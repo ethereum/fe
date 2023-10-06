@@ -12,7 +12,10 @@ use crate::{
         UseAlias, UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind,
         WhereClauseId, WherePredicate,
     },
-    span::{lazy_spans::*, params::LazyTraitRefSpan, transition::ChainRoot, SpanDowncast},
+    span::{
+        item::LazySuperTraitListSpan, lazy_spans::*, params::LazyTraitRefSpan,
+        transition::ChainRoot, SpanDowncast,
+    },
     HirDb,
 };
 
@@ -23,10 +26,10 @@ pub mod prelude {
         walk_field_def, walk_field_def_list, walk_field_list, walk_func, walk_func_param,
         walk_func_param_list, walk_generic_arg, walk_generic_arg_list, walk_generic_param,
         walk_generic_param_list, walk_impl, walk_impl_trait, walk_item, walk_kind_bound, walk_mod,
-        walk_pat, walk_path, walk_stmt, walk_struct, walk_top_mod, walk_trait, walk_trait_ref,
-        walk_ty, walk_type_alias, walk_type_bound, walk_type_bound_list, walk_use, walk_use_path,
-        walk_variant_def, walk_variant_def_list, walk_where_clause, walk_where_predicate, Visitor,
-        VisitorCtxt,
+        walk_pat, walk_path, walk_stmt, walk_struct, walk_super_trait_list, walk_top_mod,
+        walk_trait, walk_trait_ref, walk_ty, walk_type_alias, walk_type_bound,
+        walk_type_bound_list, walk_use, walk_use_path, walk_variant_def, walk_variant_def_list,
+        walk_where_clause, walk_where_predicate, Visitor, VisitorCtxt,
     };
 
     pub use crate::span::lazy_spans::*;
@@ -176,6 +179,14 @@ pub trait Visitor {
         trait_ref: TraitRefId,
     ) {
         walk_trait_ref(self, ctxt, trait_ref);
+    }
+
+    fn visit_super_trait_list(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazySuperTraitListSpan>,
+        super_traits: &[TraitRefId],
+    ) {
+        walk_super_trait_list(self, ctxt, super_traits);
     }
 
     fn visit_kind_bound(
@@ -710,16 +721,7 @@ where
 
     ctxt.with_new_ctxt(
         |span| span.super_traits(),
-        |ctxt| {
-            for (i, &trait_ref) in trait_.super_traits(ctxt.db).iter().enumerate() {
-                ctxt.with_new_ctxt(
-                    |span| span.super_trait(i),
-                    |ctxt| {
-                        visitor.visit_trait_ref(ctxt, trait_ref);
-                    },
-                );
-            }
-        },
+        |ctxt| visitor.visit_super_trait_list(ctxt, trait_.super_traits(ctxt.db)),
     );
 
     ctxt.with_new_ctxt(
@@ -1778,6 +1780,23 @@ pub fn walk_trait_ref<V>(
             |span| span.generic_args_moved(),
             |ctxt| {
                 visitor.visit_generic_arg_list(ctxt, args);
+            },
+        )
+    }
+}
+
+pub fn walk_super_trait_list<V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'_, LazySuperTraitListSpan>,
+    super_traits: &[TraitRefId],
+) where
+    V: Visitor + ?Sized,
+{
+    for (idx, super_trait) in super_traits.iter().enumerate() {
+        ctxt.with_new_ctxt(
+            |span| span.super_trait_moved(idx),
+            |ctxt| {
+                visitor.visit_trait_ref(ctxt, *super_trait);
             },
         )
     }

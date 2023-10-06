@@ -24,10 +24,11 @@ pub struct Jar(
     ty::trait_lower::lower_trait,
     ty::trait_lower::lower_trait_ref,
     ty::trait_lower::collect_trait_impls,
-    /// ADT analysis.
+    /// Item Definition analysis.
     ty::def_analysis::check_recursive_adt,
     ty::def_analysis::analyze_adt,
     ty::def_analysis::analyze_type_alias,
+    ty::def_analysis::analyze_trait,
     /// Trait system.
     ty::trait_::TraitDef,
     ty::trait_::TraitInstId,
@@ -50,7 +51,7 @@ pub struct Jar(
     /// Diagnostic accumulators.
     ty::diagnostics::AdtDefDiagAccumulator,
     ty::diagnostics::TypeAliasDefDiagAccumulator,
-    ty::diagnostics::GenericParamDiagAccumulator,
+    ty::diagnostics::TraitDefDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {

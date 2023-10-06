@@ -703,6 +703,7 @@ pub struct Trait {
     pub attributes: AttrListId,
     pub vis: Visibility,
     pub generic_params: GenericParamListId,
+    #[return_ref]
     pub super_traits: Vec<TraitRefId>,
     pub where_clause: WhereClauseId,
     pub top_mod: TopLevelMod,

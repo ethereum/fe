@@ -1,6 +1,7 @@
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, TraitRefId, TypeAlias, TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, FieldDef, Trait, TraitRefId, TypeAlias, TypeId as HirTyId,
+        VariantKind,
     },
     visitor::prelude::*,
 };
@@ -8,14 +9,17 @@ use rustc_hash::FxHashSet;
 use salsa::function::Configuration;
 
 use crate::{
-    ty::diagnostics::{AdtDefDiagAccumulator, TypeAliasDefDiagAccumulator},
+    ty::diagnostics::{
+        AdtDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
+    },
     HirAnalysisDb,
 };
 
 use super::{
-    constraint::AssumptionListId,
-    diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
-    trait_lower::{lower_trait_ref, TraitRefLowerError},
+    constraint::{collect_super_traits, AssumptionListId},
+    diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
+    trait_::TraitDef,
+    trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRefId, InvalidCause, TyData, TyId},
     ty_lower::{lower_adt, lower_hir_ty},
     visitor::{walk_ty, TyVisitor},
@@ -23,11 +27,8 @@ use super::{
 
 #[salsa::tracked]
 pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
-    let mut analyzer = AdtDefAnalysisVisitor::new(db, adt_ref);
-    let item = adt_ref.as_item(db);
-
-    let mut ctxt = VisitorCtxt::with_item(db.as_hir_db(), item);
-    analyzer.visit_item(&mut ctxt, item);
+    let mut analyzer = AdtDefAnalyzer::new(db, adt_ref);
+    analyzer.analyze();
 
     for diag in analyzer.diags {
         AdtDefDiagAccumulator::push(db, diag);
@@ -35,6 +36,16 @@ pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
 
     if let Some(diag) = check_recursive_adt(db, adt_ref) {
         AdtDefDiagAccumulator::push(db, diag);
+    }
+}
+
+#[salsa::tracked]
+pub fn analyze_trait(db: &dyn HirAnalysisDb, trait_: Trait) {
+    let mut analyzer = TraitDefAnalyzer::new(db, trait_);
+    analyzer.analyze();
+
+    for diag in analyzer.diags {
+        TraitDefDiagAccumulator::push(db, diag);
     }
 }
 
@@ -105,21 +116,23 @@ fn check_recursive_adt_impl(
     None
 }
 
-struct AdtDefAnalysisVisitor<'db> {
+struct AdtDefAnalyzer<'db> {
     db: &'db dyn HirAnalysisDb,
+    def: AdtDef,
     diags: Vec<TyDiagCollection>,
     scope: ScopeId,
     assumptions: AssumptionListId,
 }
 
-impl<'db> AdtDefAnalysisVisitor<'db> {
+impl<'db> AdtDefAnalyzer<'db> {
     fn new(db: &'db dyn HirAnalysisDb, adt: AdtRefId) -> Self {
-        let adt = lower_adt(db, adt);
+        let def = lower_adt(db, adt);
         Self {
             db,
+            def,
             diags: Vec::new(),
             scope: adt.scope(db),
-            assumptions: adt.constraints(db),
+            assumptions: def.constraints(db),
         }
     }
 
@@ -134,17 +147,24 @@ impl<'db> AdtDefAnalysisVisitor<'db> {
             true
         }
     }
+    fn analyze(&mut self) {
+        let item = self.def.adt_ref(self.db).as_item(self.db);
+
+        let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), item);
+        self.visit_item(&mut ctxt, item);
+    }
 }
 
-impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
+impl<'db> Visitor for AdtDefAnalyzer<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
-        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
-        if let Some(diag) = ty.emit_diag(self.db, ctxt.span().unwrap().into()) {
-            self.diags.push(diag.into());
-        } else if let Some(diag) =
-            ty.emit_sat_diag(self.db, self.assumptions, ctxt.span().unwrap().into())
-        {
-            self.diags.push(diag.into())
+        if let Some(diag) = analyze_ty(
+            self.db,
+            hir_ty,
+            self.scope,
+            self.assumptions,
+            ctxt.span().unwrap().into(),
+        ) {
+            self.diags.push(diag);
         }
     }
 
@@ -181,24 +201,20 @@ impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
         pred: &hir::hir_def::WherePredicate,
     ) {
         let Some(hir_ty) = pred.ty.to_opt() else {
+            walk_where_predicate(self, ctxt, pred);
             return;
         };
 
         let ty = lower_hir_ty(self.db, hir_ty, self.scope);
-        if ty.contains_invalid(self.db) {
-            walk_where_predicate(self, ctxt, pred);
-            return;
-        }
 
         if !ty.contains_ty_param(self.db) {
-            self.diags.push(
-                TraitConstraintDiag::concrete_type_bound(
-                    self.db,
-                    ctxt.span().unwrap().ty().into(),
-                    ty,
-                )
-                .into(),
-            );
+            let diag = TraitConstraintDiag::concrete_type_bound(
+                self.db,
+                ctxt.span().unwrap().ty().into(),
+                ty,
+            )
+            .into();
+            self.diags.push(diag);
             return;
         }
 
@@ -210,53 +226,136 @@ impl<'db> Visitor for AdtDefAnalysisVisitor<'db> {
         ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
         trait_ref: TraitRefId,
     ) {
-        let trait_inst = match lower_trait_ref(self.db, trait_ref, self.scope) {
-            Ok(trait_ref) => trait_ref,
-            Err(TraitRefLowerError::TraitNotFound) => {
-                return;
-            }
+        if let Some(diag) = analyze_trait_ref(
+            self.db,
+            trait_ref,
+            self.scope,
+            self.assumptions,
+            ctxt.span().unwrap().into(),
+        ) {
+            self.diags.push(diag);
+        } else {
+            walk_trait_ref(self, ctxt, trait_ref);
+        }
+    }
+}
 
-            Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
-                self.diags.push(
-                    TraitConstraintDiag::trait_arg_num_mismatch(
-                        self.db,
-                        ctxt.span().unwrap().into(),
-                        expected,
-                        given,
-                    )
-                    .into(),
-                );
-                return;
-            }
+struct TraitDefAnalyzer<'db> {
+    db: &'db dyn HirAnalysisDb,
+    def: TraitDef,
+    diags: Vec<TyDiagCollection>,
+    scope: ScopeId,
+    assumptions: AssumptionListId,
+    is_in_self_bound: bool,
+}
 
-            Err(TraitRefLowerError::ArgumentKindMisMatch { expected, given }) => {
-                self.diags.push(
-                    TraitConstraintDiag::trait_arg_kind_mismatch(
-                        self.db,
-                        ctxt.span().unwrap().into(),
-                        &expected,
-                        given,
-                    )
-                    .into(),
-                );
-                return;
-            }
+impl<'db> TraitDefAnalyzer<'db> {
+    fn new(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
+        let def = lower_trait(db, trait_);
 
-            Err(TraitRefLowerError::AssocTy(_)) => {
-                self.diags
-                    .push(TyLowerDiag::assoc_ty(ctxt.span().unwrap().into()).into());
-                return;
-            }
+        Self {
+            db,
+            def,
+            diags: Vec::new(),
+            scope: trait_.scope(),
+            assumptions: def.constraints(db),
+            is_in_self_bound: false,
+        }
+    }
+
+    fn analyze(&mut self) {
+        let trait_ = self.def.trait_(self.db);
+
+        let mut ctxt = VisitorCtxt::with_trait(self.db.as_hir_db(), trait_);
+        self.visit_trait(&mut ctxt, trait_);
+    }
+}
+
+impl<'db> Visitor for TraitDefAnalyzer<'db> {
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
+        if let Some(diag) = analyze_ty(
+            self.db,
+            hir_ty,
+            self.scope,
+            self.assumptions,
+            ctxt.span().unwrap().into(),
+        ) {
+            self.diags.push(diag);
+        }
+    }
+
+    fn visit_where_predicate(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
+        pred: &hir::hir_def::WherePredicate,
+    ) {
+        let Some(hir_ty) = pred.ty.to_opt() else {
+            walk_where_predicate(self, ctxt, pred);
+            return;
         };
 
-        if let Some(diag) =
-            trait_inst.emit_sat_diag(self.db, self.assumptions, ctxt.span().unwrap().into())
-        {
-            self.diags.push(diag.into());
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
+
+        if !ty.contains_ty_param(self.db) {
+            let diag = TraitConstraintDiag::concrete_type_bound(
+                self.db,
+                ctxt.span().unwrap().ty().into(),
+                ty,
+            )
+            .into();
+            self.diags.push(diag);
             return;
         }
 
-        walk_trait_ref(self, ctxt, trait_ref);
+        if ty.is_trait_self(self.db) {
+            self.is_in_self_bound = true;
+        }
+
+        walk_where_predicate(self, ctxt, pred);
+        self.is_in_self_bound = false;
+    }
+
+    fn visit_trait_ref(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
+        trait_ref: TraitRefId,
+    ) {
+        if self.is_in_self_bound {
+            if let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) {
+                if let Err(cycle) = collect_super_traits(self.db, self.def) {
+                    if cycle.contains(trait_inst.def(self.db)) {
+                        self.diags.push(
+                            TraitLowerDiag::CyclicSuperTraits(ctxt.span().unwrap().path().into())
+                                .into(),
+                        );
+                        return;
+                    }
+                }
+            };
+        }
+
+        if let Some(diag) = analyze_trait_ref(
+            self.db,
+            trait_ref,
+            self.scope,
+            self.assumptions,
+            ctxt.span().unwrap().into(),
+        ) {
+            self.diags.push(diag);
+            return;
+        } else {
+            walk_trait_ref(self, ctxt, trait_ref);
+        }
+    }
+
+    fn visit_super_trait_list(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, hir::span::item::LazySuperTraitListSpan>,
+        super_traits: &[TraitRefId],
+    ) {
+        self.is_in_self_bound = true;
+        walk_super_trait_list(self, ctxt, super_traits);
+        self.is_in_self_bound = false;
     }
 }
 
@@ -286,5 +385,59 @@ impl TyId {
 
         walk_ty(&mut collector, db, self);
         collector.adts
+    }
+}
+
+fn analyze_ty(
+    db: &dyn HirAnalysisDb,
+    hir_ty: HirTyId,
+    scope: ScopeId,
+    assumptions: AssumptionListId,
+    span: DynLazySpan,
+) -> Option<TyDiagCollection> {
+    let ty = lower_hir_ty(db, hir_ty, scope);
+    if let Some(diag) = ty.emit_diag(db, span.clone()) {
+        Some(diag)
+    } else if let Some(diag) = ty.emit_sat_diag(db, assumptions, span.into()) {
+        Some(diag)
+    } else {
+        None
+    }
+}
+
+fn analyze_trait_ref(
+    db: &dyn HirAnalysisDb,
+    trait_ref: TraitRefId,
+    scope: ScopeId,
+    assumptions: AssumptionListId,
+    span: DynLazySpan,
+) -> Option<TyDiagCollection> {
+    let trait_inst = match lower_trait_ref(db, trait_ref, scope) {
+        Ok(trait_ref) => trait_ref,
+        Err(TraitRefLowerError::TraitNotFound) => {
+            return None;
+        }
+
+        Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
+            return Some(
+                TraitConstraintDiag::trait_arg_num_mismatch(db, span, expected, given).into(),
+            );
+        }
+
+        Err(TraitRefLowerError::ArgumentKindMisMatch { expected, given }) => {
+            return Some(
+                TraitConstraintDiag::trait_arg_kind_mismatch(db, span, &expected, given).into(),
+            );
+        }
+
+        Err(TraitRefLowerError::AssocTy(_)) => {
+            return Some(TyLowerDiag::assoc_ty(span).into());
+        }
+    };
+
+    if let Some(diag) = trait_inst.emit_sat_diag(db, assumptions, span) {
+        Some(diag.into())
+    } else {
+        None
     }
 }

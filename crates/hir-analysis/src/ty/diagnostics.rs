@@ -18,9 +18,9 @@ use super::{
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
-pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
+pub struct TraitDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
-pub struct GenericParamDiagAccumulator(pub(super) TyDiagCollection);
+pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum TyDiagCollection {

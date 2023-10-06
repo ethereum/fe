@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 /// This module contains the logic for solving trait bounds.
 use hir::{
     hir_def::{ImplTrait, IngotId, Trait},
@@ -261,8 +263,12 @@ impl TraitDef {
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
-    pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &[TraitInstId] {
-        &collect_super_traits(db, self)
+    pub(super) fn super_traits<'db>(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> &'db BTreeSet<TraitInstId> {
+        const _EMPTY: &BTreeSet<TraitInstId> = &BTreeSet::new();
+        collect_super_traits(db, self).as_ref().unwrap_or(_EMPTY)
     }
 
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {

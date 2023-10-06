@@ -2,10 +2,8 @@ use crate::HirAnalysisDb;
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::TopLevelMod};
 
 use self::{
-    def_analysis::{analyze_adt, analyze_type_alias},
-    diagnostics::{
-        AdtDefDiagAccumulator, GenericParamDiagAccumulator, TypeAliasDefDiagAccumulator,
-    },
+    def_analysis::{analyze_adt, analyze_trait, analyze_type_alias},
+    diagnostics::{AdtDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator},
     ty_def::AdtRefId,
     ty_lower::collect_generic_params,
 };
@@ -57,18 +55,35 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
             );
 
         adts.flat_map(|adt| {
-            analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt)
-                .into_iter()
-                .chain(if let Some(owner_id) = adt.generic_owner_id(self.db) {
-                    collect_generic_params::accumulated::<GenericParamDiagAccumulator>(
-                        self.db, owner_id,
-                    )
-                } else {
-                    Vec::new()
-                })
+            analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt).into_iter()
         })
         .map(|diag| diag.to_voucher())
         .collect()
+    }
+}
+
+pub struct TraitAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+impl<'db> TraitAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+
+impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod,
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
+        top_mod
+            .all_traits(self.db.as_hir_db())
+            .iter()
+            .flat_map(|trait_| {
+                analyze_trait::accumulated::<TraitDefDiagAccumulator>(self.db, *trait_)
+            })
+            .map(|diag| diag.to_voucher())
+            .collect()
     }
 }
 
@@ -96,25 +111,6 @@ impl<'db> ModuleAnalysisPass for TypeAliasAnalysisPass<'db> {
             })
             .map(|diag| diag.to_voucher())
             .collect()
-    }
-}
-
-pub struct TraitAnalysisPass<'db> {
-    db: &'db dyn HirAnalysisDb,
-}
-impl<'db> TraitAnalysisPass<'db> {
-    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
-        Self { db }
-    }
-}
-
-impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
-    fn run_on_module(
-        &mut self,
-        top_mod: TopLevelMod,
-    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
-        // TODO:
-        vec![]
     }
 }
 

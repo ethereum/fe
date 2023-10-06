@@ -2,11 +2,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use hir::{
     hir_def::{
-        self, scope_graph::ScopeId, GenericParamOwner, IngotId, Trait, TraitRefId, WherePredicate,
+        self, scope_graph::ScopeId, GenericParamOwner, IngotId, TraitRefId, TypeBound,
+        WherePredicate,
     },
     visitor::prelude::*,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
+use salsa::function::Configuration;
 
 use crate::{
     ty::{trait_lower::lower_trait, unify::InferenceKey},
@@ -107,16 +109,26 @@ pub(crate) fn trait_inst_constraints(
 }
 
 #[salsa::tracked(return_ref, recovery_fn = recover_collect_super_traits)]
-pub(crate) fn collect_super_traits(db: &dyn HirAnalysisDb, trait_: TraitDef) -> Vec<TraitInstId> {
-    let collector = SuperTraitCollector::new(db, trait_, FxHashSet::default());
-    let insts = collector.finalize();
+pub(crate) fn collect_super_traits(
+    db: &dyn HirAnalysisDb,
+    trait_: TraitDef,
+) -> Result<BTreeSet<TraitInstId>, SuperTraitCycle> {
+    let collector = SuperTraitCollector::new(db, trait_);
+    let insts = collector.collect();
 
+    let mut cycles = BTreeSet::new();
     // Check for cycles.
-    for inst in &insts {
-        collect_super_traits(db, inst.def(db));
+    for &inst in &insts {
+        if let Err(err) = collect_super_traits(db, inst.def(db)) {
+            cycles.extend(err.0.iter().copied());
+        }
     }
 
-    insts
+    if cycles.is_empty() {
+        Ok(insts)
+    } else {
+        Err(SuperTraitCycle(cycles))
+    }
 }
 
 /// Returns a list of super trait instances of the given trait instance.
@@ -124,9 +136,9 @@ pub(crate) fn collect_super_traits(db: &dyn HirAnalysisDb, trait_: TraitDef) -> 
 pub(crate) fn super_trait_insts(
     db: &dyn HirAnalysisDb,
     trait_inst: TraitInstId,
-) -> Vec<TraitInstId> {
+) -> BTreeSet<TraitInstId> {
     let trait_def = trait_inst.def(db);
-    let super_traits = collect_super_traits(db, trait_def);
+    let super_traits = trait_def.super_traits(db);
     let mut subst = trait_inst.subst_table(db);
 
     super_traits
@@ -275,77 +287,69 @@ pub(super) type ConstraintListId = PredicateListId;
 
 pub(crate) fn recover_collect_super_traits(
     _db: &dyn HirAnalysisDb,
-    _cycle: &salsa::Cycle,
+    cycle: &salsa::Cycle,
     _trait_: TraitDef,
-) -> Vec<TraitInstId> {
-    vec![]
+) -> Result<BTreeSet<TraitInstId>, SuperTraitCycle> {
+    let mut trait_cycle = BTreeSet::new();
+    for key in cycle.participant_keys() {
+        trait_cycle.insert(collect_super_traits::key_from_id(key.key_index()));
+    }
+
+    Err(SuperTraitCycle(trait_cycle))
 }
 
 struct SuperTraitCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef,
-    super_traits: Vec<TraitInstId>,
+    super_traits: BTreeSet<TraitInstId>,
     scope: ScopeId,
 }
 
 impl<'db> SuperTraitCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: TraitDef, cycle: FxHashSet<Trait>) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, trait_: TraitDef) -> Self {
         Self {
             db,
             trait_,
-            super_traits: vec![],
+            super_traits: BTreeSet::default(),
             scope: trait_.trait_(db).scope(),
         }
     }
 
-    fn finalize(mut self) -> Vec<TraitInstId> {
+    fn collect(mut self) -> BTreeSet<TraitInstId> {
         let hir_trait = self.trait_.trait_(self.db);
-        let mut visitor_ctxt = VisitorCtxt::with_trait(self.db.as_hir_db(), hir_trait);
-        self.visit_trait(&mut visitor_ctxt, hir_trait);
+        let hir_db = self.db.as_hir_db();
+        for &super_ in hir_trait.super_traits(hir_db).iter() {
+            if let Ok(inst) = lower_trait_ref(self.db, super_, self.scope) {
+                self.super_traits.insert(inst);
+            }
+        }
+
+        for pred in hir_trait.where_clause(hir_db).data(hir_db) {
+            if pred
+                .ty
+                .to_opt()
+                .map(|ty| ty.is_self_ty(hir_db))
+                .unwrap_or_default()
+            {
+                for bound in &pred.bounds {
+                    if let TypeBound::Trait(bound) = bound {
+                        if let Ok(inst) = lower_trait_ref(self.db, *bound, self.scope) {
+                            self.super_traits.insert(inst);
+                        }
+                    }
+                }
+            }
+        }
 
         self.super_traits
     }
 }
 
-impl<'db> Visitor for SuperTraitCollector<'db> {
-    fn visit_trait_ref(
-        &mut self,
-        _ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRefId,
-    ) {
-        let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) else {
-            return;
-        };
-
-        self.super_traits.push(trait_inst);
-    }
-
-    fn visit_where_predicate(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
-        pred: &WherePredicate,
-    ) {
-        // We just want to check super traits, so we don't care about other type
-        // constraints.
-        if pred
-            .ty
-            .to_opt()
-            .map(|ty| ty.is_self_ty(self.db.as_hir_db()))
-            .unwrap_or_default()
-        {
-            walk_where_predicate(self, ctxt, pred);
-        }
-    }
-
-    fn visit_generic_param_list(
-        &mut self,
-        _: &mut VisitorCtxt<'_, LazyGenericParamListSpan>,
-        _: hir_def::GenericParamListId,
-    ) {
-    }
-
-    fn visit_item(&mut self, _: &mut VisitorCtxt<'_, LazyItemSpan>, _: hir::hir_def::ItemKind) {
-        // We don't want to visit nested items in the trait.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub(crate) struct SuperTraitCycle(BTreeSet<TraitDef>);
+impl SuperTraitCycle {
+    pub fn contains(&self, def: TraitDef) -> bool {
+        self.0.contains(&def)
     }
 }
 
@@ -385,7 +389,7 @@ impl<'db> ConstraintCollector<'db> {
         if let GenericParamOwner::Trait(trait_) = self.owner.data(self.db) {
             let trait_def = lower_trait(self.db, trait_);
             let self_param = trait_def.self_param(self.db);
-            for &inst in collect_super_traits(self.db, trait_def) {
+            for &inst in trait_def.super_traits(self.db).iter() {
                 self.push_predicate(self_param, inst, DynLazySpan::invalid());
             }
         }
