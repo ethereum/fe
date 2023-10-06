@@ -77,6 +77,15 @@ pub(crate) fn lower_trait_ref(
         });
     }
 
+    for (param, arg) in trait_def.params(db).iter().zip(args.iter()) {
+        if param.kind(db) != arg.kind(db) {
+            return Err(TraitRefLowerError::ArgumentKindMisMatch {
+                expected: param.kind(db).clone(),
+                given: *arg,
+            });
+        }
+    }
+
     let ingot = scope.ingot(hir_db);
     Ok(TraitInstId::new(db, trait_def, args, ingot))
 }

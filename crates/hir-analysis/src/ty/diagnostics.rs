@@ -55,7 +55,7 @@ pub enum TyLowerDiag {
     },
     TypeAliasCycle(DynLazySpan),
 
-    DuplicateKindBound(DynLazySpan, DynLazySpan),
+    KindBoundMismatch(DynLazySpan, String),
 
     KindBoundNotAllowed(DynLazySpan),
 
@@ -98,6 +98,22 @@ impl TyLowerDiag {
         }
     }
 
+    pub(super) fn kind_bound_mismatch(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        ty: TyId,
+        former_bound: &Kind,
+        new_kind: &Kind,
+    ) -> Self {
+        let msg = format!(
+            "`{}` is already declared with `{}` kind, but found `{}` kind here",
+            ty.pretty_print(db),
+            former_bound,
+            new_kind
+        );
+        Self::KindBoundMismatch(span, msg)
+    }
+
     pub(super) fn type_alias_cycle(span: DynLazySpan) -> Self {
         Self::TypeAliasCycle(span)
     }
@@ -113,7 +129,7 @@ impl TyLowerDiag {
             Self::RecursiveType { .. } => 2,
             Self::TypeAliasArgumentMismatch { .. } => 3,
             Self::TypeAliasCycle(_) => 4,
-            Self::DuplicateKindBound(_, _) => 5,
+            Self::KindBoundMismatch(_, _) => 5,
             Self::KindBoundNotAllowed(_) => 6,
             Self::AssocTy(_) => 7,
         }
@@ -136,7 +152,7 @@ impl TyLowerDiag {
             ),
             Self::TypeAliasCycle(_) => "recursive type alias cycle is detected".to_string(),
 
-            Self::DuplicateKindBound(_, _) => "duplicate type bound is not allowed.".to_string(),
+            Self::KindBoundMismatch(_, _) => "duplicate type bound is not allowed.".to_string(),
             Self::KindBoundNotAllowed(_) => "kind bound is not allowed".to_string(),
 
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
@@ -205,19 +221,12 @@ impl TyLowerDiag {
                 span.resolve(db),
             )],
 
-            Self::DuplicateKindBound(primary, first_defined) => {
-                vec![
-                    SubDiagnostic::new(
-                        LabelStyle::Primary,
-                        "duplicate type bound here".to_string(),
-                        primary.resolve(db),
-                    ),
-                    SubDiagnostic::new(
-                        LabelStyle::Secondary,
-                        "first defined here".to_string(),
-                        first_defined.resolve(db),
-                    ),
-                ]
+            Self::KindBoundMismatch(primary, msg) => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    msg.clone(),
+                    primary.resolve(db),
+                )]
             }
             Self::KindBoundNotAllowed(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,

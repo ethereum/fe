@@ -572,7 +572,7 @@ impl TyParamPrecursor {
     }
 }
 
-fn lower_kind(kind: &HirKindBound) -> Kind {
+pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
     match kind {
         HirKindBound::Mono => Kind::Star,
         HirKindBound::Abs(lhs, rhs) => match (lhs, rhs) {

@@ -21,7 +21,7 @@ use super::{
     trait_::TraitDef,
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRefId, InvalidCause, TyData, TyId},
-    ty_lower::{lower_adt, lower_hir_ty},
+    ty_lower::{lower_adt, lower_hir_ty, lower_kind},
     visitor::{walk_ty, TyVisitor},
 };
 
@@ -122,6 +122,7 @@ struct AdtDefAnalyzer<'db> {
     diags: Vec<TyDiagCollection>,
     scope: ScopeId,
     assumptions: AssumptionListId,
+    current_ty: Option<TyId>,
 }
 
 impl<'db> AdtDefAnalyzer<'db> {
@@ -133,6 +134,7 @@ impl<'db> AdtDefAnalyzer<'db> {
             diags: Vec::new(),
             scope: adt.scope(db),
             assumptions: def.constraints(db),
+            current_ty: None,
         }
     }
 
@@ -195,13 +197,37 @@ impl<'db> Visitor for AdtDefAnalyzer<'db> {
         }
     }
 
+    fn visit_kind_bound(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+        bound: &hir::hir_def::KindBound,
+    ) {
+        let Some(ty) = self.current_ty else {
+            return;
+        };
+
+        let kind = lower_kind(bound);
+        let former_kind = ty.kind(self.db);
+        if !former_kind.does_match(&kind) {
+            self.diags.push(
+                TyLowerDiag::kind_bound_mismatch(
+                    self.db,
+                    ctxt.span().unwrap().into(),
+                    ty,
+                    former_kind,
+                    &kind,
+                )
+                .into(),
+            );
+        }
+    }
+
     fn visit_where_predicate(
         &mut self,
         ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
         pred: &hir::hir_def::WherePredicate,
     ) {
         let Some(hir_ty) = pred.ty.to_opt() else {
-            walk_where_predicate(self, ctxt, pred);
             return;
         };
 
@@ -218,7 +244,21 @@ impl<'db> Visitor for AdtDefAnalyzer<'db> {
             return;
         }
 
+        self.current_ty = Some(ty);
         walk_where_predicate(self, ctxt, pred);
+    }
+
+    fn visit_generic_param(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
+        param: &hir::hir_def::GenericParam,
+    ) {
+        let ScopeId::GenericParam(_, idx) = ctxt.scope() else {
+            unreachable!()
+        };
+        self.current_ty = Some(self.def.params(self.db)[idx]);
+
+        walk_generic_param(self, ctxt, param)
     }
 
     fn visit_trait_ref(
@@ -246,7 +286,7 @@ struct TraitDefAnalyzer<'db> {
     diags: Vec<TyDiagCollection>,
     scope: ScopeId,
     assumptions: AssumptionListId,
-    is_in_self_bound: bool,
+    current_ty: Option<TyId>,
 }
 
 impl<'db> TraitDefAnalyzer<'db> {
@@ -259,7 +299,7 @@ impl<'db> TraitDefAnalyzer<'db> {
             diags: Vec::new(),
             scope: trait_.scope(),
             assumptions: def.constraints(db),
-            is_in_self_bound: false,
+            current_ty: None,
         }
     }
 
@@ -290,7 +330,6 @@ impl<'db> Visitor for TraitDefAnalyzer<'db> {
         pred: &hir::hir_def::WherePredicate,
     ) {
         let Some(hir_ty) = pred.ty.to_opt() else {
-            walk_where_predicate(self, ctxt, pred);
             return;
         };
 
@@ -307,12 +346,46 @@ impl<'db> Visitor for TraitDefAnalyzer<'db> {
             return;
         }
 
-        if ty.is_trait_self(self.db) {
-            self.is_in_self_bound = true;
-        }
-
+        self.current_ty = Some(ty);
         walk_where_predicate(self, ctxt, pred);
-        self.is_in_self_bound = false;
+    }
+
+    fn visit_generic_param(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
+        param: &hir::hir_def::GenericParam,
+    ) {
+        let ScopeId::GenericParam(_, idx) = ctxt.scope() else {
+            unreachable!()
+        };
+        self.current_ty = Some(self.def.params(self.db)[idx]);
+
+        walk_generic_param(self, ctxt, param)
+    }
+
+    fn visit_kind_bound(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+        bound: &hir::hir_def::KindBound,
+    ) {
+        let Some(ty) = self.current_ty else {
+            return;
+        };
+
+        let kind = lower_kind(bound);
+        let former_kind = ty.kind(self.db);
+        if !former_kind.does_match(&kind) {
+            self.diags.push(
+                TyLowerDiag::kind_bound_mismatch(
+                    self.db,
+                    ctxt.span().unwrap().into(),
+                    ty,
+                    former_kind,
+                    &kind,
+                )
+                .into(),
+            );
+        }
     }
 
     fn visit_trait_ref(
@@ -320,7 +393,11 @@ impl<'db> Visitor for TraitDefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
         trait_ref: TraitRefId,
     ) {
-        if self.is_in_self_bound {
+        if self
+            .current_ty
+            .map(|ty| ty.is_trait_self(self.db))
+            .unwrap_or_default()
+        {
             if let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) {
                 if let Err(cycle) = collect_super_traits(self.db, self.def) {
                     if cycle.contains(trait_inst.def(self.db)) {
@@ -353,9 +430,8 @@ impl<'db> Visitor for TraitDefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'_, hir::span::item::LazySuperTraitListSpan>,
         super_traits: &[TraitRefId],
     ) {
-        self.is_in_self_bound = true;
+        self.current_ty = Some(self.def.self_param(self.db));
         walk_super_trait_list(self, ctxt, super_traits);
-        self.is_in_self_bound = false;
     }
 }
 
