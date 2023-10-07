@@ -22,6 +22,7 @@ One straightforward way to interact with the language server during development 
 - [x] LSP server crate scaffolding
 - [x] LSP-based VSCode extension
 - [x] Hover prototype
+  - printing debug information
 - [x] Basic development setup and documentation
 - [x] Orientation, research and study of rust-analyzer and Fe compiler
 ### June 2023
@@ -47,7 +48,7 @@ One straightforward way to interact with the language server during development 
 ### September 2023
 - [x] Research and study of rust-analyzer's file synchronization functionality
 - Go-to definition cleanup
-- Initial "workspace" functionality.
+- Initial "workspace" functionality
   - a data structure and API for generating, caching and synchronizing necessary salsa inputs to support language server functionality
   - should support file synchronization via filesystem watching and LSP file change events alike
   - [x] Sketch of initial workspace cache data structures
@@ -58,6 +59,31 @@ One straightforward way to interact with the language server during development 
   - [x] Initial workspace sync prototype and tests
 - [x] Initial support for subdiagnostics
 - Workspace sync API brainstorming and study
-### October 2023
+### To-do and tentative roadmap
 - [ ] Documentation of progress and roadmapping work
-- [ ] Workspace sync API rework to support explicit input update operations
+- [ ] Improve the internal synchronization API for the "workspace" data structure to support an explicit update step 
+- [ ] Integrate the "workspace" data structure with LSP events and a rudimentary filesystem watcher
+
+#### Server improvements
+- [ ] Implement a task queue system for long-running tasks
+- [ ] Implement progress feedback notifications
+- [ ] Implement configurable options for the language server
+
+#### LSP Features
+- [ ] Enhance hover feature to return useful information and documentation.
+- [ ] Expand go-to feature to support variables and functions
+- [ ] Support go-to definitions for Fe standard library
+- [ ] Improve diagnostics implementation and expand tests
+
+#### Integration with VSCode
+- [ ] Implement configuration and options shortcuts in the VSCode extension
+- [ ] Investigate support for running tests/proofs from the VSCode extension
+
+#### Testing and Documentation
+- [ ] Better test coverage
+- [ ] Document the code, architecture, rationale for decisions, risks, and roadmap
+- [ ] Create a catalog of examples that activate various LSP features
+
+#### Research and Miscellaneous
+- [ ] Look into possibility of supporting proof and Fe test functionality in the language server
+- [ ] Investigate possible use cases for extending the salsa architecture into the language server more directly, e.g. performance improvements
