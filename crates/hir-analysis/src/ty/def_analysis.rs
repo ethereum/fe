@@ -16,7 +16,7 @@ use crate::{
 };
 
 use super::{
-    constraint::{collect_super_traits, AssumptionListId},
+    constraint::{collect_super_traits, AssumptionListId, SuperTraitCycle},
     diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     trait_::TraitDef,
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
@@ -27,10 +27,10 @@ use super::{
 
 #[salsa::tracked]
 pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
-    let mut analyzer = AdtDefAnalyzer::new(db, adt_ref);
-    analyzer.analyze();
+    let analyzer = DefAnalyzer::for_adt(db, adt_ref);
+    let diags = analyzer.analyze();
 
-    for diag in analyzer.diags {
+    for diag in diags {
         AdtDefDiagAccumulator::push(db, diag);
     }
 
@@ -41,10 +41,10 @@ pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
 
 #[salsa::tracked]
 pub fn analyze_trait(db: &dyn HirAnalysisDb, trait_: Trait) {
-    let mut analyzer = TraitDefAnalyzer::new(db, trait_);
-    analyzer.analyze();
+    let analyzer = DefAnalyzer::for_trait(db, trait_);
+    let diags = analyzer.analyze();
 
-    for diag in analyzer.diags {
+    for diag in diags {
         TraitDefDiagAccumulator::push(db, diag);
     }
 }
@@ -71,73 +71,43 @@ pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
     }
 }
 
-#[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
-pub(crate) fn check_recursive_adt(
-    db: &dyn HirAnalysisDb,
-    adt: AdtRefId,
-) -> Option<TyDiagCollection> {
-    let adt_def = lower_adt(db, adt);
-    for field in adt_def.fields(db) {
-        for ty in field.iter_types(db) {
-            for adt_ref in ty.collect_direct_adts(db) {
-                check_recursive_adt(db, adt_ref);
-            }
-        }
-    }
-
-    None
-}
-
-fn check_recursive_adt_impl(
-    db: &dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    adt: AdtRefId,
-) -> Option<TyDiagCollection> {
-    let participants: FxHashSet<_> = cycle
-        .participant_keys()
-        .map(|key| check_recursive_adt::key_from_id(key.key_index()))
-        .collect();
-
-    let adt_def = lower_adt(db, adt);
-    for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
-        for (ty_idx, ty) in field.iter_types(db).enumerate() {
-            for field_adt_ref in ty.collect_direct_adts(db) {
-                if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-                    let diag = TyLowerDiag::recursive_type(
-                        adt.name_span(db),
-                        adt_def.variant_ty_span(db, field_idx, ty_idx),
-                    );
-                    return Some(diag.into());
-                }
-            }
-        }
-    }
-
-    None
-}
-
-struct AdtDefAnalyzer<'db> {
+pub struct DefAnalyzer<'db> {
     db: &'db dyn HirAnalysisDb,
-    def: AdtDef,
+    def: DefKind,
     diags: Vec<TyDiagCollection>,
     scope: ScopeId,
     assumptions: AssumptionListId,
     current_ty: Option<TyId>,
 }
 
-impl<'db> AdtDefAnalyzer<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, adt: AdtRefId) -> Self {
+impl<'db> DefAnalyzer<'db> {
+    fn for_adt(db: &'db dyn HirAnalysisDb, adt: AdtRefId) -> Self {
         let def = lower_adt(db, adt);
+        let scope = adt.scope(db);
+        let assumptions = def.constraints(db);
         Self {
             db,
-            def,
-            diags: Vec::new(),
-            scope: adt.scope(db),
-            assumptions: def.constraints(db),
+            def: def.into(),
+            diags: vec![],
+            scope,
+            assumptions,
             current_ty: None,
         }
     }
 
+    fn for_trait(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
+        let def = lower_trait(db, trait_);
+        let scope = trait_.scope();
+        let assumptions = def.constraints(db);
+        Self {
+            db,
+            def: def.into(),
+            diags: vec![],
+            scope,
+            assumptions,
+            current_ty: None,
+        }
+    }
     // This method ensures that field/variant types are fully applied.
     fn verify_fully_applied(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope);
@@ -149,27 +119,62 @@ impl<'db> AdtDefAnalyzer<'db> {
             true
         }
     }
-    fn analyze(&mut self) {
-        let item = self.def.adt_ref(self.db).as_item(self.db);
 
-        let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), item);
-        self.visit_item(&mut ctxt, item);
+    fn analyze(mut self) -> Vec<TyDiagCollection> {
+        match self.def {
+            DefKind::Adt(def) => {
+                let item = def.adt_ref(self.db).as_item(self.db);
+                let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), item);
+                self.visit_item(&mut ctxt, item);
+            }
+
+            DefKind::Trait(trait_) => {
+                let trait_ = trait_.trait_(self.db);
+                let mut ctxt = VisitorCtxt::with_trait(self.db.as_hir_db(), trait_);
+                self.visit_trait(&mut ctxt, trait_);
+            }
+        }
+
+        self.diags
     }
 }
 
-impl<'db> Visitor for AdtDefAnalyzer<'db> {
+impl<'db> Visitor for DefAnalyzer<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
-        if let Some(diag) = analyze_ty(
-            self.db,
-            hir_ty,
-            self.scope,
-            self.assumptions,
-            ctxt.span().unwrap().into(),
-        ) {
-            self.diags.push(diag);
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
+        let span = ctxt.span().unwrap();
+        if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
+            self.diags.push(diag)
+        } else if let Some(diag) = ty.emit_sat_diag(self.db, self.assumptions, span.into()) {
+            self.diags.push(diag)
         }
     }
 
+    fn visit_where_predicate(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
+        pred: &hir::hir_def::WherePredicate,
+    ) {
+        let Some(hir_ty) = pred.ty.to_opt() else {
+            return;
+        };
+
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
+
+        if !ty.contains_ty_param(self.db) {
+            let diag = TraitConstraintDiag::concrete_type_bound(
+                self.db,
+                ctxt.span().unwrap().ty().into(),
+                ty,
+            )
+            .into();
+            self.diags.push(diag);
+            return;
+        }
+
+        self.current_ty = Some(ty);
+        walk_where_predicate(self, ctxt, pred);
+    }
     fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
         if let Some(ty) = field.ty.to_opt() {
             if self.verify_fully_applied(ty, ctxt.span().unwrap().ty().into()) {
@@ -195,159 +200,6 @@ impl<'db> Visitor for AdtDefAnalyzer<'db> {
                 }
             }
         }
-    }
-
-    fn visit_kind_bound(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
-        bound: &hir::hir_def::KindBound,
-    ) {
-        let Some(ty) = self.current_ty else {
-            return;
-        };
-
-        let kind = lower_kind(bound);
-        let former_kind = ty.kind(self.db);
-        if !former_kind.does_match(&kind) {
-            self.diags.push(
-                TyLowerDiag::kind_bound_mismatch(
-                    self.db,
-                    ctxt.span().unwrap().into(),
-                    ty,
-                    former_kind,
-                    &kind,
-                )
-                .into(),
-            );
-        }
-    }
-
-    fn visit_where_predicate(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
-        pred: &hir::hir_def::WherePredicate,
-    ) {
-        let Some(hir_ty) = pred.ty.to_opt() else {
-            return;
-        };
-
-        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
-
-        if !ty.contains_ty_param(self.db) {
-            let diag = TraitConstraintDiag::concrete_type_bound(
-                self.db,
-                ctxt.span().unwrap().ty().into(),
-                ty,
-            )
-            .into();
-            self.diags.push(diag);
-            return;
-        }
-
-        self.current_ty = Some(ty);
-        walk_where_predicate(self, ctxt, pred);
-    }
-
-    fn visit_generic_param(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
-        param: &hir::hir_def::GenericParam,
-    ) {
-        let ScopeId::GenericParam(_, idx) = ctxt.scope() else {
-            unreachable!()
-        };
-        self.current_ty = Some(self.def.params(self.db)[idx]);
-
-        walk_generic_param(self, ctxt, param)
-    }
-
-    fn visit_trait_ref(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRefId,
-    ) {
-        if let Some(diag) = analyze_trait_ref(
-            self.db,
-            trait_ref,
-            self.scope,
-            self.assumptions,
-            ctxt.span().unwrap().into(),
-        ) {
-            self.diags.push(diag);
-        } else {
-            walk_trait_ref(self, ctxt, trait_ref);
-        }
-    }
-}
-
-struct TraitDefAnalyzer<'db> {
-    db: &'db dyn HirAnalysisDb,
-    def: TraitDef,
-    diags: Vec<TyDiagCollection>,
-    scope: ScopeId,
-    assumptions: AssumptionListId,
-    current_ty: Option<TyId>,
-}
-
-impl<'db> TraitDefAnalyzer<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
-        let def = lower_trait(db, trait_);
-
-        Self {
-            db,
-            def,
-            diags: Vec::new(),
-            scope: trait_.scope(),
-            assumptions: def.constraints(db),
-            current_ty: None,
-        }
-    }
-
-    fn analyze(&mut self) {
-        let trait_ = self.def.trait_(self.db);
-
-        let mut ctxt = VisitorCtxt::with_trait(self.db.as_hir_db(), trait_);
-        self.visit_trait(&mut ctxt, trait_);
-    }
-}
-
-impl<'db> Visitor for TraitDefAnalyzer<'db> {
-    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
-        if let Some(diag) = analyze_ty(
-            self.db,
-            hir_ty,
-            self.scope,
-            self.assumptions,
-            ctxt.span().unwrap().into(),
-        ) {
-            self.diags.push(diag);
-        }
-    }
-
-    fn visit_where_predicate(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
-        pred: &hir::hir_def::WherePredicate,
-    ) {
-        let Some(hir_ty) = pred.ty.to_opt() else {
-            return;
-        };
-
-        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
-
-        if !ty.contains_ty_param(self.db) {
-            let diag = TraitConstraintDiag::concrete_type_bound(
-                self.db,
-                ctxt.span().unwrap().ty().into(),
-                ty,
-            )
-            .into();
-            self.diags.push(diag);
-            return;
-        }
-
-        self.current_ty = Some(ty);
-        walk_where_predicate(self, ctxt, pred);
     }
 
     fn visit_generic_param(
@@ -398,8 +250,8 @@ impl<'db> Visitor for TraitDefAnalyzer<'db> {
             .map(|ty| ty.is_trait_self(self.db))
             .unwrap_or_default()
         {
-            if let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) {
-                if let Err(cycle) = collect_super_traits(self.db, self.def) {
+            if let Some(cycle) = self.def.collect_super_trait_cycle(self.db) {
+                if let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) {
                     if cycle.contains(trait_inst.def(self.db)) {
                         self.diags.push(
                             TraitLowerDiag::CyclicSuperTraits(ctxt.span().unwrap().path().into())
@@ -408,7 +260,7 @@ impl<'db> Visitor for TraitDefAnalyzer<'db> {
                         return;
                     }
                 }
-            };
+            }
         }
 
         if let Some(diag) = analyze_trait_ref(
@@ -430,9 +282,54 @@ impl<'db> Visitor for TraitDefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'_, hir::span::item::LazySuperTraitListSpan>,
         super_traits: &[TraitRefId],
     ) {
-        self.current_ty = Some(self.def.self_param(self.db));
+        self.current_ty = Some(self.def.trait_self_param(self.db));
         walk_super_trait_list(self, ctxt, super_traits);
     }
+}
+
+#[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
+pub(crate) fn check_recursive_adt(
+    db: &dyn HirAnalysisDb,
+    adt: AdtRefId,
+) -> Option<TyDiagCollection> {
+    let adt_def = lower_adt(db, adt);
+    for field in adt_def.fields(db) {
+        for ty in field.iter_types(db) {
+            for adt_ref in ty.collect_direct_adts(db) {
+                check_recursive_adt(db, adt_ref);
+            }
+        }
+    }
+
+    None
+}
+
+fn check_recursive_adt_impl(
+    db: &dyn HirAnalysisDb,
+    cycle: &salsa::Cycle,
+    adt: AdtRefId,
+) -> Option<TyDiagCollection> {
+    let participants: FxHashSet<_> = cycle
+        .participant_keys()
+        .map(|key| check_recursive_adt::key_from_id(key.key_index()))
+        .collect();
+
+    let adt_def = lower_adt(db, adt);
+    for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
+        for (ty_idx, ty) in field.iter_types(db).enumerate() {
+            for field_adt_ref in ty.collect_direct_adts(db) {
+                if participants.contains(&field_adt_ref) && participants.contains(&adt) {
+                    let diag = TyLowerDiag::recursive_type(
+                        adt.name_span(db),
+                        adt_def.variant_ty_span(db, field_idx, ty_idx),
+                    );
+                    return Some(diag.into());
+                }
+            }
+        }
+    }
+
+    None
 }
 
 impl TyId {
@@ -461,23 +358,6 @@ impl TyId {
 
         walk_ty(&mut collector, db, self);
         collector.adts
-    }
-}
-
-fn analyze_ty(
-    db: &dyn HirAnalysisDb,
-    hir_ty: HirTyId,
-    scope: ScopeId,
-    assumptions: AssumptionListId,
-    span: DynLazySpan,
-) -> Option<TyDiagCollection> {
-    let ty = lower_hir_ty(db, hir_ty, scope);
-    if let Some(diag) = ty.emit_diag(db, span.clone()) {
-        Some(diag)
-    } else if let Some(diag) = ty.emit_sat_diag(db, assumptions, span.into()) {
-        Some(diag)
-    } else {
-        None
     }
 }
 
@@ -515,5 +395,36 @@ fn analyze_trait_ref(
         Some(diag.into())
     } else {
         None
+    }
+}
+
+#[derive(Clone, Copy, Debug, derive_more::From)]
+enum DefKind {
+    Adt(AdtDef),
+    Trait(TraitDef),
+}
+
+impl DefKind {
+    fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        match self {
+            Self::Adt(def) => def.params(db),
+            Self::Trait(def) => def.params(db),
+        }
+    }
+
+    fn trait_self_param(self, db: &dyn HirAnalysisDb) -> TyId {
+        if let Self::Trait(def) = self {
+            def.self_param(db)
+        } else {
+            panic!()
+        }
+    }
+
+    fn collect_super_trait_cycle(self, db: &dyn HirAnalysisDb) -> Option<&SuperTraitCycle> {
+        if let Self::Trait(def) = self {
+            collect_super_traits(db, def).as_ref().err()
+        } else {
+            None
+        }
     }
 }
