@@ -20,6 +20,8 @@ pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
 pub struct TraitDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
+pub struct ImplTraitDefDiagAccumulator(pub(super) TyDiagCollection);
+#[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
@@ -112,10 +114,6 @@ impl TyLowerDiag {
             new_kind
         );
         Self::KindBoundMismatch(span, msg)
-    }
-
-    pub(super) fn type_alias_cycle(span: DynLazySpan) -> Self {
-        Self::TypeAliasCycle(span)
     }
 
     pub(super) fn assoc_ty(span: DynLazySpan) -> Self {
@@ -275,7 +273,7 @@ pub enum TraitLowerDiag {
 }
 
 impl TraitLowerDiag {
-    pub fn external_trait_for_external_type(impl_trait: ImplTrait) -> Self {
+    pub(super) fn external_trait_for_external_type(impl_trait: ImplTrait) -> Self {
         Self::ExternalTraitForExternalType(impl_trait.lazy_span().trait_ref().into())
     }
 
@@ -294,7 +292,7 @@ impl TraitLowerDiag {
         }
     }
 
-    fn message(&self, db: &dyn HirDb) -> String {
+    fn message(&self) -> String {
         match self {
             Self::ExternalTraitForExternalType(_) => {
                 "external trait cannot be implemented for external type".to_string()
@@ -353,7 +351,7 @@ impl DiagnosticVoucher for TraitLowerDiag {
     fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
-        let message = self.message(db.as_hir_db());
+        let message = self.message();
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
@@ -383,7 +381,7 @@ pub enum TraitConstraintDiag {
 }
 
 impl TraitConstraintDiag {
-    pub(super) fn trait_arg_kind_mismatch(
+    pub(super) fn kind_mismatch(
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
         expected: &Kind,
@@ -398,12 +396,7 @@ impl TraitConstraintDiag {
         Self::TraitArgKindMismatch(span, msg)
     }
 
-    pub(super) fn trait_arg_num_mismatch(
-        db: &dyn HirAnalysisDb,
-        span: DynLazySpan,
-        expected: usize,
-        given: usize,
-    ) -> Self {
+    pub(super) fn trait_arg_num_mismatch(span: DynLazySpan, expected: usize, given: usize) -> Self {
         Self::TraitArgNumMismatch {
             span,
             expected,
@@ -457,7 +450,7 @@ impl TraitConstraintDiag {
         }
     }
 
-    fn message(&self, db: &dyn HirDb) -> String {
+    fn message(&self) -> String {
         match self {
             Self::KindMismatch { .. } => "type doesn't satisfy required kind bound".to_string(),
 
@@ -541,7 +534,7 @@ impl DiagnosticVoucher for TraitConstraintDiag {
     fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
-        let message = self.message(db.as_hir_db());
+        let message = self.message();
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)

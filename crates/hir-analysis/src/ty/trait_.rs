@@ -51,6 +51,7 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct TraitEnv {
     impls: FxHashMap<TraitDef, Vec<Implementor>>,
+    hir_to_implementor: FxHashMap<ImplTrait, Implementor>,
     ingot: IngotId,
 }
 
@@ -61,6 +62,7 @@ impl TraitEnv {
 
     fn collect(db: &dyn HirAnalysisDb, ingot: IngotId) -> Self {
         let mut impls: FxHashMap<_, Vec<Implementor>> = FxHashMap::default();
+        let mut hir_to_implementor: FxHashMap<ImplTrait, Implementor> = FxHashMap::default();
 
         for impl_map in ingot
             .external_ingots(db.as_hir_db())
@@ -75,10 +77,20 @@ impl TraitEnv {
                     .entry(*trait_def)
                     .or_default()
                     .extend(implementors.iter().copied());
+
+                hir_to_implementor.extend(
+                    implementors
+                        .iter()
+                        .map(|implementor| (implementor.impl_trait(db), *implementor)),
+                );
             }
         }
 
-        Self { impls, ingot }
+        Self {
+            impls,
+            hir_to_implementor,
+            ingot,
+        }
     }
 
     /// Returns all implementors of the given instantiated trait.
@@ -88,6 +100,10 @@ impl TraitEnv {
         trait_: TraitInstId,
     ) -> &'db [Implementor] {
         trait_implementors(db, trait_)
+    }
+
+    pub(crate) fn map_impl_trait<'db>(&self, trait_ref: ImplTrait) -> Option<Implementor> {
+        self.hir_to_implementor.get(&trait_ref).copied()
     }
 }
 
@@ -131,23 +147,6 @@ impl Implementor {
             .collect::<Vec<_>>();
 
         (Implementor::new(db, trait_, ty, params, hir_impl), subst)
-    }
-
-    pub(super) fn apply_subst<S: Subst>(
-        self,
-        db: &dyn HirAnalysisDb,
-        subst: &mut S,
-    ) -> Implementor {
-        Implementor::new(
-            db,
-            self.trait_(db).apply_subst(db, subst),
-            self.ty(db).apply_subst(db, subst),
-            self.params(db)
-                .iter()
-                .map(|param| param.apply_subst(db, subst))
-                .collect(),
-            self.impl_trait(db),
-        )
     }
 
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {

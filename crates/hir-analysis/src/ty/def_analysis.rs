@@ -1,6 +1,6 @@
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, Trait, TraitRefId, TypeAlias, TypeId as HirTyId,
+        scope_graph::ScopeId, FieldDef, ImplTrait, Trait, TraitRefId, TypeAlias, TypeId as HirTyId,
         VariantKind,
     },
     visitor::prelude::*,
@@ -9,16 +9,21 @@ use rustc_hash::FxHashSet;
 use salsa::function::Configuration;
 
 use crate::{
-    ty::diagnostics::{
-        AdtDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
+    ty::{
+        diagnostics::{
+            AdtDefDiagAccumulator, ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator,
+            TypeAliasDefDiagAccumulator,
+        },
+        unify::UnificationTable,
     },
     HirAnalysisDb,
 };
 
 use super::{
     constraint::{collect_super_traits, AssumptionListId, SuperTraitCycle},
+    constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
-    trait_::TraitDef,
+    trait_::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRefId, InvalidCause, TyData, TyId},
     ty_lower::{lower_adt, lower_hir_ty, lower_kind},
@@ -46,6 +51,26 @@ pub fn analyze_trait(db: &dyn HirAnalysisDb, trait_: Trait) {
 
     for diag in diags {
         TraitDefDiagAccumulator::push(db, diag);
+    }
+}
+
+#[salsa::tracked]
+pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
+    let implementor = match analyze_trait_impl_specific_error(db, impl_trait) {
+        Ok(implementor) => implementor,
+        Err(diags) => {
+            for diag in diags {
+                ImplTraitDefDiagAccumulator::push(db, diag);
+            }
+            return;
+        }
+    };
+
+    let analyzer = DefAnalyzer::for_trait_impl(db, implementor);
+    let diags = analyzer.analyze();
+
+    for diag in diags {
+        ImplTraitDefDiagAccumulator::push(db, diag);
     }
 }
 
@@ -108,6 +133,20 @@ impl<'db> DefAnalyzer<'db> {
             current_ty: None,
         }
     }
+
+    fn for_trait_impl(db: &'db dyn HirAnalysisDb, implementor: Implementor) -> Self {
+        let scope = implementor.impl_trait(db).scope();
+        let assumptions = implementor.constraints(db);
+        Self {
+            db,
+            def: implementor.into(),
+            diags: vec![],
+            scope,
+            assumptions,
+            current_ty: None,
+        }
+    }
+
     // This method ensures that field/variant types are fully applied.
     fn verify_fully_applied(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope);
@@ -133,10 +172,18 @@ impl<'db> DefAnalyzer<'db> {
                 let mut ctxt = VisitorCtxt::with_trait(self.db.as_hir_db(), trait_);
                 self.visit_trait(&mut ctxt, trait_);
             }
+
+            DefKind::ImplTrait(implementor) => {
+                let impl_trait = implementor.impl_trait(self.db);
+                let mut ctxt = VisitorCtxt::with_impl_trait(self.db.as_hir_db(), impl_trait);
+                self.visit_impl_trait(&mut ctxt, impl_trait);
+            }
         }
 
         self.diags
     }
+
+    // 1. Check if the conflict doesn't occur.
 }
 
 impl<'db> Visitor for DefAnalyzer<'db> {
@@ -161,7 +208,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
         let ty = lower_hir_ty(self.db, hir_ty, self.scope);
 
-        if !ty.contains_ty_param(self.db) {
+        if !ty.contains_invalid(self.db) && !ty.contains_ty_param(self.db) {
             let diag = TraitConstraintDiag::concrete_type_bound(
                 self.db,
                 ctxt.span().unwrap().ty().into(),
@@ -267,7 +314,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             self.db,
             trait_ref,
             self.scope,
-            self.assumptions,
+            Some(self.assumptions),
             ctxt.span().unwrap().into(),
         ) {
             self.diags.push(diag);
@@ -365,7 +412,7 @@ fn analyze_trait_ref(
     db: &dyn HirAnalysisDb,
     trait_ref: TraitRefId,
     scope: ScopeId,
-    assumptions: AssumptionListId,
+    assumptions: Option<AssumptionListId>,
     span: DynLazySpan,
 ) -> Option<TyDiagCollection> {
     let trait_inst = match lower_trait_ref(db, trait_ref, scope) {
@@ -375,15 +422,11 @@ fn analyze_trait_ref(
         }
 
         Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
-            return Some(
-                TraitConstraintDiag::trait_arg_num_mismatch(db, span, expected, given).into(),
-            );
+            return Some(TraitConstraintDiag::trait_arg_num_mismatch(span, expected, given).into());
         }
 
         Err(TraitRefLowerError::ArgumentKindMisMatch { expected, given }) => {
-            return Some(
-                TraitConstraintDiag::trait_arg_kind_mismatch(db, span, &expected, given).into(),
-            );
+            return Some(TraitConstraintDiag::kind_mismatch(db, span, &expected, given).into());
         }
 
         Err(TraitRefLowerError::AssocTy(_)) => {
@@ -391,8 +434,12 @@ fn analyze_trait_ref(
         }
     };
 
-    if let Some(diag) = trait_inst.emit_sat_diag(db, assumptions, span) {
-        Some(diag.into())
+    if let Some(assumptions) = assumptions {
+        if let Some(diag) = trait_inst.emit_sat_diag(db, assumptions, span) {
+            Some(diag.into())
+        } else {
+            None
+        }
     } else {
         None
     }
@@ -402,6 +449,7 @@ fn analyze_trait_ref(
 enum DefKind {
     Adt(AdtDef),
     Trait(TraitDef),
+    ImplTrait(Implementor),
 }
 
 impl DefKind {
@@ -409,6 +457,7 @@ impl DefKind {
         match self {
             Self::Adt(def) => def.params(db),
             Self::Trait(def) => def.params(db),
+            Self::ImplTrait(def) => def.params(db),
         }
     }
 
@@ -427,4 +476,139 @@ impl DefKind {
             None
         }
     }
+}
+
+/// This function analyzes
+/// 1. If the trait ref is well-formed except for the satisfiability.
+/// 2. If implementor type is well-formed except for the satisfiability.
+/// 3. If the ingot contains impl trait is the same as the ingot which contains
+///    either the type or trait.
+/// 4. If conflict occurs.
+/// 5. If implementor type satisfies the kind bound which is required by the
+///    trait.
+fn analyze_trait_impl_specific_error(
+    db: &dyn HirAnalysisDb,
+    impl_trait: ImplTrait,
+) -> Result<Implementor, Vec<TyDiagCollection>> {
+    let mut diags = vec![];
+    let hir_db = db.as_hir_db();
+    // We don't need to report error because it should be reported from the parser.
+    let (Some(trait_ref), Some(ty)) = (
+        impl_trait.trait_ref(hir_db).to_opt(),
+        impl_trait.ty(hir_db).to_opt(),
+    ) else {
+        return Err(diags);
+    };
+
+    // 1. Checks if the trait ref is well-formed except for the satisfiability.
+    if let Some(diag) = analyze_trait_ref(
+        db,
+        trait_ref,
+        impl_trait.scope(),
+        None,
+        impl_trait.lazy_span().trait_ref().into(),
+    ) {
+        diags.push(diag);
+    }
+
+    // 2. Checks if implementor type is well-formed except for the satisfiability.
+    let ty = lower_hir_ty(db, ty, impl_trait.scope());
+    if let Some(diag) = ty.emit_diag(db, impl_trait.lazy_span().ty().into()) {
+        diags.push(diag);
+    }
+
+    // If there is any error at the point, it means that `Implementor` is not
+    // well-formed and no more analysis is needed to reduce the amount of error
+    // messages.
+    if !diags.is_empty() {
+        return Err(diags);
+    }
+
+    let trait_inst = lower_trait_ref(db, trait_ref, impl_trait.scope()).unwrap();
+    // 3. Check if the ingot contains impl trait is the same as the ingot which
+    //    contains either the type or trait.
+    let impl_trait_ingot = impl_trait.top_mod(hir_db).ingot(hir_db);
+    if Some(impl_trait_ingot) != ty.ingot(db) && impl_trait_ingot != trait_inst.def(db).ingot(db) {
+        diags.push(TraitLowerDiag::external_trait_for_external_type(impl_trait).into());
+        return Err(diags);
+    }
+
+    let trait_env = ingot_trait_env(db, impl_trait.top_mod(hir_db).ingot(hir_db));
+    let Some(implementor) = trait_env.map_impl_trait(impl_trait) else {
+        // 4. Checks if conflict occurs.
+        // If there is no implementor type even if the trait ref and implementor type is
+        // well-formed, it means that the conflict does occur.
+        let impls = trait_env.implementors_for(db, trait_inst);
+        for conflict_cand in impls {
+            let mut table = UnificationTable::new(db);
+            let (conflict_cand, _) = conflict_cand.generalize(db, &mut table);
+            if table.unify(conflict_cand.trait_(db), trait_inst)
+                && table.unify(conflict_cand.ty(db), ty)
+            {
+                diags.push(
+                    TraitLowerDiag::conflict_impl(impl_trait, conflict_cand.impl_trait(db)).into(),
+                );
+                return Err(diags);
+            }
+        }
+        unreachable!()
+    };
+
+    // 5. Checks if implementor type satisfies the kind bound which is required by
+    //    the trait.
+    let expected_kind = implementor.trait_def(db).expected_implementor_kind(db);
+    if ty.kind(db) != expected_kind {
+        diags.push(
+            TraitConstraintDiag::kind_mismatch(
+                db,
+                impl_trait.lazy_span().ty().into(),
+                expected_kind,
+                implementor.ty(db),
+            )
+            .into(),
+        );
+        return Err(diags);
+    }
+
+    // 6. Checks if the implementor ty satisfies the trait constraints required by
+    //    the trait.
+    let mut subst = trait_inst.subst_table(db);
+    let trait_def = trait_inst.def(db);
+    subst.insert(trait_def.self_param(db), ty);
+    let trait_constraints = trait_def.constraints(db);
+    let assumptions = implementor.constraints(db);
+
+    for goal in trait_constraints.predicates(db) {
+        if !goal.ty(db).contains_trait_self(db) {
+            continue;
+        }
+        let goal = goal.apply_subst(db, &mut subst);
+        match is_goal_satisfiable(db, goal, assumptions) {
+            GoalSatisfiability::Satisfied => {}
+            GoalSatisfiability::NotSatisfied(_) => {
+                diags.push(
+                    TraitConstraintDiag::trait_bound_not_satisfied(
+                        db,
+                        impl_trait.lazy_span().ty().into(),
+                        goal,
+                    )
+                    .into(),
+                );
+                return Err(diags);
+            }
+            GoalSatisfiability::InfiniteRecursion(_) => {
+                diags.push(
+                    TraitConstraintDiag::infinite_bound_recursion(
+                        db,
+                        impl_trait.lazy_span().ty().into(),
+                        goal,
+                    )
+                    .into(),
+                );
+                return Err(diags);
+            }
+        }
+    }
+
+    Ok(implementor)
 }

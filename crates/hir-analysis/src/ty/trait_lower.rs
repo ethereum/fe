@@ -78,7 +78,7 @@ pub(crate) fn lower_trait_ref(
     }
 
     for (param, arg) in trait_def.params(db).iter().zip(args.iter()) {
-        if param.kind(db) != arg.kind(db) {
+        if !param.kind(db).does_match(arg.kind(db)) {
             return Err(TraitRefLowerError::ArgumentKindMisMatch {
                 expected: param.kind(db).clone(),
                 given: *arg,
@@ -231,7 +231,7 @@ impl<'db> ImplementorCollector<'db> {
 }
 
 impl Implementor {
-    fn does_conflict(
+    pub(super) fn does_conflict(
         self,
         db: &dyn HirAnalysisDb,
         other: Self,

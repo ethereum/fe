@@ -105,6 +105,14 @@ impl TyId {
         }
     }
 
+    pub(super) fn contains_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::TyParam(ty_param) => ty_param.is_trait_self(),
+            TyData::TyApp(lhs, rhs) => lhs.contains_trait_self(db) || rhs.contains_trait_self(db),
+            _ => false,
+        }
+    }
+
     /// Emit diagnostics for the type if the type contains invalid types.
     /// NOTE: This method doesn't emit diagnostics for
     /// `InvalidCause::AliasCycle` because it should be reported only at the
@@ -323,10 +331,6 @@ impl AdtDef {
         db: &dyn HirAnalysisDb,
     ) -> Option<GenericParamOwnerId> {
         self.adt_ref(db).generic_owner_id(db)
-    }
-
-    pub(crate) fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
-        self.adt_ref(db).scope(db)
     }
 
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {

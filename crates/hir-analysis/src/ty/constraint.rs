@@ -153,11 +153,8 @@ pub(crate) fn collect_trait_constraints(
     trait_: TraitDef,
 ) -> ConstraintListId {
     let hir_trait = trait_.trait_(db);
-    let mut collector = ConstraintCollector::new(
-        db,
-        hir_trait.scope(),
-        GenericParamOwnerId::new(db, hir_trait.into()),
-    );
+    let mut collector =
+        ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_trait.into()));
 
     let mut ctxt = VisitorCtxt::with_trait(db.as_hir_db(), hir_trait);
     collector.visit_trait(&mut ctxt, hir_trait);
@@ -170,7 +167,7 @@ pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> Co
     let Some(owner) = adt.as_generic_param_owner(db) else {
         return ConstraintListId::empty_list(db);
     };
-    let mut collector = ConstraintCollector::new(db, adt.scope(db), owner);
+    let mut collector = ConstraintCollector::new(db, owner);
     match adt.adt_ref(db).data(db) {
         AdtRef::Contract(_) => return ConstraintListId::empty_list(db),
         AdtRef::Enum(enum_) => {
@@ -192,11 +189,8 @@ pub(crate) fn collect_implementor_constraints(
     implementor: Implementor,
 ) -> ConstraintListId {
     let impl_trait = implementor.impl_trait(db);
-    let mut collector = ConstraintCollector::new(
-        db,
-        impl_trait.scope(),
-        GenericParamOwnerId::new(db, impl_trait.into()),
-    );
+    let mut collector =
+        ConstraintCollector::new(db, GenericParamOwnerId::new(db, impl_trait.into()));
     let mut ctxt = VisitorCtxt::with_impl_trait(db.as_hir_db(), impl_trait);
     collector.visit_impl_trait(&mut ctxt, impl_trait);
 
@@ -365,7 +359,7 @@ struct ConstraintCollector<'db> {
 }
 
 impl<'db> ConstraintCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId, owner: GenericParamOwnerId) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwnerId) -> Self {
         Self {
             db,
             owner,
