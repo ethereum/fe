@@ -1,6 +1,6 @@
 # Context
 
-`Context` is used frequently in Fe smart contracts. It is used to gate access to EVM functions for reading and modifyng the blockchain.
+`Context` is used frequently in Fe smart contracts. It is used to gate access to EVM features for reading and modifyng the blockchain.
 
 ## Rationale
 
@@ -15,6 +15,7 @@ struct SomeEvent{
 }
 
 pub fn looks_pure_but_isnt() {
+    // COMPILE ERROR
   emit(SomeEvent())
 }
 ```
@@ -22,11 +23,8 @@ pub fn looks_pure_but_isnt() {
 Using `Context` to control access to EVM functions such as `emit` solves this problem by requiring an instance of `Context` to be passed explicitly to the function, making it clear from the function signature that the function executes some blockchain interaction. The function above, rewritten using `Context`, looks as follows:
 
 ```fe
-struct SomeEvent {
-}
-
-pub fn uses_context(mut ctx: Context) {
-    ctx.emit(SomeEvent())
+pub fn uses_context(ctx: Context) {
+    return ctx.block_number()
 }
 ```
 
@@ -58,7 +56,7 @@ fn retrieves_blocknumber(ctx: Context) -> u256 {
 
 ## Context mutability
 
-All functionality that modifies the blockchain such as creating logs or contracts or transferring ether would require a mutable `Context` reference whereas read-only access such as `ctx.blocknumber()` does not need require a mutable reference to the context. To pass a mutable `Context` object, prepend the object name with `mut` in the function definition, e.g.:
+All functionality that modifies the blockchain such as creating logs or contracts or transferring ether would require a mutable `Context` reference whereas read-only access such as `ctx.block_number()` does not need require a mutable reference to the context. To pass a mutable `Context` object, prepend the object name with `mut` in the function definition, e.g.:
 
 ```fe
 struct SomeEvent{
