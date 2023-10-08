@@ -155,21 +155,21 @@ blockchain and transaction data. `Context` is expected to be *first* in the func
 unless the function takes `self`, in which case `Context` should come second.
 
 
-[NEWLINE]: ../lexical_structure/tokens.md#newline
-[IDENTIFIER]: ../lexical_structure/identifiers.md
-[_Types_]: ../type_system/types/index.md
-[_FunctionTypes_]: ../type_system/types/function.md
+[NEWLINE]: ../../lexical_structure/tokens.md#newline
+[IDENTIFIER]: ../../lexical_structure/identifiers.md
+[_Types_]: ../../type_system/types/index.md
+[_FunctionTypes_]: ../../type_system/types/function.md
 [SELF]: ./self.md
 [CONTEXT]: ./context.md
-[_ReturnStatement_]: ../statements/return.md
-[_VariableDeclarationStatement_]: ../statements/let.md
-[_AssignStatement_]: ../statements/assign.md
-[_AugmentedAssignStatement_]: ../statements/augassign.md
-[_ForStatement_]: ../statements/for.md
-[_WhileStatement_]: ../statements/for.md
-[_IfStatement_]: ../statements/if.md
-[_AssertStatement_]: ../statements/assert.md
-[_BreakStatement_]: ../statements/break.md
-[_ContinueStatement_]: ../statements/continue.md
-[_RevertStatement_]: ../statements/revert.md
-[_Expression_]: ../expressions/index.md
+[_ReturnStatement_]: ../../statements/return.md
+[_VariableDeclarationStatement_]: ../../statements/let.md
+[_AssignStatement_]: ../../statements/assign.md
+[_AugmentedAssignStatement_]: ../../statements/augassign.md
+[_ForStatement_]: ../../statements/for.md
+[_WhileStatement_]: ../../statements/for.md
+[_IfStatement_]: ../../statements/if.md
+[_AssertStatement_]: ../../statements/assert.md
+[_BreakStatement_]: ../../statements/break.md
+[_ContinueStatement_]: ../../statements/continue.md
+[_RevertStatement_]: ../../statements/revert.md
+[_Expression_]: ../../expressions/index.md

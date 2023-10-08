@@ -39,4 +39,4 @@ contract Foo {
 [expression]: ./index.md
 [IDENTIFIER]: ../lexical_structure/identifiers.md
 [INTEGER_LITERAL]: ../lexical_structure/tokens.md#integer-literals
-[function definition]: ../functions/index.md
+[function definition]: ../items/functions/index.md
