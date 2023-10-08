@@ -3,22 +3,16 @@ source: crates/uitest/tests/ty.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty/trait_impl_kind_mismatch.fe
 ---
-error[6-0000]: type doesn't satisfy required kind bound
+error[6-0002]: given trait argument kind mismatch
    ┌─ trait_impl_kind_mismatch.fe:10:14
    │
- 1 │ pub trait Foo
-   │           --- trait is defined here
-   ·
 10 │ impl Foo for i32 {}
-   │              ^^^ type doesn't satisfy required kind bound here
+   │              ^^^ expected `(* -> *)` kind, but `i32` has `*` kind
 
-error[6-0000]: type doesn't satisfy required kind bound
+error[6-0002]: given trait argument kind mismatch
    ┌─ trait_impl_kind_mismatch.fe:12:14
    │
- 1 │ pub trait Foo
-   │           --- trait is defined here
-   ·
 12 │ impl Foo for S<i32> {}
-   │              ^^^^^^ type doesn't satisfy required kind bound here
+   │              ^^^^^^ expected `(* -> *)` kind, but `S<i32>` has `*` kind
 
 

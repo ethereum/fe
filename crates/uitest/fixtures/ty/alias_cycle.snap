@@ -14,17 +14,9 @@ error[3-0004]: recursive type alias cycle is detected
   │
 3 │ type T2 = T3
   │           ^^ cycle happens here
-
-error[3-0004]: recursive type alias cycle is detected
-  ┌─ alias_cycle.fe:4:11
-  │
 4 │ type T3 = T4
-  │           ^^ cycle happens here
-
-error[3-0004]: recursive type alias cycle is detected
-  ┌─ alias_cycle.fe:5:11
-  │
+  │      -- type alias defined here
 5 │ type T4 = T2
-  │           ^^ cycle happens here
+  │      -- type alias defined here
 
 

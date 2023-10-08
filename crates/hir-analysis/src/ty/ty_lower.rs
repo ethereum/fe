@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use either::Either;
 use hir::hir_def::{
     kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
@@ -6,6 +8,7 @@ use hir::hir_def::{
     VariantDefListId, VariantKind,
 };
 use rustc_hash::FxHashMap;
+use salsa::function::Configuration;
 
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
@@ -35,36 +38,69 @@ pub(crate) fn collect_generic_params(
 }
 
 #[salsa::tracked(return_ref, recovery_fn = recover_lower_type_alias_cycle)]
-pub(crate) fn lower_type_alias(db: &dyn HirAnalysisDb, alias: HirTypeAlias) -> TyAlias {
+pub(crate) fn lower_type_alias(
+    db: &dyn HirAnalysisDb,
+    alias: HirTypeAlias,
+) -> Result<TyAlias, AliasCycle> {
     let params = collect_generic_params(db, GenericParamOwnerId::new(db, alias.into()));
 
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
-        return TyAlias {
+        return Ok(TyAlias {
             alias,
             alias_to: TyId::invalid(db, InvalidCause::Other),
             params: params.params.clone(),
-        };
+        });
     };
 
     let alias_to = lower_hir_ty(db, hir_ty, alias.scope());
-    TyAlias {
+    let alias_to = if alias_to.contains_invalid(db) {
+        TyId::invalid(db, InvalidCause::Other)
+    } else {
+        alias_to
+    };
+    Ok(TyAlias {
         alias,
         alias_to,
         params: params.params.clone(),
-    }
+    })
 }
 
 fn recover_lower_type_alias_cycle(
     db: &dyn HirAnalysisDb,
-    _cycle: &salsa::Cycle,
-    alias: HirTypeAlias,
-) -> TyAlias {
-    let alias_to = TyId::invalid(db, InvalidCause::AliasCycle);
-    let params = collect_generic_params(db, GenericParamOwnerId::new(db, alias.into()));
-    TyAlias {
-        alias,
-        alias_to,
-        params: params.params.clone(),
+    cycle: &salsa::Cycle,
+    _alias: HirTypeAlias,
+) -> Result<TyAlias, AliasCycle> {
+    let alias_cycle = cycle
+        .participant_keys()
+        .filter_map(|key| {
+            let ingredient_index = key.ingredient_index();
+            // This is temporary fragile solution to filter out the cycle participants, the
+            // correctness of this strategy is based on the fact that cycle participants are
+            // only `lower_type_alias` and `lower_hir_ty` functions.
+            // TODO: We can refactor here if https://github.com/salsa-rs/salsa/pull/461 is approved.
+            if matches!(
+                db.cycle_recovery_strategy(ingredient_index),
+                salsa::cycle::CycleRecoveryStrategy::Fallback
+            ) {
+                Some(lower_type_alias::key_from_id(key.key_index()))
+            } else {
+                None
+            }
+        })
+        .collect();
+    Err(AliasCycle(alias_cycle))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct AliasCycle(BTreeSet<HirTypeAlias>);
+
+impl AliasCycle {
+    pub(super) fn representative(&self) -> HirTypeAlias {
+        self.0.iter().next().unwrap().clone()
+    }
+
+    pub(super) fn participants(&self) -> impl Iterator<Item = HirTypeAlias> + '_ {
+        self.0.iter().skip(1).copied()
     }
 }
 
@@ -152,8 +188,12 @@ impl<'db> TyBuilder<'db> {
                 .fold(ty, |acc, arg| TyId::app(self.db, acc, arg)),
 
             Either::Right(alias) => {
+                if alias.alias_to.contains_invalid(self.db) {
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+
                 let ty = alias.apply_subst(self.db, &arg_tys);
-                if !ty.is_indirect(self.db) {
+                if !ty.is_invalid(self.db) {
                     let param_num = alias.params.len();
                     arg_tys[param_num..]
                         .iter()
@@ -272,7 +312,10 @@ impl<'db> TyBuilder<'db> {
                 let adt = lower_adt(self.db, adt_ref);
                 Either::Left(TyId::adt(self.db, adt))
             }
-            ItemKind::TypeAlias(alias) => Either::Right(lower_type_alias(self.db, alias)),
+            ItemKind::TypeAlias(alias) => match lower_type_alias(self.db, alias) {
+                Ok(alias) => Either::Right(alias),
+                Err(_) => Either::Left(TyId::invalid(self.db, InvalidCause::Other)),
+            },
             // This should be handled in the name resolution.
             _ => Either::Left(TyId::invalid(self.db, InvalidCause::Other)),
         }

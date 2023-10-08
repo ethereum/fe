@@ -111,9 +111,6 @@ impl TyId {
     }
 
     /// Emit diagnostics for the type if the type contains invalid types.
-    /// NOTE: This method doesn't emit diagnostics for
-    /// `InvalidCause::AliasCycle` because it should be reported only at the
-    /// type alias definition.
     pub(super) fn emit_diag(
         self,
         db: &dyn HirAnalysisDb,
@@ -148,7 +145,7 @@ impl TyId {
                     Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, pred).into())
                 }
 
-                InvalidCause::AliasCycle | InvalidCause::Other => None,
+                InvalidCause::Other => None,
             },
 
             _ => None,
@@ -413,8 +410,6 @@ pub enum InvalidCause {
     },
 
     TraitConstraintNotSat(PredicateId),
-
-    AliasCycle,
 
     /// `Other` indicates the cause is already reported in other analysis
     /// passes, e.g., parser or name resolution.

@@ -55,7 +55,10 @@ pub enum TyLowerDiag {
         type_alias: HirTypeAlias,
         n_given_arg: usize,
     },
-    TypeAliasCycle(DynLazySpan),
+    TypeAliasCycle {
+        primary: DynLazySpan,
+        cycle: Vec<HirTypeAlias>,
+    },
 
     KindBoundMismatch(DynLazySpan, String),
 
@@ -126,7 +129,7 @@ impl TyLowerDiag {
             Self::InvalidTypeArg(_, _) => 1,
             Self::RecursiveType { .. } => 2,
             Self::UnboundTypeAliasParam { .. } => 3,
-            Self::TypeAliasCycle(_) => 4,
+            Self::TypeAliasCycle { .. } => 4,
             Self::KindBoundMismatch(_, _) => 5,
             Self::KindBoundNotAllowed(_) => 6,
             Self::AssocTy(_) => 7,
@@ -142,7 +145,7 @@ impl TyLowerDiag {
             Self::UnboundTypeAliasParam { .. } => {
                 format!("all type parameters of type alias must be given",)
             }
-            Self::TypeAliasCycle(_) => "recursive type alias cycle is detected".to_string(),
+            Self::TypeAliasCycle { .. } => "recursive type alias cycle is detected".to_string(),
 
             Self::KindBoundMismatch(_, _) => "duplicate type bound is not allowed.".to_string(),
             Self::KindBoundNotAllowed(_) => "kind bound is not allowed".to_string(),
@@ -207,11 +210,21 @@ impl TyLowerDiag {
                 ]
             }
 
-            Self::TypeAliasCycle(span) => vec![SubDiagnostic::new(
-                LabelStyle::Primary,
-                "cycle happens here".to_string(),
-                span.resolve(db),
-            )],
+            Self::TypeAliasCycle { primary, cycle } => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "cycle happens here".to_string(),
+                    primary.resolve(db),
+                )];
+                diags.extend(cycle.iter().map(|type_alias| {
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "type alias defined here".to_string(),
+                        type_alias.lazy_span().alias_moved().resolve(db),
+                    )
+                }));
+                diags
+            }
 
             Self::KindBoundMismatch(primary, msg) => {
                 vec![SubDiagnostic::new(

@@ -10,41 +10,39 @@ error[2-0002]: `wrapper3` is not found
    │               ^^^^^^^^ `wrapper3` is not found
 
 error[3-0001]: invalid type argument given
-   ┌─ kind_bound.fe:25:23
+   ┌─ kind_bound.fe:25:14
    │
 25 │     foo_err: Wrapper2<i32, i32>,
-   │                       ^^^ expected `(* -> *)` kind, but found `*` kind
+   │              ^^^^^^^^^^^^^^^^^^ expected `(* -> *)` kind, but found `*` kind
 
 error[3-0001]: invalid type argument given
-   ┌─ kind_bound.fe:32:24
+   ┌─ kind_bound.fe:32:15
    │
 32 │     bar_err1: Wrapper3<i32, u32>,
-   │                        ^^^ expected `((* -> *) -> (* -> *))` kind, but found `*` kind
+   │               ^^^^^^^^^^^^^^^^^^ expected `((* -> *) -> (* -> *))` kind, but found `*` kind
 
 error[3-0001]: invalid type argument given
-   ┌─ kind_bound.fe:33:34
+   ┌─ kind_bound.fe:33:15
    │
 33 │     bar_err2: Wrapper3<Wrapper2, u32>,
-   │                                  ^^^ expected `(* -> *)` kind, but found `*` kind
+   │               ^^^^^^^^^^^^^^^^^^^^^^^ expected `(* -> *)` kind, but found `*` kind
 
 error[3-0005]: duplicate type bound is not allowed.
    ┌─ kind_bound.fe:38:10
    │
-37 │ pub struct InvalidBound<T: * -> *>
-   │                            ------ first defined here
 38 │ where T: (* -> *) -> *
-   │          ^^^^^^^^^^^^^ duplicate type bound here
+   │          ^^^^^^^^^^^^^ `T` is already declared with `(* -> *)` kind, but found `((* -> *) -> *)` kind here
 
-error[3-0006]: kind bound is not allowed
-   ┌─ kind_bound.fe:44:13
+error[6-0005]: trait bound for concrete type is not allowed
+   ┌─ kind_bound.fe:44:7
    │
 44 │ where Self: *
-   │             ^ kind bound is not allowed here
+   │       ^^^^ `InvalidBound2` is a concrete type
 
-error[3-0006]: kind bound is not allowed
-   ┌─ kind_bound.fe:50:22
+error[6-0005]: trait bound for concrete type is not allowed
+   ┌─ kind_bound.fe:50:7
    │
 50 │ where Wrapper1<i32>: *
-   │                      ^ kind bound is not allowed here
+   │       ^^^^^^^^^^^^^ `Wrapper1<i32>` is a concrete type
 
 

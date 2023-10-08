@@ -14,6 +14,7 @@ use crate::{
             AdtDefDiagAccumulator, ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator,
             TypeAliasDefDiagAccumulator,
         },
+        ty_lower::lower_type_alias,
         unify::UnificationTable,
     },
     HirAnalysisDb,
@@ -25,7 +26,7 @@ use super::{
     diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     trait_::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
-    ty_def::{AdtDef, AdtRefId, InvalidCause, TyData, TyId},
+    ty_def::{AdtDef, AdtRefId, TyId},
     ty_lower::{lower_adt, lower_hir_ty, lower_kind},
     visitor::{walk_ty, TyVisitor},
 };
@@ -82,11 +83,18 @@ pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
 
     let ty = lower_hir_ty(db, hir_ty, alias.scope());
 
-    if matches!(ty.data(db), TyData::Invalid(InvalidCause::AliasCycle)) {
-        TypeAliasDefDiagAccumulator::push(
-            db,
-            TyLowerDiag::TypeAliasCycle(alias.lazy_span().ty().into()).into(),
-        );
+    if let Err(cycle) = lower_type_alias(db, alias) {
+        if cycle.representative() == alias {
+            TypeAliasDefDiagAccumulator::push(
+                db,
+                TyLowerDiag::TypeAliasCycle {
+                    primary: alias.lazy_span().ty().into(),
+                    cycle: cycle.participants().collect(),
+                }
+                .into(),
+            );
+        }
+        return;
     }
 
     // We don't need to check for bound satisfiability here because type alias
@@ -242,11 +250,10 @@ impl<'db> Visitor for DefAnalyzer<'db> {
                     continue;
                 };
 
-                if self.verify_fully_applied(elem_ty, span.elem_ty(i).into()) {
-                    walk_variant_def(self, ctxt, variant);
-                }
+                self.verify_fully_applied(elem_ty, span.elem_ty(i).into());
             }
         }
+        walk_variant_def(self, ctxt, variant);
     }
 
     fn visit_generic_param(
