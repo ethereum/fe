@@ -5,7 +5,7 @@ use hir::{
     diagnostics::DiagnosticVoucher,
     hir_def::{ImplTrait, Trait, TypeAlias as HirTypeAlias},
     span::{DynLazySpan, LazySpan},
-    HirDb, SpannedHirDb,
+    SpannedHirDb,
 };
 
 use crate::HirAnalysisDb;
@@ -50,7 +50,7 @@ pub enum TyLowerDiag {
         field_span: DynLazySpan,
     },
 
-    TypeAliasArgumentMismatch {
+    UnboundTypeAliasParam {
         span: DynLazySpan,
         type_alias: HirTypeAlias,
         n_given_arg: usize,
@@ -88,12 +88,12 @@ impl TyLowerDiag {
         }
     }
 
-    pub(super) fn type_alias_argument_mismatch(
+    pub(super) fn unbound_type_alias_param(
         span: DynLazySpan,
         type_alias: HirTypeAlias,
         n_given_arg: usize,
     ) -> Self {
-        Self::TypeAliasArgumentMismatch {
+        Self::UnboundTypeAliasParam {
             span,
             type_alias,
             n_given_arg,
@@ -125,7 +125,7 @@ impl TyLowerDiag {
             Self::NotFullyAppliedType(_) => 0,
             Self::InvalidTypeArg(_, _) => 1,
             Self::RecursiveType { .. } => 2,
-            Self::TypeAliasArgumentMismatch { .. } => 3,
+            Self::UnboundTypeAliasParam { .. } => 3,
             Self::TypeAliasCycle(_) => 4,
             Self::KindBoundMismatch(_, _) => 5,
             Self::KindBoundNotAllowed(_) => 6,
@@ -133,21 +133,15 @@ impl TyLowerDiag {
         }
     }
 
-    fn message(&self, db: &dyn HirDb) -> String {
+    fn message(&self) -> String {
         match self {
             Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
             Self::InvalidTypeArg(_, _) => "invalid type argument given".to_string(),
             Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
 
-            Self::TypeAliasArgumentMismatch {
-                type_alias,
-                n_given_arg,
-                ..
-            } => format!(
-                "type alias expects {} generic arguments, but {} given",
-                type_alias.generic_params(db).len(db),
-                n_given_arg
-            ),
+            Self::UnboundTypeAliasParam { .. } => {
+                format!("all type parameters of type alias must be given",)
+            }
             Self::TypeAliasCycle(_) => "recursive type alias cycle is detected".to_string(),
 
             Self::KindBoundMismatch(_, _) => "duplicate type bound is not allowed.".to_string(),
@@ -189,7 +183,7 @@ impl TyLowerDiag {
                 ]
             }
 
-            Self::TypeAliasArgumentMismatch {
+            Self::UnboundTypeAliasParam {
                 span: primary_span,
                 type_alias,
                 ..
@@ -198,7 +192,7 @@ impl TyLowerDiag {
                     SubDiagnostic::new(
                         LabelStyle::Primary,
                         format!(
-                            "expected {} arguments here",
+                            "expected at least {} arguments here",
                             type_alias
                                 .generic_params(db.as_hir_db())
                                 .len(db.as_hir_db())
@@ -253,7 +247,7 @@ impl DiagnosticVoucher for TyLowerDiag {
     fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
-        let message = self.message(db.as_hir_db());
+        let message = self.message();
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)

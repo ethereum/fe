@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeSet, VecDeque},
-    fmt,
-};
+use std::{collections::BTreeSet, fmt};
 
 use hir::{
     hir_def::{
@@ -140,12 +137,10 @@ impl TyId {
                     Some(TyLowerDiag::invalid_type_arg(span, expected, given).into())
                 }
 
-                InvalidCause::TypeAliasArgumentMismatch {
+                InvalidCause::UnboundTypeAliasParam {
                     alias,
                     n_given_args: n_given_arg,
-                } => {
-                    Some(TyLowerDiag::type_alias_argument_mismatch(span, alias, n_given_arg).into())
-                }
+                } => Some(TyLowerDiag::unbound_type_alias_param(span, alias, n_given_arg).into()),
 
                 InvalidCause::AssocTy => Some(TyLowerDiag::assoc_ty(span).into()),
 
@@ -412,7 +407,7 @@ pub enum InvalidCause {
     /// Associated Type is not allowed at the moment.
     AssocTy,
 
-    TypeAliasArgumentMismatch {
+    UnboundTypeAliasParam {
         alias: HirTypeAlias,
         n_given_args: usize,
     },
@@ -788,7 +783,7 @@ fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
 fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
     struct TyAppDecomposer {
         base: Option<TyId>,
-        args: VecDeque<TyId>,
+        args: Vec<TyId>,
     }
 
     impl TyVisitor for TyAppDecomposer {
@@ -796,7 +791,7 @@ fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
             match ty.data(db) {
                 TyData::TyApp(lhs, rhs) => {
                     self.visit_ty(db, lhs);
-                    self.args.push_front(rhs);
+                    self.args.push(rhs);
                 }
                 _ => self.base = Some(ty),
             }
@@ -804,7 +799,7 @@ fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
 
         fn visit_app(&mut self, db: &dyn HirAnalysisDb, lhs: TyId, rhs: TyId) {
             self.visit_ty(db, lhs);
-            self.args.push_front(rhs);
+            self.args.push(rhs);
         }
     }
 
@@ -812,7 +807,7 @@ fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
         TyData::TyApp(lhs, rhs) => {
             let mut decomposer = TyAppDecomposer {
                 base: None,
-                args: VecDeque::new(),
+                args: Vec::new(),
             };
             decomposer.visit_app(db, lhs, rhs);
             (

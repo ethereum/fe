@@ -83,10 +83,10 @@ pub(crate) struct TyAlias {
 
 impl TyAlias {
     fn apply_subst(&self, db: &dyn HirAnalysisDb, arg_tys: &[TyId]) -> TyId {
-        if arg_tys.len() != self.params.len() {
+        if arg_tys.len() < self.params.len() {
             return TyId::invalid(
                 db,
-                InvalidCause::TypeAliasArgumentMismatch {
+                InvalidCause::UnboundTypeAliasParam {
                     alias: self.alias,
                     n_given_args: arg_tys.len(),
                 },
@@ -151,7 +151,17 @@ impl<'db> TyBuilder<'db> {
                 .into_iter()
                 .fold(ty, |acc, arg| TyId::app(self.db, acc, arg)),
 
-            Either::Right(alias) => alias.apply_subst(self.db, &arg_tys),
+            Either::Right(alias) => {
+                let ty = alias.apply_subst(self.db, &arg_tys);
+                if !ty.is_indirect(self.db) {
+                    let param_num = alias.params.len();
+                    arg_tys[param_num..]
+                        .iter()
+                        .fold(ty, |acc, arg| TyId::app(self.db, acc, *arg))
+                } else {
+                    ty
+                }
+            }
         }
     }
 
