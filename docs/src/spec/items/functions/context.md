@@ -15,7 +15,7 @@ struct SomeEvent{
 }
 
 pub fn looks_pure_but_isnt() {
-    // COMPILE ERROR
+  // COMPILE ERROR
   emit(SomeEvent())
 }
 ```
@@ -23,7 +23,7 @@ pub fn looks_pure_but_isnt() {
 Using `Context` to control access to EVM functions such as `emit` solves this problem by requiring an instance of `Context` to be passed explicitly to the function, making it clear from the function signature that the function executes some blockchain interaction. The function above, rewritten using `Context`, looks as follows:
 
 ```fe
-pub fn uses_context(ctx: Context) {
+pub fn uses_context(ctx: Context) -> u256 {
     return ctx.block_number()
 }
 ```
