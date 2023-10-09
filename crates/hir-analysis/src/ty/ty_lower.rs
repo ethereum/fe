@@ -3,9 +3,9 @@ use std::collections::BTreeSet;
 use either::Either;
 use hir::hir_def::{
     kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
-    GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound, Partial, PathId,
-    TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
-    VariantDefListId, VariantKind,
+    GenericParamListId, GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound,
+    Partial, PathId, TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId,
+    TypeKind as HirTyKind, VariantDefListId, VariantKind, WhereClauseId,
 };
 use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
@@ -653,5 +653,15 @@ impl GenericParamOwnerId {
 
     pub(super) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
         self.data(db).top_mod(db.as_hir_db()).ingot(db.as_hir_db())
+    }
+
+    pub(super) fn where_clause(self, db: &dyn HirAnalysisDb) -> Option<WhereClauseId> {
+        self.data(db)
+            .where_clause_owner()
+            .map(|owner| owner.where_clause(db.as_hir_db()))
+    }
+
+    pub(super) fn params(self, db: &dyn HirAnalysisDb) -> GenericParamListId {
+        self.data(db).params(db.as_hir_db())
     }
 }
