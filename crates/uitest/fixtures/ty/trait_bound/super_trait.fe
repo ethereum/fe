@@ -9,3 +9,10 @@ impl SubTrait for u32 {}
 
 impl SuperTrait1 for i256  {} 
 impl SubTrait for i256 {}
+
+
+pub trait WrapperSub: WrapperSuper
+where Self: * -> *
+{}
+
+pub trait WrapperSuper {}

@@ -111,7 +111,7 @@ pub struct DefAnalyzer<'db> {
     diags: Vec<TyDiagCollection>,
     scope: ScopeId,
     assumptions: AssumptionListId,
-    current_ty: Option<TyId>,
+    current_ty: Option<(TyId, DynLazySpan)>,
 }
 
 impl<'db> DefAnalyzer<'db> {
@@ -228,7 +228,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         }
 
-        self.current_ty = Some(ty);
+        self.current_ty = Some((ty, ctxt.span().unwrap().ty().into()));
         walk_where_predicate(self, ctxt, pred);
     }
     fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
@@ -265,7 +265,10 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         let ScopeId::GenericParam(_, idx) = ctxt.scope() else {
             unreachable!()
         };
-        self.current_ty = Some(self.def.params(self.db)[idx]);
+        self.current_ty = Some((
+            self.def.params(self.db)[idx],
+            ctxt.span().unwrap().into_type_param().name().into(),
+        ));
 
         walk_generic_param(self, ctxt, param)
     }
@@ -275,7 +278,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
         bound: &hir::hir_def::KindBound,
     ) {
-        let Some(ty) = self.current_ty else {
+        let Some((ty, _)) = self.current_ty else {
             return;
         };
 
@@ -302,7 +305,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
     ) {
         if self
             .current_ty
-            .map(|ty| ty.is_trait_self(self.db))
+            .as_ref()
+            .map(|(ty, _)| ty.is_trait_self(self.db))
             .unwrap_or_default()
         {
             if let Some(cycle) = self.def.collect_super_trait_cycle(self.db) {
@@ -315,6 +319,19 @@ impl<'db> Visitor for DefAnalyzer<'db> {
                         return;
                     }
                 }
+            }
+        }
+
+        if let (Some((ty, span)), Ok(trait_inst)) = (
+            &self.current_ty,
+            lower_trait_ref(self.db, trait_ref, self.scope),
+        ) {
+            let expected_kind = trait_inst.def(self.db).expected_implementor_kind(self.db);
+            if !expected_kind.does_match(ty.kind(self.db)) {
+                self.diags.push(
+                    TraitConstraintDiag::kind_mismatch(self.db, span.clone(), expected_kind, *ty)
+                        .into(),
+                );
             }
         }
 
@@ -336,7 +353,11 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'_, hir::span::item::LazySuperTraitListSpan>,
         super_traits: &[TraitRefId],
     ) {
-        self.current_ty = Some(self.def.trait_self_param(self.db));
+        let DefKind::Trait(def) = self.def else {
+            unreachable!()
+        };
+        let name_span = def.trait_(self.db).lazy_span().name().into();
+        self.current_ty = Some((self.def.trait_self_param(self.db), name_span));
         walk_super_trait_list(self, ctxt, super_traits);
     }
 }
@@ -487,8 +508,8 @@ impl DefKind {
 /// 3. If the ingot contains impl trait is the same as the ingot which contains
 ///    either the type or trait.
 /// 4. If conflict occurs.
-/// 5. If implementor type satisfies the kind bound which is required by the
-///    trait.
+/// 5. If implementor type satisfies the required kind bound.
+/// 6. If implementor type satisfies the required trait bound.
 fn analyze_trait_impl_specific_error(
     db: &dyn HirAnalysisDb,
     impl_trait: ImplTrait,
