@@ -84,7 +84,6 @@ contract ERC20 {
     fn _transfer(mut self, mut ctx: Context, sender: address, recipient: address, value: u256) {
         assert sender != 0
         assert recipient != 0
-        _before_token_transfer(from: sender, to: recipient, value)
         self._balances[sender] = self._balances[sender] - value
         self._balances[recipient] = self._balances[recipient] + value
         ctx.emit(Transfer(from: sender, to: recipient, value))
@@ -92,7 +91,6 @@ contract ERC20 {
 
     fn _mint(mut self, mut ctx: Context, account: address, value: u256) {
         assert account != address(0)
-        _before_token_transfer(from: address(0), to: account, value)
         self._total_supply = self._total_supply + value
         self._balances[account] = self._balances[account] + value
         ctx.emit(Transfer(from: address(0), to: account, value))
@@ -100,7 +98,6 @@ contract ERC20 {
 
     fn _burn(mut self, mut ctx: Context, account: address, value: u256) {
         assert account != address(0)
-        _before_token_transfer(from: account, to: address(0), value)
         self._balances[account] = self._balances[account] - value
         self._total_supply = self._total_supply - value
         ctx.emit(Transfer(from: account, to: address(0), value))
@@ -116,7 +113,5 @@ contract ERC20 {
     fn _setup_decimals(mut self, _ decimals_: u8) {
         self._decimals = decimals_
     }
-
-    fn _before_token_transfer(from: address, to: address, _ value: u256) {}
 }
 ```
