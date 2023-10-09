@@ -24,6 +24,7 @@ pub struct Jar(
     ty::trait_lower::lower_trait,
     ty::trait_lower::lower_trait_ref,
     ty::trait_lower::collect_trait_impls,
+    ty::trait_lower::lower_impl_trait,
     /// Item Definition analysis.
     ty::def_analysis::check_recursive_adt,
     ty::def_analysis::analyze_adt,

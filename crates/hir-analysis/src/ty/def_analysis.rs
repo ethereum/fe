@@ -14,6 +14,7 @@ use crate::{
             AdtDefDiagAccumulator, ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator,
             TypeAliasDefDiagAccumulator,
         },
+        trait_lower::lower_impl_trait,
         ty_lower::lower_type_alias,
         unify::UnificationTable,
     },
@@ -542,16 +543,16 @@ fn analyze_trait_impl_specific_error(
 
     let trait_env = ingot_trait_env(db, impl_trait.top_mod(hir_db).ingot(hir_db));
     let Some(implementor) = trait_env.map_impl_trait(impl_trait) else {
+        // Lower impl trait never fails if the trait ref and implementor type is
+        // well-formed.
+        let current_impl = lower_impl_trait(db, impl_trait).unwrap();
+
         // 4. Checks if conflict occurs.
         // If there is no implementor type even if the trait ref and implementor type is
         // well-formed, it means that the conflict does occur.
         let impls = trait_env.implementors_for(db, trait_inst);
         for conflict_cand in impls {
-            let mut table = UnificationTable::new(db);
-            let (conflict_cand, _) = conflict_cand.generalize(db, &mut table);
-            if table.unify(conflict_cand.trait_(db), trait_inst)
-                && table.unify(conflict_cand.ty(db), ty)
-            {
+            if conflict_cand.does_conflict(db, current_impl, &mut UnificationTable::new(db)) {
                 diags.push(
                     TraitLowerDiag::conflict_impl(impl_trait, conflict_cand.impl_trait(db)).into(),
                 );

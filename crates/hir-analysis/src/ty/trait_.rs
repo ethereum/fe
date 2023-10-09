@@ -152,6 +152,18 @@ impl Implementor {
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         collect_implementor_constraints(db, self)
     }
+
+    pub(super) fn does_conflict(
+        self,
+        db: &dyn HirAnalysisDb,
+        other: Self,
+        table: &mut UnificationTable,
+    ) -> bool {
+        let (generalized_self, _) = self.generalize(db, table);
+        let (generalized_other, _) = other.generalize(db, table);
+
+        table.unify(generalized_self, generalized_other)
+    }
 }
 
 /// Represents an instantiated trait, which can be thought of as a trait

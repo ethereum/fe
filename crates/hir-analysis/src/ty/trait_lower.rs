@@ -37,6 +37,45 @@ pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> Tra
 }
 
 #[salsa::tracked]
+pub(crate) fn lower_impl_trait(
+    db: &dyn HirAnalysisDb,
+    impl_trait: ImplTrait,
+) -> Option<Implementor> {
+    let hir_db = db.as_hir_db();
+    let scope = impl_trait.scope();
+
+    let hir_ty = impl_trait.ty(hir_db).to_opt()?;
+    let ty = lower_hir_ty(db, hir_ty, scope);
+    if ty.contains_invalid(db) {
+        return None;
+    }
+
+    let trait_ = lower_trait_ref(
+        db,
+        impl_trait.trait_ref(hir_db).to_opt()?,
+        impl_trait.scope(),
+    )
+    .ok()?;
+
+    let impl_trait_ingot = impl_trait.top_mod(hir_db).ingot(hir_db);
+
+    if Some(impl_trait_ingot) != ty.ingot(db) && impl_trait_ingot != trait_.def(db).ingot(db) {
+        return None;
+    }
+
+    let param_owner = GenericParamOwnerId::new(db, impl_trait.into());
+    let params = collect_generic_params(db, param_owner);
+
+    Some(Implementor::new(
+        db,
+        trait_,
+        ty,
+        params.params.clone(),
+        impl_trait,
+    ))
+}
+
+#[salsa::tracked]
 pub(crate) fn lower_trait_ref(
     db: &dyn HirAnalysisDb,
     trait_ref: TraitRefId,
@@ -157,7 +196,7 @@ impl<'db> ImplementorCollector<'db> {
 
     fn collect_impls(&mut self, impls: &[ImplTrait]) {
         for &impl_ in impls {
-            let Some(implementor) = self.lower_impl(impl_) else {
+            let Some(implementor) = lower_impl_trait(self.db, impl_) else {
                 continue;
             };
 
@@ -168,43 +207,6 @@ impl<'db> ImplementorCollector<'db> {
                     .push(implementor);
             }
         }
-    }
-
-    fn lower_impl(&mut self, hir_impl: ImplTrait) -> Option<Implementor> {
-        let ty = self.lower_implementor_ty(hir_impl)?;
-        let trait_ = lower_trait_ref(
-            self.db,
-            hir_impl.trait_ref(self.db.as_hir_db()).to_opt()?,
-            hir_impl.scope(),
-        )
-        .ok()?;
-
-        let impl_trait_ingot = hir_impl
-            .top_mod(self.db.as_hir_db())
-            .ingot(self.db.as_hir_db());
-
-        if Some(impl_trait_ingot) != ty.ingot(self.db)
-            && impl_trait_ingot != trait_.def(self.db).ingot(self.db)
-        {
-            return None;
-        }
-
-        let param_owner = GenericParamOwnerId::new(self.db, hir_impl.into());
-        let params = collect_generic_params(self.db, param_owner);
-        Some(Implementor::new(
-            self.db,
-            trait_,
-            ty,
-            params.params.clone(),
-            hir_impl,
-        ))
-    }
-
-    fn lower_implementor_ty(&mut self, impl_: ImplTrait) -> Option<TyId> {
-        let hir_ty = impl_.ty(self.db.as_hir_db()).to_opt()?;
-        let scope = impl_.scope();
-        let ty = lower_hir_ty(self.db, hir_ty, scope);
-        (!ty.contains_invalid(self.db)).then(|| ty)
     }
 
     /// Returns `true` if `implementor` conflicts with any existing implementor.
@@ -227,19 +229,5 @@ impl<'db> ImplementorCollector<'db> {
         }
 
         false
-    }
-}
-
-impl Implementor {
-    pub(super) fn does_conflict(
-        self,
-        db: &dyn HirAnalysisDb,
-        other: Self,
-        table: &mut UnificationTable,
-    ) -> bool {
-        let (generalized_self, _) = self.generalize(db, table);
-        let (generalized_other, _) = other.generalize(db, table);
-
-        table.unify(generalized_self, generalized_other)
     }
 }
