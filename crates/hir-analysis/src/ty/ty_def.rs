@@ -131,7 +131,7 @@ impl TyId {
                 }
 
                 InvalidCause::KindMismatch { expected, given } => {
-                    Some(TyLowerDiag::invalid_type_arg(span, expected, given).into())
+                    Some(TyLowerDiag::invalid_type_arg_kind(db, span, expected, given).into())
                 }
 
                 InvalidCause::UnboundTypeAliasParam {
@@ -191,9 +191,9 @@ impl TyId {
             Kind::Abs(k_expected, _) if k_expected.as_ref().does_match(k_arg) => arg,
             Kind::Abs(k_abs_arg, _) => Self::invalid(
                 db,
-                InvalidCause::kind_mismatch(k_abs_arg.as_ref().into(), k_arg),
+                InvalidCause::kind_mismatch(k_abs_arg.as_ref().into(), arg),
             ),
-            Kind::Star => Self::invalid(db, InvalidCause::kind_mismatch(None, k_arg)),
+            Kind::Star => Self::invalid(db, InvalidCause::kind_mismatch(None, arg)),
             Kind::Any => arg,
         };
 
@@ -398,7 +398,7 @@ pub enum InvalidCause {
     /// Kind mismatch between two types.
     KindMismatch {
         expected: Option<Kind>,
-        given: Kind,
+        given: TyId,
     },
 
     /// Associated Type is not allowed at the moment.
@@ -417,10 +417,10 @@ pub enum InvalidCause {
 }
 
 impl InvalidCause {
-    pub(super) fn kind_mismatch(expected: Option<&Kind>, given: &Kind) -> Self {
+    pub(super) fn kind_mismatch(expected: Option<&Kind>, ty: TyId) -> Self {
         Self::KindMismatch {
             expected: expected.cloned(),
-            given: given.clone(),
+            given: ty,
         }
     }
 }

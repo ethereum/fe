@@ -132,10 +132,7 @@ impl TyAlias {
 
         for (&param, &arg) in self.params.iter().zip(arg_tys.iter()) {
             let arg = if param.kind(db) != arg.kind(db) {
-                TyId::invalid(
-                    db,
-                    InvalidCause::kind_mismatch(param.kind(db).into(), arg.kind(db)),
-                )
+                TyId::invalid(db, InvalidCause::kind_mismatch(param.kind(db).into(), arg))
             } else {
                 arg
             };

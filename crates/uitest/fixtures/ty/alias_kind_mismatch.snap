@@ -3,22 +3,22 @@ source: crates/uitest/tests/ty.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty/alias_kind_mismatch.fe
 ---
-error[3-0001]: invalid type argument given
+error[3-0001]: invalid type argument kind
   ┌─ alias_kind_mismatch.fe:6:11
   │
 6 │ type T1 = S0<i32, u32, i64>
   │           ^^^^^^^^^^^^^^^^^ too many generic arguments
 
-error[3-0001]: invalid type argument given
+error[3-0001]: invalid type argument kind
   ┌─ alias_kind_mismatch.fe:7:11
   │
 7 │ type T2 = S0<S0, i64>
-  │           ^^^^^^^^^^^ expected `*` kind, but found `(* -> (* -> *))` kind
+  │           ^^^^^^^^^^^ expected `*` kind, but `S0` has `(* -> (* -> *))` kind
 
-error[3-0001]: invalid type argument given
+error[3-0001]: invalid type argument kind
    ┌─ alias_kind_mismatch.fe:12:8
    │
 12 │     t: T3<i32, S0>,
-   │        ^^^^^^^^^^^ expected `*` kind, but found `(* -> (* -> *))` kind
+   │        ^^^^^^^^^^^ expected `*` kind, but `S0` has `(* -> (* -> *))` kind
 
 

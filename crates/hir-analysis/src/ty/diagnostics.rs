@@ -44,7 +44,7 @@ impl TyDiagCollection {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag {
     NotFullyAppliedType(DynLazySpan),
-    InvalidTypeArg(DynLazySpan, String),
+    InvalidTypeArgKind(DynLazySpan, String),
     RecursiveType {
         primary_span: DynLazySpan,
         field_span: DynLazySpan,
@@ -60,7 +60,7 @@ pub enum TyLowerDiag {
         cycle: Vec<HirTypeAlias>,
     },
 
-    KindBoundMismatch(DynLazySpan, String),
+    InconsistentKindBound(DynLazySpan, String),
 
     KindBoundNotAllowed(DynLazySpan),
 
@@ -72,16 +72,27 @@ impl TyLowerDiag {
         Self::NotFullyAppliedType(span)
     }
 
-    pub fn invalid_type_arg(span: DynLazySpan, expected: Option<Kind>, actual: Kind) -> Self {
+    pub fn invalid_type_arg_kind(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        expected: Option<Kind>,
+        arg: TyId,
+    ) -> Self {
         let msg = if let Some(expected) = expected {
-            debug_assert!(!expected.does_match(&actual));
+            let arg_kind = arg.kind(db);
+            debug_assert!(!expected.does_match(arg_kind));
 
-            format!("expected `{}` kind, but found `{}` kind", expected, actual,)
+            format!(
+                "expected `{}` kind, but `{}` has `{}` kind",
+                expected,
+                arg.pretty_print(db),
+                arg_kind
+            )
         } else {
             "too many generic arguments".to_string()
         };
 
-        Self::InvalidTypeArg(span, msg)
+        Self::InvalidTypeArgKind(span, msg)
     }
 
     pub(super) fn recursive_type(primary_span: DynLazySpan, field_span: DynLazySpan) -> Self {
@@ -103,7 +114,7 @@ impl TyLowerDiag {
         }
     }
 
-    pub(super) fn kind_bound_mismatch(
+    pub(super) fn inconsistent_kind_bound(
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
         ty: TyId,
@@ -116,7 +127,7 @@ impl TyLowerDiag {
             former_bound,
             new_kind
         );
-        Self::KindBoundMismatch(span, msg)
+        Self::InconsistentKindBound(span, msg)
     }
 
     pub(super) fn assoc_ty(span: DynLazySpan) -> Self {
@@ -126,11 +137,11 @@ impl TyLowerDiag {
     fn local_code(&self) -> u16 {
         match self {
             Self::NotFullyAppliedType(_) => 0,
-            Self::InvalidTypeArg(_, _) => 1,
+            Self::InvalidTypeArgKind(_, _) => 1,
             Self::RecursiveType { .. } => 2,
             Self::UnboundTypeAliasParam { .. } => 3,
             Self::TypeAliasCycle { .. } => 4,
-            Self::KindBoundMismatch(_, _) => 5,
+            Self::InconsistentKindBound(_, _) => 5,
             Self::KindBoundNotAllowed(_) => 6,
             Self::AssocTy(_) => 7,
         }
@@ -139,7 +150,7 @@ impl TyLowerDiag {
     fn message(&self) -> String {
         match self {
             Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
-            Self::InvalidTypeArg(_, _) => "invalid type argument given".to_string(),
+            Self::InvalidTypeArgKind(_, _) => "invalid type argument kind".to_string(),
             Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
 
             Self::UnboundTypeAliasParam { .. } => {
@@ -147,7 +158,7 @@ impl TyLowerDiag {
             }
             Self::TypeAliasCycle { .. } => "recursive type alias cycle is detected".to_string(),
 
-            Self::KindBoundMismatch(_, _) => "duplicate type bound is not allowed.".to_string(),
+            Self::InconsistentKindBound(_, _) => "duplicate type bound is not allowed.".to_string(),
             Self::KindBoundNotAllowed(_) => "kind bound is not allowed".to_string(),
 
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
@@ -162,7 +173,7 @@ impl TyLowerDiag {
                 span.resolve(db),
             )],
 
-            Self::InvalidTypeArg(span, msg) => vec![SubDiagnostic::new(
+            Self::InvalidTypeArgKind(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 msg.clone(),
                 span.resolve(db),
@@ -226,7 +237,7 @@ impl TyLowerDiag {
                 diags
             }
 
-            Self::KindBoundMismatch(primary, msg) => {
+            Self::InconsistentKindBound(primary, msg) => {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
                     msg.clone(),

@@ -283,7 +283,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         let former_kind = ty.kind(self.db);
         if !former_kind.does_match(&kind) {
             self.diags.push(
-                TyLowerDiag::kind_bound_mismatch(
+                TyLowerDiag::inconsistent_kind_bound(
                     self.db,
                     ctxt.span().unwrap().into(),
                     ty,

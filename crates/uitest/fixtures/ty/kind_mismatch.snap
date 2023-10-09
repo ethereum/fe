@@ -11,25 +11,25 @@ error[2-0001]: `baz` conflicts with other definitions
 10 │     baz: Foo<i32, Foo<i32, u32, u256>>,
    │     --- `baz` is redefined here
 
-error[3-0001]: invalid type argument given
+error[3-0001]: invalid type argument kind
   ┌─ kind_mismatch.fe:7:10
   │
 7 │     foo: Foo<i32, Foo>,
-  │          ^^^^^^^^^^^^^ expected `*` kind, but found `(* -> (* -> *))` kind
+  │          ^^^^^^^^^^^^^ expected `*` kind, but `Foo` has `(* -> (* -> *))` kind
 
-error[3-0001]: invalid type argument given
+error[3-0001]: invalid type argument kind
   ┌─ kind_mismatch.fe:8:10
   │
 8 │     bar: Foo<Foo, i32>,
-  │          ^^^^^^^^^^^^^ expected `*` kind, but found `(* -> (* -> *))` kind
+  │          ^^^^^^^^^^^^^ expected `*` kind, but `Foo` has `(* -> (* -> *))` kind
 
-error[3-0001]: invalid type argument given
+error[3-0001]: invalid type argument kind
   ┌─ kind_mismatch.fe:9:10
   │
 9 │     baz: Foo<i32, u32, u256>,
   │          ^^^^^^^^^^^^^^^^^^^ too many generic arguments
 
-error[3-0001]: invalid type argument given
+error[3-0001]: invalid type argument kind
    ┌─ kind_mismatch.fe:10:10
    │
 10 │     baz: Foo<i32, Foo<i32, u32, u256>>,
