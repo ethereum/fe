@@ -523,7 +523,7 @@ fn analyze_trait_impl_specific_error(
     // If there is any error at the point, it means that `Implementor` is not
     // well-formed and no more analysis is needed to reduce the amount of error
     // messages.
-    if !diags.is_empty() {
+    if !diags.is_empty() || ty.contains_invalid(db) {
         return Err(diags);
     }
 

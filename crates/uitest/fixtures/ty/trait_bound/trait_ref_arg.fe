@@ -1,0 +1,18 @@
+pub trait Trait1<T>
+where T: Trait2 
+{}
+
+pub trait Trait2 {}
+
+impl Trait1<i32> for i32 {}
+
+pub struct Foo<T, U> 
+where U: Trait1<T>
+{
+    t: T
+}
+
+
+pub trait SubTrait<T>: Trait1<T>
+{}
+

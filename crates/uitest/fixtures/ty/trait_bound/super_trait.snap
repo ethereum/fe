@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_bound/super_trait.fe
+---
+error[6-0003]: trait bound is not satisfied
+  ┌─ super_trait.fe:8:19
+  │
+8 │ impl SubTrait for u32 {}
+  │                   ^^^ `u32` doesn't implement `SuperTrait1`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ super_trait.fe:11:19
+   │
+11 │ impl SubTrait for i256 {}
+   │                   ^^^^ `i256` doesn't implement `SuperTrait2`
+
+
