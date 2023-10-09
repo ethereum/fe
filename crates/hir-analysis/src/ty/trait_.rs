@@ -102,7 +102,7 @@ impl TraitEnv {
         trait_implementors(db, trait_)
     }
 
-    pub(crate) fn map_impl_trait<'db>(&self, trait_ref: ImplTrait) -> Option<Implementor> {
+    pub(crate) fn map_impl_trait(&self, trait_ref: ImplTrait) -> Option<Implementor> {
         self.hir_to_implementor.get(&trait_ref).copied()
     }
 }
@@ -184,10 +184,10 @@ impl TraitInstId {
         let mut args = self.substs(db).iter().map(|ty| ty.pretty_print(db));
         if let Some(first) = args.next() {
             s.push('<');
-            s.push_str(&first);
+            s.push_str(first);
             for arg in args {
                 s.push_str(", ");
-                s.push_str(&arg);
+                s.push_str(arg);
             }
             s.push('>');
         }
@@ -274,10 +274,7 @@ impl TraitDef {
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
-    pub(super) fn super_traits<'db>(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> &'db BTreeSet<TraitInstId> {
+    pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &BTreeSet<TraitInstId> {
         const _EMPTY: &BTreeSet<TraitInstId> = &BTreeSet::new();
         collect_super_traits(db, self).as_ref().unwrap_or(_EMPTY)
     }

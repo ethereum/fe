@@ -101,7 +101,7 @@ pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
     // We don't need to check for bound satisfiability here because type alias
     // doesn't have trait bound, it will be checked where the type alias is used.
     if let Some(diag) = ty.emit_diag(db, alias.lazy_span().ty().into()) {
-        TypeAliasDefDiagAccumulator::push(db, diag.into());
+        TypeAliasDefDiagAccumulator::push(db, diag);
     }
 }
 
@@ -326,7 +326,6 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             ctxt.span().unwrap().into(),
         ) {
             self.diags.push(diag);
-            return;
         } else {
             walk_trait_ref(self, ctxt, trait_ref);
         }
@@ -443,11 +442,7 @@ fn analyze_trait_ref(
     };
 
     if let Some(assumptions) = assumptions {
-        if let Some(diag) = trait_inst.emit_sat_diag(db, assumptions, span) {
-            Some(diag.into())
-        } else {
-            None
-        }
+        trait_inst.emit_sat_diag(db, assumptions, span)
     } else {
         None
     }

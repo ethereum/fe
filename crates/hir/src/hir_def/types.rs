@@ -10,10 +10,7 @@ pub struct TypeId {
 
 impl TypeId {
     pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
-        match self.data(db) {
-            TypeKind::SelfType(_) => true,
-            _ => false,
-        }
+        matches!(self.data(db), TypeKind::SelfType(_))
     }
 }
 

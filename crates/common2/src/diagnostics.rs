@@ -91,16 +91,16 @@ pub struct Span {
 
 impl PartialOrd for Span {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match self.file.cmp(&other.file) {
-            std::cmp::Ordering::Equal => self.range.start().partial_cmp(&other.range.start()),
-            ord => Some(ord),
-        }
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for Span {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        match self.file.cmp(&other.file) {
+            std::cmp::Ordering::Equal => self.range.start().cmp(&other.range.start()),
+            ord => ord,
+        }
     }
 }
 

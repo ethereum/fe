@@ -96,7 +96,7 @@ pub(crate) struct AliasCycle(BTreeSet<HirTypeAlias>);
 
 impl AliasCycle {
     pub(super) fn representative(&self) -> HirTypeAlias {
-        self.0.iter().next().unwrap().clone()
+        *self.0.iter().next().unwrap()
     }
 
     pub(super) fn participants(&self) -> impl Iterator<Item = HirTypeAlias> + '_ {
@@ -537,9 +537,8 @@ impl<'db> GenericParamCollector<'db> {
             .collect();
         let trait_self = matches!(self.owner, GenericParamOwner::Trait(_))
             .then(|| self.trait_self.into_ty(self.db));
-        let params_set = GenericParamTypeSet { params, trait_self };
 
-        params_set
+        GenericParamTypeSet { params, trait_self }
     }
 
     fn find_kind_from_bound(&self, bounds: &[TypeBound]) -> Option<Kind> {

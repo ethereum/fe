@@ -87,7 +87,7 @@ pub(crate) fn trait_inst_constraints(
 
     subst.insert(
         self_ty_param,
-        TyId::ty_var(db, self_ty_kind.clone(), InferenceKey(0 as u32)),
+        TyId::ty_var(db, self_ty_kind.clone(), InferenceKey(0_u32)),
     );
     let constraint = def_constraints.apply_subst(db, &mut subst);
 

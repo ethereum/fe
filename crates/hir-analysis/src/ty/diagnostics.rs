@@ -143,7 +143,7 @@ impl TyLowerDiag {
             Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
 
             Self::UnboundTypeAliasParam { .. } => {
-                format!("all type parameters of type alias must be given",)
+                "all type parameters of type alias must be given".to_string()
             }
             Self::TypeAliasCycle { .. } => "recursive type alias cycle is detected".to_string(),
 

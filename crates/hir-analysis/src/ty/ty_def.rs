@@ -748,10 +748,10 @@ fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
             let mut args = args.into_iter();
             let mut s = ("(").to_string();
             if let Some(first) = args.next() {
-                s.push_str(&first.pretty_print(db));
+                s.push_str(first.pretty_print(db));
                 for arg in args {
                     s.push_str(", ");
-                    s.push_str(&arg.pretty_print(db));
+                    s.push_str(arg.pretty_print(db));
                 }
             }
             s.push(')');
@@ -763,10 +763,10 @@ fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
             let mut s = (base.pretty_print(db)).to_string();
             if let Some(first) = args.next() {
                 s.push('<');
-                s.push_str(&first.pretty_print(db));
+                s.push_str(first.pretty_print(db));
                 for arg in args {
                     s.push_str(", ");
-                    s.push_str(&arg.pretty_print(db));
+                    s.push_str(arg.pretty_print(db));
                 }
                 s.push('>');
             }

@@ -442,32 +442,38 @@ impl NameDerivation {
 
 impl PartialOrd for NameDerivation {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for NameDerivation {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
-            (NameDerivation::Def, NameDerivation::Def) => Some(cmp::Ordering::Equal),
-            (NameDerivation::Def, _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::Def) => Some(cmp::Ordering::Less),
+            (NameDerivation::Def, NameDerivation::Def) => cmp::Ordering::Equal,
+            (NameDerivation::Def, _) => cmp::Ordering::Greater,
+            (_, NameDerivation::Def) => cmp::Ordering::Less,
 
             (NameDerivation::NamedImported(_), NameDerivation::NamedImported(_)) => {
-                Some(cmp::Ordering::Equal)
+                cmp::Ordering::Equal
             }
-            (NameDerivation::NamedImported(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::NamedImported(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::NamedImported(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::NamedImported(_)) => cmp::Ordering::Less,
 
             (NameDerivation::GlobImported(_), NameDerivation::GlobImported(_)) => {
-                Some(cmp::Ordering::Equal)
+                cmp::Ordering::Equal
             }
-            (NameDerivation::GlobImported(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::GlobImported(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::GlobImported(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::GlobImported(_)) => cmp::Ordering::Less,
 
-            (NameDerivation::Lex(lhs), NameDerivation::Lex(rhs)) => lhs.partial_cmp(rhs),
-            (NameDerivation::Lex(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::Lex(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::Lex(lhs), NameDerivation::Lex(rhs)) => lhs.cmp(rhs),
+            (NameDerivation::Lex(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::Lex(_)) => cmp::Ordering::Less,
 
-            (NameDerivation::External, NameDerivation::External) => Some(cmp::Ordering::Equal),
-            (NameDerivation::External, _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::External) => Some(cmp::Ordering::Less),
+            (NameDerivation::External, NameDerivation::External) => cmp::Ordering::Equal,
+            (NameDerivation::External, _) => cmp::Ordering::Greater,
+            (_, NameDerivation::External) => cmp::Ordering::Less,
 
-            (NameDerivation::Prim, NameDerivation::Prim) => Some(cmp::Ordering::Equal),
+            (NameDerivation::Prim, NameDerivation::Prim) => cmp::Ordering::Equal,
         }
     }
 }
@@ -733,12 +739,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     fn finalize_query_result(&mut self, query: NameQuery, bucket: NameResBucket) -> NameResBucket {
         self.cache_store.cache_result(query, bucket.clone());
         bucket
-    }
-}
-
-impl Ord for NameDerivation {
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.partial_cmp(other).unwrap()
     }
 }
 
