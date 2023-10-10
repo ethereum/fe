@@ -1,6 +1,6 @@
 # ERC-20 token contract
 
-This tutorial aims to implement the well-known ERC-20 token standard in Fe. Along the way you will learn some foundational Fe concepts, gain exposure to one of the most significant standards on Ethereum.
+This tutorial aims to implement the well-known [ERC-20 token standard](https://ethereum.org/en/developers/tutorials/understand-the-erc-20-token-smart-contract/) in Fe. Along the way, you will learn some foundational Fe concepts and gain exposure to one of the most significant standards on Ethereum.
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ To get the most out of this guide, you should be familiar with the concept of to
 
 ## What is ERC-20?
 
-ERC-20 describes the most widely-used standard for fungible token contracts. It includes a common set of rules that a contract must adhere to in order to be fully featured and secure.
+ERC-20 describes the most widely used standard for fungible token contracts. It includes a common set of rules that a contract must adhere to in order to be fully featured and secure.
 
 > Note that ERC-20 is not the only standard for fungible tokens on Ethereum; however, it is by far the most popular.
 
@@ -34,13 +34,13 @@ interface IERC20 {
 }
 ```
 
-The next sections will demonstrate how these functions can be implemnted in Fe.
+The next sections will demonstrate how these functions can be implemented in Fe.
 
 ## The ERC-20 Contract in Fe
 
 ### Contract definition and constructor
 
-Contracts are defined using the `contract` keyword, with the contract code following inside curly braces `{...}`. The contract's state varables are defined first, then the constructor function. A constructor function sets some of the contract's state variables when the contract is deployed. The state variables required for an ERC-20 contract are:
+Contracts are defined using the `contract` keyword, with the contract code following inside curly braces `{...}`. The contract's state variables are defined first, then the constructor function. A constructor function sets some of the contract's state variables when the contract is deployed. The state variables required for an ERC-20 contract are:
 
 - balances: the number of tokens owned by an address, with type `Map<address, u256>`
 - allowances: The number of tokens the address owner has approved for spending, with type `Map<address, u256>`
@@ -77,17 +77,17 @@ pub fn __init__(mut self, mut ctx: Context, name: String<100>, symbol: String<10
 }
 ```
 
-This constructor instantiates the `name` and `symbol` variables with constructor arguments passed along with the contract code when the contract is deployed. The value of `decimals` is instantiated using a value hard coded into the contract (`self._decimals = u8(18)`). Finally, there is a call to the `mint()` function. You can learn how the `mint()` function works in the next section.
+This constructor instantiates the `name` and `symbol` variables with constructor arguments passed along with the contract code when the contract is deployed. The value of `decimals` is instantiated using a value hard-coded into the contract (`self._decimals = u8(18)`). Finally, there is a call to the `mint()` function. You can learn how the `mint()` function works in the next section.
 
 ## Contract functions
 
 ### `mint()`
 
-The contract's `mint()` function was called in the constructor, causing some amount of tokens to be created and allocated to an account address during the contract deployment. The ERC-20 `mint()` function is not part of the IERC-20 interface so that an ERC-20 ontrat can be agnostic to the token supply mechanism. You can read more about custom supply mechanisms on the [Open Zeppelin forum](https://forum.openzeppelin.com/t/how-to-implement-erc20-supply-mechanisms/226). In this example, you will add a `mint()` function to control your token supply.
+The contract's `mint()` function was called in the constructor, causing some amount of tokens to be created and allocated to an account address during the contract deployment. The ERC-20 `mint()` function is not part of the IERC-20 interface so an ERC-20 contract can be agnostic to the token supply mechanism. You can read more about custom supply mechanisms on the [Open Zeppelin forum](https://forum.openzeppelin.com/t/how-to-implement-erc20-supply-mechanisms/226). In this example, you will add a `mint()` function to control your token supply.
 
 The `mint()` function needs to do the following:
 
-- transfer an amount of tokens from the zero address to some other address
+- create a number of tokens and allocate them to some address
 - update the total supply
 - update the balances of the token receiver's address
 - emit an event
@@ -111,6 +111,7 @@ fn _mint(mut self, mut ctx: Context, account: address, value: u256) {
 }
 ```
 
+> Note: Contract creation transactions are have a special recipient address 0x0. This is the zero address. It is not associated with any specific account or contract and it cannot initiate transactions. The zero address, `account(0)`, can be interpreted as an instruction to "create this contract". In the `mint()` function above there is a simple check to ensure the account meant toi receive the minted tokens is not accidentally set to account(0). It is also used as the sender in the Event struct `Transfer`.
 
 ### `totalSupply()`
 
