@@ -114,4 +114,5 @@ contract ERC20 {
         self._decimals = decimals_
     }
 }
+
 ```
