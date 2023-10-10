@@ -10,13 +10,10 @@ To make Fe maximally explicit and as easy as possible to audit, these functions 
 
 For example, the following function looks pure from its signature (i.e. it is not expected to alter any blockchain data) but in reality it does modify the blockchain (by emitting a log).
 
-```rust
-struct SomeEvent{
-}
-
+```fe,ignore
 pub fn looks_pure_but_isnt() {
   // COMPILE ERROR
-  emit(SomeEvent())
+  block_number()
 }
 ```
 
