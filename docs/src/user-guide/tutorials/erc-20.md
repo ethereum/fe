@@ -4,7 +4,7 @@ This tutorial aims to implement the well-known ERC-20 token standard in Fe. Alon
 
 ## Prerequisites
 
-To get the most out of this guide, you should be familiar with the concept of tokens and have some basic knowledge of the Ethereum blockchain. You should have [Fe](../installation.md) and [Foundry](https://getfoundry.sh) installed on your machine.
+To get the most out of this guide, you should be familiar with the concept of tokens and have some basic knowledge of the Ethereum blockchain. You should have [Fe](../installation.md) and [Foundry](https://getfoundry.sh) installed on your machine. In the `Build, deploy and test` section, it is assumed you saved your contract code in a file named `erc20.fe`.
 
 ## What is ERC-20?
 
@@ -51,6 +51,8 @@ There are some ERC-20 metadata variables that are not strictly required but are 
 - name: the token name, with type `String<100>`
 - symbol: the three-character ticker symbol for the token, with type `String<100>`
 - decimals: The number of decimals the token should be denominated in (e.g. ETH is expressed to 18 decimal places - the default if no value is defined in the contract)
+
+> Note that in Fe, Strings are defined with a maximum number of characters, `N: String<N>`. N is used to allocate the maximum number of bytes that can be used to store the String's characters. A `String<N>` can be instantiated using < N characters, but not > N characters. For example `Fe is great` is a sequence of 11 characters that could be stored in a `String<11>`, `String<50>` or a `String<100>` but not `String<1>` or `String<10>`.
 
 In the Fe contract, the contract definition and variable declarations look as follows:
 
@@ -269,4 +271,79 @@ pub fn decimals(self) -> u8 {
 
 Congratulations, you have now written all the logic required to implement the ERC-20 token standard. The next section will guide you through deploying and interacting with your contract!
 
-## Deploy and test
+
+## Build, deploy and test the contract
+
+Compile the contract using:
+
+```sh
+fe build erc20.fe
+```
+
+You will find the contract ABI and bytecode in the newly created `outputs` directory.
+
+Start a local blockchain to deploy your contract to:
+
+```sh
+anvil
+```
+
+There are constructor arguments (`name: String<100>`, `symbol: String<100>`) that have to be added to the contract bytecode so that the contract is instantiated with your desired values. To add constructor arguments you can encode them into bytecode and append them to the contract bytecode.
+
+First, hex encode the values you want to pass as constructor arguments. You can name the token `Fetoken` and assign the symbol `FET`:
+
+```sh
+cast --from-ascii("fetoken")
+>> 0x6665746f6b656e
+cast --from-ascii("fet")
+>> 0x666574
+```
+
+Ethereum addresses are already hex, so there is no further encoding required. The following command will take the constructor function and the hex-encoded arguments and concatenate them into a contiguous hex string and then deploy the contract with the constructor arguments. 
+
+```sh
+cast send --from <your-address> --private-key <your-private-key> --create $(cat output/ERC20/ERC20.bin) $(cast abi-encode "__init__(string,string)" 0x6665746f6b656e 0x666574)
+```
+
+You will see the contract address reported in your terminal. The adress you provided the private key for in your deployment command was interpreted by the contract as `msg_sender`, meaning it now owns 1000000000000000000000000 Fe tokens, as defined in the constructor function. This should also be the total supply.
+
+You can check this using:
+
+```sh
+cast call <contract-address> "total_supply" | cast --to-dec
+>> 1000000000000000000000000
+
+cast call <contract-address> "balanceOf(address)" <your-address> | cast --to-dec
+>> 1000000000000000000000000
+```
+
+Now, make a transfer from the funded account to another account:
+
+```sh
+cast send <contract-address> "transfer(address,uint256)" <recipient-address> <amount> --from <your-address> --private-key <your-priv-key> 
+```
+
+You will see the transaction details reported in the terminal, including logs. It is out of scope for this page but if you decoded these logs you would see the Transfer struct you defined in the contract populated with the relevant values.
+
+You can also try uisng `TransferFrom`. In this case, you first need to approve some amount of tokens that can be spent by a specific `spender` account. Then, call `TransferFrom()` with a number of tokens smaller than the apprived amount. You can also experiment with sending amoutns greater than the allowance to check that the transaction reverts as expected.
+
+```sh
+cast send <contract-address> "approve(address,uint256)" <spender-address> <amount> --from <your-address> --private-key <your private-key>
+cast send <contract-address> "transferFrom(address,address,uint256)" <spender-address> <recipient-address> <amount> --from <spender-address> --private-key <spender-priv-key>
+```
+You can check the bal;ances have been updated as expected by calling `balanceOf` for each address and checking that each bal;ance has been incremented or decremented by `amount` number of tokens.
+
+> Note that the functions that take `self` and/or `Context` as opposed to `mut self` and/or `mut Context` are accessed using `cast call` rather than `cast send`. This is because they do not modify any contract or blockchain data. This means they do not need to sign and send a transaction or pay any gas. 
+
+You can experiment with the other ERC-20 functions following the same patterns.
+
+## Summary
+
+Congratulations! You have written an ERC-20 token contract and deployed it to a local blockchain. In doing so, you learned:
+
+- the features and structure of the ERC-20 token standard
+- how to explicitly move reference values into memory using `to_mem()`
+- how to use `self` and `Context` in Fe functions
+- how to emit custom events
+- how to build a contract using `fe build`
+- how to deploy an interact with a contract using Foundry
