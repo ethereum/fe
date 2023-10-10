@@ -125,7 +125,7 @@ pub fn totalSupply(self) -> u256 {
 
 ### `balanceOf()`
 
-The `balanceOf()` function returns the curent token value associated with a specific address. That is, it returns the `u256` value associated witha given address in the `_balances` variable which has type `Map<address, u256>`. The function interacts with a contract state variable, but does not change it, so `self` should be its first argument. The function also requires an account to look up, with type `address`. This function will be called externally, so you can prepend the function declaration with the access modifier `pub`.
+The `balanceOf()` function returns the current token value associated with a specific address. That is, it returns the `u256` value associated with a given address in the `_balances` variable which has type `Map<address, u256>`. The function interacts with a contract state variable, but does not change it, so `self` should be its first argument. The function also requires an account to look up, with type `address`. This function will be called externally, so you can prepend the function declaration with the access modifier `pub`.
 
 ```fe
 pub fn balanceOf(self, _ account: address) -> u256 {
@@ -135,7 +135,7 @@ pub fn balanceOf(self, _ account: address) -> u256 {
 
 ### `allowance()`
 
-`allowance()` returns the number of tokens that `spender` is allowed to spend on behalf of owner. The idea is that a token holder approves a certain number of tokens to be spent by a `spender` address. each time `spender` transfers some of those tokens, the remaining allowance is decremented by the transfered amount.
+`allowance()` returns the number of tokens that `spender` is allowed to spend on behalf of `owner`. The idea is that a token holder approves a certain number of tokens to be spent by a `spender` address. each time `spender` transfers some of those tokens, the remaining allowance is decremented by the transfered amount.
 
 The function interacts with a contract state variable, but does not change it, so `self` should be its first argument. Addresses for the `owner` and `spender` are also required. The function then looks up the remaining allowance in `_allowances` using both `spender` and `owner` as keys. This function will be called externally, so you can prepend the function declaration with the access modifier `pub`.
 
@@ -184,9 +184,9 @@ struct Transfer {
 
 ### `transferFrom()`
 
-This function moves some amount of tokens from one account to another after checking an `allowance`. The function returns a `bool` indicating success, and emits an event. This function not only queries some of the contract's state variables and the blockchain data, but it updates them too. This means the contract takes `mut self` and `mut Context` as its first two arguments. Then, addresses for the `sender` and `recipient` addresses and the number of tokens to transfer are also required.
+This function moves some amount of tokens from one account to another after checking an `allowance`. The function returns a `bool` indicating success and emits an event. This function not only queries some of the contract's state variables and the blockchain data, but it updates them too. This means the contract takes `mut self` and `mut Context` as its first two arguments. Then, addresses for the `sender` and `recipient` addresses and the number of tokens to transfer are also required.
 
-In order for a `transfer` to happen, the sender must have approved the address calling the function to move greater than or equal to the value of tokens being transferred. This is a hard requirement that must never be violated! Therefore, you can use `assert()`. To ensure the allowance exceeds the requested amount, you can use:
+In order for a `transfer` to happen, the sender must have approved the address calling the function to move greater than or equal to the number of tokens being transferred. This is a hard requirement that must never be violated! Therefore, you can use `assert()`. To ensure the allowance exceeds the requested amount, you can use:
 
 ```
 assert self._allowances[sender][ctx.msg_sender()] >= value
@@ -207,8 +207,8 @@ pub fn transferFrom(mut self, mut ctx: Context, sender: address, recipient: addr
 
 ### `approve()`
 
-`approve()` defines the amount of tokens that a token `owner` has allowed a specific `spender` to move on their behalf using `transferFrom()`.
-This means `approve()` updates the value of `allowances` for a specific `address`. There is a public wrapper that can be called externally, and a private function that does that actual approval. The wrapper returns a `bool` indicating a successful approval.
+`approve()` defines the number of tokens that a token `owner` has allowed a specific `spender` to move on their behalf using `transferFrom()`.
+This means `approve()` updates the value of `allowances` for a specific `address`. There is a public wrapper that can be called externally and a private function that does that actual approval. The wrapper returns a `bool` indicating a successful approval.
 
 ```fe
 pub fn approve(mut self, mut ctx: Context, spender: address, value: u256) -> bool {
@@ -240,9 +240,9 @@ struct Approval {
 }
 ```
 
-> Note that at this point, all the functions required by the ERC-20 interface are defined (along with a couple of extra ones). You could deploy this contract now and it would work with the minimum viable functionality. The remaining functions optionally expand the feature set and improve the token UX.
+**Note** that at this point, all the functions required by the ERC-20 interface are defined (along with a couple of extra ones). You could deploy this contract now and it would work with the minimum viable functionality. The remaining functions optionally expand the feature set and improve the token UX.
 
-### name
+### `name()`
 
 The token name is set by the constructor. It can be queried by calling a public function returning the value of the contract's `_name` variable. Notice that the value is returned after calling the built-in [`to_mem()`](../../spec/data_layout/storage/to_mem_function.md) function. This `to_mem()` function copies a value from contract storage into memory. This is necessary for all reference types (`tuples`, `arrays`, `strings`, `structs`, `enums`, `Map`), but not for primitive types (`bool`, `address`, `numeric`), in Fe.
 
@@ -252,9 +252,9 @@ pub fn name(self) -> String<100> {
 }
 ```
 
-### symbol
+### `symbol()`
 
-The token symbol is also set by the constructor. It can be queried by calling a public function returning the value of the contract's `_symbol` variable. Again, because the type of `_symbol` is `String<100>`, which is a reference type, it has to be explicitly copied from storasge to memory using `to_mem()`.
+The token symbol is also set by the constructor. It can be queried by calling a public function returning the value of the contract's `_symbol` variable. Again, because the type of `_symbol` is `String<100>`, which is a reference type, it has to be explicitly copied from storage to memory using `to_mem()`.
 
 ```fe
 pub fn symbol(self) -> String<100> {
@@ -262,7 +262,7 @@ pub fn symbol(self) -> String<100> {
 }
 ```
 
-### decimals
+### `decimals()`
 
 Finally, the number of decimals the token is denominated to can be queried by calling a public function returning the value of the contract's `_decimals` variable. The return type is a primitive `u8` so no explicit copying to memory is required.
 
@@ -306,7 +306,7 @@ Ethereum addresses are already hex, so there is no further encoding required. Th
 cast send --from <your-address> --private-key <your-private-key> --create $(cat output/ERC20/ERC20.bin) $(cast abi-encode "__init__(string,string)" 0x6665746f6b656e 0x666574)
 ```
 
-You will see the contract address reported in your terminal. The adress you provided the private key for in your deployment command was interpreted by the contract as `msg_sender`, meaning it now owns 1000000000000000000000000 Fe tokens, as defined in the constructor function. This should also be the total supply.
+You will see the contract address reported in your terminal. The address you provided the private key for in your deployment command was interpreted by the contract as `msg_sender`, meaning it now owns 1000000000000000000000000 Fe tokens, as defined in the constructor function. This should also be the total supply.
 
 You can check this using:
 
@@ -326,13 +326,13 @@ cast send <contract-address> "transfer(address,uint256)" <recipient-address> <am
 
 You will see the transaction details reported in the terminal, including logs. It is out of scope for this page but if you decoded these logs you would see the Transfer struct you defined in the contract populated with the relevant values.
 
-You can also try uisng `TransferFrom`. In this case, you first need to approve some amount of tokens that can be spent by a specific `spender` account. Then, call `TransferFrom()` with a number of tokens smaller than the apprived amount. You can also experiment with sending amoutns greater than the allowance to check that the transaction reverts as expected.
+You can also try using `TransferFrom`. In this case, you first need to approve some amount of tokens that can be spent by a specific `spender` account. Then, call `TransferFrom()` with a number of tokens smaller than the approved amount. You can also experiment with sending amounts greater than the allowance to check that the transaction reverts as expected.
 
 ```sh
 cast send <contract-address> "approve(address,uint256)" <spender-address> <amount> --from <your-address> --private-key <your private-key>
 cast send <contract-address> "transferFrom(address,address,uint256)" <spender-address> <recipient-address> <amount> --from <spender-address> --private-key <spender-priv-key>
 ```
-You can check the bal;ances have been updated as expected by calling `balanceOf` for each address and checking that each bal;ance has been incremented or decremented by `amount` number of tokens.
+You can check the balances have been updated as expected by calling `balanceOf` for each address and checking that each balance has been incremented or decremented by `amount` number of tokens.
 
 > Note that the functions that take `self` and/or `Context` as opposed to `mut self` and/or `mut Context` are accessed using `cast call` rather than `cast send`. This is because they do not modify any contract or blockchain data. This means they do not need to sign and send a transaction or pay any gas. 
 
@@ -347,4 +347,4 @@ Congratulations! You have written an ERC-20 token contract and deployed it to a 
 - how to use `self` and `Context` in Fe functions
 - how to emit custom events
 - how to build a contract using `fe build`
-- how to deploy an interact with a contract using Foundry
+- how to deploy and interact with a contract using Foundry
