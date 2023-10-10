@@ -13,7 +13,7 @@ use self::{
 pub mod constraint_solver;
 pub mod def_analysis;
 pub mod diagnostics;
-pub mod trait_;
+pub mod trait_def;
 pub mod trait_lower;
 pub mod ty_def;
 pub mod ty_lower;
@@ -23,6 +23,7 @@ pub(crate) mod constraint;
 
 mod unify;
 
+/// An analysis pass for type definitions.
 pub struct TypeDefAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
@@ -64,6 +65,7 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
     }
 }
 
+/// An analysis pass for trait definitions.
 pub struct TraitAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
@@ -89,6 +91,7 @@ impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
     }
 }
 
+/// An analysis pass for `ImplTrait'.
 pub struct ImplTraitAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
@@ -115,6 +118,7 @@ impl<'db> ModuleAnalysisPass for ImplTraitAnalysisPass<'db> {
     }
 }
 
+/// An analysis pass for type aliases.
 pub struct TypeAliasAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }

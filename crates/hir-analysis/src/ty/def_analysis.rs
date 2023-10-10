@@ -1,3 +1,7 @@
+//! This module contains analysis for the definition of the type/trait.
+//! This module is the only module in `ty` module which is allowed to emit
+//! diagnostics.
+
 use hir::{
     hir_def::{
         scope_graph::ScopeId, FieldDef, ImplTrait, Trait, TraitRefId, TypeAlias, TypeId as HirTyId,
@@ -25,13 +29,23 @@ use super::{
     constraint::{collect_super_traits, AssumptionListId, SuperTraitCycle},
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
-    trait_::{ingot_trait_env, Implementor, TraitDef},
+    trait_def::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRefId, TyId},
     ty_lower::{lower_adt, lower_hir_ty, lower_kind},
     visitor::{walk_ty, TyVisitor},
 };
 
+/// This function implements analysis for the ADT definition.
+/// The analysis includes the following:
+/// - Check if the types in the ADT is well-formed.
+/// - Check if the trait instantiation appears in the ADT is well-formed.
+/// - Check if the field types are fully applied(i.e., these types should have
+///   `*` kind).
+/// - Check if the types in the ADT satisfies the constraints which is required
+///   in type application.
+/// - Check if the trait instantiations in the ADT satisfies the constraints.
+/// - Check if the recursive types has indirect type wrapper like pointer.
 #[salsa::tracked]
 pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
@@ -46,6 +60,13 @@ pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
     }
 }
 
+/// This function implements analysis for the trait definition.
+/// The analysis includes the following:
+/// - Check if the types appear in the trait is well-formed.
+/// - Check if the trait instantiation appears in the trait is well-formed.
+/// - Check if the types in the trait satisfy the constraints which is required
+///   in type application.
+/// - Check if the trait instantiations in the trait satisfies the constraints.
 #[salsa::tracked]
 pub fn analyze_trait(db: &dyn HirAnalysisDb, trait_: Trait) {
     let analyzer = DefAnalyzer::for_trait(db, trait_);
@@ -56,6 +77,17 @@ pub fn analyze_trait(db: &dyn HirAnalysisDb, trait_: Trait) {
     }
 }
 
+/// This function implements analysis for the trait implementation definition.
+/// The analysis include the following:
+/// - Check if the types appear in the trait impl is well-formed.
+/// - Check if the trait instantiation appears in the trait impl is well-formed.
+/// - Check if the types in the trait impl satisfy the constraints which is
+///   required in type application.
+/// - Check if the trait instantiations in the trait impl satisfies the
+///   constraints.
+/// - Check if the conflict doesn't occur.
+/// - Check if the trait or type is included in the ingot which contains the
+///   impl trait.
 #[salsa::tracked]
 pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
     let implementor = match analyze_trait_impl_specific_error(db, impl_trait) {
@@ -76,6 +108,15 @@ pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
     }
 }
 
+/// This function implements analysis for the type alias definition.
+/// The analysis includes the following:
+/// - Check if the type alias is not recursive.
+/// - Check if the type in the type alias is well-formed.
+///
+/// NOTE: This function doesn't check the satisfiability of the type since our
+/// type system treats the alias as kind of macro, meaning type alias doesn't
+/// included in the type system. Satisfiability is checked where the type alias
+/// is used.
 #[salsa::tracked]
 pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
@@ -360,6 +401,10 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         self.current_ty = Some((self.def.trait_self_param(self.db), name_span));
         walk_super_trait_list(self, ctxt, super_traits);
     }
+
+    fn visit_func(&mut self, _ctxt: &mut VisitorCtxt<'_, LazyFuncSpan>, _func: hir::hir_def::Func) {
+        // TODO:
+    }
 }
 
 #[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
@@ -502,7 +547,7 @@ impl DefKind {
     }
 }
 
-/// This function analyzes
+/// This function analyzes the trait impl specific error.
 /// 1. If the trait ref is well-formed except for the satisfiability.
 /// 2. If implementor type is well-formed except for the satisfiability.
 /// 3. If the ingot contains impl trait is the same as the ingot which contains

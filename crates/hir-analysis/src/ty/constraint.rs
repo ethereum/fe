@@ -1,3 +1,6 @@
+//! This module contains the implementation of the constraint collection
+//! algorithms.
+
 use std::collections::BTreeSet;
 
 use hir::hir_def::{scope_graph::ScopeId, GenericParam, GenericParamOwner, IngotId, TypeBound};
@@ -11,12 +14,24 @@ use crate::{
 
 use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    trait_::{Implementor, TraitDef, TraitInstId},
+    trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
     ty_def::{AdtDef, Subst, TyConcrete, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
 };
 
+/// Returns a constraints list which is derived from the given type.
+/// # Returns
+///
+/// ##  The first `AssumptionListId`
+/// This is a list of assumptions that should be merged to the context where the
+/// constraints are solved.
+/// This new assumptions are obtained when the given type is a partial applied
+/// type, i.e., the assumptions describes the free type variables.
+///
+/// ## The second `ConstraintListId`
+/// This is a list of constraints that should be solved to ensure the type is
+/// valid.
 #[salsa::tracked]
 pub(crate) fn ty_constraints(
     db: &dyn HirAnalysisDb,
@@ -102,6 +117,7 @@ pub(crate) fn trait_inst_constraints(
     )
 }
 
+/// Collect super traits of the given trait.
 #[salsa::tracked(return_ref, recovery_fn = recover_collect_super_traits)]
 pub(crate) fn collect_super_traits(
     db: &dyn HirAnalysisDb,
@@ -141,6 +157,9 @@ pub(crate) fn super_trait_insts(
         .collect()
 }
 
+/// Collect trait constraints that are specified by the given trait definition.
+/// This constraints describes 1. the constraints about self type(i.e.,
+/// implementor type), and 2. the generic parameter constraints.
 #[salsa::tracked]
 pub(crate) fn collect_trait_constraints(
     db: &dyn HirAnalysisDb,
@@ -152,6 +171,7 @@ pub(crate) fn collect_trait_constraints(
     collector.collect()
 }
 
+/// Collect constraints that are specified by the given ADT definition.
 #[salsa::tracked]
 pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> ConstraintListId {
     let Some(owner) = adt.as_generic_param_owner(db) else {
@@ -162,6 +182,8 @@ pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> Co
     collector.collect()
 }
 
+/// Collect constraints that are specified by the given implementor(i.e., impl
+/// trait).
 #[salsa::tracked]
 pub(crate) fn collect_implementor_constraints(
     db: &dyn HirAnalysisDb,
@@ -173,7 +195,7 @@ pub(crate) fn collect_implementor_constraints(
     collector.collect()
 }
 
-/// Returns a list of assumptions obtained by the given assumptions by looking
+/// Returns a list of assumptions derived from the given assumptions by looking
 /// up super traits.
 #[salsa::tracked(return_ref)]
 pub(crate) fn compute_super_assumptions(
@@ -195,6 +217,7 @@ pub(crate) fn compute_super_assumptions(
     AssumptionListId::new(db, super_assumptions, ingot)
 }
 
+/// Describes a predicate indicating `ty` implements `trait_`.
 #[salsa::interned]
 pub struct PredicateId {
     pub(super) ty: TyId,
@@ -202,6 +225,7 @@ pub struct PredicateId {
 }
 
 impl PredicateId {
+    /// Applies the given substitution to the predicate.
     pub fn apply_subst<S: Subst>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> Self {
         let ty = self.ty(db).apply_subst(db, subst);
         let trait_ = self.trait_inst(db).apply_subst(db, subst);
@@ -209,6 +233,7 @@ impl PredicateId {
     }
 }
 
+/// The list of predicates.
 #[salsa::interned]
 pub(crate) struct PredicateListId {
     #[return_ref]

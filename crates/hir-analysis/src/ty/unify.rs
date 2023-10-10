@@ -1,9 +1,12 @@
+//! This module contains the unification table for type inference and trait
+//! satisfiability checking.
+
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue};
 
 use crate::HirAnalysisDb;
 
 use super::{
-    trait_::{Implementor, TraitInstId},
+    trait_def::{Implementor, TraitInstId},
     ty_def::{Kind, Subst, TyData, TyId},
 };
 

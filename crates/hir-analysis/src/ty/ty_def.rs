@@ -1,3 +1,5 @@
+//! This module contains the type definitions for the Fe type system.
+
 use std::{collections::BTreeSet, fmt};
 
 use hir::{
@@ -13,12 +15,12 @@ use hir::{
 use rustc_hash::FxHashMap;
 
 use crate::{
-    ty::constraint_solver::{check_ty_sat, GoalSatisfiability},
+    ty::constraint_solver::{check_ty_app_sat, GoalSatisfiability},
     HirAnalysisDb,
 };
 
 use super::{
-    constraint::{collect_adt_constraints, AssumptionListId, ConstraintListId, PredicateId},
+    constraint::{collect_adt_constraints, AssumptionListId, ConstraintListId},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::InferenceKey,
@@ -31,17 +33,23 @@ pub struct TyId {
 }
 
 impl TyId {
+    /// Returns the kind of the type.
     pub fn kind(self, db: &dyn HirAnalysisDb) -> &Kind {
         ty_kind(db, self)
     }
 
+    /// Returns `true` if the type is invalid, see [`contains_invalid`] if you
+    /// want to check if the type contains any invalid types as a part of the
+    /// type.
     pub fn is_invalid(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::Invalid(_))
     }
 
+    /// Returns `IngotId` that declares the type.
     pub fn ingot(self, db: &dyn HirAnalysisDb) -> Option<IngotId> {
         match self.data(db) {
             TyData::TyCon(TyConcrete::Adt(adt)) => adt.ingot(db).into(),
+            TyData::TyApp(lhs, _) => lhs.ingot(db),
             _ => None,
         }
     }
@@ -53,6 +61,7 @@ impl TyId {
         }
     }
 
+    /// Returns `true` if the type contains invalid types as an argument.
     pub fn contains_invalid(self, db: &dyn HirAnalysisDb) -> bool {
         match self.data(db) {
             TyData::Invalid(_) => true,
@@ -141,10 +150,6 @@ impl TyId {
 
                 InvalidCause::AssocTy => Some(TyLowerDiag::assoc_ty(span).into()),
 
-                InvalidCause::TraitConstraintNotSat(pred) => {
-                    Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, pred).into())
-                }
-
                 InvalidCause::Other => None,
             },
 
@@ -158,7 +163,7 @@ impl TyId {
         assumptions: AssumptionListId,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        match check_ty_sat(db, self, assumptions) {
+        match check_ty_app_sat(db, self, assumptions) {
             GoalSatisfiability::Satisfied => None,
             GoalSatisfiability::NotSatisfied(goal) => {
                 Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into())
@@ -173,6 +178,7 @@ impl TyId {
         matches!(self.data(db), TyData::TyVar(_))
     }
 
+    /// Returns all inference keys in the type.
     pub(super) fn free_inference_keys(self, db: &dyn HirAnalysisDb) -> &BTreeSet<InferenceKey> {
         free_inference_keys(db, self)
     }
@@ -200,6 +206,7 @@ impl TyId {
         Self::new(db, TyData::TyApp(abs, arg))
     }
 
+    /// Apply type arguments to the type.
     pub(crate) fn apply_subst<S>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> TyId
     where
         S: Subst + ?Sized,
@@ -227,6 +234,8 @@ impl TyId {
         }
     }
 
+    /// Returns `true` if the type is an indirect wrapper type like a pointer or
+    /// reference(when we introduce it).
     pub(super) fn is_indirect(self, db: &dyn HirAnalysisDb) -> bool {
         // TODO: FiX here when reference type is introduced.
         self.is_ptr(db)
@@ -261,11 +270,16 @@ impl TyId {
     }
 }
 
+/// Represents a ADT type definition.
 #[salsa::tracked]
 pub struct AdtDef {
     pub adt_ref: AdtRefId,
+
+    /// Type parameters of the ADT.
     #[return_ref]
     pub params: Vec<TyId>,
+
+    /// Fields of the ADT, if the ADT is an enum, this represents variants.
     #[return_ref]
     pub fields: Vec<AdtField>,
 }
@@ -330,13 +344,20 @@ impl AdtDef {
     }
 }
 
+/// This struct represents a field of an ADT. If the ADT is an enum, this
+/// represents a variant.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AdtField {
-    pub name: Partial<IdentId>,
+    name: Partial<IdentId>,
+
     /// Fields of the variant.
-    /// If the adt is an struct or contract, the length of the vector is always
-    /// 1.
-    pub tys: Vec<Partial<HirTyId>>,
+    /// If the adt is an struct or contract,
+    /// the length of the vector is always 1.
+    ///
+    /// To allow recursive types, the type of the field is represented as a HIR
+    /// type and.
+    tys: Vec<Partial<HirTyId>>,
+
     scope: ScopeId,
 }
 impl AdtField {
@@ -348,6 +369,7 @@ impl AdtField {
         }
     }
 
+    /// Iterates all fields types of the `field`.
     pub fn iter_types<'a>(&'a self, db: &'a dyn HirAnalysisDb) -> impl Iterator<Item = TyId> + 'a {
         (0..self.num_types()).map(|i| self.ty(db, i))
     }
@@ -375,9 +397,10 @@ pub enum TyData {
     TyParam(TyParam),
 
     // Type application,
-    // e.g.,`TApp(TyConst(Option), TyConst(i32))`.
+    // e.g., `Option<i32>` is represented as `TApp(TyConst(Option), TyConst(i32))`.
     TyApp(TyId, TyId),
 
+    /// A concrete type, e.g., `i32`, `u32`, `bool`, `String`, `Result` etc.
     TyCon(TyConcrete),
 
     // TODO: DependentTy,
@@ -385,8 +408,9 @@ pub enum TyData {
     // DependentTyParam(TyParam, TyConst),
     // DependentTyVar(TyVar, TyConst),
 
-    // Invalid type which means the type is not defined.
+    // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
+    // NOTE: For type soundness check in this level, we don't consider trait satisfiability.
     Invalid(InvalidCause),
 }
 
@@ -396,21 +420,20 @@ pub enum InvalidCause {
     NotFullyApplied,
 
     /// Kind mismatch between two types.
-    KindMismatch {
-        expected: Option<Kind>,
-        given: TyId,
-    },
+    KindMismatch { expected: Option<Kind>, given: TyId },
 
     /// Associated Type is not allowed at the moment.
     AssocTy,
 
+    /// Type alias parameter is not bound.
+    /// NOTE: In our type system, type alias is a macro, so we can't perform
+    /// partial application to type alias.
     UnboundTypeAliasParam {
         alias: HirTypeAlias,
         n_given_args: usize,
     },
 
-    TraitConstraintNotSat(PredicateId),
-
+    // TraitConstraintNotSat(PredicateId),
     /// `Other` indicates the cause is already reported in other analysis
     /// passes, e.g., parser or name resolution.
     Other,
@@ -724,9 +747,6 @@ pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
         TyData::TyParam(param) => param.name.data(db.as_hir_db()).to_string(),
         TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
         TyData::TyCon(ty_con) => ty_con.pretty_print(db),
-        TyData::Invalid(InvalidCause::TraitConstraintNotSat(pred)) => {
-            pred.ty(db).pretty_print(db).to_string()
-        }
         _ => "<invalid>".to_string(),
     }
 }
@@ -775,6 +795,8 @@ fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
     }
 }
 
+/// Decompose type application into the base type and type arguments.
+/// e.g., `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
 fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
     struct TyAppDecomposer {
         base: Option<TyId>,

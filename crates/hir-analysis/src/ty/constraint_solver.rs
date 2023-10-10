@@ -1,16 +1,26 @@
+//! This module implements a constraint(trait bound) satisfiability solver.
+//! The algorithm is based on the paper [Typing Haskell in Haskell](https://web.cecs.pdx.edu/~mpj/thih/),
+//! but the algorithm here is slightly extended to support multi parametrized
+//! traits.
+
 use crate::{ty::constraint::ty_constraints, HirAnalysisDb};
 
 use super::{
     constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
-    trait_::{TraitEnv, TraitInstId},
+    trait_def::{TraitEnv, TraitInstId},
     ty_def::{Subst, TyId},
     unify::UnificationTable,
 };
 
 type Goal = PredicateId;
 
+/// Checks if the arguments of the given type applications satisfies the
+/// constraints under the given assumptions.
+///
+/// # Panics
+/// This function panics if the given type contains free inference keys.
 #[salsa::tracked]
-pub(crate) fn check_ty_sat(
+pub(crate) fn check_ty_app_sat(
     db: &dyn HirAnalysisDb,
     ty: TyId,
     assumptions: AssumptionListId,
@@ -20,7 +30,7 @@ pub(crate) fn check_ty_sat(
     let (_, args) = ty.decompose_ty_app(db);
 
     for arg in args {
-        match check_ty_sat(db, arg, assumptions) {
+        match check_ty_app_sat(db, arg, assumptions) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }
@@ -39,6 +49,8 @@ pub(crate) fn check_ty_sat(
     GoalSatisfiability::Satisfied
 }
 
+/// Checks if the given argument of the given trait instantiation satisfies the
+/// constraints under the given assumptions.
 #[salsa::tracked]
 pub(crate) fn check_trait_inst_sat(
     db: &dyn HirAnalysisDb,
@@ -97,7 +109,7 @@ struct ConstraintSolver<'db> {
 
 impl<'db> ConstraintSolver<'db> {
     fn new(db: &'db dyn HirAnalysisDb, goal: Goal, assumptions: AssumptionListId) -> Self {
-        let ingot = goal.trait_inst(db).ingot(db);
+        let ingot = assumptions.ingot(db);
         let env = TraitEnv::new(db, ingot);
 
         Self {
@@ -108,6 +120,8 @@ impl<'db> ConstraintSolver<'db> {
         }
     }
 
+    /// The main entry point of the constraint solver, whici performs actual
+    /// solving.
     fn solve(self) -> GoalSatisfiability {
         let goal_ty = self.goal.ty(self.db);
         let goal_trait = self.goal.trait_inst(self.db);
@@ -141,7 +155,7 @@ impl<'db> ConstraintSolver<'db> {
                 if table.unify(gen_impl.ty(self.db), goal_ty)
                     && table.unify(gen_impl.trait_(self.db), goal_trait)
                 {
-                    let mut subst = ChainedSubst::chain(&mut gen_param_map, &mut table);
+                    let mut subst = SubstComposition::compose(&mut gen_param_map, &mut table);
                     let constraints = impl_.constraints(self.db);
                     Some(constraints.apply_subst(self.db, &mut subst))
                 } else {
@@ -152,6 +166,7 @@ impl<'db> ConstraintSolver<'db> {
             return GoalSatisfiability::NotSatisfied(self.goal);
         };
 
+        // Checks if the all subgoals are satisfied.
         for &sub_goal in sub_goals.predicates(self.db) {
             match is_goal_satisfiable(self.db, sub_goal, self.assumptions) {
                 GoalSatisfiability::Satisfied => {}
@@ -175,18 +190,20 @@ impl PredicateListId {
     }
 }
 
-struct ChainedSubst<'a, 'b, S1, S2> {
+/// A substitution that composes multiple substitutions.
+struct SubstComposition<'a, 'b, S1, S2> {
     first: &'a mut S1,
     second: &'b mut S2,
 }
 
-impl<'a, 'b, S1, S2> ChainedSubst<'a, 'b, S1, S2> {
-    fn chain(first: &'a mut S1, second: &'b mut S2) -> Self {
+impl<'a, 'b, S1, S2> SubstComposition<'a, 'b, S1, S2> {
+    /// Creates a new `SubstComposition` from two substitutions.
+    fn compose(first: &'a mut S1, second: &'b mut S2) -> Self {
         Self { first, second }
     }
 }
 
-impl<'a, 'b, S1, S2> Subst for ChainedSubst<'a, 'b, S1, S2>
+impl<'a, 'b, S1, S2> Subst for SubstComposition<'a, 'b, S1, S2>
 where
     S1: Subst,
     S2: Subst,

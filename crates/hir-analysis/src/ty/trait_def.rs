@@ -1,6 +1,7 @@
+//! This module contains all trait related types definitions.
+
 use std::collections::BTreeSet;
 
-/// This module contains the logic for solving trait bounds.
 use hir::{
     hir_def::{ImplTrait, IngotId, Trait},
     span::DynLazySpan,
@@ -23,11 +24,13 @@ use super::{
     unify::UnificationTable,
 };
 
+/// Returns [`TraitEnv`] for the given ingot.
 #[salsa::tracked(return_ref)]
 pub(crate) fn ingot_trait_env(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitEnv {
     TraitEnv::collect(db, ingot)
 }
 
+/// Returns all [`Implementor`]s for the given trait inst.
 #[salsa::tracked(return_ref)]
 pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) -> Vec<Implementor> {
     let env = ingot_trait_env(db, trait_.ingot(db));
@@ -102,19 +105,27 @@ impl TraitEnv {
         trait_implementors(db, trait_)
     }
 
+    /// Returns the corresponding implementor of the given `impl Trait` type.
     pub(crate) fn map_impl_trait(&self, trait_ref: ImplTrait) -> Option<Implementor> {
         self.hir_to_implementor.get(&trait_ref).copied()
     }
 }
 
-/// Represents an implementor of a trait.
+/// Represents an implementor of a trait, which can be thought of as a lowered
+/// `impl Trait`.
 #[salsa::interned]
 pub(crate) struct Implementor {
+    /// The trait that this implementor implements.
     pub(crate) trait_: TraitInstId,
+
+    /// The type that this implementor implements the trait for.
     pub(crate) ty: TyId,
+
+    /// The type parameters of this implementor.
     #[return_ref]
     pub(crate) params: Vec<TyId>,
 
+    /// The original hir.
     pub(crate) impl_trait: ImplTrait,
 }
 
@@ -149,10 +160,13 @@ impl Implementor {
         (Implementor::new(db, trait_, ty, params, hir_impl), subst)
     }
 
+    /// Returns the constraints that the implementor requires when the
+    /// implementation is selected.
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         collect_implementor_constraints(db, self)
     }
 
+    /// Returns true if the implementor conflicts with the other implementor.
     pub(super) fn does_conflict(
         self,
         db: &dyn HirAnalysisDb,

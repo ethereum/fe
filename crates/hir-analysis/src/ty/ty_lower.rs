@@ -19,16 +19,19 @@ use super::ty_def::{
     AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam,
 };
 
+/// Lowers the given HirTy to `TyId`.
 #[salsa::tracked]
 pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId {
     TyBuilder::new(db, scope).lower_ty(ty)
 }
 
+/// Lower HIR ADT definition(`struct/enum/contract`) to [`AdtDef`].
 #[salsa::tracked]
 pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
     AdtTyBuilder::new(db, adt).build()
 }
 
+/// Collects the generic parameters of the given generic parameter owner.
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_generic_params(
     db: &dyn HirAnalysisDb,
@@ -37,6 +40,7 @@ pub(crate) fn collect_generic_params(
     GenericParamCollector::new(db, owner.data(db)).finalize()
 }
 
+/// Lowers the given type alias to [`TyAlias`].
 #[salsa::tracked(return_ref, recovery_fn = recover_lower_type_alias_cycle)]
 pub(crate) fn lower_type_alias(
     db: &dyn HirAnalysisDb,

@@ -1,3 +1,5 @@
+//! This module implements the trait and impl trait lowering process.
+
 use hir::hir_def::{
     scope_graph::ScopeId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRefId,
 };
@@ -10,7 +12,7 @@ use crate::{
 };
 
 use super::{
-    trait_::{Implementor, TraitDef, TraitInstId},
+    trait_def::{Implementor, TraitDef, TraitInstId},
     ty_def::{Kind, TyId},
     ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamOwnerId},
     unify::UnificationTable,
@@ -23,6 +25,10 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
     TraitBuilder::new(db, trait_).build()
 }
 
+/// Collect all trait implementors in the ingot.
+/// The returned table doesn't contain the dependent ingot implementors.
+/// If you need to obtain the environment that contains all available
+/// implementors in the ingot, use [`TraitEnv`](super::trait_def::TraitEnv).
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitImplTable {
     let dependent_impls = ingot
@@ -36,6 +42,9 @@ pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> Tra
     collector.finalize()
 }
 
+/// Returns the corresponding implementors for the given [`ImplTrait`].
+/// If the implementor type or the trait reference is ill-formed, returns
+/// `None`.
 #[salsa::tracked]
 pub(crate) fn lower_impl_trait(
     db: &dyn HirAnalysisDb,
@@ -75,6 +84,7 @@ pub(crate) fn lower_impl_trait(
     ))
 }
 
+/// Lower a trait reference to a trait instance.
 #[salsa::tracked]
 pub(crate) fn lower_trait_ref(
     db: &dyn HirAnalysisDb,
@@ -135,17 +145,16 @@ pub(crate) enum TraitRefLowerError {
     /// reported by the name resolution and no need to report it again.
     TraitNotFound,
 
+    /// The trait reference contains an associated type, which is not supported
+    /// yet.
     AssocTy(PathId),
 
-    ArgNumMismatch {
-        expected: usize,
-        given: usize,
-    },
+    /// The number of arguments doesn't match the number of parameters.
+    ArgNumMismatch { expected: usize, given: usize },
 
-    ArgumentKindMisMatch {
-        expected: Kind,
-        given: TyId,
-    },
+    /// The kind of the argument doesn't match the kind of the parameter of the
+    /// trait.
+    ArgumentKindMisMatch { expected: Kind, given: TyId },
 }
 
 struct TraitBuilder<'db> {
