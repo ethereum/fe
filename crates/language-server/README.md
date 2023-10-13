@@ -68,13 +68,21 @@ One straightforward way to interact with the language server during development 
 - [ ] Implement a task queue system for long-running tasks
 - [ ] Implement progress feedback notifications
 - [ ] Implement configurable options for the language server
+  - Diagnostics configuration
+  - Inlay configuration
 
 #### LSP Features
 - [ ] Enhance hover feature to return useful information and documentation.
-- [ ] Expand go-to feature to support variables and functions
+- [ ] Expand go-to feature to support variables, functions, implementations and other references
 - [ ] Support go-to definitions for Fe standard library
 - [ ] Improve diagnostics implementation and expand tests
-
+- [ ] Autofill and completions
+- [ ] Import completion
+- [ ] Refactoring symbol names and file names
+- [ ] Inlay hints
+- [ ] File system
+- [ ] Show syntax tree, HIR, etc.
+      
 #### Integration with VSCode
 - [ ] Implement configuration and options shortcuts in the VSCode extension
 - [ ] Investigate support for running tests/proofs from the VSCode extension
@@ -87,3 +95,6 @@ One straightforward way to interact with the language server during development 
 #### Research and Miscellaneous
 - [ ] Look into possibility of supporting proof and Fe test functionality in the language server
 - [ ] Investigate possible use cases for extending the salsa architecture into the language server more directly, e.g. performance improvements
+- [ ] View bytecode for selected code
+- [ ] Code actions for smart contract development
+- [ ] Would any LSP features be useful for plugging into LLM-based tools?  E.g. analytics or descriptions of the codebase?
