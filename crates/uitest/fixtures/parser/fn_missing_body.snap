@@ -1,0 +1,60 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/fn_missing_body.fe
+---
+error[1-0001]: unexpected token
+  ┌─ fn_missing_body.fe:3:1
+  │
+3 │ fn bar<T>() asdf
+  │ ^^ unexpected token
+
+error[1-0001]: unexpected token
+  ┌─ fn_missing_body.fe:3:1
+  │
+3 │ fn bar<T>() asdf
+  │ ^^ unexpected token
+
+error[1-0001]: function body is required
+  ┌─ fn_missing_body.fe:3:1
+  │
+3 │ fn bar<T>() asdf
+  │ ^^ function body is required
+
+error[1-0001]: expected newline after item definition
+  ┌─ fn_missing_body.fe:3:1
+  │
+3 │ fn bar<T>() asdf
+  │ ^^ expected newline after item definition
+
+error[1-0001]: unexpected token
+  ┌─ fn_missing_body.fe:3:13
+  │
+3 │ fn bar<T>() asdf
+  │             ^^^^ unexpected token
+
+error[1-0001]: unexpected token
+  ┌─ fn_missing_body.fe:5:1
+  │
+5 │ fn baz(x: u8) -> u8 {
+  │ ^^ unexpected token
+
+error[1-0001]: unexpected token
+  ┌─ fn_missing_body.fe:5:1
+  │
+5 │ fn baz(x: u8) -> u8 {
+  │ ^^ unexpected token
+
+error[1-0001]: function body is required
+  ┌─ fn_missing_body.fe:5:1
+  │
+5 │ fn baz(x: u8) -> u8 {
+  │ ^^ function body is required
+
+error[1-0001]: expected newline after item definition
+  ┌─ fn_missing_body.fe:5:1
+  │
+5 │ fn baz(x: u8) -> u8 {
+  │ ^^ expected newline after item definition
+
+

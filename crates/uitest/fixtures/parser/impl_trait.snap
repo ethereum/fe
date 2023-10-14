@@ -1,0 +1,66 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/impl_trait.fe
+---
+error[1-0001]: unexpected token
+  ┌─ impl_trait.fe:1:12
+  │
+1 │ impl X<T, u))> for Y<T where T: X {}
+  │            ^ unexpected token
+
+error[1-0001]: unexpected token
+  ┌─ impl_trait.fe:1:24
+  │
+1 │ impl X<T, u))> for Y<T where T: X {}
+  │                        ^^^^^ unexpected token
+
+error[1-0001]: expected closing `>`
+  ┌─ impl_trait.fe:1:24
+  │
+1 │ impl X<T, u))> for Y<T where T: X {}
+  │                        ^^^^^ expected closing `>`
+
+error[1-0001]: expected newline after type bounds
+  ┌─ impl_trait.fe:1:35
+  │
+1 │ impl X<T, u))> for Y<T where T: X {}
+  │                                   ^ expected newline after type bounds
+
+error[1-0001]: unexpected token
+  ┌─ impl_trait.fe:3:13
+  │
+3 │ impl X<T, u for Y<T where T: X {}
+  │             ^^^ unexpected token
+
+error[1-0001]: expected closing `>`
+  ┌─ impl_trait.fe:3:13
+  │
+3 │ impl X<T, u for Y<T where T: X {}
+  │             ^^^ expected closing `>`
+
+error[1-0001]: unexpected token
+  ┌─ impl_trait.fe:3:21
+  │
+3 │ impl X<T, u for Y<T where T: X {}
+  │                     ^^^^^ unexpected token
+
+error[1-0001]: expected closing `>`
+  ┌─ impl_trait.fe:3:21
+  │
+3 │ impl X<T, u for Y<T where T: X {}
+  │                     ^^^^^ expected closing `>`
+
+error[1-0001]: expected newline after type bounds
+  ┌─ impl_trait.fe:3:32
+  │
+3 │ impl X<T, u for Y<T where T: X {}
+  │                                ^ expected newline after type bounds
+
+error[1-0001]: unexpected token
+  ┌─ impl_trait.fe:5:8
+  │
+5 │ impl X @ for Y {}
+  │        ^ unexpected token
+
+
