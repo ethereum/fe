@@ -1,6 +1,8 @@
 use crate::HirAnalysisDb;
 
-use super::ty_def::{AdtDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar};
+use super::ty_def::{
+    AdtDef, FuncDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar,
+};
 
 pub trait TyVisitor {
     fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
@@ -31,6 +33,9 @@ pub trait TyVisitor {
 
     #[allow(unused_variables)]
     fn visit_adt(&mut self, db: &dyn HirAnalysisDb, adt: AdtDef) {}
+
+    #[allow(unused_variables)]
+    fn visit_func(&mut self, db: &dyn HirAnalysisDb, func: FuncDef) {}
 }
 
 pub fn walk_ty<V>(visitor: &mut V, db: &dyn HirAnalysisDb, ty: TyId)
@@ -57,5 +62,6 @@ where
     match ty_con {
         TyConcrete::Prim(prim) => visitor.visit_prim(db, prim),
         TyConcrete::Adt(adt) => visitor.visit_adt(db, *adt),
+        TyConcrete::Func(func) => visitor.visit_func(db, *func),
     }
 }

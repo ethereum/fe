@@ -7,8 +7,8 @@ use hir::{
         kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Contract, Enum, IdentId, IngotId, ItemKind, Partial, Struct, TypeAlias as HirTypeAlias,
-        TypeId as HirTyId, VariantKind,
+        Contract, Enum, Func, IdentId, IngotId, ItemKind, Partial, Struct,
+        TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
     },
     span::DynLazySpan,
 };
@@ -284,6 +284,23 @@ pub struct AdtDef {
     pub fields: Vec<AdtField>,
 }
 
+#[salsa::tracked]
+pub struct FuncDef {
+    pub func_ref: Func,
+
+    /// Generic parameters of the function.
+    #[return_ref]
+    pub params: Vec<TyId>,
+
+    /// Arugment types of the function.
+    #[return_ref]
+    pub arg_tys: Vec<TyId>,
+
+    /// Return types of the function.
+    #[return_ref]
+    pub ret_tys: TyId,
+}
+
 impl AdtDef {
     pub(crate) fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
         self.adt_ref(db).name(db)
@@ -525,6 +542,7 @@ impl TyParam {
 pub enum TyConcrete {
     Prim(PrimTy),
     Adt(AdtDef),
+    Func(FuncDef),
 }
 
 impl TyConcrete {
@@ -556,6 +574,14 @@ impl TyConcrete {
             .to_string(),
 
             Self::Adt(adt) => adt.name(db).data(db.as_hir_db()).to_string(),
+
+            Self::Func(func) => func
+                .func_ref(db)
+                .name(db.as_hir_db())
+                .to_opt()
+                .map(|name| name.data(db.as_hir_db()).as_str())
+                .unwrap_or_else(|| "<invalid>")
+                .to_string(),
         }
     }
 }
@@ -700,6 +726,7 @@ impl HasKind for TyConcrete {
         match self {
             TyConcrete::Prim(prim) => prim.kind(db),
             TyConcrete::Adt(adt) => adt.kind(db),
+            TyConcrete::Func(func) => func.kind(db),
         }
     }
 }
@@ -716,6 +743,17 @@ impl HasKind for PrimTy {
 }
 
 impl HasKind for AdtDef {
+    fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
+        let mut kind = Kind::Star;
+        for param in self.params(db).iter().rev() {
+            kind = Kind::abs(ty_kind(db, *param).clone(), kind);
+        }
+
+        kind
+    }
+}
+
+impl HasKind for FuncDef {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         let mut kind = Kind::Star;
         for param in self.params(db).iter().rev() {

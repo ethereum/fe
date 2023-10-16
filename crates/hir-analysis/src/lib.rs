@@ -13,6 +13,7 @@ pub struct Jar(
     ty::ty_def::free_inference_keys,
     ty::ty_def::pretty_print_ty,
     ty::ty_def::AdtDef,
+    ty::ty_def::FuncDef,
     ty::ty_def::AdtRefId,
     /// Type lowering.
     ty::ty_lower::lower_hir_ty,
