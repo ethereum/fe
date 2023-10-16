@@ -65,6 +65,7 @@ One straightforward way to interact with the language server during development 
 - [ ] Integrate the "workspace" data structure with LSP events and a rudimentary filesystem watcher
 
 #### Server improvements
+- [ ] Organize and prepare server architecture for a variety of LSP features
 - [ ] Implement a task queue system for long-running tasks
 - [ ] Implement progress feedback notifications
 - [ ] Implement configurable options for the language server
@@ -79,9 +80,10 @@ One straightforward way to interact with the language server during development 
 - [ ] Autofill and completions
 - [ ] Import completion
 - [ ] Refactoring symbol names and file names
-- [ ] Inlay hints
-- [ ] File system
+- [ ] Inlay hints and annotations
+- [ ] File system navigation
 - [ ] Show syntax tree, HIR, etc.
+- [ ] Syntactic and semantic highlighting
       
 #### Integration with VSCode
 - [ ] Implement configuration and options shortcuts in the VSCode extension
@@ -98,3 +100,4 @@ One straightforward way to interact with the language server during development 
 - [ ] View bytecode for selected code
 - [ ] Code actions for smart contract development
 - [ ] Would any LSP features be useful for plugging into LLM-based tools?  E.g. analytics or descriptions of the codebase?
+- [ ] Security review and documentation
