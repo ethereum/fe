@@ -95,6 +95,10 @@ impl TyId {
         Self::new(db, TyData::TyCon(TyConcrete::tuple(n)))
     }
 
+    pub(super) fn unit(db: &dyn HirAnalysisDb) -> Self {
+        Self::tuple(db, 0)
+    }
+
     pub(super) fn adt(db: &dyn HirAnalysisDb, adt: AdtDef) -> Self {
         Self::new(db, TyData::TyCon(TyConcrete::Adt(adt)))
     }
@@ -292,7 +296,7 @@ pub struct FuncDef {
     #[return_ref]
     pub params: Vec<TyId>,
 
-    /// Arugment types of the function.
+    /// Argument types of the function.
     #[return_ref]
     pub arg_tys: Vec<TyId>,
 

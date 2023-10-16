@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use either::Either;
 use hir::hir_def::{
-    kw, scope_graph::ScopeId, FieldDefListId, GenericArg, GenericArgListId, GenericParam,
+    kw, scope_graph::ScopeId, FieldDefListId, Func, GenericArg, GenericArgListId, GenericParam,
     GenericParamListId, GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound,
     Partial, PathId, TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId,
     TypeKind as HirTyKind, VariantDefListId, VariantKind, WhereClauseId,
@@ -16,7 +16,7 @@ use crate::{
 };
 
 use super::ty_def::{
-    AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, Kind, TyData, TyId, TyParam,
+    AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
 };
 
 /// Lowers the given HirTy to `TyId`.
@@ -29,6 +29,34 @@ pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId
 #[salsa::tracked]
 pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
     AdtTyBuilder::new(db, adt).build()
+}
+
+#[salsa::tracked]
+pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> FuncDef {
+    let generic_params = collect_generic_params(db, GenericParamOwnerId::new(db, func.into()))
+        .params
+        .clone();
+
+    let args = match func.params(db.as_hir_db()) {
+        Partial::Present(args) => args
+            .data(db.as_hir_db())
+            .iter()
+            .map(|arg| {
+                arg.ty
+                    .to_opt()
+                    .map(|ty| lower_hir_ty(db, ty, func.scope()))
+                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
+            })
+            .collect(),
+        Partial::Absent => vec![],
+    };
+
+    let ret_ty = func
+        .ret_ty(db.as_hir_db())
+        .map(|ty| lower_hir_ty(db, ty, func.scope()))
+        .unwrap_or_else(|| TyId::unit(db));
+
+    FuncDef::new(db, func, generic_params, args, ret_ty)
 }
 
 /// Collects the generic parameters of the given generic parameter owner.
