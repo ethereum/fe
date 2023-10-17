@@ -3,12 +3,17 @@
 
 use std::collections::BTreeSet;
 
-use hir::hir_def::{scope_graph::ScopeId, GenericParam, GenericParamOwner, IngotId, TypeBound};
+use hir::hir_def::{
+    scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, IngotId, ItemKind, TypeBound,
+};
 use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
 
 use crate::{
-    ty::{trait_lower::lower_trait, unify::InferenceKey},
+    ty::{
+        trait_lower::{lower_impl_trait, lower_trait},
+        unify::InferenceKey,
+    },
     HirAnalysisDb,
 };
 
@@ -16,7 +21,7 @@ use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, Subst, TyConcrete, TyData, TyId},
+    ty_def::{AdtDef, FuncDef, Subst, TyConcrete, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
 };
 
@@ -182,6 +187,15 @@ pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> Co
     collector.collect()
 }
 
+#[salsa::tracked]
+pub(crate) fn collect_impl_block_constraints(
+    db: &dyn HirAnalysisDb,
+    impl_: Impl,
+) -> ConstraintListId {
+    let owner = GenericParamOwnerId::new(db, impl_.into());
+    ConstraintCollector::new(db, owner).collect()
+}
+
 /// Collect constraints that are specified by the given implementor(i.e., impl
 /// trait).
 #[salsa::tracked]
@@ -193,6 +207,34 @@ pub(crate) fn collect_implementor_constraints(
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, impl_trait.into()));
 
     collector.collect()
+}
+
+#[salsa::tracked]
+pub(crate) fn collect_func_def_constraints(
+    db: &dyn HirAnalysisDb,
+    func: FuncDef,
+) -> ConstraintListId {
+    let hir_func = func.hir_func(db);
+
+    let func_constraints =
+        ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect();
+
+    let parent_constraints = match hir_func.scope().parent_item(db.as_hir_db()) {
+        Some(ItemKind::Trait(trait_)) => collect_trait_constraints(db, lower_trait(db, trait_)),
+
+        Some(ItemKind::Impl(impl_)) => collect_impl_block_constraints(db, impl_),
+
+        Some(ItemKind::ImplTrait(impl_trait)) => {
+            let Some(implementor) = lower_impl_trait(db, impl_trait) else {
+                return func_constraints;
+            };
+            collect_implementor_constraints(db, implementor)
+        }
+
+        _ => return func_constraints,
+    };
+
+    func_constraints.merge(db, parent_constraints)
 }
 
 /// Returns a list of assumptions derived from the given assumptions by looking

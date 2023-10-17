@@ -43,6 +43,8 @@ pub struct Jar(
     ty::constraint::collect_trait_constraints,
     ty::constraint::collect_adt_constraints,
     ty::constraint::collect_implementor_constraints,
+    ty::constraint::collect_impl_block_constraints,
+    ty::constraint::collect_func_def_constraints,
     ty::constraint::super_trait_insts,
     ty::constraint::compute_super_assumptions,
     ty::constraint::ty_constraints,

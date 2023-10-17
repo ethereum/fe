@@ -288,23 +288,6 @@ pub struct AdtDef {
     pub fields: Vec<AdtField>,
 }
 
-#[salsa::tracked]
-pub struct FuncDef {
-    pub func_ref: Func,
-
-    /// Generic parameters of the function.
-    #[return_ref]
-    pub params: Vec<TyId>,
-
-    /// Argument types of the function.
-    #[return_ref]
-    pub arg_tys: Vec<TyId>,
-
-    /// Return types of the function.
-    #[return_ref]
-    pub ret_tys: TyId,
-}
-
 impl AdtDef {
     pub(crate) fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
         self.adt_ref(db).name(db)
@@ -363,6 +346,23 @@ impl AdtDef {
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         collect_adt_constraints(db, self)
     }
+}
+
+#[salsa::tracked]
+pub struct FuncDef {
+    pub hir_func: Func,
+
+    /// Generic parameters of the function.
+    #[return_ref]
+    pub params: Vec<TyId>,
+
+    /// Argument types of the function.
+    #[return_ref]
+    pub arg_tys: Vec<TyId>,
+
+    /// Return types of the function.
+    #[return_ref]
+    pub ret_tys: TyId,
 }
 
 /// This struct represents a field of an ADT. If the ADT is an enum, this
@@ -580,7 +580,7 @@ impl TyConcrete {
             Self::Adt(adt) => adt.name(db).data(db.as_hir_db()).to_string(),
 
             Self::Func(func) => func
-                .func_ref(db)
+                .hir_func(db)
                 .name(db.as_hir_db())
                 .to_opt()
                 .map(|name| name.data(db.as_hir_db()).as_str())
