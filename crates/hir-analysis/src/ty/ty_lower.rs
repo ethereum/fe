@@ -32,7 +32,8 @@ pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
 }
 
 #[salsa::tracked]
-pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> FuncDef {
+pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
+    let name = func.name(db.as_hir_db()).to_opt()?;
     let generic_params = collect_generic_params(db, GenericParamOwnerId::new(db, func.into()))
         .params
         .clone();
@@ -56,7 +57,7 @@ pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> FuncDef {
         .map(|ty| lower_hir_ty(db, ty, func.scope()))
         .unwrap_or_else(|| TyId::unit(db));
 
-    FuncDef::new(db, func, generic_params, args, ret_ty)
+    Some(FuncDef::new(db, func, name, generic_params, args, ret_ty))
 }
 
 /// Collects the generic parameters of the given generic parameter owner.

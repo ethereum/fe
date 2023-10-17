@@ -3,6 +3,8 @@
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
+use std::iter::FilterMap;
+
 use common::InputFile;
 use parser::ast;
 
@@ -22,6 +24,7 @@ use crate::{
 };
 
 use super::{
+    kw,
     scope_graph::{ScopeGraph, ScopeId},
     AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TupleTypeId,
     TypeId, UseAlias, WhereClauseId,
@@ -411,20 +414,35 @@ impl TopLevelMod {
     pub fn all_impl_traits(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
         all_impl_trait_in_top_mod(db, self)
     }
+
+    /// Returns all impls in the top level module including ones in nested
+    /// modules.
+    pub fn all_impls(self, db: &dyn HirDb) -> &Vec<Impl> {
+        all_impl_in_top_mod(db, self)
+    }
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_top_mod_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<TopLevelMod> {
+pub fn all_top_modules_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<TopLevelMod> {
     let tree = ingot.module_tree(db);
     tree.all_modules().collect()
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_impl_trait_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<ImplTrait> {
+pub fn all_impl_traits_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<ImplTrait> {
     ingot
         .all_modules(db)
         .iter()
         .flat_map(|top_mod| top_mod.all_impl_traits(db).iter().copied())
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_impls_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<Impl> {
+    ingot
+        .all_modules(db)
+        .iter()
+        .flat_map(|top_mod| top_mod.all_impls(db).iter().copied())
         .collect()
 }
 
@@ -483,6 +501,17 @@ pub fn all_traits_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Trait>
         .iter()
         .filter_map(|item| match item {
             ItemKind::Trait(trait_) => Some(*trait_),
+            _ => None,
+        })
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_impl_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Impl> {
+    all_items_in_top_mod(db, top_mod)
+        .iter()
+        .filter_map(|item| match item {
+            ItemKind::Impl(impl_) => Some(*impl_),
             _ => None,
         })
         .collect()
@@ -559,6 +588,18 @@ impl Func {
 
     pub fn vis(self, db: &dyn HirDb) -> Visibility {
         self.modifier(db).to_visibility()
+    }
+
+    pub fn is_method(self, db: &dyn HirDb) -> bool {
+        let Some(params) = self.params(db).to_opt() else {
+            return false;
+        };
+
+        let Some(first_param) = params.data(db).get(0) else {
+            return false;
+        };
+
+        first_param.name.to_opt().map(|name| name.ident()).flatten() == Some(kw::SELF)
     }
 }
 
@@ -686,6 +727,15 @@ impl Impl {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
+    }
+
+    pub fn funcs(self, db: &dyn HirDb) -> impl Iterator<Item = Func> + '_ {
+        let s_graph = self.top_mod(db).scope_graph(db);
+        let scope = ScopeId::from_item(self.into());
+        s_graph.child_items(scope).filter_map(|item| match item {
+            ItemKind::Func(func) => Some(func),
+            _ => None,
+        })
     }
 
     pub fn scope(self) -> ScopeId {

@@ -21,7 +21,7 @@ use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, FuncDef, Subst, TyConcrete, TyData, TyId},
+    ty_def::{AdtDef, FuncDef, Subst, TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
 };
 
@@ -46,8 +46,8 @@ pub(crate) fn ty_constraints(
 
     let (base, args) = ty.decompose_ty_app(db);
     let (params, base_constraints) = match base.data(db) {
-        TyData::TyCon(TyConcrete::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, adt)),
-        TyData::TyCon(TyConcrete::Func(func_def)) => (
+        TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, adt)),
+        TyData::TyBase(TyBase::Func(func_def)) => (
             func_def.params(db),
             collect_func_def_constraints(db, func_def),
         ),

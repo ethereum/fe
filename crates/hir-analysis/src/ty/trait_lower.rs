@@ -26,9 +26,10 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
 }
 
 /// Collect all trait implementors in the ingot.
-/// The returned table doesn't contain the dependent ingot implementors.
-/// If you need to obtain the environment that contains all available
-/// implementors in the ingot, use [`TraitEnv`](super::trait_def::TraitEnv).
+/// The returned table doesn't contain the dependent(external) ingot
+/// implementors. If you need to obtain the environment that contains all
+/// available implementors in the ingot, please use
+/// [`TraitEnv`](super::trait_def::TraitEnv).
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitImplTable {
     let dependent_impls = ingot
@@ -37,9 +38,8 @@ pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> Tra
         .map(|(_, external)| collect_trait_impls(db, *external))
         .collect();
 
-    let mut collector = ImplementorCollector::new(db, dependent_impls);
-    collector.collect_impls(ingot.all_impl_trait(db.as_hir_db()));
-    collector.finalize()
+    let impl_traits = ingot.all_impl_traits(db.as_hir_db());
+    ImplementorCollector::new(db, dependent_impls).collect(impl_traits)
 }
 
 /// Returns the corresponding implementors for the given [`ImplTrait`].
@@ -199,12 +199,8 @@ impl<'db> ImplementorCollector<'db> {
         }
     }
 
-    fn finalize(self) -> TraitImplTable {
-        self.impl_table
-    }
-
-    fn collect_impls(&mut self, impls: &[ImplTrait]) {
-        for &impl_ in impls {
+    fn collect(mut self, impl_traits: &[ImplTrait]) -> TraitImplTable {
+        for &impl_ in impl_traits {
             let Some(implementor) = lower_impl_trait(self.db, impl_) else {
                 continue;
             };
@@ -216,6 +212,8 @@ impl<'db> ImplementorCollector<'db> {
                     .push(implementor);
             }
         }
+
+        self.impl_table
     }
 
     /// Returns `true` if `implementor` conflicts with any existing implementor.

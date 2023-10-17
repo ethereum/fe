@@ -11,6 +11,7 @@ pub struct Jar(
     ty::ty_def::TyId,
     ty::ty_def::ty_kind,
     ty::ty_def::free_inference_keys,
+    ty::ty_def::collect_type_params,
     ty::ty_def::pretty_print_ty,
     ty::ty_def::AdtDef,
     ty::ty_def::FuncDef,
@@ -27,6 +28,8 @@ pub struct Jar(
     ty::trait_lower::lower_trait_ref,
     ty::trait_lower::collect_trait_impls,
     ty::trait_lower::lower_impl_trait,
+    /// Method collection.
+    ty::method_table::collect_methods,
     /// Item Definition analysis.
     ty::def_analysis::check_recursive_adt,
     ty::def_analysis::analyze_adt,

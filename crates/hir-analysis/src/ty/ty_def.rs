@@ -23,7 +23,7 @@ use super::{
     constraint::{collect_adt_constraints, AssumptionListId, ConstraintListId},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
-    unify::InferenceKey,
+    unify::{InferenceKey, UnificationTable},
     visitor::TyVisitor,
 };
 
@@ -48,7 +48,8 @@ impl TyId {
     /// Returns `IngotId` that declares the type.
     pub fn ingot(self, db: &dyn HirAnalysisDb) -> Option<IngotId> {
         match self.data(db) {
-            TyData::TyCon(TyConcrete::Adt(adt)) => adt.ingot(db).into(),
+            TyData::TyBase(TyBase::Adt(adt)) => adt.ingot(db).into(),
+            TyData::TyBase(TyBase::Func(def)) => def.ingot(db).into(),
             TyData::TyApp(lhs, _) => lhs.ingot(db),
             _ => None,
         }
@@ -87,12 +88,19 @@ impl TyId {
         decompose_ty_app(db, self)
     }
 
+    pub(super) fn base_ty(self, db: &dyn HirAnalysisDb) -> Option<TyBase> {
+        match self.decompose_ty_app(db).0.data(db) {
+            TyData::TyBase(concrete) => Some(concrete),
+            _ => None,
+        }
+    }
+
     pub(super) fn ptr(db: &dyn HirAnalysisDb) -> Self {
-        Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::Ptr)))
+        Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Ptr)))
     }
 
     pub(super) fn tuple(db: &dyn HirAnalysisDb, n: usize) -> Self {
-        Self::new(db, TyData::TyCon(TyConcrete::tuple(n)))
+        Self::new(db, TyData::TyBase(TyBase::tuple(n)))
     }
 
     pub(super) fn unit(db: &dyn HirAnalysisDb) -> Self {
@@ -100,7 +108,7 @@ impl TyId {
     }
 
     pub(super) fn adt(db: &dyn HirAnalysisDb, adt: AdtDef) -> Self {
-        Self::new(db, TyData::TyCon(TyConcrete::Adt(adt)))
+        Self::new(db, TyData::TyBase(TyBase::Adt(adt)))
     }
 
     pub(super) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
@@ -121,6 +129,17 @@ impl TyId {
             TyData::TyApp(lhs, rhs) => lhs.contains_trait_self(db) || rhs.contains_trait_self(db),
             _ => false,
         }
+    }
+
+    pub(super) fn generalize(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
+        let params = self.type_params(db);
+        let mut subst = FxHashMap::default();
+        for param in params.iter() {
+            let new_var = table.new_var(param.kind(db));
+            subst.insert(*param, new_var);
+        }
+
+        self.apply_subst(db, &mut subst)
     }
 
     /// Emit diagnostics for the type if the type contains invalid types.
@@ -187,6 +206,11 @@ impl TyId {
         free_inference_keys(db, self)
     }
 
+    /// Returns all generics parameters in the type.
+    pub(super) fn type_params(self, db: &dyn HirAnalysisDb) -> &BTreeSet<TyId> {
+        collect_type_params(db, self)
+    }
+
     pub(super) fn ty_var(db: &dyn HirAnalysisDb, kind: Kind, key: InferenceKey) -> Self {
         Self::new(db, TyData::TyVar(TyVar { kind, key }))
     }
@@ -232,7 +256,7 @@ impl TyId {
     /// Returns `true` if the type is a pointer or a pointer application.
     pub(super) fn is_ptr(self, db: &dyn HirAnalysisDb) -> bool {
         match self.data(db) {
-            TyData::TyCon(TyConcrete::Prim(PrimTy::Ptr)) => true,
+            TyData::TyBase(TyBase::Prim(PrimTy::Ptr)) => true,
             TyData::TyApp(abs, _) => abs.is_ptr(db),
             _ => false,
         }
@@ -251,24 +275,24 @@ impl TyId {
 
     pub(super) fn from_hir_prim_ty(db: &dyn HirAnalysisDb, hir_prim: HirPrimTy) -> Self {
         match hir_prim {
-            HirPrimTy::Bool => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::Bool))),
+            HirPrimTy::Bool => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Bool))),
 
             HirPrimTy::Int(int_ty) => match int_ty {
-                HirIntTy::I8 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::I8))),
-                HirIntTy::I16 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::I16))),
-                HirIntTy::I32 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::I32))),
-                HirIntTy::I64 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::I64))),
-                HirIntTy::I128 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::I128))),
-                HirIntTy::I256 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::I256))),
+                HirIntTy::I8 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I8))),
+                HirIntTy::I16 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I16))),
+                HirIntTy::I32 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I32))),
+                HirIntTy::I64 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I64))),
+                HirIntTy::I128 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I128))),
+                HirIntTy::I256 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I256))),
             },
 
             HirPrimTy::Uint(uint_ty) => match uint_ty {
-                HirUintTy::U8 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::U8))),
-                HirUintTy::U16 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::U16))),
-                HirUintTy::U32 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::U32))),
-                HirUintTy::U64 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::U64))),
-                HirUintTy::U128 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::U128))),
-                HirUintTy::U256 => Self::new(db, TyData::TyCon(TyConcrete::Prim(PrimTy::U256))),
+                HirUintTy::U8 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U8))),
+                HirUintTy::U16 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U16))),
+                HirUintTy::U32 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U32))),
+                HirUintTy::U64 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U64))),
+                HirUintTy::U128 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U128))),
+                HirUintTy::U256 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256))),
             },
         }
     }
@@ -352,6 +376,8 @@ impl AdtDef {
 pub struct FuncDef {
     pub hir_func: Func,
 
+    pub name: IdentId,
+
     /// Generic parameters of the function.
     #[return_ref]
     pub params: Vec<TyId>,
@@ -363,6 +389,22 @@ pub struct FuncDef {
     /// Return types of the function.
     #[return_ref]
     pub ret_tys: TyId,
+}
+
+impl FuncDef {
+    pub fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
+        self.hir_func(db)
+            .top_mod(db.as_hir_db())
+            .ingot(db.as_hir_db())
+    }
+
+    pub fn receiver_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+        if self.hir_func(db).is_method(db.as_hir_db()) {
+            self.arg_tys(db).get(0).copied()
+        } else {
+            None
+        }
+    }
 }
 
 /// This struct represents a field of an ADT. If the ADT is an enum, this
@@ -422,7 +464,7 @@ pub enum TyData {
     TyApp(TyId, TyId),
 
     /// A concrete type, e.g., `i32`, `u32`, `bool`, `String`, `Result` etc.
-    TyCon(TyConcrete),
+    TyBase(TyBase),
 
     // TODO: DependentTy,
     // TermTy(TermTy)
@@ -542,14 +584,14 @@ impl TyParam {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TyConcrete {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TyBase {
     Prim(PrimTy),
     Adt(AdtDef),
     Func(FuncDef),
 }
 
-impl TyConcrete {
+impl TyBase {
     pub(super) fn tuple(n: usize) -> Self {
         Self::Prim(PrimTy::Tuple(n))
     }
@@ -590,7 +632,7 @@ impl TyConcrete {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]
 pub enum PrimTy {
     Bool,
     U8,
@@ -707,7 +749,7 @@ impl HasKind for TyData {
         match self {
             TyData::TyVar(ty_var) => ty_var.kind(db),
             TyData::TyParam(ty_param) => ty_param.kind.clone(),
-            TyData::TyCon(ty_const) => ty_const.kind(db),
+            TyData::TyBase(ty_const) => ty_const.kind(db),
             TyData::TyApp(abs, _) => match abs.kind(db) {
                 // `TyId::app` method handles the kind mismatch, so we don't need to verify it again
                 // here.
@@ -725,12 +767,12 @@ impl HasKind for TyVar {
     }
 }
 
-impl HasKind for TyConcrete {
+impl HasKind for TyBase {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         match self {
-            TyConcrete::Prim(prim) => prim.kind(db),
-            TyConcrete::Adt(adt) => adt.kind(db),
-            TyConcrete::Func(func) => func.kind(db),
+            TyBase::Prim(prim) => prim.kind(db),
+            TyBase::Adt(adt) => adt.kind(db),
+            TyBase::Func(func) => func.kind(db),
         }
     }
 }
@@ -783,30 +825,44 @@ pub(crate) fn free_inference_keys(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<
 }
 
 #[salsa::tracked(return_ref)]
+pub(crate) fn collect_type_params(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<TyId> {
+    struct TypeParamCollector(BTreeSet<TyId>);
+    impl TyVisitor for TypeParamCollector {
+        fn visit_param(&mut self, _db: &dyn HirAnalysisDb, param: &TyParam) {
+            let param_ty = TyId::new(_db, TyData::TyParam(param.clone()));
+            self.0.insert(param_ty);
+        }
+    }
+
+    let mut collector = TypeParamCollector(BTreeSet::new());
+    collector.visit_ty(db, ty);
+    collector.0
+}
+
+#[salsa::tracked(return_ref)]
 pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
     match ty.data(db) {
         TyData::TyVar(var) => format!("%{}", var.key.0),
         TyData::TyParam(param) => param.name.data(db.as_hir_db()).to_string(),
         TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
-        TyData::TyCon(ty_con) => ty_con.pretty_print(db),
+        TyData::TyBase(ty_con) => ty_con.pretty_print(db),
         _ => "<invalid>".to_string(),
     }
 }
 
 fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
     use PrimTy::*;
-    use TyConcrete::*;
-    use TyData::*;
+    use TyBase::*;
 
     let (base, args) = decompose_ty_app(db, ty);
     match base.data(db) {
-        TyCon(Prim(Array)) => {
+        TyData::TyBase(Prim(Array)) => {
             let elem_ty = args[0].pretty_print(db);
             let len = args[1].pretty_print(db);
             format!("[{}; {}]", elem_ty, len)
         }
 
-        TyCon(Prim(Tuple(_))) => {
+        TyData::TyBase(Prim(Tuple(_))) => {
             let mut args = args.into_iter();
             let mut s = ("(").to_string();
             if let Some(first) = args.next() {

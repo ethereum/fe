@@ -122,7 +122,7 @@ pub enum FuncParamName {
 }
 
 impl FuncParamName {
-    pub fn as_name(&self) -> Option<IdentId> {
+    pub fn ident(&self) -> Option<IdentId> {
         match self {
             FuncParamName::Ident(name) => Some(*name),
             _ => None,
