@@ -45,30 +45,36 @@ pub(crate) fn ty_constraints(
     assert!(ty.free_inference_keys(db).is_empty());
 
     let (base, args) = ty.decompose_ty_app(db);
-    let TyData::TyCon(TyConcrete::Adt(adt)) = base.data(db) else {
-        return (
-            AssumptionListId::empty_list(db),
-            ConstraintListId::empty_list(db),
-        );
+    let (params, base_constraints) = match base.data(db) {
+        TyData::TyCon(TyConcrete::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, adt)),
+        TyData::TyCon(TyConcrete::Func(func_def)) => (
+            func_def.params(db),
+            collect_func_def_constraints(db, func_def),
+        ),
+        _ => {
+            return (
+                AssumptionListId::empty_list(db),
+                ConstraintListId::empty_list(db),
+            );
+        }
     };
 
     let mut subst = FxHashMap::default();
     let mut arg_idx = 0;
-    for (&param, arg) in adt.params(db).iter().zip(args) {
+    for (&param, arg) in params.iter().zip(args) {
         subst.insert(param, arg);
         arg_idx += 1;
     }
 
     // Generalize unbound type parameters.
-    for &arg in adt.params(db).iter().skip(arg_idx) {
+    for &arg in params.iter().skip(arg_idx) {
         let key = InferenceKey(arg_idx as u32);
         let ty_var = TyId::ty_var(db, arg.kind(db).clone(), key);
         subst.insert(arg, ty_var);
         arg_idx += 1;
     }
 
-    // Substitute type parameters.
-    let constraints = collect_adt_constraints(db, adt).apply_subst(db, &mut subst);
+    let constraints = base_constraints.apply_subst(db, &mut subst);
 
     // If the predicate type is a type variable, collect it as an assumption
     // and remove it from the constraint.
