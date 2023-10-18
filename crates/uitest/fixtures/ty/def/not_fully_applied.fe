@@ -16,3 +16,10 @@ pub enum MyE {
 pub contract MyC {
     f: Gen<i32>,
 }
+
+
+impl Gen<T> {
+    fn foo(self) {}
+    
+    fn bar(self: Self) {}
+}

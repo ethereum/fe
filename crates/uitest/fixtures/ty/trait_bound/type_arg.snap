@@ -15,4 +15,22 @@ error[6-0003]: trait bound is not satisfied
 11 │     u: Foo<u32>
    │        ^^^^^^^^ `u32` doesn't implement `Trait1`
 
+error[6-0003]: trait bound is not satisfied
+   ┌─ type_arg.fe:15:9
+   │
+15 │ impl<T> Foo<T> {
+   │         ^^^^^^ `T` doesn't implement `Trait1`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ type_arg.fe:16:12
+   │
+16 │     fn foo(self) {}
+   │            ^^^^ `T` doesn't implement `Trait1`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ type_arg.fe:27:21
+   │
+27 │     fn foo<U>(self: Self<U>) {}
+   │                     ^^^^^^^ `U` doesn't implement `Trait1`
+
 
