@@ -51,7 +51,7 @@ impl MethodTable {
 
         let name = func.name(db);
         let bucket = self.buckets.entry(base).or_insert_with(MethodBucket::new);
-        let methods = bucket.methods.entry(ty).or_insert_with(FxHashMap::default);
+        let methods = bucket.methods.entry(ty).or_default();
         methods.insert(name, func);
     }
 }

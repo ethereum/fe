@@ -171,7 +171,6 @@ pub struct DefAnalyzer<'db> {
     db: &'db dyn HirAnalysisDb,
     def: DefKind,
     diags: Vec<TyDiagCollection>,
-    scope: ScopeId,
     assumptions: AssumptionListId,
     current_ty: Option<(TyId, DynLazySpan)>,
 }
@@ -179,13 +178,11 @@ pub struct DefAnalyzer<'db> {
 impl<'db> DefAnalyzer<'db> {
     fn for_adt(db: &'db dyn HirAnalysisDb, adt: AdtRefId) -> Self {
         let def = lower_adt(db, adt);
-        let scope = adt.scope(db);
         let assumptions = def.constraints(db);
         Self {
             db,
             def: def.into(),
             diags: vec![],
-            scope,
             assumptions,
             current_ty: None,
         }
@@ -193,39 +190,33 @@ impl<'db> DefAnalyzer<'db> {
 
     fn for_trait(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
         let def = lower_trait(db, trait_);
-        let scope = trait_.scope();
         let assumptions = def.constraints(db);
         Self {
             db,
             def: def.into(),
             diags: vec![],
-            scope,
             assumptions,
             current_ty: None,
         }
     }
 
     fn for_impl(db: &'db dyn HirAnalysisDb, impl_: HirImpl, ty: TyId) -> Self {
-        let scope = impl_.scope();
         let assumptions = collect_impl_block_constraints(db, impl_);
         Self {
             db,
             def: DefKind::Impl(impl_, ty),
             diags: vec![],
-            scope,
             assumptions,
             current_ty: None,
         }
     }
 
     fn for_trait_impl(db: &'db dyn HirAnalysisDb, implementor: Implementor) -> Self {
-        let scope = implementor.impl_trait(db).scope();
         let assumptions = implementor.constraints(db);
         Self {
             db,
             def: implementor.into(),
             diags: vec![],
-            scope,
             assumptions,
             current_ty: None,
         }
@@ -233,7 +224,7 @@ impl<'db> DefAnalyzer<'db> {
 
     // This method ensures that field/variant types are fully applied.
     fn verify_fully_applied(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
-        let ty = lower_hir_ty(self.db, ty, self.scope);
+        let ty = lower_hir_ty(self.db, ty, self.scope());
         if !ty.is_mono_type(self.db) {
             self.diags
                 .push(TyLowerDiag::not_fully_applied_type(span).into());
@@ -276,6 +267,10 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
+    fn scope(&self) -> ScopeId {
+        self.def.scope(self.db)
+    }
+
     fn analyze(mut self) -> Vec<TyDiagCollection> {
         match self.def {
             DefKind::Adt(def) => {
@@ -316,7 +311,7 @@ impl<'db> DefAnalyzer<'db> {
 
 impl<'db> Visitor for DefAnalyzer<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
-        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope());
         let span = ctxt.span().unwrap();
         if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
             self.diags.push(diag)
@@ -334,7 +329,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         };
 
-        let ty = lower_hir_ty(self.db, hir_ty, self.scope);
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope());
 
         if !ty.contains_invalid(self.db) && !ty.contains_ty_param(self.db) {
             let diag = TraitConstraintDiag::concrete_type_bound(
@@ -429,7 +424,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             .unwrap_or_default()
         {
             if let Some(cycle) = self.def.collect_super_trait_cycle(self.db) {
-                if let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope) {
+                if let Ok(trait_inst) = lower_trait_ref(self.db, trait_ref, self.scope()) {
                     if cycle.contains(trait_inst.def(self.db)) {
                         self.diags.push(
                             TraitLowerDiag::CyclicSuperTraits(ctxt.span().unwrap().path().into())
@@ -443,7 +438,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
         if let (Some((ty, span)), Ok(trait_inst)) = (
             &self.current_ty,
-            lower_trait_ref(self.db, trait_ref, self.scope),
+            lower_trait_ref(self.db, trait_ref, self.scope()),
         ) {
             let expected_kind = trait_inst.def(self.db).expected_implementor_kind(self.db);
             if !expected_kind.does_match(ty.kind(self.db)) {
@@ -457,7 +452,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         if let Some(diag) = analyze_trait_ref(
             self.db,
             trait_ref,
-            self.scope,
+            self.scope(),
             Some(self.assumptions),
             ctxt.span().unwrap().into(),
         ) {
@@ -502,10 +497,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         };
 
-        if matches!(self.def, DefKind::Impl(_, _)) {
-            if !self.verify_method_conflict(func) {
-                return;
-            }
+        if matches!(self.def, DefKind::Impl(_, _)) && !self.verify_method_conflict(func) {
+            return;
         }
 
         let def = std::mem::replace(&mut self.def, func.into());
@@ -532,7 +525,11 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             ctxt.span().unwrap().ty().into()
         };
 
-        self.verify_fully_applied(hir_ty, ty_span);
+        if !self.verify_fully_applied(hir_ty, ty_span) {
+            return;
+        }
+
+        walk_func_param(self, ctxt, param);
     }
 }
 
@@ -678,6 +675,16 @@ impl DefKind {
             collect_super_traits(db, def).as_ref().err()
         } else {
             None
+        }
+    }
+
+    fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
+        match self {
+            Self::Adt(def) => def.adt_ref(db).scope(db),
+            Self::Trait(def) => def.trait_(db).scope(),
+            Self::ImplTrait(def) => def.impl_trait(db).scope(),
+            Self::Impl(hir_impl, _) => hir_impl.scope(),
+            Self::Func(def) => def.hir_func(db).scope(),
         }
     }
 }

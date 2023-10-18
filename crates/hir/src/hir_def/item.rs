@@ -597,7 +597,7 @@ impl Func {
             return false;
         };
 
-        first_param.name.to_opt().map(|name| name.ident()).flatten() == Some(kw::SELF)
+        first_param.name.to_opt().and_then(|name| name.ident()) == Some(kw::SELF)
     }
 }
 

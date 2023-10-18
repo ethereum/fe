@@ -346,6 +346,11 @@ impl<'db> TyBuilder<'db> {
                 Ok(alias) => Either::Right(alias),
                 Err(_) => Either::Left(TyId::invalid(self.db, InvalidCause::Other)),
             },
+            ItemKind::Func(func) => {
+                let func = lower_func(self.db, func).unwrap();
+                Either::Left(TyId::func(self.db, func))
+            }
+
             // This should be handled in the name resolution.
             _ => Either::Left(TyId::invalid(self.db, InvalidCause::Other)),
         }

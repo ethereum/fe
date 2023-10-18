@@ -113,6 +113,10 @@ impl TyId {
         Self::new(db, TyData::TyBase(TyBase::Adt(adt)))
     }
 
+    pub(super) fn func(db: &dyn HirAnalysisDb, func: FuncDef) -> Self {
+        Self::new(db, TyData::TyBase(TyBase::Func(func)))
+    }
+
     pub(super) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
     }
