@@ -32,6 +32,20 @@ impl MethodTable {
         None
     }
 
+    pub(super) fn prove_eager(
+        &self,
+        db: &dyn HirAnalysisDb,
+        ty: TyId,
+        name: IdentId,
+    ) -> Option<FuncDef> {
+        let base = ty.base_ty(db)?;
+        if let Some(bucket) = self.buckets.get(&base) {
+            return bucket.prove(db, TableMode::Creation, ty, name);
+        }
+
+        None
+    }
+
     pub(super) fn new() -> Self {
         Self {
             buckets: FxHashMap::default(),
