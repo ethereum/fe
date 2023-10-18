@@ -22,6 +22,8 @@ pub struct TraitDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
 pub struct ImplTraitDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
+pub struct ImplDefDiagAccumulator(pub(super) TyDiagCollection);
+#[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
@@ -29,6 +31,7 @@ pub enum TyDiagCollection {
     Ty(TyLowerDiag),
     Satisfaction(TraitConstraintDiag),
     TraitLower(TraitLowerDiag),
+    Impl(ImplDiag),
 }
 
 impl TyDiagCollection {
@@ -37,6 +40,7 @@ impl TyDiagCollection {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
             TyDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
             TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
+            TyDiagCollection::Impl(diag) => Box::new(diag) as _,
         }
     }
 }
@@ -545,6 +549,74 @@ impl TraitConstraintDiag {
 }
 
 impl DiagnosticVoucher for TraitConstraintDiag {
+    fn error_code(&self) -> GlobalErrorCode {
+        GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code())
+    }
+
+    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+        let severity = self.severity();
+        let error_code = self.error_code();
+        let message = self.message();
+        let sub_diags = self.sub_diags(db);
+
+        CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ImplDiag {
+    ConflictMethodImpl {
+        primary: DynLazySpan,
+        conflict_with: DynLazySpan,
+    },
+}
+
+impl ImplDiag {
+    pub(super) fn conflict_method_impl(primary: DynLazySpan, conflict_with: DynLazySpan) -> Self {
+        Self::ConflictMethodImpl {
+            primary,
+            conflict_with,
+        }
+    }
+
+    fn local_code(&self) -> u16 {
+        match self {
+            Self::ConflictMethodImpl { .. } => 0,
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            Self::ConflictMethodImpl { .. } => "conflict method implementation".to_string(),
+        }
+    }
+
+    fn sub_diags(&self, db: &dyn SpannedHirDb) -> Vec<SubDiagnostic> {
+        match self {
+            Self::ConflictMethodImpl {
+                primary,
+                conflict_with,
+            } => vec![
+                SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "conflict method implementation".to_string(),
+                    primary.resolve(db),
+                ),
+                SubDiagnostic::new(
+                    LabelStyle::Secondary,
+                    "conflict with this method implementation".to_string(),
+                    conflict_with.resolve(db),
+                ),
+            ],
+        }
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::Error
+    }
+}
+
+impl DiagnosticVoucher for ImplDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code())
     }
