@@ -2,10 +2,12 @@ use crate::HirAnalysisDb;
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::TopLevelMod};
 
 use self::{
-    def_analysis::{analyze_adt, analyze_impl_trait, analyze_trait, analyze_type_alias},
+    def_analysis::{
+        analyze_adt, analyze_impl, analyze_impl_trait, analyze_trait, analyze_type_alias,
+    },
     diagnostics::{
-        AdtDefDiagAccumulator, ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator,
-        TypeAliasDefDiagAccumulator,
+        AdtDefDiagAccumulator, ImplDefDiagAccumulator, ImplTraitDefDiagAccumulator,
+        TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
     },
     ty_def::AdtRefId,
 };
@@ -87,6 +89,30 @@ impl<'db> ModuleAnalysisPass for TraitAnalysisPass<'db> {
             .flat_map(|trait_| {
                 analyze_trait::accumulated::<TraitDefDiagAccumulator>(self.db, *trait_)
             })
+            .map(|diag| diag.to_voucher())
+            .collect()
+    }
+}
+
+pub struct ImplAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+
+impl<'db> ImplAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+
+impl<'db> ModuleAnalysisPass for ImplAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod,
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
+        top_mod
+            .all_impls(self.db.as_hir_db())
+            .iter()
+            .flat_map(|impl_| analyze_impl::accumulated::<ImplDefDiagAccumulator>(self.db, *impl_))
             .map(|diag| diag.to_voucher())
             .collect()
     }
