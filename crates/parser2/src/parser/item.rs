@@ -418,14 +418,14 @@ impl super::Parse for ImplScope {
 define_scope! { ImplTraitItemListScope, ImplTraitItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplTraitItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, false, FuncDefScope::Normal)
+        parse_fn_item_block(parser, false, FuncDefScope::Impl)
     }
 }
 
 define_scope! { ImplItemListScope, ImplItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, true, FuncDefScope::Normal)
+        parse_fn_item_block(parser, true, FuncDefScope::Impl)
     }
 }
 

@@ -141,17 +141,22 @@ impl FuncParam {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParam) -> Self {
         let is_mut = ast.mut_token().is_some();
         let label = ast.label().map(|ast| FuncParamLabel::lower_ast(ctxt, ast));
-        let name = ast
-            .name()
-            .map(|ast| FuncParamName::lower_ast(ctxt, ast))
-            .into();
-        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
+        let name = ast.name().map(|ast| FuncParamName::lower_ast(ctxt, ast));
+
+        let self_ty_fallback = name.map_or(false, |name| name.is_self()) && ast.ty().is_none();
+
+        let ty = if self_ty_fallback {
+            Partial::Present(TypeId::fallback_self_ty(ctxt.db()))
+        } else {
+            TypeId::lower_ast_partial(ctxt, ast.ty())
+        };
 
         Self {
             is_mut,
             label,
-            name,
+            name: name.into(),
             ty,
+            self_ty_fallback,
         }
     }
 }

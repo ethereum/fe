@@ -12,6 +12,13 @@ impl TypeId {
     pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
         matches!(self.data(db), TypeKind::SelfType(_))
     }
+
+    pub fn fallback_self_ty(db: &dyn HirDb) -> Self {
+        Self::new(
+            db,
+            TypeKind::SelfType(GenericArgListId::new(db, Vec::new())),
+        )
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

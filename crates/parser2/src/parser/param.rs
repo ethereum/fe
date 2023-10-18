@@ -6,12 +6,12 @@ use super::{
     expr_atom::{BlockExprScope, LitExprScope},
     path::PathScope,
     token_stream::TokenStream,
-    type_::{is_type_start, parse_type},
+    type_::{is_type_start, parse_type, SelfTypeScope},
     Parser,
 };
 
 define_scope! {
-    pub(crate) FuncParamListScope,
+    pub(crate) FuncParamListScope{ allow_self: bool},
     FuncParamList,
     Override(RParen, Comma)
 }
@@ -23,12 +23,12 @@ impl super::Parse for FuncParamListScope {
         }
 
         parser.with_next_expected_tokens(
-            |parser| parser.parse(FnParamScope::default(), None),
+            |parser| parser.parse(FnParamScope::new(self.allow_self), None),
             &[SyntaxKind::Comma, SyntaxKind::RParen],
         );
         while parser.bump_if(SyntaxKind::Comma) {
             parser.with_next_expected_tokens(
-                |parser| parser.parse(FnParamScope::default(), None),
+                |parser| parser.parse(FnParamScope::new(false), None),
                 &[SyntaxKind::Comma, SyntaxKind::RParen],
             );
         }
@@ -38,7 +38,7 @@ impl super::Parse for FuncParamListScope {
 }
 
 define_scope! {
-    FnParamScope,
+    FnParamScope{allow_self: bool},
     FnParam,
     Inheritance
 }
@@ -46,11 +46,20 @@ impl super::Parse for FnParamScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_if(SyntaxKind::MutKw);
 
+        if !self.allow_self && parser.current_kind() == Some(SyntaxKind::SelfKw) {
+            parser.error_and_recover("self is not allowed here", None);
+            return;
+        }
+
         let is_self = parser.with_recovery_tokens(
             |parser| match parser.current_kind() {
                 Some(SyntaxKind::SelfKw) => {
-                    parser.bump_expected(SyntaxKind::SelfKw);
-                    true
+                    if self.allow_self {
+                        parser.bump_expected(SyntaxKind::SelfKw);
+                        true
+                    } else {
+                        unreachable!()
+                    }
                 }
                 Some(SyntaxKind::Ident | SyntaxKind::Underscore) => parser
                     .with_next_expected_tokens(
@@ -70,13 +79,15 @@ impl super::Parse for FnParamScope {
             },
             &[SyntaxKind::Colon],
         );
+
         if is_self {
-            return;
+            if parser.bump_if(SyntaxKind::Colon) {
+                parser.parse(SelfTypeScope::default(), None);
+            }
+        } else {
+            parser.bump_or_recover(SyntaxKind::Colon, "expected `:` after argument name", None);
+            parse_type(parser, None);
         }
-
-        parser.bump_or_recover(SyntaxKind::Colon, "expected `:` after argument name", None);
-
-        parse_type(parser, None);
     }
 }
 

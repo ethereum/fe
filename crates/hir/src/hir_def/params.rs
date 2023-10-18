@@ -1,6 +1,6 @@
 use crate::{hir_def::TypeId, HirDb};
 
-use super::{Body, IdentId, Partial, PathId};
+use super::{kw, Body, IdentId, Partial, PathId};
 
 #[salsa::interned]
 pub struct GenericArgListId {
@@ -91,6 +91,10 @@ pub struct FuncParam {
     pub label: Option<FuncParamLabel>,
     pub name: Partial<FuncParamName>,
     pub ty: Partial<TypeId>,
+
+    /// `true` if this parameter is `self` and the type is not specified.
+    /// `ty` should have `Self` type without any type arguments.
+    pub self_ty_fallback: bool,
 }
 
 impl FuncParam {
@@ -99,6 +103,10 @@ impl FuncParam {
             FuncParamName::Ident(name) => Some(name),
             _ => None,
         }
+    }
+
+    pub fn is_self_param(&self) -> bool {
+        self.name.to_opt().map_or(false, |name| name.is_self())
     }
 }
 
@@ -127,6 +135,10 @@ impl FuncParamName {
             FuncParamName::Ident(name) => Some(*name),
             _ => None,
         }
+    }
+
+    pub fn is_self(&self) -> bool {
+        self.ident() == Some(kw::SELF)
     }
 }
 

@@ -3,8 +3,6 @@
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
-use std::iter::FilterMap;
-
 use common::InputFile;
 use parser::ast;
 
