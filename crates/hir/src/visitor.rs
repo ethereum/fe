@@ -1462,7 +1462,16 @@ pub fn walk_func_param<V>(
     }
 
     if let Some(ty) = param.ty.to_opt() {
-        ctxt.with_new_ctxt(|span| span.ty_moved(), |ctxt| visitor.visit_ty(ctxt, ty));
+        if param.is_self_param() && param.self_ty_fallback {
+            ctxt.with_new_ctxt(
+                |span| span.fallback_self_ty(),
+                |ctxt| {
+                    visitor.visit_ty(ctxt, ty);
+                },
+            );
+        } else {
+            ctxt.with_new_ctxt(|span| span.ty_moved(), |ctxt| visitor.visit_ty(ctxt, ty));
+        }
     }
 }
 
