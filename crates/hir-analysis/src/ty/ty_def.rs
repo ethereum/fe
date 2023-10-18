@@ -20,7 +20,9 @@ use crate::{
 };
 
 use super::{
-    constraint::{collect_adt_constraints, AssumptionListId, ConstraintListId},
+    constraint::{
+        collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
+    },
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::{InferenceKey, UnificationTable},
@@ -404,6 +406,10 @@ impl FuncDef {
         } else {
             None
         }
+    }
+
+    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
+        collect_func_def_constraints(db, self)
     }
 }
 

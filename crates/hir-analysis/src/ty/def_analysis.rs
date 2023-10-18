@@ -4,8 +4,8 @@
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, ImplTrait, Trait, TraitRefId, TypeAlias, TypeId as HirTyId,
-        VariantKind,
+        scope_graph::ScopeId, FieldDef, Impl as HirImpl, ImplTrait, Trait, TraitRefId, TypeAlias,
+        TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
@@ -15,9 +15,10 @@ use salsa::function::Configuration;
 use crate::{
     ty::{
         diagnostics::{
-            AdtDefDiagAccumulator, ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator,
-            TypeAliasDefDiagAccumulator,
+            AdtDefDiagAccumulator, ImplDefDiagAccumulator, ImplTraitDefDiagAccumulator,
+            TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
         },
+        method_table::collect_methods,
         trait_lower::lower_impl_trait,
         ty_lower::lower_type_alias,
         unify::UnificationTable,
@@ -26,13 +27,18 @@ use crate::{
 };
 
 use super::{
-    constraint::{collect_super_traits, AssumptionListId, SuperTraitCycle},
+    constraint::{
+        collect_impl_block_constraints, collect_super_traits, AssumptionListId, SuperTraitCycle,
+    },
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    diagnostics::{TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
+    diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     trait_def::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
-    ty_def::{AdtDef, AdtRefId, TyId},
-    ty_lower::{lower_adt, lower_hir_ty, lower_kind},
+    ty_def::{AdtDef, AdtRefId, FuncDef, TyId},
+    ty_lower::{
+        collect_generic_params, lower_adt, lower_func, lower_hir_ty, lower_kind,
+        GenericParamOwnerId,
+    },
     visitor::{walk_ty, TyVisitor},
 };
 
@@ -105,6 +111,21 @@ pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
 
     for diag in diags {
         ImplTraitDefDiagAccumulator::push(db, diag);
+    }
+}
+
+#[salsa::tracked]
+pub fn analyze_impl(db: &dyn HirAnalysisDb, impl_: HirImpl) {
+    let Some(hir_ty) = impl_.ty(db.as_hir_db()).to_opt() else {
+        return;
+    };
+    let ty = lower_hir_ty(db, hir_ty, impl_.scope());
+
+    let analyzer = DefAnalyzer::for_impl(db, impl_, ty);
+    let diags = analyzer.analyze();
+
+    for diag in diags {
+        ImplDefDiagAccumulator::push(db, diag);
     }
 }
 
@@ -184,6 +205,19 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
+    fn for_impl(db: &'db dyn HirAnalysisDb, impl_: HirImpl, ty: TyId) -> Self {
+        let scope = impl_.scope();
+        let assumptions = collect_impl_block_constraints(db, impl_);
+        Self {
+            db,
+            def: DefKind::Impl(impl_, ty),
+            diags: vec![],
+            scope,
+            assumptions,
+            current_ty: None,
+        }
+    }
+
     fn for_trait_impl(db: &'db dyn HirAnalysisDb, implementor: Implementor) -> Self {
         let scope = implementor.impl_trait(db).scope();
         let assumptions = implementor.constraints(db);
@@ -209,6 +243,39 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
+    fn verify_method_conflict(&mut self, func: FuncDef) -> bool {
+        let self_ty = func.receiver_ty(self.db).unwrap_or_else(|| {
+            if let DefKind::Impl(_, ty) = self.def {
+                ty
+            } else {
+                unreachable!()
+            }
+        });
+
+        if self_ty.contains_invalid(self.db) {
+            return true;
+        }
+
+        let method_table = collect_methods(self.db, func.ingot(self.db));
+        let maybe_conflict = match method_table.prove(self.db, self_ty, func.name(self.db)) {
+            Some(func_def) => func_def,
+            None => unreachable!(),
+        };
+
+        if maybe_conflict != func {
+            self.diags.push(
+                ImplDiag::conflict_method_impl(
+                    func.hir_func(self.db).lazy_span().name().into(),
+                    maybe_conflict.hir_func(self.db).lazy_span().name().into(),
+                )
+                .into(),
+            );
+            false
+        } else {
+            true
+        }
+    }
+
     fn analyze(mut self) -> Vec<TyDiagCollection> {
         match self.def {
             DefKind::Adt(def) => {
@@ -227,6 +294,17 @@ impl<'db> DefAnalyzer<'db> {
                 let impl_trait = implementor.impl_trait(self.db);
                 let mut ctxt = VisitorCtxt::with_impl_trait(self.db.as_hir_db(), impl_trait);
                 self.visit_impl_trait(&mut ctxt, impl_trait);
+            }
+
+            DefKind::Impl(hir_impl, _) => {
+                let mut ctxt = VisitorCtxt::with_impl(self.db.as_hir_db(), hir_impl);
+                self.visit_impl(&mut ctxt, hir_impl)
+            }
+
+            DefKind::Func(func) => {
+                let func = func.hir_func(self.db);
+                let mut ctxt = VisitorCtxt::with_func(self.db.as_hir_db(), func);
+                self.visit_func(&mut ctxt, func);
             }
         }
 
@@ -402,8 +480,59 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         walk_super_trait_list(self, ctxt, super_traits);
     }
 
-    fn visit_func(&mut self, _ctxt: &mut VisitorCtxt<'_, LazyFuncSpan>, _func: hir::hir_def::Func) {
-        // TODO:
+    fn visit_impl(&mut self, ctxt: &mut VisitorCtxt<'_, LazyImplSpan>, impl_: HirImpl) {
+        let Some(impl_ty) = impl_.ty(self.db.as_hir_db()).to_opt() else {
+            return;
+        };
+
+        let impl_ty = lower_hir_ty(self.db, impl_ty, impl_.scope());
+        if let Some(ty) = impl_ty.emit_diag(self.db, ctxt.span().unwrap().target_ty().into()) {
+            self.diags.push(ty);
+        } else {
+            walk_impl(self, ctxt, impl_);
+        }
+    }
+
+    fn visit_func(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyFuncSpan>,
+        hir_func: hir::hir_def::Func,
+    ) {
+        let Some(func) = lower_func(self.db, hir_func) else {
+            return;
+        };
+
+        if matches!(self.def, DefKind::Impl(_, _)) {
+            if !self.verify_method_conflict(func) {
+                return;
+            }
+        }
+
+        let def = std::mem::replace(&mut self.def, func.into());
+        let constraints = std::mem::replace(&mut self.assumptions, func.constraints(self.db));
+
+        walk_func(self, ctxt, hir_func);
+
+        self.assumptions = constraints;
+        self.def = def;
+    }
+
+    fn visit_func_param(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyFuncParamSpan>,
+        param: &hir::hir_def::FuncParam,
+    ) {
+        let Some(hir_ty) = param.ty.to_opt() else {
+            return;
+        };
+
+        let ty_span = if param.is_self_param() && param.self_ty_fallback {
+            ctxt.span().unwrap().name().into()
+        } else {
+            ctxt.span().unwrap().ty().into()
+        };
+
+        self.verify_fully_applied(hir_ty, ty_span);
     }
 }
 
@@ -519,6 +648,8 @@ enum DefKind {
     Adt(AdtDef),
     Trait(TraitDef),
     ImplTrait(Implementor),
+    Impl(HirImpl, TyId),
+    Func(FuncDef),
 }
 
 impl DefKind {
@@ -527,6 +658,10 @@ impl DefKind {
             Self::Adt(def) => def.params(db),
             Self::Trait(def) => def.params(db),
             Self::ImplTrait(def) => def.params(db),
+            Self::Impl(hir_impl, _) => {
+                &collect_generic_params(db, GenericParamOwnerId::new(db, hir_impl.into())).params
+            }
+            Self::Func(def) => def.params(db),
         }
     }
 
