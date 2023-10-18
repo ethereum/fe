@@ -14,6 +14,8 @@
 * [Development](development/index.md)
     * [Build & Test](development/build.md)
     * [Release](development/release.md)
+* [Standard Library](std/index.md)
+  * [Precompiles](std/precompiles.md)
 * [Specification (WIP)](spec/index.md)
     * [Notation](spec/notation.md)
     * [Lexical Structure](spec/lexical_structure/index.md)
