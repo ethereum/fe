@@ -239,14 +239,28 @@ impl<'db> TyBuilder<'db> {
         let res = self.resolve_path(PathId::self_ty(self.db.as_hir_db()));
         let (scope, res) = match res {
             Either::Left(res @ NameResKind::Scope(scope)) => (scope, res),
-            Either::Left(NameResKind::Prim(prim)) => return TyId::from_hir_prim_ty(self.db, prim),
-            Either::Right(ty) => return ty,
+            Either::Left(NameResKind::Prim(prim)) => {
+                let ty = TyId::from_hir_prim_ty(self.db, prim);
+                return args
+                    .data(self.db.as_hir_db())
+                    .iter()
+                    .map(|arg| lower_generic_arg(self.db, arg, self.scope))
+                    .fold(ty, |acc, arg| TyId::app(self.db, acc, arg));
+            }
+
+            Either::Right(ty) => {
+                return args
+                    .data(self.db.as_hir_db())
+                    .iter()
+                    .map(|arg| lower_generic_arg(self.db, arg, self.scope))
+                    .fold(ty, |acc, arg| TyId::app(self.db, acc, arg));
+            }
         };
 
-        let (target_hir_ty, target_scope) = match scope {
+        let ty = match scope {
             ScopeId::Item(item) => match item {
                 ItemKind::Enum(_) | ItemKind::Struct(_) | ItemKind::Contract(_) => {
-                    return self.lower_resolved_path(res).unwrap_left()
+                    self.lower_resolved_path(res).unwrap_left()
                 }
 
                 ItemKind::Trait(trait_) => {
@@ -254,29 +268,35 @@ impl<'db> TyBuilder<'db> {
                         self.db,
                         GenericParamOwnerId::new(self.db, trait_.into()),
                     );
-                    return params.trait_self.unwrap();
+                    params.trait_self.unwrap()
                 }
 
-                ItemKind::Impl(impl_) => (impl_.ty(self.db.as_hir_db()), impl_.scope()),
-                ItemKind::ImplTrait(impl_trait) => {
-                    (impl_trait.ty(self.db.as_hir_db()), impl_trait.scope())
+                ItemKind::Impl(impl_) => {
+                    let hir_ty = impl_.ty(self.db.as_hir_db());
+                    hir_ty
+                        .to_opt()
+                        .map(|hir_ty| lower_hir_ty(self.db, hir_ty, scope))
+                        .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
                 }
-                _ => return TyId::invalid(self.db, InvalidCause::Other),
+
+                ItemKind::ImplTrait(impl_trait) => {
+                    let hir_ty = impl_trait.ty(self.db.as_hir_db());
+                    hir_ty
+                        .to_opt()
+                        .map(|hir_ty| lower_hir_ty(self.db, hir_ty, scope))
+                        .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+                }
+
+                _ => TyId::invalid(self.db, InvalidCause::Other),
             },
 
             _ => unreachable!(),
         };
 
-        let target_ty = target_hir_ty
-            .to_opt()
-            .map(|hir_ty| lower_hir_ty(self.db, hir_ty, target_scope))
-            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
-
-        let db = self.db;
         args.data(self.db.as_hir_db())
             .iter()
             .map(|arg| lower_generic_arg(self.db, arg, self.scope))
-            .fold(target_ty, |acc, arg| TyId::app(db, acc, arg))
+            .fold(ty, |acc, arg| TyId::app(self.db, acc, arg))
     }
 
     fn lower_ptr(&mut self, pointee: Partial<HirTyId>) -> TyId {
