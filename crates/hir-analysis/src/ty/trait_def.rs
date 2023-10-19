@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 
 use hir::{
-    hir_def::{ImplTrait, IngotId, Trait},
+    hir_def::{IdentId, ImplTrait, IngotId, Trait},
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
@@ -20,7 +20,7 @@ use super::{
     },
     constraint_solver::{check_trait_inst_sat, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
-    ty_def::{Kind, Subst, TyId},
+    ty_def::{FuncDef, Kind, Subst, TyId},
     unify::UnificationTable,
 };
 
@@ -272,8 +272,16 @@ pub struct TraitDef {
     /// We collects self type here to know the expected kind of implementor
     /// type in `Implementor` lowering phase.
     pub self_param: TyId,
-    // TODO: we need to collect associated method types here.
-    // methods: Vec<FuncInst>
+    pub methods: FxHashMap<IdentId, TraitMethod>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct TraitMethod(pub FuncDef);
+
+impl TraitMethod {
+    pub fn has_default_impl(self, db: &dyn HirAnalysisDb) -> bool {
+        self.0.hir_func(db).body(db.as_hir_db()).is_some()
+    }
 }
 
 impl TraitDef {

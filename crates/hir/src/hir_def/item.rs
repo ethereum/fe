@@ -773,6 +773,15 @@ impl Trait {
     pub fn scope(self) -> ScopeId {
         ScopeId::from_item(self.into())
     }
+
+    pub fn methods(self, db: &dyn HirDb) -> impl Iterator<Item = Func> + '_ {
+        let s_graph = self.top_mod(db).scope_graph(db);
+        let scope = ScopeId::from_item(self.into());
+        s_graph.child_items(scope).filter_map(|item| match item {
+            ItemKind::Func(func) => Some(func),
+            _ => None,
+        })
+    }
 }
 
 #[salsa::tracked]
