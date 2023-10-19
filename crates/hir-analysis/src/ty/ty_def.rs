@@ -393,8 +393,7 @@ pub struct FuncDef {
     pub arg_tys: Vec<TyId>,
 
     /// Return types of the function.
-    #[return_ref]
-    pub ret_tys: TyId,
+    pub ret_ty: TyId,
 }
 
 impl FuncDef {

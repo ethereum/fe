@@ -28,6 +28,7 @@ pub struct Jar(
     ty::trait_lower::lower_trait_ref,
     ty::trait_lower::collect_trait_impls,
     ty::trait_lower::lower_impl_trait,
+    ty::trait_lower::collect_implementor_methods,
     /// Method collection.
     ty::method_table::collect_methods,
     /// Item Definition analysis.

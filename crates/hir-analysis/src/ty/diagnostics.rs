@@ -1,11 +1,13 @@
+use std::collections::BTreeSet;
+
 use common::diagnostics::{
     CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, SubDiagnostic,
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
-    hir_def::{ImplTrait, Trait, TypeAlias as HirTypeAlias},
+    hir_def::{IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias},
     span::{DynLazySpan, LazySpan},
-    SpannedHirDb,
+    HirDb, SpannedHirDb,
 };
 
 use crate::HirAnalysisDb;
@@ -14,6 +16,8 @@ use super::{
     constraint::PredicateId,
     ty_def::{Kind, TyId},
 };
+
+use itertools::Itertools;
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
@@ -569,6 +573,49 @@ pub enum ImplDiag {
         primary: DynLazySpan,
         conflict_with: DynLazySpan,
     },
+
+    MethodNotDefinedInTrait {
+        primary: DynLazySpan,
+        trait_: Trait,
+        method_name: IdentId,
+    },
+
+    NotAllTraitItemsImplemented {
+        primary: DynLazySpan,
+        not_implemented: BTreeSet<IdentId>,
+    },
+
+    MethodTypeParamNumMismatch {
+        primary: DynLazySpan,
+        expected: usize,
+        given: usize,
+    },
+
+    MethodTypeParamKindMismatch {
+        primary: DynLazySpan,
+        message: String,
+    },
+
+    MethodArgNumMismatch {
+        primary: DynLazySpan,
+        expected: usize,
+        given: usize,
+    },
+
+    MethodArgTyMismatch {
+        primary: DynLazySpan,
+        message: String,
+    },
+
+    MethodRetTyMismatch {
+        primary: DynLazySpan,
+        message: String,
+    },
+
+    MethodStricterBound {
+        primary: DynLazySpan,
+        message: String,
+    },
 }
 
 impl ImplDiag {
@@ -579,15 +626,164 @@ impl ImplDiag {
         }
     }
 
-    fn local_code(&self) -> u16 {
-        match self {
-            Self::ConflictMethodImpl { .. } => 0,
+    pub(super) fn method_not_defined_in_trait(
+        primary: DynLazySpan,
+        trait_: Trait,
+        method_name: IdentId,
+    ) -> Self {
+        Self::MethodNotDefinedInTrait {
+            primary,
+            trait_,
+            method_name,
         }
     }
 
-    fn message(&self) -> String {
+    pub(super) fn not_all_trait_items_implemented(
+        primary: DynLazySpan,
+        not_implemented: BTreeSet<IdentId>,
+    ) -> Self {
+        Self::NotAllTraitItemsImplemented {
+            primary,
+            not_implemented,
+        }
+    }
+
+    pub(super) fn method_param_num_mismatch(
+        primary: DynLazySpan,
+        expected: usize,
+        given: usize,
+    ) -> Self {
+        Self::MethodTypeParamNumMismatch {
+            primary,
+            expected,
+            given,
+        }
+    }
+
+    pub(super) fn method_arg_num_mismatch(
+        primary: DynLazySpan,
+        expected: usize,
+        given: usize,
+    ) -> Self {
+        Self::MethodArgNumMismatch {
+            primary,
+            expected,
+            given,
+        }
+    }
+
+    pub fn method_arg_ty_mismatch(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        expected: TyId,
+        given: TyId,
+    ) -> Self {
+        let message = format!(
+            "expected `{}` type, but the given type is `{}`",
+            expected.pretty_print(db),
+            given.pretty_print(db),
+        );
+
+        Self::MethodArgTyMismatch { primary, message }
+    }
+
+    pub fn method_ret_type_mismatch(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        expected: TyId,
+        given: TyId,
+    ) -> Self {
+        let message = format!(
+            "expected `{}` type, but the given type is `{}`",
+            expected.pretty_print(db),
+            given.pretty_print(db),
+        );
+
+        Self::MethodRetTyMismatch { primary, message }
+    }
+
+    pub(super) fn method_param_kind_mismatch(
+        primary: DynLazySpan,
+        expected: &Kind,
+        given: &Kind,
+    ) -> Self {
+        let message = format!(
+            "expected `{}` kind, but the given type has `{}` kind",
+            expected, given,
+        );
+
+        Self::MethodTypeParamKindMismatch { primary, message }
+    }
+
+    pub(super) fn method_stricter_bound(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        stricter_bounds: &[PredicateId],
+    ) -> Self {
+        let message = format!(
+            "method has stricter bounds than the declared method in the trait: {}",
+            stricter_bounds
+                .iter()
+                .map(|pred| format!("`{}`", pred.pretty_print(db)))
+                .join(", ")
+        );
+        Self::MethodStricterBound { primary, message }
+    }
+
+    pub fn local_code(&self) -> u16 {
+        match self {
+            Self::ConflictMethodImpl { .. } => 0,
+            Self::MethodNotDefinedInTrait { .. } => 1,
+            Self::NotAllTraitItemsImplemented { .. } => 2,
+            Self::MethodTypeParamNumMismatch { .. } => 3,
+            Self::MethodTypeParamKindMismatch { .. } => 4,
+            Self::MethodArgNumMismatch { .. } => 5,
+            Self::MethodArgTyMismatch { .. } => 6,
+            Self::MethodRetTyMismatch { .. } => 7,
+            Self::MethodStricterBound { .. } => 8,
+        }
+    }
+
+    fn message(&self, db: &dyn HirDb) -> String {
         match self {
             Self::ConflictMethodImpl { .. } => "conflict method implementation".to_string(),
+            Self::MethodNotDefinedInTrait {
+                trait_,
+                method_name,
+                ..
+            } => format!(
+                "method `{}` is not defined in trait `{}`",
+                method_name.data(db),
+                trait_.name(db).unwrap().data(db),
+            ),
+
+            Self::NotAllTraitItemsImplemented { .. } => {
+                "not all trait methods are implemented".to_string()
+            }
+
+            Self::MethodTypeParamNumMismatch { .. } => {
+                "trait method type parameter number mismatch".to_string()
+            }
+
+            Self::MethodTypeParamKindMismatch { .. } => {
+                "trait method type parameter kind mismatch".to_string()
+            }
+
+            Self::MethodArgNumMismatch { .. } => {
+                "trait method argument number mismatch".to_string()
+            }
+
+            Self::MethodArgTyMismatch { .. } => {
+                "given argument type doesn't match the expected type required by trait".to_string()
+            }
+
+            Self::MethodRetTyMismatch { .. } => {
+                "given return type doesn't match the expected type required by trait".to_string()
+            }
+
+            Self::MethodStricterBound { .. } => {
+                "impl method has stricter bound than the declared method in the trait".to_string()
+            }
         }
     }
 
@@ -608,6 +804,107 @@ impl ImplDiag {
                     conflict_with.resolve(db),
                 ),
             ],
+
+            Self::MethodNotDefinedInTrait {
+                primary,
+                trait_,
+                method_name,
+            } => {
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!(
+                            "method `{}` is not defined in trait `{}`",
+                            method_name.data(db.as_hir_db()),
+                            trait_.name(db.as_hir_db()).unwrap().data(db.as_hir_db()),
+                        ),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "trait is defined here".to_string(),
+                        trait_.lazy_span().name().resolve(db),
+                    ),
+                ]
+            }
+
+            Self::NotAllTraitItemsImplemented {
+                primary,
+                not_implemented,
+            } => {
+                let not_implemented: String = not_implemented
+                    .iter()
+                    .map(|name| name.data(db.as_hir_db()))
+                    .join(", ");
+
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!(
+                        "all required trait items must be implemented, missing: `{}`",
+                        not_implemented
+                    ),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::MethodTypeParamNumMismatch {
+                primary,
+                expected,
+                given,
+            } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!(
+                        "expected {} type parameters here, but {} given",
+                        expected, given
+                    ),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::MethodTypeParamKindMismatch { primary, message } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    message.clone(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::MethodArgNumMismatch {
+                primary,
+                expected,
+                given,
+            } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected {} arguments here, but {} given", expected, given),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::MethodArgTyMismatch { primary, message } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    message.clone(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::MethodRetTyMismatch { primary, message } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    message.clone(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::MethodStricterBound { primary, message } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    message.clone(),
+                    primary.resolve(db),
+                )]
+            }
         }
     }
 
@@ -624,7 +921,7 @@ impl DiagnosticVoucher for ImplDiag {
     fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
-        let message = self.message();
+        let message = self.message(db.as_hir_db());
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)

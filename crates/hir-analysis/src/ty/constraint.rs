@@ -209,7 +209,7 @@ pub(crate) fn collect_implementor_constraints(
     db: &dyn HirAnalysisDb,
     implementor: Implementor,
 ) -> ConstraintListId {
-    let impl_trait = implementor.impl_trait(db);
+    let impl_trait = implementor.hir_impl_trait(db);
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, impl_trait.into()));
 
     collector.collect()
@@ -278,6 +278,12 @@ impl PredicateId {
         let ty = self.ty(db).apply_subst(db, subst);
         let trait_ = self.trait_inst(db).apply_subst(db, subst);
         Self::new(db, ty, trait_)
+    }
+
+    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
+        let ty = self.ty(db);
+        let trait_ = self.trait_inst(db);
+        format!("{}: {}", ty.pretty_print(db), trait_.pretty_print(db))
     }
 }
 

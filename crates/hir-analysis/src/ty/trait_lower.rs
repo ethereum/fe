@@ -1,5 +1,7 @@
 //! This module implements the trait and impl trait lowering process.
 
+use std::collections::BTreeMap;
+
 use hir::hir_def::{
     scope_graph::ScopeId, IdentId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRefId,
 };
@@ -13,7 +15,7 @@ use crate::{
 
 use super::{
     trait_def::{Implementor, TraitDef, TraitInstId, TraitMethod},
-    ty_def::{InvalidCause, Kind, TyId},
+    ty_def::{FuncDef, InvalidCause, Kind, TyId},
     ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamOwnerId},
     unify::UnificationTable,
 };
@@ -139,6 +141,22 @@ pub(crate) fn lower_trait_ref(
     Ok(TraitInstId::new(db, trait_def, args, ingot))
 }
 
+#[salsa::tracked(return_ref)]
+pub(crate) fn collect_implementor_methods(
+    db: &dyn HirAnalysisDb,
+    implementor: Implementor,
+) -> BTreeMap<IdentId, FuncDef> {
+    let mut methods = BTreeMap::default();
+
+    for method in implementor.hir_impl_trait(db).methods(db.as_hir_db()) {
+        if let Some(func) = lower_func(db, method) {
+            methods.insert(func.name(db), func);
+        }
+    }
+
+    methods
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TraitRefLowerError {
     /// The trait reference is not a valid trait reference. This error is
@@ -162,7 +180,7 @@ struct TraitBuilder<'db> {
     trait_: Trait,
     params: Vec<TyId>,
     self_arg: TyId,
-    methods: FxHashMap<IdentId, TraitMethod>,
+    methods: BTreeMap<IdentId, TraitMethod>,
 }
 
 impl<'db> TraitBuilder<'db> {
@@ -172,7 +190,7 @@ impl<'db> TraitBuilder<'db> {
             trait_,
             params: vec![],
             self_arg: TyId::invalid(db, InvalidCause::Other),
-            methods: FxHashMap::default(),
+            methods: BTreeMap::default(),
         }
     }
 

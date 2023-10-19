@@ -813,6 +813,13 @@ impl ImplTrait {
     pub fn scope(self) -> ScopeId {
         ScopeId::from_item(self.into())
     }
+
+    pub fn methods(self, db: &dyn HirDb) -> impl Iterator<Item = Func> + '_ {
+        self.children_non_nested(db).filter_map(|item| match item {
+            ItemKind::Func(func) => Some(func),
+            _ => None,
+        })
+    }
 }
 
 #[salsa::tracked]

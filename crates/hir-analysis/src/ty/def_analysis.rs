@@ -2,6 +2,8 @@
 //! This module is the only module in `ty` module which is allowed to emit
 //! diagnostics.
 
+use std::collections::BTreeSet;
+
 use hir::{
     hir_def::{
         scope_graph::ScopeId, FieldDef, Impl as HirImpl, ImplTrait, Trait, TraitRefId, TypeAlias,
@@ -32,7 +34,7 @@ use super::{
     },
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
-    trait_def::{ingot_trait_env, Implementor, TraitDef},
+    trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRefId, FuncDef, TyId},
     ty_lower::{
@@ -96,7 +98,7 @@ pub fn analyze_trait(db: &dyn HirAnalysisDb, trait_: Trait) {
 ///   impl trait.
 #[salsa::tracked]
 pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
-    let implementor = match analyze_trait_impl_specific_error(db, impl_trait) {
+    let implementor = match analyze_impl_trait_specific_error(db, impl_trait) {
         Ok(implementor) => implementor,
         Err(diags) => {
             for diag in diags {
@@ -106,10 +108,11 @@ pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
         }
     };
 
+    let method_diags = ImplTraitMethodAnalyzer::new(db, implementor).analyze();
+
     let analyzer = DefAnalyzer::for_trait_impl(db, implementor);
     let diags = analyzer.analyze();
-
-    for diag in diags {
+    for diag in method_diags.into_iter().chain(diags) {
         ImplTraitDefDiagAccumulator::push(db, diag);
     }
 }
@@ -286,7 +289,7 @@ impl<'db> DefAnalyzer<'db> {
             }
 
             DefKind::ImplTrait(implementor) => {
-                let impl_trait = implementor.impl_trait(self.db);
+                let impl_trait = implementor.hir_impl_trait(self.db);
                 let mut ctxt = VisitorCtxt::with_impl_trait(self.db.as_hir_db(), impl_trait);
                 self.visit_impl_trait(&mut ctxt, impl_trait);
             }
@@ -682,7 +685,7 @@ impl DefKind {
         match self {
             Self::Adt(def) => def.adt_ref(db).scope(db),
             Self::Trait(def) => def.trait_(db).scope(),
-            Self::ImplTrait(def) => def.impl_trait(db).scope(),
+            Self::ImplTrait(def) => def.hir_impl_trait(db).scope(),
             Self::Impl(hir_impl, _) => hir_impl.scope(),
             Self::Func(def) => def.hir_func(db).scope(),
         }
@@ -697,7 +700,7 @@ impl DefKind {
 /// 4. If conflict occurs.
 /// 5. If implementor type satisfies the required kind bound.
 /// 6. If implementor type satisfies the required trait bound.
-fn analyze_trait_impl_specific_error(
+fn analyze_impl_trait_specific_error(
     db: &dyn HirAnalysisDb,
     impl_trait: ImplTrait,
 ) -> Result<Implementor, Vec<TyDiagCollection>> {
@@ -757,7 +760,8 @@ fn analyze_trait_impl_specific_error(
         for conflict_cand in impls {
             if conflict_cand.does_conflict(db, current_impl, &mut UnificationTable::new(db)) {
                 diags.push(
-                    TraitLowerDiag::conflict_impl(impl_trait, conflict_cand.impl_trait(db)).into(),
+                    TraitLowerDiag::conflict_impl(impl_trait, conflict_cand.hir_impl_trait(db))
+                        .into(),
                 );
                 return Err(diags);
             }
@@ -822,4 +826,224 @@ fn analyze_trait_impl_specific_error(
     }
 
     Ok(implementor)
+}
+
+struct ImplTraitMethodAnalyzer<'db> {
+    db: &'db dyn HirAnalysisDb,
+    diags: Vec<TyDiagCollection>,
+    implementor: Implementor,
+}
+
+impl<'db> ImplTraitMethodAnalyzer<'db> {
+    fn new(db: &'db dyn HirAnalysisDb, implementor: Implementor) -> Self {
+        Self {
+            db,
+            diags: vec![],
+            implementor,
+        }
+    }
+
+    fn analyze(mut self) -> Vec<TyDiagCollection> {
+        let impl_methods = self.implementor.methods(self.db);
+        let hir_trait = self.implementor.trait_def(self.db).trait_(self.db);
+        let trait_methods = self.implementor.trait_def(self.db).methods(self.db);
+        let mut required_methods: BTreeSet<_> = trait_methods
+            .iter()
+            .filter_map(|(name, trait_method)| {
+                if !trait_method.has_default_impl(self.db) {
+                    Some(*name)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for (name, impl_method) in impl_methods {
+            let Some(trait_method) = trait_methods.get(name) else {
+                self.diags.push(
+                    ImplDiag::method_not_defined_in_trait(
+                        self.implementor
+                            .hir_impl_trait(self.db)
+                            .lazy_span()
+                            .trait_ref()
+                            .into(),
+                        hir_trait,
+                        *name,
+                    )
+                    .into(),
+                );
+                continue;
+            };
+
+            required_methods.remove(name);
+            self.analyze_method(*impl_method, *trait_method);
+        }
+
+        if !required_methods.is_empty() {
+            self.diags.push(
+                ImplDiag::not_all_trait_items_implemented(
+                    self.implementor
+                        .hir_impl_trait(self.db)
+                        .lazy_span()
+                        .ty_moved()
+                        .into(),
+                    required_methods,
+                )
+                .into(),
+            );
+        }
+
+        self.diags
+    }
+
+    fn analyze_method(&mut self, impl_method: FuncDef, expected_method: TraitMethod) {
+        // TODO: We need to check label integrity.
+        let mut subst = self.implementor.subst_table(self.db);
+
+        let mut is_err = false;
+
+        // Checks if the number of parameters are the same.
+        let method_params = impl_method.params(self.db);
+        let expected_params = expected_method.0.params(self.db);
+        if method_params.len() != expected_params.len() {
+            self.diags.push(
+                ImplDiag::method_param_num_mismatch(
+                    impl_method.hir_func(self.db).lazy_span().name().into(),
+                    expected_params.len(),
+                    method_params.len(),
+                )
+                .into(),
+            );
+            is_err = true;
+        };
+
+        if is_err {
+            return;
+        }
+
+        // Checks if the parameter kinds are the same.
+        for (idx, (&expected_param, &method_param)) in
+            expected_params.iter().zip(method_params).enumerate()
+        {
+            let expected_kind = expected_param.kind(self.db);
+            let given_kind = method_param.kind(self.db);
+
+            if expected_kind != given_kind {
+                let span = impl_method
+                    .hir_func(self.db)
+                    .lazy_span()
+                    .generic_params()
+                    .param(idx)
+                    .into();
+                self.diags.push(
+                    ImplDiag::method_param_kind_mismatch(span, expected_kind, given_kind).into(),
+                );
+                is_err = true;
+            }
+
+            subst.insert(expected_param, method_param);
+        }
+
+        if is_err {
+            return;
+        }
+
+        let expected_arg_tys = expected_method.0.arg_tys(self.db);
+        let method_arg_tys = impl_method.arg_tys(self.db);
+
+        // Checks if the arity are the same.
+        if expected_arg_tys.len() != method_arg_tys.len() {
+            self.diags.push(
+                ImplDiag::method_arg_num_mismatch(
+                    impl_method
+                        .hir_func(self.db)
+                        .lazy_span()
+                        .params_moved()
+                        .into(),
+                    expected_arg_tys.len(),
+                    method_arg_tys.len(),
+                )
+                .into(),
+            );
+            is_err = true;
+        }
+
+        if is_err {
+            return;
+        }
+
+        // Checks if the argument types are the same.
+        for (idx, (expected_arg_ty, &method_arg_ty)) in
+            expected_arg_tys.iter().zip(method_arg_tys).enumerate()
+        {
+            let expected_arg_ty = expected_arg_ty.apply_subst(self.db, &mut subst);
+            if expected_arg_ty != method_arg_ty {
+                let span = impl_method
+                    .hir_func(self.db)
+                    .lazy_span()
+                    .params_moved()
+                    .param(idx)
+                    .into();
+                self.diags.push(
+                    ImplDiag::method_arg_ty_mismatch(self.db, span, expected_arg_ty, method_arg_ty)
+                        .into(),
+                );
+                is_err = true;
+            }
+        }
+
+        // Checks if the return type is the same.
+        let expected_ret_ty = expected_method
+            .0
+            .ret_ty(self.db)
+            .apply_subst(self.db, &mut subst);
+        let method_ret_ty = impl_method.ret_ty(self.db);
+        if expected_ret_ty != method_ret_ty {
+            self.diags.push(
+                ImplDiag::method_ret_type_mismatch(
+                    self.db,
+                    impl_method.hir_func(self.db).lazy_span().ret_ty().into(),
+                    expected_ret_ty,
+                    method_ret_ty,
+                )
+                .into(),
+            );
+
+            is_err = true;
+        }
+
+        if is_err {
+            return;
+        }
+
+        // Check if the method constraints are stricter than the trait constraints.
+        // This check can be performed to check if the `impl_method` constraints are
+        // satisfied under the assumptions that is obtained from the `expected_method`
+        // constraints.
+        let expected_constraints = expected_method
+            .0
+            .constraints(self.db)
+            .apply_subst(self.db, &mut subst);
+        let method_constraints = impl_method.constraints(self.db);
+        let mut unsatisfied_goals = vec![];
+        for &goal in method_constraints.predicates(self.db) {
+            if !matches!(
+                is_goal_satisfiable(self.db, goal, expected_constraints),
+                GoalSatisfiability::Satisfied
+            ) {
+                unsatisfied_goals.push(goal);
+            }
+        }
+
+        if !unsatisfied_goals.is_empty() {
+            self.diags.push(
+                ImplDiag::method_stricter_bound(
+                    self.db,
+                    impl_method.hir_func(self.db).lazy_span().name().into(),
+                    &unsatisfied_goals,
+                )
+                .into(),
+            );
+        }
+    }
 }
