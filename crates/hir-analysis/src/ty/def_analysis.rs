@@ -738,7 +738,11 @@ fn analyze_impl_trait_specific_error(
         return Err(diags);
     }
 
-    let trait_inst = lower_trait_ref(db, trait_ref, impl_trait.scope()).unwrap();
+    let trait_inst = match lower_trait_ref(db, trait_ref, impl_trait.scope()) {
+        Ok(trait_inst) => trait_inst,
+        Err(_) => return Err(vec![]),
+    };
+
     // 3. Check if the ingot contains impl trait is the same as the ingot which
     //    contains either the type or trait.
     let impl_trait_ingot = impl_trait.top_mod(hir_db).ingot(hir_db);
@@ -977,7 +981,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
             expected_arg_tys.iter().zip(method_arg_tys).enumerate()
         {
             let expected_arg_ty = expected_arg_ty.apply_subst(self.db, &mut subst);
-            if expected_arg_ty != method_arg_ty {
+            if !method_arg_ty.contains_invalid(self.db) && expected_arg_ty != method_arg_ty {
                 let span = impl_method
                     .hir_func(self.db)
                     .lazy_span()
@@ -998,7 +1002,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
             .ret_ty(self.db)
             .apply_subst(self.db, &mut subst);
         let method_ret_ty = impl_method.ret_ty(self.db);
-        if expected_ret_ty != method_ret_ty {
+        if !method_ret_ty.contains_invalid(self.db) && expected_ret_ty != method_ret_ty {
             self.diags.push(
                 ImplDiag::method_ret_type_mismatch(
                     self.db,

@@ -636,10 +636,7 @@ impl<'db> GenericParamCollector<'db> {
         match resolve_path_early(self.db, path, self.owner.scope()) {
             EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
                 Ok(res) => match res.kind {
-                    NameResKind::Scope(ScopeId::GenericParam(item, idx)) => {
-                        debug_assert_eq!(item, ItemKind::from(self.owner));
-                        ParamLoc::Idx(idx)
-                    }
+                    NameResKind::Scope(ScopeId::GenericParam(_, idx)) => ParamLoc::Idx(idx),
                     _ => ParamLoc::NonParam,
                 },
                 Err(_) => ParamLoc::NonParam,

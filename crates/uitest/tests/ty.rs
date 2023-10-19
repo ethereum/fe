@@ -30,6 +30,19 @@ fn run_trait_bound(fixture: Fixture<&str>) {
     snap_test!(diags, fixture.path());
 }
 
+#[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/fixtures/ty/trait_impl",
+    glob: "*.fe"
+)]
+fn run_trait_impl(fixture: Fixture<&str>) {
+    let mut driver = DriverDataBase::default();
+    let path = Path::new(fixture.path());
+    let top_mod = driver.top_mod_from_file(path, fixture.content());
+    driver.run_on_top_mod(top_mod);
+    let diags = driver.format_diags();
+    snap_test!(diags, fixture.path());
+}
+
 #[cfg(target_family = "wasm")]
 mod wasm {
     use super::*;
@@ -67,6 +80,25 @@ mod wasm {
             #[wasm_bindgen_test]
         )]
         fn run_trait_bound(fixture: Fixture<&str>) {
+            let mut driver = DriverDataBase::default();
+            let path = Path::new(fixture.path());
+            let top_mod = driver.top_mod_from_file(path, fixture.content());
+            driver.run_on_top_mod(top_mod);
+        }
+    }
+
+    mod trait_impl {
+        use super::*;
+
+        #[dir_test(
+        dir: "$CARGO_MANIFEST_DIR/fixtures/ty/trait_impl",
+        glob: "*.fe",
+        postfix: "wasm"
+        )]
+        #[dir_test_attr(
+            #[wasm_bindgen_test]
+        )]
+        fn run_trait_impl(fixture: Fixture<&str>) {
             let mut driver = DriverDataBase::default();
             let path = Path::new(fixture.path());
             let top_mod = driver.top_mod_from_file(path, fixture.content());

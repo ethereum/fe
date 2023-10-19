@@ -1,0 +1,10 @@
+pub trait Foo {
+    fn foo(self) -> i32
+    fn bar(self) -> i32
+    
+    fn baz(self) -> i32 {
+        self.foo() + self.bar()
+    }
+}
+
+impl Foo for i32 {}
