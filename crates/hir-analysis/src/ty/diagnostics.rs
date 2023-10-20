@@ -80,6 +80,12 @@ pub enum TyLowerDiag {
         name: IdentId,
     },
 
+    DuplicatedArgName {
+        primary: DynLazySpan,
+        conflict_with: DynLazySpan,
+        name: IdentId,
+    },
+
     AssocTy(DynLazySpan),
 }
 
@@ -158,6 +164,18 @@ impl TyLowerDiag {
         }
     }
 
+    pub(super) fn duplicated_arg_name(
+        primary: DynLazySpan,
+        conflict_with: DynLazySpan,
+        name: IdentId,
+    ) -> Self {
+        Self::DuplicatedArgName {
+            primary,
+            conflict_with,
+            name,
+        }
+    }
+
     pub(super) fn assoc_ty(span: DynLazySpan) -> Self {
         Self::AssocTy(span)
     }
@@ -172,7 +190,8 @@ impl TyLowerDiag {
             Self::InconsistentKindBound(_, _) => 5,
             Self::KindBoundNotAllowed(_) => 6,
             Self::GenericParamAlreadyDefinedInParent { .. } => 7,
-            Self::AssocTy(_) => 8,
+            Self::DuplicatedArgName { .. } => 8,
+            Self::AssocTy(_) => 9,
         }
     }
 
@@ -192,6 +211,10 @@ impl TyLowerDiag {
 
             Self::GenericParamAlreadyDefinedInParent { .. } => {
                 "generic parameter is already defined in the parent item".to_string()
+            }
+
+            Self::DuplicatedArgName { .. } => {
+                "duplicated argument name in function definition is not allowed".to_string()
             }
 
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
@@ -301,6 +324,25 @@ impl TyLowerDiag {
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
                         "conflict with this generic parameter".to_string(),
+                        conflict_with.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::DuplicatedArgName {
+                primary,
+                conflict_with,
+                name,
+            } => {
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("duplicated argument name `{}`", name.data(db.as_hir_db())),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "conflict with this argument name".to_string(),
                         conflict_with.resolve(db),
                     ),
                 ]

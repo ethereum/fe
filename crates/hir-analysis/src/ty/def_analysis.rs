@@ -2,16 +2,16 @@
 //! This module is the only module in `ty` module which is allowed to emit
 //! diagnostics.
 
-use std::collections::BTreeSet;
+use std::collections::{hash_map::Entry, BTreeSet};
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, Func, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait,
-        TraitRefId, TypeAlias, TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, FieldDef, Func, FuncParamListId, IdentId, Impl as HirImpl, ImplTrait,
+        ItemKind, PathId, Trait, TraitRefId, TypeAlias, TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::function::Configuration;
 
 use crate::{
@@ -635,6 +635,39 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
         self.assumptions = constraints;
         self.def = def;
+    }
+
+    fn visit_func_param_list(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyFuncParamListSpan>,
+        params: FuncParamListId,
+    ) {
+        // Checks if the argument names are not duplicated.
+        let mut already_seen: FxHashMap<IdentId, usize> = FxHashMap::default();
+
+        for (i, param) in params.data(self.db.as_hir_db()).iter().enumerate() {
+            let Some(name) = param.name.to_opt().and_then(|name| name.ident()) else {
+                continue;
+            };
+
+            match already_seen.entry(name) {
+                Entry::Occupied(entry) => {
+                    let diag = TyLowerDiag::duplicated_arg_name(
+                        ctxt.span().unwrap().param(i).name().into(),
+                        ctxt.span().unwrap().param(*entry.get()).name().into(),
+                        name,
+                    )
+                    .into();
+                    self.diags.push(diag);
+                }
+
+                Entry::Vacant(entry) => {
+                    entry.insert(i);
+                }
+            }
+        }
+
+        walk_func_param_list(self, ctxt, params)
     }
 
     fn visit_func_param(
