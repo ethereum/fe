@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamLabel, IdentId,
+    scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamName, IdentId,
     IngotId, ItemKind, TopLevelMod, Use, VariantKind, Visibility,
 };
 
@@ -280,7 +280,7 @@ impl ScopeId {
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
                 let param = &func.params(db).to_opt()?.data(db)[idx];
-                if let Some(FuncParamLabel::Ident(ident)) = param.label {
+                if let Some(FuncParamName::Ident(ident)) = param.label {
                     Some(ident)
                 } else {
                     param.name()
@@ -330,7 +330,7 @@ impl ScopeId {
                 let func: Func = parent.try_into().unwrap();
                 let param = &func.params(db).to_opt()?.data(db)[idx];
                 let param_span = func.lazy_span().params().param(idx);
-                if let Some(FuncParamLabel::Ident(_)) = param.label {
+                if let Some(FuncParamName::Ident(_)) = param.label {
                     Some(param_span.label().into())
                 } else {
                     Some(param_span.name().into())

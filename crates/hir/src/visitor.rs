@@ -5,12 +5,11 @@ use crate::{
         attr,
         scope_graph::{FieldParent, ScopeId},
         Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
-        FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
-        GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
-        KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct,
-        TopLevelMod, Trait, TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use,
-        UseAlias, UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind,
-        WhereClauseId, WherePredicate,
+        FieldIndex, Func, FuncParam, FuncParamListId, FuncParamName, GenericArg, GenericArgListId,
+        GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind,
+        MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait,
+        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{
         item::LazySuperTraitListSpan, lazy_spans::*, params::LazyTraitRefSpan,
@@ -1451,7 +1450,7 @@ pub fn walk_func_param<V>(
 ) where
     V: Visitor + ?Sized,
 {
-    if let Some(FuncParamLabel::Ident(ident)) = param.label {
+    if let Some(FuncParamName::Ident(ident)) = param.label {
         ctxt.with_new_ctxt(
             |span| span.label_moved(),
             |ctxt| visitor.visit_ident(ctxt, ident),

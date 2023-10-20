@@ -88,7 +88,7 @@ pub struct ConstGenericArg {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FuncParam {
     pub is_mut: bool,
-    pub label: Option<FuncParamLabel>,
+    pub label: Option<FuncParamName>,
     pub name: Partial<FuncParamName>,
     pub ty: Partial<TypeId>,
 
@@ -117,14 +117,7 @@ pub struct WherePredicate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FuncParamLabel {
-    Ident(IdentId),
-    Underscore,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FuncParamName {
-    /// `self` parameter.
     Ident(IdentId),
     Underscore,
 }
