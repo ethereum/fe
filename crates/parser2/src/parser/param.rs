@@ -6,7 +6,7 @@ use super::{
     expr_atom::{BlockExprScope, LitExprScope},
     path::PathScope,
     token_stream::TokenStream,
-    type_::{is_type_start, parse_type, SelfTypeScope},
+    type_::{is_type_start, parse_type},
     Parser,
 };
 
@@ -82,7 +82,7 @@ impl super::Parse for FnParamScope {
 
         if is_self {
             if parser.bump_if(SyntaxKind::Colon) {
-                parser.parse(SelfTypeScope::default(), None);
+                parse_type(parser, None);
             }
         } else {
             parser.bump_or_recover(SyntaxKind::Colon, "expected `:` after argument name", None);
