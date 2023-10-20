@@ -785,6 +785,10 @@ pub fn walk_impl_trait<V>(
             visitor.visit_where_clause(ctxt, id);
         },
     );
+
+    for item in impl_trait.children_non_nested(ctxt.db) {
+        visitor.visit_item(&mut VisitorCtxt::with_item(ctxt.db, item), item);
+    }
 }
 
 pub fn walk_const<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyConstSpan>, const_: Const)
