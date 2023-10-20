@@ -72,6 +72,12 @@ pub enum TyLowerDiag {
 
     KindBoundNotAllowed(DynLazySpan),
 
+    GenericParamAlreadyDefinedInParent {
+        primary: DynLazySpan,
+        conflict_with: DynLazySpan,
+        name: IdentId,
+    },
+
     AssocTy(DynLazySpan),
 }
 
@@ -138,6 +144,18 @@ impl TyLowerDiag {
         Self::InconsistentKindBound(span, msg)
     }
 
+    pub(super) fn generic_param_conflict(
+        primary: DynLazySpan,
+        conflict_with: DynLazySpan,
+        name: IdentId,
+    ) -> Self {
+        Self::GenericParamAlreadyDefinedInParent {
+            primary,
+            conflict_with,
+            name,
+        }
+    }
+
     pub(super) fn assoc_ty(span: DynLazySpan) -> Self {
         Self::AssocTy(span)
     }
@@ -151,7 +169,8 @@ impl TyLowerDiag {
             Self::TypeAliasCycle { .. } => 4,
             Self::InconsistentKindBound(_, _) => 5,
             Self::KindBoundNotAllowed(_) => 6,
-            Self::AssocTy(_) => 7,
+            Self::GenericParamAlreadyDefinedInParent { .. } => 7,
+            Self::AssocTy(_) => 8,
         }
     }
 
@@ -168,6 +187,10 @@ impl TyLowerDiag {
 
             Self::InconsistentKindBound(_, _) => "duplicate type bound is not allowed.".to_string(),
             Self::KindBoundNotAllowed(_) => "kind bound is not allowed".to_string(),
+
+            Self::GenericParamAlreadyDefinedInParent { .. } => {
+                "generic parameter is already defined in the parent item".to_string()
+            }
 
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
         }
@@ -252,11 +275,34 @@ impl TyLowerDiag {
                     primary.resolve(db),
                 )]
             }
+
             Self::KindBoundNotAllowed(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "kind bound is not allowed here".to_string(),
                 span.resolve(db),
             )],
+
+            Self::GenericParamAlreadyDefinedInParent {
+                primary,
+                conflict_with,
+                name,
+            } => {
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!(
+                            "generic parameter `{}` is already defined in the parent item",
+                            name.data(db.as_hir_db())
+                        ),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "conflict with this generic parameter".to_string(),
+                        conflict_with.resolve(db),
+                    ),
+                ]
+            }
 
             Self::AssocTy(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,

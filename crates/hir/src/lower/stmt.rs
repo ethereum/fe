@@ -85,7 +85,7 @@ fn desugar_aug_assign(
     let lhs_ident = ast.ident();
     let path = lhs_ident
         .clone()
-        .map(|ident| PathId::from_ident(ctxt.f_ctxt, ident));
+        .map(|ident| PathId::from_token(ctxt.f_ctxt, ident));
 
     let lhs_origin: AugAssignDesugared = lhs_ident.unwrap().text_range().into();
     let lhs_pat = if let Some(path) = path {

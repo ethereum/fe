@@ -6,8 +6,8 @@ use std::collections::BTreeSet;
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, Impl as HirImpl, ImplTrait, Trait, TraitRefId, TypeAlias,
-        TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, FieldDef, Impl as HirImpl, ImplTrait, PathId, Trait, TraitRefId,
+        TypeAlias, TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
@@ -15,6 +15,7 @@ use rustc_hash::FxHashSet;
 use salsa::function::Configuration;
 
 use crate::{
+    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
     ty::{
         diagnostics::{
             AdtDefDiagAccumulator, ImplDefDiagAccumulator, ImplTraitDefDiagAccumulator,
@@ -382,6 +383,37 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         let ScopeId::GenericParam(_, idx) = ctxt.scope() else {
             unreachable!()
         };
+
+        // Check if the same generic parameter is already defined in the parent item.
+        // Other name conflict check is done in the name resolution.
+        //
+        // This check is necessary because the conflict rule
+        // for the generic parameter is the exceptional case where shadowing shouldn't
+        // occur.
+        if let Some(name) = param.name().to_opt() {
+            let scope = self.scope();
+            let parent_scope = scope.parent(self.db.as_hir_db()).unwrap();
+            let path = PathId::from_ident(self.db.as_hir_db(), name);
+            if let EarlyResolvedPath::Full(bucket) = resolve_path_early(self.db, path, parent_scope)
+            {
+                if let Ok(res) = bucket.pick(NameDomain::Type) {
+                    if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) = res.kind
+                    {
+                        self.diags.push(
+                            TyLowerDiag::generic_param_conflict(
+                                ctxt.span().unwrap().into(),
+                                conflict_with.name_span(self.db.as_hir_db()).unwrap(),
+                                name,
+                            )
+                            .into(),
+                        );
+
+                        return;
+                    }
+                }
+            }
+        }
+
         self.current_ty = Some((
             self.def.params(self.db)[idx],
             ctxt.span().unwrap().into_type_param().name().into(),

@@ -1,0 +1,23 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/def/generic_param_conflict.fe
+---
+error[3-0007]: generic parameter is already defined in the parent item
+  ┌─ generic_param_conflict.fe:8:12
+  │
+6 │ impl<E> Result<E>
+  │      - conflict with this generic parameter
+7 │ {
+8 │     fn foo<E>(self: Self<E>) {}
+  │            ^ generic parameter `E` is already defined in the parent item
+
+error[3-0007]: generic parameter is already defined in the parent item
+   ┌─ generic_param_conflict.fe:11:16
+   │
+10 │     fn bar<T>(self: Self<T>) {
+   │            - conflict with this generic parameter
+11 │         fn baz<T>(t: T) {}
+   │                ^ generic parameter `T` is already defined in the parent item
+
+

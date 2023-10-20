@@ -21,4 +21,8 @@ impl PathId {
         let self_ty = Partial::Present(kw::SELF_TY);
         Self::new(db, vec![self_ty])
     }
+
+    pub fn from_ident(db: &dyn HirDb, ident: IdentId) -> Self {
+        Self::new(db, vec![Partial::Present(ident)])
+    }
 }
