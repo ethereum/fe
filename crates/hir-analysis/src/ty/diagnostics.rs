@@ -662,6 +662,11 @@ pub enum ImplDiag {
         primary: DynLazySpan,
         message: String,
     },
+
+    InvalidSelfType {
+        primary: DynLazySpan,
+        message: String,
+    },
 }
 
 impl ImplDiag {
@@ -776,6 +781,28 @@ impl ImplDiag {
         Self::MethodStricterBound { primary, message }
     }
 
+    pub(super) fn invalid_self_ty(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        expected: TyId,
+        actual: TyId,
+    ) -> Self {
+        let message = if !expected.is_trait_self(db) {
+            format!(
+                "type of `self` must starts with `Self` or `{}`, but the given type is `{}`",
+                expected.pretty_print(db),
+                actual.pretty_print(db),
+            )
+        } else {
+            format!(
+                "type of `self` must starts with `Self`, but the given type is `{}`",
+                actual.pretty_print(db),
+            )
+        };
+
+        Self::InvalidSelfType { primary, message }
+    }
+
     pub fn local_code(&self) -> u16 {
         match self {
             Self::ConflictMethodImpl { .. } => 0,
@@ -787,6 +814,7 @@ impl ImplDiag {
             Self::MethodArgTyMismatch { .. } => 6,
             Self::MethodRetTyMismatch { .. } => 7,
             Self::MethodStricterBound { .. } => 8,
+            Self::InvalidSelfType { .. } => 9,
         }
     }
 
@@ -830,6 +858,8 @@ impl ImplDiag {
             Self::MethodStricterBound { .. } => {
                 "impl method has stricter bound than the declared method in the trait".to_string()
             }
+
+            Self::InvalidSelfType { .. } => "invalid type for `self` argument".to_string(),
         }
     }
 
@@ -945,6 +975,14 @@ impl ImplDiag {
             }
 
             Self::MethodStricterBound { primary, message } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    message.clone(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::InvalidSelfType { primary, message } => {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
                     message.clone(),

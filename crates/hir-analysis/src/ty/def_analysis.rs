@@ -174,6 +174,7 @@ pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
 pub struct DefAnalyzer<'db> {
     db: &'db dyn HirAnalysisDb,
     def: DefKind,
+    parent_def: DefKind,
     diags: Vec<TyDiagCollection>,
     assumptions: AssumptionListId,
     current_ty: Option<(TyId, DynLazySpan)>,
@@ -186,6 +187,7 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def: def.into(),
+            parent_def: def.into(),
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -198,6 +200,7 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def: def.into(),
+            parent_def: def.into(),
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -206,9 +209,11 @@ impl<'db> DefAnalyzer<'db> {
 
     fn for_impl(db: &'db dyn HirAnalysisDb, impl_: HirImpl, ty: TyId) -> Self {
         let assumptions = collect_impl_block_constraints(db, impl_);
+        let def = DefKind::Impl(impl_, ty);
         Self {
             db,
-            def: DefKind::Impl(impl_, ty),
+            def,
+            parent_def: def,
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -220,6 +225,7 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def: implementor.into(),
+            parent_def: implementor.into(),
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -236,6 +242,40 @@ impl<'db> DefAnalyzer<'db> {
         } else {
             true
         }
+    }
+
+    fn verify_self_type(&mut self, self_ty: HirTyId, span: DynLazySpan) -> bool {
+        let expected_ty = match self.parent_def {
+            DefKind::Impl(_, ty) => ty,
+            DefKind::ImplTrait(implementor) => implementor.ty(self.db),
+            DefKind::Trait(trait_) => trait_.self_param(self.db),
+            _ => unreachable!(),
+        };
+
+        let param_ty = lower_hir_ty(self.db, self_ty, self.def.scope(self.db));
+        if !param_ty.contains_invalid(self.db) {
+            let (expected_base_ty, expected_param_ty_args) = expected_ty.decompose_ty_app(self.db);
+            let (param_base_ty, param_ty_args) = param_ty.decompose_ty_app(self.db);
+
+            if param_base_ty != expected_base_ty {
+                self.diags.push(
+                    ImplDiag::invalid_self_ty(self.db, span.clone(), expected_ty, param_ty).into(),
+                );
+                return false;
+            }
+
+            for (expected_arg, param_arg) in expected_param_ty_args.iter().zip(param_ty_args.iter())
+            {
+                if expected_arg != param_arg {
+                    self.diags.push(
+                        ImplDiag::invalid_self_ty(self.db, span, expected_ty, param_ty).into(),
+                    );
+                    return false;
+                }
+            }
+        }
+
+        true
     }
 
     fn verify_method_conflict(&mut self, func: FuncDef) -> bool {
@@ -554,11 +594,15 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         };
 
-        let ty_span = if param.is_self_param() && param.self_ty_fallback {
+        let ty_span: DynLazySpan = if param.is_self_param() && param.self_ty_fallback {
             ctxt.span().unwrap().name().into()
         } else {
             ctxt.span().unwrap().ty().into()
         };
+
+        if param.is_self_param() {
+            self.verify_self_type(hir_ty, ty_span.clone());
+        }
 
         if !self.verify_fully_applied(hir_ty, ty_span) {
             return;
