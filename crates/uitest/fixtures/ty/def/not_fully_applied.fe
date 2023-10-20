@@ -23,3 +23,6 @@ impl Gen<T> {
     
     fn bar(self: Self) {}
 }
+
+
+fn foo(gen: Gen) {}

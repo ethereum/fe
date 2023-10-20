@@ -58,6 +58,7 @@ pub struct Jar(
     hir_def::all_structs_in_top_mod,
     hir_def::all_enums_in_top_mod,
     hir_def::all_traits_in_top_mod,
+    hir_def::all_funcs_in_top_mod,
     hir_def::all_contracts_in_top_mod,
     hir_def::all_type_aliases_in_top_mod,
     hir_def::all_impl_in_top_mod,

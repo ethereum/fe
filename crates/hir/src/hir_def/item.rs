@@ -407,6 +407,10 @@ impl TopLevelMod {
         all_traits_in_top_mod(db, self)
     }
 
+    pub fn all_funcs(self, db: &dyn HirDb) -> &Vec<Func> {
+        all_funcs_in_top_mod(db, self)
+    }
+
     /// Returns all traits in the top level module including ones in nested
     /// modules.
     pub fn all_impl_traits(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
@@ -499,6 +503,17 @@ pub fn all_traits_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Trait>
         .iter()
         .filter_map(|item| match item {
             ItemKind::Trait(trait_) => Some(*trait_),
+            _ => None,
+        })
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
+pub fn all_funcs_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Func> {
+    all_items_in_top_mod(db, top_mod)
+        .iter()
+        .filter_map(|item| match item {
+            ItemKind::Func(func_) => Some(*func_),
             _ => None,
         })
         .collect()

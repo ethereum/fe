@@ -38,6 +38,7 @@ pub struct Jar(
     ty::def_analysis::analyze_trait,
     ty::def_analysis::analyze_impl,
     ty::def_analysis::analyze_impl_trait,
+    ty::def_analysis::analyze_func,
     /// Trait system.
     ty::trait_def::TraitDef,
     ty::trait_def::TraitInstId,
@@ -65,6 +66,7 @@ pub struct Jar(
     ty::diagnostics::TraitDefDiagAccumulator,
     ty::diagnostics::ImplTraitDefDiagAccumulator,
     ty::diagnostics::ImplDefDiagAccumulator,
+    ty::diagnostics::FuncDefDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {

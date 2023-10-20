@@ -28,6 +28,8 @@ pub struct ImplTraitDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
 pub struct ImplDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
+pub struct FuncDefDiagAccumulator(pub(super) TyDiagCollection);
+#[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]

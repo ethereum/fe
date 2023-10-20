@@ -51,4 +51,10 @@ error[3-0000]: expected fully applied type
 24 │     fn bar(self: Self) {}
    │                  ^^^^ expected fully applied type here
 
+error[3-0000]: expected fully applied type
+   ┌─ not_fully_applied.fe:28:13
+   │
+28 │ fn foo(gen: Gen) {}
+   │             ^^^ expected fully applied type here
+
 

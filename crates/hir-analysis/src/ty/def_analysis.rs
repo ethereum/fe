@@ -6,8 +6,8 @@ use std::collections::BTreeSet;
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, Impl as HirImpl, ImplTrait, PathId, Trait, TraitRefId,
-        TypeAlias, TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, FieldDef, Func, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait,
+        TraitRefId, TypeAlias, TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
@@ -18,8 +18,8 @@ use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
     ty::{
         diagnostics::{
-            AdtDefDiagAccumulator, ImplDefDiagAccumulator, ImplTraitDefDiagAccumulator,
-            TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
+            AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
+            ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
         },
         method_table::collect_methods,
         trait_lower::lower_impl_trait,
@@ -37,7 +37,7 @@ use super::{
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
-    ty_def::{AdtDef, AdtRefId, FuncDef, TyId},
+    ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyId},
     ty_lower::{
         collect_generic_params, lower_adt, lower_func, lower_hir_ty, lower_kind,
         GenericParamOwnerId,
@@ -133,6 +133,19 @@ pub fn analyze_impl(db: &dyn HirAnalysisDb, impl_: HirImpl) {
     }
 }
 
+#[salsa::tracked]
+pub fn analyze_func(db: &dyn HirAnalysisDb, func: Func) {
+    let Some(func_def) = lower_func(db, func) else {
+        return;
+    };
+
+    let analyzer = DefAnalyzer::for_func(db, func_def);
+    let diags = analyzer.analyze();
+    for diag in diags {
+        FuncDefDiagAccumulator::push(db, diag);
+    }
+}
+
 /// This function implements analysis for the type alias definition.
 /// The analysis includes the following:
 /// - Check if the type alias is not recursive.
@@ -174,7 +187,7 @@ pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
 pub struct DefAnalyzer<'db> {
     db: &'db dyn HirAnalysisDb,
     def: DefKind,
-    parent_def: DefKind,
+    self_ty: Option<TyId>,
     diags: Vec<TyDiagCollection>,
     assumptions: AssumptionListId,
     current_ty: Option<(TyId, DynLazySpan)>,
@@ -187,7 +200,7 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def: def.into(),
-            parent_def: def.into(),
+            self_ty: None,
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -200,7 +213,7 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def: def.into(),
-            parent_def: def.into(),
+            self_ty: def.self_param(db).into(),
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -213,7 +226,7 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def,
-            parent_def: def,
+            self_ty: ty.into(),
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -225,7 +238,35 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def: implementor.into(),
-            parent_def: implementor.into(),
+            self_ty: implementor.ty(db).into(),
+            diags: vec![],
+            assumptions,
+            current_ty: None,
+        }
+    }
+
+    fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef) -> Self {
+        let hir_db = db.as_hir_db();
+        let assumptions = func.constraints(db);
+        let self_ty = match func.hir_func(db).scope().parent(hir_db).unwrap() {
+            ScopeId::Item(ItemKind::Trait(trait_)) => lower_trait(db, trait_).self_param(db).into(),
+            ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => {
+                match impl_trait.ty(hir_db).to_opt() {
+                    Some(hir_ty) => lower_hir_ty(db, hir_ty, impl_trait.scope()).into(),
+                    _ => TyId::invalid(db, InvalidCause::Other).into(),
+                }
+            }
+            ScopeId::Item(ItemKind::Impl(impl_)) => match impl_.ty(hir_db).to_opt() {
+                Some(hir_ty) => lower_hir_ty(db, hir_ty, impl_.scope()).into(),
+                None => TyId::invalid(db, InvalidCause::Other).into(),
+            },
+            _ => None,
+        };
+
+        Self {
+            db,
+            def: func.into(),
+            self_ty,
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -245,15 +286,10 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     fn verify_self_type(&mut self, self_ty: HirTyId, span: DynLazySpan) -> bool {
-        let expected_ty = match self.parent_def {
-            DefKind::Impl(_, ty) => ty,
-            DefKind::ImplTrait(implementor) => implementor.ty(self.db),
-            DefKind::Trait(trait_) => trait_.self_param(self.db),
-            _ => unreachable!(),
-        };
+        let expected_ty = self.self_ty.unwrap();
 
         let param_ty = lower_hir_ty(self.db, self_ty, self.def.scope(self.db));
-        if !param_ty.contains_invalid(self.db) {
+        if !param_ty.contains_invalid(self.db) && !expected_ty.contains_invalid(self.db) {
             let (expected_base_ty, expected_param_ty_args) = expected_ty.decompose_ty_app(self.db);
             let (param_base_ty, param_ty_args) = param_ty.decompose_ty_app(self.db);
 
@@ -279,13 +315,9 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     fn verify_method_conflict(&mut self, func: FuncDef) -> bool {
-        let self_ty = func.receiver_ty(self.db).unwrap_or_else(|| {
-            if let DefKind::Impl(_, ty) = self.def {
-                ty
-            } else {
-                unreachable!()
-            }
-        });
+        let self_ty = func
+            .receiver_ty(self.db)
+            .unwrap_or_else(|| self.self_ty.unwrap());
 
         if self_ty.contains_invalid(self.db) {
             return true;
@@ -317,11 +349,22 @@ impl<'db> DefAnalyzer<'db> {
 
     fn analyze(mut self) -> Vec<TyDiagCollection> {
         match self.def {
-            DefKind::Adt(def) => {
-                let item = def.adt_ref(self.db).as_item(self.db);
-                let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), item);
-                self.visit_item(&mut ctxt, item);
-            }
+            DefKind::Adt(def) => match def.adt_ref(self.db).data(self.db) {
+                AdtRef::Struct(struct_) => {
+                    let mut ctxt = VisitorCtxt::with_struct(self.db.as_hir_db(), struct_);
+                    self.visit_struct(&mut ctxt, struct_);
+                }
+
+                AdtRef::Enum(enum_) => {
+                    let mut ctxt = VisitorCtxt::with_enum(self.db.as_hir_db(), enum_);
+                    self.visit_enum(&mut ctxt, enum_);
+                }
+
+                AdtRef::Contract(contract) => {
+                    let mut ctxt = VisitorCtxt::with_contract(self.db.as_hir_db(), contract);
+                    self.visit_contract(&mut ctxt, contract);
+                }
+            },
 
             DefKind::Trait(trait_) => {
                 let trait_ = trait_.trait_(self.db);
@@ -349,11 +392,13 @@ impl<'db> DefAnalyzer<'db> {
 
         self.diags
     }
-
-    // 1. Check if the conflict doesn't occur.
 }
 
 impl<'db> Visitor for DefAnalyzer<'db> {
+    // We don't need to traverse the nested item, each item kinds are explicitly
+    // handled(e.g, `visit_trait` or `visit_enum`).
+    fn visit_item(&mut self, _ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, _item: ItemKind) {}
+
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
         let ty = lower_hir_ty(self.db, hir_ty, self.scope());
         let span = ctxt.span().unwrap();
@@ -432,7 +477,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         // occur.
         if let Some(name) = param.name().to_opt() {
             let scope = self.scope();
-            let parent_scope = scope.parent(self.db.as_hir_db()).unwrap();
+            let parent_scope = scope.parent_item(self.db.as_hir_db()).unwrap().scope();
             let path = PathId::from_ident(self.db.as_hir_db(), name);
             if let EarlyResolvedPath::Full(bucket) = resolve_path_early(self.db, path, parent_scope)
             {
@@ -572,7 +617,14 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         };
 
-        if matches!(self.def, DefKind::Impl(_, _)) && !self.verify_method_conflict(func) {
+        // We need to check the conflict only when the function is defined in the `impl`
+        // block since this check requires the ingot-wide method table(i.e., which is
+        // not performed in name resolution phase).
+        if matches!(
+            ctxt.scope().parent_item(self.db.as_hir_db()).unwrap(),
+            ItemKind::Impl(_)
+        ) && !self.verify_method_conflict(func)
+        {
             return;
         }
 
