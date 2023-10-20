@@ -1066,6 +1066,8 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         let mut subst = self.implementor.subst_table(self.db);
 
         let mut is_err = false;
+        let hir_impl_method = impl_method.hir_func(self.db);
+        let hir_expected_method = expected_method.0.hir_func(self.db);
 
         // Checks if the number of parameters are the same.
         let method_params = impl_method.params(self.db);
@@ -1073,7 +1075,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         if method_params.len() != expected_params.len() {
             self.diags.push(
                 ImplDiag::method_param_num_mismatch(
-                    impl_method.hir_func(self.db).lazy_span().name().into(),
+                    hir_impl_method.lazy_span().name().into(),
                     expected_params.len(),
                     method_params.len(),
                 )
@@ -1094,8 +1096,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
             let given_kind = method_param.kind(self.db);
 
             if expected_kind != given_kind {
-                let span = impl_method
-                    .hir_func(self.db)
+                let span = hir_impl_method
                     .lazy_span()
                     .generic_params()
                     .param(idx)
@@ -1120,11 +1121,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         if expected_arg_tys.len() != method_arg_tys.len() {
             self.diags.push(
                 ImplDiag::method_arg_num_mismatch(
-                    impl_method
-                        .hir_func(self.db)
-                        .lazy_span()
-                        .params_moved()
-                        .into(),
+                    hir_impl_method.lazy_span().params_moved().into(),
                     expected_arg_tys.len(),
                     method_arg_tys.len(),
                 )
@@ -1135,6 +1132,48 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
 
         if is_err {
             return;
+        }
+
+        // Checks if the argument labels are the same.
+        for (idx, (expected_param, method_param)) in expected_method
+            .0
+            .hir_params(self.db)
+            .iter()
+            .zip(impl_method.hir_params(self.db))
+            .enumerate()
+        {
+            let Some(expected_label) = expected_param
+                .label
+                .or_else(|| expected_param.name.to_opt())
+            else {
+                continue;
+            };
+
+            let Some(method_label) = method_param.label.or_else(|| method_param.name.to_opt())
+            else {
+                continue;
+            };
+
+            if expected_label != method_label {
+                let primary = hir_impl_method.lazy_span().params_moved().param(idx).into();
+                let sub = hir_expected_method
+                    .lazy_span()
+                    .params_moved()
+                    .param(idx)
+                    .into();
+
+                self.diags.push(
+                    ImplDiag::method_arg_label_mismatch(
+                        self.db,
+                        primary,
+                        sub,
+                        expected_label,
+                        method_label,
+                    )
+                    .into(),
+                );
+                is_err = true;
+            }
         }
 
         // Checks if the argument types are the same.

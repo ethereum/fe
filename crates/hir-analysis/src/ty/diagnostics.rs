@@ -5,7 +5,7 @@ use common::diagnostics::{
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
-    hir_def::{IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias},
+    hir_def::{FuncParamName, IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias},
     span::{DynLazySpan, LazySpan},
     HirDb, SpannedHirDb,
 };
@@ -692,6 +692,12 @@ pub enum ImplDiag {
         given: usize,
     },
 
+    MethodArgLabelMismatch {
+        primary: DynLazySpan,
+        definition: DynLazySpan,
+        message: String,
+    },
+
     MethodArgTyMismatch {
         primary: DynLazySpan,
         message: String,
@@ -782,6 +788,26 @@ impl ImplDiag {
         Self::MethodArgTyMismatch { primary, message }
     }
 
+    pub fn method_arg_label_mismatch(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        definition: DynLazySpan,
+        expected: FuncParamName,
+        given: FuncParamName,
+    ) -> Self {
+        let message = format!(
+            "expected `{}` label, but the given label is `{}`",
+            expected.pretty_print(db.as_hir_db()),
+            given.pretty_print(db.as_hir_db())
+        );
+
+        Self::MethodArgLabelMismatch {
+            primary,
+            definition,
+            message,
+        }
+    }
+
     pub fn method_ret_type_mismatch(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
@@ -855,10 +881,11 @@ impl ImplDiag {
             Self::MethodTypeParamNumMismatch { .. } => 3,
             Self::MethodTypeParamKindMismatch { .. } => 4,
             Self::MethodArgNumMismatch { .. } => 5,
-            Self::MethodArgTyMismatch { .. } => 6,
-            Self::MethodRetTyMismatch { .. } => 7,
-            Self::MethodStricterBound { .. } => 8,
-            Self::InvalidSelfType { .. } => 9,
+            Self::MethodArgLabelMismatch { .. } => 6,
+            Self::MethodArgTyMismatch { .. } => 7,
+            Self::MethodRetTyMismatch { .. } => 8,
+            Self::MethodStricterBound { .. } => 9,
+            Self::InvalidSelfType { .. } => 10,
         }
     }
 
@@ -889,6 +916,11 @@ impl ImplDiag {
 
             Self::MethodArgNumMismatch { .. } => {
                 "trait method argument number mismatch".to_string()
+            }
+
+            Self::MethodArgLabelMismatch { .. } => {
+                "given argument label doesn't match the expected label required by trait"
+                    .to_string()
             }
 
             Self::MethodArgTyMismatch { .. } => {
@@ -1000,6 +1032,21 @@ impl ImplDiag {
                     format!("expected {} arguments here, but {} given", expected, given),
                     primary.resolve(db),
                 )]
+            }
+
+            Self::MethodArgLabelMismatch {
+                primary,
+                definition,
+                message,
+            } => {
+                vec![
+                    SubDiagnostic::new(LabelStyle::Primary, message.clone(), primary.resolve(db)),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "argument label is defined here".to_string(),
+                        definition.resolve(db),
+                    ),
+                ]
             }
 
             Self::MethodArgTyMismatch { primary, message } => {

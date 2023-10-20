@@ -133,6 +133,13 @@ impl FuncParamName {
     pub fn is_self(&self) -> bool {
         self.ident() == Some(kw::SELF)
     }
+
+    pub fn pretty_print(&self, db: &dyn HirDb) -> String {
+        match self {
+            FuncParamName::Ident(name) => name.data(db).to_string(),
+            FuncParamName::Underscore => "_".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

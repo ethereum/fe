@@ -7,8 +7,8 @@ use hir::{
         kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Contract, Enum, Func, IdentId, IngotId, ItemKind, Partial, Struct,
-        TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
+        Contract, Enum, Func, FuncParam as HirFuncParam, IdentId, IngotId, ItemKind, Partial,
+        Struct, TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
     },
     span::DynLazySpan,
 };
@@ -413,6 +413,15 @@ impl FuncDef {
 
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         collect_func_def_constraints(db, self)
+    }
+
+    pub(super) fn hir_params(self, db: &dyn HirAnalysisDb) -> &[HirFuncParam] {
+        const EMPTY: &[HirFuncParam] = &[];
+        self.hir_func(db)
+            .params(db.as_hir_db())
+            .to_opt()
+            .map(|list| list.data(db.as_hir_db()).as_ref())
+            .unwrap_or(EMPTY)
     }
 }
 

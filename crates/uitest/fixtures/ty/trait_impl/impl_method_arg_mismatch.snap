@@ -9,13 +9,13 @@ error[6-0005]: trait method argument number mismatch
 10 │     fn foo<T, U>(self, t: (T, U)) {}
    │                 ^^^^^^^^^^^^^^^^^ expected 3 arguments here, but 2 given
 
-error[6-0006]: given argument type doesn't match the expected type required by trait
+error[6-0007]: given argument type doesn't match the expected type required by trait
   ┌─ impl_method_arg_mismatch.fe:6:30
   │
 6 │     fn foo<T, U>(self, t: T, u: i32) {}
   │                              ^^^^^^ expected `U` type, but the given type is `i32`
 
-error[6-0006]: given argument type doesn't match the expected type required by trait
+error[6-0007]: given argument type doesn't match the expected type required by trait
    ┌─ impl_method_arg_mismatch.fe:26:15
    │
 26 │     fn foo<T>(x: Self<T>) {}
