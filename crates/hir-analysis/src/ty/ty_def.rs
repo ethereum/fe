@@ -73,9 +73,8 @@ impl TyId {
         }
     }
 
-    /// Returns `true` if the type is declared as a monotype or fully applied
-    /// type.
-    pub fn is_mono_type(self, db: &dyn HirAnalysisDb) -> bool {
+    /// Returns `true` if the type has a `*` kind.
+    pub fn has_star_kind(self, db: &dyn HirAnalysisDb) -> bool {
         !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
@@ -164,9 +163,7 @@ impl TyId {
             }
 
             TyData::Invalid(cause) => match cause {
-                InvalidCause::NotFullyApplied => {
-                    Some(TyLowerDiag::not_fully_applied_type(span).into())
-                }
+                InvalidCause::NotFullyApplied => Some(TyLowerDiag::non_concrete_ty(span).into()),
 
                 InvalidCause::KindMismatch { expected, given } => {
                     Some(TyLowerDiag::invalid_type_arg_kind(db, span, expected, given).into())

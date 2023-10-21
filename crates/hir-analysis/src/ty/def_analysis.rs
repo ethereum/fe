@@ -273,12 +273,11 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    // This method ensures that field/variant types are fully applied.
-    fn verify_fully_applied(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
+    /// This method verifies if the given `ty` has `*` kind(i.e, concrete type)
+    fn verify_concrete_type(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
-        if !ty.is_mono_type(self.db) {
-            self.diags
-                .push(TyLowerDiag::not_fully_applied_type(span).into());
+        if !ty.has_star_kind(self.db) {
+            self.diags.push(TyLowerDiag::non_concrete_ty(span).into());
             false
         } else {
             true
@@ -436,7 +435,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
     }
     fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
         if let Some(ty) = field.ty.to_opt() {
-            if self.verify_fully_applied(ty, ctxt.span().unwrap().ty().into()) {
+            if self.verify_concrete_type(ty, ctxt.span().unwrap().ty().into()) {
                 walk_field_def(self, ctxt, field);
             }
         }
@@ -454,7 +453,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
                     continue;
                 };
 
-                self.verify_fully_applied(elem_ty, span.elem_ty(i).into());
+                self.verify_concrete_type(elem_ty, span.elem_ty(i).into());
             }
         }
         walk_variant_def(self, ctxt, variant);
@@ -689,7 +688,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             self.verify_self_type(hir_ty, ty_span.clone());
         }
 
-        if !self.verify_fully_applied(hir_ty, ty_span) {
+        if !self.verify_concrete_type(hir_ty, ty_span) {
             return;
         }
 

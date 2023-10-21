@@ -1,0 +1,60 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/def/not_concrete_ty.fe
+---
+error[2-0002]: `T` is not found
+   ┌─ not_concrete_ty.fe:21:10
+   │
+21 │ impl Gen<T> {
+   │          ^ `T` is not found
+
+error[3-0000]: expected a concrete type in this context
+  ┌─ not_concrete_ty.fe:7:8
+  │
+7 │     f: Gen<i32>,
+  │        ^^^^^^^^ expected a concrete type here
+
+error[3-0000]: expected a concrete type in this context
+   ┌─ not_concrete_ty.fe:12:13
+   │
+12 │     Variant(Gen<i32>, Gen<u32>)
+   │             ^^^^^^^^ expected a concrete type here
+
+error[3-0000]: expected a concrete type in this context
+   ┌─ not_concrete_ty.fe:12:23
+   │
+12 │     Variant(Gen<i32>, Gen<u32>)
+   │                       ^^^^^^^^ expected a concrete type here
+
+error[3-0000]: expected a concrete type in this context
+   ┌─ not_concrete_ty.fe:13:36
+   │
+13 │     Variant2{ x: Gen<i32, u32>, y: Gen<u32> }
+   │                                    ^^^^^^^^ expected a concrete type here
+
+error[3-0000]: expected a concrete type in this context
+   ┌─ not_concrete_ty.fe:17:8
+   │
+17 │     f: Gen<i32>,
+   │        ^^^^^^^^ expected a concrete type here
+
+error[3-0000]: expected a concrete type in this context
+   ┌─ not_concrete_ty.fe:22:12
+   │
+22 │     fn foo(self) {}
+   │            ^^^^ expected a concrete type here
+
+error[3-0000]: expected a concrete type in this context
+   ┌─ not_concrete_ty.fe:24:18
+   │
+24 │     fn bar(self: Self) {}
+   │                  ^^^^ expected a concrete type here
+
+error[3-0000]: expected a concrete type in this context
+   ┌─ not_concrete_ty.fe:28:13
+   │
+28 │ fn foo(gen: Gen) {}
+   │             ^^^ expected a concrete type here
+
+

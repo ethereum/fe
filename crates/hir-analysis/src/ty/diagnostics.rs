@@ -53,7 +53,7 @@ impl TyDiagCollection {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag {
-    NotFullyAppliedType(DynLazySpan),
+    NonConcreteTy(DynLazySpan),
     InvalidTypeArgKind(DynLazySpan, String),
     RecursiveType {
         primary_span: DynLazySpan,
@@ -90,8 +90,8 @@ pub enum TyLowerDiag {
 }
 
 impl TyLowerDiag {
-    pub fn not_fully_applied_type(span: DynLazySpan) -> Self {
-        Self::NotFullyAppliedType(span)
+    pub fn non_concrete_ty(span: DynLazySpan) -> Self {
+        Self::NonConcreteTy(span)
     }
 
     pub fn invalid_type_arg_kind(
@@ -182,7 +182,7 @@ impl TyLowerDiag {
 
     fn local_code(&self) -> u16 {
         match self {
-            Self::NotFullyAppliedType(_) => 0,
+            Self::NonConcreteTy(_) => 0,
             Self::InvalidTypeArgKind(_, _) => 1,
             Self::RecursiveType { .. } => 2,
             Self::UnboundTypeAliasParam { .. } => 3,
@@ -197,7 +197,7 @@ impl TyLowerDiag {
 
     fn message(&self) -> String {
         match self {
-            Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
+            Self::NonConcreteTy(_) => "expected a concrete type in this context".to_string(),
             Self::InvalidTypeArgKind(_, _) => "invalid type argument kind".to_string(),
             Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
 
@@ -223,9 +223,9 @@ impl TyLowerDiag {
 
     fn sub_diags(&self, db: &dyn SpannedHirDb) -> Vec<SubDiagnostic> {
         match self {
-            Self::NotFullyAppliedType(span) => vec![SubDiagnostic::new(
+            Self::NonConcreteTy(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
-                "expected fully applied type here".to_string(),
+                "expected a concrete type here".to_string(),
                 span.resolve(db),
             )],
 

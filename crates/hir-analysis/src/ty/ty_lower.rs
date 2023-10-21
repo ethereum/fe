@@ -318,7 +318,7 @@ impl<'db> TyBuilder<'db> {
                 .to_opt()
                 .map(|elem| lower_hir_ty(self.db, elem, self.scope))
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
-            if !elem_ty.is_mono_type(self.db) {
+            if !elem_ty.has_star_kind(self.db) {
                 return TyId::invalid(self.db, InvalidCause::NotFullyApplied);
             }
 
