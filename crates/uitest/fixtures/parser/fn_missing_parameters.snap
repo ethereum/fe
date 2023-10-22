@@ -3,17 +3,11 @@ source: crates/uitest/tests/parser.rs
 expression: diags
 input_file: crates/uitest/fixtures/parser/fn_missing_parameters.fe
 ---
-error[1-0001]: unexpected token
+error[1-0001]: expected `(` for the function arguments
   ┌─ fn_missing_parameters.fe:1:8
   │
 1 │ fn foo -> u8 {}
-  │        ^^ unexpected token
-
-error[1-0001]: expected `(` for the function arguments
-  ┌─ fn_missing_parameters.fe:1:14
-  │
-1 │ fn foo -> u8 {}
-  │              ^ expected `(` for the function arguments
+  │        ^^ expected `(` for the function arguments
 
 error[1-0001]: expected `(` for the function arguments
   ┌─ fn_missing_parameters.fe:3:8
@@ -21,28 +15,22 @@ error[1-0001]: expected `(` for the function arguments
 3 │ fn bar {
   │        ^ expected `(` for the function arguments
 
-error[1-0001]: unexpected token
+error[1-0001]: expected `(` for the function arguments
   ┌─ fn_missing_parameters.fe:6:8
   │
 6 │ fn baz -> u8 {}
-  │        ^^ unexpected token
+  │        ^^ expected `(` for the function arguments
 
 error[1-0001]: expected `(` for the function arguments
-  ┌─ fn_missing_parameters.fe:6:14
-  │
-6 │ fn baz -> u8 {}
-  │              ^ expected `(` for the function arguments
-
-error[1-0001]: unexpected token
   ┌─ fn_missing_parameters.fe:8:9
   │
 8 │ fn f<T> where T: U {}
-  │         ^^^^^ unexpected token
+  │         ^^^^^ expected `(` for the function arguments
 
-error[1-0001]: expected `(` for the function arguments
+error[1-0001]: expected newline after type bounds
   ┌─ fn_missing_parameters.fe:8:20
   │
 8 │ fn f<T> where T: U {}
-  │                    ^ expected `(` for the function arguments
+  │                    ^ expected newline after type bounds
 
 
