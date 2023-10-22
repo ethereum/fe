@@ -15,6 +15,7 @@ use self::{
 
 pub mod constraint_solver;
 pub mod def_analysis;
+pub mod dependent_ty;
 pub mod diagnostics;
 pub mod method_table;
 pub mod trait_def;

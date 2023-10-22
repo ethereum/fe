@@ -23,6 +23,7 @@ use super::{
     constraint::{
         collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
     },
+    dependent_ty::DependentTy,
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::{InferenceKey, UnificationTable},
@@ -31,6 +32,7 @@ use super::{
 
 #[salsa::interned]
 pub struct TyId {
+    #[return_ref]
     pub data: TyData,
 }
 
@@ -59,7 +61,7 @@ impl TyId {
 
     pub fn invalid_cause(self, db: &dyn HirAnalysisDb) -> Option<InvalidCause> {
         match self.data(db) {
-            TyData::Invalid(cause) => Some(cause),
+            TyData::Invalid(cause) => Some(cause.clone()),
             _ => None,
         }
     }
@@ -91,7 +93,7 @@ impl TyId {
 
     pub(super) fn base_ty(self, db: &dyn HirAnalysisDb) -> Option<TyBase> {
         match self.decompose_ty_app(db).0.data(db) {
-            TyData::TyBase(concrete) => Some(concrete),
+            TyData::TyBase(concrete) => Some(*concrete),
             _ => None,
         }
     }
@@ -165,14 +167,14 @@ impl TyId {
             TyData::Invalid(cause) => match cause {
                 InvalidCause::NotFullyApplied => Some(TyLowerDiag::non_concrete_ty(span).into()),
 
-                InvalidCause::KindMismatch { expected, given } => {
-                    Some(TyLowerDiag::invalid_type_arg_kind(db, span, expected, given).into())
-                }
+                InvalidCause::KindMismatch { expected, given } => Some(
+                    TyLowerDiag::invalid_type_arg_kind(db, span, expected.clone(), *given).into(),
+                ),
 
                 InvalidCause::UnboundTypeAliasParam {
                     alias,
                     n_given_args: n_given_arg,
-                } => Some(TyLowerDiag::unbound_type_alias_param(span, alias, n_given_arg).into()),
+                } => Some(TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into()),
 
                 InvalidCause::AssocTy => Some(TyLowerDiag::assoc_ty(span).into()),
 
@@ -481,10 +483,7 @@ pub enum TyData {
     /// A concrete type, e.g., `i32`, `u32`, `bool`, `String`, `Result` etc.
     TyBase(TyBase),
 
-    // TODO: DependentTy,
-    // TermTy(TermTy)
-    // DependentTyParam(TyParam, TyConst),
-    // DependentTyVar(TyVar, TyConst),
+    DependentTy(DependentTy),
 
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
@@ -771,6 +770,9 @@ impl HasKind for TyData {
                 Kind::Abs(_, ret) => ret.as_ref().clone(),
                 _ => Kind::Any,
             },
+
+            TyData::DependentTy(dependent_ty) => dependent_ty.ty.kind(db).clone(),
+
             TyData::Invalid(_) => Kind::Any,
         }
     }
@@ -920,8 +922,8 @@ fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
         fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
             match ty.data(db) {
                 TyData::TyApp(lhs, rhs) => {
-                    self.visit_ty(db, lhs);
-                    self.args.push(rhs);
+                    self.visit_ty(db, *lhs);
+                    self.args.push(*rhs);
                 }
                 _ => self.base = Some(ty),
             }
@@ -939,7 +941,7 @@ fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
                 base: None,
                 args: Vec::new(),
             };
-            decomposer.visit_app(db, lhs, rhs);
+            decomposer.visit_app(db, *lhs, *rhs);
             (
                 decomposer.base.unwrap(),
                 decomposer.args.into_iter().collect(),

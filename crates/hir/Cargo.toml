@@ -13,7 +13,7 @@ description = "Provides HIR definition and lowering for Fe lang"
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
 derive_more = "0.99"
 cranelift-entity = "0.91"
-num-bigint = "0.4.3"
+num-bigint = "0.4"
 num-traits = "0.2.15"
 camino = "1.1.4"
 rustc-hash = "1.1.0"

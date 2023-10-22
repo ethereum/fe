@@ -64,10 +64,10 @@ impl<'db> UnificationTable<'db> {
                 .is_ok(),
 
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
-                let ok = self.unify_ty(ty1_1, ty2_1);
+                let ok = self.unify_ty(*ty1_1, *ty2_1);
                 if ok {
-                    let ty1_2 = self.apply(self.db, ty1_2);
-                    let ty2_2 = self.apply(self.db, ty2_2);
+                    let ty1_2 = self.apply(self.db, *ty1_2);
+                    let ty2_2 = self.apply(self.db, *ty2_2);
                     self.unify_ty(ty1_2, ty2_2)
                 } else {
                     false
