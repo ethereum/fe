@@ -9,41 +9,23 @@ error[1-0001]: expected ident for the struct name
 1 │ pub struct<T, U
   │           ^ expected ident for the struct name
 
-error[1-0001]: unexpected token
-  ┌─ struct_.fe:2:1
-  │
-2 │ where T 
-  │ ^^^^^ unexpected token
-
 error[1-0001]: expected closing `>`
-  ┌─ struct_.fe:2:1
+  ┌─ struct_.fe:1:16
   │
-2 │ where T 
-  │ ^^^^^ expected closing `>`
+1 │ pub struct<T, U
+  │                ^ expected closing `>`
 
 error[1-0001]: expected `:` for type bounds
-  ┌─ struct_.fe:2:9
-  │  
-2 │   where T 
-  │ ╭────────^
-3 │ │       U: Trait
-  │ ╰^ expected `:` for type bounds
-
-error[1-0001]: unexpected token
-  ┌─ struct_.fe:6:8
-  │  
-6 │       foo
-  │ ╭───────^
-7 │ │     bar: i32::foo
-  │ ╰^ unexpected token
+  ┌─ struct_.fe:2:8
+  │
+2 │ where T 
+  │        ^ expected `:` for type bounds
 
 error[1-0001]: expected `name: type` for the field definition
   ┌─ struct_.fe:6:8
-  │  
-6 │       foo
-  │ ╭───────^
-7 │ │     bar: i32::foo
-  │ ╰^ expected `name: type` for the field definition
+  │
+6 │     foo
+  │        ^ expected `name: type` for the field definition
 
 error[1-0001]: expected comma after field definition
   ┌─ struct_.fe:6:8

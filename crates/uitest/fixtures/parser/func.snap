@@ -3,23 +3,23 @@ source: crates/uitest/tests/parser.rs
 expression: diags
 input_file: crates/uitest/fixtures/parser/func.fe
 ---
-error[1-0001]: unexpected token
+error[1-0001]: unexpected syntax
   ┌─ func.fe:1:17
   │
 1 │ fn foo<T: Trait>>(x: i32, _ mut y: u32, z: u32) ->  T, u where T: Trait2 
-  │                 ^ unexpected token
+  │                 ^ unexpected syntax
 
-error[1-0001]: unexpected token
+error[1-0001]: unexpected syntax
   ┌─ func.fe:1:29
   │
 1 │ fn foo<T: Trait>>(x: i32, _ mut y: u32, z: u32) ->  T, u where T: Trait2 
-  │                             ^^^ unexpected token
+  │                             ^^^^^ unexpected syntax
 
-error[1-0001]: unexpected token
+error[1-0001]: unexpected syntax
   ┌─ func.fe:1:54
   │
 1 │ fn foo<T: Trait>>(x: i32, _ mut y: u32, z: u32) ->  T, u where T: Trait2 
-  │                                                      ^ unexpected token
+  │                                                      ^^^ unexpected syntax
 
 error[1-0001]: expected type parameter
   ┌─ func.fe:6:8
@@ -27,11 +27,11 @@ error[1-0001]: expected type parameter
 6 │ fn foo<<<T: Trait>(x: i32)
   │        ^ expected type parameter
 
-error[1-0001]: unexpected token
-  ┌─ func.fe:6:19
+error[1-0001]: unexpected syntax
+  ┌─ func.fe:6:8
   │
 6 │ fn foo<<<T: Trait>(x: i32)
-  │                   ^ unexpected token
+  │        ^^^^^^^^^^^ unexpected syntax
 
 error[1-0001]: expected closing `>`
   ┌─ func.fe:6:19

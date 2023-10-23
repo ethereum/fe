@@ -41,9 +41,6 @@ Root@0..94
           Path@35..38
             PathSegment@35..38
               Ident@35..38 "Bar"
-        Error@38..38
-        Error@38..38
-        Error@38..38
       Newline@38..39 "\n"
       RBrace@39..40 "}"
   WhiteSpace@40..41 " "
@@ -83,9 +80,6 @@ Root@0..94
             PathPat@70..70
               Path@70..70
                 PathSegment@70..70
-                  Error@70..70
-            Error@70..70
-            Error@70..70
         FatArrow@70..72 "=>"
         WhiteSpace@72..73 " "
         LitExpr@73..77

@@ -9,12 +9,6 @@ error[1-0001]: expected type parameter
 1 │ type Result<T, = Result<T, E>
   │                ^ expected type parameter
 
-error[1-0001]: unexpected token
-  ┌─ type_.fe:1:16
-  │
-1 │ type Result<T, = Result<T, E>
-  │                ^ unexpected token
-
 error[1-0001]: expected closing `>`
   ┌─ type_.fe:1:16
   │

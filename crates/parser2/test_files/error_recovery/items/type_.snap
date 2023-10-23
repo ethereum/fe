@@ -17,9 +17,6 @@ Root@0..72
           Comma@13..14 ","
           WhiteSpace@14..15 " "
           TypeGenericParam@15..15
-            Error@15..15
-            Error@15..15
-          Error@15..15
         Eq@15..16 "="
         WhiteSpace@16..17 " "
         PathType@17..29

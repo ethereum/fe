@@ -23,9 +23,9 @@ Root@0..151
           LBrace@19..20 "{"
           Newline@20..21 "\n"
           WhiteSpace@21..25 "    "
-          VariantDef@25..39
+          VariantDef@25..33
             Ident@25..26 "X"
-            TupleType@26..39
+            TupleType@26..33
               LParen@26..27 "("
               PathType@27..30
                 Path@27..30
@@ -37,10 +37,10 @@ Root@0..151
                 Path@32..33
                   PathSegment@32..33
                     Ident@32..33 "T"
-              Newline@33..34 "\n"
-              WhiteSpace@34..38 "    "
-              Error@38..39
-                Ident@38..39 "A"
+          Newline@33..34 "\n"
+          WhiteSpace@34..38 "    "
+          VariantDef@38..39
+            Ident@38..39 "A"
           Newline@39..40 "\n"
           WhiteSpace@40..44 "    "
           VariantDef@44..53
@@ -115,7 +115,6 @@ Root@0..151
                     WhiteSpace@112..113 " "
                     KindBoundMono@113..114
                       Star@113..114 "*"
-                  Error@114..114
             Newline@114..115 "\n"
           WhiteSpace@115..119 "    "
           WherePredicate@119..129

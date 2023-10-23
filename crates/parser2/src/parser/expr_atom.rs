@@ -105,21 +105,21 @@ impl super::Parse for IfExprScope {
         parser.parse(BlockExprScope::default(), None);
 
         if parser.current_kind() == Some(SyntaxKind::ElseKw) {
-            parser.with_next_expected_tokens(
+            parser.bump_expected(SyntaxKind::ElseKw);
+
+            parser.with_recovery_tokens(
                 |parser| {
-                    parser.bump_expected(SyntaxKind::ElseKw);
+                    if matches!(
+                        parser.current_kind(),
+                        Some(SyntaxKind::LBrace | SyntaxKind::IfKw)
+                    ) {
+                        parse_expr(parser);
+                    } else {
+                        parser.error_and_recover("expected `{` or `if` after `else`", None);
+                    }
                 },
                 &[SyntaxKind::LBrace, SyntaxKind::IfKw],
             );
-
-            if !matches!(
-                parser.current_kind(),
-                Some(SyntaxKind::LBrace | SyntaxKind::IfKw)
-            ) {
-                parser.error_and_recover("expected `{` or `if` after `else`", None);
-                return;
-            }
-            parse_expr(parser);
         }
     }
 }

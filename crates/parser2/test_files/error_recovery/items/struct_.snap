@@ -11,28 +11,24 @@ Root@0..160
           PubKw@0..3 "pub"
         WhiteSpace@3..4 " "
         StructKw@4..10 "struct"
-        Error@10..10
-        GenericParamList@10..16
+        GenericParamList@10..15
           Lt@10..11 "<"
           TypeGenericParam@11..12
             Ident@11..12 "T"
           Comma@12..13 ","
           WhiteSpace@13..14 " "
-          TypeGenericParam@14..16
+          TypeGenericParam@14..15
             Ident@14..15 "U"
-            Newline@15..16 "\n"
-            Error@16..16
-          Error@16..16
+        Newline@15..16 "\n"
         WhereClause@16..40
           WhereKw@16..21 "where"
           WhiteSpace@21..22 " "
-          WherePredicate@22..24
+          WherePredicate@22..23
             PathType@22..23
               Path@22..23
                 PathSegment@22..23
                   Ident@22..23 "T"
-            WhiteSpace@23..24 " "
-            Error@24..24
+          WhiteSpace@23..24 " "
           Newline@24..25 "\n"
           WhiteSpace@25..31 "      "
           WherePredicate@31..40
@@ -57,8 +53,6 @@ Root@0..160
           WhiteSpace@47..51 "    "
           RecordFieldDef@51..54
             Ident@51..54 "foo"
-            Error@54..54
-            Error@54..54
           Newline@54..55 "\n"
           WhiteSpace@55..59 "    "
           RecordFieldDef@59..72

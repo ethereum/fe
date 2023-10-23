@@ -1,0 +1,48 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/for_.fe
+---
+error[1-0001]: expected `in` keyword
+  ┌─ for_.fe:2:6
+  │
+2 │ for i arr { }
+  │      ^ expected `in` keyword
+
+error[1-0001]: expected path segment
+  ┌─ for_.fe:4:5
+  │
+4 │ for in arr { }
+  │     ^ expected path segment
+
+error[1-0001]: expected path segment
+  ┌─ for_.fe:6:5
+  │
+6 │ for @ in arr {}
+  │     ^ expected path segment
+
+error[1-0001]: unexpected syntax
+  ┌─ for_.fe:6:5
+  │
+6 │ for @ in arr {}
+  │     ^ unexpected syntax
+
+error[1-0001]: expected path segment
+  ┌─ for_.fe:8:5
+  │
+8 │ for @ in arr x y {}
+  │     ^ expected path segment
+
+error[1-0001]: unexpected syntax
+  ┌─ for_.fe:8:5
+  │
+8 │ for @ in arr x y {}
+  │     ^ unexpected syntax
+
+error[1-0001]: unexpected syntax
+  ┌─ for_.fe:8:14
+  │
+8 │ for @ in arr x y {}
+  │              ^^^ unexpected syntax
+
+

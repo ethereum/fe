@@ -1,0 +1,42 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/match_.fe
+---
+error[1-0001]: unexpected syntax
+  ┌─ match_.fe:2:10
+  │
+2 │ match X  => {
+  │          ^^ unexpected syntax
+
+error[1-0001]: expected `=>`
+  ┌─ match_.fe:4:7
+  │
+4 │    Bar
+  │       ^ expected `=>`
+
+error[1-0001]: expected expression
+  ┌─ match_.fe:4:7
+  │
+4 │    Bar
+  │       ^ expected expression
+
+error[1-0001]: expected path segment
+  ┌─ match_.fe:8:16
+  │
+8 │    Foo(i, j,   => true x
+  │                ^ expected path segment
+
+error[1-0001]: expected `)`
+  ┌─ match_.fe:8:16
+  │
+8 │    Foo(i, j,   => true x
+  │                ^ expected `)`
+
+error[1-0001]: unexpected syntax
+  ┌─ match_.fe:8:24
+  │
+8 │    Foo(i, j,   => true x
+  │                        ^ unexpected syntax
+
+

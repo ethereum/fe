@@ -23,7 +23,7 @@ impl super::Parse for UseTreeScope {
 
         if parser.current_kind() == Some(SyntaxKind::AsKw) {
             if is_glob {
-                parser.error_and_recover("can't use `as` with `*`", None);
+                parser.error_msg_on_current_token("can't use `as` with `*`");
             }
             if parser.current_kind() == Some(SyntaxKind::AsKw) {
                 parser.parse(UseTreeAliasScope::default(), None);
@@ -34,14 +34,12 @@ impl super::Parse for UseTreeScope {
         if !parser.bump_if(SyntaxKind::Colon2) {
             return;
         }
-        match parser.current_kind() {
-            Some(SyntaxKind::LBrace) if !is_glob => {
-                parser.parse(UseTreeListScope::default(), None);
+        if parser.current_kind() == Some(SyntaxKind::LBrace) {
+            if is_glob {
+                parser.error_msg_on_current_token("can't use `*` with `{}`");
             }
-            _ => {
-                parser.error_and_recover("can't use `*` with `{}`", None);
-            }
-        };
+            parser.parse(UseTreeListScope::default(), None);
+        }
     }
 }
 
@@ -90,7 +88,7 @@ impl super::Parse for UsePathScope {
             });
             if is_path_segment {
                 if self.is_glob.get() {
-                    parser.error_and_recover("can't specify path after `*`", None);
+                    parser.error_msg_on_current_token("can't specify path after `*`");
                 }
                 parser.bump_expected(SyntaxKind::Colon2);
                 self.is_glob

@@ -3,58 +3,16 @@ source: crates/uitest/tests/parser.rs
 expression: diags
 input_file: crates/uitest/fixtures/parser/struct_missing_body.fe
 ---
-error[1-0001]: unexpected token
-  ┌─ struct_missing_body.fe:4:1
+error[1-0001]: expected struct field definition
+  ┌─ struct_missing_body.fe:2:9
   │
-4 │ struct T<U>
-  │ ^^^^^^ unexpected token
-
-error[1-0001]: unexpected token
-  ┌─ struct_missing_body.fe:4:1
-  │
-4 │ struct T<U>
-  │ ^^^^^^ unexpected token
-
-error[1-0001]: unexpected token
-  ┌─ struct_missing_body.fe:4:1
-  │
-4 │ struct T<U>
-  │ ^^^^^^ unexpected token
+2 │ struct S
+  │         ^ expected struct field definition
 
 error[1-0001]: expected struct field definition
-  ┌─ struct_missing_body.fe:4:1
+  ┌─ struct_missing_body.fe:4:12
   │
 4 │ struct T<U>
-  │ ^^^^^^ expected struct field definition
-
-error[1-0001]: expected newline after item definition
-  ┌─ struct_missing_body.fe:4:1
-  │
-4 │ struct T<U>
-  │ ^^^^^^ expected newline after item definition
-
-error[1-0001]: unexpected token
-  ┌─ struct_missing_body.fe:6:1
-  │
-6 │ struct Foo {}
-  │ ^^^^^^ unexpected token
-
-error[1-0001]: unexpected token
-  ┌─ struct_missing_body.fe:6:1
-  │
-6 │ struct Foo {}
-  │ ^^^^^^ unexpected token
-
-error[1-0001]: expected struct field definition
-  ┌─ struct_missing_body.fe:6:1
-  │
-6 │ struct Foo {}
-  │ ^^^^^^ expected struct field definition
-
-error[1-0001]: expected newline after item definition
-  ┌─ struct_missing_body.fe:6:1
-  │
-6 │ struct Foo {}
-  │ ^^^^^^ expected newline after item definition
+  │            ^ expected struct field definition
 
 
