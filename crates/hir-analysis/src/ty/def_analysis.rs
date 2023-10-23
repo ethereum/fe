@@ -6,8 +6,9 @@ use std::collections::{hash_map::Entry, BTreeSet};
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, Func, FuncParamListId, IdentId, Impl as HirImpl, ImplTrait,
-        ItemKind, PathId, Trait, TraitRefId, TypeAlias, TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, FieldDef, Func, FuncParamListId, GenericParam, IdentId,
+        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeAlias,
+        TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
@@ -420,10 +421,22 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         let ty = lower_hir_ty(self.db, hir_ty, self.scope());
 
         if !ty.contains_invalid(self.db) && !ty.contains_ty_param(self.db) {
+            dbg!(ty.pretty_print(self.db));
             let diag = TraitConstraintDiag::concrete_type_bound(
                 self.db,
                 ctxt.span().unwrap().ty().into(),
                 ty,
+            )
+            .into();
+            self.diags.push(diag);
+            return;
+        }
+
+        if ty.is_dependent_ty(self.db) {
+            let diag = TraitConstraintDiag::dependent_ty_bound(
+                self.db,
+                ty,
+                ctxt.span().unwrap().ty().into(),
             )
             .into();
             self.diags.push(diag);
@@ -498,12 +511,27 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             }
         }
 
-        self.current_ty = Some((
-            self.def.params(self.db)[idx],
-            ctxt.span().unwrap().into_type_param().name().into(),
-        ));
+        match param {
+            GenericParam::Type(_) => {
+                self.current_ty = Some((
+                    self.def.params(self.db)[idx],
+                    ctxt.span().unwrap().into_type_param().name().into(),
+                ));
+                walk_generic_param(self, ctxt, param)
+            }
+            GenericParam::Const(_) => {
+                let ty = self.def.params(self.db)[idx];
+                let Some(dependent_ty_param) = ty.dependent_ty_param(self.db) else {
+                    return;
+                };
 
-        walk_generic_param(self, ctxt, param)
+                if let Some(diag) = dependent_ty_param
+                    .emit_diag(self.db, ctxt.span().unwrap().into_const_param().ty().into())
+                {
+                    self.diags.push(diag)
+                }
+            }
+        }
     }
 
     fn visit_kind_bound(

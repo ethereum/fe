@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/def/const_generics_cycle.fe
+---
+error[3-0010]: recursive const parameter type is not allowed
+  ┌─ const_generics_cycle.fe:1:28
+  │
+1 │ pub struct Foo<T, const U: T> {}
+  │                            ^ recursive const parameter type is detected here
+
+error[3-0010]: recursive const parameter type is not allowed
+  ┌─ const_generics_cycle.fe:2:28
+  │
+2 │ pub struct Bar<T, const U: Bar> {}
+  │                            ^^^ recursive const parameter type is detected here
+
+

@@ -21,6 +21,8 @@ common = { path = "../common2", package = "fe-common2" }
 macros = { path = "../macros", package = "fe-macros" }
 fe-compiler-test-utils = { path = "../test-utils" }
 num-bigint = "0.4"
+once_cell = "1.18"
+regex = "1.10"
 
 [dev-dependencies]
 codespan-reporting = "0.11"

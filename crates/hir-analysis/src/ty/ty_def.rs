@@ -71,6 +71,7 @@ impl TyId {
         match self.data(db) {
             TyData::Invalid(_) => true,
             TyData::TyApp(lhs, rhs) => lhs.contains_invalid(db) || rhs.contains_invalid(db),
+            TyData::DependentTy(dependent_ty) => dependent_ty.ty.contains_invalid(db),
             _ => false,
         }
     }
@@ -122,12 +123,12 @@ impl TyId {
         matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
     }
 
+    pub(super) fn is_dependent_ty(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::DependentTy(_))
+    }
+
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
-        match self.data(db) {
-            TyData::TyParam(_) => true,
-            TyData::TyApp(lhs, rhs) => lhs.contains_ty_param(db) || rhs.contains_ty_param(db),
-            _ => false,
-        }
+        !self.type_params(db).is_empty()
     }
 
     pub(super) fn contains_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
@@ -175,6 +176,14 @@ impl TyId {
                     alias,
                     n_given_args: n_given_arg,
                 } => Some(TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into()),
+
+                InvalidCause::InvalidConstParamTy { ty } => {
+                    Some(TyLowerDiag::invalid_const_param_ty(db, span, *ty).into())
+                }
+
+                InvalidCause::RecursiveConstParamTy => {
+                    Some(TyLowerDiag::RecursiveConstParamTy(span).into())
+                }
 
                 InvalidCause::AssocTy => Some(TyLowerDiag::assoc_ty(span).into()),
 
@@ -299,6 +308,14 @@ impl TyId {
                 HirUintTy::U128 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U128))),
                 HirUintTy::U256 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256))),
             },
+        }
+    }
+
+    pub(super) fn dependent_ty_param(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+        if let TyData::DependentTy(dependent_ty) = self.data(db) {
+            Some(dependent_ty.ty)
+        } else {
+            None
         }
     }
 }
@@ -497,10 +514,19 @@ pub enum InvalidCause {
     NotFullyApplied,
 
     /// Kind mismatch between two types.
-    KindMismatch { expected: Option<Kind>, given: TyId },
+    KindMismatch {
+        expected: Option<Kind>,
+        given: TyId,
+    },
 
     /// Associated Type is not allowed at the moment.
     AssocTy,
+
+    InvalidConstParamTy {
+        ty: TyId,
+    },
+
+    RecursiveConstParamTy,
 
     /// Type alias parameter is not bound.
     /// NOTE: In our type system, type alias is a macro, so we can't perform
@@ -573,6 +599,12 @@ pub struct TyVar {
     pub(super) key: InferenceKey,
 }
 
+impl TyVar {
+    pub(super) fn pretty_print(&self) -> String {
+        format!("%{}", self.key.0)
+    }
+}
+
 /// Type generics parameter. We also treat `Self` type in a trait definition as
 /// a special type parameter.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -585,6 +617,10 @@ pub struct TyParam {
 }
 
 impl TyParam {
+    pub(super) fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
+        self.name.data(db.as_hir_db()).to_string()
+    }
+
     pub fn self_ty_param(kind: Kind) -> Self {
         Self {
             name: kw::SELF_TY,
@@ -606,6 +642,20 @@ pub enum TyBase {
 }
 
 impl TyBase {
+    pub fn is_integral(self) -> bool {
+        match self {
+            Self::Prim(prim) => prim.is_integral(),
+            _ => false,
+        }
+    }
+
+    pub fn is_bool(self) -> bool {
+        match self {
+            Self::Prim(prim) => prim.is_bool(),
+            _ => false,
+        }
+    }
+
     pub(super) fn tuple(n: usize) -> Self {
         Self::Prim(PrimTy::Tuple(n))
     }
@@ -665,6 +715,30 @@ pub enum PrimTy {
     Array,
     Tuple(usize),
     Ptr,
+}
+
+impl PrimTy {
+    pub fn is_integral(self) -> bool {
+        matches!(
+            self,
+            Self::U8
+                | Self::U16
+                | Self::U32
+                | Self::U64
+                | Self::U128
+                | Self::U256
+                | Self::I8
+                | Self::I16
+                | Self::I32
+                | Self::I64
+                | Self::I128
+                | Self::I256
+        )
+    }
+
+    pub fn is_bool(self) -> bool {
+        matches!(self, Self::Bool)
+    }
 }
 
 #[salsa::interned]
@@ -859,10 +933,11 @@ pub(crate) fn collect_type_params(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<
 #[salsa::tracked(return_ref)]
 pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
     match ty.data(db) {
-        TyData::TyVar(var) => format!("%{}", var.key.0),
-        TyData::TyParam(param) => param.name.data(db.as_hir_db()).to_string(),
+        TyData::TyVar(var) => var.pretty_print(),
+        TyData::TyParam(param) => param.pretty_print(db),
         TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
         TyData::TyBase(ty_con) => ty_con.pretty_print(db),
+        TyData::DependentTy(dependent_ty) => dependent_ty.pretty_print(db),
         _ => "<invalid>".to_string(),
     }
 }
