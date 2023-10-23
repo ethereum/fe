@@ -156,42 +156,47 @@ impl TyId {
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        match self.data(db) {
-            TyData::TyApp(lhs, rhs) => {
-                if let Some(diag) = lhs.emit_diag(db, span.clone()) {
-                    Some(diag)
-                } else {
-                    rhs.emit_diag(db, span)
-                }
-            }
-
-            TyData::Invalid(cause) => match cause {
-                InvalidCause::NotFullyApplied => Some(TyLowerDiag::non_concrete_ty(span).into()),
-
-                InvalidCause::KindMismatch { expected, given } => Some(
-                    TyLowerDiag::invalid_type_arg_kind(db, span, expected.clone(), *given).into(),
-                ),
-
-                InvalidCause::UnboundTypeAliasParam {
-                    alias,
-                    n_given_args: n_given_arg,
-                } => Some(TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into()),
-
-                InvalidCause::InvalidConstParamTy { ty } => {
-                    Some(TyLowerDiag::invalid_const_param_ty(db, span, *ty).into())
-                }
-
-                InvalidCause::RecursiveConstParamTy => {
-                    Some(TyLowerDiag::RecursiveConstParamTy(span).into())
-                }
-
-                InvalidCause::AssocTy => Some(TyLowerDiag::assoc_ty(span).into()),
-
-                InvalidCause::Other => None,
-            },
-
-            _ => None,
+        struct EmitDiagVisitor {
+            diag: Option<TyDiagCollection>,
+            span: DynLazySpan,
         }
+
+        impl TyVisitor for EmitDiagVisitor {
+            fn visit_invalid(&mut self, db: &dyn HirAnalysisDb, cause: &InvalidCause) {
+                let span = self.span.clone();
+                let diag = match cause {
+                    InvalidCause::NotFullyApplied => TyLowerDiag::non_concrete_ty(span).into(),
+
+                    InvalidCause::KindMismatch { expected, given } => {
+                        TyLowerDiag::invalid_type_arg_kind(db, span, expected.clone(), *given)
+                            .into()
+                    }
+
+                    InvalidCause::UnboundTypeAliasParam {
+                        alias,
+                        n_given_args: n_given_arg,
+                    } => TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into(),
+
+                    InvalidCause::InvalidConstParamTy { ty } => {
+                        TyLowerDiag::invalid_const_param_ty(db, span, *ty).into()
+                    }
+
+                    InvalidCause::RecursiveConstParamTy => {
+                        TyLowerDiag::RecursiveConstParamTy(span).into()
+                    }
+
+                    InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
+
+                    InvalidCause::Other => return,
+                };
+
+                self.diag.get_or_insert(diag);
+            }
+        }
+
+        let mut visitor = EmitDiagVisitor { diag: None, span };
+        visitor.visit_ty(db, self);
+        visitor.diag
     }
 
     pub(super) fn emit_sat_diag(

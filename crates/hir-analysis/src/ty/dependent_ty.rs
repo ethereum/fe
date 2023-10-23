@@ -1,8 +1,9 @@
+use hir::hir_def::Body;
 use num_bigint::{BigInt, BigUint};
 
 use crate::HirAnalysisDb;
 
-use super::ty_def::{TyId, TyParam, TyVar};
+use super::ty_def::{InvalidCause, TyId, TyParam, TyVar};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct DependentTy {
@@ -19,7 +20,9 @@ impl DependentTy {
         match &self.data {
             DependentTyData::TyVar(var) => var.pretty_print(),
             DependentTyData::TyParam(param) => param.pretty_print(db),
+            DependentTyData::TyExprNonEvaluated(_) => unreachable!(),
             DependentTyData::TyLit(lit) => lit.pretty_print(),
+            DependentTyData::Invalid(_) => "<invalid>".to_string(),
         }
     }
 }
@@ -28,7 +31,15 @@ impl DependentTy {
 pub enum DependentTyData {
     TyVar(TyVar),
     TyParam(TyParam),
+    TyExprNonEvaluated(TyExpr),
     TyLit(TyLit),
+    Invalid(InvalidCause),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TyExpr {
+    Unresolved(Body),
+    Resolved(TyLit),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

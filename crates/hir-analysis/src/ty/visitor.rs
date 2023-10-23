@@ -1,7 +1,7 @@
 use crate::HirAnalysisDb;
 
 use super::{
-    dependent_ty::DependentTy,
+    dependent_ty::{DependentTy, DependentTyData},
     ty_def::{AdtDef, FuncDef, InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
 };
 
@@ -80,8 +80,9 @@ where
 {
     visitor.visit_ty(db, dependent_ty.ty);
     match &dependent_ty.data {
-        super::dependent_ty::DependentTyData::TyVar(var) => visitor.visit_var(db, var),
-        super::dependent_ty::DependentTyData::TyParam(param) => visitor.visit_param(db, param),
-        super::dependent_ty::DependentTyData::TyLit(_) => {}
+        DependentTyData::TyVar(var) => visitor.visit_var(db, var),
+        DependentTyData::TyParam(param) => visitor.visit_param(db, param),
+        DependentTyData::Invalid(cause) => visitor.visit_invalid(db, cause),
+        DependentTyData::TyExprNonEvaluated(_) | DependentTyData::TyLit(_) => {}
     }
 }
