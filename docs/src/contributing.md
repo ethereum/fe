@@ -45,7 +45,7 @@ To report an issue, please use the [Github issue board](https://github.com/ether
 - any error messages or relevant logs
 - the specific source code where the issue originates
 
-The appropriate place for technical discussions about the language itself is the Fe [Discord](https://discord.gg/yCT6NYBb).
+The appropriate place for technical discussions about the language itself is the Fe [Discord](https://discord.gg/ywpkAXFjZH).
 
 ### Rasing Pull Requests
 
