@@ -2,14 +2,14 @@
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 name = "fe-compiler-tests"
-version = "0.24.0"
+version = "0.25.0"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
-fe-test-runner = {path = "../test-runner", version = "^0.24.0"}
-fe-driver = {path = "../driver", version = "^0.24.0"}
-fe-common = {path = "../common", version = "^0.24.0"}
+fe-test-runner = {path = "../test-runner", version = "^0.25.0"}
+fe-driver = {path = "../driver", version = "^0.25.0"}
+fe-common = {path = "../common", version = "^0.25.0"}
 
 dir-test = "^0.1"
 
