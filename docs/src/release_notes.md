@@ -8,6 +8,83 @@
 Fe is moving fast. Read up on all the latest improvements.
 
 [//]: # (towncrier release notes start)
+## 0.25.0 "Yoshiokaite" (2023-10-26)
+
+
+### Features
+
+
+- Use the project root as default path for `fe test`
+
+  Just run `fe test` from any directory of the project. ([#913](https://github.com/ethereum/fe/issues/913))
+- Completed `std::buf::MemoryBuffer` refactor. ([#917](https://github.com/ethereum/fe/issues/917))
+- Allow filtering tests to run via `fe test --filter <some-filter`
+
+  E.g. Running `fe test --filter foo` will run all tests that contain `foo` in their name. ([#919](https://github.com/ethereum/fe/issues/919))
+- Logs for successfully ran tests can be printed with the `--logs` parameter.
+
+  example: 
+
+  ```
+  // test_log.fe
+
+  use std::evm::log0
+  use std::buf::MemoryBuffer
+
+  struct MyEvent {
+    pub foo: u256
+    pub baz: bool
+    pub bar: u256
+  }
+
+  #test
+  fn test_log(mut ctx: Context) {
+    ctx.emit(MyEvent(foo: 42, baz: false, bar: 26))
+    unsafe { log0(buf: MemoryBuffer::new(len: 42)) }
+  }
+
+  ```
+
+  ```
+  $ fe test --logs test_log.fe
+  executing 1 test in test_log:
+    test_log ... passed
+
+  test_log produced the following logs:
+    MyEvent emitted by 0x0000…002a with the following parameters [foo: 2a, baz: false, bar: 1a]
+    Log { address: 0x000000000000000000000000000000000000002a, topics: [], data: b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x1a\0\0\0\0\0\0\0\0\0\0" }
+
+
+  1 test passed; 0 tests failed; 1 test executed
+  ```
+
+  Note: Logs are not collected for failing tests. ([#933](https://github.com/ethereum/fe/issues/933))
+- Adds 'functions' section to docs with information on `self` and `Context`. ([#937](https://github.com/ethereum/fe/issues/937))
+
+
+### Bugfixes
+
+
+- Yul codegen was failing to include string literals used in test assertions. This resulted in a compiler error.
+
+  Example:
+
+  ```
+  #test
+  fn foo() {
+      assert false, "oops"
+  }
+  ```
+
+  The example code above was failing to compile, but now it compiles and executes as expected. ([#926](https://github.com/ethereum/fe/issues/926))
+
+
+### Improved Documentation
+
+
+- Added a new tutorial: Open Auction ([#930](https://github.com/ethereum/fe/issues/930))
+
+
 ## 0.24.0 "Xenotime" (2023-08-10)
 
 
