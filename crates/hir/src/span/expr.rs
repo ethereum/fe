@@ -192,10 +192,9 @@ impl ChainInitiator for ExprRoot {
 
 #[cfg(test)]
 mod tests {
-    use parser::ast::BinExpr;
 
     use crate::{
-        hir_def::{ArithBinOp, Body, Expr, Stmt},
+        hir_def::{ArithBinOp, Body, Expr},
         test_db::TestDb,
         HirDb,
     };
