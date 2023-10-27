@@ -7,10 +7,6 @@ use super::{
     Checkpoint, Parser,
 };
 
-pub fn parse_lhs_aug<S: TokenStream>(parser: &mut Parser<S>) -> bool {
-    //include Lp and Lb ?
-    parse_expr_with_min_bp(parser, 146, true)
-}
 /// Parses expression.
 pub fn parse_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parse_expr_with_min_bp(parser, 0, true)
@@ -172,7 +168,13 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
         Amp => (100, 101),
         LShift | RShift => (110, 111),
         Plus | Minus => (120, 121),
-        Star | Slash | Percent => (130, 131),
+        Star | Slash | Percent => {
+            if is_aug(parser) {
+                (38, 39)
+            } else {
+                (130, 131)
+            }
+        }
         Star2 => (141, 140),
         Dot => (151, 150),
         Eq => {
