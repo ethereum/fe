@@ -28,6 +28,8 @@ pub struct CompiledContract {
     pub yul: String,
     #[cfg(feature = "solc-backend")]
     pub bytecode: String,
+    #[cfg(feature = "solc-backend")]
+    pub runtime_bytecode: String,
 }
 
 #[cfg(feature = "solc-backend")]
@@ -111,13 +113,14 @@ pub fn compile_single_file(
     path: &str,
     src: &str,
     with_bytecode: bool,
+    with_runtime_bytecode: bool,
     optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
     let module = ModuleId::new_standalone(db, path, src);
     let diags = module.diagnostics(db);
 
     if diags.is_empty() {
-        compile_module(db, module, with_bytecode, optimize)
+        compile_module(db, module, with_bytecode, with_runtime_bytecode, optimize)
     } else {
         Err(CompileError(diags))
     }
@@ -158,6 +161,7 @@ pub fn compile_ingot(
     db: &mut Db,
     build_files: &BuildFiles,
     with_bytecode: bool,
+    with_runtime_bytecode: bool,
     optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
     let ingot = IngotId::from_build_files(db, build_files);
@@ -170,7 +174,13 @@ pub fn compile_ingot(
     let main_module = ingot
         .root_module(db)
         .expect("missing root module, with no diagnostic");
-    compile_module(db, main_module, with_bytecode, optimize)
+    compile_module(
+        db,
+        main_module,
+        with_bytecode,
+        with_runtime_bytecode,
+        optimize,
+    )
 }
 
 #[cfg(feature = "solc-backend")]
@@ -220,7 +230,7 @@ fn compile_test(db: &mut Db, test: FunctionId, optimize: bool) -> CompiledTest {
     let yul_test = fe_codegen::yul::isel::lower_test(db, test)
         .to_string()
         .replace('"', "\\\"");
-    let bytecode = compile_to_evm("test", &yul_test, optimize);
+    let bytecode = compile_to_evm("test", &yul_test, optimize, false).bytecode;
     let events = db.codegen_abi_module_events(test.module(db));
     CompiledTest::new(test.name(db), events, bytecode)
 }
@@ -239,6 +249,7 @@ fn compile_module(
     db: &mut Db,
     module_id: ModuleId,
     with_bytecode: bool,
+    with_runtime_bytecode: bool,
     optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
     let mut contracts = IndexMap::default();
@@ -248,11 +259,17 @@ fn compile_module(
         let abi = db.codegen_abi_contract(contract);
         let yul_contract = compile_to_yul(db, contract);
 
-        let bytecode = if with_bytecode {
+        let (bytecode, runtime_bytecode) = if with_bytecode || with_runtime_bytecode {
             let deployable_name = db.codegen_contract_deployer_symbol_name(contract);
-            compile_to_evm(deployable_name.as_str(), &yul_contract, optimize)
+            let bytecode = compile_to_evm(
+                deployable_name.as_str(),
+                &yul_contract,
+                optimize,
+                with_runtime_bytecode,
+            );
+            (bytecode.bytecode, bytecode.runtime_bytecode)
         } else {
-            "".to_string()
+            ("".to_string(), "".to_string())
         };
 
         contracts.insert(
@@ -261,6 +278,7 @@ fn compile_module(
                 json_abi: serde_json::to_string_pretty(&abi).unwrap(),
                 yul: yul_contract,
                 bytecode,
+                runtime_bytecode,
             },
         );
     }
@@ -277,6 +295,7 @@ fn compile_module(
     db: &mut Db,
     module_id: ModuleId,
     _with_bytecode: bool,
+    _with_runtime_bytecode: bool,
     _optimize: bool,
 ) -> Result<CompiledModule, CompileError> {
     let mut contracts = IndexMap::default();
@@ -307,9 +326,14 @@ fn compile_to_yul(db: &mut Db, contract: ContractId) -> String {
 }
 
 #[cfg(feature = "solc-backend")]
-fn compile_to_evm(name: &str, yul_object: &str, optimize: bool) -> String {
-    match fe_yulc::compile_single_contract(name, yul_object, optimize) {
-        Ok(contracts) => contracts,
+fn compile_to_evm(
+    name: &str,
+    yul_object: &str,
+    optimize: bool,
+    verify_runtime_bytecode: bool,
+) -> fe_yulc::ContractBytecode {
+    match fe_yulc::compile_single_contract(name, yul_object, optimize, verify_runtime_bytecode) {
+        Ok(bytecode) => bytecode,
 
         Err(error) => {
             for error in serde_json::from_str::<Value>(&error.0)
