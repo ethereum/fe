@@ -26,6 +26,7 @@ pub struct CompiledModule {
 pub struct CompiledContract {
     pub json_abi: String,
     pub yul: String,
+    pub origin: ContractId,
     #[cfg(feature = "solc-backend")]
     pub bytecode: String,
     #[cfg(feature = "solc-backend")]
@@ -274,9 +275,11 @@ fn compile_module(
 
         contracts.insert(
             name.to_string(),
+            // Maybe put the ContractID here so we can trace it back to the source file
             CompiledContract {
                 json_abi: serde_json::to_string_pretty(&abi).unwrap(),
                 yul: yul_contract,
+                origin: contract,
                 bytecode,
                 runtime_bytecode,
             },
@@ -309,6 +312,7 @@ fn compile_module(
             CompiledContract {
                 json_abi: serde_json::to_string_pretty(&abi).unwrap(),
                 yul: yul_contract,
+                origin: contract,
             },
         );
     }

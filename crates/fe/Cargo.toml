@@ -15,6 +15,9 @@ solc-backend = ["fe-driver/solc-backend"]
 
 [dependencies]
 clap = {version="3.1.18", features = ["derive"]}
+reqwest = { version = "0.11", features = ["json", "blocking"] }
+serde = { version = "1", features = ["derive"] }
+url = "2"
 fs_extra = "1.2.0"
 walkdir = "2"
 indexmap = "1.6.2"
