@@ -16,6 +16,7 @@ enum Emit {
     Ast,
     LoweredAst,
     Bytecode,
+    RuntimeBytecode,
     Tokens,
     Yul,
 }
@@ -45,6 +46,7 @@ pub struct BuildArgs {
 fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
+    let with_runtime_bytecode = emit.contains(&Emit::RuntimeBytecode);
     let input_path = &compile_arg.input_path;
     let optimize = compile_arg.optimize.unwrap_or(true);
 
@@ -62,6 +64,7 @@ fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
         input_path,
         &content,
         with_bytecode,
+        with_runtime_bytecode,
         optimize,
     ) {
         Ok(module) => module,
@@ -77,6 +80,7 @@ fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
 fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
+    let with_runtime_bytecode = emit.contains(&Emit::RuntimeBytecode);
     let input_path = &compile_arg.input_path;
     let optimize = compile_arg.optimize.unwrap_or(true);
 
@@ -100,15 +104,20 @@ fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     }
 
     let mut db = fe_driver::Db::default();
-    let compiled_module =
-        match fe_driver::compile_ingot(&mut db, &build_files, with_bytecode, optimize) {
-            Ok(module) => module,
-            Err(error) => {
-                eprintln!("Unable to compile {input_path}.");
-                print_diagnostics(&db, &error.0);
-                std::process::exit(1)
-            }
-        };
+    let compiled_module = match fe_driver::compile_ingot(
+        &mut db,
+        &build_files,
+        with_bytecode,
+        with_runtime_bytecode,
+        optimize,
+    ) {
+        Ok(module) => module,
+        Err(error) => {
+            eprintln!("Unable to compile {input_path}.");
+            print_diagnostics(&db, &error.0);
+            std::process::exit(1)
+        }
+    };
 
     // no file content for ingots
     ("".to_string(), compiled_module)
@@ -201,6 +210,14 @@ fn write_compiled_module(
         if targets.contains(&Emit::Bytecode) {
             let file_name = format!("{}.bin", &name);
             write_output(&contract_output_dir.join(file_name), &contract.bytecode)?;
+        }
+        #[cfg(feature = "solc-backend")]
+        if targets.contains(&Emit::RuntimeBytecode) {
+            let file_name = format!("{}.runtime.bin", &name);
+            write_output(
+                &contract_output_dir.join(file_name),
+                &contract.runtime_bytecode,
+            )?;
         }
     }
 
