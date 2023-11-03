@@ -8,6 +8,67 @@
 Fe is moving fast. Read up on all the latest improvements.
 
 [//]: # (towncrier release notes start)
+## 0.26.0 "Zircon" (2023-11-03)
+
+
+### Features
+
+
+- Give option to produce runtime bytecode as compilation artifact
+
+  Previously, the compiler could only produce the bytecode that is used
+  for the deployment of the contract. Now it can also produce the runtime
+  bytecode which is the bytecode that is saved to storage.
+
+  Being able to obtain the runtime bytecode is useful for contract
+  verification.
+
+  To obtain the runtime bytecode use the `runtime-bytecode` option
+  of the `--emit` flag (multiple options allowed).
+
+  Example Output:
+
+  - mycontract.bin (bytecode for deployment)
+  - mycontract.runtime.bin (runtime bytecode) ([#947](https://github.com/ethereum/fe/issues/947))
+
+- New `verify` command to verify onchain contracts against local source code.
+
+  People need to be able to verify that a deployed contract matches the source code
+  that the author claims was used to deploy it. Previously, there was no simple
+  way to achieve this.
+
+  These are the steps to verify a contract with the `verify` command:
+
+  1. Obtain the project's source code locally.
+  2. Ensure it is the same source code that was used to deploy the contract. (e.g. check out a specific tag)
+  2. From the project directory run `fe verify <contract-address> <json-rpc-url>`
+
+  Example:
+
+  ```bash
+  $ fe verify 0xf0adbb9ed4135d1509ad039505bada942d18755f https://example-eth-mainnet-rpc.com
+  It's a match!✨
+
+  Onchain contract:
+  Address: 0xf0adbb9ed4135d1509ad039505bada942d18755f
+  Bytecode: 0x60008..76b90
+
+  Local contract:
+  Contract name: SimpleDAO
+  Source file: /home/work/ef/simple_dao/fe_contracts/simpledao/src/main.fe
+  Bytecode: 0x60008..76b90
+
+  Hint: Run with --verbose to see the contract's source code.
+  ```
+  ([#948](https://github.com/ethereum/fe/issues/948))
+
+
+### Improved Documentation
+
+
+- Added a new page on EVM precompiles ([#944](https://github.com/ethereum/fe/issues/944))
+
+
 ## 0.25.0 "Yoshiokaite" (2023-10-26)
 
 
