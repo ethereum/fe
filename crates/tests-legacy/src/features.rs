@@ -1,8 +1,7 @@
 //! Simple contract tests that narrowly test a given feature
 
 #![cfg(feature = "solc-backend")]
-use evm::{Capture, ExitReason};
-use evm_runtime::Handler;
+use evm::{ExitReason, Handler};
 use insta::assert_snapshot;
 use primitive_types::{H160, U256};
 use rstest::rstest;
@@ -213,7 +212,7 @@ fn test_assert() {
 
         assert!(matches!(
             harness.capture_call(&mut executor, "bar", &[uint_token(42)]),
-            evm::Capture::Exit((evm::ExitReason::Succeed(_), _))
+            (evm::ExitReason::Succeed(_), _)
         ));
 
         validate_revert(
@@ -421,6 +420,7 @@ fn return_builtin_attributes() {
         block_difficulty: U256::from(block_difficulty),
         block_gas_limit: primitive_types::U256::MAX,
         block_base_fee_per_gas: U256::from(basefee),
+        block_randomness: None,
     };
 
     let backend = evm::backend::MemoryBackend::new(&vicinity, BTreeMap::new());
@@ -430,6 +430,11 @@ fn return_builtin_attributes() {
             deploy_contract(&mut executor, "return_builtin_attributes.fe", "Foo", &[]);
         let sender = address_token("1234000000000000000000000000000000005678");
         harness.caller = sender.clone().into_address().unwrap();
+        executor.state_mut().deposit(
+            sender.clone().into_address().unwrap(),
+            U256::from(1_000_000_000),
+        );
+
         let value = 55555;
         harness.value = U256::from(value);
         harness.test_function(&mut executor, "base_fee", &[], Some(&uint_token(basefee)));
@@ -1946,14 +1951,13 @@ fn ctx_init_in_call() {
         let harness = deploy_contract(&mut executor, "ctx_init_in_call.fe", "Foo", &[]);
 
         match harness.capture_call_raw_bytes(&mut executor, vec![]) {
-            Capture::Exit((ExitReason::Succeed(_), return_bytes)) => {
+            (ExitReason::Succeed(_), return_bytes) => {
                 assert_eq!(
                     [&[0; 12], harness.address.as_bytes()].concat(),
                     return_bytes
                 )
             }
-            Capture::Exit(_) => panic!("call didn't succeed"),
-            Capture::Trap(_) => panic!("trapped!"),
+            _ => panic!("call didn't succeed"),
         }
     });
 }

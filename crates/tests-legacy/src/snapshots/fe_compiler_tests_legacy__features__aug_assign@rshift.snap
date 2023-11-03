@@ -2,5 +2,5 @@
 source: crates/tests-legacy/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 ---
-rshift([Uint(128), Uint(7)]) used 453 gas
+rshift([Uint(128), Uint(7)]) used 452 gas
 

@@ -1,5 +1,5 @@
 #![cfg(feature = "solc-backend")]
-use evm_runtime::Handler;
+use evm::Handler;
 use fe_compiler_test_utils::*;
 use insta::assert_snapshot;
 use primitive_types::{H160, H256, U256};
@@ -18,6 +18,7 @@ fn simple_open_auction() {
         block_difficulty: U256::zero(),
         block_gas_limit: primitive_types::U256::MAX,
         block_base_fee_per_gas: U256::zero(),
+        block_randomness: None,
     };
     let state: BTreeMap<primitive_types::H160, evm::backend::MemoryAccount> = BTreeMap::new();
     let backend = evm::backend::MemoryBackend::new(&vicinity, state);
@@ -37,23 +38,32 @@ fn simple_open_auction() {
             &[bidding_time, beneficiary],
         );
 
+        executor.state_mut().deposit(
+            alice.clone().into_address().unwrap(),
+            U256::from(1_000_000_000),
+        );
+        executor.state_mut().deposit(
+            bob.clone().into_address().unwrap(),
+            U256::from(1_000_000_000),
+        );
+
         // alice bid first
         harness.caller = alice.clone().into_address().unwrap();
-        harness.value = U256::from(10000);
+        harness.value = U256::from(10_000);
 
         harness.test_function(&mut executor, "bid", &[], None);
         executor.state_mut().deposit(harness.address, harness.value);
 
         // bob bid second
         harness.caller = bob.clone().into_address().unwrap();
-        harness.value = U256::from(100000);
+        harness.value = U256::from(100_000);
 
         harness.test_function(&mut executor, "bid", &[], None);
         executor.state_mut().deposit(harness.address, harness.value);
 
         // alice bib again but fail b/c "Bid not high enough"
         harness.caller = alice.clone().into_address().unwrap();
-        harness.value = U256::from(10000);
+        harness.value = U256::from(10_000);
 
         validate_revert(
             harness.capture_call(&mut executor, "bid", &[]),

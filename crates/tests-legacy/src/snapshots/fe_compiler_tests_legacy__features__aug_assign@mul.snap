@@ -2,5 +2,5 @@
 source: crates/tests-legacy/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 ---
-mul([Uint(10), Uint(42)]) used 334 gas
+mul([Uint(10), Uint(42)]) used 332 gas
 

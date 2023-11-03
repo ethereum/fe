@@ -3,6 +3,15 @@
   "sources": { "input.yul": { "content": "{src}" } },
   "settings": {
     "optimizer": { "enabled": {optimizer_enabled} },
-    "outputSelection": { "*": { "*": ["*"], "": [ "*" ] } }
+    "outputSelection": { "*": { "*": [
+      "abi",
+      "metadata",
+      "ir",
+      "irOptimized",
+      "evm.assembly",
+      "evm.bytecode",
+      "evm.deployedBytecode",
+      "evm.gasEstimates"
+    ], "": [ "*" ] } }
   }
 }

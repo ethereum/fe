@@ -2,5 +2,5 @@
 source: crates/tests-legacy/src/features.rs
 expression: "format!(\"{}\", harness.gas_reporter)"
 ---
-bit_xor([Uint(26), Uint(42)]) used 494 gas
+bit_xor([Uint(26), Uint(42)]) used 493 gas
 
