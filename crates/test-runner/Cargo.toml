@@ -1,6 +1,6 @@
 [package]
 name = "fe-test-runner"
-version = "0.25.0"
+version = "0.26.0"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "GPL-3.0-or-later"
