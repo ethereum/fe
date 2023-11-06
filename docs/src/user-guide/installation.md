@@ -1,13 +1,21 @@
 # Installation
 
-At this point Fe is only available for **Linux** and **MacOS**.
+At this point Fe is available for **Linux** and **MacOS** natively but can also be installed on **Windows** via [WSL](https://learn.microsoft.com/en-us/windows/wsl/about).
 
 > Note: If you happen to be a Windows developer, consider getting involved
-> and help us to support the Windows platform. [Here would be a good place to start.](https://github.com/ethereum/fe/issues/62)
+> and help us to support the Windows platform natively. [Here would be a good place to start.](https://github.com/ethereum/fe/issues/62)
+
+## Package managers
+
+Fe can be installed from [Homebrew](https://brew.sh/). Homebrew is available for Mac, Linux and Windows (via [WSL](https://learn.microsoft.com/en-us/windows/wsl/about)). The following command installs Fe and exposes it as `fe` without any further configuration necessary:
+
+```sh
+brew install fe-lang/tap/fe
+```
 
 ## Download the compiler
 
-Fe is only distributed via a single executable file linked from the [home page](https://fe-lang.org). In the future we will make sure it can be installed through popular package managers such as `apt` or `homebrew`.
+Fe is distributed via a single executable file linked from the [home page](https://fe-lang.org). In the future we will make sure it can be installed through a variety of popular package managers such as `apt`.
 
 Depending on your operating system, the file that you download is either named `fe_amd64` or `fe_mac`.
 
@@ -36,14 +44,6 @@ SUBCOMMANDS:
     check    Analyze the current project and report errors, but don't build artifacts
     help     Print this message or the help of the given subcommand(s)
     new      Create new fe project
-```
-
-## Package managers
-
-Fe can also be installed from [Homebrew](https://brew.sh/). Homebrew is available for Mac, Linux and Windows (via [WSL](https://learn.microsoft.com/en-us/windows/wsl/about)). The following command installs Fe and exposes it as `fe` without any further configuration necessary:
-
-```sh
-brew install fe-lang/tap/fe
 ```
 
 
