@@ -1,6 +1,6 @@
 use parser::ast::{self};
 
-use crate::hir_def::{kw, params::*, Body, IdentId, PathId, TypeId};
+use crate::hir_def::{kw, params::*, Body, IdentId, Partial, TypeId};
 
 use super::FileLowerCtxt;
 
@@ -174,11 +174,37 @@ impl WherePredicate {
 
 impl TypeBound {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeBound) -> Self {
-        let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast)).into();
-        let generic_args = ast
-            .generic_args()
-            .map(|args| GenericArgListId::lower_ast(ctxt, args));
-        Self { path, generic_args }
+        if let Some(trait_bound) = ast.trait_bound() {
+            Self::Trait(TraitRefId::lower_ast(ctxt, trait_bound))
+        } else {
+            Self::Kind(KindBound::lower_ast_opt(ctxt, ast.kind_bound()))
+        }
+    }
+}
+
+impl KindBound {
+    fn lower_ast_opt(_ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::KindBound>) -> Partial<Self> {
+        let Some(ast) = ast else {
+            return Partial::Absent;
+        };
+
+        if let Some(abs) = ast.abs() {
+            let lhs = KindBound::lower_ast_opt(_ctxt, abs.lhs())
+                .to_opt()
+                .map(Box::new)
+                .into();
+
+            let rhs = KindBound::lower_ast_opt(_ctxt, abs.rhs())
+                .to_opt()
+                .map(Box::new)
+                .into();
+
+            Partial::Present(KindBound::Abs(lhs, rhs))
+        } else if ast.mono().is_some() {
+            Partial::Present(KindBound::Mono)
+        } else {
+            Partial::Absent
+        }
     }
 }
 

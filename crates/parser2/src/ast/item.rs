@@ -1,4 +1,4 @@
-use super::{ast_node, TupleType};
+use super::{ast_node, TraitRef, TupleType};
 use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
 
 use rowan::ast::{support, AstNode};
@@ -158,7 +158,6 @@ ast_node! {
     SK::TypeAlias,
 }
 impl super::GenericParamsOwner for TypeAlias {}
-impl super::WhereClauseOwner for TypeAlias {}
 impl super::AttrListOwner for TypeAlias {}
 impl super::ItemModifierOwner for TypeAlias {}
 impl TypeAlias {
@@ -197,6 +196,21 @@ impl Trait {
     pub fn item_list(&self) -> Option<TraitItemList> {
         support::child(self.syntax())
     }
+
+    pub fn super_trait_list(&self) -> Option<SuperTraitList> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    pub struct SuperTraitList,
+    SK::SuperTraitList,
+    IntoIterator<Item=TraitRef>
+}
+impl SuperTraitList {
+    pub fn colon(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Colon)
+    }
 }
 
 ast_node! {
@@ -233,14 +247,14 @@ impl super::AttrListOwner for ImplTrait {}
 impl ImplTrait {
     /// Returns the trait of the impl.
     /// `Foo` in `impl<T> Foo for Bar<T> { .. }`
-    pub fn trait_ref(&self) -> Option<super::PathType> {
+    pub fn trait_ref(&self) -> Option<TraitRef> {
         support::child(self.syntax())
     }
 
     /// Returns the type of the impl.
     /// `Bar<T>` in `impl<T> Foo for Bar<T> { .. }`
     pub fn ty(&self) -> Option<super::Type> {
-        support::children(self.syntax()).nth(1)
+        support::child(self.syntax())
     }
 
     /// Returns the trait impl item list.

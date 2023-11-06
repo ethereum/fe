@@ -26,6 +26,7 @@ pub use module_tree::*;
 pub use params::*;
 pub use pat::*;
 pub use path::*;
+use salsa::{AsId, Id};
 pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
@@ -43,16 +44,28 @@ impl IngotId {
         module_tree_impl(db, self.inner(db))
     }
 
+    pub fn all_modules(self, db: &dyn HirDb) -> &Vec<TopLevelMod> {
+        all_top_mod_in_ingot(db, self)
+    }
+
     pub fn root_mod(self, db: &dyn HirDb) -> TopLevelMod {
         self.module_tree(db).root_data().top_mod
     }
 
-    pub fn external_ingots(self, db: &dyn HirDb) -> &[(IdentId, TopLevelMod)] {
+    pub fn external_ingots(self, db: &dyn HirDb) -> &[(IdentId, IngotId)] {
         external_ingots_impl(db, self.inner(db)).as_slice()
     }
 
     pub fn kind(self, db: &dyn HirDb) -> IngotKind {
         self.inner(db).kind(db.as_input_db())
+    }
+
+    pub fn all_impl_trait(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
+        all_impl_trait_in_ingot(db, self)
+    }
+
+    pub fn dummy() -> Self {
+        IngotId::from_id(Id::from_u32(u32::MAX - 1))
     }
 }
 

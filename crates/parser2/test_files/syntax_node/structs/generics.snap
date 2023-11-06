@@ -88,12 +88,13 @@ Root@0..560
               Colon@126..127 ":"
               WhiteSpace@127..128 " "
               TypeBound@128..138
-                Path@128..138
-                  PathSegment@128..131
-                    Ident@128..131 "foo"
-                  Colon2@131..133 "::"
-                  PathSegment@133..138
-                    Ident@133..138 "Trait"
+                TraitRef@128..138
+                  Path@128..138
+                    PathSegment@128..131
+                      Ident@128..131 "foo"
+                    Colon2@131..133 "::"
+                    PathSegment@133..138
+                      Ident@133..138 "Trait"
           Comma@138..139 ","
           Newline@139..140 "\n"
           WhiteSpace@140..144 "    "
@@ -171,22 +172,24 @@ Root@0..560
               Colon@233..234 ":"
               WhiteSpace@234..235 " "
               TypeBound@235..245
-                Path@235..245
-                  PathSegment@235..238
-                    Ident@235..238 "foo"
-                  Colon2@238..240 "::"
-                  PathSegment@240..245
-                    Ident@240..245 "Trait"
+                TraitRef@235..245
+                  Path@235..245
+                    PathSegment@235..238
+                      Ident@235..238 "foo"
+                    Colon2@238..240 "::"
+                    PathSegment@240..245
+                      Ident@240..245 "Trait"
               WhiteSpace@245..246 " "
               Plus@246..247 "+"
               WhiteSpace@247..248 " "
               TypeBound@248..258
-                Path@248..258
-                  PathSegment@248..251
-                    Ident@248..251 "bar"
-                  Colon2@251..253 "::"
-                  PathSegment@253..258
-                    Ident@253..258 "Trait"
+                TraitRef@248..258
+                  Path@248..258
+                    PathSegment@248..251
+                      Ident@248..251 "bar"
+                    Colon2@251..253 "::"
+                    PathSegment@253..258
+                      Ident@253..258 "Trait"
           Comma@258..259 ","
           Newline@259..260 "\n"
           WhiteSpace@260..264 "    "
@@ -201,12 +204,13 @@ Root@0..560
               Colon@272..273 ":"
               WhiteSpace@273..274 " "
               TypeBound@274..284
-                Path@274..284
-                  PathSegment@274..277
-                    Ident@274..277 "bar"
-                  Colon2@277..279 "::"
-                  PathSegment@279..284
-                    Ident@279..284 "Trait"
+                TraitRef@274..284
+                  Path@274..284
+                    PathSegment@274..277
+                      Ident@274..277 "bar"
+                    Colon2@277..279 "::"
+                    PathSegment@279..284
+                      Ident@279..284 "Trait"
           Newline@284..285 "\n"
           Gt@285..286 ">"
         WhiteSpace@286..287 " "
@@ -223,16 +227,18 @@ Root@0..560
               Colon@298..299 ":"
               WhiteSpace@299..300 " "
               TypeBound@300..306
-                Path@300..306
-                  PathSegment@300..306
-                    Ident@300..306 "Trait1"
+                TraitRef@300..306
+                  Path@300..306
+                    PathSegment@300..306
+                      Ident@300..306 "Trait1"
               WhiteSpace@306..307 " "
               Plus@307..308 "+"
               WhiteSpace@308..309 " "
               TypeBound@309..315
-                Path@309..315
-                  PathSegment@309..315
-                    Ident@309..315 "Trait2"
+                TraitRef@309..315
+                  Path@309..315
+                    PathSegment@309..315
+                      Ident@309..315 "Trait2"
             Newline@315..316 "\n"
           WhiteSpace@316..320 "    "
           WherePredicate@320..347
@@ -252,16 +258,18 @@ Root@0..560
               Colon@329..330 ":"
               WhiteSpace@330..331 " "
               TypeBound@331..337
-                Path@331..337
-                  PathSegment@331..337
-                    Ident@331..337 "Trait1"
+                TraitRef@331..337
+                  Path@331..337
+                    PathSegment@331..337
+                      Ident@331..337 "Trait1"
               WhiteSpace@337..338 " "
               Plus@338..339 "+"
               WhiteSpace@339..340 " "
               TypeBound@340..346
-                Path@340..346
-                  PathSegment@340..346
-                    Ident@340..346 "Trait2"
+                TraitRef@340..346
+                  Path@340..346
+                    PathSegment@340..346
+                      Ident@340..346 "Trait2"
             Newline@346..347 "\n"
           WhiteSpace@347..351 "    "
           WherePredicate@351..378
@@ -281,16 +289,18 @@ Root@0..560
               Colon@360..361 ":"
               WhiteSpace@361..362 " "
               TypeBound@362..368
-                Path@362..368
-                  PathSegment@362..368
-                    Ident@362..368 "Trait2"
+                TraitRef@362..368
+                  Path@362..368
+                    PathSegment@362..368
+                      Ident@362..368 "Trait2"
               WhiteSpace@368..369 " "
               Plus@369..370 "+"
               WhiteSpace@370..371 " "
               TypeBound@371..377
-                Path@371..377
-                  PathSegment@371..377
-                    Ident@371..377 "Trait3"
+                TraitRef@371..377
+                  Path@371..377
+                    PathSegment@371..377
+                      Ident@371..377 "Trait3"
             Newline@377..378 "\n"
         RecordFieldDefList@378..411
           LBrace@378..379 "{"
@@ -346,15 +356,16 @@ Root@0..560
               Colon@431..432 ":"
               WhiteSpace@432..433 " "
               TypeBound@433..446
-                Path@433..446
-                  PathSegment@433..436
-                    Ident@433..436 "std"
-                  Colon2@436..438 "::"
-                  PathSegment@438..441
-                    Ident@438..441 "ops"
-                  Colon2@441..443 "::"
-                  PathSegment@443..446
-                    Ident@443..446 "Add"
+                TraitRef@433..446
+                  Path@433..446
+                    PathSegment@433..436
+                      Ident@433..436 "std"
+                    Colon2@436..438 "::"
+                    PathSegment@438..441
+                      Ident@438..441 "ops"
+                    Colon2@441..443 "::"
+                    PathSegment@443..446
+                      Ident@443..446 "Add"
           Comma@446..447 ","
           WhiteSpace@447..448 " "
           TypeGenericParam@448..449
@@ -396,31 +407,33 @@ Root@0..560
               Colon@491..492 ":"
               WhiteSpace@492..493 " "
               TypeBound@493..498
-                Path@493..498
-                  PathSegment@493..498
-                    Ident@493..498 "Trait"
+                TraitRef@493..498
+                  Path@493..498
+                    PathSegment@493..498
+                      Ident@493..498 "Trait"
               WhiteSpace@498..499 " "
               Plus@499..500 "+"
               WhiteSpace@500..501 " "
               TypeBound@501..514
-                Path@501..506
-                  PathSegment@501..506
-                    Ident@501..506 "Trait"
-                GenericArgList@506..514
-                  Lt@506..507 "<"
-                  TypeGenericArg@507..510
-                    PathType@507..510
-                      Path@507..510
-                        PathSegment@507..510
-                          Ident@507..510 "i32"
-                  Comma@510..511 ","
-                  WhiteSpace@511..512 " "
-                  TypeGenericArg@512..513
-                    PathType@512..513
-                      Path@512..513
-                        PathSegment@512..513
-                          Ident@512..513 "Y"
-                  Gt@513..514 ">"
+                TraitRef@501..514
+                  Path@501..506
+                    PathSegment@501..506
+                      Ident@501..506 "Trait"
+                  GenericArgList@506..514
+                    Lt@506..507 "<"
+                    TypeGenericArg@507..510
+                      PathType@507..510
+                        Path@507..510
+                          PathSegment@507..510
+                            Ident@507..510 "i32"
+                    Comma@510..511 ","
+                    WhiteSpace@511..512 " "
+                    TypeGenericArg@512..513
+                      PathType@512..513
+                        Path@512..513
+                          PathSegment@512..513
+                            Ident@512..513 "Y"
+                    Gt@513..514 ">"
             Newline@514..515 "\n"
         RecordFieldDefList@515..560
           LBrace@515..516 "{"

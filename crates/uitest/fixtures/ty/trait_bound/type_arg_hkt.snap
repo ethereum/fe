@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_bound/type_arg_hkt.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ type_arg_hkt.fe:26:8
+   │
+26 │     u: I32Wrapper<Result<i32>>
+   │        ^^^^^^^^^^^^^^^^^^^^^^^ `Result<i32>` doesn't implement `Wrapper`
+
+

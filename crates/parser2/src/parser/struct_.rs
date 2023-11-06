@@ -29,7 +29,7 @@ impl super::Parse for StructScope {
         );
 
         parser.with_next_expected_tokens(
-            |parser| parse_generic_params_opt(parser),
+            |parser| parse_generic_params_opt(parser, false),
             &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
         );
 

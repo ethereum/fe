@@ -1,0 +1,12 @@
+pub struct Foo<T: Trait1 + Trait2> {
+    t: T
+}
+
+trait Trait1 {}
+trait Trait2 {}
+impl Trait1 for i32 {}
+
+pub struct User {
+    t: Foo<i32>,
+    u: Foo<u32>
+}

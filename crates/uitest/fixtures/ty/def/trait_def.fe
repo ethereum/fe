@@ -1,0 +1,7 @@
+trait Clone {}
+pub trait Trait<T, U> 
+where T: * -> *
+      T: (* -> *) -> *
+{
+
+}

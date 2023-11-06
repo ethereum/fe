@@ -91,16 +91,16 @@ pub struct Span {
 
 impl PartialOrd for Span {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match self.file.cmp(&other.file) {
-            std::cmp::Ordering::Equal => self.range.start().partial_cmp(&other.range.start()),
-            ord => Some(ord),
-        }
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for Span {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        match self.file.cmp(&other.file) {
+            std::cmp::Ordering::Equal => self.range.start().cmp(&other.range.start()),
+            ord => ord,
+        }
     }
 }
 
@@ -144,7 +144,10 @@ pub enum DiagnosticPass {
 
     NameResolution,
 
-    TyCheck,
+    TypeDefinition,
+    TraitDefinition,
+    ImplTraitDefinition,
+    TraitSatisfaction,
 
     ExternalAnalysis(ExternalAnalysisKey),
 }
@@ -154,8 +157,10 @@ impl DiagnosticPass {
         match self {
             Self::Parse => 1,
             Self::NameResolution => 2,
-
-            Self::TyCheck => 3,
+            Self::TypeDefinition => 3,
+            Self::TraitDefinition => 4,
+            Self::ImplTraitDefinition => 5,
+            Self::TraitSatisfaction => 6,
 
             Self::ExternalAnalysis(_) => std::u16::MAX,
         }

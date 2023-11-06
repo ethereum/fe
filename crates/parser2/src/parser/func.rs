@@ -54,7 +54,7 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     );
 
     parser.with_next_expected_tokens(
-        |parser| parse_generic_params_opt(parser),
+        |parser| parse_generic_params_opt(parser, false),
         &[SyntaxKind::LParen, SyntaxKind::LBrace],
     );
 
@@ -99,7 +99,7 @@ fn parse_trait_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     );
 
     parser.with_next_expected_tokens(
-        |parser| parse_generic_params_opt(parser),
+        |parser| parse_generic_params_opt(parser, false),
         &[SyntaxKind::LParen],
     );
 

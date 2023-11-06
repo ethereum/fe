@@ -1,4 +1,4 @@
-use crate::hir_def::TypeId;
+use crate::{hir_def::TypeId, HirDb};
 
 use super::{Body, IdentId, Partial, PathId};
 
@@ -8,10 +8,26 @@ pub struct GenericArgListId {
     pub data: Vec<GenericArg>,
 }
 
+impl GenericArgListId {
+    pub fn len(self, db: &dyn HirDb) -> usize {
+        self.data(db).len()
+    }
+
+    pub fn is_empty(self, db: &dyn HirDb) -> bool {
+        self.data(db).is_empty()
+    }
+}
+
 #[salsa::interned]
 pub struct GenericParamListId {
     #[return_ref]
     pub data: Vec<GenericParam>,
+}
+
+impl GenericParamListId {
+    pub fn len(&self, db: &dyn HirDb) -> usize {
+        self.data(db).len()
+    }
 }
 
 #[salsa::interned]
@@ -31,6 +47,7 @@ pub enum GenericParam {
     Type(TypeGenericParam),
     Const(ConstGenericParam),
 }
+
 impl GenericParam {
     pub fn name(&self) -> Partial<IdentId> {
         match self {
@@ -114,9 +131,23 @@ impl FuncParamName {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeBound {
+pub enum TypeBound {
+    Trait(TraitRefId),
+    Kind(Partial<KindBound>),
+}
+
+#[salsa::interned]
+pub struct TraitRefId {
     /// The path to the trait.
     pub path: Partial<PathId>,
     /// The type arguments of the trait.
     pub generic_args: Option<GenericArgListId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum KindBound {
+    /// `*`
+    Mono,
+    /// `* -> *`
+    Abs(Partial<Box<KindBound>>, Partial<Box<KindBound>>),
 }

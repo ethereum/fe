@@ -1,6 +1,6 @@
 use crate::{hir_def::Partial, HirDb};
 
-use super::IdentId;
+use super::{kw, IdentId};
 
 #[salsa::interned]
 pub struct PathId {
@@ -15,5 +15,10 @@ impl PathId {
 
     pub fn len(self, db: &dyn HirDb) -> usize {
         self.segments(db).len()
+    }
+
+    pub fn self_ty(db: &dyn HirDb) -> Self {
+        let self_ty = Partial::Present(kw::SELF_TY);
+        Self::new(db, vec![self_ty])
     }
 }

@@ -442,32 +442,38 @@ impl NameDerivation {
 
 impl PartialOrd for NameDerivation {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for NameDerivation {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
-            (NameDerivation::Def, NameDerivation::Def) => Some(cmp::Ordering::Equal),
-            (NameDerivation::Def, _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::Def) => Some(cmp::Ordering::Less),
+            (NameDerivation::Def, NameDerivation::Def) => cmp::Ordering::Equal,
+            (NameDerivation::Def, _) => cmp::Ordering::Greater,
+            (_, NameDerivation::Def) => cmp::Ordering::Less,
 
             (NameDerivation::NamedImported(_), NameDerivation::NamedImported(_)) => {
-                Some(cmp::Ordering::Equal)
+                cmp::Ordering::Equal
             }
-            (NameDerivation::NamedImported(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::NamedImported(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::NamedImported(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::NamedImported(_)) => cmp::Ordering::Less,
 
             (NameDerivation::GlobImported(_), NameDerivation::GlobImported(_)) => {
-                Some(cmp::Ordering::Equal)
+                cmp::Ordering::Equal
             }
-            (NameDerivation::GlobImported(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::GlobImported(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::GlobImported(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::GlobImported(_)) => cmp::Ordering::Less,
 
-            (NameDerivation::Lex(lhs), NameDerivation::Lex(rhs)) => lhs.partial_cmp(rhs),
-            (NameDerivation::Lex(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::Lex(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::Lex(lhs), NameDerivation::Lex(rhs)) => lhs.cmp(rhs),
+            (NameDerivation::Lex(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::Lex(_)) => cmp::Ordering::Less,
 
-            (NameDerivation::External, NameDerivation::External) => Some(cmp::Ordering::Equal),
-            (NameDerivation::External, _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::External) => Some(cmp::Ordering::Less),
+            (NameDerivation::External, NameDerivation::External) => cmp::Ordering::Equal,
+            (NameDerivation::External, _) => cmp::Ordering::Greater,
+            (_, NameDerivation::External) => cmp::Ordering::Less,
 
-            (NameDerivation::Prim, NameDerivation::Prim) => Some(cmp::Ordering::Equal),
+            (NameDerivation::Prim, NameDerivation::Prim) => cmp::Ordering::Equal,
         }
     }
 }
@@ -504,6 +510,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 
     pub(crate) fn resolve_query(&mut self, query: NameQuery) -> NameResBucket {
+        let hir_db = self.db.as_hir_db();
         // If the query is already resolved, return the cached result.
         if let Some(resolved) = self.cache_store.get(query) {
             return resolved.clone();
@@ -519,7 +526,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         // 1. Look for the name in the current scope.
         let mut found_scopes = FxHashSet::default();
-        for edge in query.scope.edges(self.db.as_hir_db()) {
+        for edge in query.scope.edges(hir_db) {
             match edge.kind.propagate(&query) {
                 PropagationResult::Terminated => {
                     if found_scopes.insert(edge.dest) {
@@ -577,16 +584,16 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // 5. Look for the name in the external ingots.
         query
             .scope
-            .top_mod(self.db.as_hir_db())
-            .ingot(self.db.as_hir_db())
-            .external_ingots(self.db.as_hir_db())
+            .top_mod(hir_db)
+            .ingot(hir_db)
+            .external_ingots(hir_db)
             .iter()
-            .for_each(|(name, root_mod)| {
+            .for_each(|(name, ingot)| {
                 if *name == query.name {
                     // We don't care about the result of `push` because we assume ingots are
                     // guaranteed to be unique.
                     bucket.push(&NameRes::new_from_scope(
-                        ScopeId::from_item((*root_mod).into()),
+                        ScopeId::from_item((ingot.root_mod(hir_db)).into()),
                         NameDomain::Type,
                         NameDerivation::External,
                     ))
@@ -732,12 +739,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     fn finalize_query_result(&mut self, query: NameQuery, bucket: NameResBucket) -> NameResBucket {
         self.cache_store.cache_result(query, bucket.clone());
         bucket
-    }
-}
-
-impl Ord for NameDerivation {
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.partial_cmp(other).unwrap()
     }
 }
 

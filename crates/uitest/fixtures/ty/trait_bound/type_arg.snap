@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_bound/type_arg.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ type_arg.fe:10:8
+   │
+10 │     t: Foo<i32>,
+   │        ^^^^^^^^ `i32` doesn't implement `Trait2`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ type_arg.fe:11:8
+   │
+11 │     u: Foo<u32>
+   │        ^^^^^^^^ `u32` doesn't implement `Trait1`
+
+

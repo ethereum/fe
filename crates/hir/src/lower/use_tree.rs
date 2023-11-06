@@ -45,7 +45,6 @@ impl Use {
                 let id = ctxt.joined_id(TrackedItemId::Use(path));
                 ctxt.enter_item_scope(id.clone(), false);
                 let top_mod = ctxt.top_mod();
-                let alias = alias;
                 let origin = HirOrigin::desugared(origin);
                 let use_ = Self::new(ctxt.db(), id, path, alias, vis, top_mod, origin);
                 ctxt.leave_item_scope(use_)
