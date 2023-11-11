@@ -117,7 +117,7 @@ Since reading the messages doesn't change any state within the blockchain, you d
 To do that run:
 
 ```sh
-$ cast call --rpc-url https://rpc.sepolia.org <contract-address> "get_msg(address)" <your-account-address-that-signed-the-guestbook>
+$ cast call --rpc-url http://localhost:8545 <contract-address> "get_msg(address)" <your-account-address-that-signed-the-guestbook>
 ```
 
 Notice that the command doesn't need to provide a private key simply because we are not sending an actual transaction.
