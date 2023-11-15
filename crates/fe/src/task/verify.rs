@@ -70,6 +70,7 @@ fn request_bytecode(rpc_url: &str, contract_address: &str) -> Result<String, Str
     let client = reqwest::blocking::Client::new();
     let res = client
         .post(rpc_url)
+        .header("Content-Type", "application/json")
         .body(format!(
             "{{
             \"jsonrpc\": \"2.0\",
