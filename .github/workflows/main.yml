@@ -15,7 +15,7 @@ env:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - name: Install system dependencies
@@ -37,7 +37,7 @@ jobs:
         run: cargo clippy --workspace --all-targets --all-features -- -D clippy::all
 
   book:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - name: Install rust
@@ -62,7 +62,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
           - os: macOS-latest
     steps:
       - uses: actions/checkout@v3
@@ -87,7 +87,7 @@ jobs:
         run: cargo test --workspace --all-features --verbose
 
   wasm-test:
-      runs-on: ubuntu-latest
+      runs-on: ubuntu-20.04
       steps:
       - uses: actions/checkout@v3
       - name: Install rust
@@ -113,7 +113,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             BIN_FILE: fe_amd64
           - os: macOS-latest
             BIN_FILE: fe_mac
