@@ -64,10 +64,16 @@ sudo apt-get update &&\
  apt-get install cmake
 ```
 
+Navigate to the folder containing the Fe source code.
+
+```sh
+cd fe
+```
+
 Now, use Rust to build the Fe binary. To run Fe, you need to build using `solc-backend`.
 
 ```sh
-cargo build --feature solc-backend
+cargo build -r --feature solc-backend
 ```
 
 You will now find your Fe binary in `/target/release`. Check the build with:
