@@ -1,0 +1,24 @@
+[package]
+name = "fe-compiler-fuzzers"
+version = "0.0.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+fe-common = {path = "../crates/common", version = "^0.26.0"}
+fe-driver = {path = "../crates/driver", version = "^0.26.0"}
+
+# Prevent this from interfering with workspaces
+[workspace]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "single_file_fuzzer"
+path = "fuzz_targets/single_file_fuzzer.rs"
+test = false
+doc = false

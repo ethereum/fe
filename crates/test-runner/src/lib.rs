@@ -1,9 +1,10 @@
-use bytes::Bytes;
+use alloy_primitives::{Address, Bytes};
 use colored::Colorize;
 use ethabi::{Event, Hash, RawLog};
 use indexmap::IndexMap;
-use revm::primitives::{AccountInfo, Bytecode, Env, ExecutionResult, TransactTo, B160, U256};
-use std::fmt::Display;
+use revm::primitives::{AccountInfo, Bytecode, Env, ExecutionResult, TransactTo, U256};
+
+use std::{fmt::Display, str::FromStr};
 
 pub use ethabi;
 
@@ -112,11 +113,13 @@ pub fn execute(name: &str, events: &[Event], bytecode: &str, sink: &mut TestSink
         .iter()
         .map(|event| (event.signature(), event))
         .collect();
-    let bytecode = Bytecode::new_raw(Bytes::copy_from_slice(&hex::decode(bytecode).unwrap()));
+    let bytecode = Bytecode::new_raw(alloy_primitives::Bytes(
+        Bytes::copy_from_slice(&hex::decode(bytecode).unwrap()).into(),
+    ));
 
     let mut database = revm::InMemoryDB::default();
-    let test_address = B160::from(42);
-    let test_info = AccountInfo::new(U256::ZERO, 0, bytecode);
+    let test_address = Address::from_str("42").unwrap();
+    let test_info = AccountInfo::new(U256::ZERO, 0, bytecode.hash_slow(), bytecode);
     database.insert_account_info(test_address, test_info);
 
     let mut env = Env::default();
@@ -134,12 +137,12 @@ pub fn execute(name: &str, events: &[Event], bytecode: &str, sink: &mut TestSink
                 if let Some(Some(event)) = log
                     .topics
                     .get(0)
-                    .map(|sig| events.get(&Hash::from_slice(sig.as_bytes())))
+                    .map(|sig| events.get(&Hash::from_slice(sig.as_ref())))
                 {
                     let topics = log
                         .topics
                         .iter()
-                        .map(|topic| Hash::from_slice(topic.as_bytes()))
+                        .map(|topic| Hash::from_slice(topic.as_ref()))
                         .collect();
                     let data = log.data.clone().to_vec();
                     let raw_log = RawLog { topics, data };
