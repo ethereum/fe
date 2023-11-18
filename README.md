@@ -1,7 +1,7 @@
 
 <img src="https://raw.githubusercontent.com/ethereum/fe/master/logo/fe_svg/fe_source.svg" width="150px">
 
-Fe is an emerging smart contract language for the Ethereum blockchain.
+Fe is a high-level smart contract language for the Ethereum blockchain.
 
 [![Build Status](https://github.com/ethereum/fe/workflows/CI/badge.svg)](https://github.com/ethereum/fe/actions)
 [![Coverage](https://codecov.io/gh/ethereum/fe/branch/master/graph/badge.svg)](https://codecov.io/gh/ethereum/fe)
@@ -11,35 +11,37 @@ NOTE: **The larger part of the `master` branch will be replaced with the brand-n
 
 ## Overview
 
-Fe is a statically typed language for the Ethereum Virtual Machine (EVM). It is inspired by Python and Rust which makes it easy to learn -- especially for new developers entering the Ethereum ecosystem.
+Fe is statically typed and designed for writing smart contracts. It is implemented in Rust and generates EVM bytecode.
 
-## Features & Goals
+## Language Features & Goals
 
-* Bounds and overflow checking
-* Decidability by limitation of dynamic program behavior
-* More precise gas estimation (as a consequence of decidability)
-* Static typing
-* Pure function support
-* Restrictions on reentrancy
-* Static looping
-* Module imports
-* Standard library
-* Usage of [YUL](https://docs.soliditylang.org/en/latest/yul.html) IR to target both EVM and eWASM
-* WASM compiler binaries for enhanced portability and in-browser compilation of
-  Fe contracts
-* Implementation in a powerful, systems-oriented language (Rust) with strong safety guarantees to reduce risk of compiler bugs
+* Heavily static
+* Safe by default 
+* Ergonomic
+* Powerful
+* Designed for Ethereum 
 
-Additional information about design goals and background can be found in the [official announcement](https://snakecharmers.ethereum.org/fe-a-new-language-for-the-ethereum-ecosystem/).
+## Compiler/Tooling Features & Goals
+
+* Efficient and correct code generation
+* Compiler interactiveness and IDE support
+* Testing that enables thorough validation of contracts and libraries
+* Wasm support
 
 ## Language Specification
 
 We aim to provide a full language specification that should eventually be used to formally verify the correctness of the compiler. A work in progress draft of the specification can be found [here](http://fe-lang.org/docs/spec/index.html).
 
-## Progress
+## Progress (as of March 2023)
 
-Fe development is still in its early stages. We have a basic [Roadmap for 2021](https://notes.ethereum.org/LVhaTF30SJOpkbG1iVw1jg) that we want to follow. We generally try to drive the development by working through real world use cases. Our next goal is to provide a working Uniswap implementation in Fe which will help us to advance and form the language.
+**Supported language features**
+- Enums and match statements
+- Module system
+- Traits and generics 
 
-Fe had its first alpha release January 2021 and is now following a monthly release cycle.
+**Bountiful**
+
+We have launched a non-traditional bug bounty platform to help validate the Fe compiler. You can read more [here](https://blog.fe-lang.org/posts/bountiful-break-things-and-get-paid/). 
 
 ## Getting started
 
