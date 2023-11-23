@@ -5,7 +5,7 @@ use std::path::Path;
 use clap::{ArgEnum, Args};
 use fe_common::diagnostics::print_diagnostics;
 use fe_common::files::SourceFileId;
-use fe_common::utils::files::{BuildFiles, ProjectMode};
+use fe_common::utils::files::{get_project_root, BuildFiles, ProjectMode};
 use fe_driver::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
@@ -24,6 +24,7 @@ enum Emit {
 #[derive(Args)]
 #[clap(about = "Build the current project")]
 pub struct BuildArgs {
+    #[clap(default_value_t = get_project_root().unwrap_or(".".to_string()))]
     input_path: String,
     #[clap(short, long, default_value = DEFAULT_OUTPUT_DIR_NAME)]
     output_dir: String,
