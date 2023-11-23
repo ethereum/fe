@@ -3,6 +3,7 @@ use std::path::Path;
 use clap::Args;
 use fe_common::{
     diagnostics::{print_diagnostics, Diagnostic},
+    utils::files::get_project_root,
     utils::files::BuildFiles,
 };
 use fe_driver::Db;
@@ -10,6 +11,7 @@ use fe_driver::Db;
 #[derive(Args)]
 #[clap(about = "Analyze the current project and report errors, but don't build artifacts")]
 pub struct CheckArgs {
+    #[clap(default_value_t = get_project_root().unwrap_or(".".to_string()))]
     input_path: String,
 }
 
