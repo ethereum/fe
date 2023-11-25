@@ -1,4 +1,6 @@
+use common::recursive_def::RecursiveDefHelper;
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::TopLevelMod};
+use itertools::Itertools;
 
 use self::{
     def_analysis::{
@@ -7,7 +9,8 @@ use self::{
     },
     diagnostics::{
         AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
-        ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
+        ImplTraitDefDiagAccumulator, RecursiveAdtDef, RecursiveAdtDefAccumulator,
+        TraitDefDiagAccumulator, TyDiagCollection, TyLowerDiag, TypeAliasDefDiagAccumulator,
     },
     ty_def::AdtRefId,
 };
@@ -61,13 +64,38 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
                     .iter()
                     .map(|c| AdtRefId::from_contract(self.db, *c)),
             );
+        let (diags, recursive_adt_defs): (Vec<_>, Vec<_>) = adts
+            .map(|adt| {
+                (
+                    analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt),
+                    analyze_adt::accumulated::<RecursiveAdtDefAccumulator>(self.db, adt),
+                )
+            })
+            .unzip();
+        let recursive_adt_defs = recursive_adt_defs.into_iter().flatten().collect_vec();
 
-        adts.flat_map(|adt| {
-            analyze_adt::accumulated::<AdtDefDiagAccumulator>(self.db, adt).into_iter()
-        })
-        .map(|diag| diag.to_voucher())
-        .collect()
+        diags
+            .into_iter()
+            .flatten()
+            .map(|diag| diag.to_voucher())
+            .chain(
+                adt_recursion_diags(recursive_adt_defs)
+                    .iter()
+                    .map(|diag| diag.to_voucher()),
+            )
+            .collect()
     }
+}
+
+fn adt_recursion_diags(defs: Vec<RecursiveAdtDef>) -> Vec<TyDiagCollection> {
+    let mut helper = RecursiveDefHelper::new(defs);
+    let mut diags = vec![];
+
+    while let Some(defs) = helper.remove_disjoint_set() {
+        diags.push(TyLowerDiag::adt_recursion(defs).into());
+    }
+
+    diags
 }
 
 /// An analysis pass for trait definitions.
