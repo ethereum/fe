@@ -5,6 +5,11 @@ At this point Fe is available for **Linux** and **MacOS** natively but can also 
 > Note: If you happen to be a Windows developer, consider getting involved
 > and help us to support the Windows platform natively. [Here would be a good place to start.](https://github.com/ethereum/fe/issues/62)
 
+On a computer with MacOS and an ARM chip, you need to install Rosetta, Apple's x86-to-ARM translator, to be able to run the executable. 
+```
+/usr/sbin/softwareupdate --install-rosetta --agree-to-license
+```
+
 ## Package managers
 
 Fe can be installed from [Homebrew](https://brew.sh/). Homebrew is available for Mac, Linux and Windows (via [WSL](https://learn.microsoft.com/en-us/windows/wsl/about)). The following command installs Fe and exposes it as `fe` without any further configuration necessary:
