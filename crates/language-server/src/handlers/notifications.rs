@@ -4,17 +4,19 @@ use anyhow::{Error, Result};
 use fxhash::FxHashMap;
 use serde::Deserialize;
 
-use crate::{state::ServerState, util::diag_to_lsp};
+use crate::{state::ServerState, util::diag_to_lsp, workspace::{IngotFileContext, SyncableInputFile}};
 
 fn string_diagnostics(
     state: &mut ServerState,
     path: &str,
-    src: &str,
+    text: String,
 ) -> Vec<common::diagnostics::CompleteDiagnostic> {
     let db = &mut state.db;
     let workspace = &mut state.workspace;
-    let file_path = std::path::Path::new(path);
-    let top_mod = workspace.top_mod_from_file(db, file_path, Some(src));
+    let file_path = path;
+    let input = workspace.input_from_file_path(db, file_path).unwrap();
+    input.set_text(db).to(text);
+    let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
     db.run_on_top_mod(top_mod);
     db.finalize_diags()
 }
@@ -28,7 +30,7 @@ pub fn get_diagnostics(
     let diags = string_diagnostics(
         state,
         uri.to_file_path().unwrap().to_str().unwrap(),
-        text.as_str(),
+        text,
     );
 
     let diagnostics = diags
@@ -76,7 +78,7 @@ fn send_diagnostics(
     
     results.for_each(|result| {
         let sender = state.sender.lock().unwrap();
-        sender.send(result);
+        let _ = sender.send(result);
     });
 
     Ok(())

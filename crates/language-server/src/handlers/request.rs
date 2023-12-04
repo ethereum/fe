@@ -39,11 +39,11 @@ pub fn handle_hover(
         params.text_document_position_params.position,
         file_text.as_str(),
     );
-    let file_path = std::path::Path::new(file_path);
+    // let file_path = std::path::Path::new(file_path);
     info!("getting hover info for file_path: {:?}", file_path);
     let ingot = state
         .workspace
-        .input_from_file_path(&mut state.db, file_path.to_str().unwrap())
+        .input_from_file_path(&mut state.db, file_path)
         .map(|input| input.ingot(&state.db));
 
     // info!("got ingot: {:?} of type {:?}", ingot, ingot.map(|ingot| ingot.kind(&mut state.db)));
@@ -73,7 +73,7 @@ pub fn handle_hover(
     let top_mod =
         state
             .workspace
-            .top_mod_from_file(&mut state.db, file_path, Some(file_text.as_str()));
+            .top_mod_from_file_path(&mut state.db, file_path).unwrap();
     let early_resolution = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     let goto_info = match early_resolution {
@@ -126,11 +126,11 @@ pub fn handle_goto_definition(
     let cursor: Cursor = to_offset_from_position(params.position, file_text.as_str());
 
     // Get the module and the goto info
-    let file_path = std::path::Path::new(params.text_document.uri.path());
+    let file_path = params.text_document.uri.path();
     let top_mod =
         state
             .workspace
-            .top_mod_from_file(&mut state.db, file_path, Some(file_text.as_str()));
+            .top_mod_from_file_path(&mut state.db, file_path).unwrap();
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     // Convert the goto info to a Location
