@@ -22,6 +22,7 @@ pub fn run_server() -> Result<()> {
 
     let (request_id, _initialize_params) = connection.initialize_start()?;
     let initialize_params: InitializeParams = serde_json::from_value(_initialize_params)?;
+    // let debug_params = initialize_params.clone();
     // todo: actually use initialization params
 
     let capabilities = server_capabilities();
@@ -60,6 +61,9 @@ pub fn run_server() -> Result<()> {
             .ok()
             .unwrap(),
     )?;
+    // info!("TESTING");
+    // info!("initialized with params: {:?}", debug_params);
+
     let result = state.run(connection.receiver);
 
     io_threads.join().unwrap();

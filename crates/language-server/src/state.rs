@@ -32,6 +32,7 @@ impl ServerState {
     }
 
     fn send(&mut self, msg: Message) -> Result<()> {
+        info!("SEND: {:?}", msg);
         let sender = self.sender.lock().unwrap();
         sender.send(msg)?;
         Ok(())
@@ -91,6 +92,8 @@ impl ServerState {
                 // }
                 _ => {}
             }
+        } else if let lsp_server::Message::Response(resp) = msg {
+            info!("RESPONSE: {:?}", resp);
         }
 
         Ok(())
