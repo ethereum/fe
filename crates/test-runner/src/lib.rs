@@ -1,7 +1,7 @@
-use bytes::Bytes;
+use alloy_primitives::{Address, Bytes};
 use colored::Colorize;
-use revm::primitives::{AccountInfo, Bytecode, Env, ExecutionResult, TransactTo, B160, U256};
-use std::fmt::Display;
+use revm::primitives::{AccountInfo, Bytecode, Env, ExecutionResult, TransactTo, U256};
+use std::{fmt::Display, str::FromStr};
 
 #[derive(Debug, Default)]
 pub struct TestSink {
@@ -66,11 +66,13 @@ impl Display for TestSink {
 }
 
 pub fn execute(name: &str, bytecode: &str, sink: &mut TestSink) -> bool {
-    let bytecode = Bytecode::new_raw(Bytes::copy_from_slice(&hex::decode(bytecode).unwrap()));
+    let bytecode = Bytecode::new_raw(alloy_primitives::Bytes(
+        Bytes::copy_from_slice(&hex::decode(bytecode).unwrap()).into(),
+    ));
 
     let mut database = revm::InMemoryDB::default();
-    let test_address = B160::from(42);
-    let test_info = AccountInfo::new(U256::ZERO, 0, bytecode);
+    let test_address = Address::from_str("42").unwrap();
+    let test_info = AccountInfo::new(U256::ZERO, 0, bytecode.hash_slow(), bytecode);
     database.insert_account_info(test_address, test_info);
 
     let mut env = Env::default();
