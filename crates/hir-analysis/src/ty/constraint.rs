@@ -3,12 +3,17 @@
 
 use std::collections::BTreeSet;
 
-use hir::hir_def::{scope_graph::ScopeId, GenericParam, GenericParamOwner, IngotId, TypeBound};
+use hir::hir_def::{
+    scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, IngotId, ItemKind, TypeBound,
+};
 use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
 
 use crate::{
-    ty::{trait_lower::lower_trait, unify::InferenceKey},
+    ty::{
+        trait_lower::{lower_impl_trait, lower_trait},
+        unify::InferenceKey,
+    },
     HirAnalysisDb,
 };
 
@@ -16,7 +21,7 @@ use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, Subst, TyConcrete, TyData, TyId},
+    ty_def::{AdtDef, FuncDef, Subst, TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
 };
 
@@ -40,30 +45,36 @@ pub(crate) fn ty_constraints(
     assert!(ty.free_inference_keys(db).is_empty());
 
     let (base, args) = ty.decompose_ty_app(db);
-    let TyData::TyCon(TyConcrete::Adt(adt)) = base.data(db) else {
-        return (
-            AssumptionListId::empty_list(db),
-            ConstraintListId::empty_list(db),
-        );
+    let (params, base_constraints) = match base.data(db) {
+        TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, adt)),
+        TyData::TyBase(TyBase::Func(func_def)) => (
+            func_def.params(db),
+            collect_func_def_constraints(db, func_def),
+        ),
+        _ => {
+            return (
+                AssumptionListId::empty_list(db),
+                ConstraintListId::empty_list(db),
+            );
+        }
     };
 
     let mut subst = FxHashMap::default();
     let mut arg_idx = 0;
-    for (&param, arg) in adt.params(db).iter().zip(args) {
+    for (&param, arg) in params.iter().zip(args) {
         subst.insert(param, arg);
         arg_idx += 1;
     }
 
     // Generalize unbound type parameters.
-    for &arg in adt.params(db).iter().skip(arg_idx) {
+    for &arg in params.iter().skip(arg_idx) {
         let key = InferenceKey(arg_idx as u32);
         let ty_var = TyId::ty_var(db, arg.kind(db).clone(), key);
         subst.insert(arg, ty_var);
         arg_idx += 1;
     }
 
-    // Substitute type parameters.
-    let constraints = collect_adt_constraints(db, adt).apply_subst(db, &mut subst);
+    let constraints = base_constraints.apply_subst(db, &mut subst);
 
     // If the predicate type is a type variable, collect it as an assumption
     // and remove it from the constraint.
@@ -182,6 +193,15 @@ pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> Co
     collector.collect()
 }
 
+#[salsa::tracked]
+pub(crate) fn collect_impl_block_constraints(
+    db: &dyn HirAnalysisDb,
+    impl_: Impl,
+) -> ConstraintListId {
+    let owner = GenericParamOwnerId::new(db, impl_.into());
+    ConstraintCollector::new(db, owner).collect()
+}
+
 /// Collect constraints that are specified by the given implementor(i.e., impl
 /// trait).
 #[salsa::tracked]
@@ -189,10 +209,38 @@ pub(crate) fn collect_implementor_constraints(
     db: &dyn HirAnalysisDb,
     implementor: Implementor,
 ) -> ConstraintListId {
-    let impl_trait = implementor.impl_trait(db);
+    let impl_trait = implementor.hir_impl_trait(db);
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, impl_trait.into()));
 
     collector.collect()
+}
+
+#[salsa::tracked]
+pub(crate) fn collect_func_def_constraints(
+    db: &dyn HirAnalysisDb,
+    func: FuncDef,
+) -> ConstraintListId {
+    let hir_func = func.hir_func(db);
+
+    let func_constraints =
+        ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect();
+
+    let parent_constraints = match hir_func.scope().parent_item(db.as_hir_db()) {
+        Some(ItemKind::Trait(trait_)) => collect_trait_constraints(db, lower_trait(db, trait_)),
+
+        Some(ItemKind::Impl(impl_)) => collect_impl_block_constraints(db, impl_),
+
+        Some(ItemKind::ImplTrait(impl_trait)) => {
+            let Some(implementor) = lower_impl_trait(db, impl_trait) else {
+                return func_constraints;
+            };
+            collect_implementor_constraints(db, implementor)
+        }
+
+        _ => return func_constraints,
+    };
+
+    func_constraints.merge(db, parent_constraints)
 }
 
 /// Returns a list of assumptions derived from the given assumptions by looking
@@ -230,6 +278,12 @@ impl PredicateId {
         let ty = self.ty(db).apply_subst(db, subst);
         let trait_ = self.trait_inst(db).apply_subst(db, subst);
         Self::new(db, ty, trait_)
+    }
+
+    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
+        let ty = self.ty(db);
+        let trait_ = self.trait_inst(db);
+        format!("{}: {}", ty.pretty_print(db), trait_.pretty_print(db))
     }
 }
 

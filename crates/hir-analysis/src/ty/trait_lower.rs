@@ -1,19 +1,21 @@
 //! This module implements the trait and impl trait lowering process.
 
+use std::collections::BTreeMap;
+
 use hir::hir_def::{
-    scope_graph::ScopeId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRefId,
+    scope_graph::ScopeId, IdentId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRefId,
 };
 use rustc_hash::FxHashMap;
 
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
-    ty::ty_lower::lower_hir_ty,
+    ty::ty_lower::{lower_func, lower_hir_ty},
     HirAnalysisDb,
 };
 
 use super::{
-    trait_def::{Implementor, TraitDef, TraitInstId},
-    ty_def::{Kind, TyId},
+    trait_def::{Implementor, TraitDef, TraitInstId, TraitMethod},
+    ty_def::{FuncDef, InvalidCause, Kind, TyId},
     ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamOwnerId},
     unify::UnificationTable,
 };
@@ -26,9 +28,10 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
 }
 
 /// Collect all trait implementors in the ingot.
-/// The returned table doesn't contain the dependent ingot implementors.
-/// If you need to obtain the environment that contains all available
-/// implementors in the ingot, use [`TraitEnv`](super::trait_def::TraitEnv).
+/// The returned table doesn't contain the dependent(external) ingot
+/// implementors. If you need to obtain the environment that contains all
+/// available implementors in the ingot, please use
+/// [`TraitEnv`](super::trait_def::TraitEnv).
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitImplTable {
     let dependent_impls = ingot
@@ -37,9 +40,8 @@ pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> Tra
         .map(|(_, external)| collect_trait_impls(db, *external))
         .collect();
 
-    let mut collector = ImplementorCollector::new(db, dependent_impls);
-    collector.collect_impls(ingot.all_impl_trait(db.as_hir_db()));
-    collector.finalize()
+    let impl_traits = ingot.all_impl_traits(db.as_hir_db());
+    ImplementorCollector::new(db, dependent_impls).collect(impl_traits)
 }
 
 /// Returns the corresponding implementors for the given [`ImplTrait`].
@@ -139,6 +141,22 @@ pub(crate) fn lower_trait_ref(
     Ok(TraitInstId::new(db, trait_def, args, ingot))
 }
 
+#[salsa::tracked(return_ref)]
+pub(crate) fn collect_implementor_methods(
+    db: &dyn HirAnalysisDb,
+    implementor: Implementor,
+) -> BTreeMap<IdentId, FuncDef> {
+    let mut methods = BTreeMap::default();
+
+    for method in implementor.hir_impl_trait(db).methods(db.as_hir_db()) {
+        if let Some(func) = lower_func(db, method) {
+            methods.insert(func.name(db), func);
+        }
+    }
+
+    methods
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TraitRefLowerError {
     /// The trait reference is not a valid trait reference. This error is
@@ -162,24 +180,53 @@ struct TraitBuilder<'db> {
     trait_: Trait,
     params: Vec<TyId>,
     self_arg: TyId,
-    // TODO: We need to lower associated methods here.
-    // methods: Vec
+    methods: BTreeMap<IdentId, TraitMethod>,
 }
 
 impl<'db> TraitBuilder<'db> {
     fn new(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
-        let params_owner_id = GenericParamOwnerId::new(db, trait_.into());
-        let params_set = collect_generic_params(db, params_owner_id);
         Self {
             db,
             trait_,
-            params: params_set.params.clone(),
-            self_arg: params_set.trait_self.unwrap(),
+            params: vec![],
+            self_arg: TyId::invalid(db, InvalidCause::Other),
+            methods: BTreeMap::default(),
         }
     }
 
-    fn build(self) -> TraitDef {
-        TraitDef::new(self.db, self.trait_, self.params, self.self_arg)
+    fn build(mut self) -> TraitDef {
+        self.collect_params();
+        self.collect_methods();
+
+        TraitDef::new(
+            self.db,
+            self.trait_,
+            self.params,
+            self.self_arg,
+            self.methods,
+        )
+    }
+
+    fn collect_params(&mut self) {
+        let params_owner_id = GenericParamOwnerId::new(self.db, self.trait_.into());
+        let params_set = collect_generic_params(self.db, params_owner_id);
+        self.params = params_set.params.clone();
+        self.self_arg = params_set.trait_self.unwrap();
+    }
+
+    fn collect_methods(&mut self) {
+        let hir_db = self.db.as_hir_db();
+        for method in self.trait_.methods(hir_db) {
+            let Some(func) = lower_func(self.db, method) else {
+                continue;
+            };
+
+            let name = func.name(self.db);
+            let trait_method = TraitMethod(func);
+            // We can simply ignore the conflict here because it's already handled by the
+            // name resolution.
+            self.methods.entry(name).or_insert(trait_method);
+        }
     }
 }
 
@@ -199,12 +246,8 @@ impl<'db> ImplementorCollector<'db> {
         }
     }
 
-    fn finalize(self) -> TraitImplTable {
-        self.impl_table
-    }
-
-    fn collect_impls(&mut self, impls: &[ImplTrait]) {
-        for &impl_ in impls {
+    fn collect(mut self, impl_traits: &[ImplTrait]) -> TraitImplTable {
+        for &impl_ in impl_traits {
             let Some(implementor) = lower_impl_trait(self.db, impl_) else {
                 continue;
             };
@@ -216,6 +259,8 @@ impl<'db> ImplementorCollector<'db> {
                     .push(implementor);
             }
         }
+
+        self.impl_table
     }
 
     /// Returns `true` if `implementor` conflicts with any existing implementor.

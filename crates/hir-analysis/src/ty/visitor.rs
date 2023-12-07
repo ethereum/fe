@@ -1,6 +1,6 @@
 use crate::HirAnalysisDb;
 
-use super::ty_def::{AdtDef, InvalidCause, PrimTy, TyConcrete, TyData, TyId, TyParam, TyVar};
+use super::ty_def::{AdtDef, FuncDef, InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar};
 
 pub trait TyVisitor {
     fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
@@ -11,7 +11,7 @@ pub trait TyVisitor {
     fn visit_var(&mut self, db: &dyn HirAnalysisDb, var: &TyVar) {}
 
     #[allow(unused_variables)]
-    fn visit_param(&self, db: &dyn HirAnalysisDb, ty_param: &TyParam) {}
+    fn visit_param(&mut self, db: &dyn HirAnalysisDb, ty_param: &TyParam) {}
 
     fn visit_app(&mut self, db: &dyn HirAnalysisDb, abs: TyId, arg: TyId) {
         self.visit_ty(db, abs);
@@ -19,7 +19,7 @@ pub trait TyVisitor {
     }
 
     #[allow(unused_variables)]
-    fn visit_ty_con(&mut self, db: &dyn HirAnalysisDb, ty_con: &TyConcrete) {
+    fn visit_ty_con(&mut self, db: &dyn HirAnalysisDb, ty_con: &TyBase) {
         walk_ty_con(self, db, ty_con);
     }
 
@@ -31,6 +31,9 @@ pub trait TyVisitor {
 
     #[allow(unused_variables)]
     fn visit_adt(&mut self, db: &dyn HirAnalysisDb, adt: AdtDef) {}
+
+    #[allow(unused_variables)]
+    fn visit_func(&mut self, db: &dyn HirAnalysisDb, func: FuncDef) {}
 }
 
 pub fn walk_ty<V>(visitor: &mut V, db: &dyn HirAnalysisDb, ty: TyId)
@@ -44,18 +47,19 @@ where
 
         TyData::TyApp(abs, arg) => visitor.visit_app(db, abs, arg),
 
-        TyData::TyCon(ty_con) => visitor.visit_ty_con(db, &ty_con),
+        TyData::TyBase(ty_con) => visitor.visit_ty_con(db, &ty_con),
 
         TyData::Invalid(cause) => visitor.visit_invalid(db, &cause),
     }
 }
 
-pub fn walk_ty_con<V>(visitor: &mut V, db: &dyn HirAnalysisDb, ty_con: &TyConcrete)
+pub fn walk_ty_con<V>(visitor: &mut V, db: &dyn HirAnalysisDb, ty_con: &TyBase)
 where
     V: TyVisitor + ?Sized,
 {
     match ty_con {
-        TyConcrete::Prim(prim) => visitor.visit_prim(db, prim),
-        TyConcrete::Adt(adt) => visitor.visit_adt(db, *adt),
+        TyBase::Prim(prim) => visitor.visit_prim(db, prim),
+        TyBase::Adt(adt) => visitor.visit_adt(db, *adt),
+        TyBase::Func(func) => visitor.visit_func(db, *func),
     }
 }

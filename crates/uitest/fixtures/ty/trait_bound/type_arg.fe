@@ -10,3 +10,19 @@ pub struct User {
     t: Foo<i32>,
     u: Foo<u32>
 }
+
+
+impl<T> Foo<T> {
+    fn foo(self) {}
+}
+
+
+
+pub struct Foo2<T, U: Trait1> {
+    t: T,
+    u: U
+}
+
+impl<T> Foo2<T> {
+    fn foo<U>(self: Self<U>) {}
+}

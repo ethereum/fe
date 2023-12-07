@@ -74,7 +74,7 @@ impl<'db> UnificationTable<'db> {
                 }
             }
 
-            (TyData::TyParam(_), TyData::TyParam(_)) | (TyData::TyCon(_), TyData::TyCon(_)) => {
+            (TyData::TyParam(_), TyData::TyParam(_)) | (TyData::TyBase(_), TyData::TyBase(_)) => {
                 ty1 == ty2
             }
 

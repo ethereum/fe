@@ -52,6 +52,12 @@ define_lazy_span_node!(
     }
 );
 
+impl LazyFuncParamSpan {
+    pub fn fallback_self_ty(&self) -> LazyTySpan {
+        LazyTySpan(self.name().0)
+    }
+}
+
 define_lazy_span_node!(LazyGenericParamSpan, ast::GenericParam);
 impl LazyGenericParamSpan {
     pub fn into_type_param(self) -> LazyTypeGenericParamSpan {

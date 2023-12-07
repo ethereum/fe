@@ -53,11 +53,14 @@ impl super::Parse for PathTypeScope {
     }
 }
 
-define_scope!(SelfTypeScope, SelfType, Inheritance);
+define_scope!(pub(super) SelfTypeScope, SelfType, Inheritance);
 impl super::Parse for SelfTypeScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        parser.bump_expected(SyntaxKind::SelfTypeKw);
+        if !parser.bump_if(SyntaxKind::SelfTypeKw) {
+            parser.error_and_recover("expected `Self` type here", None);
+            return;
+        }
         if parser.current_kind() == Some(SyntaxKind::Lt) {
             parser.parse(GenericArgListScope::default(), None);
         }

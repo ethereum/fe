@@ -5,12 +5,11 @@ use crate::{
         attr,
         scope_graph::{FieldParent, ScopeId},
         Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
-        FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
-        GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
-        KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct,
-        TopLevelMod, Trait, TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use,
-        UseAlias, UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind,
-        WhereClauseId, WherePredicate,
+        FieldIndex, Func, FuncParam, FuncParamListId, FuncParamName, GenericArg, GenericArgListId,
+        GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind,
+        MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait,
+        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{
         item::LazySuperTraitListSpan, lazy_spans::*, params::LazyTraitRefSpan,
@@ -785,6 +784,10 @@ pub fn walk_impl_trait<V>(
             visitor.visit_where_clause(ctxt, id);
         },
     );
+
+    for item in impl_trait.children_non_nested(ctxt.db) {
+        visitor.visit_item(&mut VisitorCtxt::with_item(ctxt.db, item), item);
+    }
 }
 
 pub fn walk_const<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyConstSpan>, const_: Const)
@@ -1447,7 +1450,7 @@ pub fn walk_func_param<V>(
 ) where
     V: Visitor + ?Sized,
 {
-    if let Some(FuncParamLabel::Ident(ident)) = param.label {
+    if let Some(FuncParamName::Ident(ident)) = param.label {
         ctxt.with_new_ctxt(
             |span| span.label_moved(),
             |ctxt| visitor.visit_ident(ctxt, ident),
@@ -1462,7 +1465,16 @@ pub fn walk_func_param<V>(
     }
 
     if let Some(ty) = param.ty.to_opt() {
-        ctxt.with_new_ctxt(|span| span.ty_moved(), |ctxt| visitor.visit_ty(ctxt, ty));
+        if param.is_self_param() && param.self_ty_fallback {
+            ctxt.with_new_ctxt(
+                |span| span.fallback_self_ty(),
+                |ctxt| {
+                    visitor.visit_ty(ctxt, ty);
+                },
+            );
+        } else {
+            ctxt.with_new_ctxt(|span| span.ty_moved(), |ctxt| visitor.visit_ty(ctxt, ty));
+        }
     }
 }
 

@@ -340,11 +340,11 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
             return;
         }
 
-        let scope = ScopeId::from_item(item);
-        // We don't need to check impl/impl-trait blocks for conflicts because they
+        // We don't need to check impl blocks for conflicts because they
         // needs ingot granularity analysis, the conflict checks for them is done by the
         // `ImplCollector`.
-        if !matches!(item, ItemKind::Impl(_) | ItemKind::ImplTrait(_)) {
+        if !matches!(item, ItemKind::Impl(_)) {
+            let scope = ScopeId::from_item(item);
             self.check_conflict(scope);
         }
 

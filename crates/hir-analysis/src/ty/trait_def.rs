@@ -1,9 +1,9 @@
 //! This module contains all trait related types definitions.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use hir::{
-    hir_def::{ImplTrait, IngotId, Trait},
+    hir_def::{IdentId, ImplTrait, IngotId, Trait},
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
@@ -20,7 +20,8 @@ use super::{
     },
     constraint_solver::{check_trait_inst_sat, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
-    ty_def::{Kind, Subst, TyId},
+    trait_lower::collect_implementor_methods,
+    ty_def::{FuncDef, Kind, Subst, TyId},
     unify::UnificationTable,
 };
 
@@ -84,7 +85,7 @@ impl TraitEnv {
                 hir_to_implementor.extend(
                     implementors
                         .iter()
-                        .map(|implementor| (implementor.impl_trait(db), *implementor)),
+                        .map(|implementor| (implementor.hir_impl_trait(db), *implementor)),
                 );
             }
         }
@@ -126,7 +127,7 @@ pub(crate) struct Implementor {
     pub(crate) params: Vec<TyId>,
 
     /// The original hir.
-    pub(crate) impl_trait: ImplTrait,
+    pub(crate) hir_impl_trait: ImplTrait,
 }
 
 impl Implementor {
@@ -148,7 +149,7 @@ impl Implementor {
             subst.insert(*param, var);
         }
 
-        let hir_impl = self.impl_trait(db);
+        let hir_impl = self.hir_impl_trait(db);
         let trait_ = self.trait_(db).apply_subst(db, &mut subst);
         let ty = self.ty(db).apply_subst(db, &mut subst);
         let params = self
@@ -177,6 +178,17 @@ impl Implementor {
         let (generalized_other, _) = other.generalize(db, table);
 
         table.unify(generalized_self, generalized_other)
+    }
+
+    pub(super) fn methods(self, db: &dyn HirAnalysisDb) -> &BTreeMap<IdentId, FuncDef> {
+        collect_implementor_methods(db, self)
+    }
+
+    pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> FxHashMap<TyId, TyId> {
+        let mut table = self.trait_(db).subst_table(db);
+
+        table.insert(self.trait_(db).def(db).self_param(db), self.ty(db));
+        table
     }
 }
 
@@ -272,8 +284,17 @@ pub struct TraitDef {
     /// We collects self type here to know the expected kind of implementor
     /// type in `Implementor` lowering phase.
     pub self_param: TyId,
-    // TODO: we need to collect associated method types here.
-    // methods: Vec<FuncInst>
+    #[return_ref]
+    pub methods: BTreeMap<IdentId, TraitMethod>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct TraitMethod(pub FuncDef);
+
+impl TraitMethod {
+    pub fn has_default_impl(self, db: &dyn HirAnalysisDb) -> bool {
+        self.0.hir_func(db).body(db.as_hir_db()).is_some()
+    }
 }
 
 impl TraitDef {

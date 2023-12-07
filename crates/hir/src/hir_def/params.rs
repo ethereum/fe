@@ -1,6 +1,6 @@
 use crate::{hir_def::TypeId, HirDb};
 
-use super::{Body, IdentId, Partial, PathId};
+use super::{kw, Body, IdentId, Partial, PathId};
 
 #[salsa::interned]
 pub struct GenericArgListId {
@@ -88,9 +88,13 @@ pub struct ConstGenericArg {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FuncParam {
     pub is_mut: bool,
-    pub label: Option<FuncParamLabel>,
+    pub label: Option<FuncParamName>,
     pub name: Partial<FuncParamName>,
     pub ty: Partial<TypeId>,
+
+    /// `true` if this parameter is `self` and the type is not specified.
+    /// `ty` should have `Self` type without any type arguments.
+    pub self_ty_fallback: bool,
 }
 
 impl FuncParam {
@@ -99,6 +103,10 @@ impl FuncParam {
             FuncParamName::Ident(name) => Some(name),
             _ => None,
         }
+    }
+
+    pub fn is_self_param(&self) -> bool {
+        self.name.to_opt().map_or(false, |name| name.is_self())
     }
 }
 
@@ -109,23 +117,27 @@ pub struct WherePredicate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FuncParamLabel {
-    Ident(IdentId),
-    Underscore,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FuncParamName {
-    /// `self` parameter.
     Ident(IdentId),
     Underscore,
 }
 
 impl FuncParamName {
-    pub fn as_name(&self) -> Option<IdentId> {
+    pub fn ident(&self) -> Option<IdentId> {
         match self {
             FuncParamName::Ident(name) => Some(*name),
             _ => None,
+        }
+    }
+
+    pub fn is_self(&self) -> bool {
+        self.ident() == Some(kw::SELF)
+    }
+
+    pub fn pretty_print(&self, db: &dyn HirDb) -> String {
+        match self {
+            FuncParamName::Ident(name) => name.data(db).to_string(),
+            FuncParamName::Underscore => "_".to_string(),
         }
     }
 }

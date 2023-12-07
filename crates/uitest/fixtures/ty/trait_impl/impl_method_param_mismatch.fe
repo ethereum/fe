@@ -1,0 +1,11 @@
+pub trait Foo {
+    fn foo<T, U: * -> *>(t: T, u: U<i32>) {}
+}
+
+impl Foo for i32 {
+    fn foo<T, U>(t: T, u: U) {}
+}
+
+impl Foo for u32 {
+    fn foo<T>(t: T) {}
+}

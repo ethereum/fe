@@ -45,7 +45,7 @@ impl IngotId {
     }
 
     pub fn all_modules(self, db: &dyn HirDb) -> &Vec<TopLevelMod> {
-        all_top_mod_in_ingot(db, self)
+        all_top_modules_in_ingot(db, self)
     }
 
     pub fn root_mod(self, db: &dyn HirDb) -> TopLevelMod {
@@ -60,8 +60,16 @@ impl IngotId {
         self.inner(db).kind(db.as_input_db())
     }
 
-    pub fn all_impl_trait(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
-        all_impl_trait_in_ingot(db, self)
+    pub fn all_impl_traits(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
+        all_impl_traits_in_ingot(db, self)
+    }
+
+    pub fn all_impls(self, db: &dyn HirDb) -> &Vec<Impl> {
+        all_impls_in_ingot(db, self)
+    }
+
+    pub fn is_std(self, db: &dyn HirDb) -> bool {
+        matches!(self.kind(db), IngotKind::Std)
     }
 
     pub fn dummy() -> Self {

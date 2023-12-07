@@ -11,12 +11,15 @@ pub struct Jar(
     ty::ty_def::TyId,
     ty::ty_def::ty_kind,
     ty::ty_def::free_inference_keys,
+    ty::ty_def::collect_type_params,
     ty::ty_def::pretty_print_ty,
     ty::ty_def::AdtDef,
+    ty::ty_def::FuncDef,
     ty::ty_def::AdtRefId,
     /// Type lowering.
     ty::ty_lower::lower_hir_ty,
     ty::ty_lower::lower_adt,
+    ty::ty_lower::lower_func,
     ty::ty_lower::lower_type_alias,
     ty::ty_lower::collect_generic_params,
     ty::ty_lower::GenericParamOwnerId,
@@ -25,12 +28,17 @@ pub struct Jar(
     ty::trait_lower::lower_trait_ref,
     ty::trait_lower::collect_trait_impls,
     ty::trait_lower::lower_impl_trait,
+    ty::trait_lower::collect_implementor_methods,
+    /// Method collection.
+    ty::method_table::collect_methods,
     /// Item Definition analysis.
     ty::def_analysis::check_recursive_adt,
     ty::def_analysis::analyze_adt,
     ty::def_analysis::analyze_type_alias,
     ty::def_analysis::analyze_trait,
+    ty::def_analysis::analyze_impl,
     ty::def_analysis::analyze_impl_trait,
+    ty::def_analysis::analyze_func,
     /// Trait system.
     ty::trait_def::TraitDef,
     ty::trait_def::TraitInstId,
@@ -41,6 +49,8 @@ pub struct Jar(
     ty::constraint::collect_trait_constraints,
     ty::constraint::collect_adt_constraints,
     ty::constraint::collect_implementor_constraints,
+    ty::constraint::collect_impl_block_constraints,
+    ty::constraint::collect_func_def_constraints,
     ty::constraint::super_trait_insts,
     ty::constraint::compute_super_assumptions,
     ty::constraint::ty_constraints,
@@ -55,6 +65,8 @@ pub struct Jar(
     ty::diagnostics::TypeAliasDefDiagAccumulator,
     ty::diagnostics::TraitDefDiagAccumulator,
     ty::diagnostics::ImplTraitDefDiagAccumulator,
+    ty::diagnostics::ImplDefDiagAccumulator,
+    ty::diagnostics::FuncDefDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {

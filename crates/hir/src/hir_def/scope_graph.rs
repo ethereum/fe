@@ -9,7 +9,7 @@ use crate::{
 };
 
 use super::{
-    scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamLabel, IdentId,
+    scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamName, IdentId,
     IngotId, ItemKind, TopLevelMod, Use, VariantKind, Visibility,
 };
 
@@ -32,7 +32,7 @@ impl ScopeGraph {
             db,
             graph: self,
             visited: Default::default(),
-            stack: vec![self.top_mod.into()],
+            stack: vec![self.top_mod.scope()],
         }
     }
 
@@ -280,7 +280,7 @@ impl ScopeId {
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
                 let param = &func.params(db).to_opt()?.data(db)[idx];
-                if let Some(FuncParamLabel::Ident(ident)) = param.label {
+                if let Some(FuncParamName::Ident(ident)) = param.label {
                     Some(ident)
                 } else {
                     param.name()
@@ -330,7 +330,7 @@ impl ScopeId {
                 let func: Func = parent.try_into().unwrap();
                 let param = &func.params(db).to_opt()?.data(db)[idx];
                 let param_span = func.lazy_span().params().param(idx);
-                if let Some(FuncParamLabel::Ident(_)) = param.label {
+                if let Some(FuncParamName::Ident(_)) = param.label {
                     Some(param_span.label().into())
                 } else {
                     Some(param_span.name().into())
@@ -385,30 +385,38 @@ pub enum FieldParent {
 struct ScopeGraphItemIterDfs<'a> {
     db: &'a dyn HirDb,
     graph: &'a ScopeGraph,
-    visited: FxHashSet<ItemKind>,
-    stack: Vec<ItemKind>,
+    visited: FxHashSet<ScopeId>,
+    stack: Vec<ScopeId>,
 }
 
 impl<'a> std::iter::Iterator for ScopeGraphItemIterDfs<'a> {
     type Item = ItemKind;
 
     fn next(&mut self) -> Option<ItemKind> {
-        let item = self.stack.pop()?;
-        self.visited.insert(item);
-        let scope_id = ScopeId::from_item(item);
+        while let Some(scope) = self.stack.pop() {
+            self.visited.insert(scope);
+            for edge in self.graph.edges(scope) {
+                let dest = edge.dest;
+                let top_mod = dest.top_mod(self.db);
+                if top_mod != self.graph.top_mod || self.visited.contains(&dest) {
+                    continue;
+                }
 
-        for edge in self.graph.edges(scope_id) {
-            let top_mod = edge.dest.top_mod(self.db);
-            if top_mod != self.graph.top_mod {
-                continue;
-            }
-            if let Some(item) = edge.dest.to_item() {
-                if !self.visited.contains(&item) {
-                    self.stack.push(item);
+                match dest {
+                    ScopeId::Item(_) | ScopeId::Block(..) => {
+                        self.stack.push(dest);
+                    }
+
+                    _ => {}
                 }
             }
+
+            if let Some(item) = scope.to_item() {
+                return Some(item);
+            }
         }
-        Some(item)
+
+        None
     }
 }
 
