@@ -1,0 +1,30 @@
+[package]
+name = "fe-v2-fuzz"
+version = "0.0.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+fe-parser2 = {path = "../crates/parser2", version = "^0.23.0"}
+fe-driver2 = {path = "../crates/driver2", version = "^0.23.0"}
+
+# Prevent this from interfering with workspaces
+[workspace]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "fuzz_v2_parser"
+path = "fuzz_targets/fuzz_v2_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_v2_driver"
+path = "fuzz_targets/fuzz_v2_driver.rs"
+test = false
+doc = false
