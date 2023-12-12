@@ -40,6 +40,26 @@ impl ServerState {
 
     pub fn run(&mut self, receiver: Receiver<lsp_server::Message>) -> Result<()> {
         info!("Fe Language Server listening...");
+
+        // watch the workspace root for changes
+        self.send(lsp_server::Message::Request(lsp_server::Request::new(
+            28716283.into(),
+            String::from("client/registerCapability"),
+            lsp_types::RegistrationParams {
+                registrations: vec![lsp_types::Registration {
+                    id: String::from("watch-fe-files"),
+                    method: String::from("workspace/didChangeWatchedFiles"),
+                    register_options: Some(serde_json::to_value(lsp_types::DidChangeWatchedFilesRegistrationOptions {
+                        watchers: vec![lsp_types::FileSystemWatcher {
+                            glob_pattern: lsp_types::GlobPattern::String("**/*.fe".to_string()),
+                            kind: None
+                            // kind: Some(WatchKind::Create | WatchKind::Change | WatchKind::Delete),
+                        }],
+                    }).unwrap()),
+                }],
+            }
+        )))?;
+
         while let Some(msg) = self.next_message(&receiver) {
             if let lsp_server::Message::Notification(notification) = &msg {
                 if notification.method == lsp_types::notification::Exit::METHOD {
