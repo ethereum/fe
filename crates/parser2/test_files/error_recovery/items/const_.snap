@@ -18,7 +18,7 @@ Root@0..44
             Int@10..12 "10"
       Newline@12..14 "\n\n"
     Item@14..29
-      Const@14..26
+      Const@14..29
         ConstKw@14..19 "const"
         WhiteSpace@19..20 " "
         Ident@20..21 "X"
@@ -28,8 +28,9 @@ Root@0..44
           Path@23..26
             PathSegment@23..26
               Ident@23..26 "i32"
-      WhiteSpace@26..27 " "
-      Newline@27..29 "\n\n"
+        WhiteSpace@26..27 " "
+        Error@27..29
+          Newline@27..29 "\n\n"
     Item@29..44
       Const@29..44
         ConstKw@29..34 "const"
@@ -38,11 +39,11 @@ Root@0..44
         Colon@36..37 ":"
         WhiteSpace@37..38 " "
         PathType@38..40
-          Path@38..40
-            PathSegment@38..40
-              Error@38..40
-                RBracket@38..39 "]"
-                InvalidToken@39..40 "@"
+          Path@38..38
+            PathSegment@38..38
+          Error@38..40
+            RBracket@38..39 "]"
+            InvalidToken@39..40 "@"
         WhiteSpace@40..41 " "
         Eq@41..42 "="
         WhiteSpace@42..43 " "

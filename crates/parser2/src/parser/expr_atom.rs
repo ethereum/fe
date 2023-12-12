@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use rowan::Checkpoint;
 
 use crate::{
@@ -9,31 +11,32 @@ use super::{
     define_scope,
     expr::{parse_expr, parse_expr_no_struct},
     item::ItemScope,
-    parse_pat,
+    parse_list, parse_pat,
     stmt::parse_stmt,
     token_stream::TokenStream,
-    Parser,
+    ErrProof, Parser, Recovery,
 };
 
 pub(super) fn parse_expr_atom<S: TokenStream>(
     parser: &mut Parser<S>,
     allow_record_init: bool,
-) -> (bool, Checkpoint) {
+) -> Result<Checkpoint, Recovery<ErrProof>> {
     use SyntaxKind::*;
     match parser.current_kind() {
-        Some(IfKw) => parser.parse(IfExprScope::default(), None),
-        Some(MatchKw) => parser.parse(MatchExprScope::default(), None),
-        Some(LBrace) => parser.parse(BlockExprScope::default(), None),
-        Some(LParen) => parser.parse(ParenScope::default(), None),
-        Some(LBracket) => parser.parse(ArrayScope::default(), None),
-        Some(kind) if lit::is_lit(kind) => parser.parse(LitExprScope::default(), None),
+        Some(IfKw) => parser.parse_cp(IfExprScope::default(), None),
+        Some(MatchKw) => parser.parse_cp(MatchExprScope::default(), None),
+        Some(LBrace) => parser.parse_cp(BlockExprScope::default(), None),
+        Some(LParen) => parser.parse_cp(ParenScope::default(), None),
+        Some(LBracket) => parser.parse_cp(ArrayScope::default(), None),
+        Some(kind) if lit::is_lit(kind) => parser
+            .parse_cp(LitExprScope::default(), None)
+            .map_err(|e| e.into()),
         Some(kind) if path::is_path_segment(kind) => {
-            parser.parse(PathExprScope::new(allow_record_init), None)
+            parser.parse_cp(PathExprScope::new(allow_record_init), None)
         }
-        _ => {
-            parser.error_and_recover("expected expression", None);
-            (false, parser.checkpoint())
-        }
+        _ => parser
+            .error_and_recover("expected expression") // xxx
+            .map(|()| parser.checkpoint()),
     }
 }
 
@@ -52,7 +55,9 @@ define_scope! {
     )
 }
 impl super::Parse for BlockExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::LBrace);
 
         loop {
@@ -67,198 +72,189 @@ impl super::Parse for BlockExprScope {
                 .map(SyntaxKind::is_item_head)
                 .unwrap_or_default()
             {
-                parser.parse(ItemScope::default(), None);
+                parser.parse(ItemScope::default())?;
                 continue;
             }
 
-            if !parse_stmt(parser, None) {
-                continue;
-            }
+            parse_stmt(parser)?;
 
             parser.set_newline_as_trivia(false);
-            if !parser.bump_if(SyntaxKind::Newline)
-                && parser.current_kind() != Some(SyntaxKind::RBrace)
-            {
-                parser.error_and_recover("expected newline after statement", None);
-                parser.bump_if(SyntaxKind::Newline);
-            }
+            parser.expect(&[SyntaxKind::Newline, SyntaxKind::RBrace], None)?;
+            parser.bump_if(SyntaxKind::Newline);
         }
 
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_bump_until("expected `}`", None, SyntaxKind::RBrace);
-            parser.bump_if(SyntaxKind::RBrace);
+        if parser.find(SyntaxKind::RBrace, Some("missing closing `}` for block"))? {
+            parser.bump();
         }
+        Ok(())
     }
 }
 
 define_scope! { IfExprScope, IfExpr, Inheritance }
 impl super::Parse for IfExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::IfKw);
 
-        parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
+        parser.set_scope_recovery_stack(&[SyntaxKind::LBrace, SyntaxKind::ElseKw]);
+        parse_expr_no_struct(parser)?;
 
-        if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected `{`", None);
-            return;
+        if parser.find_and_pop(SyntaxKind::LBrace, Some("missing `if` body"))? {
+            parser.parse(BlockExprScope::default())?;
         }
-        parser.parse(BlockExprScope::default(), None);
 
         if parser.current_kind() == Some(SyntaxKind::ElseKw) {
-            parser.bump_expected(SyntaxKind::ElseKw);
+            parser.bump();
 
-            parser.with_recovery_tokens(
-                |parser| {
-                    if matches!(
-                        parser.current_kind(),
-                        Some(SyntaxKind::LBrace | SyntaxKind::IfKw)
-                    ) {
-                        parse_expr(parser);
-                    } else {
-                        parser.error_and_recover("expected `{` or `if` after `else`", None);
-                    }
-                },
-                &[SyntaxKind::LBrace, SyntaxKind::IfKw],
-            );
+            parser.expect(&[SyntaxKind::LBrace, SyntaxKind::IfKw], None)?;
+            parse_expr(parser)?;
         }
+        Ok(())
     }
 }
 
 define_scope! { MatchExprScope, MatchExpr, Inheritance }
 impl super::Parse for MatchExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::MatchKw);
 
-        parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
-
-        if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected `{`", None);
-            return;
+        parse_expr_no_struct(parser)?;
+        if parser.find(SyntaxKind::LBrace, None)? {
+            dbg!(parser.current_kind());
+            parser.parse(MatchArmListScope::default())?;
         }
-        parser.parse(MatchArmListScope::default(), None);
+        Ok(())
     }
 }
 
 define_scope! { MatchArmListScope, MatchArmList, Override(SyntaxKind::Newline, SyntaxKind::RBrace) }
 impl super::Parse for MatchArmListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::LBrace);
 
         loop {
             parser.set_newline_as_trivia(true);
-            if parser.current_kind() == Some(SyntaxKind::RBrace) || parser.current_kind().is_none()
-            {
+            if parser.current_kind() == Some(SyntaxKind::RBrace) {
                 break;
             }
 
-            parser.parse(MatchArmScope::default(), None);
-
+            parser.parse(MatchArmScope::default())?;
             parser.set_newline_as_trivia(false);
-            if parser.current_kind() != Some(SyntaxKind::RBrace) {
-                parser.bump_or_recover(
-                    SyntaxKind::Newline,
-                    "expected newline after match arm",
-                    None,
-                );
+
+            parser.expect(&[SyntaxKind::Newline, SyntaxKind::RBrace], None)?;
+            if !parser.bump_if(SyntaxKind::Newline) {
+                break;
             }
         }
-
-        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
+        parser.bump_expected(SyntaxKind::RBrace);
+        Ok(())
     }
 }
 
 define_scope! { MatchArmScope, MatchArm, Inheritance }
 impl super::Parse for MatchArmScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
 
-        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::FatArrow]);
-        parser.bump_or_recover(SyntaxKind::FatArrow, "expected `=>`", None);
+        parser.set_scope_recovery_stack(&[SyntaxKind::FatArrow]);
+        parse_pat(parser)?;
 
-        parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RBrace, SyntaxKind::Newline]);
+        if parser.find_and_pop(SyntaxKind::FatArrow, None)? {
+            parser.bump();
+        }
+        parse_expr(parser)
     }
 }
 
 define_scope! { pub(crate) LitExprScope, LitExpr, Inheritance }
 impl super::Parse for LitExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.parse(lit::LitScope::default(), None);
+    type Error = Infallible;
+
+    /// Caller is expected to verify that the next token is a literal.
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.parse(lit::LitScope::default())
     }
 }
 
 define_scope! { PathExprScope{ allow_record_init: bool }, PathExpr, Inheritance }
 impl super::Parse for PathExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.with_recovery_tokens(
-            |parser| parser.parse(path::PathScope::default(), None),
-            &[SyntaxKind::LBrace],
-        );
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        // xxx "expected an expression"?
+        parser.or_recover(|p| p.parse(path::PathScope::default()))?;
+
         if parser.current_kind() == Some(SyntaxKind::LBrace) && self.allow_record_init {
             self.set_kind(SyntaxKind::RecordInitExpr);
-            parser.parse(RecordFieldListScope::default(), None);
+            parser.parse(RecordFieldListScope::default())?;
         }
+        Ok(())
     }
 }
 
 define_scope! { RecordFieldListScope, RecordFieldList, Override(RBrace, Comma) }
 impl super::Parse for RecordFieldListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LBrace);
+    type Error = Recovery<ErrProof>;
 
-        if parser.bump_if(SyntaxKind::RBrace) {
-            return;
-        }
-
-        parser.with_next_expected_tokens(
-            |parser| parser.parse(RecordFieldScope::default(), None),
-            &[SyntaxKind::RBrace, SyntaxKind::Comma],
-        );
-
-        while parser.bump_if(SyntaxKind::Comma) {
-            parser.with_next_expected_tokens(
-                |parser| {
-                    parser.parse(RecordFieldScope::default(), None);
-                },
-                &[SyntaxKind::RBrace, SyntaxKind::Comma],
-            )
-        }
-
-        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            true,
+            (SyntaxKind::LBrace, SyntaxKind::RBrace),
+            |parser| parser.parse(RecordFieldScope::default()),
+        )
     }
 }
 
 define_scope! { RecordFieldScope, RecordField, Inheritance }
 impl super::Parse for RecordFieldScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.bump_if(SyntaxKind::Ident);
 
         if parser.bump_if(SyntaxKind::Colon) {
-            parse_expr(parser);
+            parse_expr(parser)?;
         }
+        Ok(())
     }
 }
 
 define_scope! { ParenScope, ParenExpr, Override(RParen, Comma) }
 impl super::Parse for ParenScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::LParen);
-        let is_trivia = parser.set_newline_as_trivia(true);
 
         if parser.bump_if(SyntaxKind::RParen) {
             self.set_kind(SyntaxKind::TupleExpr);
-            parser.set_newline_as_trivia(is_trivia);
-            return;
+            return Ok(());
         }
 
-        parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RParen, SyntaxKind::Comma]);
-        while parser.bump_if(SyntaxKind::Comma) {
-            self.set_kind(SyntaxKind::TupleExpr);
-            parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RParen, SyntaxKind::Comma]);
-        }
+        loop {
+            if parser.bump_if(SyntaxKind::RParen) {
+                return Ok(());
+            }
+            parse_expr(parser)?;
+            parser.expect(&[SyntaxKind::RParen, SyntaxKind::Comma], None)?;
 
-        parser.bump_or_recover(SyntaxKind::RParen, "expected `)`", None);
-        parser.set_newline_as_trivia(is_trivia);
+            if parser.bump_if(SyntaxKind::Comma) {
+                self.set_kind(SyntaxKind::TupleExpr);
+                continue;
+            }
+            break;
+        }
+        parser.bump_expected(SyntaxKind::RParen);
+        Ok(())
     }
 }
 
@@ -268,34 +264,45 @@ define_scope! {
     Override(RBracket, Comma, SemiColon)
 }
 impl super::Parse for ArrayScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::LBracket);
 
         if parser.bump_if(SyntaxKind::RBracket) {
-            return;
+            return Ok(());
         }
 
-        parser.with_next_expected_tokens(
-            parse_expr,
+        parse_expr(parser)?;
+        parser.expect(
             &[
                 SyntaxKind::SemiColon,
                 SyntaxKind::Comma,
                 SyntaxKind::RBracket,
             ],
-        );
+            None,
+        )?;
 
         if parser.bump_if(SyntaxKind::SemiColon) {
             self.set_kind(SyntaxKind::ArrayRepExpr);
-            parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RBracket]);
+            parse_expr(parser)?;
         } else {
             while parser.bump_if(SyntaxKind::Comma) {
-                parser.with_next_expected_tokens(
-                    parse_expr,
-                    &[SyntaxKind::Comma, SyntaxKind::RBracket],
-                );
+                if parser.bump_if(SyntaxKind::RBracket) {
+                    return Ok(());
+                }
+
+                parse_expr(parser)?;
+                parser.expect(&[SyntaxKind::Comma, SyntaxKind::RBracket], None)?;
             }
         }
 
-        parser.bump_or_recover(SyntaxKind::RBracket, "expected `]`", None);
+        if parser.find(
+            SyntaxKind::RBracket,
+            Some("missing closing `]` in array definition"),
+        )? {
+            parser.bump();
+        }
+        Ok(())
     }
 }

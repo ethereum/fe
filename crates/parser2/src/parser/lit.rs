@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use crate::SyntaxKind;
 
 use super::{define_scope, token_stream::TokenStream, Parser};
@@ -8,13 +10,13 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for LitScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        match parser.current_kind() {
-            Some(kind) if is_lit(kind) => {
-                parser.bump();
-            }
-            _ => parser.error_and_recover("expected literal", None),
-        }
+    type Error = Infallible;
+
+    /// Caller is expected to verify that the next token is a literal.
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        assert!(is_lit(parser.current_kind().unwrap()));
+        parser.bump();
+        Ok(())
     }
 }
 

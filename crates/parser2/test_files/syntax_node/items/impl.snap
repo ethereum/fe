@@ -136,10 +136,10 @@ Root@0..272
             Gt@152..153 ">"
         WhiteSpace@153..154 " "
         Newline@154..155 "\n"
-        WhereClause@155..175
+        WhereClause@155..174
           WhereKw@155..160 "where"
           WhiteSpace@160..161 " "
-          WherePredicate@161..175
+          WherePredicate@161..174
             PathType@161..167
               Path@161..164
                 PathSegment@161..164
@@ -160,7 +160,7 @@ Root@0..272
                   Path@169..174
                     PathSegment@169..174
                       Ident@169..174 "Clone"
-            Newline@174..175 "\n"
+        Newline@174..175 "\n"
         ImplItemList@175..272
           LBrace@175..176 "{"
           Newline@176..177 "\n"
@@ -208,10 +208,10 @@ Root@0..272
             WhiteSpace@212..213 " "
             Newline@213..214 "\n"
             WhiteSpace@214..222 "        "
-            WhereClause@222..236
+            WhereClause@222..235
               WhereKw@222..227 "where"
               WhiteSpace@227..228 " "
-              WherePredicate@228..236
+              WherePredicate@228..235
                 PathType@228..229
                   Path@228..229
                     PathSegment@228..229
@@ -224,7 +224,7 @@ Root@0..272
                       Path@231..235
                         PathSegment@231..235
                           Ident@231..235 "Copy"
-                Newline@235..236 "\n"
+            Newline@235..236 "\n"
             WhiteSpace@236..240 "    "
             BlockExpr@240..270
               LBrace@240..241 "{"

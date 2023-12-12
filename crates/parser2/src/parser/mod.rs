@@ -1,7 +1,9 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, convert::Infallible};
 
 pub(crate) use item::ItemListScope;
+
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::SmallVec;
 
 use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
 use crate::{syntax_node::SyntaxNode, GreenNode, ParseError, SyntaxKind, TextRange};
@@ -34,9 +36,8 @@ pub struct Parser<S: TokenStream> {
 
     builder: rowan::GreenNodeBuilder<'static>,
     /// The second element holds `is_newline_trivia` of the parent.
-    parents: Vec<(Box<dyn ParsingScope>, bool)>,
+    parents: Vec<ScopeEntry>,
     errors: Vec<ParseError>,
-    is_err: bool,
 
     next_trivias: VecDeque<S::Token>,
     /// if `is_newline_trivia` is `true`, `Newline` is also regarded as a trivia
@@ -44,11 +45,10 @@ pub struct Parser<S: TokenStream> {
     is_newline_trivia: bool,
 
     current_pos: rowan::TextSize,
+    end_of_prev_token: rowan::TextSize,
     /// The dry run states which holds the each state of the parser when it
     /// enters dry run mode.
     dry_run_states: Vec<DryRunState<S>>,
-
-    auxiliary_recovery_set: FxHashMap<SyntaxKind, usize>,
 }
 
 impl<S: TokenStream> Parser<S> {
@@ -59,18 +59,47 @@ impl<S: TokenStream> Parser<S> {
             builder: rowan::GreenNodeBuilder::new(),
             parents: Vec::new(),
             errors: Vec::new(),
-            is_err: false,
             current_pos: rowan::TextSize::from(0),
+            end_of_prev_token: rowan::TextSize::from(0),
             is_newline_trivia: true,
             next_trivias: VecDeque::new(),
             dry_run_states: Vec::new(),
-            auxiliary_recovery_set: FxHashMap::default(),
         }
     }
 
     /// Returns the current token of the parser.
     pub fn current_token(&mut self) -> Option<S::Token> {
         self.peek_non_trivia()
+    }
+
+    // xxx doc
+    pub fn current_token_range(&mut self) -> Option<TextRange> {
+        let mut start = self.current_pos;
+        if !self.is_newline_trivia {
+            for tok in &self.next_trivias {
+                if tok.syntax_kind() == SyntaxKind::Newline {
+                    return Some(TextRange::new(start, start + tok.text_size()));
+                }
+                start += tok.text_size();
+            }
+        }
+
+        while let Some(next) = self.stream.peek().map(|tok| tok.syntax_kind()) {
+            if self.is_trivia(next) {
+                let next = self.stream.next().unwrap();
+                start += next.text_size();
+
+                self.next_trivias.push_back(next);
+                continue;
+            } else {
+                return Some(TextRange::new(
+                    start,
+                    start + self.stream.peek().unwrap().text_size(),
+                ));
+            }
+        }
+
+        None
     }
 
     /// Returns the current non-trivia token kind of the parser.
@@ -101,6 +130,69 @@ impl<S: TokenStream> Parser<S> {
         (SyntaxNode::new_root(green_node), errors)
     }
 
+    pub fn set_scope_recovery_stack(&mut self, tokens: &[SyntaxKind]) {
+        let rec = self.scope_aux_recovery();
+        rec.clear();
+        rec.extend(tokens.iter().rev().copied());
+    }
+
+    pub fn pop_recovery_stack(&mut self) {
+        self.scope_aux_recovery().pop();
+    }
+
+    fn scope_aux_recovery(&mut self) -> &mut SmallVec<[SyntaxKind; 4]> {
+        &mut self.parents.last_mut().unwrap().aux_recovery_tokens
+    }
+
+    pub fn expect_and_pop_recovery_stack(&mut self) -> Result<(), Recovery<ErrProof>> {
+        let current = self.current_kind();
+        let r = if current.is_some() && self.scope_aux_recovery().contains(&current.unwrap()) {
+            Ok(())
+        } else {
+            let pos = self.current_pos;
+            let (index, unexpected) = self.recover(None);
+            let proof = if unexpected.is_some() {
+                ErrProof(())
+            } else {
+                let err = ParseError::expected(self.scope_aux_recovery(), None, pos);
+                self.add_error(err)
+            };
+            self.allow_local_recovery(Err(Recovery(index, proof)))
+        };
+        self.pop_recovery_stack();
+        r
+    }
+
+    // xxx
+    pub fn expect(
+        &mut self,
+        expected: &[SyntaxKind],
+        msg: Option<&str>,
+    ) -> Result<(), Recovery<ErrProof>> {
+        let current = self.current_kind();
+
+        let aux = self.scope_aux_recovery();
+        let truncate_to = aux.len();
+        aux.extend_from_slice(expected);
+
+        let res = if current.is_some() && aux.contains(&current.unwrap()) {
+            Ok(())
+        } else {
+            let pos = self.current_pos;
+            let (index, unexpected) = self.recover(None);
+            let proof = if unexpected.is_some() {
+                ErrProof(())
+            } else {
+                self.add_error(ParseError::expected(expected, msg, pos))
+            };
+            self.pop_recovery_stack();
+            self.allow_local_recovery(Err(Recovery(index, proof)))
+        };
+        self.scope_aux_recovery().truncate(truncate_to);
+
+        res
+    }
+
     /// Adds the `recovery_tokens` as a temporary recovery token set.
     /// These tokens are used as a recovery token set in addition to scope's
     /// recovery token set.
@@ -111,51 +203,13 @@ impl<S: TokenStream> Parser<S> {
     where
         F: FnOnce(&mut Self) -> R,
     {
-        for token in recovery_tokens {
-            self.add_recovery_token(*token);
-        }
-
+        let truncate_to = self.scope_aux_recovery().len();
+        self.scope_aux_recovery().extend_from_slice(recovery_tokens);
         let r = f(self);
-
-        for token in recovery_tokens {
-            self.remove_recovery_token(*token);
-        }
-
+        self.scope_aux_recovery().truncate(truncate_to);
         r
     }
 
-    /// Adds `expected_tokens` as a temporary recovery token set, the invokes
-    /// the `f` closure. If the `f` closure fails to parse,
-    /// `expected_tokens` are also used as a recovery token set in addition to
-    /// scope's recovery token set.
-    ///
-    /// If `current_token()` is not in `expected_tokens` after `f` returns, an
-    /// error is reported and try to recover with `expected_tokens` and scope's
-    /// recovery token set.
-    pub fn with_next_expected_tokens<F, R>(&mut self, f: F, expected_tokens: &[SyntaxKind]) -> R
-    where
-        F: FnOnce(&mut Self) -> R,
-    {
-        for token in expected_tokens {
-            self.add_recovery_token(*token);
-        }
-
-        let r = f(self);
-
-        if self.current_kind().is_some()
-            && expected_tokens
-                .iter()
-                .all(|token| *token != self.current_kind().unwrap())
-        {
-            self.recover(None);
-        }
-
-        for token in expected_tokens {
-            self.remove_recovery_token(*token);
-        }
-
-        r
-    }
     /// Invoke the scope to parse. The scope is wrapped up by the node specified
     /// by the scope.
     ///
@@ -170,17 +224,69 @@ impl<S: TokenStream> Parser<S> {
     ///   `true`. otherwise, the first element is `false`.
     /// * The second element of the return value is the checkpoint of the start
     ///   of the node.
-    pub fn parse<T>(&mut self, mut scope: T, checkpoint: Option<Checkpoint>) -> (bool, Checkpoint)
+    pub fn parse_cp<T, E>(
+        &mut self,
+        mut scope: T,
+        checkpoint: Option<Checkpoint>,
+    ) -> Result<Checkpoint, E>
+    // xxx checkpoint handling
     where
-        T: Parse + 'static,
+        T: Parse<Error = E> + 'static,
+        E: XxxRecoveryThing,
     {
-        let mut is_err = std::mem::take(&mut self.is_err);
         let checkpoint = self.enter(scope.clone(), checkpoint);
         let start_checkpoint = self.checkpoint();
-        scope.parse(self);
+        let res = scope.parse(self);
         self.leave(checkpoint);
-        std::mem::swap(&mut self.is_err, &mut is_err);
-        (!is_err, start_checkpoint)
+        let res = self.allow_local_recovery(res);
+        res.map(|_| start_checkpoint)
+    }
+
+    pub fn parse<T, E>(&mut self, scope: T) -> Result<(), E>
+    where
+        T: Parse<Error = E> + 'static,
+        E: XxxRecoveryThing,
+    {
+        self.parse_cp(scope, None).map(|_| ())
+    }
+
+    // xxx do we ever want to use this?
+    pub fn parses_without_error<T, E>(&mut self, mut scope: T) -> bool
+    where
+        T: Parse<Error = E> + 'static,
+        E: XxxRecoveryThing,
+    {
+        debug_assert!(self.is_dry_run());
+        let checkpoint = self.enter(scope.clone(), None);
+        let r = scope.parse(self);
+        let is_err = self.leave(checkpoint);
+        r.is_ok() && !is_err
+    }
+
+    // xxx remove?
+    pub fn parse_or_recover<T>(&mut self, mut scope: T) -> Result<(), Recovery<ErrProof>>
+    where
+        T: Parse<Error = ParseError> + 'static,
+    {
+        let checkpoint = self.enter(scope.clone(), None);
+        let res = scope.parse(self);
+        self.leave(checkpoint);
+        if let Err(err) = res {
+            let proof = self.add_error(err);
+            self.try_recover().map_err(|r| r.add_err_proof(proof))?;
+        }
+        Ok(())
+    }
+
+    pub fn or_recover<F>(&mut self, f: F) -> Result<(), Recovery<ErrProof>>
+    where
+        F: FnOnce(&mut Self) -> Result<(), ParseError>,
+    {
+        if let Err(err) = f(self) {
+            let proof = self.add_error(err);
+            self.try_recover().map_err(|r| r.add_err_proof(proof))?;
+        }
+        Ok(())
     }
 
     #[doc(hidden)]
@@ -195,7 +301,9 @@ impl<S: TokenStream> Parser<S> {
         if !self.parents.is_empty() {
             self.bump_trivias();
         }
-        self.parents.push((Box::new(scope), self.is_newline_trivia));
+        // xxx don't push current scope onto parents stack
+        self.parents
+            .push(ScopeEntry::new(Box::new(scope), self.is_newline_trivia));
         // `is_newline_trivia` is always `true` when entering a scope.
         self.is_newline_trivia = true;
         checkpoint.unwrap_or_else(|| self.checkpoint())
@@ -203,10 +311,11 @@ impl<S: TokenStream> Parser<S> {
 
     #[doc(hidden)]
     /// Leave the scope and wrap up the checkpoint by the scope's node.
+    /// Returns `is_err` value for exited scope.
     // NOTE: This method is limited to testing and internal usage.
-    pub fn leave(&mut self, checkpoint: Checkpoint) {
-        let (scope, is_newline_trivia) = self.parents.pop().unwrap();
-        self.is_newline_trivia = is_newline_trivia;
+    pub fn leave(&mut self, checkpoint: Checkpoint) -> bool {
+        let scope = self.parents.pop().unwrap();
+        self.is_newline_trivia = scope.is_newline_trivia;
 
         // Ensure the trailing trivias are added to the current node if the current
         // scope is the root.
@@ -216,9 +325,20 @@ impl<S: TokenStream> Parser<S> {
 
         if !self.is_dry_run() {
             self.builder
-                .start_node_at(checkpoint, scope.syntax_kind().into());
+                .start_node_at(checkpoint, scope.scope.syntax_kind().into());
             self.builder.finish_node();
         }
+        scope.is_err
+    }
+
+    pub fn add_error(&mut self, err: ParseError) -> ErrProof {
+        eprintln!(
+            "add_error: {err:?} {}",
+            std::backtrace::Backtrace::capture()
+        );
+        self.parents.last_mut().unwrap().is_err = true;
+        self.errors.push(err);
+        ErrProof(())
     }
 
     /// Add `msg` as an error to the error list, then bumps consecutive tokens
@@ -228,33 +348,27 @@ impl<S: TokenStream> Parser<S> {
     ///   node.
     /// * If checkpoint is `None`, the current branch is wrapped up by an error
     ///   node.
-    pub fn error_and_recover(&mut self, msg: &str, checkpoint: Option<Checkpoint>) {
-        self.error(msg);
-        self.recover(checkpoint);
+    pub fn error_and_recover(&mut self, msg: &str) -> Result<(), Recovery<ErrProof>> {
+        let proof = self.add_error(ParseError::Msg(
+            msg.into(),
+            TextRange::empty(self.end_of_prev_token),
+        ));
+        self.try_recover().map_err(|r| r.add_err_proof(proof))
     }
 
-    /// Add `msg` as an error to the error list, then bumps consecutive tokens
-    /// until a `tok` is found or the end of the file is reached.
-    ///
-    /// * If checkpoint is `Some`, the marked branch is wrapped up by an error
-    ///   node.
-    /// * If checkpoint is `None`, the current branch is wrapped up by an error
-    ///   node.
-    pub fn error_and_bump_until(
+    // xxx check uses of error_and_recover
+    pub fn recover_and_error_if_no_skipped_tokens(
         &mut self,
         msg: &str,
-        checkpoint: Option<Checkpoint>,
-        kind: SyntaxKind,
-    ) {
-        let err_scope = self.error(msg);
-        let checkpoint = self.enter(err_scope, checkpoint);
-        loop {
-            if self.current_kind() == Some(kind) || self.current_kind().is_none() {
-                break;
-            }
-            self.bump()
+    ) -> Result<(), Recovery<ErrProof>> {
+        let (index, unexpected) = self.recover(None);
+        if unexpected.is_none() {
+            self.add_error(ParseError::Msg(
+                msg.into(),
+                TextRange::empty(self.current_pos),
+            ));
         }
-        self.leave(checkpoint);
+        self.allow_local_recovery(Err(Recovery(index, ErrProof(()))))
     }
 
     /// Runs the parser in the dry run mode.
@@ -268,10 +382,9 @@ impl<S: TokenStream> Parser<S> {
         self.stream.set_bt_point();
         self.dry_run_states.push(DryRunState {
             pos: self.current_pos,
+            end_of_prev_token: self.end_of_prev_token,
             err_num: self.errors.len(),
             next_trivias: self.next_trivias.clone(),
-            auxiliary_recovery_set: self.auxiliary_recovery_set.clone(),
-            is_err: self.is_err,
         });
 
         let r = f(self);
@@ -281,9 +394,8 @@ impl<S: TokenStream> Parser<S> {
         let state = self.dry_run_states.pop().unwrap();
         self.errors.truncate(state.err_num);
         self.current_pos = state.pos;
+        self.end_of_prev_token = state.end_of_prev_token;
         self.next_trivias = state.next_trivias;
-        self.auxiliary_recovery_set = state.auxiliary_recovery_set;
-        self.is_err = state.is_err;
 
         r
     }
@@ -294,6 +406,7 @@ impl<S: TokenStream> Parser<S> {
         self.bump_trivias();
 
         self.bump_raw();
+        self.end_of_prev_token = self.current_pos;
     }
 
     /// Bumps the current token if the current token is the `expected` kind.
@@ -301,7 +414,7 @@ impl<S: TokenStream> Parser<S> {
     /// # Panics
     /// Panics If the current token is not the `expected` kind.
     pub fn bump_expected(&mut self, expected: SyntaxKind) {
-        assert_eq!(self.current_kind(), Some(expected));
+        assert_eq!(self.current_kind(), Some(expected), "expected {expected:?}");
         self.bump();
     }
 
@@ -316,53 +429,88 @@ impl<S: TokenStream> Parser<S> {
         }
     }
 
+    pub fn find(
+        &mut self,
+        kind: SyntaxKind,
+        msg: Option<&str>,
+    ) -> Result<bool, Recovery<ErrProof>> {
+        self.scope_aux_recovery().push(kind);
+        self.find_and_pop(kind, msg)
+    }
+
+    pub fn find_and_pop(
+        &mut self,
+        kind: SyntaxKind,
+        msg: Option<&str>,
+    ) -> Result<bool, Recovery<ErrProof>> {
+        debug_assert_eq!(self.scope_aux_recovery().last(), Some(&kind));
+
+        let r = if self.current_kind() == Some(kind) {
+            Ok(true)
+        } else {
+            let pos = self.current_pos;
+            let r = self.try_recover();
+            if self.current_kind() == Some(kind) {
+                Ok(true)
+            } else {
+                let proof = self.add_error(ParseError::expected(&[kind], msg, pos));
+                r.map(|_| false).map_err(|rec| rec.add_err_proof(proof))
+            }
+        };
+        self.scope_aux_recovery().pop();
+        r
+    }
+
+    pub fn try_recover(&mut self) -> Result<(), Recovery<()>> {
+        let (index, _) = self.recover(None);
+        self.allow_local_recovery(Err(Recovery(index, ())))
+    }
+
+    // xxx remove checkpoint arg?
     /// Consumes tokens until a recovery token is found, and reports an error on any
     /// unexpected tokens.
-    pub fn recover(&mut self, checkpoint: Option<Checkpoint>) {
-        let mut recovery_set: FxHashSet<SyntaxKind> = FxHashSet::default();
-        let mut scope_index = self.parents.len() - 1;
-        loop {
-            match self
-                .parents
-                .get(scope_index)
-                .map(|scope| scope.0.recovery_method())
-            {
-                Some(RecoveryMethod::Inheritance(set)) => {
-                    recovery_set.extend(set.iter());
-                    if scope_index == 0 {
-                        break;
-                    }
-                    scope_index -= 1;
-                }
-                Some(RecoveryMethod::Override(set)) => {
-                    recovery_set.extend(set.iter());
-                    break;
-                }
-
-                None => break,
-            }
-        }
-
-        if !self.is_newline_trivia {
-            self.add_recovery_token(SyntaxKind::Newline);
+    /// Returns the index of the scope that matched the recovery token.
+    fn recover(
+        &mut self,
+        checkpoint: Option<Checkpoint>,
+    ) -> (Option<ScopeIndex>, Option<rowan::TextSize>) {
+        if !self.is_dry_run() {
+            eprintln!(
+                "recover! {:?} {:?} scopes: {:#?}",
+                self.current_kind(),
+                self.current_token().map(|t| t.text().to_string()),
+                self.parents
+            );
         }
         let mut unexpected = None;
         let mut open_brackets_in_error = FxHashMap::default();
+        let mut match_scope_index = None;
         while let Some(kind) = self.current_kind() {
             if kind.is_open_bracket_kind() {
                 *open_brackets_in_error.entry(kind).or_insert(0) += 1;
-            }
-            if recovery_set.contains(&kind) || self.auxiliary_recovery_set.contains_key(&kind) {
-                if let Some(open_bracket) = kind.corresponding_open_bracket_kind() {
-                    if open_brackets_in_error.get(&open_bracket).unwrap_or(&0) != &0 {
-                        *open_brackets_in_error.get_mut(&open_bracket).unwrap() -= 1;
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
+            } else if let Some(open_bracket) = kind.corresponding_open_bracket_kind() {
+                if open_brackets_in_error.get(&open_bracket).unwrap_or(&0) != &0 {
+                    *open_brackets_in_error.get_mut(&open_bracket).unwrap() -= 1;
                 }
             }
+
+            if let Some((scope_index, _)) = self
+                .parents
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_i, scope)| scope.is_recovery_match(kind))
+            {
+                match_scope_index = Some(scope_index);
+                if !self.is_dry_run() {
+                    eprintln!(
+                        "recovered at {scope_index} on {kind:?}, {:#?}",
+                        self.parents[scope_index]
+                    );
+                }
+                break;
+            }
+
             if unexpected.is_none() {
                 if !self.parents.is_empty() {
                     self.bump_trivias();
@@ -372,26 +520,46 @@ impl<S: TokenStream> Parser<S> {
                     checkpoint.unwrap_or_else(|| self.checkpoint()),
                 ));
             }
+            if !self.is_dry_run() {
+                eprintln!(
+                    "skipping {kind:?} {:?}",
+                    self.current_token().unwrap().text()
+                );
+            }
             self.bump();
         }
 
-        if !self.is_newline_trivia {
-            self.remove_recovery_token(SyntaxKind::Newline);
-        }
-
         if let Some((start_pos, checkpoint)) = unexpected {
-            self.is_err = true;
             if !self.is_dry_run() {
                 self.builder
                     .start_node_at(checkpoint, SyntaxKind::Error.into());
                 self.builder.finish_node();
 
-                self.errors.push(ParseError {
-                    range: TextRange::new(start_pos, self.current_pos),
-                    msg: "unexpected syntax".to_string(),
-                });
+                self.add_error(ParseError::Unexpected(TextRange::new(
+                    start_pos,
+                    self.current_pos,
+                )));
             }
         }
+
+        eprintln!("{}", std::backtrace::Backtrace::capture());
+        (
+            match_scope_index.map(ScopeIndex),
+            unexpected.map(|(start_pos, _)| start_pos),
+        )
+    }
+
+    // xxx
+    fn allow_local_recovery<E: XxxRecoveryThing>(&self, r: Result<(), E>) -> Result<(), E> {
+        match r {
+            Ok(()) => Ok(()),
+            Err(e) if e.is_local_recovery(self) => Ok(()),
+            _ => r,
+        }
+    }
+
+    fn is_current_scope(&self, index: ScopeIndex) -> bool {
+        index.0 + 1 == self.parents.len()
     }
 
     /// Bumps the current token if the current token is the `expected` kind.
@@ -401,11 +569,15 @@ impl<S: TokenStream> Parser<S> {
         &mut self,
         expected: SyntaxKind,
         msg: &str,
-        checkpoint: Option<Checkpoint>,
-    ) {
+    ) -> Result<(), Recovery<ErrProof>> {
         if !self.bump_if(expected) {
-            self.error(msg);
-            self.recover(checkpoint);
+            let proof = self.add_error(ParseError::Msg(
+                msg.into(),
+                TextRange::empty(self.current_pos),
+            ));
+            self.try_recover().map_err(|r| r.add_err_proof(proof))
+        } else {
+            Ok(())
         }
     }
 
@@ -496,21 +668,17 @@ impl<S: TokenStream> Parser<S> {
     }
 
     /// Add the `msg` to the error list, at `current_pos`.
-    fn error(&mut self, msg: &str) -> ErrorScope {
-        self.is_err = true;
+    fn error(&mut self, msg: &str) -> ErrProof {
         let pos = self.current_pos;
-        self.errors.push(ParseError {
-            range: TextRange::new(pos, pos),
-            msg: msg.to_string(),
-        });
-        ErrorScope::default()
+        self.errors
+            .push(ParseError::Msg(msg.into(), TextRange::new(pos, pos)));
+        ErrProof(())
     }
 
     /// Add the `msg` to the error list, on `current_token()`.
     /// Bumps trivias.
-    fn error_msg_on_current_token(&mut self, msg: &str) {
+    fn error_msg_on_current_token(&mut self, msg: &str) -> ErrProof {
         self.bump_trivias();
-        self.is_err = true;
         let start = self.current_pos;
         let end = if let Some(current_token) = self.current_token() {
             start + current_token.text_size()
@@ -518,24 +686,21 @@ impl<S: TokenStream> Parser<S> {
             start
         };
 
-        self.errors.push(ParseError {
-            range: TextRange::new(start, end),
-            msg: msg.to_string(),
-        });
+        self.add_error(ParseError::Msg(msg.into(), TextRange::new(start, end)))
     }
 
+    // xxx remove this or error_msg_on_current_token
     /// Wrap the current token in a `SyntaxKind::Error`, and add `msg` to the error list.
     fn unexpected_token_error(&mut self, msg: &str, checkpoint: Option<Checkpoint>) {
         let checkpoint = self.enter(ErrorScope::default(), checkpoint);
 
-        self.is_err = true;
         let start_pos = self.current_pos;
         self.bump();
 
-        self.errors.push(ParseError {
-            range: TextRange::new(start_pos, self.current_pos),
-            msg: msg.to_string(),
-        });
+        self.add_error(ParseError::Msg(
+            msg.into(),
+            TextRange::new(start_pos, self.current_pos),
+        ));
         self.leave(checkpoint);
     }
 
@@ -547,19 +712,6 @@ impl<S: TokenStream> Parser<S> {
     fn is_trivia(&self, kind: SyntaxKind) -> bool {
         kind.is_trivia() || (self.is_newline_trivia && kind == SyntaxKind::Newline)
     }
-
-    fn add_recovery_token(&mut self, token: SyntaxKind) {
-        *self.auxiliary_recovery_set.entry(token).or_insert(0) += 1;
-    }
-
-    fn remove_recovery_token(&mut self, token: SyntaxKind) {
-        if let Some(num) = self.auxiliary_recovery_set.get_mut(&token) {
-            *num -= 1;
-        }
-        if self.auxiliary_recovery_set.get(&token) == Some(&0) {
-            self.auxiliary_recovery_set.remove(&token);
-        }
-    }
 }
 
 pub trait ParsingScope {
@@ -570,18 +722,63 @@ pub trait ParsingScope {
 }
 
 pub trait Parse: ParsingScope + Clone {
+    type Error;
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error>;
+}
+
+pub trait ParseInfalible: ParsingScope + Clone {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>);
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct ScopeIndex(usize);
+#[derive(Debug, Copy, Clone)]
+pub struct Recovery<T>(Option<ScopeIndex>, T);
+impl Recovery<()> {
+    pub fn add_err_proof(self, proof: ErrProof) -> Recovery<ErrProof> {
+        Recovery(self.0, proof)
+    }
+}
+
+#[derive(Debug)]
+pub struct ErrProof(());
+
+impl<T> From<Infallible> for Recovery<T> {
+    fn from(_value: Infallible) -> Self {
+        unreachable!()
+    }
+}
+
+impl From<Recovery<ErrProof>> for Recovery<()> {
+    fn from(r: Recovery<ErrProof>) -> Self {
+        Recovery(r.0, ())
+    }
+}
+
+pub trait XxxRecoveryThing {
+    fn is_local_recovery<S: TokenStream>(&self, _parser: &Parser<S>) -> bool {
+        false
+    }
+}
+impl XxxRecoveryThing for ParseError {}
+impl XxxRecoveryThing for Infallible {}
+impl<T> XxxRecoveryThing for Recovery<T> {
+    fn is_local_recovery<S: TokenStream>(&self, parser: &Parser<S>) -> bool {
+        self.0
+            .as_ref()
+            .map(|i| parser.is_current_scope(*i))
+            .unwrap_or(false)
+    }
 }
 
 struct DryRunState<S: TokenStream> {
     /// The text position is the position when the dry run started.
     pos: rowan::TextSize,
+    end_of_prev_token: rowan::TextSize,
     /// The number of errors when the dry run started.
     err_num: usize,
     /// The stored trivias when the dry run started.
     next_trivias: VecDeque<S::Token>,
-    auxiliary_recovery_set: FxHashMap<SyntaxKind, usize>,
-    is_err: bool,
 }
 
 /// Represents the recovery method of the current scope.
@@ -602,6 +799,46 @@ impl RecoveryMethod {
 
     fn override_(tokens: &[SyntaxKind]) -> Self {
         Self::Override(tokens.iter().copied().collect())
+    }
+
+    fn recovery_set(&self) -> &FxHashSet<SyntaxKind> {
+        match self {
+            RecoveryMethod::Inheritance(set) => set,
+            RecoveryMethod::Override(set) => set,
+        }
+    }
+}
+
+struct ScopeEntry {
+    scope: Box<dyn ParsingScope>,
+    is_newline_trivia: bool,
+    is_err: bool,
+    aux_recovery_tokens: SmallVec<[SyntaxKind; 4]>,
+}
+impl ScopeEntry {
+    fn new(scope: Box<dyn ParsingScope>, is_newline_trivia: bool) -> Self {
+        Self {
+            scope,
+            is_newline_trivia,
+            is_err: false,
+            aux_recovery_tokens: SmallVec::new(),
+        }
+    }
+
+    fn is_recovery_match(&self, kind: SyntaxKind) -> bool {
+        self.scope.recovery_method().recovery_set().contains(&kind)
+            || self.aux_recovery_tokens.contains(&kind)
+    }
+}
+
+impl std::fmt::Debug for ScopeEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ScopeEntry")
+            .field("scope", &self.scope.syntax_kind())
+            .field("is_newline_trivia", &self.is_newline_trivia)
+            .field("is_err", &self.is_err)
+            .field("aux_recovery_tokens", &self.aux_recovery_tokens)
+            .finish()
     }
 }
 
@@ -726,3 +963,77 @@ macro_rules! define_scope_struct {
 use define_scope;
 #[doc(hidden)]
 use define_scope_struct;
+
+// xxx move
+/// Parse a comma-separated list of elements, with trailing commas allowed.
+/// Panics if `parser.current_kind() != Some(brackets.0)`
+fn parse_list<S: TokenStream, F>(
+    parser: &mut Parser<S>,
+    newline_delim: bool,
+    brackets: (SyntaxKind, SyntaxKind),
+    element: F,
+) -> Result<(), Recovery<ErrProof>>
+where
+    F: Fn(&mut Parser<S>) -> Result<(), Recovery<ErrProof>>,
+{
+    parser.bump_expected(brackets.0);
+
+    loop {
+        if parser.bump_if(brackets.1) {
+            return Ok(());
+        }
+        element(parser)?;
+
+        dbg!(parser.current_token().map(|t| t.text().to_string()));
+        if parser.current_kind() != Some(SyntaxKind::Comma)
+            && parser.current_kind() != Some(brackets.1)
+        {
+            // Recover gracefully if list elements are separated by newline instead of comma
+            let nt = parser.set_newline_as_trivia(false);
+            let newline = parser.current_kind() == Some(SyntaxKind::Newline) || {
+                parser.with_recovery_tokens(
+                    |parser| {
+                        // xxx clean
+                        let pos = parser.current_pos;
+                        let (index, unexpected) = parser.recover(None);
+                        if unexpected.is_none() {
+                            parser.add_error(ParseError::expected(
+                                &[brackets.1, SyntaxKind::Comma],
+                                None,
+                                pos,
+                            ));
+                        }
+                        parser.allow_local_recovery(Err(Recovery(index, ErrProof(()))))
+                    },
+                    &[SyntaxKind::Newline, SyntaxKind::Comma, brackets.1],
+                )?;
+                parser.current_kind() == Some(SyntaxKind::Newline)
+            };
+            parser.set_newline_as_trivia(nt);
+
+            if newline {
+                dbg!(newline_delim);
+                parser.add_error(ParseError::expected(
+                    &[brackets.1, SyntaxKind::Comma],
+                    None,
+                    parser.current_pos,
+                ));
+                if !newline_delim {
+                    return Ok(());
+                }
+            } else {
+                parser.expect(&[brackets.1, SyntaxKind::Comma], None)?;
+                if !parser.bump_if(SyntaxKind::Comma) {
+                    break;
+                }
+            }
+        } else if !parser.bump_if(SyntaxKind::Comma) {
+            dbg!("2", parser.current_kind());
+            parser.expect(&[brackets.1], None)?;
+            break;
+        }
+    }
+    parser.bump_expected(brackets.1);
+
+    Ok(())
+}

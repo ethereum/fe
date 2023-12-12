@@ -536,7 +536,7 @@ pub enum ArithBinOp {
     BitAnd(SyntaxToken),
     /// `|`
     BitOr(SyntaxToken),
-    /// `^`  
+    /// `^`
     BitXor(SyntaxToken),
 }
 impl ArithBinOp {
@@ -674,7 +674,7 @@ mod tests {
     {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        crate::parser::expr::parse_expr(&mut parser);
+        crate::parser::expr::parse_expr(&mut parser).unwrap();
         Expr::cast(parser.finish_to_node().0)
             .unwrap()
             .kind()
@@ -913,6 +913,7 @@ mod tests {
 
         let if_expr: IfExpr = parse_expr("if { true } { return } else { continue }");
         if let ExprKind::Block(stmts) = if_expr.cond().unwrap().kind() {
+            dbg!(&stmts);
             assert!(matches!(
                 stmts.into_iter().next().unwrap().kind(),
                 crate::ast::StmtKind::Expr(_)

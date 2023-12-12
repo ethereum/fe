@@ -1,13 +1,16 @@
-use crate::SyntaxKind;
+use std::convert::Infallible;
+
+use crate::{ParseError, SyntaxKind};
 
 use super::{
     define_scope,
     expr::parse_expr,
     expr_atom::{BlockExprScope, LitExprScope},
+    parse_list,
     path::PathScope,
     token_stream::TokenStream,
     type_::{is_type_start, parse_type},
-    Parser,
+    ErrProof, Parser, Recovery,
 };
 
 define_scope! {
@@ -16,24 +19,15 @@ define_scope! {
     Override(RParen, Comma)
 }
 impl super::Parse for FuncParamListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LParen);
-        if parser.bump_if(SyntaxKind::RParen) {
-            return;
-        }
+    type Error = Recovery<ErrProof>;
 
-        parser.with_next_expected_tokens(
-            |parser| parser.parse(FnParamScope::new(self.allow_self), None),
-            &[SyntaxKind::Comma, SyntaxKind::RParen],
-        );
-        while parser.bump_if(SyntaxKind::Comma) {
-            parser.with_next_expected_tokens(
-                |parser| parser.parse(FnParamScope::new(false), None),
-                &[SyntaxKind::Comma, SyntaxKind::RParen],
-            );
-        }
-
-        parser.bump_or_recover(SyntaxKind::RParen, "expected closing `)`", None);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            false,
+            (SyntaxKind::LParen, SyntaxKind::RParen),
+            |parser| parser.parse(FnParamScope::new(self.allow_self)),
+        )
     }
 }
 
@@ -43,120 +37,124 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for FnParamScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_if(SyntaxKind::MutKw);
+        parser.expect(
+            &[
+                SyntaxKind::SelfKw,
+                SyntaxKind::Ident,
+                SyntaxKind::Underscore,
+            ],
+            None,
+        )?;
 
-        if !self.allow_self && parser.current_kind() == Some(SyntaxKind::SelfKw) {
-            parser.error_and_recover("self is not allowed here", None);
-            return;
-        }
-
-        let is_self = parser.with_recovery_tokens(
-            |parser| match parser.current_kind() {
-                Some(SyntaxKind::SelfKw) => {
-                    if self.allow_self {
-                        parser.bump_expected(SyntaxKind::SelfKw);
-                        true
-                    } else {
-                        unreachable!()
-                    }
+        match parser.current_kind() {
+            Some(SyntaxKind::SelfKw) => {
+                if !self.allow_self {
+                    parser.error_msg_on_current_token("`self` is not allowed here");
                 }
-                Some(SyntaxKind::Ident | SyntaxKind::Underscore) => parser
-                    .with_next_expected_tokens(
-                        |parser| {
-                            parser.bump();
-                            if !parser.bump_if(SyntaxKind::Ident) {
-                                parser.bump_if(SyntaxKind::Underscore);
-                            }
-                            false
-                        },
-                        &[SyntaxKind::Colon],
-                    ),
-                _ => {
-                    parser.error_and_recover("expected identifier for argument name", None);
-                    false
+                parser.bump_expected(SyntaxKind::SelfKw);
+                if parser.bump_if(SyntaxKind::Colon) {
+                    parse_type(parser, None)?;
                 }
-            },
-            &[SyntaxKind::Colon],
-        );
-
-        if is_self {
-            if parser.bump_if(SyntaxKind::Colon) {
-                parse_type(parser, None);
             }
-        } else {
-            parser.bump_or_recover(SyntaxKind::Colon, "expected `:` after argument name", None);
-            parse_type(parser, None);
-        }
+            Some(SyntaxKind::Ident | SyntaxKind::Underscore) => {
+                parser.bump();
+
+                parser.expect(
+                    &[SyntaxKind::Ident, SyntaxKind::Underscore, SyntaxKind::Colon],
+                    None,
+                )?;
+                if !parser.bump_if(SyntaxKind::Ident) {
+                    parser.bump_if(SyntaxKind::Underscore);
+                }
+                if parser.find(
+                    SyntaxKind::Colon,
+                    Some("missing type bound for fn parameter"),
+                )? {
+                    parser.bump();
+                    parse_type(parser, None)?;
+                }
+            }
+            _ => unreachable!(), // only reachable if a recovery token is added
+        };
+        Ok(())
     }
 }
 
 define_scope! {
     pub(crate) GenericParamListScope {disallow_trait_bound: bool},
     GenericParamList,
-    Override(Gt)
+    Override(Comma, Gt)
 }
 impl super::Parse for GenericParamListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::Lt);
-        if parser.bump_if(SyntaxKind::Gt) {
-            return;
-        }
+    type Error = Recovery<ErrProof>;
 
-        parser.parse(GenericParamScope::new(self.disallow_trait_bound), None);
-        while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(GenericParamScope::new(self.disallow_trait_bound), None);
-        }
-
-        parser.bump_or_recover(SyntaxKind::Gt, "expected closing `>`", None);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(parser, false, (SyntaxKind::Lt, SyntaxKind::Gt), |parser| {
+            parser.expect(
+                &[SyntaxKind::Ident, SyntaxKind::ConstKw, SyntaxKind::Gt],
+                None,
+            )?;
+            match parser.current_kind() {
+                Some(SyntaxKind::ConstKw) => parser.parse(ConstGenericParamScope::default()),
+                Some(SyntaxKind::Ident) => {
+                    parser.parse(TypeGenericParamScope::new(self.disallow_trait_bound))
+                }
+                Some(SyntaxKind::Gt) => Ok(()),
+                _ => unreachable!(),
+            }
+        })
     }
 }
 
 define_scope! {
-    GenericParamScope {disallow_trait_bound: bool},
-    TypeGenericParam,
-    Inheritance(Comma)
+    ConstGenericParamScope,
+    ConstGenericParam,
+    Inheritance
 }
-impl super::Parse for GenericParamScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+impl super::Parse for ConstGenericParamScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        let is_const = parser.bump_if(SyntaxKind::ConstKw);
-        if is_const {
-            self.set_kind(SyntaxKind::ConstGenericParam);
+        parser.bump_expected(SyntaxKind::ConstKw);
+
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Colon]);
+        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+            parser.bump();
         }
-        parser.with_next_expected_tokens(
-            |parser| {
-                if is_const {
-                    parser.with_next_expected_tokens(
-                        |parser| {
-                            if !parser.bump_if(SyntaxKind::Ident) {
-                                parser.error_and_recover("expected const parameter", None);
-                            }
-                        },
-                        &[SyntaxKind::Colon],
-                    );
+        if parser.find_and_pop(SyntaxKind::Colon, None)? {
+            parser.bump();
+            parse_type(parser, None)?;
+        }
 
-                    if !parser.bump_if(SyntaxKind::Colon) {
-                        parser.error_and_recover("expected `:` after const parameter", None);
-                        return;
-                    }
-                    parse_type(parser, None);
+        // parse trait bound even though it's not allowed (checked in hir)
+        if parser.current_kind() == Some(SyntaxKind::Colon) {
+            parser.parse(TypeBoundListScope::new(true))?;
+        }
+        Ok(())
+    }
+}
 
-                    parser.set_newline_as_trivia(true);
-                } else {
-                    if !parser.bump_if(SyntaxKind::Ident) {
-                        parser.error_and_recover("expected type parameter", None);
-                    }
+define_scope! {
+    TypeGenericParamScope {disallow_trait_bound: bool},
+    TypeGenericParam,
+    Inheritance
+}
+impl super::Parse for TypeGenericParamScope {
+    type Error = Recovery<ErrProof>;
 
-                    if parser.current_kind() == Some(SyntaxKind::Colon) {
-                        parser.parse(TypeBoundListScope::new(self.disallow_trait_bound), None);
-                    }
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.set_newline_as_trivia(false);
+        parser.bump_expected(SyntaxKind::Ident);
 
-                    parser.set_newline_as_trivia(true);
-                }
-            },
-            &[SyntaxKind::Comma, SyntaxKind::Gt],
-        );
+        if parser.current_kind() == Some(SyntaxKind::Colon) {
+            parser.parse(TypeBoundListScope::new(self.disallow_trait_bound))?;
+        }
+        Ok(())
     }
 }
 
@@ -166,14 +164,17 @@ define_scope! {
     Inheritance(Plus)
 }
 impl super::Parse for TypeBoundListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Colon);
 
-        parser.parse(TypeBoundScope::new(self.disallow_trait_bound), None);
+        parser.parse(TypeBoundScope::new(self.disallow_trait_bound))?;
         while parser.current_kind() == Some(SyntaxKind::Plus) {
             parser.bump_expected(SyntaxKind::Plus);
-            parser.parse(TypeBoundScope::new(self.disallow_trait_bound), None);
+            parser.parse(TypeBoundScope::new(self.disallow_trait_bound))?;
         }
+        Ok(())
     }
 }
 
@@ -183,41 +184,49 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for TypeBoundScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         let is_type_kind = matches!(
             parser.current_kind(),
             Some(SyntaxKind::LParen | SyntaxKind::Star)
         );
 
         if is_type_kind {
-            parse_kind_bound(parser);
+            parse_kind_bound(parser)
         } else {
             if self.disallow_trait_bound {
-                parser.error_and_recover("trait bounds are not allowed here", None);
-                return;
+                return parser.error_and_recover("trait bounds are not allowed here");
             }
-            parser.parse(TraitRefScope::default(), None);
+            parser.parse(TraitRefScope::default())
         }
     }
 }
 
-fn parse_kind_bound<S: TokenStream>(parser: &mut Parser<S>) {
+fn parse_kind_bound<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
     let checkpoint = parser.checkpoint();
     let is_newline_trivia = parser.set_newline_as_trivia(false);
 
+    parser.expect(&[SyntaxKind::Star, SyntaxKind::LParen], None)?;
+
     if parser.bump_if(SyntaxKind::LParen) {
-        parse_kind_bound(parser);
-        parser.bump_or_recover(SyntaxKind::RParen, "expected closing `)`", None);
+        parse_kind_bound(parser)?;
+        if parser.find(SyntaxKind::RParen, None)? {
+            parser.bump();
+        }
     } else if parser.current_kind() == Some(SyntaxKind::Star) {
-        parser.parse(KindBoundMonoScope::default(), None);
+        parser.parse(KindBoundMonoScope::default())?;
     } else {
-        parser.error_and_recover("expected `*` or `(`", None);
+        // guaranteed by `expected`, unless other recovery
+        // other tokens are added to the current scope
+        unreachable!();
     }
 
     if parser.current_kind() == Some(SyntaxKind::Arrow) {
-        parser.parse(KindBoundAbsScope::default(), checkpoint.into());
+        parser.parse_cp(KindBoundAbsScope::default(), checkpoint.into())?;
     }
     parser.set_newline_as_trivia(is_newline_trivia);
+    Ok(())
 }
 
 define_scope! {
@@ -226,8 +235,11 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for KindBoundMonoScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Star);
+        Ok(())
     }
 }
 
@@ -237,9 +249,11 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for KindBoundAbsScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Arrow);
-        parse_kind_bound(parser);
+        parse_kind_bound(parser)
     }
 }
 
@@ -249,11 +263,20 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for TraitRefScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.parse(PathScope::default(), None);
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        // xxx add test that triggers this
+        parser.or_recover(|parser| {
+            parser.parse(PathScope::default()).map_err(|_| {
+                ParseError::expected(&[SyntaxKind::TraitRef], None, parser.current_pos)
+            })
+        })?;
+
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::default(), None);
+            parser.parse(GenericArgListScope::default())?;
         }
+        Ok(())
     }
 }
 
@@ -263,143 +286,167 @@ define_scope! {
     Override(Gt, Comma)
 }
 impl super::Parse for GenericArgListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::Lt);
+    type Error = Recovery<ErrProof>;
 
-        if parser.bump_if(SyntaxKind::Gt) {
-            return;
-        }
-
-        parser.parse(GenericArgScope::default(), None);
-        while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(GenericArgScope::default(), None);
-        }
-
-        parser.bump_or_recover(SyntaxKind::Gt, "expected closing `>`", None);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(parser, false, (SyntaxKind::Lt, SyntaxKind::Gt), |parser| {
+            parser.parse(GenericArgScope::default())
+        })
     }
 }
 
 define_scope! {
     GenericArgScope,
     TypeGenericArg,
-    Inheritance
+    Override()
 }
 impl super::Parse for GenericArgScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        parser.with_next_expected_tokens(
-            |parser| {
-                match parser.current_kind() {
-                    Some(SyntaxKind::LBrace) => {
-                        self.set_kind(SyntaxKind::ConstGenericArg);
-                        parser.parse(BlockExprScope::default(), None);
-                    }
+        match parser.current_kind() {
+            Some(SyntaxKind::LBrace) => {
+                self.set_kind(SyntaxKind::ConstGenericArg);
+                parser.parse(BlockExprScope::default())?;
+            }
 
-                    Some(kind) if kind.is_literal_leaf() => {
-                        self.set_kind(SyntaxKind::ConstGenericArg);
-                        parser.parse(LitExprScope::default(), None);
-                    }
+            Some(kind) if kind.is_literal_leaf() => {
+                self.set_kind(SyntaxKind::ConstGenericArg);
+                parser.parse(LitExprScope::default())?;
+            }
 
-                    _ => {
-                        parse_type(parser, None);
-                        if parser.current_kind() == Some(SyntaxKind::Colon) {
-                            parser.error_and_recover("type bounds are not allowed here", None);
-                        }
-                    }
+            _ => {
+                parse_type(parser, None)?;
+                if parser.current_kind() == Some(SyntaxKind::Colon) {
+                    parser.error_and_recover("type bounds are not allowed here")?;
                 }
-                parser.set_newline_as_trivia(true);
-            },
-            &[SyntaxKind::Comma, SyntaxKind::Gt],
-        );
+            }
+        }
+        Ok(())
     }
 }
 
 define_scope! { pub(crate) CallArgListScope, CallArgList, Override(RParen, Comma) }
 impl super::Parse for CallArgListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LParen);
+    type Error = Recovery<ErrProof>;
 
-        if parser.bump_if(SyntaxKind::RParen) {
-            return;
-        }
-
-        parser.parse(CallArgScope::default(), None);
-        while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(CallArgScope::default(), None);
-        }
-
-        parser.bump_or_recover(SyntaxKind::RParen, "expected closing `)`", None);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            false,
+            (SyntaxKind::LParen, SyntaxKind::RParen),
+            |parser| parser.parse(CallArgScope::default()),
+        )
     }
 }
 
-define_scope! { CallArgScope, CallArg, Inheritance }
+define_scope! { CallArgScope, CallArg, Override(Comma, RParen) }
 impl super::Parse for CallArgScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.with_next_expected_tokens(
-            |parser| {
-                parser.set_newline_as_trivia(false);
-                let has_label = parser.dry_run(|parser| {
-                    parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
-                });
+    type Error = Recovery<ErrProof>;
 
-                if has_label {
-                    parser.bump_expected(SyntaxKind::Ident);
-                    parser.bump_expected(SyntaxKind::Colon);
-                }
-                parse_expr(parser);
-                parser.set_newline_as_trivia(true);
-            },
-            &[SyntaxKind::Comma, SyntaxKind::RParen],
-        );
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.set_newline_as_trivia(false);
+        let has_label = parser.dry_run(|parser| {
+            parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
+        });
+
+        if has_label {
+            parser.bump_expected(SyntaxKind::Ident);
+            parser.bump_expected(SyntaxKind::Colon);
+        }
+        parse_expr(parser)?;
+        Ok(())
     }
 }
 
 define_scope! { pub(crate) WhereClauseScope, WhereClause, Inheritance(Newline) }
 impl super::Parse for WhereClauseScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::WhereKw);
+
+        let mut pred_count = 0;
 
         loop {
             parser.set_newline_as_trivia(true);
             match parser.current_kind() {
                 Some(kind) if is_type_start(kind) => {
-                    parser.parse(WherePredicateScope::default(), None);
+                    parser.parse(WherePredicateScope::default())?;
+                    pred_count += 1;
                 }
                 _ => break,
             }
+
+            if !parser.bump_if(SyntaxKind::Comma) {
+                if parser.current_kind().is_some() && is_type_start(parser.current_kind().unwrap())
+                {
+                    parser.set_newline_as_trivia(false);
+                    let newline = parser.current_kind() == Some(SyntaxKind::Newline);
+                    parser.set_newline_as_trivia(true);
+
+                    if newline {
+                        parser.add_error(ParseError::expected(
+                            &[SyntaxKind::Comma],
+                            None,
+                            parser.current_pos,
+                        ));
+                    } else if parser.find(SyntaxKind::Comma, None)? {
+                        parser.bump();
+                    } else {
+                        break;
+                    }
+                }
+            }
         }
+        if pred_count == 0 {
+            parser.error("`where` clause requires one or more type constraints");
+        }
+        Ok(())
     }
 }
 
 define_scope! { pub(crate) WherePredicateScope, WherePredicate, Inheritance }
 impl super::Parse for WherePredicateScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_type(parser, None);
-        parser.set_newline_as_trivia(false);
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_type(parser, None)?;
+
         if parser.current_kind() == Some(SyntaxKind::Colon) {
-            parser.parse(TypeBoundListScope::default(), None);
-            if !parser.bump_if(SyntaxKind::Newline) {
-                parser.error_and_recover("expected newline after type bounds", None);
-            }
+            parser.parse(TypeBoundListScope::default())?;
         } else {
-            parser.error_and_recover("expected `:` for type bounds", None);
+            parser.add_error(ParseError::expected(
+                &[SyntaxKind::Colon],
+                Some("missing type bound in `where` clause"),
+                parser.current_pos,
+            ));
         }
+        Ok(())
     }
 }
 
-pub(crate) fn parse_where_clause_opt<S: TokenStream>(parser: &mut Parser<S>) {
+pub(crate) fn parse_where_clause_opt<S: TokenStream>(
+    parser: &mut Parser<S>,
+) -> Result<(), Recovery<ErrProof>> {
     let newline_as_trivia = parser.set_newline_as_trivia(true);
-    if parser.current_kind() == Some(SyntaxKind::WhereKw) {
-        parser.parse(WhereClauseScope::default(), None);
-    }
+    let r = if parser.current_kind() == Some(SyntaxKind::WhereKw) {
+        parser.parse(WhereClauseScope::default())
+    } else {
+        Ok(())
+    };
     parser.set_newline_as_trivia(newline_as_trivia);
+    r
 }
 
 pub(crate) fn parse_generic_params_opt<S: TokenStream>(
     parser: &mut Parser<S>,
     disallow_trait_bound: bool,
-) {
+) -> Result<(), Recovery<ErrProof>> {
     if parser.current_kind() == Some(SyntaxKind::Lt) {
-        parser.parse(GenericParamListScope::new(disallow_trait_bound), None);
+        parser.parse(GenericParamListScope::new(disallow_trait_bound))
+    } else {
+        Ok(())
     }
 }

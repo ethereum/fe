@@ -1,5 +1,5 @@
-impl X<T, u))> for Y<T where T: X {}
+impl A<T, u))> for B<T where T: X {}
 
-impl X<T, u for Y<T where T: X {}
+impl C<T, u for D<T where T: X {}
 
-impl X @ for Y {}
+impl E @ for F {}

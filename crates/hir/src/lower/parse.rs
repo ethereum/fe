@@ -41,13 +41,13 @@ impl DiagnosticVoucher for ParserError {
 
     fn to_complete(&self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let error_code = self.error_code();
-        let span = Span::new(self.file, self.error.range, SpanKind::Original);
+        let span = Span::new(self.file, self.error.range(), SpanKind::Original);
         CompleteDiagnostic::new(
             Severity::Error,
-            self.error.msg.clone(),
+            self.error.msg(),
             vec![SubDiagnostic::new(
                 LabelStyle::Primary,
-                self.error.msg.clone(),
+                self.error.msg(),
                 Some(span),
             )],
             vec![],

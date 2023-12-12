@@ -1,18 +1,23 @@
+use std::convert::Infallible;
+use unwrap_infallible::UnwrapInfallible;
+
 use super::{
     define_scope, expr_atom,
     param::{CallArgListScope, GenericArgListScope},
-    token_stream::{LexicalToken, TokenStream},
-    Checkpoint, Parser,
+    token_stream::TokenStream,
+    Checkpoint, ErrProof, Parser, Recovery,
 };
 use crate::SyntaxKind;
 
 /// Parses expression.
-pub fn parse_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+pub fn parse_expr<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
     parse_expr_with_min_bp(parser, 0, true)
 }
 
 /// Parses expression except for `struct` initialization expression.
-pub fn parse_expr_no_struct<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+pub fn parse_expr_no_struct<S: TokenStream>(
+    parser: &mut Parser<S>,
+) -> Result<(), Recovery<ErrProof>> {
     parse_expr_with_min_bp(parser, 0, false)
 }
 
@@ -26,11 +31,8 @@ fn parse_expr_with_min_bp<S: TokenStream>(
     parser: &mut Parser<S>,
     min_bp: u8,
     allow_struct_init: bool,
-) -> bool {
-    let (ok, checkpoint) = parse_expr_atom(parser, allow_struct_init);
-    if !ok {
-        return false;
-    }
+) -> Result<(), Recovery<ErrProof>> {
+    let checkpoint = parse_expr_atom(parser, allow_struct_init)?;
 
     loop {
         let is_trivia = parser.set_newline_as_trivia(true);
@@ -46,12 +48,15 @@ fn parse_expr_with_min_bp<S: TokenStream>(
             Some(_) => {
                 match kind {
                     SyntaxKind::LBracket => {
-                        parser.parse(IndexExprScope::default(), Some(checkpoint));
+                        parser.parse_cp(IndexExprScope::default(), Some(checkpoint))?;
                         continue;
                     }
 
                     SyntaxKind::LParen => {
-                        if parser.parse(CallExprScope::default(), Some(checkpoint)).0 {
+                        if parser
+                            .parse_cp(CallExprScope::default(), Some(checkpoint))
+                            .is_ok()
+                        {
                             continue;
                         }
                     }
@@ -59,7 +64,7 @@ fn parse_expr_with_min_bp<S: TokenStream>(
                     // `expr<generic_param_args>()`.
                     SyntaxKind::Lt => {
                         if is_call_expr(parser) {
-                            parser.parse(CallExprScope::default(), Some(checkpoint));
+                            parser.parse_cp(CallExprScope::default(), Some(checkpoint))?;
                             continue;
                         }
                     }
@@ -67,7 +72,7 @@ fn parse_expr_with_min_bp<S: TokenStream>(
                     // `expr.method<T, i32>()`
                     SyntaxKind::Dot => {
                         if is_method_call(parser) {
-                            parser.parse(MethodExprScope::default(), Some(checkpoint));
+                            parser.parse_cp(MethodExprScope::default(), Some(checkpoint))?;
                             continue;
                         }
                     }
@@ -82,41 +87,35 @@ fn parse_expr_with_min_bp<S: TokenStream>(
                 break;
             }
 
-            let (ok, _) = if kind == SyntaxKind::Dot {
-                parser.parse(FieldExprScope::default(), Some(checkpoint))
+            if kind == SyntaxKind::Dot {
+                parser.parse_cp(FieldExprScope::default(), Some(checkpoint))
             } else if is_assign(parser) {
-                parser.parse(AssignExprScope::default(), Some(checkpoint))
+                parser.parse_cp(AssignExprScope::default(), Some(checkpoint))
             } else if is_aug_assign(parser) {
-                parser.parse(AugAssignExprScope::default(), Some(checkpoint))
+                parser.parse_cp(AugAssignExprScope::default(), Some(checkpoint))
             } else {
-                parser.parse(BinExprScope::default(), Some(checkpoint))
-            };
-
-            if !ok {
-                return false;
-            }
-
+                parser.parse_cp(BinExprScope::default(), Some(checkpoint))
+            }?;
             continue;
         }
         break;
     }
 
-    true
+    Ok(())
 }
 
 fn parse_expr_atom<S: TokenStream>(
     parser: &mut Parser<S>,
     allow_struct_init: bool,
-) -> (bool, Checkpoint) {
+) -> Result<Checkpoint, Recovery<ErrProof>> {
     match parser.current_kind() {
         Some(kind) if prefix_binding_power(kind).is_some() => {
-            parser.parse(UnExprScope::default(), None)
+            parser.parse_cp(UnExprScope::default(), None)
         }
         Some(_) => expr_atom::parse_expr_atom(parser, allow_struct_init),
-        None => {
-            parser.error_and_recover("expected expression", None);
-            (false, parser.checkpoint())
-        }
+        None => parser
+            .error_and_recover("expected expression")
+            .map(|_| parser.checkpoint()),
     }
 }
 
@@ -216,161 +215,170 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
 
 define_scope! { UnExprScope, UnExpr, Inheritance }
 impl super::Parse for UnExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         let kind = parser.current_kind().unwrap();
         let bp = prefix_binding_power(kind).unwrap();
         parser.bump();
-        parse_expr_with_min_bp(parser, bp, true);
+        parse_expr_with_min_bp(parser, bp, true)
     }
 }
 
 define_scope! { BinExprScope, BinExpr, Inheritance }
 impl super::Parse for BinExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         let (_, rbp) = infix_binding_power(parser).unwrap();
         bump_bin_op(parser);
-        parse_expr_with_min_bp(parser, rbp, false);
+        parse_expr_with_min_bp(parser, rbp, false)
     }
 }
 
 define_scope! { AugAssignExprScope, AugAssignExpr, Inheritance }
 impl super::Parse for AugAssignExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         let (_, rbp) = infix_binding_power(parser).unwrap();
         bump_aug_assign_op(parser);
-        parse_expr_with_min_bp(parser, rbp, false);
+        parse_expr_with_min_bp(parser, rbp, false)
     }
 }
 
 define_scope! { AssignExprScope, AssignExpr, Inheritance }
 impl super::Parse for AssignExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         let (_, rbp) = infix_binding_power(parser).unwrap();
         parser.bump_expected(SyntaxKind::Eq);
-        parse_expr_with_min_bp(parser, rbp, true);
+        parse_expr_with_min_bp(parser, rbp, true)
     }
 }
 
-define_scope! { IndexExprScope, IndexExpr, Override(RBracket) }
+define_scope! { IndexExprScope, IndexExpr, Override(RBracket, Newline) }
 impl super::Parse for IndexExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::LBracket);
-        parser.with_next_expected_tokens(parse_expr, &[SyntaxKind::RBracket]);
-        parser.bump_or_recover(SyntaxKind::RBracket, "expected `]`", None);
+        parse_expr(parser)?;
+
+        if parser.find(
+            SyntaxKind::RBracket,
+            Some("missing closing `]` in index expression"),
+        )? {
+            parser.bump();
+        }
+        Ok(())
     }
 }
 
 define_scope! { CallExprScope, CallExpr, Inheritance }
 impl super::Parse for CallExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
+
+        parser.set_scope_recovery_stack(&[SyntaxKind::LParen]);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.with_next_expected_tokens(
-                |parser| {
-                    parser.parse(GenericArgListScope::default(), None);
-                },
-                &[SyntaxKind::LParen],
-            );
+            parser.parse(GenericArgListScope::default())?;
         }
 
-        if parser.current_kind() != Some(SyntaxKind::LParen) {
-            parser.error_and_recover("expected `(`", None);
-            return;
+        if parser.find_and_pop(SyntaxKind::LParen, None)? {
+            parser.parse(CallArgListScope::default())?;
         }
-        parser.parse(CallArgListScope::default(), None);
+        Ok(())
     }
 }
 
 define_scope! { MethodExprScope, MethodCallExpr, Inheritance }
 impl super::Parse for MethodExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        let is_trivia = parser.set_newline_as_trivia(true);
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Dot);
+        parser.set_newline_as_trivia(false);
 
-        parser.bump_or_recover(SyntaxKind::Ident, "expected identifier", None);
-
-        parser.with_next_expected_tokens(
-            |parser| {
-                if parser.current_kind() == Some(SyntaxKind::Lt) {
-                    parser.parse(GenericArgListScope::default(), None);
-                }
-            },
-            &[SyntaxKind::LParen],
-        );
-
-        if parser.current_kind() != Some(SyntaxKind::LParen) {
-            parser.error_and_recover("expected `(`", None);
-            parser.set_newline_as_trivia(is_trivia);
-            return;
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Lt, SyntaxKind::LParen]);
+        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+            parser.bump();
         }
 
-        parser.set_newline_as_trivia(is_trivia);
-        parser.parse(CallArgListScope::default(), None);
+        parser.pop_recovery_stack();
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
+            parser.parse(GenericArgListScope::default())?;
+        }
+
+        if parser.find_and_pop(SyntaxKind::LParen, None)? {
+            parser.parse(CallArgListScope::default())?;
+        }
+        Ok(())
     }
 }
 
 define_scope! { FieldExprScope, FieldExpr, Inheritance }
 impl super::Parse for FieldExprScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        let is_trivia = parser.set_newline_as_trivia(true);
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Dot);
 
-        match parser.current_token() {
-            Some(token) if token.syntax_kind() == SyntaxKind::Ident => {
-                parser.bump();
-            }
-            Some(token) if token.syntax_kind() == SyntaxKind::Int => {
-                let text = token.text();
-                if !text.chars().all(|c| c.is_ascii_digit()) {
-                    parser
-                        .error_and_recover("expected integer decimal literal without prefix", None);
-                    return;
-                }
-                parser.bump();
-            }
-            _ => {
-                parser.error_and_recover("expected identifier or integer literal", None);
-            }
-        }
-
-        parser.set_newline_as_trivia(is_trivia);
+        parser.expect(&[SyntaxKind::Ident, SyntaxKind::Int], None)?;
+        parser.bump();
+        Ok(())
     }
 }
 
 define_scope! { pub(super) LShiftScope, LShift, Inheritance }
 impl super::Parse for LShiftScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Lt);
         parser.bump_expected(SyntaxKind::Lt);
+        Ok(())
     }
 }
 
 define_scope! { pub(super) RShiftScope, RShift, Inheritance }
 impl super::Parse for RShiftScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Gt);
         parser.bump_expected(SyntaxKind::Gt);
+        Ok(())
     }
 }
 
 define_scope! { pub(super) LtEqScope, LtEq, Inheritance }
 impl super::Parse for LtEqScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Lt);
         parser.bump_expected(SyntaxKind::Eq);
+        Ok(())
     }
 }
 
 define_scope! { pub(super) GtEqScope, GtEq, Inheritance }
 impl super::Parse for GtEqScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Gt);
         parser.bump_expected(SyntaxKind::Eq);
+        Ok(())
     }
 }
 
@@ -414,18 +422,18 @@ fn bump_bin_op<S: TokenStream>(parser: &mut Parser<S>) {
     match parser.current_kind() {
         Some(SyntaxKind::Lt) => {
             if is_lshift(parser) {
-                parser.parse(LShiftScope::default(), None);
+                parser.parse(LShiftScope::default()).unwrap_infallible();
             } else if is_lt_eq(parser) {
-                parser.parse(LtEqScope::default(), None);
+                parser.parse(LtEqScope::default()).unwrap_infallible();
             } else {
                 parser.bump();
             }
         }
         Some(SyntaxKind::Gt) => {
             if is_rshift(parser) {
-                parser.parse(RShiftScope::default(), None);
+                parser.parse(RShiftScope::default()).unwrap_infallible();
             } else if is_gt_eq(parser) {
-                parser.parse(GtEqScope::default(), None);
+                parser.parse(GtEqScope::default()).unwrap_infallible();
             } else {
                 parser.bump();
             }
@@ -445,12 +453,12 @@ fn bump_aug_assign_op<S: TokenStream>(parser: &mut Parser<S>) -> bool {
             true
         }
         (Some(Lt), Some(Lt), Some(Eq)) => {
-            parser.parse(LShiftScope::default(), None);
+            parser.parse(LShiftScope::default()).unwrap_infallible();
             parser.bump_expected(SyntaxKind::Eq);
             true
         }
         (Some(Gt), Some(Gt), Some(Eq)) => {
-            parser.parse(RShiftScope::default(), None);
+            parser.parse(RShiftScope::default()).unwrap_infallible();
             parser.bump_expected(SyntaxKind::Eq);
             true
         }
@@ -464,43 +472,42 @@ fn is_call_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
 
         let mut is_call = true;
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            is_call &= parser.parse(GenericArgListScope::default(), None).0;
+            // xxx `call` error recovery test: "without error" should only apply to base scope
+            is_call &= parser.parses_without_error(GenericArgListScope::default())
         }
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
             false
         } else {
-            is_call && parser.parse(CallArgListScope::default(), None).0
+            is_call && parser.parses_without_error(CallArgListScope::default())
         }
     })
 }
 
 fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
-    parser.dry_run(|parser| {
-        let is_trivia = parser.set_newline_as_trivia(true);
+    let is_trivia = parser.set_newline_as_trivia(true);
+    let res = parser.dry_run(|parser| {
         if !parser.bump_if(SyntaxKind::Dot) {
-            parser.set_newline_as_trivia(is_trivia);
             return false;
         }
 
         if !parser.bump_if(SyntaxKind::Ident) {
-            parser.set_newline_as_trivia(is_trivia);
             return false;
         }
 
         if parser.current_kind() == Some(SyntaxKind::Lt)
-            && !parser.parse(GenericArgListScope::default(), None).0
+            && !parser.parses_without_error(GenericArgListScope::default())
         {
-            parser.set_newline_as_trivia(is_trivia);
             return false;
         }
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
-            parser.set_newline_as_trivia(is_trivia);
             false
         } else {
             parser.set_newline_as_trivia(is_trivia);
-            parser.parse(CallArgListScope::default(), None).0
+            parser.parses_without_error(CallArgListScope::default())
         }
-    })
+    });
+    parser.set_newline_as_trivia(is_trivia);
+    res
 }

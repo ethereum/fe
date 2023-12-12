@@ -1,9 +1,9 @@
 pub trait Trait {}
 
 pub struct MyS<T, U>
-    where T: Trait
-          U: Trait
-          Z: Trait
+    where T: Trait,
+          U: Trait,
+          Z: Trait,
 {
     t: T,
     u: U,

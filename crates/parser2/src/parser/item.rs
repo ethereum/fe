@@ -1,4 +1,6 @@
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, convert::Infallible, rc::Rc};
+
+use unwrap_infallible::UnwrapInfallible;
 
 use crate::{parser::func::FuncScope, SyntaxKind};
 
@@ -7,11 +9,12 @@ use super::{
     expr::parse_expr,
     func::FuncDefScope,
     param::{parse_generic_params_opt, parse_where_clause_opt, TraitRefScope},
+    parse_list,
     struct_::RecordFieldDefListScope,
     token_stream::{LexicalToken, TokenStream},
     type_::{parse_type, TupleTypeScope},
     use_tree::UseTreeScope,
-    Parser,
+    ErrProof, Parser, Recovery,
 };
 
 define_scope! {
@@ -37,7 +40,9 @@ define_scope! {
     )
 }
 impl super::Parse for ItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         use crate::SyntaxKind::*;
 
         if self.inside_mod {
@@ -51,13 +56,14 @@ impl super::Parse for ItemListScope {
             }
             if parser.current_kind().is_none() {
                 if self.inside_mod {
-                    parser.error("expected `}` to close the module");
+                    parser.error("`}` to close the module");
                 }
                 break;
             }
 
-            parser.parse(ItemScope::default(), None);
+            parser.parse(ItemScope::default())?;
         }
+        Ok(())
     }
 }
 
@@ -68,14 +74,16 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for ItemScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         use crate::SyntaxKind::*;
 
-        let mut checkpoint = attr::parse_attr_list(parser);
+        let mut checkpoint = attr::parse_attr_list(parser)?;
         let modifier_scope = ItemModifierScope::default();
         let modifier = match parser.current_kind() {
             Some(kind) if kind.is_modifier_head() => {
-                let (_, modifier_checkpoint) = parser.parse(modifier_scope.clone(), None);
+                let modifier_checkpoint = parser.parse_cp(modifier_scope.clone(), None).unwrap();
                 checkpoint.get_or_insert(modifier_checkpoint);
                 modifier_scope.kind.get()
             }
@@ -83,7 +91,7 @@ impl super::Parse for ItemScope {
         };
 
         if modifier.is_unsafe() && parser.current_kind() != Some(FnKw) {
-            parser.error("expected `fn` after `unsafe` keyword");
+            parser.error("expected `fn` after `unsafe` keyword"); // xxx
         } else if modifier.is_pub() && matches!(parser.current_kind(), Some(ImplKw | ExternKw)) {
             let error_msg = format!(
                 "`pub` can't be used for `{}`",
@@ -93,51 +101,31 @@ impl super::Parse for ItemScope {
         }
 
         match parser.current_kind() {
-            Some(ModKw) => {
-                parser.parse(ModScope::default(), checkpoint);
-            }
-            Some(FnKw) => {
-                parser.parse(FuncScope::default(), checkpoint);
-            }
-            Some(StructKw) => {
-                parser.parse(super::struct_::StructScope::default(), checkpoint);
-            }
-            Some(ContractKw) => {
-                parser.parse(ContractScope::default(), checkpoint);
-            }
-            Some(EnumKw) => {
-                parser.parse(EnumScope::default(), checkpoint);
-            }
-            Some(TraitKw) => {
-                parser.parse(TraitScope::default(), checkpoint);
-            }
-            Some(ImplKw) => {
-                parser.parse(ImplScope::default(), checkpoint);
-            }
-            Some(UseKw) => {
-                parser.parse(UseScope::default(), checkpoint);
-            }
-            Some(ConstKw) => {
-                parser.parse(ConstScope::default(), checkpoint);
-            }
-            Some(ExternKw) => {
-                parser.parse(ExternScope::default(), checkpoint);
-            }
-            Some(TypeKw) => {
-                parser.parse(TypeAliasScope::default(), checkpoint);
-            }
-            tok => {
-                parser.error_and_recover(&format! {"expected item: but got {tok:?}"}, checkpoint)
-            }
-        }
+            Some(ModKw) => parser.parse_cp(ModScope::default(), checkpoint),
+            Some(FnKw) => parser.parse_cp(FuncScope::default(), checkpoint),
+            Some(StructKw) => parser.parse_cp(super::struct_::StructScope::default(), checkpoint),
+            Some(ContractKw) => parser.parse_cp(ContractScope::default(), checkpoint),
+            Some(EnumKw) => parser.parse_cp(EnumScope::default(), checkpoint),
+            Some(TraitKw) => parser.parse_cp(TraitScope::default(), checkpoint),
+            Some(ImplKw) => parser.parse_cp(ImplScope::default(), checkpoint),
+            Some(UseKw) => parser.parse_cp(UseScope::default(), checkpoint),
+            Some(ConstKw) => parser.parse_cp(ConstScope::default(), checkpoint),
+            Some(ExternKw) => parser.parse_cp(ExternScope::default(), checkpoint),
+            Some(TypeKw) => parser.parse_cp(TypeAliasScope::default(), checkpoint),
+            tok => parser
+                .error_and_recover(&format! {"expected item: but got {tok:?}"})
+                .map(|_| checkpoint.unwrap_or_else(|| parser.checkpoint())),
+        }?;
 
         parser.set_newline_as_trivia(false);
         if parser.current_kind().is_some() && !parser.bump_if(SyntaxKind::Newline) {
+            // xxx
             parser.bump_or_recover(
                 SyntaxKind::Newline,
                 "expected newline after item definition",
-                checkpoint,
             )
+        } else {
+            Ok(())
         }
     }
 }
@@ -148,7 +136,9 @@ define_scope! {
     Inheritance
 }
 impl super::Parse for ItemModifierScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         let mut modifier_kind = ModifierKind::None;
 
         loop {
@@ -170,6 +160,7 @@ impl super::Parse for ItemModifierScope {
                 _ => break,
             }
         }
+        Ok(())
     }
 }
 
@@ -217,339 +208,321 @@ impl ModifierKind {
 
 define_scope! { ModScope, Mod, Inheritance }
 impl super::Parse for ModScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ModKw);
-        parser.with_next_expected_tokens(
-            |parser| {
-                parser.bump_or_recover(
-                    SyntaxKind::Ident,
-                    "expected identifier for the module name",
-                    None,
-                )
-            },
-            &[SyntaxKind::LBrace],
-        );
-        if parser.current_kind() == Some(SyntaxKind::LBrace) {
-            parser.parse(ItemListScope::new(true), None);
-        } else {
-            parser.error_and_recover("expected contract field definition", None);
+
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::LBrace]);
+
+        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+            parser.bump();
         }
+        if parser.find_and_pop(SyntaxKind::LBrace, Some("`mod` body"))? {
+            parser.parse(ItemListScope::new(true))?;
+        }
+        Ok(())
     }
 }
 
 define_scope! { ContractScope, Contract, Inheritance }
 impl super::Parse for ContractScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ContractKw);
 
-        parser.with_next_expected_tokens(
-            |parser| {
-                parser.bump_or_recover(
-                    SyntaxKind::Ident,
-                    "expected identifier for the contract name",
-                    None,
-                )
-            },
-            &[SyntaxKind::LBrace],
-        );
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::LBrace]);
 
-        if parser.current_kind() == Some(SyntaxKind::LBrace) {
-            parser.parse(RecordFieldDefListScope::default(), None);
-        } else {
-            parser.error_and_recover("expected contract field definition", None);
+        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+            parser.bump();
         }
+        if parser.find_and_pop(SyntaxKind::LBrace, Some("contract field definition"))? {
+            parser.parse(RecordFieldDefListScope::default())?;
+        }
+        Ok(())
     }
 }
 
 define_scope! { EnumScope, Enum, Inheritance }
 impl super::Parse for EnumScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::EnumKw);
 
-        parser.with_next_expected_tokens(
-            |parser| {
-                parser.bump_or_recover(
-                    SyntaxKind::Ident,
-                    "expected identifier for the enum name",
-                    None,
-                );
-            },
-            &[SyntaxKind::Lt, SyntaxKind::LBrace, SyntaxKind::WhereKw],
-        );
+        parser.set_scope_recovery_stack(&[
+            SyntaxKind::Ident,
+            SyntaxKind::Lt,
+            SyntaxKind::WhereKw,
+            SyntaxKind::LBrace,
+        ]);
 
-        parser.with_next_expected_tokens(
-            |parser| parse_generic_params_opt(parser, false),
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
-        );
-
-        parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
-
-        if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected enum body", None);
-            return;
+        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+            parser.bump();
         }
 
-        parser.parse(VariantDefListScope::default(), None);
+        parser.pop_recovery_stack();
+        parse_generic_params_opt(parser, false)?;
+
+        parser.pop_recovery_stack();
+        parse_where_clause_opt(parser)?;
+
+        if parser.find_and_pop(SyntaxKind::LBrace, Some("enum body definition"))? {
+            parser.parse(VariantDefListScope::default())?;
+        }
+        Ok(())
     }
 }
 
-define_scope! { VariantDefListScope, VariantDefList, Override(RBrace, Newline) }
+define_scope! { VariantDefListScope, VariantDefList, Override(Comma, RBrace) }
 impl super::Parse for VariantDefListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LBrace);
-        parser.set_newline_as_trivia(true);
+    type Error = Recovery<ErrProof>;
 
-        loop {
-            if parser.current_kind() == Some(SyntaxKind::RBrace) || parser.current_kind().is_none()
-            {
-                break;
-            }
-            parser.parse(VariantDefScope::default(), None);
-
-            if !parser.bump_if(SyntaxKind::Comma)
-                && parser.current_kind() != Some(SyntaxKind::RBrace)
-            {
-                parser.error("expected comma after enum variant definition");
-            }
-        }
-
-        parser.bump_or_recover(
-            SyntaxKind::RBrace,
-            "expected the closing brace of the enum definition",
-            None,
-        );
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            true,
+            (SyntaxKind::LBrace, SyntaxKind::RBrace),
+            |parser| parser.parse(VariantDefScope::default()),
+        )
     }
 }
 
 define_scope! { VariantDefScope, VariantDef, Inheritance }
 impl super::Parse for VariantDefScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_or_recover(
-            SyntaxKind::Ident,
-            "expected ident for the variant name",
-            None,
-        );
+    type Error = Recovery<ErrProof>;
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        // xxx check for keywords when bumping ident
+        parser.bump_or_recover(SyntaxKind::Ident, "expected ident for the variant name")?;
 
         if parser.current_kind() == Some(SyntaxKind::LParen) {
-            parser.parse(TupleTypeScope::default(), None);
+            parser.parse(TupleTypeScope::default())?;
         } else if parser.current_kind() == Some(SyntaxKind::LBrace) {
-            parser.parse(RecordFieldDefListScope::default(), None);
+            parser.parse(RecordFieldDefListScope::default())?;
         }
+        Ok(())
     }
 }
 
 define_scope! { TraitScope, Trait, Inheritance }
 impl super::Parse for TraitScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    // xxx add TraitSignature syntax kind
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::TraitKw);
-
-        parser.bump_or_recover(
+        parser.set_scope_recovery_stack(&[
             SyntaxKind::Ident,
-            "expected identifier for the trait name",
-            None,
-        );
+            SyntaxKind::Lt,
+            SyntaxKind::Colon,
+            SyntaxKind::WhereKw,
+            SyntaxKind::LBrace,
+        ]);
+        if parser.find_and_pop(
+            SyntaxKind::Ident,
+            Some("expected identifier for the trait name"),
+        )? {
+            parser.bump();
+        }
 
-        parser.with_next_expected_tokens(
-            |parser| parse_generic_params_opt(parser, false),
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::Colon],
-        );
+        parser.expect_and_pop_recovery_stack()?;
+        parse_generic_params_opt(parser, false)?;
 
+        parser.expect_and_pop_recovery_stack()?;
         if parser.current_kind() == Some(SyntaxKind::Colon) {
-            parser.with_next_expected_tokens(
-                |parser| {
-                    parser.parse(SuperTraitListScope::default(), None);
-                },
-                &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
-            );
+            parser.parse(SuperTraitListScope::default())?;
         }
 
-        parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
+        parser.expect_and_pop_recovery_stack()?;
+        parse_where_clause_opt(parser)?;
 
-        if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected trait body", None);
-            return;
+        if parser.find(SyntaxKind::LBrace, Some("missing trait body"))? {
+            parser.parse(TraitItemListScope::default())?;
         }
-
-        parser.parse(TraitItemListScope::default(), None);
+        Ok(())
     }
 }
 
-define_scope! {SuperTraitListScope, SuperTraitList, Inheritance(Plus)}
+define_scope! {SuperTraitListScope, SuperTraitList, Inheritance(Plus)} // xxx remove Plus?
 impl super::Parse for SuperTraitListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Colon);
-        parser.parse(TraitRefScope::default(), None);
+        parser.parse(TraitRefScope::default())?;
         while parser.bump_if(SyntaxKind::Plus) {
-            parser.parse(TraitRefScope::default(), None);
+            parser.parse(TraitRefScope::default())?;
         }
+        Ok(())
     }
 }
 
 define_scope! { TraitItemListScope, TraitItemList, Override(RBrace, Newline, FnKw) }
 impl super::Parse for TraitItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parse_fn_item_block(parser, false, FuncDefScope::TraitDef)
     }
 }
 
-define_scope! { ImplScope, Impl, Inheritance }
+define_scope! { ImplScope, Impl, Override(ForKw, LBrace) }
 impl super::Parse for ImplScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ImplKw);
-        parser.with_recovery_tokens(
-            |parser| parse_generic_params_opt(parser, false),
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
-        );
+
+        parse_generic_params_opt(parser, false)?;
 
         let is_impl_trait = parser.dry_run(|parser| {
-            parser.with_next_expected_tokens(
-                |parser| parse_type(parser, None),
-                &[SyntaxKind::LBrace, SyntaxKind::WhereKw, SyntaxKind::ForKw],
-            );
+            // xxx reconsider, with new changes to parses_without_error
+            // We don't use `parses_without_error` here, because it's too strict;
+            // we only care whether the token after the trait/type is `for`.
+            let _ = parse_type(parser, None);
             parser.bump_if(SyntaxKind::ForKw)
         });
 
         if is_impl_trait {
             self.set_kind(SyntaxKind::ImplTrait);
-            parser.with_next_expected_tokens(
-                |parser| {
-                    parser.parse(TraitRefScope::default(), None);
-                },
-                &[SyntaxKind::ForKw],
-            );
+            parser.set_scope_recovery_stack(&[
+                SyntaxKind::ForKw,
+                SyntaxKind::WhereKw,
+                SyntaxKind::LBrace,
+            ]);
+
+            parser.parse(TraitRefScope::default())?;
+            parser.pop_recovery_stack();
             parser.bump_expected(SyntaxKind::ForKw);
-            parser.with_next_expected_tokens(
-                |parser| {
-                    parse_type(parser, None);
-                },
-                &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
-            );
         } else {
-            parser.with_next_expected_tokens(
-                |parser| {
-                    parse_type(parser, None);
-                },
-                &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
-            )
+            parser.set_scope_recovery_stack(&[SyntaxKind::WhereKw, SyntaxKind::LBrace]);
         }
 
-        parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
-        if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected impl body", None);
-            return;
-        }
+        parse_type(parser, None)?;
 
-        if is_impl_trait {
-            parser.parse(ImplTraitItemListScope::default(), None);
-        } else {
-            parser.parse(ImplItemListScope::default(), None);
+        parser.expect_and_pop_recovery_stack()?;
+        parse_where_clause_opt(parser)?;
+
+        if parser.find_and_pop(SyntaxKind::LBrace, Some("impl body"))? {
+            if is_impl_trait {
+                parser.parse(ImplTraitItemListScope::default())?;
+            } else {
+                parser.parse(ImplItemListScope::default())?;
+            }
         }
+        Ok(())
     }
 }
 
 define_scope! { ImplTraitItemListScope, ImplTraitItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplTraitItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parse_fn_item_block(parser, false, FuncDefScope::Impl)
     }
 }
 
 define_scope! { ImplItemListScope, ImplItemList, Override(RBrace, FnKw) }
 impl super::Parse for ImplItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parse_fn_item_block(parser, true, FuncDefScope::Impl)
     }
 }
 
 define_scope! { UseScope, Use, Inheritance }
 impl super::Parse for UseScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::UseKw);
-        parser.parse(UseTreeScope::default(), None);
+        parser.parse(UseTreeScope::default())
     }
 }
 
 define_scope! { ConstScope, Const, Inheritance }
 impl super::Parse for ConstScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ConstKw);
 
         parser.set_newline_as_trivia(false);
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Colon, SyntaxKind::Eq]);
 
-        parser.with_next_expected_tokens(
-            |parser| parser.bump_or_recover(SyntaxKind::Ident, "expected identifier", None),
-            &[SyntaxKind::Colon, SyntaxKind::Eq],
-        );
-
-        parser.with_next_expected_tokens(
-            |parser| {
-                if parser.bump_if(SyntaxKind::Colon) {
-                    parse_type(parser, None);
-                } else {
-                    parser.error_and_recover("expected type annotation for `const`", None);
-                }
-            },
-            &[SyntaxKind::Eq],
-        );
-
-        if parser.bump_if(SyntaxKind::Eq) {
-            parse_expr(parser);
-        } else {
-            parser.error_and_recover("expected `=` for const value definition", None);
+        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+            parser.bump();
         }
+        if parser.find_and_pop(SyntaxKind::Colon, None)? {
+            parser.bump();
+            parse_type(parser, None)?;
+        }
+        if parser.find_and_pop(
+            SyntaxKind::Eq,
+            Some("expected `=` for const value definition"),
+        )? {
+            parser.bump();
+            parse_expr(parser)?;
+        }
+        Ok(())
     }
 }
 
 define_scope! { ExternScope, Extern, Inheritance }
 impl super::Parse for ExternScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ExternKw);
 
-        if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected extern block", None)
+        parser.set_scope_recovery_stack(&[SyntaxKind::LBrace]);
+        if parser.find(SyntaxKind::LBrace, Some("missing `extern` body"))? {
+            parser.parse(ExternItemListScope::default())?;
         }
-
-        parser.parse(ExternItemListScope::default(), None);
+        Ok(())
     }
 }
 
-define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, PubKw, UnsafeKw, FnKw) }
+define_scope! { ExternItemListScope, ExternItemList, Override(PubKw, UnsafeKw, FnKw) }
 impl super::Parse for ExternItemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_fn_item_block(parser, true, FuncDefScope::Extern);
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_fn_item_block(parser, true, FuncDefScope::Extern)
     }
 }
 
 define_scope! { TypeAliasScope, TypeAlias, Inheritance }
 impl super::Parse for TypeAliasScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::TypeKw);
 
-        parser.with_next_expected_tokens(
-            |parser| {
-                parser.bump_or_recover(
-                    SyntaxKind::Ident,
-                    "expected identifier for type alias name",
-                    None,
-                );
-            },
-            &[SyntaxKind::Lt, SyntaxKind::Eq],
-        );
-
-        parser.with_next_expected_tokens(
-            |parser| {
-                parse_generic_params_opt(parser, true);
-            },
-            &[SyntaxKind::Eq],
-        );
-
-        if !parser.bump_if(SyntaxKind::Eq) {
-            parser.error_and_recover("expected `=` for type alias definition", None);
-            return;
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Lt, SyntaxKind::Eq]);
+        if parser.find_and_pop(
+            SyntaxKind::Ident,
+            Some("expected identifier for type alias name"),
+        )? {
+            parser.bump();
         }
 
-        parse_type(parser, None);
+        parser.pop_recovery_stack();
+        parse_generic_params_opt(parser, true)?;
+
+        if parser.find_and_pop(
+            SyntaxKind::Eq,
+            Some("expected `=` for type alias definition"),
+        )? {
+            parser.bump();
+            parse_type(parser, None)?;
+        }
+        Ok(())
     }
 }
 
@@ -562,7 +535,7 @@ fn parse_fn_item_block<S: TokenStream>(
     parser: &mut Parser<S>,
     allow_modifier: bool,
     fn_def_scope: FuncDefScope,
-) {
+) -> Result<(), Recovery<ErrProof>> {
     parser.bump_expected(SyntaxKind::LBrace);
     loop {
         parser.set_newline_as_trivia(true);
@@ -570,7 +543,7 @@ fn parse_fn_item_block<S: TokenStream>(
             break;
         }
 
-        let mut checkpoint = attr::parse_attr_list(parser);
+        let mut checkpoint = attr::parse_attr_list(parser)?;
 
         let is_modifier = |kind: Option<SyntaxKind>| match kind {
             Some(kind) => kind.is_modifier_head(),
@@ -579,7 +552,9 @@ fn parse_fn_item_block<S: TokenStream>(
 
         if is_modifier(parser.current_kind()) {
             if allow_modifier {
-                let (_, modifier_checkpoint) = parser.parse(ItemModifierScope::default(), None);
+                let modifier_checkpoint = parser
+                    .parse_cp(ItemModifierScope::default(), None)
+                    .unwrap_infallible();
                 checkpoint.get_or_insert(modifier_checkpoint);
             } else {
                 while is_modifier(parser.current_kind()) {
@@ -590,22 +565,20 @@ fn parse_fn_item_block<S: TokenStream>(
 
         match parser.current_kind() {
             Some(SyntaxKind::FnKw) => {
-                parser.parse(FuncScope::new(fn_def_scope), checkpoint);
+                parser.parse_cp(FuncScope::new(fn_def_scope), checkpoint)?;
+
+                parser.set_newline_as_trivia(false);
+                parser.expect(
+                    &[SyntaxKind::Newline, SyntaxKind::RBrace],
+                    Some("expected newline after item definition"),
+                )?;
             }
             _ => {
-                parser.error_msg_on_current_token("only `fn` is allowed in this block");
-                parser.recover(checkpoint);
+                let proof = parser.error_msg_on_current_token("only `fn` is allowed in this block");
+                parser.try_recover().map_err(|r| r.add_err_proof(proof))?;
             }
-        }
-
-        parser.set_newline_as_trivia(false);
-        if !matches!(
-            parser.current_kind(),
-            Some(SyntaxKind::RBrace | SyntaxKind::Newline)
-        ) {
-            parser.error_and_recover("expected newline after item definition", None)
         }
     }
 
-    parser.bump_or_recover(SyntaxKind::RBrace, "expected `}` to close the block", None);
+    parser.bump_or_recover(SyntaxKind::RBrace, "expected `}` to close the block")
 }

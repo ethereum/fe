@@ -1,23 +1,26 @@
-use crate::SyntaxKind;
+use crate::{ParseError, SyntaxKind};
 
 use super::{
     define_scope,
     expr::parse_expr,
     param::GenericArgListScope,
+    parse_list,
     path::{is_path_segment, PathScope},
     token_stream::TokenStream,
-    Checkpoint, Parser,
+    Checkpoint, ErrProof, Parser, Recovery,
 };
 
-pub fn parse_type<S: TokenStream>(parser: &mut Parser<S>, checkpoint: Option<Checkpoint>) -> bool {
+pub fn parse_type<S: TokenStream>(
+    parser: &mut Parser<S>,
+    checkpoint: Option<Checkpoint>,
+) -> Result<Checkpoint, Recovery<ErrProof>> {
     match parser.current_kind() {
-        Some(SyntaxKind::Star) => parser.parse(PtrTypeScope::default(), checkpoint),
-        Some(SyntaxKind::SelfTypeKw) => parser.parse(SelfTypeScope::new(), checkpoint),
-        Some(SyntaxKind::LParen) => parser.parse(TupleTypeScope::default(), checkpoint),
-        Some(SyntaxKind::LBracket) => parser.parse(ArrayTypeScope::default(), checkpoint),
-        _ => parser.parse(PathTypeScope::default(), checkpoint),
+        Some(SyntaxKind::Star) => parser.parse_cp(PtrTypeScope::default(), checkpoint),
+        Some(SyntaxKind::SelfTypeKw) => parser.parse_cp(SelfTypeScope::new(), checkpoint),
+        Some(SyntaxKind::LParen) => parser.parse_cp(TupleTypeScope::default(), checkpoint),
+        Some(SyntaxKind::LBracket) => parser.parse_cp(ArrayTypeScope::default(), checkpoint),
+        _ => parser.parse_cp(PathTypeScope::default(), checkpoint),
     }
-    .0
 }
 
 pub(crate) fn is_type_start(kind: SyntaxKind) -> bool {
@@ -32,38 +35,44 @@ pub(crate) fn is_type_start(kind: SyntaxKind) -> bool {
 
 define_scope!(PtrTypeScope, PtrType, Inheritance);
 impl super::Parse for PtrTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Star);
-        parse_type(parser, None);
+        parse_type(parser, None).map(|_| ())
     }
 }
 
 define_scope!(pub(crate) PathTypeScope , PathType, Inheritance);
 impl super::Parse for PathTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        if !parser.parse(PathScope::default(), None).0 {
-            return;
-        }
+
+        parser.or_recover(|p| {
+            p.parse(PathScope::default()).map_err(|_| {
+                ParseError::expected(&[SyntaxKind::PathType], None, p.end_of_prev_token)
+            })
+        })?;
 
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::default(), None);
+            parser.parse(GenericArgListScope::default())?;
         }
+        Ok(())
     }
 }
 
 define_scope!(pub(super) SelfTypeScope, SelfType, Inheritance);
 impl super::Parse for SelfTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        if !parser.bump_if(SyntaxKind::SelfTypeKw) {
-            parser.error_and_recover("expected `Self` type here", None);
-            return;
-        }
+        parser.bump_expected(SyntaxKind::SelfTypeKw);
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::default(), None);
+            parser.parse(GenericArgListScope::default())?;
         }
+        Ok(())
     }
 }
 define_scope! {
@@ -75,54 +84,45 @@ define_scope! {
     )
 }
 impl super::Parse for TupleTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.set_newline_as_trivia(false);
-        parser.bump_expected(SyntaxKind::LParen);
-        if parser.bump_if(SyntaxKind::RParen) {
-            return;
-        }
-        parser.set_newline_as_trivia(true);
-
-        parse_type(parser, None);
-        while parser.bump_if(SyntaxKind::Comma) {
-            parse_type(parser, None);
-        }
-
-        if !parser.bump_if(SyntaxKind::RParen) {
-            // If the close paren is missing, we want to recover on a newline,
-            // so we have to explicitly set newlines to be non-trivia.
-            parser.set_newline_as_trivia(false);
-            parser.error_and_recover("expected `)`", None);
-            parser.set_newline_as_trivia(true);
-            parser.bump_if(SyntaxKind::RParen);
-        }
+    type Error = Recovery<ErrProof>;
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            false,
+            (SyntaxKind::LParen, SyntaxKind::RParen),
+            |parser| {
+                parse_type(parser, None)?;
+                Ok(())
+            },
+        )
     }
 }
 
 define_scope! {
     ArrayTypeScope,
     ArrayType,
-    Override(RBracket)
+    Inheritance
 }
 impl super::Parse for ArrayTypeScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::LBracket);
 
-        parser
-            .with_next_expected_tokens(|parser| parse_type(parser, None), &[SyntaxKind::SemiColon]);
+        parser.set_scope_recovery_stack(&[SyntaxKind::SemiColon, SyntaxKind::RBracket]);
 
-        if !parser.bump_if(SyntaxKind::SemiColon) {
-            parser.error_and_recover("expected `;`", None);
-            parser.bump_if(SyntaxKind::LBracket);
-            return;
+        parse_type(parser, None)?;
+
+        if parser.find_and_pop(SyntaxKind::SemiColon, None)? {
+            parser.bump();
         }
 
-        parse_expr(parser);
+        parse_expr(parser)?;
 
-        if !parser.bump_if(SyntaxKind::RBracket) {
-            parser.error_and_recover("expected closing `]`", None);
-            parser.bump_if(SyntaxKind::RBracket);
+        if parser.find_and_pop(SyntaxKind::RBracket, None)? {
+            parser.bump();
         }
+        Ok(())
     }
 }

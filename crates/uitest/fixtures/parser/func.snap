@@ -13,7 +13,7 @@ error[1-0001]: unexpected syntax
   ┌─ func.fe:1:29
   │
 1 │ fn foo<T: Trait>>(x: i32, _ mut y: u32, z: u32) ->  T, u where T: Trait2 
-  │                             ^^^^^ unexpected syntax
+  │                             ^^^ unexpected syntax
 
 error[1-0001]: unexpected syntax
   ┌─ func.fe:1:54
@@ -21,22 +21,10 @@ error[1-0001]: unexpected syntax
 1 │ fn foo<T: Trait>>(x: i32, _ mut y: u32, z: u32) ->  T, u where T: Trait2 
   │                                                      ^^^ unexpected syntax
 
-error[1-0001]: expected type parameter
-  ┌─ func.fe:6:8
-  │
-6 │ fn foo<<<T: Trait>(x: i32)
-  │        ^ expected type parameter
-
 error[1-0001]: unexpected syntax
   ┌─ func.fe:6:8
   │
 6 │ fn foo<<<T: Trait>(x: i32)
-  │        ^^^^^^^^^^^ unexpected syntax
-
-error[1-0001]: expected closing `>`
-  ┌─ func.fe:6:19
-  │
-6 │ fn foo<<<T: Trait>(x: i32)
-  │                   ^ expected closing `>`
+  │        ^^ unexpected syntax
 
 

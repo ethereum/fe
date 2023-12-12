@@ -20,7 +20,7 @@ Root@0..160
           TypeGenericParam@14..15
             Ident@14..15 "U"
         Newline@15..16 "\n"
-        WhereClause@16..40
+        WhereClause@16..39
           WhereKw@16..21 "where"
           WhiteSpace@21..22 " "
           WherePredicate@22..23
@@ -31,7 +31,7 @@ Root@0..160
           WhiteSpace@23..24 " "
           Newline@24..25 "\n"
           WhiteSpace@25..31 "      "
-          WherePredicate@31..40
+          WherePredicate@31..39
             PathType@31..32
               Path@31..32
                 PathSegment@31..32
@@ -44,7 +44,7 @@ Root@0..160
                   Path@34..39
                     PathSegment@34..39
                       Ident@34..39 "Trait"
-            Newline@39..40 "\n"
+        Newline@39..40 "\n"
         WhiteSpace@40..44 "    "
         Newline@44..45 "\n"
         RecordFieldDefList@45..74

@@ -435,6 +435,8 @@ pub enum SyntaxKind {
     /// `<T: Trait, U, const N: usize>`
     GenericParamList,
 
+    /// fn foo<T, U>(t: T) -> U
+    FuncSignature,
     /// `(x: i32, _ y: mut i32)`
     FuncParamList,
 
@@ -516,6 +518,93 @@ impl SyntaxKind {
                     | SyntaxKind::UseKw
                     | SyntaxKind::ExternKw
             )
+    }
+
+    // xxx
+    /// Panics if `self` is not a token kind
+    pub fn describe(self) -> &'static str {
+        match self {
+            SyntaxKind::Newline => "newline",
+            SyntaxKind::Ident => "identifier",
+            SyntaxKind::Int => "integer",
+            SyntaxKind::String => "string literal",
+            SyntaxKind::LParen => "`(`",
+            SyntaxKind::RParen => "`)`",
+            SyntaxKind::LBrace => "`{`",
+            SyntaxKind::RBrace => "`}`",
+            SyntaxKind::LBracket => "`[`",
+            SyntaxKind::RBracket => "`]`",
+            SyntaxKind::Colon => "`:`",
+            SyntaxKind::Colon2 => "`::`",
+            SyntaxKind::SemiColon => "`;`",
+            SyntaxKind::Dot => "`.`",
+            SyntaxKind::Dot2 => "`..`",
+            SyntaxKind::Comma => "`,`",
+            SyntaxKind::Arrow => "`->`",
+            SyntaxKind::FatArrow => "`=>`",
+            SyntaxKind::Underscore => "`_`",
+            SyntaxKind::Pound => "`#`",
+            SyntaxKind::Plus => "`+`",
+            SyntaxKind::Minus => "`-`",
+            SyntaxKind::Star => "`*`",
+            SyntaxKind::Star2 => "`**`",
+            SyntaxKind::Slash => "`/`",
+            SyntaxKind::Percent => "`%`",
+            SyntaxKind::Tilde => "`~`",
+            SyntaxKind::Not => "`!`",
+            SyntaxKind::Hat => "`^`",
+            SyntaxKind::Amp => "`&`",
+            SyntaxKind::Amp2 => "`&&`",
+            SyntaxKind::Pipe => "`|`",
+            SyntaxKind::Pipe2 => "`||`",
+            SyntaxKind::Lt => "`<`",
+            SyntaxKind::Gt => "`>`",
+            SyntaxKind::Eq => "``",
+            SyntaxKind::Eq2 => "``",
+            SyntaxKind::NotEq => "``",
+            SyntaxKind::AsKw => "`as`",
+            SyntaxKind::TrueKw => "`true`",
+            SyntaxKind::FalseKw => "`false`",
+            SyntaxKind::BreakKw => "`break`",
+            SyntaxKind::ContinueKw => "`continue`",
+            SyntaxKind::ContractKw => "`contract`",
+            SyntaxKind::FnKw => "`fn`",
+            SyntaxKind::ModKw => "`mod`",
+            SyntaxKind::ConstKw => "`const`",
+            SyntaxKind::IfKw => "`if`",
+            SyntaxKind::ElseKw => "`else`",
+            SyntaxKind::MatchKw => "`match`",
+            SyntaxKind::ForKw => "`for`",
+            SyntaxKind::InKw => "`in`",
+            SyntaxKind::WhereKw => "`where`",
+            SyntaxKind::WhileKw => "`while`",
+            SyntaxKind::PubKw => "`pub`",
+            SyntaxKind::ReturnKw => "`return`",
+            SyntaxKind::SelfKw => "`self`",
+            SyntaxKind::SelfTypeKw => "`Self`",
+            SyntaxKind::StructKw => "`struct`",
+            SyntaxKind::EnumKw => "`enum`",
+            SyntaxKind::TraitKw => "`trait`",
+            SyntaxKind::ImplKw => "`impl`",
+            SyntaxKind::TypeKw => "`type`",
+            SyntaxKind::LetKw => "`let`",
+            SyntaxKind::MutKw => "`mut`",
+            SyntaxKind::UseKw => "`use`",
+            SyntaxKind::ExternKw => "`extern`",
+            SyntaxKind::UnsafeKw => "`unsafe`",
+            SyntaxKind::IngotKw => "`ingot`",
+            SyntaxKind::SuperKw => "`super`",
+            SyntaxKind::LShift => "`<<`",
+            SyntaxKind::RShift => "`>>`",
+            SyntaxKind::LtEq => "`<=`",
+            SyntaxKind::GtEq => "`>=`",
+
+            SyntaxKind::PathType => "a type name",
+            SyntaxKind::TraitRef => "a trait name",
+            SyntaxKind::PathSegment => "a path segment",
+            SyntaxKind::PathPat => "a pattern",
+            _ => unimplemented!(),
+        }
     }
 }
 

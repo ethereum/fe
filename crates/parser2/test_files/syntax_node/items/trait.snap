@@ -203,7 +203,7 @@ Root@0..652
           LBrace@209..210 "{"
           Newline@210..211 "\n"
           WhiteSpace@211..215 "    "
-          Func@215..270
+          Func@215..269
             FnKw@215..217 "fn"
             WhiteSpace@217..218 " "
             Ident@218..221 "add"
@@ -230,10 +230,10 @@ Root@0..652
             WhiteSpace@245..246 " "
             Newline@246..247 "\n"
             WhiteSpace@247..255 "        "
-            WhereClause@255..270
+            WhereClause@255..269
               WhereKw@255..260 "where"
               WhiteSpace@260..261 " "
-              WherePredicate@261..270
+              WherePredicate@261..269
                 PathType@261..264
                   Path@261..264
                     PathSegment@261..264
@@ -246,7 +246,7 @@ Root@0..652
                       Path@266..269
                         PathSegment@266..269
                           Ident@266..269 "Sub"
-                Newline@269..270 "\n"
+          Newline@269..270 "\n"
           RBrace@270..271 "}"
       Newline@271..274 "\n\n\n"
     Item@274..357
@@ -333,10 +333,10 @@ Root@0..652
         WhiteSpace@374..375 " "
         Newline@375..376 "\n"
         WhiteSpace@376..380 "    "
-        WhereClause@380..409
+        WhereClause@380..408
           WhereKw@380..385 "where"
           WhiteSpace@385..386 " "
-          WherePredicate@386..409
+          WherePredicate@386..408
             PathType@386..387
               Path@386..387
                 PathSegment@386..387
@@ -357,7 +357,7 @@ Root@0..652
                   Path@403..408
                     PathSegment@403..408
                       Ident@403..408 "Clone"
-            Newline@408..409 "\n"
+        Newline@408..409 "\n"
         ImplItemList@409..592
           LBrace@409..410 "{"
           Newline@410..411 "\n"
@@ -521,10 +521,10 @@ Root@0..652
               Gt@631..632 ">"
         WhiteSpace@632..633 " "
         Newline@633..634 "\n"
-        WhereClause@634..650
+        WhereClause@634..649
           WhereKw@634..639 "where"
           WhiteSpace@639..640 " "
-          WherePredicate@640..650
+          WherePredicate@640..649
             PathType@640..641
               Path@640..641
                 PathSegment@640..641
@@ -545,7 +545,7 @@ Root@0..652
                           PathSegment@647..648
                             Ident@647..648 "T"
                     Gt@648..649 ">"
-            Newline@649..650 "\n"
+        Newline@649..650 "\n"
         TraitItemList@650..652
           LBrace@650..651 "{"
           RBrace@651..652 "}"

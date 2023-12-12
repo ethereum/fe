@@ -58,7 +58,7 @@ Root@0..94
       WhiteSpace@53..54 " "
       Newline@54..55 "\n"
       WhiteSpace@55..58 "   "
-      MatchArm@58..79
+      MatchArm@58..77
         PathTuplePat@58..70
           Path@58..61
             PathSegment@58..61
@@ -85,9 +85,9 @@ Root@0..94
         LitExpr@73..77
           Lit@73..77
             TrueKw@73..77 "true"
-        WhiteSpace@77..78 " "
-        Error@78..79
-          Ident@78..79 "x"
+      WhiteSpace@77..78 " "
+      Error@78..79
+        Ident@78..79 "x"
       Newline@79..80 "\n"
       WhiteSpace@80..83 "   "
       MatchArm@83..91

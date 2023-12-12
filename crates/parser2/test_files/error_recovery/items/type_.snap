@@ -10,13 +10,12 @@ Root@0..72
         TypeKw@0..4 "type"
         WhiteSpace@4..5 " "
         Ident@5..11 "Result"
-        GenericParamList@11..15
+        GenericParamList@11..14
           Lt@11..12 "<"
           TypeGenericParam@12..13
             Ident@12..13 "T"
           Comma@13..14 ","
-          WhiteSpace@14..15 " "
-          TypeGenericParam@15..15
+        WhiteSpace@14..15 " "
         Eq@15..16 "="
         WhiteSpace@16..17 " "
         PathType@17..29

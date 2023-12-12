@@ -452,21 +452,21 @@ mod tests {
     fn parse_generic_params(source: &str) -> GenericParamList {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        parser.parse(GenericParamListScope::default(), None);
+        parser.parse(GenericParamListScope::default()).unwrap();
         GenericParamList::cast(parser.finish_to_node().0).unwrap()
     }
 
     fn parse_generic_arg(source: &str) -> GenericArgList {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        parser.parse(GenericArgListScope::default(), None);
+        parser.parse(GenericArgListScope::default()).unwrap();
         GenericArgList::cast(parser.finish_to_node().0).unwrap()
     }
 
     fn parse_where_clause(source: &str) -> WhereClause {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        parser.parse(WhereClauseScope::default(), None);
+        parser.parse(WhereClauseScope::default()).unwrap();
         WhereClause::cast(parser.finish_to_node().0).unwrap()
     }
 
@@ -548,7 +548,7 @@ mod tests {
     #[test]
     #[wasm_bindgen_test]
     fn where_clause() {
-        let source = r#"where 
+        let source = r#"where
             T: Trait + Trait2<X, Y>
             *U: Trait3
             (T, U): Trait4 + Trait5

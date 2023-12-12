@@ -475,7 +475,7 @@ mod tests {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
 
-        parser.parse(ItemListScope::default(), None);
+        let _ = parser.parse(ItemListScope::default());
         let (node, errs) = parser.finish_to_node();
         for e in errs {
             eprintln!("{:?}", e);
@@ -729,6 +729,7 @@ mod tests {
         let u: Use = parse_item(source);
         let use_tree = u.use_tree().unwrap();
         let mut count = 0;
+        dbg!(use_tree.path().unwrap());
         for segment in use_tree.path().unwrap() {
             match count {
                 0 => {

@@ -1,3 +1,5 @@
+use std::convert::Infallible;
+
 use crate::SyntaxKind;
 
 use super::{
@@ -7,115 +9,130 @@ use super::{
     pat::parse_pat,
     token_stream::TokenStream,
     type_::parse_type,
-    Checkpoint, Parser,
+    ErrProof, Parser, Recovery,
 };
 
-pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>, checkpoint: Option<Checkpoint>) -> bool {
+pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
     use SyntaxKind::*;
 
     match parser.current_kind() {
-        Some(LetKw) => parser.parse(LetStmtScope::default(), checkpoint),
-        Some(ForKw) => parser.parse(ForStmtScope::default(), checkpoint),
-        Some(WhileKw) => parser.parse(WhileStmtScope::default(), checkpoint),
-        Some(ContinueKw) => parser.parse(ContinueStmtScope::default(), checkpoint),
-        Some(BreakKw) => parser.parse(BreakStmtScope::default(), checkpoint),
-        Some(ReturnKw) => parser.parse(ReturnStmtScope::default(), checkpoint),
-        _ => parser.parse(ExprStmtScope::default(), checkpoint),
+        Some(LetKw) => parser.parse(LetStmtScope::default()),
+        Some(ForKw) => parser.parse(ForStmtScope::default()),
+        Some(WhileKw) => parser.parse(WhileStmtScope::default()),
+        Some(ContinueKw) => parser
+            .parse(ContinueStmtScope::default())
+            .map_err(|e| e.into()),
+        Some(BreakKw) => parser
+            .parse(BreakStmtScope::default())
+            .map_err(|e| e.into()),
+        Some(ReturnKw) => parser.parse(ReturnStmtScope::default()),
+        _ => parser.parse(ExprStmtScope::default()),
     }
-    .0
 }
 
 define_scope! { LetStmtScope, LetStmt, Inheritance }
 impl super::Parse for LetStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::LetKw);
         parser.set_newline_as_trivia(false);
-        if !parse_pat(parser) {
-            parser.error_and_recover("expected pattern", None);
-            return;
-        }
+        parse_pat(parser)?; // xxx "expected pattern" error msg
+
         if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.bump_expected(SyntaxKind::Colon);
-            parse_type(parser, None);
+            parse_type(parser, None)?;
         }
 
         if parser.bump_if(SyntaxKind::Eq) {
-            parse_expr(parser);
+            parse_expr(parser)?;
         }
+        Ok(())
     }
 }
 
 define_scope! { ForStmtScope, ForStmt, Inheritance }
 impl super::Parse for ForStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ForKw);
 
-        parser.with_recovery_tokens(parse_pat, &[SyntaxKind::InKw, SyntaxKind::LBrace]);
+        parser.set_scope_recovery_stack(&[SyntaxKind::InKw, SyntaxKind::LBrace]);
+        parse_pat(parser)?;
 
-        parser.with_next_expected_tokens(
-            |p| {
-                if !p.bump_if(SyntaxKind::InKw) {
-                    p.error("expected `in` keyword");
-                }
-
-                parse_expr_no_struct(p);
-            },
-            &[SyntaxKind::LBrace],
-        );
-
-        if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected block", None);
-            return;
+        if parser.find_and_pop(SyntaxKind::InKw, None)? {
+            parser.bump();
         }
-        parser.parse(BlockExprScope::default(), None);
+        parse_expr_no_struct(parser)?;
+
+        if parser.find_and_pop(SyntaxKind::LBrace, None)? {
+            parser.parse(BlockExprScope::default())?;
+        }
+        Ok(())
     }
 }
 
 define_scope! { WhileStmtScope, WhileStmt, Inheritance }
 impl super::Parse for WhileStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::WhileKw);
 
-        parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
+        parser.set_scope_recovery_stack(&[SyntaxKind::LBrace]);
+        parse_expr_no_struct(parser)?;
 
-        if parser.current_kind() != Some(SyntaxKind::LBrace) {
-            parser.error_and_recover("expected block", None);
-            return;
+        if parser.find_and_pop(SyntaxKind::LBrace, None)? {
+            parser.parse(BlockExprScope::default())?;
         }
-        parser.parse(BlockExprScope::default(), None);
+        Ok(())
     }
 }
 
 define_scope! { ContinueStmtScope, ContinueStmt, Inheritance }
 impl super::Parse for ContinueStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ContinueKw);
+        Ok(())
     }
 }
 
 define_scope! { BreakStmtScope, BreakStmt, Inheritance }
 impl super::Parse for BreakStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::BreakKw);
+        Ok(())
     }
 }
 
 define_scope! { ReturnStmtScope, ReturnStmt, Inheritance }
 impl super::Parse for ReturnStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ReturnKw);
         parser.set_newline_as_trivia(false);
 
-        let has_val = parser.dry_run(parse_expr);
-        if has_val {
-            parse_expr(parser);
+        if !matches!(
+            parser.current_kind(),
+            None | Some(SyntaxKind::Newline | SyntaxKind::RBrace)
+        ) {
+            parse_expr(parser)?;
         }
+        Ok(())
     }
 }
 
 define_scope! { ExprStmtScope, ExprStmt, Inheritance }
 impl super::Parse for ExprStmtScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parse_expr(parser);
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_expr(parser)
     }
 }

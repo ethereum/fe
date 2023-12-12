@@ -20,9 +20,9 @@ pub struct StructWithGenericParam3<
     T,
     U: bar::Trait
 > where
-    T: Trait1 + Trait2
-    Option<T>: Trait1 + Trait2
-    Result<U>: Trait2 + Trait3
+    T: Trait1 + Trait2,
+    Option<T>: Trait1 + Trait2,
+    Result<U>: Trait2 + Trait3,
 {
     x: S,
     y: T,

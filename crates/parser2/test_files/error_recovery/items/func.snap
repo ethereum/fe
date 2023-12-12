@@ -40,10 +40,10 @@ Root@0..133
           FnParam@26..38
             Underscore@26..27 "_"
             WhiteSpace@27..28 " "
-            Error@28..33
+            Error@28..31
               MutKw@28..31 "mut"
-              WhiteSpace@31..32 " "
-              Ident@32..33 "y"
+            WhiteSpace@31..32 " "
+            Ident@32..33 "y"
             Colon@33..34 ":"
             WhiteSpace@34..35 " "
             PathType@35..38
@@ -73,10 +73,10 @@ Root@0..133
           WhiteSpace@54..55 " "
           Ident@55..56 "u"
         WhiteSpace@56..57 " "
-        WhereClause@57..74
+        WhereClause@57..72
           WhereKw@57..62 "where"
           WhiteSpace@62..63 " "
-          WherePredicate@63..74
+          WherePredicate@63..72
             PathType@63..64
               Path@63..64
                 PathSegment@63..64
@@ -89,8 +89,8 @@ Root@0..133
                   Path@66..72
                     PathSegment@66..72
                       Ident@66..72 "Trait2"
-            WhiteSpace@72..73 " "
-            Newline@73..74 "\n"
+        WhiteSpace@72..73 " "
+        Newline@73..74 "\n"
         BlockExpr@74..78
           LBrace@74..75 "{"
           Newline@75..77 "\n\n"
@@ -103,15 +103,20 @@ Root@0..133
         Ident@83..86 "foo"
         GenericParamList@86..98
           Lt@86..87 "<"
-          TypeGenericParam@87..98
-            Error@87..98
-              Lt@87..88 "<"
-              Lt@88..89 "<"
-              Ident@89..90 "T"
+          Error@87..89
+            Lt@87..88 "<"
+            Lt@88..89 "<"
+          TypeGenericParam@89..97
+            Ident@89..90 "T"
+            TypeBoundList@90..97
               Colon@90..91 ":"
               WhiteSpace@91..92 " "
-              Ident@92..97 "Trait"
-              Gt@97..98 ">"
+              TypeBound@92..97
+                TraitRef@92..97
+                  Path@92..97
+                    PathSegment@92..97
+                      Ident@92..97 "Trait"
+          Gt@97..98 ">"
         FuncParamList@98..106
           LParen@98..99 "("
           FnParam@99..105
@@ -125,10 +130,10 @@ Root@0..133
           RParen@105..106 ")"
         Newline@106..107 "\n"
         WhiteSpace@107..111 "    "
-        WhereClause@111..128
+        WhereClause@111..126
           WhereKw@111..116 "where"
           WhiteSpace@116..117 " "
-          WherePredicate@117..128
+          WherePredicate@117..126
             PathType@117..118
               Path@117..118
                 PathSegment@117..118
@@ -141,8 +146,8 @@ Root@0..133
                   Path@120..126
                     PathSegment@120..126
                       Ident@120..126 "Trait2"
-            WhiteSpace@126..127 " "
-            Newline@127..128 "\n"
+        WhiteSpace@126..127 " "
+        Newline@127..128 "\n"
         BlockExpr@128..132
           LBrace@128..129 "{"
           Newline@129..131 "\n\n"
