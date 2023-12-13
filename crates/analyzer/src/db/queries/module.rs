@@ -113,6 +113,66 @@ pub fn module_all_items(db: &dyn AnalyzerDb, module: ModuleId) -> Rc<[Item]> {
         .collect()
 }
 
+pub fn module_named_item(db: &dyn AnalyzerDb, module: ModuleId, name: SmolStr) -> Option<Item> {
+    let body = &module.ast(db).body;
+    for stmt in body {
+        if let Some(item) = match stmt {
+            ast::ModuleStmt::TypeAlias(node) => Some(Item::Type(TypeDef::Alias(
+                db.intern_type_alias(Rc::new(TypeAlias {
+                    ast: node.clone(),
+                    module,
+                })),
+            ))),
+            ast::ModuleStmt::Contract(node) => Some(Item::Type(TypeDef::Contract(
+                db.intern_contract(Rc::new(Contract {
+                    name: node.name().into(),
+                    ast: node.clone(),
+                    module,
+                })),
+            ))),
+            ast::ModuleStmt::Struct(node) => Some(Item::Type(TypeDef::Struct(db.intern_struct(
+                Rc::new(Struct {
+                    ast: node.clone(),
+                    module,
+                }),
+            )))),
+            ast::ModuleStmt::Enum(node) => {
+                Some(Item::Type(TypeDef::Enum(db.intern_enum(Rc::new(Enum {
+                    ast: node.clone(),
+                    module,
+                })))))
+            }
+            ast::ModuleStmt::Constant(node) => Some(Item::Constant(db.intern_module_const(
+                Rc::new(ModuleConstant {
+                    ast: node.clone(),
+                    module,
+                }),
+            ))),
+            ast::ModuleStmt::Function(node) => Some(Item::Function(
+                db.intern_function(Rc::new(Function::new(db, node, None, module))),
+            )),
+            ast::ModuleStmt::Trait(node) => Some(Item::Trait(db.intern_trait(Rc::new(Trait {
+                ast: node.clone(),
+                module,
+            })))),
+            ast::ModuleStmt::Attribute(node) => {
+                Some(Item::Attribute(db.intern_attribute(Rc::new(Attribute {
+                    ast: node.clone(),
+                    module,
+                }))))
+            }
+            ast::ModuleStmt::Pragma(_) | ast::ModuleStmt::Use(_) | ast::ModuleStmt::Impl(_) => None,
+            ast::ModuleStmt::ParseError(_) => None,
+        } {
+            if item.name(db) == name {
+                return Some(item);
+            }
+        }
+    }
+
+    None
+}
+
 pub fn module_all_impls(db: &dyn AnalyzerDb, module: ModuleId) -> Analysis<Rc<[ImplId]>> {
     let body = &module.ast(db).body;
     let mut scope = ItemScope::new(db, module);
