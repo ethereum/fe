@@ -11,6 +11,7 @@
     * [Open auction](user-guide/tutorials/auction.md)
   * [Example Contracts](user-guide/example_contracts/index.md)
     * [Open auction](user-guide/example_contracts/auction_contract.md)
+    * [Useful external links](user-guide/external_links.md)
 * [Development](development/index.md)
     * [Build & Test](development/build.md)
     * [Release](development/release.md)
