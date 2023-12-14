@@ -64,7 +64,7 @@ pub fn to_lsp_location_from_scope(
         .ok_or("Failed to resolve span")?;
     let uri = span.file.abs_path(db.as_input_db());
     let range = to_lsp_range_from_span(span, db.as_input_db())?;
-    let uri = lsp_types::Url::from_file_path(uri).map_err(|_| "Failed to convert path to URL")?;
+    let uri = lsp_types::Url::from_file_path(uri).map_err(|()| "Failed to convert path to URL")?;
     Ok(lsp_types::Location { uri, range })
 }
 
@@ -84,7 +84,7 @@ pub fn diag_to_lsp(
     diag.sub_diagnostics.into_iter().for_each(|sub| {
         let uri = sub.span.as_ref().unwrap().file.abs_path(db);
         let lsp_range = to_lsp_range_from_span(sub.span.unwrap(), db);
-        
+
         // todo: generalize this to handle other kinds of URLs besides file URLs
         let uri = Url::from_file_path(uri).unwrap();
 

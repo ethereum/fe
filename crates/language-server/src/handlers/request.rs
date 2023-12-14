@@ -70,10 +70,10 @@ pub fn handle_hover(
         })
     };
 
-    let top_mod =
-        state
-            .workspace
-            .top_mod_from_file_path(&mut state.db, file_path).unwrap();
+    let top_mod = state
+        .workspace
+        .top_mod_from_file_path(&mut state.db, file_path)
+        .unwrap();
     let early_resolution = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     let goto_info = match early_resolution {
@@ -127,10 +127,10 @@ pub fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
-    let top_mod =
-        state
-            .workspace
-            .top_mod_from_file_path(&mut state.db, file_path).unwrap();
+    let top_mod = state
+        .workspace
+        .top_mod_from_file_path(&mut state.db, file_path)
+        .unwrap();
     let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
 
     // Convert the goto info to a Location
@@ -164,11 +164,10 @@ pub fn handle_goto_definition(
         .collect::<Vec<_>>()
         .join("\n");
 
-    let error = (!errors.is_empty()).then_some(
-        ResponseError {
-            code: lsp_types::error_codes::SERVER_CANCELLED as i32,
-            message: errors,
-            data: None,
+    let error = (!errors.is_empty()).then_some(ResponseError {
+        code: lsp_types::error_codes::SERVER_CANCELLED as i32,
+        message: errors,
+        data: None,
     });
 
     // Send the response

@@ -43,21 +43,23 @@ impl ServerState {
 
         // watch the workspace root for changes
         self.send(lsp_server::Message::Request(lsp_server::Request::new(
-            28716283.into(),
+            28_716_283.into(),
             String::from("client/registerCapability"),
             lsp_types::RegistrationParams {
                 registrations: vec![lsp_types::Registration {
                     id: String::from("watch-fe-files"),
                     method: String::from("workspace/didChangeWatchedFiles"),
-                    register_options: Some(serde_json::to_value(lsp_types::DidChangeWatchedFilesRegistrationOptions {
-                        watchers: vec![lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::String("**/*.fe".to_string()),
-                            kind: None
-                            // kind: Some(WatchKind::Create | WatchKind::Change | WatchKind::Delete),
-                        }],
-                    }).unwrap()),
+                    register_options: Some(
+                        serde_json::to_value(lsp_types::DidChangeWatchedFilesRegistrationOptions {
+                            watchers: vec![lsp_types::FileSystemWatcher {
+                                glob_pattern: lsp_types::GlobPattern::String("**/*.fe".to_string()),
+                                kind: None, // kind: Some(WatchKind::Create | WatchKind::Change | WatchKind::Delete),
+                            }],
+                        })
+                        .unwrap(),
+                    ),
                 }],
-            }
+            },
         )))?;
 
         while let Some(msg) = self.next_message(&receiver) {
@@ -88,10 +90,10 @@ impl ServerState {
                 // goto definition
                 lsp_types::request::GotoDefinition::METHOD => handle_goto_definition(self, req)?,
                 lsp_types::request::GotoTypeDefinition::METHOD => {
-                    handle_goto_definition(self, req)?
+                    handle_goto_definition(self, req)?;
                 }
                 lsp_types::request::GotoImplementation::METHOD => {
-                    handle_goto_definition(self, req)?
+                    handle_goto_definition(self, req)?;
                 }
                 lsp_types::request::GotoDeclaration::METHOD => handle_goto_definition(self, req)?,
                 _ => {}
@@ -102,10 +104,10 @@ impl ServerState {
 
             match note.method.as_str() {
                 lsp_types::notification::DidOpenTextDocument::METHOD => {
-                    handle_document_did_open(self, note)?
+                    handle_document_did_open(self, note)?;
                 }
                 lsp_types::notification::DidChangeTextDocument::METHOD => {
-                    handle_document_did_change(self, note)?
+                    handle_document_did_change(self, note)?;
                 }
                 // lsp_types::notification::DidChangeWorkspaceFolders::METHOD => {
                 //     handle_workspace_did_change_folders(self, note)?

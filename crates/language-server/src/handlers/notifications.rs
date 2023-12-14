@@ -1,10 +1,8 @@
-
-
 use anyhow::{Error, Result};
 use fxhash::FxHashMap;
 use serde::Deserialize;
 
-use crate::{state::ServerState, util::diag_to_lsp, workspace::{IngotFileContext, SyncableInputFile}};
+use crate::{state::ServerState, util::diag_to_lsp, workspace::IngotFileContext};
 
 fn string_diagnostics(
     state: &mut ServerState,
@@ -27,11 +25,7 @@ pub fn get_diagnostics(
     text: String,
     uri: lsp_types::Url,
 ) -> Result<FxHashMap<lsp_types::Url, lsp_types::Diagnostic>, Error> {
-    let diags = string_diagnostics(
-        state,
-        uri.to_file_path().unwrap().to_str().unwrap(),
-        text,
-    );
+    let diags = string_diagnostics(state, uri.to_file_path().unwrap().to_str().unwrap(), text);
 
     let diagnostics = diags
         .into_iter()
@@ -62,7 +56,7 @@ pub fn handle_document_did_change(
 
 fn send_diagnostics(
     state: &mut ServerState,
-    diagnostics: FxHashMap<lsp_types::Url, lsp_types::Diagnostic>
+    diagnostics: FxHashMap<lsp_types::Url, lsp_types::Diagnostic>,
 ) -> Result<(), Error> {
     let results = diagnostics.into_iter().map(|(uri, diag)| {
         let result = lsp_types::PublishDiagnosticsParams {
@@ -75,7 +69,7 @@ fn send_diagnostics(
             params: serde_json::to_value(result).unwrap(),
         })
     });
-    
+
     results.for_each(|result| {
         let sender = state.sender.lock().unwrap();
         let _ = sender.send(result);

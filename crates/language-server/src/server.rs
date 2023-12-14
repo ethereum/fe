@@ -61,9 +61,9 @@ fn server_capabilities() -> ServerCapabilities {
                 will_create: None,
                 will_rename: None,
                 will_delete: None,
-                })
             }),
-            // ..Default::default()
+        }),
+        // ..Default::default()
         ..Default::default()
     }
 }

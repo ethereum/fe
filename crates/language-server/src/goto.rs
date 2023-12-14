@@ -134,8 +134,13 @@ mod tests {
         let input = workspace.input_from_file_path(db, fixture.path());
         assert_eq!(input.unwrap().ingot(db).kind(db), IngotKind::Local);
 
-        input.unwrap().set_text(db).to(fixture.content().to_string());
-        let top_mod = workspace.top_mod_from_file_path(db, fe_source_path).unwrap();
+        input
+            .unwrap()
+            .set_text(db)
+            .to((*fixture.content()).to_string());
+        let top_mod = workspace
+            .top_mod_from_file_path(db, fe_source_path)
+            .unwrap();
 
         let ingot = workspace.ingot_from_file_path(db, fixture.path());
         assert_eq!(ingot.unwrap().kind(db), IngotKind::Local);
@@ -188,8 +193,10 @@ mod tests {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
         let input = workspace.input_from_file_path(db, fixture.path()).unwrap();
-        input.set_text(db).to(fixture.content().to_string());
-        let top_mod = workspace.top_mod_from_file_path(db, fixture.path()).unwrap();
+        input.set_text(db).to((*fixture.content()).to_string());
+        let top_mod = workspace
+            .top_mod_from_file_path(db, fixture.path())
+            .unwrap();
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
 
@@ -240,8 +247,14 @@ mod tests {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
 
-        workspace.input_from_file_path(db, fixture.path()).unwrap().set_text(db).to(fixture.content().to_string());
-        let top_mod = workspace.top_mod_from_file_path(db, fixture.path()).unwrap();
+        workspace
+            .input_from_file_path(db, fixture.path())
+            .unwrap()
+            .set_text(db)
+            .to((*fixture.content()).to_string());
+        let top_mod = workspace
+            .top_mod_from_file_path(db, fixture.path())
+            .unwrap();
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
 

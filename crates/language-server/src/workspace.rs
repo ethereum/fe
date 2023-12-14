@@ -1,7 +1,4 @@
-use std::{
-    collections::BTreeSet,
-    path::{Path, PathBuf},
-};
+use std::{collections::BTreeSet, path::PathBuf};
 
 use anyhow::Result;
 use common::{
@@ -172,13 +169,13 @@ impl IngotFileContext for StandaloneIngotContext {
     }
 
     fn top_mod_from_file_path(
-            &mut self,
-            db: &mut LanguageServerDatabase,
-            path: &str,
-        ) -> Option<TopLevelMod> {
-            let file = self.input_from_file_path(db, path)?;
-            Some(map_file_to_mod(db, file))
-        }
+        &mut self,
+        db: &mut LanguageServerDatabase,
+        path: &str,
+    ) -> Option<TopLevelMod> {
+        let file = self.input_from_file_path(db, path)?;
+        Some(map_file_to_mod(db, file))
+    }
 }
 
 pub struct Workspace {
@@ -267,13 +264,13 @@ impl Workspace {
             .unwrap();
 
         let ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
-        for path in ingot_context_file_keys.iter() {
+        for path in ingot_context_file_keys {
             if !paths.contains(path) {
                 ingot_context.files.remove(path);
             }
         }
 
-        for path in paths.iter() {
+        for path in paths {
             if !ingot_context_file_keys.contains(path) {
                 let file = ingot_context.input_from_file_path(db, path);
                 let contents = std::fs::read_to_string(path).unwrap();
@@ -333,17 +330,18 @@ impl IngotFileContext for Workspace {
     }
 
     fn top_mod_from_file_path(
-            &mut self,
-            db: &mut LanguageServerDatabase,
-            path: &str,
-        ) -> Option<TopLevelMod> {
-            let ctx = get_containing_ingot(&mut self.ingot_contexts, path);
-            if ctx.is_some() {
-                Some(ctx.unwrap().top_mod_from_file_path(db, path).unwrap())
-            } else {
-                self.standalone_ingot_context.top_mod_from_file_path(db, path)
-            }
+        &mut self,
+        db: &mut LanguageServerDatabase,
+        path: &str,
+    ) -> Option<TopLevelMod> {
+        let ctx = get_containing_ingot(&mut self.ingot_contexts, path);
+        if ctx.is_some() {
+            Some(ctx.unwrap().top_mod_from_file_path(db, path).unwrap())
+        } else {
+            self.standalone_ingot_context
+                .top_mod_from_file_path(db, path)
         }
+    }
 }
 
 pub trait SyncableInputFile {
@@ -355,7 +353,7 @@ pub trait SyncableInputFile {
 impl SyncableInputFile for InputFile {
     fn sync_from_fs(&self, db: &mut LanguageServerDatabase) -> Result<()> {
         let path = self.path(db);
-        let contents = std::fs::read_to_string(&path)?;
+        let contents = std::fs::read_to_string(path)?;
         self.set_text(db).to(contents);
         Ok(())
     }
@@ -422,8 +420,8 @@ impl SyncableIngotFileContext for Workspace {
 #[cfg(test)]
 mod tests {
 
-    use crate::workspace::{get_containing_ingot, IngotFileContext, Workspace, FE_CONFIG_SUFFIX, SyncableInputFile};
-    use std::path::{Path, PathBuf};
+    use crate::workspace::{get_containing_ingot, IngotFileContext, Workspace, FE_CONFIG_SUFFIX};
+    use std::path::PathBuf;
 
     use super::StandaloneIngotContext;
 
