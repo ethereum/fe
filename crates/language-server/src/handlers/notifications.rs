@@ -3,7 +3,11 @@ use fxhash::FxHashMap;
 // use log::info;
 use serde::Deserialize;
 
-use crate::{state::ServerState, util::diag_to_lsp, workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile}};
+use crate::{
+    state::ServerState,
+    util::diag_to_lsp,
+    workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile},
+};
 
 fn run_diagnostics(
     state: &mut ServerState,
@@ -29,7 +33,7 @@ pub fn get_diagnostics(
 
     // we need to reduce the diagnostics to a map from URL to Vec<Diagnostic>
     let mut result = FxHashMap::<lsp_types::Url, Vec<lsp_types::Diagnostic>>::default();
-    
+
     // add a null diagnostic to the result for the given URL
     let _ = result.entry(uri.clone()).or_insert_with(Vec::new);
 
@@ -46,7 +50,19 @@ pub fn handle_document_did_open(
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidOpenTextDocumentParams::deserialize(note.params)?;
-    let input = state.workspace.input_from_file_path(&mut state.db, params.text_document.uri.to_file_path().unwrap().to_str().unwrap()).unwrap();
+    let input = state
+        .workspace
+        .input_from_file_path(
+            &mut state.db,
+            params
+                .text_document
+                .uri
+                .to_file_path()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+        )
+        .unwrap();
     let _ = input.sync(&mut state.db, None);
     let diagnostics = get_diagnostics(state, params.text_document.uri.clone())?;
     send_diagnostics(state, diagnostics)
@@ -57,7 +73,19 @@ pub fn handle_document_did_change(
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidChangeTextDocumentParams::deserialize(note.params)?;
-    let input = state.workspace.input_from_file_path(&mut state.db, params.text_document.uri.to_file_path().unwrap().to_str().unwrap()).unwrap();
+    let input = state
+        .workspace
+        .input_from_file_path(
+            &mut state.db,
+            params
+                .text_document
+                .uri
+                .to_file_path()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+        )
+        .unwrap();
     let _ = input.sync(&mut state.db, Some(params.content_changes[0].text.clone()));
     let diagnostics = get_diagnostics(state, params.text_document.uri.clone())?;
     // info!("sending diagnostics... {:?}", diagnostics);
@@ -98,19 +126,25 @@ pub fn handle_watched_file_changes(
     for change in changes {
         let uri = change.uri;
         let path = uri.to_file_path().unwrap();
-        
+
         match change.typ {
             lsp_types::FileChangeType::CREATED => {
-                let input = state.workspace.input_from_file_path(&mut state.db, path.to_str().unwrap()).unwrap();        
+                let input = state
+                    .workspace
+                    .input_from_file_path(&mut state.db, path.to_str().unwrap())
+                    .unwrap();
                 let _ = input.sync(&mut state.db, None);
             }
             lsp_types::FileChangeType::CHANGED => {
-                let input = state.workspace.input_from_file_path(&mut state.db, path.to_str().unwrap()).unwrap();        
+                let input = state
+                    .workspace
+                    .input_from_file_path(&mut state.db, path.to_str().unwrap())
+                    .unwrap();
                 let _ = input.sync(&mut state.db, None);
             }
             // TODO: handle this more carefully!
             lsp_types::FileChangeType::DELETED => {
-                // let input = state.workspace.input_from_file_path(&mut state.db, path.to_str().unwrap()).unwrap();        
+                // let input = state.workspace.input_from_file_path(&mut state.db, path.to_str().unwrap()).unwrap();
                 // let _ = input.sync(&mut state.db, None);
                 // this is inefficient, a hack for now
                 let _ = state.workspace.sync(&mut state.db);
