@@ -79,8 +79,8 @@ pub fn severity_to_lsp(severity: Severity) -> lsp_types::DiagnosticSeverity {
 pub fn diag_to_lsp(
     diag: CompleteDiagnostic,
     db: &dyn InputDb,
-) -> FxHashMap<lsp_types::Url, lsp_types::Diagnostic> {
-    let mut result = FxHashMap::<lsp_types::Url, lsp_types::Diagnostic>::default();
+) -> FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>> {
+    let mut result = FxHashMap::<lsp_types::Url, Vec<lsp_types::Diagnostic>>::default();
     diag.sub_diagnostics.into_iter().for_each(|sub| {
         let uri = sub.span.as_ref().unwrap().file.abs_path(db);
         let lsp_range = to_lsp_range_from_span(sub.span.unwrap(), db);
@@ -90,20 +90,18 @@ pub fn diag_to_lsp(
 
         match lsp_range {
             Ok(range) => {
-                result.insert(
-                    uri,
-                    lsp_types::Diagnostic {
-                        range,
-                        severity: Some(severity_to_lsp(diag.severity)),
-                        code: None,
-                        source: None,
-                        message: sub.message,
-                        related_information: None,
-                        tags: None,
-                        code_description: None,
-                        data: None, // for code actions
-                    },
-                );
+                let diags = result.entry(uri).or_insert_with(Vec::new);
+                diags.push(lsp_types::Diagnostic {
+                    range,
+                    severity: Some(severity_to_lsp(diag.severity)),
+                    code: None,
+                    source: None,
+                    message: sub.message,
+                    related_information: None,
+                    tags: None,
+                    code_description: None,
+                    data: None, // for code actions
+                });
             }
             Err(_) => {
                 error!("Failed to convert span to range");

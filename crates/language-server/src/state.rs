@@ -10,7 +10,7 @@ use lsp_server::Message;
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
 
-use crate::handlers::notifications::handle_document_did_change;
+use crate::handlers::notifications::{handle_document_did_change, handle_watched_file_changes};
 use crate::handlers::request::handle_goto_definition;
 use crate::handlers::{notifications::handle_document_did_open, request::handle_hover};
 
@@ -109,9 +109,9 @@ impl ServerState {
                 lsp_types::notification::DidChangeTextDocument::METHOD => {
                     handle_document_did_change(self, note)?;
                 }
-                // lsp_types::notification::DidChangeWorkspaceFolders::METHOD => {
-                //     handle_workspace_did_change_folders(self, note)?
-                // }
+                lsp_types::notification::DidChangeWatchedFiles::METHOD => {
+                    handle_watched_file_changes(self, note)?;
+                }
                 _ => {}
             }
         } else if let lsp_server::Message::Response(resp) = msg {

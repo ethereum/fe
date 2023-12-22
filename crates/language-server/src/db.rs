@@ -40,7 +40,7 @@ pub struct LanguageServerDatabase {
 }
 
 impl LanguageServerDatabase {
-    pub fn run_on_top_mod(&mut self, top_mod: TopLevelMod) {
+    pub fn analyze_top_mod(&mut self, top_mod: TopLevelMod) {
         self.run_on_file_with_pass_manager(top_mod, initialize_analysis_pass);
     }
 
