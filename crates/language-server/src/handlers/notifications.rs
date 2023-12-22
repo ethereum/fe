@@ -129,6 +129,9 @@ pub fn handle_watched_file_changes(
 
         match change.typ {
             lsp_types::FileChangeType::CREATED => {
+                // TODO: handle this more carefully!
+                // this is inefficient, a hack for now
+                let _ = state.workspace.sync(&mut state.db);
                 let input = state
                     .workspace
                     .input_from_file_path(&mut state.db, path.to_str().unwrap())
@@ -142,20 +145,20 @@ pub fn handle_watched_file_changes(
                     .unwrap();
                 let _ = input.sync(&mut state.db, None);
             }
-            // TODO: handle this more carefully!
             lsp_types::FileChangeType::DELETED => {
-                // let input = state.workspace.input_from_file_path(&mut state.db, path.to_str().unwrap()).unwrap();
-                // let _ = input.sync(&mut state.db, None);
+                // TODO: handle this more carefully!
                 // this is inefficient, a hack for now
                 let _ = state.workspace.sync(&mut state.db);
             }
             _ => {}
         }
         // collect diagnostics for the file
-        let diags = get_diagnostics(state, uri.clone())?;
-        for (uri, more_diags) in diags {
-            let diags = diagnostics.entry(uri).or_insert_with(Vec::new);
-            diags.extend(more_diags);
+        if change.typ != lsp_types::FileChangeType::DELETED {
+            let diags = get_diagnostics(state, uri.clone())?;
+            for (uri, more_diags) in diags {
+                let diags = diagnostics.entry(uri).or_insert_with(Vec::new);
+                diags.extend(more_diags);
+            }
         }
     }
     // info!("sending diagnostics... {:?}", diagnostics);
