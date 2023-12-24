@@ -1,6 +1,6 @@
 use std::io;
 
-use fe_analyzer::namespace::items::ModuleId;
+use fe_analyzer2::namespace::items::ModuleId;
 
 use crate::db::MirDb;
 

@@ -1,5 +1,5 @@
-use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
-use fe_common::impl_intern_key;
+use fe_analyzer2::namespace::{items as analyzer_items, types as analyzer_types};
+use fe_common2::impl_intern_key;
 use fxhash::FxHashMap;
 use id_arena::Arena;
 use num_bigint::BigInt;

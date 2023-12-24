@@ -1,7 +1,7 @@
 use std::fmt::Write;
 
 use dot2::{label::Text, Id};
-use fe_analyzer::{pattern_analysis::ConstructorKind, AnalyzerDb};
+use fe_analyzer2::{pattern_analysis::ConstructorKind, AnalyzerDb};
 use fxhash::FxHashMap;
 use indexmap::IndexMap;
 use smol_str::SmolStr;

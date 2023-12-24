@@ -1,6 +1,6 @@
 use std::{fmt, rc::Rc, str::FromStr};
 
-use fe_analyzer::namespace::{items::EnumVariantId, types as analyzer_types};
+use fe_analyzer2::namespace::{items::EnumVariantId, types as analyzer_types};
 
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
@@ -470,8 +470,8 @@ fn round_up(value: usize, slot_size: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use fe_analyzer::namespace::items::ModuleId;
-    use fe_common::Span;
+    use fe_analyzer2::namespace::items::ModuleId;
+    use fe_common2::Span;
 
     use super::*;
     use crate::{

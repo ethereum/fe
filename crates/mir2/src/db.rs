@@ -1,12 +1,12 @@
 #![allow(clippy::arc_with_non_send_sync)]
 use std::{collections::BTreeMap, rc::Rc};
 
-use fe_analyzer::{
+use fe_analyzer2::{
     db::AnalyzerDbStorage,
     namespace::{items as analyzer_items, types as analyzer_types},
     AnalyzerDb,
 };
-use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
+use fe_common2::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 use smol_str::SmolStr;
 
 use crate::ir::{self, ConstantId, TypeId};

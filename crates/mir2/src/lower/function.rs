@@ -9,7 +9,7 @@ use fe_analyzer2::{
         types::{self as analyzer_types, Type},
     },
 };
-use fe_common::numeric::Literal;
+use fe_common2::numeric::Literal;
 use fe_parser2::{ast, node::Node};
 use fxhash::FxHashMap;
 use id_arena::{Arena, Id};
@@ -102,7 +102,7 @@ pub(super) struct BodyLowerHelper<'db, 'a> {
     pub(super) builder: BodyBuilder,
     ast: &'a Node<ast::Function>,
     func: FunctionId,
-    analyzer_body: &'a fe_analyzer::context::FunctionBody,
+    analyzer_body: &'a fe_analyzer2::context::FunctionBody,
     scopes: Arena<Scope>,
     current_scope: ScopeId,
 }
@@ -565,7 +565,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         db: &'db dyn MirDb,
         func: FunctionId,
         ast: &'a Node<ast::Function>,
-        analyzer_body: &'a fe_analyzer::context::FunctionBody,
+        analyzer_body: &'a fe_analyzer2::context::FunctionBody,
     ) -> Self {
         let mut builder = BodyBuilder::new(func, ast.into());
         let mut scopes = Arena::new();

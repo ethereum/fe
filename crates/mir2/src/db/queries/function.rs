@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, rc::Rc};
 
-use fe_analyzer::{
+use fe_analyzer2::{
     display::Displayable,
     namespace::{items as analyzer_items, items::Item, types as analyzer_types},
 };

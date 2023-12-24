@@ -1,4 +1,4 @@
-use fe_analyzer::pattern_analysis::{ConstructorKind, PatternMatrix};
+use fe_analyzer2::pattern_analysis::{ConstructorKind, PatternMatrix};
 use fe_parser2::{
     ast::{Expr, LiteralPattern, MatchArm},
     node::Node,

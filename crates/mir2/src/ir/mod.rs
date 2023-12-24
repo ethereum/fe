@@ -1,4 +1,4 @@
-use fe_common::Span;
+use fe_common2::Span;
 use fe_parser2::node::{Node, NodeId};
 
 pub mod basic_block;

@@ -3,7 +3,7 @@
 //! The algorithm for efficient decision tree construction is mainly based on [Compiling pattern matching to good decision trees](https://dl.acm.org/doi/10.1145/1411304.1411311).
 use std::io;
 
-use fe_analyzer::{
+use fe_analyzer2::{
     pattern_analysis::{
         ConstructorKind, PatternMatrix, PatternRowVec, SigmaSet, SimplifiedPattern,
         SimplifiedPatternKind,

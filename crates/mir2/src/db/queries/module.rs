@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use fe_analyzer::namespace::items::{self as analyzer_items, TypeDef};
+use fe_analyzer2::namespace::items::{self as analyzer_items, TypeDef};
 
 use crate::{db::MirDb, ir::FunctionId};
 

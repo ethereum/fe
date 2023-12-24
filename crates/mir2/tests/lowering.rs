@@ -1,5 +1,5 @@
-use fe_analyzer::namespace::items::{IngotId, ModuleId};
-use fe_common::{db::Upcast, files::Utf8Path};
+use fe_analyzer2::namespace::items::{IngotId, ModuleId};
+use fe_common2::{db::Upcast, files::Utf8Path};
 use fe_mir::{
     analysis::{ControlFlowGraph, DomTree, LoopTree, PostDomTree},
     db::{MirDb, NewDb},
