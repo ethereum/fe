@@ -68,6 +68,32 @@ pub fn handle_document_did_open(
     send_diagnostics(state, diagnostics)
 }
 
+// Currently this is used to handle document renaming since the "document open" handler is called
+// before the "document was renamed" handler.
+//
+// The fix: handle document renaming more explicitly in the "will rename" flow, along with the document
+// rename refactor.
+pub fn handle_document_did_close(
+    state: &mut ServerState,
+    note: lsp_server::Notification,
+) -> Result<(), Error> {
+    let params = lsp_types::DidCloseTextDocumentParams::deserialize(note.params)?;
+    let input = state
+        .workspace
+        .input_from_file_path(
+            &mut state.db,
+            params
+                .text_document
+                .uri
+                .to_file_path()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+        )
+        .unwrap();
+    input.sync(&mut state.db, None)
+    }
+
 pub fn handle_document_did_change(
     state: &mut ServerState,
     note: lsp_server::Notification,

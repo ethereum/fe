@@ -348,6 +348,7 @@ pub trait SyncableInputFile {
     fn sync(&self, db: &mut LanguageServerDatabase, contents: Option<String>) -> Result<()>;
     fn sync_from_fs(&self, db: &mut LanguageServerDatabase) -> Result<()>;
     fn sync_from_text(&self, db: &mut LanguageServerDatabase, contents: String) -> Result<()>;
+    fn remove_from_ingot(&self, db: &mut LanguageServerDatabase) -> Result<()>;
 }
 
 impl SyncableInputFile for InputFile {
@@ -362,11 +363,25 @@ impl SyncableInputFile for InputFile {
         Ok(())
     }
     fn sync(&self, db: &mut LanguageServerDatabase, contents: Option<String>) -> Result<()> {
-        if let Some(contents) = contents {
-            self.sync_from_text(db, contents)
+        // check to see if the file actually exists anymore:
+        let path = self.path(db);
+        if !path.exists() {
+            // if not let's remove it from the ingot
+            self.remove_from_ingot(db)
         } else {
-            self.sync_from_fs(db)
+            if let Some(contents) = contents {
+                self.sync_from_text(db, contents)
+            } else {
+                self.sync_from_fs(db)
+            }
         }
+    }
+    fn remove_from_ingot(&self, db: &mut LanguageServerDatabase) -> Result<()> {
+        let ingot = self.ingot(db);
+        let mut files = ingot.files(db).clone();
+        files.remove(self);
+        ingot.set_files(db, files);
+        Ok(())
     }
 }
 

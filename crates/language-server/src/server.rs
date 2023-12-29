@@ -61,6 +61,37 @@ fn server_capabilities() -> ServerCapabilities {
                 will_create: None,
                 will_rename: None,
                 will_delete: None,
+                // TODO: implement file operation refactors and workspace cache updates
+                // will_create: Some(lsp_types::FileOperationRegistrationOptions {
+                //     filters: vec![lsp_types::FileOperationFilter {
+                //         scheme: Some(String::from("file")),
+                //         pattern: lsp_types::FileOperationPattern {
+                //             glob: String::from("**/*"),
+                //             options: None,
+                //             matches: None,
+                //         },
+                //     }],
+                // }),
+                // will_rename: Some(lsp_types::FileOperationRegistrationOptions {
+                //     filters: vec![lsp_types::FileOperationFilter {
+                //         scheme: Some(String::from("file")),
+                //         pattern: lsp_types::FileOperationPattern {
+                //             glob: String::from("**/*"),
+                //             options: None,
+                //             matches: None,
+                //         },
+                //     }],
+                // }),
+                // will_delete: Some(lsp_types::FileOperationRegistrationOptions {
+                //     filters: vec![lsp_types::FileOperationFilter {
+                //         scheme: Some(String::from("file")),
+                //         pattern: lsp_types::FileOperationPattern {
+                //             glob: String::from("**/*"),
+                //             options: None,
+                //             matches: None,
+                //         },
+                //     }],
+                // }),
             }),
         }),
         // ..Default::default()

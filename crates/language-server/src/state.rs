@@ -10,7 +10,7 @@ use lsp_server::Message;
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
 
-use crate::handlers::notifications::{handle_document_did_change, handle_watched_file_changes};
+use crate::handlers::notifications::{handle_document_did_change, handle_watched_file_changes, handle_document_did_close};
 use crate::handlers::request::handle_goto_definition;
 use crate::handlers::{notifications::handle_document_did_open, request::handle_hover};
 
@@ -105,6 +105,12 @@ impl ServerState {
             match note.method.as_str() {
                 lsp_types::notification::DidOpenTextDocument::METHOD => {
                     handle_document_did_open(self, note)?;
+                }
+                // TODO: this is currently something of a hack to deal with
+                // file renames. We should be using the workspace
+                // "will change" requests instead.
+                lsp_types::notification::DidCloseTextDocument::METHOD => {
+                    handle_document_did_close(self, note)?;
                 }
                 lsp_types::notification::DidChangeTextDocument::METHOD => {
                     handle_document_did_change(self, note)?;
