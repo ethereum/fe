@@ -1,6 +1,5 @@
 use std::fmt;
 
-use fe_analyzer2::namespace::items::ContractId;
 use id_arena::Id;
 
 use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId, SourceInfo, TypeId};

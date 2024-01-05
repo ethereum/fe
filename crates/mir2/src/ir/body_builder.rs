@@ -1,4 +1,3 @@
-use fe_analyzer2::namespace::items::ContractId;
 use num_bigint::BigInt;
 
 use crate::ir::{

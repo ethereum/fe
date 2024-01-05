@@ -1136,6 +1136,8 @@ version = "0.23.0"
 dependencies = [
  "dot2",
  "fe-common2",
+ "fe-hir",
+ "fe-hir-analysis",
  "fe-library",
  "fe-parser2",
  "fe-test-files",
@@ -1145,7 +1147,24 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "num-traits",
- "salsa",
+ "salsa-2022",
+ "smol_str",
+]
+
+[[package]]
+name = "fe-mir2-analysis"
+version = "0.23.0"
+dependencies = [
+ "dot2",
+ "fe-common2",
+ "fe-hir",
+ "fe-hir-analysis",
+ "fe-library",
+ "fe-mir2",
+ "fe-test-files",
+ "fxhash",
+ "id-arena",
+ "salsa-2022",
  "smol_str",
 ]
 

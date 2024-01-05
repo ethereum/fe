@@ -2,8 +2,6 @@ use fe_common2::impl_intern_key;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
-use fe_analyzer2::{context, namespace::items as analyzer_items};
-
 use super::{SourceInfo, TypeId};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

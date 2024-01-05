@@ -1,6 +1,3 @@
-use fe_common2::Span;
-use fe_parser2::node::{Node, NodeId};
-
 pub mod basic_block;
 pub mod body_builder;
 pub mod body_cursor;

@@ -1,5 +1,3 @@
-use fe_analyzer2::namespace::{items as analyzer_items, types as analyzer_types};
-use fe_common2::{impl_intern_key, Span};
 use smol_str::SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

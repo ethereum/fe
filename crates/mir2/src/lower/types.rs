@@ -6,7 +6,7 @@ use crate::{
     },
 };
 
-use fe_analyzer2::namespace::{
+use fe_analyzer::namespace::{
     items as analyzer_items,
     types::{self as analyzer_types, TraitOrType},
 };

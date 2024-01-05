@@ -1,14 +1,12 @@
 use std::rc::Rc;
 
-use fe_analyzer2::namespace::items::{self as analyzer_items};
-
 use crate::{db::MirDb, ir::FunctionId};
 
-pub fn mir_lower_enum_all_functions(
+pub fn mir_lower_contract_all_functions(
     db: &dyn MirDb,
-    enum_: analyzer_items::EnumId,
+    contract: analyzer_items::ContractId,
 ) -> Rc<Vec<FunctionId>> {
-    enum_
+    contract
         .all_functions(db.upcast())
         .iter()
         .map(|func| db.mir_lowered_func_signature(*func))

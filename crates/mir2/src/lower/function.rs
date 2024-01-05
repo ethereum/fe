@@ -1,14 +1,5 @@
 use std::{collections::BTreeMap, rc::Rc, vec};
 
-use fe_analyzer2::{
-    builtins::{ContractTypeMethod, GlobalFunction, ValueMethod},
-    constants::{EMITTABLE_TRAIT_NAME, EMIT_FN_NAME},
-    context::{Adjustment, AdjustmentKind, CallType as AnalyzerCallType, NamedThing},
-    namespace::{
-        items as analyzer_items,
-        types::{self as analyzer_types, Type},
-    },
-};
 use fe_common2::numeric::Literal;
 use fe_parser2::{ast, node::Node};
 use fxhash::FxHashMap;
