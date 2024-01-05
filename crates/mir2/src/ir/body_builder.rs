@@ -228,40 +228,6 @@ impl BodyBuilder {
         self.insert_inst(inst)
     }
 
-    pub fn keccak256(&mut self, arg: ValueId, source: SourceInfo) -> InstId {
-        let kind = InstKind::Keccak256 { arg };
-        let inst = Inst::new(kind, source);
-        self.insert_inst(inst)
-    }
-
-    pub fn abi_encode(&mut self, arg: ValueId, source: SourceInfo) -> InstId {
-        let kind = InstKind::AbiEncode { arg };
-        let inst = Inst::new(kind, source);
-        self.insert_inst(inst)
-    }
-
-    pub fn create(&mut self, value: ValueId, contract: ContractId, source: SourceInfo) -> InstId {
-        let kind = InstKind::Create { value, contract };
-        let inst = Inst::new(kind, source);
-        self.insert_inst(inst)
-    }
-
-    pub fn create2(
-        &mut self,
-        value: ValueId,
-        salt: ValueId,
-        contract: ContractId,
-        source: SourceInfo,
-    ) -> InstId {
-        let kind = InstKind::Create2 {
-            value,
-            salt,
-            contract,
-        };
-        let inst = Inst::new(kind, source);
-        self.insert_inst(inst)
-    }
-
     pub fn yul_intrinsic(
         &mut self,
         op: YulIntrinsicOp,

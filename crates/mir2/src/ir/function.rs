@@ -8,9 +8,10 @@ use super::{
     basic_block::BasicBlock,
     body_order::BodyOrder,
     inst::{BranchInfo, Inst, InstId, InstKind},
-    types::TypeId,
+    // types::TypeId,
     value::{AssignableValue, Local, Value, ValueId},
-    BasicBlockId, SourceInfo,
+    BasicBlockId,
+    SourceInfo,
 };
 
 /// Represents function signature.

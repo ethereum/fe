@@ -1,6 +1,8 @@
-use id_arena::Id;
+#[salsa::interned]
+pub struct BasicBlockId {
+    #[return_ref]
+    pub data: BasicBlock,
+}
 
-pub type BasicBlockId = Id<BasicBlock>;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[salsa::tracked]
 pub struct BasicBlock {}
