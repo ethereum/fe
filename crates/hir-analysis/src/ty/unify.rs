@@ -3,12 +3,11 @@
 
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue};
 
-use crate::HirAnalysisDb;
-
 use super::{
     trait_def::{Implementor, TraitInstId},
-    ty_def::{Kind, Subst, TyData, TyId},
+    ty_def::{Kind, Subst, TyData, TyId, TyVar, TyVarUniverse},
 };
+use crate::HirAnalysisDb;
 
 pub(crate) struct UnificationTable<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -49,19 +48,15 @@ impl<'db> UnificationTable<'db> {
         let ty2 = self.apply(self.db, ty2);
 
         match (ty1.data(self.db), ty2.data(self.db)) {
-            (TyData::TyVar(var1), TyData::TyVar(var2)) => {
-                self.table.unify_var_var(var1.key, var2.key).is_ok()
+            (TyData::TyVar(_), TyData::TyVar(_)) => self.unify_var_var(ty1, ty2),
+
+            (TyData::TyVar(var), _) if !ty2.free_inference_keys(self.db).contains(&var.key) => {
+                self.unify_var_value(var, ty2)
             }
 
-            (TyData::TyVar(var), _) if !ty2.free_inference_keys(self.db).contains(&var.key) => self
-                .table
-                .unify_var_value(var.key, InferenceValue::Bounded(ty2))
-                .is_ok(),
-
-            (_, TyData::TyVar(var)) if !ty1.free_inference_keys(self.db).contains(&var.key) => self
-                .table
-                .unify_var_value(var.key, InferenceValue::Bounded(ty1))
-                .is_ok(),
+            (_, TyData::TyVar(var)) if !ty1.free_inference_keys(self.db).contains(&var.key) => {
+                self.unify_var_value(var, ty1)
+            }
 
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
                 let ok = self.unify_ty(*ty1_1, *ty2_1);
@@ -84,9 +79,9 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
-    pub fn new_var(&mut self, kind: &Kind) -> TyId {
+    pub fn new_var(&mut self, universe: TyVarUniverse, kind: &Kind) -> TyId {
         let key = self.new_key(kind);
-        TyId::ty_var(self.db, kind.clone(), key)
+        TyId::ty_var(self.db, universe, kind.clone(), key)
     }
 
     pub fn new_key(&mut self, kind: &Kind) -> InferenceKey {
@@ -97,6 +92,62 @@ impl<'db> UnificationTable<'db> {
         match self.table.probe_value(key) {
             InferenceValue::Bounded(ty) => Some(ty),
             InferenceValue::Unbounded(_) => None,
+        }
+    }
+
+    /// Try to unify two type variables.
+    /// Returns `true` if the two variables are unifiable.
+    ///
+    /// When the two variables are in the same universe, we can just unify them.
+    ///
+    /// When the two variables are *NOT* in the same universe, a type variable
+    /// that has a broader universe are narrowed down to the narrower one.
+    ///
+    /// NOTE: This assumes that we have only two universes: General and Int.
+    fn unify_var_var(&mut self, ty_var1: TyId, ty_var2: TyId) -> bool {
+        let (TyData::TyVar(var1), TyData::TyVar(var2)) =
+            (ty_var1.data(self.db), ty_var2.data(self.db))
+        else {
+            panic!()
+        };
+
+        if var1.universe == var2.universe {
+            self.table.unify_var_var(var1.key, var2.key).is_ok()
+        } else if matches!(var1.universe, TyVarUniverse::General) {
+            // Narrow down the universe of var1 to Int.
+            self.table
+                .unify_var_value(var1.key, InferenceValue::Bounded(ty_var2))
+                .is_ok()
+        } else {
+            // Narrow down the universe of var2 to Int.
+            self.table
+                .unify_var_value(var2.key, InferenceValue::Bounded(ty_var1))
+                .is_ok()
+        }
+    }
+
+    /// Try to unify a type variable to a type.
+    /// We perform the following checks:
+    /// 1. Occurrence check: The same type variable must not occur in the type.
+    /// 2. Universe check: The universe of the type variable must match the
+    ///    universe of the type.
+    fn unify_var_value(&mut self, var: &TyVar, value: TyId) -> bool {
+        if value.free_inference_keys(self.db).contains(&var.key) {
+            return false;
+        }
+
+        match (var.universe, value.is_integral(self.db)) {
+            (TyVarUniverse::General, _) => self
+                .table
+                .unify_var_value(var.key, InferenceValue::Bounded(value))
+                .is_ok(),
+
+            (TyVarUniverse::Integral, true) => self
+                .table
+                .unify_var_value(var.key, InferenceValue::Bounded(value))
+                .is_ok(),
+
+            _ => false,
         }
     }
 }
