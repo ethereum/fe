@@ -1101,6 +1101,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-library2"
+version = "0.23.0"
+dependencies = [
+ "include_dir",
+]
+
+[[package]]
 name = "fe-macros"
 version = "0.23.0"
 dependencies = [
@@ -1138,7 +1145,7 @@ dependencies = [
  "fe-common2",
  "fe-hir",
  "fe-hir-analysis",
- "fe-library",
+ "fe-library2",
  "fe-parser2",
  "fe-test-files",
  "fxhash",

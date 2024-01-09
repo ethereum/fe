@@ -27,12 +27,12 @@ pub struct Jar(
 pub struct LowerJar();
 
 pub trait MirDb: salsa::DbWithJar<Jar> + HirDb {
-    // fn prefill(&self)
-    // where
-    //     Self: Sized,
-    // {
-    //     IdentId::prefill(self)
-    // }
+    fn prefill(&self)
+    where
+        Self: Sized,
+    {
+        // IdentId::prefill(self)
+    }
 
     fn as_hir_db(&self) -> &dyn MirDb {
         <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)

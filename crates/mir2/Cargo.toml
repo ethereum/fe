@@ -23,4 +23,4 @@ indexmap = "1.6.2"
 
 [dev-dependencies]
 test-files = { path = "../test-files", package = "fe-test-files" }
-fe-library = { path = "../library" }
+fe-library2 = { path = "../library2" }

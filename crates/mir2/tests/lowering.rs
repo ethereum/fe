@@ -20,9 +20,11 @@
 //     };
 // }
 
+use fe_mir2::LowerMirDb;
+
 // #[test]
 // fn mir_lower_std_lib() {
-//     let mut db = NewDb::default();
+//     let mut db = LowerMirDb::default();
 
 //     // Should return the same id
 //     let std_ingot = IngotId::std_lib(&mut db);
