@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/dependent_ty/normal_type_expected.fe
+---
+error[3-0013]: expected a normal type
+  ┌─ normal_type_expected.fe:4:15
+  │
+4 │ pub fn foo(x: Foo<1>) {}
+  │               ^^^^^^ expected a normal type, but the given type is a dependent type
+
+

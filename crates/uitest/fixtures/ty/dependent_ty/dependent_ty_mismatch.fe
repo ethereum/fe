@@ -1,0 +1,18 @@
+pub struct Foo<const N: u32> {
+    N: u256
+}
+
+pub struct Foo2<T, const N: u32> {
+    t: T,
+    N: u256
+}
+
+
+pub struct Bar<const N: bool> {
+    N: bool
+}
+
+pub fn foo(x: Foo<true>) {}
+pub fn foo2(x: Foo2<i32, false>) {}
+
+pub fn bar(x: Bar<3>) {}

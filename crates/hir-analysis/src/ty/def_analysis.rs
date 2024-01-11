@@ -15,21 +15,6 @@ use hir::{
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::function::Configuration;
 
-use crate::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
-    ty::{
-        diagnostics::{
-            AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
-            ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
-        },
-        method_table::collect_methods,
-        trait_lower::lower_impl_trait,
-        ty_lower::lower_type_alias,
-        unify::UnificationTable,
-    },
-    HirAnalysisDb,
-};
-
 use super::{
     constraint::{
         collect_impl_block_constraints, collect_super_traits, AssumptionListId, SuperTraitCycle,
@@ -44,6 +29,20 @@ use super::{
         GenericParamOwnerId,
     },
     visitor::{walk_ty, TyVisitor},
+};
+use crate::{
+    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    ty::{
+        diagnostics::{
+            AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
+            ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
+        },
+        method_table::collect_methods,
+        trait_lower::lower_impl_trait,
+        ty_lower::lower_type_alias,
+        unify::UnificationTable,
+    },
+    HirAnalysisDb,
 };
 
 /// This function implements analysis for the ADT definition.
@@ -421,7 +420,6 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         let ty = lower_hir_ty(self.db, hir_ty, self.scope());
 
         if !ty.contains_invalid(self.db) && !ty.contains_ty_param(self.db) {
-            dbg!(ty.pretty_print(self.db));
             let diag = TraitConstraintDiag::concrete_type_bound(
                 self.db,
                 ctxt.span().unwrap().ty().into(),

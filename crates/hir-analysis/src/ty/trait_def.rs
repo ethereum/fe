@@ -8,11 +8,6 @@ use hir::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{
-    ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
-    HirAnalysisDb,
-};
-
 use super::{
     constraint::{
         collect_super_traits, collect_trait_constraints, trait_inst_constraints, AssumptionListId,
@@ -21,8 +16,12 @@ use super::{
     constraint_solver::{check_trait_inst_sat, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     trait_lower::collect_implementor_methods,
-    ty_def::{FuncDef, Kind, Subst, TyId},
+    ty_def::{FuncDef, Kind, Subst, TyId, TyVarUniverse},
     unify::UnificationTable,
+};
+use crate::{
+    ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
+    HirAnalysisDb,
 };
 
 /// Returns [`TraitEnv`] for the given ingot.
@@ -145,7 +144,7 @@ impl Implementor {
     ) -> (Self, impl Subst) {
         let mut subst = FxHashMap::default();
         for param in self.params(db) {
-            let var = table.new_var(param.kind(db));
+            let var = table.new_var(TyVarUniverse::General, param.kind(db));
             subst.insert(*param, var);
         }
 

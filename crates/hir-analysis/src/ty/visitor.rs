@@ -1,9 +1,8 @@
-use crate::HirAnalysisDb;
-
 use super::{
-    dependent_ty::{DependentTy, DependentTyData},
+    dependent_ty::{DependentTyData, DependentTyId},
     ty_def::{AdtDef, FuncDef, InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
 };
+use crate::HirAnalysisDb;
 
 pub trait TyVisitor {
     fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
@@ -39,7 +38,7 @@ pub trait TyVisitor {
     fn visit_func(&mut self, db: &dyn HirAnalysisDb, func: FuncDef) {}
 
     #[allow(unused_variables)]
-    fn visit_dependent_ty(&mut self, db: &dyn HirAnalysisDb, dependent_ty: &DependentTy) {
+    fn visit_dependent_ty(&mut self, db: &dyn HirAnalysisDb, dependent_ty: &DependentTyId) {
         walk_dependent_ty(self, db, dependent_ty)
     }
 }
@@ -74,15 +73,14 @@ where
     }
 }
 
-pub fn walk_dependent_ty<V>(visitor: &mut V, db: &dyn HirAnalysisDb, dependent_ty: &DependentTy)
+pub fn walk_dependent_ty<V>(visitor: &mut V, db: &dyn HirAnalysisDb, dependent_ty: &DependentTyId)
 where
     V: TyVisitor + ?Sized,
 {
-    visitor.visit_ty(db, dependent_ty.ty);
-    match &dependent_ty.data {
-        DependentTyData::TyVar(var) => visitor.visit_var(db, var),
-        DependentTyData::TyParam(param) => visitor.visit_param(db, param),
-        DependentTyData::Invalid(cause) => visitor.visit_invalid(db, cause),
-        DependentTyData::TyExprNonEvaluated(_) | DependentTyData::TyLit(_) => {}
+    visitor.visit_ty(db, dependent_ty.ty(db));
+    match &dependent_ty.data(db) {
+        DependentTyData::TyVar(var, _) => visitor.visit_var(db, var),
+        DependentTyData::TyParam(param, _) => visitor.visit_param(db, param),
+        DependentTyData::Evaluated(..) | DependentTyData::UnEvaluated(..) => {}
     }
 }

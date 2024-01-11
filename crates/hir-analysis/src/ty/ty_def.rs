@@ -14,20 +14,19 @@ use hir::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{
-    ty::constraint_solver::{check_ty_app_sat, GoalSatisfiability},
-    HirAnalysisDb,
-};
-
 use super::{
     constraint::{
         collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
     },
-    dependent_ty::DependentTy,
+    dependent_ty::DependentTyId,
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::{InferenceKey, UnificationTable},
     visitor::TyVisitor,
+};
+use crate::{
+    ty::constraint_solver::{check_ty_app_sat, GoalSatisfiability},
+    HirAnalysisDb,
 };
 
 #[salsa::interned]
@@ -47,6 +46,14 @@ impl TyId {
     /// type.
     pub fn is_invalid(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::Invalid(_))
+    }
+
+    /// Returns `true` if the type is an integral type(like `u32`, `i32` etc.)
+    pub fn is_integral(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::TyBase(ty_base) => ty_base.is_integral(),
+            _ => false,
+        }
     }
 
     /// Returns `IngotId` that declares the type.
@@ -71,7 +78,7 @@ impl TyId {
         match self.data(db) {
             TyData::Invalid(_) => true,
             TyData::TyApp(lhs, rhs) => lhs.contains_invalid(db) || rhs.contains_invalid(db),
-            TyData::DependentTy(dependent_ty) => dependent_ty.ty.contains_invalid(db),
+            TyData::DependentTy(dependent_ty) => dependent_ty.ty(db).contains_invalid(db),
             _ => false,
         }
     }
@@ -107,8 +114,17 @@ impl TyId {
         Self::new(db, TyData::TyBase(TyBase::tuple(n)))
     }
 
+    pub(super) fn array(db: &dyn HirAnalysisDb) -> Self {
+        let base = TyBase::Prim(PrimTy::Array);
+        Self::new(db, TyData::TyBase(base))
+    }
+
     pub(super) fn unit(db: &dyn HirAnalysisDb) -> Self {
         Self::tuple(db, 0)
+    }
+
+    pub(super) fn dependent_ty(db: &dyn HirAnalysisDb, dependent_ty: DependentTyId) -> Self {
+        Self::new(db, TyData::DependentTy(dependent_ty))
     }
 
     pub(super) fn adt(db: &dyn HirAnalysisDb, adt: AdtDef) -> Self {
@@ -143,7 +159,7 @@ impl TyId {
         let params = self.type_params(db);
         let mut subst = FxHashMap::default();
         for param in params.iter() {
-            let new_var = table.new_var(param.kind(db));
+            let new_var = table.new_var(TyVarUniverse::General, param.kind(db));
             subst.insert(*param, new_var);
         }
 
@@ -172,11 +188,6 @@ impl TyId {
                             .into()
                     }
 
-                    InvalidCause::UnboundTypeAliasParam {
-                        alias,
-                        n_given_args: n_given_arg,
-                    } => TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into(),
-
                     InvalidCause::InvalidConstParamTy { ty } => {
                         TyLowerDiag::invalid_const_param_ty(db, span, *ty).into()
                     }
@@ -185,7 +196,24 @@ impl TyId {
                         TyLowerDiag::RecursiveConstParamTy(span).into()
                     }
 
+                    InvalidCause::DependentTyMismatch { expected, given } => {
+                        TyLowerDiag::dependent_ty_mismatch(db, span, *expected, *given).into()
+                    }
+
+                    InvalidCause::DependentTyExpected { expected } => {
+                        TyLowerDiag::dependent_ty_expected(db, span, *expected).into()
+                    }
+
+                    InvalidCause::NormalTypeExpected => {
+                        TyLowerDiag::NormalTypeExpected { primary: span }.into()
+                    }
+
                     InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
+
+                    InvalidCause::UnboundTypeAliasParam {
+                        alias,
+                        n_given_args: n_given_arg,
+                    } => TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into(),
 
                     InvalidCause::Other => return,
                 };
@@ -230,21 +258,65 @@ impl TyId {
         collect_type_params(db, self)
     }
 
-    pub(super) fn ty_var(db: &dyn HirAnalysisDb, kind: Kind, key: InferenceKey) -> Self {
-        Self::new(db, TyData::TyVar(TyVar { kind, key }))
+    pub(super) fn ty_var(
+        db: &dyn HirAnalysisDb,
+        universe: TyVarUniverse,
+        kind: Kind,
+        key: InferenceKey,
+    ) -> Self {
+        let kind = TyVarKind::Var(kind);
+        Self::new(
+            db,
+            TyData::TyVar(TyVar {
+                universe,
+                kind,
+                key,
+            }),
+        )
     }
 
     /// Perform type level application.
-    /// If the kind is mismatched, return `TyData::Invalid`.
     pub(super) fn app(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
         let k_abs = abs.kind(db);
         let k_arg = arg.kind(db);
 
+        match (abs.expected_dependent_ty(db), arg.data(db)) {
+            (Some(expected_dependent_ty), TyData::DependentTy(dep_ty)) => {
+                let arg = if expected_dependent_ty.is_invalid(db) {
+                    Self::new(db, TyData::Invalid(InvalidCause::Other))
+                } else {
+                    let evaluated_dep_ty = dep_ty.evaluate(db, expected_dependent_ty);
+                    TyId::dependent_ty(db, evaluated_dep_ty)
+                };
+
+                return Self::new(db, TyData::TyApp(abs, arg));
+            }
+
+            (Some(expected_dependent_ty), _) => {
+                let invalid_cause = if expected_dependent_ty.is_invalid(db) {
+                    InvalidCause::Other
+                } else {
+                    InvalidCause::DependentTyExpected {
+                        expected: expected_dependent_ty,
+                    }
+                };
+                let arg = Self::invalid(db, invalid_cause);
+                return Self::new(db, TyData::TyApp(abs, arg));
+            }
+
+            (None, TyData::DependentTy(_)) => {
+                let arg = Self::invalid(db, InvalidCause::NormalTypeExpected);
+                return Self::new(db, TyData::TyApp(abs, arg));
+            }
+
+            (None, _) => {}
+        };
+
         let arg = match k_abs {
             Kind::Abs(k_expected, _) if k_expected.as_ref().does_match(k_arg) => arg,
-            Kind::Abs(k_abs_arg, _) => Self::invalid(
+            Kind::Abs(k_expected, _) => Self::invalid(
                 db,
-                InvalidCause::kind_mismatch(k_abs_arg.as_ref().into(), arg),
+                InvalidCause::kind_mismatch(k_expected.as_ref().into(), arg),
             ),
             Kind::Star => Self::invalid(db, InvalidCause::kind_mismatch(None, arg)),
             Kind::Any => arg,
@@ -318,9 +390,18 @@ impl TyId {
 
     pub(super) fn dependent_ty_param(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
         if let TyData::DependentTy(dependent_ty) = self.data(db) {
-            Some(dependent_ty.ty)
+            Some(dependent_ty.ty(db))
         } else {
             None
+        }
+    }
+
+    /// Returns the next expected type of a type argument.
+    fn expected_dependent_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+        let (base, args) = self.decompose_ty_app(db);
+        match base.data(db) {
+            TyData::TyBase(ty_base) => ty_base.expected_dependent_ty(db, args.len()),
+            _ => None,
         }
     }
 }
@@ -397,6 +478,16 @@ impl AdtDef {
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         collect_adt_constraints(db, self)
     }
+
+    /// Returns the expected type of the `idx`-th type parameter when the
+    /// parameter is declared as a dependent type.
+    fn expected_dependent_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        let TyData::DependentTy(dependent_ty) = self.params(db).get(idx)?.data(db) else {
+            return None;
+        };
+
+        Some(dependent_ty.ty(db))
+    }
 }
 
 #[salsa::tracked]
@@ -426,7 +517,7 @@ impl FuncDef {
 
     pub fn receiver_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
         if self.hir_func(db).is_method(db.as_hir_db()) {
-            self.arg_tys(db).get(0).copied()
+            self.arg_tys(db).first().copied()
         } else {
             None
         }
@@ -443,6 +534,16 @@ impl FuncDef {
             .to_opt()
             .map(|list| list.data(db.as_hir_db()).as_ref())
             .unwrap_or(EMPTY)
+    }
+
+    /// Returns the expected type of the `idx`-th type parameter when the
+    /// parameter is declared as a dependent type.
+    fn expected_dependent_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        let TyData::DependentTy(dependent_ty) = self.params(db).get(idx)?.data(db) else {
+            return None;
+        };
+
+        Some(dependent_ty.ty(db))
     }
 }
 
@@ -505,7 +606,7 @@ pub enum TyData {
     /// A concrete type, e.g., `i32`, `u32`, `bool`, `String`, `Result` etc.
     TyBase(TyBase),
 
-    DependentTy(DependentTy),
+    DependentTy(DependentTyId),
 
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
@@ -524,14 +625,25 @@ pub enum InvalidCause {
         given: TyId,
     },
 
-    /// Associated Type is not allowed at the moment.
-    AssocTy,
-
     InvalidConstParamTy {
         ty: TyId,
     },
 
     RecursiveConstParamTy,
+
+    /// The given type doesn't match the expected dependent type.
+    DependentTyMismatch {
+        expected: TyId,
+        given: TyId,
+    },
+
+    /// The given type is not a dependent type where it is required.
+    DependentTyExpected {
+        expected: TyId,
+    },
+
+    /// The given type is dependent type where it is *NOT* required.
+    NormalTypeExpected,
 
     /// Type alias parameter is not bound.
     /// NOTE: In our type system, type alias is a macro, so we can't perform
@@ -540,6 +652,9 @@ pub enum InvalidCause {
         alias: HirTypeAlias,
         n_given_args: usize,
     },
+
+    /// Associated Type is not allowed at the moment.
+    AssocTy,
 
     // TraitConstraintNotSat(PredicateId),
     /// `Other` indicates the cause is already reported in other analysis
@@ -600,13 +715,32 @@ impl fmt::Display for Kind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyVar {
-    pub kind: Kind,
+    pub universe: TyVarUniverse,
+    pub kind: TyVarKind,
     pub(super) key: InferenceKey,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TyVarUniverse {
+    /// Type variable that can be unified with any other types.
+    General,
+
+    /// Type variable that can be unified with only integral types.
+    Integral,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TyVarKind {
+    Var(Kind),
+    IntVar,
 }
 
 impl TyVar {
     pub(super) fn pretty_print(&self) -> String {
-        format!("%{}", self.key.0)
+        match self.universe {
+            TyVarUniverse::General => format!("${}", self.key.0),
+            TyVarUniverse::Integral => "<integer>".to_string(),
+        }
     }
 }
 
@@ -665,6 +799,10 @@ impl TyBase {
         Self::Prim(PrimTy::Tuple(n))
     }
 
+    pub(super) fn bool() -> Self {
+        Self::Prim(PrimTy::Bool)
+    }
+
     fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         match self {
             Self::Prim(prim) => match prim {
@@ -697,6 +835,16 @@ impl TyBase {
                 .map(|name| name.data(db.as_hir_db()).as_str())
                 .unwrap_or_else(|| "<invalid>")
                 .to_string(),
+        }
+    }
+
+    /// Returns the expected type of the `idx`-th type parameter when the
+    /// parameter is declared as a dependent type.
+    fn expected_dependent_ty(&self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        match self {
+            Self::Prim(prim_ty) => prim_ty.expected_dependent_ty(db, idx),
+            Self::Adt(adt) => adt.expected_dependent_ty(db, idx),
+            Self::Func(func) => func.expected_dependent_ty(db, idx),
         }
     }
 }
@@ -743,6 +891,19 @@ impl PrimTy {
 
     pub fn is_bool(self) -> bool {
         matches!(self, Self::Bool)
+    }
+
+    /// Returns the expected type of the `idx`-th type parameter when the
+    /// parameter is declared as a dependent type.
+    fn expected_dependent_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        match self {
+            Self::Array if idx == 1 => {
+                // FIXME: Change `U256` to `usize` when we add `usize` type.
+                Some(TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256))))
+            }
+            Self::Tuple(_) => None,
+            _ => None,
+        }
     }
 }
 
@@ -850,7 +1011,7 @@ impl HasKind for TyData {
                 _ => Kind::Any,
             },
 
-            TyData::DependentTy(dependent_ty) => dependent_ty.ty.kind(db).clone(),
+            TyData::DependentTy(dependent_ty) => dependent_ty.ty(db).kind(db).clone(),
 
             TyData::Invalid(_) => Kind::Any,
         }
@@ -859,7 +1020,10 @@ impl HasKind for TyData {
 
 impl HasKind for TyVar {
     fn kind(&self, _db: &dyn HirAnalysisDb) -> Kind {
-        self.kind.clone()
+        match &self.kind {
+            TyVarKind::Var(kind) => kind.clone(),
+            TyVarKind::IntVar => Kind::Star,
+        }
     }
 }
 

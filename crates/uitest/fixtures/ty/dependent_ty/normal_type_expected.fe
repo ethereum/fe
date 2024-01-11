@@ -1,0 +1,4 @@
+pub struct Foo<T> {
+    t: T
+}
+pub fn foo(x: Foo<1>) {}

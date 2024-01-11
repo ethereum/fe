@@ -10,16 +10,15 @@ use hir::hir_def::{
 use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
 
-use crate::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
-    HirAnalysisDb,
-};
-
 use super::{
-    dependent_ty::{DependentTy, DependentTyData},
+    dependent_ty::{DependentTyData, DependentTyId},
     ty_def::{
         AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
     },
+};
+use crate::{
+    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    HirAnalysisDb,
 };
 
 /// Lowers the given HirTy to `TyId`.
@@ -208,8 +207,13 @@ impl<'db> TyBuilder<'db> {
 
             HirTyKind::Tuple(tuple_id) => self.lower_tuple(*tuple_id),
 
-            HirTyKind::Array(_, _) => {
-                todo!()
+            HirTyKind::Array(hir_elem_ty, len) => {
+                let elem_ty = self.lower_opt_hir_ty(*hir_elem_ty);
+                let len_ty = DependentTyId::from_opt_body(self.db, *len);
+                let len_ty = TyId::dependent_ty(self.db, len_ty);
+                let array = TyId::array(self.db);
+                let array_1 = TyId::app(self.db, array, elem_ty);
+                TyId::app(self.db, array_1, len_ty)
             }
         }
     }
@@ -285,18 +289,12 @@ impl<'db> TyBuilder<'db> {
 
                 ItemKind::Impl(impl_) => {
                     let hir_ty = impl_.ty(self.db.as_hir_db());
-                    hir_ty
-                        .to_opt()
-                        .map(|hir_ty| lower_hir_ty(self.db, hir_ty, scope))
-                        .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+                    self.lower_opt_hir_ty(hir_ty)
                 }
 
                 ItemKind::ImplTrait(impl_trait) => {
                     let hir_ty = impl_trait.ty(self.db.as_hir_db());
-                    hir_ty
-                        .to_opt()
-                        .map(|hir_ty| lower_hir_ty(self.db, hir_ty, scope))
-                        .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+                    self.lower_opt_hir_ty(hir_ty)
                 }
 
                 _ => TyId::invalid(self.db, InvalidCause::Other),
@@ -312,10 +310,7 @@ impl<'db> TyBuilder<'db> {
     }
 
     fn lower_ptr(&mut self, pointee: Partial<HirTyId>) -> TyId {
-        let pointee = pointee
-            .to_opt()
-            .map(|pointee| lower_hir_ty(self.db, pointee, self.scope))
-            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
+        let pointee = self.lower_opt_hir_ty(pointee);
 
         let ptr = TyId::ptr(self.db);
         TyId::app(self.db, ptr, pointee)
@@ -325,11 +320,8 @@ impl<'db> TyBuilder<'db> {
         let elems = tuple_id.data(self.db.as_hir_db());
         let len = elems.len();
         let tuple = TyId::tuple(self.db, len);
-        elems.iter().fold(tuple, |acc, elem| {
-            let elem_ty = elem
-                .to_opt()
-                .map(|elem| lower_hir_ty(self.db, elem, self.scope))
-                .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
+        elems.iter().fold(tuple, |acc, &elem| {
+            let elem_ty = self.lower_opt_hir_ty(elem);
             if !elem_ty.has_star_kind(self.db) {
                 return TyId::invalid(self.db, InvalidCause::NotFullyApplied);
             }
@@ -404,6 +396,13 @@ impl<'db> TyBuilder<'db> {
             }
         }
     }
+
+    fn lower_opt_hir_ty(&self, hir_ty: Partial<HirTyId>) -> TyId {
+        hir_ty
+            .to_opt()
+            .map(|hir_ty| lower_hir_ty(self.db, hir_ty, self.scope))
+            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+    }
 }
 
 pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope: ScopeId) -> TyId {
@@ -414,7 +413,10 @@ pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope:
             .map(|ty| lower_hir_ty(db, ty, scope))
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
 
-        GenericArg::Const(_) => todo!(),
+        GenericArg::Const(const_arg) => {
+            let dependent_ty = DependentTyId::from_opt_body(db, const_arg.body);
+            TyId::dependent_ty(db, dependent_ty)
+        }
     }
 }
 
@@ -688,7 +690,7 @@ impl TyParamPrecursor {
 
         let ty_data = match self.ty {
             Some(ty) => {
-                let dependent_ty = DependentTy::new(ty, DependentTyData::TyParam(param));
+                let dependent_ty = DependentTyId::new(db, DependentTyData::TyParam(param, ty));
                 TyData::DependentTy(dependent_ty)
             }
             None => TyData::TyParam(param),

@@ -18,6 +18,19 @@ fn run_ty_def(fixture: Fixture<&str>) {
 }
 
 #[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/fixtures/ty/dependent_ty",
+    glob: "*.fe"
+)]
+fn run_dependent_ty(fixture: Fixture<&str>) {
+    let mut driver = DriverDataBase::default();
+    let path = Path::new(fixture.path());
+    let top_mod = driver.top_mod_from_file(path, fixture.content());
+    driver.run_on_top_mod(top_mod);
+    let diags = driver.format_diags();
+    snap_test!(diags, fixture.path());
+}
+
+#[dir_test(
     dir: "$CARGO_MANIFEST_DIR/fixtures/ty/trait_bound",
     glob: "*.fe"
 )]
@@ -45,8 +58,9 @@ fn run_trait_impl(fixture: Fixture<&str>) {
 
 #[cfg(target_family = "wasm")]
 mod wasm {
-    use super::*;
     use wasm_bindgen_test::wasm_bindgen_test;
+
+    use super::*;
 
     mod def {
         use super::*;
@@ -61,6 +75,25 @@ mod wasm {
             #[wasm_bindgen_test]
         )]
         fn run_ty_def(fixture: Fixture<&str>) {
+            let mut driver = DriverDataBase::default();
+            let path = Path::new(fixture.path());
+            let top_mod = driver.top_mod_from_file(path, fixture.content());
+            driver.run_on_top_mod(top_mod);
+        }
+    }
+
+    mod dependent_ty {
+        use super::*;
+
+        #[dir_test(
+        dir: "$CARGO_MANIFEST_DIR/fixtures/ty/dependent_ty",
+        glob: "*.fe",
+        postfix: "wasm"
+        )]
+        #[dir_test_attr(
+            #[wasm_bindgen_test]
+        )]
+        fn run_dependent_ty(fixture: Fixture<&str>) {
             let mut driver = DriverDataBase::default();
             let path = Path::new(fixture.path());
             let top_mod = driver.top_mod_from_file(path, fixture.content());

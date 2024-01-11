@@ -9,15 +9,13 @@ use hir::{
     span::{DynLazySpan, LazySpan},
     HirDb, SpannedHirDb,
 };
-
-use crate::HirAnalysisDb;
+use itertools::Itertools;
 
 use super::{
     constraint::PredicateId,
     ty_def::{Kind, TyId},
 };
-
-use itertools::Itertools;
+use crate::HirAnalysisDb;
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
@@ -92,6 +90,21 @@ pub enum TyLowerDiag {
     },
 
     RecursiveConstParamTy(DynLazySpan),
+
+    DependentTyMismatch {
+        primary: DynLazySpan,
+        expected: String,
+        actual: String,
+    },
+
+    DependentTyExpected {
+        primary: DynLazySpan,
+        expected: String,
+    },
+
+    NormalTypeExpected {
+        primary: DynLazySpan,
+    },
 
     AssocTy(DynLazySpan),
 }
@@ -180,6 +193,30 @@ impl TyLowerDiag {
         }
     }
 
+    pub(super) fn dependent_ty_mismatch(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        expected: TyId,
+        actual: TyId,
+    ) -> Self {
+        let expected = expected.pretty_print(db).to_string();
+        let actual = actual.pretty_print(db).to_string();
+        Self::DependentTyMismatch {
+            primary,
+            expected,
+            actual,
+        }
+    }
+
+    pub(super) fn dependent_ty_expected(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        expected: TyId,
+    ) -> Self {
+        let expected = expected.pretty_print(db).to_string();
+        Self::DependentTyExpected { primary, expected }
+    }
+
     pub(super) fn duplicated_arg_name(
         primary: DynLazySpan,
         conflict_with: DynLazySpan,
@@ -209,7 +246,10 @@ impl TyLowerDiag {
             Self::DuplicatedArgName { .. } => 8,
             Self::InvalidConstParamTy { .. } => 9,
             Self::RecursiveConstParamTy { .. } => 10,
-            Self::AssocTy(_) => 11,
+            Self::DependentTyMismatch { .. } => 11,
+            Self::DependentTyExpected { .. } => 12,
+            Self::NormalTypeExpected { .. } => 13,
+            Self::AssocTy(_) => 14,
         }
     }
 
@@ -238,6 +278,14 @@ impl TyLowerDiag {
             Self::InvalidConstParamTy { pretty_ty, .. } => {
                 format!("`{}` is forbidden as a const parameter type", pretty_ty)
             }
+
+            Self::DependentTyMismatch { .. } => {
+                "given type doesn't match the expected dependent type".to_string()
+            }
+
+            Self::DependentTyExpected { .. } => "expected dependent type".to_string(),
+
+            Self::NormalTypeExpected { .. } => "expected a normal type".to_string(),
 
             Self::RecursiveConstParamTy(_) => {
                 "recursive const parameter type is not allowed".to_string()
@@ -378,6 +426,37 @@ impl TyLowerDiag {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
                     "only integer or bool types are allowed as a const parameter type".to_string(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::DependentTyMismatch {
+                primary,
+                expected,
+                actual,
+            } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!(
+                        "expected `{}` type, but the given type is `{}`",
+                        expected, actual
+                    ),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::DependentTyExpected { primary, expected } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected dependent type of `{}` here", expected),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::NormalTypeExpected { primary } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "expected a normal type, but the given type is a dependent type".to_string(),
                     primary.resolve(db),
                 )]
             }
