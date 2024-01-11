@@ -1,3 +1,7 @@
+use test_db::LowerMirTestDb;
+
+mod test_db;
+
 // macro_rules! test_lowering {
 //     ($name:ident, $path:expr) => {
 //         #[test]
@@ -20,30 +24,28 @@
 //     };
 // }
 
-use fe_mir2::LowerMirDb;
+#[test]
+fn mir_lower_std_lib() {
+    let mut db = LowerMirTestDb::default();
 
-// #[test]
-// fn mir_lower_std_lib() {
-//     let mut db = LowerMirDb::default();
+    // Should return the same id
+    let std_ingot = IngotId::std_lib(&mut db);
 
-//     // Should return the same id
-//     let std_ingot = IngotId::std_lib(&mut db);
+    // let diags = std_ingot.diagnostics(&db);
+    // if !diags.is_empty() {
+    //     panic!("std lib analysis failed")
+    // }
 
-//     let diags = std_ingot.diagnostics(&db);
-//     if !diags.is_empty() {
-//         panic!("std lib analysis failed")
-//     }
-
-//     for &module in std_ingot.all_modules(db.upcast()).iter() {
-//         for func in db.mir_lower_module_all_functions(module).iter() {
-//             let body = func.body(&db);
-//             let cfg = ControlFlowGraph::compute(&body);
-//             let domtree = DomTree::compute(&cfg);
-//             LoopTree::compute(&cfg, &domtree);
-//             PostDomTree::compute(&body);
-//         }
-//     }
-// }
+    // for &module in std_ingot.all_modules(db.upcast()).iter() {
+    //     for func in db.mir_lower_module_all_functions(module).iter() {
+    //         let body = func.body(&db);
+    //         let cfg = ControlFlowGraph::compute(&body);
+    //         let domtree = DomTree::compute(&cfg);
+    //         LoopTree::compute(&cfg, &domtree);
+    //         PostDomTree::compute(&body);
+    //     }
+    // }
+}
 
 // test_lowering! { mir_erc20_token, "demos/erc20_token.fe"}
 // test_lowering! { mir_guest_book, "demos/guest_book.fe"}

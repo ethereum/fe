@@ -5,7 +5,7 @@ use fe_hir::HirDb;
 pub mod ir;
 // pub mod pretty_print;
 
-// mod lower;
+mod lower;
 
 #[salsa::jar(db = MirDb)]
 pub struct Jar(

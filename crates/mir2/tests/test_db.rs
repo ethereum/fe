@@ -36,7 +36,7 @@ pub struct LowerMirTestDb {
 }
 
 impl LowerMirTestDb {
-    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> TopLevelMod {
+    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
         let ingot = InputIngot::new(self, file_name, kind, version, BTreeSet::default());
@@ -46,16 +46,16 @@ impl LowerMirTestDb {
 
         // let mut prop_formatter = HirPropertyFormatter::default();
         // let top_mod = self.register_file(&mut prop_formatter, root);
-        let top_mod = self.register_file(root);
-        top_mod
+        // let top_mod = self.register_file(root);
+        // top_mod
     }
 
-    fn register_file(&self, input_file: InputFile) -> TopLevelMod {
-        let top_mod = lower::map_file_to_mod(self, input_file);
-        let path = input_file.path(self);
-        let text = input_file.text(self);
+    fn register_file(&self, input_file: InputFile) {
+        // let top_mod = lower::map_file_to_mod(self, input_file);
+        // let path = input_file.path(self);
+        // let text = input_file.text(self);
         // prop_formatter.register_top_mod(path.as_str(), text, top_mod);
-        top_mod
+        // top_mod
     }
 }
 
