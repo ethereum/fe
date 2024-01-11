@@ -35,3 +35,9 @@ log = "0.4"
 patricia_tree = "0.6.2"
 glob = "0.3.1"
 url = "2.4.1"
+tower-lsp = "0.20.0"
+tokio = { version = "1.35.1", features = ["full", "io-std"] }
+tokio-macros = "2.2.0"
+futures = "0.3.28"
+tracing = { version = "0.1.40", features = ["async-await"] }
+tracing-subscriber = "0.3.18"

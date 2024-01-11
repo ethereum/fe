@@ -18,7 +18,7 @@ pub trait ToCsDiag {
 
 impl<T> ToCsDiag for T
 where
-    T: DiagnosticVoucher,
+    T: DiagnosticVoucher + Sync,
 {
     fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile> {
         let complete = self.to_complete(db);

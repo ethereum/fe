@@ -7,17 +7,16 @@ use lsp_server::{Response, ResponseError};
 use serde::Deserialize;
 
 use crate::{
+    backend::Backend,
     goto::{goto_enclosing_path, Cursor},
-    state::ServerState,
     util::{to_lsp_location_from_scope, to_offset_from_position},
     workspace::IngotFileContext,
 };
 
-pub fn handle_hover(
-    state: &mut ServerState,
-    req: lsp_server::Request,
-) -> Result<(), anyhow::Error> {
+pub fn handle_hover(state: &mut Backend, req: lsp_server::Request) -> Result<(), anyhow::Error> {
     // TODO: get more relevant information for the hover
+    let db = &mut *state.db.lock().unwrap();
+    let workspace = &mut state.workspace;
     let params = lsp_types::HoverParams::deserialize(req.params)?;
     let file_path = &params
         .text_document_position_params
@@ -41,16 +40,15 @@ pub fn handle_hover(
     );
     // let file_path = std::path::Path::new(file_path);
     info!("getting hover info for file_path: {:?}", file_path);
-    let ingot = state
-        .workspace
-        .input_from_file_path(&mut state.db, file_path)
-        .map(|input| input.ingot(&state.db));
+    let ingot = workspace
+        .input_from_file_path(db, file_path)
+        .map(|input| input.ingot(db));
 
     // info!("got ingot: {:?} of type {:?}", ingot, ingot.map(|ingot| ingot.kind(&mut state.db)));
 
     let ingot_info: Option<String> = {
         let ingot_type = match ingot {
-            Some(ingot) => match ingot.kind(&state.db) {
+            Some(ingot) => match ingot.kind(db) {
                 IngotKind::StandAlone => None,
                 IngotKind::Local => Some("Local ingot"),
                 IngotKind::External => Some("External ingot"),
@@ -58,11 +56,11 @@ pub fn handle_hover(
             },
             None => Some("No ingot information available"),
         };
-        let ingot_file_count = ingot.unwrap().files(&state.db).len();
+        let ingot_file_count = ingot.unwrap().files(db).len();
         let ingot_path = ingot
             .unwrap()
-            .path(&state.db)
-            .strip_prefix(&state.workspace.root_path.clone().unwrap_or("".into()))
+            .path(db)
+            .strip_prefix(workspace.root_path.clone().unwrap_or("".into()))
             .ok();
 
         ingot_type.map(|ingot_type| {
@@ -70,22 +68,21 @@ pub fn handle_hover(
         })
     };
 
-    let top_mod = state
-        .workspace
-        .top_mod_from_file_path(&mut state.db, file_path)
+    let top_mod = workspace
+        .top_mod_from_file_path(db, file_path)
         .unwrap();
-    let early_resolution = goto_enclosing_path(&mut state.db, top_mod, cursor);
+    let early_resolution = goto_enclosing_path(db, top_mod, cursor);
 
     let goto_info = match early_resolution {
         Some(EarlyResolvedPath::Full(bucket)) => bucket
             .iter()
-            .map(|x| x.pretty_path(&state.db).unwrap())
+            .map(|x| x.pretty_path(db).unwrap())
             .collect::<Vec<_>>()
             .join("\n"),
         Some(EarlyResolvedPath::Partial {
             res,
             unresolved_from: _,
-        }) => res.pretty_path(&state.db).unwrap(),
+        }) => res.pretty_path(db).unwrap(),
         None => String::from("No goto info available"),
     };
 
@@ -102,24 +99,26 @@ pub fn handle_hover(
             }),
         range: None,
     };
-    let response_message = Response {
+    let _response_message = Response {
         id: req.id,
         result: Some(serde_json::to_value(result)?),
         error: None,
     };
 
-    state.send_response(response_message)?;
+    // state.send_response(response_message)?;
     Ok(())
 }
 
 use lsp_types::TextDocumentPositionParams;
 
 pub fn handle_goto_definition(
-    state: &mut ServerState,
+    state: &mut Backend,
     req: lsp_server::Request,
 ) -> Result<(), anyhow::Error> {
     info!("handling goto definition request: {:?}", req);
     let params = TextDocumentPositionParams::deserialize(req.params)?;
+    let db = &mut *state.db.lock().unwrap();
+    let workspace = &mut state.workspace;
 
     // Convert the position to an offset in the file
     let file_text = std::fs::read_to_string(params.text_document.uri.path())?;
@@ -127,11 +126,10 @@ pub fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
-    let top_mod = state
-        .workspace
-        .top_mod_from_file_path(&mut state.db, file_path)
+    let top_mod = workspace
+        .top_mod_from_file_path(db, file_path)
         .unwrap();
-    let goto_info = goto_enclosing_path(&mut state.db, top_mod, cursor);
+    let goto_info = goto_enclosing_path(db, top_mod, cursor);
 
     // Convert the goto info to a Location
     let scopes = match goto_info {
@@ -152,13 +150,13 @@ pub fn handle_goto_definition(
     let locations = scopes
         .iter()
         .filter_map(|scope| *scope)
-        .map(|scope| to_lsp_location_from_scope(scope, &state.db))
+        .map(|scope| to_lsp_location_from_scope(scope, db))
         .collect::<Vec<_>>();
 
     let errors = scopes
         .iter()
         .filter_map(|scope| *scope)
-        .map(|scope| to_lsp_location_from_scope(scope, &state.db))
+        .map(|scope| to_lsp_location_from_scope(scope, db))
         .filter_map(std::result::Result::err)
         .map(|err| err.to_string())
         .collect::<Vec<_>>()
@@ -186,6 +184,6 @@ pub fn handle_goto_definition(
 
     info!("goto definition response: {:?}", response_message);
 
-    state.send_response(response_message)?;
+    // state.send_response(response_message)?;
     Ok(())
 }
