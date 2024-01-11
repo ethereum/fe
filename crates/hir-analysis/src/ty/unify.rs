@@ -1,7 +1,7 @@
 //! This module contains the unification table for type inference and trait
 //! satisfiability checking.
 
-use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue};
+use ena::unify::{InPlace, InPlaceUnificationTable, UnifyKey, UnifyValue};
 
 use super::{
     trait_def::{Implementor, TraitInstId},
@@ -14,6 +14,8 @@ pub(crate) struct UnificationTable<'db> {
     table: InPlaceUnificationTable<InferenceKey>,
 }
 
+pub type Snapshot = ena::unify::Snapshot<InPlace<InferenceKey>>;
+
 impl<'db> UnificationTable<'db> {
     pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
         Self {
@@ -22,16 +24,24 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
+    pub fn rollback_to(&mut self, snapshot: Snapshot) {
+        self.table.rollback_to(snapshot);
+    }
+
+    pub fn snapshot(&mut self) -> Snapshot {
+        self.table.snapshot()
+    }
+
     pub fn unify<T>(&mut self, lhs: T, rhs: T) -> bool
     where
         T: Unifiable,
     {
-        let snapshot = self.table.snapshot();
+        let snapshot = self.snapshot();
         if lhs.unify(self, rhs) {
             self.table.commit(snapshot);
             true
         } else {
-            self.table.rollback_to(snapshot);
+            self.rollback_to(snapshot);
             false
         }
     }
@@ -72,7 +82,7 @@ impl<'db> UnificationTable<'db> {
             (TyData::Invalid(_), _) | (_, TyData::Invalid(_)) => true,
 
             (TyData::DependentTy(dep_ty1), TyData::DependentTy(dep_ty2)) => {
-                if self.unify_ty(dep_ty1.ty(self.db), dep_ty2.ty(self.db)) {
+                if !self.unify_ty(dep_ty1.ty(self.db), dep_ty2.ty(self.db)) {
                     return false;
                 }
 
@@ -85,6 +95,10 @@ impl<'db> UnificationTable<'db> {
 
                     (_, DependentTyData::TyVar(var, _)) => self.unify_var_value(var, ty1),
 
+                    (DependentTyData::Evaluated(val1, _), DependentTyData::Evaluated(val2, _)) => {
+                        val1 == val2
+                    }
+
                     _ => false,
                 }
             }
@@ -96,6 +110,26 @@ impl<'db> UnificationTable<'db> {
     pub fn new_var(&mut self, universe: TyVarUniverse, kind: &Kind) -> TyId {
         let key = self.new_key(kind);
         TyId::ty_var(self.db, universe, kind.clone(), key)
+    }
+
+    pub(super) fn new_var_from_param(&mut self, db: &dyn HirAnalysisDb, ty: TyId) -> TyId {
+        match ty.data(db) {
+            TyData::TyParam(param) => {
+                let key = self.new_key(&param.kind);
+                let universe = TyVarUniverse::General;
+                TyId::ty_var(db, universe, param.kind.clone(), key)
+            }
+
+            TyData::DependentTy(dep_ty) => {
+                if let DependentTyData::TyParam(_, ty) = dep_ty.data(db) {
+                    let key = self.new_key(ty.kind(db));
+                    TyId::dependent_ty_var(db, *ty, key)
+                } else {
+                    panic!()
+                }
+            }
+            _ => panic!(),
+        }
     }
 
     pub fn new_key(&mut self, kind: &Kind) -> InferenceKey {
@@ -277,3 +311,5 @@ impl Unifiable for Implementor {
         table.unify(self.ty(db), other.ty(db))
     }
 }
+
+pub trait Foo<const N: usize> {}

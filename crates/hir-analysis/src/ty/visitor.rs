@@ -15,6 +15,15 @@ pub trait TyVisitor {
     #[allow(unused_variables)]
     fn visit_param(&mut self, db: &dyn HirAnalysisDb, ty_param: &TyParam) {}
 
+    #[allow(unused_variables)]
+    fn visit_dependent_param(
+        &mut self,
+        db: &dyn HirAnalysisDb,
+        ty_param: &TyParam,
+        dep_ty_ty: TyId,
+    ) {
+    }
+
     fn visit_app(&mut self, db: &dyn HirAnalysisDb, abs: TyId, arg: TyId) {
         self.visit_ty(db, abs);
         self.visit_ty(db, arg);
@@ -80,7 +89,7 @@ where
     visitor.visit_ty(db, dependent_ty.ty(db));
     match &dependent_ty.data(db) {
         DependentTyData::TyVar(var, _) => visitor.visit_var(db, var),
-        DependentTyData::TyParam(param, _) => visitor.visit_param(db, param),
+        DependentTyData::TyParam(param, ty) => visitor.visit_dependent_param(db, param, *ty),
         DependentTyData::Evaluated(..) | DependentTyData::UnEvaluated(..) => {}
     }
 }

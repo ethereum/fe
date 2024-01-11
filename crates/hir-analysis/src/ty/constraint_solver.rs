@@ -3,14 +3,13 @@
 //! but the algorithm here is slightly extended to support multi parametrized
 //! traits.
 
-use crate::{ty::constraint::ty_constraints, HirAnalysisDb};
-
 use super::{
     constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
     trait_def::{TraitEnv, TraitInstId},
     ty_def::{Subst, TyId},
     unify::UnificationTable,
 };
+use crate::{ty::constraint::ty_constraints, HirAnalysisDb};
 
 type Goal = PredicateId;
 
@@ -166,7 +165,7 @@ impl<'db> ConstraintSolver<'db> {
             return GoalSatisfiability::NotSatisfied(self.goal);
         };
 
-        // Checks if the all subgoals are satisfied.
+        // Checks if the all sub goals are satisfied.
         for &sub_goal in sub_goals.predicates(self.db) {
             match is_goal_satisfiable(self.db, sub_goal, self.assumptions) {
                 GoalSatisfiability::Satisfied => {}

@@ -22,56 +22,72 @@ pub(crate) fn evaluate_dependent_ty(
     expected_ty: Option<TyId>,
 ) -> DependentTyId {
     let DependentTyData::UnEvaluated(body) = dependent_ty.data(db) else {
-        return dependent_ty;
+        let dep_ty_ty = dependent_ty.ty(db);
+        return match check_dependent_ty(db, dep_ty_ty, expected_ty, &mut UnificationTable::new(db))
+        {
+            Ok(_) => dependent_ty,
+            Err(cause) => {
+                let ty = TyId::invalid(db, cause);
+                return dependent_ty.swap_ty(db, ty);
+            }
+        };
     };
 
     let Partial::Present(expr) = body.expr(db.as_hir_db()).data(db.as_hir_db(), *body) else {
         let data = DependentTyData::Evaluated(
-            ResolvedDependentTy::Invalid,
+            EvaluatedDependentTy::Invalid,
             TyId::invalid(db, InvalidCause::Other),
         );
         return DependentTyId::new(db, data);
     };
 
-    // FIXME: When we add type inference, we need to use the inference engine to
-    // check the type of the expression.
     let mut table = UnificationTable::new(db);
     let (resolved, ty) = match expr {
         Expr::Lit(LitKind::Bool(b)) => (
-            ResolvedDependentTy::LitBool(*b),
+            EvaluatedDependentTy::LitBool(*b),
             TyId::new(db, TyData::TyBase(TyBase::bool())),
         ),
 
         Expr::Lit(LitKind::Int(i)) => (
-            ResolvedDependentTy::LitInt(*i),
+            EvaluatedDependentTy::LitInt(*i),
             table.new_var(TyVarUniverse::Integral, &Kind::Star),
         ),
 
         _ => todo!(),
     };
 
-    if ty.is_invalid(db) {
-        let resolved = ResolvedDependentTy::Invalid;
-        let data = DependentTyData::Evaluated(resolved, TyId::invalid(db, InvalidCause::Other));
-        return DependentTyId::new(db, data);
+    let data = match check_dependent_ty(db, ty, expected_ty, &mut table) {
+        Ok(ty) => DependentTyData::Evaluated(resolved, ty),
+        Err(err) => DependentTyData::Evaluated(resolved, TyId::invalid(db, err)),
+    };
+
+    DependentTyId::new(db, data)
+}
+
+// FIXME: When we add type inference, we need to use the inference engine to
+// check the type of the expression instead of this function.
+fn check_dependent_ty(
+    db: &dyn HirAnalysisDb,
+    dep_ty_ty: TyId,
+    expected_ty: Option<TyId>,
+    table: &mut UnificationTable,
+) -> Result<TyId, InvalidCause> {
+    if dep_ty_ty.is_invalid(db) {
+        return Err(InvalidCause::Other);
     }
 
     let Some(expected_ty) = expected_ty else {
-        return DependentTyId::new(db, DependentTyData::Evaluated(resolved, ty));
+        return Ok(dep_ty_ty);
     };
 
-    if table.unify(expected_ty, ty) {
-        let data = DependentTyData::Evaluated(resolved, expected_ty);
-        DependentTyId::new(db, data)
+    if table.unify(expected_ty, dep_ty_ty) {
+        Ok(expected_ty)
     } else {
-        let resolved = ResolvedDependentTy::Invalid;
         let invalid = InvalidCause::DependentTyMismatch {
             expected: expected_ty,
-            given: ty,
+            given: dep_ty_ty,
         };
-
-        let data = DependentTyData::Evaluated(resolved, TyId::invalid(db, invalid));
-        DependentTyId::new(db, data)
+        Err(invalid)
     }
 }
 
@@ -109,12 +125,27 @@ impl DependentTyId {
         match body {
             Partial::Present(body) => Self::from_body(db, body),
             Partial::Absent => {
-                let resolved = ResolvedDependentTy::Invalid;
+                let resolved = EvaluatedDependentTy::Invalid;
                 let ty = TyId::invalid(db, InvalidCause::Other);
                 let data = DependentTyData::Evaluated(resolved, ty);
                 Self::new(db, data)
             }
         }
+    }
+
+    fn swap_ty(self, db: &dyn HirAnalysisDb, ty: TyId) -> Self {
+        let data = match self.data(db) {
+            DependentTyData::TyVar(var, _) => DependentTyData::TyVar(var.clone(), ty),
+            DependentTyData::TyParam(param, _) => DependentTyData::TyParam(param.clone(), ty),
+            DependentTyData::Evaluated(evaluated, _) => {
+                DependentTyData::Evaluated(evaluated.clone(), ty)
+            }
+            DependentTyData::UnEvaluated(_) => {
+                return self;
+            }
+        };
+
+        Self::new(db, data)
     }
 }
 
@@ -122,25 +153,25 @@ impl DependentTyId {
 pub enum DependentTyData {
     TyVar(TyVar, TyId),
     TyParam(TyParam, TyId),
-    Evaluated(ResolvedDependentTy, TyId),
+    Evaluated(EvaluatedDependentTy, TyId),
     UnEvaluated(Body),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ResolvedDependentTy {
+pub enum EvaluatedDependentTy {
     LitInt(IntegerId),
     LitBool(bool),
     Invalid,
 }
 
-impl ResolvedDependentTy {
+impl EvaluatedDependentTy {
     pub fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         match self {
-            ResolvedDependentTy::LitInt(val) => {
+            EvaluatedDependentTy::LitInt(val) => {
                 format!("{}", val.data(db.as_hir_db()))
             }
-            ResolvedDependentTy::LitBool(val) => format!("{}", val),
-            ResolvedDependentTy::Invalid => "<invalid>".to_string(),
+            EvaluatedDependentTy::LitBool(val) => format!("{}", val),
+            EvaluatedDependentTy::Invalid => "<invalid>".to_string(),
         }
     }
 }

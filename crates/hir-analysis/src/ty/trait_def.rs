@@ -16,7 +16,7 @@ use super::{
     constraint_solver::{check_trait_inst_sat, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     trait_lower::collect_implementor_methods,
-    ty_def::{FuncDef, Kind, Subst, TyId, TyVarUniverse},
+    ty_def::{FuncDef, Kind, Subst, TyId},
     unify::UnificationTable,
 };
 use crate::{
@@ -53,7 +53,7 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
 /// implementors which can be used in the ingot.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct TraitEnv {
-    impls: FxHashMap<TraitDef, Vec<Implementor>>,
+    pub(super) impls: FxHashMap<TraitDef, Vec<Implementor>>,
     hir_to_implementor: FxHashMap<ImplTrait, Implementor>,
     ingot: IngotId,
 }
@@ -73,7 +73,7 @@ impl TraitEnv {
             .map(|(_, external)| collect_trait_impls(db, *external))
             .chain(std::iter::once(collect_trait_impls(db, ingot)))
         {
-            // `collect_trait_impls` ensure that there are no conflicting impls, so we can
+            // `collect_trait_impls` ensures that there are no conflicting impls, so we can
             // just extend the map.
             for (trait_def, implementors) in impl_map.iter() {
                 impls
@@ -143,9 +143,9 @@ impl Implementor {
         table: &mut UnificationTable,
     ) -> (Self, impl Subst) {
         let mut subst = FxHashMap::default();
-        for param in self.params(db) {
-            let var = table.new_var(TyVarUniverse::General, param.kind(db));
-            subst.insert(*param, var);
+        for &param in self.params(db) {
+            let var = table.new_var_from_param(db, param);
+            subst.insert(param, var);
         }
 
         let hir_impl = self.hir_impl_trait(db);

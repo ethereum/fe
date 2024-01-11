@@ -18,7 +18,7 @@ use super::{
     constraint::{
         collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
     },
-    dependent_ty::DependentTyId,
+    dependent_ty::{DependentTyData, DependentTyId},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId},
     unify::{InferenceKey, UnificationTable},
@@ -158,9 +158,9 @@ impl TyId {
     pub(super) fn generalize(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
         let params = self.type_params(db);
         let mut subst = FxHashMap::default();
-        for param in params.iter() {
-            let new_var = table.new_var(TyVarUniverse::General, param.kind(db));
-            subst.insert(*param, new_var);
+        for &param in params.iter() {
+            let new_var = table.new_var_from_param(db, param);
+            subst.insert(param, new_var);
         }
 
         self.apply_subst(db, &mut subst)
@@ -264,7 +264,6 @@ impl TyId {
         kind: Kind,
         key: InferenceKey,
     ) -> Self {
-        let kind = TyVarKind::Var(kind);
         Self::new(
             db,
             TyData::TyVar(TyVar {
@@ -275,48 +274,25 @@ impl TyId {
         )
     }
 
+    pub(super) fn dependent_ty_var(db: &dyn HirAnalysisDb, ty: TyId, key: InferenceKey) -> Self {
+        let ty_var = TyVar {
+            universe: TyVarUniverse::General,
+            kind: ty.kind(db).clone(),
+            key,
+        };
+
+        let data = DependentTyData::TyVar(ty_var, ty);
+        Self::new(db, TyData::DependentTy(DependentTyId::new(db, data)))
+    }
+
     /// Perform type level application.
     pub(super) fn app(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
         let k_abs = abs.kind(db);
         let k_arg = arg.kind(db);
 
-        match (abs.expected_dependent_ty(db), arg.data(db)) {
-            (Some(expected_dep_ty), TyData::DependentTy(dep_ty)) => {
-                let arg = if expected_dep_ty.is_invalid(db) {
-                    Self::new(db, TyData::Invalid(InvalidCause::Other))
-                } else {
-                    let evaluated_dep_ty = dep_ty.evaluate(db, expected_dep_ty.into());
-                    TyId::dependent_ty(db, evaluated_dep_ty)
-                };
-
-                return Self::new(db, TyData::TyApp(abs, arg));
-            }
-
-            (Some(expected_dependent_ty), _) => {
-                let invalid_cause = if expected_dependent_ty.is_invalid(db) {
-                    InvalidCause::Other
-                } else {
-                    InvalidCause::DependentTyExpected {
-                        expected: expected_dependent_ty,
-                    }
-                };
-                let arg = Self::invalid(db, invalid_cause);
-                return Self::new(db, TyData::TyApp(abs, arg));
-            }
-
-            (None, TyData::DependentTy(dep_ty)) => {
-                let evaluated_dep_ty = dep_ty.evaluate(db, None);
-                let arg = Self::invalid(
-                    db,
-                    InvalidCause::NormalTypeExpected {
-                        given: TyId::dependent_ty(db, evaluated_dep_ty),
-                    },
-                );
-                return Self::new(db, TyData::TyApp(abs, arg));
-            }
-
-            (None, _) => {}
-        };
+        let arg = arg
+            .evaluate_dep_ty(db, abs.expected_dependent_ty(db))
+            .unwrap_or_else(|cause| Self::invalid(db, cause));
 
         let arg = match k_abs {
             Kind::Abs(k_expected, _) if k_expected.as_ref().does_match(k_arg) => arg,
@@ -399,6 +375,47 @@ impl TyId {
             Some(dependent_ty.ty(db))
         } else {
             None
+        }
+    }
+
+    pub(super) fn evaluate_dep_ty(
+        self,
+        db: &dyn HirAnalysisDb,
+        expected_ty: Option<TyId>,
+    ) -> Result<TyId, InvalidCause> {
+        match (expected_ty, self.data(db)) {
+            (Some(expected_dep_ty), TyData::DependentTy(dep_ty)) => {
+                if expected_dep_ty.is_invalid(db) {
+                    Err(InvalidCause::Other)
+                } else {
+                    let evaluated_dep_ty = dep_ty.evaluate(db, expected_dep_ty.into());
+                    let evaluated_dep_ty_ty = evaluated_dep_ty.ty(db);
+                    if let Some(cause) = evaluated_dep_ty_ty.invalid_cause(db) {
+                        Err(cause)
+                    } else {
+                        Ok(TyId::dependent_ty(db, evaluated_dep_ty))
+                    }
+                }
+            }
+
+            (Some(expected_dependent_ty), _) => {
+                if expected_dependent_ty.is_invalid(db) {
+                    Err(InvalidCause::Other)
+                } else {
+                    Err(InvalidCause::DependentTyExpected {
+                        expected: expected_dependent_ty,
+                    })
+                }
+            }
+
+            (None, TyData::DependentTy(dep_ty)) => {
+                let evaluated_dep_ty = dep_ty.evaluate(db, None);
+                Err(InvalidCause::NormalTypeExpected {
+                    given: TyId::dependent_ty(db, evaluated_dep_ty),
+                })
+            }
+
+            (None, _) => Ok(self),
         }
     }
 
@@ -724,7 +741,7 @@ impl fmt::Display for Kind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyVar {
     pub universe: TyVarUniverse,
-    pub kind: TyVarKind,
+    pub kind: Kind,
     pub(super) key: InferenceKey,
 }
 
@@ -735,12 +752,6 @@ pub enum TyVarUniverse {
 
     /// Type variable that can be unified with only integral types.
     Integral,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TyVarKind {
-    Var(Kind),
-    IntVar,
 }
 
 impl TyVar {
@@ -1028,10 +1039,7 @@ impl HasKind for TyData {
 
 impl HasKind for TyVar {
     fn kind(&self, _db: &dyn HirAnalysisDb) -> Kind {
-        match &self.kind {
-            TyVarKind::Var(kind) => kind.clone(),
-            TyVarKind::IntVar => Kind::Star,
-        }
+        self.kind.clone()
     }
 }
 
@@ -1099,6 +1107,17 @@ pub(crate) fn collect_type_params(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<
         fn visit_param(&mut self, _db: &dyn HirAnalysisDb, param: &TyParam) {
             let param_ty = TyId::new(_db, TyData::TyParam(param.clone()));
             self.0.insert(param_ty);
+        }
+
+        fn visit_dependent_param(
+            &mut self,
+            db: &dyn HirAnalysisDb,
+            param: &TyParam,
+            dep_ty_ty: TyId,
+        ) {
+            let dep_ty = DependentTyId::new(db, DependentTyData::TyParam(param.clone(), dep_ty_ty));
+            let dep_param_ty = TyId::new(db, TyData::DependentTy(dep_ty));
+            self.0.insert(dep_param_ty);
         }
     }
 

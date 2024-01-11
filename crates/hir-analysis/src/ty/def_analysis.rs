@@ -24,10 +24,7 @@ use super::{
     trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyId},
-    ty_lower::{
-        collect_generic_params, lower_adt, lower_func, lower_hir_ty, lower_kind,
-        GenericParamOwnerId,
-    },
+    ty_lower::{collect_generic_params, lower_adt, lower_kind, GenericParamOwnerId},
     visitor::{walk_ty, TyVisitor},
 };
 use crate::{
@@ -39,7 +36,7 @@ use crate::{
         },
         method_table::collect_methods,
         trait_lower::lower_impl_trait,
-        ty_lower::lower_type_alias,
+        ty_lower::{lower_func, lower_hir_ty, lower_type_alias},
         unify::UnificationTable,
     },
     HirAnalysisDb,
@@ -811,20 +808,37 @@ fn analyze_trait_ref(
 ) -> Option<TyDiagCollection> {
     let trait_inst = match lower_trait_ref(db, trait_ref, scope) {
         Ok(trait_ref) => trait_ref,
-        Err(TraitRefLowerError::TraitNotFound) => {
-            return None;
-        }
 
         Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
             return Some(TraitConstraintDiag::trait_arg_num_mismatch(span, expected, given).into());
         }
 
-        Err(TraitRefLowerError::ArgumentKindMisMatch { expected, given }) => {
+        Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
             return Some(TraitConstraintDiag::kind_mismatch(db, span, &expected, given).into());
         }
 
         Err(TraitRefLowerError::AssocTy(_)) => {
             return Some(TyLowerDiag::assoc_ty(span).into());
+        }
+
+        Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => match (expected, given) {
+            (Some(expected), Some(given)) => {
+                return Some(TyLowerDiag::dependent_ty_mismatch(db, span, expected, given).into())
+            }
+
+            (Some(expected), None) => {
+                return Some(TyLowerDiag::dependent_ty_expected(db, span, expected).into())
+            }
+
+            (None, Some(given)) => {
+                return Some(TyLowerDiag::normal_type_expected(db, span, given).into())
+            }
+
+            (None, None) => unreachable!(),
+        },
+
+        Err(TraitRefLowerError::Other) => {
+            return None;
         }
     };
 
@@ -952,17 +966,8 @@ fn analyze_impl_trait_specific_error(
         // 4. Checks if conflict occurs.
         // If there is no implementor type even if the trait ref and implementor type is
         // well-formed, it means that the conflict does occur.
-        let impls = trait_env.implementors_for(db, trait_inst);
-        for conflict_cand in impls {
-            if conflict_cand.does_conflict(db, current_impl, &mut UnificationTable::new(db)) {
-                diags.push(
-                    TraitLowerDiag::conflict_impl(impl_trait, conflict_cand.hir_impl_trait(db))
-                        .into(),
-                );
-                return Err(diags);
-            }
-        }
-        unreachable!()
+        analyze_conflict_impl(db, current_impl, &mut diags);
+        return Err(diags);
     };
 
     // 5. Checks if implementor type satisfies the kind bound which is required by
@@ -1279,6 +1284,32 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                 )
                 .into(),
             );
+        }
+    }
+}
+
+fn analyze_conflict_impl(
+    db: &dyn HirAnalysisDb,
+    implementor: Implementor,
+    diags: &mut Vec<TyDiagCollection>,
+) {
+    let trait_ = implementor.trait_(db);
+    let env = ingot_trait_env(db, trait_.ingot(db));
+    let Some(impls) = env.impls.get(&trait_.def(db)) else {
+        return;
+    };
+
+    for cand in impls {
+        if cand.does_conflict(db, implementor, &mut UnificationTable::new(db)) {
+            diags.push(
+                TraitLowerDiag::conflict_impl(
+                    cand.hir_impl_trait(db),
+                    implementor.hir_impl_trait(db),
+                )
+                .into(),
+            );
+
+            return;
         }
     }
 }

@@ -7,17 +7,19 @@ use hir::hir_def::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
-    ty::ty_lower::{lower_func, lower_hir_ty},
-    HirAnalysisDb,
-};
-
 use super::{
     trait_def::{Implementor, TraitDef, TraitInstId, TraitMethod},
     ty_def::{FuncDef, InvalidCause, Kind, TyId},
     ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamOwnerId},
     unify::UnificationTable,
+};
+use crate::{
+    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    ty::{
+        ty_def::TyData,
+        ty_lower::{lower_func, lower_hir_ty},
+    },
+    HirAnalysisDb,
 };
 
 type TraitImplTable = FxHashMap<TraitDef, Vec<Implementor>>;
@@ -94,26 +96,26 @@ pub(crate) fn lower_trait_ref(
     scope: ScopeId,
 ) -> Result<TraitInstId, TraitRefLowerError> {
     let hir_db = db.as_hir_db();
-    let args = if let Some(args) = trait_ref.generic_args(hir_db) {
+    let mut args = if let Some(args) = trait_ref.generic_args(hir_db) {
         lower_generic_arg_list(db, args, scope)
     } else {
         vec![]
     };
 
     let Partial::Present(path) = trait_ref.path(hir_db) else {
-        return Err(TraitRefLowerError::TraitNotFound);
+        return Err(TraitRefLowerError::Other);
     };
 
     let trait_def = match resolve_path_early(db, path, scope) {
         EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
             Ok(res) => {
                 let NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) = res.kind else {
-                    return Err(TraitRefLowerError::TraitNotFound);
+                    return Err(TraitRefLowerError::Other);
                 };
                 lower_trait(db, trait_)
             }
 
-            Err(_) => return Err(TraitRefLowerError::TraitNotFound),
+            Err(_) => return Err(TraitRefLowerError::Other),
         },
 
         EarlyResolvedPath::Partial { .. } => {
@@ -128,12 +130,44 @@ pub(crate) fn lower_trait_ref(
         });
     }
 
-    for (param, arg) in trait_def.params(db).iter().zip(args.iter()) {
+    for (param, arg) in trait_def.params(db).iter().zip(args.iter_mut()) {
         if !param.kind(db).does_match(arg.kind(db)) {
-            return Err(TraitRefLowerError::ArgumentKindMisMatch {
+            return Err(TraitRefLowerError::ArgKindMisMatch {
                 expected: param.kind(db).clone(),
                 given: *arg,
             });
+        }
+
+        let expected_dep_ty = match param.data(db) {
+            TyData::DependentTy(expected_ty) => expected_ty.ty(db).into(),
+            _ => None,
+        };
+
+        match arg.evaluate_dep_ty(db, expected_dep_ty) {
+            Ok(ty) => *arg = ty,
+
+            Err(InvalidCause::DependentTyMismatch { expected, given }) => {
+                return Err(TraitRefLowerError::ArgTypeMismatch {
+                    expected: Some(expected),
+                    given: Some(given),
+                });
+            }
+
+            Err(InvalidCause::DependentTyExpected { expected }) => {
+                return Err(TraitRefLowerError::ArgTypeMismatch {
+                    expected: Some(expected),
+                    given: None,
+                });
+            }
+
+            Err(InvalidCause::NormalTypeExpected { given }) => {
+                return Err(TraitRefLowerError::ArgTypeMismatch {
+                    expected: None,
+                    given: Some(given),
+                })
+            }
+
+            _ => return Err(TraitRefLowerError::Other),
         }
     }
 
@@ -159,10 +193,6 @@ pub(crate) fn collect_implementor_methods(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TraitRefLowerError {
-    /// The trait reference is not a valid trait reference. This error is
-    /// reported by the name resolution and no need to report it again.
-    TraitNotFound,
-
     /// The trait reference contains an associated type, which is not supported
     /// yet.
     AssocTy(PathId),
@@ -172,7 +202,17 @@ pub(crate) enum TraitRefLowerError {
 
     /// The kind of the argument doesn't match the kind of the parameter of the
     /// trait.
-    ArgumentKindMisMatch { expected: Kind, given: TyId },
+    ArgKindMisMatch { expected: Kind, given: TyId },
+
+    /// The argument type doesn't match the dependent parameter type.
+    ArgTypeMismatch {
+        expected: Option<TyId>,
+        given: Option<TyId>,
+    },
+
+    /// Other errors, which is reported by another pass. So we don't need to
+    /// report this error kind.
+    Other,
 }
 
 struct TraitBuilder<'db> {
