@@ -204,8 +204,8 @@ impl TyId {
                         TyLowerDiag::dependent_ty_expected(db, span, *expected).into()
                     }
 
-                    InvalidCause::NormalTypeExpected => {
-                        TyLowerDiag::NormalTypeExpected { primary: span }.into()
+                    InvalidCause::NormalTypeExpected { given } => {
+                        TyLowerDiag::normal_type_expected(db, span, *given).into()
                     }
 
                     InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
@@ -281,11 +281,11 @@ impl TyId {
         let k_arg = arg.kind(db);
 
         match (abs.expected_dependent_ty(db), arg.data(db)) {
-            (Some(expected_dependent_ty), TyData::DependentTy(dep_ty)) => {
-                let arg = if expected_dependent_ty.is_invalid(db) {
+            (Some(expected_dep_ty), TyData::DependentTy(dep_ty)) => {
+                let arg = if expected_dep_ty.is_invalid(db) {
                     Self::new(db, TyData::Invalid(InvalidCause::Other))
                 } else {
-                    let evaluated_dep_ty = dep_ty.evaluate(db, expected_dependent_ty);
+                    let evaluated_dep_ty = dep_ty.evaluate(db, expected_dep_ty.into());
                     TyId::dependent_ty(db, evaluated_dep_ty)
                 };
 
@@ -304,8 +304,14 @@ impl TyId {
                 return Self::new(db, TyData::TyApp(abs, arg));
             }
 
-            (None, TyData::DependentTy(_)) => {
-                let arg = Self::invalid(db, InvalidCause::NormalTypeExpected);
+            (None, TyData::DependentTy(dep_ty)) => {
+                let evaluated_dep_ty = dep_ty.evaluate(db, None);
+                let arg = Self::invalid(
+                    db,
+                    InvalidCause::NormalTypeExpected {
+                        given: TyId::dependent_ty(db, evaluated_dep_ty),
+                    },
+                );
                 return Self::new(db, TyData::TyApp(abs, arg));
             }
 
@@ -643,7 +649,9 @@ pub enum InvalidCause {
     },
 
     /// The given type is dependent type where it is *NOT* required.
-    NormalTypeExpected,
+    NormalTypeExpected {
+        given: TyId,
+    },
 
     /// Type alias parameter is not bound.
     /// NOTE: In our type system, type alias is a macro, so we can't perform

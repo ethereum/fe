@@ -104,6 +104,7 @@ pub enum TyLowerDiag {
 
     NormalTypeExpected {
         primary: DynLazySpan,
+        given: String,
     },
 
     AssocTy(DynLazySpan),
@@ -215,6 +216,15 @@ impl TyLowerDiag {
     ) -> Self {
         let expected = expected.pretty_print(db).to_string();
         Self::DependentTyExpected { primary, expected }
+    }
+
+    pub(super) fn normal_type_expected(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        given: TyId,
+    ) -> Self {
+        let given = given.pretty_print(db).to_string();
+        Self::NormalTypeExpected { primary, given }
     }
 
     pub(super) fn duplicated_arg_name(
@@ -438,7 +448,7 @@ impl TyLowerDiag {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
                     format!(
-                        "expected `{}` type, but the given type is `{}`",
+                        "expected `{}` type here, but `{}` is given",
                         expected, actual
                     ),
                     primary.resolve(db),
@@ -453,10 +463,10 @@ impl TyLowerDiag {
                 )]
             }
 
-            Self::NormalTypeExpected { primary } => {
+            Self::NormalTypeExpected { primary, given } => {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    "expected a normal type, but the given type is a dependent type".to_string(),
+                    format!("expected a normal type here, but `{}` is given", given,),
                     primary.resolve(db),
                 )]
             }

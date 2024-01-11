@@ -2,3 +2,8 @@ pub struct Foo<T> {
     t: T
 }
 pub fn foo(x: Foo<1>) {}
+
+pub struct Bar<T, const N: u32> {
+    u: T,
+    n: N,
+}

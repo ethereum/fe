@@ -7,12 +7,12 @@ error[6-0006]: trait bound for dependent type is not allowed
   ┌─ const_generics_trait_bound.fe:4:7
   │
 4 │ where U: Trait
-  │       ^ `U` is a dependent type
+  │       ^ `const U: u32` is a dependent type
 
 error[6-0006]: trait bound for dependent type is not allowed
   ┌─ const_generics_trait_bound.fe:8:7
   │
 8 │ where U: Trait
-  │       ^ `U` is a dependent type
+  │       ^ `const U: bool` is a dependent type
 
 

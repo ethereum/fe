@@ -273,11 +273,17 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    /// This method verifies if the given `ty` has `*` kind(i.e, concrete type)
+    /// This method verifies if
+    /// 1. the given `ty` has `*` kind(i.e, concrete type)
+    /// 2. the given `ty` is not dependent type
     fn verify_concrete_type(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
         if !ty.has_star_kind(self.db) {
             self.diags.push(TyLowerDiag::non_concrete_ty(span).into());
+            false
+        } else if ty.is_dependent_ty(self.db) {
+            self.diags
+                .push(TyLowerDiag::normal_type_expected(self.db, span, ty).into());
             false
         } else {
             true

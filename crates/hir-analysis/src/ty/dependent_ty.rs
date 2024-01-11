@@ -19,7 +19,7 @@ pub struct DependentTyId {
 pub(crate) fn evaluate_dependent_ty(
     db: &dyn HirAnalysisDb,
     dependent_ty: DependentTyId,
-    expected_ty: TyId,
+    expected_ty: Option<TyId>,
 ) -> DependentTyId {
     let DependentTyData::UnEvaluated(body) = dependent_ty.data(db) else {
         return dependent_ty;
@@ -33,6 +33,8 @@ pub(crate) fn evaluate_dependent_ty(
         return DependentTyId::new(db, data);
     };
 
+    // FIXME: When we add type inference, we need to use the inference engine to
+    // check the type of the expression.
     let mut table = UnificationTable::new(db);
     let (resolved, ty) = match expr {
         Expr::Lit(LitKind::Bool(b)) => (
@@ -54,6 +56,10 @@ pub(crate) fn evaluate_dependent_ty(
         return DependentTyId::new(db, data);
     }
 
+    let Some(expected_ty) = expected_ty else {
+        return DependentTyId::new(db, DependentTyData::Evaluated(resolved, ty));
+    };
+
     if table.unify(expected_ty, ty) {
         let data = DependentTyData::Evaluated(resolved, expected_ty);
         DependentTyId::new(db, data)
@@ -70,7 +76,6 @@ pub(crate) fn evaluate_dependent_ty(
 }
 
 impl DependentTyId {
-    #[allow(unused)]
     pub fn ty(self, db: &dyn HirAnalysisDb) -> TyId {
         match self.data(db) {
             DependentTyData::TyVar(_, ty) => *ty,
@@ -83,15 +88,16 @@ impl DependentTyId {
     pub(super) fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
         match &self.data(db) {
             DependentTyData::TyVar(var, _) => var.pretty_print(),
-            DependentTyData::TyParam(param, _) => param.pretty_print(db),
+            DependentTyData::TyParam(param, ty) => {
+                format!("const {}: {}", param.pretty_print(db), ty.pretty_print(db))
+            }
             DependentTyData::Evaluated(resolved, _) => resolved.pretty_print(db),
             DependentTyData::UnEvaluated(_) => "<unevaluated>".to_string(),
         }
     }
 
-    #[allow(unused)]
-    pub(super) fn evaluate(self, db: &dyn HirAnalysisDb, ty: TyId) -> Self {
-        evaluate_dependent_ty(db, self, ty)
+    pub(super) fn evaluate(self, db: &dyn HirAnalysisDb, expected_ty: Option<TyId>) -> Self {
+        evaluate_dependent_ty(db, self, expected_ty)
     }
 
     pub(super) fn from_body(db: &dyn HirAnalysisDb, body: Body) -> Self {
@@ -130,7 +136,9 @@ pub enum ResolvedDependentTy {
 impl ResolvedDependentTy {
     pub fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         match self {
-            ResolvedDependentTy::LitInt(val) => format!("{}", val.data(db.as_hir_db())),
+            ResolvedDependentTy::LitInt(val) => {
+                format!("{}", val.data(db.as_hir_db()))
+            }
             ResolvedDependentTy::LitBool(val) => format!("{}", val),
             ResolvedDependentTy::Invalid => "<invalid>".to_string(),
         }

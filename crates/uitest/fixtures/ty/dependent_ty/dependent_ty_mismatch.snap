@@ -7,18 +7,18 @@ error[3-0011]: given type doesn't match the expected dependent type
    ┌─ dependent_ty_mismatch.fe:15:15
    │
 15 │ pub fn foo(x: Foo<true>) {}
-   │               ^^^^^^^^^ expected `u32` type, but the given type is `bool`
+   │               ^^^^^^^^^ expected `u32` type here, but `bool` is given
 
 error[3-0011]: given type doesn't match the expected dependent type
    ┌─ dependent_ty_mismatch.fe:16:16
    │
 16 │ pub fn foo2(x: Foo2<i32, false>) {}
-   │                ^^^^^^^^^^^^^^^^ expected `u32` type, but the given type is `bool`
+   │                ^^^^^^^^^^^^^^^^ expected `u32` type here, but `bool` is given
 
 error[3-0011]: given type doesn't match the expected dependent type
    ┌─ dependent_ty_mismatch.fe:18:15
    │
 18 │ pub fn bar(x: Bar<3>) {}
-   │               ^^^^^^ expected `bool` type, but the given type is `<integer>`
+   │               ^^^^^^ expected `bool` type here, but `<integer>` is given
 
 
