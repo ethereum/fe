@@ -7,7 +7,7 @@ use super::{
     trait_def::{Implementor, TraitInstId},
     ty_def::{Kind, Subst, TyData, TyId, TyVar, TyVarUniverse},
 };
-use crate::HirAnalysisDb;
+use crate::{ty::dependent_ty::DependentTyData, HirAnalysisDb};
 
 pub(crate) struct UnificationTable<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -50,13 +50,9 @@ impl<'db> UnificationTable<'db> {
         match (ty1.data(self.db), ty2.data(self.db)) {
             (TyData::TyVar(_), TyData::TyVar(_)) => self.unify_var_var(ty1, ty2),
 
-            (TyData::TyVar(var), _) if !ty2.free_inference_keys(self.db).contains(&var.key) => {
-                self.unify_var_value(var, ty2)
-            }
+            (TyData::TyVar(var), _) => self.unify_var_value(var, ty2),
 
-            (_, TyData::TyVar(var)) if !ty1.free_inference_keys(self.db).contains(&var.key) => {
-                self.unify_var_value(var, ty1)
-            }
+            (_, TyData::TyVar(var)) => self.unify_var_value(var, ty1),
 
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
                 let ok = self.unify_ty(*ty1_1, *ty2_1);
@@ -75,6 +71,24 @@ impl<'db> UnificationTable<'db> {
 
             (TyData::Invalid(_), _) | (_, TyData::Invalid(_)) => true,
 
+            (TyData::DependentTy(dep_ty1), TyData::DependentTy(dep_ty2)) => {
+                if self.unify_ty(dep_ty1.ty(self.db), dep_ty2.ty(self.db)) {
+                    return false;
+                }
+
+                match (dep_ty1.data(self.db), dep_ty2.data(self.db)) {
+                    (DependentTyData::TyVar(..), DependentTyData::TyVar(..)) => {
+                        self.unify_var_var(ty1, ty2)
+                    }
+
+                    (DependentTyData::TyVar(var, _), _) => self.unify_var_value(var, ty2),
+
+                    (_, DependentTyData::TyVar(var, _)) => self.unify_var_value(var, ty1),
+
+                    _ => false,
+                }
+            }
+
             _ => false,
         }
     }
@@ -85,13 +99,13 @@ impl<'db> UnificationTable<'db> {
     }
 
     pub fn new_key(&mut self, kind: &Kind) -> InferenceKey {
-        self.table.new_key(InferenceValue::Unbounded(kind.clone()))
+        self.table.new_key(InferenceValue::Unbound(kind.clone()))
     }
 
-    pub fn probe(&mut self, key: InferenceKey) -> Option<TyId> {
+    fn probe(&mut self, key: InferenceKey) -> Option<TyId> {
         match self.table.probe_value(key) {
-            InferenceValue::Bounded(ty) => Some(ty),
-            InferenceValue::Unbounded(_) => None,
+            InferenceValue::Bound(ty) => Some(ty),
+            InferenceValue::Unbound(_) => None,
         }
     }
 
@@ -105,10 +119,17 @@ impl<'db> UnificationTable<'db> {
     ///
     /// NOTE: This assumes that we have only two universes: General and Int.
     fn unify_var_var(&mut self, ty_var1: TyId, ty_var2: TyId) -> bool {
-        let (TyData::TyVar(var1), TyData::TyVar(var2)) =
-            (ty_var1.data(self.db), ty_var2.data(self.db))
-        else {
-            panic!()
+        let (var1, var2) = match (ty_var1.data(self.db), ty_var2.data(self.db)) {
+            (TyData::TyVar(var1), TyData::TyVar(var2)) => (var1, var2),
+            (TyData::DependentTy(dep_ty1), TyData::DependentTy(dep_ty2)) => {
+                match (dep_ty1.data(self.db), dep_ty2.data(self.db)) {
+                    (DependentTyData::TyVar(var1, _), DependentTyData::TyVar(var2, _)) => {
+                        (var1, var2)
+                    }
+                    _ => panic!(),
+                }
+            }
+            _ => panic!(),
         };
 
         if var1.universe == var2.universe {
@@ -116,12 +137,12 @@ impl<'db> UnificationTable<'db> {
         } else if matches!(var1.universe, TyVarUniverse::General) {
             // Narrow down the universe of var1 to Int.
             self.table
-                .unify_var_value(var1.key, InferenceValue::Bounded(ty_var2))
+                .unify_var_value(var1.key, InferenceValue::Bound(ty_var2))
                 .is_ok()
         } else {
             // Narrow down the universe of var2 to Int.
             self.table
-                .unify_var_value(var2.key, InferenceValue::Bounded(ty_var1))
+                .unify_var_value(var2.key, InferenceValue::Bound(ty_var1))
                 .is_ok()
         }
     }
@@ -139,12 +160,12 @@ impl<'db> UnificationTable<'db> {
         match (var.universe, value.is_integral(self.db)) {
             (TyVarUniverse::General, _) => self
                 .table
-                .unify_var_value(var.key, InferenceValue::Bounded(value))
+                .unify_var_value(var.key, InferenceValue::Bound(value))
                 .is_ok(),
 
             (TyVarUniverse::Integral, true) => self
                 .table
-                .unify_var_value(var.key, InferenceValue::Bounded(value))
+                .unify_var_value(var.key, InferenceValue::Bound(value))
                 .is_ok(),
 
             _ => false,
@@ -156,6 +177,13 @@ impl<'db> Subst for UnificationTable<'db> {
     fn get(&mut self, ty: TyId) -> Option<TyId> {
         match ty.data(self.db) {
             TyData::TyVar(var) => self.probe(var.key),
+            TyData::DependentTy(dep_ty) => {
+                if let DependentTyData::TyVar(var, _) = dep_ty.data(self.db) {
+                    self.probe(var.key)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -166,8 +194,8 @@ pub struct InferenceKey(pub(super) u32);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InferenceValue {
-    Bounded(TyId),
-    Unbounded(Kind),
+    Bound(TyId),
+    Unbound(Kind),
 }
 
 impl UnifyKey for InferenceKey {
@@ -191,21 +219,21 @@ impl UnifyValue for InferenceValue {
 
     fn unify_values(v1: &Self, v2: &Self) -> Result<Self, Self::Error> {
         match (v1, v2) {
-            (InferenceValue::Unbounded(k1), InferenceValue::Unbounded(k2)) => {
+            (InferenceValue::Unbound(k1), InferenceValue::Unbound(k2)) => {
                 assert!(k1.does_match(k2));
-                Ok(InferenceValue::Unbounded(k1.clone()))
+                Ok(InferenceValue::Unbound(k1.clone()))
             }
 
-            (InferenceValue::Unbounded(_), InferenceValue::Bounded(ty))
-            | (InferenceValue::Bounded(ty), InferenceValue::Unbounded(_)) => {
-                Ok(InferenceValue::Bounded(*ty))
+            (InferenceValue::Unbound(_), InferenceValue::Bound(ty))
+            | (InferenceValue::Bound(ty), InferenceValue::Unbound(_)) => {
+                Ok(InferenceValue::Bound(*ty))
             }
 
-            (InferenceValue::Bounded(ty1), InferenceValue::Bounded(ty2)) => {
+            (InferenceValue::Bound(ty1), InferenceValue::Bound(ty2)) => {
                 if ty1 != ty2 {
                     Err(())
                 } else {
-                    Ok(InferenceValue::Bounded(*ty1))
+                    Ok(InferenceValue::Bound(*ty1))
                 }
             }
         }
