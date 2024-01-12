@@ -1,33 +1,34 @@
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::fmt::Write;
+
+use std::sync::{Arc, Mutex};
 
 use crate::db::LanguageServerDatabase;
+use crate::handlers::notifications::get_diagnostics;
 use crate::server::server_capabilities;
-use crate::workspace::Workspace;
+use crate::workspace::{IngotFileContext, SyncableInputFile, Workspace};
 use anyhow::Result;
-use crossbeam_channel::{Receiver, Sender};
+
 use log::{info, Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
 use lsp_server::Message;
-use lsp_types::{InitializeParams, InitializeResult};
-use lsp_types::notification::Notification;
-use lsp_types::request::Request;
-use tower_lsp::{Client, LanguageServer, LspService, Server};
+use lsp_types::{InitializeParams, InitializeResult, TextDocumentItem};
 
-use crate::handlers::notifications::{handle_document_did_change, handle_watched_file_changes, handle_document_did_close};
-use crate::handlers::request::handle_goto_definition;
-use crate::handlers::{notifications::handle_document_did_open, request::handle_hover};
+use tokio::task;
+use tower_lsp::{Client, LanguageServer};
 
 pub struct Backend {
     // pub(crate) sender: Arc<Mutex<Sender<Message>>>,
-    client: Client,
+    pub(crate) client: Client,
     pub(crate) db: Arc<Mutex<LanguageServerDatabase>>,
-    pub(crate) workspace: Workspace,
-
+    pub(crate) workspace: Arc<Mutex<Workspace>>,
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(
+        &self,
+        initialize_params: InitializeParams,
+    ) -> tower_lsp::jsonrpc::Result<InitializeResult> {
         // let initialize_params: InitializeParams = serde_json::from_value(_initialize_params)?;
 
         let capabilities = server_capabilities();
@@ -39,63 +40,122 @@ impl LanguageServer for Backend {
                 version: Some(String::from(env!("CARGO_PKG_VERSION"))),
             }),
         };
+        let _ = self.init_logger(log::Level::Info);
+        let workspace = &mut *self.workspace.lock().unwrap();
+        let db = &mut *self.db.lock().unwrap();
+        let _ = workspace.set_workspace_root(
+            db,
+            initialize_params
+                .root_uri
+                .unwrap()
+                .to_file_path()
+                .ok()
+                .unwrap(),
+        );
+        info!("TESTING");
+        // info!("initialized with params: {:?}", debug_params);
         Ok(initialize_result)
     }
-    fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
+    async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
         Ok(())
     }
+
+    async fn did_open(&self, params: lsp_types::DidOpenTextDocumentParams) {
+        // let _ =
+        info!("did open: {:?}", params);
+        {
+            let db = &mut *self.db.lock().unwrap();
+            let workspace = &mut *self.workspace.lock().unwrap();
+            let input = workspace
+                .input_from_file_path(
+                    db,
+                    params
+                        .text_document
+                        .uri
+                        .to_file_path()
+                        .unwrap()
+                        .to_str()
+                        .unwrap(),
+                )
+                .unwrap();
+            let _ = input.sync(db, None);
+        }
+        self.on_change(TextDocumentItem {
+            uri: params.text_document.uri,
+            language_id: params.text_document.language_id,
+            version: params.text_document.version,
+            text: params.text_document.text,
+        })
+        .await;
+    }
 }
+
+use tracing::Subscriber;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::FmtSubscriber;
+use tracing_subscriber::Layer;
 
 impl Backend {
     pub fn new(client: Client) -> Self {
         let db = Arc::new(Mutex::new(LanguageServerDatabase::default()));
+        let workspace = Arc::new(Mutex::new(Workspace::default()));
         Self {
             client,
             db,
-            workspace: Workspace::default(),
+            workspace,
         }
     }
+    async fn on_change(&self, params: TextDocumentItem) {
+        let diagnostics = get_diagnostics(self, params.uri.clone())
+            .unwrap()
+            .into_iter()
+            .map(|(uri, diags)| self.client.publish_diagnostics(uri, diags, None))
+            .collect::<Vec<_>>();
 
-    fn db(&self) -> MutexGuard<LanguageServerDatabase> {
-        self.db.lock().unwrap()
+        futures::future::join_all(diagnostics).await;
     }
 
-    pub fn run(&mut self, receiver: Receiver<lsp_server::Message>) -> Result<()> {
-        info!("Fe Language Server listening...");
 
-        // watch the workspace root for changes
-        self.send(lsp_server::Message::Request(lsp_server::Request::new(
-            28_716_283.into(),
-            String::from("client/registerCapability"),
-            lsp_types::RegistrationParams {
-                registrations: vec![lsp_types::Registration {
-                    id: String::from("watch-fe-files"),
-                    method: String::from("workspace/didChangeWatchedFiles"),
-                    register_options: Some(
-                        serde_json::to_value(lsp_types::DidChangeWatchedFilesRegistrationOptions {
-                            watchers: vec![lsp_types::FileSystemWatcher {
-                                glob_pattern: lsp_types::GlobPattern::String("**/*.fe".to_string()),
-                                kind: None, // kind: Some(WatchKind::Create | WatchKind::Change | WatchKind::Delete),
-                            }],
-                        })
-                        .unwrap(),
-                    ),
-                }],
-            },
-        )))?;
+    // pub(crate) fn db(&self) -> &mut LanguageServerDatabase {
+    //     let mut db = self.db.lock().unwrap();
+    //     &mut *db
+    // }
 
-        while let Some(msg) = self.next_message(&receiver) {
-            if let lsp_server::Message::Notification(notification) = &msg {
-                if notification.method == lsp_types::notification::Exit::METHOD {
-                    return Ok(());
-                }
-            }
+    // pub fn run(&mut self, receiver: Receiver<lsp_server::Message>) -> Result<()> {
+    //     info!("Fe Language Server listening...");
 
-            let _ = self.handle_message(msg);
-        }
-        Ok(())
-    }
+    //     // watch the workspace root for changes
+    //     self.send(lsp_server::Message::Request(lsp_server::Request::new(
+    //         28_716_283.into(),
+    //         String::from("client/registerCapability"),
+    //         lsp_types::RegistrationParams {
+    //             registrations: vec![lsp_types::Registration {
+    //                 id: String::from("watch-fe-files"),
+    //                 method: String::from("workspace/didChangeWatchedFiles"),
+    //                 register_options: Some(
+    //                     serde_json::to_value(lsp_types::DidChangeWatchedFilesRegistrationOptions {
+    //                         watchers: vec![lsp_types::FileSystemWatcher {
+    //                             glob_pattern: lsp_types::GlobPattern::String("**/*.fe".to_string()),
+    //                             kind: None, // kind: Some(WatchKind::Create | WatchKind::Change | WatchKind::Delete),
+    //                         }],
+    //                     })
+    //                     .unwrap(),
+    //                 ),
+    //             }],
+    //         },
+    //     )))?;
 
+    //     while let Some(msg) = self.next_message(&receiver) {
+    //         if let lsp_server::Message::Notification(notification) = &msg {
+    //             if notification.method == lsp_types::notification::Exit::METHOD {
+    //                 return Ok(());
+    //             }
+    //         }
+
+    //         let _ = self.handle_message(msg);
+    //     }
+    //     Ok(())
+    // }
 
     // fn handle_message(&mut self, msg: lsp_server::Message) -> Result<()> {
     //     if let lsp_server::Message::Request(req) = msg {
@@ -148,7 +208,7 @@ impl Backend {
     pub fn init_logger(&self, level: Level) -> Result<(), SetLoggerError> {
         let logger = LspLogger {
             level,
-            client: Arc::new(Mutex::new(self.client.clone())),
+            client: Arc::new(tokio::sync::Mutex::new(self.client.clone())),
             // sender: self.sender.clone(),
         };
         let static_logger = Box::leak(Box::new(logger));
@@ -160,7 +220,7 @@ impl Backend {
 
 pub struct LspLogger {
     level: Level,
-    client: Arc<Mutex<Client>>,
+    client: Arc<tokio::sync::Mutex<Client>>,
     // sender: Arc<Mutex<Sender<Message>>>,
 }
 
@@ -178,21 +238,29 @@ impl log::Log for LspLogger {
         metadata.level() <= logger.level
     }
 
+    // TODO: investigate performance implications of this
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             let message = format!("{} - {}", record.level(), record.args());
-            let client = self.client.lock().unwrap();
-            let _ = client.log_message(
-                
-               match record.level() {
-                            Level::Error => lsp_types::MessageType::ERROR,
-                            Level::Warn => lsp_types::MessageType::WARNING,
-                            Level::Info => lsp_types::MessageType::INFO,
-                            Level::Debug => lsp_types::MessageType::LOG,
-                            Level::Trace => lsp_types::MessageType::LOG,
+            let level = record.level();
+            let client = self.client.clone();
+            tokio::task::spawn(async move {
+                // let client = client.lock().unwrap();
+                let client = client.lock().await;
+                // let client = client.lock().unwrap();
+                client
+                    .log_message(
+                        match level {
+                            log::Level::Error => lsp_types::MessageType::ERROR,
+                            log::Level::Warn => lsp_types::MessageType::WARNING,
+                            log::Level::Info => lsp_types::MessageType::INFO,
+                            log::Level::Debug => lsp_types::MessageType::LOG,
+                            log::Level::Trace => lsp_types::MessageType::LOG,
                         },
-            message
-            );
+                        message,
+                    )
+                    .await
+            });
         }
     }
 
