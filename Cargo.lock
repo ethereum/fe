@@ -1161,10 +1161,10 @@ dependencies = [
  "derive_more",
  "dir-test",
  "fe-compiler-test-utils",
- "fxhash",
  "lazy_static",
  "logos",
  "rowan",
+ "rustc-hash",
  "wasm-bindgen",
  "wasm-bindgen-test",
 ]

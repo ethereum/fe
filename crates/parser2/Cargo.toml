@@ -12,7 +12,7 @@ description = "Parser lib for Fe."
 [dependencies]
 rowan = "0.15.10"
 logos = "0.12.1"
-fxhash = "0.2.1"
+rustc-hash = "1.1.0"
 lazy_static = "1.4.0"
 derive_more = "0.99"
 
