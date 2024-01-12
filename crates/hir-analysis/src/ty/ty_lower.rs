@@ -786,4 +786,9 @@ impl GenericParamOwnerId {
     pub(super) fn params(self, db: &dyn HirAnalysisDb) -> GenericParamListId {
         self.data(db).params(db.as_hir_db())
     }
+
+    pub(super) fn from_item_opt(db: &dyn HirAnalysisDb, item: ItemKind) -> Option<Self> {
+        let owner = GenericParamOwner::from_item_opt(item)?;
+        Self::new(db, owner).into()
+    }
 }

@@ -20,10 +20,11 @@ use super::{
         collect_impl_block_constraints, collect_super_traits, AssumptionListId, SuperTraitCycle,
     },
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
+    dependent_ty::DependentTyId,
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
-    ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyId},
+    ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyData, TyId},
     ty_lower::{collect_generic_params, lower_adt, lower_kind, GenericParamOwnerId},
     visitor::{walk_ty, TyVisitor},
 };
@@ -447,12 +448,42 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         self.current_ty = Some((ty, ctxt.span().unwrap().ty().into()));
         walk_where_predicate(self, ctxt, pred);
     }
+
     fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
-        if let Some(ty) = field.ty.to_opt() {
-            if self.verify_concrete_type(ty, ctxt.span().unwrap().ty().into()) {
-                walk_field_def(self, ctxt, field);
+        let Some(ty) = field.ty.to_opt() else {
+            return;
+        };
+
+        if !self.verify_concrete_type(ty, ctxt.span().unwrap().ty().into()) {
+            return;
+        }
+
+        let Some(name) = field.name.to_opt() else {
+            return;
+        };
+
+        // Checks if the field type is the same as the type of dependent type parameter.
+        if let Some(dep_ty) = find_dependent_ty_param(self.db, name, ctxt.scope()) {
+            let dep_ty_ty = dep_ty.ty(self.db);
+            let field_ty = lower_hir_ty(self.db, ty, ctxt.scope());
+            if !dep_ty_ty.contains_invalid(self.db)
+                && !field_ty.contains_invalid(self.db)
+                && field_ty != dep_ty_ty
+            {
+                self.diags.push(
+                    TyLowerDiag::dependent_ty_mismatch(
+                        self.db,
+                        ctxt.span().unwrap().ty().into(),
+                        dep_ty_ty,
+                        field_ty,
+                    )
+                    .into(),
+                );
+                return;
             }
         }
+
+        walk_field_def(self, ctxt, field);
     }
 
     fn visit_variant_def(
@@ -970,6 +1001,32 @@ fn analyze_impl_trait_specific_error(
         return Err(diags);
     };
 
+    fn analyze_conflict_impl(
+        db: &dyn HirAnalysisDb,
+        implementor: Implementor,
+        diags: &mut Vec<TyDiagCollection>,
+    ) {
+        let trait_ = implementor.trait_(db);
+        let env = ingot_trait_env(db, trait_.ingot(db));
+        let Some(impls) = env.impls.get(&trait_.def(db)) else {
+            return;
+        };
+
+        for cand in impls {
+            if cand.does_conflict(db, implementor, &mut UnificationTable::new(db)) {
+                diags.push(
+                    TraitLowerDiag::conflict_impl(
+                        cand.hir_impl_trait(db),
+                        implementor.hir_impl_trait(db),
+                    )
+                    .into(),
+                );
+
+                return;
+            }
+        }
+    }
+
     // 5. Checks if implementor type satisfies the kind bound which is required by
     //    the trait.
     let expected_kind = implementor.trait_def(db).expected_implementor_kind(db);
@@ -1288,28 +1345,31 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
     }
 }
 
-fn analyze_conflict_impl(
+fn find_dependent_ty_param(
     db: &dyn HirAnalysisDb,
-    implementor: Implementor,
-    diags: &mut Vec<TyDiagCollection>,
-) {
-    let trait_ = implementor.trait_(db);
-    let env = ingot_trait_env(db, trait_.ingot(db));
-    let Some(impls) = env.impls.get(&trait_.def(db)) else {
-        return;
+    ident: IdentId,
+    scope: ScopeId,
+) -> Option<DependentTyId> {
+    let path = PathId::from_ident(db.as_hir_db(), ident);
+    let EarlyResolvedPath::Full(bucket) = resolve_path_early(db, path, scope) else {
+        return None;
     };
 
-    for cand in impls {
-        if cand.does_conflict(db, implementor, &mut UnificationTable::new(db)) {
-            diags.push(
-                TraitLowerDiag::conflict_impl(
-                    cand.hir_impl_trait(db),
-                    implementor.hir_impl_trait(db),
-                )
-                .into(),
-            );
+    let res = bucket.pick(NameDomain::Value).as_ref().ok()?;
+    let NameResKind::Scope(scope) = res.kind else {
+        return None;
+    };
 
-            return;
-        }
+    let (item, idx) = match scope {
+        ScopeId::GenericParam(item, idx) => (item, idx),
+        _ => return None,
+    };
+
+    let owner = GenericParamOwnerId::from_item_opt(db, item).unwrap();
+    let params = collect_generic_params(db, owner);
+    let ty = params.params.get(idx)?;
+    match ty.data(db) {
+        TyData::DependentTy(dep_ty) => Some(*dep_ty),
+        _ => None,
     }
 }
