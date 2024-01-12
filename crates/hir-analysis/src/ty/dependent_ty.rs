@@ -53,7 +53,15 @@ pub(crate) fn evaluate_dependent_ty(
             table.new_var(TyVarUniverse::Integral, &Kind::Star),
         ),
 
-        _ => todo!(),
+        _ => {
+            return DependentTyId::new(
+                db,
+                DependentTyData::Evaluated(
+                    EvaluatedDependentTy::Invalid,
+                    TyId::invalid(db, InvalidCause::InvalidDependentTyExpr { body: *body }),
+                ),
+            );
+        }
     };
 
     let data = match check_dependent_ty(db, ty, expected_ty, &mut table) {

@@ -108,6 +108,8 @@ pub enum TyLowerDiag {
     },
 
     AssocTy(DynLazySpan),
+
+    InvalidDependentTyExpr(DynLazySpan),
 }
 
 impl TyLowerDiag {
@@ -260,6 +262,7 @@ impl TyLowerDiag {
             Self::DependentTyExpected { .. } => 12,
             Self::NormalTypeExpected { .. } => 13,
             Self::AssocTy(_) => 14,
+            Self::InvalidDependentTyExpr(_) => 15,
         }
     }
 
@@ -302,6 +305,10 @@ impl TyLowerDiag {
             }
 
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
+
+            Self::InvalidDependentTyExpr(_) => {
+                "the expression is not supported yet in a dependent type context".to_string()
+            }
         }
     }
 
@@ -480,6 +487,12 @@ impl TyLowerDiag {
             Self::AssocTy(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "associated type is not implemented".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::InvalidDependentTyExpr(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "only literal expression is supported".to_string(),
                 span.resolve(db),
             )],
         }

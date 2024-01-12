@@ -1,4 +1,3 @@
-use crate::HirAnalysisDb;
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::TopLevelMod};
 
 use self::{
@@ -12,6 +11,7 @@ use self::{
     },
     ty_def::AdtRefId,
 };
+use crate::HirAnalysisDb;
 
 pub mod constraint_solver;
 pub mod def_analysis;

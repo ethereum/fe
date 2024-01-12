@@ -7,7 +7,7 @@ use hir::{
         kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Contract, Enum, Func, FuncParam as HirFuncParam, IdentId, IngotId, ItemKind, Partial,
+        Body, Contract, Enum, Func, FuncParam as HirFuncParam, IdentId, IngotId, ItemKind, Partial,
         Struct, TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
     },
     span::DynLazySpan,
@@ -208,12 +208,16 @@ impl TyId {
                         TyLowerDiag::normal_type_expected(db, span, *given).into()
                     }
 
-                    InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
-
                     InvalidCause::UnboundTypeAliasParam {
                         alias,
                         n_given_args: n_given_arg,
                     } => TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into(),
+
+                    InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
+
+                    InvalidCause::InvalidDependentTyExpr { body } => {
+                        TyLowerDiag::InvalidDependentTyExpr(body.lazy_span().into()).into()
+                    }
 
                     InvalidCause::Other => return,
                 };
@@ -680,6 +684,13 @@ pub enum InvalidCause {
 
     /// Associated Type is not allowed at the moment.
     AssocTy,
+
+    // The given expression is not supported yet in the dependent type context.
+    // TODO: Remove this error kind and introduce a new error kind for more specific cause when
+    // type inference is implemented.
+    InvalidDependentTyExpr {
+        body: Body,
+    },
 
     // TraitConstraintNotSat(PredicateId),
     /// `Other` indicates the cause is already reported in other analysis
