@@ -68,9 +68,7 @@ pub fn handle_hover(state: &mut Backend, req: lsp_server::Request) -> Result<(),
         })
     };
 
-    let top_mod = workspace
-        .top_mod_from_file_path(db, file_path)
-        .unwrap();
+    let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
     let early_resolution = goto_enclosing_path(db, top_mod, cursor);
 
     let goto_info = match early_resolution {
@@ -126,9 +124,7 @@ pub fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
-    let top_mod = workspace
-        .top_mod_from_file_path(db, file_path)
-        .unwrap();
+    let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
     let goto_info = goto_enclosing_path(db, top_mod, cursor);
 
     // Convert the goto info to a Location
