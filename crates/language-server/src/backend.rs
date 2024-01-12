@@ -1,4 +1,4 @@
-use std::fmt::Write;
+
 
 use std::sync::{Arc, Mutex};
 
@@ -10,10 +10,10 @@ use anyhow::Result;
 
 use log::{info, Level, Metadata, Record};
 use log::{LevelFilter, SetLoggerError};
-use lsp_server::Message;
+
 use lsp_types::{InitializeParams, InitializeResult, TextDocumentItem};
 
-use tokio::task;
+
 use tower_lsp::{Client, LanguageServer};
 
 pub struct Backend {
@@ -92,7 +92,7 @@ impl LanguageServer for Backend {
 
 use tracing::Subscriber;
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::FmtSubscriber;
+
 use tracing_subscriber::Layer;
 
 impl Backend {
@@ -114,7 +114,6 @@ impl Backend {
 
         futures::future::join_all(diagnostics).await;
     }
-
 
     // pub(crate) fn db(&self) -> &mut LanguageServerDatabase {
     //     let mut db = self.db.lock().unwrap();
@@ -204,7 +203,6 @@ impl Backend {
     //     Ok(())
     // }
 
-
     pub fn init_logger(&self, level: Level) -> Result<(), SetLoggerError> {
         let logger = LspLogger {
             level,
@@ -259,7 +257,7 @@ impl log::Log for LspLogger {
                         },
                         message,
                     )
-                    .await
+                    .await;
             });
         }
     }

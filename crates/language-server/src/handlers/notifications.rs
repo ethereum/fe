@@ -13,10 +13,7 @@ use crate::{
 #[cfg(target_arch = "wasm32")]
 use crate::util::DummyFilePathConversion;
 
-fn run_diagnostics(
-    state: &Backend,
-    path: &str,
-) -> Vec<common::diagnostics::CompleteDiagnostic> {
+fn run_diagnostics(state: &Backend, path: &str) -> Vec<common::diagnostics::CompleteDiagnostic> {
     let db = &mut *state.db.lock().unwrap();
     let workspace = &mut *state.workspace.lock().unwrap();
     let file_path = path;
