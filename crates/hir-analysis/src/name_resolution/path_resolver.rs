@@ -1,14 +1,13 @@
 #![allow(unused)]
 use hir::hir_def::{scope_graph::ScopeId, IdentId, Partial, PathId};
 
-use crate::{name_resolution::QueryDirective, HirAnalysisDb};
-
 use super::{
     name_resolver::{
         NameRes, NameResBucket, NameResolutionError, NameResolver, ResolvedQueryCacheStore,
     },
     NameDomain, NameQuery,
 };
+use crate::{name_resolution::QueryDirective, HirAnalysisDb};
 
 /// The result of early path resolution.
 /// There are two kinds of early resolution results:
@@ -109,7 +108,7 @@ impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
         segments: &[Partial<IdentId>],
         scope: ScopeId,
     ) -> PathResolutionResult<EarlyResolvedPathWithTrajectory> {
-        let mut i_path = IntermediatePath::new(segments, scope);
+        let mut i_path = IntermediatePath::new(self.db, segments, scope);
         loop {
             match i_path.state(self.db) {
                 IntermediatePathState::ReadyToFinalize => {
@@ -157,14 +156,14 @@ struct IntermediatePath<'a> {
 }
 
 impl<'a> IntermediatePath<'a> {
-    fn new(path: &'a [Partial<IdentId>], scope: ScopeId) -> Self {
-        let domain = NameDomain::from_scope(scope);
+    fn new(db: &dyn HirAnalysisDb, path: &'a [Partial<IdentId>], scope: ScopeId) -> Self {
+        let domain = NameDomain::from_scope(db, scope);
         Self {
             path,
             idx: 0,
             current_res: NameRes::new_from_scope(
                 scope,
-                NameDomain::from_scope(scope),
+                NameDomain::from_scope(db, scope),
                 super::NameDerivation::Def,
             ),
             trajectory: vec![],
