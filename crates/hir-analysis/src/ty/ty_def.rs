@@ -756,6 +756,8 @@ pub struct TyVar {
     pub(super) key: InferenceKey,
 }
 
+/// Represents the universe of a type variable that indicates what type domain
+/// can be unified with the type variable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TyVarUniverse {
     /// Type variable that can be unified with any other types.
