@@ -1,4 +1,5 @@
-use test_db::LowerMirTestDb;
+use fe_hir::hir_def::IngotId;
+use test_db::{initialize_analysis_pass, LowerMirTestDb};
 
 mod test_db;
 
@@ -29,12 +30,14 @@ fn mir_lower_std_lib() {
     let mut db = LowerMirTestDb::default();
 
     // Should return the same id
-    let std_ingot = IngotId::std_lib(&mut db);
+    let std_ingot = IngotId::dummy();
 
-    // let diags = std_ingot.diagnostics(&db);
-    // if !diags.is_empty() {
-    //     panic!("std lib analysis failed")
-    // }
+    let mut pm = initialize_analysis_pass(&db);
+    let diags = pm.run_on_module(std_ingot.root_mod(&db));
+
+    if !diags.is_empty() {
+        panic!("std lib analysis failed")
+    }
 
     // for &module in std_ingot.all_modules(db.upcast()).iter() {
     //     for func in db.mir_lower_module_all_functions(module).iter() {

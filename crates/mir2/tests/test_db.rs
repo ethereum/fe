@@ -13,7 +13,15 @@ use fe_common2::{
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
-use fe_hir::hir_def::TopLevelMod;
+use fe_hir::{analysis_pass::AnalysisPassManager, hir_def::TopLevelMod, ParsingPass};
+use fe_hir_analysis::{
+    name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
+    ty::{
+        FuncAnalysisPass, ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass,
+        TypeAliasAnalysisPass, TypeDefAnalysisPass,
+    },
+};
+use fe_mir2::LowerMirDb;
 // use hir::{
 //     hir_def::TopLevelMod,
 //     lower,
@@ -141,4 +149,19 @@ impl Default for LowerMirTestDb {
 
 impl salsa::Database for LowerMirTestDb {
     fn salsa_event(&self, _: salsa::Event) {}
+}
+
+pub fn initialize_analysis_pass(db: &LowerMirTestDb) -> AnalysisPassManager<'_> {
+    let mut pass_manager = AnalysisPassManager::new();
+    pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
+    pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(TypeDefAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ImplAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
+    pass_manager
 }
