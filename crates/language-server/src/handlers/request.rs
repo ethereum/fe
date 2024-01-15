@@ -7,16 +7,14 @@ use lsp_server::{Response, ResponseError};
 use serde::Deserialize;
 
 use crate::{
-    backend::Backend,
-    goto::{goto_enclosing_path, Cursor},
-    util::{to_lsp_location_from_scope, to_offset_from_position},
-    workspace::IngotFileContext,
+    backend::Backend, db::LanguageServerDatabase, goto::{goto_enclosing_path, Cursor}, util::{to_lsp_location_from_scope, to_offset_from_position}, workspace::{IngotFileContext, Workspace}
 };
 
-pub fn handle_hover(state: &mut Backend, req: lsp_server::Request) -> Result<(), anyhow::Error> {
+pub fn handle_hover(
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
+    req: lsp_server::Request) -> Result<(), anyhow::Error> {
     // TODO: get more relevant information for the hover
-    let db = &mut *state.db.lock().unwrap();
-    let workspace = &mut state.workspace;
     let params = lsp_types::HoverParams::deserialize(req.params)?;
     let file_path = &params
         .text_document_position_params
@@ -110,13 +108,12 @@ pub fn handle_hover(state: &mut Backend, req: lsp_server::Request) -> Result<(),
 use lsp_types::TextDocumentPositionParams;
 
 pub fn handle_goto_definition(
-    state: &mut Backend,
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
     req: lsp_server::Request,
 ) -> Result<(), anyhow::Error> {
     info!("handling goto definition request: {:?}", req);
     let params = TextDocumentPositionParams::deserialize(req.params)?;
-    let db = &mut *state.db.lock().unwrap();
-    let workspace = &mut state.workspace;
 
     // Convert the position to an offset in the file
     let file_text = std::fs::read_to_string(params.text_document.uri.path())?;
