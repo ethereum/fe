@@ -39,15 +39,15 @@ fn mir_lower_std_lib() {
         panic!("std lib analysis failed")
     }
 
-    // for &module in std_ingot.all_modules(db.upcast()).iter() {
-    //     for func in db.mir_lower_module_all_functions(module).iter() {
-    //         let body = func.body(&db);
-    //         let cfg = ControlFlowGraph::compute(&body);
-    //         let domtree = DomTree::compute(&cfg);
-    //         LoopTree::compute(&cfg, &domtree);
-    //         PostDomTree::compute(&body);
-    //     }
-    // }
+    for &module in std_ingot.all_modules(&db).iter() {
+        //     for func in db.mir_lower_module_all_functions(module).iter() {
+        //         let body = func.body(&db);
+        //         let cfg = ControlFlowGraph::compute(&body);
+        //         let domtree = DomTree::compute(&cfg);
+        //         LoopTree::compute(&cfg, &domtree);
+        //         PostDomTree::compute(&body);
+        //     }
+    }
 }
 
 // test_lowering! { mir_erc20_token, "demos/erc20_token.fe"}

@@ -1104,6 +1104,7 @@ dependencies = [
 name = "fe-library2"
 version = "0.23.0"
 dependencies = [
+ "fe-common2",
  "include_dir",
 ]
 

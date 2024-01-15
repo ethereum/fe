@@ -8,3 +8,4 @@ repository = "https://github.com/ethereum/fe"
 
 [dependencies]
 include_dir = "0.7.2"
+common = { path = "../common2", package = "fe-common2" }
