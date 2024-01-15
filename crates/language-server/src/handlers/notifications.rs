@@ -5,17 +5,21 @@ use serde::Deserialize;
 
 use crate::{
     backend::Backend,
-    // state::ServerState,
+    db::LanguageServerDatabase,
     util::diag_to_lsp,
-    workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile},
+    workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile, Workspace},
 };
 
 #[cfg(target_arch = "wasm32")]
 use crate::util::DummyFilePathConversion;
 
-fn run_diagnostics(state: &Backend, path: &str) -> Vec<common::diagnostics::CompleteDiagnostic> {
-    let db = &mut *state.db.lock().unwrap();
-    let workspace = &mut *state.workspace.lock().unwrap();
+fn run_diagnostics(
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
+    path: &str,
+) -> Vec<common::diagnostics::CompleteDiagnostic> {
+    // let db = &mut *state.db.lock().unwrap();
+    // let workspace = &mut *state.workspace.lock().unwrap();
     let file_path = path;
     let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
     db.analyze_top_mod(top_mod);
@@ -23,11 +27,12 @@ fn run_diagnostics(state: &Backend, path: &str) -> Vec<common::diagnostics::Comp
 }
 
 pub fn get_diagnostics(
-    state: &Backend,
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
     uri: lsp_types::Url,
 ) -> Result<FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>>, Error> {
-    let diags = run_diagnostics(state, uri.to_file_path().unwrap().to_str().unwrap());
-    let db = &mut *state.db.lock().unwrap();
+    let diags = run_diagnostics(db, workspace, uri.to_file_path().unwrap().to_str().unwrap());
+    // let db = &mut *state.db.lock().unwrap();
 
     let diagnostics = diags
         .into_iter()
@@ -48,13 +53,14 @@ pub fn get_diagnostics(
 }
 
 pub fn handle_document_did_open(
-    state: &mut Backend,
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidOpenTextDocumentParams::deserialize(note.params)?;
     {
-        let db = &mut *state.db.lock().unwrap();
-        let workspace = &mut *state.workspace.lock().unwrap();
+        // let db = &mut *state.db.lock().unwrap();
+        // let workspace = &mut *state.workspace.lock().unwrap();
         let input = workspace
             .input_from_file_path(
                 db,
@@ -69,8 +75,8 @@ pub fn handle_document_did_open(
             .unwrap();
         let _ = input.sync(db, None);
     }
-    let diagnostics = get_diagnostics(state, params.text_document.uri.clone())?;
-    send_diagnostics(state, diagnostics)
+    let diagnostics = get_diagnostics(db, workspace, params.text_document.uri.clone())?;
+    send_diagnostics(diagnostics)
 }
 
 // Currently this is used to handle document renaming since the "document open" handler is called
@@ -79,12 +85,14 @@ pub fn handle_document_did_open(
 // The fix: handle document renaming more explicitly in the "will rename" flow, along with the document
 // rename refactor.
 pub fn handle_document_did_close(
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
     state: &mut Backend,
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidCloseTextDocumentParams::deserialize(note.params)?;
-    let db = &mut *state.db.lock().unwrap();
-    let workspace = &mut *state.workspace.lock().unwrap();
+    // let db = &mut *state.db.lock().unwrap();
+    // let workspace = &mut *state.workspace.lock().unwrap();
     let input = workspace
         .input_from_file_path(
             db,
@@ -101,13 +109,14 @@ pub fn handle_document_did_close(
 }
 
 pub fn handle_document_did_change(
-    state: &mut Backend,
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidChangeTextDocumentParams::deserialize(note.params)?;
     {
-        let db = &mut *state.db.lock().unwrap();
-        let workspace = &mut *state.workspace.lock().unwrap();
+        // let db = &mut *state.db.lock().unwrap();
+        // let workspace = &mut *state.workspace.lock().unwrap();
         let input = workspace
             .input_from_file_path(
                 db,
@@ -122,13 +131,13 @@ pub fn handle_document_did_change(
             .unwrap();
         let _ = input.sync(db, Some(params.content_changes[0].text.clone()));
     }
-    let diagnostics = get_diagnostics(state, params.text_document.uri.clone())?;
+    let diagnostics = get_diagnostics(db, workspace, params.text_document.uri.clone())?;
     // info!("sending diagnostics... {:?}", diagnostics);
-    send_diagnostics(state, diagnostics)
+    send_diagnostics(diagnostics)
 }
 
 pub fn send_diagnostics(
-    _state: &mut Backend,
+    // _state: &mut Backend,
     diagnostics: FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>>,
 ) -> Result<(), Error> {
     let _results = diagnostics.into_iter().map(|(uri, diags)| {
@@ -152,7 +161,8 @@ pub fn send_diagnostics(
 }
 
 pub fn handle_watched_file_changes(
-    state: &mut Backend,
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidChangeWatchedFilesParams::deserialize(note.params)?;
@@ -164,8 +174,8 @@ pub fn handle_watched_file_changes(
 
         // TODO: sort out the mutable/immutable borrow issues here
         {
-            let db = &mut state.db.lock().unwrap();
-            let workspace = &mut state.workspace.lock().unwrap();
+            // let db = &mut state.db.lock().unwrap();
+            // let workspace = &mut state.workspace.lock().unwrap();
             match change.typ {
                 lsp_types::FileChangeType::CREATED => {
                     // TODO: handle this more carefully!
@@ -194,7 +204,7 @@ pub fn handle_watched_file_changes(
         }
         // collect diagnostics for the file
         if change.typ != lsp_types::FileChangeType::DELETED {
-            let diags = get_diagnostics(state, uri.clone())?;
+            let diags = get_diagnostics(db, workspace, uri.clone())?;
             for (uri, more_diags) in diags {
                 let diags = diagnostics.entry(uri).or_insert_with(Vec::new);
                 diags.extend(more_diags);
@@ -202,6 +212,6 @@ pub fn handle_watched_file_changes(
         }
     }
     // info!("sending diagnostics... {:?}", diagnostics);
-    send_diagnostics(state, diagnostics)
+    send_diagnostics(diagnostics)
     // Ok(())
 }
