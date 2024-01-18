@@ -4,10 +4,7 @@ use fxhash::FxHashMap;
 use serde::Deserialize;
 
 use crate::{
-    backend::Backend,
-    db::LanguageServerDatabase,
-    util::diag_to_lsp,
-    workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile, Workspace},
+    backend::Backend, db::LanguageServerDatabase, diagnostics::get_diagnostics, workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile, Workspace}
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -211,7 +208,5 @@ pub fn handle_watched_file_changes(
             }
         }
     }
-    // info!("sending diagnostics... {:?}", diagnostics);
-    send_diagnostics(diagnostics)
-    // Ok(())
+    Ok(())
 }
