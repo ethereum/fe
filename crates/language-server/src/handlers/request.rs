@@ -7,13 +7,17 @@ use lsp_server::{Response, ResponseError};
 use serde::Deserialize;
 
 use crate::{
-    backend::Backend, db::LanguageServerDatabase, goto::{goto_enclosing_path, Cursor}, util::{to_lsp_location_from_scope, to_offset_from_position}, workspace::{IngotFileContext, Workspace}
+    db::LanguageServerDatabase,
+    goto::{goto_enclosing_path, Cursor},
+    util::{to_lsp_location_from_scope, to_offset_from_position},
+    workspace::{IngotFileContext, Workspace},
 };
 
 pub fn handle_hover(
     db: &mut LanguageServerDatabase,
     workspace: &mut Workspace,
-    req: lsp_server::Request) -> Result<(), anyhow::Error> {
+    req: lsp_server::Request,
+) -> Result<(), anyhow::Error> {
     // TODO: get more relevant information for the hover
     let params = lsp_types::HoverParams::deserialize(req.params)?;
     let file_path = &params
