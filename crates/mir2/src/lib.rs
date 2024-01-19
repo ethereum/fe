@@ -1,4 +1,4 @@
-use fe_hir::HirDb;
+use hir::HirDb;
 
 // pub mod analysis;
 // pub mod graphviz;

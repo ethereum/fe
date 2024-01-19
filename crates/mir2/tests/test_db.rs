@@ -8,20 +8,19 @@ use std::collections::{BTreeMap, BTreeSet};
 //         termcolor::{BufferWriter, ColorChoice},
 //     },
 // };
-use fe_common2::{
+use common::{
     diagnostics::Span,
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
-use fe_hir::{analysis_pass::AnalysisPassManager, hir_def::TopLevelMod, ParsingPass};
-use fe_hir_analysis::{
+use hir::{analysis_pass::AnalysisPassManager, hir_def::TopLevelMod, ParsingPass};
+use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         FuncAnalysisPass, ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass,
         TypeAliasAnalysisPass, TypeDefAnalysisPass,
     },
 };
-use fe_mir2::LowerMirDb;
 // use hir::{
 //     hir_def::TopLevelMod,
 //     lower,
@@ -33,11 +32,11 @@ use fe_mir2::LowerMirDb;
 type CodeSpanFileId = usize;
 
 #[salsa::db(
-    fe_common2::Jar,
-    fe_hir::Jar,
-    fe_hir::SpannedJar,
-    fe_hir::LowerJar,
-    fe_hir_analysis::Jar
+    common::Jar,
+    hir::Jar,
+    hir::SpannedJar,
+    hir::LowerJar,
+    hir_analysis::Jar
 )]
 pub struct LowerMirTestDb {
     storage: salsa::Storage<Self>,
@@ -52,10 +51,16 @@ impl LowerMirTestDb {
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into());
 
+        // let top_mod = lower::map_file_to_mod(self, input_file);
+
         // let mut prop_formatter = HirPropertyFormatter::default();
         // let top_mod = self.register_file(&mut prop_formatter, root);
         // let top_mod = self.register_file(root);
         // top_mod
+    }
+
+    pub fn new_std_lib(&mut self) {
+        library::std_lib_input_ingot(self);
     }
 
     fn register_file(&self, input_file: InputFile) {

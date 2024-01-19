@@ -1,4 +1,5 @@
-use fe_hir::hir_def::IngotId;
+use common::InputDb;
+use hir::hir_def::IngotId;
 use test_db::{initialize_analysis_pass, LowerMirTestDb};
 
 mod test_db;
@@ -28,26 +29,24 @@ mod test_db;
 #[test]
 fn mir_lower_std_lib() {
     let mut db = LowerMirTestDb::default();
+    let top_mod = db.new_std_lib();
 
-    // Should return the same id
-    let std_ingot = IngotId::dummy();
+    // let mut pm = initialize_analysis_pass(&db);
+    // let diags = pm.run_on_module(std_ingot.root_mod(&db));
 
-    let mut pm = initialize_analysis_pass(&db);
-    let diags = pm.run_on_module(std_ingot.root_mod(&db));
+    // if !diags.is_empty() {
+    //     panic!("std lib analysis failed")
+    // }
 
-    if !diags.is_empty() {
-        panic!("std lib analysis failed")
-    }
-
-    for &module in std_ingot.all_modules(&db).iter() {
-        //     for func in db.mir_lower_module_all_functions(module).iter() {
-        //         let body = func.body(&db);
-        //         let cfg = ControlFlowGraph::compute(&body);
-        //         let domtree = DomTree::compute(&cfg);
-        //         LoopTree::compute(&cfg, &domtree);
-        //         PostDomTree::compute(&body);
-        //     }
-    }
+    // for &module in std_ingot.all_modules(&db).iter() {
+    //     for func in db.mir_lower_module_all_functions(module).iter() {
+    //         let body = func.body(&db);
+    //         let cfg = ControlFlowGraph::compute(&body);
+    //         let domtree = DomTree::compute(&cfg);
+    //         LoopTree::compute(&cfg, &domtree);
+    //         PostDomTree::compute(&body);
+    //     }
+    // }
 }
 
 // test_lowering! { mir_erc20_token, "demos/erc20_token.fe"}

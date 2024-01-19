@@ -7,10 +7,10 @@ license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 
 [dependencies]
-fe-common2 = { path = "../common2", version = "^0.23.0" }
-fe-parser2 = { path = "../parser2", version = "^0.23.0" }
-fe-hir-analysis = { path = "../hir-analysis", version = "^0.23.0" }
-fe-hir = { path = "../hir", version = "^0.23.0" }
+common = { path = "../common2", package = "fe-common2" }
+parser = { path = "../parser2", package = "fe-parser2" }
+hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
+hir = { path = "../hir", package = "fe-hir" }
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
 smol_str = "0.1.21"
 num-bigint = "0.4.3"
@@ -23,4 +23,4 @@ indexmap = "1.6.2"
 
 [dev-dependencies]
 test-files = { path = "../test-files", package = "fe-test-files" }
-fe-library2 = { path = "../library2" }
+library = { path = "../library2" , package = "fe-library2"}
