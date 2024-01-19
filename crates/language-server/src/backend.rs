@@ -3,18 +3,12 @@ use tokio::sync::Mutex;
 
 use crate::db::LanguageServerDatabase;
 
-
-
-use crate::workspace::{Workspace};
+use crate::workspace::Workspace;
 use anyhow::Result;
-
-
-
-
 use lsp_types::{
     DidChangeWatchedFilesRegistrationOptions, FileSystemWatcher, GlobPattern, Registration,
 };
-use tower_lsp::{Client};
+use tower_lsp::Client;
 
 pub struct Backend {
     // pub(crate) sender: Arc<Mutex<Sender<Message>>>,
@@ -22,7 +16,6 @@ pub struct Backend {
     pub(crate) db: Arc<tokio::sync::Mutex<LanguageServerDatabase>>,
     pub(crate) workspace: Arc<tokio::sync::Mutex<Workspace>>,
 }
-
 
 impl Backend {
     pub fn new(client: Client) -> Self {
@@ -52,5 +45,4 @@ impl Backend {
         };
         Ok(client.register_capability(vec![registration]).await?)
     }
-
 }

@@ -1,1 +1,1 @@
-pub(crate) const LANGUAGE_ID : &str = "fe";
+pub(crate) const LANGUAGE_ID: &str = "fe";

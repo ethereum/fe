@@ -12,7 +12,11 @@ use common::{
 use fxhash::FxHashMap;
 use hir::diagnostics::DiagnosticVoucher;
 
-use crate::{db::{LanguageServerDatabase, LanguageServerDb}, util::diag_to_lsp, workspace::{IngotFileContext, Workspace}};
+use crate::{
+    db::{LanguageServerDatabase, LanguageServerDb},
+    util::diag_to_lsp,
+    workspace::{IngotFileContext, Workspace},
+};
 
 pub trait ToCsDiag {
     fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile>;
