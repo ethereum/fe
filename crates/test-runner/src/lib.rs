@@ -133,7 +133,7 @@ pub fn execute(name: &str, events: &[Event], bytecode: &str, sink: &mut TestSink
             .map(|log| {
                 if let Some(Some(event)) = log
                     .topics
-                    .get(0)
+                    .first()
                     .map(|sig| events.get(&Hash::from_slice(sig.as_bytes())))
                 {
                     let topics = log
