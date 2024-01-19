@@ -72,16 +72,12 @@ impl LanguageServer for Backend {
         .await;
     }
 
-
     // Currently this is used to handle document renaming since the "document open" handler is called
     // before the "document was renamed" handler.
     //
     // The fix: handle document renaming more explicitly in the "will rename" flow, along with the document
     // rename refactor.
-    async fn did_close(
-        &self,
-        params: DidCloseTextDocumentParams,
-    ) {
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let workspace = &mut *self.workspace.lock().await;
         let db = &mut *self.db.lock().await;
         let input = workspace

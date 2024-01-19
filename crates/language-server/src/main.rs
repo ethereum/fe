@@ -1,13 +1,13 @@
+mod backend;
+mod capabilities;
 mod db;
 mod diagnostics;
-mod goto;
-mod capabilities;
-mod backend;
-mod util;
-mod workspace;
 mod globals;
+mod goto;
 mod language_server;
 mod logger;
+mod util;
+mod workspace;
 
 use backend::Backend;
 use db::Jar;
