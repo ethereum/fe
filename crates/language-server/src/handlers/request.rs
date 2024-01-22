@@ -142,8 +142,6 @@ pub fn handle_goto_definition(
         None => return Ok(()),
     };
 
-    // info!("scopes: {:?}", scopes);
-
     let locations = scopes
         .iter()
         .filter_map(|scope| *scope)

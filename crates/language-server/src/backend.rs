@@ -11,13 +11,24 @@ use lsp_types::{
 use tower_lsp::Client;
 
 pub struct Backend {
-    // pub(crate) sender: Arc<Mutex<Sender<Message>>>,
-    pub(crate) client: Arc<Mutex<Client>>,
-    pub(crate) db: Arc<tokio::sync::Mutex<LanguageServerDatabase>>,
-    pub(crate) workspace: Arc<tokio::sync::Mutex<Workspace>>,
+    client: Arc<Mutex<Client>>,
+    db: Arc<Mutex<LanguageServerDatabase>>,
+    workspace: Arc<Mutex<Workspace>>,
 }
 
 impl Backend {
+    pub(crate) fn db(&self) -> Arc<Mutex<LanguageServerDatabase>> {
+        self.db.clone()
+    }
+
+    pub(crate) fn workspace(&self) -> Arc<Mutex<Workspace>> {
+        self.workspace.clone()
+    }
+
+    pub(crate) fn client(&self) -> Arc<Mutex<Client>> {
+        self.client.clone()
+    }
+
     pub fn new(client: Client) -> Self {
         let db = Arc::new(Mutex::new(LanguageServerDatabase::default()));
         let workspace = Arc::new(Mutex::new(Workspace::default()));

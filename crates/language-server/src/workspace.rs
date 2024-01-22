@@ -34,6 +34,12 @@ pub trait IngotFileContext {
         db: &mut LanguageServerDatabase,
         path: &str,
     ) -> Option<TopLevelMod>;
+    fn rename_file(
+        &mut self,
+        db: &mut LanguageServerDatabase,
+        old_path: &str,
+        new_path: &str,
+    ) -> Result<()>;
 }
 
 pub struct LocalIngotContext {
@@ -108,6 +114,20 @@ impl IngotFileContext for LocalIngotContext {
         let file = self.input_from_file_path(db, path)?;
         Some(map_file_to_mod(db, file))
     }
+
+    fn rename_file(
+        &mut self,
+        db: &mut LanguageServerDatabase,
+        old_path: &str,
+        new_path: &str,
+    ) -> Result<()> {
+        let file = self.files.remove(old_path);
+        if let Some(file) = file {
+            file.set_path(db).to(new_path.into());
+            self.files.insert(new_path, file);
+        }
+        Ok(())
+    }
 }
 
 pub struct StandaloneIngotContext {
@@ -175,6 +195,20 @@ impl IngotFileContext for StandaloneIngotContext {
     ) -> Option<TopLevelMod> {
         let file = self.input_from_file_path(db, path)?;
         Some(map_file_to_mod(db, file))
+    }
+
+    fn rename_file(
+        &mut self,
+        db: &mut LanguageServerDatabase,
+        old_path: &str,
+        new_path: &str,
+    ) -> Result<()> {
+        let file = self.files.remove(old_path);
+        if let Some(file) = file {
+            file.set_path(db).to(new_path.into());
+            self.files.insert(new_path, file);
+        }
+        Ok(())
     }
 }
 
@@ -251,27 +285,27 @@ impl Workspace {
         info!("Syncing ingot at {}", config_path);
 
         let ingot_root = config_path.strip_suffix(FE_CONFIG_SUFFIX).unwrap();
-        let paths = &glob::glob(&format!("{ingot_root}/src/**/*.fe"))
+        let actual_paths = &glob::glob(&format!("{ingot_root}/src/**/*.fe"))
             .unwrap()
             .map(|p| p.unwrap().to_str().unwrap().to_string())
             .collect::<Vec<String>>();
 
-        info!("Found {} files in ingot", paths.len());
-        info!("Syncing ingot files: {:?}", paths);
+        info!("Found {} files in ingot", actual_paths.len());
+        info!("Syncing ingot files: {:?}", actual_paths);
 
         let ingot_context = self
             .ingot_context_from_config_path(db, config_path)
             .unwrap();
 
-        let ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
-        for path in ingot_context_file_keys {
-            if !paths.contains(path) {
+        let previous_ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
+        for path in previous_ingot_context_file_keys {
+            if !actual_paths.contains(path) {
                 ingot_context.files.remove(path);
             }
         }
 
-        for path in paths {
-            if !ingot_context_file_keys.contains(path) {
+        for path in actual_paths {
+            if !previous_ingot_context_file_keys.contains(path) {
                 let file = ingot_context.input_from_file_path(db, path);
                 let contents = std::fs::read_to_string(path).unwrap();
                 file.unwrap().set_text(db).to(contents);
@@ -342,6 +376,21 @@ impl IngotFileContext for Workspace {
                 .top_mod_from_file_path(db, path)
         }
     }
+
+    fn rename_file(
+        &mut self,
+        db: &mut LanguageServerDatabase,
+        old_path: &str,
+        new_path: &str,
+    ) -> Result<()> {
+        let ctx = get_containing_ingot(&mut self.ingot_contexts, old_path);
+        if ctx.is_some() {
+            ctx.unwrap().rename_file(db, old_path, new_path)
+        } else {
+            self.standalone_ingot_context
+                .rename_file(db, old_path, new_path)
+        }
+    }
 }
 
 pub trait SyncableInputFile {
@@ -349,6 +398,7 @@ pub trait SyncableInputFile {
     fn sync_from_fs(&self, db: &mut LanguageServerDatabase) -> Result<()>;
     fn sync_from_text(&self, db: &mut LanguageServerDatabase, contents: String) -> Result<()>;
     fn remove_from_ingot(&self, db: &mut LanguageServerDatabase) -> Result<()>;
+    // fn rename(&self, db: &mut LanguageServerDatabase, new_path: String) -> Result<()>;
 }
 
 impl SyncableInputFile for InputFile {
@@ -366,6 +416,10 @@ impl SyncableInputFile for InputFile {
         // check to see if the file actually exists anymore:
         let path = self.path(db);
         if !path.exists() {
+            info!(
+                "File {:?} no longer exists... removing from workspace",
+                path
+            );
             // if not let's remove it from the ingot
             self.remove_from_ingot(db)
         } else if let Some(contents) = contents {

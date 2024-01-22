@@ -47,7 +47,7 @@ impl Backend {
     pub fn init_logger(&self, level: Level) -> Result<(), SetLoggerError> {
         let logger = Logger {
             level,
-            client: self.client.clone(),
+            client: self.client(),
         };
         let static_logger = Box::leak(Box::new(logger));
         log::set_logger(static_logger)?;
