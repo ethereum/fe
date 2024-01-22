@@ -274,10 +274,13 @@ impl<'db> DefAnalyzer<'db> {
     /// This method verifies if
     /// 1. the given `ty` has `*` kind(i.e, concrete type)
     /// 2. the given `ty` is not dependent type
-    fn verify_concrete_type(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
+    /// TODo: This method is a stop-gap implementation until we design a true
+    /// dependent type system.
+    fn verify_normal_star_type(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
         if !ty.has_star_kind(self.db) {
-            self.diags.push(TyLowerDiag::non_concrete_ty(span).into());
+            self.diags
+                .push(TyLowerDiag::expected_star_kind_ty(span).into());
             false
         } else if ty.is_dependent_ty(self.db) {
             self.diags
@@ -454,7 +457,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         };
 
-        if !self.verify_concrete_type(ty, ctxt.span().unwrap().ty().into()) {
+        if !self.verify_normal_star_type(ty, ctxt.span().unwrap().ty().into()) {
             return;
         }
 
@@ -498,7 +501,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
                     continue;
                 };
 
-                self.verify_concrete_type(elem_ty, span.elem_ty(i).into());
+                self.verify_normal_star_type(elem_ty, span.elem_ty(i).into());
             }
         }
         walk_variant_def(self, ctxt, variant);
@@ -692,6 +695,10 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
         walk_func(self, ctxt, hir_func);
 
+        if let Some(ret_ty) = hir_func.ret_ty(self.db.as_hir_db()) {
+            self.verify_normal_star_type(ret_ty, hir_func.lazy_span().ret_ty().into());
+        }
+
         self.assumptions = constraints;
         self.def = def;
     }
@@ -748,7 +755,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             self.verify_self_type(hir_ty, ty_span.clone());
         }
 
-        if !self.verify_concrete_type(hir_ty, ty_span) {
+        if !self.verify_normal_star_type(hir_ty, ty_span) {
             return;
         }
 

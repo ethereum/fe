@@ -181,7 +181,9 @@ impl TyId {
             fn visit_invalid(&mut self, db: &dyn HirAnalysisDb, cause: &InvalidCause) {
                 let span = self.span.clone();
                 let diag = match cause {
-                    InvalidCause::NotFullyApplied => TyLowerDiag::non_concrete_ty(span).into(),
+                    InvalidCause::NotFullyApplied => {
+                        TyLowerDiag::expected_star_kind_ty(span).into()
+                    }
 
                     InvalidCause::KindMismatch { expected, given } => {
                         TyLowerDiag::invalid_type_arg_kind(db, span, expected.clone(), *given)
