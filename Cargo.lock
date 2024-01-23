@@ -933,6 +933,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-codegen2"
+version = "0.23.0"
+dependencies = [
+ "fe-abi",
+ "fe-common",
+ "fe-hir",
+ "fe-hir-analysis",
+ "fe-mir",
+ "fe-mir2",
+ "fxhash",
+ "indexmap",
+ "num-bigint",
+ "salsa-2022",
+ "smol_str",
+ "yultsur",
+]
+
+[[package]]
 name = "fe-common"
 version = "0.23.0"
 dependencies = [

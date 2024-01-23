@@ -5,7 +5,7 @@ use fe_mir::ir::{
     FunctionBody, Inst, InstId, TypeId, TypeKind, Value, ValueId,
 };
 
-use crate::db::CodegenDb;
+use crate::CodegenDb;
 
 use super::critical_edge::CriticalEdgeSplitter;
 

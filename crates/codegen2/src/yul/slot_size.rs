@@ -1,6 +1,6 @@
 use fe_mir::ir::{Type, TypeId, TypeKind};
 
-use crate::db::CodegenDb;
+use crate::CodegenDb;
 
 // We use the same slot size between memory and storage to simplify the
 // implementation and minimize gas consumption in memory <-> storage copy

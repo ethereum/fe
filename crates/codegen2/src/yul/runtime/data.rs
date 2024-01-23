@@ -1,10 +1,10 @@
 use crate::{
-    db::CodegenDb,
     yul::{
         runtime::{make_ptr, BitMask},
         slot_size::{yul_primitive_type, SLOT_SIZE},
         YulVariable,
     },
+    CodegenDb,
 };
 
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};

@@ -1,15 +1,15 @@
-use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::{function::Linkage, FunctionId};
+use hir::hir_def::Contract;
 use yultsur::{yul, *};
 
 use crate::{
-    db::CodegenDb,
     yul::{runtime::AbiSrcLocation, YulVariable},
+    CodegenDb,
 };
 
 use super::context::Context;
 
-pub fn lower_contract_deployable(db: &dyn CodegenDb, contract: ContractId) -> yul::Object {
+pub fn lower_contract_deployable(db: &dyn CodegenDb, contract: Contract) -> yul::Object {
     let mut context = Context::default();
 
     let constructor = if let Some(init) = contract.init_function(db.upcast()) {
@@ -61,7 +61,7 @@ pub fn lower_contract_deployable(db: &dyn CodegenDb, contract: ContractId) -> yu
     normalize_object(object)
 }
 
-pub fn lower_contract(db: &dyn CodegenDb, contract: ContractId) -> yul::Object {
+pub fn lower_contract(db: &dyn CodegenDb, contract: Contract) -> yul::Object {
     let exported_funcs: Vec<_> = db
         .mir_lower_contract_all_functions(contract)
         .iter()
@@ -210,7 +210,7 @@ fn dispatch_arm(db: &dyn CodegenDb, context: &mut Context, func: FunctionId) -> 
 fn make_init(
     db: &dyn CodegenDb,
     context: &mut Context,
-    contract: ContractId,
+    contract: Contract,
     init: FunctionId,
 ) -> Vec<yul::Statement> {
     context.function_dependency.insert(init);
@@ -250,7 +250,7 @@ fn make_init(
     }
 }
 
-fn make_deploy(db: &dyn CodegenDb, contract: ContractId) -> Vec<yul::Statement> {
+fn make_deploy(db: &dyn CodegenDb, contract: Contract) -> Vec<yul::Statement> {
     let contract_symbol =
         identifier_expression! { (format!{r#""{}""#, db.codegen_contract_symbol_name(contract)}) };
     let size = YulVariable::new("$$size");

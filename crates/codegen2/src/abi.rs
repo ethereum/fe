@@ -13,8 +13,7 @@ use fe_analyzer::{
 };
 use fe_mir::ir::{self, FunctionId, TypeId};
 
-use crate::db::CodegenDb;
-
+#[salsa::tracked(return_ref)]
 pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
     let mut funcs = vec![];
 
@@ -46,6 +45,7 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
     AbiContract::new(funcs, events)
 }
 
+#[salsa::tracked(return_ref)]
 pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
     // We use a legalized signature.
     let sig = db.codegen_legalized_signature(function);
@@ -87,6 +87,7 @@ pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {
     AbiFunction::new(func_type, name.to_string(), args, ret_ty, state_mutability)
 }
 
+#[salsa::tracked(return_ref)]
 pub fn abi_function_argument_maximum_size(db: &dyn CodegenDb, function: FunctionId) -> usize {
     let sig = db.codegen_legalized_signature(function);
     sig.params.iter().fold(0, |acc, param| {
@@ -94,6 +95,7 @@ pub fn abi_function_argument_maximum_size(db: &dyn CodegenDb, function: Function
     })
 }
 
+#[salsa::tracked(return_ref)]
 pub fn abi_function_return_maximum_size(db: &dyn CodegenDb, function: FunctionId) -> usize {
     let sig = db.codegen_legalized_signature(function);
     sig.return_type
@@ -101,6 +103,7 @@ pub fn abi_function_return_maximum_size(db: &dyn CodegenDb, function: FunctionId
         .unwrap_or_default()
 }
 
+#[salsa::tracked(return_ref)]
 pub fn abi_type_maximum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
     let abi_type = db.codegen_abi_type(ty);
     if abi_type.is_static() {
@@ -132,6 +135,7 @@ pub fn abi_type_maximum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
     }
 }
 
+#[salsa::tracked(return_ref)]
 pub fn abi_type_minimum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
     let abi_type = db.codegen_abi_type(ty);
     if abi_type.is_static() {
@@ -162,6 +166,7 @@ pub fn abi_type_minimum_size(db: &dyn CodegenDb, ty: TypeId) -> usize {
     }
 }
 
+#[salsa::tracked(return_ref)]
 pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
     let legalized_ty = db.codegen_legalized_type(ty);
 
@@ -236,6 +241,7 @@ pub fn abi_type(db: &dyn CodegenDb, ty: TypeId) -> AbiType {
     }
 }
 
+#[salsa::tracked(return_ref)]
 pub fn abi_event(db: &dyn CodegenDb, ty: TypeId) -> AbiEvent {
     debug_assert!(ty.is_struct(db.upcast()));
 

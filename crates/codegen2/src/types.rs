@@ -3,8 +3,7 @@ use fe_mir::ir::{
     Type, TypeId, TypeKind,
 };
 
-use crate::db::CodegenDb;
-
+#[salsa::tracked(return_ref)]
 pub fn legalized_type(db: &dyn CodegenDb, ty: TypeId) -> TypeId {
     let ty_data = ty.data(db.upcast());
     let ty_kind = match &ty.data(db.upcast()).kind {

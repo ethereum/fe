@@ -1,20 +1,20 @@
+use hir::hir_def::Contract;
 use indexmap::IndexSet;
 
-use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::FunctionId;
 use fxhash::FxHashSet;
 use yultsur::yul;
 
 use crate::{
-    db::CodegenDb,
     yul::runtime::{DefaultRuntimeProvider, RuntimeProvider},
+    CodegenDb,
 };
 
 use super::{lower_contract_deployable, lower_function};
 
 pub struct Context {
     pub runtime: Box<dyn RuntimeProvider>,
-    pub(super) contract_dependency: IndexSet<ContractId>,
+    pub(super) contract_dependency: IndexSet<Contract>,
     pub(super) function_dependency: IndexSet<FunctionId>,
     pub(super) string_constants: IndexSet<String>,
     pub(super) lowered_functions: FxHashSet<FunctionId>,

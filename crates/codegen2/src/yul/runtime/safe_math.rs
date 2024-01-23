@@ -1,4 +1,4 @@
-use crate::{db::CodegenDb, yul::YulVariable};
+use crate::{yul::YulVariable, CodegenDb};
 
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};
 

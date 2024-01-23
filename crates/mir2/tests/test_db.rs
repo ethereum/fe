@@ -51,7 +51,7 @@ impl LowerMirTestDb {
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into());
 
-        let top_mod = lower::map_file_to_mod(self, input_file);
+        // let top_mod = lower::map_file_to_mod(self, input_file);
 
         // let mut prop_formatter = HirPropertyFormatter::default();
         // let top_mod = self.register_file(&mut prop_formatter, root);
@@ -59,8 +59,9 @@ impl LowerMirTestDb {
         // top_mod
     }
 
-    pub fn new_std_lib(&mut self) {
-        library::std_lib_input_ingot(self);
+    pub fn new_std_lib(&mut self) -> TopLevelMod {
+        let input = library::std_lib_input_ingot(self);
+        lower::map_file_to_mod(self, input_file)
     }
 
     fn register_file(&self, input_file: InputFile) {

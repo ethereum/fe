@@ -1,6 +1,6 @@
 use fe_mir::ir::{FunctionSignature, TypeKind};
 
-use crate::db::CodegenDb;
+use crate::CodegenDb;
 
 pub fn legalize_func_signature(db: &dyn CodegenDb, sig: &mut FunctionSignature) {
     // Remove param if the type is contract or zero-sized.

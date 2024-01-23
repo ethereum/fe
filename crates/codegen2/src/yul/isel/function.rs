@@ -25,13 +25,13 @@ use yultsur::{
 };
 
 use crate::{
-    db::CodegenDb,
     yul::{
         isel::inst_order::StructuralInst,
         runtime::{self, RuntimeProvider},
         slot_size::{function_hash_type, yul_primitive_type, SLOT_SIZE},
         YulVariable,
     },
+    CodegenDb,
 };
 
 pub fn lower_function(

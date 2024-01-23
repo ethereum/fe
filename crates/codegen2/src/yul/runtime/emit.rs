@@ -1,6 +1,6 @@
 use crate::{
-    db::CodegenDb,
     yul::{runtime::make_ptr, slot_size::SLOT_SIZE, YulVariable},
+    CodegenDb,
 };
 
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};

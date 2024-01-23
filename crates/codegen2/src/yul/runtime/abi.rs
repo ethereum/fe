@@ -1,10 +1,10 @@
 use crate::{
-    db::CodegenDb,
     yul::{
         runtime::{error_revert_numeric, make_ptr},
         slot_size::{yul_primitive_type, SLOT_SIZE},
         YulVariable,
     },
+    CodegenDb,
 };
 
 use super::{AbiSrcLocation, DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};

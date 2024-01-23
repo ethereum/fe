@@ -1,20 +1,20 @@
 use crate::{
-    db::CodegenDb,
     yul::{runtime::AbiSrcLocation, YulVariable},
+    CodegenDb,
 };
 
 use super::{DefaultRuntimeProvider, RuntimeFunction, RuntimeProvider};
 
-use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::{FunctionId, Type, TypeKind};
 
+use hir::hir_def::Contract;
 use yultsur::*;
 
 pub(super) fn make_create(
     provider: &mut DefaultRuntimeProvider,
     db: &dyn CodegenDb,
     func_name: &str,
-    contract: ContractId,
+    contract: Contract,
 ) -> RuntimeFunction {
     let func_name = YulVariable::new(func_name);
     let contract_symbol = literal_expression! {
@@ -40,7 +40,7 @@ pub(super) fn make_create2(
     provider: &mut DefaultRuntimeProvider,
     db: &dyn CodegenDb,
     func_name: &str,
-    contract: ContractId,
+    contract: Contract,
 ) -> RuntimeFunction {
     let func_name = YulVariable::new(func_name);
     let contract_symbol = literal_expression! {

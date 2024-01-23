@@ -32,11 +32,11 @@ fn mir_lower_std_lib() {
     let top_mod = db.new_std_lib();
 
     let mut pm = initialize_analysis_pass(&db);
-    let diags = pm.run_on_module(std_ingot.root_mod(&db));
+    let diags = pm.run_on_module(top_mod);
 
-    // if !diags.is_empty() {
-    //     panic!("std lib analysis failed")
-    // }
+    if !diags.is_empty() {
+        panic!("std lib analysis failed")
+    }
 
     // for &module in std_ingot.all_modules(&db).iter() {
     //     for func in db.mir_lower_module_all_functions(module).iter() {

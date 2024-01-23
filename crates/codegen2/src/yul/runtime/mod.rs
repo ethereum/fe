@@ -8,14 +8,14 @@ mod safe_math;
 use std::fmt::Write;
 
 use fe_abi::types::AbiType;
-use fe_analyzer::namespace::items::ContractId;
 use fe_mir::ir::{types::ArrayDef, FunctionId, TypeId, TypeKind};
+use hir::hir_def::Contract;
 use indexmap::IndexMap;
 use yultsur::*;
 
 use num_bigint::BigInt;
 
-use crate::{db::CodegenDb, yul::slot_size::SLOT_SIZE};
+use crate::{yul::slot_size::SLOT_SIZE, CodegenDb};
 
 use super::slot_size::yul_primitive_type;
 
@@ -29,14 +29,14 @@ pub trait RuntimeProvider {
     fn create(
         &mut self,
         db: &dyn CodegenDb,
-        contract: ContractId,
+        contract: Contract,
         value: yul::Expression,
     ) -> yul::Expression;
 
     fn create2(
         &mut self,
         db: &dyn CodegenDb,
-        contract: ContractId,
+        contract: Contract,
         value: yul::Expression,
         salt: yul::Expression,
     ) -> yul::Expression;
@@ -272,7 +272,7 @@ impl RuntimeProvider for DefaultRuntimeProvider {
     fn create(
         &mut self,
         db: &dyn CodegenDb,
-        contract: ContractId,
+        contract: Contract,
         value: yul::Expression,
     ) -> yul::Expression {
         let name = format!("$create_{}", db.codegen_contract_symbol_name(contract));
@@ -285,7 +285,7 @@ impl RuntimeProvider for DefaultRuntimeProvider {
     fn create2(
         &mut self,
         db: &dyn CodegenDb,
-        contract: ContractId,
+        contract: Contract,
         value: yul::Expression,
         salt: yul::Expression,
     ) -> yul::Expression {

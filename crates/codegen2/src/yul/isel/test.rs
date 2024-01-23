@@ -1,6 +1,7 @@
+use crate::CodegenDb;
+
 use super::context::Context;
-use crate::db::CodegenDb;
-use fe_analyzer::namespace::items::FunctionId;
+use fe_mir::ir::FunctionId;
 use yultsur::{yul, *};
 
 pub fn lower_test(db: &dyn CodegenDb, test: FunctionId) -> yul::Object {
