@@ -937,10 +937,8 @@ name = "fe-codegen2"
 version = "0.23.0"
 dependencies = [
  "fe-abi",
- "fe-common",
  "fe-hir",
  "fe-hir-analysis",
- "fe-mir",
  "fe-mir2",
  "fxhash",
  "indexmap",

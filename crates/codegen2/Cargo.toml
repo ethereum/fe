@@ -8,8 +8,6 @@ edition = "2021"
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
 hir = { path = "../hir", package = "fe-hir" }
 mir = { path = "../mir2", package = "fe-mir2" }
-fe-mir = { path = "../mir", version = "^0.23.0"}
-fe-common = { path = "../common", version = "^0.23.0"}
 fe-abi = { path = "../abi", version = "^0.23.0"}
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
 num-bigint = "0.4.3"
