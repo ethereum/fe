@@ -384,8 +384,8 @@ impl IngotFileContext for Workspace {
         new_path: &str,
     ) -> Result<()> {
         let ctx = get_containing_ingot(&mut self.ingot_contexts, old_path);
-        if ctx.is_some() {
-            ctx.unwrap().rename_file(db, old_path, new_path)
+        if let Some(ctx) = ctx {
+            ctx.rename_file(db, old_path, new_path)
         } else {
             self.standalone_ingot_context
                 .rename_file(db, old_path, new_path)

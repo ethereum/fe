@@ -1,6 +1,5 @@
 use std::sync::Arc;
-use std::sync::{Mutex, MutexGuard};
-// use tokio::sync::{Mutex, MutexGuard};
+use std::sync::Mutex;
 
 use crate::db::LanguageServerDatabase;
 
@@ -18,14 +17,6 @@ pub struct Backend {
 }
 
 impl Backend {
-    // pub(crate) fn db(&self) -> MutexGuard<LanguageServerDatabase> {
-    //     self.db.lock().unwrap()
-    // }
-
-    // pub(crate) fn workspace(&self) -> MutexGuard<Workspace> {
-    //     self.workspace.lock().unwrap()
-    // }
-
     pub fn new(client: Client) -> Self {
         let db = Arc::new(Mutex::new(LanguageServerDatabase::default()));
         let workspace = Arc::new(Mutex::new(Workspace::default()));
