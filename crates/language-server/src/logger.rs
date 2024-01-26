@@ -22,8 +22,8 @@ impl log::Log for Logger {
             let message = format!("{} - {}", record.level(), record.args());
             let level = record.level();
             let client = self.client.clone();
-            tokio::task::spawn(async move {
-                let client = client.lock().await;
+            tokio::spawn(async move {
+                let mut client = client.lock().await;
                 client
                     .log_message(
                         match level {
@@ -37,6 +37,22 @@ impl log::Log for Logger {
                     )
                     .await;
             });
+            // let client = self.client.clone();
+            // tokio::task::spawn_blocking(async move {
+            //     let client = client.lock().await;
+            //     client
+            //         .log_message(
+            //             match level {
+            //                 log::Level::Error => lsp_types::MessageType::ERROR,
+            //                 log::Level::Warn => lsp_types::MessageType::WARNING,
+            //                 log::Level::Info => lsp_types::MessageType::INFO,
+            //                 log::Level::Debug => lsp_types::MessageType::LOG,
+            //                 log::Level::Trace => lsp_types::MessageType::LOG,
+            //             },
+            //             message,
+            //         )
+            //         .await;
+            // });
         }
     }
 
@@ -47,7 +63,7 @@ impl Backend {
     pub fn init_logger(&self, level: Level) -> Result<(), SetLoggerError> {
         let logger = Logger {
             level,
-            client: self.client(),
+            client: self.client.clone(),
         };
         let static_logger = Box::leak(Box::new(logger));
         log::set_logger(static_logger)?;

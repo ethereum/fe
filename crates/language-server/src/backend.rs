@@ -1,5 +1,6 @@
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
+// use tokio::sync::{Mutex, MutexGuard};
 
 use crate::db::LanguageServerDatabase;
 
@@ -11,28 +12,24 @@ use lsp_types::{
 use tower_lsp::Client;
 
 pub struct Backend {
-    client: Arc<Mutex<Client>>,
-    db: Arc<Mutex<LanguageServerDatabase>>,
-    workspace: Arc<Mutex<Workspace>>,
+    pub(crate) client: Arc<tokio::sync::Mutex<Client>>,
+    pub(crate) db: Arc<Mutex<LanguageServerDatabase>>,
+    pub(crate) workspace: Arc<Mutex<Workspace>>,
 }
 
 impl Backend {
-    pub(crate) fn db(&self) -> Arc<Mutex<LanguageServerDatabase>> {
-        self.db.clone()
-    }
+    // pub(crate) fn db(&self) -> MutexGuard<LanguageServerDatabase> {
+    //     self.db.lock().unwrap()
+    // }
 
-    pub(crate) fn workspace(&self) -> Arc<Mutex<Workspace>> {
-        self.workspace.clone()
-    }
-
-    pub(crate) fn client(&self) -> Arc<Mutex<Client>> {
-        self.client.clone()
-    }
+    // pub(crate) fn workspace(&self) -> MutexGuard<Workspace> {
+    //     self.workspace.lock().unwrap()
+    // }
 
     pub fn new(client: Client) -> Self {
         let db = Arc::new(Mutex::new(LanguageServerDatabase::default()));
         let workspace = Arc::new(Mutex::new(Workspace::default()));
-        let client = Arc::new(Mutex::new(client));
+        let client = Arc::new(tokio::sync::Mutex::new(client));
         Self {
             client,
             db,
