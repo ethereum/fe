@@ -16,11 +16,11 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::function::Configuration;
 
 use super::{
+    const_ty::ConstTyId,
     constraint::{
         collect_impl_block_constraints, collect_super_traits, AssumptionListId, SuperTraitCycle,
     },
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    dependent_ty::DependentTyId,
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
@@ -273,16 +273,16 @@ impl<'db> DefAnalyzer<'db> {
 
     /// This method verifies if
     /// 1. the given `ty` has `*` kind(i.e, concrete type)
-    /// 2. the given `ty` is not dependent type
+    /// 2. the given `ty` is not const type
     /// TODo: This method is a stop-gap implementation until we design a true
-    /// dependent type system.
+    /// const type system.
     fn verify_normal_star_type(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
         if !ty.has_star_kind(self.db) {
             self.diags
                 .push(TyLowerDiag::expected_star_kind_ty(span).into());
             false
-        } else if ty.is_dependent_ty(self.db) {
+        } else if ty.is_const_ty(self.db) {
             self.diags
                 .push(TyLowerDiag::normal_type_expected(self.db, span, ty).into());
             false
@@ -437,13 +437,10 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         }
 
-        if ty.is_dependent_ty(self.db) {
-            let diag = TraitConstraintDiag::dependent_ty_bound(
-                self.db,
-                ty,
-                ctxt.span().unwrap().ty().into(),
-            )
-            .into();
+        if ty.is_const_ty(self.db) {
+            let diag =
+                TraitConstraintDiag::const_ty_bound(self.db, ty, ctxt.span().unwrap().ty().into())
+                    .into();
             self.diags.push(diag);
             return;
         }
@@ -465,19 +462,19 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         };
 
-        // Checks if the field type is the same as the type of dependent type parameter.
-        if let Some(dep_ty) = find_dependent_ty_param(self.db, name, ctxt.scope()) {
-            let dep_ty_ty = dep_ty.ty(self.db);
+        // Checks if the field type is the same as the type of const type parameter.
+        if let Some(const_ty) = find_const_ty_param(self.db, name, ctxt.scope()) {
+            let const_ty_ty = const_ty.ty(self.db);
             let field_ty = lower_hir_ty(self.db, ty, ctxt.scope());
-            if !dep_ty_ty.contains_invalid(self.db)
+            if !const_ty_ty.contains_invalid(self.db)
                 && !field_ty.contains_invalid(self.db)
-                && field_ty != dep_ty_ty
+                && field_ty != const_ty_ty
             {
                 self.diags.push(
-                    TyLowerDiag::dependent_ty_mismatch(
+                    TyLowerDiag::const_ty_mismatch(
                         self.db,
                         ctxt.span().unwrap().ty().into(),
-                        dep_ty_ty,
+                        const_ty_ty,
                         field_ty,
                     )
                     .into(),
@@ -556,11 +553,11 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             }
             GenericParam::Const(_) => {
                 let ty = self.def.params(self.db)[idx];
-                let Some(dependent_ty_param) = ty.dependent_ty_param(self.db) else {
+                let Some(const_ty_param) = ty.const_ty_param(self.db) else {
                     return;
                 };
 
-                if let Some(diag) = dependent_ty_param
+                if let Some(diag) = const_ty_param
                     .emit_diag(self.db, ctxt.span().unwrap().into_const_param().ty().into())
                 {
                     self.diags.push(diag)
@@ -861,11 +858,11 @@ fn analyze_trait_ref(
 
         Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => match (expected, given) {
             (Some(expected), Some(given)) => {
-                return Some(TyLowerDiag::dependent_ty_mismatch(db, span, expected, given).into())
+                return Some(TyLowerDiag::const_ty_mismatch(db, span, expected, given).into())
             }
 
             (Some(expected), None) => {
-                return Some(TyLowerDiag::dependent_ty_expected(db, span, expected).into())
+                return Some(TyLowerDiag::const_ty_expected(db, span, expected).into())
             }
 
             (None, Some(given)) => {
@@ -1352,11 +1349,11 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
     }
 }
 
-fn find_dependent_ty_param(
+fn find_const_ty_param(
     db: &dyn HirAnalysisDb,
     ident: IdentId,
     scope: ScopeId,
-) -> Option<DependentTyId> {
+) -> Option<ConstTyId> {
     let path = PathId::from_ident(db.as_hir_db(), ident);
     let EarlyResolvedPath::Full(bucket) = resolve_path_early(db, path, scope) else {
         return None;
@@ -1376,7 +1373,7 @@ fn find_dependent_ty_param(
     let param_set = collect_generic_params(db, owner);
     let ty = param_set.params(db).get(idx)?;
     match ty.data(db) {
-        TyData::DependentTy(dep_ty) => Some(*dep_ty),
+        TyData::ConstTy(const_ty) => Some(*const_ty),
         _ => None,
     }
 }

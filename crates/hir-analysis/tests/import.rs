@@ -1,6 +1,4 @@
 mod test_db;
-use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
-
 use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
@@ -8,6 +6,7 @@ use fe_compiler_test_utils::snap_test;
 use fe_hir_analysis::name_resolution::{ImportAnalysisPass, NameDerivation, ResolvedImports};
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::Use};
 use rustc_hash::FxHashMap;
+use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/imports",

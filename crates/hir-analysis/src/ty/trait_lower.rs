@@ -32,20 +32,20 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
 }
 
 /// Collect all trait implementors in the ingot.
-/// The returned table doesn't contain the dependent(external) ingot
+/// The returned table doesn't contain the const(external) ingot
 /// implementors. If you need to obtain the environment that contains all
 /// available implementors in the ingot, please use
 /// [`TraitEnv`](super::trait_def::TraitEnv).
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitImplTable {
-    let dependent_impls = ingot
+    let const_impls = ingot
         .external_ingots(db.as_hir_db())
         .iter()
         .map(|(_, external)| collect_trait_impls(db, *external))
         .collect();
 
     let impl_traits = ingot.all_impl_traits(db.as_hir_db());
-    ImplementorCollector::new(db, dependent_impls).collect(impl_traits)
+    ImplementorCollector::new(db, const_impls).collect(impl_traits)
 }
 
 /// Returns the corresponding implementors for the given [`ImplTrait`].
@@ -134,22 +134,22 @@ pub(crate) fn lower_trait_ref(
             });
         }
 
-        let expected_dep_ty = match param.data(db) {
-            TyData::DependentTy(expected_ty) => expected_ty.ty(db).into(),
+        let expected_const_ty = match param.data(db) {
+            TyData::ConstTy(expected_ty) => expected_ty.ty(db).into(),
             _ => None,
         };
 
-        match arg.evaluate_dep_ty(db, expected_dep_ty) {
+        match arg.evaluate_const_ty(db, expected_const_ty) {
             Ok(ty) => *arg = ty,
 
-            Err(InvalidCause::DependentTyMismatch { expected, given }) => {
+            Err(InvalidCause::ConstTyMismatch { expected, given }) => {
                 return Err(TraitRefLowerError::ArgTypeMismatch {
                     expected: Some(expected),
                     given: Some(given),
                 });
             }
 
-            Err(InvalidCause::DependentTyExpected { expected }) => {
+            Err(InvalidCause::ConstTyExpected { expected }) => {
                 return Err(TraitRefLowerError::ArgTypeMismatch {
                     expected: Some(expected),
                     given: None,
@@ -200,7 +200,7 @@ pub(crate) enum TraitRefLowerError {
     /// trait.
     ArgKindMisMatch { expected: Kind, given: TyId },
 
-    /// The argument type doesn't match the dependent parameter type.
+    /// The argument type doesn't match the const parameter type.
     ArgTypeMismatch {
         expected: Option<TyId>,
         given: Option<TyId>,
@@ -263,15 +263,15 @@ impl<'db> TraitBuilder<'db> {
 struct ImplementorCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     impl_table: TraitImplTable,
-    dependent_impl_maps: Vec<&'db TraitImplTable>,
+    const_impl_maps: Vec<&'db TraitImplTable>,
 }
 
 impl<'db> ImplementorCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, dependent_impl_maps: Vec<&'db TraitImplTable>) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, const_impl_maps: Vec<&'db TraitImplTable>) -> Self {
         Self {
             db,
             impl_table: TraitImplTable::default(),
-            dependent_impl_maps,
+            const_impl_maps,
         }
     }
 
@@ -296,7 +296,7 @@ impl<'db> ImplementorCollector<'db> {
     fn does_conflict(&mut self, implementor: Implementor) -> bool {
         let def = implementor.trait_def(self.db);
         for impl_map in self
-            .dependent_impl_maps
+            .const_impl_maps
             .iter()
             .chain(std::iter::once(&&self.impl_table))
         {

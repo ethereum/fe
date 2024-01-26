@@ -11,7 +11,7 @@ use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
 
 use super::{
-    dependent_ty::{DependentTyData, DependentTyId},
+    const_ty::{ConstTyData, ConstTyId},
     ty_def::{
         AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
     },
@@ -223,8 +223,8 @@ impl<'db> TyBuilder<'db> {
 
             HirTyKind::Array(hir_elem_ty, len) => {
                 let elem_ty = self.lower_opt_hir_ty(*hir_elem_ty);
-                let len_ty = DependentTyId::from_opt_body(self.db, *len);
-                let len_ty = TyId::dependent_ty(self.db, len_ty);
+                let len_ty = ConstTyId::from_opt_body(self.db, *len);
+                let len_ty = TyId::const_ty(self.db, len_ty);
                 let array = TyId::array(self.db);
                 let array_1 = TyId::app(self.db, array, elem_ty);
                 TyId::app(self.db, array_1, len_ty)
@@ -428,8 +428,8 @@ pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope:
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
 
         GenericArg::Const(const_arg) => {
-            let dependent_ty = DependentTyId::from_opt_body(db, const_arg.body);
-            TyId::dependent_ty(db, dependent_ty)
+            let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
+            TyId::const_ty(db, const_ty)
         }
     }
 }
@@ -592,7 +592,7 @@ impl<'db> GenericParamCollector<'db> {
                     let hir_ty = param.ty.to_opt();
 
                     self.params
-                        .push(TyParamPrecursor::dependent_ty_param(name, idx, hir_ty))
+                        .push(TyParamPrecursor::const_ty_param(name, idx, hir_ty))
                 }
             }
         }
@@ -608,7 +608,7 @@ impl<'db> GenericParamCollector<'db> {
         for pred in where_clause.data(hir_db) {
             match self.param_idx_from_ty(pred.ty.to_opt()) {
                 ParamLoc::Idx(idx) => {
-                    if self.params[idx].kind.is_none() && !self.params[idx].is_dependent_ty {
+                    if self.params[idx].kind.is_none() && !self.params[idx].is_const_ty {
                         self.params[idx].kind = self.extract_kind(pred.bounds.as_slice());
                     }
                 }
@@ -697,8 +697,8 @@ pub struct TyParamPrecursor {
     name: Partial<IdentId>,
     idx: Option<usize>,
     kind: Option<Kind>,
-    dep_ty_ty: Option<HirTyId>,
-    is_dependent_ty: bool,
+    const_ty_ty: Option<HirTyId>,
+    is_const_ty: bool,
 }
 
 impl TyParamPrecursor {
@@ -713,11 +713,11 @@ impl TyParamPrecursor {
             kind: self.kind.clone().unwrap_or(Kind::Star),
         };
 
-        if !self.is_dependent_ty {
+        if !self.is_const_ty {
             return TyId::new(db, TyData::TyParam(param));
         }
 
-        let dep_ty_ty = match self.dep_ty_ty {
+        let const_ty_ty = match self.const_ty_ty {
             Some(ty) => {
                 let ty = lower_hir_ty(db, ty, scope);
                 if !(ty.contains_invalid(db) || ty.is_integral(db) || ty.is_bool(db)) {
@@ -730,9 +730,9 @@ impl TyParamPrecursor {
             None => TyId::invalid(db, InvalidCause::Other),
         };
 
-        let dep_ty = DependentTyId::new(db, DependentTyData::TyParam(param, dep_ty_ty));
+        let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, const_ty_ty));
 
-        TyId::new(db, TyData::DependentTy(dep_ty))
+        TyId::new(db, TyData::ConstTy(const_ty))
     }
 
     fn ty_param(name: Partial<IdentId>, idx: usize, kind: Option<Kind>) -> Self {
@@ -740,18 +740,18 @@ impl TyParamPrecursor {
             name,
             idx: idx.into(),
             kind,
-            dep_ty_ty: None,
-            is_dependent_ty: false,
+            const_ty_ty: None,
+            is_const_ty: false,
         }
     }
 
-    fn dependent_ty_param(name: Partial<IdentId>, idx: usize, ty: Option<HirTyId>) -> Self {
+    fn const_ty_param(name: Partial<IdentId>, idx: usize, ty: Option<HirTyId>) -> Self {
         Self {
             name,
             idx: idx.into(),
             kind: None,
-            dep_ty_ty: ty,
-            is_dependent_ty: true,
+            const_ty_ty: ty,
+            is_const_ty: true,
         }
     }
 
@@ -761,8 +761,8 @@ impl TyParamPrecursor {
             name,
             idx: None,
             kind,
-            dep_ty_ty: None,
-            is_dependent_ty: false,
+            const_ty_ty: None,
+            is_const_ty: false,
         }
     }
 }

@@ -10,122 +10,121 @@ use crate::{
 };
 
 #[salsa::interned]
-pub struct DependentTyId {
+pub struct ConstTyId {
     #[return_ref]
-    pub(super) data: DependentTyData,
+    pub(super) data: ConstTyData,
 }
 
 #[salsa::tracked]
-pub(crate) fn evaluate_dependent_ty(
+pub(crate) fn evaluate_const_ty(
     db: &dyn HirAnalysisDb,
-    dependent_ty: DependentTyId,
+    const_ty: ConstTyId,
     expected_ty: Option<TyId>,
-) -> DependentTyId {
-    let DependentTyData::UnEvaluated(body) = dependent_ty.data(db) else {
-        let dep_ty_ty = dependent_ty.ty(db);
-        return match check_dependent_ty(db, dep_ty_ty, expected_ty, &mut UnificationTable::new(db))
-        {
-            Ok(_) => dependent_ty,
+) -> ConstTyId {
+    let ConstTyData::UnEvaluated(body) = const_ty.data(db) else {
+        let const_ty_ty = const_ty.ty(db);
+        return match check_const_ty(db, const_ty_ty, expected_ty, &mut UnificationTable::new(db)) {
+            Ok(_) => const_ty,
             Err(cause) => {
                 let ty = TyId::invalid(db, cause);
-                return dependent_ty.swap_ty(db, ty);
+                return const_ty.swap_ty(db, ty);
             }
         };
     };
 
     let Partial::Present(expr) = body.expr(db.as_hir_db()).data(db.as_hir_db(), *body) else {
-        let data = DependentTyData::Evaluated(
-            EvaluatedDependentTy::Invalid,
+        let data = ConstTyData::Evaluated(
+            EvaluatedConstTy::Invalid,
             TyId::invalid(db, InvalidCause::Other),
         );
-        return DependentTyId::new(db, data);
+        return ConstTyId::new(db, data);
     };
 
     let mut table = UnificationTable::new(db);
     let (resolved, ty) = match expr {
         Expr::Lit(LitKind::Bool(b)) => (
-            EvaluatedDependentTy::LitBool(*b),
+            EvaluatedConstTy::LitBool(*b),
             TyId::new(db, TyData::TyBase(TyBase::bool())),
         ),
 
         Expr::Lit(LitKind::Int(i)) => (
-            EvaluatedDependentTy::LitInt(*i),
+            EvaluatedConstTy::LitInt(*i),
             table.new_var(TyVarUniverse::Integral, &Kind::Star),
         ),
 
         _ => {
-            return DependentTyId::new(
+            return ConstTyId::new(
                 db,
-                DependentTyData::Evaluated(
-                    EvaluatedDependentTy::Invalid,
-                    TyId::invalid(db, InvalidCause::InvalidDependentTyExpr { body: *body }),
+                ConstTyData::Evaluated(
+                    EvaluatedConstTy::Invalid,
+                    TyId::invalid(db, InvalidCause::InvalidConstTyExpr { body: *body }),
                 ),
             );
         }
     };
 
-    let data = match check_dependent_ty(db, ty, expected_ty, &mut table) {
-        Ok(ty) => DependentTyData::Evaluated(resolved, ty),
-        Err(err) => DependentTyData::Evaluated(resolved, TyId::invalid(db, err)),
+    let data = match check_const_ty(db, ty, expected_ty, &mut table) {
+        Ok(ty) => ConstTyData::Evaluated(resolved, ty),
+        Err(err) => ConstTyData::Evaluated(resolved, TyId::invalid(db, err)),
     };
 
-    DependentTyId::new(db, data)
+    ConstTyId::new(db, data)
 }
 
 // FIXME: When we add type inference, we need to use the inference engine to
 // check the type of the expression instead of this function.
-fn check_dependent_ty(
+fn check_const_ty(
     db: &dyn HirAnalysisDb,
-    dep_ty_ty: TyId,
+    const_ty_ty: TyId,
     expected_ty: Option<TyId>,
     table: &mut UnificationTable,
 ) -> Result<TyId, InvalidCause> {
-    if dep_ty_ty.is_invalid(db) {
+    if const_ty_ty.is_invalid(db) {
         return Err(InvalidCause::Other);
     }
 
     let Some(expected_ty) = expected_ty else {
-        return Ok(dep_ty_ty);
+        return Ok(const_ty_ty);
     };
 
-    if table.unify(expected_ty, dep_ty_ty) {
+    if table.unify(expected_ty, const_ty_ty) {
         Ok(expected_ty)
     } else {
-        let invalid = InvalidCause::DependentTyMismatch {
+        let invalid = InvalidCause::ConstTyMismatch {
             expected: expected_ty,
-            given: dep_ty_ty,
+            given: const_ty_ty,
         };
         Err(invalid)
     }
 }
 
-impl DependentTyId {
+impl ConstTyId {
     pub fn ty(self, db: &dyn HirAnalysisDb) -> TyId {
         match self.data(db) {
-            DependentTyData::TyVar(_, ty) => *ty,
-            DependentTyData::TyParam(_, ty) => *ty,
-            DependentTyData::Evaluated(_, ty) => *ty,
-            DependentTyData::UnEvaluated(_) => TyId::invalid(db, InvalidCause::Other),
+            ConstTyData::TyVar(_, ty) => *ty,
+            ConstTyData::TyParam(_, ty) => *ty,
+            ConstTyData::Evaluated(_, ty) => *ty,
+            ConstTyData::UnEvaluated(_) => TyId::invalid(db, InvalidCause::Other),
         }
     }
 
     pub(super) fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
         match &self.data(db) {
-            DependentTyData::TyVar(var, _) => var.pretty_print(),
-            DependentTyData::TyParam(param, ty) => {
+            ConstTyData::TyVar(var, _) => var.pretty_print(),
+            ConstTyData::TyParam(param, ty) => {
                 format!("const {}: {}", param.pretty_print(db), ty.pretty_print(db))
             }
-            DependentTyData::Evaluated(resolved, _) => resolved.pretty_print(db),
-            DependentTyData::UnEvaluated(_) => "<unevaluated>".to_string(),
+            ConstTyData::Evaluated(resolved, _) => resolved.pretty_print(db),
+            ConstTyData::UnEvaluated(_) => "<unevaluated>".to_string(),
         }
     }
 
     pub(super) fn evaluate(self, db: &dyn HirAnalysisDb, expected_ty: Option<TyId>) -> Self {
-        evaluate_dependent_ty(db, self, expected_ty)
+        evaluate_const_ty(db, self, expected_ty)
     }
 
     pub(super) fn from_body(db: &dyn HirAnalysisDb, body: Body) -> Self {
-        let data = DependentTyData::UnEvaluated(body);
+        let data = ConstTyData::UnEvaluated(body);
         Self::new(db, data)
     }
 
@@ -133,9 +132,9 @@ impl DependentTyId {
         match body {
             Partial::Present(body) => Self::from_body(db, body),
             Partial::Absent => {
-                let resolved = EvaluatedDependentTy::Invalid;
+                let resolved = EvaluatedConstTy::Invalid;
                 let ty = TyId::invalid(db, InvalidCause::Other);
-                let data = DependentTyData::Evaluated(resolved, ty);
+                let data = ConstTyData::Evaluated(resolved, ty);
                 Self::new(db, data)
             }
         }
@@ -143,12 +142,10 @@ impl DependentTyId {
 
     fn swap_ty(self, db: &dyn HirAnalysisDb, ty: TyId) -> Self {
         let data = match self.data(db) {
-            DependentTyData::TyVar(var, _) => DependentTyData::TyVar(var.clone(), ty),
-            DependentTyData::TyParam(param, _) => DependentTyData::TyParam(param.clone(), ty),
-            DependentTyData::Evaluated(evaluated, _) => {
-                DependentTyData::Evaluated(evaluated.clone(), ty)
-            }
-            DependentTyData::UnEvaluated(_) => {
+            ConstTyData::TyVar(var, _) => ConstTyData::TyVar(var.clone(), ty),
+            ConstTyData::TyParam(param, _) => ConstTyData::TyParam(param.clone(), ty),
+            ConstTyData::Evaluated(evaluated, _) => ConstTyData::Evaluated(evaluated.clone(), ty),
+            ConstTyData::UnEvaluated(_) => {
                 return self;
             }
         };
@@ -158,28 +155,28 @@ impl DependentTyId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum DependentTyData {
+pub enum ConstTyData {
     TyVar(TyVar, TyId),
     TyParam(TyParam, TyId),
-    Evaluated(EvaluatedDependentTy, TyId),
+    Evaluated(EvaluatedConstTy, TyId),
     UnEvaluated(Body),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum EvaluatedDependentTy {
+pub enum EvaluatedConstTy {
     LitInt(IntegerId),
     LitBool(bool),
     Invalid,
 }
 
-impl EvaluatedDependentTy {
+impl EvaluatedConstTy {
     pub fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         match self {
-            EvaluatedDependentTy::LitInt(val) => {
+            EvaluatedConstTy::LitInt(val) => {
                 format!("{}", val.data(db.as_hir_db()))
             }
-            EvaluatedDependentTy::LitBool(val) => format!("{}", val),
-            EvaluatedDependentTy::Invalid => "<invalid>".to_string(),
+            EvaluatedConstTy::LitBool(val) => format!("{}", val),
+            EvaluatedConstTy::Invalid => "<invalid>".to_string(),
         }
     }
 }

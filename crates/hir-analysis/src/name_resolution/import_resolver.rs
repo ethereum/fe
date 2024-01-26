@@ -11,8 +11,6 @@ use hir::{
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{name_resolution::visibility_checker::is_use_visible, HirAnalysisDb};
-
 use super::{
     diagnostics::NameResDiag,
     name_resolver::{
@@ -20,6 +18,7 @@ use super::{
         NameResolutionError, NameResolutionResult, NameResolver, QueryDirective,
     },
 };
+use crate::{name_resolution::visibility_checker::is_use_visible, HirAnalysisDb};
 
 pub(crate) struct ImportResolver<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -473,8 +472,8 @@ impl<'db> ImportResolver<'db> {
     // the `i_use` resolution.
     //
     // This is because:
-    // 1. the resolution of the first segment changes depending on whether the
-    //    dependent glob is resolved or not at the time of `i_use` resolution,
+    // 1. the resolution of the first segment changes depending on whether the const
+    //    glob is resolved or not at the time of `i_use` resolution,
     // 2. the order in which uses are resolved is nondeterministic.
     //
     // In normal name resolution rules, the name brought in by a glob always shadows

@@ -1,28 +1,28 @@
 ---
 source: crates/uitest/tests/ty.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty/dependent_ty/trait_dependent_ty.fe
+input_file: crates/uitest/fixtures/ty/const_ty/trait_const_ty.fe
 ---
-error[3-0011]: given type doesn't match the expected dependent type
-  ┌─ trait_dependent_ty.fe:3:20
+error[3-0011]: given type doesn't match the expected const type
+  ┌─ trait_const_ty.fe:3:20
   │
 3 │ impl<const N: u64> Trait<N> for i64 {}
   │                    ^^^^^^^^ expected `u32` type here, but `u64` is given
 
-error[3-0011]: given type doesn't match the expected dependent type
-  ┌─ trait_dependent_ty.fe:5:14
+error[3-0011]: given type doesn't match the expected const type
+  ┌─ trait_const_ty.fe:5:14
   │
 5 │     where T: Trait<N>
   │              ^^^^^^^^ expected `u32` type here, but `u64` is given
 
-error[3-0012]: expected dependent type
-  ┌─ trait_dependent_ty.fe:2:6
+error[3-0012]: expected const type
+  ┌─ trait_const_ty.fe:2:6
   │
 2 │ impl Trait<i32> for i32 {}
-  │      ^^^^^^^^^^ expected dependent type of `u32` here
+  │      ^^^^^^^^^^ expected const type of `u32` here
 
 error[3-0013]: expected a normal type
-  ┌─ trait_dependent_ty.fe:9:6
+  ┌─ trait_const_ty.fe:9:6
   │
 9 │ impl Trait2<1> for i32 {}
   │      ^^^^^^^^^ expected a normal type here, but `1` is given

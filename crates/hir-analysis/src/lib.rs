@@ -16,9 +16,9 @@ pub struct Jar(
     ty::ty_def::AdtDef,
     ty::ty_def::FuncDef,
     ty::ty_def::AdtRefId,
-    /// Dependent types.
-    ty::dependent_ty::DependentTyId,
-    ty::dependent_ty::evaluate_dependent_ty,
+    /// Const types.
+    ty::const_ty::ConstTyId,
+    ty::const_ty::evaluate_const_ty,
     /// Type lowering.
     ty::ty_lower::lower_hir_ty,
     ty::ty_lower::lower_adt,

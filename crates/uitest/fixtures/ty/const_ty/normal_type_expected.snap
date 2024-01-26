@@ -1,7 +1,7 @@
 ---
 source: crates/uitest/tests/ty.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty/dependent_ty/normal_type_expected.fe
+input_file: crates/uitest/fixtures/ty/const_ty/normal_type_expected.fe
 ---
 error[3-0013]: expected a normal type
   ┌─ normal_type_expected.fe:4:15

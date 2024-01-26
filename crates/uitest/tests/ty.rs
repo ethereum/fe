@@ -18,10 +18,10 @@ fn run_ty_def(fixture: Fixture<&str>) {
 }
 
 #[dir_test(
-    dir: "$CARGO_MANIFEST_DIR/fixtures/ty/dependent_ty",
+    dir: "$CARGO_MANIFEST_DIR/fixtures/ty/const_ty",
     glob: "*.fe"
 )]
-fn run_dependent_ty(fixture: Fixture<&str>) {
+fn run_const_ty(fixture: Fixture<&str>) {
     let mut driver = DriverDataBase::default();
     let path = Path::new(fixture.path());
     let top_mod = driver.top_mod_from_file(path, fixture.content());
@@ -82,18 +82,18 @@ mod wasm {
         }
     }
 
-    mod dependent_ty {
+    mod const_ty {
         use super::*;
 
         #[dir_test(
-        dir: "$CARGO_MANIFEST_DIR/fixtures/ty/dependent_ty",
+        dir: "$CARGO_MANIFEST_DIR/fixtures/ty/const_ty",
         glob: "*.fe",
         postfix: "wasm"
         )]
         #[dir_test_attr(
             #[wasm_bindgen_test]
         )]
-        fn run_dependent_ty(fixture: Fixture<&str>) {
+        fn run_const_ty(fixture: Fixture<&str>) {
             let mut driver = DriverDataBase::default();
             let path = Path::new(fixture.path());
             let top_mod = driver.top_mod_from_file(path, fixture.content());

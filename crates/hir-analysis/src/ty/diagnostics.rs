@@ -91,13 +91,13 @@ pub enum TyLowerDiag {
 
     RecursiveConstParamTy(DynLazySpan),
 
-    DependentTyMismatch {
+    ConstTyMismatch {
         primary: DynLazySpan,
         expected: String,
         actual: String,
     },
 
-    DependentTyExpected {
+    ConstTyExpected {
         primary: DynLazySpan,
         expected: String,
     },
@@ -109,7 +109,7 @@ pub enum TyLowerDiag {
 
     AssocTy(DynLazySpan),
 
-    InvalidDependentTyExpr(DynLazySpan),
+    InvalidConstTyExpr(DynLazySpan),
 }
 
 impl TyLowerDiag {
@@ -196,7 +196,7 @@ impl TyLowerDiag {
         }
     }
 
-    pub(super) fn dependent_ty_mismatch(
+    pub(super) fn const_ty_mismatch(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
         expected: TyId,
@@ -204,20 +204,20 @@ impl TyLowerDiag {
     ) -> Self {
         let expected = expected.pretty_print(db).to_string();
         let actual = actual.pretty_print(db).to_string();
-        Self::DependentTyMismatch {
+        Self::ConstTyMismatch {
             primary,
             expected,
             actual,
         }
     }
 
-    pub(super) fn dependent_ty_expected(
+    pub(super) fn const_ty_expected(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
         expected: TyId,
     ) -> Self {
         let expected = expected.pretty_print(db).to_string();
-        Self::DependentTyExpected { primary, expected }
+        Self::ConstTyExpected { primary, expected }
     }
 
     pub(super) fn normal_type_expected(
@@ -258,11 +258,11 @@ impl TyLowerDiag {
             Self::DuplicatedArgName { .. } => 8,
             Self::InvalidConstParamTy { .. } => 9,
             Self::RecursiveConstParamTy { .. } => 10,
-            Self::DependentTyMismatch { .. } => 11,
-            Self::DependentTyExpected { .. } => 12,
+            Self::ConstTyMismatch { .. } => 11,
+            Self::ConstTyExpected { .. } => 12,
             Self::NormalTypeExpected { .. } => 13,
             Self::AssocTy(_) => 14,
-            Self::InvalidDependentTyExpr(_) => 15,
+            Self::InvalidConstTyExpr(_) => 15,
         }
     }
 
@@ -292,11 +292,11 @@ impl TyLowerDiag {
                 format!("`{}` is forbidden as a const parameter type", pretty_ty)
             }
 
-            Self::DependentTyMismatch { .. } => {
-                "given type doesn't match the expected dependent type".to_string()
+            Self::ConstTyMismatch { .. } => {
+                "given type doesn't match the expected const type".to_string()
             }
 
-            Self::DependentTyExpected { .. } => "expected dependent type".to_string(),
+            Self::ConstTyExpected { .. } => "expected const type".to_string(),
 
             Self::NormalTypeExpected { .. } => "expected a normal type".to_string(),
 
@@ -306,8 +306,8 @@ impl TyLowerDiag {
 
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
 
-            Self::InvalidDependentTyExpr(_) => {
-                "the expression is not supported yet in a dependent type context".to_string()
+            Self::InvalidConstTyExpr(_) => {
+                "the expression is not supported yet in a const type context".to_string()
             }
         }
     }
@@ -447,7 +447,7 @@ impl TyLowerDiag {
                 )]
             }
 
-            Self::DependentTyMismatch {
+            Self::ConstTyMismatch {
                 primary,
                 expected,
                 actual,
@@ -462,10 +462,10 @@ impl TyLowerDiag {
                 )]
             }
 
-            Self::DependentTyExpected { primary, expected } => {
+            Self::ConstTyExpected { primary, expected } => {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("expected dependent type of `{}` here", expected),
+                    format!("expected const type of `{}` here", expected),
                     primary.resolve(db),
                 )]
             }
@@ -490,7 +490,7 @@ impl TyLowerDiag {
                 span.resolve(db),
             )],
 
-            Self::InvalidDependentTyExpr(span) => vec![SubDiagnostic::new(
+            Self::InvalidConstTyExpr(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "only literal expression is supported".to_string(),
                 span.resolve(db),
@@ -637,7 +637,7 @@ pub enum TraitConstraintDiag {
 
     ConcreteTypeBound(DynLazySpan, String),
 
-    DependentTyBound(DynLazySpan, String),
+    ConstTyBound(DynLazySpan, String),
 }
 
 impl TraitConstraintDiag {
@@ -694,9 +694,9 @@ impl TraitConstraintDiag {
         Self::InfiniteBoundRecursion(span, msg)
     }
 
-    pub(super) fn dependent_ty_bound(db: &dyn HirAnalysisDb, ty: TyId, span: DynLazySpan) -> Self {
-        let msg = format!("`{}` is a dependent type", ty.pretty_print(db));
-        Self::DependentTyBound(span, msg)
+    pub(super) fn const_ty_bound(db: &dyn HirAnalysisDb, ty: TyId, span: DynLazySpan) -> Self {
+        let msg = format!("`{}` is a const type", ty.pretty_print(db));
+        Self::ConstTyBound(span, msg)
     }
 
     pub(super) fn concrete_type_bound(db: &dyn HirAnalysisDb, span: DynLazySpan, ty: TyId) -> Self {
@@ -712,7 +712,7 @@ impl TraitConstraintDiag {
             Self::TraitBoundNotSat(_, _) => 3,
             Self::InfiniteBoundRecursion(_, _) => 4,
             Self::ConcreteTypeBound(_, _) => 5,
-            Self::DependentTyBound(_, _) => 6,
+            Self::ConstTyBound(_, _) => 6,
         }
     }
 
@@ -732,9 +732,7 @@ impl TraitConstraintDiag {
                 "trait bound for concrete type is not allowed".to_string()
             }
 
-            Self::DependentTyBound(_, _) => {
-                "trait bound for dependent type is not allowed".to_string()
-            }
+            Self::ConstTyBound(_, _) => "trait bound for const type is not allowed".to_string(),
         }
     }
 
@@ -789,7 +787,7 @@ impl TraitConstraintDiag {
                 span.resolve(db),
             )],
 
-            Self::DependentTyBound(span, msg) => vec![SubDiagnostic::new(
+            Self::ConstTyBound(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 msg.clone(),
                 span.resolve(db),

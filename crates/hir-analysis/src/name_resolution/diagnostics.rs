@@ -8,9 +8,8 @@ use hir::{
     HirDb,
 };
 
-use crate::HirAnalysisDb;
-
 use super::NameRes;
+use crate::HirAnalysisDb;
 
 #[salsa::accumulator]
 pub struct NameResolutionDiagAccumulator(pub(super) NameResDiag);

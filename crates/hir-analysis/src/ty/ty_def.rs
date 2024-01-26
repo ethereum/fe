@@ -15,10 +15,10 @@ use hir::{
 use rustc_hash::FxHashMap;
 
 use super::{
+    const_ty::{ConstTyData, ConstTyId},
     constraint::{
         collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
     },
-    dependent_ty::{DependentTyData, DependentTyId},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId, GenericParamTypeSet},
     unify::{InferenceKey, UnificationTable},
@@ -86,7 +86,7 @@ impl TyId {
         match self.data(db) {
             TyData::Invalid(_) => true,
             TyData::TyApp(lhs, rhs) => lhs.contains_invalid(db) || rhs.contains_invalid(db),
-            TyData::DependentTy(dependent_ty) => dependent_ty.ty(db).contains_invalid(db),
+            TyData::ConstTy(const_ty) => const_ty.ty(db).contains_invalid(db),
             _ => false,
         }
     }
@@ -131,8 +131,8 @@ impl TyId {
         Self::tuple(db, 0)
     }
 
-    pub(super) fn dependent_ty(db: &dyn HirAnalysisDb, dependent_ty: DependentTyId) -> Self {
-        Self::new(db, TyData::DependentTy(dependent_ty))
+    pub(super) fn const_ty(db: &dyn HirAnalysisDb, const_ty: ConstTyId) -> Self {
+        Self::new(db, TyData::ConstTy(const_ty))
     }
 
     pub(super) fn adt(db: &dyn HirAnalysisDb, adt: AdtDef) -> Self {
@@ -147,8 +147,8 @@ impl TyId {
         matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
     }
 
-    pub(super) fn is_dependent_ty(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::DependentTy(_))
+    pub(super) fn is_const_ty(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::ConstTy(_))
     }
 
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
@@ -206,12 +206,12 @@ impl TyId {
                         TyLowerDiag::RecursiveConstParamTy(span).into()
                     }
 
-                    InvalidCause::DependentTyMismatch { expected, given } => {
-                        TyLowerDiag::dependent_ty_mismatch(db, span, *expected, *given).into()
+                    InvalidCause::ConstTyMismatch { expected, given } => {
+                        TyLowerDiag::const_ty_mismatch(db, span, *expected, *given).into()
                     }
 
-                    InvalidCause::DependentTyExpected { expected } => {
-                        TyLowerDiag::dependent_ty_expected(db, span, *expected).into()
+                    InvalidCause::ConstTyExpected { expected } => {
+                        TyLowerDiag::const_ty_expected(db, span, *expected).into()
                     }
 
                     InvalidCause::NormalTypeExpected { given } => {
@@ -225,8 +225,8 @@ impl TyId {
 
                     InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
 
-                    InvalidCause::InvalidDependentTyExpr { body } => {
-                        TyLowerDiag::InvalidDependentTyExpr(body.lazy_span().into()).into()
+                    InvalidCause::InvalidConstTyExpr { body } => {
+                        TyLowerDiag::InvalidConstTyExpr(body.lazy_span().into()).into()
                     }
 
                     InvalidCause::Other => return,
@@ -288,15 +288,15 @@ impl TyId {
         )
     }
 
-    pub(super) fn dependent_ty_var(db: &dyn HirAnalysisDb, ty: TyId, key: InferenceKey) -> Self {
+    pub(super) fn const_ty_var(db: &dyn HirAnalysisDb, ty: TyId, key: InferenceKey) -> Self {
         let ty_var = TyVar {
             universe: TyVarUniverse::General,
             kind: ty.kind(db).clone(),
             key,
         };
 
-        let data = DependentTyData::TyVar(ty_var, ty);
-        Self::new(db, TyData::DependentTy(DependentTyId::new(db, data)))
+        let data = ConstTyData::TyVar(ty_var, ty);
+        Self::new(db, TyData::ConstTy(ConstTyId::new(db, data)))
     }
 
     /// Perform type level application.
@@ -305,7 +305,7 @@ impl TyId {
         let k_arg = arg.kind(db);
 
         let arg = arg
-            .evaluate_dep_ty(db, abs.expected_dependent_ty(db))
+            .evaluate_const_ty(db, abs.expected_const_ty(db))
             .unwrap_or_else(|cause| Self::invalid(db, cause));
 
         let arg = match k_abs {
@@ -384,48 +384,48 @@ impl TyId {
         }
     }
 
-    pub(super) fn dependent_ty_param(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
-        if let TyData::DependentTy(dependent_ty) = self.data(db) {
-            Some(dependent_ty.ty(db))
+    pub(super) fn const_ty_param(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+        if let TyData::ConstTy(const_ty) = self.data(db) {
+            Some(const_ty.ty(db))
         } else {
             None
         }
     }
 
-    pub(super) fn evaluate_dep_ty(
+    pub(super) fn evaluate_const_ty(
         self,
         db: &dyn HirAnalysisDb,
         expected_ty: Option<TyId>,
     ) -> Result<TyId, InvalidCause> {
         match (expected_ty, self.data(db)) {
-            (Some(expected_dep_ty), TyData::DependentTy(dep_ty)) => {
-                if expected_dep_ty.is_invalid(db) {
+            (Some(expected_const_ty), TyData::ConstTy(const_ty)) => {
+                if expected_const_ty.is_invalid(db) {
                     Err(InvalidCause::Other)
                 } else {
-                    let evaluated_dep_ty = dep_ty.evaluate(db, expected_dep_ty.into());
-                    let evaluated_dep_ty_ty = evaluated_dep_ty.ty(db);
-                    if let Some(cause) = evaluated_dep_ty_ty.invalid_cause(db) {
+                    let evaluated_const_ty = const_ty.evaluate(db, expected_const_ty.into());
+                    let evaluated_const_ty_ty = evaluated_const_ty.ty(db);
+                    if let Some(cause) = evaluated_const_ty_ty.invalid_cause(db) {
                         Err(cause)
                     } else {
-                        Ok(TyId::dependent_ty(db, evaluated_dep_ty))
+                        Ok(TyId::const_ty(db, evaluated_const_ty))
                     }
                 }
             }
 
-            (Some(expected_dependent_ty), _) => {
-                if expected_dependent_ty.is_invalid(db) {
+            (Some(expected_const_ty), _) => {
+                if expected_const_ty.is_invalid(db) {
                     Err(InvalidCause::Other)
                 } else {
-                    Err(InvalidCause::DependentTyExpected {
-                        expected: expected_dependent_ty,
+                    Err(InvalidCause::ConstTyExpected {
+                        expected: expected_const_ty,
                     })
                 }
             }
 
-            (None, TyData::DependentTy(dep_ty)) => {
-                let evaluated_dep_ty = dep_ty.evaluate(db, None);
+            (None, TyData::ConstTy(const_ty)) => {
+                let evaluated_const_ty = const_ty.evaluate(db, None);
                 Err(InvalidCause::NormalTypeExpected {
-                    given: TyId::dependent_ty(db, evaluated_dep_ty),
+                    given: TyId::const_ty(db, evaluated_const_ty),
                 })
             }
 
@@ -434,10 +434,10 @@ impl TyId {
     }
 
     /// Returns the next expected type of a type argument.
-    fn expected_dependent_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+    fn expected_const_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
         let (base, args) = self.decompose_ty_app(db);
         match base.data(db) {
-            TyData::TyBase(ty_base) => ty_base.expected_dependent_ty(db, args.len()),
+            TyData::TyBase(ty_base) => ty_base.expected_const_ty(db, args.len()),
             _ => None,
         }
     }
@@ -520,13 +520,13 @@ impl AdtDef {
     }
 
     /// Returns the expected type of the `idx`-th type parameter when the
-    /// parameter is declared as a dependent type.
-    fn expected_dependent_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
-        let TyData::DependentTy(dependent_ty) = self.params(db).get(idx)?.data(db) else {
+    /// parameter is declared as a const type.
+    fn expected_const_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        let TyData::ConstTy(const_ty) = self.params(db).get(idx)?.data(db) else {
             return None;
         };
 
-        Some(dependent_ty.ty(db))
+        Some(const_ty.ty(db))
     }
 }
 
@@ -579,13 +579,13 @@ impl FuncDef {
     }
 
     /// Returns the expected type of the `idx`-th type parameter when the
-    /// parameter is declared as a dependent type.
-    fn expected_dependent_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
-        let TyData::DependentTy(dependent_ty) = self.params(db).get(idx)?.data(db) else {
+    /// parameter is declared as a const type.
+    fn expected_const_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        let TyData::ConstTy(const_ty) = self.params(db).get(idx)?.data(db) else {
             return None;
         };
 
-        Some(dependent_ty.ty(db))
+        Some(const_ty.ty(db))
     }
 }
 
@@ -648,7 +648,7 @@ pub enum TyData {
     /// A concrete type, e.g., `i32`, `u32`, `bool`, `String`, `Result` etc.
     TyBase(TyBase),
 
-    DependentTy(DependentTyId),
+    ConstTy(ConstTyId),
 
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
@@ -673,18 +673,18 @@ pub enum InvalidCause {
 
     RecursiveConstParamTy,
 
-    /// The given type doesn't match the expected dependent type.
-    DependentTyMismatch {
+    /// The given type doesn't match the expected const type.
+    ConstTyMismatch {
         expected: TyId,
         given: TyId,
     },
 
-    /// The given type is not a dependent type where it is required.
-    DependentTyExpected {
+    /// The given type is not a const type where it is required.
+    ConstTyExpected {
         expected: TyId,
     },
 
-    /// The given type is dependent type where it is *NOT* required.
+    /// The given type is const type where it is *NOT* required.
     NormalTypeExpected {
         given: TyId,
     },
@@ -700,10 +700,10 @@ pub enum InvalidCause {
     /// Associated Type is not allowed at the moment.
     AssocTy,
 
-    // The given expression is not supported yet in the dependent type context.
+    // The given expression is not supported yet in the const type context.
     // TODO: Remove this error kind and introduce a new error kind for more specific cause when
     // type inference is implemented.
-    InvalidDependentTyExpr {
+    InvalidConstTyExpr {
         body: Body,
     },
 
@@ -886,12 +886,12 @@ impl TyBase {
     }
 
     /// Returns the expected type of the `idx`-th type parameter when the
-    /// parameter is declared as a dependent type.
-    fn expected_dependent_ty(&self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+    /// parameter is declared as a const type.
+    fn expected_const_ty(&self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
         match self {
-            Self::Prim(prim_ty) => prim_ty.expected_dependent_ty(db, idx),
-            Self::Adt(adt) => adt.expected_dependent_ty(db, idx),
-            Self::Func(func) => func.expected_dependent_ty(db, idx),
+            Self::Prim(prim_ty) => prim_ty.expected_const_ty(db, idx),
+            Self::Adt(adt) => adt.expected_const_ty(db, idx),
+            Self::Func(func) => func.expected_const_ty(db, idx),
         }
     }
 }
@@ -941,8 +941,8 @@ impl PrimTy {
     }
 
     /// Returns the expected type of the `idx`-th type parameter when the
-    /// parameter is declared as a dependent type.
-    fn expected_dependent_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+    /// parameter is declared as a const type.
+    fn expected_const_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
         match self {
             Self::Array if idx == 1 => {
                 // FIXME: Change `U256` to `usize` when we add `usize` type.
@@ -1058,7 +1058,7 @@ impl HasKind for TyData {
                 _ => Kind::Any,
             },
 
-            TyData::DependentTy(dependent_ty) => dependent_ty.ty(db).kind(db).clone(),
+            TyData::ConstTy(const_ty) => const_ty.ty(db).kind(db).clone(),
 
             TyData::Invalid(_) => Kind::Any,
         }
@@ -1137,15 +1137,15 @@ pub(crate) fn collect_type_params(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<
             self.0.insert(param_ty);
         }
 
-        fn visit_dependent_param(
+        fn visit_const_param(
             &mut self,
             db: &dyn HirAnalysisDb,
             param: &TyParam,
-            dep_ty_ty: TyId,
+            const_ty_ty: TyId,
         ) {
-            let dep_ty = DependentTyId::new(db, DependentTyData::TyParam(param.clone(), dep_ty_ty));
-            let dep_param_ty = TyId::new(db, TyData::DependentTy(dep_ty));
-            self.0.insert(dep_param_ty);
+            let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param.clone(), const_ty_ty));
+            let const_param_ty = TyId::new(db, TyData::ConstTy(const_ty));
+            self.0.insert(const_param_ty);
         }
     }
 
@@ -1161,7 +1161,7 @@ pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
         TyData::TyParam(param) => param.pretty_print(db),
         TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
         TyData::TyBase(ty_con) => ty_con.pretty_print(db),
-        TyData::DependentTy(dependent_ty) => dependent_ty.pretty_print(db),
+        TyData::ConstTy(const_ty) => const_ty.pretty_print(db),
         _ => "<invalid>".to_string(),
     }
 }

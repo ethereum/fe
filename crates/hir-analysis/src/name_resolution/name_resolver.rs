@@ -844,7 +844,7 @@ impl ResolvedQueryCacheStore {
 //     Value = 0b10,
 //
 //     /// The domain is associated with both `Type` and `Value`. This domain is
-//     /// used to represent dependent type parameters.
+//     /// used to represent const type parameters.
 //     #[doc(hidden)]
 //     TypeAndValue = 0b11,
 //

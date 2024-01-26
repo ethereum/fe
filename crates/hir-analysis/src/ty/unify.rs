@@ -7,7 +7,7 @@ use super::{
     trait_def::{Implementor, TraitInstId},
     ty_def::{Kind, Subst, TyData, TyId, TyVar, TyVarUniverse},
 };
-use crate::{ty::dependent_ty::DependentTyData, HirAnalysisDb};
+use crate::{ty::const_ty::ConstTyData, HirAnalysisDb};
 
 pub(crate) struct UnificationTable<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -81,21 +81,21 @@ impl<'db> UnificationTable<'db> {
 
             (TyData::Invalid(_), _) | (_, TyData::Invalid(_)) => true,
 
-            (TyData::DependentTy(dep_ty1), TyData::DependentTy(dep_ty2)) => {
-                if !self.unify_ty(dep_ty1.ty(self.db), dep_ty2.ty(self.db)) {
+            (TyData::ConstTy(const_ty1), TyData::ConstTy(const_ty2)) => {
+                if !self.unify_ty(const_ty1.ty(self.db), const_ty2.ty(self.db)) {
                     return false;
                 }
 
-                match (dep_ty1.data(self.db), dep_ty2.data(self.db)) {
-                    (DependentTyData::TyVar(..), DependentTyData::TyVar(..)) => {
+                match (const_ty1.data(self.db), const_ty2.data(self.db)) {
+                    (ConstTyData::TyVar(..), ConstTyData::TyVar(..)) => {
                         self.unify_var_var(ty1, ty2)
                     }
 
-                    (DependentTyData::TyVar(var, _), _) => self.unify_var_value(var, ty2),
+                    (ConstTyData::TyVar(var, _), _) => self.unify_var_value(var, ty2),
 
-                    (_, DependentTyData::TyVar(var, _)) => self.unify_var_value(var, ty1),
+                    (_, ConstTyData::TyVar(var, _)) => self.unify_var_value(var, ty1),
 
-                    (DependentTyData::Evaluated(val1, _), DependentTyData::Evaluated(val2, _)) => {
+                    (ConstTyData::Evaluated(val1, _), ConstTyData::Evaluated(val2, _)) => {
                         val1 == val2
                     }
 
@@ -120,10 +120,10 @@ impl<'db> UnificationTable<'db> {
                 TyId::ty_var(db, universe, param.kind.clone(), key)
             }
 
-            TyData::DependentTy(dep_ty) => {
-                if let DependentTyData::TyParam(_, ty) = dep_ty.data(db) {
+            TyData::ConstTy(const_ty) => {
+                if let ConstTyData::TyParam(_, ty) = const_ty.data(db) {
                     let key = self.new_key(ty.kind(db));
-                    TyId::dependent_ty_var(db, *ty, key)
+                    TyId::const_ty_var(db, *ty, key)
                 } else {
                     panic!()
                 }
@@ -155,11 +155,9 @@ impl<'db> UnificationTable<'db> {
     fn unify_var_var(&mut self, ty_var1: TyId, ty_var2: TyId) -> bool {
         let (var1, var2) = match (ty_var1.data(self.db), ty_var2.data(self.db)) {
             (TyData::TyVar(var1), TyData::TyVar(var2)) => (var1, var2),
-            (TyData::DependentTy(dep_ty1), TyData::DependentTy(dep_ty2)) => {
-                match (dep_ty1.data(self.db), dep_ty2.data(self.db)) {
-                    (DependentTyData::TyVar(var1, _), DependentTyData::TyVar(var2, _)) => {
-                        (var1, var2)
-                    }
+            (TyData::ConstTy(const_ty1), TyData::ConstTy(const_ty2)) => {
+                match (const_ty1.data(self.db), const_ty2.data(self.db)) {
+                    (ConstTyData::TyVar(var1, _), ConstTyData::TyVar(var2, _)) => (var1, var2),
                     _ => panic!(),
                 }
             }
@@ -211,8 +209,8 @@ impl<'db> Subst for UnificationTable<'db> {
     fn get(&mut self, ty: TyId) -> Option<TyId> {
         match ty.data(self.db) {
             TyData::TyVar(var) => self.probe(var.key),
-            TyData::DependentTy(dep_ty) => {
-                if let DependentTyData::TyVar(var, _) = dep_ty.data(self.db) {
+            TyData::ConstTy(const_ty) => {
+                if let ConstTyData::TyVar(var, _) = const_ty.data(self.db) {
                     self.probe(var.key)
                 } else {
                     None

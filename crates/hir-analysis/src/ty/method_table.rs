@@ -2,13 +2,12 @@ use common::input::IngotKind;
 use hir::hir_def::{IdentId, Impl, IngotId};
 use rustc_hash::FxHashMap;
 
-use crate::HirAnalysisDb;
-
 use super::{
     ty_def::{FuncDef, InvalidCause, TyBase, TyId},
     ty_lower::{lower_func, lower_hir_ty},
     unify::UnificationTable,
 };
+use crate::HirAnalysisDb;
 
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_methods(db: &dyn HirAnalysisDb, ingot: IngotId) -> MethodTable {

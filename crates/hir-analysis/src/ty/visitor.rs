@@ -1,5 +1,5 @@
 use super::{
-    dependent_ty::{DependentTyData, DependentTyId},
+    const_ty::{ConstTyData, ConstTyId},
     ty_def::{AdtDef, FuncDef, InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
 };
 use crate::HirAnalysisDb;
@@ -16,12 +16,7 @@ pub trait TyVisitor {
     fn visit_param(&mut self, db: &dyn HirAnalysisDb, ty_param: &TyParam) {}
 
     #[allow(unused_variables)]
-    fn visit_dependent_param(
-        &mut self,
-        db: &dyn HirAnalysisDb,
-        ty_param: &TyParam,
-        dep_ty_ty: TyId,
-    ) {
+    fn visit_const_param(&mut self, db: &dyn HirAnalysisDb, ty_param: &TyParam, const_ty_ty: TyId) {
     }
 
     fn visit_app(&mut self, db: &dyn HirAnalysisDb, abs: TyId, arg: TyId) {
@@ -47,8 +42,8 @@ pub trait TyVisitor {
     fn visit_func(&mut self, db: &dyn HirAnalysisDb, func: FuncDef) {}
 
     #[allow(unused_variables)]
-    fn visit_dependent_ty(&mut self, db: &dyn HirAnalysisDb, dependent_ty: &DependentTyId) {
-        walk_dependent_ty(self, db, dependent_ty)
+    fn visit_const_ty(&mut self, db: &dyn HirAnalysisDb, const_ty: &ConstTyId) {
+        walk_const_ty(self, db, const_ty)
     }
 }
 
@@ -65,7 +60,7 @@ where
 
         TyData::TyBase(ty_con) => visitor.visit_ty_base(db, ty_con),
 
-        TyData::DependentTy(dependent_ty) => visitor.visit_dependent_ty(db, dependent_ty),
+        TyData::ConstTy(const_ty) => visitor.visit_const_ty(db, const_ty),
 
         TyData::Invalid(cause) => visitor.visit_invalid(db, cause),
     }
@@ -82,14 +77,14 @@ where
     }
 }
 
-pub fn walk_dependent_ty<V>(visitor: &mut V, db: &dyn HirAnalysisDb, dependent_ty: &DependentTyId)
+pub fn walk_const_ty<V>(visitor: &mut V, db: &dyn HirAnalysisDb, const_ty: &ConstTyId)
 where
     V: TyVisitor + ?Sized,
 {
-    visitor.visit_ty(db, dependent_ty.ty(db));
-    match &dependent_ty.data(db) {
-        DependentTyData::TyVar(var, _) => visitor.visit_var(db, var),
-        DependentTyData::TyParam(param, ty) => visitor.visit_dependent_param(db, param, *ty),
-        DependentTyData::Evaluated(..) | DependentTyData::UnEvaluated(..) => {}
+    visitor.visit_ty(db, const_ty.ty(db));
+    match &const_ty.data(db) {
+        ConstTyData::TyVar(var, _) => visitor.visit_var(db, var),
+        ConstTyData::TyParam(param, ty) => visitor.visit_const_param(db, param, *ty),
+        ConstTyData::Evaluated(..) | ConstTyData::UnEvaluated(..) => {}
     }
 }
