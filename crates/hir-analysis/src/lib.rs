@@ -26,6 +26,8 @@ pub struct Jar(
     ty::ty_lower::lower_type_alias,
     ty::ty_lower::collect_generic_params,
     ty::ty_lower::GenericParamOwnerId,
+    ty::ty_lower::GenericParamTypeSet,
+    ty::ty_lower::evaluate_params_precursor,
     /// Trait lowering.
     ty::trait_lower::lower_trait,
     ty::trait_lower::lower_trait_ref,

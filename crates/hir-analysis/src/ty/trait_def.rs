@@ -17,6 +17,7 @@ use super::{
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     trait_lower::collect_implementor_methods,
     ty_def::{FuncDef, Kind, Subst, TyId},
+    ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
 };
 use crate::{
@@ -278,13 +279,19 @@ impl TraitInstId {
 #[salsa::tracked]
 pub struct TraitDef {
     pub trait_: Trait,
-    #[return_ref]
-    pub params: Vec<TyId>,
-    /// We collects self type here to know the expected kind of implementor
-    /// type in `Implementor` lowering phase.
-    pub self_param: TyId,
+    pub(crate) param_set: GenericParamTypeSet,
     #[return_ref]
     pub methods: BTreeMap<IdentId, TraitMethod>,
+}
+
+impl TraitDef {
+    pub fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.param_set(db).params(db)
+    }
+
+    pub fn self_param(self, db: &dyn HirAnalysisDb) -> TyId {
+        self.param_set(db).trait_self(db).unwrap()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

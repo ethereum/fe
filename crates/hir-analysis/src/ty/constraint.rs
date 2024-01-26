@@ -497,9 +497,9 @@ impl<'db> ConstraintCollector<'db> {
     fn collect_constraints_from_generic_params(&mut self) {
         let param_set = collect_generic_params(self.db, self.owner);
         let params_list = self.owner.params(self.db);
-        assert!(param_set.params.len() == params_list.len(self.db.as_hir_db()));
+        assert!(param_set.params(self.db).len() == params_list.len(self.db.as_hir_db()));
         for (&ty, hir_param) in param_set
-            .params
+            .params(self.db)
             .iter()
             .zip(params_list.data(self.db.as_hir_db()))
         {

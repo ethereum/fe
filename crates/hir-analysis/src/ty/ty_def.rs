@@ -20,7 +20,7 @@ use super::{
     },
     dependent_ty::{DependentTyData, DependentTyId},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
-    ty_lower::{lower_hir_ty, GenericParamOwnerId},
+    ty_lower::{lower_hir_ty, GenericParamOwnerId, GenericParamTypeSet},
     unify::{InferenceKey, UnificationTable},
     visitor::TyVisitor,
 };
@@ -52,6 +52,14 @@ impl TyId {
     pub fn is_integral(self, db: &dyn HirAnalysisDb) -> bool {
         match self.data(db) {
             TyData::TyBase(ty_base) => ty_base.is_integral(),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the type is a bool type.
+    pub fn is_bool(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::TyBase(ty_base) => ty_base.is_bool(),
             _ => false,
         }
     }
@@ -441,8 +449,7 @@ pub struct AdtDef {
     pub adt_ref: AdtRefId,
 
     /// Type parameters of the ADT.
-    #[return_ref]
-    pub params: Vec<TyId>,
+    param_set: GenericParamTypeSet,
 
     /// Fields of the ADT, if the ADT is an enum, this represents variants.
     #[return_ref]
@@ -452,6 +459,10 @@ pub struct AdtDef {
 impl AdtDef {
     pub(crate) fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
         self.adt_ref(db).name(db)
+    }
+
+    pub(crate) fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.param_set(db).params(db)
     }
 
     pub(crate) fn variant_ty_span(
@@ -525,9 +536,7 @@ pub struct FuncDef {
 
     pub name: IdentId,
 
-    /// Generic parameters of the function.
-    #[return_ref]
-    pub params: Vec<TyId>,
+    params_set: GenericParamTypeSet,
 
     /// Argument types of the function.
     #[return_ref]
@@ -542,6 +551,10 @@ impl FuncDef {
         self.hir_func(db)
             .top_mod(db.as_hir_db())
             .ingot(db.as_hir_db())
+    }
+
+    pub fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.params_set(db).params(db)
     }
 
     pub fn receiver_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {

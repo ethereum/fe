@@ -10,7 +10,9 @@ use rustc_hash::FxHashMap;
 use super::{
     trait_def::{Implementor, TraitDef, TraitInstId, TraitMethod},
     ty_def::{FuncDef, InvalidCause, Kind, TyId},
-    ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamOwnerId},
+    ty_lower::{
+        collect_generic_params, lower_generic_arg_list, GenericParamOwnerId, GenericParamTypeSet,
+    },
     unify::UnificationTable,
 };
 use crate::{
@@ -77,15 +79,9 @@ pub(crate) fn lower_impl_trait(
     }
 
     let param_owner = GenericParamOwnerId::new(db, impl_trait.into());
-    let params = collect_generic_params(db, param_owner);
+    let params = collect_generic_params(db, param_owner).params(db).to_vec();
 
-    Some(Implementor::new(
-        db,
-        trait_,
-        ty,
-        params.params.clone(),
-        impl_trait,
-    ))
+    Some(Implementor::new(db, trait_, ty, params, impl_trait))
 }
 
 /// Lower a trait reference to a trait instance.
@@ -218,18 +214,19 @@ pub(crate) enum TraitRefLowerError {
 struct TraitBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: Trait,
-    params: Vec<TyId>,
-    self_arg: TyId,
+    param_set: GenericParamTypeSet,
     methods: BTreeMap<IdentId, TraitMethod>,
 }
 
 impl<'db> TraitBuilder<'db> {
     fn new(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
+        let params_owner_id = GenericParamOwnerId::new(db, trait_.into());
+        let param_set = collect_generic_params(db, params_owner_id);
+
         Self {
             db,
             trait_,
-            params: vec![],
-            self_arg: TyId::invalid(db, InvalidCause::Other),
+            param_set,
             methods: BTreeMap::default(),
         }
     }
@@ -238,20 +235,12 @@ impl<'db> TraitBuilder<'db> {
         self.collect_params();
         self.collect_methods();
 
-        TraitDef::new(
-            self.db,
-            self.trait_,
-            self.params,
-            self.self_arg,
-            self.methods,
-        )
+        TraitDef::new(self.db, self.trait_, self.param_set, self.methods)
     }
 
     fn collect_params(&mut self) {
         let params_owner_id = GenericParamOwnerId::new(self.db, self.trait_.into());
-        let params_set = collect_generic_params(self.db, params_owner_id);
-        self.params = params_set.params.clone();
-        self.self_arg = params_set.trait_self.unwrap();
+        self.param_set = collect_generic_params(self.db, params_owner_id);
     }
 
     fn collect_methods(&mut self) {

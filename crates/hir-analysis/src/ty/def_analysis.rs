@@ -903,7 +903,7 @@ impl DefKind {
             Self::Trait(def) => def.params(db),
             Self::ImplTrait(def) => def.params(db),
             Self::Impl(hir_impl, _) => {
-                &collect_generic_params(db, GenericParamOwnerId::new(db, hir_impl.into())).params
+                collect_generic_params(db, GenericParamOwnerId::new(db, hir_impl.into())).params(db)
             }
             Self::Func(def) => def.params(db),
         }
@@ -1373,8 +1373,8 @@ fn find_dependent_ty_param(
     };
 
     let owner = GenericParamOwnerId::from_item_opt(db, item).unwrap();
-    let params = collect_generic_params(db, owner);
-    let ty = params.params.get(idx)?;
+    let param_set = collect_generic_params(db, owner);
+    let ty = param_set.params(db).get(idx)?;
     match ty.data(db) {
         TyData::DependentTy(dep_ty) => Some(*dep_ty),
         _ => None,
