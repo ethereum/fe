@@ -4,8 +4,7 @@ use lsp_types::{
     TextDocumentItem,
 };
 
-use tokio::sync::MutexGuard;
-use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
+use tower_lsp::{jsonrpc::Result, LanguageServer};
 
 use crate::{
     backend::Backend,
@@ -188,12 +187,11 @@ async fn on_change(backend: &Backend, params: TextDocumentItem) {
     };
 
     let client = backend.client.lock().await;
-    let diagnostics = 
-        diagnostics
-            .unwrap()
-            .into_iter()
-            .map(|(uri, diags)| client.publish_diagnostics(uri, diags, None))
-            .collect::<Vec<_>>();
+    let diagnostics = diagnostics
+        .unwrap()
+        .into_iter()
+        .map(|(uri, diags)| client.publish_diagnostics(uri, diags, None))
+        .collect::<Vec<_>>();
 
     futures::future::join_all(diagnostics).await;
 }

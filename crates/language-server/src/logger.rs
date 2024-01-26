@@ -23,7 +23,7 @@ impl log::Log for Logger {
             let level = record.level();
             let client = self.client.clone();
             tokio::spawn(async move {
-                let mut client = client.lock().await;
+                let client = client.lock().await;
                 client
                     .log_message(
                         match level {
@@ -37,22 +37,6 @@ impl log::Log for Logger {
                     )
                     .await;
             });
-            // let client = self.client.clone();
-            // tokio::task::spawn_blocking(async move {
-            //     let client = client.lock().await;
-            //     client
-            //         .log_message(
-            //             match level {
-            //                 log::Level::Error => lsp_types::MessageType::ERROR,
-            //                 log::Level::Warn => lsp_types::MessageType::WARNING,
-            //                 log::Level::Info => lsp_types::MessageType::INFO,
-            //                 log::Level::Debug => lsp_types::MessageType::LOG,
-            //                 log::Level::Trace => lsp_types::MessageType::LOG,
-            //             },
-            //             message,
-            //         )
-            //         .await;
-            // });
         }
     }
 
