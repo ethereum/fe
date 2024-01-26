@@ -61,7 +61,8 @@ impl LowerMirTestDb {
 
     pub fn new_std_lib(&mut self) -> TopLevelMod {
         let input = library::std_lib_input_ingot(self);
-        lower::map_file_to_mod(self, input_file)
+        panic!("");
+        // lower::map_file_to_mod(self, input_file)
     }
 
     fn register_file(&self, input_file: InputFile) {
