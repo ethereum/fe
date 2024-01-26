@@ -179,7 +179,7 @@ pub fn handle_watched_file_changes(
                 lsp_types::FileChangeType::CREATED => {
                     // TODO: handle this more carefully!
                     // this is inefficient, a hack for now
-                    // let db = state.db();
+                    // let db = state.db.lock().unwrap();
                     // let db = &mut state.db.lock().unwrap();
                     let _ = workspace.sync(db);
                     let input = workspace

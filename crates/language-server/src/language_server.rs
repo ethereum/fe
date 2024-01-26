@@ -4,7 +4,8 @@ use lsp_types::{
     TextDocumentItem,
 };
 
-use tower_lsp::{jsonrpc::Result, LanguageServer};
+use tokio::sync::MutexGuard;
+use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
 use crate::{
     backend::Backend,
@@ -27,23 +28,24 @@ impl LanguageServer for Backend {
             }),
         };
         // setup logging
-        let _ = self.init_logger(log::Level::Info);
+        {
+            let _ = self.init_logger(log::Level::Info);
+        }
 
         // setup workspace
-        let workspace = self.workspace();
-        let workspace = &mut workspace.lock().await;
-        let db = self.db();
-        let db = &mut db.lock().await;
-
-        let _ = workspace.set_workspace_root(
-            db,
-            initialize_params
-                .root_uri
-                .unwrap()
-                .to_file_path()
-                .ok()
-                .unwrap(),
-        );
+        {
+            let workspace = &mut self.workspace.lock().unwrap();
+            let db = &mut self.db.lock().unwrap();
+            let _ = workspace.set_workspace_root(
+                db,
+                initialize_params
+                    .root_uri
+                    .unwrap()
+                    .to_file_path()
+                    .ok()
+                    .unwrap(),
+            );
+        }
 
         // register watchers
         let _ = self.register_watchers().await;
@@ -56,29 +58,35 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: lsp_types::DidOpenTextDocumentParams) {
         info!("did open: {:?}", params);
-        let workspace = self.workspace();
-        let workspace = &mut workspace.lock().await;
-        let db = self.db();
-        let db = &mut db.lock().await;
-        let _ = workspace.sync(db);
+        {
+            let workspace = &mut self.workspace.lock().unwrap();
+            let db = &mut self.db.lock().unwrap();
+            let _ = workspace.sync(db);
+        }
 
-        self.on_change(TextDocumentItem {
-            uri: params.text_document.uri,
-            language_id: LANGUAGE_ID.to_string(),
-            version: params.text_document.version,
-            text: params.text_document.text,
-        })
+        on_change(
+            self,
+            TextDocumentItem {
+                uri: params.text_document.uri,
+                language_id: LANGUAGE_ID.to_string(),
+                version: params.text_document.version,
+                text: params.text_document.text,
+            },
+        )
         .await;
     }
 
     async fn did_change(&self, params: lsp_types::DidChangeTextDocumentParams) {
         info!("did change: {:?}", params);
-        self.on_change(TextDocumentItem {
-            uri: params.text_document.uri,
-            language_id: LANGUAGE_ID.to_string(),
-            version: params.text_document.version,
-            text: params.content_changes[0].text.clone(),
-        })
+        on_change(
+            self,
+            TextDocumentItem {
+                uri: params.text_document.uri,
+                language_id: LANGUAGE_ID.to_string(),
+                version: params.text_document.version,
+                text: params.content_changes[0].text.clone(),
+            },
+        )
         .await;
     }
 
@@ -88,10 +96,10 @@ impl LanguageServer for Backend {
     // The fix: handle document renaming more explicitly in the "will rename" flow, along with the document
     // rename refactor.
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        let workspace = self.workspace();
-        let workspace = &mut workspace.lock().await;
-        let db = self.db();
-        let db = &mut db.lock().await;
+        let workspace = &mut self.workspace.lock().unwrap();
+        // let workspace = &mut workspace.lock().await;
+        let db = &mut self.db.lock().unwrap();
+        // let db = &mut db.lock().await;
 
         let input = workspace
             .input_from_file_path(
@@ -108,11 +116,6 @@ impl LanguageServer for Backend {
         let _ = input.sync(db, None);
     }
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        let workspace = self.workspace();
-        let workspace = &mut workspace.lock().await;
-        let db = self.db();
-        let db = &mut db.lock().await;
-
         let changes = params.changes;
         for change in changes {
             let uri = change.uri;
@@ -122,6 +125,8 @@ impl LanguageServer for Backend {
                 lsp_types::FileChangeType::CREATED => {
                     // TODO: handle this more carefully!
                     // this is inefficient, a hack for now
+                    let workspace = &mut self.workspace.lock().unwrap();
+                    let db = &mut self.db.lock().unwrap();
                     let _ = workspace.sync(db);
                     let input = workspace
                         .input_from_file_path(db, path.to_str().unwrap())
@@ -129,6 +134,8 @@ impl LanguageServer for Backend {
                     let _ = input.sync(db, None);
                 }
                 lsp_types::FileChangeType::CHANGED => {
+                    let workspace = &mut self.workspace.lock().unwrap();
+                    let db = &mut self.db.lock().unwrap();
                     let input = workspace
                         .input_from_file_path(db, path.to_str().unwrap())
                         .unwrap();
@@ -137,50 +144,34 @@ impl LanguageServer for Backend {
                 lsp_types::FileChangeType::DELETED => {
                     // TODO: handle this more carefully!
                     // this is inefficient, a hack for now
+                    let workspace = &mut self.workspace.lock().unwrap();
+                    let db = &mut self.db.lock().unwrap();
                     let _ = workspace.sync(db);
                 }
                 _ => {}
             }
             // collect diagnostics for the file
             if change.typ != lsp_types::FileChangeType::DELETED {
-                // let diags = get_diagnostics(db, workspace, uri.clone());
-                // for (uri, more_diags) in diags.ok().unwrap() {
-                //     let diags = diagnostics.entry(uri).or_insert_with(Vec::new);
-                //     diags.extend(more_diags);
-                // }
                 let text = std::fs::read_to_string(path).unwrap();
-                self.on_change(TextDocumentItem {
-                    uri: uri.clone(),
-                    language_id: LANGUAGE_ID.to_string(),
-                    version: 0,
-                    text,
-                })
+                on_change(
+                    self,
+                    TextDocumentItem {
+                        uri: uri.clone(),
+                        language_id: LANGUAGE_ID.to_string(),
+                        version: 0,
+                        text,
+                    },
+                )
                 .await;
             }
         }
     }
-
-    // async fn will_rename_files(&self, params: RenameFilesParams) -> Result<Option<WorkspaceEdit>> {
-    //     let workspace = &mut *self.workspace.lock().await;
-    //     let db = &mut *self.db.lock().await;
-
-    //     for file in params.files {
-    //         let _ = workspace.rename_file(db, &*file.old_uri, &*file.new_uri);
-    //     }
-
-    //     // TODO: implement file rename auto-refactoring
-    //     Ok(None)
-    // }
 }
 
-impl Backend {
-    async fn on_change(&self, params: TextDocumentItem) {
-        let workspace = self.workspace();
-        let workspace = &mut workspace.lock().await;
-        let db = self.db();
-        let db = &mut db.lock().await;
-        let client = self.client();
-        let client = &mut *client.lock().await;
+async fn on_change(backend: &Backend, params: TextDocumentItem) {
+    let diagnostics = {
+        let workspace = &mut backend.workspace.lock().unwrap();
+        let db = &mut backend.db.lock().unwrap();
         let input = workspace
             .input_from_file_path(
                 db,
@@ -193,12 +184,16 @@ impl Backend {
             )
             .unwrap();
         let _ = input.sync(db, Some(params.text));
-        let diagnostics = get_diagnostics(db, workspace, params.uri.clone())
+        get_diagnostics(db, workspace, params.uri.clone())
+    };
+
+    let client = backend.client.lock().await;
+    let diagnostics = 
+        diagnostics
             .unwrap()
             .into_iter()
             .map(|(uri, diags)| client.publish_diagnostics(uri, diags, None))
             .collect::<Vec<_>>();
 
-        futures::future::join_all(diagnostics).await;
-    }
+    futures::future::join_all(diagnostics).await;
 }
