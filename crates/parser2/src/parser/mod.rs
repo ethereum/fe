@@ -468,6 +468,33 @@ impl<S: TokenStream> Parser<S> {
         }
     }
 
+    /// Skip trivias (and newlines), then peek the next three tokens.
+    pub fn peek_three(&mut self) -> (Option<SyntaxKind>, Option<SyntaxKind>, Option<SyntaxKind>) {
+        self.stream.set_bt_point();
+
+        while let Some(next) = self.stream.peek().map(|tok| tok.syntax_kind()) {
+            if !(next.is_trivia() || next == SyntaxKind::Newline) {
+                break;
+            }
+            self.stream.next();
+        }
+
+        let tokens = (
+            self.stream.next().map(|t| t.syntax_kind()),
+            self.stream.next().map(|t| t.syntax_kind()),
+            self.stream.next().map(|t| t.syntax_kind()),
+        );
+
+        self.stream.backtrack();
+        tokens
+    }
+
+    /// Skip trivias, then peek the next two tokens.
+    pub fn peek_two(&mut self) -> (Option<SyntaxKind>, Option<SyntaxKind>) {
+        let (a, b, _) = self.peek_three();
+        (a, b)
+    }
+
     /// Add the `msg` to the error list, at `current_pos`.
     fn error(&mut self, msg: &str) -> ErrorScope {
         self.is_err = true;
