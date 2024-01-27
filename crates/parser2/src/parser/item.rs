@@ -149,21 +149,31 @@ define_scope! {
 }
 impl super::Parse for ItemModifierScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if parser.bump_if(SyntaxKind::PubKw) {
-            if parser.bump_if(SyntaxKind::UnsafeKw) {
-                self.kind.set(ModifierKind::PubAndUnsafe);
-            } else {
-                self.kind.set(ModifierKind::Pub);
+        let mut modifier_kind = ModifierKind::None;
+
+        loop {
+            match parser.current_kind() {
+                Some(kind) if kind.is_modifier_head() => {
+                    let new_kind = modifier_kind.union(kind);
+                    if new_kind == modifier_kind {
+                        parser.unexpected_token_error("duplicate modifier", None);
+                    } else if kind == SyntaxKind::PubKw && modifier_kind.is_unsafe() {
+                        parser.unexpected_token_error(
+                            "`pub` modifier must come before `unsafe`",
+                            None,
+                        );
+                    } else {
+                        parser.bump();
+                    }
+                    modifier_kind = new_kind;
+                }
+                _ => break,
             }
-        } else if parser.bump_if(SyntaxKind::UnsafeKw) {
-            self.kind.set(ModifierKind::Unsafe);
-        } else {
-            self.kind.set(ModifierKind::None);
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ModifierKind {
     None,
     Pub,
@@ -176,6 +186,26 @@ impl Default for ModifierKind {
     }
 }
 impl ModifierKind {
+    fn union(&self, kind: SyntaxKind) -> ModifierKind {
+        match kind {
+            SyntaxKind::PubKw => {
+                if self.is_unsafe() {
+                    Self::PubAndUnsafe
+                } else {
+                    Self::Pub
+                }
+            }
+            SyntaxKind::UnsafeKw => {
+                if self.is_pub() {
+                    Self::PubAndUnsafe
+                } else {
+                    Self::Unsafe
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
     fn is_pub(&self) -> bool {
         matches!(self, Self::Pub | Self::PubAndUnsafe)
     }
@@ -542,19 +572,19 @@ fn parse_fn_item_block<S: TokenStream>(
 
         let mut checkpoint = attr::parse_attr_list(parser);
 
-        loop {
-            match parser.current_kind() {
-                Some(kind) if kind.is_modifier_head() => {
-                    if allow_modifier {
-                        let (_, modifier_checkpoint) =
-                            parser.parse(ItemModifierScope::default(), None);
-                        checkpoint.get_or_insert(modifier_checkpoint);
-                    } else {
-                        parser
-                            .unexpected_token_error("modifier is not allowed in this block", None);
-                    }
+        let is_modifier = |kind: Option<SyntaxKind>| match kind {
+            Some(kind) => kind.is_modifier_head(),
+            _ => false,
+        };
+
+        if is_modifier(parser.current_kind()) {
+            if allow_modifier {
+                let (_, modifier_checkpoint) = parser.parse(ItemModifierScope::default(), None);
+                checkpoint.get_or_insert(modifier_checkpoint);
+            } else {
+                while is_modifier(parser.current_kind()) {
+                    parser.unexpected_token_error("modifier is not allowed in this block", None);
                 }
-                _ => break,
             }
         }
 

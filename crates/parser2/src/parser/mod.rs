@@ -317,7 +317,7 @@ impl<S: TokenStream> Parser<S> {
     }
 
     /// Consumes tokens until a recovery token is found, and reports an error on any
-    /// unexpexted tokens.
+    /// unexpected tokens.
     pub fn recover(&mut self, checkpoint: Option<Checkpoint>) {
         let mut recovery_set: FxHashSet<SyntaxKind> = FxHashSet::default();
         let mut scope_index = self.parents.len() - 1;
