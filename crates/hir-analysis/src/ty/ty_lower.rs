@@ -10,19 +10,30 @@ use hir::hir_def::{
 use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
 
+use super::{
+    const_ty::{ConstTyData, ConstTyId},
+    ty_def::{
+        AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
+    },
+};
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
     HirAnalysisDb,
 };
 
-use super::ty_def::{
-    AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
-};
-
 /// Lowers the given HirTy to `TyId`.
-#[salsa::tracked]
+#[salsa::tracked(recovery_fn=recover_lower_hir_ty_cycle)]
 pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId {
     TyBuilder::new(db, scope).lower_ty(ty)
+}
+
+fn recover_lower_hir_ty_cycle(
+    db: &dyn HirAnalysisDb,
+    _cycle: &salsa::Cycle,
+    _ty: HirTyId,
+    _scope: ScopeId,
+) -> TyId {
+    TyId::invalid(db, InvalidCause::RecursiveConstParamTy)
 }
 
 /// Lower HIR ADT definition(`struct/enum/contract`) to [`AdtDef`].
@@ -34,9 +45,7 @@ pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
 #[salsa::tracked]
 pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
     let name = func.name(db.as_hir_db()).to_opt()?;
-    let generic_params = collect_generic_params(db, GenericParamOwnerId::new(db, func.into()))
-        .params
-        .clone();
+    let params_set = collect_generic_params(db, GenericParamOwnerId::new(db, func.into()));
 
     let args = match func.params(db.as_hir_db()) {
         Partial::Present(args) => args
@@ -57,11 +66,11 @@ pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
         .map(|ty| lower_hir_ty(db, ty, func.scope()))
         .unwrap_or_else(|| TyId::unit(db));
 
-    Some(FuncDef::new(db, func, name, generic_params, args, ret_ty))
+    Some(FuncDef::new(db, func, name, params_set, args, ret_ty))
 }
 
 /// Collects the generic parameters of the given generic parameter owner.
-#[salsa::tracked(return_ref)]
+#[salsa::tracked]
 pub(crate) fn collect_generic_params(
     db: &dyn HirAnalysisDb,
     owner: GenericParamOwnerId,
@@ -75,13 +84,13 @@ pub(crate) fn lower_type_alias(
     db: &dyn HirAnalysisDb,
     alias: HirTypeAlias,
 ) -> Result<TyAlias, AliasCycle> {
-    let params = collect_generic_params(db, GenericParamOwnerId::new(db, alias.into()));
+    let param_set = collect_generic_params(db, GenericParamOwnerId::new(db, alias.into()));
 
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
         return Ok(TyAlias {
             alias,
             alias_to: TyId::invalid(db, InvalidCause::Other),
-            params: params.params.clone(),
+            param_set,
         });
     };
 
@@ -94,8 +103,20 @@ pub(crate) fn lower_type_alias(
     Ok(TyAlias {
         alias,
         alias_to,
-        params: params.params.clone(),
+        param_set,
     })
+}
+
+#[doc(hidden)]
+#[salsa::tracked(return_ref)]
+pub(crate) fn evaluate_params_precursor(
+    db: &dyn HirAnalysisDb,
+    set: GenericParamTypeSet,
+) -> Vec<TyId> {
+    set.params_precursor(db)
+        .iter()
+        .map(|p| p.evaluate(db, set.scope(db)))
+        .collect()
 }
 
 fn recover_lower_type_alias_cycle(
@@ -103,24 +124,24 @@ fn recover_lower_type_alias_cycle(
     cycle: &salsa::Cycle,
     _alias: HirTypeAlias,
 ) -> Result<TyAlias, AliasCycle> {
+    use once_cell::sync::Lazy;
+    use regex::Regex;
+
+    // Filter out the cycle participants that are not type aliases.
+    // This is inefficient workaround because it's not possible to obtain the
+    // ingredient index of the tracked function. Please refer to https://github.com/salsa-rs/salsa/pull/461 for more details.
+    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"lower_type_alias\(?(\d)\)").unwrap());
     let alias_cycle = cycle
-        .participant_keys()
-        .filter_map(|key| {
-            let ingredient_index = key.ingredient_index();
-            // This is temporary fragile solution to filter out the cycle participants, the
-            // correctness of this strategy is based on the fact that cycle participants are
-            // only `lower_type_alias` and `lower_hir_ty` functions.
-            // TODO: We can refactor here if https://github.com/salsa-rs/salsa/pull/461 is approved.
-            if matches!(
-                db.cycle_recovery_strategy(ingredient_index),
-                salsa::cycle::CycleRecoveryStrategy::Fallback
-            ) {
-                Some(lower_type_alias::key_from_id(key.key_index()))
-            } else {
-                None
-            }
+        .all_participants(db)
+        .into_iter()
+        .filter_map(|participant| {
+            let caps = RE.captures(&participant)?;
+            let id = caps.get(1)?;
+            let id = salsa::Id::from_u32(id.as_str().parse().ok()?);
+            Some(lower_type_alias::key_from_id(id))
         })
         .collect();
+
     Err(AliasCycle(alias_cycle))
 }
 
@@ -147,12 +168,16 @@ impl AliasCycle {
 pub(crate) struct TyAlias {
     alias: HirTypeAlias,
     alias_to: TyId,
-    params: Vec<TyId>,
+    param_set: GenericParamTypeSet,
 }
 
 impl TyAlias {
+    fn params<'db>(&self, db: &'db dyn HirAnalysisDb) -> &'db [TyId] {
+        self.param_set.params(db)
+    }
+
     fn apply_subst(&self, db: &dyn HirAnalysisDb, arg_tys: &[TyId]) -> TyId {
-        if arg_tys.len() < self.params.len() {
+        if arg_tys.len() < self.params(db).len() {
             return TyId::invalid(
                 db,
                 InvalidCause::UnboundTypeAliasParam {
@@ -163,7 +188,7 @@ impl TyAlias {
         }
         let mut subst = FxHashMap::default();
 
-        for (&param, &arg) in self.params.iter().zip(arg_tys.iter()) {
+        for (&param, &arg) in self.params(db).iter().zip(arg_tys.iter()) {
             let arg = if param.kind(db) != arg.kind(db) {
                 TyId::invalid(db, InvalidCause::kind_mismatch(param.kind(db).into(), arg))
             } else {
@@ -196,8 +221,13 @@ impl<'db> TyBuilder<'db> {
 
             HirTyKind::Tuple(tuple_id) => self.lower_tuple(*tuple_id),
 
-            HirTyKind::Array(_, _) => {
-                todo!()
+            HirTyKind::Array(hir_elem_ty, len) => {
+                let elem_ty = self.lower_opt_hir_ty(*hir_elem_ty);
+                let len_ty = ConstTyId::from_opt_body(self.db, *len);
+                let len_ty = TyId::const_ty(self.db, len_ty);
+                let array = TyId::array(self.db);
+                let array_1 = TyId::app(self.db, array, elem_ty);
+                TyId::app(self.db, array_1, len_ty)
             }
         }
     }
@@ -224,7 +254,7 @@ impl<'db> TyBuilder<'db> {
 
                 let ty = alias.apply_subst(self.db, &arg_tys);
                 if !ty.is_invalid(self.db) {
-                    let param_num = alias.params.len();
+                    let param_num = alias.params(self.db).len();
                     arg_tys[param_num..]
                         .iter()
                         .fold(ty, |acc, arg| TyId::app(self.db, acc, *arg))
@@ -268,23 +298,17 @@ impl<'db> TyBuilder<'db> {
                         self.db,
                         GenericParamOwnerId::new(self.db, trait_.into()),
                     );
-                    params.trait_self.unwrap()
+                    params.trait_self(self.db).unwrap()
                 }
 
                 ItemKind::Impl(impl_) => {
                     let hir_ty = impl_.ty(self.db.as_hir_db());
-                    hir_ty
-                        .to_opt()
-                        .map(|hir_ty| lower_hir_ty(self.db, hir_ty, scope))
-                        .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+                    self.lower_opt_hir_ty(hir_ty)
                 }
 
                 ItemKind::ImplTrait(impl_trait) => {
                     let hir_ty = impl_trait.ty(self.db.as_hir_db());
-                    hir_ty
-                        .to_opt()
-                        .map(|hir_ty| lower_hir_ty(self.db, hir_ty, scope))
-                        .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+                    self.lower_opt_hir_ty(hir_ty)
                 }
 
                 _ => TyId::invalid(self.db, InvalidCause::Other),
@@ -300,10 +324,7 @@ impl<'db> TyBuilder<'db> {
     }
 
     fn lower_ptr(&mut self, pointee: Partial<HirTyId>) -> TyId {
-        let pointee = pointee
-            .to_opt()
-            .map(|pointee| lower_hir_ty(self.db, pointee, self.scope))
-            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
+        let pointee = self.lower_opt_hir_ty(pointee);
 
         let ptr = TyId::ptr(self.db);
         TyId::app(self.db, ptr, pointee)
@@ -313,12 +334,9 @@ impl<'db> TyBuilder<'db> {
         let elems = tuple_id.data(self.db.as_hir_db());
         let len = elems.len();
         let tuple = TyId::tuple(self.db, len);
-        elems.iter().fold(tuple, |acc, elem| {
-            let elem_ty = elem
-                .to_opt()
-                .map(|elem| lower_hir_ty(self.db, elem, self.scope))
-                .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
-            if !elem_ty.is_mono_type(self.db) {
+        elems.iter().fold(tuple, |acc, &elem| {
+            let elem_ty = self.lower_opt_hir_ty(elem);
+            if !elem_ty.has_star_kind(self.db) {
                 return TyId::invalid(self.db, InvalidCause::NotFullyApplied);
             }
 
@@ -341,7 +359,7 @@ impl<'db> TyBuilder<'db> {
                 let owner_id = GenericParamOwnerId::new(self.db, owner);
 
                 let params = collect_generic_params(self.db, owner_id);
-                return Either::Left(params.params[idx]);
+                return Either::Left(params.get_param(self.db, idx).unwrap());
             }
             _ => unreachable!(),
         };
@@ -392,6 +410,13 @@ impl<'db> TyBuilder<'db> {
             }
         }
     }
+
+    fn lower_opt_hir_ty(&self, hir_ty: Partial<HirTyId>) -> TyId {
+        hir_ty
+            .to_opt()
+            .map(|hir_ty| lower_hir_ty(self.db, hir_ty, self.scope))
+            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+    }
 }
 
 pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope: ScopeId) -> TyId {
@@ -402,7 +427,10 @@ pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope:
             .map(|ty| lower_hir_ty(db, ty, scope))
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
 
-        GenericArg::Const(_) => todo!(),
+        GenericArg::Const(const_arg) => {
+            let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
+            TyId::const_ty(db, const_ty)
+        }
     }
 }
 
@@ -420,7 +448,7 @@ pub(super) fn lower_generic_arg_list(
 struct AdtTyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     adt: AdtRefId,
-    params: Vec<TyId>,
+    params: GenericParamTypeSet,
     variants: Vec<AdtField>,
 }
 
@@ -429,7 +457,7 @@ impl<'db> AdtTyBuilder<'db> {
         Self {
             db,
             adt,
-            params: Vec::new(),
+            params: GenericParamTypeSet::empty(db, adt.scope(db)),
             variants: Vec::new(),
         }
     }
@@ -448,7 +476,7 @@ impl<'db> AdtTyBuilder<'db> {
         };
         let owner_id = GenericParamOwnerId::new(self.db, owner);
 
-        self.params = collect_generic_params(self.db, owner_id).params.clone();
+        self.params = collect_generic_params(self.db, owner_id);
     }
 
     fn collect_variants(&mut self) {
@@ -502,10 +530,28 @@ impl<'db> AdtTyBuilder<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct GenericParamTypeSet {
-    pub(crate) params: Vec<TyId>,
-    pub(crate) trait_self: Option<TyId>,
+#[doc(hidden)]
+#[salsa::interned]
+pub struct GenericParamTypeSet {
+    params_precursor: Vec<TyParamPrecursor>,
+    pub trait_self: Option<TyId>,
+    scope: ScopeId,
+}
+
+impl GenericParamTypeSet {
+    pub(crate) fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        evaluate_params_precursor(db, self)
+    }
+
+    pub(crate) fn empty(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
+        Self::new(db, Vec::new(), None, scope)
+    }
+
+    fn get_param(&self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        self.params_precursor(db)
+            .get(idx)
+            .map(|p| p.evaluate(db, self.scope(db)))
+    }
 }
 
 struct GenericParamCollector<'db> {
@@ -518,11 +564,7 @@ struct GenericParamCollector<'db> {
 
 impl<'db> GenericParamCollector<'db> {
     fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwner) -> Self {
-        let trait_self = TyParamPrecursor {
-            name: Partial::Present(kw::SELF_TY),
-            idx: None,
-            kind: None,
-        };
+        let trait_self = TyParamPrecursor::trait_self(None);
 
         Self {
             db,
@@ -540,16 +582,17 @@ impl<'db> GenericParamCollector<'db> {
                 GenericParam::Type(param) => {
                     let name = param.name;
 
-                    let kind = self.find_kind_from_bound(param.bounds.as_slice());
-                    self.params.push(TyParamPrecursor {
-                        name,
-                        idx: Some(idx),
-                        kind,
-                    });
+                    let kind = self.extract_kind(param.bounds.as_slice());
+                    self.params
+                        .push(TyParamPrecursor::ty_param(name, idx, kind));
                 }
 
-                GenericParam::Const(_) => {
-                    todo!()
+                GenericParam::Const(param) => {
+                    let name = param.name;
+                    let hir_ty = param.ty.to_opt();
+
+                    self.params
+                        .push(TyParamPrecursor::const_ty_param(name, idx, hir_ty))
                 }
             }
         }
@@ -565,14 +608,14 @@ impl<'db> GenericParamCollector<'db> {
         for pred in where_clause.data(hir_db) {
             match self.param_idx_from_ty(pred.ty.to_opt()) {
                 ParamLoc::Idx(idx) => {
-                    if self.params[idx].kind.is_none() {
-                        self.params[idx].kind = self.find_kind_from_bound(pred.bounds.as_slice());
+                    if self.params[idx].kind.is_none() && !self.params[idx].is_const_ty {
+                        self.params[idx].kind = self.extract_kind(pred.bounds.as_slice());
                     }
                 }
 
                 ParamLoc::TraitSelf => {
                     if self.trait_self.kind.is_none() {
-                        self.trait_self.kind = self.find_kind_from_bound(pred.bounds.as_slice());
+                        self.trait_self.kind = self.extract_kind(pred.bounds.as_slice());
                     }
                 }
 
@@ -585,18 +628,13 @@ impl<'db> GenericParamCollector<'db> {
         self.collect_generic_params();
         self.collect_kind_in_where_clause();
 
-        let params = self
-            .params
-            .into_iter()
-            .map(|param| param.into_ty(self.db))
-            .collect();
         let trait_self = matches!(self.owner, GenericParamOwner::Trait(_))
-            .then(|| self.trait_self.into_ty(self.db));
+            .then(|| self.trait_self.evaluate(self.db, self.owner.scope()));
 
-        GenericParamTypeSet { params, trait_self }
+        GenericParamTypeSet::new(self.db, self.params, trait_self, self.owner.scope())
     }
 
-    fn find_kind_from_bound(&self, bounds: &[TypeBound]) -> Option<Kind> {
+    fn extract_kind(&self, bounds: &[TypeBound]) -> Option<Kind> {
         for bound in bounds {
             if let TypeBound::Kind(Partial::Present(k)) = bound {
                 return Some(lower_kind(k));
@@ -653,15 +691,18 @@ enum ParamLoc {
     NonParam,
 }
 
-#[derive(Debug)]
-struct TyParamPrecursor {
+#[doc(hidden)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TyParamPrecursor {
     name: Partial<IdentId>,
     idx: Option<usize>,
     kind: Option<Kind>,
+    const_ty_ty: Option<HirTyId>,
+    is_const_ty: bool,
 }
 
 impl TyParamPrecursor {
-    pub fn into_ty(self, db: &dyn HirAnalysisDb) -> TyId {
+    fn evaluate(&self, db: &dyn HirAnalysisDb, scope: ScopeId) -> TyId {
         let Partial::Present(name) = self.name else {
             return TyId::invalid(db, InvalidCause::Other);
         };
@@ -669,10 +710,60 @@ impl TyParamPrecursor {
         let param = TyParam {
             name,
             idx: self.idx,
-            kind: self.kind.unwrap_or(Kind::Star),
+            kind: self.kind.clone().unwrap_or(Kind::Star),
         };
 
-        TyId::new(db, TyData::TyParam(param))
+        if !self.is_const_ty {
+            return TyId::new(db, TyData::TyParam(param));
+        }
+
+        let const_ty_ty = match self.const_ty_ty {
+            Some(ty) => {
+                let ty = lower_hir_ty(db, ty, scope);
+                if !(ty.contains_invalid(db) || ty.is_integral(db) || ty.is_bool(db)) {
+                    TyId::invalid(db, InvalidCause::InvalidConstParamTy { ty })
+                } else {
+                    ty
+                }
+            }
+
+            None => TyId::invalid(db, InvalidCause::Other),
+        };
+
+        let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, const_ty_ty));
+
+        TyId::new(db, TyData::ConstTy(const_ty))
+    }
+
+    fn ty_param(name: Partial<IdentId>, idx: usize, kind: Option<Kind>) -> Self {
+        Self {
+            name,
+            idx: idx.into(),
+            kind,
+            const_ty_ty: None,
+            is_const_ty: false,
+        }
+    }
+
+    fn const_ty_param(name: Partial<IdentId>, idx: usize, ty: Option<HirTyId>) -> Self {
+        Self {
+            name,
+            idx: idx.into(),
+            kind: None,
+            const_ty_ty: ty,
+            is_const_ty: true,
+        }
+    }
+
+    fn trait_self(kind: Option<Kind>) -> Self {
+        let name = Partial::Present(kw::SELF_TY);
+        Self {
+            name,
+            idx: None,
+            kind,
+            const_ty_ty: None,
+            is_const_ty: false,
+        }
     }
 }
 
@@ -718,5 +809,10 @@ impl GenericParamOwnerId {
 
     pub(super) fn params(self, db: &dyn HirAnalysisDb) -> GenericParamListId {
         self.data(db).params(db.as_hir_db())
+    }
+
+    pub(super) fn from_item_opt(db: &dyn HirAnalysisDb, item: ItemKind) -> Option<Self> {
+        let owner = GenericParamOwner::from_item_opt(item)?;
+        Self::new(db, owner).into()
     }
 }

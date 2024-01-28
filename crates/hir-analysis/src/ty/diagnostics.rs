@@ -9,15 +9,13 @@ use hir::{
     span::{DynLazySpan, LazySpan},
     HirDb, SpannedHirDb,
 };
-
-use crate::HirAnalysisDb;
+use itertools::Itertools;
 
 use super::{
     constraint::PredicateId,
     ty_def::{Kind, TyId},
 };
-
-use itertools::Itertools;
+use crate::HirAnalysisDb;
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
@@ -53,7 +51,7 @@ impl TyDiagCollection {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag {
-    NotFullyAppliedType(DynLazySpan),
+    ExpectedStarKind(DynLazySpan),
     InvalidTypeArgKind(DynLazySpan, String),
     RecursiveType {
         primary_span: DynLazySpan,
@@ -86,12 +84,37 @@ pub enum TyLowerDiag {
         name: IdentId,
     },
 
+    InvalidConstParamTy {
+        primary: DynLazySpan,
+        pretty_ty: String,
+    },
+
+    RecursiveConstParamTy(DynLazySpan),
+
+    ConstTyMismatch {
+        primary: DynLazySpan,
+        expected: String,
+        actual: String,
+    },
+
+    ConstTyExpected {
+        primary: DynLazySpan,
+        expected: String,
+    },
+
+    NormalTypeExpected {
+        primary: DynLazySpan,
+        given: String,
+    },
+
     AssocTy(DynLazySpan),
+
+    InvalidConstTyExpr(DynLazySpan),
 }
 
 impl TyLowerDiag {
-    pub fn not_fully_applied_type(span: DynLazySpan) -> Self {
-        Self::NotFullyAppliedType(span)
+    pub fn expected_star_kind_ty(span: DynLazySpan) -> Self {
+        Self::ExpectedStarKind(span)
     }
 
     pub fn invalid_type_arg_kind(
@@ -136,6 +159,15 @@ impl TyLowerDiag {
         }
     }
 
+    pub(super) fn invalid_const_param_ty(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        ty: TyId,
+    ) -> Self {
+        let pretty_ty = ty.pretty_print(db).to_string();
+        Self::InvalidConstParamTy { primary, pretty_ty }
+    }
+
     pub(super) fn inconsistent_kind_bound(
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
@@ -164,6 +196,39 @@ impl TyLowerDiag {
         }
     }
 
+    pub(super) fn const_ty_mismatch(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        expected: TyId,
+        actual: TyId,
+    ) -> Self {
+        let expected = expected.pretty_print(db).to_string();
+        let actual = actual.pretty_print(db).to_string();
+        Self::ConstTyMismatch {
+            primary,
+            expected,
+            actual,
+        }
+    }
+
+    pub(super) fn const_ty_expected(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        expected: TyId,
+    ) -> Self {
+        let expected = expected.pretty_print(db).to_string();
+        Self::ConstTyExpected { primary, expected }
+    }
+
+    pub(super) fn normal_type_expected(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        given: TyId,
+    ) -> Self {
+        let given = given.pretty_print(db).to_string();
+        Self::NormalTypeExpected { primary, given }
+    }
+
     pub(super) fn duplicated_arg_name(
         primary: DynLazySpan,
         conflict_with: DynLazySpan,
@@ -182,7 +247,7 @@ impl TyLowerDiag {
 
     fn local_code(&self) -> u16 {
         match self {
-            Self::NotFullyAppliedType(_) => 0,
+            Self::ExpectedStarKind(_) => 0,
             Self::InvalidTypeArgKind(_, _) => 1,
             Self::RecursiveType { .. } => 2,
             Self::UnboundTypeAliasParam { .. } => 3,
@@ -191,13 +256,19 @@ impl TyLowerDiag {
             Self::KindBoundNotAllowed(_) => 6,
             Self::GenericParamAlreadyDefinedInParent { .. } => 7,
             Self::DuplicatedArgName { .. } => 8,
-            Self::AssocTy(_) => 9,
+            Self::InvalidConstParamTy { .. } => 9,
+            Self::RecursiveConstParamTy { .. } => 10,
+            Self::ConstTyMismatch { .. } => 11,
+            Self::ConstTyExpected { .. } => 12,
+            Self::NormalTypeExpected { .. } => 13,
+            Self::AssocTy(_) => 14,
+            Self::InvalidConstTyExpr(_) => 15,
         }
     }
 
     fn message(&self) -> String {
         match self {
-            Self::NotFullyAppliedType(_) => "expected fully applied type".to_string(),
+            Self::ExpectedStarKind(_) => "expected `*` kind in this context".to_string(),
             Self::InvalidTypeArgKind(_, _) => "invalid type argument kind".to_string(),
             Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
 
@@ -217,15 +288,35 @@ impl TyLowerDiag {
                 "duplicated argument name in function definition is not allowed".to_string()
             }
 
+            Self::InvalidConstParamTy { pretty_ty, .. } => {
+                format!("`{}` is forbidden as a const parameter type", pretty_ty)
+            }
+
+            Self::ConstTyMismatch { .. } => {
+                "given type doesn't match the expected const type".to_string()
+            }
+
+            Self::ConstTyExpected { .. } => "expected const type".to_string(),
+
+            Self::NormalTypeExpected { .. } => "expected a normal type".to_string(),
+
+            Self::RecursiveConstParamTy(_) => {
+                "recursive const parameter type is not allowed".to_string()
+            }
+
             Self::AssocTy(_) => "associated type is not supported ".to_string(),
+
+            Self::InvalidConstTyExpr(_) => {
+                "the expression is not supported yet in a const type context".to_string()
+            }
         }
     }
 
     fn sub_diags(&self, db: &dyn SpannedHirDb) -> Vec<SubDiagnostic> {
         match self {
-            Self::NotFullyAppliedType(span) => vec![SubDiagnostic::new(
+            Self::ExpectedStarKind(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
-                "expected fully applied type here".to_string(),
+                "expected `*` kind here".to_string(),
                 span.resolve(db),
             )],
 
@@ -348,9 +439,60 @@ impl TyLowerDiag {
                 ]
             }
 
+            Self::InvalidConstParamTy { primary, .. } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "only integer or bool types are allowed as a const parameter type".to_string(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::ConstTyMismatch {
+                primary,
+                expected,
+                actual,
+            } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!(
+                        "expected `{}` type here, but `{}` is given",
+                        expected, actual
+                    ),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::ConstTyExpected { primary, expected } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected const type of `{}` here", expected),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::NormalTypeExpected { primary, given } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected a normal type here, but `{}` is given", given,),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::RecursiveConstParamTy(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "recursive const parameter type is detected here".to_string(),
+                span.resolve(db),
+            )],
+
             Self::AssocTy(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "associated type is not implemented".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::InvalidConstTyExpr(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "only literal expression is supported".to_string(),
                 span.resolve(db),
             )],
         }
@@ -494,6 +636,8 @@ pub enum TraitConstraintDiag {
     InfiniteBoundRecursion(DynLazySpan, String),
 
     ConcreteTypeBound(DynLazySpan, String),
+
+    ConstTyBound(DynLazySpan, String),
 }
 
 impl TraitConstraintDiag {
@@ -550,6 +694,11 @@ impl TraitConstraintDiag {
         Self::InfiniteBoundRecursion(span, msg)
     }
 
+    pub(super) fn const_ty_bound(db: &dyn HirAnalysisDb, ty: TyId, span: DynLazySpan) -> Self {
+        let msg = format!("`{}` is a const type", ty.pretty_print(db));
+        Self::ConstTyBound(span, msg)
+    }
+
     pub(super) fn concrete_type_bound(db: &dyn HirAnalysisDb, span: DynLazySpan, ty: TyId) -> Self {
         let msg = format!("`{}` is a concrete type", ty.pretty_print(db));
         Self::ConcreteTypeBound(span, msg)
@@ -563,6 +712,7 @@ impl TraitConstraintDiag {
             Self::TraitBoundNotSat(_, _) => 3,
             Self::InfiniteBoundRecursion(_, _) => 4,
             Self::ConcreteTypeBound(_, _) => 5,
+            Self::ConstTyBound(_, _) => 6,
         }
     }
 
@@ -581,6 +731,8 @@ impl TraitConstraintDiag {
             Self::ConcreteTypeBound(_, _) => {
                 "trait bound for concrete type is not allowed".to_string()
             }
+
+            Self::ConstTyBound(_, _) => "trait bound for const type is not allowed".to_string(),
         }
     }
 
@@ -630,6 +782,12 @@ impl TraitConstraintDiag {
             )],
 
             Self::ConcreteTypeBound(span, msg) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                msg.clone(),
+                span.resolve(db),
+            )],
+
+            Self::ConstTyBound(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 msg.clone(),
                 span.resolve(db),

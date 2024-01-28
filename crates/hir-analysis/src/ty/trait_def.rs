@@ -8,11 +8,6 @@ use hir::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{
-    ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
-    HirAnalysisDb,
-};
-
 use super::{
     constraint::{
         collect_super_traits, collect_trait_constraints, trait_inst_constraints, AssumptionListId,
@@ -22,7 +17,12 @@ use super::{
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     trait_lower::collect_implementor_methods,
     ty_def::{FuncDef, Kind, Subst, TyId},
+    ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
+};
+use crate::{
+    ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
+    HirAnalysisDb,
 };
 
 /// Returns [`TraitEnv`] for the given ingot.
@@ -54,7 +54,7 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
 /// implementors which can be used in the ingot.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct TraitEnv {
-    impls: FxHashMap<TraitDef, Vec<Implementor>>,
+    pub(super) impls: FxHashMap<TraitDef, Vec<Implementor>>,
     hir_to_implementor: FxHashMap<ImplTrait, Implementor>,
     ingot: IngotId,
 }
@@ -74,7 +74,7 @@ impl TraitEnv {
             .map(|(_, external)| collect_trait_impls(db, *external))
             .chain(std::iter::once(collect_trait_impls(db, ingot)))
         {
-            // `collect_trait_impls` ensure that there are no conflicting impls, so we can
+            // `collect_trait_impls` ensures that there are no conflicting impls, so we can
             // just extend the map.
             for (trait_def, implementors) in impl_map.iter() {
                 impls
@@ -144,9 +144,9 @@ impl Implementor {
         table: &mut UnificationTable,
     ) -> (Self, impl Subst) {
         let mut subst = FxHashMap::default();
-        for param in self.params(db) {
-            let var = table.new_var(param.kind(db));
-            subst.insert(*param, var);
+        for &param in self.params(db) {
+            let var = table.new_var_from_param(db, param);
+            subst.insert(param, var);
         }
 
         let hir_impl = self.hir_impl_trait(db);
@@ -279,13 +279,19 @@ impl TraitInstId {
 #[salsa::tracked]
 pub struct TraitDef {
     pub trait_: Trait,
-    #[return_ref]
-    pub params: Vec<TyId>,
-    /// We collects self type here to know the expected kind of implementor
-    /// type in `Implementor` lowering phase.
-    pub self_param: TyId,
+    pub(crate) param_set: GenericParamTypeSet,
     #[return_ref]
     pub methods: BTreeMap<IdentId, TraitMethod>,
+}
+
+impl TraitDef {
+    pub fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.param_set(db).params(db)
+    }
+
+    pub fn self_param(self, db: &dyn HirAnalysisDb) -> TyId {
+        self.param_set(db).trait_self(db).unwrap()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

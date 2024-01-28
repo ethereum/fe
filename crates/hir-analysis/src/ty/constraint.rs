@@ -9,20 +9,20 @@ use hir::hir_def::{
 use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
 
-use crate::{
-    ty::{
-        trait_lower::{lower_impl_trait, lower_trait},
-        unify::InferenceKey,
-    },
-    HirAnalysisDb,
-};
-
 use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
     ty_def::{AdtDef, FuncDef, Subst, TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
+};
+use crate::{
+    ty::{
+        trait_lower::{lower_impl_trait, lower_trait},
+        ty_def::TyVarUniverse,
+        unify::InferenceKey,
+    },
+    HirAnalysisDb,
 };
 
 /// Returns a constraints list which is derived from the given type.
@@ -46,10 +46,10 @@ pub(crate) fn ty_constraints(
 
     let (base, args) = ty.decompose_ty_app(db);
     let (params, base_constraints) = match base.data(db) {
-        TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, adt)),
+        TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, *adt)),
         TyData::TyBase(TyBase::Func(func_def)) => (
             func_def.params(db),
-            collect_func_def_constraints(db, func_def),
+            collect_func_def_constraints(db, *func_def),
         ),
         _ => {
             return (
@@ -69,7 +69,7 @@ pub(crate) fn ty_constraints(
     // Generalize unbound type parameters.
     for &arg in params.iter().skip(arg_idx) {
         let key = InferenceKey(arg_idx as u32);
-        let ty_var = TyId::ty_var(db, arg.kind(db).clone(), key);
+        let ty_var = TyId::ty_var(db, TyVarUniverse::General, arg.kind(db).clone(), key);
         subst.insert(arg, ty_var);
         arg_idx += 1;
     }
@@ -107,7 +107,12 @@ pub(crate) fn trait_inst_constraints(
 
     subst.insert(
         self_ty_param,
-        TyId::ty_var(db, self_ty_kind.clone(), InferenceKey(0_u32)),
+        TyId::ty_var(
+            db,
+            TyVarUniverse::General,
+            self_ty_kind.clone(),
+            InferenceKey(0_u32),
+        ),
     );
     let constraint = def_constraints.apply_subst(db, &mut subst);
 
@@ -492,9 +497,9 @@ impl<'db> ConstraintCollector<'db> {
     fn collect_constraints_from_generic_params(&mut self) {
         let param_set = collect_generic_params(self.db, self.owner);
         let params_list = self.owner.params(self.db);
-        assert!(param_set.params.len() == params_list.len(self.db.as_hir_db()));
+        assert!(param_set.params(self.db).len() == params_list.len(self.db.as_hir_db()));
         for (&ty, hir_param) in param_set
-            .params
+            .params(self.db)
             .iter()
             .zip(params_list.data(self.db.as_hir_db()))
         {

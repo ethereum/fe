@@ -7,17 +7,21 @@ use hir::hir_def::{
 };
 use rustc_hash::FxHashMap;
 
-use crate::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
-    ty::ty_lower::{lower_func, lower_hir_ty},
-    HirAnalysisDb,
-};
-
 use super::{
     trait_def::{Implementor, TraitDef, TraitInstId, TraitMethod},
     ty_def::{FuncDef, InvalidCause, Kind, TyId},
-    ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamOwnerId},
+    ty_lower::{
+        collect_generic_params, lower_generic_arg_list, GenericParamOwnerId, GenericParamTypeSet,
+    },
     unify::UnificationTable,
+};
+use crate::{
+    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    ty::{
+        ty_def::TyData,
+        ty_lower::{lower_func, lower_hir_ty},
+    },
+    HirAnalysisDb,
 };
 
 type TraitImplTable = FxHashMap<TraitDef, Vec<Implementor>>;
@@ -28,20 +32,20 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
 }
 
 /// Collect all trait implementors in the ingot.
-/// The returned table doesn't contain the dependent(external) ingot
+/// The returned table doesn't contain the const(external) ingot
 /// implementors. If you need to obtain the environment that contains all
 /// available implementors in the ingot, please use
 /// [`TraitEnv`](super::trait_def::TraitEnv).
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitImplTable {
-    let dependent_impls = ingot
+    let const_impls = ingot
         .external_ingots(db.as_hir_db())
         .iter()
         .map(|(_, external)| collect_trait_impls(db, *external))
         .collect();
 
     let impl_traits = ingot.all_impl_traits(db.as_hir_db());
-    ImplementorCollector::new(db, dependent_impls).collect(impl_traits)
+    ImplementorCollector::new(db, const_impls).collect(impl_traits)
 }
 
 /// Returns the corresponding implementors for the given [`ImplTrait`].
@@ -75,15 +79,9 @@ pub(crate) fn lower_impl_trait(
     }
 
     let param_owner = GenericParamOwnerId::new(db, impl_trait.into());
-    let params = collect_generic_params(db, param_owner);
+    let params = collect_generic_params(db, param_owner).params(db).to_vec();
 
-    Some(Implementor::new(
-        db,
-        trait_,
-        ty,
-        params.params.clone(),
-        impl_trait,
-    ))
+    Some(Implementor::new(db, trait_, ty, params, impl_trait))
 }
 
 /// Lower a trait reference to a trait instance.
@@ -94,26 +92,26 @@ pub(crate) fn lower_trait_ref(
     scope: ScopeId,
 ) -> Result<TraitInstId, TraitRefLowerError> {
     let hir_db = db.as_hir_db();
-    let args = if let Some(args) = trait_ref.generic_args(hir_db) {
+    let mut args = if let Some(args) = trait_ref.generic_args(hir_db) {
         lower_generic_arg_list(db, args, scope)
     } else {
         vec![]
     };
 
     let Partial::Present(path) = trait_ref.path(hir_db) else {
-        return Err(TraitRefLowerError::TraitNotFound);
+        return Err(TraitRefLowerError::Other);
     };
 
     let trait_def = match resolve_path_early(db, path, scope) {
         EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
             Ok(res) => {
                 let NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) = res.kind else {
-                    return Err(TraitRefLowerError::TraitNotFound);
+                    return Err(TraitRefLowerError::Other);
                 };
                 lower_trait(db, trait_)
             }
 
-            Err(_) => return Err(TraitRefLowerError::TraitNotFound),
+            Err(_) => return Err(TraitRefLowerError::Other),
         },
 
         EarlyResolvedPath::Partial { .. } => {
@@ -128,12 +126,44 @@ pub(crate) fn lower_trait_ref(
         });
     }
 
-    for (param, arg) in trait_def.params(db).iter().zip(args.iter()) {
+    for (param, arg) in trait_def.params(db).iter().zip(args.iter_mut()) {
         if !param.kind(db).does_match(arg.kind(db)) {
-            return Err(TraitRefLowerError::ArgumentKindMisMatch {
+            return Err(TraitRefLowerError::ArgKindMisMatch {
                 expected: param.kind(db).clone(),
                 given: *arg,
             });
+        }
+
+        let expected_const_ty = match param.data(db) {
+            TyData::ConstTy(expected_ty) => expected_ty.ty(db).into(),
+            _ => None,
+        };
+
+        match arg.evaluate_const_ty(db, expected_const_ty) {
+            Ok(ty) => *arg = ty,
+
+            Err(InvalidCause::ConstTyMismatch { expected, given }) => {
+                return Err(TraitRefLowerError::ArgTypeMismatch {
+                    expected: Some(expected),
+                    given: Some(given),
+                });
+            }
+
+            Err(InvalidCause::ConstTyExpected { expected }) => {
+                return Err(TraitRefLowerError::ArgTypeMismatch {
+                    expected: Some(expected),
+                    given: None,
+                });
+            }
+
+            Err(InvalidCause::NormalTypeExpected { given }) => {
+                return Err(TraitRefLowerError::ArgTypeMismatch {
+                    expected: None,
+                    given: Some(given),
+                })
+            }
+
+            _ => return Err(TraitRefLowerError::Other),
         }
     }
 
@@ -159,10 +189,6 @@ pub(crate) fn collect_implementor_methods(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TraitRefLowerError {
-    /// The trait reference is not a valid trait reference. This error is
-    /// reported by the name resolution and no need to report it again.
-    TraitNotFound,
-
     /// The trait reference contains an associated type, which is not supported
     /// yet.
     AssocTy(PathId),
@@ -172,24 +198,35 @@ pub(crate) enum TraitRefLowerError {
 
     /// The kind of the argument doesn't match the kind of the parameter of the
     /// trait.
-    ArgumentKindMisMatch { expected: Kind, given: TyId },
+    ArgKindMisMatch { expected: Kind, given: TyId },
+
+    /// The argument type doesn't match the const parameter type.
+    ArgTypeMismatch {
+        expected: Option<TyId>,
+        given: Option<TyId>,
+    },
+
+    /// Other errors, which is reported by another pass. So we don't need to
+    /// report this error kind.
+    Other,
 }
 
 struct TraitBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: Trait,
-    params: Vec<TyId>,
-    self_arg: TyId,
+    param_set: GenericParamTypeSet,
     methods: BTreeMap<IdentId, TraitMethod>,
 }
 
 impl<'db> TraitBuilder<'db> {
     fn new(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
+        let params_owner_id = GenericParamOwnerId::new(db, trait_.into());
+        let param_set = collect_generic_params(db, params_owner_id);
+
         Self {
             db,
             trait_,
-            params: vec![],
-            self_arg: TyId::invalid(db, InvalidCause::Other),
+            param_set,
             methods: BTreeMap::default(),
         }
     }
@@ -198,20 +235,12 @@ impl<'db> TraitBuilder<'db> {
         self.collect_params();
         self.collect_methods();
 
-        TraitDef::new(
-            self.db,
-            self.trait_,
-            self.params,
-            self.self_arg,
-            self.methods,
-        )
+        TraitDef::new(self.db, self.trait_, self.param_set, self.methods)
     }
 
     fn collect_params(&mut self) {
         let params_owner_id = GenericParamOwnerId::new(self.db, self.trait_.into());
-        let params_set = collect_generic_params(self.db, params_owner_id);
-        self.params = params_set.params.clone();
-        self.self_arg = params_set.trait_self.unwrap();
+        self.param_set = collect_generic_params(self.db, params_owner_id);
     }
 
     fn collect_methods(&mut self) {
@@ -234,15 +263,15 @@ impl<'db> TraitBuilder<'db> {
 struct ImplementorCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     impl_table: TraitImplTable,
-    dependent_impl_maps: Vec<&'db TraitImplTable>,
+    const_impl_maps: Vec<&'db TraitImplTable>,
 }
 
 impl<'db> ImplementorCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, dependent_impl_maps: Vec<&'db TraitImplTable>) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, const_impl_maps: Vec<&'db TraitImplTable>) -> Self {
         Self {
             db,
             impl_table: TraitImplTable::default(),
-            dependent_impl_maps,
+            const_impl_maps,
         }
     }
 
@@ -267,7 +296,7 @@ impl<'db> ImplementorCollector<'db> {
     fn does_conflict(&mut self, implementor: Implementor) -> bool {
         let def = implementor.trait_def(self.db);
         for impl_map in self
-            .dependent_impl_maps
+            .const_impl_maps
             .iter()
             .chain(std::iter::once(&&self.impl_table))
         {

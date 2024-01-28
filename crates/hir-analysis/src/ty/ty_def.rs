@@ -7,30 +7,31 @@ use hir::{
         kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Contract, Enum, Func, FuncParam as HirFuncParam, IdentId, IngotId, ItemKind, Partial,
+        Body, Contract, Enum, Func, FuncParam as HirFuncParam, IdentId, IngotId, ItemKind, Partial,
         Struct, TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
     },
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
 
+use super::{
+    const_ty::{ConstTyData, ConstTyId},
+    constraint::{
+        collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
+    },
+    diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
+    ty_lower::{lower_hir_ty, GenericParamOwnerId, GenericParamTypeSet},
+    unify::{InferenceKey, UnificationTable},
+    visitor::TyVisitor,
+};
 use crate::{
     ty::constraint_solver::{check_ty_app_sat, GoalSatisfiability},
     HirAnalysisDb,
 };
 
-use super::{
-    constraint::{
-        collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
-    },
-    diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
-    ty_lower::{lower_hir_ty, GenericParamOwnerId},
-    unify::{InferenceKey, UnificationTable},
-    visitor::TyVisitor,
-};
-
 #[salsa::interned]
 pub struct TyId {
+    #[return_ref]
     pub data: TyData,
 }
 
@@ -47,6 +48,22 @@ impl TyId {
         matches!(self.data(db), TyData::Invalid(_))
     }
 
+    /// Returns `true` if the type is an integral type(like `u32`, `i32` etc.)
+    pub fn is_integral(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::TyBase(ty_base) => ty_base.is_integral(),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the type is a bool type.
+    pub fn is_bool(self, db: &dyn HirAnalysisDb) -> bool {
+        match self.data(db) {
+            TyData::TyBase(ty_base) => ty_base.is_bool(),
+            _ => false,
+        }
+    }
+
     /// Returns `IngotId` that declares the type.
     pub fn ingot(self, db: &dyn HirAnalysisDb) -> Option<IngotId> {
         match self.data(db) {
@@ -59,7 +76,7 @@ impl TyId {
 
     pub fn invalid_cause(self, db: &dyn HirAnalysisDb) -> Option<InvalidCause> {
         match self.data(db) {
-            TyData::Invalid(cause) => Some(cause),
+            TyData::Invalid(cause) => Some(cause.clone()),
             _ => None,
         }
     }
@@ -69,13 +86,13 @@ impl TyId {
         match self.data(db) {
             TyData::Invalid(_) => true,
             TyData::TyApp(lhs, rhs) => lhs.contains_invalid(db) || rhs.contains_invalid(db),
+            TyData::ConstTy(const_ty) => const_ty.ty(db).contains_invalid(db),
             _ => false,
         }
     }
 
-    /// Returns `true` if the type is declared as a monotype or fully applied
-    /// type.
-    pub fn is_mono_type(self, db: &dyn HirAnalysisDb) -> bool {
+    /// Returns `true` if the type has a `*` kind.
+    pub fn has_star_kind(self, db: &dyn HirAnalysisDb) -> bool {
         !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
@@ -92,7 +109,7 @@ impl TyId {
 
     pub(super) fn base_ty(self, db: &dyn HirAnalysisDb) -> Option<TyBase> {
         match self.decompose_ty_app(db).0.data(db) {
-            TyData::TyBase(concrete) => Some(concrete),
+            TyData::TyBase(concrete) => Some(*concrete),
             _ => None,
         }
     }
@@ -105,8 +122,17 @@ impl TyId {
         Self::new(db, TyData::TyBase(TyBase::tuple(n)))
     }
 
+    pub(super) fn array(db: &dyn HirAnalysisDb) -> Self {
+        let base = TyBase::Prim(PrimTy::Array);
+        Self::new(db, TyData::TyBase(base))
+    }
+
     pub(super) fn unit(db: &dyn HirAnalysisDb) -> Self {
         Self::tuple(db, 0)
+    }
+
+    pub(super) fn const_ty(db: &dyn HirAnalysisDb, const_ty: ConstTyId) -> Self {
+        Self::new(db, TyData::ConstTy(const_ty))
     }
 
     pub(super) fn adt(db: &dyn HirAnalysisDb, adt: AdtDef) -> Self {
@@ -121,12 +147,12 @@ impl TyId {
         matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
     }
 
+    pub(super) fn is_const_ty(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::ConstTy(_))
+    }
+
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
-        match self.data(db) {
-            TyData::TyParam(_) => true,
-            TyData::TyApp(lhs, rhs) => lhs.contains_ty_param(db) || rhs.contains_ty_param(db),
-            _ => false,
-        }
+        !self.type_params(db).is_empty()
     }
 
     pub(super) fn contains_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
@@ -140,9 +166,9 @@ impl TyId {
     pub(super) fn generalize(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
         let params = self.type_params(db);
         let mut subst = FxHashMap::default();
-        for param in params.iter() {
-            let new_var = table.new_var(param.kind(db));
-            subst.insert(*param, new_var);
+        for &param in params.iter() {
+            let new_var = table.new_var_from_param(db, param);
+            subst.insert(param, new_var);
         }
 
         self.apply_subst(db, &mut subst)
@@ -154,36 +180,65 @@ impl TyId {
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        match self.data(db) {
-            TyData::TyApp(lhs, rhs) => {
-                if let Some(diag) = lhs.emit_diag(db, span.clone()) {
-                    Some(diag)
-                } else {
-                    rhs.emit_diag(db, span)
-                }
-            }
-
-            TyData::Invalid(cause) => match cause {
-                InvalidCause::NotFullyApplied => {
-                    Some(TyLowerDiag::not_fully_applied_type(span).into())
-                }
-
-                InvalidCause::KindMismatch { expected, given } => {
-                    Some(TyLowerDiag::invalid_type_arg_kind(db, span, expected, given).into())
-                }
-
-                InvalidCause::UnboundTypeAliasParam {
-                    alias,
-                    n_given_args: n_given_arg,
-                } => Some(TyLowerDiag::unbound_type_alias_param(span, alias, n_given_arg).into()),
-
-                InvalidCause::AssocTy => Some(TyLowerDiag::assoc_ty(span).into()),
-
-                InvalidCause::Other => None,
-            },
-
-            _ => None,
+        struct EmitDiagVisitor {
+            diag: Option<TyDiagCollection>,
+            span: DynLazySpan,
         }
+
+        impl TyVisitor for EmitDiagVisitor {
+            fn visit_invalid(&mut self, db: &dyn HirAnalysisDb, cause: &InvalidCause) {
+                let span = self.span.clone();
+                let diag = match cause {
+                    InvalidCause::NotFullyApplied => {
+                        TyLowerDiag::expected_star_kind_ty(span).into()
+                    }
+
+                    InvalidCause::KindMismatch { expected, given } => {
+                        TyLowerDiag::invalid_type_arg_kind(db, span, expected.clone(), *given)
+                            .into()
+                    }
+
+                    InvalidCause::InvalidConstParamTy { ty } => {
+                        TyLowerDiag::invalid_const_param_ty(db, span, *ty).into()
+                    }
+
+                    InvalidCause::RecursiveConstParamTy => {
+                        TyLowerDiag::RecursiveConstParamTy(span).into()
+                    }
+
+                    InvalidCause::ConstTyMismatch { expected, given } => {
+                        TyLowerDiag::const_ty_mismatch(db, span, *expected, *given).into()
+                    }
+
+                    InvalidCause::ConstTyExpected { expected } => {
+                        TyLowerDiag::const_ty_expected(db, span, *expected).into()
+                    }
+
+                    InvalidCause::NormalTypeExpected { given } => {
+                        TyLowerDiag::normal_type_expected(db, span, *given).into()
+                    }
+
+                    InvalidCause::UnboundTypeAliasParam {
+                        alias,
+                        n_given_args: n_given_arg,
+                    } => TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into(),
+
+                    InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
+
+                    InvalidCause::InvalidConstTyExpr { body } => {
+                        TyLowerDiag::InvalidConstTyExpr(body.lazy_span().into()).into()
+                    }
+
+                    InvalidCause::Other => return,
+                };
+
+                self.diag.get_or_insert(diag);
+            }
+        }
+
+        let mut visitor = EmitDiagVisitor { diag: None, span };
+        visitor.visit_ty(db, self);
+        visitor.diag
     }
 
     pub(super) fn emit_sat_diag(
@@ -217,21 +272,47 @@ impl TyId {
         collect_type_params(db, self)
     }
 
-    pub(super) fn ty_var(db: &dyn HirAnalysisDb, kind: Kind, key: InferenceKey) -> Self {
-        Self::new(db, TyData::TyVar(TyVar { kind, key }))
+    pub(super) fn ty_var(
+        db: &dyn HirAnalysisDb,
+        universe: TyVarUniverse,
+        kind: Kind,
+        key: InferenceKey,
+    ) -> Self {
+        Self::new(
+            db,
+            TyData::TyVar(TyVar {
+                universe,
+                kind,
+                key,
+            }),
+        )
+    }
+
+    pub(super) fn const_ty_var(db: &dyn HirAnalysisDb, ty: TyId, key: InferenceKey) -> Self {
+        let ty_var = TyVar {
+            universe: TyVarUniverse::General,
+            kind: ty.kind(db).clone(),
+            key,
+        };
+
+        let data = ConstTyData::TyVar(ty_var, ty);
+        Self::new(db, TyData::ConstTy(ConstTyId::new(db, data)))
     }
 
     /// Perform type level application.
-    /// If the kind is mismatched, return `TyData::Invalid`.
     pub(super) fn app(db: &dyn HirAnalysisDb, abs: Self, arg: Self) -> TyId {
         let k_abs = abs.kind(db);
         let k_arg = arg.kind(db);
 
+        let arg = arg
+            .evaluate_const_ty(db, abs.expected_const_ty(db))
+            .unwrap_or_else(|cause| Self::invalid(db, cause));
+
         let arg = match k_abs {
             Kind::Abs(k_expected, _) if k_expected.as_ref().does_match(k_arg) => arg,
-            Kind::Abs(k_abs_arg, _) => Self::invalid(
+            Kind::Abs(k_expected, _) => Self::invalid(
                 db,
-                InvalidCause::kind_mismatch(k_abs_arg.as_ref().into(), arg),
+                InvalidCause::kind_mismatch(k_expected.as_ref().into(), arg),
             ),
             Kind::Star => Self::invalid(db, InvalidCause::kind_mismatch(None, arg)),
             Kind::Any => arg,
@@ -302,6 +383,64 @@ impl TyId {
             },
         }
     }
+
+    pub(super) fn const_ty_param(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+        if let TyData::ConstTy(const_ty) = self.data(db) {
+            Some(const_ty.ty(db))
+        } else {
+            None
+        }
+    }
+
+    pub(super) fn evaluate_const_ty(
+        self,
+        db: &dyn HirAnalysisDb,
+        expected_ty: Option<TyId>,
+    ) -> Result<TyId, InvalidCause> {
+        match (expected_ty, self.data(db)) {
+            (Some(expected_const_ty), TyData::ConstTy(const_ty)) => {
+                if expected_const_ty.is_invalid(db) {
+                    Err(InvalidCause::Other)
+                } else {
+                    let evaluated_const_ty = const_ty.evaluate(db, expected_const_ty.into());
+                    let evaluated_const_ty_ty = evaluated_const_ty.ty(db);
+                    if let Some(cause) = evaluated_const_ty_ty.invalid_cause(db) {
+                        Err(cause)
+                    } else {
+                        Ok(TyId::const_ty(db, evaluated_const_ty))
+                    }
+                }
+            }
+
+            (Some(expected_const_ty), _) => {
+                if expected_const_ty.is_invalid(db) {
+                    Err(InvalidCause::Other)
+                } else {
+                    Err(InvalidCause::ConstTyExpected {
+                        expected: expected_const_ty,
+                    })
+                }
+            }
+
+            (None, TyData::ConstTy(const_ty)) => {
+                let evaluated_const_ty = const_ty.evaluate(db, None);
+                Err(InvalidCause::NormalTypeExpected {
+                    given: TyId::const_ty(db, evaluated_const_ty),
+                })
+            }
+
+            (None, _) => Ok(self),
+        }
+    }
+
+    /// Returns the next expected type of a type argument.
+    fn expected_const_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+        let (base, args) = self.decompose_ty_app(db);
+        match base.data(db) {
+            TyData::TyBase(ty_base) => ty_base.expected_const_ty(db, args.len()),
+            _ => None,
+        }
+    }
 }
 
 /// Represents a ADT type definition.
@@ -310,8 +449,7 @@ pub struct AdtDef {
     pub adt_ref: AdtRefId,
 
     /// Type parameters of the ADT.
-    #[return_ref]
-    pub params: Vec<TyId>,
+    param_set: GenericParamTypeSet,
 
     /// Fields of the ADT, if the ADT is an enum, this represents variants.
     #[return_ref]
@@ -321,6 +459,10 @@ pub struct AdtDef {
 impl AdtDef {
     pub(crate) fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
         self.adt_ref(db).name(db)
+    }
+
+    pub(crate) fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.param_set(db).params(db)
     }
 
     pub(crate) fn variant_ty_span(
@@ -376,6 +518,16 @@ impl AdtDef {
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         collect_adt_constraints(db, self)
     }
+
+    /// Returns the expected type of the `idx`-th type parameter when the
+    /// parameter is declared as a const type.
+    fn expected_const_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        let TyData::ConstTy(const_ty) = self.params(db).get(idx)?.data(db) else {
+            return None;
+        };
+
+        Some(const_ty.ty(db))
+    }
 }
 
 #[salsa::tracked]
@@ -384,9 +536,7 @@ pub struct FuncDef {
 
     pub name: IdentId,
 
-    /// Generic parameters of the function.
-    #[return_ref]
-    pub params: Vec<TyId>,
+    params_set: GenericParamTypeSet,
 
     /// Argument types of the function.
     #[return_ref]
@@ -403,9 +553,13 @@ impl FuncDef {
             .ingot(db.as_hir_db())
     }
 
+    pub fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.params_set(db).params(db)
+    }
+
     pub fn receiver_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
         if self.hir_func(db).is_method(db.as_hir_db()) {
-            self.arg_tys(db).get(0).copied()
+            self.arg_tys(db).first().copied()
         } else {
             None
         }
@@ -422,6 +576,16 @@ impl FuncDef {
             .to_opt()
             .map(|list| list.data(db.as_hir_db()).as_ref())
             .unwrap_or(EMPTY)
+    }
+
+    /// Returns the expected type of the `idx`-th type parameter when the
+    /// parameter is declared as a const type.
+    fn expected_const_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        let TyData::ConstTy(const_ty) = self.params(db).get(idx)?.data(db) else {
+            return None;
+        };
+
+        Some(const_ty.ty(db))
     }
 }
 
@@ -484,10 +648,7 @@ pub enum TyData {
     /// A concrete type, e.g., `i32`, `u32`, `bool`, `String`, `Result` etc.
     TyBase(TyBase),
 
-    // TODO: DependentTy,
-    // TermTy(TermTy)
-    // DependentTyParam(TyParam, TyConst),
-    // DependentTyVar(TyVar, TyConst),
+    ConstTy(ConstTyId),
 
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
@@ -501,10 +662,32 @@ pub enum InvalidCause {
     NotFullyApplied,
 
     /// Kind mismatch between two types.
-    KindMismatch { expected: Option<Kind>, given: TyId },
+    KindMismatch {
+        expected: Option<Kind>,
+        given: TyId,
+    },
 
-    /// Associated Type is not allowed at the moment.
-    AssocTy,
+    InvalidConstParamTy {
+        ty: TyId,
+    },
+
+    RecursiveConstParamTy,
+
+    /// The given type doesn't match the expected const type.
+    ConstTyMismatch {
+        expected: TyId,
+        given: TyId,
+    },
+
+    /// The given type is not a const type where it is required.
+    ConstTyExpected {
+        expected: TyId,
+    },
+
+    /// The given type is const type where it is *NOT* required.
+    NormalTypeExpected {
+        given: TyId,
+    },
 
     /// Type alias parameter is not bound.
     /// NOTE: In our type system, type alias is a macro, so we can't perform
@@ -512,6 +695,16 @@ pub enum InvalidCause {
     UnboundTypeAliasParam {
         alias: HirTypeAlias,
         n_given_args: usize,
+    },
+
+    /// Associated Type is not allowed at the moment.
+    AssocTy,
+
+    // The given expression is not supported yet in the const type context.
+    // TODO: Remove this error kind and introduce a new error kind for more specific cause when
+    // type inference is implemented.
+    InvalidConstTyExpr {
+        body: Body,
     },
 
     // TraitConstraintNotSat(PredicateId),
@@ -573,8 +766,29 @@ impl fmt::Display for Kind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyVar {
+    pub universe: TyVarUniverse,
     pub kind: Kind,
     pub(super) key: InferenceKey,
+}
+
+/// Represents the universe of a type variable that indicates what type domain
+/// can be unified with the type variable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TyVarUniverse {
+    /// Type variable that can be unified with any other types.
+    General,
+
+    /// Type variable that can be unified with only integral types.
+    Integral,
+}
+
+impl TyVar {
+    pub(super) fn pretty_print(&self) -> String {
+        match self.universe {
+            TyVarUniverse::General => format!("${}", self.key.0),
+            TyVarUniverse::Integral => "<integer>".to_string(),
+        }
+    }
 }
 
 /// Type generics parameter. We also treat `Self` type in a trait definition as
@@ -589,6 +803,10 @@ pub struct TyParam {
 }
 
 impl TyParam {
+    pub(super) fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
+        self.name.data(db.as_hir_db()).to_string()
+    }
+
     pub fn self_ty_param(kind: Kind) -> Self {
         Self {
             name: kw::SELF_TY,
@@ -610,8 +828,26 @@ pub enum TyBase {
 }
 
 impl TyBase {
+    pub fn is_integral(self) -> bool {
+        match self {
+            Self::Prim(prim) => prim.is_integral(),
+            _ => false,
+        }
+    }
+
+    pub fn is_bool(self) -> bool {
+        match self {
+            Self::Prim(prim) => prim.is_bool(),
+            _ => false,
+        }
+    }
+
     pub(super) fn tuple(n: usize) -> Self {
         Self::Prim(PrimTy::Tuple(n))
+    }
+
+    pub(super) fn bool() -> Self {
+        Self::Prim(PrimTy::Bool)
     }
 
     fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
@@ -648,6 +884,16 @@ impl TyBase {
                 .to_string(),
         }
     }
+
+    /// Returns the expected type of the `idx`-th type parameter when the
+    /// parameter is declared as a const type.
+    fn expected_const_ty(&self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        match self {
+            Self::Prim(prim_ty) => prim_ty.expected_const_ty(db, idx),
+            Self::Adt(adt) => adt.expected_const_ty(db, idx),
+            Self::Func(func) => func.expected_const_ty(db, idx),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]
@@ -669,6 +915,43 @@ pub enum PrimTy {
     Array,
     Tuple(usize),
     Ptr,
+}
+
+impl PrimTy {
+    pub fn is_integral(self) -> bool {
+        matches!(
+            self,
+            Self::U8
+                | Self::U16
+                | Self::U32
+                | Self::U64
+                | Self::U128
+                | Self::U256
+                | Self::I8
+                | Self::I16
+                | Self::I32
+                | Self::I64
+                | Self::I128
+                | Self::I256
+        )
+    }
+
+    pub fn is_bool(self) -> bool {
+        matches!(self, Self::Bool)
+    }
+
+    /// Returns the expected type of the `idx`-th type parameter when the
+    /// parameter is declared as a const type.
+    fn expected_const_ty(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+        match self {
+            Self::Array if idx == 1 => {
+                // FIXME: Change `U256` to `usize` when we add `usize` type.
+                Some(TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256))))
+            }
+            Self::Tuple(_) => None,
+            _ => None,
+        }
+    }
 }
 
 #[salsa::interned]
@@ -774,6 +1057,9 @@ impl HasKind for TyData {
                 Kind::Abs(_, ret) => ret.as_ref().clone(),
                 _ => Kind::Any,
             },
+
+            TyData::ConstTy(const_ty) => const_ty.ty(db).kind(db).clone(),
+
             TyData::Invalid(_) => Kind::Any,
         }
     }
@@ -850,6 +1136,17 @@ pub(crate) fn collect_type_params(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<
             let param_ty = TyId::new(_db, TyData::TyParam(param.clone()));
             self.0.insert(param_ty);
         }
+
+        fn visit_const_param(
+            &mut self,
+            db: &dyn HirAnalysisDb,
+            param: &TyParam,
+            const_ty_ty: TyId,
+        ) {
+            let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param.clone(), const_ty_ty));
+            let const_param_ty = TyId::new(db, TyData::ConstTy(const_ty));
+            self.0.insert(const_param_ty);
+        }
     }
 
     let mut collector = TypeParamCollector(BTreeSet::new());
@@ -860,10 +1157,11 @@ pub(crate) fn collect_type_params(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<
 #[salsa::tracked(return_ref)]
 pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
     match ty.data(db) {
-        TyData::TyVar(var) => format!("%{}", var.key.0),
-        TyData::TyParam(param) => param.name.data(db.as_hir_db()).to_string(),
+        TyData::TyVar(var) => var.pretty_print(),
+        TyData::TyParam(param) => param.pretty_print(db),
         TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
         TyData::TyBase(ty_con) => ty_con.pretty_print(db),
+        TyData::ConstTy(const_ty) => const_ty.pretty_print(db),
         _ => "<invalid>".to_string(),
     }
 }
@@ -923,8 +1221,8 @@ fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
         fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
             match ty.data(db) {
                 TyData::TyApp(lhs, rhs) => {
-                    self.visit_ty(db, lhs);
-                    self.args.push(rhs);
+                    self.visit_ty(db, *lhs);
+                    self.args.push(*rhs);
                 }
                 _ => self.base = Some(ty),
             }
@@ -942,7 +1240,7 @@ fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
                 base: None,
                 args: Vec::new(),
             };
-            decomposer.visit_app(db, lhs, rhs);
+            decomposer.visit_app(db, *lhs, *rhs);
             (
                 decomposer.base.unwrap(),
                 decomposer.args.into_iter().collect(),

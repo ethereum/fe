@@ -6,12 +6,6 @@ mod path_resolver;
 mod visibility_checker;
 
 use either::Either;
-pub use import_resolver::ResolvedImports;
-pub use name_resolver::{
-    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind, QueryDirective,
-};
-pub use path_resolver::EarlyResolvedPath;
-
 use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
@@ -21,9 +15,12 @@ use hir::{
     },
     visitor::prelude::*,
 };
+pub use import_resolver::ResolvedImports;
+pub use name_resolver::{
+    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind, QueryDirective,
+};
+pub use path_resolver::EarlyResolvedPath;
 use rustc_hash::FxHashSet;
-
-use crate::HirAnalysisDb;
 
 use self::{
     diagnostics::{ImportResolutionDiagAccumulator, NameResDiag, NameResolutionDiagAccumulator},
@@ -31,6 +28,7 @@ use self::{
     name_resolver::{NameResolutionError, ResolvedQueryCacheStore},
     path_resolver::EarlyPathResolver,
 };
+use crate::HirAnalysisDb;
 
 // TODO: Implement `resolve_path` and `resolve_segments` after implementing the
 // late path resolution.
@@ -296,7 +294,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
             return;
         };
 
-        let domain = NameDomain::from_scope(scope);
+        let domain = NameDomain::from_scope(self.db, scope);
         let binding = self.inner.resolve_query(query);
         match binding.pick(domain) {
             Ok(_) => {}

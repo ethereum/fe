@@ -6,14 +6,28 @@ use std::collections::{hash_map::Entry, BTreeSet};
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, Func, FuncParamListId, IdentId, Impl as HirImpl, ImplTrait,
-        ItemKind, PathId, Trait, TraitRefId, TypeAlias, TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, FieldDef, Func, FuncParamListId, GenericParam, IdentId,
+        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeAlias,
+        TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::function::Configuration;
 
+use super::{
+    const_ty::ConstTyId,
+    constraint::{
+        collect_impl_block_constraints, collect_super_traits, AssumptionListId, SuperTraitCycle,
+    },
+    constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
+    diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
+    trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
+    trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
+    ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyData, TyId},
+    ty_lower::{collect_generic_params, lower_adt, lower_kind, GenericParamOwnerId},
+    visitor::{walk_ty, TyVisitor},
+};
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
     ty::{
@@ -23,26 +37,10 @@ use crate::{
         },
         method_table::collect_methods,
         trait_lower::lower_impl_trait,
-        ty_lower::lower_type_alias,
+        ty_lower::{lower_func, lower_hir_ty, lower_type_alias},
         unify::UnificationTable,
     },
     HirAnalysisDb,
-};
-
-use super::{
-    constraint::{
-        collect_impl_block_constraints, collect_super_traits, AssumptionListId, SuperTraitCycle,
-    },
-    constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
-    trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
-    trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
-    ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyId},
-    ty_lower::{
-        collect_generic_params, lower_adt, lower_func, lower_hir_ty, lower_kind,
-        GenericParamOwnerId,
-    },
-    visitor::{walk_ty, TyVisitor},
 };
 
 /// This function implements analysis for the ADT definition.
@@ -273,12 +271,20 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    // This method ensures that field/variant types are fully applied.
-    fn verify_fully_applied(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
+    /// This method verifies if
+    /// 1. the given `ty` has `*` kind(i.e, concrete type)
+    /// 2. the given `ty` is not const type
+    /// TODo: This method is a stop-gap implementation until we design a true
+    /// const type system.
+    fn verify_normal_star_type(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
-        if !ty.is_mono_type(self.db) {
+        if !ty.has_star_kind(self.db) {
             self.diags
-                .push(TyLowerDiag::not_fully_applied_type(span).into());
+                .push(TyLowerDiag::expected_star_kind_ty(span).into());
+            false
+        } else if ty.is_const_ty(self.db) {
+            self.diags
+                .push(TyLowerDiag::normal_type_expected(self.db, span, ty).into());
             false
         } else {
             true
@@ -431,15 +437,53 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         }
 
+        if ty.is_const_ty(self.db) {
+            let diag =
+                TraitConstraintDiag::const_ty_bound(self.db, ty, ctxt.span().unwrap().ty().into())
+                    .into();
+            self.diags.push(diag);
+            return;
+        }
+
         self.current_ty = Some((ty, ctxt.span().unwrap().ty().into()));
         walk_where_predicate(self, ctxt, pred);
     }
+
     fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
-        if let Some(ty) = field.ty.to_opt() {
-            if self.verify_fully_applied(ty, ctxt.span().unwrap().ty().into()) {
-                walk_field_def(self, ctxt, field);
+        let Some(ty) = field.ty.to_opt() else {
+            return;
+        };
+
+        if !self.verify_normal_star_type(ty, ctxt.span().unwrap().ty().into()) {
+            return;
+        }
+
+        let Some(name) = field.name.to_opt() else {
+            return;
+        };
+
+        // Checks if the field type is the same as the type of const type parameter.
+        if let Some(const_ty) = find_const_ty_param(self.db, name, ctxt.scope()) {
+            let const_ty_ty = const_ty.ty(self.db);
+            let field_ty = lower_hir_ty(self.db, ty, ctxt.scope());
+            if !const_ty_ty.contains_invalid(self.db)
+                && !field_ty.contains_invalid(self.db)
+                && field_ty != const_ty_ty
+            {
+                self.diags.push(
+                    TyLowerDiag::const_ty_mismatch(
+                        self.db,
+                        ctxt.span().unwrap().ty().into(),
+                        const_ty_ty,
+                        field_ty,
+                    )
+                    .into(),
+                );
+                return;
             }
         }
+
+        walk_field_def(self, ctxt, field);
     }
 
     fn visit_variant_def(
@@ -454,7 +498,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
                     continue;
                 };
 
-                self.verify_fully_applied(elem_ty, span.elem_ty(i).into());
+                self.verify_normal_star_type(elem_ty, span.elem_ty(i).into());
             }
         }
         walk_variant_def(self, ctxt, variant);
@@ -499,12 +543,27 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             }
         }
 
-        self.current_ty = Some((
-            self.def.params(self.db)[idx],
-            ctxt.span().unwrap().into_type_param().name().into(),
-        ));
+        match param {
+            GenericParam::Type(_) => {
+                self.current_ty = Some((
+                    self.def.params(self.db)[idx],
+                    ctxt.span().unwrap().into_type_param().name().into(),
+                ));
+                walk_generic_param(self, ctxt, param)
+            }
+            GenericParam::Const(_) => {
+                let ty = self.def.params(self.db)[idx];
+                let Some(const_ty_param) = ty.const_ty_param(self.db) else {
+                    return;
+                };
 
-        walk_generic_param(self, ctxt, param)
+                if let Some(diag) = const_ty_param
+                    .emit_diag(self.db, ctxt.span().unwrap().into_const_param().ty().into())
+                {
+                    self.diags.push(diag)
+                }
+            }
+        }
     }
 
     fn visit_kind_bound(
@@ -633,6 +692,10 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
         walk_func(self, ctxt, hir_func);
 
+        if let Some(ret_ty) = hir_func.ret_ty(self.db.as_hir_db()) {
+            self.verify_normal_star_type(ret_ty, hir_func.lazy_span().ret_ty().into());
+        }
+
         self.assumptions = constraints;
         self.def = def;
     }
@@ -689,7 +752,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             self.verify_self_type(hir_ty, ty_span.clone());
         }
 
-        if !self.verify_fully_applied(hir_ty, ty_span) {
+        if !self.verify_normal_star_type(hir_ty, ty_span) {
             return;
         }
 
@@ -780,20 +843,37 @@ fn analyze_trait_ref(
 ) -> Option<TyDiagCollection> {
     let trait_inst = match lower_trait_ref(db, trait_ref, scope) {
         Ok(trait_ref) => trait_ref,
-        Err(TraitRefLowerError::TraitNotFound) => {
-            return None;
-        }
 
         Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
             return Some(TraitConstraintDiag::trait_arg_num_mismatch(span, expected, given).into());
         }
 
-        Err(TraitRefLowerError::ArgumentKindMisMatch { expected, given }) => {
+        Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
             return Some(TraitConstraintDiag::kind_mismatch(db, span, &expected, given).into());
         }
 
         Err(TraitRefLowerError::AssocTy(_)) => {
             return Some(TyLowerDiag::assoc_ty(span).into());
+        }
+
+        Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => match (expected, given) {
+            (Some(expected), Some(given)) => {
+                return Some(TyLowerDiag::const_ty_mismatch(db, span, expected, given).into())
+            }
+
+            (Some(expected), None) => {
+                return Some(TyLowerDiag::const_ty_expected(db, span, expected).into())
+            }
+
+            (None, Some(given)) => {
+                return Some(TyLowerDiag::normal_type_expected(db, span, given).into())
+            }
+
+            (None, None) => unreachable!(),
+        },
+
+        Err(TraitRefLowerError::Other) => {
+            return None;
         }
     };
 
@@ -820,7 +900,7 @@ impl DefKind {
             Self::Trait(def) => def.params(db),
             Self::ImplTrait(def) => def.params(db),
             Self::Impl(hir_impl, _) => {
-                &collect_generic_params(db, GenericParamOwnerId::new(db, hir_impl.into())).params
+                collect_generic_params(db, GenericParamOwnerId::new(db, hir_impl.into())).params(db)
             }
             Self::Func(def) => def.params(db),
         }
@@ -921,18 +1001,35 @@ fn analyze_impl_trait_specific_error(
         // 4. Checks if conflict occurs.
         // If there is no implementor type even if the trait ref and implementor type is
         // well-formed, it means that the conflict does occur.
-        let impls = trait_env.implementors_for(db, trait_inst);
-        for conflict_cand in impls {
-            if conflict_cand.does_conflict(db, current_impl, &mut UnificationTable::new(db)) {
+        analyze_conflict_impl(db, current_impl, &mut diags);
+        return Err(diags);
+    };
+
+    fn analyze_conflict_impl(
+        db: &dyn HirAnalysisDb,
+        implementor: Implementor,
+        diags: &mut Vec<TyDiagCollection>,
+    ) {
+        let trait_ = implementor.trait_(db);
+        let env = ingot_trait_env(db, trait_.ingot(db));
+        let Some(impls) = env.impls.get(&trait_.def(db)) else {
+            return;
+        };
+
+        for cand in impls {
+            if cand.does_conflict(db, implementor, &mut UnificationTable::new(db)) {
                 diags.push(
-                    TraitLowerDiag::conflict_impl(impl_trait, conflict_cand.hir_impl_trait(db))
-                        .into(),
+                    TraitLowerDiag::conflict_impl(
+                        cand.hir_impl_trait(db),
+                        implementor.hir_impl_trait(db),
+                    )
+                    .into(),
                 );
-                return Err(diags);
+
+                return;
             }
         }
-        unreachable!()
-    };
+    }
 
     // 5. Checks if implementor type satisfies the kind bound which is required by
     //    the trait.
@@ -1249,5 +1346,34 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                 .into(),
             );
         }
+    }
+}
+
+fn find_const_ty_param(
+    db: &dyn HirAnalysisDb,
+    ident: IdentId,
+    scope: ScopeId,
+) -> Option<ConstTyId> {
+    let path = PathId::from_ident(db.as_hir_db(), ident);
+    let EarlyResolvedPath::Full(bucket) = resolve_path_early(db, path, scope) else {
+        return None;
+    };
+
+    let res = bucket.pick(NameDomain::Value).as_ref().ok()?;
+    let NameResKind::Scope(scope) = res.kind else {
+        return None;
+    };
+
+    let (item, idx) = match scope {
+        ScopeId::GenericParam(item, idx) => (item, idx),
+        _ => return None,
+    };
+
+    let owner = GenericParamOwnerId::from_item_opt(db, item).unwrap();
+    let param_set = collect_generic_params(db, owner);
+    let ty = param_set.params(db).get(idx)?;
+    match ty.data(db) {
+        TyData::ConstTy(const_ty) => Some(*const_ty),
+        _ => None,
     }
 }

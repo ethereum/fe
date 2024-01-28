@@ -1,0 +1,4 @@
+pub struct Foo<const N: u256> {
+    N: u256
+}
+fn foo(x: Foo<u32>) {}

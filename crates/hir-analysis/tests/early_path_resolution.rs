@@ -1,6 +1,4 @@
 mod test_db;
-use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
-
 use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
@@ -15,6 +13,7 @@ use hir::{
     visitor::prelude::*,
     HirDb, SpannedHirDb,
 };
+use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/early_path_resolution",

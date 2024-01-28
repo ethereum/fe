@@ -6,6 +6,12 @@
 use common::InputFile;
 use parser::ast;
 
+use super::{
+    kw,
+    scope_graph::{ScopeGraph, ScopeId},
+    AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TupleTypeId,
+    TypeId, UseAlias, WhereClauseId,
+};
 use crate::{
     hir_def::TraitRefId,
     lower,
@@ -19,13 +25,6 @@ use crate::{
         DynLazySpan, HirOrigin,
     },
     HirDb,
-};
-
-use super::{
-    kw,
-    scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TupleTypeId,
-    TypeId, UseAlias, WhereClauseId,
 };
 
 #[derive(
@@ -608,7 +607,7 @@ impl Func {
             return false;
         };
 
-        let Some(first_param) = params.data(db).get(0) else {
+        let Some(first_param) = params.data(db).first() else {
             return false;
         };
 

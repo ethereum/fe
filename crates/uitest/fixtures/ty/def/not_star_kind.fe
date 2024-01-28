@@ -26,3 +26,5 @@ impl Gen<T> {
 
 
 fn foo(gen: Gen) {}
+
+fn foo(gen: Gen<i32>) -> Gen {}

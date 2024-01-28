@@ -1,12 +1,10 @@
 use std::collections::VecDeque;
 
 pub(crate) use item::ItemListScope;
-
-use fxhash::{FxHashMap, FxHashSet};
-
-use crate::{syntax_node::SyntaxNode, GreenNode, ParseError, SyntaxKind, TextRange};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
+use crate::{syntax_node::SyntaxNode, GreenNode, ParseError, SyntaxKind, TextRange};
 
 pub mod token_stream;
 
@@ -322,7 +320,7 @@ impl<S: TokenStream> Parser<S> {
 
     /// Proceeds the parser to the recovery token of the current scope.
     pub fn recover(&mut self) {
-        let mut recovery_set: FxHashSet<SyntaxKind> = fxhash::FxHashSet::default();
+        let mut recovery_set: FxHashSet<SyntaxKind> = FxHashSet::default();
         let mut scope_index = self.parents.len() - 1;
         loop {
             match self
