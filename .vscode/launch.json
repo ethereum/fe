@@ -1,0 +1,25 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "args": [
+                "--extensionDevelopmentPath=${workspaceFolder}/crates/language-server/editors/vscode",
+                "${workspaceFolder}/crates/"
+            ],
+            "name": "Launch Fe VSCode Extension",
+            "outFiles": [
+                "${workspaceFolder}/crates/language-server/editors/vscode/out/**/*.js"
+            ],
+            "preLaunchTask": "compile-vscode-extension",
+            "request": "launch",
+            "type": "extensionHost",
+            // we need to enable backtrace on the extension host
+            "env": {
+                "RUST_BACKTRACE": "1"
+            }
+        },
+    ]
+}

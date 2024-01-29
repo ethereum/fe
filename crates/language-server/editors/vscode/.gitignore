@@ -1,0 +1,15 @@
+# Logs
+logs
+*.log
+
+# Compiled output
+# dist
+*.tsbuildinfo
+node_modules/
+out/
+
+# Optional npm cache directory
+.npm
+
+# Environment variables
+.env
