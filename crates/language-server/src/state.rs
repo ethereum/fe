@@ -10,7 +10,9 @@ use lsp_server::Message;
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
 
-use crate::handlers::notifications::{handle_document_did_change, handle_watched_file_changes, handle_document_did_close};
+use crate::handlers::notifications::{
+    handle_document_did_change, handle_document_did_close, handle_watched_file_changes,
+};
 use crate::handlers::request::handle_goto_definition;
 use crate::handlers::{notifications::handle_document_did_open, request::handle_hover};
 

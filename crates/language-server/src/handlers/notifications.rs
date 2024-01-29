@@ -92,7 +92,7 @@ pub fn handle_document_did_close(
         )
         .unwrap();
     input.sync(&mut state.db, None)
-    }
+}
 
 pub fn handle_document_did_change(
     state: &mut ServerState,

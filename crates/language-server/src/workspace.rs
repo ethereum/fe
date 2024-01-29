@@ -368,12 +368,10 @@ impl SyncableInputFile for InputFile {
         if !path.exists() {
             // if not let's remove it from the ingot
             self.remove_from_ingot(db)
+        } else if let Some(contents) = contents {
+            self.sync_from_text(db, contents)
         } else {
-            if let Some(contents) = contents {
-                self.sync_from_text(db, contents)
-            } else {
-                self.sync_from_fs(db)
-            }
+            self.sync_from_fs(db)
         }
     }
     fn remove_from_ingot(&self, db: &mut LanguageServerDatabase) -> Result<()> {
