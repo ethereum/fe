@@ -205,8 +205,8 @@ mod tests {
         for cursor in &cursors {
             let resolved_path = goto_enclosing_path(db, top_mod, *cursor);
 
-            match resolved_path {
-                Some(path) => match path {
+            if let Some(path) = resolved_path {
+                match path {
                     EarlyResolvedPath::Full(bucket) => {
                         let path = bucket
                             .iter()
@@ -222,9 +222,8 @@ mod tests {
                         let path = res.pretty_path(db).unwrap();
                         cursor_path_map.insert(*cursor, path);
                     }
-                },
-                None => {}
-            };
+                }
+            }
         }
 
         let result = format!(

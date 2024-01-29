@@ -50,7 +50,7 @@ pub fn handle_hover(
 
     let ingot_info: Option<String> = {
         let ingot_type = match ingot {
-            Some(ingot) => match ingot.kind(&mut state.db) {
+            Some(ingot) => match ingot.kind(&state.db) {
                 IngotKind::StandAlone => None,
                 IngotKind::Local => Some("Local ingot"),
                 IngotKind::External => Some("External ingot"),
@@ -58,10 +58,10 @@ pub fn handle_hover(
             },
             None => Some("No ingot information available"),
         };
-        let ingot_file_count = ingot.unwrap().files(&mut state.db).len();
+        let ingot_file_count = ingot.unwrap().files(&state.db).len();
         let ingot_path = ingot
             .unwrap()
-            .path(&mut state.db)
+            .path(&state.db)
             .strip_prefix(&state.workspace.root_path.clone().unwrap_or("".into()))
             .ok();
 

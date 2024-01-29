@@ -322,8 +322,8 @@ impl IngotFileContext for Workspace {
         path: &str,
     ) -> Option<InputIngot> {
         let ctx = get_containing_ingot(&mut self.ingot_contexts, path);
-        if ctx.is_some() {
-            Some(ctx.unwrap().ingot_from_file_path(db, path).unwrap())
+        if let Some(ctx) = ctx {
+            Some(ctx.ingot_from_file_path(db, path).unwrap())
         } else {
             self.standalone_ingot_context.ingot_from_file_path(db, path)
         }
@@ -335,8 +335,8 @@ impl IngotFileContext for Workspace {
         path: &str,
     ) -> Option<TopLevelMod> {
         let ctx = get_containing_ingot(&mut self.ingot_contexts, path);
-        if ctx.is_some() {
-            Some(ctx.unwrap().top_mod_from_file_path(db, path).unwrap())
+        if let Some(ctx) = ctx {
+            Some(ctx.top_mod_from_file_path(db, path).unwrap())
         } else {
             self.standalone_ingot_context
                 .top_mod_from_file_path(db, path)
@@ -451,10 +451,10 @@ mod tests {
         let ingot = ctx.ingot_from_file_path(&mut db, file_path);
         assert!(ingot.is_some());
         assert_eq!(
-            ingot.unwrap().kind(&mut db),
+            ingot.unwrap().kind(&db),
             common::input::IngotKind::StandAlone
         );
-        assert_eq!(ingot.unwrap(), file.unwrap().ingot(&mut db));
+        assert_eq!(ingot.unwrap(), file.unwrap().ingot(&db));
     }
 
     #[test]
@@ -473,7 +473,7 @@ mod tests {
 
         let _ingot_context_ingot = {
             let ingot_context = workspace.ingot_context_from_config_path(
-                &mut crate::db::LanguageServerDatabase::default(),
+                &crate::db::LanguageServerDatabase::default(),
                 config_path,
             );
 
@@ -505,7 +505,7 @@ mod tests {
         let mut db = crate::db::LanguageServerDatabase::default();
 
         let ingot_context_ingot = {
-            let ingot_context = workspace.ingot_context_from_config_path(&mut db, config_path);
+            let ingot_context = workspace.ingot_context_from_config_path(&db, config_path);
 
             assert!(ingot_context.is_some());
             ingot_context.map(|ctx| ctx.ingot)
@@ -518,16 +518,13 @@ mod tests {
         let ingot = workspace.ingot_from_file_path(&mut db, file_path);
         assert!(ingot.is_some());
 
-        assert_eq!(file.map(|f| f.ingot(&mut db)).unwrap(), ingot.unwrap());
+        assert_eq!(file.map(|f| f.ingot(&db)).unwrap(), ingot.unwrap());
 
         assert_eq!(
-            ingot_context_ingot.unwrap().kind(&mut db),
+            ingot_context_ingot.unwrap().kind(&db),
             common::input::IngotKind::Local
         );
-        assert_eq!(
-            ingot.unwrap().kind(&mut db),
-            common::input::IngotKind::Local
-        );
+        assert_eq!(ingot.unwrap().kind(&db), common::input::IngotKind::Local);
         assert_eq!(ingot_context_ingot.unwrap(), ingot.unwrap());
     }
 
@@ -549,7 +546,7 @@ mod tests {
         let fe_source_path = ingot_base_dir.join("src/main.fe");
         let input = workspace.input_from_file_path(&mut db, fe_source_path.to_str().unwrap());
         assert!(input.is_some());
-        assert!(input.unwrap().ingot(&mut db).kind(&mut db) == common::input::IngotKind::Local);
+        assert!(input.unwrap().ingot(&db).kind(&db) == common::input::IngotKind::Local);
     }
 
     #[test]
@@ -621,7 +618,7 @@ mod tests {
             let contents = std::fs::read_to_string(&file).unwrap();
             let file = foo_context.input_from_file_path(&mut db, &file).unwrap();
 
-            assert!(*file.text(&mut db) == contents);
+            assert!(*file.text(&db) == contents);
         }
     }
 
@@ -640,7 +637,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            dangling_file.ingot(&db).kind(&mut db),
+            dangling_file.ingot(&db).kind(&db),
             common::input::IngotKind::StandAlone
         );
 
@@ -648,7 +645,7 @@ mod tests {
         let ingot_paths = workspace
             .ingot_contexts
             .values()
-            .map(|ctx| format!("{}{}", ctx.ingot.path(&mut db), FE_CONFIG_SUFFIX))
+            .map(|ctx| format!("{}{}", ctx.ingot.path(&db), FE_CONFIG_SUFFIX))
             .collect::<Vec<String>>();
 
         for ingot_path in ingot_paths {
@@ -661,7 +658,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(
-            non_dangling_input.ingot(&db).kind(&mut db),
+            non_dangling_input.ingot(&db).kind(&db),
             common::input::IngotKind::Local
         );
     }
