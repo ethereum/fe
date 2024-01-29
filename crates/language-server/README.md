@@ -60,9 +60,9 @@ One straightforward way to interact with the language server during development 
 - [x] Initial support for subdiagnostics
 - Workspace sync API brainstorming and study
 ### To-do and tentative roadmap
-- [ ] Documentation of progress and roadmapping work
-- [ ] Improve the internal synchronization API for the "workspace" data structure to support an explicit update step 
-- [ ] Integrate the "workspace" data structure with LSP events and a rudimentary filesystem watcher
+- [x] Documentation of progress and roadmapping work
+- [x] Improve the internal synchronization API for the "workspace" data structure to support an explicit update step 
+- [x] Integrate the "workspace" data structure with LSP events and a rudimentary filesystem watcher
 
 #### Server improvements
 - [ ] Organize and prepare server architecture for a variety of LSP features
