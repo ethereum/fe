@@ -40,6 +40,7 @@ pub trait IngotFileContext {
         old_path: &str,
         new_path: &str,
     ) -> Result<()>;
+    fn remove_file(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Result<()>;
 }
 
 pub struct LocalIngotContext {
@@ -128,6 +129,14 @@ impl IngotFileContext for LocalIngotContext {
         }
         Ok(())
     }
+
+    fn remove_file(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Result<()> {
+        let file = self.files.remove(path);
+        if let Some(file) = file {
+            file.remove_from_ingot(db)?;
+        }
+        Ok(())
+    }
 }
 
 pub struct StandaloneIngotContext {
@@ -208,6 +217,15 @@ impl IngotFileContext for StandaloneIngotContext {
             file.set_path(db).to(new_path.into());
             self.files.insert(new_path, file);
         }
+        Ok(())
+    }
+
+    fn remove_file(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Result<()> {
+        let file = self.files.remove(path);
+        if let Some(file) = file {
+            file.remove_from_ingot(db)?;
+        }
+        self.ingots.remove(path);
         Ok(())
     }
 }
@@ -300,7 +318,7 @@ impl Workspace {
         let previous_ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
         for path in previous_ingot_context_file_keys {
             if !actual_paths.contains(path) {
-                ingot_context.files.remove(path);
+                ingot_context.remove_file(db, path);
             }
         }
 
@@ -391,6 +409,16 @@ impl IngotFileContext for Workspace {
                 .rename_file(db, old_path, new_path)
         }
     }
+
+    fn remove_file(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Result<()> {
+        let ctx = get_containing_ingot(&mut self.ingot_contexts, path);
+        if let Some(ctx) = ctx {
+            ctx.remove_file(db, path)
+        } else {
+            self.standalone_ingot_context.remove_file(db, path)?;
+            Ok(())
+        }
+    }
 }
 
 pub trait SyncableInputFile {
@@ -464,21 +492,6 @@ impl SyncableIngotFileContext for Workspace {
 
         for ingot_path in ingot_paths {
             self.sync_ingot_files(db, &ingot_path);
-        }
-
-        let paths = glob::glob(&format!("{path}/src/**/*.fe"))
-            .ok()
-            .unwrap()
-            .filter_map(|p| {
-                p.ok()
-                    .unwrap()
-                    .to_str()
-                    .map(std::string::ToString::to_string)
-            })
-            .collect::<Vec<String>>();
-
-        for path in paths {
-            self.input_from_file_path(db, &path);
         }
         Ok(())
     }
