@@ -2,14 +2,14 @@ pub mod basic_block;
 // pub mod body_builder;
 // pub mod body_cursor;
 // pub mod body_order;
-// pub mod constant;
+pub mod constant;
 // pub mod function;
 // pub mod inst;
 // pub mod types;
 // pub mod value;
 
 pub use basic_block::{BasicBlock, BasicBlockId};
-// pub use constant::{Constant, ConstantId};
+pub use constant::{Constant, ConstantId};
 // pub use function::{FunctionBody, FunctionId, FunctionParam, FunctionSignature};
 // pub use inst::{Inst, InstId};
 // pub use types::{Type, TypeId, TypeKind};

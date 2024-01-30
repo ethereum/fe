@@ -10,7 +10,7 @@ mod lower;
 #[salsa::jar(db = MirDb)]
 pub struct Jar(
     // ir::Constant,
-    // ir::ConstantId,
+    ir::ConstantId,
     // ir::FunctionBody,
     // ir::FunctionId,
     // ir::FunctionParam,
