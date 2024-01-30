@@ -103,6 +103,8 @@ impl<'db> UnificationTable<'db> {
                 }
             }
 
+            (_, _) if ty1.is_bot(self.db) || ty2.is_bot(self.db) => true,
+
             _ => false,
         }
     }

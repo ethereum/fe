@@ -151,6 +151,10 @@ impl TyId {
         matches!(self.data(db), TyData::ConstTy(_))
     }
 
+    pub(super) fn is_bot(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::Bot)
+    }
+
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
         !self.type_params(db).is_empty()
     }
@@ -650,6 +654,8 @@ pub enum TyData {
 
     ConstTy(ConstTyId),
 
+    Bot,
+
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
     // NOTE: For type soundness check in this level, we don't consider trait satisfiability.
@@ -1059,6 +1065,8 @@ impl HasKind for TyData {
             },
 
             TyData::ConstTy(const_ty) => const_ty.ty(db).kind(db).clone(),
+
+            TyData::Bot => Kind::Any,
 
             TyData::Invalid(_) => Kind::Any,
         }
