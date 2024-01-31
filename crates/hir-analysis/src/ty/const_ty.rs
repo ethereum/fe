@@ -87,7 +87,7 @@ fn check_const_ty(
         return Ok(const_ty_ty);
     };
 
-    if table.unify(expected_ty, const_ty_ty) {
+    if table.unify(expected_ty, const_ty_ty).is_ok() {
         Ok(expected_ty)
     } else {
         let invalid = InvalidCause::ConstTyMismatch {

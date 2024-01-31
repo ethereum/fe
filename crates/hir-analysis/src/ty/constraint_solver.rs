@@ -151,8 +151,8 @@ impl<'db> ConstraintSolver<'db> {
 
                 // If the `impl` can matches the goal by unifying the goal type, then we can
                 // obtain a subgaols which is specified by the `impl`.
-                if table.unify(gen_impl.ty(self.db), goal_ty)
-                    && table.unify(gen_impl.trait_(self.db), goal_trait)
+                if table.unify(gen_impl.ty(self.db), goal_ty).is_ok()
+                    && table.unify(gen_impl.trait_(self.db), goal_trait).is_ok()
                 {
                     let mut subst = SubstComposition::compose(&mut gen_param_map, &mut table);
                     let constraints = impl_.constraints(self.db);
