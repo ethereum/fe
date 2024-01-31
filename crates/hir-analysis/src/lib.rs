@@ -65,6 +65,8 @@ pub struct Jar(
     ty::constraint_solver::is_goal_satisfiable,
     ty::constraint_solver::check_ty_app_sat,
     ty::constraint_solver::check_trait_inst_sat,
+    /// Type checking.
+    ty::ty_check::check_func_body,
     /// Diagnostic accumulators.
     ty::diagnostics::AdtDefDiagAccumulator,
     ty::diagnostics::TypeAliasDefDiagAccumulator,
