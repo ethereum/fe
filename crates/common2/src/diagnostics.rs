@@ -149,6 +149,7 @@ pub enum DiagnosticPass {
     ImplTraitDefinition,
     TraitSatisfaction,
     MethodDefinition,
+    TyCheck,
 
     ExternalAnalysis(ExternalAnalysisKey),
 }
@@ -163,6 +164,7 @@ impl DiagnosticPass {
             Self::ImplTraitDefinition => 5,
             Self::TraitSatisfaction => 6,
             Self::MethodDefinition => 7,
+            Self::TyCheck => 8,
 
             Self::ExternalAnalysis(_) => std::u16::MAX,
         }

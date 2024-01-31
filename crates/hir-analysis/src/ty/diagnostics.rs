@@ -29,10 +29,13 @@ pub struct ImplDefDiagAccumulator(pub(super) TyDiagCollection);
 pub struct FuncDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
+#[salsa::accumulator]
+pub struct FuncBodyDiagAccumulator(pub(super) TyDiagCollection);
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum TyDiagCollection {
     Ty(TyLowerDiag),
+    TyCheck(TyCheckDiag),
     Satisfaction(TraitConstraintDiag),
     TraitLower(TraitLowerDiag),
     Impl(ImplDiag),
@@ -42,6 +45,7 @@ impl TyDiagCollection {
     pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
+            TyDiagCollection::TyCheck(diag) => Box::new(diag) as _,
             TyDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
             TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
             TyDiagCollection::Impl(diag) => Box::new(diag) as _,
@@ -506,6 +510,73 @@ impl TyLowerDiag {
 impl DiagnosticVoucher for TyLowerDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
+    }
+
+    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+        let severity = self.severity();
+        let error_code = self.error_code();
+        let message = self.message();
+        let sub_diags = self.sub_diags(db);
+
+        CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TyCheckDiag {
+    TypeMismatch(DynLazySpan, String, String),
+    InfiniteOccurrence(DynLazySpan),
+}
+
+impl TyCheckDiag {
+    pub(super) fn type_mismatch(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        expected: TyId,
+        actual: TyId,
+    ) -> Self {
+        let expected = expected.pretty_print(db).to_string();
+        let actual = actual.pretty_print(db).to_string();
+        Self::TypeMismatch(span, expected, actual)
+    }
+
+    fn local_code(&self) -> u16 {
+        match self {
+            Self::TypeMismatch(_, _, _) => 0,
+            Self::InfiniteOccurrence(_) => 1,
+        }
+    }
+
+    fn message(&self) -> String {
+        match self {
+            Self::TypeMismatch(_, _, _) => "type mismatch".to_string(),
+            Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
+        }
+    }
+
+    fn sub_diags(&self, db: &dyn SpannedHirDb) -> Vec<SubDiagnostic> {
+        match self {
+            Self::TypeMismatch(span, expected, actual) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                format!("expected `{}`, but `{}` is given", expected, actual),
+                span.resolve(db),
+            )],
+            Self::InfiniteOccurrence(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "infinite sized type found".to_string(),
+                span.resolve(db),
+            )],
+        }
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::Error
+    }
+}
+
+impl DiagnosticVoucher for TyCheckDiag {
+    fn error_code(&self) -> GlobalErrorCode {
+        GlobalErrorCode::new(DiagnosticPass::TyCheck, self.local_code())
     }
 
     fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {

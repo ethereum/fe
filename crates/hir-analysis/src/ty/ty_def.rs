@@ -48,6 +48,10 @@ impl TyId {
         matches!(self.data(db), TyData::Invalid(_))
     }
 
+    pub fn is_star_kind(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.kind(db), Kind::Star | Kind::Any)
+    }
+
     /// Returns `true` if the type is an integral type(like `u32`, `i32` etc.)
     pub fn is_integral(self, db: &dyn HirAnalysisDb) -> bool {
         match self.data(db) {

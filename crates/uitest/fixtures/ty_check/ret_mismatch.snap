@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/ret_mismatch.fe
+---
+error[8-0000]: type mismatch
+  ┌─ ret_mismatch.fe:2:5
+  │
+2 │     1
+  │     ^ expected `bool`, but `<integer>` is given
+
+error[8-0000]: type mismatch
+  ┌─ ret_mismatch.fe:6:5
+  │
+6 │     false
+  │     ^^^^^ expected `i32`, but `bool` is given
+
+

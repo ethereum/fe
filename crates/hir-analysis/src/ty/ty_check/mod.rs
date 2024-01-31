@@ -5,9 +5,10 @@ use hir::hir_def::{Body, Expr, ExprId, Func, LitKind, Partial, PatId, Stmt, Stmt
 use rustc_hash::FxHashMap;
 
 use super::{
+    diagnostics::{FuncBodyDiagAccumulator, TyCheckDiag},
     ty_def::{InvalidCause, Kind, TyId, TyVarUniverse},
     ty_lower::lower_hir_ty,
-    unify::UnificationTable,
+    unify::{UnificationError, UnificationTable},
 };
 use crate::HirAnalysisDb;
 
@@ -33,7 +34,14 @@ impl<'db> TyChecker<'db> {
     fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func) -> Result<Self, ()> {
         let env = ThCheckEnv::new_with_func(db, func)?;
         let expected_ty = match func.ret_ty(db.as_hir_db()) {
-            Some(ty) => lower_hir_ty(db, ty, func.scope()),
+            Some(hir_ty) => {
+                let ty = lower_hir_ty(db, hir_ty, func.scope());
+                if ty.is_star_kind(db) {
+                    ty
+                } else {
+                    TyId::invalid(db, InvalidCause::Other)
+                }
+            }
             None => TyId::unit(db),
         };
 
@@ -103,14 +111,40 @@ impl<'db> TyChecker<'db> {
             Expr::Match(..) => todo!(),
         };
 
-        match self.table.unify(expected, actual) {
+        let actual = match self.table.unify(expected, actual) {
             Ok(()) => {
                 let actual = actual.apply_subst(self.db, &mut self.table);
                 self.env.type_expr(expr, actual);
                 actual
             }
-            Err(_) => todo!(),
-        }
+            Err(UnificationError::TypeMismatch) => {
+                let actual = actual.apply_subst(self.db, &mut self.table);
+                let expected = expected.apply_subst(self.db, &mut self.table);
+                FuncBodyDiagAccumulator::push(
+                    self.db,
+                    TyCheckDiag::type_mismatch(
+                        self.db,
+                        expr.lazy_span(self.env.body()).into(),
+                        expected,
+                        actual,
+                    )
+                    .into(),
+                );
+                TyId::invalid(self.db, InvalidCause::Other)
+            }
+
+            Err(UnificationError::OccursCheckFailed) => {
+                FuncBodyDiagAccumulator::push(
+                    self.db,
+                    TyCheckDiag::InfiniteOccurrence(expr.lazy_span(self.env.body()).into()).into(),
+                );
+
+                TyId::invalid(self.db, InvalidCause::Other)
+            }
+        };
+
+        self.env.type_expr(expr, actual);
+        actual
     }
 
     fn check_stmt(&mut self, stmt: StmtId, expected: TyId) -> TyId {

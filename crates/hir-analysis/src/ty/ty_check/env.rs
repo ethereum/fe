@@ -50,10 +50,14 @@ impl<'db> ThCheckEnv<'db> {
                 continue;
             };
 
-            let ty = match param.ty {
+            let mut ty = match param.ty {
                 Partial::Present(hir_ty) => lower_hir_ty(db, hir_ty, func.scope()),
                 Partial::Absent => TyId::invalid(db, InvalidCause::Other),
             };
+
+            if ty.is_star_kind(db) {
+                ty = TyId::invalid(db, InvalidCause::Other);
+            }
 
             env.register_var(name, ty);
         }
