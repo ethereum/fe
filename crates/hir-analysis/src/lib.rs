@@ -74,6 +74,7 @@ pub struct Jar(
     ty::diagnostics::ImplTraitDefDiagAccumulator,
     ty::diagnostics::ImplDefDiagAccumulator,
     ty::diagnostics::FuncDefDiagAccumulator,
+    ty::diagnostics::FuncBodyDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {
