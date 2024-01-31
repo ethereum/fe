@@ -6,8 +6,9 @@ use self::{
         analyze_type_alias,
     },
     diagnostics::{
-        AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
-        ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
+        AdtDefDiagAccumulator, FuncBodyDiagAccumulator, FuncDefDiagAccumulator,
+        ImplDefDiagAccumulator, ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator,
+        TypeAliasDefDiagAccumulator,
     },
     ty_def::AdtRefId,
 };
@@ -33,7 +34,6 @@ mod unify;
 pub struct TypeDefAnalysisPass<'db> {
     db: &'db dyn HirAnalysisDb,
 }
-
 impl<'db> TypeDefAnalysisPass<'db> {
     pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
         Self { db }
@@ -68,6 +68,31 @@ impl<'db> ModuleAnalysisPass for TypeDefAnalysisPass<'db> {
         })
         .map(|diag| diag.to_voucher())
         .collect()
+    }
+}
+
+pub struct BodyAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+impl<'db> BodyAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+impl<'db> ModuleAnalysisPass for BodyAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod,
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher>> {
+        top_mod
+            .all_funcs(self.db.as_hir_db())
+            .iter()
+            .flat_map(|func| {
+                ty_check::check_func_body::accumulated::<FuncBodyDiagAccumulator>(self.db, *func)
+                    .into_iter()
+            })
+            .map(|diag| diag.to_voucher())
+            .collect()
     }
 }
 
