@@ -122,6 +122,10 @@ impl TyId {
         Self::new(db, TyData::TyBase(TyBase::tuple(n)))
     }
 
+    pub(super) fn bool(db: &dyn HirAnalysisDb) -> Self {
+        Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Bool)))
+    }
+
     pub(super) fn array(db: &dyn HirAnalysisDb) -> Self {
         let base = TyBase::Prim(PrimTy::Array);
         Self::new(db, TyData::TyBase(base))

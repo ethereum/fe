@@ -44,7 +44,7 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
         .filter(|impl_| {
             let mut table = UnificationTable::new(db);
             let (gen_impl, _) = impl_.generalize(db, &mut table);
-            table.unify(gen_impl.trait_(db), trait_)
+            table.unify(gen_impl.trait_(db), trait_).is_ok()
         })
         .cloned()
         .collect()
@@ -177,7 +177,7 @@ impl Implementor {
         let (generalized_self, _) = self.generalize(db, table);
         let (generalized_other, _) = other.generalize(db, table);
 
-        table.unify(generalized_self, generalized_other)
+        table.unify(generalized_self, generalized_other).is_ok()
     }
 
     pub(super) fn methods(self, db: &dyn HirAnalysisDb) -> &BTreeMap<IdentId, FuncDef> {
