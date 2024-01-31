@@ -135,6 +135,10 @@ impl TyId {
         Self::tuple(db, 0)
     }
 
+    pub(super) fn bot(db: &dyn HirAnalysisDb) -> Self {
+        Self::new(db, TyData::Bot)
+    }
+
     pub(super) fn const_ty(db: &dyn HirAnalysisDb, const_ty: ConstTyId) -> Self {
         Self::new(db, TyData::ConstTy(const_ty))
     }
