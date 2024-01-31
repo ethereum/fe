@@ -97,7 +97,7 @@ impl MethodBucket {
                 ty
             };
 
-            if table.unify(cand_ty, ty) {
+            if table.unify(cand_ty, ty).is_ok() {
                 if let Some(func) = funcs.get(&name) {
                     return Some(*func);
                 }
