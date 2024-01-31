@@ -20,6 +20,7 @@ pub mod diagnostics;
 pub mod method_table;
 pub mod trait_def;
 pub mod trait_lower;
+pub mod ty_check;
 pub mod ty_def;
 pub mod ty_lower;
 pub mod visitor;
