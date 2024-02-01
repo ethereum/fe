@@ -126,6 +126,15 @@ impl TyId {
         Self::new(db, TyData::TyBase(TyBase::tuple(n)))
     }
 
+    pub(super) fn tuple_with_elems(db: &dyn HirAnalysisDb, elems: &[TyId]) -> Self {
+        let base = TyBase::tuple(elems.len());
+        let mut ty = Self::new(db, TyData::TyBase(base));
+        for &elem in elems {
+            ty = Self::app(db, ty, elem);
+        }
+        ty
+    }
+
     pub(super) fn bool(db: &dyn HirAnalysisDb) -> Self {
         Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Bool)))
     }
@@ -161,6 +170,13 @@ impl TyId {
 
     pub(super) fn is_const_ty(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::ConstTy(_))
+    }
+
+    pub(super) fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(
+            self.data(db),
+            TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
+        )
     }
 
     pub(super) fn is_bot(self, db: &dyn HirAnalysisDb) -> bool {
