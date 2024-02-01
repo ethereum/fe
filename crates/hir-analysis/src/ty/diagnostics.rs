@@ -35,7 +35,7 @@ pub struct FuncBodyDiagAccumulator(pub(super) TyDiagCollection);
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum TyDiagCollection {
     Ty(TyLowerDiag),
-    TyCheck(TyCheckDiag),
+    BodyDiag(BodyDiag),
     Satisfaction(TraitConstraintDiag),
     TraitLower(TraitLowerDiag),
     Impl(ImplDiag),
@@ -45,7 +45,7 @@ impl TyDiagCollection {
     pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
-            TyDiagCollection::TyCheck(diag) => Box::new(diag) as _,
+            TyDiagCollection::BodyDiag(diag) => Box::new(diag) as _,
             TyDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
             TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
             TyDiagCollection::Impl(diag) => Box::new(diag) as _,
@@ -523,12 +523,13 @@ impl DiagnosticVoucher for TyLowerDiag {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TyCheckDiag {
+pub enum BodyDiag {
     TypeMismatch(DynLazySpan, String, String),
     InfiniteOccurrence(DynLazySpan),
+    DuplicatedRestPat(DynLazySpan),
 }
 
-impl TyCheckDiag {
+impl BodyDiag {
     pub(super) fn type_mismatch(
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
@@ -544,6 +545,7 @@ impl TyCheckDiag {
         match self {
             Self::TypeMismatch(_, _, _) => 0,
             Self::InfiniteOccurrence(_) => 1,
+            Self::DuplicatedRestPat(_) => 2,
         }
     }
 
@@ -551,6 +553,7 @@ impl TyCheckDiag {
         match self {
             Self::TypeMismatch(_, _, _) => "type mismatch".to_string(),
             Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
+            Self::DuplicatedRestPat(_) => "duplicated `..` found".to_string(),
         }
     }
 
@@ -561,9 +564,16 @@ impl TyCheckDiag {
                 format!("expected `{}`, but `{}` is given", expected, actual),
                 span.resolve(db),
             )],
+
             Self::InfiniteOccurrence(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 "infinite sized type found".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::DuplicatedRestPat(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "`..` can be used only once".to_string(),
                 span.resolve(db),
             )],
         }
@@ -574,7 +584,7 @@ impl TyCheckDiag {
     }
 }
 
-impl DiagnosticVoucher for TyCheckDiag {
+impl DiagnosticVoucher for BodyDiag {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TyCheck, self.local_code())
     }

@@ -16,16 +16,6 @@ pub enum Pat {
     Or(PatId, PatId),
 }
 
-impl Pat {
-    /// Return `true` if this pattern is a binding.
-    pub fn is_bind(&self, db: &dyn HirDb) -> bool {
-        match self {
-            Self::Path(Partial::Present(p), _) => p.len(db) == 1,
-            _ => false,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PatId(u32);
 entity_impl!(PatId);
@@ -39,12 +29,8 @@ impl PatId {
         &body.pats(db)[self]
     }
 
-    /// Return `true` if this pattern is a binding.
-    pub fn is_bind(self, db: &dyn HirDb, body: Body) -> bool {
-        match self.data(db, body) {
-            Partial::Present(p) => p.is_bind(db),
-            Partial::Absent => false,
-        }
+    pub fn is_rest(self, db: &dyn HirDb, body: Body) -> bool {
+        matches!(self.data(db, body), Partial::Present(Pat::Rest))
     }
 }
 
