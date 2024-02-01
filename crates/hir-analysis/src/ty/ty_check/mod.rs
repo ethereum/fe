@@ -78,7 +78,11 @@ impl<'db> TyChecker<'db> {
             Expr::Lit(lit) => match lit {
                 LitKind::Bool(_) => TyId::bool(self.db),
                 LitKind::Int(_) => self.table.new_var(TyVarUniverse::Integral, &Kind::Star),
-                _ => todo!(),
+                LitKind::String(s) => {
+                    let len_bytes = s.len_bytes(self.db.as_hir_db());
+                    self.table
+                        .new_var(TyVarUniverse::String(len_bytes), &Kind::Star)
+                }
             },
 
             Expr::Block(stmts) => {

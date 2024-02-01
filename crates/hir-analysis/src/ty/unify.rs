@@ -2,12 +2,16 @@
 //! satisfiability checking.
 
 use ena::unify::{InPlace, InPlaceUnificationTable, UnifyKey, UnifyValue};
+use num_bigint::BigUint;
 
 use super::{
     trait_def::{Implementor, TraitInstId},
     ty_def::{Kind, Subst, TyData, TyId, TyVar, TyVarUniverse},
 };
-use crate::{ty::const_ty::ConstTyData, HirAnalysisDb};
+use crate::{
+    ty::const_ty::{ConstTyData, EvaluatedConstTy},
+    HirAnalysisDb,
+};
 
 pub(crate) struct UnificationTable<'db> {
     db: &'db dyn HirAnalysisDb,
@@ -178,16 +182,30 @@ impl<'db> UnificationTable<'db> {
             _ => panic!(),
         };
 
-        if var1.universe == var2.universe {
-            self.table.unify_var_var(var1.key, var2.key)
-        } else if matches!(var1.universe, TyVarUniverse::General) {
-            // Narrow down the universe of var1 to Int.
-            self.table
-                .unify_var_value(var1.key, InferenceValue::Bound(ty_var2))
-        } else {
-            // Narrow down the universe of var2 to Int.
-            self.table
-                .unify_var_value(var2.key, InferenceValue::Bound(ty_var1))
+        match (var1.universe, var2.universe) {
+            (universe1, universe2) if universe1 == universe2 => {
+                self.table.unify_var_var(var1.key, var2.key)
+            }
+
+            (TyVarUniverse::General, _) => self
+                .table
+                .unify_var_value(var1.key, InferenceValue::Bound(ty_var2)),
+
+            (_, TyVarUniverse::General) => self
+                .table
+                .unify_var_value(var2.key, InferenceValue::Bound(ty_var1)),
+
+            (TyVarUniverse::String(n1), TyVarUniverse::String(n2)) => {
+                if n1 > n2 {
+                    self.table
+                        .unify_var_value(var1.key, InferenceValue::Bound(ty_var2))
+                } else {
+                    self.table
+                        .unify_var_value(var2.key, InferenceValue::Bound(ty_var1))
+                }
+            }
+
+            (_, _) => Err(UnificationError::TypeMismatch),
         }
     }
 
@@ -201,16 +219,49 @@ impl<'db> UnificationTable<'db> {
             return Err(UnificationError::OccursCheckFailed);
         }
 
-        match (var.universe, value.is_integral(self.db)) {
-            (TyVarUniverse::General, _) => self
+        if value.contains_invalid(self.db) {
+            return self
+                .table
+                .unify_var_value(var.key, InferenceValue::Bound(value));
+        }
+
+        match var.universe {
+            TyVarUniverse::General => self
                 .table
                 .unify_var_value(var.key, InferenceValue::Bound(value)),
 
-            (TyVarUniverse::Integral, true) => self
-                .table
-                .unify_var_value(var.key, InferenceValue::Bound(value)),
+            TyVarUniverse::Integral => {
+                if value.is_integral(self.db) {
+                    self.table
+                        .unify_var_value(var.key, InferenceValue::Bound(value))
+                } else {
+                    Err(UnificationError::TypeMismatch)
+                }
+            }
 
-            _ => Err(UnificationError::TypeMismatch),
+            TyVarUniverse::String(n_var) => {
+                let (base, args) = value.decompose_ty_app(self.db);
+                if !base.is_string(self.db) || args.len() != 1 {
+                    return Err(UnificationError::TypeMismatch);
+                }
+
+                let TyData::ConstTy(const_ty) = args[0].data(self.db) else {
+                    return Ok(());
+                };
+
+                let ConstTyData::Evaluated(EvaluatedConstTy::LitInt(n_value), _) =
+                    const_ty.data(self.db)
+                else {
+                    return Ok(());
+                };
+
+                if &BigUint::from(n_var) <= n_value.data(self.db.as_hir_db()) {
+                    self.table
+                        .unify_var_value(var.key, InferenceValue::Bound(value))
+                } else {
+                    Err(UnificationError::TypeMismatch)
+                }
+            }
         }
     }
 }
