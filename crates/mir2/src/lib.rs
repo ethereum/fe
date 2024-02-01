@@ -19,6 +19,19 @@ pub struct Jar(
     // ir::InstId,
     // ir::Value,
     // ir::ValueId,
+    // mir_intern_const,
+    // mir_intern_type,
+    // mir_intern_function,
+    // mir_lower_module_all_functions,
+    // mir_lower_contract_all_functions,
+    // mir_lower_struct_all_functions,
+    // mir_lower_enum_all_functions,
+    // mir_lowered_type,
+    mir_lowered_constant,
+    // mir_lowered_func_signature,
+    // mir_lowered_monomorphized_func_signature,
+    // mir_lowered_pseudo_monomorphized_func_signature,
+    // mir_lowered_func_body,
 );
 
 #[salsa::jar(db = LowerMirDb)]

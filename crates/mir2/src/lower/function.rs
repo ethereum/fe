@@ -1,14 +1,12 @@
 use std::{collections::BTreeMap, rc::Rc, vec};
 
-use fe_common2::numeric::Literal;
-use fe_parser2::{ast, node::Node};
 use fxhash::FxHashMap;
+use hir::hir_def::{self, TypeId};
 use id_arena::{Arena, Id};
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
 use crate::{
-    db::MirDb,
     ir::{
         self,
         body_builder::BodyBuilder,
@@ -17,8 +15,9 @@ use crate::{
         inst::{CallType, InstKind},
         value::{AssignableValue, Local},
         BasicBlockId, Constant, FunctionBody, FunctionId, FunctionParam, FunctionSignature, InstId,
-        SourceInfo, TypeId, Value, ValueId,
+        Value, ValueId,
     },
+    MirDb,
 };
 
 type ScopeId = Id<Scope>;
@@ -91,7 +90,7 @@ pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
 pub(super) struct BodyLowerHelper<'db, 'a> {
     pub(super) db: &'db dyn MirDb,
     pub(super) builder: BodyBuilder,
-    ast: &'a Node<ast::Function>,
+    ast: &'a Node<hir_def::Function>,
     func: FunctionId,
     analyzer_body: &'a fe_analyzer2::context::FunctionBody,
     scopes: Arena<Scope>,
@@ -99,9 +98,9 @@ pub(super) struct BodyLowerHelper<'db, 'a> {
 }
 
 impl<'db, 'a> BodyLowerHelper<'db, 'a> {
-    pub(super) fn lower_stmt(&mut self, stmt: &Node<ast::FuncStmt>) {
+    pub(super) fn lower_stmt(&mut self, stmt: &Node<hir_def::FuncStmt>) {
         match &stmt.kind {
-            ast::FuncStmt::Return { value } => {
+            hir_def::FuncStmt::Return { value } => {
                 let value = if let Some(expr) = value {
                     self.lower_expr_to_value(expr)
                 } else {
@@ -112,11 +111,11 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.move_to_block(next_block);
             }
 
-            ast::FuncStmt::VarDecl { target, value, .. } => {
+            hir_def::FuncStmt::VarDecl { target, value, .. } => {
                 self.lower_var_decl(target, value.as_ref(), stmt.into());
             }
 
-            ast::FuncStmt::ConstantDecl { name, value, .. } => {
+            hir_def::FuncStmt::ConstantDecl { name, value, .. } => {
                 let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&name.id]);
 
                 let value = self.analyzer_body.expressions[&value.id]
@@ -129,13 +128,13 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.scope_mut().declare_var(&name.kind, constant);
             }
 
-            ast::FuncStmt::Assign { target, value } => {
+            hir_def::FuncStmt::Assign { target, value } => {
                 let result = self.lower_assignable_value(target);
                 let (expr, _ty) = self.lower_expr(value);
                 self.builder.map_result(expr, result)
             }
 
-            ast::FuncStmt::AugAssign { target, op, value } => {
+            hir_def::FuncStmt::AugAssign { target, op, value } => {
                 let result = self.lower_assignable_value(target);
                 let lhs = self.lower_expr_to_value(target);
                 let rhs = self.lower_expr_to_value(value);
@@ -144,9 +143,11 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.map_result(inst, result)
             }
 
-            ast::FuncStmt::For { target, iter, body } => self.lower_for_loop(target, iter, body),
+            hir_def::FuncStmt::For { target, iter, body } => {
+                self.lower_for_loop(target, iter, body)
+            }
 
-            ast::FuncStmt::While { test, body } => {
+            hir_def::FuncStmt::While { test, body } => {
                 let header_bb = self.builder.make_block();
                 let exit_bb = self.builder.make_block();
 
@@ -170,18 +171,18 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.move_to_block(exit_bb);
             }
 
-            ast::FuncStmt::If {
+            hir_def::FuncStmt::If {
                 test,
                 body,
                 or_else,
             } => self.lower_if(test, body, or_else),
 
-            ast::FuncStmt::Match { expr, arms } => {
+            hir_def::FuncStmt::Match { expr, arms } => {
                 let matrix = &self.analyzer_body.matches[&stmt.id];
                 super::pattern_match::lower_match(self, matrix, expr, arms);
             }
 
-            ast::FuncStmt::Assert { test, msg } => {
+            hir_def::FuncStmt::Assert { test, msg } => {
                 let then_bb = self.builder.make_block();
                 let false_bb = self.builder.make_block();
 
@@ -199,18 +200,18 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.move_to_block(then_bb);
             }
 
-            ast::FuncStmt::Expr { value } => {
+            hir_def::FuncStmt::Expr { value } => {
                 self.lower_expr_to_value(value);
             }
 
-            ast::FuncStmt::Break => {
+            hir_def::FuncStmt::Break => {
                 let exit = self.scope().loop_exit(&self.scopes);
                 self.builder.jump(exit, stmt.into());
                 let next_block = self.builder.make_block();
                 self.builder.move_to_block(next_block);
             }
 
-            ast::FuncStmt::Continue => {
+            hir_def::FuncStmt::Continue => {
                 let entry = self.scope().loop_entry(&self.scopes);
                 if let Some(loop_idx) = self.scope().loop_idx(&self.scopes) {
                     let imm_one = self.make_u256_imm(1u32);
@@ -226,14 +227,14 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.move_to_block(next_block);
             }
 
-            ast::FuncStmt::Revert { error } => {
+            hir_def::FuncStmt::Revert { error } => {
                 let error = error.as_ref().map(|err| self.lower_expr_to_value(err));
                 self.builder.revert(error, stmt.into());
                 let next_block = self.builder.make_block();
                 self.builder.move_to_block(next_block);
             }
 
-            ast::FuncStmt::Unsafe(stmts) => {
+            hir_def::FuncStmt::Unsafe(stmts) => {
                 self.enter_scope();
                 for stmt in stmts {
                     self.lower_stmt(stmt)
@@ -245,12 +246,12 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
     pub(super) fn lower_var_decl(
         &mut self,
-        var: &Node<ast::VarDeclTarget>,
-        init: Option<&Node<ast::Expr>>,
+        var: &Node<hir_def::VarDeclTarget>,
+        init: Option<&Node<hir_def::Expr>>,
         source: SourceInfo,
     ) {
         match &var.kind {
-            ast::VarDeclTarget::Name(name) => {
+            hir_def::VarDeclTarget::Name(name) => {
                 let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
                 let value = self.declare_var(name, ty, var.into());
                 if let Some(init) = init {
@@ -262,9 +263,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 }
             }
 
-            ast::VarDeclTarget::Tuple(decls) => {
+            hir_def::VarDeclTarget::Tuple(decls) => {
                 if let Some(init) = init {
-                    if let ast::Expr::Tuple { elts } = &init.kind {
+                    if let hir_def::Expr::Tuple { elts } = &init.kind {
                         debug_assert_eq!(decls.len(), elts.len());
                         for (decl, init_elem) in decls.iter().zip(elts.iter()) {
                             self.lower_var_decl(decl, Some(init_elem), source.clone());
@@ -287,9 +288,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         &mut self,
         name: &SmolStr,
         ty: TypeId,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> ValueId {
-        let local = Local::user_local(name.clone(), ty, source);
+        // let local = Local::user_local(name.clone(), ty, source);
+        let local = Local::user_local(name.clone(), ty);
         let value = self.builder.declare(local);
         self.scope_mut().declare_var(name, value);
         value
@@ -297,13 +299,13 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
     pub(super) fn lower_var_decl_unpack(
         &mut self,
-        var: &Node<ast::VarDeclTarget>,
+        var: &Node<hir_def::VarDeclTarget>,
         init: ValueId,
         init_ty: TypeId,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) {
         match &var.kind {
-            ast::VarDeclTarget::Name(name) => {
+            hir_def::VarDeclTarget::Name(name) => {
                 let ty = self.lower_analyzer_type(self.analyzer_body.var_types[&var.id]);
                 let local = Local::user_local(name.clone(), ty, var.into());
 
@@ -313,7 +315,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.map_result(bind, lhs.into());
             }
 
-            ast::VarDeclTarget::Tuple(decls) => {
+            hir_def::VarDeclTarget::Tuple(decls) => {
                 for (index, decl) in decls.iter().enumerate() {
                     let elem_ty = init_ty.projection_ty_imm(self.db, index);
                     let index_value = self.make_u256_imm(index);
@@ -327,10 +329,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         }
     }
 
-    pub(super) fn lower_expr(&mut self, expr: &Node<ast::Expr>) -> (InstId, TypeId) {
+    pub(super) fn lower_expr(&mut self, expr: &Node<hir_def::Expr>) -> (InstId, TypeId) {
         let mut ty = self.expr_ty(expr);
         let mut inst = match &expr.kind {
-            ast::Expr::Ternary {
+            hir_def::Expr::Ternary {
                 if_expr,
                 test,
                 else_expr,
@@ -361,38 +363,38 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.bind(tmp, SourceInfo::dummy())
             }
 
-            ast::Expr::BoolOperation { left, op, right } => {
+            hir_def::Expr::BoolOperation { left, op, right } => {
                 self.lower_bool_op(op.kind, left, right, ty)
             }
 
-            ast::Expr::BinOperation { left, op, right } => {
+            hir_def::Expr::BinOperation { left, op, right } => {
                 let lhs = self.lower_expr_to_value(left);
                 let rhs = self.lower_expr_to_value(right);
                 self.lower_binop(op.kind, lhs, rhs, expr.into())
             }
 
-            ast::Expr::UnaryOperation { op, operand } => {
+            hir_def::Expr::UnaryOperation { op, operand } => {
                 let value = self.lower_expr_to_value(operand);
                 match op.kind {
-                    ast::UnaryOperator::Invert => self.builder.inv(value, expr.into()),
-                    ast::UnaryOperator::Not => self.builder.not(value, expr.into()),
-                    ast::UnaryOperator::USub => self.builder.neg(value, expr.into()),
+                    hir_def::UnaryOperator::Invert => self.builder.inv(value, expr.into()),
+                    hir_def::UnaryOperator::Not => self.builder.not(value, expr.into()),
+                    hir_def::UnaryOperator::USub => self.builder.neg(value, expr.into()),
                 }
             }
 
-            ast::Expr::CompOperation { left, op, right } => {
+            hir_def::Expr::CompOperation { left, op, right } => {
                 let lhs = self.lower_expr_to_value(left);
                 let rhs = self.lower_expr_to_value(right);
                 self.lower_comp_op(op.kind, lhs, rhs, expr.into())
             }
 
-            ast::Expr::Attribute { .. } => {
+            hir_def::Expr::Attribute { .. } => {
                 let mut indices = vec![];
                 let value = self.lower_aggregate_access(expr, &mut indices);
                 self.builder.aggregate_access(value, indices, expr.into())
             }
 
-            ast::Expr::Subscript { value, index } => {
+            hir_def::Expr::Subscript { value, index } => {
                 let value_ty = self.expr_ty(value).deref(self.db);
                 if value_ty.is_aggregate(self.db) {
                     let mut indices = vec![];
@@ -407,7 +409,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 }
             }
 
-            ast::Expr::Call {
+            hir_def::Expr::Call {
                 func,
                 generic_args,
                 args,
@@ -416,7 +418,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.lower_call(func, generic_args, &args.kind, ty, expr.into())
             }
 
-            ast::Expr::List { elts } | ast::Expr::Tuple { elts } => {
+            hir_def::Expr::List { elts } | hir_def::Expr::Tuple { elts } => {
                 let args = elts
                     .iter()
                     .map(|elem| self.lower_expr_to_value(elem))
@@ -425,7 +427,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.aggregate_construct(ty, args, expr.into())
             }
 
-            ast::Expr::Repeat { value, len: _ } => {
+            hir_def::Expr::Repeat { value, len: _ } => {
                 let array_type = if let Type::Array(array_type) = self.analyzer_body.expressions
                     [&expr.id]
                     .typ
@@ -441,28 +443,28 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.aggregate_construct(ty, args, expr.into())
             }
 
-            ast::Expr::Bool(b) => {
+            hir_def::Expr::Bool(b) => {
                 let imm = self.builder.make_imm_from_bool(*b, ty);
                 self.builder.bind(imm, expr.into())
             }
 
-            ast::Expr::Name(name) => {
+            hir_def::Expr::Name(name) => {
                 let value = self.resolve_name(name);
                 self.builder.bind(value, expr.into())
             }
 
-            ast::Expr::Path(path) => {
+            hir_def::Expr::Path(path) => {
                 let value = self.resolve_path(path, expr.into());
                 self.builder.bind(value, expr.into())
             }
 
-            ast::Expr::Num(num) => {
+            hir_def::Expr::Num(num) => {
                 let imm = Literal::new(num).parse().unwrap();
                 let imm = self.builder.make_imm(imm, ty);
                 self.builder.bind(imm, expr.into())
             }
 
-            ast::Expr::Str(s) => {
+            hir_def::Expr::Str(s) => {
                 let ty = self.expr_ty(expr);
                 let const_value = self.make_local_constant(
                     "str_in_func".into(),
@@ -473,7 +475,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.bind(const_value, expr.into())
             }
 
-            ast::Expr::Unit => {
+            hir_def::Expr::Unit => {
                 let value = self.make_unit();
                 self.builder.bind(value, expr.into())
             }
@@ -510,7 +512,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             .unwrap_or_else(|| self.map_to_tmp(inst, ty))
     }
 
-    pub(super) fn lower_expr_to_value(&mut self, expr: &Node<ast::Expr>) -> ValueId {
+    pub(super) fn lower_expr_to_value(&mut self, expr: &Node<hir_def::Expr>) -> ValueId {
         let (inst, ty) = self.lower_expr(expr);
         self.map_to_tmp(inst, ty)
     }
@@ -555,7 +557,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     fn new(
         db: &'db dyn MirDb,
         func: FunctionId,
-        ast: &'a Node<ast::Function>,
+        ast: &'a Node<hir_def::Function>,
         analyzer_body: &'a fe_analyzer2::context::FunctionBody,
     ) -> Self {
         let mut builder = BodyBuilder::new(func, ast.into());
@@ -624,9 +626,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
     fn lower_if(
         &mut self,
-        cond: &Node<ast::Expr>,
-        then: &[Node<ast::FuncStmt>],
-        else_: &[Node<ast::FuncStmt>],
+        cond: &Node<hir_def::Expr>,
+        then: &[Node<hir_def::FuncStmt>],
+        else_: &[Node<hir_def::FuncStmt>],
     ) {
         let cond = self.lower_expr_to_value(cond);
 
@@ -689,8 +691,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     fn lower_for_loop(
         &mut self,
         loop_variable: &Node<SmolStr>,
-        iter: &Node<ast::Expr>,
-        body: &[Node<ast::FuncStmt>],
+        iter: &Node<hir_def::Expr>,
+        body: &[Node<hir_def::FuncStmt>],
     ) {
         let preheader_bb = self.builder.make_block();
         let entry_bb = self.builder.make_block();
@@ -775,15 +777,15 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         self.builder.move_to_block(exit_bb);
     }
 
-    fn lower_assignable_value(&mut self, expr: &Node<ast::Expr>) -> AssignableValue {
+    fn lower_assignable_value(&mut self, expr: &Node<hir_def::Expr>) -> AssignableValue {
         match &expr.kind {
-            ast::Expr::Attribute { value, attr } => {
+            hir_def::Expr::Attribute { value, attr } => {
                 let idx = self.expr_ty(value).index_from_fname(self.db, &attr.kind);
                 let idx = self.make_u256_imm(idx);
                 let lhs = self.lower_assignable_value(value).into();
                 AssignableValue::Aggregate { lhs, idx }
             }
-            ast::Expr::Subscript { value, index } => {
+            hir_def::Expr::Subscript { value, index } => {
                 let lhs = self.lower_assignable_value(value).into();
                 let attr = self.lower_expr_to_value(index);
                 let value_ty = self.expr_ty(value).deref(self.db);
@@ -795,23 +797,23 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                     unreachable!()
                 }
             }
-            ast::Expr::Name(name) => self.resolve_name(name).into(),
-            ast::Expr::Path(path) => self.resolve_path(path, expr.into()).into(),
+            hir_def::Expr::Name(name) => self.resolve_name(name).into(),
+            hir_def::Expr::Path(path) => self.resolve_path(path, expr.into()).into(),
             _ => self.lower_expr_to_value(expr).into(),
         }
     }
 
     /// Returns the pre-adjustment type of the given `Expr`
-    fn expr_ty(&self, expr: &Node<ast::Expr>) -> TypeId {
+    fn expr_ty(&self, expr: &Node<hir_def::Expr>) -> TypeId {
         let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ;
         self.lower_analyzer_type(analyzer_ty)
     }
 
     fn lower_bool_op(
         &mut self,
-        op: ast::BoolOperator,
-        lhs: &Node<ast::Expr>,
-        rhs: &Node<ast::Expr>,
+        op: hir_def::BoolOperator,
+        lhs: &Node<hir_def::Expr>,
+        rhs: &Node<hir_def::Expr>,
         ty: TypeId,
     ) -> InstId {
         let true_bb = self.builder.make_block();
@@ -824,7 +826,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
             .declare(Local::tmp_local(format!("${op}_tmp").into(), ty));
 
         match op {
-            ast::BoolOperator::And => {
+            hir_def::BoolOperator::And => {
                 self.builder
                     .branch(lhs, true_bb, false_bb, SourceInfo::dummy());
 
@@ -840,7 +842,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 self.builder.jump(merge_bb, SourceInfo::dummy());
             }
 
-            ast::BoolOperator::Or => {
+            hir_def::BoolOperator::Or => {
                 self.builder
                     .branch(lhs, true_bb, false_bb, SourceInfo::dummy());
 
@@ -863,40 +865,40 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
     fn lower_binop(
         &mut self,
-        op: ast::BinOperator,
+        op: hir_def::BinOp,
         lhs: ValueId,
         rhs: ValueId,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
         match op {
-            ast::BinOperator::Add => self.builder.add(lhs, rhs, source),
-            ast::BinOperator::Sub => self.builder.sub(lhs, rhs, source),
-            ast::BinOperator::Mult => self.builder.mul(lhs, rhs, source),
-            ast::BinOperator::Div => self.builder.div(lhs, rhs, source),
-            ast::BinOperator::Mod => self.builder.modulo(lhs, rhs, source),
-            ast::BinOperator::Pow => self.builder.pow(lhs, rhs, source),
-            ast::BinOperator::LShift => self.builder.shl(lhs, rhs, source),
-            ast::BinOperator::RShift => self.builder.shr(lhs, rhs, source),
-            ast::BinOperator::BitOr => self.builder.bit_or(lhs, rhs, source),
-            ast::BinOperator::BitXor => self.builder.bit_xor(lhs, rhs, source),
-            ast::BinOperator::BitAnd => self.builder.bit_and(lhs, rhs, source),
+            hir_def::BinOp::Add => self.builder.add(lhs, rhs),
+            hir_def::BinOp::Sub => self.builder.sub(lhs, rhs),
+            hir_def::BinOp::Mult => self.builder.mul(lhs, rhs),
+            hir_def::BinOp::Div => self.builder.div(lhs, rhs),
+            hir_def::BinOp::Mod => self.builder.modulo(lhs, rhs),
+            hir_def::BinOp::Pow => self.builder.pow(lhs, rhs),
+            hir_def::BinOp::LShift => self.builder.shl(lhs, rhs),
+            hir_def::BinOp::RShift => self.builder.shr(lhs, rhs),
+            hir_def::BinOp::BitOr => self.builder.bit_or(lhs, rhs),
+            hir_def::BinOp::BitXor => self.builder.bit_xor(lhs, rhs),
+            hir_def::BinOp::BitAnd => self.builder.bit_and(lhs, rhs),
         }
     }
 
     fn lower_comp_op(
         &mut self,
-        op: ast::CompOperator,
+        op: hir_def::CompBinOp,
         lhs: ValueId,
         rhs: ValueId,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
         match op {
-            ast::CompOperator::Eq => self.builder.eq(lhs, rhs, source),
-            ast::CompOperator::NotEq => self.builder.ne(lhs, rhs, source),
-            ast::CompOperator::Lt => self.builder.lt(lhs, rhs, source),
-            ast::CompOperator::LtE => self.builder.le(lhs, rhs, source),
-            ast::CompOperator::Gt => self.builder.gt(lhs, rhs, source),
-            ast::CompOperator::GtE => self.builder.ge(lhs, rhs, source),
+            hir_def::CompBinOp::Eq => self.builder.eq(lhs, rhs),
+            hir_def::CompBinOp::NotEq => self.builder.ne(lhs, rhs),
+            hir_def::CompBinOp::Lt => self.builder.lt(lhs, rhs),
+            hir_def::CompBinOp::LtE => self.builder.le(lhs, rhs),
+            hir_def::CompBinOp::Gt => self.builder.gt(lhs, rhs),
+            hir_def::CompBinOp::GtE => self.builder.ge(lhs, rhs),
         }
     }
 
@@ -943,9 +945,9 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
     fn lower_call(
         &mut self,
-        func: &Node<ast::Expr>,
-        _generic_args: &Option<Node<Vec<ast::GenericArg>>>,
-        args: &[Node<ast::CallArg>],
+        func: &Node<hir_def::Expr>,
+        _generic_args: &Option<Node<Vec<hir_def::GenericArg>>>,
+        args: &[Node<hir_def::CallArg>],
         ty: TypeId,
         source: SourceInfo,
     ) -> InstId {
@@ -1081,27 +1083,27 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     }
 
     // FIXME: This is ugly hack to properly analyze method call. Remove this when  https://github.com/ethereum/fe/issues/670 is resolved.
-    fn lower_method_receiver(&mut self, receiver: &Node<ast::Expr>) -> ValueId {
+    fn lower_method_receiver(&mut self, receiver: &Node<hir_def::Expr>) -> ValueId {
         match &receiver.kind {
-            ast::Expr::Attribute { value, .. } => self.lower_expr_to_value(value),
+            hir_def::Expr::Attribute { value, .. } => self.lower_expr_to_value(value),
             _ => unreachable!(),
         }
     }
 
     fn lower_aggregate_access(
         &mut self,
-        expr: &Node<ast::Expr>,
+        expr: &Node<hir_def::Expr>,
         indices: &mut Vec<ValueId>,
     ) -> ValueId {
         match &expr.kind {
-            ast::Expr::Attribute { value, attr } => {
+            hir_def::Expr::Attribute { value, attr } => {
                 let index = self.expr_ty(value).index_from_fname(self.db, &attr.kind);
                 let value = self.lower_aggregate_access(value, indices);
                 indices.push(self.make_u256_imm(index));
                 value
             }
 
-            ast::Expr::Subscript { value, index }
+            hir_def::Expr::Subscript { value, index }
                 if self.expr_ty(value).deref(self.db).is_aggregate(self.db) =>
             {
                 let value = self.lower_aggregate_access(value, indices);
@@ -1181,7 +1183,7 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
 
     /// Resolve a path appeared in an expression.
     /// NOTE: Don't call this to resolve method receiver.
-    fn resolve_path(&mut self, path: &ast::Path, source: SourceInfo) -> ValueId {
+    fn resolve_path(&mut self, path: &hir_def::Path, source: SourceInfo) -> ValueId {
         let func_id = self.builder.func_id();
         let module = func_id.module(self.db);
         match module.resolve_path(self.db.upcast(), path).value.unwrap() {
@@ -1318,7 +1320,7 @@ fn self_arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId) -> SourceIn
         .kind
         .args
         .iter()
-        .find(|arg| matches!(arg.kind, ast::FunctionArg::Self_ { .. }))
+        .find(|arg| matches!(arg.kind, hir_def::FunctionArg::Self_ { .. }))
         .unwrap()
         .into()
 }
@@ -1332,14 +1334,14 @@ fn arg_source(db: &dyn MirDb, func: analyzer_items::FunctionId, arg_name: &str) 
         .args
         .iter()
         .find_map(|arg| match &arg.kind {
-            ast::FunctionArg::Regular { name, .. } => {
+            hir_def::FunctionArg::Regular { name, .. } => {
                 if name.kind == arg_name {
                     Some(name.into())
                 } else {
                     None
                 }
             }
-            ast::FunctionArg::Self_ { .. } => None,
+            hir_def::FunctionArg::Self_ { .. } => None,
         })
         .unwrap()
 }
