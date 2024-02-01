@@ -167,6 +167,10 @@ impl TyId {
         matches!(self.data(db), TyData::Bot)
     }
 
+    pub(super) fn is_string(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::TyBase(TyBase::Prim(PrimTy::String)))
+    }
+
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
         !self.type_params(db).is_empty()
     }
@@ -397,6 +401,8 @@ impl TyId {
                 HirUintTy::U128 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U128))),
                 HirUintTy::U256 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256))),
             },
+
+            HirPrimTy::String => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::String))),
         }
     }
 
@@ -796,6 +802,10 @@ pub enum TyVarUniverse {
     /// Type variable that can be unified with any other types.
     General,
 
+    /// Type variable that can be unified with only string types that has at
+    /// least the given length.
+    String(usize),
+
     /// Type variable that can be unified with only integral types.
     Integral,
 }
@@ -805,6 +815,7 @@ impl TyVar {
         match self.universe {
             TyVarUniverse::General => format!("${}", self.key.0),
             TyVarUniverse::Integral => "<integer>".to_string(),
+            TyVarUniverse::String(n) => format!("String<{}>", n).to_string(),
         }
     }
 }
@@ -966,6 +977,7 @@ impl PrimTy {
                 // FIXME: Change `U256` to `usize` when we add `usize` type.
                 Some(TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256))))
             }
+            Self::String => Some(TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256)))),
             Self::Tuple(_) => None,
             _ => None,
         }
@@ -1107,6 +1119,7 @@ impl HasKind for PrimTy {
             Self::Array => (0..2).fold(Kind::Star, |acc, _| Kind::abs(Kind::Star, acc)),
             Self::Tuple(n) => (0..*n).fold(Kind::Star, |acc, _| Kind::abs(Kind::Star, acc)),
             Self::Ptr => Kind::abs(Kind::Star, Kind::Star),
+            Self::String => Kind::abs(Kind::Star, Kind::Star),
             _ => Kind::Star,
         }
     }
