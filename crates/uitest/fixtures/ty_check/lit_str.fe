@@ -1,0 +1,7 @@
+pub fn lit_str() -> String<2> {
+    "abc"
+}
+
+pub fn lit_str_utf8() -> String<1> {
+    "あ"
+}
