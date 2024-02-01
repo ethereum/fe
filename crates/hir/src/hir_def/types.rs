@@ -1,6 +1,5 @@
-use crate::HirDb;
-
 use super::{Body, GenericArgListId, Partial, PathId};
+use crate::HirDb;
 
 #[salsa::interned]
 pub struct TypeId {
