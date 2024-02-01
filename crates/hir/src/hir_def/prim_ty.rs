@@ -1,18 +1,21 @@
 use super::{kw, IdentId};
+use crate::HirDb;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PrimTy {
     Bool,
     Int(IntTy),
     Uint(UintTy),
+    String,
 }
 
 impl PrimTy {
-    pub fn name(self) -> IdentId {
+    pub fn name(self, db: &dyn HirDb) -> IdentId {
         match self {
             PrimTy::Bool => kw::BOOL,
             PrimTy::Int(ty) => ty.name(),
             PrimTy::Uint(ty) => ty.name(),
+            PrimTy::String => IdentId::new(db, "String".into()),
         }
     }
 
@@ -31,6 +34,7 @@ impl PrimTy {
             PrimTy::Uint(UintTy::U64),
             PrimTy::Uint(UintTy::U128),
             PrimTy::Uint(UintTy::U256),
+            PrimTy::String,
         ]
     }
 }

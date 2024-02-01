@@ -30,7 +30,6 @@ pub mod prelude {
         walk_type_bound_list, walk_use, walk_use_path, walk_variant_def, walk_variant_def_list,
         walk_where_clause, walk_where_predicate, Visitor, VisitorCtxt,
     };
-
     pub use crate::span::lazy_spans::*;
 }
 
@@ -2138,9 +2137,8 @@ use visit_node_in_body;
 #[cfg(test)]
 mod tests {
 
-    use crate::test_db::TestDb;
-
     use super::*;
+    use crate::test_db::TestDb;
     struct MyVisitor {
         generic_param_list: Option<LazyGenericParamListSpan>,
         attributes: Vec<LazyAttrSpan>,

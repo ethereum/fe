@@ -339,7 +339,11 @@ impl NameRes {
     pub fn pretty_path(&self, db: &dyn HirAnalysisDb) -> Option<String> {
         match self.kind {
             NameResKind::Scope(scope) => scope.pretty_path(db.as_hir_db()),
-            NameResKind::Prim(prim) => prim.name().data(db.as_hir_db()).clone().into(),
+            NameResKind::Prim(prim) => prim
+                .name(db.as_hir_db())
+                .data(db.as_hir_db())
+                .clone()
+                .into(),
         }
     }
 
@@ -415,7 +419,7 @@ impl NameResKind {
     pub fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
         match self {
             NameResKind::Scope(scope) => scope.name(db.as_hir_db()).unwrap(),
-            NameResKind::Prim(prim) => prim.name(),
+            NameResKind::Prim(prim) => prim.name(db.as_hir_db()),
         }
     }
 }
@@ -610,7 +614,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         for &prim in PrimTy::all_types() {
             // We don't care about the result of `push` because we assume builtin types are
             // guaranteed to be unique.
-            if query.name == prim.name() {
+            if query.name == prim.name(self.db.as_hir_db()) {
                 bucket.push(&NameRes::new_prim(prim));
             }
         }

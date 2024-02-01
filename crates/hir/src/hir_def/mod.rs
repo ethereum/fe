@@ -23,6 +23,7 @@ pub use expr::*;
 pub use ident::*;
 pub use item::*;
 pub use module_tree::*;
+use num_bigint::BigUint;
 pub use params::*;
 pub use pat::*;
 pub use path::*;
@@ -30,8 +31,6 @@ use salsa::{AsId, Id};
 pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
-
-use num_bigint::BigUint;
 
 use crate::{external_ingots_impl, HirDb};
 
@@ -83,11 +82,29 @@ pub struct IntegerId {
     pub data: BigUint,
 }
 
+impl IntegerId {
+    pub fn from_usize(db: &dyn HirDb, value: usize) -> Self {
+        let data = BigUint::from(value);
+        Self::new(db, data)
+    }
+}
+
 #[salsa::interned]
 pub struct StringId {
     /// The text of the string literal, without the quotes.
     #[return_ref]
     pub data: String,
+}
+
+impl StringId {
+    pub fn from_str(db: &dyn HirDb, value: &str) -> Self {
+        let data = value.to_string();
+        Self::new(db, data)
+    }
+
+    pub fn len_bytes(&self, db: &dyn HirDb) -> usize {
+        self.data(db).as_bytes().len()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]

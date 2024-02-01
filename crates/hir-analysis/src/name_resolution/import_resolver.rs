@@ -511,7 +511,7 @@ impl<'db> ImportResolver<'db> {
                 .any(|(ingot_name, _)| *ingot_name == first_segment_ident)
                 || PrimTy::all_types()
                     .iter()
-                    .any(|ty| ty.name() == first_segment_ident))
+                    .any(|ty| ty.name(self.db.as_hir_db()) == first_segment_ident))
         {
             self.register_error(&i_use, NameResolutionError::Ambiguous(vec![]));
         }
