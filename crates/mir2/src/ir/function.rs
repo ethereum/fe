@@ -1,4 +1,5 @@
 use fxhash::FxHashMap;
+use hir::hir_def::{ModuleTreeNodeId, TypeId};
 use id_arena::Arena;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
@@ -11,17 +12,16 @@ use super::{
     // types::TypeId,
     value::{AssignableValue, Local, Value, ValueId},
     BasicBlockId,
-    SourceInfo,
 };
 
 /// Represents function signature.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionSignature {
     pub params: Vec<FunctionParam>,
-    pub resolved_generics: BTreeMap<SmolStr, analyzer_types::TypeId>,
+    pub resolved_generics: BTreeMap<SmolStr, TypeId>,
     pub return_type: Option<TypeId>,
-    pub module_id: analyzer_items::ModuleId,
-    pub analyzer_func_id: analyzer_items::FunctionId,
+    pub module_id: ModuleTreeNodeId,
+    pub analyzer_func_id: FunctionId,
     pub linkage: Linkage,
 }
 
@@ -29,12 +29,12 @@ pub struct FunctionSignature {
 pub struct FunctionParam {
     pub name: SmolStr,
     pub ty: TypeId,
-    pub source: SourceInfo,
+    // pub source: SourceInfo,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FunctionId(pub u32);
-impl_intern_key!(FunctionId);
+// impl_intern_key!(FunctionId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Linkage {
@@ -66,19 +66,19 @@ pub struct FunctionBody {
 
     /// Tracks order of basic blocks and instructions in a function body.
     pub order: BodyOrder,
-
-    pub source: SourceInfo,
+    // pub source: SourceInfo,
 }
 
 impl FunctionBody {
-    pub fn new(fid: FunctionId, source: SourceInfo) -> Self {
+    pub fn new(fid: FunctionId) -> Self {
+        // pub fn new(fid: FunctionId, source: SourceInfo) -> Self {
         let mut store = BodyDataStore::default();
         let entry_bb = store.store_block(BasicBlock {});
         Self {
             fid,
             store,
             order: BodyOrder::new(entry_bb),
-            source,
+            // source,
         }
     }
 }

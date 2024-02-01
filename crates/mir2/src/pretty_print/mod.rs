@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{db::MirDb, ir::function::BodyDataStore};
+use crate::{ir::function::BodyDataStore, MirDb};
 
 mod inst;
 mod types;

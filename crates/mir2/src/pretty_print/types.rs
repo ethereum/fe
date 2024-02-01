@@ -1,9 +1,8 @@
 use std::fmt::{self, Write};
 
-use crate::{
-    db::MirDb,
-    ir::{function::BodyDataStore, TypeId},
-};
+use hir::hir_def::TypeId;
+
+use crate::{ir::function::BodyDataStore, MirDb};
 
 use super::PrettyPrint;
 

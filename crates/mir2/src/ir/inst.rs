@@ -1,15 +1,16 @@
 use std::fmt;
 
+use hir::hir_def::{Contract, TypeId};
 use id_arena::Id;
 
-use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId, SourceInfo, TypeId};
+use super::{basic_block::BasicBlockId, function::FunctionId, value::ValueId};
 
 pub type InstId = Id<Inst>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Inst {
     pub kind: InstKind,
-    pub source: SourceInfo,
+    // pub source: SourceInfo,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -125,13 +126,13 @@ pub enum InstKind {
 
     Create {
         value: ValueId,
-        contract: ContractId,
+        contract: Contract,
     },
 
     Create2 {
         value: ValueId,
         salt: ValueId,
-        contract: ContractId,
+        contract: Contract,
     },
 
     YulIntrinsic {
@@ -168,29 +169,37 @@ impl SwitchTable {
 }
 
 impl Inst {
-    pub fn new(kind: InstKind, source: SourceInfo) -> Self {
-        Self { kind, source }
+    // pub fn new(kind: InstKind, source: SourceInfo) -> Self {
+    pub fn new(kind: InstKind) -> Self {
+        // Self { kind, source }
+        Self { kind }
     }
 
-    pub fn unary(op: UnOp, value: ValueId, source: SourceInfo) -> Self {
+    // pub fn unary(op: UnOp, value: ValueId, source: SourceInfo) -> Self {
+    pub fn unary(op: UnOp, value: ValueId) -> Self {
         let kind = InstKind::Unary { op, value };
-        Self::new(kind, source)
+        // Self::new(kind, source)
+        Self::new(kind)
     }
 
-    pub fn binary(op: BinOp, lhs: ValueId, rhs: ValueId, source: SourceInfo) -> Self {
+    // pub fn binary(op: BinOp, lhs: ValueId, rhs: ValueId, source: SourceInfo) -> Self {
+    pub fn binary(op: BinOp, lhs: ValueId, rhs: ValueId) -> Self {
         let kind = InstKind::Binary { op, lhs, rhs };
-        Self::new(kind, source)
+        // Self::new(kind, source)
+        Self::new(kind)
     }
 
-    pub fn intrinsic(op: YulIntrinsicOp, args: Vec<ValueId>, source: SourceInfo) -> Self {
+    // pub fn intrinsic(op: YulIntrinsicOp, args: Vec<ValueId>, source: SourceInfo) -> Self {
+    pub fn intrinsic(op: YulIntrinsicOp, args: Vec<ValueId>) -> Self {
         let kind = InstKind::YulIntrinsic { op, args };
-        Self::new(kind, source)
+        // Self::new(kind, source)
+        Self::new(kind)
     }
 
     pub fn nop() -> Self {
         Self {
             kind: InstKind::Nop,
-            source: SourceInfo::dummy(),
+            // source: SourceInfo::dummy(),
         }
     }
 
@@ -575,89 +584,89 @@ impl fmt::Display for YulIntrinsicOp {
     }
 }
 
-impl From<fe_analyzer2::builtins::Intrinsic> for YulIntrinsicOp {
-    fn from(val: fe_analyzer2::builtins::Intrinsic) -> Self {
-        use fe_analyzer2::builtins::Intrinsic;
-        match val {
-            Intrinsic::__stop => Self::Stop,
-            Intrinsic::__add => Self::Add,
-            Intrinsic::__sub => Self::Sub,
-            Intrinsic::__mul => Self::Mul,
-            Intrinsic::__div => Self::Div,
-            Intrinsic::__sdiv => Self::Sdiv,
-            Intrinsic::__mod => Self::Mod,
-            Intrinsic::__smod => Self::Smod,
-            Intrinsic::__exp => Self::Exp,
-            Intrinsic::__not => Self::Not,
-            Intrinsic::__lt => Self::Lt,
-            Intrinsic::__gt => Self::Gt,
-            Intrinsic::__slt => Self::Slt,
-            Intrinsic::__sgt => Self::Sgt,
-            Intrinsic::__eq => Self::Eq,
-            Intrinsic::__iszero => Self::Iszero,
-            Intrinsic::__and => Self::And,
-            Intrinsic::__or => Self::Or,
-            Intrinsic::__xor => Self::Xor,
-            Intrinsic::__byte => Self::Byte,
-            Intrinsic::__shl => Self::Shl,
-            Intrinsic::__shr => Self::Shr,
-            Intrinsic::__sar => Self::Sar,
-            Intrinsic::__addmod => Self::Addmod,
-            Intrinsic::__mulmod => Self::Mulmod,
-            Intrinsic::__signextend => Self::Signextend,
-            Intrinsic::__keccak256 => Self::Keccak256,
-            Intrinsic::__pc => Self::Pc,
-            Intrinsic::__pop => Self::Pop,
-            Intrinsic::__mload => Self::Mload,
-            Intrinsic::__mstore => Self::Mstore,
-            Intrinsic::__mstore8 => Self::Mstore8,
-            Intrinsic::__sload => Self::Sload,
-            Intrinsic::__sstore => Self::Sstore,
-            Intrinsic::__msize => Self::Msize,
-            Intrinsic::__gas => Self::Gas,
-            Intrinsic::__address => Self::Address,
-            Intrinsic::__balance => Self::Balance,
-            Intrinsic::__selfbalance => Self::Selfbalance,
-            Intrinsic::__caller => Self::Caller,
-            Intrinsic::__callvalue => Self::Callvalue,
-            Intrinsic::__calldataload => Self::Calldataload,
-            Intrinsic::__calldatasize => Self::Calldatasize,
-            Intrinsic::__calldatacopy => Self::Calldatacopy,
-            Intrinsic::__codesize => Self::Codesize,
-            Intrinsic::__codecopy => Self::Codecopy,
-            Intrinsic::__extcodesize => Self::Extcodesize,
-            Intrinsic::__extcodecopy => Self::Extcodecopy,
-            Intrinsic::__returndatasize => Self::Returndatasize,
-            Intrinsic::__returndatacopy => Self::Returndatacopy,
-            Intrinsic::__extcodehash => Self::Extcodehash,
-            Intrinsic::__create => Self::Create,
-            Intrinsic::__create2 => Self::Create2,
-            Intrinsic::__call => Self::Call,
-            Intrinsic::__callcode => Self::Callcode,
-            Intrinsic::__delegatecall => Self::Delegatecall,
-            Intrinsic::__staticcall => Self::Staticcall,
-            Intrinsic::__return => Self::Return,
-            Intrinsic::__revert => Self::Revert,
-            Intrinsic::__selfdestruct => Self::Selfdestruct,
-            Intrinsic::__invalid => Self::Invalid,
-            Intrinsic::__log0 => Self::Log0,
-            Intrinsic::__log1 => Self::Log1,
-            Intrinsic::__log2 => Self::Log2,
-            Intrinsic::__log3 => Self::Log3,
-            Intrinsic::__log4 => Self::Log4,
-            Intrinsic::__chainid => Self::Chainid,
-            Intrinsic::__basefee => Self::Basefee,
-            Intrinsic::__origin => Self::Origin,
-            Intrinsic::__gasprice => Self::Gasprice,
-            Intrinsic::__blockhash => Self::Blockhash,
-            Intrinsic::__coinbase => Self::Coinbase,
-            Intrinsic::__timestamp => Self::Timestamp,
-            Intrinsic::__number => Self::Number,
-            Intrinsic::__prevrandao => Self::Prevrandao,
-            Intrinsic::__gaslimit => Self::Gaslimit,
-        }
-    }
-}
+// impl From<fe_analyzer2::builtins::Intrinsic> for YulIntrinsicOp {
+//     fn from(val: fe_analyzer2::builtins::Intrinsic) -> Self {
+//         use fe_analyzer2::builtins::Intrinsic;
+//         match val {
+//             Intrinsic::__stop => Self::Stop,
+//             Intrinsic::__add => Self::Add,
+//             Intrinsic::__sub => Self::Sub,
+//             Intrinsic::__mul => Self::Mul,
+//             Intrinsic::__div => Self::Div,
+//             Intrinsic::__sdiv => Self::Sdiv,
+//             Intrinsic::__mod => Self::Mod,
+//             Intrinsic::__smod => Self::Smod,
+//             Intrinsic::__exp => Self::Exp,
+//             Intrinsic::__not => Self::Not,
+//             Intrinsic::__lt => Self::Lt,
+//             Intrinsic::__gt => Self::Gt,
+//             Intrinsic::__slt => Self::Slt,
+//             Intrinsic::__sgt => Self::Sgt,
+//             Intrinsic::__eq => Self::Eq,
+//             Intrinsic::__iszero => Self::Iszero,
+//             Intrinsic::__and => Self::And,
+//             Intrinsic::__or => Self::Or,
+//             Intrinsic::__xor => Self::Xor,
+//             Intrinsic::__byte => Self::Byte,
+//             Intrinsic::__shl => Self::Shl,
+//             Intrinsic::__shr => Self::Shr,
+//             Intrinsic::__sar => Self::Sar,
+//             Intrinsic::__addmod => Self::Addmod,
+//             Intrinsic::__mulmod => Self::Mulmod,
+//             Intrinsic::__signextend => Self::Signextend,
+//             Intrinsic::__keccak256 => Self::Keccak256,
+//             Intrinsic::__pc => Self::Pc,
+//             Intrinsic::__pop => Self::Pop,
+//             Intrinsic::__mload => Self::Mload,
+//             Intrinsic::__mstore => Self::Mstore,
+//             Intrinsic::__mstore8 => Self::Mstore8,
+//             Intrinsic::__sload => Self::Sload,
+//             Intrinsic::__sstore => Self::Sstore,
+//             Intrinsic::__msize => Self::Msize,
+//             Intrinsic::__gas => Self::Gas,
+//             Intrinsic::__address => Self::Address,
+//             Intrinsic::__balance => Self::Balance,
+//             Intrinsic::__selfbalance => Self::Selfbalance,
+//             Intrinsic::__caller => Self::Caller,
+//             Intrinsic::__callvalue => Self::Callvalue,
+//             Intrinsic::__calldataload => Self::Calldataload,
+//             Intrinsic::__calldatasize => Self::Calldatasize,
+//             Intrinsic::__calldatacopy => Self::Calldatacopy,
+//             Intrinsic::__codesize => Self::Codesize,
+//             Intrinsic::__codecopy => Self::Codecopy,
+//             Intrinsic::__extcodesize => Self::Extcodesize,
+//             Intrinsic::__extcodecopy => Self::Extcodecopy,
+//             Intrinsic::__returndatasize => Self::Returndatasize,
+//             Intrinsic::__returndatacopy => Self::Returndatacopy,
+//             Intrinsic::__extcodehash => Self::Extcodehash,
+//             Intrinsic::__create => Self::Create,
+//             Intrinsic::__create2 => Self::Create2,
+//             Intrinsic::__call => Self::Call,
+//             Intrinsic::__callcode => Self::Callcode,
+//             Intrinsic::__delegatecall => Self::Delegatecall,
+//             Intrinsic::__staticcall => Self::Staticcall,
+//             Intrinsic::__return => Self::Return,
+//             Intrinsic::__revert => Self::Revert,
+//             Intrinsic::__selfdestruct => Self::Selfdestruct,
+//             Intrinsic::__invalid => Self::Invalid,
+//             Intrinsic::__log0 => Self::Log0,
+//             Intrinsic::__log1 => Self::Log1,
+//             Intrinsic::__log2 => Self::Log2,
+//             Intrinsic::__log3 => Self::Log3,
+//             Intrinsic::__log4 => Self::Log4,
+//             Intrinsic::__chainid => Self::Chainid,
+//             Intrinsic::__basefee => Self::Basefee,
+//             Intrinsic::__origin => Self::Origin,
+//             Intrinsic::__gasprice => Self::Gasprice,
+//             Intrinsic::__blockhash => Self::Blockhash,
+//             Intrinsic::__coinbase => Self::Coinbase,
+//             Intrinsic::__timestamp => Self::Timestamp,
+//             Intrinsic::__number => Self::Number,
+//             Intrinsic::__prevrandao => Self::Prevrandao,
+//             Intrinsic::__gaslimit => Self::Gaslimit,
+//         }
+//     }
+// }
 
 pub enum BranchInfo<'a> {
     NotBranch,

@@ -1,10 +1,10 @@
 use std::fmt::{self, Write};
 
 use crate::{
-    db::MirDb,
     ir::{
         constant::ConstantValue, function::BodyDataStore, value::AssignableValue, Value, ValueId,
     },
+    MirDb,
 };
 
 use super::PrettyPrint;

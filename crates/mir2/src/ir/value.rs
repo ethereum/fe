@@ -1,16 +1,11 @@
+use hir::hir_def::{TypeId, TypeKind};
 use id_arena::Id;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
-use crate::db::MirDb;
+// use crate::db::MirDb;
 
-use super::{
-    constant::ConstantId,
-    function::BodyDataStore,
-    inst::InstId,
-    types::{TypeId, TypeKind},
-    SourceInfo,
-};
+use super::{constant::ConstantId, function::BodyDataStore, inst::InstId};
 
 pub type ValueId = Id<Value>;
 
@@ -68,22 +63,22 @@ impl From<ValueId> for AssignableValue {
 }
 
 impl AssignableValue {
-    pub fn ty(&self, db: &dyn MirDb, store: &BodyDataStore) -> TypeId {
-        match self {
-            Self::Value(value) => store.value_ty(*value),
-            Self::Aggregate { lhs, idx } => {
-                let lhs_ty = lhs.ty(db, store);
-                lhs_ty.projection_ty(db, store.value_data(*idx))
-            }
-            Self::Map { lhs, .. } => {
-                let lhs_ty = lhs.ty(db, store).deref(db);
-                match lhs_ty.data(db).kind {
-                    TypeKind::Map(def) => def.value_ty.make_sptr(db),
-                    _ => unreachable!(),
-                }
-            }
-        }
-    }
+    // pub fn ty(&self, db: &dyn MirDb, store: &BodyDataStore) -> TypeId {
+    //     match self {
+    //         Self::Value(value) => store.value_ty(*value),
+    //         Self::Aggregate { lhs, idx } => {
+    //             let lhs_ty = lhs.ty(db, store);
+    //             lhs_ty.projection_ty(db, store.value_data(*idx))
+    //         }
+    //         Self::Map { lhs, .. } => {
+    //             let lhs_ty = lhs.ty(db, store).deref(db);
+    //             match lhs_ty.data(db).kind {
+    //                 TypeKind::Map(def) => def.value_ty.make_sptr(db),
+    //                 _ => unreachable!(),
+    //             }
+    //         }
+    //     }
+    // }
 
     pub fn value_id(&self) -> Option<ValueId> {
         match self {
@@ -105,28 +100,29 @@ pub struct Local {
 
     /// `true` if a local is introduced in MIR.
     pub is_tmp: bool,
-
-    pub source: SourceInfo,
+    // pub source: SourceInfo,
 }
 
 impl Local {
-    pub fn user_local(name: SmolStr, ty: TypeId, source: SourceInfo) -> Local {
+    // pub fn user_local(name: SmolStr, ty: TypeId, source: SourceInfo) -> Local {
+    pub fn user_local(name: SmolStr, ty: TypeId) -> Local {
         Self {
             name,
             ty,
             is_arg: false,
             is_tmp: false,
-            source,
+            // source,
         }
     }
 
-    pub fn arg_local(name: SmolStr, ty: TypeId, source: SourceInfo) -> Local {
+    // pub fn arg_local(name: SmolStr, ty: TypeId, source: SourceInfo) -> Local {
+    pub fn arg_local(name: SmolStr, ty: TypeId) -> Local {
         Self {
             name,
             ty,
             is_arg: true,
             is_tmp: false,
-            source,
+            // source,
         }
     }
 
@@ -136,7 +132,7 @@ impl Local {
             ty,
             is_arg: false,
             is_tmp: true,
-            source: SourceInfo::dummy(),
+            // source: SourceInfo::dummy(),
         }
     }
 }

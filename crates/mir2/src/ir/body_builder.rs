@@ -1,10 +1,11 @@
+use hir::hir_def::TypeId;
 use num_bigint::BigInt;
 
 use crate::ir::{
     body_cursor::{BodyCursor, CursorLocation},
     inst::{BinOp, Inst, InstKind, UnOp},
     value::{AssignableValue, Local},
-    BasicBlock, BasicBlockId, FunctionBody, FunctionId, InstId, SourceInfo, TypeId,
+    BasicBlock, BasicBlockId, FunctionBody, FunctionId, InstId,
 };
 
 use super::{
@@ -20,8 +21,10 @@ pub struct BodyBuilder {
 
 macro_rules! impl_unary_inst {
     ($name:ident, $code:path) => {
-        pub fn $name(&mut self, value: ValueId, source: SourceInfo) -> InstId {
-            let inst = Inst::unary($code, value, source);
+        // pub fn $name(&mut self, value: ValueId, source: SourceInfo) -> InstId {
+        pub fn $name(&mut self, value: ValueId) -> InstId {
+            // let inst = Inst::unary($code, value, source);
+            let inst = Inst::unary($code, value);
             self.insert_inst(inst)
         }
     };
@@ -29,16 +32,20 @@ macro_rules! impl_unary_inst {
 
 macro_rules! impl_binary_inst {
     ($name:ident, $code:path) => {
-        pub fn $name(&mut self, lhs: ValueId, rhs: ValueId, source: SourceInfo) -> InstId {
-            let inst = Inst::binary($code, lhs, rhs, source);
+        // pub fn $name(&mut self, lhs: ValueId, rhs: ValueId, source: SourceInfo) -> InstId {
+        pub fn $name(&mut self, lhs: ValueId, rhs: ValueId) -> InstId {
+            // let inst = Inst::binary($code, lhs, rhs, source);
+            let inst = Inst::binary($code, lhs, rhs);
             self.insert_inst(inst)
         }
     };
 }
 
 impl BodyBuilder {
-    pub fn new(fid: FunctionId, source: SourceInfo) -> Self {
-        let body = FunctionBody::new(fid, source);
+    // pub fn new(fid: FunctionId, source: SourceInfo) -> Self {
+    pub fn new(fid: FunctionId) -> Self {
+        // let body = FunctionBody::new(fid, source);
+        let body = FunctionBody::new(fid);
         let entry_block = body.order.entry();
         Self {
             body,
@@ -104,11 +111,12 @@ impl BodyBuilder {
     }
 
     pub fn declare(&mut self, local: Local) -> ValueId {
-        let source = local.source.clone();
+        // let source = local.source.clone();
         let local_id = self.body.store.store_value(Value::Local(local));
 
         let kind = InstKind::Declare { local: local_id };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst);
         local_id
     }
@@ -145,24 +153,27 @@ impl BodyBuilder {
         &mut self,
         value: ValueId,
         result_ty: TypeId,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
         let kind = InstKind::Cast {
             kind: CastKind::Primitive,
             value,
             to: result_ty,
         };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn untag_cast(&mut self, value: ValueId, result_ty: TypeId, source: SourceInfo) -> InstId {
+    // pub fn untag_cast(&mut self, value: ValueId, result_ty: TypeId, source: SourceInfo) -> InstId {
+    pub fn untag_cast(&mut self, value: ValueId, result_ty: TypeId) -> InstId {
         let kind = InstKind::Cast {
             kind: CastKind::Untag,
             value,
             to: result_ty,
         };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
@@ -170,28 +181,35 @@ impl BodyBuilder {
         &mut self,
         ty: TypeId,
         args: Vec<ValueId>,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
         let kind = InstKind::AggregateConstruct { ty, args };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn bind(&mut self, src: ValueId, source: SourceInfo) -> InstId {
+    // pub fn bind(&mut self, src: ValueId, source: SourceInfo) -> InstId {
+    pub fn bind(&mut self, src: ValueId) -> InstId {
         let kind = InstKind::Bind { src };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn mem_copy(&mut self, src: ValueId, source: SourceInfo) -> InstId {
+    // pub fn mem_copy(&mut self, src: ValueId, source: SourceInfo) -> InstId {
+    pub fn mem_copy(&mut self, src: ValueId) -> InstId {
         let kind = InstKind::MemCopy { src };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn load(&mut self, src: ValueId, source: SourceInfo) -> InstId {
+    // pub fn load(&mut self, src: ValueId, source: SourceInfo) -> InstId {
+    pub fn load(&mut self, src: ValueId) -> InstId {
         let kind = InstKind::Load { src };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
@@ -199,16 +217,19 @@ impl BodyBuilder {
         &mut self,
         value: ValueId,
         indices: Vec<ValueId>,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
         let kind = InstKind::AggregateAccess { value, indices };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn map_access(&mut self, value: ValueId, key: ValueId, source: SourceInfo) -> InstId {
+    // pub fn map_access(&mut self, value: ValueId, key: ValueId, source: SourceInfo) -> InstId {
+    pub fn map_access(&mut self, value: ValueId, key: ValueId) -> InstId {
         let kind = InstKind::MapAccess { value, key };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
@@ -217,14 +238,15 @@ impl BodyBuilder {
         func: FunctionId,
         args: Vec<ValueId>,
         call_type: CallType,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
         let kind = InstKind::Call {
             func,
             args,
             call_type,
         };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
@@ -232,15 +254,18 @@ impl BodyBuilder {
         &mut self,
         op: YulIntrinsicOp,
         args: Vec<ValueId>,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
-        let inst = Inst::intrinsic(op, args, source);
+        // let inst = Inst::intrinsic(op, args, source);
+        let inst = Inst::intrinsic(op, args);
         self.insert_inst(inst)
     }
 
-    pub fn jump(&mut self, dest: BasicBlockId, source: SourceInfo) -> InstId {
+    // pub fn jump(&mut self, dest: BasicBlockId, source: SourceInfo) -> InstId {
+    pub fn jump(&mut self, dest: BasicBlockId) -> InstId {
         let kind = InstKind::Jump { dest };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
@@ -249,10 +274,11 @@ impl BodyBuilder {
         cond: ValueId,
         then: BasicBlockId,
         else_: BasicBlockId,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
         let kind = InstKind::Branch { cond, then, else_ };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
@@ -261,38 +287,47 @@ impl BodyBuilder {
         disc: ValueId,
         table: SwitchTable,
         default: Option<BasicBlockId>,
-        source: SourceInfo,
+        // source: SourceInfo,
     ) -> InstId {
         let kind = InstKind::Switch {
             disc,
             table,
             default,
         };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn revert(&mut self, arg: Option<ValueId>, source: SourceInfo) -> InstId {
+    // pub fn revert(&mut self, arg: Option<ValueId>, source: SourceInfo) -> InstId {
+    pub fn revert(&mut self, arg: Option<ValueId>) -> InstId {
         let kind = InstKind::Revert { arg };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn emit(&mut self, arg: ValueId, source: SourceInfo) -> InstId {
+    // pub fn emit(&mut self, arg: ValueId, source: SourceInfo) -> InstId {
+    pub fn emit(&mut self, arg: ValueId) -> InstId {
         let kind = InstKind::Emit { arg };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn ret(&mut self, arg: ValueId, source: SourceInfo) -> InstId {
+    // pub fn ret(&mut self, arg: ValueId, source: SourceInfo) -> InstId {
+    pub fn ret(&mut self, arg: ValueId) -> InstId {
         let kind = InstKind::Return { arg: arg.into() };
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 
-    pub fn nop(&mut self, source: SourceInfo) -> InstId {
+    // pub fn nop(&mut self, source: SourceInfo) -> InstId {
+    pub fn nop(&mut self) -> InstId {
         let kind = InstKind::Nop;
-        let inst = Inst::new(kind, source);
+        // let inst = Inst::new(kind, source);
+        let inst = Inst::new(kind);
         self.insert_inst(inst)
     }
 

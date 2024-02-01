@@ -3,7 +3,7 @@ use hir::HirDb;
 // pub mod analysis;
 // pub mod graphviz;
 pub mod ir;
-// pub mod pretty_print;
+pub mod pretty_print;
 
 mod lower;
 
