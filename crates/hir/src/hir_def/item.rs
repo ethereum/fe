@@ -639,6 +639,20 @@ impl Struct {
     pub fn scope(self) -> ScopeId {
         ScopeId::from_item(self.into())
     }
+
+    /// Returns the human readable string of the expected struct initializer.
+    /// ## Example
+    /// When `S` is a struct defined as below:
+    /// ```fe
+    /// struct S {
+    ///    x: u64,
+    ///    y: i32,
+    /// }
+    /// ```
+    /// Then this method returns ` { x, y }`.
+    pub fn format_initializer_args(self, db: &dyn HirDb) -> String {
+        self.fields(db).format_initializer_args(db)
+    }
 }
 
 #[salsa::tracked]
@@ -964,6 +978,24 @@ pub struct FieldDefListId {
     pub data: Vec<FieldDef>,
 }
 
+impl FieldDefListId {
+    fn format_initializer_args(self, db: &dyn HirDb) -> String {
+        let args = self
+            .data(db)
+            .iter()
+            .map(|field| {
+                field
+                    .name
+                    .to_opt()
+                    .map_or_else(|| "_".to_string(), |name| name.data(db).to_string())
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        format!(" {{ {} }}", args)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldDef {
     pub name: Partial<IdentId>,
@@ -981,6 +1013,32 @@ pub struct VariantDefListId {
 pub struct VariantDef {
     pub name: Partial<IdentId>,
     pub kind: VariantKind,
+}
+
+impl VariantDef {
+    /// Returns the human readable string of the expected variant initializer.
+    /// ## Example
+    /// When enum `E` is an variant defined as below:
+    /// ```fe
+    /// enum E {
+    ///     V(u64, i32),
+    ///     S { x: u64, y: i32 },
+    /// }
+    /// ```
+    ///
+    /// Then the method returns `(_, _)` for the first variant and ` { x, y }`
+    /// for the second variant.
+    pub fn format_initializer_args(&self, db: &dyn HirDb) -> String {
+        match self.kind {
+            VariantKind::Unit => "".to_string(),
+            VariantKind::Tuple(tup) => {
+                let args = (0..tup.len(db)).map(|_| "_").collect::<Vec<_>>().join(", ");
+                format!("({})", args)
+            }
+
+            VariantKind::Record(fields) => fields.format_initializer_args(db),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

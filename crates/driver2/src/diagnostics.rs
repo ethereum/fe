@@ -2,12 +2,11 @@ use std::ops::Range;
 
 use camino::Utf8Path;
 use codespan_reporting as cs;
-use cs::{diagnostic as cs_diag, files as cs_files};
-
 use common::{
     diagnostics::{LabelStyle, Severity},
     InputDb, InputFile,
 };
+use cs::{diagnostic as cs_diag, files as cs_files};
 use hir::diagnostics::DiagnosticVoucher;
 
 use crate::{DriverDataBase, DriverDb};
