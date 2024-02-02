@@ -1,6 +1,5 @@
-use parser::ast::{self, prelude::*, AstPtr, SyntaxNodePtr};
-
 use common::diagnostics::Span;
+use parser::ast::{self, prelude::*, AstPtr, SyntaxNodePtr};
 
 use crate::{
     hir_def::{
@@ -24,48 +23,42 @@ pub mod use_tree;
 pub(crate) mod transition;
 
 pub mod lazy_spans {
-    pub use super::attr::{
-        LazyAttrArgListSpan, LazyAttrArgSpan, LazyAttrListSpan, LazyAttrSpan,
-        LazyDocCommentAttrSpan, LazyNormalAttrSpan,
+    pub use super::{
+        attr::{
+            LazyAttrArgListSpan, LazyAttrArgSpan, LazyAttrListSpan, LazyAttrSpan,
+            LazyDocCommentAttrSpan, LazyNormalAttrSpan,
+        },
+        expr::{
+            LazyAssignExprSpan, LazyAugAssignExprSpan, LazyBinExprSpan, LazyCallArgListSpan,
+            LazyCallArgSpan, LazyCallExprSpan, LazyExprSpan, LazyFieldExprSpan, LazyFieldListSpan,
+            LazyFieldSpan, LazyLitExprSpan, LazyMatchArmListSpan, LazyMatchArmSpan,
+            LazyMatchExprSpan, LazyMethodCallExprSpan, LazyPathExprSpan, LazyRecordInitExprSpan,
+            LazyUnExprSpan,
+        },
+        item::{
+            LazyBodySpan, LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFieldDefListSpan,
+            LazyFieldDefSpan, LazyFuncSpan, LazyImplSpan, LazyImplTraitSpan, LazyItemModifierSpan,
+            LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan, LazyTraitSpan,
+            LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefListSpan, LazyVariantDefSpan,
+        },
+        params::{
+            LazyConstGenericParamSpan, LazyFuncParamListSpan, LazyFuncParamSpan,
+            LazyGenericArgListSpan, LazyGenericArgSpan, LazyGenericParamListSpan,
+            LazyGenericParamSpan, LazyKindBoundSpan, LazyTraitRefSpan, LazyTypeBoundListSpan,
+            LazyTypeBoundSpan, LazyTypeGenericArgSpan, LazyWhereClauseSpan, LazyWherePredicateSpan,
+        },
+        pat::{
+            LazyLitPatSpan, LazyPatSpan, LazyPathPatSpan, LazyPathTuplePatSpan,
+            LazyRecordPatFieldListSpan, LazyRecordPatFieldSpan, LazyRecordPatSpan,
+        },
+        path::{LazyPathSegmentSpan, LazyPathSpan},
+        stmt::{LazyLetStmtSpan, LazyStmtSpan},
+        types::{
+            LazyArrayTypeSpan, LazyPathTypeSpan, LazyPtrTypeSpan, LazyTupleTypeSpan, LazyTySpan,
+        },
+        use_tree::{LazyUseAliasSpan, LazyUsePathSegmentSpan, LazyUsePathSpan},
+        DynLazySpan, LazyLitSpan, LazySpan, LazySpanAtom,
     };
-
-    pub use super::expr::{
-        LazyAssignExprSpan, LazyAugAssignExprSpan, LazyBinExprSpan, LazyCallArgListSpan,
-        LazyCallArgSpan, LazyCallExprSpan, LazyExprSpan, LazyFieldExprSpan, LazyFieldListSpan,
-        LazyFieldSpan, LazyLitExprSpan, LazyMatchArmListSpan, LazyMatchArmSpan, LazyMatchExprSpan,
-        LazyMethodCallExprSpan, LazyPathExprSpan, LazyRecordInitExprSpan, LazyUnExprSpan,
-    };
-
-    pub use super::item::{
-        LazyBodySpan, LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFieldDefListSpan,
-        LazyFieldDefSpan, LazyFuncSpan, LazyImplSpan, LazyImplTraitSpan, LazyItemModifierSpan,
-        LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan, LazyTraitSpan,
-        LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefListSpan, LazyVariantDefSpan,
-    };
-
-    pub use super::params::{
-        LazyConstGenericParamSpan, LazyFuncParamListSpan, LazyFuncParamSpan,
-        LazyGenericArgListSpan, LazyGenericArgSpan, LazyGenericParamListSpan, LazyGenericParamSpan,
-        LazyKindBoundSpan, LazyTraitRefSpan, LazyTypeBoundListSpan, LazyTypeBoundSpan,
-        LazyTypeGenericArgSpan, LazyWhereClauseSpan, LazyWherePredicateSpan,
-    };
-
-    pub use super::pat::{
-        LazyLitPatSpan, LazyPatSpan, LazyPathPatSpan, LazyPathTuplePatSpan,
-        LazyRecordPatFieldListSpan, LazyRecordPatFieldSpan, LazyRecordPatSpan,
-    };
-
-    pub use super::path::{LazyPathSegmentSpan, LazyPathSpan};
-
-    pub use super::stmt::{LazyLetStmtSpan, LazyStmtSpan};
-
-    pub use super::types::{
-        LazyArrayTypeSpan, LazyPathTypeSpan, LazyPtrTypeSpan, LazyTupleTypeSpan, LazyTySpan,
-    };
-
-    pub use super::use_tree::{LazyUseAliasSpan, LazyUsePathSegmentSpan, LazyUsePathSpan};
-
-    pub use super::{DynLazySpan, LazyLitSpan, LazySpan, LazySpanAtom};
 }
 
 /// This struct represents a dynamic lazy span, which can be converted from all
@@ -215,9 +208,6 @@ where
 /// other HIR node kinds.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum DesugaredOrigin {
-    /// The HIR node is the result of desugaring an augmented assignment
-    /// statement.
-
     /// The HIR node is the result of desugaring a AST use.
     /// In HIR lowering, nested use tree is flattened into a single use path.
     Use(UseDesugared),

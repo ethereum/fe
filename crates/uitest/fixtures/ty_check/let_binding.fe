@@ -1,0 +1,3 @@
+pub fn foo() {
+    let s: i32 = "foo"
+}

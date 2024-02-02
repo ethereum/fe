@@ -131,18 +131,18 @@ impl<'db> UnificationTable<'db> {
         TyId::ty_var(self.db, universe, kind.clone(), key)
     }
 
-    pub(super) fn new_var_from_param(&mut self, db: &dyn HirAnalysisDb, ty: TyId) -> TyId {
-        match ty.data(db) {
+    pub(super) fn new_var_from_param(&mut self, ty: TyId) -> TyId {
+        match ty.data(self.db) {
             TyData::TyParam(param) => {
                 let key = self.new_key(&param.kind);
                 let universe = TyVarUniverse::General;
-                TyId::ty_var(db, universe, param.kind.clone(), key)
+                TyId::ty_var(self.db, universe, param.kind.clone(), key)
             }
 
             TyData::ConstTy(const_ty) => {
-                if let ConstTyData::TyParam(_, ty) = const_ty.data(db) {
-                    let key = self.new_key(ty.kind(db));
-                    TyId::const_ty_var(db, *ty, key)
+                if let ConstTyData::TyParam(_, ty) = const_ty.data(self.db) {
+                    let key = self.new_key(ty.kind(self.db));
+                    TyId::const_ty_var(self.db, *ty, key)
                 } else {
                     panic!()
                 }

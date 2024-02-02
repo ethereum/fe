@@ -30,6 +30,15 @@ fn test_standalone(fixture: Fixture<&str>) {
                 ty.pretty_print(&db).to_string(),
             );
         }
+
+        for pat in body.pats(&db).keys() {
+            let ty = typed_body.pat_ty(&db, pat);
+            prop_formatter.push_prop(
+                func.top_mod(&db),
+                pat.lazy_span(body).into(),
+                ty.pretty_print(&db).to_string(),
+            );
+        }
     }
 
     let res = prop_formatter.finish(&db);

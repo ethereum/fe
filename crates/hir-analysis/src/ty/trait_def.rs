@@ -145,7 +145,7 @@ impl Implementor {
     ) -> (Self, impl Subst) {
         let mut subst = FxHashMap::default();
         for &param in self.params(db) {
-            let var = table.new_var_from_param(db, param);
+            let var = table.new_var_from_param(param);
             subst.insert(param, var);
         }
 
