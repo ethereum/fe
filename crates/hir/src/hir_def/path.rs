@@ -28,4 +28,15 @@ impl PathId {
     pub fn from_ident(db: &dyn HirDb, ident: IdentId) -> Self {
         Self::new(db, vec![Partial::Present(ident)])
     }
+
+    pub fn pretty_print(self, db: &dyn HirDb) -> String {
+        self.segments(db)
+            .iter()
+            .map(|seg| {
+                seg.to_opt()
+                    .map_or("_".to_string(), |id| id.data(db).clone())
+            })
+            .collect::<Vec<_>>()
+            .join("::")
+    }
 }

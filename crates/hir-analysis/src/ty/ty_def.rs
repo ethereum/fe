@@ -203,7 +203,7 @@ impl TyId {
         let params = self.type_params(db);
         let mut subst = FxHashMap::default();
         for &param in params.iter() {
-            let new_var = table.new_var_from_param(db, param);
+            let new_var = table.new_var_from_param(param);
             subst.insert(param, new_var);
         }
 
@@ -397,29 +397,7 @@ impl TyId {
     }
 
     pub(super) fn from_hir_prim_ty(db: &dyn HirAnalysisDb, hir_prim: HirPrimTy) -> Self {
-        match hir_prim {
-            HirPrimTy::Bool => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Bool))),
-
-            HirPrimTy::Int(int_ty) => match int_ty {
-                HirIntTy::I8 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I8))),
-                HirIntTy::I16 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I16))),
-                HirIntTy::I32 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I32))),
-                HirIntTy::I64 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I64))),
-                HirIntTy::I128 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I128))),
-                HirIntTy::I256 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::I256))),
-            },
-
-            HirPrimTy::Uint(uint_ty) => match uint_ty {
-                HirUintTy::U8 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U8))),
-                HirUintTy::U16 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U16))),
-                HirUintTy::U32 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U32))),
-                HirUintTy::U64 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U64))),
-                HirUintTy::U128 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U128))),
-                HirUintTy::U256 => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256))),
-            },
-
-            HirPrimTy::String => Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::String))),
-        }
+        Self::new(db, TyData::TyBase(hir_prim.into()))
     }
 
     pub(super) fn const_ty_param(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
@@ -865,7 +843,7 @@ impl TyParam {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
 pub enum TyBase {
     Prim(PrimTy),
     Adt(AdtDef),
@@ -937,6 +915,34 @@ impl TyBase {
             Self::Prim(prim_ty) => prim_ty.expected_const_ty(db, idx),
             Self::Adt(adt) => adt.expected_const_ty(db, idx),
             Self::Func(func) => func.expected_const_ty(db, idx),
+        }
+    }
+}
+
+impl From<HirPrimTy> for TyBase {
+    fn from(hir_prim: HirPrimTy) -> Self {
+        match hir_prim {
+            HirPrimTy::Bool => Self::Prim(PrimTy::Bool),
+
+            HirPrimTy::Int(int_ty) => match int_ty {
+                HirIntTy::I8 => Self::Prim(PrimTy::I8),
+                HirIntTy::I16 => Self::Prim(PrimTy::I16),
+                HirIntTy::I32 => Self::Prim(PrimTy::I32),
+                HirIntTy::I64 => Self::Prim(PrimTy::I64),
+                HirIntTy::I128 => Self::Prim(PrimTy::I128),
+                HirIntTy::I256 => Self::Prim(PrimTy::I256),
+            },
+
+            HirPrimTy::Uint(uint_ty) => match uint_ty {
+                HirUintTy::U8 => Self::Prim(PrimTy::U8),
+                HirUintTy::U16 => Self::Prim(PrimTy::U16),
+                HirUintTy::U32 => Self::Prim(PrimTy::U32),
+                HirUintTy::U64 => Self::Prim(PrimTy::U64),
+                HirUintTy::U128 => Self::Prim(PrimTy::U128),
+                HirUintTy::U256 => Self::Prim(PrimTy::U256),
+            },
+
+            HirPrimTy::String => Self::Prim(PrimTy::String),
         }
     }
 }
@@ -1027,6 +1033,10 @@ impl AdtRefId {
         }
         .to_opt()
         .unwrap_or_else(|| IdentId::new(hir_db, "<unknown>".to_string()))
+    }
+
+    pub fn kind_name(self, db: &dyn HirAnalysisDb) -> &'static str {
+        self.as_item(db).kind_name()
     }
 
     pub fn name_span(self, db: &dyn HirAnalysisDb) -> DynLazySpan {

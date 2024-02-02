@@ -13,6 +13,7 @@ use itertools::Itertools;
 
 use super::{
     constraint::PredicateId,
+    ty_check::pat::ResolvedPatData,
     ty_def::{Kind, TyId},
 };
 use crate::HirAnalysisDb;
@@ -30,12 +31,26 @@ pub struct FuncDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
-pub struct FuncBodyDiagAccumulator(pub(super) TyDiagCollection);
+pub struct FuncBodyDiagAccumulator(pub(super) FuncBodyDiag);
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
+pub enum FuncBodyDiag {
+    Ty(TyDiagCollection),
+    Body(BodyDiag),
+}
+
+impl FuncBodyDiag {
+    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
+        match self {
+            Self::Ty(diag) => diag.to_voucher(),
+            Self::Body(diag) => Box::new(diag.clone()) as _,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum TyDiagCollection {
     Ty(TyLowerDiag),
-    BodyDiag(BodyDiag),
     Satisfaction(TraitConstraintDiag),
     TraitLower(TraitLowerDiag),
     Impl(ImplDiag),
@@ -45,7 +60,6 @@ impl TyDiagCollection {
     pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
-            TyDiagCollection::BodyDiag(diag) => Box::new(diag) as _,
             TyDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
             TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
             TyDiagCollection::Impl(diag) => Box::new(diag) as _,
@@ -527,6 +541,15 @@ pub enum BodyDiag {
     TypeMismatch(DynLazySpan, String, String),
     InfiniteOccurrence(DynLazySpan),
     DuplicatedRestPat(DynLazySpan),
+    InvalidPathDomainInPat {
+        primary: DynLazySpan,
+        resolved: Option<DynLazySpan>,
+    },
+    UnitVariantExpectedInPat {
+        primary: DynLazySpan,
+        kind: &'static str,
+        hint: Option<String>,
+    },
 }
 
 impl BodyDiag {
@@ -541,11 +564,27 @@ impl BodyDiag {
         Self::TypeMismatch(span, expected, actual)
     }
 
+    pub(super) fn unit_variant_expected_in_pat(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        data: ResolvedPatData,
+    ) -> Self {
+        let kind = data.data_kind(db);
+        let hint = data.hint(db);
+        Self::UnitVariantExpectedInPat {
+            primary,
+            kind,
+            hint,
+        }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(_, _, _) => 0,
             Self::InfiniteOccurrence(_) => 1,
             Self::DuplicatedRestPat(_) => 2,
+            Self::InvalidPathDomainInPat { .. } => 3,
+            Self::UnitVariantExpectedInPat { .. } => 4,
         }
     }
 
@@ -554,6 +593,8 @@ impl BodyDiag {
             Self::TypeMismatch(_, _, _) => "type mismatch".to_string(),
             Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
             Self::DuplicatedRestPat(_) => "duplicated `..` found".to_string(),
+            Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
+            Self::UnitVariantExpectedInPat { .. } => "unit variant is expected here".to_string(),
         }
     }
 
@@ -576,6 +617,42 @@ impl BodyDiag {
                 "`..` can be used only once".to_string(),
                 span.resolve(db),
             )],
+
+            Self::InvalidPathDomainInPat { primary, resolved } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "expected type or enum variant here".to_string(),
+                    primary.resolve(db),
+                )];
+                if let Some(resolved) = resolved {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "this item given".to_string(),
+                        resolved.resolve(db),
+                    ))
+                }
+                diag
+            }
+
+            Self::UnitVariantExpectedInPat {
+                primary,
+                kind,
+                hint,
+            } => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected unit variant here, but found {}", kind,),
+                    primary.resolve(db),
+                )];
+                if let Some(hint) = hint {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Use {} instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+                diags
+            }
         }
     }
 

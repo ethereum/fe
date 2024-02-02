@@ -40,4 +40,8 @@ impl TupleTypeId {
     pub fn to_ty(self, db: &dyn HirDb) -> TypeId {
         TypeId::new(db, TypeKind::Tuple(self))
     }
+
+    pub fn len(self, db: &dyn HirDb) -> usize {
+        self.data(db).len()
+    }
 }

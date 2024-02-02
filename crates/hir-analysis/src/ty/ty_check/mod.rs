@@ -1,23 +1,21 @@
 mod env;
+pub(crate) mod pat;
+mod stmt;
 
-use std::ops::Range;
-
-use env::ThCheckEnv;
+use env::TyCheckEnv;
 use hir::{
-    hir_def::{
-        Body, Expr, ExprId, Func, IdentId, LitKind, Partial, Pat, PatId, PathId, Stmt, StmtId,
-    },
+    hir_def::{Body, Expr, ExprId, Func, LitKind, Partial, PatId, TypeId as HirTyId},
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
 
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
-    ty_def::{AdtDef, InvalidCause, Kind, TyId, TyVar, TyVarUniverse},
+    ty_def::{InvalidCause, Kind, TyId, TyVarUniverse},
     ty_lower::lower_hir_ty,
     unify::{UnificationError, UnificationTable},
 };
-use crate::{name_resolution::resolve_path_early, HirAnalysisDb};
+use crate::HirAnalysisDb;
 
 #[salsa::tracked(return_ref)]
 pub fn check_func_body(db: &dyn HirAnalysisDb, func: Func) -> TypedBody {
@@ -26,20 +24,19 @@ pub fn check_func_body(db: &dyn HirAnalysisDb, func: Func) -> TypedBody {
     };
 
     checker.run();
-
     checker.finish()
 }
 
 pub struct TyChecker<'db> {
     db: &'db dyn HirAnalysisDb,
-    env: ThCheckEnv<'db>,
+    env: TyCheckEnv<'db>,
     table: UnificationTable<'db>,
     expected: TyId,
 }
 
 impl<'db> TyChecker<'db> {
     fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func) -> Result<Self, ()> {
-        let env = ThCheckEnv::new_with_func(db, func)?;
+        let env = TyCheckEnv::new_with_func(db, func)?;
         let expected_ty = match func.ret_ty(db.as_hir_db()) {
             Some(hir_ty) => {
                 let ty = lower_hir_ty(db, hir_ty, func.scope());
@@ -60,11 +57,12 @@ impl<'db> TyChecker<'db> {
         self.check_expr_ty(root_expr, self.expected);
     }
 
-    fn finish(self) -> TypedBody {
-        self.env.finish()
+    fn finish(mut self) -> TypedBody {
+        // TODO: check for untyped expressions and patterns.
+        self.env.finish(&mut self.table)
     }
 
-    fn new(db: &'db dyn HirAnalysisDb, env: ThCheckEnv<'db>, expected: TyId) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId) -> Self {
         let table = UnificationTable::new(db);
         Self {
             db,
@@ -72,6 +70,21 @@ impl<'db> TyChecker<'db> {
             table,
             expected,
         }
+    }
+
+    fn lower_ty(&self, hir_ty: HirTyId, span: DynLazySpan) -> TyId {
+        let ty = lower_hir_ty(self.db, hir_ty, self.env.scope());
+        if let Some(diag) = ty.emit_diag(self.db, span) {
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+        }
+
+        ty
+    }
+
+    /// Returns the fresh type variable for pattern and expr type checking. The
+    /// kind of the type variable is `*`, and the universe is `General`.
+    fn fresh_ty(&mut self) -> TyId {
+        self.table.new_var(TyVarUniverse::General, &Kind::Star)
     }
 
     fn check_expr_ty(&mut self, expr: ExprId, expected: TyId) -> TyId {
@@ -93,7 +106,8 @@ impl<'db> TyChecker<'db> {
                         self.check_stmt(stmt, TyId::bot(self.db));
                     }
 
-                    let res = self.check_stmt(stmts[stmts.len() - 1], expected);
+                    let last_stmt = stmts[stmts.len() - 1];
+                    let res = self.check_stmt(last_stmt, expected);
                     self.env.leave_block();
                     res
                 }
@@ -112,138 +126,11 @@ impl<'db> TyChecker<'db> {
             Expr::ArrayRep(..) => todo!(),
             Expr::If(..) => todo!(),
             Expr::Match(..) => todo!(),
+            Expr::Assign(..) => todo!(),
+            Expr::AugAssign(..) => todo!(),
         };
 
         self.unify_ty(expr, actual, expected)
-    }
-
-    fn check_stmt(&mut self, stmt: StmtId, expected: TyId) -> TyId {
-        let Partial::Present(stmt_data) = self.env.stmt_data(stmt) else {
-            return TyId::invalid(self.db, InvalidCause::Other);
-        };
-
-        match stmt_data {
-            Stmt::Let(..) => todo!(),
-            Stmt::Assign(..) => todo!(),
-            Stmt::For(..) => todo!(),
-            Stmt::While(..) => todo!(),
-            Stmt::Continue => todo!(),
-            Stmt::Break => todo!(),
-            Stmt::Return(..) => todo!(),
-            Stmt::Expr(expr) => self.check_expr_ty(*expr, expected),
-        }
-    }
-
-    fn check_pat(&mut self, pat: PatId, expected: TyId) -> TyId {
-        let Partial::Present(pat_data) = pat.data(self.db.as_hir_db(), self.env.body()) else {
-            let actual = TyId::invalid(self.db, InvalidCause::Other);
-            return self.unify_ty(pat, actual, expected);
-        };
-
-        match pat_data {
-            Pat::WildCard => {
-                let ty_var = self.table.new_var(TyVarUniverse::General, &Kind::Star);
-                self.unify_ty(pat, ty_var, expected)
-            }
-
-            Pat::Rest => unreachable!(),
-
-            Pat::Lit(lit) => {
-                let actual = match lit {
-                    Partial::Present(lit) => self.lit_ty(lit),
-                    Partial::Absent => TyId::invalid(self.db, InvalidCause::Other),
-                };
-                self.unify_ty(pat, actual, expected)
-            }
-
-            Pat::Tuple(pat_tup) => {
-                let (actual, rest_range) = self.unpack_rest_pat(pat_tup, expected, pat);
-                let unified = self.unify_ty(pat, actual, expected);
-
-                if unified.contains_invalid(self.db) {
-                    pat_tup.iter().for_each(|&pat| {
-                        self.env
-                            .type_pat(pat, TyId::invalid(self.db, InvalidCause::Other));
-                    });
-                    return unified;
-                }
-
-                for (i, &pat_ty) in unified.decompose_ty_app(self.db).1.iter().enumerate() {
-                    if rest_range.contains(&i)
-                        || pat_tup[i].is_rest(self.db.as_hir_db(), self.env.body())
-                    {
-                        continue;
-                    }
-
-                    self.check_pat(pat_tup[i], pat_ty);
-                }
-
-                unified
-            }
-
-            Pat::Path(path) => todo!(),
-
-            Pat::PathTuple(path, tup) => todo!(),
-
-            Pat::Record(path, fields) => todo!(),
-
-            Pat::Or(lhs, rhs) => {
-                self.check_pat(*lhs, expected);
-                self.check_pat(*rhs, expected)
-            }
-        }
-    }
-
-    fn unpack_rest_pat(
-        &mut self,
-        pat_tup: &[PatId],
-        expected: TyId,
-        pat: PatId,
-    ) -> (TyId, std::ops::Range<usize>) {
-        let mut rest_start = None;
-        for (i, &pat) in pat_tup.iter().enumerate() {
-            if pat.is_rest(self.db.as_hir_db(), self.env.body()) && rest_start.replace(i).is_some()
-            {
-                let span = pat.lazy_span(self.env.body());
-                FuncBodyDiagAccumulator::push(
-                    self.db,
-                    BodyDiag::DuplicatedRestPat(span.into()).into(),
-                );
-                return (
-                    TyId::invalid(self.db, InvalidCause::Other),
-                    Range::default(),
-                );
-            }
-        }
-
-        let mut make_args = |len: usize| {
-            (0..len)
-                .map(|_| self.table.new_var(TyVarUniverse::General, &Kind::Star))
-                .collect::<Vec<_>>()
-        };
-
-        match rest_start {
-            Some(rest_start) => {
-                let (base, expected_args) = expected.decompose_ty_app(self.db);
-                let expected_args_len = expected_args.len();
-                let minimum_len = expected_args.len() - 1;
-
-                if base.is_tuple(self.db) && minimum_len <= expected_args.len() {
-                    let diff = expected_args_len - minimum_len;
-                    let range = rest_start..rest_start + diff;
-                    let ty_args = make_args(expected_args_len);
-                    (TyId::tuple_with_elems(self.db, &ty_args), range)
-                } else {
-                    let ty_args = make_args(minimum_len);
-                    (TyId::tuple_with_elems(self.db, &ty_args), Range::default())
-                }
-            }
-
-            None => {
-                let ty_args = make_args(pat_tup.len());
-                (TyId::tuple_with_elems(self.db, &ty_args), Range::default())
-            }
-        }
     }
 
     fn lit_ty(&mut self, lit: &LitKind) -> TyId {
@@ -265,7 +152,7 @@ impl<'db> TyChecker<'db> {
         let t = t.into();
 
         let actual = match self.table.unify(expected, actual) {
-            Ok(()) => actual.apply_subst(self.db, &mut self.table),
+            Ok(()) => actual,
 
             Err(UnificationError::TypeMismatch) => {
                 let actual = actual.apply_subst(self.db, &mut self.table);
@@ -346,17 +233,4 @@ impl Typeable {
             Self::Pat(pat) => pat.lazy_span(body).into(),
         }
     }
-}
-
-#[derive(Clone)]
-enum ResolvedPath {
-    Adt(ResolvedAdt),
-    NewVar(IdentId),
-    NotFound,
-}
-
-#[derive(Clone)]
-struct ResolvedAdt {
-    adt: AdtDef,
-    variant_idx: Option<usize>,
 }

@@ -6,6 +6,11 @@ use parser::{
     ast::prelude::*, syntax_node::NodeOrToken, FeLang, SyntaxNode, SyntaxToken, TextRange,
 };
 
+use super::{
+    body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
+    impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast, type_alias_ast,
+    use_ast, DesugaredOrigin, DesugaredUseFocus, HirOrigin, LazySpan, UseDesugared,
+};
 use crate::{
     hir_def::{
         Body, Const, Contract, Enum, Func, Impl, ImplTrait, ItemKind, Mod, Struct, TopLevelMod,
@@ -13,12 +18,6 @@ use crate::{
     },
     lower::top_mod_ast,
     HirDb, SpannedHirDb,
-};
-
-use super::{
-    body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
-    impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast, type_alias_ast,
-    use_ast, DesugaredOrigin, DesugaredUseFocus, HirOrigin, LazySpan, UseDesugared,
 };
 
 /// This type represents function from the hir origin to another hir origin to

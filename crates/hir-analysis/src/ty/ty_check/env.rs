@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use hir::hir_def::{
     scope_graph::ScopeId, Body, Expr, ExprId, Func, IdentId, Partial, PatId, Stmt, StmtId,
 };
@@ -10,11 +8,12 @@ use crate::{
     ty::{
         ty_def::{InvalidCause, TyId},
         ty_lower::lower_hir_ty,
+        unify::UnificationTable,
     },
     HirAnalysisDb,
 };
 
-pub(super) struct ThCheckEnv<'db> {
+pub(super) struct TyCheckEnv<'db> {
     db: &'db dyn HirAnalysisDb,
     body: Body,
 
@@ -22,9 +21,11 @@ pub(super) struct ThCheckEnv<'db> {
     expr_ty: FxHashMap<ExprId, TyId>,
 
     var_env: Vec<BlockEnv>,
+
+    pending_vars: FxHashMap<IdentId, PatId>,
 }
 
-impl<'db> ThCheckEnv<'db> {
+impl<'db> TyCheckEnv<'db> {
     pub(super) fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func) -> Result<Self, ()> {
         let hir_db = db.as_hir_db();
         let Some(body) = func.body(hir_db) else {
@@ -34,9 +35,10 @@ impl<'db> ThCheckEnv<'db> {
         let mut env = Self {
             db,
             body,
-            pat_ty: HashMap::default(),
-            expr_ty: HashMap::default(),
+            pat_ty: FxHashMap::default(),
+            expr_ty: FxHashMap::default(),
             var_env: vec![],
+            pending_vars: FxHashMap::default(),
         };
 
         env.enter_block(body.expr(hir_db))?;
@@ -45,7 +47,7 @@ impl<'db> ThCheckEnv<'db> {
             return Err(());
         };
 
-        for param in params.data(hir_db) {
+        for (i, param) in params.data(hir_db).iter().enumerate() {
             let Some(name) = param.name() else {
                 continue;
             };
@@ -58,8 +60,9 @@ impl<'db> ThCheckEnv<'db> {
             if ty.is_star_kind(db) {
                 ty = TyId::invalid(db, InvalidCause::Other);
             }
+            let var = VarKind::Param(i, ty);
 
-            env.register_var(name, ty);
+            env.var_env.last_mut().unwrap().register_var(name, var);
         }
 
         Ok(env)
@@ -94,12 +97,29 @@ impl<'db> ThCheckEnv<'db> {
         self.pat_ty.insert(pat, ty);
     }
 
-    pub(super) fn register_var(&mut self, name: IdentId, ty: TyId) {
-        let var_env = self.var_env.last_mut().unwrap();
-        var_env.vars.insert(name, ty);
+    /// Register a pending binding which will be added when `flush_pending_vars`
+    /// is called.
+    pub(super) fn register_pending_binding(&mut self, name: IdentId, pat: PatId) {
+        self.pending_vars.insert(name, pat);
     }
 
-    pub(super) fn finish(self) -> TypedBody {
+    /// Flush pending bindings to the current scope environment.
+    pub(super) fn flush_pending_bindings(&mut self) {
+        let var_env = self.var_env.last_mut().unwrap();
+        for (name, pat) in self.pending_vars.drain() {
+            var_env.register_var(name, VarKind::Local(pat));
+        }
+    }
+
+    pub(super) fn finish(mut self, table: &mut UnificationTable) -> TypedBody {
+        self.expr_ty
+            .values_mut()
+            .for_each(|ty| *ty = ty.apply_subst(self.db, table));
+
+        self.pat_ty
+            .values_mut()
+            .for_each(|ty| *ty = ty.apply_subst(self.db, table));
+
         TypedBody {
             body: Some(self.body),
             pat_ty: self.pat_ty,
@@ -114,11 +134,15 @@ impl<'db> ThCheckEnv<'db> {
     pub(super) fn stmt_data(&self, stmt: StmtId) -> &'db Partial<Stmt> {
         stmt.data(self.db.as_hir_db(), self.body)
     }
+
+    pub(super) fn scope(&self) -> ScopeId {
+        self.var_env.last().unwrap().scope
+    }
 }
 
-struct BlockEnv {
-    scope: ScopeId,
-    vars: FxHashMap<IdentId, TyId>,
+pub(super) struct BlockEnv {
+    pub(super) scope: ScopeId,
+    pub(super) vars: FxHashMap<IdentId, VarKind>,
 }
 
 impl BlockEnv {
@@ -128,4 +152,14 @@ impl BlockEnv {
             vars: FxHashMap::default(),
         }
     }
+
+    fn register_var(&mut self, name: IdentId, var: VarKind) {
+        self.vars.insert(name, var);
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum VarKind {
+    Local(PatId),
+    Param(usize, TyId),
 }
