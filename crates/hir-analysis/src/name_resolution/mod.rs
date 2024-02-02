@@ -17,7 +17,8 @@ use hir::{
 };
 pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
-    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind, QueryDirective,
+    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind,
+    NameResolutionError, QueryDirective,
 };
 pub use path_resolver::EarlyResolvedPath;
 use rustc_hash::FxHashSet;
@@ -25,7 +26,7 @@ use rustc_hash::FxHashSet;
 use self::{
     diagnostics::{ImportResolutionDiagAccumulator, NameResDiag, NameResolutionDiagAccumulator},
     import_resolver::DefaultImporter,
-    name_resolver::{NameResolutionError, ResolvedQueryCacheStore},
+    name_resolver::ResolvedQueryCacheStore,
     path_resolver::EarlyPathResolver,
 };
 use crate::HirAnalysisDb;
@@ -33,7 +34,7 @@ use crate::HirAnalysisDb;
 // TODO: Implement `resolve_path` and `resolve_segments` after implementing the
 // late path resolution.
 
-/// Resolves the given path in the given scope.
+// Resolves the given path in the given scope.
 /// It's not necessary to report any error even if the `EarlyResolvedPath`
 /// contains some errors; it's always reported from [`PathAnalysisPass`].
 pub fn resolve_path_early(
@@ -69,6 +70,14 @@ pub fn resolve_segments_early(
             EarlyResolvedPath::Full(bucket)
         }
     }
+}
+
+/// Resolves the given query. If you don't need to resolve customized queries,
+/// consider using [`resolve_path_early`] or [`resolve_segments_early`] instead.
+pub fn resolve_query(db: &dyn HirAnalysisDb, query: NameQuery) -> NameResBucket {
+    let importer = DefaultImporter;
+    let mut name_resolver = name_resolver::NameResolver::new_no_cache(db, &importer);
+    name_resolver.resolve_query(query)
 }
 
 /// Performs import resolution analysis. This pass only checks correctness of
@@ -236,8 +245,14 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
 
             match err {
                 NameResolutionError::NotFound => {
-                    self.diags
-                        .push(NameResDiag::not_found(span, last_seg_ident));
+                    if !matches!(
+                        self.path_ctxt.last().unwrap(),
+                        ExpectedPathKind::Expr | ExpectedPathKind::Pat
+                    ) || path.len(self.db.as_hir_db()) != 1
+                    {
+                        self.diags
+                            .push(NameResDiag::not_found(span, last_seg_ident));
+                    }
                 }
                 NameResolutionError::Ambiguous(cands) => {
                     self.diags.push(NameResDiag::ambiguous(
@@ -281,6 +296,8 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
                     self.diags
                         .push(NameResDiag::ExpectedValue(span, last_seg_ident, res));
                 }
+
+                _ => {}
             },
         }
     }
@@ -322,8 +339,10 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
 
     fn make_query_for_conflict_check(&self, scope: ScopeId) -> Option<NameQuery> {
         let name = scope.name(self.db.as_hir_db())?;
-        let mut directive = QueryDirective::new();
-        directive.disallow_lex().disallow_glob().disallow_external();
+        let directive = QueryDirective::new()
+            .disallow_lex()
+            .disallow_glob()
+            .disallow_external();
 
         let parent_scope = scope.parent(self.db.as_hir_db())?;
         Some(NameQuery::with_directive(name, parent_scope, directive))
@@ -417,17 +436,21 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     // We don't need to run path analysis on patterns, statements and expressions in
     // early path resolution.
-    fn visit_pat(&mut self, _: &mut VisitorCtxt<'_, LazyPatSpan>, _: PatId, _: &Pat) {}
-
-    fn visit_expr(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
-        expr: ExprId,
-        expr_data: &Expr,
-    ) {
-        if matches!(expr_data, Expr::Block(_)) {
-            walk_expr(self, ctxt, expr)
+    fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: PatId, pat_data: &Pat) {
+        match pat_data {
+            Pat::PathTuple { .. } | Pat::Record { .. } => {
+                self.path_ctxt.push(ExpectedPathKind::PatWithArg)
+            }
+            _ => self.path_ctxt.push(ExpectedPathKind::Pat),
         }
+        walk_pat(self, ctxt, pat);
+        self.path_ctxt.pop();
+    }
+
+    fn visit_expr(&mut self, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: ExprId, _: &Expr) {
+        self.path_ctxt.push(ExpectedPathKind::Expr);
+        walk_expr(self, ctxt, expr);
+        self.path_ctxt.pop();
     }
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
@@ -445,7 +468,16 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
                 let diag = match err.kind {
                     NameResolutionError::NotFound => {
-                        NameResDiag::not_found(span.into(), *ident.unwrap())
+                        if path.len(self.db.as_hir_db()) == 1
+                            && matches!(
+                                self.path_ctxt.last().unwrap(),
+                                ExpectedPathKind::Expr | ExpectedPathKind::Pat
+                            )
+                        {
+                            return;
+                        } else {
+                            NameResDiag::not_found(span.into(), *ident.unwrap())
+                        }
                     }
 
                     NameResolutionError::Invalid => {
@@ -499,6 +531,9 @@ enum ExpectedPathKind {
     Type,
     Trait,
     Value,
+    PatWithArg,
+    Pat,
+    Expr,
 }
 
 impl ExpectedPathKind {
@@ -507,6 +542,9 @@ impl ExpectedPathKind {
             ExpectedPathKind::Type => NameDomain::Type,
             ExpectedPathKind::Trait => NameDomain::Type,
             ExpectedPathKind::Value => NameDomain::Value,
+            ExpectedPathKind::Pat | ExpectedPathKind::PatWithArg | ExpectedPathKind::Expr => {
+                NameDomain::Value | NameDomain::Type
+            }
         }
     }
 

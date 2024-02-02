@@ -87,17 +87,17 @@ impl QueryDirective {
     }
 
     /// Disallow lexical scope lookup.
-    pub fn disallow_lex(&mut self) -> &mut Self {
+    pub fn disallow_lex(mut self) -> Self {
         self.allow_lex = false;
         self
     }
 
-    pub(super) fn disallow_external(&mut self) -> &mut Self {
+    pub(super) fn disallow_external(mut self) -> Self {
         self.allow_external = false;
         self
     }
 
-    pub(super) fn disallow_glob(&mut self) -> &mut Self {
+    pub(super) fn disallow_glob(mut self) -> Self {
         self.allow_glob = false;
         self
     }
@@ -770,7 +770,7 @@ pub enum NameResolutionError {
     /// The name is found, but it's ambiguous.
     Ambiguous(Vec<NameRes>),
 
-    /// The name is found ,but it can't be used in the middle of a use path.
+    /// The name is found, but it can't be used in the middle of a use path.
     InvalidPathSegment(NameRes),
 
     /// The definition conflicts with other definitions.

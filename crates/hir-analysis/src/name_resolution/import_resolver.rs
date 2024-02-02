@@ -574,20 +574,23 @@ impl<'db> ImportResolver<'db> {
             return Err(NameResolutionError::Invalid);
         };
 
-        let mut directive = QueryDirective::new();
         let Some(current_scope) = i_use.current_scope() else {
             return Err(NameResolutionError::NotFound);
         };
 
         // In the middle of the use path, disallow lexically scoped names and
         // external names.
-        if !i_use.is_first_segment() {
-            directive.disallow_lex().disallow_external();
-        }
-
-        if self.contains_unresolved_named_use(seg_name, current_scope, i_use.is_first_segment()) {
-            directive.disallow_glob().disallow_external();
-        }
+        let directive = if !i_use.is_first_segment() {
+            QueryDirective::new().disallow_lex().disallow_external()
+        } else if self.contains_unresolved_named_use(
+            seg_name,
+            current_scope,
+            i_use.is_first_segment(),
+        ) {
+            QueryDirective::new().disallow_glob().disallow_external()
+        } else {
+            QueryDirective::new()
+        };
 
         Ok(NameQuery::with_directive(
             seg_name,
