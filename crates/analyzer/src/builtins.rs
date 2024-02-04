@@ -73,6 +73,8 @@ pub enum Intrinsic {
     __sload,          // (p)
     __sstore,         // (p, v) -> ()
     __msize,          // ()
+    __tstore,         // ()
+    __tload,          // ()
     __gas,            // ()
     __address,        // ()
     __balance,        // (a)

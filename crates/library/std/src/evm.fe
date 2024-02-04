@@ -230,6 +230,14 @@ pub unsafe fn msize() -> u256 {
     return __msize()
 }
 
+pub unsafe fn tstore(offset p: u256, value v: u256) {
+    return __tstore(p,v)
+}
+
+pub unsafe fn tload(offset p: u256) -> u256 {
+    return __tload(p)
+}
+
 pub unsafe fn call_data_load(offset p: u256) -> u256 {
     return __calldataload(p)
 }
