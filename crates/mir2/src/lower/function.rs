@@ -16,15 +16,15 @@ use crate::{
 
 type ScopeId = Id<Scope>;
 
-pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
-    let analyzer_func = func.analyzer_func(db);
-    let ast = &analyzer_func.data(db.upcast()).ast;
-    let analyzer_body = analyzer_func.body(db.upcast());
+// pub fn lower_func_body(db: &dyn MirDb, func: FunctionId) -> Rc<FunctionBody> {
+//     let analyzer_func = func.analyzer_func(db);
+//     let ast = &analyzer_func.data(db.upcast()).ast;
+//     let analyzer_body = analyzer_func.body(db.upcast());
 
-    BodyLowerHelper::new(db, func, ast, analyzer_body.as_ref())
-        .lower()
-        .into()
-}
+//     BodyLowerHelper::new(db, func, ast, analyzer_body.as_ref())
+//         .lower()
+//         .into()
+// }
 
 pub(super) struct BodyLowerHelper<'db, 'a> {
     pub(super) db: &'db dyn MirDb,
@@ -426,17 +426,17 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         panic!()
     }
 
-    fn inst_result_or_tmp(&mut self, inst: InstId, ty: TypeId) -> ValueId {
-        self.builder
-            .inst_result(inst)
-            .and_then(|r| r.value_id())
-            .unwrap_or_else(|| self.map_to_tmp(inst, ty))
-    }
+    // fn inst_result_or_tmp(&mut self, inst: InstId, ty: TypeId) -> ValueId {
+    //     self.builder
+    //         .inst_result(inst)
+    //         .and_then(|r| r.value_id())
+    //         .unwrap_or_else(|| self.map_to_tmp(inst, ty))
+    // }
 
-    pub(super) fn lower_expr_to_value(&mut self, expr: &hir_def::Expr) -> ValueId {
-        let (inst, ty) = self.lower_expr(expr);
-        self.map_to_tmp(inst, ty)
-    }
+    // pub(super) fn lower_expr_to_value(&mut self, expr: &hir_def::Expr) -> ValueId {
+    //     let (inst, ty) = self.lower_expr(expr);
+    //     self.map_to_tmp(inst, ty)
+    // }
 
     pub(super) fn enter_scope(&mut self) {
         let new_scope = Scope::with_parent(self.current_scope);
@@ -454,26 +454,26 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         })
     }
 
-    pub(super) fn make_u256_imm(&mut self, value: impl Into<BigInt>) -> ValueId {
-        let u256_ty = self.u256_ty();
-        self.make_imm(value, u256_ty)
-    }
+    // pub(super) fn make_u256_imm(&mut self, value: impl Into<BigInt>) -> ValueId {
+    //     let u256_ty = self.u256_ty();
+    //     self.make_imm(value, u256_ty)
+    // }
 
-    pub(super) fn map_to_tmp(&mut self, inst: InstId, ty: TypeId) -> ValueId {
-        match &self.builder.inst_data(inst).kind {
-            &InstKind::Bind { src } => {
-                let value = *src;
-                self.builder.remove_inst(inst);
-                value
-            }
-            _ => {
-                let tmp = Value::Temporary { inst, ty };
-                let result = self.builder.make_value(tmp);
-                self.builder.map_result(inst, result.into());
-                result
-            }
-        }
-    }
+    // pub(super) fn map_to_tmp(&mut self, inst: InstId, ty: TypeId) -> ValueId {
+    //     match &self.builder.inst_data(inst).kind {
+    //         &InstKind::Bind { src } => {
+    //             let value = *src;
+    //             self.builder.remove_inst(inst);
+    //             value
+    //         }
+    //         _ => {
+    //             let tmp = Value::Temporary { inst, ty };
+    //             let result = self.builder.make_value(tmp);
+    //             self.builder.map_result(inst, result.into());
+    //             result
+    //         }
+    //     }
+    // }
 
     // fn new(
     //     db: &'db dyn MirDb,
@@ -517,87 +517,87 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     //     self.db.mir_lowered_type(analyzer_ty)
     // }
 
-    fn lower(mut self) -> FunctionBody {
-        for stmt in &self.ast.kind.body {
-            self.lower_stmt(stmt)
-        }
+    // fn lower(mut self) -> FunctionBody {
+    //     for stmt in &self.ast.kind.body {
+    //         self.lower_stmt(stmt)
+    //     }
 
-        let last_block = self.builder.current_block();
-        if !self.builder.is_block_terminated(last_block) {
-            let unit = self.make_unit();
-            self.builder.ret(unit());
-        }
+    //     let last_block = self.builder.current_block();
+    //     if !self.builder.is_block_terminated(last_block) {
+    //         let unit = self.make_unit();
+    //         self.builder.ret(unit());
+    //     }
 
-        self.builder.build()
-    }
+    //     self.builder.build()
+    // }
 
-    fn branch_eq(
-        &mut self,
-        v1: ValueId,
-        v2: ValueId,
-        true_bb: BasicBlockId,
-        false_bb: BasicBlockId,
-    ) {
-        let cond = self.builder.eq(v1, v2);
-        let bool_ty = self.bool_ty();
-        let cond = self.map_to_tmp(cond, bool_ty);
-        self.builder.branch(cond, true_bb, false_bb);
-    }
+    // fn branch_eq(
+    //     &mut self,
+    //     v1: ValueId,
+    //     v2: ValueId,
+    //     true_bb: BasicBlockId,
+    //     false_bb: BasicBlockId,
+    // ) {
+    //     let cond = self.builder.eq(v1, v2);
+    //     let bool_ty = self.bool_ty();
+    //     let cond = self.map_to_tmp(cond, bool_ty);
+    //     self.builder.branch(cond, true_bb, false_bb);
+    // }
 
-    fn lower_if(&mut self, cond: &hir_def::Expr, then: &[hir_def::Stmt], else_: &[hir_def::Stmt]) {
-        let cond = self.lower_expr_to_value(cond);
+    // fn lower_if(&mut self, cond: &hir_def::Expr, then: &[hir_def::Stmt], else_: &[hir_def::Stmt]) {
+    //     let cond = self.lower_expr_to_value(cond);
 
-        if else_.is_empty() {
-            let then_bb = self.builder.make_block();
-            let merge_bb = self.builder.make_block();
+    //     if else_.is_empty() {
+    //         let then_bb = self.builder.make_block();
+    //         let merge_bb = self.builder.make_block();
 
-            self.builder.branch(cond, then_bb, merge_bb());
+    //         self.builder.branch(cond, then_bb, merge_bb());
 
-            // Lower then block.
-            self.builder.move_to_block(then_bb);
-            self.enter_scope();
-            for stmt in then {
-                self.lower_stmt(stmt);
-            }
-            self.builder.jump(merge_bb());
-            self.builder.move_to_block(merge_bb);
-            self.leave_scope();
-        } else {
-            let then_bb = self.builder.make_block();
-            let else_bb = self.builder.make_block();
+    //         // Lower then block.
+    //         self.builder.move_to_block(then_bb);
+    //         self.enter_scope();
+    //         for stmt in then {
+    //             self.lower_stmt(stmt);
+    //         }
+    //         self.builder.jump(merge_bb());
+    //         self.builder.move_to_block(merge_bb);
+    //         self.leave_scope();
+    //     } else {
+    //         let then_bb = self.builder.make_block();
+    //         let else_bb = self.builder.make_block();
 
-            self.builder.branch(cond, then_bb, else_bb());
+    //         self.builder.branch(cond, then_bb, else_bb());
 
-            // Lower then block.
-            self.builder.move_to_block(then_bb);
-            self.enter_scope();
-            for stmt in then {
-                self.lower_stmt(stmt);
-            }
-            self.leave_scope();
-            let then_block_end_bb = self.builder.current_block();
+    //         // Lower then block.
+    //         self.builder.move_to_block(then_bb);
+    //         self.enter_scope();
+    //         for stmt in then {
+    //             self.lower_stmt(stmt);
+    //         }
+    //         self.leave_scope();
+    //         let then_block_end_bb = self.builder.current_block();
 
-            // Lower else_block.
-            self.builder.move_to_block(else_bb);
-            self.enter_scope();
-            for stmt in else_ {
-                self.lower_stmt(stmt);
-            }
-            self.leave_scope();
-            let else_block_end_bb = self.builder.current_block();
+    //         // Lower else_block.
+    //         self.builder.move_to_block(else_bb);
+    //         self.enter_scope();
+    //         for stmt in else_ {
+    //             self.lower_stmt(stmt);
+    //         }
+    //         self.leave_scope();
+    //         let else_block_end_bb = self.builder.current_block();
 
-            let merge_bb = self.builder.make_block();
-            if !self.builder.is_block_terminated(then_block_end_bb) {
-                self.builder.move_to_block(then_block_end_bb);
-                self.builder.jump(merge_bb());
-            }
-            if !self.builder.is_block_terminated(else_block_end_bb) {
-                self.builder.move_to_block(else_block_end_bb);
-                self.builder.jump(merge_bb());
-            }
-            self.builder.move_to_block(merge_bb);
-        }
-    }
+    //         let merge_bb = self.builder.make_block();
+    //         if !self.builder.is_block_terminated(then_block_end_bb) {
+    //             self.builder.move_to_block(then_block_end_bb);
+    //             self.builder.jump(merge_bb());
+    //         }
+    //         if !self.builder.is_block_terminated(else_block_end_bb) {
+    //             self.builder.move_to_block(else_block_end_bb);
+    //             self.builder.jump(merge_bb());
+    //         }
+    //         self.builder.move_to_block(merge_bb);
+    //     }
+    // }
 
     // NOTE: we assume a type of `iter` is array.
     // TODO: Desugar to `loop` + `match` like rustc in HIR to generate better MIR.
@@ -702,102 +702,102 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
     //     }
     // }
 
-    /// Returns the pre-adjustment type of the given `Expr`
-    fn expr_ty(&self, expr: &hir_def::Expr) -> TypeId {
-        let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ;
-        self.lower_analyzer_type(analyzer_ty)
-    }
+    // /// Returns the pre-adjustment type of the given `Expr`
+    // fn expr_ty(&self, expr: &hir_def::Expr) -> TypeId {
+    //     let analyzer_ty = self.analyzer_body.expressions[&expr.id].typ;
+    //     self.lower_analyzer_type(analyzer_ty)
+    // }
 
-    fn lower_bool_op(
-        &mut self,
-        op: hir_def::LogicalBinOp,
-        lhs: &hir_def::Expr,
-        rhs: &hir_def::Expr,
-        ty: TypeId,
-    ) -> InstId {
-        let true_bb = self.builder.make_block();
-        let false_bb = self.builder.make_block();
-        let merge_bb = self.builder.make_block();
+    // fn lower_bool_op(
+    //     &mut self,
+    //     op: hir_def::LogicalBinOp,
+    //     lhs: &hir_def::Expr,
+    //     rhs: &hir_def::Expr,
+    //     ty: TypeId,
+    // ) -> InstId {
+    //     let true_bb = self.builder.make_block();
+    //     let false_bb = self.builder.make_block();
+    //     let merge_bb = self.builder.make_block();
 
-        let lhs = self.lower_expr_to_value(lhs);
-        let tmp = self
-            .builder
-            .declare(Local::tmp_local(format!("${op}_tmp").into(), ty));
+    //     let lhs = self.lower_expr_to_value(lhs);
+    //     let tmp = self
+    //         .builder
+    //         .declare(Local::tmp_local(format!("${op}_tmp").into(), ty));
 
-        match op {
-            hir_def::LogicalBinOp::And => {
-                self.builder.branch(lhs, true_bb, false_bb());
+    //     match op {
+    //         hir_def::LogicalBinOp::And => {
+    //             self.builder.branch(lhs, true_bb, false_bb());
 
-                self.builder.move_to_block(true_bb);
-                let (rhs, _rhs_ty) = self.lower_expr(rhs);
-                self.builder.map_result(rhs, tmp.into());
-                self.builder.jump(merge_bb());
+    //             self.builder.move_to_block(true_bb);
+    //             let (rhs, _rhs_ty) = self.lower_expr(rhs);
+    //             self.builder.map_result(rhs, tmp.into());
+    //             self.builder.jump(merge_bb());
 
-                self.builder.move_to_block(false_bb);
-                let false_imm = self.builder.make_imm_from_bool(false, ty);
-                let false_imm_copy = self.builder.bind(false_imm());
-                self.builder.map_result(false_imm_copy, tmp.into());
-                self.builder.jump(merge_bb());
-            }
+    //             self.builder.move_to_block(false_bb);
+    //             let false_imm = self.builder.make_imm_from_bool(false, ty);
+    //             let false_imm_copy = self.builder.bind(false_imm());
+    //             self.builder.map_result(false_imm_copy, tmp.into());
+    //             self.builder.jump(merge_bb());
+    //         }
 
-            hir_def::LogicalBinOp::Or => {
-                self.builder.branch(lhs, true_bb, false_bb());
+    //         hir_def::LogicalBinOp::Or => {
+    //             self.builder.branch(lhs, true_bb, false_bb());
 
-                self.builder.move_to_block(true_bb);
-                let true_imm = self.builder.make_imm_from_bool(true, ty);
-                let true_imm_copy = self.builder.bind(true_imm());
-                self.builder.map_result(true_imm_copy, tmp.into());
-                self.builder.jump(merge_bb());
+    //             self.builder.move_to_block(true_bb);
+    //             let true_imm = self.builder.make_imm_from_bool(true, ty);
+    //             let true_imm_copy = self.builder.bind(true_imm());
+    //             self.builder.map_result(true_imm_copy, tmp.into());
+    //             self.builder.jump(merge_bb());
 
-                self.builder.move_to_block(false_bb);
-                let (rhs, _rhs_ty) = self.lower_expr(rhs);
-                self.builder.map_result(rhs, tmp.into());
-                self.builder.jump(merge_bb());
-            }
-        }
+    //             self.builder.move_to_block(false_bb);
+    //             let (rhs, _rhs_ty) = self.lower_expr(rhs);
+    //             self.builder.map_result(rhs, tmp.into());
+    //             self.builder.jump(merge_bb());
+    //         }
+    //     }
 
-        self.builder.move_to_block(merge_bb);
-        self.builder.bind(tmp())
-    }
+    //     self.builder.move_to_block(merge_bb);
+    //     self.builder.bind(tmp())
+    // }
 
-    fn lower_binop(
-        &mut self,
-        op: hir_def::BinOp,
-        lhs: ValueId,
-        rhs: ValueId,
-        // source: SourceInfo,
-    ) -> InstId {
-        match op {
-            hir_def::BinOp::Add => self.builder.add(lhs, rhs),
-            hir_def::BinOp::Sub => self.builder.sub(lhs, rhs),
-            hir_def::BinOp::Mult => self.builder.mul(lhs, rhs),
-            hir_def::BinOp::Div => self.builder.div(lhs, rhs),
-            hir_def::BinOp::Mod => self.builder.modulo(lhs, rhs),
-            hir_def::BinOp::Pow => self.builder.pow(lhs, rhs),
-            hir_def::BinOp::LShift => self.builder.shl(lhs, rhs),
-            hir_def::BinOp::RShift => self.builder.shr(lhs, rhs),
-            hir_def::BinOp::BitOr => self.builder.bit_or(lhs, rhs),
-            hir_def::BinOp::BitXor => self.builder.bit_xor(lhs, rhs),
-            hir_def::BinOp::BitAnd => self.builder.bit_and(lhs, rhs),
-        }
-    }
+    // fn lower_binop(
+    //     &mut self,
+    //     op: hir_def::BinOp,
+    //     lhs: ValueId,
+    //     rhs: ValueId,
+    //     // source: SourceInfo,
+    // ) -> InstId {
+    //     match op {
+    //         hir_def::BinOp::Add => self.builder.add(lhs, rhs),
+    //         hir_def::BinOp::Sub => self.builder.sub(lhs, rhs),
+    //         hir_def::BinOp::Mult => self.builder.mul(lhs, rhs),
+    //         hir_def::BinOp::Div => self.builder.div(lhs, rhs),
+    //         hir_def::BinOp::Mod => self.builder.modulo(lhs, rhs),
+    //         hir_def::BinOp::Pow => self.builder.pow(lhs, rhs),
+    //         hir_def::BinOp::LShift => self.builder.shl(lhs, rhs),
+    //         hir_def::BinOp::RShift => self.builder.shr(lhs, rhs),
+    //         hir_def::BinOp::BitOr => self.builder.bit_or(lhs, rhs),
+    //         hir_def::BinOp::BitXor => self.builder.bit_xor(lhs, rhs),
+    //         hir_def::BinOp::BitAnd => self.builder.bit_and(lhs, rhs),
+    //     }
+    // }
 
-    fn lower_comp_op(
-        &mut self,
-        op: hir_def::CompBinOp,
-        lhs: ValueId,
-        rhs: ValueId,
-        // source: SourceInfo,
-    ) -> InstId {
-        match op {
-            hir_def::CompBinOp::Eq => self.builder.eq(lhs, rhs),
-            hir_def::CompBinOp::NotEq => self.builder.ne(lhs, rhs),
-            hir_def::CompBinOp::Lt => self.builder.lt(lhs, rhs),
-            hir_def::CompBinOp::LtE => self.builder.le(lhs, rhs),
-            hir_def::CompBinOp::Gt => self.builder.gt(lhs, rhs),
-            hir_def::CompBinOp::GtE => self.builder.ge(lhs, rhs),
-        }
-    }
+    // fn lower_comp_op(
+    //     &mut self,
+    //     op: hir_def::CompBinOp,
+    //     lhs: ValueId,
+    //     rhs: ValueId,
+    //     // source: SourceInfo,
+    // ) -> InstId {
+    //     match op {
+    //         hir_def::CompBinOp::Eq => self.builder.eq(lhs, rhs),
+    //         hir_def::CompBinOp::NotEq => self.builder.ne(lhs, rhs),
+    //         hir_def::CompBinOp::Lt => self.builder.lt(lhs, rhs),
+    //         hir_def::CompBinOp::LtE => self.builder.le(lhs, rhs),
+    //         hir_def::CompBinOp::Gt => self.builder.gt(lhs, rhs),
+    //         hir_def::CompBinOp::GtE => self.builder.ge(lhs, rhs),
+    //     }
+    // }
 
     // fn resolve_generics_args(
     //     &mut self,
@@ -975,38 +975,38 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
         todo!();
     }
 
-    // FIXME: This is ugly hack to properly analyze method call. Remove this when  https://github.com/ethereum/fe/issues/670 is resolved.
-    fn lower_method_receiver(&mut self, receiver: &hir_def::Expr) -> ValueId {
-        match &receiver.kind {
-            hir_def::Expr::Attribute { value, .. } => self.lower_expr_to_value(value),
-            _ => unreachable!(),
-        }
-    }
+    // // FIXME: This is ugly hack to properly analyze method call. Remove this when  https://github.com/ethereum/fe/issues/670 is resolved.
+    // fn lower_method_receiver(&mut self, receiver: &hir_def::Expr) -> ValueId {
+    //     match &receiver.kind {
+    //         hir_def::Expr::Attribute { value, .. } => self.lower_expr_to_value(value),
+    //         _ => unreachable!(),
+    //     }
+    // }
 
-    fn lower_aggregate_access(
-        &mut self,
-        expr: &hir_def::Expr,
-        indices: &mut Vec<ValueId>,
-    ) -> ValueId {
-        match &expr.kind {
-            hir_def::Expr::Attribute { value, attr } => {
-                let index = self.expr_ty(value).index_from_fname(self.db, &attr.kind);
-                let value = self.lower_aggregate_access(value, indices);
-                indices.push(self.make_u256_imm(index));
-                value
-            }
+    // fn lower_aggregate_access(
+    //     &mut self,
+    //     expr: &hir_def::Expr,
+    //     indices: &mut Vec<ValueId>,
+    // ) -> ValueId {
+    //     match &expr.kind {
+    //         hir_def::Expr::Attribute { value, attr } => {
+    //             let index = self.expr_ty(value).index_from_fname(self.db, &attr.kind);
+    //             let value = self.lower_aggregate_access(value, indices);
+    //             indices.push(self.make_u256_imm(index));
+    //             value
+    //         }
 
-            hir_def::Expr::Subscript { value, index }
-                if self.expr_ty(value).deref(self.db).is_aggregate(self.db) =>
-            {
-                let value = self.lower_aggregate_access(value, indices);
-                indices.push(self.lower_expr_to_value(index));
-                value
-            }
+    //         hir_def::Expr::Subscript { value, index }
+    //             if self.expr_ty(value).deref(self.db).is_aggregate(self.db) =>
+    //         {
+    //             let value = self.lower_aggregate_access(value, indices);
+    //             indices.push(self.lower_expr_to_value(index));
+    //             value
+    //         }
 
-            _ => self.lower_expr_to_value(expr),
-        }
-    }
+    //         _ => self.lower_expr_to_value(expr),
+    //     }
+    // }
 
     // fn make_unit(&mut self) -> ValueId {
     //     let unit_ty = analyzer_types::TypeId::unit(self.db.upcast());
@@ -1131,12 +1131,12 @@ impl Scope {
             maximum_iter_count: None,
         };
 
-        // Declare function parameters.
-        for param in &func.signature(db).params {
-            let local = Local::arg_local(param.name.clone(), param.ty);
-            let value_id = builder.store_func_arg(local);
-            root.declare_var(&param.name, value_id)
-        }
+        // // Declare function parameters.
+        // for param in &func.signature(db).params {
+        //     let local = Local::arg_local(param.name.clone(), param.ty);
+        //     let value_id = builder.store_func_arg(local);
+        //     root.declare_var(&param.name, value_id)
+        // }
 
         root
     }
@@ -1205,9 +1205,9 @@ impl Scope {
     }
 }
 
-fn make_param(db: &dyn MirDb, name: impl Into<SmolStr>, ty: TypeId) -> FunctionParam {
-    FunctionParam {
-        name: name.into(),
-        ty: db.mir_lowered_type(ty),
-    }
-}
+// fn make_param(db: &dyn MirDb, name: impl Into<SmolStr>, ty: TypeId) -> FunctionParam {
+//     FunctionParam {
+//         name: name.into(),
+//         ty: db.mir_lowered_type(ty),
+//     }
+// }
