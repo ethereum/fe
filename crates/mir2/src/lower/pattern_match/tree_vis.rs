@@ -1,8 +1,8 @@
 use std::fmt::Write;
 
 use dot2::{label::Text, Id};
-use fe_analyzer2::{pattern_analysis::ConstructorKind, AnalyzerDb};
 use fxhash::FxHashMap;
+use hir::HirDb;
 use indexmap::IndexMap;
 use smol_str::SmolStr;
 
@@ -11,12 +11,12 @@ use super::decision_tree::{Case, DecisionTree, LeafNode, Occurrence, SwitchNode}
 pub(super) struct TreeRenderer<'db> {
     nodes: Vec<Node>,
     edges: FxHashMap<(usize, usize), Case>,
-    db: &'db dyn AnalyzerDb,
+    db: &'db dyn HirDb,
 }
 
 impl<'db> TreeRenderer<'db> {
     #[allow(unused)]
-    pub(super) fn new(db: &'db dyn AnalyzerDb, tree: &DecisionTree) -> Self {
+    pub(super) fn new(db: &'db dyn HirDb, tree: &DecisionTree) -> Self {
         let mut renderer = Self {
             nodes: Vec::new(),
             edges: FxHashMap::default(),
@@ -88,19 +88,19 @@ impl<'db> dot2::Labeller<'db> for TreeRenderer<'db> {
         Ok(Text::LabelStr(label.into()))
     }
 
-    fn edge_label(&self, e: &Self::Edge) -> Text<'db> {
-        let label = match &self.edges[e] {
-            Case::Ctor(ConstructorKind::Enum(variant)) => {
-                variant.name_with_parent(self.db).to_string()
-            }
-            Case::Ctor(ConstructorKind::Tuple(_)) => "()".to_string(),
-            Case::Ctor(ConstructorKind::Struct(sid)) => sid.name(self.db).into(),
-            Case::Ctor(ConstructorKind::Literal((lit, _))) => lit.to_string(),
-            Case::Default => "_".into(),
-        };
+    // fn edge_label(&self, e: &Self::Edge) -> Text<'db> {
+    //     let label = match &self.edges[e] {
+    //         Case::Ctor(ConstructorKind ::Enum(variant)) => {
+    //             variant.name_with_parent(self.db).to_string()
+    //         }
+    //         Case::Ctor(ConstructorKind::Tuple(_)) => "()".to_string(),
+    //         Case::Ctor(ConstructorKind::Struct(sid)) => sid.name(self.db).into(),
+    //         Case::Ctor(ConstructorKind::Literal((lit, _))) => lit.to_string(),
+    //         Case::Default => "_".into(),
+    //     };
 
-        Text::LabelStr(label.into())
-    }
+    //     Text::LabelStr(label.into())
+    // }
 }
 
 impl<'db> dot2::GraphWalk<'db> for TreeRenderer<'db> {

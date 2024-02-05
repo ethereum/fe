@@ -27,7 +27,7 @@ pub struct Jar(
     // mir_lower_struct_all_functions,
     // mir_lower_enum_all_functions,
     // mir_lowered_type,
-    mir_lowered_constant,
+    lower::constant::mir_lowered_constant,
     // mir_lowered_func_signature,
     // mir_lowered_monomorphized_func_signature,
     // mir_lowered_pseudo_monomorphized_func_signature,

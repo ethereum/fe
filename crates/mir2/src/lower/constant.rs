@@ -1,14 +1,14 @@
 use std::rc::Rc;
 
+use hir::hir_def::TypeId;
+
 use crate::{
-    db::MirDb,
-    ir::{Constant, ConstantId, SourceInfo, TypeId},
+    ir::{Constant, ConstantId},
+    MirDb,
 };
 
-pub fn mir_lowered_constant(
-    db: &dyn MirDb,
-    analyzer_const: analyzer_items::ModuleConstantId,
-) -> ConstantId {
+#[salsa::tracked]
+pub fn mir_lowered_constant(db: &dyn MirDb, analyzer_const: hir::hir_def::Const) -> ConstantId {
     let name = analyzer_const.name(db.upcast());
     let value = analyzer_const.constant_value(db.upcast()).unwrap();
     let ty = analyzer_const.typ(db.upcast()).unwrap();
@@ -17,23 +17,21 @@ pub fn mir_lowered_constant(
     let id = analyzer_const.node_id(db.upcast());
 
     let ty = db.mir_lowered_type(ty);
-    let source = SourceInfo { span, id };
 
     let constant = Constant {
         name,
         value: value.into(),
         ty,
         module_id,
-        source,
     };
 
     db.mir_intern_const(constant.into())
 }
 
 impl ConstantId {
-    pub fn data(self, db: &dyn MirDb) -> Rc<Constant> {
-        db.lookup_mir_intern_const(self)
-    }
+    // pub fn data(self, db: &dyn MirDb) -> Rc<Constant> {
+    //     db.lookup_mir_intern_const(self)
+    // }
 
     pub fn ty(self, db: &dyn MirDb) -> TypeId {
         self.data(db).ty

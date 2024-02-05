@@ -1,11 +1,11 @@
-use hir::hir_def::{TypeId, TypeKind};
+use hir::hir_def::TypeId;
 use id_arena::Id;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
 // use crate::db::MirDb;
 
-use super::{constant::ConstantId, function::BodyDataStore, inst::InstId};
+use super::{constant::ConstantId, inst::InstId};
 
 pub type ValueId = Id<Value>;
 
