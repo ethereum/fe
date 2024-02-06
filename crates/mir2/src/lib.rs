@@ -10,7 +10,7 @@ mod lower;
 #[salsa::jar(db = MirDb)]
 pub struct Jar(
     // ir::Constant,
-    ir::ConstantId,
+    ir::ConstId,
     // ir::FunctionBody,
     // ir::FunctionId,
     // ir::FunctionParam,
@@ -45,9 +45,9 @@ pub trait MirDb: salsa::DbWithJar<Jar> + HirDb {
         // IdentId::prefill(self)
     }
 
-    fn as_hir_db(&self) -> &dyn MirDb {
-        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
-    }
+    // fn as_hir_db(&self) -> &dyn MirDb {
+    //     <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
+    // }
 }
 impl<DB> MirDb for DB where DB: salsa::DbWithJar<Jar> + HirDb {}
 

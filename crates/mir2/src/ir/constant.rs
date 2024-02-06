@@ -1,30 +1,19 @@
-use hir::hir_def::{ModuleTreeNodeId, TypeId};
+use hir::hir_def;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 
-// use super::SourceInfo;
-
 #[salsa::interned]
-pub struct ConstantId {
+pub struct ConstId {
     #[return_ref]
-    pub data: Constant,
+    pub data: Const,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Constant {
-    /// A name of a constant.
-    pub name: SmolStr,
-
-    /// A value of a constant.
+pub struct Const {
     pub value: ConstantValue,
 
-    /// A type of a constant.
-    pub ty: TypeId,
-
-    /// A module where a constant is declared.
-    pub module_id: ModuleTreeNodeId,
-    // /// A span where a constant is declared.
-    // pub source: SourceInfo,
+    #[return_ref]
+    pub(crate) origin: hir_def::Const,
 }
 
 // /// An interned Id for [`Constant`].
