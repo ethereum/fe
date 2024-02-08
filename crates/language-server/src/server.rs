@@ -3,6 +3,9 @@ use anyhow::Result;
 use lsp_server::{Connection, Notification};
 use lsp_types::{HoverProviderCapability, InitializeParams, ServerCapabilities};
 
+#[cfg(target_arch = "wasm32")]
+use crate::util::DummyFilePathConversion;
+
 fn server_capabilities() -> ServerCapabilities {
     ServerCapabilities {
         hover_provider: Some(HoverProviderCapability::Simple(true)),
