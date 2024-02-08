@@ -110,3 +110,24 @@ pub fn diag_to_lsp(
     });
     result
 }
+
+#[cfg(target_arch = "wasm32")]
+use std::path::Path;
+
+#[cfg(target_arch = "wasm32")]
+pub trait DummyFilePathConversion {
+    fn to_file_path(&self) -> Result<std::path::PathBuf, ()>;
+    fn from_file_path<P: AsRef<Path>>(path: P) -> Result<Url, ()>;
+}
+
+#[cfg(target_arch = "wasm32")]
+impl DummyFilePathConversion for lsp_types::Url {
+    fn to_file_path(&self) -> Result<std::path::PathBuf, ()> {
+        // for now we don't support file paths on wasm
+        Err(())
+    }
+    fn from_file_path<P: AsRef<Path>>(_path: P) -> Result<Url, ()> {
+        // for now we don't support file paths on wasm
+        Err(())
+    }
+}

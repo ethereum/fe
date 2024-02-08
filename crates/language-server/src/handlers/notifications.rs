@@ -9,6 +9,9 @@ use crate::{
     workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile},
 };
 
+#[cfg(target_arch = "wasm32")]
+use crate::util::DummyFilePathConversion;
+
 fn run_diagnostics(
     state: &mut ServerState,
     path: &str,
