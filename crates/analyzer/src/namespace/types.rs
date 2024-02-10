@@ -7,14 +7,11 @@ use crate::namespace::items::{
 };
 use crate::AnalyzerDb;
 
-use fe_common::impl_intern_key;
-use fe_common::Span;
+use fe_common::{impl_intern_key, Span};
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use smol_str::SmolStr;
-use std::fmt;
-use std::rc::Rc;
-use std::str::FromStr;
+use std::{fmt, rc::Rc, str::FromStr};
 use strum::{AsRefStr, EnumIter, EnumString};
 
 pub fn u256_min() -> BigInt {
@@ -240,8 +237,8 @@ impl TypeId {
         (candidates, in_scope_candidates)
     }
 
-    /// Signature for the function with the given name defined directly on the type.
-    /// Does not consider trait impls.
+    /// Signature for the function with the given name defined directly on the
+    /// type. Does not consider trait impls.
     pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         match self.typ(db) {
             Type::SPtr(inner) => inner.function_sig(db, name),

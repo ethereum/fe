@@ -1,8 +1,8 @@
-use fe_common::db::TestDb;
-use fe_common::diagnostics::diagnostics_string;
-use fe_common::SourceFileId;
-use fe_parser::grammar::{expressions, functions, module};
-use fe_parser::Parser;
+use fe_common::{db::TestDb, diagnostics::diagnostics_string, SourceFileId};
+use fe_parser::{
+    grammar::{expressions, functions, module},
+    Parser,
+};
 use insta::assert_snapshot;
 
 pub fn err_string<F, T>(test_name: &str, mut parse_fn: F, src: &str) -> String

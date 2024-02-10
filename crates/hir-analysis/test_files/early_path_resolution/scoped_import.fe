@@ -1,0 +1,14 @@
+pub fn foo() {
+    {
+        use mod1::Foo
+        let v: Foo
+    }
+    
+    let v: Foo
+}
+
+struct Foo {}
+
+mod mod1 {
+    pub struct Foo {}
+}

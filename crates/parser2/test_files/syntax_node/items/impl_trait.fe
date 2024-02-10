@@ -1,0 +1,22 @@
+impl<T> Trait<T> for F<T> {
+    fn foo() {
+        return 1
+    }
+}
+
+impl<T, U> Trait<T, U> for F<T> 
+where T: Clone
+      U: Bar
+{
+    fn foo<T: OtherTrait<U>>(t: T) {
+        do_something<i32>(t)
+    }
+}
+
+impl<T: Clone, U> Trait<T, U> for F<U> 
+where U: Bar
+{
+    fn foo<T: OtherTrait<U>>(t: T) {
+        do_something<i32>(t)
+    }
+}

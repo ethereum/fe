@@ -9,8 +9,9 @@ use rstest::rstest;
 use std::collections::BTreeMap;
 
 use fe_common::utils::keccak;
-use fe_compiler_test_utils::*;
-use fe_compiler_test_utils::{self as test_utils};
+use fe_compiler_test_utils::{
+    *, {self as test_utils},
+};
 
 const SOME_ADDRESS: &str = "2012301230123012301230123012301230123002";
 

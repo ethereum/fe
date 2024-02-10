@@ -1,0 +1,40 @@
+---
+source: crates/parser2/tests/error_recovery.rs
+expression: node
+input_file: crates/parser2/test_files/error_recovery/exprs/array.fe
+---
+Root@0..19
+  ArrayExpr@0..11
+    LBracket@0..1 "["
+    LitExpr@1..2
+      Lit@1..2
+        Int@1..2 "1"
+    Comma@2..3 ","
+    WhiteSpace@3..4 " "
+    LitExpr@4..5
+      Lit@4..5
+        Int@4..5 "2"
+    WhiteSpace@5..6 " "
+    Error@6..7
+      Ident@6..7 "a"
+    Comma@7..8 ","
+    WhiteSpace@8..9 " "
+    LitExpr@9..10
+      Lit@9..10
+        Int@9..10 "3"
+    RBracket@10..11 "]"
+  Newline@11..12 "\n"
+  ArrayExpr@12..19
+    LBracket@12..13 "["
+    LitExpr@13..14
+      Lit@13..14
+        Int@13..14 "1"
+    Comma@14..15 ","
+    WhiteSpace@15..16 " "
+    LitExpr@16..17
+      Lit@16..17
+        Int@16..17 "2"
+    Comma@17..18 ","
+    Error@18..18
+    RBracket@18..19 "]"
+

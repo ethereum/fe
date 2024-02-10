@@ -1,24 +1,27 @@
-use crate::constants::{EMITTABLE_TRAIT_NAME, INDEXED};
-use crate::context::{self, Analysis, Constant, NamedThing};
-use crate::display::{DisplayWithDb, Displayable};
-use crate::errors::{self, IncompleteItem, TypeError};
-use crate::namespace::types::{self, GenericType, Type, TypeId};
-use crate::traversal::pragma::check_pragma_version;
-use crate::AnalyzerDb;
-use crate::{builtins, errors::ConstEvalError};
-use fe_common::diagnostics::Diagnostic;
-use fe_common::diagnostics::Label;
-use fe_common::files::{common_prefix, Utf8Path};
-use fe_common::utils::files::{BuildFiles, ProjectMode};
-use fe_common::{impl_intern_key, FileKind, SourceFileId};
-use fe_parser::ast::GenericParameter;
-use fe_parser::node::{Node, Span};
-use fe_parser::{ast, node::NodeId};
+use crate::{
+    builtins,
+    constants::{EMITTABLE_TRAIT_NAME, INDEXED},
+    context::{self, Analysis, Constant, NamedThing},
+    display::{DisplayWithDb, Displayable},
+    errors::{self, ConstEvalError, IncompleteItem, TypeError},
+    namespace::types::{self, GenericType, Type, TypeId},
+    traversal::pragma::check_pragma_version,
+    AnalyzerDb,
+};
+use fe_common::{
+    diagnostics::{Diagnostic, Label},
+    files::{common_prefix, Utf8Path},
+    impl_intern_key, FileKind, SourceFileId,
+};
+use fe_parser::{
+    ast,
+    ast::GenericParameter,
+    node::{Node, NodeId, Span},
+};
 use indexmap::{indexmap, IndexMap};
 use smallvec::SmallVec;
 use smol_str::SmolStr;
-use std::rc::Rc;
-use std::{fmt, ops::Deref};
+use std::{fmt, ops::Deref, rc::Rc};
 use strum::IntoEnumIterator;
 
 use super::types::TraitOrType;
@@ -1791,8 +1794,8 @@ impl ImplId {
             || other == Type::SelfType(TraitOrType::TypeId(self.receiver(db))).id(db)
     }
 
-    /// Returns `true` if the `type_in_impl` can stand in for the `type_in_trait` as a type used
-    /// for a parameter or as a return type
+    /// Returns `true` if the `type_in_impl` can stand in for the
+    /// `type_in_trait` as a type used for a parameter or as a return type
     pub fn can_stand_in_for(
         &self,
         db: &dyn AnalyzerDb,

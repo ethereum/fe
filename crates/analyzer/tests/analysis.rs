@@ -8,8 +8,10 @@ use fe_parser::node::{NodeId, Span};
 use indexmap::IndexMap;
 use insta::assert_snapshot;
 use smallvec::SmallVec;
-use std::collections::{HashMap, VecDeque};
-use std::fmt::Display;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt::Display,
+};
 use wasm_bindgen_test::wasm_bindgen_test;
 
 #[test]

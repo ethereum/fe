@@ -1,6 +1,8 @@
-use std::fs;
-use std::io::{Error, Write};
-use std::path::Path;
+use std::{
+    fs,
+    io::{Error, Write},
+    path::Path,
+};
 
 use clap::{ArgEnum, Args};
 use fe_common::diagnostics::print_diagnostics;

@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/import_alias_cycle.fe
+---
+error[2-0002]: `Foo` is not found
+  ┌─ import_alias_cycle.fe:2:26
+  │
+2 │     pub use super::mod2::Foo as Bar // Error
+  │                          ^^^ `Foo` is not found
+
+error[2-0002]: `Bar` is not found
+  ┌─ import_alias_cycle.fe:6:26
+  │
+6 │     pub use super::mod1::Bar as Foo // Error
+  │                          ^^^ `Bar` is not found
+
+

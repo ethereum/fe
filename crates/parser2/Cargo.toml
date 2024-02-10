@@ -1,0 +1,25 @@
+[package]
+name = "fe-parser2"
+version = "0.23.0"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Parser lib for Fe."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rowan = "0.15.10"
+logos = "0.12.1"
+fxhash = "0.2.1"
+lazy_static = "1.4.0"
+derive_more = "0.99"
+
+[dev-dependencies]
+fe-compiler-test-utils = { path = "../test-utils" }
+dir-test = "0.1"
+wasm-bindgen-test = "0.3"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"

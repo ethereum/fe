@@ -2,14 +2,18 @@ use std::rc::Rc;
 
 use smol_str::SmolStr;
 
-use crate::context::{AnalyzerContext, TempContext};
-use crate::db::Analysis;
-use crate::errors::TypeError;
-use crate::namespace::items::{FunctionSigId, ImplId, TraitId, TypeAliasId};
-use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{self, TypeId};
-use crate::traversal::types::type_desc;
-use crate::AnalyzerDb;
+use crate::{
+    context::{AnalyzerContext, TempContext},
+    db::Analysis,
+    errors::TypeError,
+    namespace::{
+        items::{FunctionSigId, ImplId, TraitId, TypeAliasId},
+        scopes::ItemScope,
+        types::{self, TypeId},
+    },
+    traversal::types::type_desc,
+    AnalyzerDb,
+};
 
 /// Returns all `impl` for the given type from the current ingot as well as
 /// dependency ingots

@@ -1,13 +1,17 @@
-use crate::context::AnalyzerContext;
-use crate::db::{Analysis, AnalyzerDb};
-use crate::errors;
-use crate::namespace::items::{
-    self, ContractFieldId, ContractId, DepGraph, DepGraphWrapper, DepLocality, FunctionId, Item,
-    TypeDef,
+use crate::{
+    context::AnalyzerContext,
+    db::{Analysis, AnalyzerDb},
+    errors,
+    namespace::{
+        items::{
+            self, ContractFieldId, ContractId, DepGraph, DepGraphWrapper, DepLocality, FunctionId,
+            Item, TypeDef,
+        },
+        scopes::ItemScope,
+        types::{self, Type},
+    },
+    traversal::types::type_desc,
 };
-use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{self, Type};
-use crate::traversal::types::type_desc;
 use fe_common::diagnostics::Label;
 use fe_parser::ast;
 use indexmap::map::{Entry, IndexMap};
@@ -122,7 +126,8 @@ pub fn contract_public_function_map(
         contract
             .functions(db)
             .iter()
-            .filter_map(|(name, func)| func.is_public(db).then(|| (name.clone(), *func)))
+            .filter(|(_, func)| func.is_public(db))
+            .map(|(name, func)| (name.clone(), *func))
             .collect(),
     )
 }

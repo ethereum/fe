@@ -1,0 +1,25 @@
+enum Empty {}
+
+enum Basic {
+    Unit
+    Tup(i32, u32)
+}
+
+enum RecordVariants {
+     Rectangle { w: u32, h: u32 }
+     Circle { r: u32 }
+}
+
+enum Option<T>
+    where T: Clone
+{
+    Some(T)
+    None
+}
+
+enum BoundEnum<T: Add + Mul , U: Sub + Div>
+where Foo::Bar<T>: Trait
+{
+    AddMul(T)
+    SubDiv(U)
+}

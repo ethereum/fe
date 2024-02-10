@@ -1,9 +1,9 @@
 use std::{collections::BTreeMap, rc::Rc};
 
-use fe_analyzer::display::Displayable;
-use fe_analyzer::namespace::items as analyzer_items;
-use fe_analyzer::namespace::items::Item;
-use fe_analyzer::namespace::types as analyzer_types;
+use fe_analyzer::{
+    display::Displayable,
+    namespace::{items as analyzer_items, items::Item, types as analyzer_types},
+};
 
 use smol_str::SmolStr;
 
@@ -28,8 +28,8 @@ pub fn mir_lowered_monomorphized_func_signature(
     lower_monomorphized_func_signature(db, analyzer_func, resolved_generics)
 }
 
-/// Generate MIR function and monomorphize generic parameters as if they were called with unit type
-/// NOTE: THIS SHOULD ONLY BE USED IN TEST CODE
+/// Generate MIR function and monomorphize generic parameters as if they were
+/// called with unit type NOTE: THIS SHOULD ONLY BE USED IN TEST CODE
 pub fn mir_lowered_pseudo_monomorphized_func_signature(
     db: &dyn MirDb,
     analyzer_func: analyzer_items::FunctionId,

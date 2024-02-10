@@ -264,8 +264,8 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                 let value = self.declare_var(name, ty, var.into());
                 if let Some(init) = init {
                     let (init, _init_ty) = self.lower_expr(init);
-                    // debug_assert_eq!(ty.deref(self.db), init_ty, "vardecl init type mismatch: {} != {}",
-                    //                  ty.as_string(self.db),
+                    // debug_assert_eq!(ty.deref(self.db), init_ty, "vardecl init type mismatch: {}
+                    // != {}",                  ty.as_string(self.db),
                     //                  init_ty.as_string(self.db));
                     self.builder.map_result(init, value.into());
                 }
