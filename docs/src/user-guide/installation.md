@@ -1,13 +1,26 @@
 # Installation
 
-At this point Fe is only available for **Linux** and **MacOS**.
+At this point Fe is available for **Linux** and **MacOS** natively but can also be installed on **Windows** via [WSL](https://learn.microsoft.com/en-us/windows/wsl/about).
 
 > Note: If you happen to be a Windows developer, consider getting involved
-> and help us to support the Windows platform. [Here would be a good place to start.](https://github.com/ethereum/fe/issues/62)
+> and help us to support the Windows platform natively. [Here would be a good place to start.](https://github.com/ethereum/fe/issues/62)
+
+On a computer with MacOS and an ARM chip, you need to install Rosetta, Apple's x86-to-ARM translator, to be able to run the executable. 
+```
+/usr/sbin/softwareupdate --install-rosetta --agree-to-license
+```
+
+## Package managers
+
+Fe can be installed from [Homebrew](https://brew.sh/). Homebrew is available for Mac, Linux and Windows (via [WSL](https://learn.microsoft.com/en-us/windows/wsl/about)). The following command installs Fe and exposes it as `fe` without any further configuration necessary:
+
+```sh
+brew install fe-lang/tap/fe
+```
 
 ## Download the compiler
 
-Fe is only distributed via a single executable file linked from the [home page](https://fe-lang.org). In the future we will make sure it can be installed through popular package managers such as `apt` or `homebrew`.
+Fe is distributed via a single executable file linked from the [home page](https://fe-lang.org). In the future we will make sure it can be installed through a variety of popular package managers such as `apt`.
 
 Depending on your operating system, the file that you download is either named `fe_amd64` or `fe_mac`.
 
@@ -38,18 +51,10 @@ SUBCOMMANDS:
     new      Create new fe project
 ```
 
-## Package managers
-
-Fe can also be installed from [Homebrew](https://brew.sh/). Homebrew is available for Mac, Linux and Windows (via [WSL](https://learn.microsoft.com/en-us/windows/wsl/about)). The following command installs Fe and exposes it as `fe` without any further configuration necessary:
-
-```sh
-brew install fe-lang/tap/fe
-```
-
 
 ## Building from source
 
-You can also build Fe from the source code provided in our Github [repository](https://github.com/ethereum/fe). To do this you will need to have [Rust](https://www.rust-lang.org/tools/install) installed. Then, cloen the github repository using:
+You can also build Fe from the source code provided in our Github [repository](https://github.com/ethereum/fe). To do this you will need to have [Rust](https://www.rust-lang.org/tools/install) installed. Then, clone the github repository using:
 
 ```sh
 git clone https://github.com/ethereum/fe.git
@@ -64,10 +69,16 @@ sudo apt-get update &&\
  apt-get install cmake
 ```
 
+Navigate to the folder containing the Fe source code.
+
+```sh
+cd fe
+```
+
 Now, use Rust to build the Fe binary. To run Fe, you need to build using `solc-backend`.
 
 ```sh
-cargo build --feature solc-backend
+cargo build -r --feature solc-backend
 ```
 
 You will now find your Fe binary in `/target/release`. Check the build with:

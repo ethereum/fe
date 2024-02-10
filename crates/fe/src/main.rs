@@ -27,6 +27,10 @@ fn main() {
             task::create_new_project(arg);
         }
         #[cfg(feature = "solc-backend")]
+        Commands::Verify(arg) => {
+            task::verify(arg);
+        }
+        #[cfg(feature = "solc-backend")]
         Commands::Test(arg) => {
             task::test(arg);
         }

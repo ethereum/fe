@@ -1,5 +1,7 @@
 # Functions
 
+Constant size values stored on the stack or in memory can be passed into and returned by functions.
+
 > **<sup>Syntax</sup>**\
 > _Function_ :\
 > &nbsp;&nbsp; _FunctionQualifiers_ `fn` [IDENTIFIER]\
@@ -50,7 +52,7 @@ When referred to, a _function_ yields a first-class *value* of the
 corresponding zero-sized [*function type*][_FunctionTypes_], which
 when called evaluates to a direct call to the function.
 
-A function header ends with a colon (`:`) after which the function body begins.
+A function header prepends a set or curly brackets `{...}` which contain the function body.
 
 For example, this is a simple function:
 
@@ -127,6 +129,7 @@ let cyf: u256 = encrypt(msg, key: 0x1234)
 A parameter can also be specified to have no label, by using `_` in place of a
 label in the function definition. In this case, when calling the function, the
 corresponding argument must not be labeled. Example:
+
 ```fe
 fn add(_ x: u256, _ y: u256) -> u256 {
     return x + y
@@ -136,7 +139,7 @@ fn demo() {
 }
 ```
 
-Functions defined inside of a contract or struct may take `self` as a
+Functions defined inside of a contract or struct may take [`self`][SELF] as a
 parameter. This gives the function the ability to read and write contract
 storage or struct fields, respectively. If a function takes `self`
 as a parameter, the function must be called via `self`. For example:
@@ -144,21 +147,29 @@ as a parameter, the function must be called via `self`. For example:
 ```fe,ignore
 let ok: bool = self.transfer(from, to, value)
 ```
+`self` is expected to come *first* parameter in the function's parameter list.
 
-[NEWLINE]: ../lexical_structure/tokens.md#newline
-[IDENTIFIER]: ../lexical_structure/identifiers.md
-[_Types_]: ../type_system/types/index.md
-[_FunctionTypes_]: ../type_system/types/function.md
 
-[_ReturnStatement_]: ../statements/return.md
-[_VariableDeclarationStatement_]: ../statements/let.md
-[_AssignStatement_]: ../statements/assign.md
-[_AugmentedAssignStatement_]: ../statements/augassign.md
-[_ForStatement_]: ../statements/for.md
-[_WhileStatement_]: ../statements/for.md
-[_IfStatement_]: ../statements/if.md
-[_AssertStatement_]: ../statements/assert.md
-[_BreakStatement_]: ../statements/break.md
-[_ContinueStatement_]: ../statements/continue.md
-[_RevertStatement_]: ../statements/revert.md
-[_Expression_]: ../expressions/index.md
+Functions can also take a [`Context`][CONTEXT] object which gives access to EVM features that read or write
+blockchain and transaction data. `Context` is expected to be *first* in the function's parameter list
+unless the function takes `self`, in which case `Context` should come second.
+
+
+[NEWLINE]: ../../lexical_structure/tokens.md#newline
+[IDENTIFIER]: ../../lexical_structure/identifiers.md
+[_Types_]: ../../type_system/types/index.md
+[_FunctionTypes_]: ../../type_system/types/function.md
+[SELF]: ./self.md
+[CONTEXT]: ./context.md
+[_ReturnStatement_]: ../../statements/return.md
+[_VariableDeclarationStatement_]: ../../statements/let.md
+[_AssignStatement_]: ../../statements/assign.md
+[_AugmentedAssignStatement_]: ../../statements/augassign.md
+[_ForStatement_]: ../../statements/for.md
+[_WhileStatement_]: ../../statements/for.md
+[_IfStatement_]: ../../statements/if.md
+[_AssertStatement_]: ../../statements/assert.md
+[_BreakStatement_]: ../../statements/break.md
+[_ContinueStatement_]: ../../statements/continue.md
+[_RevertStatement_]: ../../statements/revert.md
+[_Expression_]: ../../expressions/index.md

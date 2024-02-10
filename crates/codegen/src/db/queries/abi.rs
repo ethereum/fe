@@ -7,7 +7,7 @@ use fe_abi::{
 use fe_analyzer::{
     constants::INDEXED,
     namespace::{
-        items::ContractId,
+        items::{ContractId, ModuleId},
         types::{CtxDecl, SelfDecl},
     },
 };
@@ -32,8 +32,14 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
         }
     }
 
+    let events = abi_module_events(db, contract.module(db.upcast()));
+
+    AbiContract::new(funcs, events)
+}
+
+pub fn abi_module_events(db: &dyn CodegenDb, module: ModuleId) -> Vec<AbiEvent> {
     let mut events = vec![];
-    for &s in db.module_structs(contract.module(db.upcast())).as_ref() {
+    for &s in db.module_structs(module).as_ref() {
         let struct_ty = s.as_type(db.upcast());
         // TODO: This is a hack to avoid generating an ABI for non-`emittable` structs.
         if struct_ty.is_emittable(db.upcast()) {
@@ -43,7 +49,7 @@ pub fn abi_contract(db: &dyn CodegenDb, contract: ContractId) -> AbiContract {
         }
     }
 
-    AbiContract::new(funcs, events)
+    events
 }
 
 pub fn abi_function(db: &dyn CodegenDb, function: FunctionId) -> AbiFunction {

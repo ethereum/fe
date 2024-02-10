@@ -143,9 +143,9 @@ impl Serialize for AbiType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AbiTupleField {
-    name: String,
+    pub name: String,
     #[serde(flatten)]
-    ty: AbiType,
+    pub ty: AbiType,
 }
 
 impl AbiTupleField {

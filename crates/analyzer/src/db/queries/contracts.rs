@@ -122,7 +122,8 @@ pub fn contract_public_function_map(
         contract
             .functions(db)
             .iter()
-            .filter_map(|(name, func)| func.is_public(db).then(|| (name.clone(), *func)))
+            .filter(|(_, func)| func.is_public(db))
+            .map(|(name, func)| (name.clone(), *func))
             .collect(),
     )
 }

@@ -276,7 +276,8 @@ impl SimplifiedArmMatrix {
                 .pats()
                 .iter()
                 .enumerate()
-                .filter_map(|(i, pat)| (i != col).then(|| pat.clone()))
+                .filter(|(i, _)| (*i != col))
+                .map(|(_, pat)| pat.clone())
                 .collect();
             rows.push(PatternRowVec::new(reduced_pat_vec));
         }

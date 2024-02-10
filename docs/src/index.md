@@ -59,4 +59,4 @@ The details of the EVM can also cause the higher level languages to be less intu
 
 You can read much more information about Fe in these docs. If you want to get building, you can begin with our [Quickstart guide](quickstart/index.md).
 
-You can also get involved in the Fe community by contributing code or documentation to the project Github or joining the conversation on [Discord](https://discord.gg/yCT6NYBb). Learn more on our [Contributing](contributing.md) page.
+You can also get involved in the Fe community by contributing code or documentation to the project Github or joining the conversation on [Discord](https://discord.gg/ywpkAXFjZH). Learn more on our [Contributing](contributing.md) page.

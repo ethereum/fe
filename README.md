@@ -11,7 +11,7 @@ NOTE: **The larger part of the `master` branch will be replaced with the brand-n
 
 ## Overview
 
-Fe is a statically typed language for the Ethereum Virtual Machine (EVM). It is inspired by Python and Rust which makes it easy to learn -- especially for new developers entering the Ethereum ecosystem.
+Fe is a statically typed language for the Ethereum Virtual Machine (EVM). It is inspired by Rust and easy to learn -- especially for new developers entering the Ethereum ecosystem.
 
 ## Features & Goals
 

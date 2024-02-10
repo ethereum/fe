@@ -6,7 +6,7 @@ Make sure that version follows [semver](https://semver.org/) rules e.g (`0.23.0`
 
 ### Generate Release Notes
 
-**Prerequisite**: Release notes are generated with [towncrier](https://pypi.org/project/towncrier/).Ensure to have `towncrier` installed and the command is available.
+**Prerequisite**: Release notes are generated with [towncrier](https://pypi.org/project/towncrier/). Ensure to have `towncrier` installed and the command is available.
 
 Run `make notes version=<version>` where `<version>` is the version we are generating the release notes for e.g. `0.23.0`.
 
