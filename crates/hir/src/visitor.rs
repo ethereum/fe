@@ -5,13 +5,16 @@ use crate::{
         attr,
         scope_graph::{FieldParent, ScopeId},
         Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
-        FieldIndex, Func, FuncParam, FuncParamLabel, FuncParamListId, FuncParamName, GenericArg,
-        GenericArgListId, GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind,
-        LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod,
-        Trait, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        FieldIndex, Func, FuncParam, FuncParamListId, FuncParamName, GenericArg, GenericArgListId,
+        GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind,
+        MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait,
+        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
         UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
-    span::{lazy_spans::*, transition::ChainRoot, SpanDowncast},
+    span::{
+        item::LazySuperTraitListSpan, lazy_spans::*, params::LazyTraitRefSpan,
+        transition::ChainRoot, SpanDowncast,
+    },
     HirDb,
 };
 
@@ -21,10 +24,11 @@ pub mod prelude {
         walk_call_arg_list, walk_const, walk_contract, walk_enum, walk_expr, walk_field,
         walk_field_def, walk_field_def_list, walk_field_list, walk_func, walk_func_param,
         walk_func_param_list, walk_generic_arg, walk_generic_arg_list, walk_generic_param,
-        walk_generic_param_list, walk_impl, walk_impl_trait, walk_item, walk_mod, walk_pat,
-        walk_path, walk_stmt, walk_struct, walk_top_mod, walk_trait, walk_ty, walk_type_alias,
-        walk_type_bound, walk_type_bound_list, walk_use, walk_use_path, walk_variant_def,
-        walk_variant_def_list, walk_where_clause, walk_where_predicate, Visitor, VisitorCtxt,
+        walk_generic_param_list, walk_impl, walk_impl_trait, walk_item, walk_kind_bound, walk_mod,
+        walk_pat, walk_path, walk_stmt, walk_struct, walk_super_trait_list, walk_top_mod,
+        walk_trait, walk_trait_ref, walk_ty, walk_type_alias, walk_type_bound,
+        walk_type_bound_list, walk_use, walk_use_path, walk_variant_def, walk_variant_def_list,
+        walk_where_clause, walk_where_predicate, Visitor, VisitorCtxt,
     };
 
     pub use crate::span::lazy_spans::*;
@@ -166,6 +170,30 @@ pub trait Visitor {
         bound: &TypeBound,
     ) {
         walk_type_bound(self, ctxt, bound);
+    }
+
+    fn visit_trait_ref(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
+        trait_ref: TraitRefId,
+    ) {
+        walk_trait_ref(self, ctxt, trait_ref);
+    }
+
+    fn visit_super_trait_list(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazySuperTraitListSpan>,
+        super_traits: &[TraitRefId],
+    ) {
+        walk_super_trait_list(self, ctxt, super_traits);
+    }
+
+    fn visit_kind_bound(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+        bound: &KindBound,
+    ) {
+        walk_kind_bound(self, ctxt, bound);
     }
 
     fn visit_where_clause(
@@ -609,14 +637,6 @@ pub fn walk_type_alias<V>(
         },
     );
 
-    ctxt.with_new_ctxt(
-        |span| span.where_clause_moved(),
-        |ctxt| {
-            let id = alias.where_clause(ctxt.db);
-            visitor.visit_where_clause(ctxt, id);
-        },
-    );
-
     if let Some(ty) = alias.ty(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
             |span| span.ty_moved(),
@@ -699,6 +719,11 @@ where
     );
 
     ctxt.with_new_ctxt(
+        |span| span.super_traits(),
+        |ctxt| visitor.visit_super_trait_list(ctxt, trait_.super_traits(ctxt.db)),
+    );
+
+    ctxt.with_new_ctxt(
         |span| span.where_clause_moved(),
         |ctxt| {
             let id = trait_.where_clause(ctxt.db);
@@ -722,21 +747,7 @@ pub fn walk_impl_trait<V>(
         ctxt.with_new_ctxt(
             |span| span.trait_ref_moved(),
             |ctxt| {
-                if let Some(path) = trait_ref.path.to_opt() {
-                    ctxt.with_new_ctxt(
-                        |span| span.path_moved(),
-                        |ctxt| {
-                            visitor.visit_path(ctxt, path);
-                        },
-                    )
-                };
-
-                ctxt.with_new_ctxt(
-                    |span| span.generic_args_moved(),
-                    |ctxt| {
-                        visitor.visit_generic_arg_list(ctxt, trait_ref.generic_args);
-                    },
-                );
+                visitor.visit_trait_ref(ctxt, trait_ref);
             },
         )
     }
@@ -773,6 +784,10 @@ pub fn walk_impl_trait<V>(
             visitor.visit_where_clause(ctxt, id);
         },
     );
+
+    for item in impl_trait.children_non_nested(ctxt.db) {
+        visitor.visit_item(&mut VisitorCtxt::with_item(ctxt.db, item), item);
+    }
 }
 
 pub fn walk_const<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyConstSpan>, const_: Const)
@@ -1440,7 +1455,7 @@ pub fn walk_func_param<V>(
 ) where
     V: Visitor + ?Sized,
 {
-    if let Some(FuncParamLabel::Ident(ident)) = param.label {
+    if let Some(FuncParamName::Ident(ident)) = param.label {
         ctxt.with_new_ctxt(
             |span| span.label_moved(),
             |ctxt| visitor.visit_ident(ctxt, ident),
@@ -1455,7 +1470,16 @@ pub fn walk_func_param<V>(
     }
 
     if let Some(ty) = param.ty.to_opt() {
-        ctxt.with_new_ctxt(|span| span.ty_moved(), |ctxt| visitor.visit_ty(ctxt, ty));
+        if param.is_self_param() && param.self_ty_fallback {
+            ctxt.with_new_ctxt(
+                |span| span.fallback_self_ty(),
+                |ctxt| {
+                    visitor.visit_ty(ctxt, ty);
+                },
+            );
+        } else {
+            ctxt.with_new_ctxt(|span| span.ty_moved(), |ctxt| visitor.visit_ty(ctxt, ty));
+        }
     }
 }
 
@@ -1631,7 +1655,7 @@ where
         TypeKind::Ptr(ty) => {
             if let Some(ty) = ty.to_opt() {
                 ctxt.with_new_ctxt(
-                    |ctxt| ctxt.into_ptr_type().ty(),
+                    |ctxt| ctxt.into_ptr_type().pointee(),
                     |ctxt| {
                         visitor.visit_ty(ctxt, ty);
                     },
@@ -1651,7 +1675,7 @@ where
                 ctxt.with_new_ctxt(
                     |span| span.generic_args_moved(),
                     |ctxt| {
-                        visitor.visit_generic_arg_list(ctxt, generic_args);
+                        visitor.visit_generic_arg_list(ctxt, *generic_args);
                     },
                 );
             },
@@ -1659,7 +1683,7 @@ where
 
         TypeKind::Tuple(t) => ctxt.with_new_ctxt(
             |span| span.into_tuple_type(),
-            |ctxt| walk_tuple_type(visitor, ctxt, t),
+            |ctxt| walk_tuple_type(visitor, ctxt, *t),
         ),
 
         TypeKind::Array(elem, body) => ctxt.with_new_ctxt(
@@ -1679,7 +1703,17 @@ where
             },
         ),
 
-        TypeKind::SelfType => {}
+        TypeKind::SelfType(generic_args) => ctxt.with_new_ctxt(
+            |span| span.into_self_type(),
+            |ctxt| {
+                ctxt.with_new_ctxt(
+                    |span| span.generic_args_moved(),
+                    |ctxt| {
+                        visitor.visit_generic_arg_list(ctxt, *generic_args);
+                    },
+                );
+            },
+        ),
     }
 }
 
@@ -1727,7 +1761,29 @@ pub fn walk_type_bound<V>(
 ) where
     V: Visitor + ?Sized,
 {
-    if let Some(path) = bound.path.to_opt() {
+    match bound {
+        TypeBound::Trait(trait_ref) => ctxt.with_new_ctxt(
+            |span| span.trait_bound_moved(),
+            |ctxt| visitor.visit_trait_ref(ctxt, *trait_ref),
+        ),
+        TypeBound::Kind(Partial::Present(kind_bound)) => ctxt.with_new_ctxt(
+            |span| span.kind_bound_moved(),
+            |ctxt| {
+                visitor.visit_kind_bound(ctxt, kind_bound);
+            },
+        ),
+        _ => {}
+    }
+}
+
+pub fn walk_trait_ref<V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
+    trait_ref: TraitRefId,
+) where
+    V: Visitor + ?Sized,
+{
+    if let Some(path) = trait_ref.path(ctxt.db()).to_opt() {
         ctxt.with_new_ctxt(
             |span| span.path_moved(),
             |ctxt| {
@@ -1736,11 +1792,58 @@ pub fn walk_type_bound<V>(
         )
     }
 
-    if let Some(args) = bound.generic_args {
+    if let Some(args) = trait_ref.generic_args(ctxt.db()) {
         ctxt.with_new_ctxt(
             |span| span.generic_args_moved(),
             |ctxt| {
                 visitor.visit_generic_arg_list(ctxt, args);
+            },
+        )
+    }
+}
+
+pub fn walk_super_trait_list<V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'_, LazySuperTraitListSpan>,
+    super_traits: &[TraitRefId],
+) where
+    V: Visitor + ?Sized,
+{
+    for (idx, super_trait) in super_traits.iter().enumerate() {
+        ctxt.with_new_ctxt(
+            |span| span.super_trait_moved(idx),
+            |ctxt| {
+                visitor.visit_trait_ref(ctxt, *super_trait);
+            },
+        )
+    }
+}
+
+pub fn walk_kind_bound<V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+    bound: &KindBound,
+) where
+    V: Visitor + ?Sized,
+{
+    let KindBound::Abs(lhs, rhs) = bound else {
+        return;
+    };
+
+    if let Partial::Present(lhs) = lhs {
+        ctxt.with_new_ctxt(
+            |span| span.abs_moved().lhs_moved(),
+            |ctxt| {
+                visitor.visit_kind_bound(ctxt, lhs.as_ref());
+            },
+        )
+    }
+
+    if let Partial::Present(rhs) = rhs {
+        ctxt.with_new_ctxt(
+            |span| span.abs_moved().rhs_moved(),
+            |ctxt| {
+                visitor.visit_kind_bound(ctxt, rhs.as_ref());
             },
         )
     }
@@ -1808,6 +1911,18 @@ impl<'db, T> VisitorCtxt<'db, T>
 where
     T: LazySpan,
 {
+    pub fn new(db: &'db dyn HirDb, scope: ScopeId, span: T) -> Self
+    where
+        T: Into<DynLazySpan>,
+    {
+        Self {
+            db,
+            span: span.into(),
+            scope_stack: vec![scope],
+            _t: PhantomData,
+        }
+    }
+
     pub fn db(&self) -> &'db dyn HirDb {
         self.db
     }

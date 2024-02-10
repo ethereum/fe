@@ -62,3 +62,48 @@ impl Stmt {
         ctxt.push_stmt(stmt, origin_kind)
     }
 }
+
+fn desugar_aug_assign(
+    ctxt: &mut BodyCtxt<'_, '_>,
+    ast: &ast::AugAssignStmt,
+) -> (Stmt, HirOrigin<ast::Stmt>) {
+    let lhs_ident = ast.ident();
+    let path = lhs_ident
+        .clone()
+        .map(|ident| PathId::from_token(ctxt.f_ctxt, ident));
+
+    let lhs_origin: AugAssignDesugared = lhs_ident.unwrap().text_range().into();
+    let lhs_pat = if let Some(path) = path {
+        ctxt.push_pat(
+            Pat::Path(Some(path).into()),
+            HirOrigin::desugared(lhs_origin.clone()),
+        )
+    } else {
+        ctxt.push_missing_pat()
+    };
+
+    let binop_lhs = if let Some(path) = path {
+        ctxt.push_expr(
+            Expr::Path(Some(path).into()),
+            HirOrigin::desugared(lhs_origin),
+        )
+    } else {
+        ctxt.push_missing_expr()
+    };
+
+    let binop_rhs = ast
+        .expr()
+        .map(|expr| Expr::lower_ast(ctxt, expr))
+        .unwrap_or_else(|| ctxt.push_missing_expr());
+
+    let binop = ast.op().map(|op| ArithBinOp::lower_ast(op).into()).into();
+    let expr = ctxt.push_expr(
+        Expr::Bin(binop_lhs, binop_rhs, binop),
+        HirOrigin::desugared(AugAssignDesugared::stmt(ast)),
+    );
+
+    (
+        Stmt::Assign(lhs_pat, expr),
+        HirOrigin::desugared(AugAssignDesugared::stmt(ast)),
+    )
+}

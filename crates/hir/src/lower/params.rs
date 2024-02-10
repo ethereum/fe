@@ -1,6 +1,6 @@
 use parser::ast::{self};
 
-use crate::hir_def::{kw, params::*, Body, IdentId, PathId, TypeId};
+use crate::hir_def::{kw, params::*, Body, IdentId, Partial, TypeId};
 
 use super::FileLowerCtxt;
 
@@ -140,18 +140,23 @@ impl GenericParam {
 impl FuncParam {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParam) -> Self {
         let is_mut = ast.mut_token().is_some();
-        let label = ast.label().map(|ast| FuncParamLabel::lower_ast(ctxt, ast));
-        let name = ast
-            .name()
-            .map(|ast| FuncParamName::lower_ast(ctxt, ast))
-            .into();
-        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
+        let label = ast.label().map(|ast| FuncParamName::lower_label(ctxt, ast));
+        let name = ast.name().map(|ast| FuncParamName::lower_ast(ctxt, ast));
+
+        let self_ty_fallback = name.map_or(false, |name| name.is_self()) && ast.ty().is_none();
+
+        let ty = if self_ty_fallback {
+            Partial::Present(TypeId::fallback_self_ty(ctxt.db()))
+        } else {
+            TypeId::lower_ast_partial(ctxt, ast.ty())
+        };
 
         Self {
             is_mut,
             label,
-            name,
+            name: name.into(),
             ty,
+            self_ty_fallback,
         }
     }
 }
@@ -174,11 +179,37 @@ impl WherePredicate {
 
 impl TypeBound {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeBound) -> Self {
-        let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast)).into();
-        let generic_args = ast
-            .generic_args()
-            .map(|args| GenericArgListId::lower_ast(ctxt, args));
-        Self { path, generic_args }
+        if let Some(trait_bound) = ast.trait_bound() {
+            Self::Trait(TraitRefId::lower_ast(ctxt, trait_bound))
+        } else {
+            Self::Kind(KindBound::lower_ast_opt(ctxt, ast.kind_bound()))
+        }
+    }
+}
+
+impl KindBound {
+    fn lower_ast_opt(_ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::KindBound>) -> Partial<Self> {
+        let Some(ast) = ast else {
+            return Partial::Absent;
+        };
+
+        if let Some(abs) = ast.abs() {
+            let lhs = KindBound::lower_ast_opt(_ctxt, abs.lhs())
+                .to_opt()
+                .map(Box::new)
+                .into();
+
+            let rhs = KindBound::lower_ast_opt(_ctxt, abs.rhs())
+                .to_opt()
+                .map(Box::new)
+                .into();
+
+            Partial::Present(KindBound::Abs(lhs, rhs))
+        } else if ast.mono().is_some() {
+            Partial::Present(KindBound::Mono)
+        } else {
+            Partial::Absent
+        }
     }
 }
 
@@ -192,15 +223,11 @@ impl FuncParamName {
             ast::FuncParamName::Underscore(_) => FuncParamName::Underscore,
         }
     }
-}
 
-impl FuncParamLabel {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParamLabel) -> Self {
+    fn lower_label(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParamLabel) -> FuncParamName {
         match ast {
-            ast::FuncParamLabel::Ident(name) => {
-                FuncParamLabel::Ident(IdentId::lower_token(ctxt, name))
-            }
-            ast::FuncParamLabel::Underscore(_) => FuncParamLabel::Underscore,
+            ast::FuncParamLabel::Ident(name) => Self::Ident(IdentId::lower_token(ctxt, name)),
+            ast::FuncParamLabel::Underscore(_) => Self::Underscore,
         }
     }
 }

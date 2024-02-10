@@ -277,19 +277,86 @@ ast_node! {
     /// A type bound.
     /// `Trait`
     /// `Trait<T, U>`
+    /// `(* -> *) -> *`
     pub struct TypeBound,
     SK::TypeBound,
 }
 impl TypeBound {
     /// A path of the type bound.
+    pub fn trait_bound(&self) -> Option<TraitRef> {
+        support::child(self.syntax())
+    }
+
+    pub fn kind_bound(&self) -> Option<KindBound> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    pub struct TraitRef,
+    SK::TraitRef
+}
+impl TraitRef {
+    /// A path to the trait.
     pub fn path(&self) -> Option<super::Path> {
         support::child(self.syntax())
     }
 
-    /// A generic argument list of the type bound.
+    /// A generic argument list for the trait.
     pub fn generic_args(&self) -> Option<GenericArgList> {
         support::child(self.syntax())
     }
+}
+
+ast_node! {
+    pub struct KindBound,
+     SK::KindBoundAbs | SK::KindBoundMono
+}
+impl KindBound {
+    pub fn mono(&self) -> Option<KindBoundMono> {
+        match self.syntax().kind() {
+            SK::KindBoundMono => Some(KindBoundMono::cast(self.syntax().clone()).unwrap()),
+            _ => None,
+        }
+    }
+
+    pub fn abs(&self) -> Option<KindBoundAbs> {
+        match self.syntax().kind() {
+            SK::KindBoundAbs => Some(KindBoundAbs::cast(self.syntax().clone()).unwrap()),
+            _ => None,
+        }
+    }
+}
+
+ast_node! {
+    pub struct KindBoundMono,
+    SK::KindBoundMono,
+}
+
+ast_node! {
+    pub struct KindBoundAbs,
+    SK::KindBoundAbs,
+}
+impl KindBoundAbs {
+    pub fn lhs(&self) -> Option<KindBound> {
+        support::child(self.syntax())
+    }
+
+    pub fn rhs(&self) -> Option<KindBound> {
+        support::children(self.syntax()).nth(1)
+    }
+
+    pub fn arrow(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Arrow)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum KindBoundVariant {
+    /// `*`
+    Mono(KindBoundMono),
+    /// `KindBound -> KindBound`
+    Abs(KindBoundAbs),
 }
 
 /// A trait for AST nodes that can have generic parameters.
@@ -421,6 +488,8 @@ mod tests {
             p1_bounds
                 .next()
                 .unwrap()
+                .trait_bound()
+                .unwrap()
                 .path()
                 .unwrap()
                 .segments()
@@ -435,6 +504,8 @@ mod tests {
 
         assert_eq!(
             p1_bounds_trait2
+                .trait_bound()
+                .unwrap()
                 .path()
                 .unwrap()
                 .segments()

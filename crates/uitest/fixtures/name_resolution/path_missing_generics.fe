@@ -10,4 +10,4 @@ pub struct MyS<T, U>
     z: Z
 }
 
-impl<T, U> MyS<T, U, V> {}
+impl<T: Trait, U: Trait> MyS<T, V> {}

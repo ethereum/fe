@@ -12,18 +12,17 @@ use hir::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
-        IdentId, ItemKind, Use,
+        GenericParam, GenericParamOwner, IdentId, ItemKind, Use,
     },
     span::DynLazySpan,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::HirAnalysisDb;
-
 use super::{
     import_resolver::Importer,
     visibility_checker::{is_scope_visible_from, is_use_visible},
 };
+use crate::HirAnalysisDb;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NameQuery {
@@ -144,13 +143,19 @@ impl NameResBucket {
 
     /// Returns the resolution of the given `domain`.
     pub fn pick(&self, domain: NameDomain) -> &NameResolutionResult<NameRes> {
-        self.bucket
-            .get(&domain)
-            .unwrap_or(&Err(NameResolutionError::NotFound))
+        for domain in domain.iter() {
+            if let Some(res) = self.bucket.get(&domain) {
+                return res;
+            }
+        }
+
+        &Err(NameResolutionError::NotFound)
     }
 
     pub fn filter_by_domain(&mut self, domain: NameDomain) {
-        self.bucket.retain(|d, _| *d == domain);
+        for domain in domain.iter() {
+            self.bucket.retain(|d, _| *d == domain);
+        }
     }
 
     pub(super) fn merge(&mut self, bucket: &NameResBucket) {
@@ -172,48 +177,49 @@ impl NameResBucket {
 
     /// Push the `res` into the set.
     fn push(&mut self, res: &NameRes) {
-        let domain = res.domain;
-        match self.bucket.entry(domain) {
-            Entry::Occupied(mut e) => {
-                let old_res = match e.get_mut() {
-                    Ok(res) => res,
-                    Err(NameResolutionError::NotFound) => {
-                        e.insert(Ok(res.clone())).ok();
-                        return;
-                    }
-                    Err(NameResolutionError::Ambiguous(ambiguous_set)) => {
-                        if ambiguous_set[0].derivation == res.derivation {
-                            ambiguous_set.push(res.clone());
+        for domain in res.domain.iter() {
+            match self.bucket.entry(domain) {
+                Entry::Occupied(mut e) => {
+                    let old_res = match e.get_mut() {
+                        Ok(res) => res,
+                        Err(NameResolutionError::NotFound) => {
+                            e.insert(Ok(res.clone())).ok();
+                            return;
                         }
-                        return;
-                    }
-                    Err(_) => {
-                        return;
-                    }
-                };
+                        Err(NameResolutionError::Ambiguous(ambiguous_set)) => {
+                            if ambiguous_set[0].derivation == res.derivation {
+                                ambiguous_set.push(res.clone());
+                            }
+                            return;
+                        }
+                        Err(_) => {
+                            return;
+                        }
+                    };
 
-                let old_derivation = old_res.derivation.clone();
-                match res.derivation.cmp(&old_derivation) {
-                    cmp::Ordering::Less => {}
-                    cmp::Ordering::Equal => {
-                        if old_res.kind != res.kind {
-                            let old_res_cloned = old_res.clone();
-                            let res = res.clone();
-                            e.insert(Err(NameResolutionError::Ambiguous(vec![
-                                old_res_cloned,
-                                res,
-                            ])))
-                            .ok();
+                    let old_derivation = old_res.derivation.clone();
+                    match res.derivation.cmp(&old_derivation) {
+                        cmp::Ordering::Less => {}
+                        cmp::Ordering::Equal => {
+                            if old_res.kind != res.kind {
+                                let old_res_cloned = old_res.clone();
+                                let res = res.clone();
+                                e.insert(Err(NameResolutionError::Ambiguous(vec![
+                                    old_res_cloned,
+                                    res,
+                                ])))
+                                .ok();
+                            }
                         }
-                    }
-                    cmp::Ordering::Greater => {
-                        e.insert(Ok(res.clone())).ok();
+                        cmp::Ordering::Greater => {
+                            e.insert(Ok(res.clone())).ok();
+                        }
                     }
                 }
-            }
 
-            Entry::Vacant(e) => {
-                e.insert(Ok(res.clone()));
+                Entry::Vacant(e) => {
+                    e.insert(Ok(res.clone()));
+                }
             }
         }
     }
@@ -442,32 +448,38 @@ impl NameDerivation {
 
 impl PartialOrd for NameDerivation {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for NameDerivation {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
-            (NameDerivation::Def, NameDerivation::Def) => Some(cmp::Ordering::Equal),
-            (NameDerivation::Def, _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::Def) => Some(cmp::Ordering::Less),
+            (NameDerivation::Def, NameDerivation::Def) => cmp::Ordering::Equal,
+            (NameDerivation::Def, _) => cmp::Ordering::Greater,
+            (_, NameDerivation::Def) => cmp::Ordering::Less,
 
             (NameDerivation::NamedImported(_), NameDerivation::NamedImported(_)) => {
-                Some(cmp::Ordering::Equal)
+                cmp::Ordering::Equal
             }
-            (NameDerivation::NamedImported(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::NamedImported(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::NamedImported(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::NamedImported(_)) => cmp::Ordering::Less,
 
             (NameDerivation::GlobImported(_), NameDerivation::GlobImported(_)) => {
-                Some(cmp::Ordering::Equal)
+                cmp::Ordering::Equal
             }
-            (NameDerivation::GlobImported(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::GlobImported(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::GlobImported(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::GlobImported(_)) => cmp::Ordering::Less,
 
-            (NameDerivation::Lex(lhs), NameDerivation::Lex(rhs)) => lhs.partial_cmp(rhs),
-            (NameDerivation::Lex(_), _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::Lex(_)) => Some(cmp::Ordering::Less),
+            (NameDerivation::Lex(lhs), NameDerivation::Lex(rhs)) => lhs.cmp(rhs),
+            (NameDerivation::Lex(_), _) => cmp::Ordering::Greater,
+            (_, NameDerivation::Lex(_)) => cmp::Ordering::Less,
 
-            (NameDerivation::External, NameDerivation::External) => Some(cmp::Ordering::Equal),
-            (NameDerivation::External, _) => Some(cmp::Ordering::Greater),
-            (_, NameDerivation::External) => Some(cmp::Ordering::Less),
+            (NameDerivation::External, NameDerivation::External) => cmp::Ordering::Equal,
+            (NameDerivation::External, _) => cmp::Ordering::Greater,
+            (_, NameDerivation::External) => cmp::Ordering::Less,
 
-            (NameDerivation::Prim, NameDerivation::Prim) => Some(cmp::Ordering::Equal),
+            (NameDerivation::Prim, NameDerivation::Prim) => cmp::Ordering::Equal,
         }
     }
 }
@@ -504,6 +516,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 
     pub(crate) fn resolve_query(&mut self, query: NameQuery) -> NameResBucket {
+        let hir_db = self.db.as_hir_db();
         // If the query is already resolved, return the cached result.
         if let Some(resolved) = self.cache_store.get(query) {
             return resolved.clone();
@@ -519,13 +532,13 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         // 1. Look for the name in the current scope.
         let mut found_scopes = FxHashSet::default();
-        for edge in query.scope.edges(self.db.as_hir_db()) {
+        for edge in query.scope.edges(hir_db) {
             match edge.kind.propagate(&query) {
                 PropagationResult::Terminated => {
                     if found_scopes.insert(edge.dest) {
                         let res = NameRes::new_from_scope(
                             edge.dest,
-                            NameDomain::from_scope(edge.dest),
+                            NameDomain::from_scope(self.db, edge.dest),
                             NameDerivation::Def,
                         );
                         bucket.push(&res);
@@ -577,16 +590,16 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // 5. Look for the name in the external ingots.
         query
             .scope
-            .top_mod(self.db.as_hir_db())
-            .ingot(self.db.as_hir_db())
-            .external_ingots(self.db.as_hir_db())
+            .top_mod(hir_db)
+            .ingot(hir_db)
+            .external_ingots(hir_db)
             .iter()
-            .for_each(|(name, root_mod)| {
+            .for_each(|(name, ingot)| {
                 if *name == query.name {
                     // We don't care about the result of `push` because we assume ingots are
                     // guaranteed to be unique.
                     bucket.push(&NameRes::new_from_scope(
-                        ScopeId::from_item((*root_mod).into()),
+                        ScopeId::from_item((ingot.root_mod(hir_db)).into()),
                         NameDomain::Type,
                         NameDerivation::External,
                     ))
@@ -651,7 +664,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         unresolved_named_imports: FxHashSet<IdentId>,
     ) -> FxHashMap<IdentId, Vec<NameRes>> {
         let mut res_collection: FxHashMap<IdentId, Vec<NameRes>> = FxHashMap::default();
-        let mut found_domains: FxHashMap<IdentId, u8> = FxHashMap::default();
+        let mut found_domains: FxHashMap<IdentId, NameDomain> = FxHashMap::default();
         let mut found_kinds: FxHashSet<(IdentId, NameResKind)> = FxHashSet::default();
 
         for edge in target.edges(self.db.as_hir_db()) {
@@ -666,11 +679,14 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             if !found_kinds.insert((name, scope.into())) {
                 continue;
             }
-            let res =
-                NameRes::new_from_scope(scope, NameDomain::from_scope(scope), NameDerivation::Def);
+            let res = NameRes::new_from_scope(
+                scope,
+                NameDomain::from_scope(self.db, scope),
+                NameDerivation::Def,
+            );
 
             if res.is_visible(self.db, use_scope) {
-                *found_domains.entry(name).or_default() |= res.domain as u8;
+                *found_domains.entry(name).or_default() |= res.domain;
                 res_collection.entry(name).or_default().push(res);
             }
         }
@@ -683,13 +699,13 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     .iter()
                     .filter(|res| res.is_visible(self.db, use_scope))
                 {
-                    if (found_domain & res.domain as u8 != 0)
+                    if (found_domain & res.domain != NameDomain::Invalid)
                         || !found_kinds.insert((name, res.kind))
                     {
                         continue;
                     }
 
-                    *found_domains_after_named.entry(name).or_default() |= res.domain as u8;
+                    *found_domains_after_named.entry(name).or_default() |= res.domain;
                     res_collection.entry(name).or_default().push(res.clone());
                 }
             }
@@ -714,7 +730,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                             .copied()
                             .unwrap_or_default();
 
-                        if (seen_domain & res.domain as u8 != 0)
+                        if (seen_domain & res.domain != NameDomain::Invalid)
                             || !found_kinds.insert((name, res.kind))
                         {
                             continue;
@@ -732,12 +748,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     fn finalize_query_result(&mut self, query: NameQuery, bucket: NameResBucket) -> NameResBucket {
         self.cache_store.cache_result(query, bucket.clone());
         bucket
-    }
-}
-
-impl Ord for NameDerivation {
-    fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.partial_cmp(other).unwrap()
     }
 }
 
@@ -823,29 +833,172 @@ impl ResolvedQueryCacheStore {
 /// }
 /// use MyEnum::Foo
 /// ```
+// #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+// pub enum NameDomain {
+//     /// The domain is associated with all items except for items that belongs to
+//     /// the `Value` domain.
+//     Type = 0b1,
+//     /// The domain is associated with a local variable and items that are
+//     /// guaranteed not to have associated names. e.g., `fn`, `const` or enum
+//     /// variables.
+//     Value = 0b10,
+//
+//     /// The domain is associated with both `Type` and `Value`. This domain is
+//     /// used to represent const type parameters.
+//     #[doc(hidden)]
+//     TypeAndValue = 0b11,
+//
+//     /// The domain is associated with struct fields.
+//     Field = 0b100,
+// }
+// impl NameDomain {
+//     pub(super) fn from_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self
+// {         match scope {
+//             ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_))
+//             | ScopeId::FuncParam(..)
+//             | ScopeId::Block(..) => Self::Value,
+//             ScopeId::Item(_) => Self::Type,
+//             ScopeId::GenericParam(parent, idx) => {
+//                 let parent =
+// GenericParamOwner::from_item_opt(parent).unwrap();
+//
+//                 let param =
+// &parent.params(db.as_hir_db()).data(db.as_hir_db())[idx];
+// match param {                     GenericParam::Type(_) => NameDomain::Type,
+//                     GenericParam::Const(_) => NameDomain::Type |
+// NameDomain::Value,                 }
+//             }
+//             ScopeId::Field(..) => Self::Field,
+//             ScopeId::Variant(..) => Self::Value,
+//         }
+//     }
+//
+//     pub(super) fn disjoint(self) -> impl Iterator<Item = Self> {
+//     match self {
+//     Self::Type => Either::Left(std::iter::once(Self::Type)),
+//     Self::Value => Either::Left(std::iter::once(Self::Value)),
+//     Self::TypeAndValue => {
+//
+//    Either::Right(std::iter::once(Self::Type).
+//     chain(std::iter::once(Self::Value)))         }
+//     Self::Field => Either::Left(std::iter::once(Self::Field)),
+//     }
+//     }
+// }
+
+/// Each resolved name is associated with a domain that indicates which domain
+/// the name belongs to.
+/// The multiple same names can be introduced in a same scope as long as they
+/// are in different domains.
+///
+/// E.g., A `Foo` in the below example can be introduced in the same scope as a
+/// type and variant at the same time.
+/// ```fe
+/// struct Foo {}
+/// enum MyEnum {
+///     Foo
+/// }
+/// use MyEnum::Foo
+/// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum NameDomain {
+pub struct NameDomain {
+    _inner: u8,
+}
+
+#[allow(non_upper_case_globals)]
+impl NameDomain {
     /// The domain is associated with all items except for items that belongs to
     /// the `Value` domain.
-    Type = 0b1,
+    pub const Type: Self = Self { _inner: 0b1 };
     /// The domain is associated with a local variable and items that are
     /// guaranteed not to have associated names. e.g., `fn`, `const` or enum
     /// variables.
-    Value = 0b10,
+    pub const Value: Self = Self { _inner: 0b10 };
     /// The domain is associated with struct fields.
-    Field = 0b100,
-}
+    pub const Field: Self = Self { _inner: 0b100 };
 
-impl NameDomain {
-    pub(super) fn from_scope(scope: ScopeId) -> Self {
+    const Invalid: Self = Self { _inner: 0b0 };
+
+    pub(super) fn from_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
         match scope {
             ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_))
             | ScopeId::FuncParam(..)
             | ScopeId::Block(..) => Self::Value,
-            ScopeId::Item(_) | ScopeId::GenericParam(..) => Self::Type,
+            ScopeId::Item(_) => Self::Type,
+            ScopeId::GenericParam(parent, idx) => {
+                let parent = GenericParamOwner::from_item_opt(parent).unwrap();
+
+                let param = &parent.params(db.as_hir_db()).data(db.as_hir_db())[idx];
+                match param {
+                    GenericParam::Type(_) => NameDomain::Type,
+                    GenericParam::Const(_) => NameDomain::Type | NameDomain::Value,
+                }
+            }
             ScopeId::Field(..) => Self::Field,
             ScopeId::Variant(..) => Self::Value,
         }
+    }
+
+    pub(super) fn iter(self) -> impl Iterator<Item = Self> {
+        struct NameDomainIter {
+            _inner: u8,
+            idx: u8,
+        }
+
+        impl Iterator for NameDomainIter {
+            type Item = NameDomain;
+
+            fn next(&mut self) -> Option<Self::Item> {
+                while self.idx < 3 {
+                    let domain = NameDomain {
+                        _inner: (1 << self.idx) & self._inner,
+                    };
+                    self.idx += 1;
+                    if domain != NameDomain::Invalid {
+                        return Some(domain);
+                    }
+                }
+
+                None
+            }
+        }
+
+        NameDomainIter {
+            _inner: self._inner,
+            idx: 0,
+        }
+    }
+}
+
+impl Default for NameDomain {
+    fn default() -> Self {
+        Self::Invalid
+    }
+}
+
+impl std::ops::BitOr for NameDomain {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        Self {
+            _inner: self._inner | rhs._inner,
+        }
+    }
+}
+
+impl std::ops::BitAnd for NameDomain {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        Self {
+            _inner: self._inner & rhs._inner,
+        }
+    }
+}
+
+impl std::ops::BitOrAssign for NameDomain {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self._inner |= rhs._inner;
     }
 }
 

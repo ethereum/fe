@@ -1,14 +1,13 @@
 #![allow(unused)]
 use hir::hir_def::{scope_graph::ScopeId, IdentId, Partial, PathId};
 
-use crate::{name_resolution::QueryDirective, HirAnalysisDb};
-
 use super::{
     name_resolver::{
         NameRes, NameResBucket, NameResolutionError, NameResolver, ResolvedQueryCacheStore,
     },
     NameDomain, NameQuery,
 };
+use crate::{name_resolution::QueryDirective, HirAnalysisDb};
 
 /// The result of early path resolution.
 /// There are two kinds of early resolution results:
@@ -109,7 +108,7 @@ impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
         segments: &[Partial<IdentId>],
         scope: ScopeId,
     ) -> PathResolutionResult<EarlyResolvedPathWithTrajectory> {
-        let mut i_path = IntermediatePath::new(segments, scope);
+        let mut i_path = IntermediatePath::new(self.db, segments, scope);
         loop {
             match i_path.state(self.db) {
                 IntermediatePathState::ReadyToFinalize => {
@@ -117,7 +116,7 @@ impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
                     return Ok(i_path.finalize_as_full(bucket));
                 }
 
-                IntermediatePathState::TypeDependent => return Ok(i_path.finalize_as_partial()),
+                IntermediatePathState::TypeConst => return Ok(i_path.finalize_as_partial()),
 
                 IntermediatePathState::Unresolved => {
                     self.resolve_segment(&mut i_path)?;
@@ -157,14 +156,14 @@ struct IntermediatePath<'a> {
 }
 
 impl<'a> IntermediatePath<'a> {
-    fn new(path: &'a [Partial<IdentId>], scope: ScopeId) -> Self {
-        let domain = NameDomain::from_scope(scope);
+    fn new(db: &dyn HirAnalysisDb, path: &'a [Partial<IdentId>], scope: ScopeId) -> Self {
+        let domain = NameDomain::from_scope(db, scope);
         Self {
             path,
             idx: 0,
             current_res: NameRes::new_from_scope(
                 scope,
-                NameDomain::from_scope(scope),
+                NameDomain::from_scope(db, scope),
                 super::NameDerivation::Def,
             ),
             trajectory: vec![],
@@ -173,7 +172,7 @@ impl<'a> IntermediatePath<'a> {
 
     /// Make a `NameQuery` to resolve the current segment.
     fn make_query(&self, db: &dyn HirAnalysisDb) -> PathResolutionResult<NameQuery> {
-        debug_assert!(self.state(db) != IntermediatePathState::TypeDependent);
+        debug_assert!(self.state(db) != IntermediatePathState::TypeConst);
         let Partial::Present(name) = self.path[self.idx] else {
             return Err(PathResolutionError::new(
                 NameResolutionError::Invalid,
@@ -258,13 +257,13 @@ impl<'a> IntermediatePath<'a> {
     fn state(&self, db: &dyn HirAnalysisDb) -> IntermediatePathState {
         debug_assert!(self.idx < self.path.len());
 
-        let is_type_dependent =
+        let is_type_const =
             (self.current_res.is_type() || self.current_res.is_trait()) && self.idx != 0;
 
-        if (self.idx == self.path.len() - 1) && !is_type_dependent {
+        if (self.idx == self.path.len() - 1) && !is_type_const {
             IntermediatePathState::ReadyToFinalize
-        } else if is_type_dependent {
-            IntermediatePathState::TypeDependent
+        } else if is_type_const {
+            IntermediatePathState::TypeConst
         } else {
             IntermediatePathState::Unresolved
         }
@@ -279,7 +278,7 @@ enum IntermediatePathState {
 
     /// The intermediate path points to a type and the next segment need to be
     /// resolved with the type context.
-    TypeDependent,
+    TypeConst,
 
     /// The path resolution need to be continued further.
     Unresolved,

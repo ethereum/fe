@@ -357,6 +357,8 @@ pub enum SyntaxKind {
     ImplItemList,
     /// `trait Foo {..}`
     Trait,
+    /// `: Trait + Trait2`
+    SuperTraitList,
     /// `{ fn foo() {..} }`
     TraitItemList,
     /// `impl Trait for Foo { .. }`
@@ -441,8 +443,14 @@ pub enum SyntaxKind {
 
     /// `foo::Trait1 + Trait2`
     TypeBoundList,
-    /// `Trait1`
+    /// `TraitBound` or `TypeKind`.
     TypeBound,
+    /// `Trait1<Arg, ...>`
+    TraitRef,
+    /// `* -> *` or `(*-> *) -> *`
+    KindBoundAbs,
+    /// `*`.
+    KindBoundMono,
     /// `where Option<T>: Trait1 + Trait2`
     WhereClause,
     /// `Option<T>: Trait1 + Trait2`

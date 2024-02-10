@@ -1,0 +1,81 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/def/not_star_kind.fe
+---
+error[2-0001]: `foo` conflicts with other definitions
+   ┌─ not_star_kind.fe:28:4
+   │
+28 │ fn foo(gen: Gen) {}
+   │    ^^^ `foo` is defined here
+29 │ 
+30 │ fn foo(gen: Gen<i32>) -> Gen {}
+   │    --- `foo` is redefined here
+
+error[2-0002]: `T` is not found
+   ┌─ not_star_kind.fe:21:10
+   │
+21 │ impl Gen<T> {
+   │          ^ `T` is not found
+
+error[3-0000]: expected `*` kind in this context
+  ┌─ not_star_kind.fe:7:8
+  │
+7 │     f: Gen<i32>,
+  │        ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:12:13
+   │
+12 │     Variant(Gen<i32>, Gen<u32>)
+   │             ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:12:23
+   │
+12 │     Variant(Gen<i32>, Gen<u32>)
+   │                       ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:13:36
+   │
+13 │     Variant2{ x: Gen<i32, u32>, y: Gen<u32> }
+   │                                    ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:17:8
+   │
+17 │     f: Gen<i32>,
+   │        ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:22:12
+   │
+22 │     fn foo(self) {}
+   │            ^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:24:18
+   │
+24 │     fn bar(self: Self) {}
+   │                  ^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:28:13
+   │
+28 │ fn foo(gen: Gen) {}
+   │             ^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:30:13
+   │
+30 │ fn foo(gen: Gen<i32>) -> Gen {}
+   │             ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_star_kind.fe:30:26
+   │
+30 │ fn foo(gen: Gen<i32>) -> Gen {}
+   │                          ^^^ expected `*` kind here
+
+

@@ -1,5 +1,3 @@
 pub type Int = i32 
 
 type Result<T> = Result<T, Error>
-
-type WithBound<T: TraitBound> = NoBound<T>

@@ -151,6 +151,8 @@ impl<'db> ScopeGraphBuilder<'db> {
                     inner.into(),
                     inner.generic_params(self.db),
                 );
+                self.graph
+                    .add_edge(item_node, item_node, EdgeKind::self_ty());
                 inner
                     .name(self.db)
                     .to_opt()
@@ -165,6 +167,9 @@ impl<'db> ScopeGraphBuilder<'db> {
                     FieldParent::Item(inner.into()),
                     inner.fields(self.db),
                 );
+                self.graph
+                    .add_edge(item_node, item_node, EdgeKind::self_ty());
+
                 inner
                     .name(self.db)
                     .to_opt()
@@ -180,6 +185,8 @@ impl<'db> ScopeGraphBuilder<'db> {
                     inner.into(),
                     inner.generic_params(self.db),
                 );
+                self.graph
+                    .add_edge(item_node, item_node, EdgeKind::self_ty());
                 inner
                     .name(self.db)
                     .to_opt()

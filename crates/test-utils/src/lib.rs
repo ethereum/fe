@@ -567,12 +567,12 @@ pub fn compile_solidity_contract(
     let abi = if let serde_json::Value::Array(data) = &output["contracts"]["input.sol"][name]["abi"]
     {
         data.iter()
-            .cloned()
             .filter(|val| {
                 // ethabi doesn't yet support error types so we just filter them out for now
                 // https://github.com/rust-ethereum/ethabi/issues/225
                 val["type"] != "error"
             })
+            .cloned()
             .collect::<Vec<_>>()
     } else {
         vec![]

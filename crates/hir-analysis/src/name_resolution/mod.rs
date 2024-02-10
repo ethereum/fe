@@ -6,24 +6,21 @@ mod path_resolver;
 mod visibility_checker;
 
 use either::Either;
-pub use import_resolver::ResolvedImports;
-pub use name_resolver::{
-    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, QueryDirective,
-};
-pub use path_resolver::EarlyResolvedPath;
-
 use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        scope_graph::ScopeId, Expr, ExprId, IdentId, IngotId, ItemKind, Partial, Pat, PatId,
-        PathId, TopLevelMod, TypeBound, TypeId,
+        scope_graph::ScopeId, Expr, ExprId, GenericArgListId, IdentId, IngotId, ItemKind, Partial,
+        Pat, PatId, PathId, TopLevelMod, TraitRefId, TypeId,
     },
     visitor::prelude::*,
 };
+pub use import_resolver::ResolvedImports;
+pub use name_resolver::{
+    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind, QueryDirective,
+};
+pub use path_resolver::EarlyResolvedPath;
 use rustc_hash::FxHashSet;
-
-use crate::HirAnalysisDb;
 
 use self::{
     diagnostics::{ImportResolutionDiagAccumulator, NameResDiag, NameResolutionDiagAccumulator},
@@ -31,6 +28,7 @@ use self::{
     name_resolver::{NameResolutionError, ResolvedQueryCacheStore},
     path_resolver::EarlyPathResolver,
 };
+use crate::HirAnalysisDb;
 
 // TODO: Implement `resolve_path` and `resolve_segments` after implementing the
 // late path resolution.
@@ -296,7 +294,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
             return;
         };
 
-        let domain = NameDomain::from_scope(scope);
+        let domain = NameDomain::from_scope(self.db, scope);
         let binding = self.inner.resolve_query(query);
         match binding.pick(domain) {
             Ok(_) => {}
@@ -340,11 +338,11 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
             return;
         }
 
-        let scope = ScopeId::from_item(item);
-        // We don't need to check impl/impl-trait blocks for conflicts because they
+        // We don't need to check impl blocks for conflicts because they
         // needs ingot granularity analysis, the conflict checks for them is done by the
         // `ImplCollector`.
-        if !matches!(item, ItemKind::Impl(_) | ItemKind::ImplTrait(_)) {
+        if !matches!(item, ItemKind::Impl(_)) {
+            let scope = ScopeId::from_item(item);
             self.check_conflict(scope);
         }
 
@@ -361,13 +359,13 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         self.path_ctxt.pop();
     }
 
-    fn visit_type_bound(
+    fn visit_trait_ref(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTypeBoundSpan>,
-        bound: &TypeBound,
+        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
+        trait_ref: TraitRefId,
     ) {
         self.path_ctxt.push(ExpectedPathKind::Trait);
-        walk_type_bound(self, ctxt, bound);
+        walk_trait_ref(self, ctxt, trait_ref);
         self.path_ctxt.pop();
     }
 
@@ -399,6 +397,16 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         let scope = ctxt.scope();
         self.check_conflict(scope);
         walk_generic_param(self, ctxt, param);
+    }
+
+    fn visit_generic_arg_list(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyGenericArgListSpan>,
+        args: GenericArgListId,
+    ) {
+        self.path_ctxt.push(ExpectedPathKind::Type);
+        walk_generic_arg_list(self, ctxt, args);
+        self.path_ctxt.pop();
     }
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {

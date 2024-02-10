@@ -2,7 +2,7 @@ use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{
-        item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRef,
+        item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRefId,
         TupleTypeId, TypeId, WhereClauseId,
     },
     span::HirOrigin,
@@ -216,7 +216,6 @@ impl TypeAlias {
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
-        let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let origin = HirOrigin::raw(&ast);
 
@@ -227,7 +226,6 @@ impl TypeAlias {
             attributes,
             vis,
             generic_params,
-            where_clause,
             ty,
             ctxt.top_mod(),
             origin,
@@ -277,6 +275,14 @@ impl Trait {
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
+        let super_traits = if let Some(super_traits) = ast.super_trait_list() {
+            super_traits
+                .into_iter()
+                .map(|trait_ref| TraitRefId::lower_ast(ctxt, trait_ref))
+                .collect()
+        } else {
+            vec![]
+        };
         let origin = HirOrigin::raw(&ast);
 
         if let Some(item_list) = ast.item_list() {
@@ -292,6 +298,7 @@ impl Trait {
             attributes,
             vis,
             generic_params,
+            super_traits,
             where_clause,
             ctxt.top_mod(),
             origin,
@@ -303,7 +310,7 @@ impl Trait {
 
 impl ImplTrait {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::ImplTrait) -> Self {
-        let trait_ref = TraitRef::lower_ast_partial(ctxt, ast.trait_ref());
+        let trait_ref = TraitRefId::lower_ast_partial(ctxt, ast.trait_ref());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let id = ctxt.joined_id(TrackedItemId::ImplTrait(trait_ref, ty));
         ctxt.enter_item_scope(id.clone(), false);

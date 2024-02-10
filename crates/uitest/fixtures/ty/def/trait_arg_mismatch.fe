@@ -1,0 +1,11 @@
+pub trait Foo<T: * -> *> {}
+
+enum Option<T> {
+    Some(T)
+    None
+}
+
+impl Foo<i32> for i32 {}
+impl Foo<Option<i32>> for i32 {}
+impl Foo<Option> for i32 {}
+impl Foo for u32 {}

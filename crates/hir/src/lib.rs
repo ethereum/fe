@@ -1,6 +1,6 @@
 use analysis_pass::ModuleAnalysisPass;
 use common::{InputDb, InputIngot};
-use hir_def::{module_tree_impl, IdentId, TopLevelMod};
+use hir_def::{module_tree_impl, IdentId, IngotId, TopLevelMod};
 pub use lower::parse::ParserError;
 use lower::{
     map_file_to_mod_impl,
@@ -48,7 +48,21 @@ pub struct Jar(
     hir_def::ImplItemListId,
     hir_def::TypeId,
     hir_def::TupleTypeId,
+    hir_def::TraitRefId,
     hir_def::UsePathId,
+    /// Utility methods for analysis.
+    hir_def::all_top_modules_in_ingot,
+    hir_def::all_impls_in_ingot,
+    hir_def::all_impl_traits_in_ingot,
+    hir_def::all_items_in_top_mod,
+    hir_def::all_structs_in_top_mod,
+    hir_def::all_enums_in_top_mod,
+    hir_def::all_traits_in_top_mod,
+    hir_def::all_funcs_in_top_mod,
+    hir_def::all_contracts_in_top_mod,
+    hir_def::all_type_aliases_in_top_mod,
+    hir_def::all_impl_in_top_mod,
+    hir_def::all_impl_trait_in_top_mod,
     /// Accumulated diagnostics.
     ParseErrorAccumulator,
     /// Private tracked functions. These are not part of the public API, and
@@ -101,15 +115,15 @@ impl<'db> ModuleAnalysisPass for ParsingPass<'db> {
 // The reason why this function is not a public API is that we want to prohibit users of `HirDb` to
 // access `InputIngot` directly.
 #[salsa::tracked(return_ref)]
-pub(crate) fn external_ingots_impl(
-    db: &dyn HirDb,
-    ingot: InputIngot,
-) -> Vec<(IdentId, TopLevelMod)> {
+pub(crate) fn external_ingots_impl(db: &dyn HirDb, ingot: InputIngot) -> Vec<(IdentId, IngotId)> {
     let mut res = Vec::new();
     for dep in ingot.external_ingots(db.as_input_db()) {
         let name = IdentId::new(db, dep.name.to_string());
-        let root = module_tree_impl(db, dep.ingot).root_data().top_mod;
-        res.push((name, root))
+        let ingot = module_tree_impl(db, dep.ingot)
+            .root_data()
+            .top_mod
+            .ingot(db);
+        res.push((name, ingot))
     }
     res
 }

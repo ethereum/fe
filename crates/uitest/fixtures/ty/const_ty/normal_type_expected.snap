@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/const_ty/normal_type_expected.fe
+---
+error[3-0013]: expected a normal type
+  ┌─ normal_type_expected.fe:4:15
+  │
+4 │ pub fn foo(x: Foo<1>) {}
+  │               ^^^^^^ expected a normal type here, but `1` is given
+
+error[3-0013]: expected a normal type
+  ┌─ normal_type_expected.fe:8:8
+  │
+8 │     n: N,
+  │        ^ expected a normal type here, but `const N: u32` is given
+
+

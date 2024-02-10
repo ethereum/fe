@@ -23,3 +23,12 @@ where Foo::Bar<T>: Trait
     AddMul(T)
     SubDiv(U)
 }
+
+enum HKTEnum<T: * -> *, U, V, W>
+where 
+   U: (* -> *) -> *
+   V: * -> * -> (* -> *)
+   W: * -> * -> * -> *
+{
+    Foo(U<T>)
+}

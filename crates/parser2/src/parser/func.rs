@@ -20,6 +20,7 @@ define_scope! {
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FuncDefScope {
     Normal,
+    Impl,
     TraitDef,
     Extern,
 }
@@ -34,14 +35,15 @@ impl super::Parse for FuncScope {
         parser.bump_expected(SyntaxKind::FnKw);
 
         match self.fn_def_scope {
-            FuncDefScope::Normal => parse_normal_fn_def_impl(parser),
+            FuncDefScope::Normal => parse_normal_fn_def_impl(parser, false),
+            FuncDefScope::Impl => parse_normal_fn_def_impl(parser, true),
             FuncDefScope::TraitDef => parse_trait_fn_def_impl(parser),
             FuncDefScope::Extern => parse_extern_fn_def_impl(parser),
         }
     }
 }
 
-fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
+fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>, allow_self: bool) {
     parser.with_next_expected_tokens(
         |parser| {
             parser.bump_or_recover(
@@ -54,14 +56,14 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     );
 
     parser.with_next_expected_tokens(
-        |parser| parse_generic_params_opt(parser),
+        |parser| parse_generic_params_opt(parser, false),
         &[SyntaxKind::LParen, SyntaxKind::LBrace],
     );
 
     parser.with_next_expected_tokens(
         |parser| {
             if parser.current_kind() == Some(SyntaxKind::LParen) {
-                parser.parse(FuncParamListScope::default(), None);
+                parser.parse(FuncParamListScope::new(allow_self), None);
             } else {
                 parser.error_and_recover("expected `(` for the function arguments", None);
             }
@@ -99,14 +101,14 @@ fn parse_trait_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>) {
     );
 
     parser.with_next_expected_tokens(
-        |parser| parse_generic_params_opt(parser),
+        |parser| parse_generic_params_opt(parser, false),
         &[SyntaxKind::LParen],
     );
 
     parser.with_recovery_tokens(
         |parser| {
             if parser.current_kind() == Some(SyntaxKind::LParen) {
-                parser.parse(FuncParamListScope::default(), None);
+                parser.parse(FuncParamListScope::new(true), None);
             } else {
                 parser.error_and_recover("expected `(` for the function arguments", None);
             }

@@ -70,6 +70,7 @@ impl SelfType {
         support::token(self.syntax(), SK::SelfTypeKw)
     }
 }
+impl super::GenericArgsOwner for SelfType {}
 
 ast_node! {
     /// A tuple type.
