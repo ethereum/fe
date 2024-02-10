@@ -170,7 +170,7 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
         Plus | Minus => (120, 121),
         Star | Slash | Percent => {
             if is_aug(parser) {
-                (38, 39)
+                (11, 10)
             } else {
                 (130, 131)
             }
@@ -179,7 +179,7 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
         Dot => (151, 150),
         Eq => {
             // `Assign` and `AugAssign` have the same binding power
-            (40, 41)
+            (11, 10)
         }
         _ => return None,
     };
@@ -207,14 +207,12 @@ impl super::Parse for BinExprScope {
         if is_aug(parser) {
             self.set_kind(SyntaxKind::AugAssignExpr);
             bump_aug_assign_op(parser);
-            let (_, rbp) = infix_binding_power(parser).unwrap();
-            parser.bump_or_recover(SyntaxKind::Eq, "expected `=`", None);
+            parser.bump_expected(SyntaxKind::Eq);
             parse_expr_with_min_bp(parser, rbp, true);
         } else if is_asn(parser) {
             self.set_kind(SyntaxKind::AssignExpr);
             parser.set_newline_as_trivia(false);
-            let (_, rbp) = infix_binding_power(parser).unwrap();
-            parser.bump_or_recover(SyntaxKind::Eq, "expected `=`", None);
+            parser.bump_expected(SyntaxKind::Eq);
             parse_expr_with_min_bp(parser, rbp, true);
         } else {
             bump_bin_op(parser);
