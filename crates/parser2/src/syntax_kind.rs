@@ -460,7 +460,6 @@ pub enum SyntaxKind {
 
     /// Represents an error branch.
     Error,
-
 }
 
 impl SyntaxKind {

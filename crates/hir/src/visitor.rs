@@ -1066,7 +1066,7 @@ where
                 visit_node_in_body!(visitor, ctxt, else_, expr);
             }
         }
-        
+
         Expr::Match(scrutinee, arms) => {
             visit_node_in_body!(visitor, ctxt, scrutinee, expr);
 
@@ -1086,7 +1086,7 @@ where
                 );
             }
         }
-        
+
         Expr::Assign(left_expr_id, right_expr_id) => {
             visit_node_in_body!(visitor, ctxt, left_expr_id, expr);
             visit_node_in_body!(visitor, ctxt, right_expr_id, expr);

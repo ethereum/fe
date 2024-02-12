@@ -54,7 +54,6 @@ impl Expr {
             SK::AssignExpr => ExprKind::Assign(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::AugAssignExpr => ExprKind::AugAssign(AstNode::cast(self.syntax().clone()).unwrap()),
             _ => unreachable!(),
-
         }
     }
 }
@@ -339,7 +338,6 @@ impl ParenExpr {
     }
 }
 
-
 ast_node! {
     /// `x = 1`
     pub struct AssignExpr,
@@ -369,8 +367,8 @@ impl AugAssignExpr {
 
     pub fn op(&self) -> Option<super::ArithBinOp> {
         self.syntax()
-        .children_with_tokens()
-        .find_map(ArithBinOp::from_node_or_token)
+            .children_with_tokens()
+            .find_map(ArithBinOp::from_node_or_token)
     }
 
     /// Returns the expression of the rhs of the assignment.
@@ -398,7 +396,7 @@ pub enum ExprKind {
     Match(MatchExpr),
     Paren(ParenExpr),
     Assign(AssignExpr),
-    AugAssign(AugAssignExpr)
+    AugAssign(AugAssignExpr),
 }
 
 ast_node! {
@@ -987,11 +985,10 @@ mod tests {
             ExprKind::Path(_)
         ));
     }
-    
+
     #[test]
     #[wasm_bindgen_test]
     fn aug_assign() {
-
         let aug_assign_expr: AugAssignExpr = parse_expr("x += 1");
         assert!(matches!(
             aug_assign_expr.lhs_expr().unwrap().kind(),
@@ -1001,7 +998,7 @@ mod tests {
             aug_assign_expr.op().unwrap(),
             crate::ast::ArithBinOp::Add(_)
         ));
-    
+
         let aug_assign_expr: AugAssignExpr = parse_expr("x.y <<= 1");
         assert!(matches!(
             aug_assign_expr.lhs_expr().unwrap().kind(),
@@ -1012,5 +1009,4 @@ mod tests {
             crate::ast::ArithBinOp::LShift(_)
         ));
     }
-    
 }

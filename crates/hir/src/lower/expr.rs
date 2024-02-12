@@ -2,7 +2,7 @@ use parser::ast::{self, prelude::*};
 
 use crate::{
     hir_def::{
-        expr::*, kw::SELF, Body, GenericArgListId, IdentId, IntegerId, ItemKind, LitKind, Pat, PathId, Stmt
+        expr::*, Body, GenericArgListId, IdentId, IntegerId, ItemKind, LitKind, Pat, PathId, Stmt,
     },
     span::HirOrigin,
 };

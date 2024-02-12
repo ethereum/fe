@@ -1,7 +1,4 @@
-use parser::{
-    ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
-    TextRange,
-};
+use parser::ast::{self, prelude::*, AstPtr, SyntaxNodePtr};
 
 use common::diagnostics::Span;
 
@@ -33,10 +30,10 @@ pub mod lazy_spans {
     };
 
     pub use super::expr::{
-        LazyBinExprSpan, LazyCallArgListSpan, LazyCallArgSpan, LazyCallExprSpan, LazyExprSpan,
-        LazyFieldExprSpan, LazyFieldListSpan, LazyFieldSpan, LazyLitExprSpan, LazyMatchArmListSpan,
-        LazyMatchArmSpan, LazyMatchExprSpan, LazyMethodCallExprSpan, LazyPathExprSpan,
-        LazyRecordInitExprSpan, LazyUnExprSpan, LazyAssignExprSpan, LazyAugAssignExprSpan,
+        LazyAssignExprSpan, LazyAugAssignExprSpan, LazyBinExprSpan, LazyCallArgListSpan,
+        LazyCallArgSpan, LazyCallExprSpan, LazyExprSpan, LazyFieldExprSpan, LazyFieldListSpan,
+        LazyFieldSpan, LazyLitExprSpan, LazyMatchArmListSpan, LazyMatchArmSpan, LazyMatchExprSpan,
+        LazyMethodCallExprSpan, LazyPathExprSpan, LazyRecordInitExprSpan, LazyUnExprSpan,
     };
 
     pub use super::item::{

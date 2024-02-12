@@ -232,9 +232,9 @@ mod tests {
 
         let body: Body = db.expect_item::<Body>(text);
         let bin_expr = match body.exprs(db.as_hir_db()).values().nth(2).unwrap().unwrap() {
-              Expr::AugAssign(lhs, rhs, bin_op) => (*lhs, *rhs, *bin_op),
-              _ => unreachable!(),
-        };       
+            Expr::AugAssign(lhs, rhs, bin_op) => (*lhs, *rhs, *bin_op),
+            _ => unreachable!(),
+        };
         let top_mod = body.top_mod(db.as_hir_db());
         assert_eq!("x", db.text_at(top_mod, &bin_expr.0.lazy_span(body)));
         assert_eq!("1", db.text_at(top_mod, &bin_expr.1.lazy_span(body)));

@@ -36,7 +36,6 @@ pub enum Expr {
     /// third is the else branch.
     /// In case `else if`, the third is the lowered into `If` expression.
     If(ExprId, ExprId, Option<ExprId>),
-    
 
     /// The first `ExprId` is the scrutinee, the second is the arms.
     Match(ExprId, Partial<Vec<MatchArm>>),

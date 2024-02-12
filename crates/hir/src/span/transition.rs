@@ -18,8 +18,7 @@ use crate::{
 use super::{
     body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
     impl_trait_ast, mod_ast, pat::PatRoot, stmt::StmtRoot, struct_ast, trait_ast, type_alias_ast,
-    use_ast, DesugaredOrigin, DesugaredUseFocus, HirOrigin, LazySpan,
-    UseDesugared,
+    use_ast, DesugaredOrigin, DesugaredUseFocus, HirOrigin, LazySpan, UseDesugared,
 };
 
 /// This type represents function from the hir origin to another hir origin to
@@ -436,7 +435,6 @@ macro_rules! define_lazy_span_node {
 impl DesugaredOrigin {
     fn resolve(self, _db: &dyn SpannedHirDb, root: SyntaxNode, file: InputFile) -> Span {
         let range = match self {
-           
             Self::Use(UseDesugared {
                 root: use_root,
                 path,

@@ -87,11 +87,11 @@ fn parse_expr_with_min_bp<S: TokenStream>(
                 // Method call is already handled as the postfix operator.
                 SyntaxKind::Dot => parser.parse(FieldExprScope::default(), Some(checkpoint)).0,
                 _ => {
-                     // 1. Try to parse the expression as an augmented assignment expression.
+                    // 1. Try to parse the expression as an augmented assignment expression.
                     // 2. If 1. fails, try to parse the expression as an assignment expression.
                     // 3. If 2. fails, try to parse the expression as a binary expression.
                     parser.parse(BinExprScope::default(), Some(checkpoint)).0
-                },
+                }
             } {
                 return false;
             }
@@ -169,15 +169,18 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
         Amp => (100, 101),
         LShift | RShift => (110, 111),
         Plus | Minus => (120, 121),
-        Star | Slash | Percent =>  if is_aug(parser) {
-            (11, 10)} else {
+        Star | Slash | Percent => {
+            if is_aug(parser) {
+                (11, 10)
+            } else {
                 (130, 131)
             }
+        }
         Star2 => (141, 140),
         Dot => (151, 150),
         Eq => {
-             // `Assign` and `AugAssign` have the same binding power
-             (11, 10)
+            // `Assign` and `AugAssign` have the same binding power
+            (11, 10)
         }
         _ => return None,
     };
@@ -204,7 +207,7 @@ impl super::Parse for BinExprScope {
         if is_aug(parser) {
             self.set_kind(SyntaxKind::AugAssignExpr);
             bump_aug_assign_op(parser);
-            parser.bump_expected(SyntaxKind::Eq);    
+            parser.bump_expected(SyntaxKind::Eq);
             parse_expr_with_min_bp(parser, rbp, true);
         } else if is_asn(parser) {
             self.set_kind(SyntaxKind::AssignExpr);
@@ -216,7 +219,7 @@ impl super::Parse for BinExprScope {
             bump_bin_op(parser);
             parse_expr_with_min_bp(parser, rbp, false);
         }
-       }
+    }
 }
 
 define_scope! { IndexExprScope, IndexExpr, Override(RBracket) }

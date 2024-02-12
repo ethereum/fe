@@ -1,7 +1,7 @@
 use rowan::ast::{support, AstNode};
 
 use super::ast_node;
-use crate::{SyntaxKind as SK, SyntaxToken};
+use crate::SyntaxKind as SK;
 
 ast_node! {
     /// A statement.
@@ -52,7 +52,6 @@ impl LetStmt {
         support::child(self.syntax())
     }
 }
-
 
 ast_node! {
     /// `for pat in expr {..}`

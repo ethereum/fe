@@ -47,5 +47,4 @@ impl ChainInitiator for StmtRoot {
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}

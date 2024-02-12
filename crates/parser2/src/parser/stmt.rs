@@ -1,4 +1,4 @@
-use crate::{parser::expr, SyntaxKind};
+use crate::SyntaxKind;
 
 use super::{
     define_scope,
