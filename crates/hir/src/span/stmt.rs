@@ -48,34 +48,4 @@ impl ChainInitiator for StmtRoot {
 
 #[cfg(test)]
 mod tests {
-    use crate::{hir_def::Body, test_db::TestDb, HirDb};
-
-    #[test]
-    fn aug_assign() {
-        let mut db = TestDb::default();
-
-        let text = r#"
-            fn foo() {
-                let mut x = 0
-                x += 1
-            }
-        }"#;
-
-        let body: Body = db.expect_item::<Body>(text);
-        let top_mod = body.top_mod(db.as_hir_db());
-        assert!(body.stmts(db.as_hir_db()).len() == 2);
-        for (i, stmt) in body.stmts(db.as_hir_db()).keys().enumerate() {
-            match i {
-                0 => {
-                    let span = stmt.lazy_span(body);
-                    assert_eq!("let mut x = 0", db.text_at(top_mod, &span));
-                }
-                1 => {
-                    let span = stmt.lazy_span(body);
-                    assert_eq!("x += 1", db.text_at(top_mod, &span));
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
 }

@@ -86,7 +86,12 @@ fn parse_expr_with_min_bp<S: TokenStream>(
             if !match kind {
                 // Method call is already handled as the postfix operator.
                 SyntaxKind::Dot => parser.parse(FieldExprScope::default(), Some(checkpoint)).0,
-                _ => parser.parse(BinExprScope::default(), Some(checkpoint)).0,
+                _ => {
+                     // 1. Try to parse the expression as an augmented assignment expression.
+                    // 2. If 1. fails, try to parse the expression as an assignment expression.
+                    // 3. If 2. fails, try to parse the expression as a binary expression.
+                    parser.parse(BinExprScope::default(), Some(checkpoint)).0
+                },
             } {
                 return false;
             }
@@ -164,9 +169,16 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
         Amp => (100, 101),
         LShift | RShift => (110, 111),
         Plus | Minus => (120, 121),
-        Star | Slash | Percent => (130, 131),
+        Star | Slash | Percent =>  if is_aug(parser) {
+            (11, 10)} else {
+                (130, 131)
+            }
         Star2 => (141, 140),
         Dot => (151, 150),
+        Eq => {
+             // `Assign` and `AugAssign` have the same binding power
+             (11, 10)
+        }
         _ => return None,
     };
 
@@ -188,12 +200,23 @@ define_scope! { BinExprScope, BinExpr, Inheritance }
 impl super::Parse for BinExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-
         let (_, rbp) = infix_binding_power(parser).unwrap();
-        bump_bin_op(parser);
-
-        parse_expr_with_min_bp(parser, rbp, true);
-    }
+        if is_aug(parser) {
+            self.set_kind(SyntaxKind::AugAssignExpr);
+            bump_aug_assign_op(parser);
+            parser.bump_expected(SyntaxKind::Eq);    
+            parse_expr_with_min_bp(parser, rbp, true);
+        } else if is_asn(parser) {
+            self.set_kind(SyntaxKind::AssignExpr);
+            parser.set_newline_as_trivia(false);
+            let (_, rbp) = infix_binding_power(parser).unwrap();
+            parser.bump_expected(SyntaxKind::Eq);
+            parse_expr_with_min_bp(parser, rbp, true);
+        } else {
+            bump_bin_op(parser);
+            parse_expr_with_min_bp(parser, rbp, false);
+        }
+       }
 }
 
 define_scope! { IndexExprScope, IndexExpr, Override(RBracket) }
@@ -325,6 +348,27 @@ fn is_lt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
 fn is_gt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.dry_run(|parser| parser.parse(GtEqScope::default(), None).0)
 }
+fn is_aug<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    parser.dry_run(|parser| {
+        if !bump_aug_assign_op(parser) {
+            return false;
+        }
+
+        parser.set_newline_as_trivia(false);
+        parser.current_kind() == Some(SyntaxKind::Eq)
+    })
+}
+fn is_asn<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    parser.dry_run(|parser| {
+        parser.set_newline_as_trivia(false);
+        if parser.current_kind() == Some(SyntaxKind::Eq) {
+            parser.bump();
+            true
+        } else {
+            false
+        }
+    })
+}
 
 fn bump_bin_op<S: TokenStream>(parser: &mut Parser<S>) {
     match parser.current_kind() {
@@ -349,6 +393,33 @@ fn bump_bin_op<S: TokenStream>(parser: &mut Parser<S>) {
         _ => {
             parser.bump();
         }
+    }
+}
+
+fn bump_aug_assign_op<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+    use SyntaxKind::*;
+    match parser.current_kind() {
+        Some(Pipe | Hat | Amp | Plus | Minus | Star | Slash | Percent | Star2) => {
+            parser.bump();
+            true
+        }
+        Some(Lt) => {
+            if is_lshift(parser) {
+                parser.parse(LShiftScope::default(), None);
+                true
+            } else {
+                false
+            }
+        }
+        Some(Gt) => {
+            if is_rshift(parser) {
+                parser.parse(RShiftScope::default(), None);
+                true
+            } else {
+                false
+            }
+        }
+        _ => false,
     }
 }
 

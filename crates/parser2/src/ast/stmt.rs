@@ -8,8 +8,6 @@ ast_node! {
     /// Use [`Self::kind`] to get the specific kind of the statement.
     pub struct Stmt,
     SK::LetStmt
-    | SK::AssignStmt
-    | SK::AugAssignStmt
     | SK::ForStmt
     | SK::WhileStmt
     | SK::ContinueStmt
@@ -22,8 +20,6 @@ impl Stmt {
     pub fn kind(&self) -> StmtKind {
         match self.syntax().kind() {
             SK::LetStmt => StmtKind::Let(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::AssignStmt => StmtKind::Assign(AstNode::cast(self.syntax().clone()).unwrap()),
-            SK::AugAssignStmt => StmtKind::AugAssign(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ForStmt => StmtKind::For(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::WhileStmt => StmtKind::While(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ContinueStmt => StmtKind::Continue(AstNode::cast(self.syntax().clone()).unwrap()),
@@ -57,45 +53,6 @@ impl LetStmt {
     }
 }
 
-ast_node! {
-    /// `x = 1`
-    pub struct AssignStmt,
-    SK::AssignStmt,
-}
-impl AssignStmt {
-    /// Returns the pattern of the lhs of the assignment.
-    pub fn pat(&self) -> Option<super::Pat> {
-        support::child(self.syntax())
-    }
-
-    /// Returns the expression of the rhs of the assignment.
-    pub fn expr(&self) -> Option<super::Expr> {
-        support::child(self.syntax())
-    }
-}
-
-ast_node! {
-    /// `x += 1`
-    pub struct AugAssignStmt,
-    SK::AugAssignStmt,
-}
-impl AugAssignStmt {
-    /// Returns the identifier of the lhs of the aug assignment.
-    pub fn ident(&self) -> Option<SyntaxToken> {
-        support::token(self.syntax(), SK::Ident)
-    }
-
-    pub fn op(&self) -> Option<super::ArithBinOp> {
-        self.syntax()
-            .children_with_tokens()
-            .find_map(super::ArithBinOp::from_node_or_token)
-    }
-
-    /// Returns the expression of the rhs of the assignment.
-    pub fn expr(&self) -> Option<super::Expr> {
-        support::child(self.syntax())
-    }
-}
 
 ast_node! {
     /// `for pat in expr {..}`
@@ -189,8 +146,6 @@ impl ExprStmt {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum StmtKind {
     Let(LetStmt),
-    Assign(AssignStmt),
-    AugAssign(AugAssignStmt),
     For(ForStmt),
     While(WhileStmt),
     Continue(ContinueStmt),
@@ -241,36 +196,6 @@ mod tests {
         assert!(matches!(let_stmt.pat().unwrap().kind(), PatKind::Path(_)));
         assert!(let_stmt.type_annotation().is_none());
         assert!(let_stmt.initializer().is_none());
-    }
-
-    #[test]
-    #[wasm_bindgen_test]
-    fn assign() {
-        let assign_stmt: AssignStmt = parse_stmt(r#"Foo{x, y} = foo"#);
-        assert!(matches!(
-            assign_stmt.pat().unwrap().kind(),
-            PatKind::Record(_)
-        ));
-        assert!(assign_stmt.expr().is_some());
-    }
-
-    #[test]
-    #[wasm_bindgen_test]
-    fn aug_assign() {
-        let aug_assign_stmt: AugAssignStmt = parse_stmt("x += 1");
-        assert!(matches!(aug_assign_stmt.ident().unwrap().text(), "x",));
-        assert!(matches!(
-            aug_assign_stmt.op().unwrap(),
-            crate::ast::ArithBinOp::Add(_)
-        ));
-
-        let aug_assign_stmt: AugAssignStmt = parse_stmt("x <<= 1");
-
-        assert!(matches!(aug_assign_stmt.ident().unwrap().text(), "x",));
-        assert!(matches!(
-            aug_assign_stmt.op().unwrap(),
-            crate::ast::ArithBinOp::LShift(_)
-        ));
     }
 
     #[test]

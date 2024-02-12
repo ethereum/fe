@@ -22,7 +22,9 @@ ast_node! {
     | SK::LitExpr
     | SK::IfExpr
     | SK::MatchExpr
-    | SK::ParenExpr,
+    | SK::ParenExpr
+    | SK::AssignExpr
+    | SK::AugAssignExpr,
 }
 
 impl Expr {
@@ -49,7 +51,10 @@ impl Expr {
             SK::IfExpr => ExprKind::If(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::MatchExpr => ExprKind::Match(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ParenExpr => ExprKind::Paren(AstNode::cast(self.syntax().clone()).unwrap()),
+            SK::AssignExpr => ExprKind::Assign(AstNode::cast(self.syntax().clone()).unwrap()),
+            SK::AugAssignExpr => ExprKind::AugAssign(AstNode::cast(self.syntax().clone()).unwrap()),
             _ => unreachable!(),
+
         }
     }
 }
@@ -334,6 +339,46 @@ impl ParenExpr {
     }
 }
 
+
+ast_node! {
+    /// `x = 1`
+    pub struct AssignExpr,
+    SK::AssignExpr,
+}
+impl AssignExpr {
+    /// Returns the expression of the lhs and rhs of the assignment.
+    pub fn lhs_expr(&self) -> Option<super::Expr> {
+        support::children(self.syntax()).next()
+    }
+
+    pub fn rhs_expr(&self) -> Option<super::Expr> {
+        support::children(self.syntax()).nth(1)
+    }
+}
+
+ast_node! {
+    /// `x += 1`
+    pub struct AugAssignExpr,
+    SK::AugAssignExpr,
+}
+impl AugAssignExpr {
+    /// Returns the expression of the lhs of the aug assignment.
+    pub fn lhs_expr(&self) -> Option<super::Expr> {
+        support::children(self.syntax()).next()
+    }
+
+    pub fn op(&self) -> Option<super::ArithBinOp> {
+        self.syntax()
+        .children_with_tokens()
+        .find_map(ArithBinOp::from_node_or_token)
+    }
+
+    /// Returns the expression of the rhs of the assignment.
+    pub fn rhs_expr(&self) -> Option<super::Expr> {
+        support::children(self.syntax()).nth(1)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum ExprKind {
     Lit(LitExpr),
@@ -352,6 +397,8 @@ pub enum ExprKind {
     If(IfExpr),
     Match(MatchExpr),
     Paren(ParenExpr),
+    Assign(AssignExpr),
+    AugAssign(AugAssignExpr)
 }
 
 ast_node! {
@@ -927,4 +974,43 @@ mod tests {
         }
         assert_eq!(count, 3)
     }
+    #[test]
+    #[wasm_bindgen_test]
+    fn assign() {
+        let assign_expr: AssignExpr = parse_expr(r#"Foo{x, y} = foo"#);
+        assert!(matches!(
+            assign_expr.lhs_expr().unwrap().kind(),
+            ExprKind::RecordInit(_)
+        ));
+        assert!(matches!(
+            assign_expr.rhs_expr().unwrap().kind(),
+            ExprKind::Path(_)
+        ));
+    }
+    
+    #[test]
+    #[wasm_bindgen_test]
+    fn aug_assign() {
+
+        let aug_assign_expr: AugAssignExpr = parse_expr("x += 1");
+        assert!(matches!(
+            aug_assign_expr.lhs_expr().unwrap().kind(),
+            ExprKind::Path(_)
+        ));
+        assert!(matches!(
+            aug_assign_expr.op().unwrap(),
+            crate::ast::ArithBinOp::Add(_)
+        ));
+    
+        let aug_assign_expr: AugAssignExpr = parse_expr("x.y <<= 1");
+        assert!(matches!(
+            aug_assign_expr.lhs_expr().unwrap().kind(),
+            ExprKind::Field(_)
+        ));
+        assert!(matches!(
+            aug_assign_expr.op().unwrap(),
+            crate::ast::ArithBinOp::LShift(_)
+        ));
+    }
+    
 }

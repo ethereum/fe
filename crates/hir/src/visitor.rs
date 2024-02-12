@@ -874,11 +874,6 @@ where
             }
         }
 
-        Stmt::Assign(pat_id, expr_id) => {
-            visit_node_in_body!(visitor, ctxt, pat_id, pat);
-            visit_node_in_body!(visitor, ctxt, expr_id, expr);
-        }
-
         Stmt::For(pat_id, cond_id, for_body_id) => {
             visit_node_in_body!(visitor, ctxt, pat_id, pat);
             visit_node_in_body!(visitor, ctxt, cond_id, expr);
@@ -1071,7 +1066,7 @@ where
                 visit_node_in_body!(visitor, ctxt, else_, expr);
             }
         }
-
+        
         Expr::Match(scrutinee, arms) => {
             visit_node_in_body!(visitor, ctxt, scrutinee, expr);
 
@@ -1090,6 +1085,16 @@ where
                     },
                 );
             }
+        }
+        
+        Expr::Assign(left_expr_id, right_expr_id) => {
+            visit_node_in_body!(visitor, ctxt, left_expr_id, expr);
+            visit_node_in_body!(visitor, ctxt, right_expr_id, expr);
+        }
+
+        Expr::AugAssign(left_expr_id, right_expr_id, _) => {
+            visit_node_in_body!(visitor, ctxt, left_expr_id, expr);
+            visit_node_in_body!(visitor, ctxt, right_expr_id, expr);
         }
     }
 }

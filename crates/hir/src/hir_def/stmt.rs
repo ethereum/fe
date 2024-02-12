@@ -10,9 +10,6 @@ pub enum Stmt {
     /// second `Option<TypeId>` is the type annotation, and the third
     /// `Option<ExprId>` is the expression for initialization.
     Let(PatId, Option<TypeId>, Option<ExprId>),
-    /// The `Assign` statement. The first `PatId` is the pattern for binding,
-    /// and the second `ExprId` is the rhs value of the binding.
-    Assign(PatId, ExprId),
     /// The first `PatId` is the pattern for binding which can be used in the
     /// for-loop body.
     ///
