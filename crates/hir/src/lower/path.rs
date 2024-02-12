@@ -1,4 +1,4 @@
-use parser::{ast, SyntaxToken};
+use parser::ast;
 
 use crate::hir_def::{kw, IdentId, Partial, PathId};
 
@@ -29,6 +29,4 @@ impl PathId {
     ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
     }
-
-   
 }
