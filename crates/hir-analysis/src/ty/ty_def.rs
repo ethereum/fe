@@ -468,8 +468,9 @@ pub struct AdtDef {
     param_set: GenericParamTypeSet,
 
     /// Fields of the ADT, if the ADT is an enum, this represents variants.
+    /// Otherwise, `fields[0]` represents all fields of the struct.
     #[return_ref]
-    pub fields: Vec<AdtField>,
+    pub fields: Vec<AdtFieldList>,
 }
 
 impl AdtDef {
@@ -608,7 +609,7 @@ impl FuncDef {
 /// This struct represents a field of an ADT. If the ADT is an enum, this
 /// represents a variant.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AdtField {
+pub struct AdtFieldList {
     name: Partial<IdentId>,
 
     /// Fields of the variant.
@@ -621,7 +622,7 @@ pub struct AdtField {
 
     scope: ScopeId,
 }
-impl AdtField {
+impl AdtFieldList {
     pub fn ty(&self, db: &dyn HirAnalysisDb, i: usize) -> TyId {
         if let Some(ty) = self.tys[i].to_opt() {
             lower_hir_ty(db, ty, self.scope)
@@ -807,7 +808,7 @@ pub enum TyVarUniverse {
 impl TyVar {
     pub(super) fn pretty_print(&self) -> String {
         match self.universe {
-            TyVarUniverse::General => format!("${}", self.key.0),
+            TyVarUniverse::General => ("_").to_string(),
             TyVarUniverse::Integral => "<integer>".to_string(),
             TyVarUniverse::String(n) => format!("String<{}>", n).to_string(),
         }

@@ -76,6 +76,10 @@ impl<'db> TyChecker<'db> {
         }
     }
 
+    fn body(&self) -> Body {
+        self.env.body()
+    }
+
     fn lit_ty(&mut self, lit: &LitKind) -> TyId {
         match lit {
             LitKind::Bool(_) => TyId::bool(self.db),
@@ -101,6 +105,10 @@ impl<'db> TyChecker<'db> {
     /// kind of the type variable is `*`, and the universe is `General`.
     fn fresh_ty(&mut self) -> TyId {
         self.table.new_var(TyVarUniverse::General, &Kind::Star)
+    }
+
+    fn fresh_tys_n(&mut self, n: usize) -> Vec<TyId> {
+        (0..n).map(|_| self.fresh_ty()).collect()
     }
 
     fn unify_ty<T>(&mut self, t: T, actual: TyId, expected: TyId) -> TyId
@@ -273,5 +281,39 @@ impl ResolvedPathData {
                 )
             }
         }
+    }
+
+    fn is_tuple_variant(&self, db: &dyn HirAnalysisDb) -> bool {
+        match self {
+            Self::Adt(_, _) => false,
+            Self::Variant(enum_, idx, _) => {
+                let hir_db = db.as_hir_db();
+                matches!(
+                    enum_.variants(hir_db).data(hir_db)[*idx].kind,
+                    HirVariantKind::Tuple(_)
+                )
+            }
+        }
+    }
+
+    fn field_tys(&self, db: &dyn HirAnalysisDb) -> Vec<TyId> {
+        let (adt, idx) = match self {
+            Self::Adt(adt, _) => {
+                if matches!(
+                    adt.adt_ref(db).data(db),
+                    AdtRef::Struct(_) | AdtRef::Contract(_)
+                ) {
+                    (*adt, 0)
+                } else {
+                    return vec![];
+                }
+            }
+            Self::Variant(enum_, idx, _) => {
+                let adt = lower_adt(db, AdtRefId::from_enum(db, *enum_));
+                (adt, *idx)
+            }
+        };
+
+        adt.fields(db)[idx].iter_types(db).collect()
     }
 }

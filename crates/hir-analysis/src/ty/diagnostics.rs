@@ -16,7 +16,7 @@ use super::{
     ty_check::ResolvedPathData,
     ty_def::{Kind, TyId},
 };
-use crate::HirAnalysisDb;
+use crate::{name_resolution::diagnostics::NameResDiag, HirAnalysisDb};
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
@@ -37,6 +37,7 @@ pub struct FuncBodyDiagAccumulator(pub(super) FuncBodyDiag);
 pub enum FuncBodyDiag {
     Ty(TyDiagCollection),
     Body(BodyDiag),
+    NameRes(NameResDiag),
 }
 
 impl FuncBodyDiag {
@@ -44,6 +45,7 @@ impl FuncBodyDiag {
         match self {
             Self::Ty(diag) => diag.to_voucher(),
             Self::Body(diag) => Box::new(diag.clone()) as _,
+            Self::NameRes(diag) => Box::new(diag.clone()) as _,
         }
     }
 }
@@ -547,8 +549,18 @@ pub enum BodyDiag {
     },
     UnitVariantExpectedInPat {
         primary: DynLazySpan,
-        kind: &'static str,
+        pat_kind: &'static str,
         hint: Option<String>,
+    },
+    TupleVariantExpectedInPat {
+        primary: DynLazySpan,
+        pat_kind: Option<&'static str>,
+        hint: Option<String>,
+    },
+    MismatchedFieldCount {
+        primary: DynLazySpan,
+        expected: usize,
+        given: usize,
     },
 }
 
@@ -569,11 +581,29 @@ impl BodyDiag {
         primary: DynLazySpan,
         data: ResolvedPathData,
     ) -> Self {
-        let kind = data.data_kind(db);
+        let pat_kind = data.data_kind(db);
         let hint = data.initializer_hint(db);
         Self::UnitVariantExpectedInPat {
             primary,
-            kind,
+            pat_kind,
+            hint,
+        }
+    }
+
+    pub(super) fn tuple_variant_expected_in_pat(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        data: Option<ResolvedPathData>,
+    ) -> Self {
+        let (pat_kind, hint) = if let Some(data) = data {
+            (Some(data.data_kind(db)), data.initializer_hint(db))
+        } else {
+            (None, None)
+        };
+
+        Self::TupleVariantExpectedInPat {
+            primary,
+            pat_kind,
             hint,
         }
     }
@@ -585,6 +615,8 @@ impl BodyDiag {
             Self::DuplicatedRestPat(_) => 2,
             Self::InvalidPathDomainInPat { .. } => 3,
             Self::UnitVariantExpectedInPat { .. } => 4,
+            Self::TupleVariantExpectedInPat { .. } => 5,
+            Self::MismatchedFieldCount { .. } => 6,
         }
     }
 
@@ -594,7 +626,9 @@ impl BodyDiag {
             Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
             Self::DuplicatedRestPat(_) => "duplicated `..` found".to_string(),
             Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
-            Self::UnitVariantExpectedInPat { .. } => "unit variant is expected here".to_string(),
+            Self::UnitVariantExpectedInPat { .. } => "expected unit variant".to_string(),
+            Self::TupleVariantExpectedInPat { .. } => "expected tuple variant".to_string(),
+            Self::MismatchedFieldCount { .. } => "field count mismatch".to_string(),
         }
     }
 
@@ -636,22 +670,64 @@ impl BodyDiag {
 
             Self::UnitVariantExpectedInPat {
                 primary,
-                kind,
+                pat_kind,
                 hint,
             } => {
-                let mut diags = vec![SubDiagnostic::new(
+                let mut diag = vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("expected unit variant here, but found {}", kind,),
+                    format!("expected unit variant here, but found {}", pat_kind,),
                     primary.resolve(db),
                 )];
                 if let Some(hint) = hint {
-                    diags.push(SubDiagnostic::new(
+                    diag.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("Use {} instead", hint),
+                        format!("Consider using `{}` instead", hint),
                         primary.resolve(db),
                     ))
                 }
-                diags
+                diag
+            }
+
+            Self::TupleVariantExpectedInPat {
+                primary,
+                pat_kind,
+                hint,
+            } => {
+                let mut diag = if let Some(pat_kind) = pat_kind {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("expected tuple variant here, but found {}", pat_kind,),
+                        primary.resolve(db),
+                    )]
+                } else {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        "expected tuple variant here".to_string(),
+                        primary.resolve(db),
+                    )]
+                };
+
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+
+                diag
+            }
+
+            Self::MismatchedFieldCount {
+                primary,
+                expected,
+                given,
+            } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected {} fields here, but {} given", expected, given,),
+                    primary.resolve(db),
+                )]
             }
         }
     }

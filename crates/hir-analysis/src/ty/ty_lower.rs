@@ -13,7 +13,7 @@ use salsa::function::Configuration;
 use super::{
     const_ty::{ConstTyData, ConstTyId},
     ty_def::{
-        AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
+        AdtDef, AdtFieldList, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
     },
 };
 use crate::{
@@ -449,7 +449,7 @@ struct AdtTyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     adt: AdtRefId,
     params: GenericParamTypeSet,
-    variants: Vec<AdtField>,
+    variants: Vec<AdtFieldList>,
 }
 
 impl<'db> AdtTyBuilder<'db> {
@@ -499,7 +499,7 @@ impl<'db> AdtTyBuilder<'db> {
         let scope = self.adt.scope(self.db);
 
         fields.data(self.db.as_hir_db()).iter().for_each(|field| {
-            let variant = AdtField::new(field.name, vec![field.ty], scope);
+            let variant = AdtFieldList::new(field.name, vec![field.ty], scope);
             self.variants.push(variant);
         })
     }
@@ -524,7 +524,7 @@ impl<'db> AdtTyBuilder<'db> {
                     VariantKind::Unit => vec![],
                 };
 
-                let variant = AdtField::new(variant.name, tys, scope);
+                let variant = AdtFieldList::new(variant.name, tys, scope);
                 self.variants.push(variant)
             })
     }

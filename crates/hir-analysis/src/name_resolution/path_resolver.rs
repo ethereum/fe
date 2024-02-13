@@ -7,7 +7,10 @@ use super::{
     },
     NameDomain, NameQuery,
 };
-use crate::{name_resolution::QueryDirective, HirAnalysisDb};
+use crate::{
+    name_resolution::{resolve_segments_early, QueryDirective},
+    HirAnalysisDb,
+};
 
 /// The result of early path resolution.
 /// There are two kinds of early resolution results:
