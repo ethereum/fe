@@ -6,7 +6,7 @@ use fe_compiler_test_utils::snap_test;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/fixtures/ty_check",
-    glob: "*.fe"
+    glob: "**/*.fe"
 )]
 fn run_ty_check(fixture: Fixture<&str>) {
     let mut driver = DriverDataBase::default();

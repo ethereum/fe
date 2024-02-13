@@ -8,7 +8,7 @@ use test_db::HirAnalysisTestDb;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/ty_check",
-    glob: "*.fe"
+    glob: "**/*.fe"
 )]
 fn test_standalone(fixture: Fixture<&str>) {
     let mut db = HirAnalysisTestDb::default();

@@ -1,0 +1,10 @@
+pub enum Foo {
+    Variant(u8, u16, u32, u64)
+}
+
+puf fn foo() {
+    let Foo::Variant(a, b, c, d)
+    let Foo::Variant(.., a, b)
+    let Foo::Variant(a, .., b, c)
+    let Foo::Variant(a, b, c, ..)
+}
