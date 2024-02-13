@@ -352,6 +352,9 @@ impl AssignExpr {
     pub fn rhs_expr(&self) -> Option<super::Expr> {
         support::children(self.syntax()).nth(1)
     }
+    pub fn eq(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Eq)
+    }
 }
 
 ast_node! {
@@ -976,6 +979,7 @@ mod tests {
     #[wasm_bindgen_test]
     fn assign() {
         let assign_expr: AssignExpr = parse_expr(r#"Foo{x, y} = foo"#);
+
         assert!(matches!(
             assign_expr.lhs_expr().unwrap().kind(),
             ExprKind::RecordInit(_)

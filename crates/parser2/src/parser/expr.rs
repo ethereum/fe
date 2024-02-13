@@ -144,6 +144,10 @@ fn postfix_binding_power(kind: SyntaxKind) -> Option<u8> {
 fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8)> {
     use SyntaxKind::*;
 
+    if is_aug(parser) {
+        return Some((11, 10));
+    }
+
     let bp = match parser.current_kind()? {
         Pipe2 => (50, 51),
         Amp2 => (60, 61),
@@ -169,13 +173,7 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
         Amp => (100, 101),
         LShift | RShift => (110, 111),
         Plus | Minus => (120, 121),
-        Star | Slash | Percent => {
-            if is_aug(parser) {
-                (11, 10)
-            } else {
-                (130, 131)
-            }
-        }
+        Star | Slash | Percent => (130, 131),
         Star2 => (141, 140),
         Dot => (151, 150),
         Eq => {
@@ -351,6 +349,7 @@ fn is_lt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
 fn is_gt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.dry_run(|parser| parser.parse(GtEqScope::default(), None).0)
 }
+
 fn is_aug<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.dry_run(|parser| {
         if !bump_aug_assign_op(parser) {
@@ -361,6 +360,7 @@ fn is_aug<S: TokenStream>(parser: &mut Parser<S>) -> bool {
         parser.current_kind() == Some(SyntaxKind::Eq)
     })
 }
+
 fn is_asn<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.dry_run(|parser| {
         parser.set_newline_as_trivia(false);

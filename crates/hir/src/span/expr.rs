@@ -53,9 +53,11 @@ impl LazyExprSpan {
     pub fn into_match_expr(self) -> LazyMatchExprSpan {
         LazyMatchExprSpan(self.0)
     }
+
     pub fn into_aug_assign_expr(self) -> LazyAugAssignExprSpan {
         LazyAugAssignExprSpan(self.0)
     }
+
     pub fn into_assign_expr(self) -> LazyAssignExprSpan {
         LazyAssignExprSpan(self.0)
     }
@@ -80,8 +82,8 @@ define_lazy_span_node!(
 define_lazy_span_node!(
     LazyAssignExprSpan,
     ast::AssignExpr,
-    @node {
-        (lhs_expr, lhs_expr, LazySpanAtom), //no eq function
+    @token {
+        (eq, eq),
     }
 );
 

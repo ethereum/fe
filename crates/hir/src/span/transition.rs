@@ -363,7 +363,7 @@ macro_rules! define_lazy_span_node {
                         fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
                             origin.map(|node| <$sk_node as AstNode>::cast(node)
                                 .and_then(|n| n.$getter_node())
-                                .map(|n| n.syntax().clone().into()))
+                                .map(|n|  n.syntax().clone().into()))
                         }
 
                         let lazy_transition = crate::span::transition::LazyTransitionFn {

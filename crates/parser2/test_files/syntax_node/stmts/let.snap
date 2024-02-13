@@ -69,50 +69,50 @@ Root@0..231
         Int@49..50 "1"
   Newline@50..52 "\n\n"
   ExprStmt@52..62
-    BinExpr@52..62
-      AugAssignExpr@52..58
-        PathExpr@52..53
-          Path@52..53
-            PathSegment@52..53
-              Ident@52..53 "x"
-        WhiteSpace@53..54 " "
-        Plus@54..55 "+"
-        Eq@55..56 "="
-        WhiteSpace@56..57 " "
+    AugAssignExpr@52..62
+      PathExpr@52..53
+        Path@52..53
+          PathSegment@52..53
+            Ident@52..53 "x"
+      WhiteSpace@53..54 " "
+      Plus@54..55 "+"
+      Eq@55..56 "="
+      WhiteSpace@56..57 " "
+      BinExpr@57..62
         LitExpr@57..58
           Lit@57..58
             Int@57..58 "1"
-      WhiteSpace@58..59 " "
-      Plus@59..60 "+"
-      WhiteSpace@60..61 " "
-      LitExpr@61..62
-        Lit@61..62
-          Int@61..62 "1"
+        WhiteSpace@58..59 " "
+        Plus@59..60 "+"
+        WhiteSpace@60..61 " "
+        LitExpr@61..62
+          Lit@61..62
+            Int@61..62 "1"
   Newline@62..63 "\n"
   ExprStmt@63..75
-    BinExpr@63..75
-      AugAssignExpr@63..70
-        PathExpr@63..64
-          Path@63..64
-            PathSegment@63..64
-              Ident@63..64 "y"
-        WhiteSpace@64..65 " "
-        LShift@65..67
-          Lt@65..66 "<"
-          Lt@66..67 "<"
-        Eq@67..68 "="
-        WhiteSpace@68..69 " "
+    AugAssignExpr@63..75
+      PathExpr@63..64
+        Path@63..64
+          PathSegment@63..64
+            Ident@63..64 "y"
+      WhiteSpace@64..65 " "
+      LShift@65..67
+        Lt@65..66 "<"
+        Lt@66..67 "<"
+      Eq@67..68 "="
+      WhiteSpace@68..69 " "
+      BinExpr@69..75
         LitExpr@69..70
           Lit@69..70
             Int@69..70 "1"
-      WhiteSpace@70..71 " "
-      RShift@71..73
-        Gt@71..72 ">"
-        Gt@72..73 ">"
-      WhiteSpace@73..74 " "
-      LitExpr@74..75
-        Lit@74..75
-          Int@74..75 "2"
+        WhiteSpace@70..71 " "
+        RShift@71..73
+          Gt@71..72 ">"
+          Gt@72..73 ">"
+        WhiteSpace@73..74 " "
+        LitExpr@74..75
+          Lit@74..75
+            Int@74..75 "2"
   Newline@75..77 "\n\n"
   LetStmt@77..102
     LetKw@77..80 "let"

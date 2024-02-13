@@ -175,6 +175,7 @@ impl Expr {
             ast::ExprKind::Paren(paren) => {
                 return Self::push_to_body_opt(ctxt, paren.expr());
             }
+
             ast::ExprKind::Assign(assign) => {
                 let lhs = Self::push_to_body_opt(ctxt, assign.lhs_expr());
                 let rhs = Self::push_to_body_opt(ctxt, assign.rhs_expr());
