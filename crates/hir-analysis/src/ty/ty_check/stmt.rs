@@ -22,7 +22,7 @@ impl<'db> TyChecker<'db> {
 
             Stmt::Return(..) => todo!(),
 
-            Stmt::Expr(expr) => self.check_expr_ty(*expr, expected),
+            Stmt::Expr(expr) => self.check_expr(*expr, expected),
         }
     }
 
@@ -40,7 +40,7 @@ impl<'db> TyChecker<'db> {
 
         self.check_pat(*pat, ascription);
         if let Some(expr) = expr {
-            self.check_expr_ty(*expr, ascription);
+            self.check_expr(*expr, ascription);
         }
 
         self.env.flush_pending_bindings();

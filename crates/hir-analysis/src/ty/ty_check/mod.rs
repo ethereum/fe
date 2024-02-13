@@ -1,18 +1,22 @@
 mod env;
-pub(crate) mod pat;
+mod expr;
+mod pat;
 mod stmt;
 
 use env::TyCheckEnv;
 use hir::{
-    hir_def::{Body, Expr, ExprId, Func, LitKind, Partial, PatId, TypeId as HirTyId},
+    hir_def::{
+        Body, Enum, ExprId, Func, LitKind, PatId, PathId, TypeId as HirTyId,
+        VariantKind as HirVariantKind,
+    },
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
 
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
-    ty_def::{InvalidCause, Kind, TyId, TyVarUniverse},
-    ty_lower::lower_hir_ty,
+    ty_def::{AdtDef, AdtRef, AdtRefId, InvalidCause, Kind, TyId, TyVarUniverse},
+    ty_lower::{lower_adt, lower_hir_ty},
     unify::{UnificationError, UnificationTable},
 };
 use crate::HirAnalysisDb;
@@ -54,7 +58,7 @@ impl<'db> TyChecker<'db> {
 
     fn run(&mut self) {
         let root_expr = self.env.body().expr(self.db.as_hir_db());
-        self.check_expr_ty(root_expr, self.expected);
+        self.check_expr(root_expr, self.expected);
     }
 
     fn finish(mut self) -> TypedBody {
@@ -72,6 +76,18 @@ impl<'db> TyChecker<'db> {
         }
     }
 
+    fn lit_ty(&mut self, lit: &LitKind) -> TyId {
+        match lit {
+            LitKind::Bool(_) => TyId::bool(self.db),
+            LitKind::Int(_) => self.table.new_var(TyVarUniverse::Integral, &Kind::Star),
+            LitKind::String(s) => {
+                let len_bytes = s.len_bytes(self.db.as_hir_db());
+                self.table
+                    .new_var(TyVarUniverse::String(len_bytes), &Kind::Star)
+            }
+        }
+    }
+
     fn lower_ty(&self, hir_ty: HirTyId, span: DynLazySpan) -> TyId {
         let ty = lower_hir_ty(self.db, hir_ty, self.env.scope());
         if let Some(diag) = ty.emit_diag(self.db, span) {
@@ -85,64 +101,6 @@ impl<'db> TyChecker<'db> {
     /// kind of the type variable is `*`, and the universe is `General`.
     fn fresh_ty(&mut self) -> TyId {
         self.table.new_var(TyVarUniverse::General, &Kind::Star)
-    }
-
-    fn check_expr_ty(&mut self, expr: ExprId, expected: TyId) -> TyId {
-        let Partial::Present(expr_data) = self.env.expr_data(expr) else {
-            let ty = TyId::invalid(self.db, InvalidCause::Other);
-            self.env.type_expr(expr, ty);
-            return ty;
-        };
-
-        let actual = match expr_data {
-            Expr::Lit(lit) => self.lit_ty(lit),
-
-            Expr::Block(stmts) => {
-                if stmts.is_empty() {
-                    TyId::unit(self.db)
-                } else {
-                    self.env.enter_block(expr).ok();
-                    for &stmt in stmts[..stmts.len() - 1].iter() {
-                        self.check_stmt(stmt, TyId::bot(self.db));
-                    }
-
-                    let last_stmt = stmts[stmts.len() - 1];
-                    let res = self.check_stmt(last_stmt, expected);
-                    self.env.leave_block();
-                    res
-                }
-            }
-
-            Expr::Bin(..) => todo!(),
-            Expr::Un(..) => todo!(),
-            Expr::Call(..) => todo!(),
-            Expr::MethodCall(..) => todo!(),
-            Expr::Path(..) => todo!(),
-            Expr::RecordInit(..) => todo!(),
-            Expr::Field(..) => todo!(),
-            Expr::Tuple(..) => todo!(),
-            Expr::Index(..) => todo!(),
-            Expr::Array(..) => todo!(),
-            Expr::ArrayRep(..) => todo!(),
-            Expr::If(..) => todo!(),
-            Expr::Match(..) => todo!(),
-            Expr::Assign(..) => todo!(),
-            Expr::AugAssign(..) => todo!(),
-        };
-
-        self.unify_ty(expr, actual, expected)
-    }
-
-    fn lit_ty(&mut self, lit: &LitKind) -> TyId {
-        match lit {
-            LitKind::Bool(_) => TyId::bool(self.db),
-            LitKind::Int(_) => self.table.new_var(TyVarUniverse::Integral, &Kind::Star),
-            LitKind::String(s) => {
-                let len_bytes = s.len_bytes(self.db.as_hir_db());
-                self.table
-                    .new_var(TyVarUniverse::String(len_bytes), &Kind::Star)
-            }
-        }
     }
 
     fn unify_ty<T>(&mut self, t: T, actual: TyId, expected: TyId) -> TyId
@@ -203,7 +161,6 @@ impl TypedBody {
             .copied()
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
     }
-
     pub fn pat_ty(&self, db: &dyn HirAnalysisDb, pat: PatId) -> TyId {
         self.pat_ty
             .get(&pat)
@@ -231,6 +188,90 @@ impl Typeable {
         match self {
             Self::Expr(expr) => expr.lazy_span(body).into(),
             Self::Pat(pat) => pat.lazy_span(body).into(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub(crate) enum ResolvedPathData {
+    Adt(AdtDef, PathId),
+    Variant(Enum, usize, PathId),
+}
+
+impl ResolvedPathData {
+    pub(crate) fn adt_ref(&self, db: &dyn HirAnalysisDb) -> AdtRef {
+        match self {
+            Self::Adt(adt, _) => adt.adt_ref(db).data(db),
+            Self::Variant(enum_, _, _) => AdtRef::Enum(*enum_),
+        }
+    }
+
+    pub(crate) fn data_kind(&self, db: &dyn HirAnalysisDb) -> &'static str {
+        match self {
+            Self::Adt(adt, _) => adt.adt_ref(db).kind_name(db),
+            Self::Variant(enum_, idx, _) => {
+                let hir_db = db.as_hir_db();
+                match enum_.variants(hir_db).data(hir_db)[*idx].kind {
+                    hir::hir_def::VariantKind::Unit => "unit variant",
+                    HirVariantKind::Tuple(_) => "tuple variant",
+                    HirVariantKind::Record(_) => "record variant",
+                }
+            }
+        }
+    }
+
+    pub(crate) fn initializer_hint(&self, db: &dyn HirAnalysisDb) -> Option<String> {
+        let hir_db = db.as_hir_db();
+
+        let expected_sub_pat = match self {
+            Self::Adt(_, _) => {
+                let AdtRef::Struct(s) = self.adt_ref(db) else {
+                    return None;
+                };
+
+                s.format_initializer_args(hir_db)
+            }
+
+            Self::Variant(enum_, idx, _) => {
+                enum_.variants(hir_db).data(hir_db)[*idx].format_initializer_args(hir_db)
+            }
+        };
+
+        let path = self.path().pretty_print(hir_db);
+        Some(format!("{}{}", path, expected_sub_pat))
+    }
+
+    fn path(&self) -> PathId {
+        match self {
+            Self::Adt(_, path) => *path,
+            Self::Variant(_, _, path) => *path,
+        }
+    }
+
+    fn ty(&self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> TyId {
+        let adt = match self {
+            Self::Adt(adt, _) => *adt,
+
+            Self::Variant(enum_, ..) => lower_adt(db, AdtRefId::from_enum(db, *enum_)),
+        };
+
+        let adt_ty = TyId::adt(db, adt);
+        adt.params(db).iter().fold(adt_ty, |ty, param| {
+            let param_ty = table.new_var_from_param(*param);
+            TyId::app(db, ty, param_ty)
+        })
+    }
+
+    fn is_unit_variant(&self, db: &dyn HirAnalysisDb) -> bool {
+        match self {
+            Self::Adt(_, _) => false,
+            Self::Variant(enum_, idx, _) => {
+                let hir_db = db.as_hir_db();
+                matches!(
+                    enum_.variants(hir_db).data(hir_db)[*idx].kind,
+                    hir::hir_def::VariantKind::Unit
+                )
+            }
         }
     }
 }
