@@ -1,23 +1,19 @@
 use std::ops::Range;
 
 use hir::{
-    hir_def::{
-        scope_graph::ScopeId, Enum, IdentId, ItemKind, Partial, Pat, PatId, PathId,
-        VariantKind as HirVariantKind,
-    },
+    hir_def::{scope_graph::ScopeId, Enum, IdentId, ItemKind, Partial, Pat, PatId, PathId},
     span::DynLazySpan,
 };
 
-use super::{env::TyCheckEnv, TyChecker};
+use super::{env::TyCheckEnv, ResolvedPathData, TyChecker};
 use crate::{
     name_resolution::{
         resolve_path_early, EarlyResolvedPath, NameDomain, NameRes, NameResBucket, NameResKind,
     },
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator, TyLowerDiag},
-        ty_def::{AdtDef, AdtRef, AdtRefId, InvalidCause, Kind, TyId, TyVarUniverse},
+        ty_def::{AdtRefId, InvalidCause, Kind, TyId, TyVarUniverse},
         ty_lower::lower_adt,
-        unify::UnificationTable,
     },
     HirAnalysisDb,
 };
@@ -240,12 +236,12 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         match res.kind {
             NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
                 let adt = lower_adt(self.db, AdtRefId::from_struct(self.db, struct_));
-                ResolvedPathInPat::Data(ResolvedPatData::Adt(adt, self.path))
+                ResolvedPathInPat::Data(ResolvedPathData::Adt(adt, self.path))
             }
 
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
                 let enum_: Enum = parent.try_into().unwrap();
-                let data = ResolvedPatData::Variant(enum_, idx, self.path);
+                let data = ResolvedPathData::Variant(enum_, idx, self.path);
                 ResolvedPathInPat::Data(data)
             }
 
@@ -269,92 +265,8 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
 #[derive(Clone, Debug)]
 pub(crate) enum ResolvedPathInPat {
-    Data(ResolvedPatData),
+    Data(ResolvedPathData),
     NewBinding(IdentId),
     Diag(FuncBodyDiag),
     Invalid,
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub(crate) enum ResolvedPatData {
-    Adt(AdtDef, PathId),
-    Variant(Enum, usize, PathId),
-}
-
-impl ResolvedPatData {
-    pub(crate) fn adt_ref(&self, db: &dyn HirAnalysisDb) -> AdtRef {
-        match self {
-            Self::Adt(adt, _) => adt.adt_ref(db).data(db),
-            Self::Variant(enum_, _, _) => AdtRef::Enum(*enum_),
-        }
-    }
-
-    pub(crate) fn data_kind(&self, db: &dyn HirAnalysisDb) -> &'static str {
-        match self {
-            Self::Adt(adt, _) => adt.adt_ref(db).kind_name(db),
-            Self::Variant(enum_, idx, _) => {
-                let hir_db = db.as_hir_db();
-                match enum_.variants(hir_db).data(hir_db)[*idx].kind {
-                    hir::hir_def::VariantKind::Unit => "unit variant",
-                    HirVariantKind::Tuple(_) => "tuple variant",
-                    HirVariantKind::Record(_) => "record variant",
-                }
-            }
-        }
-    }
-
-    pub(crate) fn hint(&self, db: &dyn HirAnalysisDb) -> Option<String> {
-        let hir_db = db.as_hir_db();
-
-        let expected_sub_pat = match self {
-            Self::Adt(_, _) => {
-                let AdtRef::Struct(s) = self.adt_ref(db) else {
-                    return None;
-                };
-
-                s.format_initializer_args(hir_db)
-            }
-
-            Self::Variant(enum_, idx, _) => {
-                enum_.variants(hir_db).data(hir_db)[*idx].format_initializer_args(hir_db)
-            }
-        };
-
-        let path = self.path().pretty_print(hir_db);
-        Some(format!("{}{}", path, expected_sub_pat))
-    }
-
-    fn path(&self) -> PathId {
-        match self {
-            Self::Adt(_, path) => *path,
-            Self::Variant(_, _, path) => *path,
-        }
-    }
-
-    fn ty(&self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> TyId {
-        let adt = match self {
-            Self::Adt(adt, _) => *adt,
-
-            Self::Variant(enum_, ..) => lower_adt(db, AdtRefId::from_enum(db, *enum_)),
-        };
-
-        let adt_ty = TyId::adt(db, adt);
-        adt.params(db).iter().fold(adt_ty, |ty, param| {
-            let param_ty = table.new_var_from_param(*param);
-            TyId::app(db, ty, param_ty)
-        })
-    }
-
-    fn is_unit_variant(&self, db: &dyn HirAnalysisDb) -> bool {
-        match self {
-            Self::Adt(_, _) => false,
-            Self::Variant(enum_, idx, _) => {
-                let hir_db = db.as_hir_db();
-                matches!(
-                    enum_.variants(hir_db).data(hir_db)[*idx].kind,
-                    hir::hir_def::VariantKind::Unit
-                )
-            }
-        }
-    }
 }
