@@ -1,14 +1,13 @@
 use parser::ast;
 
+use super::{
+    body_source_map, define_lazy_span_node,
+    transition::{ChainInitiator, ResolvedOrigin, SpanTransitionChain},
+};
 use crate::{
     hir_def::{Body, PatId},
     span::{path::LazyPathSpan, LazyLitSpan},
     SpannedHirDb,
-};
-
-use super::{
-    body_source_map, define_lazy_span_node,
-    transition::{ChainInitiator, ResolvedOrigin, SpanTransitionChain},
 };
 
 define_lazy_span_node!(LazyPatSpan, ast::Pat,);
@@ -26,8 +25,8 @@ impl LazyPatSpan {
         LazyLitPatSpan(self.0)
     }
 
-    pub fn into_path_tuple_pat(self) -> LazyPathPatSpan {
-        LazyPathPatSpan(self.0)
+    pub fn into_path_tuple_pat(self) -> LazyPathTuplePatSpan {
+        LazyPathTuplePatSpan(self.0)
     }
 
     pub fn into_record_pat(self) -> LazyRecordPatSpan {

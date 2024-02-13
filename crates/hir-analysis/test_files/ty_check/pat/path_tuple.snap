@@ -1,0 +1,132 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/pat/path_tuple.fe
+---
+note: 
+   ┌─ test_file.fe:5:14
+   │  
+ 5 │   puf fn foo() {
+   │ ╭──────────────^
+ 6 │ │     let Foo::Variant(a, b, c, d)
+ 7 │ │     let Foo::Variant(.., a, b)
+ 8 │ │     let Foo::Variant(a, .., b, c)
+ 9 │ │     let Foo::Variant(a, b, c, ..)
+10 │ │ }
+   │ ╰─^ ()
+
+note: 
+  ┌─ test_file.fe:6:9
+  │
+6 │     let Foo::Variant(a, b, c, d)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^ Foo
+
+note: 
+  ┌─ test_file.fe:6:22
+  │
+6 │     let Foo::Variant(a, b, c, d)
+  │                      ^ u8
+
+note: 
+  ┌─ test_file.fe:6:25
+  │
+6 │     let Foo::Variant(a, b, c, d)
+  │                         ^ u16
+
+note: 
+  ┌─ test_file.fe:6:28
+  │
+6 │     let Foo::Variant(a, b, c, d)
+  │                            ^ u32
+
+note: 
+  ┌─ test_file.fe:6:31
+  │
+6 │     let Foo::Variant(a, b, c, d)
+  │                               ^ u64
+
+note: 
+  ┌─ test_file.fe:7:9
+  │
+7 │     let Foo::Variant(.., a, b)
+  │         ^^^^^^^^^^^^^^^^^^^^^^ Foo
+
+note: 
+  ┌─ test_file.fe:7:22
+  │
+7 │     let Foo::Variant(.., a, b)
+  │                      ^^ <invalid>
+
+note: 
+  ┌─ test_file.fe:7:26
+  │
+7 │     let Foo::Variant(.., a, b)
+  │                          ^ u32
+
+note: 
+  ┌─ test_file.fe:7:29
+  │
+7 │     let Foo::Variant(.., a, b)
+  │                             ^ u64
+
+note: 
+  ┌─ test_file.fe:8:9
+  │
+8 │     let Foo::Variant(a, .., b, c)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^ Foo
+
+note: 
+  ┌─ test_file.fe:8:22
+  │
+8 │     let Foo::Variant(a, .., b, c)
+  │                      ^ u8
+
+note: 
+  ┌─ test_file.fe:8:25
+  │
+8 │     let Foo::Variant(a, .., b, c)
+  │                         ^^ <invalid>
+
+note: 
+  ┌─ test_file.fe:8:29
+  │
+8 │     let Foo::Variant(a, .., b, c)
+  │                             ^ u32
+
+note: 
+  ┌─ test_file.fe:8:32
+  │
+8 │     let Foo::Variant(a, .., b, c)
+  │                                ^ u64
+
+note: 
+  ┌─ test_file.fe:9:9
+  │
+9 │     let Foo::Variant(a, b, c, ..)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^ Foo
+
+note: 
+  ┌─ test_file.fe:9:22
+  │
+9 │     let Foo::Variant(a, b, c, ..)
+  │                      ^ u8
+
+note: 
+  ┌─ test_file.fe:9:25
+  │
+9 │     let Foo::Variant(a, b, c, ..)
+  │                         ^ u16
+
+note: 
+  ┌─ test_file.fe:9:28
+  │
+9 │     let Foo::Variant(a, b, c, ..)
+  │                            ^ u32
+
+note: 
+  ┌─ test_file.fe:9:31
+  │
+9 │     let Foo::Variant(a, b, c, ..)
+  │                               ^^ <invalid>
+
+
