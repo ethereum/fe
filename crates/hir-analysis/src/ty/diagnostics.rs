@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use super::{
     constraint::PredicateId,
-    ty_check::pat::ResolvedPatData,
+    ty_check::ResolvedPathData,
     ty_def::{Kind, TyId},
 };
 use crate::HirAnalysisDb;
@@ -567,10 +567,10 @@ impl BodyDiag {
     pub(super) fn unit_variant_expected_in_pat(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
-        data: ResolvedPatData,
+        data: ResolvedPathData,
     ) -> Self {
         let kind = data.data_kind(db);
-        let hint = data.hint(db);
+        let hint = data.initializer_hint(db);
         Self::UnitVariantExpectedInPat {
             primary,
             kind,
