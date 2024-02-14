@@ -45,6 +45,3 @@ impl ChainInitiator for StmtRoot {
         ResolvedOrigin::resolve(db, top_mod, origin)
     }
 }
-
-#[cfg(test)]
-mod tests {}
