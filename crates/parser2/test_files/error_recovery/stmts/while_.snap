@@ -39,20 +39,16 @@ Root@0..56
               Int@33..34 "1"
       Newline@34..35 "\n"
       RBrace@35..36 "}"
-  ExprStmt@36..37
-    Error@36..37
+  ExprStmt@36..56
+    Error@36..56
       RBrace@36..37 "}"
-  Newline@37..38 "\n"
-  WhiteSpace@38..42 "    "
-  Newline@42..43 "\n"
-  WhileStmt@43..56
-    WhileKw@43..48 "while"
-    WhiteSpace@48..49 " "
-    LitExpr@49..53
-      Lit@49..53
-        TrueKw@49..53 "true"
-    WhiteSpace@53..54 " "
-    BlockExpr@54..56
+      Newline@37..38 "\n"
+      WhiteSpace@38..42 "    "
+      Newline@42..43 "\n"
+      WhileKw@43..48 "while"
+      WhiteSpace@48..49 " "
+      TrueKw@49..53 "true"
+      WhiteSpace@53..54 " "
       LBrace@54..55 "{"
       RBrace@55..56 "}"
 

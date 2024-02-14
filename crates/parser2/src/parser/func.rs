@@ -52,12 +52,23 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>, allow_self: 
                 None,
             )
         },
-        &[SyntaxKind::Lt, SyntaxKind::LParen, SyntaxKind::LBrace],
+        &[
+            SyntaxKind::Lt,
+            SyntaxKind::LParen,
+            SyntaxKind::Arrow,
+            SyntaxKind::WhereKw,
+            SyntaxKind::LBrace,
+        ],
     );
 
     parser.with_next_expected_tokens(
         |parser| parse_generic_params_opt(parser, false),
-        &[SyntaxKind::LParen, SyntaxKind::LBrace],
+        &[
+            SyntaxKind::LParen,
+            SyntaxKind::WhereKw,
+            SyntaxKind::Arrow,
+            SyntaxKind::LBrace,
+        ],
     );
 
     parser.with_next_expected_tokens(
@@ -68,7 +79,7 @@ fn parse_normal_fn_def_impl<S: TokenStream>(parser: &mut Parser<S>, allow_self: 
                 parser.error_and_recover("expected `(` for the function arguments", None);
             }
         },
-        &[SyntaxKind::LBrace, SyntaxKind::Arrow, SyntaxKind::WhereKw],
+        &[SyntaxKind::Arrow, SyntaxKind::WhereKw, SyntaxKind::LBrace],
     );
 
     parser.with_next_expected_tokens(

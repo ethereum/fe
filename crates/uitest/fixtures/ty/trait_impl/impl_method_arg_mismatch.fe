@@ -1,5 +1,5 @@
 pub trait Foo {
-    fn foo<T, U>(self, t: T, u: U) 
+    fn foo<T, U>(self, t: T, u: U)
 }
 
 impl Foo for i32 {
@@ -11,15 +11,15 @@ impl Foo for u32 {
 }
 
 pub trait HktTrait
-where 
+where
     Self: * -> *
 {
     fn foo<T>(x: Self<i32>)
 }
 
 pub enum Option<T> {
-    Some(T)
-    None
+    Some(T),
+    None,
 }
 
 impl HktTrait for Option {

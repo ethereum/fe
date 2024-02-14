@@ -1,0 +1,30 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/method.fe
+---
+error[1-0001]: unexpected syntax
+  ┌─ method.fe:2:23
+  │
+2 │ foo::bar.baz<i32, u32 T,>(1, 2)
+  │                       ^ unexpected syntax
+
+error[1-0001]: expected path segment
+  ┌─ method.fe:2:25
+  │
+2 │ foo::bar.baz<i32, u32 T,>(1, 2)
+  │                         ^ expected path segment
+
+error[1-0001]: unexpected syntax
+  ┌─ method.fe:4:17
+  │
+4 │ foo::bar.x(1, 2 E,)
+  │                 ^ unexpected syntax
+
+error[1-0001]: expected expression
+  ┌─ method.fe:4:19
+  │
+4 │ foo::bar.x(1, 2 E,)
+  │                   ^ expected expression
+
+

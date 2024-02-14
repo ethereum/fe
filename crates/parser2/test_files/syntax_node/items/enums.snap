@@ -3,8 +3,8 @@ source: crates/parser2/tests/syntax_node.rs
 expression: node
 input_file: crates/parser2/test_files/syntax_node/items/enums.fe
 ---
-Root@0..428
-  ItemList@0..428
+Root@0..491
+  ItemList@0..491
     Item@0..15
       Enum@0..13
         EnumKw@0..4 "enum"
@@ -15,399 +15,467 @@ Root@0..428
           LBrace@11..12 "{"
           RBrace@12..13 "}"
       Newline@13..15 "\n\n"
-    Item@15..58
-      Enum@15..56
+    Item@15..59
+      Enum@15..57
         EnumKw@15..19 "enum"
         WhiteSpace@19..20 " "
         Ident@20..25 "Basic"
         WhiteSpace@25..26 " "
-        VariantDefList@26..56
+        VariantDefList@26..57
           LBrace@26..27 "{"
           Newline@27..28 "\n"
           WhiteSpace@28..32 "    "
           VariantDef@32..36
             Ident@32..36 "Unit"
-          Newline@36..37 "\n"
-          WhiteSpace@37..41 "    "
-          VariantDef@41..54
-            Ident@41..44 "Tup"
-            TupleType@44..54
-              LParen@44..45 "("
-              PathType@45..48
-                Path@45..48
-                  PathSegment@45..48
-                    Ident@45..48 "i32"
-              Comma@48..49 ","
-              WhiteSpace@49..50 " "
-              PathType@50..53
-                Path@50..53
-                  PathSegment@50..53
-                    Ident@50..53 "u32"
-              RParen@53..54 ")"
-          Newline@54..55 "\n"
-          RBrace@55..56 "}"
-      Newline@56..58 "\n\n"
-    Item@58..140
-      Enum@58..138
-        EnumKw@58..62 "enum"
-        WhiteSpace@62..63 " "
-        Ident@63..77 "RecordVariants"
-        WhiteSpace@77..78 " "
-        VariantDefList@78..138
-          LBrace@78..79 "{"
-          Newline@79..80 "\n"
-          WhiteSpace@80..85 "     "
-          VariantDef@85..113
-            Ident@85..94 "Rectangle"
-            WhiteSpace@94..95 " "
-            RecordFieldDefList@95..113
-              LBrace@95..96 "{"
-              WhiteSpace@96..97 " "
-              RecordFieldDef@97..103
-                Ident@97..98 "w"
-                Colon@98..99 ":"
-                WhiteSpace@99..100 " "
-                PathType@100..103
-                  Path@100..103
-                    PathSegment@100..103
-                      Ident@100..103 "u32"
-              Comma@103..104 ","
-              WhiteSpace@104..105 " "
-              RecordFieldDef@105..111
-                Ident@105..106 "h"
-                Colon@106..107 ":"
-                WhiteSpace@107..108 " "
-                PathType@108..111
-                  Path@108..111
-                    PathSegment@108..111
-                      Ident@108..111 "u32"
-              WhiteSpace@111..112 " "
-              RBrace@112..113 "}"
-          Newline@113..114 "\n"
-          WhiteSpace@114..119 "     "
-          VariantDef@119..136
-            Ident@119..125 "Circle"
-            WhiteSpace@125..126 " "
-            RecordFieldDefList@126..136
-              LBrace@126..127 "{"
-              WhiteSpace@127..128 " "
-              RecordFieldDef@128..134
-                Ident@128..129 "r"
-                Colon@129..130 ":"
-                WhiteSpace@130..131 " "
-                PathType@131..134
-                  Path@131..134
-                    PathSegment@131..134
-                      Ident@131..134 "u32"
-              WhiteSpace@134..135 " "
-              RBrace@135..136 "}"
-          Newline@136..137 "\n"
-          RBrace@137..138 "}"
-      Newline@138..140 "\n\n"
-    Item@140..200
-      Enum@140..198
-        EnumKw@140..144 "enum"
-        WhiteSpace@144..145 " "
-        Ident@145..151 "Option"
-        GenericParamList@151..154
-          Lt@151..152 "<"
-          TypeGenericParam@152..153
-            Ident@152..153 "T"
-          Gt@153..154 ">"
-        Newline@154..155 "\n"
-        WhiteSpace@155..159 "    "
-        WhereClause@159..174
-          WhereKw@159..164 "where"
-          WhiteSpace@164..165 " "
-          WherePredicate@165..174
-            PathType@165..166
-              Path@165..166
-                PathSegment@165..166
-                  Ident@165..166 "T"
-            TypeBoundList@166..173
-              Colon@166..167 ":"
-              WhiteSpace@167..168 " "
-              TypeBound@168..173
-                TraitRef@168..173
-                  Path@168..173
-                    PathSegment@168..173
-                      Ident@168..173 "Clone"
-            Newline@173..174 "\n"
-        VariantDefList@174..198
-          LBrace@174..175 "{"
-          Newline@175..176 "\n"
-          WhiteSpace@176..180 "    "
-          VariantDef@180..187
-            Ident@180..184 "Some"
-            TupleType@184..187
-              LParen@184..185 "("
-              PathType@185..186
-                Path@185..186
-                  PathSegment@185..186
-                    Ident@185..186 "T"
-              RParen@186..187 ")"
-          Newline@187..188 "\n"
-          WhiteSpace@188..192 "    "
-          VariantDef@192..196
-            Ident@192..196 "None"
-          Newline@196..197 "\n"
-          RBrace@197..198 "}"
-      Newline@198..200 "\n\n"
-    Item@200..302
-      Enum@200..300
-        EnumKw@200..204 "enum"
-        WhiteSpace@204..205 " "
-        Ident@205..214 "BoundEnum"
-        GenericParamList@214..243
-          Lt@214..215 "<"
-          TypeGenericParam@215..227
-            Ident@215..216 "T"
-            TypeBoundList@216..227
-              Colon@216..217 ":"
-              WhiteSpace@217..218 " "
-              TypeBound@218..221
-                TraitRef@218..221
-                  Path@218..221
-                    PathSegment@218..221
-                      Ident@218..221 "Add"
+          Comma@36..37 ","
+          Newline@37..38 "\n"
+          WhiteSpace@38..42 "    "
+          VariantDef@42..55
+            Ident@42..45 "Tup"
+            TupleType@45..55
+              LParen@45..46 "("
+              PathType@46..49
+                Path@46..49
+                  PathSegment@46..49
+                    Ident@46..49 "i32"
+              Comma@49..50 ","
+              WhiteSpace@50..51 " "
+              PathType@51..54
+                Path@51..54
+                  PathSegment@51..54
+                    Ident@51..54 "u32"
+              RParen@54..55 ")"
+          Newline@55..56 "\n"
+          RBrace@56..57 "}"
+      Newline@57..59 "\n\n"
+    Item@59..142
+      Enum@59..140
+        EnumKw@59..63 "enum"
+        WhiteSpace@63..64 " "
+        Ident@64..78 "RecordVariants"
+        WhiteSpace@78..79 " "
+        VariantDefList@79..140
+          LBrace@79..80 "{"
+          Newline@80..81 "\n"
+          WhiteSpace@81..86 "     "
+          VariantDef@86..114
+            Ident@86..95 "Rectangle"
+            WhiteSpace@95..96 " "
+            RecordFieldDefList@96..114
+              LBrace@96..97 "{"
+              WhiteSpace@97..98 " "
+              RecordFieldDef@98..104
+                Ident@98..99 "w"
+                Colon@99..100 ":"
+                WhiteSpace@100..101 " "
+                PathType@101..104
+                  Path@101..104
+                    PathSegment@101..104
+                      Ident@101..104 "u32"
+              Comma@104..105 ","
+              WhiteSpace@105..106 " "
+              RecordFieldDef@106..112
+                Ident@106..107 "h"
+                Colon@107..108 ":"
+                WhiteSpace@108..109 " "
+                PathType@109..112
+                  Path@109..112
+                    PathSegment@109..112
+                      Ident@109..112 "u32"
+              WhiteSpace@112..113 " "
+              RBrace@113..114 "}"
+          Comma@114..115 ","
+          Newline@115..116 "\n"
+          WhiteSpace@116..121 "     "
+          VariantDef@121..138
+            Ident@121..127 "Circle"
+            WhiteSpace@127..128 " "
+            RecordFieldDefList@128..138
+              LBrace@128..129 "{"
+              WhiteSpace@129..130 " "
+              RecordFieldDef@130..136
+                Ident@130..131 "r"
+                Colon@131..132 ":"
+                WhiteSpace@132..133 " "
+                PathType@133..136
+                  Path@133..136
+                    PathSegment@133..136
+                      Ident@133..136 "u32"
+              WhiteSpace@136..137 " "
+              RBrace@137..138 "}"
+          Newline@138..139 "\n"
+          RBrace@139..140 "}"
+      Newline@140..142 "\n\n"
+    Item@142..204
+      Enum@142..202
+        EnumKw@142..146 "enum"
+        WhiteSpace@146..147 " "
+        Ident@147..153 "Option"
+        GenericParamList@153..156
+          Lt@153..154 "<"
+          TypeGenericParam@154..155
+            Ident@154..155 "T"
+          Gt@155..156 ">"
+        Newline@156..157 "\n"
+        WhiteSpace@157..161 "    "
+        WhereClause@161..176
+          WhereKw@161..166 "where"
+          WhiteSpace@166..167 " "
+          WherePredicate@167..176
+            PathType@167..168
+              Path@167..168
+                PathSegment@167..168
+                  Ident@167..168 "T"
+            TypeBoundList@168..175
+              Colon@168..169 ":"
+              WhiteSpace@169..170 " "
+              TypeBound@170..175
+                TraitRef@170..175
+                  Path@170..175
+                    PathSegment@170..175
+                      Ident@170..175 "Clone"
+            Newline@175..176 "\n"
+        VariantDefList@176..202
+          LBrace@176..177 "{"
+          Newline@177..178 "\n"
+          WhiteSpace@178..182 "    "
+          VariantDef@182..189
+            Ident@182..186 "Some"
+            TupleType@186..189
+              LParen@186..187 "("
+              PathType@187..188
+                Path@187..188
+                  PathSegment@187..188
+                    Ident@187..188 "T"
+              RParen@188..189 ")"
+          Comma@189..190 ","
+          Newline@190..191 "\n"
+          WhiteSpace@191..195 "    "
+          VariantDef@195..199
+            Ident@195..199 "None"
+          Comma@199..200 ","
+          Newline@200..201 "\n"
+          RBrace@201..202 "}"
+      Newline@202..204 "\n\n"
+    Item@204..308
+      Enum@204..306
+        EnumKw@204..208 "enum"
+        WhiteSpace@208..209 " "
+        Ident@209..218 "BoundEnum"
+        GenericParamList@218..247
+          Lt@218..219 "<"
+          TypeGenericParam@219..231
+            Ident@219..220 "T"
+            TypeBoundList@220..231
+              Colon@220..221 ":"
               WhiteSpace@221..222 " "
-              Plus@222..223 "+"
-              WhiteSpace@223..224 " "
-              TypeBound@224..227
-                TraitRef@224..227
-                  Path@224..227
-                    PathSegment@224..227
-                      Ident@224..227 "Mul"
-          WhiteSpace@227..228 " "
-          Comma@228..229 ","
-          WhiteSpace@229..230 " "
-          TypeGenericParam@230..242
-            Ident@230..231 "U"
-            TypeBoundList@231..242
-              Colon@231..232 ":"
-              WhiteSpace@232..233 " "
-              TypeBound@233..236
-                TraitRef@233..236
-                  Path@233..236
-                    PathSegment@233..236
-                      Ident@233..236 "Sub"
+              TypeBound@222..225
+                TraitRef@222..225
+                  Path@222..225
+                    PathSegment@222..225
+                      Ident@222..225 "Add"
+              WhiteSpace@225..226 " "
+              Plus@226..227 "+"
+              WhiteSpace@227..228 " "
+              TypeBound@228..231
+                TraitRef@228..231
+                  Path@228..231
+                    PathSegment@228..231
+                      Ident@228..231 "Mul"
+          WhiteSpace@231..232 " "
+          Comma@232..233 ","
+          WhiteSpace@233..234 " "
+          TypeGenericParam@234..246
+            Ident@234..235 "U"
+            TypeBoundList@235..246
+              Colon@235..236 ":"
               WhiteSpace@236..237 " "
-              Plus@237..238 "+"
-              WhiteSpace@238..239 " "
-              TypeBound@239..242
-                TraitRef@239..242
-                  Path@239..242
-                    PathSegment@239..242
-                      Ident@239..242 "Div"
-          Gt@242..243 ">"
-        Newline@243..244 "\n"
-        WhereClause@244..269
-          WhereKw@244..249 "where"
-          WhiteSpace@249..250 " "
-          WherePredicate@250..269
-            PathType@250..261
-              Path@250..258
-                PathSegment@250..253
-                  Ident@250..253 "Foo"
-                Colon2@253..255 "::"
-                PathSegment@255..258
-                  Ident@255..258 "Bar"
-              GenericArgList@258..261
-                Lt@258..259 "<"
-                TypeGenericArg@259..260
-                  PathType@259..260
-                    Path@259..260
-                      PathSegment@259..260
-                        Ident@259..260 "T"
-                Gt@260..261 ">"
-            TypeBoundList@261..268
-              Colon@261..262 ":"
-              WhiteSpace@262..263 " "
-              TypeBound@263..268
-                TraitRef@263..268
-                  Path@263..268
-                    PathSegment@263..268
-                      Ident@263..268 "Trait"
-            Newline@268..269 "\n"
-        VariantDefList@269..300
-          LBrace@269..270 "{"
-          Newline@270..271 "\n"
-          WhiteSpace@271..275 "    "
-          VariantDef@275..284
-            Ident@275..281 "AddMul"
-            TupleType@281..284
-              LParen@281..282 "("
-              PathType@282..283
-                Path@282..283
-                  PathSegment@282..283
-                    Ident@282..283 "T"
-              RParen@283..284 ")"
-          Newline@284..285 "\n"
-          WhiteSpace@285..289 "    "
-          VariantDef@289..298
-            Ident@289..295 "SubDiv"
-            TupleType@295..298
-              LParen@295..296 "("
-              PathType@296..297
-                Path@296..297
-                  PathSegment@296..297
-                    Ident@296..297 "U"
-              RParen@297..298 ")"
-          Newline@298..299 "\n"
-          RBrace@299..300 "}"
-      Newline@300..302 "\n\n"
-    Item@302..428
-      Enum@302..427
-        EnumKw@302..306 "enum"
-        WhiteSpace@306..307 " "
-        Ident@307..314 "HKTEnum"
-        GenericParamList@314..334
-          Lt@314..315 "<"
-          TypeGenericParam@315..324
-            Ident@315..316 "T"
-            TypeBoundList@316..324
-              Colon@316..317 ":"
-              WhiteSpace@317..318 " "
-              TypeBound@318..324
-                KindBoundAbs@318..324
-                  KindBoundMono@318..319
-                    Star@318..319 "*"
-                  WhiteSpace@319..320 " "
-                  Arrow@320..322 "->"
-                  WhiteSpace@322..323 " "
-                  KindBoundMono@323..324
-                    Star@323..324 "*"
-          Comma@324..325 ","
-          WhiteSpace@325..326 " "
-          TypeGenericParam@326..327
-            Ident@326..327 "U"
-          Comma@327..328 ","
-          WhiteSpace@328..329 " "
-          TypeGenericParam@329..330
-            Ident@329..330 "V"
+              TypeBound@237..240
+                TraitRef@237..240
+                  Path@237..240
+                    PathSegment@237..240
+                      Ident@237..240 "Sub"
+              WhiteSpace@240..241 " "
+              Plus@241..242 "+"
+              WhiteSpace@242..243 " "
+              TypeBound@243..246
+                TraitRef@243..246
+                  Path@243..246
+                    PathSegment@243..246
+                      Ident@243..246 "Div"
+          Gt@246..247 ">"
+        Newline@247..248 "\n"
+        WhereClause@248..273
+          WhereKw@248..253 "where"
+          WhiteSpace@253..254 " "
+          WherePredicate@254..273
+            PathType@254..265
+              Path@254..262
+                PathSegment@254..257
+                  Ident@254..257 "Foo"
+                Colon2@257..259 "::"
+                PathSegment@259..262
+                  Ident@259..262 "Bar"
+              GenericArgList@262..265
+                Lt@262..263 "<"
+                TypeGenericArg@263..264
+                  PathType@263..264
+                    Path@263..264
+                      PathSegment@263..264
+                        Ident@263..264 "T"
+                Gt@264..265 ">"
+            TypeBoundList@265..272
+              Colon@265..266 ":"
+              WhiteSpace@266..267 " "
+              TypeBound@267..272
+                TraitRef@267..272
+                  Path@267..272
+                    PathSegment@267..272
+                      Ident@267..272 "Trait"
+            Newline@272..273 "\n"
+        VariantDefList@273..306
+          LBrace@273..274 "{"
+          Newline@274..275 "\n"
+          WhiteSpace@275..279 "    "
+          VariantDef@279..288
+            Ident@279..285 "AddMul"
+            TupleType@285..288
+              LParen@285..286 "("
+              PathType@286..287
+                Path@286..287
+                  PathSegment@286..287
+                    Ident@286..287 "T"
+              RParen@287..288 ")"
+          Comma@288..289 ","
+          Newline@289..290 "\n"
+          WhiteSpace@290..294 "    "
+          VariantDef@294..303
+            Ident@294..300 "SubDiv"
+            TupleType@300..303
+              LParen@300..301 "("
+              PathType@301..302
+                Path@301..302
+                  PathSegment@301..302
+                    Ident@301..302 "U"
+              RParen@302..303 ")"
+          Comma@303..304 ","
+          Newline@304..305 "\n"
+          RBrace@305..306 "}"
+      Newline@306..308 "\n\n"
+    Item@308..434
+      Enum@308..432
+        EnumKw@308..312 "enum"
+        WhiteSpace@312..313 " "
+        Ident@313..320 "HKTEnum"
+        GenericParamList@320..340
+          Lt@320..321 "<"
+          TypeGenericParam@321..330
+            Ident@321..322 "T"
+            TypeBoundList@322..330
+              Colon@322..323 ":"
+              WhiteSpace@323..324 " "
+              TypeBound@324..330
+                KindBoundAbs@324..330
+                  KindBoundMono@324..325
+                    Star@324..325 "*"
+                  WhiteSpace@325..326 " "
+                  Arrow@326..328 "->"
+                  WhiteSpace@328..329 " "
+                  KindBoundMono@329..330
+                    Star@329..330 "*"
           Comma@330..331 ","
           WhiteSpace@331..332 " "
           TypeGenericParam@332..333
-            Ident@332..333 "W"
-          Gt@333..334 ">"
-        Newline@334..335 "\n"
-        WhereClause@335..410
-          WhereKw@335..340 "where"
-          WhiteSpace@340..341 " "
-          Newline@341..342 "\n"
-          WhiteSpace@342..345 "   "
-          WherePredicate@345..362
-            PathType@345..346
-              Path@345..346
-                PathSegment@345..346
-                  Ident@345..346 "U"
-            TypeBoundList@346..361
-              Colon@346..347 ":"
-              WhiteSpace@347..348 " "
-              TypeBound@348..361
-                KindBoundAbs@348..361
-                  LParen@348..349 "("
-                  KindBoundAbs@349..355
-                    KindBoundMono@349..350
-                      Star@349..350 "*"
-                    WhiteSpace@350..351 " "
-                    Arrow@351..353 "->"
-                    WhiteSpace@353..354 " "
+            Ident@332..333 "U"
+          Comma@333..334 ","
+          WhiteSpace@334..335 " "
+          TypeGenericParam@335..336
+            Ident@335..336 "V"
+          Comma@336..337 ","
+          WhiteSpace@337..338 " "
+          TypeGenericParam@338..339
+            Ident@338..339 "W"
+          Gt@339..340 ">"
+        Newline@340..341 "\n"
+        WhereClause@341..415
+          WhereKw@341..346 "where"
+          Newline@346..347 "\n"
+          WhiteSpace@347..350 "   "
+          WherePredicate@350..367
+            PathType@350..351
+              Path@350..351
+                PathSegment@350..351
+                  Ident@350..351 "U"
+            TypeBoundList@351..366
+              Colon@351..352 ":"
+              WhiteSpace@352..353 " "
+              TypeBound@353..366
+                KindBoundAbs@353..366
+                  LParen@353..354 "("
+                  KindBoundAbs@354..360
                     KindBoundMono@354..355
                       Star@354..355 "*"
-                  RParen@355..356 ")"
-                  WhiteSpace@356..357 " "
-                  Arrow@357..359 "->"
-                  WhiteSpace@359..360 " "
-                  KindBoundMono@360..361
-                    Star@360..361 "*"
-            Newline@361..362 "\n"
-          WhiteSpace@362..365 "   "
-          WherePredicate@365..387
-            PathType@365..366
-              Path@365..366
-                PathSegment@365..366
-                  Ident@365..366 "V"
-            TypeBoundList@366..386
-              Colon@366..367 ":"
-              WhiteSpace@367..368 " "
-              TypeBound@368..386
-                KindBoundAbs@368..386
-                  KindBoundMono@368..369
-                    Star@368..369 "*"
-                  WhiteSpace@369..370 " "
-                  Arrow@370..372 "->"
-                  KindBoundAbs@372..386
-                    WhiteSpace@372..373 " "
-                    KindBoundMono@373..374
-                      Star@373..374 "*"
-                    WhiteSpace@374..375 " "
-                    Arrow@375..377 "->"
+                    WhiteSpace@355..356 " "
+                    Arrow@356..358 "->"
+                    WhiteSpace@358..359 " "
+                    KindBoundMono@359..360
+                      Star@359..360 "*"
+                  RParen@360..361 ")"
+                  WhiteSpace@361..362 " "
+                  Arrow@362..364 "->"
+                  WhiteSpace@364..365 " "
+                  KindBoundMono@365..366
+                    Star@365..366 "*"
+            Newline@366..367 "\n"
+          WhiteSpace@367..370 "   "
+          WherePredicate@370..392
+            PathType@370..371
+              Path@370..371
+                PathSegment@370..371
+                  Ident@370..371 "V"
+            TypeBoundList@371..391
+              Colon@371..372 ":"
+              WhiteSpace@372..373 " "
+              TypeBound@373..391
+                KindBoundAbs@373..391
+                  KindBoundMono@373..374
+                    Star@373..374 "*"
+                  WhiteSpace@374..375 " "
+                  Arrow@375..377 "->"
+                  KindBoundAbs@377..391
                     WhiteSpace@377..378 " "
-                    LParen@378..379 "("
-                    KindBoundAbs@379..385
-                      KindBoundMono@379..380
-                        Star@379..380 "*"
-                      WhiteSpace@380..381 " "
-                      Arrow@381..383 "->"
-                      WhiteSpace@383..384 " "
+                    KindBoundMono@378..379
+                      Star@378..379 "*"
+                    WhiteSpace@379..380 " "
+                    Arrow@380..382 "->"
+                    WhiteSpace@382..383 " "
+                    LParen@383..384 "("
+                    KindBoundAbs@384..390
                       KindBoundMono@384..385
                         Star@384..385 "*"
-                    RParen@385..386 ")"
-            Newline@386..387 "\n"
-          WhiteSpace@387..390 "   "
-          WherePredicate@390..410
-            PathType@390..391
-              Path@390..391
-                PathSegment@390..391
-                  Ident@390..391 "W"
-            TypeBoundList@391..409
-              Colon@391..392 ":"
-              WhiteSpace@392..393 " "
-              TypeBound@393..409
-                KindBoundAbs@393..409
-                  KindBoundMono@393..394
-                    Star@393..394 "*"
-                  WhiteSpace@394..395 " "
-                  Arrow@395..397 "->"
-                  KindBoundAbs@397..409
-                    WhiteSpace@397..398 " "
-                    KindBoundMono@398..399
-                      Star@398..399 "*"
-                    WhiteSpace@399..400 " "
-                    Arrow@400..402 "->"
-                    KindBoundAbs@402..409
-                      WhiteSpace@402..403 " "
-                      KindBoundMono@403..404
-                        Star@403..404 "*"
-                      WhiteSpace@404..405 " "
-                      Arrow@405..407 "->"
+                      WhiteSpace@385..386 " "
+                      Arrow@386..388 "->"
+                      WhiteSpace@388..389 " "
+                      KindBoundMono@389..390
+                        Star@389..390 "*"
+                    RParen@390..391 ")"
+            Newline@391..392 "\n"
+          WhiteSpace@392..395 "   "
+          WherePredicate@395..415
+            PathType@395..396
+              Path@395..396
+                PathSegment@395..396
+                  Ident@395..396 "W"
+            TypeBoundList@396..414
+              Colon@396..397 ":"
+              WhiteSpace@397..398 " "
+              TypeBound@398..414
+                KindBoundAbs@398..414
+                  KindBoundMono@398..399
+                    Star@398..399 "*"
+                  WhiteSpace@399..400 " "
+                  Arrow@400..402 "->"
+                  KindBoundAbs@402..414
+                    WhiteSpace@402..403 " "
+                    KindBoundMono@403..404
+                      Star@403..404 "*"
+                    WhiteSpace@404..405 " "
+                    Arrow@405..407 "->"
+                    KindBoundAbs@407..414
                       WhiteSpace@407..408 " "
                       KindBoundMono@408..409
                         Star@408..409 "*"
-            Newline@409..410 "\n"
-        VariantDefList@410..427
-          LBrace@410..411 "{"
-          Newline@411..412 "\n"
-          WhiteSpace@412..416 "    "
-          VariantDef@416..425
-            Ident@416..419 "Foo"
-            TupleType@419..425
-              LParen@419..420 "("
-              PathType@420..424
-                Path@420..421
-                  PathSegment@420..421
-                    Ident@420..421 "U"
-                GenericArgList@421..424
-                  Lt@421..422 "<"
-                  TypeGenericArg@422..423
-                    PathType@422..423
-                      Path@422..423
-                        PathSegment@422..423
-                          Ident@422..423 "T"
-                  Gt@423..424 ">"
-              RParen@424..425 ")"
-          Newline@425..426 "\n"
-          RBrace@426..427 "}"
-      Newline@427..428 "\n"
+                      WhiteSpace@409..410 " "
+                      Arrow@410..412 "->"
+                      WhiteSpace@412..413 " "
+                      KindBoundMono@413..414
+                        Star@413..414 "*"
+            Newline@414..415 "\n"
+        VariantDefList@415..432
+          LBrace@415..416 "{"
+          Newline@416..417 "\n"
+          WhiteSpace@417..421 "    "
+          VariantDef@421..430
+            Ident@421..424 "Foo"
+            TupleType@424..430
+              LParen@424..425 "("
+              PathType@425..429
+                Path@425..426
+                  PathSegment@425..426
+                    Ident@425..426 "U"
+                GenericArgList@426..429
+                  Lt@426..427 "<"
+                  TypeGenericArg@427..428
+                    PathType@427..428
+                      Path@427..428
+                        PathSegment@427..428
+                          Ident@427..428 "T"
+                  Gt@428..429 ">"
+              RParen@429..430 ")"
+          Newline@430..431 "\n"
+          RBrace@431..432 "}"
+      Newline@432..434 "\n\n"
+    Item@434..491
+      Enum@434..490
+        EnumKw@434..438 "enum"
+        WhiteSpace@438..439 " "
+        Ident@439..449 "SingleLine"
+        WhiteSpace@449..450 " "
+        VariantDefList@450..490
+          LBrace@450..451 "{"
+          WhiteSpace@451..452 " "
+          VariantDef@452..453
+            Ident@452..453 "A"
+          Comma@453..454 ","
+          WhiteSpace@454..455 " "
+          VariantDef@455..456
+            Ident@455..456 "B"
+          Comma@456..457 ","
+          WhiteSpace@457..458 " "
+          VariantDef@458..477
+            Ident@458..459 "C"
+            WhiteSpace@459..460 " "
+            RecordFieldDefList@460..477
+              LBrace@460..461 "{"
+              WhiteSpace@461..462 " "
+              RecordFieldDef@462..468
+                Ident@462..463 "x"
+                Colon@463..464 ":"
+                WhiteSpace@464..465 " "
+                PathType@465..468
+                  Path@465..468
+                    PathSegment@465..468
+                      Ident@465..468 "i32"
+              Comma@468..469 ","
+              WhiteSpace@469..470 " "
+              RecordFieldDef@470..475
+                Ident@470..471 "y"
+                Colon@471..472 ":"
+                WhiteSpace@472..473 " "
+                PathType@473..475
+                  Path@473..475
+                    PathSegment@473..475
+                      Ident@473..475 "u8"
+              WhiteSpace@475..476 " "
+              RBrace@476..477 "}"
+          Comma@477..478 ","
+          WhiteSpace@478..479 " "
+          VariantDef@479..488
+            Ident@479..480 "D"
+            TupleType@480..488
+              LParen@480..481 "("
+              PathType@481..483
+                Path@481..483
+                  PathSegment@481..483
+                    Ident@481..483 "i8"
+              Comma@483..484 ","
+              WhiteSpace@484..485 " "
+              PathType@485..487
+                Path@485..487
+                  PathSegment@485..487
+                    Ident@485..487 "i8"
+              RParen@487..488 ")"
+          WhiteSpace@488..489 " "
+          RBrace@489..490 "}"
+      Newline@490..491 "\n"
 

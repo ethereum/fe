@@ -89,7 +89,11 @@ impl super::Parse for TupleTypeScope {
         }
 
         if !parser.bump_if(SyntaxKind::RParen) {
+            // If the close paren is missing, we want to recover on a newline,
+            // so we have to explicitly set newlines to be non-trivia.
+            parser.set_newline_as_trivia(false);
             parser.error_and_recover("expected `)`", None);
+            parser.set_newline_as_trivia(true);
             parser.bump_if(SyntaxKind::RParen);
         }
     }

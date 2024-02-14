@@ -34,8 +34,6 @@ Root@0..20
       LitExpr@13..14
         Lit@13..14
           Int@13..14 "3"
-    Error@14..14
-    Error@14..14
   Newline@14..15 "\n"
   IndexExpr@15..20
     PathExpr@15..16

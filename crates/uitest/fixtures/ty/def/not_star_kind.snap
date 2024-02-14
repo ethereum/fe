@@ -27,19 +27,19 @@ error[3-0000]: expected `*` kind in this context
 error[3-0000]: expected `*` kind in this context
    ┌─ not_star_kind.fe:12:13
    │
-12 │     Variant(Gen<i32>, Gen<u32>)
+12 │     Variant(Gen<i32>, Gen<u32>),
    │             ^^^^^^^^ expected `*` kind here
 
 error[3-0000]: expected `*` kind in this context
    ┌─ not_star_kind.fe:12:23
    │
-12 │     Variant(Gen<i32>, Gen<u32>)
+12 │     Variant(Gen<i32>, Gen<u32>),
    │                       ^^^^^^^^ expected `*` kind here
 
 error[3-0000]: expected `*` kind in this context
    ┌─ not_star_kind.fe:13:36
    │
-13 │     Variant2{ x: Gen<i32, u32>, y: Gen<u32> }
+13 │     Variant2{ x: Gen<i32, u32>, y: Gen<u32> },
    │                                    ^^^^^^^^ expected `*` kind here
 
 error[3-0000]: expected `*` kind in this context

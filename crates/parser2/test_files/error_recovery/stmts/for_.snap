@@ -3,77 +3,91 @@ source: crates/parser2/tests/error_recovery.rs
 expression: node
 input_file: crates/parser2/test_files/error_recovery/stmts/for_.fe
 ---
-Root@0..67
-  ForStmt@0..29
-    ForKw@0..3 "for"
-    WhiteSpace@3..4 " "
-    PathPat@4..5
-      Path@4..5
-        PathSegment@4..5
-          Ident@4..5 "i"
-    WhiteSpace@5..6 " "
-    Error@6..9
-      Ident@6..9 "arr"
-    WhiteSpace@9..10 " "
-    Error@10..13
-      LBrace@10..11 "{"
-      WhiteSpace@11..12 " "
-      RBrace@12..13 "}"
-    Newline@13..15 "\n\n"
-    Error@15..25
-      ForKw@15..18 "for"
-      WhiteSpace@18..19 " "
-      InKw@19..21 "in"
-      WhiteSpace@21..22 " "
-      Ident@22..25 "arr"
-    WhiteSpace@25..26 " "
-    BlockExpr@26..29
-      LBrace@26..27 "{"
-      WhiteSpace@27..28 " "
-      RBrace@28..29 "}"
-  Newline@29..31 "\n\n"
-  ForStmt@31..46
-    ForKw@31..34 "for"
-    WhiteSpace@34..35 " "
-    PathPat@35..36
-      Path@35..36
-        PathSegment@35..36
-          Error@35..36
-            InvalidToken@35..36 "@"
-    WhiteSpace@36..37 " "
-    InKw@37..39 "in"
-    WhiteSpace@39..40 " "
-    PathExpr@40..43
-      Path@40..43
-        PathSegment@40..43
-          Ident@40..43 "arr"
-    WhiteSpace@43..44 " "
-    BlockExpr@44..46
-      LBrace@44..45 "{"
-      RBrace@45..46 "}"
-  Newline@46..48 "\n\n"
-  ForStmt@48..67
-    ForKw@48..51 "for"
-    WhiteSpace@51..52 " "
-    PathPat@52..53
-      Path@52..53
-        PathSegment@52..53
-          Error@52..53
-            InvalidToken@52..53 "@"
-    WhiteSpace@53..54 " "
-    InKw@54..56 "in"
-    WhiteSpace@56..57 " "
-    PathExpr@57..60
-      Path@57..60
-        PathSegment@57..60
-          Ident@57..60 "arr"
-    WhiteSpace@60..61 " "
-    Error@61..64
-      Ident@61..62 "x"
-      WhiteSpace@62..63 " "
-      Ident@63..64 "y"
-    WhiteSpace@64..65 " "
-    BlockExpr@65..67
-      LBrace@65..66 "{"
-      RBrace@66..67 "}"
+Root@0..71
+  ExprStmt@0..71
+    BlockExpr@0..71
+      LBrace@0..1 "{"
+      Newline@1..2 "\n"
+      ForStmt@2..15
+        ForKw@2..5 "for"
+        WhiteSpace@5..6 " "
+        PathPat@6..7
+          Path@6..7
+            PathSegment@6..7
+              Ident@6..7 "i"
+        WhiteSpace@7..8 " "
+        PathExpr@8..11
+          Path@8..11
+            PathSegment@8..11
+              Ident@8..11 "arr"
+        WhiteSpace@11..12 " "
+        BlockExpr@12..15
+          LBrace@12..13 "{"
+          WhiteSpace@13..14 " "
+          RBrace@14..15 "}"
+      Newline@15..17 "\n\n"
+      ForStmt@17..31
+        ForKw@17..20 "for"
+        WhiteSpace@20..21 " "
+        PathPat@21..21
+          Path@21..21
+            PathSegment@21..21
+        InKw@21..23 "in"
+        WhiteSpace@23..24 " "
+        PathExpr@24..27
+          Path@24..27
+            PathSegment@24..27
+              Ident@24..27 "arr"
+        WhiteSpace@27..28 " "
+        BlockExpr@28..31
+          LBrace@28..29 "{"
+          WhiteSpace@29..30 " "
+          RBrace@30..31 "}"
+      Newline@31..33 "\n\n"
+      ForStmt@33..48
+        ForKw@33..36 "for"
+        WhiteSpace@36..37 " "
+        PathPat@37..38
+          Path@37..38
+            PathSegment@37..38
+              Error@37..38
+                InvalidToken@37..38 "@"
+        WhiteSpace@38..39 " "
+        InKw@39..41 "in"
+        WhiteSpace@41..42 " "
+        PathExpr@42..45
+          Path@42..45
+            PathSegment@42..45
+              Ident@42..45 "arr"
+        WhiteSpace@45..46 " "
+        BlockExpr@46..48
+          LBrace@46..47 "{"
+          RBrace@47..48 "}"
+      Newline@48..50 "\n\n"
+      ForStmt@50..69
+        ForKw@50..53 "for"
+        WhiteSpace@53..54 " "
+        PathPat@54..55
+          Path@54..55
+            PathSegment@54..55
+              Error@54..55
+                InvalidToken@54..55 "@"
+        WhiteSpace@55..56 " "
+        InKw@56..58 "in"
+        WhiteSpace@58..59 " "
+        PathExpr@59..62
+          Path@59..62
+            PathSegment@59..62
+              Ident@59..62 "arr"
+        WhiteSpace@62..63 " "
+        Error@63..66
+          Ident@63..64 "x"
+          WhiteSpace@64..65 " "
+          Ident@65..66 "y"
+        WhiteSpace@66..67 " "
+        BlockExpr@67..69
+          LBrace@67..68 "{"
+          RBrace@68..69 "}"
+      Newline@69..70 "\n"
+      RBrace@70..71 "}"
 

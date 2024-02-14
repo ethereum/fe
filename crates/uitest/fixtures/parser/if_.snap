@@ -1,0 +1,86 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/if_.fe
+---
+error[1-0001]: unexpected syntax
+  ┌─ if_.fe:3:6
+  │
+3 │ if x y {
+  │      ^ unexpected syntax
+
+error[1-0001]: expected `{` or `if` after `else`
+  ┌─ if_.fe:8:7
+  │
+8 │ } else x {}
+  │       ^ expected `{` or `if` after `else`
+
+error[1-0001]: unexpected syntax
+  ┌─ if_.fe:8:8
+  │
+8 │ } else x {}
+  │        ^ unexpected syntax
+
+error[1-0001]: expected newline after statement
+  ┌─ if_.fe:8:9
+  │
+8 │ } else x {}
+  │         ^ expected newline after statement
+
+error[1-0001]: unexpected syntax
+  ┌─ if_.fe:8:10
+  │
+8 │ } else x {}
+  │          ^^ unexpected syntax
+
+error[1-0001]: expected `{` or `if` after `else`
+   ┌─ if_.fe:10:14
+   │
+10 │ if x { } else x if x { } else { }
+   │              ^ expected `{` or `if` after `else`
+
+error[1-0001]: unexpected syntax
+   ┌─ if_.fe:10:15
+   │
+10 │ if x { } else x if x { } else { }
+   │               ^ unexpected syntax
+
+error[1-0001]: expected newline after statement
+   ┌─ if_.fe:10:16
+   │
+10 │ if x { } else x if x { } else { }
+   │                ^ expected newline after statement
+
+error[1-0001]: unexpected syntax
+   ┌─ if_.fe:10:17
+   │
+10 │ if x { } else x if x { } else { }
+   │                 ^^^^^^^^^^^^^^^^^ unexpected syntax
+
+error[1-0001]: expected expression
+   ┌─ if_.fe:14:1
+   │
+14 │ else {
+   │ ^ expected expression
+
+error[1-0001]: unexpected syntax
+   ┌─ if_.fe:14:1
+   │  
+14 │ ╭ else {
+15 │ │     1
+16 │ │ }
+   │ ╰─^ unexpected syntax
+
+error[1-0001]: expected newline after statement
+   ┌─ if_.fe:18:2
+   │
+18 │ }
+   │  ^ expected newline after statement
+
+error[1-0001]: expected `}`
+   ┌─ if_.fe:18:2
+   │
+18 │ }
+   │  ^ expected `}`
+
+

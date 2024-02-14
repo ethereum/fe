@@ -67,17 +67,15 @@ impl super::Parse for RecordFieldDefListScope {
             if !parser.bump_if(SyntaxKind::Comma)
                 && parser.current_kind() != Some(SyntaxKind::RBrace)
             {
-                parser.error_at_current_pos("expected comma after field definition");
+                parser.error("expected comma after field definition");
             }
         }
 
-        if !parser.bump_if(SyntaxKind::RBrace) {
-            parser.error_and_recover(
-                "expected the closing brace of the struct field definition",
-                None,
-            );
-            parser.bump_if(SyntaxKind::RBrace);
-        }
+        parser.bump_or_recover(
+            SyntaxKind::RBrace,
+            "expected the closing brace of the struct definition",
+            None,
+        );
     }
 }
 
@@ -101,8 +99,8 @@ impl super::Parse for RecordFieldDefScope {
         // 2. We anticipate that this error would happen often in the transition period
         //    to Fe-V2.
         if parser.current_kind() == Some(SyntaxKind::FnKw) {
-            let err_scope = parser.error("function definition in struct is not allowed");
-            let checkpoint = parser.enter(err_scope, None);
+            parser.error_msg_on_current_token("function definition in struct is not allowed");
+            let checkpoint = parser.enter(super::ErrorScope::new(), None);
             parser.parse(FuncScope::default(), None);
             parser.leave(checkpoint);
             return;

@@ -1,0 +1,36 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/enum_.fe
+---
+error[1-0001]: expected `)`
+  ┌─ enum_.fe:2:13
+  │
+2 │     X(u32, T
+  │             ^ expected `)`
+
+error[1-0001]: expected comma after enum variant definition
+  ┌─ enum_.fe:2:13
+  │
+2 │     X(u32, T
+  │             ^ expected comma after enum variant definition
+
+error[1-0001]: expected comma after enum variant definition
+  ┌─ enum_.fe:3:6
+  │
+3 │     A
+  │      ^ expected comma after enum variant definition
+
+error[1-0001]: expected comma after enum variant definition
+  ┌─ enum_.fe:4:14
+  │
+4 │     Y(T, u32) A
+  │              ^ expected comma after enum variant definition
+
+error[1-0001]: expected comma after enum variant definition
+  ┌─ enum_.fe:4:16
+  │
+4 │     Y(T, u32) A
+  │                ^ expected comma after enum variant definition
+
+

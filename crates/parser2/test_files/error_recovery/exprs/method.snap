@@ -36,7 +36,6 @@ Root@0..78
         PathType@24..24
           Path@24..24
             PathSegment@24..24
-              Error@24..24
       Gt@24..25 ">"
     CallArgList@25..31
       LParen@25..26 "("
@@ -79,7 +78,6 @@ Root@0..78
           Ident@49..50 "E"
       Comma@50..51 ","
       CallArg@51..51
-        Error@51..51
       RParen@51..52 ")"
   Newline@52..54 "\n\n"
   MethodCallExpr@54..78

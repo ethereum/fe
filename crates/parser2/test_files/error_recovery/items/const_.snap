@@ -11,11 +11,6 @@ Root@0..44
         WhiteSpace@5..6 " "
         Ident@6..7 "X"
         WhiteSpace@7..8 " "
-        Error@8..8
-        PathType@8..8
-          Path@8..8
-            PathSegment@8..8
-              Error@8..8
         Eq@8..9 "="
         WhiteSpace@9..10 " "
         LitExpr@10..12
@@ -23,7 +18,7 @@ Root@0..44
             Int@10..12 "10"
       Newline@12..14 "\n\n"
     Item@14..29
-      Const@14..27
+      Const@14..26
         ConstKw@14..19 "const"
         WhiteSpace@19..20 " "
         Ident@20..21 "X"
@@ -33,9 +28,7 @@ Root@0..44
           Path@23..26
             PathSegment@23..26
               Ident@23..26 "i32"
-        WhiteSpace@26..27 " "
-        Error@27..27
-        Error@27..27
+      WhiteSpace@26..27 " "
       Newline@27..29 "\n\n"
     Item@29..44
       Const@29..44

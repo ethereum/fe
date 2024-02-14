@@ -4,7 +4,7 @@ use crate::SyntaxKind;
 
 pub(super) fn parse_attr_list<S: TokenStream>(parser: &mut Parser<S>) -> Option<Checkpoint> {
     if let Some(SyntaxKind::DocComment) | Some(SyntaxKind::Pound) = parser.current_kind() {
-        Some(parser.parse(super::attr::AttrListScope::default(), None).1)
+        Some(parser.parse(AttrListScope::default(), None).1)
     } else {
         None
     }

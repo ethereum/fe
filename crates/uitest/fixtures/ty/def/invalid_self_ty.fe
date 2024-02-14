@@ -7,8 +7,8 @@ impl<T> Foo for Option<T> {
 }
 
 pub enum Option<T> {
-    Some(T)
-    None
+    Some(T),
+    None,
 
 }
 

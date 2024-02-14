@@ -34,24 +34,22 @@ Root@0..90
         WhiteSpace@14..15 " "
         ForKw@15..18 "for"
         WhiteSpace@18..19 " "
-        PathType@19..23
+        PathType@19..22
           Path@19..20
             PathSegment@19..20
               Ident@19..20 "Y"
-          GenericArgList@20..23
+          GenericArgList@20..22
             Lt@20..21 "<"
-            TypeGenericArg@21..23
+            TypeGenericArg@21..22
               PathType@21..22
                 Path@21..22
                   PathSegment@21..22
                     Ident@21..22 "T"
-              WhiteSpace@22..23 " "
-              Error@23..23
-            Error@23..23
-        WhereClause@23..34
+        WhiteSpace@22..23 " "
+        WhereClause@23..33
           WhereKw@23..28 "where"
           WhiteSpace@28..29 " "
-          WherePredicate@29..34
+          WherePredicate@29..33
             PathType@29..30
               Path@29..30
                 PathSegment@29..30
@@ -64,8 +62,7 @@ Root@0..90
                   Path@32..33
                     PathSegment@32..33
                       Ident@32..33 "X"
-            WhiteSpace@33..34 " "
-            Error@34..34
+        WhiteSpace@33..34 " "
         ImplTraitItemList@34..36
           LBrace@34..35 "{"
           RBrace@35..36 "}"
@@ -74,11 +71,11 @@ Root@0..90
       ImplTrait@38..71
         ImplKw@38..42 "impl"
         WhiteSpace@42..43 " "
-        TraitRef@43..50
+        TraitRef@43..49
           Path@43..44
             PathSegment@43..44
               Ident@43..44 "X"
-          GenericArgList@44..50
+          GenericArgList@44..49
             Lt@44..45 "<"
             TypeGenericArg@45..46
               PathType@45..46
@@ -87,34 +84,30 @@ Root@0..90
                     Ident@45..46 "T"
             Comma@46..47 ","
             WhiteSpace@47..48 " "
-            TypeGenericArg@48..50
+            TypeGenericArg@48..49
               PathType@48..49
                 Path@48..49
                   PathSegment@48..49
                     Ident@48..49 "u"
-              WhiteSpace@49..50 " "
-              Error@50..50
-            Error@50..50
+        WhiteSpace@49..50 " "
         ForKw@50..53 "for"
         WhiteSpace@53..54 " "
-        PathType@54..58
+        PathType@54..57
           Path@54..55
             PathSegment@54..55
               Ident@54..55 "Y"
-          GenericArgList@55..58
+          GenericArgList@55..57
             Lt@55..56 "<"
-            TypeGenericArg@56..58
+            TypeGenericArg@56..57
               PathType@56..57
                 Path@56..57
                   PathSegment@56..57
                     Ident@56..57 "T"
-              WhiteSpace@57..58 " "
-              Error@58..58
-            Error@58..58
-        WhereClause@58..69
+        WhiteSpace@57..58 " "
+        WhereClause@58..68
           WhereKw@58..63 "where"
           WhiteSpace@63..64 " "
-          WherePredicate@64..69
+          WherePredicate@64..68
             PathType@64..65
               Path@64..65
                 PathSegment@64..65
@@ -127,8 +120,7 @@ Root@0..90
                   Path@67..68
                     PathSegment@67..68
                       Ident@67..68 "X"
-            WhiteSpace@68..69 " "
-            Error@69..69
+        WhiteSpace@68..69 " "
         ImplTraitItemList@69..71
           LBrace@69..70 "{"
           RBrace@70..71 "}"

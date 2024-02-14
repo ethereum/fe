@@ -50,11 +50,18 @@ impl super::Parse for ForStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::ForKw);
 
-        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::InKw, SyntaxKind::LBrace]);
+        parser.with_recovery_tokens(parse_pat, &[SyntaxKind::InKw, SyntaxKind::LBrace]);
 
-        parser.bump_or_recover(SyntaxKind::InKw, "expected `in` keyword", None);
+        parser.with_next_expected_tokens(
+            |p| {
+                if !p.bump_if(SyntaxKind::InKw) {
+                    p.error("expected `in` keyword");
+                }
 
-        parser.with_next_expected_tokens(parse_expr_no_struct, &[SyntaxKind::LBrace]);
+                parse_expr_no_struct(p);
+            },
+            &[SyntaxKind::LBrace],
+        );
 
         if parser.current_kind() != Some(SyntaxKind::LBrace) {
             parser.error_and_recover("expected block", None);

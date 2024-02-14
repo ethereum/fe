@@ -112,8 +112,6 @@ Root@0..133
               WhiteSpace@91..92 " "
               Ident@92..97 "Trait"
               Gt@97..98 ">"
-            Error@98..98
-          Error@98..98
         FuncParamList@98..106
           LParen@98..99 "("
           FnParam@99..105

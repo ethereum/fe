@@ -1,0 +1,36 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/fn_missing_parameters.fe
+---
+error[1-0001]: expected `(` for the function arguments
+  ┌─ fn_missing_parameters.fe:1:7
+  │
+1 │ fn foo -> u8 {}
+  │       ^ expected `(` for the function arguments
+
+error[1-0001]: expected `(` for the function arguments
+  ┌─ fn_missing_parameters.fe:3:7
+  │
+3 │ fn bar {
+  │       ^ expected `(` for the function arguments
+
+error[1-0001]: expected `(` for the function arguments
+  ┌─ fn_missing_parameters.fe:6:7
+  │
+6 │ fn baz -> u8 {}
+  │       ^ expected `(` for the function arguments
+
+error[1-0001]: expected `(` for the function arguments
+  ┌─ fn_missing_parameters.fe:8:8
+  │
+8 │ fn f<T> where T: U {}
+  │        ^ expected `(` for the function arguments
+
+error[1-0001]: expected newline after type bounds
+  ┌─ fn_missing_parameters.fe:8:19
+  │
+8 │ fn f<T> where T: U {}
+  │                   ^ expected newline after type bounds
+
+

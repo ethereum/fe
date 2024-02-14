@@ -1,0 +1,30 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/call.fe
+---
+error[1-0001]: unexpected syntax
+  ┌─ call.fe:2:10
+  │
+2 │ foo(x, y a, z ;)
+  │          ^ unexpected syntax
+
+error[1-0001]: unexpected syntax
+  ┌─ call.fe:2:15
+  │
+2 │ foo(x, y a, z ;)
+  │               ^ unexpected syntax
+
+error[1-0001]: unexpected syntax
+  ┌─ call.fe:4:12
+  │
+4 │ foo<i32, T E, >(x, y)
+  │            ^ unexpected syntax
+
+error[1-0001]: expected path segment
+  ┌─ call.fe:4:15
+  │
+4 │ foo<i32, T E, >(x, y)
+  │               ^ expected path segment
+
+

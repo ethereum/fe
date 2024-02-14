@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/block.fe
+---
+error[1-0001]: expected newline after statement
+  ┌─ block.fe:3:15
+  │
+3 │     let x: i32 u32 = 10
+  │               ^ expected newline after statement
+
+error[1-0001]: unexpected syntax
+  ┌─ block.fe:3:16
+  │
+3 │     let x: i32 u32 = 10
+  │                ^^^^^^^^ unexpected syntax
+
+

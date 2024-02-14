@@ -1,0 +1,48 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/struct_.fe
+---
+error[1-0001]: expected ident for the struct name
+  ┌─ struct_.fe:1:11
+  │
+1 │ pub struct<T, U
+  │           ^ expected ident for the struct name
+
+error[1-0001]: expected closing `>`
+  ┌─ struct_.fe:1:16
+  │
+1 │ pub struct<T, U
+  │                ^ expected closing `>`
+
+error[1-0001]: expected `:` for type bounds
+  ┌─ struct_.fe:2:8
+  │
+2 │ where T 
+  │        ^ expected `:` for type bounds
+
+error[1-0001]: expected `name: type` for the field definition
+  ┌─ struct_.fe:6:8
+  │
+6 │     foo
+  │        ^ expected `name: type` for the field definition
+
+error[1-0001]: expected comma after field definition
+  ┌─ struct_.fe:6:8
+  │
+6 │     foo
+  │        ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+   ┌─ struct_.fe:11:9
+   │
+11 │     pub fn foo()  -> i32 {
+   │         ^^ function definition in struct is not allowed
+
+error[1-0001]: expected comma after field definition
+   ┌─ struct_.fe:13:6
+   │
+13 │     }
+   │      ^ expected comma after field definition
+
+

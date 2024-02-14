@@ -149,21 +149,31 @@ define_scope! {
 }
 impl super::Parse for ItemModifierScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if parser.bump_if(SyntaxKind::PubKw) {
-            if parser.bump_if(SyntaxKind::UnsafeKw) {
-                self.kind.set(ModifierKind::PubAndUnsafe);
-            } else {
-                self.kind.set(ModifierKind::Pub);
+        let mut modifier_kind = ModifierKind::None;
+
+        loop {
+            match parser.current_kind() {
+                Some(kind) if kind.is_modifier_head() => {
+                    let new_kind = modifier_kind.union(kind);
+                    if new_kind == modifier_kind {
+                        parser.unexpected_token_error("duplicate modifier", None);
+                    } else if kind == SyntaxKind::PubKw && modifier_kind.is_unsafe() {
+                        parser.unexpected_token_error(
+                            "`pub` modifier must come before `unsafe`",
+                            None,
+                        );
+                    } else {
+                        parser.bump();
+                    }
+                    modifier_kind = new_kind;
+                }
+                _ => break,
             }
-        } else if parser.bump_if(SyntaxKind::UnsafeKw) {
-            self.kind.set(ModifierKind::Unsafe);
-        } else {
-            self.kind.set(ModifierKind::None);
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ModifierKind {
     None,
     Pub,
@@ -176,6 +186,26 @@ impl Default for ModifierKind {
     }
 }
 impl ModifierKind {
+    fn union(&self, kind: SyntaxKind) -> ModifierKind {
+        match kind {
+            SyntaxKind::PubKw => {
+                if self.is_unsafe() {
+                    Self::PubAndUnsafe
+                } else {
+                    Self::Pub
+                }
+            }
+            SyntaxKind::UnsafeKw => {
+                if self.is_pub() {
+                    Self::PubAndUnsafe
+                } else {
+                    Self::Unsafe
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
     fn is_pub(&self) -> bool {
         matches!(self, Self::Pub | Self::PubAndUnsafe)
     }
@@ -267,25 +297,27 @@ define_scope! { VariantDefListScope, VariantDefList, Override(RBrace, Newline) }
 impl super::Parse for VariantDefListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LBrace);
+        parser.set_newline_as_trivia(true);
 
         loop {
-            parser.set_newline_as_trivia(true);
             if parser.current_kind() == Some(SyntaxKind::RBrace) || parser.current_kind().is_none()
             {
                 break;
             }
             parser.parse(VariantDefScope::default(), None);
-            parser.set_newline_as_trivia(false);
-            if parser.current_kind() != Some(SyntaxKind::RBrace) {
-                parser.bump_or_recover(
-                    SyntaxKind::Newline,
-                    "expected newline after variant definition",
-                    None,
-                );
+
+            if !parser.bump_if(SyntaxKind::Comma)
+                && parser.current_kind() != Some(SyntaxKind::RBrace)
+            {
+                parser.error("expected comma after enum variant definition");
             }
         }
 
-        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
+        parser.bump_or_recover(
+            SyntaxKind::RBrace,
+            "expected the closing brace of the enum definition",
+            None,
+        );
     }
 }
 
@@ -451,22 +483,20 @@ impl super::Parse for ConstScope {
 
         parser.with_next_expected_tokens(
             |parser| {
-                parser.bump_or_recover(
-                    SyntaxKind::Colon,
-                    "expected type annotation for `const`",
-                    None,
-                );
-                parse_type(parser, None);
+                if parser.bump_if(SyntaxKind::Colon) {
+                    parse_type(parser, None);
+                } else {
+                    parser.error_and_recover("expected type annotation for `const`", None);
+                }
             },
             &[SyntaxKind::Eq],
         );
 
-        if !parser.bump_if(SyntaxKind::Eq) {
+        if parser.bump_if(SyntaxKind::Eq) {
+            parse_expr(parser);
+        } else {
             parser.error_and_recover("expected `=` for const value definition", None);
-            return;
         }
-
-        parse_expr(parser);
     }
 }
 
@@ -483,7 +513,7 @@ impl super::Parse for ExternScope {
     }
 }
 
-define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, FnKw) }
+define_scope! { ExternItemListScope, ExternItemList, Override(RBrace, PubKw, UnsafeKw, FnKw) }
 impl super::Parse for ExternItemListScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parse_fn_item_block(parser, true, FuncDefScope::Extern);
@@ -541,17 +571,21 @@ fn parse_fn_item_block<S: TokenStream>(
         }
 
         let mut checkpoint = attr::parse_attr_list(parser);
-        let modifier_scope = ItemModifierScope::default();
-        match parser.current_kind() {
-            Some(kind) if kind.is_modifier_head() && allow_modifier => {
-                if allow_modifier {
-                    let (_, modifier_checkpoint) = parser.parse(modifier_scope, None);
-                    checkpoint.get_or_insert(modifier_checkpoint);
-                } else {
-                    parser.error_and_recover("modifier is not allowed in the block", checkpoint);
+
+        let is_modifier = |kind: Option<SyntaxKind>| match kind {
+            Some(kind) => kind.is_modifier_head(),
+            _ => false,
+        };
+
+        if is_modifier(parser.current_kind()) {
+            if allow_modifier {
+                let (_, modifier_checkpoint) = parser.parse(ItemModifierScope::default(), None);
+                checkpoint.get_or_insert(modifier_checkpoint);
+            } else {
+                while is_modifier(parser.current_kind()) {
+                    parser.unexpected_token_error("modifier is not allowed in this block", None);
                 }
             }
-            _ => {}
         }
 
         match parser.current_kind() {
@@ -559,7 +593,8 @@ fn parse_fn_item_block<S: TokenStream>(
                 parser.parse(FuncScope::new(fn_def_scope), checkpoint);
             }
             _ => {
-                parser.error_and_recover("only `fn` is allowed in the block", checkpoint);
+                parser.error_msg_on_current_token("only `fn` is allowed in this block");
+                parser.recover(checkpoint);
             }
         }
 

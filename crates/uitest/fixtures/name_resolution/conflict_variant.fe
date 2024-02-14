@@ -1,5 +1,5 @@
 pub enum MyE {
-    Var1
-    Var2
-    Var1
+    Var1,
+    Var2,
+    Var1,
 }

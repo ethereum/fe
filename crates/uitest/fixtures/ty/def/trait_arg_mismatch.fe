@@ -1,8 +1,8 @@
 pub trait Foo<T: * -> *> {}
 
 enum Option<T> {
-    Some(T)
-    None
+    Some(T),
+    None,
 }
 
 impl Foo<i32> for i32 {}

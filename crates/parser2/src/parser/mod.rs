@@ -147,7 +147,7 @@ impl<S: TokenStream> Parser<S> {
                 .iter()
                 .all(|token| *token != self.current_kind().unwrap())
         {
-            self.error_and_recover("unexpected token", None);
+            self.recover(None);
         }
 
         for token in expected_tokens {
@@ -229,10 +229,8 @@ impl<S: TokenStream> Parser<S> {
     /// * If checkpoint is `None`, the current branch is wrapped up by an error
     ///   node.
     pub fn error_and_recover(&mut self, msg: &str, checkpoint: Option<Checkpoint>) {
-        let err_scope = self.error(msg);
-        let checkpoint = self.enter(err_scope, checkpoint);
-        self.recover();
-        self.leave(checkpoint);
+        self.error(msg);
+        self.recover(checkpoint);
     }
 
     /// Add `msg` as an error to the error list, then bumps consecutive tokens
@@ -318,8 +316,9 @@ impl<S: TokenStream> Parser<S> {
         }
     }
 
-    /// Proceeds the parser to the recovery token of the current scope.
-    pub fn recover(&mut self) {
+    /// Consumes tokens until a recovery token is found, and reports an error on any
+    /// unexpected tokens.
+    pub fn recover(&mut self, checkpoint: Option<Checkpoint>) {
         let mut recovery_set: FxHashSet<SyntaxKind> = FxHashSet::default();
         let mut scope_index = self.parents.len() - 1;
         loop {
@@ -344,8 +343,10 @@ impl<S: TokenStream> Parser<S> {
             }
         }
 
-        let is_newline_trivia = self.set_newline_as_trivia(false);
-        self.auxiliary_recovery_set.insert(SyntaxKind::Newline, 1);
+        if !self.is_newline_trivia {
+            self.add_recovery_token(SyntaxKind::Newline);
+        }
+        let mut unexpected = None;
         let mut open_brackets_in_error = FxHashMap::default();
         while let Some(kind) = self.current_kind() {
             if kind.is_open_bracket_kind() {
@@ -362,11 +363,35 @@ impl<S: TokenStream> Parser<S> {
                     break;
                 }
             }
-
+            if unexpected.is_none() {
+                if !self.parents.is_empty() {
+                    self.bump_trivias();
+                }
+                unexpected = Some((
+                    self.current_pos,
+                    checkpoint.unwrap_or_else(|| self.checkpoint()),
+                ));
+            }
             self.bump();
         }
 
-        self.set_newline_as_trivia(is_newline_trivia);
+        if !self.is_newline_trivia {
+            self.remove_recovery_token(SyntaxKind::Newline);
+        }
+
+        if let Some((start_pos, checkpoint)) = unexpected {
+            self.is_err = true;
+            if !self.is_dry_run() {
+                self.builder
+                    .start_node_at(checkpoint, SyntaxKind::Error.into());
+                self.builder.finish_node();
+
+                self.errors.push(ParseError {
+                    range: TextRange::new(start_pos, self.current_pos),
+                    msg: "unexpected syntax".to_string(),
+                });
+            }
+        }
     }
 
     /// Bumps the current token if the current token is the `expected` kind.
@@ -379,7 +404,8 @@ impl<S: TokenStream> Parser<S> {
         checkpoint: Option<Checkpoint>,
     ) {
         if !self.bump_if(expected) {
-            self.error_and_recover(msg, checkpoint);
+            self.error(msg);
+            self.recover(checkpoint);
         }
     }
 
@@ -442,8 +468,47 @@ impl<S: TokenStream> Parser<S> {
         }
     }
 
-    /// Add the `msg` to the error list.
+    /// Skip trivias (and newlines), then peek the next three tokens.
+    pub fn peek_three(&mut self) -> (Option<SyntaxKind>, Option<SyntaxKind>, Option<SyntaxKind>) {
+        self.stream.set_bt_point();
+
+        while let Some(next) = self.stream.peek().map(|tok| tok.syntax_kind()) {
+            if !(next.is_trivia() || next == SyntaxKind::Newline) {
+                break;
+            }
+            self.stream.next();
+        }
+
+        let tokens = (
+            self.stream.next().map(|t| t.syntax_kind()),
+            self.stream.next().map(|t| t.syntax_kind()),
+            self.stream.next().map(|t| t.syntax_kind()),
+        );
+
+        self.stream.backtrack();
+        tokens
+    }
+
+    /// Skip trivias, then peek the next two tokens.
+    pub fn peek_two(&mut self) -> (Option<SyntaxKind>, Option<SyntaxKind>) {
+        let (a, b, _) = self.peek_three();
+        (a, b)
+    }
+
+    /// Add the `msg` to the error list, at `current_pos`.
     fn error(&mut self, msg: &str) -> ErrorScope {
+        self.is_err = true;
+        let pos = self.current_pos;
+        self.errors.push(ParseError {
+            range: TextRange::new(pos, pos),
+            msg: msg.to_string(),
+        });
+        ErrorScope::default()
+    }
+
+    /// Add the `msg` to the error list, on `current_token()`.
+    /// Bumps trivias.
+    fn error_msg_on_current_token(&mut self, msg: &str) {
         self.bump_trivias();
         self.is_err = true;
         let start = self.current_pos;
@@ -452,23 +517,26 @@ impl<S: TokenStream> Parser<S> {
         } else {
             start
         };
-        let range = TextRange::new(start, end);
 
         self.errors.push(ParseError {
-            range,
+            range: TextRange::new(start, end),
             msg: msg.to_string(),
         });
-        ErrorScope::default()
     }
 
-    fn error_at_current_pos(&mut self, msg: &str) -> ErrorScope {
-        let pos = self.current_pos;
-        let range = TextRange::new(pos, pos);
+    /// Wrap the current token in a `SyntaxKind::Error`, and add `msg` to the error list.
+    fn unexpected_token_error(&mut self, msg: &str, checkpoint: Option<Checkpoint>) {
+        let checkpoint = self.enter(ErrorScope::default(), checkpoint);
+
+        self.is_err = true;
+        let start_pos = self.current_pos;
+        self.bump();
+
         self.errors.push(ParseError {
-            range,
+            range: TextRange::new(start_pos, self.current_pos),
             msg: msg.to_string(),
         });
-        ErrorScope::default()
+        self.leave(checkpoint);
     }
 
     /// Returns `true` if the parser is in the dry run mode.

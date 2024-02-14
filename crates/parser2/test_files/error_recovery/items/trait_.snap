@@ -20,7 +20,6 @@ Root@0..133
             Ident@13..14 "Y"
           Comma@14..15 ","
           TypeGenericParam@15..15
-            Error@15..15
           Gt@15..16 ">"
         TraitItemList@16..18
           LBrace@16..17 "{"
@@ -38,15 +37,12 @@ Root@0..133
           Comma@31..32 ","
           WhiteSpace@32..33 " "
           TypeGenericParam@33..33
-            Error@33..33
-            Error@33..33
-          Error@33..33
         TraitItemList@33..35
           LBrace@33..34 "{"
           RBrace@34..35 "}"
       Newline@35..37 "\n\n"
     Item@37..53
-      Trait@37..53
+      Trait@37..51
         TraitKw@37..42 "trait"
         WhiteSpace@42..43 " "
         Ident@43..46 "Bar"
@@ -57,13 +53,8 @@ Root@0..133
           Comma@48..49 ","
           WhiteSpace@49..50 " "
           TypeGenericParam@50..50
-            Error@50..50
           Gt@50..51 ">"
-        Newline@51..53 "\n\n"
-        Error@53..53
-        Error@53..53
-        Error@53..53
-      Error@53..53
+      Newline@51..53 "\n\n"
     Item@53..87
       Trait@53..85
         TraitKw@53..58 "trait"
@@ -79,13 +70,12 @@ Root@0..133
             Ident@66..67 "T"
           Comma@67..68 ","
           TypeGenericParam@68..68
-            Error@68..68
           Gt@68..69 ">"
         WhiteSpace@69..70 " "
-        WhereClause@70..83
+        WhereClause@70..82
           WhereKw@70..75 "where"
           WhiteSpace@75..76 " "
-          WherePredicate@76..83
+          WherePredicate@76..82
             PathType@76..77
               Path@76..77
                 PathSegment@76..77
@@ -98,8 +88,7 @@ Root@0..133
                   Path@79..82
                     PathSegment@79..82
                       Ident@79..82 "Add"
-            WhiteSpace@82..83 " "
-            Error@83..83
+        WhiteSpace@82..83 " "
         TraitItemList@83..85
           LBrace@83..84 "{"
           RBrace@84..85 "}"
