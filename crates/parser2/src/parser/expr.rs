@@ -56,9 +56,6 @@ fn parse_expr_with_min_bp<S: TokenStream>(
 
                     // `expr<generic_param_args>()`.
                     SyntaxKind::Lt => {
-                        //let is_call_expr =
-                        //    parser.dry_run(|parser| parser.parse(CallExprScope::default(),
-                        // None).0);
                         if is_call_expr(parser) {
                             parser.parse(CallExprScope::default(), Some(checkpoint));
                             continue;
@@ -83,16 +80,17 @@ fn parse_expr_with_min_bp<S: TokenStream>(
                 break;
             }
 
-            if !match kind {
-                // Method call is already handled as the postfix operator.
-                SyntaxKind::Dot => parser.parse(FieldExprScope::default(), Some(checkpoint)).0,
-                _ => {
-                    // 1. Try to parse the expression as an augmented assignment expression.
-                    // 2. If 1. fails, try to parse the expression as an assignment expression.
-                    // 3. If 2. fails, try to parse the expression as a binary expression.
-                    parser.parse(BinExprScope::default(), Some(checkpoint)).0
-                }
-            } {
+            let (ok, _) = if kind == SyntaxKind::Dot {
+                parser.parse(FieldExprScope::default(), Some(checkpoint))
+            } else if is_asn(parser) {
+                parser.parse(AssignExprScope::default(), Some(checkpoint))
+            } else if is_aug(parser) {
+                parser.parse(AugAssignExprScope::default(), Some(checkpoint))
+            } else {
+                parser.parse(BinExprScope::default(), Some(checkpoint))
+            };
+
+            if !ok {
                 return false;
             }
 
@@ -202,20 +200,28 @@ impl super::Parse for BinExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
         let (_, rbp) = infix_binding_power(parser).unwrap();
-        if is_aug(parser) {
-            self.set_kind(SyntaxKind::AugAssignExpr);
-            bump_aug_assign_op(parser);
-            parse_expr_with_min_bp(parser, rbp, true);
-        } else if is_asn(parser) {
-            self.set_kind(SyntaxKind::AssignExpr);
-            parser.set_newline_as_trivia(false);
-            let (_, rbp) = infix_binding_power(parser).unwrap();
-            parser.bump_expected(SyntaxKind::Eq);
-            parse_expr_with_min_bp(parser, rbp, true);
-        } else {
-            bump_bin_op(parser);
-            parse_expr_with_min_bp(parser, rbp, false);
-        }
+        bump_bin_op(parser);
+        parse_expr_with_min_bp(parser, rbp, false);
+    }
+}
+
+define_scope! { AugAssignExprScope, AugAssignExpr, Inheritance }
+impl super::Parse for AugAssignExprScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
+        let (_, rbp) = infix_binding_power(parser).unwrap();
+        bump_aug_assign_op(parser);
+        parse_expr_with_min_bp(parser, rbp, false);
+    }
+}
+
+define_scope! { AssignExprScope, AssignExpr, Inheritance }
+impl super::Parse for AssignExprScope {
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        parser.set_newline_as_trivia(false);
+        let (_, rbp) = infix_binding_power(parser).unwrap();
+        parser.bump_expected(SyntaxKind::Eq);
+        parse_expr_with_min_bp(parser, rbp, true);
     }
 }
 
