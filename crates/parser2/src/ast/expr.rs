@@ -352,7 +352,7 @@ impl AssignExpr {
     pub fn rhs_expr(&self) -> Option<super::Expr> {
         support::children(self.syntax()).nth(1)
     }
-    
+
     pub fn eq(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Eq)
     }

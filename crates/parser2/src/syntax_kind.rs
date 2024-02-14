@@ -290,7 +290,7 @@ pub enum SyntaxKind {
     AssignExpr,
     /// x += 1
     AugAssignExpr,
-    
+
     // Statements. These are non-leaf nodes.
     /// `let x = 1`
     LetStmt,
