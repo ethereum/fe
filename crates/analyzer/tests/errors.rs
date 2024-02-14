@@ -104,7 +104,6 @@ test_stmt! { assert_reason_not_string, "assert true, 1" }
 test_stmt! { assign_int, "5 = 6" }
 test_stmt! { assign_call, "self.f() = 10" }
 test_stmt! { assign_type_mismatch, "let mut x: u256 = 10\nx = address(0)" }
-test_stmt! { aug_assign_non_numeric, "let mut a: u256 = 1\nlet b: bool = true\na += b" }
 test_stmt! { binary_op_add_sign_mismatch, "let a: u256 = 1\nlet b: i256 = 2\na + b" }
 test_stmt! { binary_op_lshift_bool, "let a: bool = true\nlet b: i256\na << b" }
 test_stmt! { binary_op_lshift_with_int, "let a: u256 = 1\nlet b: i256 = 2\na << b" }

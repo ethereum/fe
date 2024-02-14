@@ -1,7 +1,4 @@
-use parser::{
-    ast::{self, prelude::*, AstPtr, SyntaxNodePtr},
-    TextRange,
-};
+use parser::ast::{self, prelude::*, AstPtr, SyntaxNodePtr};
 
 use common::diagnostics::Span;
 
@@ -33,10 +30,10 @@ pub mod lazy_spans {
     };
 
     pub use super::expr::{
-        LazyBinExprSpan, LazyCallArgListSpan, LazyCallArgSpan, LazyCallExprSpan, LazyExprSpan,
-        LazyFieldExprSpan, LazyFieldListSpan, LazyFieldSpan, LazyLitExprSpan, LazyMatchArmListSpan,
-        LazyMatchArmSpan, LazyMatchExprSpan, LazyMethodCallExprSpan, LazyPathExprSpan,
-        LazyRecordInitExprSpan, LazyUnExprSpan,
+        LazyAssignExprSpan, LazyAugAssignExprSpan, LazyBinExprSpan, LazyCallArgListSpan,
+        LazyCallArgSpan, LazyCallExprSpan, LazyExprSpan, LazyFieldExprSpan, LazyFieldListSpan,
+        LazyFieldSpan, LazyLitExprSpan, LazyMatchArmListSpan, LazyMatchArmSpan, LazyMatchExprSpan,
+        LazyMethodCallExprSpan, LazyPathExprSpan, LazyRecordInitExprSpan, LazyUnExprSpan,
     };
 
     pub use super::item::{
@@ -220,28 +217,10 @@ where
 pub enum DesugaredOrigin {
     /// The HIR node is the result of desugaring an augmented assignment
     /// statement.
-    AugAssign(AugAssignDesugared),
 
     /// The HIR node is the result of desugaring a AST use.
     /// In HIR lowering, nested use tree is flattened into a single use path.
     Use(UseDesugared),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
-pub enum AugAssignDesugared {
-    /// The HIR node is the result of desugaring an augmented assignment
-    /// statement.
-    Stmt(AstPtr<ast::AugAssignStmt>),
-    /// The `TextRange` points to the LHS of the augmented assignment statement.
-    Lhs(TextRange),
-    /// The HIR node points to the RHS of the RHS of augmented assignment.
-    Rhs(AstPtr<ast::Expr>),
-}
-
-impl AugAssignDesugared {
-    pub(crate) fn stmt(ast: &ast::AugAssignStmt) -> Self {
-        Self::Stmt(AstPtr::new(ast))
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

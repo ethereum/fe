@@ -10,7 +10,6 @@ pub enum Expr {
     Block(Vec<StmtId>),
     /// The first `ExprId` is the lhs, the second is the rhs.
     ///
-    /// **NOTE:** The `AugAssign` statement is desugared to a `Assign` statement
     /// and a `BinOp`.
     Bin(ExprId, ExprId, Partial<BinOp>),
     Un(ExprId, Partial<UnOp>),
@@ -40,6 +39,12 @@ pub enum Expr {
 
     /// The first `ExprId` is the scrutinee, the second is the arms.
     Match(ExprId, Partial<Vec<MatchArm>>),
+
+    /// The `Assign` Expression. The first `ExprId` is the destination of the assignment,
+    /// and the second `ExprId` is the rhs value of the binding.
+    Assign(ExprId, ExprId),
+
+    AugAssign(ExprId, ExprId, ArithBinOp),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

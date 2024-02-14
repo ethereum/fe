@@ -286,14 +286,14 @@ pub enum SyntaxKind {
     MatchExpr,
     /// `(1 + 2)`
     ParenExpr,
+    /// x = 1
+    AssignExpr,
+    /// x += 1
+    AugAssignExpr,
 
     // Statements. These are non-leaf nodes.
     /// `let x = 1`
     LetStmt,
-    /// `x = 1`
-    AssignStmt,
-    /// `x += 1`
-    AugAssignStmt,
     /// `for x in y {..}`
     ForStmt,
     /// `while expr {..}`
