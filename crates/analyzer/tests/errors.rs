@@ -339,6 +339,11 @@ test_ingot! { bad_ingot }
 test_ingot! { mainless_ingot }
 test_ingot! { bad_visibility }
 test_ingot! { missing_dep }
+test_ingot! { misconfigured_dep }
+#[cfg(not(target_arch = "wasm32"))]
+test_ingot! { dep_unavailable_rev }
+#[cfg(not(target_arch = "wasm32"))]
+test_ingot! { dep_unavailable_source }
 test_ingot! { name_mismatch }
 test_ingot! { version_mismatch }
 test_ingot! { main_dep }

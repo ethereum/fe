@@ -7,9 +7,12 @@ use path_clean::PathClean;
 use smol_str::SmolStr;
 use walkdir::WalkDir;
 
+use crate::utils::dirs::get_fe_deps;
+use crate::utils::git;
+
 const FE_TOML: &str = "fe.toml";
 
-enum FileLoader {
+pub enum FileLoader {
     Static(Vec<(&'static str, &'static str)>),
     Fs,
 }
@@ -22,7 +25,9 @@ impl FileLoader {
             )),
             FileLoader::Fs => Ok(SmolStr::new(
                 fs::canonicalize(path)
-                    .map_err(|err| format!("unable to canonicalize root project path.\n{err}"))?
+                    .map_err(|err| {
+                        format!("unable to canonicalize root project path {path}.\n{err}")
+                    })?
                     .to_str()
                     .expect("could not convert path to string"),
             )),
@@ -150,14 +155,24 @@ impl ProjectFiles {
         let manifest = Manifest::load(loader, &manifest_path)?;
         let name = manifest.name;
         let version = manifest.version;
-        let dependencies = if let Some(dependencies) = &manifest.dependencies {
-            dependencies
-                .iter()
-                .map(|(name, value)| Dependency::new(loader, name, path, value))
-                .collect::<Result<_, _>>()?
-        } else {
-            vec![]
-        };
+
+        let mut dependencies = vec![];
+        let mut errors = vec![];
+
+        if let Some(deps) = &manifest.dependencies {
+            for (name, value) in deps {
+                match Dependency::new(loader, name, path, value) {
+                    Ok(dep) => dependencies.push(dep),
+                    Err(dep_err) => {
+                        errors.push(format!("Misconfigured dependency {name}:\n{dep_err}"))
+                    }
+                }
+            }
+        }
+
+        if !errors.is_empty() {
+            return Err(errors.join("\n"));
+        }
 
         let src_path = Path::new(path)
             .join("src")
@@ -201,48 +216,19 @@ pub struct Dependency {
     pub name: SmolStr,
     pub version: Option<SmolStr>,
     pub canonicalized_path: SmolStr,
+    pub kind: DependencyKind,
 }
 
-impl Dependency {
-    fn new(
-        loader: &FileLoader,
-        name: &str,
-        orig_path: &str,
-        value: &toml::Value,
-    ) -> Result<Self, String> {
-        match value {
-            toml::Value::String(dep_path) => Ok(Dependency {
-                name: name.into(),
-                version: None,
-                canonicalized_path: loader.canonicalize_path(
-                    Path::new(orig_path)
-                        .join(dep_path)
-                        .to_str()
-                        .expect("unable to convert path to &str"),
-                )?,
-            }),
-            toml::Value::Table(table) => {
-                let dep_path = table.get("path").unwrap().as_str().unwrap();
-                let version = table
-                    .get("version")
-                    .map(|version| version.as_str().unwrap().into());
-                Ok(Dependency {
-                    name: name.into(),
-                    version,
-                    canonicalized_path: loader.canonicalize_path(
-                        Path::new(orig_path)
-                            .join(dep_path)
-                            .to_str()
-                            .expect("unable to convert path to &str"),
-                    )?,
-                })
-            }
-            _ => Err("unsupported toml type".into()),
-        }
-    }
+pub trait DependencyResolver {
+    fn resolve(dep: &Dependency, loader: &FileLoader) -> Result<ProjectFiles, String>;
+}
 
-    fn resolve(&self, loader: &FileLoader) -> Result<ProjectFiles, String> {
-        let project = ProjectFiles::load(loader, &self.canonicalized_path)?;
+#[derive(Clone)]
+pub struct LocalDependency;
+
+impl DependencyResolver for LocalDependency {
+    fn resolve(dep: &Dependency, loader: &FileLoader) -> Result<ProjectFiles, String> {
+        let project = ProjectFiles::load(loader, &dep.canonicalized_path)?;
 
         let mut errors = vec![];
 
@@ -250,11 +236,11 @@ impl Dependency {
             errors.push(format!("{} is not a library", project.name));
         }
 
-        if project.name != self.name {
-            errors.push(format!("Name mismatch: {} =/= {}", project.name, self.name));
+        if project.name != dep.name {
+            errors.push(format!("Name mismatch: {} =/= {}", project.name, dep.name));
         }
 
-        if let Some(version) = &self.version {
+        if let Some(version) = &dep.version {
             if version != &project.version {
                 errors.push(format!(
                     "Version mismatch: {} =/= {}",
@@ -268,10 +254,123 @@ impl Dependency {
         } else {
             Err(format!(
                 "Unable to resolve {} at {} due to the following errors.\n{}",
-                self.name,
-                self.canonicalized_path,
+                dep.name,
+                dep.canonicalized_path,
                 errors.join("\n")
             ))
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct GitDependency {
+    source: String,
+    rev: String,
+}
+
+impl DependencyResolver for GitDependency {
+    fn resolve(dep: &Dependency, loader: &FileLoader) -> Result<ProjectFiles, String> {
+        if let DependencyKind::Git(GitDependency { source, rev }) = &dep.kind {
+            if let Err(e) = git::fetch_and_checkout(source, dep.canonicalized_path.as_str(), rev) {
+                return Err(format!(
+                    "Unable to clone git dependency {}.\n{}",
+                    dep.name, e
+                ));
+            }
+
+            // Load it like any local dependency which will include additional checks.
+            return LocalDependency::resolve(dep, loader);
+        }
+        Err(format!("Could not resolve git dependency {}", dep.name))
+    }
+}
+
+#[derive(Clone)]
+pub enum DependencyKind {
+    Local(LocalDependency),
+    Git(GitDependency),
+}
+
+impl Dependency {
+    fn new(
+        loader: &FileLoader,
+        name: &str,
+        orig_path: &str,
+        value: &toml::Value,
+    ) -> Result<Self, String> {
+        let join_path = |path: &str| {
+            loader.canonicalize_path(
+                Path::new(orig_path)
+                    .join(path)
+                    .to_str()
+                    .expect("unable to convert path to &str"),
+            )
+        };
+
+        match value {
+            toml::Value::String(dep_path) => Ok(Dependency {
+                name: name.into(),
+                version: None,
+                kind: DependencyKind::Local(LocalDependency),
+                canonicalized_path: join_path(dep_path)?,
+            }),
+            toml::Value::Table(table) => {
+                let version = table
+                    .get("version")
+                    .map(|version| version.as_str().unwrap().into());
+
+                let return_local_dep = |path| {
+                    Ok::<Dependency, String>(Dependency {
+                        name: name.into(),
+                        version: version.clone(),
+                        canonicalized_path: join_path(path)?,
+
+                        kind: DependencyKind::Local(LocalDependency),
+                    })
+                };
+
+                match (table.get("source"), table.get("rev"), table.get("path")) {
+                    (Some(toml::Value::String(source)), Some(toml::Value::String(rev)), None) => {
+                        let dep_path = get_fe_deps().join(format!("{}-{}", name, rev));
+                        if dep_path.exists() {
+                            // Should we at least perform some kind of integrity check here? We currently treat an
+                            // existing directory as a valid dependency no matter what.
+                            return_local_dep(dep_path.to_str().unwrap())
+                        } else {
+                            fs::create_dir_all(&dep_path).unwrap();
+                            Ok(Dependency {
+                                name: name.into(),
+                                version: version.clone(),
+                                canonicalized_path: loader.canonicalize_path(
+                                    Path::new(orig_path)
+                                        .join(dep_path)
+                                        .to_str()
+                                        .expect("unable to convert path to &str"),
+                                )?,
+                                kind: DependencyKind::Git(GitDependency {
+                                    source: source.into(),
+                                    rev: rev.into(),
+                                }),
+                            })
+                        }
+                    }
+                    (Some(_), Some(_), Some(_)) => {
+                        Err("`path` can not be used together with `rev` and `source`".into())
+                    }
+                    (Some(_), None, _) => Err("`source` specified but no `rev` given".into()),
+                    (None, Some(_), _) => Err("`rev` specified but no `source` given".into()),
+                    (None, None, Some(toml::Value::String(path))) => return_local_dep(path),
+                    _ => Err("Dependency isn't well formed".into()),
+                }
+            }
+            _ => Err("unsupported toml type".into()),
+        }
+    }
+
+    fn resolve(&self, loader: &FileLoader) -> Result<ProjectFiles, String> {
+        match &self.kind {
+            DependencyKind::Local(_) => LocalDependency::resolve(self, loader),
+            DependencyKind::Git(_) => GitDependency::resolve(self, loader),
         }
     }
 }

@@ -24,3 +24,6 @@ camino = "1.0.7"
 walkdir = "2"
 toml = "0.7.6"
 path-clean = "1.0.1"
+dirs = "5.0.1"
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+git2 = "0.18.2"
