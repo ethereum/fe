@@ -1,0 +1,6 @@
+use example_c::get_total
+
+#test
+fn test_example(){
+    assert get_total() == 1111
+}

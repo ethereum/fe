@@ -1,0 +1,8 @@
+---
+source: crates/analyzer/tests/errors.rs
+assertion_line: 343
+expression: error_string_ingot(&path)
+---
+Unable to clone git dependency example_a.
+unexpected packet type; class=Net (12)
+Make sure revision 61e530c6d2f0cb800e04c30a285b8ee08097291a exists in remote
