@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/if_.fe
+---
+error[8-0000]: type mismatch
+  ┌─ if_.fe:2:16
+  │
+2 │     let x = if "a" {
+  │                ^^^ expected `bool`, but `String<1>` is given
+
+error[8-0000]: type mismatch
+   ┌─ if_.fe:11:9
+   │
+11 │         false
+   │         ^^^^^ expected `String<3>`, but `bool` is given
+
+error[8-0000]: type mismatch
+   ┌─ if_.fe:17:9
+   │
+17 │         false
+   │         ^^^^^ expected `i32`, but `bool` is given
+
+

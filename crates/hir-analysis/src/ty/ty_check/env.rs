@@ -37,11 +37,11 @@ impl<'db> TyCheckEnv<'db> {
             body,
             pat_ty: FxHashMap::default(),
             expr_ty: FxHashMap::default(),
-            var_env: vec![],
+            var_env: vec![BlockEnv::new(func.scope())],
             pending_vars: FxHashMap::default(),
         };
 
-        env.enter_block(body.expr(hir_db))?;
+        env.enter_scope(body.expr(hir_db));
 
         let Some(params) = func.params(hir_db).to_opt() else {
             return Err(());
@@ -72,20 +72,17 @@ impl<'db> TyCheckEnv<'db> {
         self.body
     }
 
-    pub(super) fn enter_block(&mut self, block: ExprId) -> Result<(), ()> {
-        if !matches!(
-            block.data(self.db.as_hir_db(), self.body),
-            Partial::Present(Expr::Block(_))
-        ) {
-            return Err(());
-        }
+    pub(super) fn enter_scope(&mut self, block: ExprId) {
+        let new_scope = match block.data(self.db.as_hir_db(), self.body) {
+            Partial::Present(Expr::Block(_)) => ScopeId::Block(self.body, block),
+            _ => self.scope(),
+        };
 
-        let var_env = BlockEnv::new(ScopeId::Block(self.body, block));
+        let var_env = BlockEnv::new(new_scope);
         self.var_env.push(var_env);
-        Ok(())
     }
 
-    pub(super) fn leave_block(&mut self) {
+    pub(super) fn leave_scope(&mut self) {
         self.var_env.pop().unwrap();
     }
 
