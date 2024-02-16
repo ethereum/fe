@@ -1,0 +1,22 @@
+fn lit_if() -> i32 {
+    if true {
+        1
+    } else {
+        2
+    }
+}
+
+fn string_if() -> String<5> {
+    if true {
+        "1"
+    } else {
+        "Foo"
+    }
+}
+
+// If expression should be typed as `()` when else block doesn't exist.
+fn no_else() -> () {
+    let x = if true {
+        false
+    }
+}

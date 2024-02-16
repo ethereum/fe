@@ -28,7 +28,7 @@ impl<'db> TyChecker<'db> {
             Expr::Index(..) => todo!(),
             Expr::Array(..) => todo!(),
             Expr::ArrayRep(..) => todo!(),
-            Expr::If(..) => todo!(),
+            Expr::If(..) => self.check_if(expr, expr_data, expected),
             Expr::Match(..) => todo!(),
             Expr::Assign(..) => todo!(),
             Expr::AugAssign(..) => todo!(),
@@ -45,15 +45,45 @@ impl<'db> TyChecker<'db> {
         if stmts.is_empty() {
             TyId::unit(self.db)
         } else {
-            self.env.enter_block(expr).ok();
+            self.env.enter_scope(expr);
             for &stmt in stmts[..stmts.len() - 1].iter() {
                 self.check_stmt(stmt, TyId::bot(self.db));
             }
 
             let last_stmt = stmts[stmts.len() - 1];
             let res = self.check_stmt(last_stmt, expected);
-            self.env.leave_block();
+            self.env.leave_scope();
             res
         }
+    }
+
+    fn check_if(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
+        let Expr::If(cond, then, else_) = expr_data else {
+            unreachable!()
+        };
+
+        self.check_expr(*cond, TyId::bool(self.db));
+
+        match else_ {
+            Some(else_) => {
+                self.check_expr_in_new_scope(*then, expected);
+                self.check_expr_in_new_scope(*else_, expected)
+            }
+
+            None => {
+                // If there is no else branch, the if expression itself typed as `()`
+                let expected = self.fresh_ty();
+                self.check_expr_in_new_scope(*then, expected);
+                TyId::unit(self.db)
+            }
+        }
+    }
+
+    fn check_expr_in_new_scope(&mut self, expr: ExprId, expected: TyId) -> TyId {
+        self.env.enter_scope(expr);
+        let ty = self.check_expr(expr, expected);
+        self.env.leave_scope();
+
+        ty
     }
 }
