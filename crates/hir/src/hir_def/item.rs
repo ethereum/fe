@@ -979,6 +979,18 @@ pub struct FieldDefListId {
 }
 
 impl FieldDefListId {
+    pub fn get_field(self, db: &dyn HirDb, name: IdentId) -> Option<&FieldDef> {
+        self.data(db)
+            .iter()
+            .find(|field| field.name.to_opt() == Some(name))
+    }
+
+    pub fn field_idx(self, db: &dyn HirDb, name: IdentId) -> Option<usize> {
+        self.data(db)
+            .iter()
+            .position(|field| field.name.to_opt() == Some(name))
+    }
+
     fn format_initializer_args(self, db: &dyn HirDb) -> String {
         let args = self
             .data(db)

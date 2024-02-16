@@ -610,8 +610,6 @@ impl FuncDef {
 /// represents a variant.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AdtFieldList {
-    name: Partial<IdentId>,
-
     /// Fields of the variant.
     /// If the adt is an struct or contract,
     /// the length of the vector is always 1.
@@ -640,8 +638,8 @@ impl AdtFieldList {
         self.tys.len()
     }
 
-    pub(super) fn new(name: Partial<IdentId>, tys: Vec<Partial<HirTyId>>, scope: ScopeId) -> Self {
-        Self { name, tys, scope }
+    pub(super) fn new(tys: Vec<Partial<HirTyId>>, scope: ScopeId) -> Self {
+        Self { tys, scope }
     }
 }
 

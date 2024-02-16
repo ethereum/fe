@@ -1,11 +1,15 @@
-use std::ops::Range;
+use std::{
+    collections::{hash_map::Entry, BTreeSet},
+    ops::Range,
+};
 
 use hir::{
     hir_def::{scope_graph::ScopeId, Enum, IdentId, ItemKind, Partial, Pat, PatId, PathId},
     span::path::LazyPathSpan,
 };
+use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::{env::TyCheckEnv, ResolvedPathData, TyChecker};
+use super::{ResolvedPathData, TyChecker};
 use crate::{
     name_resolution::{
         resolve_path_early, resolve_segments_early, EarlyResolvedPath, NameDomain, NameRes,
@@ -16,7 +20,6 @@ use crate::{
         ty_def::{AdtRefId, InvalidCause, Kind, TyId, TyVarUniverse},
         ty_lower::lower_adt,
     },
-    HirAnalysisDb,
 };
 
 impl<'db> TyChecker<'db> {
@@ -37,7 +40,7 @@ impl<'db> TyChecker<'db> {
             Pat::Tuple(..) => self.check_tuple_pat(pat, pat_data, expected),
             Pat::Path(..) => self.check_path_pat(pat, pat_data),
             Pat::PathTuple(..) => self.check_path_tuple_pat(pat, pat_data),
-            Pat::Record(..) => todo!(),
+            Pat::Record(..) => self.check_record_pat(pat, pat_data),
 
             Pat::Or(lhs, rhs) => {
                 self.check_pat(*lhs, expected);
@@ -111,10 +114,10 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        match resolve_path_in_pat(self.db, &self.env, *path, pat) {
+        match resolve_path_in_pat(self, *path, pat) {
             ResolvedPathInPat::Data(data) => {
                 if data.is_unit_variant(self.db) {
-                    data.ty(self.db, &mut self.table)
+                    data.ty(self.db)
                 } else {
                     let diag = BodyDiag::unit_variant_expected_in_pat(
                         self.db,
@@ -142,21 +145,14 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_path_tuple_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
-        let Pat::PathTuple(path, args) = pat_data else {
-            unreachable!()
-        };
-
-        let Partial::Present(path) = path else {
+        let Pat::PathTuple(Partial::Present(path), args) = pat_data else {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        let (pat_ty, expected_fields) = match resolve_path_in_pat(self.db, &self.env, *path, pat) {
+        let mut path_data = match resolve_path_in_pat(self, *path, pat) {
             ResolvedPathInPat::Data(data) => {
                 if data.is_tuple_variant(self.db) {
-                    let ty = data.ty(self.db, &mut self.table);
-                    let field_tys = data.field_tys(self.db);
-
-                    (ty, Some(field_tys))
+                    data
                 } else {
                     let diag = BodyDiag::tuple_variant_expected_in_pat(
                         self.db,
@@ -164,8 +160,7 @@ impl<'db> TyChecker<'db> {
                         Some(data),
                     );
                     FuncBodyDiagAccumulator::push(self.db, diag.into());
-
-                    (TyId::invalid(self.db, InvalidCause::Other), None)
+                    return TyId::invalid(self.db, InvalidCause::Other);
                 }
             }
 
@@ -177,26 +172,22 @@ impl<'db> TyChecker<'db> {
                 );
                 FuncBodyDiagAccumulator::push(self.db, diag.into());
 
-                (TyId::invalid(self.db, InvalidCause::Other), None)
+                return TyId::invalid(self.db, InvalidCause::Other);
             }
 
             ResolvedPathInPat::Diag(diag) => {
                 FuncBodyDiagAccumulator::push(self.db, diag);
 
-                (TyId::invalid(self.db, InvalidCause::Other), None)
+                return TyId::invalid(self.db, InvalidCause::Other);
             }
 
-            ResolvedPathInPat::Invalid => (TyId::invalid(self.db, InvalidCause::Other), None),
+            ResolvedPathInPat::Invalid => {
+                return TyId::invalid(self.db, InvalidCause::Other);
+            }
         };
 
-        let Some(expected_fields) = expected_fields else {
-            args.iter().for_each(|&pat| {
-                self.env
-                    .type_pat(pat, TyId::invalid(self.db, InvalidCause::Other));
-            });
-
-            return pat_ty;
-        };
+        let pat_ty = path_data.ty(self.db);
+        let expected_fields = path_data.field_tys(self.db);
 
         let (actual_args, rest_range) = self.unpack_rest_pat(args, Some(expected_fields.len()));
         if actual_args.len() != expected_fields.len() {
@@ -230,6 +221,139 @@ impl<'db> TyChecker<'db> {
         }
 
         pat_ty
+    }
+
+    fn check_record_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
+        let Pat::Record(Partial::Present(path), fields) = pat_data else {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
+
+        let mut path_data = match resolve_path_in_pat(self, *path, pat) {
+            ResolvedPathInPat::Data(data) => {
+                if data.is_record(self.db) {
+                    data
+                } else {
+                    let diag = BodyDiag::record_variant_expected_in_pat(
+                        self.db,
+                        pat.lazy_span(self.body()).into(),
+                        Some(data),
+                    );
+                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+            }
+
+            ResolvedPathInPat::NewBinding(_) => {
+                let diag = BodyDiag::record_variant_expected_in_pat(
+                    self.db,
+                    pat.lazy_span(self.body()).into(),
+                    None,
+                );
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+                return TyId::invalid(self.db, InvalidCause::Other);
+            }
+
+            ResolvedPathInPat::Diag(diag) => {
+                FuncBodyDiagAccumulator::push(self.db, diag);
+
+                return TyId::invalid(self.db, InvalidCause::Other);
+            }
+
+            ResolvedPathInPat::Invalid => return TyId::invalid(self.db, InvalidCause::Other),
+        };
+
+        let hir_db = self.db.as_hir_db();
+        let mut seen_fields = FxHashMap::default();
+        let mut contains_rest = false;
+        let mut contains_invalid_field = false;
+
+        let pat_span = pat.lazy_span(self.body()).into_record_pat();
+
+        for (i, field_pat) in fields.iter().enumerate() {
+            let field_pat_span = pat_span.fields().field(i);
+
+            if field_pat.pat.is_rest(hir_db, self.body()) {
+                if contains_rest {
+                    let diag =
+                        BodyDiag::DuplicatedRestPat(field_pat.pat.lazy_span(self.body()).into());
+                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    continue;
+                }
+
+                contains_rest = true;
+                continue;
+            }
+
+            let expected_ty = match field_pat.label(hir_db, self.body()) {
+                Some(label) => match seen_fields.entry(label) {
+                    Entry::Occupied(i) => {
+                        let first_use = pat_span.fields().field(*i.get()).name();
+                        let diag = BodyDiag::DuplicatedRecordFieldBind {
+                            primary: pat_span.clone().into(),
+                            first_use: first_use.into(),
+                            name: label,
+                        };
+                        FuncBodyDiagAccumulator::push(self.db, diag.into());
+                        contains_invalid_field = true;
+
+                        TyId::invalid(self.db, InvalidCause::Other)
+                    }
+
+                    Entry::Vacant(entry) => {
+                        entry.insert(i);
+                        if let Some(ty) = path_data.record_field_ty(self.db, label) {
+                            ty
+                        } else {
+                            let diag = BodyDiag::record_field_not_found(
+                                self.db,
+                                field_pat_span.into(),
+                                &path_data,
+                                label,
+                            );
+                            FuncBodyDiagAccumulator::push(self.db, diag.into());
+                            contains_invalid_field = true;
+
+                            TyId::invalid(self.db, InvalidCause::Other)
+                        }
+                    }
+                },
+
+                None => {
+                    let diag = BodyDiag::ExplicitLabelExpectedInRecord {
+                        primary: field_pat_span.into(),
+                        hint: path_data.initializer_hint(self.db),
+                    };
+                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    contains_invalid_field = true;
+
+                    TyId::invalid(self.db, InvalidCause::Other)
+                }
+            };
+
+            self.check_pat(field_pat.pat, expected_ty);
+        }
+
+        // Check for missing fields if no rest pat in the record.
+        if !contains_rest && !contains_invalid_field {
+            let expected_labels = path_data.record_labels(self.db);
+            let found = seen_fields.keys().copied().collect::<FxHashSet<_>>();
+            let missing_fields: BTreeSet<IdentId> =
+                expected_labels.difference(&found).copied().collect();
+
+            if !missing_fields.is_empty() {
+                let diag = BodyDiag::MissingRecordFields {
+                    primary: pat_span.into(),
+                    missing_fields,
+                    hint: path_data.initializer_hint(self.db),
+                };
+
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+            }
+        }
+
+        path_data.ty(self.db)
     }
 
     fn unpack_rest_pat(
@@ -271,33 +395,29 @@ impl<'db> TyChecker<'db> {
     }
 }
 
-fn resolve_path_in_pat(
-    db: &dyn HirAnalysisDb,
-    env: &TyCheckEnv,
-    path: PathId,
-    pat: PatId,
-) -> ResolvedPathInPat {
-    PathResolver { db, env, pat, path }.resolve_path()
+fn resolve_path_in_pat(tc: &mut TyChecker, path: PathId, pat: PatId) -> ResolvedPathInPat {
+    PathResolver { tc, pat, path }.resolve_path()
 }
 
-struct PathResolver<'db, 'env> {
-    db: &'db dyn HirAnalysisDb,
-    env: &'env TyCheckEnv<'db>,
+struct PathResolver<'db, 'tc> {
+    tc: &'tc mut TyChecker<'db>,
     pat: PatId,
     path: PathId,
 }
 
 impl<'db, 'env> PathResolver<'db, 'env> {
-    fn resolve_path(&self) -> ResolvedPathInPat {
-        let early_resolved_path = resolve_path_early(self.db, self.path, self.env.scope());
+    fn resolve_path(&mut self) -> ResolvedPathInPat {
+        let hir_db = self.tc.db.as_hir_db();
+
+        let early_resolved_path = resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
         let resolved = self.resolve_early_resolved_path(early_resolved_path);
 
-        if !self.path.is_ident(self.db.as_hir_db()) {
+        if !self.path.is_ident(hir_db) {
             resolved
         } else {
             match resolved {
                 ResolvedPathInPat::Diag(_) | ResolvedPathInPat::Invalid => {
-                    if let Some(ident) = self.path.last_segment(self.db.as_hir_db()).to_opt() {
+                    if let Some(ident) = self.path.last_segment(hir_db).to_opt() {
                         ResolvedPathInPat::NewBinding(ident)
                     } else {
                         resolved
@@ -309,8 +429,8 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_early_resolved_path(&self, early: EarlyResolvedPath) -> ResolvedPathInPat {
-        let hir_db = self.db.as_hir_db();
+    fn resolve_early_resolved_path(&mut self, early: EarlyResolvedPath) -> ResolvedPathInPat {
+        let hir_db = self.tc.db.as_hir_db();
 
         // Try to resolve the partially resolved path as an enum variant.
         let early = match early {
@@ -320,7 +440,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             } if res.is_enum() && unresolved_from + 1 == self.path.len(hir_db) => {
                 let segments = &self.path.segments(hir_db)[unresolved_from..];
                 let scope = res.scope().unwrap();
-                resolve_segments_early(self.db, segments, scope)
+                resolve_segments_early(self.tc.db, segments, scope)
             }
 
             _ => early,
@@ -337,7 +457,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_bucket(&self, bucket: NameResBucket) -> ResolvedPathInPat {
+    fn resolve_bucket(&mut self, bucket: NameResBucket) -> ResolvedPathInPat {
         if let Ok(res) = bucket.pick(NameDomain::Value) {
             let res = self.resolve_name_res(res);
             if !matches!(res, ResolvedPathInPat::Diag(_) | ResolvedPathInPat::Invalid) {
@@ -351,16 +471,26 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_name_res(&self, res: &NameRes) -> ResolvedPathInPat {
+    fn resolve_name_res(&mut self, res: &NameRes) -> ResolvedPathInPat {
         match res.kind {
             NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
-                let adt = lower_adt(self.db, AdtRefId::from_struct(self.db, struct_));
-                ResolvedPathInPat::Data(ResolvedPathData::Adt(adt, self.path))
+                let adt = lower_adt(self.tc.db, AdtRefId::from_struct(self.tc.db, struct_));
+                let data =
+                    ResolvedPathData::new_adt(self.tc.db, &mut self.tc.table, adt, self.path);
+
+                ResolvedPathInPat::Data(data)
             }
 
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
                 let enum_: Enum = parent.try_into().unwrap();
-                let data = ResolvedPathData::Variant(enum_, idx, self.path);
+                let data = ResolvedPathData::new_variant(
+                    self.tc.db,
+                    &mut self.tc.table,
+                    enum_,
+                    idx,
+                    self.path,
+                );
+
                 ResolvedPathInPat::Data(data)
             }
 
@@ -369,7 +499,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                     primary: self.path_span().into(),
                     resolved: res
                         .scope()
-                        .and_then(|scope| scope.name_span(self.db.as_hir_db())),
+                        .and_then(|scope| scope.name_span(self.tc.db.as_hir_db())),
                 };
 
                 ResolvedPathInPat::Diag(diag.into())
@@ -378,11 +508,12 @@ impl<'db, 'env> PathResolver<'db, 'env> {
     }
 
     fn path_span(&self) -> LazyPathSpan {
-        let Partial::Present(pat_data) = self.pat.data(self.db.as_hir_db(), self.env.body()) else {
+        let Partial::Present(pat_data) = self.pat.data(self.tc.db.as_hir_db(), self.tc.env.body())
+        else {
             unreachable!()
         };
 
-        let pat_span = self.pat.lazy_span(self.env.body());
+        let pat_span = self.pat.lazy_span(self.tc.env.body());
 
         match pat_data {
             Pat::Path(_) => pat_span.into_path_pat().path(),

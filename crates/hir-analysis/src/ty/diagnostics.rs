@@ -542,25 +542,60 @@ impl DiagnosticVoucher for TyLowerDiag {
 pub enum BodyDiag {
     TypeMismatch(DynLazySpan, String, String),
     InfiniteOccurrence(DynLazySpan),
+
     DuplicatedRestPat(DynLazySpan),
+
     InvalidPathDomainInPat {
         primary: DynLazySpan,
         resolved: Option<DynLazySpan>,
     },
+
     UnitVariantExpectedInPat {
         primary: DynLazySpan,
         pat_kind: &'static str,
         hint: Option<String>,
     },
+
     TupleVariantExpectedInPat {
         primary: DynLazySpan,
         pat_kind: Option<&'static str>,
         hint: Option<String>,
     },
+
+    RecordVariantExpectedInPat {
+        primary: DynLazySpan,
+        pat_kind: Option<&'static str>,
+        hint: Option<String>,
+    },
+
     MismatchedFieldCount {
         primary: DynLazySpan,
         expected: usize,
         given: usize,
+    },
+
+    DuplicatedRecordFieldBind {
+        primary: DynLazySpan,
+        first_use: DynLazySpan,
+        name: IdentId,
+    },
+
+    RecordFieldNotFound {
+        primary: DynLazySpan,
+        label: IdentId,
+        def_span: DynLazySpan,
+        def_name: IdentId,
+    },
+
+    ExplicitLabelExpectedInRecord {
+        primary: DynLazySpan,
+        hint: Option<String>,
+    },
+
+    MissingRecordFields {
+        primary: DynLazySpan,
+        missing_fields: BTreeSet<IdentId>,
+        hint: Option<String>,
     },
 }
 
@@ -608,6 +643,41 @@ impl BodyDiag {
         }
     }
 
+    pub(super) fn record_variant_expected_in_pat(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        data: Option<ResolvedPathData>,
+    ) -> Self {
+        let (pat_kind, hint) = if let Some(data) = data {
+            (Some(data.data_kind(db)), data.initializer_hint(db))
+        } else {
+            (None, None)
+        };
+
+        Self::RecordVariantExpectedInPat {
+            primary,
+            pat_kind,
+            hint,
+        }
+    }
+
+    pub(super) fn record_field_not_found(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        data: &ResolvedPathData,
+        label: IdentId,
+    ) -> Self {
+        let def_span = data.def_span(db);
+        let def_name = data.def_name(db);
+
+        Self::RecordFieldNotFound {
+            primary,
+            label,
+            def_span,
+            def_name,
+        }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(_, _, _) => 0,
@@ -616,7 +686,12 @@ impl BodyDiag {
             Self::InvalidPathDomainInPat { .. } => 3,
             Self::UnitVariantExpectedInPat { .. } => 4,
             Self::TupleVariantExpectedInPat { .. } => 5,
-            Self::MismatchedFieldCount { .. } => 6,
+            Self::RecordVariantExpectedInPat { .. } => 6,
+            Self::MismatchedFieldCount { .. } => 7,
+            Self::DuplicatedRecordFieldBind { .. } => 8,
+            Self::RecordFieldNotFound { .. } => 9,
+            Self::ExplicitLabelExpectedInRecord { .. } => 10,
+            Self::MissingRecordFields { .. } => 11,
         }
     }
 
@@ -628,7 +703,12 @@ impl BodyDiag {
             Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
             Self::UnitVariantExpectedInPat { .. } => "expected unit variant".to_string(),
             Self::TupleVariantExpectedInPat { .. } => "expected tuple variant".to_string(),
+            Self::RecordVariantExpectedInPat { .. } => "expected record variant".to_string(),
             Self::MismatchedFieldCount { .. } => "field count mismatch".to_string(),
+            Self::DuplicatedRecordFieldBind { .. } => "duplicated record field binding".to_string(),
+            Self::RecordFieldNotFound { .. } => "specified field not found".to_string(),
+            Self::ExplicitLabelExpectedInRecord { .. } => "explicit label is required".to_string(),
+            Self::MissingRecordFields { .. } => "all fields are not given".to_string(),
         }
     }
 
@@ -718,6 +798,36 @@ impl BodyDiag {
                 diag
             }
 
+            Self::RecordVariantExpectedInPat {
+                primary,
+                pat_kind,
+                hint,
+            } => {
+                let mut diag = if let Some(pat_kind) = pat_kind {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("expected record variant here, but found {}", pat_kind,),
+                        primary.resolve(db),
+                    )]
+                } else {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        "expected record variant here".to_string(),
+                        primary.resolve(db),
+                    )]
+                };
+
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+
+                diag
+            }
+
             Self::MismatchedFieldCount {
                 primary,
                 expected,
@@ -728,6 +838,91 @@ impl BodyDiag {
                     format!("expected {} fields here, but {} given", expected, given,),
                     primary.resolve(db),
                 )]
+            }
+
+            Self::DuplicatedRecordFieldBind {
+                primary,
+                first_use,
+                name,
+            } => {
+                let name = name.data(db.as_hir_db());
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("duplicated field binding `{}`", name),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("first use of `{}`", name),
+                        first_use.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::RecordFieldNotFound {
+                primary,
+                label,
+                def_span,
+                def_name,
+            } => {
+                let label = label.data(db.as_hir_db());
+                let def_name = def_name.data(db.as_hir_db());
+
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("field `{}` not found", label),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("`{}` is defined here", def_name),
+                        def_span.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::ExplicitLabelExpectedInRecord { primary, hint } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "explicit label is required".to_string(),
+                    primary.resolve(db),
+                )];
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+
+                diag
+            }
+
+            Self::MissingRecordFields {
+                primary,
+                missing_fields,
+                hint,
+            } => {
+                let missing = missing_fields
+                    .iter()
+                    .map(|id| id.data(db.as_hir_db()))
+                    .join(", ");
+
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format! {"missing `{}`", missing},
+                    primary.resolve(db),
+                )];
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+                diag
             }
         }
     }
