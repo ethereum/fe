@@ -498,10 +498,13 @@ impl<'db> AdtTyBuilder<'db> {
     fn collect_field_types(&mut self, fields: FieldDefListId) {
         let scope = self.adt.scope(self.db);
 
-        fields.data(self.db.as_hir_db()).iter().for_each(|field| {
-            let variant = AdtFieldList::new(field.name, vec![field.ty], scope);
-            self.variants.push(variant);
-        })
+        let fields = fields
+            .data(self.db.as_hir_db())
+            .iter()
+            .map(|field| field.ty)
+            .collect();
+
+        self.variants.push(AdtFieldList::new(fields, scope));
     }
 
     fn collect_enum_variant_types(&mut self, variants: VariantDefListId) {
@@ -524,7 +527,7 @@ impl<'db> AdtTyBuilder<'db> {
                     VariantKind::Unit => vec![],
                 };
 
-                let variant = AdtFieldList::new(variant.name, tys, scope);
+                let variant = AdtFieldList::new(tys, scope);
                 self.variants.push(variant)
             })
     }
