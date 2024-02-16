@@ -1,0 +1,90 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/pat/record.fe
+---
+error[1-0001]: expected comma after enum variant definition
+  ┌─ record.fe:7:9
+  │
+7 │     Unit
+  │         ^ expected comma after enum variant definition
+
+error[8-0002]: duplicated `..` found
+   ┌─ record.fe:13:24
+   │
+13 │     let Foo {x, .., y, ..}
+   │                        ^^ `..` can be used only once
+
+error[8-0002]: duplicated `..` found
+   ┌─ record.fe:19:33
+   │
+19 │     let Bar::Variant {x, .., y, ..}
+   │                                 ^^ `..` can be used only once
+
+error[8-0008]: duplicated record field binding
+   ┌─ record.fe:12:9
+   │
+12 │     let Foo {x, x}
+   │         ^^^^^^^^^^ duplicated field binding `x`
+
+error[8-0008]: duplicated record field binding
+   ┌─ record.fe:18:9
+   │
+18 │     let Bar::Variant {x, x}
+   │         ^^^^^^^^^^^^^^^^^^^ duplicated field binding `x`
+
+error[8-0009]: specified field not found
+   ┌─ record.fe:14:17
+   │
+ 1 │ pub struct Foo {
+   │            --- `Foo` is defined here
+   ·
+14 │     let Foo {x, z}
+   │                 ^ field `z` not found
+
+error[8-0009]: specified field not found
+   ┌─ record.fe:20:26
+   │
+ 8 │     Variant {x: i32, y: u32}
+   │     ------------------------ `Variant` is defined here
+   ·
+20 │     let Bar::Variant {x, z}
+   │                          ^ field `z` not found
+
+error[8-0010]: explicit label is required
+   ┌─ record.fe:15:17
+   │
+15 │     let Foo {x, Bar::Unit}
+   │                 ^^^^^^^^^
+   │                 │
+   │                 explicit label is required
+   │                 Consider using `Foo { x, y }` instead
+
+error[8-0010]: explicit label is required
+   ┌─ record.fe:21:26
+   │
+21 │     let Bar::Variant {x, Bar::Unit}
+   │                          ^^^^^^^^^
+   │                          │
+   │                          explicit label is required
+   │                          Consider using `Bar::Variant { x, y }` instead
+
+error[8-0011]: all fields are not given
+   ┌─ record.fe:16:9
+   │
+16 │     let Foo {x}
+   │         ^^^^^^^
+   │         │
+   │         missing `y`
+   │         Consider using `Foo { x, y }` instead
+
+error[8-0011]: all fields are not given
+   ┌─ record.fe:22:9
+   │
+22 │     let Bar::Variant {}
+   │         ^^^^^^^^^^^^^^^
+   │         │
+   │         missing `x, y`
+   │         Consider using `Bar::Variant { x, y }` instead
+
+

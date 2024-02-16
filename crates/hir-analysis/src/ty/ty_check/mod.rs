@@ -6,16 +6,16 @@ mod stmt;
 use env::TyCheckEnv;
 use hir::{
     hir_def::{
-        Body, Enum, ExprId, Func, LitKind, PatId, PathId, TypeId as HirTyId,
+        Body, Enum, ExprId, Func, IdentId, LitKind, PatId, PathId, TypeId as HirTyId,
         VariantKind as HirVariantKind,
     },
     span::DynLazySpan,
 };
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
-    ty_def::{AdtDef, AdtRef, AdtRefId, InvalidCause, Kind, TyId, TyVarUniverse},
+    ty_def::{AdtDef, AdtRef, AdtRefId, InvalidCause, Kind, Subst, TyId, TyVarUniverse},
     ty_lower::{lower_adt, lower_hir_ty},
     unify::{UnificationError, UnificationTable},
 };
@@ -200,24 +200,77 @@ impl Typeable {
     }
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ResolvedPathData {
-    Adt(AdtDef, PathId),
-    Variant(Enum, usize, PathId),
+    Adt {
+        adt: AdtDef,
+        args: FxHashMap<TyId, TyId>,
+        path: PathId,
+    },
+
+    Variant {
+        enum_: Enum,
+        idx: usize,
+        args: FxHashMap<TyId, TyId>,
+        path: PathId,
+    },
 }
 
 impl ResolvedPathData {
-    pub(crate) fn adt_ref(&self, db: &dyn HirAnalysisDb) -> AdtRef {
+    fn new_adt(
+        db: &dyn HirAnalysisDb,
+        table: &mut UnificationTable,
+        adt: AdtDef,
+        path: PathId,
+    ) -> Self {
+        let args = adt
+            .params(db)
+            .iter()
+            .map(|param| (*param, table.new_var_from_param(*param)))
+            .collect();
+
+        Self::Adt { adt, args, path }
+    }
+
+    fn new_variant(
+        db: &dyn HirAnalysisDb,
+        table: &mut UnificationTable,
+        enum_: Enum,
+        idx: usize,
+        path: PathId,
+    ) -> Self {
+        let args = lower_adt(db, AdtRefId::from_enum(db, enum_))
+            .params(db)
+            .iter()
+            .map(|param| (*param, table.new_var_from_param(*param)))
+            .collect();
+
+        Self::Variant {
+            enum_,
+            idx,
+            args,
+            path,
+        }
+    }
+
+    pub(crate) fn adt_ref(&self, db: &dyn HirAnalysisDb) -> AdtRefId {
         match self {
-            Self::Adt(adt, _) => adt.adt_ref(db).data(db),
-            Self::Variant(enum_, _, _) => AdtRef::Enum(*enum_),
+            Self::Adt { adt, .. } => adt.adt_ref(db),
+            Self::Variant { enum_, .. } => AdtRefId::from_enum(db, *enum_),
+        }
+    }
+
+    pub(crate) fn adt_def(&self, db: &dyn HirAnalysisDb) -> AdtDef {
+        match self {
+            Self::Adt { adt, .. } => *adt,
+            Self::Variant { enum_, .. } => lower_adt(db, AdtRefId::from_enum(db, *enum_)),
         }
     }
 
     pub(crate) fn data_kind(&self, db: &dyn HirAnalysisDb) -> &'static str {
         match self {
-            Self::Adt(adt, _) => adt.adt_ref(db).kind_name(db),
-            Self::Variant(enum_, idx, _) => {
+            Self::Adt { adt, .. } => adt.adt_ref(db).kind_name(db),
+            Self::Variant { enum_, idx, .. } => {
                 let hir_db = db.as_hir_db();
                 match enum_.variants(hir_db).data(hir_db)[*idx].kind {
                     hir::hir_def::VariantKind::Unit => "unit variant",
@@ -232,15 +285,15 @@ impl ResolvedPathData {
         let hir_db = db.as_hir_db();
 
         let expected_sub_pat = match self {
-            Self::Adt(_, _) => {
-                let AdtRef::Struct(s) = self.adt_ref(db) else {
+            Self::Adt { .. } => {
+                let AdtRef::Struct(s) = self.adt_ref(db).data(db) else {
                     return None;
                 };
 
                 s.format_initializer_args(hir_db)
             }
 
-            Self::Variant(enum_, idx, _) => {
+            Self::Variant { enum_, idx, .. } => {
                 enum_.variants(hir_db).data(hir_db)[*idx].format_initializer_args(hir_db)
             }
         };
@@ -249,31 +302,51 @@ impl ResolvedPathData {
         Some(format!("{}{}", path, expected_sub_pat))
     }
 
-    fn path(&self) -> PathId {
+    pub(super) fn def_span(&self, db: &dyn HirAnalysisDb) -> DynLazySpan {
         match self {
-            Self::Adt(_, path) => *path,
-            Self::Variant(_, _, path) => *path,
+            Self::Adt { .. } => self.adt_ref(db).name_span(db),
+            Self::Variant { enum_, idx, .. } => {
+                enum_.lazy_span().variants_moved().variant(*idx).into()
+            }
         }
     }
 
-    fn ty(&self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> TyId {
-        let adt = match self {
-            Self::Adt(adt, _) => *adt,
+    pub(super) fn def_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
+        match self {
+            Self::Adt { adt, .. } => adt.adt_ref(db).name(db),
+            Self::Variant { enum_, idx, .. } => {
+                *enum_.variants(db.as_hir_db()).data(db.as_hir_db())[*idx]
+                    .name
+                    .unwrap()
+            }
+        }
+    }
 
-            Self::Variant(enum_, ..) => lower_adt(db, AdtRefId::from_enum(db, *enum_)),
-        };
+    fn path(&self) -> PathId {
+        match self {
+            Self::Adt { path, .. } => *path,
+            Self::Variant { path, .. } => *path,
+        }
+    }
 
-        let adt_ty = TyId::adt(db, adt);
-        adt.params(db).iter().fold(adt_ty, |ty, param| {
-            let param_ty = table.new_var_from_param(*param);
-            TyId::app(db, ty, param_ty)
-        })
+    fn is_record(&self, db: &dyn HirAnalysisDb) -> bool {
+        match self {
+            Self::Adt { adt, .. } => matches!(
+                adt.adt_ref(db).data(db),
+                AdtRef::Struct(_) | AdtRef::Contract(_)
+            ),
+
+            Self::Variant { enum_, idx, .. } => matches!(
+                enum_.variants(db.as_hir_db()).data(db.as_hir_db())[*idx].kind,
+                HirVariantKind::Record(_)
+            ),
+        }
     }
 
     fn is_unit_variant(&self, db: &dyn HirAnalysisDb) -> bool {
         match self {
-            Self::Adt(_, _) => false,
-            Self::Variant(enum_, idx, _) => {
+            Self::Adt { .. } => false,
+            Self::Variant { enum_, idx, .. } => {
                 let hir_db = db.as_hir_db();
                 matches!(
                     enum_.variants(hir_db).data(hir_db)[*idx].kind,
@@ -285,8 +358,8 @@ impl ResolvedPathData {
 
     fn is_tuple_variant(&self, db: &dyn HirAnalysisDb) -> bool {
         match self {
-            Self::Adt(_, _) => false,
-            Self::Variant(enum_, idx, _) => {
+            Self::Adt { .. } => false,
+            Self::Variant { enum_, idx, .. } => {
                 let hir_db = db.as_hir_db();
                 matches!(
                     enum_.variants(hir_db).data(hir_db)[*idx].kind,
@@ -296,9 +369,60 @@ impl ResolvedPathData {
         }
     }
 
-    fn field_tys(&self, db: &dyn HirAnalysisDb) -> Vec<TyId> {
+    fn ty(&self, db: &dyn HirAnalysisDb) -> TyId {
+        let adt = match self {
+            Self::Adt { adt, .. } => *adt,
+
+            Self::Variant { enum_, .. } => lower_adt(db, AdtRefId::from_enum(db, *enum_)),
+        };
+
+        let adt_ty = TyId::adt(db, adt);
+        self.args().fold(adt_ty, |ty, arg| TyId::app(db, ty, *arg))
+    }
+
+    fn record_field_ty(&mut self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId> {
+        let hir_db = db.as_hir_db();
+
+        let (hir_field_list, field_list) = match self {
+            Self::Adt { adt, .. } => match adt.adt_ref(db).data(db) {
+                AdtRef::Struct(s) => (s.fields(hir_db), &adt.fields(db)[0]),
+                AdtRef::Contract(c) => (c.fields(hir_db), &adt.fields(db)[0]),
+
+                _ => return None,
+            },
+
+            Self::Variant { enum_, ref idx, .. } => {
+                match enum_.variants(hir_db).data(hir_db)[*idx].kind {
+                    hir::hir_def::VariantKind::Record(fields) => {
+                        (fields, &self.adt_def(db).fields(db)[*idx])
+                    }
+
+                    _ => return None,
+                }
+            }
+        };
+
+        let field_idx = hir_field_list.field_idx(hir_db, name)?;
+        let ty = field_list.ty(db, field_idx);
+
+        Some(ty.apply_subst(db, self.subst()))
+    }
+
+    fn args(&self) -> impl Iterator<Item = &TyId> {
+        match self {
+            Self::Adt { args, .. } | Self::Variant { args, .. } => args.values(),
+        }
+    }
+
+    fn subst(&mut self) -> &mut impl Subst {
+        match self {
+            Self::Adt { args, .. } | Self::Variant { args, .. } => args,
+        }
+    }
+
+    fn field_tys(&mut self, db: &dyn HirAnalysisDb) -> Vec<TyId> {
         let (adt, idx) = match self {
-            Self::Adt(adt, _) => {
+            Self::Adt { adt, .. } => {
                 if matches!(
                     adt.adt_ref(db).data(db),
                     AdtRef::Struct(_) | AdtRef::Contract(_)
@@ -308,12 +432,42 @@ impl ResolvedPathData {
                     return vec![];
                 }
             }
-            Self::Variant(enum_, idx, _) => {
+            Self::Variant { enum_, idx, .. } => {
                 let adt = lower_adt(db, AdtRefId::from_enum(db, *enum_));
                 (adt, *idx)
             }
         };
 
-        adt.fields(db)[idx].iter_types(db).collect()
+        adt.fields(db)[idx]
+            .iter_types(db)
+            .map(|ty| ty.apply_subst(db, self.subst()))
+            .collect()
+    }
+
+    fn record_labels(&mut self, db: &dyn HirAnalysisDb) -> FxHashSet<IdentId> {
+        let hir_db = db.as_hir_db();
+
+        let fields = match self {
+            Self::Adt { adt, .. } => match adt.adt_ref(db).data(db) {
+                AdtRef::Struct(s) => s.fields(hir_db),
+                AdtRef::Contract(c) => c.fields(hir_db),
+
+                _ => return FxHashSet::default(),
+            },
+
+            Self::Variant { enum_, ref idx, .. } => {
+                match enum_.variants(hir_db).data(hir_db)[*idx].kind {
+                    hir::hir_def::VariantKind::Record(fields) => fields,
+
+                    _ => return FxHashSet::default(),
+                }
+            }
+        };
+
+        fields
+            .data(hir_db)
+            .iter()
+            .filter_map(|field| field.name.to_opt())
+            .collect()
     }
 }
