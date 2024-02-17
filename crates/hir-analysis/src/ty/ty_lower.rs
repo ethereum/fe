@@ -42,6 +42,8 @@ pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
     AdtTyBuilder::new(db, adt).build()
 }
 
+/// Lower func to [`FuncDef`]. This function returns `None` iff the function
+/// name is `Partial::Absent`.
 #[salsa::tracked]
 pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
     let name = func.name(db.as_hir_db()).to_opt()?;

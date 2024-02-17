@@ -37,7 +37,7 @@ impl<'db> TyCheckEnv<'db> {
             body,
             pat_ty: FxHashMap::default(),
             expr_ty: FxHashMap::default(),
-            var_env: vec![BlockEnv::new(func.scope())],
+            var_env: vec![BlockEnv::new(func.scope(), 0)],
             pending_vars: FxHashMap::default(),
         };
 
@@ -60,7 +60,7 @@ impl<'db> TyCheckEnv<'db> {
             if ty.is_star_kind(db) {
                 ty = TyId::invalid(db, InvalidCause::Other);
             }
-            let var = VarKind::Param(i, ty);
+            let var = LocalBinding::Param(i, ty);
 
             env.var_env.last_mut().unwrap().register_var(name, var);
         }
@@ -78,7 +78,7 @@ impl<'db> TyCheckEnv<'db> {
             _ => self.scope(),
         };
 
-        let var_env = BlockEnv::new(new_scope);
+        let var_env = BlockEnv::new(new_scope, self.var_env.len());
         self.var_env.push(var_env);
     }
 
@@ -104,7 +104,7 @@ impl<'db> TyCheckEnv<'db> {
     pub(super) fn flush_pending_bindings(&mut self) {
         let var_env = self.var_env.last_mut().unwrap();
         for (name, pat) in self.pending_vars.drain() {
-            var_env.register_var(name, VarKind::Local(pat));
+            var_env.register_var(name, LocalBinding::Local(pat));
         }
     }
 
@@ -135,28 +135,42 @@ impl<'db> TyCheckEnv<'db> {
     pub(super) fn scope(&self) -> ScopeId {
         self.var_env.last().unwrap().scope
     }
+
+    pub(super) fn current_block_idx(&self) -> usize {
+        self.var_env.last().unwrap().idx
+    }
+
+    pub(super) fn get_block(&self, idx: usize) -> &BlockEnv {
+        &self.var_env[idx]
+    }
 }
 
 pub(super) struct BlockEnv {
     pub(super) scope: ScopeId,
-    pub(super) vars: FxHashMap<IdentId, VarKind>,
+    pub(super) vars: FxHashMap<IdentId, LocalBinding>,
+    idx: usize,
 }
 
 impl BlockEnv {
-    fn new(scope: ScopeId) -> Self {
+    pub(super) fn lookup_var(&self, var: IdentId) -> Option<LocalBinding> {
+        self.vars.get(&var).copied()
+    }
+
+    fn new(scope: ScopeId, idx: usize) -> Self {
         Self {
             scope,
             vars: FxHashMap::default(),
+            idx,
         }
     }
 
-    fn register_var(&mut self, name: IdentId, var: VarKind) {
+    fn register_var(&mut self, name: IdentId, var: LocalBinding) {
         self.vars.insert(name, var);
     }
 }
 
-#[derive(Clone, Copy)]
-pub(super) enum VarKind {
+#[derive(Debug, Clone, Copy)]
+pub(super) enum LocalBinding {
     Local(PatId),
     Param(usize, TyId),
 }
