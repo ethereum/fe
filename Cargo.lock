@@ -851,7 +851,7 @@ dependencies = [
  "insta",
  "primitive-types",
  "serde_json",
- "solc",
+ "solc 0.1.0 (git+https://github.com/fe-lang/solc-rust?rev=bde551e)",
  "yultsur",
 ]
 
@@ -988,7 +988,7 @@ version = "0.26.0"
 dependencies = [
  "indexmap 1.9.2",
  "serde_json",
- "solc",
+ "solc 0.1.0 (git+https://github.com/fe-lang/solc-rust?rev=e05ea1d)",
 ]
 
 [[package]]
@@ -2714,6 +2714,15 @@ dependencies = [
 name = "solc"
 version = "0.1.0"
 source = "git+https://github.com/fe-lang/solc-rust?rev=bde551e#bde551ef2ec13e7f88c93e42f76216d803b39bec"
+dependencies = [
+ "cmake",
+ "lazy_static",
+]
+
+[[package]]
+name = "solc"
+version = "0.1.0"
+source = "git+https://github.com/fe-lang/solc-rust?rev=e05ea1d#e05ea1dee54bf00f05386a51cae1020a648a064a"
 dependencies = [
  "cmake",
  "lazy_static",
