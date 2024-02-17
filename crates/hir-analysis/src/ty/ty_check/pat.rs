@@ -3,23 +3,16 @@ use std::{
     ops::Range,
 };
 
-use hir::{
-    hir_def::{scope_graph::ScopeId, Enum, IdentId, ItemKind, Partial, Pat, PatId, PathId},
-    span::path::LazyPathSpan,
-};
+use hir::hir_def::{IdentId, Partial, Pat, PatId};
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::{ResolvedPathData, TyChecker};
-use crate::{
-    name_resolution::{
-        resolve_path_early, resolve_segments_early, EarlyResolvedPath, NameDomain, NameRes,
-        NameResBucket, NameResKind,
-    },
-    ty::{
-        diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator, TyLowerDiag},
-        ty_def::{AdtRefId, InvalidCause, Kind, TyId, TyVarUniverse},
-        ty_lower::lower_adt,
-    },
+use super::{
+    path::{resolve_path_in_pat, ResolvedPathInPat},
+    TyChecker,
+};
+use crate::ty::{
+    diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
+    ty_def::{InvalidCause, Kind, TyId, TyVarUniverse},
 };
 
 impl<'db> TyChecker<'db> {
@@ -393,141 +386,4 @@ impl<'db> TyChecker<'db> {
             None => (self.fresh_tys_n(pat_tup.len()), Range::default()),
         }
     }
-}
-
-fn resolve_path_in_pat(tc: &mut TyChecker, path: PathId, pat: PatId) -> ResolvedPathInPat {
-    PathResolver { tc, pat, path }.resolve_path()
-}
-
-struct PathResolver<'db, 'tc> {
-    tc: &'tc mut TyChecker<'db>,
-    pat: PatId,
-    path: PathId,
-}
-
-impl<'db, 'env> PathResolver<'db, 'env> {
-    fn resolve_path(&mut self) -> ResolvedPathInPat {
-        let hir_db = self.tc.db.as_hir_db();
-
-        let early_resolved_path = resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
-        let resolved = self.resolve_early_resolved_path(early_resolved_path);
-
-        if !self.path.is_ident(hir_db) {
-            resolved
-        } else {
-            match resolved {
-                ResolvedPathInPat::Diag(_) | ResolvedPathInPat::Invalid => {
-                    if let Some(ident) = self.path.last_segment(hir_db).to_opt() {
-                        ResolvedPathInPat::NewBinding(ident)
-                    } else {
-                        resolved
-                    }
-                }
-
-                _ => resolved,
-            }
-        }
-    }
-
-    fn resolve_early_resolved_path(&mut self, early: EarlyResolvedPath) -> ResolvedPathInPat {
-        let hir_db = self.tc.db.as_hir_db();
-
-        // Try to resolve the partially resolved path as an enum variant.
-        let early = match early {
-            EarlyResolvedPath::Partial {
-                res,
-                unresolved_from,
-            } if res.is_enum() && unresolved_from + 1 == self.path.len(hir_db) => {
-                let segments = &self.path.segments(hir_db)[unresolved_from..];
-                let scope = res.scope().unwrap();
-                resolve_segments_early(self.tc.db, segments, scope)
-            }
-
-            _ => early,
-        };
-
-        match early {
-            EarlyResolvedPath::Full(bucket) => self.resolve_bucket(bucket),
-
-            EarlyResolvedPath::Partial { .. } => {
-                let span = self.path_span().into();
-                let diag = TyLowerDiag::AssocTy(span);
-                ResolvedPathInPat::Diag(FuncBodyDiag::Ty(diag.into()))
-            }
-        }
-    }
-
-    fn resolve_bucket(&mut self, bucket: NameResBucket) -> ResolvedPathInPat {
-        if let Ok(res) = bucket.pick(NameDomain::Value) {
-            let res = self.resolve_name_res(res);
-            if !matches!(res, ResolvedPathInPat::Diag(_) | ResolvedPathInPat::Invalid) {
-                return res;
-            }
-        }
-
-        match bucket.pick(NameDomain::Type) {
-            Ok(res) => self.resolve_name_res(res),
-            Err(_) => ResolvedPathInPat::Invalid,
-        }
-    }
-
-    fn resolve_name_res(&mut self, res: &NameRes) -> ResolvedPathInPat {
-        match res.kind {
-            NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
-                let adt = lower_adt(self.tc.db, AdtRefId::from_struct(self.tc.db, struct_));
-                let data =
-                    ResolvedPathData::new_adt(self.tc.db, &mut self.tc.table, adt, self.path);
-
-                ResolvedPathInPat::Data(data)
-            }
-
-            NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
-                let enum_: Enum = parent.try_into().unwrap();
-                let data = ResolvedPathData::new_variant(
-                    self.tc.db,
-                    &mut self.tc.table,
-                    enum_,
-                    idx,
-                    self.path,
-                );
-
-                ResolvedPathInPat::Data(data)
-            }
-
-            _ => {
-                let diag = BodyDiag::InvalidPathDomainInPat {
-                    primary: self.path_span().into(),
-                    resolved: res
-                        .scope()
-                        .and_then(|scope| scope.name_span(self.tc.db.as_hir_db())),
-                };
-
-                ResolvedPathInPat::Diag(diag.into())
-            }
-        }
-    }
-
-    fn path_span(&self) -> LazyPathSpan {
-        let Partial::Present(pat_data) = self.pat.data(self.tc.db.as_hir_db(), self.tc.env.body())
-        else {
-            unreachable!()
-        };
-
-        let pat_span = self.pat.lazy_span(self.tc.env.body());
-
-        match pat_data {
-            Pat::Path(_) => pat_span.into_path_pat().path(),
-            Pat::PathTuple(..) => pat_span.into_path_tuple_pat().path(),
-            Pat::Record(..) => pat_span.into_record_pat().path(),
-            _ => unreachable!(),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(crate) enum ResolvedPathInPat {
-    Data(ResolvedPathData),
-    NewBinding(IdentId),
-    Diag(FuncBodyDiag),
-    Invalid,
 }
