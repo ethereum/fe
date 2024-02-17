@@ -570,6 +570,10 @@ impl FuncDef {
             .ingot(db.as_hir_db())
     }
 
+    pub fn name_span(self, db: &dyn HirAnalysisDb) -> DynLazySpan {
+        self.hir_func(db).lazy_span().name_moved().into()
+    }
+
     pub fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
         self.params_set(db).params(db)
     }

@@ -7,16 +7,16 @@ use hir::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use super::TyChecker;
+use super::{env::LocalBinding, TyChecker};
 use crate::{
     name_resolution::{
-        resolve_path_early, resolve_segments_early, EarlyResolvedPath, NameDomain, NameRes,
-        NameResBucket, NameResKind,
+        resolve_path_early, resolve_query, resolve_segments_early, EarlyResolvedPath, NameDomain,
+        NameQuery, NameRes, NameResBucket, NameResKind, QueryDirective,
     },
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, TyLowerDiag},
-        ty_def::{AdtDef, AdtRef, AdtRefId, Subst, TyId},
-        ty_lower::lower_adt,
+        ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, Subst, TyId},
+        ty_lower::{lower_adt, lower_func},
         unify::UnificationTable,
     },
     HirAnalysisDb,
@@ -33,7 +33,7 @@ pub(super) fn resolve_path_in_pat(
 
     let pat_span = pat.lazy_span(tc.env.body());
 
-    let span = match pat_data {
+    let span: DynLazySpan = match pat_data {
         Pat::Path(_) => pat_span.into_path_pat().path(),
         Pat::PathTuple(..) => pat_span.into_path_tuple_pat().path(),
         Pat::Record(..) => pat_span.into_record_pat().path(),
@@ -44,13 +44,22 @@ pub(super) fn resolve_path_in_pat(
     let mut resolver = PatPathResolver {
         tc,
         path,
-        span,
+        span: span.clone(),
         mode: PathMode::Pat,
     };
 
     match resolver.resolve_path() {
         ResolvedPathInBody::Data(data) => ResolvedPathInPat::Data(data),
-        ResolvedPathInBody::NewBinding(binding) => ResolvedPathInPat::NewBinding(binding),
+        ResolvedPathInBody::Func(func) => {
+            let diag = BodyDiag::InvalidPathDomainInPat {
+                primary: span,
+                resolved: Some(func.name_span(tc.db)),
+            };
+            ResolvedPathInPat::Diag(diag.into())
+        }
+        ResolvedPathInBody::Binding(binding, _) | ResolvedPathInBody::NewBinding(binding) => {
+            ResolvedPathInPat::NewBinding(binding)
+        }
         ResolvedPathInBody::Diag(diag) => ResolvedPathInPat::Diag(diag),
         ResolvedPathInBody::Invalid => ResolvedPathInPat::Invalid,
     }
@@ -340,6 +349,37 @@ impl ResolvedPathData {
     }
 }
 
+#[derive(Clone, Debug, derive_more::From)]
+pub(crate) struct ResolvedPathFunc {
+    def: FuncDef,
+    args: FxHashMap<TyId, TyId>,
+}
+
+impl ResolvedPathFunc {
+    pub(crate) fn name_span(&self, db: &dyn HirAnalysisDb) -> DynLazySpan {
+        self.def.name_span(db)
+    }
+
+    pub(super) fn ty(&self, db: &dyn HirAnalysisDb) -> TyId {
+        let ty = TyId::func(db, self.def);
+        self.args().fold(ty, |ty, arg| TyId::app(db, ty, *arg))
+    }
+
+    fn new(db: &dyn HirAnalysisDb, def: FuncDef, table: &mut UnificationTable) -> Self {
+        let args = def
+            .params(db)
+            .iter()
+            .map(|param| (*param, table.new_var_from_param(*param)))
+            .collect();
+
+        Self { def, args }
+    }
+
+    fn args(&self) -> impl Iterator<Item = &TyId> {
+        self.args.values()
+    }
+}
+
 struct PatPathResolver<'db, 'tc> {
     tc: &'tc mut TyChecker<'db>,
     path: PathId,
@@ -367,8 +407,10 @@ impl<'db, 'env> PatPathResolver<'db, 'env> {
         let hir_db = self.tc.db.as_hir_db();
 
         match self.mode {
-            PathMode::ExprValue => todo!(),
+            PathMode::ExprValue => self.resolve_ident_expr(ident),
+
             PathMode::RecordInit => todo!(),
+
             PathMode::Pat => {
                 let early_resolved_path =
                     resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
@@ -386,6 +428,42 @@ impl<'db, 'env> PatPathResolver<'db, 'env> {
                     _ => resolved,
                 }
             }
+        }
+    }
+
+    fn resolve_ident_expr(&mut self, ident: IdentId) -> ResolvedPathInBody {
+        let mut current_idx = self.tc.env.current_block_idx();
+        loop {
+            let env = self.tc.env.get_block(current_idx);
+            if let Some(binding) = env.lookup_var(ident) {
+                return ResolvedPathInBody::Binding(ident, binding);
+            }
+
+            let scope = env.scope;
+            let directive = QueryDirective::new().disallow_lex();
+            let query = NameQuery::with_directive(ident, scope, directive);
+            let bucket = resolve_query(self.tc.db, query);
+
+            let resolved = self.resolve_bucket(bucket);
+            match resolved {
+                ResolvedPathInBody::Invalid => {
+                    if current_idx == 0 {
+                        break;
+                    } else {
+                        current_idx -= 1;
+                    }
+                }
+                _ => return resolved,
+            }
+        }
+
+        let query = NameQuery::new(ident, self.tc.body().scope());
+        let bucket = resolve_query(self.tc.db, query);
+
+        let resolved = self.resolve_bucket(bucket);
+        match resolved {
+            ResolvedPathInBody::Invalid => ResolvedPathInBody::NewBinding(ident),
+            resolved => resolved,
         }
     }
 
@@ -461,10 +539,25 @@ impl<'db, 'env> PatPathResolver<'db, 'env> {
                 ResolvedPathData::new_adt(self.tc.db, &mut self.tc.table, adt, self.path).into()
             }
 
+            NameResKind::Scope(ScopeId::Item(ItemKind::Enum(enum_))) => {
+                let adt = lower_adt(self.tc.db, AdtRefId::from_enum(self.tc.db, enum_));
+                ResolvedPathData::new_adt(self.tc.db, &mut self.tc.table, adt, self.path).into()
+            }
+
+            NameResKind::Scope(ScopeId::Item(ItemKind::Contract(contract_))) => {
+                let adt = lower_adt(self.tc.db, AdtRefId::from_contract(self.tc.db, contract_));
+                ResolvedPathData::new_adt(self.tc.db, &mut self.tc.table, adt, self.path).into()
+            }
+
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
                 let enum_: Enum = parent.try_into().unwrap();
                 ResolvedPathData::new_variant(self.tc.db, &mut self.tc.table, enum_, idx, self.path)
                     .into()
+            }
+
+            NameResKind::Scope(ScopeId::Item(ItemKind::Func(func))) => {
+                let func_def = lower_func(self.tc.db, func).unwrap();
+                ResolvedPathFunc::new(self.tc.db, func_def, &mut self.tc.table).into()
             }
 
             _ => {
@@ -495,6 +588,9 @@ impl<'db, 'env> PatPathResolver<'db, 'env> {
 #[derive(Clone, Debug, derive_more::From)]
 enum ResolvedPathInBody {
     Data(ResolvedPathData),
+    Func(ResolvedPathFunc),
+    #[from(ignore)]
+    Binding(IdentId, LocalBinding),
     NewBinding(IdentId),
     Diag(FuncBodyDiag),
     Invalid,
