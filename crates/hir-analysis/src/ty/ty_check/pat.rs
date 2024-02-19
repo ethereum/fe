@@ -99,7 +99,7 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_path_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
-        let Pat::Path(path) = pat_data else {
+        let Pat::Path(path, _) = pat_data else {
             unreachable!()
         };
 

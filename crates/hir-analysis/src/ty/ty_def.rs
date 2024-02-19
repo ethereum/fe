@@ -165,7 +165,7 @@ impl TyId {
     }
 
     pub(super) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
+        matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self)
     }
 
     pub(super) fn is_const_ty(self, db: &dyn HirAnalysisDb) -> bool {
@@ -193,7 +193,7 @@ impl TyId {
 
     pub(super) fn contains_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
         match self.data(db) {
-            TyData::TyParam(ty_param) => ty_param.is_trait_self(),
+            TyData::TyParam(ty_param) => ty_param.is_trait_self,
             TyData::TyApp(lhs, rhs) => lhs.contains_trait_self(db) || rhs.contains_trait_self(db),
             _ => false,
         }
@@ -465,6 +465,7 @@ pub struct AdtDef {
     pub adt_ref: AdtRefId,
 
     /// Type parameters of the ADT.
+    #[return_ref]
     param_set: GenericParamTypeSet,
 
     /// Fields of the ADT, if the ADT is an enum, this represents variants.
@@ -480,6 +481,10 @@ impl AdtDef {
 
     pub(crate) fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
         self.param_set(db).params(db)
+    }
+
+    pub(crate) fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.param_set(db).original_params(db)
     }
 
     pub(crate) fn variant_ty_span(
@@ -576,6 +581,10 @@ impl FuncDef {
 
     pub fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
         self.params_set(db).params(db)
+    }
+
+    pub fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.params_set(db).original_params(db)
     }
 
     pub fn receiver_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
@@ -822,10 +831,17 @@ impl TyVar {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyParam {
     pub name: IdentId,
-    /// If the type parameter is not a`Self` type in a trait definition, this
-    /// field is always `Some`.
-    pub idx: Option<usize>,
+    // The index points to the lowered type parameter list, which means that the idx doesn't
+    // correspond to the index of the type parameter in the original source code.
+    // E.g.,
+    // ```fe
+    // impl Foo<T, U> {
+    //     fn foo<V>(v: V) {}
+    // ```
+    // The `foo`'s type parameter list is lowered to [`T`, `U`, `V`], so the index of `V` is 2.
+    pub idx: usize,
     pub kind: Kind,
+    pub is_trait_self: bool,
 }
 
 impl TyParam {
@@ -833,16 +849,22 @@ impl TyParam {
         self.name.data(db.as_hir_db()).to_string()
     }
 
-    pub fn self_ty_param(kind: Kind) -> Self {
+    pub(super) fn normal_param(name: IdentId, idx: usize, kind: Kind) -> Self {
         Self {
-            name: kw::SELF_TY,
-            idx: None,
+            name,
+            idx,
             kind,
+            is_trait_self: false,
         }
     }
 
-    pub fn is_trait_self(&self) -> bool {
-        self.idx.is_none()
+    pub(super) fn trait_self(kind: Kind) -> Self {
+        Self {
+            name: kw::SELF_TY,
+            idx: 0,
+            kind,
+            is_trait_self: true,
+        }
     }
 }
 
