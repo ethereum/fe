@@ -1,3 +1,4 @@
+#![allow(unused)]
 use hir::{
     hir_def::{
         scope_graph::ScopeId, Enum, IdentId, ItemKind, Partial, Pat, PatId, PathId,

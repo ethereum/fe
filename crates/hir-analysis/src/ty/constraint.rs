@@ -372,8 +372,10 @@ impl<'db> SuperTraitCollector<'db> {
     fn collect(mut self) -> BTreeSet<TraitInstId> {
         let hir_trait = self.trait_.trait_(self.db);
         let hir_db = self.db.as_hir_db();
+        let self_param = self.trait_.self_param(self.db);
+
         for &super_ in hir_trait.super_traits(hir_db).iter() {
-            if let Ok(inst) = lower_trait_ref(self.db, super_, self.scope) {
+            if let Ok(inst) = lower_trait_ref(self.db, self_param, super_, self.scope) {
                 self.super_traits.insert(inst);
             }
         }
@@ -387,7 +389,7 @@ impl<'db> SuperTraitCollector<'db> {
             {
                 for bound in &pred.bounds {
                     if let TypeBound::Trait(bound) = bound {
-                        if let Ok(inst) = lower_trait_ref(self.db, *bound, self.scope) {
+                        if let Ok(inst) = lower_trait_ref(self.db, self_param, *bound, self.scope) {
                             self.super_traits.insert(inst);
                         }
                     }
@@ -496,17 +498,14 @@ impl<'db> ConstraintCollector<'db> {
 
     fn collect_constraints_from_generic_params(&mut self) {
         let param_set = collect_generic_params(self.db, self.owner);
-        let params_list = self.owner.params(self.db);
-        assert!(param_set.params(self.db).len() == params_list.len(self.db.as_hir_db()));
-        for (&ty, hir_param) in param_set
-            .params(self.db)
-            .iter()
-            .zip(params_list.data(self.db.as_hir_db()))
-        {
+        let param_list = self.owner.params(self.db);
+
+        for (i, hir_param) in param_list.data(self.db.as_hir_db()).iter().enumerate() {
             let GenericParam::Type(hir_param) = hir_param else {
                 continue;
             };
 
+            let ty = param_set.param_by_original_idx(self.db, i).unwrap();
             let bounds = &hir_param.bounds;
             self.add_bounds(ty, bounds)
         }
@@ -518,7 +517,8 @@ impl<'db> ConstraintCollector<'db> {
                 continue;
             };
 
-            let Ok(trait_inst) = lower_trait_ref(self.db, *trait_ref, self.owner.scope(self.db))
+            let Ok(trait_inst) =
+                lower_trait_ref(self.db, bound_ty, *trait_ref, self.owner.scope(self.db))
             else {
                 continue;
             };

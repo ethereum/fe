@@ -256,6 +256,23 @@ impl GenericParamOwner {
         }
     }
 
+    pub fn parent(self, db: &dyn HirDb) -> Option<Self> {
+        let ScopeId::Item(item) = self.scope().parent(db)? else {
+            return None;
+        };
+
+        match item {
+            ItemKind::Func(func) => Some(GenericParamOwner::Func(func)),
+            ItemKind::Struct(struct_) => Some(GenericParamOwner::Struct(struct_)),
+            ItemKind::Enum(enum_) => Some(GenericParamOwner::Enum(enum_)),
+            ItemKind::TypeAlias(type_alias) => Some(GenericParamOwner::TypeAlias(type_alias)),
+            ItemKind::Impl(impl_) => Some(GenericParamOwner::Impl(impl_)),
+            ItemKind::Trait(trait_) => Some(GenericParamOwner::Trait(trait_)),
+            ItemKind::ImplTrait(impl_trait) => Some(GenericParamOwner::ImplTrait(impl_trait)),
+            _ => None,
+        }
+    }
+
     pub fn where_clause_owner(self) -> Option<WhereClauseOwner> {
         let item = ItemKind::from(self);
         WhereClauseOwner::from_item_opt(item)
@@ -612,6 +629,19 @@ impl Func {
         };
 
         first_param.name.to_opt().and_then(|name| name.ident()) == Some(kw::SELF)
+    }
+
+    /// Returns `true` if the function is method or associated functions.
+    pub fn is_associated_func(self, db: &dyn HirDb) -> bool {
+        let item = match self.scope().parent(db) {
+            Some(ScopeId::Item(item)) => item,
+            _ => return false,
+        };
+
+        matches!(
+            item,
+            ItemKind::Trait(_) | ItemKind::Impl(_) | ItemKind::ImplTrait(_)
+        )
     }
 }
 

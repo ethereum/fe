@@ -2,15 +2,14 @@ use std::{collections::BTreeSet, io};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
+use super::{
+    scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamName, IdentId,
+    IngotId, ItemKind, TopLevelMod, Use, VariantKind, Visibility,
+};
 use crate::{
     hir_def::{BodyKind, GenericParamOwner},
     span::DynLazySpan,
     HirDb,
-};
-
-use super::{
-    scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamName, IdentId,
-    IngotId, ItemKind, TopLevelMod, Use, VariantKind, Visibility,
 };
 
 /// Represents a scope relation graph in a top-level module.
