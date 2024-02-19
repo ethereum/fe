@@ -3,12 +3,6 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty_check/pat/record.fe
 ---
-error[1-0001]: expected comma after enum variant definition
-  ┌─ record.fe:7:9
-  │
-7 │     Unit
-  │         ^ expected comma after enum variant definition
-
 error[8-0002]: duplicated `..` found
    ┌─ record.fe:13:24
    │

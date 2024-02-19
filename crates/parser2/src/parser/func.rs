@@ -1,5 +1,3 @@
-use crate::{ExpectedKind, SyntaxKind};
-
 use super::{
     define_scope,
     expr_atom::BlockExprScope,
@@ -8,6 +6,7 @@ use super::{
     type_::parse_type,
     ErrProof, Parser, Recovery,
 };
+use crate::{ExpectedKind, SyntaxKind};
 
 define_scope! {
     pub(crate) FuncScope {

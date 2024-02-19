@@ -1,3 +1,4 @@
+#![allow(unused)]
 use hir::{
     hir_def::{
         scope_graph::ScopeId, Enum, IdentId, ItemKind, Partial, Pat, PatId, PathId,
@@ -34,7 +35,7 @@ pub(super) fn resolve_path_in_pat(
     let pat_span = pat.lazy_span(tc.env.body());
 
     let span: DynLazySpan = match pat_data {
-        Pat::Path(_) => pat_span.into_path_pat().path(),
+        Pat::Path(_, _) => pat_span.into_path_pat().path(),
         Pat::PathTuple(..) => pat_span.into_path_tuple_pat().path(),
         Pat::Record(..) => pat_span.into_record_pat().path(),
         _ => unreachable!(),
