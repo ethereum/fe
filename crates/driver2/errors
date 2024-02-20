@@ -1,0 +1,1578 @@
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+
+running 1 test
+test check_std_lib ... FAILED
+
+failures:
+
+---- check_std_lib stdout ----
+thread 'check_std_lib' panicked at 'error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:21:14
+   │
+21 │     cur: u256
+   │              ^ expected comma after field definition
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:22:14
+   │
+22 │     len: u256
+   │              ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+   ┌─ src/buf.fe:24:9
+   │
+24 │     pub fn new(len: u256) -> Self {
+   │         ^^ function definition in struct is not allowed
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:26:6
+   │
+26 │     }
+   │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+   ┌─ src/buf.fe:30:9
+   │
+30 │     pub fn advance(mut self, len: u256) -> u256 {
+   │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+   ┌─ src/buf.fe:30:24
+   │
+30 │     pub fn advance(mut self, len: u256) -> u256 {
+   │                        ^^^^ self is not allowed here
+
+error[1-0001]: expected newline after statement
+   ┌─ src/buf.fe:32:16
+   │
+32 │         assert cur + len < self.len + 1
+   │                ^^^ expected newline after statement
+
+error[1-0001]: expected expression
+   ┌─ src/buf.fe:33:19
+   │
+33 │         self.cur += len
+   │                   ^ expected expression
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:35:6
+   │
+35 │     }
+   │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+   ┌─ src/buf.fe:38:9
+   │
+38 │     pub fn remainder(self) -> u256 {
+   │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+   ┌─ src/buf.fe:38:22
+   │
+38 │     pub fn remainder(self) -> u256 {
+   │                      ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:45:17
+   │
+45 │     offset: u256
+   │                 ^ expected comma after field definition
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:46:14
+   │
+46 │     len: u256
+   │              ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+   ┌─ src/buf.fe:48:9
+   │
+48 │     pub fn new(len: u256) -> Self {
+   │         ^^ function definition in struct is not allowed
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+   ┌─ src/buf.fe:49:16
+   │
+49 │         unsafe {
+   │                ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+   ┌─ src/buf.fe:49:16
+   │
+49 │         unsafe {
+   │                ^ expected item: but got Some(LBrace)
+
+error[1-0001]: self is not allowed here
+   ┌─ src/buf.fe:62:16
+   │
+62 │     pub fn len(self) -> u256 {
+   │                ^^^^ self is not allowed here
+
+error[1-0001]: self is not allowed here
+   ┌─ src/buf.fe:67:19
+   │
+67 │     pub fn offset(self) -> u256 {
+   │                   ^^^^ self is not allowed here
+
+error[1-0001]: self is not allowed here
+   ┌─ src/buf.fe:72:19
+   │
+72 │     pub fn reader(self) -> MemoryBufferReader {
+   │                   ^^^^ self is not allowed here
+
+error[1-0001]: self is not allowed here
+   ┌─ src/buf.fe:77:23
+   │
+77 │     pub fn writer(mut self) -> MemoryBufferWriter {
+   │                       ^^^^ self is not allowed here
+
+error[1-0001]: expected item: but got Some(RBrace)
+   ┌─ src/buf.fe:80:1
+   │
+80 │ }
+   │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:84:22
+   │
+84 │     buf: MemoryBuffer
+   │                      ^ expected comma after field definition
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:85:16
+   │
+85 │     cur: Cursor 
+   │                ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+   ┌─ src/buf.fe:88:9
+   │
+88 │     pub fn new(mut buf: MemoryBuffer) -> Self {
+   │         ^^ function definition in struct is not allowed
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:93:6
+   │
+93 │     }
+   │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+   ┌─ src/buf.fe:96:9
+   │
+96 │     pub fn remainder(self) -> u256 {
+   │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+   ┌─ src/buf.fe:96:22
+   │
+96 │     pub fn remainder(self) -> u256 {
+   │                      ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+   ┌─ src/buf.fe:98:6
+   │
+98 │     }
+   │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:100:9
+    │
+100 │     pub fn write_offset(mut self, len: u256) -> u256 {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:100:29
+    │
+100 │     pub fn write_offset(mut self, len: u256) -> u256 {
+    │                             ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:102:6
+    │
+102 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:104:9
+    │
+104 │     pub fn write_n(mut self, value: u256, len: u256) {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:104:24
+    │
+104 │     pub fn write_n(mut self, value: u256, len: u256) {
+    │                        ^^^^ self is not allowed here
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/buf.fe:107:16
+    │
+107 │         unsafe { evm::mstore(offset, value: shifted_value) }
+    │                ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/buf.fe:107:16
+    │
+107 │         unsafe { evm::mstore(offset, value: shifted_value) }
+    │                ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:108:6
+    │
+108 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:110:9
+    │
+110 │     pub fn write_buf(mut self, buf: MemoryBuffer) {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:110:26
+    │
+110 │     pub fn write_buf(mut self, buf: MemoryBuffer) {
+    │                          ^^^^ self is not allowed here
+
+error[1-0001]: expected path segment
+    ┌─ src/buf.fe:116:13
+    │
+116 │             if bytes_remaining >= 32 {
+    │             ^^ expected path segment
+
+error[1-0001]: expected newline after statement
+    ┌─ src/buf.fe:116:38
+    │
+116 │             if bytes_remaining >= 32 {
+    │                                      ^ expected newline after statement
+
+error[1-0001]: expected newline after statement
+    ┌─ src/buf.fe:118:15
+    │
+118 │             } else if bytes_remaining == 0 {
+    │               ^^^^ expected newline after statement
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:120:14
+    │
+120 │             } else {
+    │              ^ expected comma after field definition
+
+error[1-0001]: expected ident for the field name
+    ┌─ src/buf.fe:120:15
+    │
+120 │             } else {
+    │               ^^^^ expected ident for the field name
+
+error[1-0001]: unexpected token
+    ┌─ src/buf.fe:120:21
+    │  
+120 │               } else {
+    │ ╭────────────────────^
+121 │ │                 // self.write(value: reader.read_u8())
+    │ ╰^ unexpected token
+
+error[1-0001]: expected `name: type` for the field definition
+    ┌─ src/buf.fe:120:21
+    │  
+120 │               } else {
+    │ ╭────────────────────^
+121 │ │                 // self.write(value: reader.read_u8())
+    │ ╰^ expected `name: type` for the field definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/buf.fe:123:9
+    │
+123 │         }
+    │         ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/buf.fe:124:5
+    │
+124 │     }
+    │     ^ expected item: but got Some(RBrace)
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:126:44
+    │
+126 │     pub fn write<T: MemoryBufferWrite>(mut self, value: T) {
+    │                                            ^^^^ self is not allowed here
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/buf.fe:129:1
+    │
+129 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/buf.fe:132:55
+    │
+132 │     fn write_buf(self, mut writer: MemoryBufferWriter);
+    │                                                       ^ expected newline after item definition
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/buf.fe:138:16
+    │
+138 │         unsafe { evm::mstore(offset, value: self) }
+    │                ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/buf.fe:138:16
+    │
+138 │         unsafe { evm::mstore(offset, value: self) }
+    │                ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/buf.fe:169:16
+    │
+169 │         unsafe { evm::mstore8(offset, value: self) }
+    │                ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/buf.fe:169:16
+    │
+169 │         unsafe { evm::mstore8(offset, value: self) }
+    │                ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:180:22
+    │
+180 │     buf: MemoryBuffer
+    │                      ^ expected comma after field definition
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:181:16
+    │
+181 │     cur: Cursor 
+    │                ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:184:9
+    │
+184 │     pub fn new(buf: MemoryBuffer) -> Self {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:186:6
+    │
+186 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:189:9
+    │
+189 │     pub fn remainder(self) -> u256 {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:189:22
+    │
+189 │     pub fn remainder(self) -> u256 {
+    │                      ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:191:6
+    │
+191 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:193:5
+    │
+193 │     fn read_offset(mut self, len: u256) -> u256 {
+    │     ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:193:24
+    │
+193 │     fn read_offset(mut self, len: u256) -> u256 {
+    │                        ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:195:6
+    │
+195 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:197:5
+    │
+197 │     fn read_n(mut self, len: u256) -> u256 {
+    │     ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:197:19
+    │
+197 │     fn read_n(mut self, len: u256) -> u256 {
+    │                   ^^^^ self is not allowed here
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/buf.fe:199:16
+    │
+199 │         unsafe {
+    │                ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/buf.fe:199:16
+    │
+199 │         unsafe {
+    │                ^ expected item: but got Some(LBrace)
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:205:24
+    │
+205 │     pub fn read_u8(mut self) -> u8 {
+    │                        ^^^^ self is not allowed here
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:209:25
+    │
+209 │     pub fn read_u16(mut self) -> u16 {
+    │                         ^^^^ self is not allowed here
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:213:25
+    │
+213 │     pub fn read_u32(mut self) -> u32 {
+    │                         ^^^^ self is not allowed here
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:217:25
+    │
+217 │     pub fn read_u64(mut self) -> u64 {
+    │                         ^^^^ self is not allowed here
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:221:26
+    │
+221 │     pub fn read_u128(mut self) -> u128 {
+    │                          ^^^^ self is not allowed here
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:225:26
+    │
+225 │     pub fn read_u256(mut self) -> u256 {
+    │                          ^^^^ self is not allowed here
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/buf.fe:227:16
+    │
+227 │         unsafe {
+    │                ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/buf.fe:227:16
+    │
+227 │         unsafe {
+    │                ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/buf.fe:231:5
+    │
+231 │     }
+    │     ^ expected item: but got Some(RBrace)
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:233:25
+    │
+233 │     pub fn read_buf(mut self, len: u256) -> MemoryBuffer {
+    │                         ^^^^ self is not allowed here
+
+error[1-0001]: expected path segment
+    ┌─ src/buf.fe:240:13
+    │
+240 │             if bytes_remaining >= 32 {
+    │             ^^ expected path segment
+
+error[1-0001]: expected newline after statement
+    ┌─ src/buf.fe:240:38
+    │
+240 │             if bytes_remaining >= 32 {
+    │                                      ^ expected newline after statement
+
+error[1-0001]: expected newline after statement
+    ┌─ src/buf.fe:242:15
+    │
+242 │             } else if bytes_remaining == 0 {
+    │               ^^^^ expected newline after statement
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/buf.fe:244:15
+    │
+244 │             } else {
+    │               ^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(Ident)
+    ┌─ src/buf.fe:245:17
+    │
+245 │                 writer.write(value: self.read_u8())
+    │                 ^^^^^^ expected item: but got Some(Ident)
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/buf.fe:246:13
+    │
+246 │             }
+    │             ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/buf.fe:247:9
+    │
+247 │         }
+    │         ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected item: but got Some(ReturnKw)
+    ┌─ src/buf.fe:249:9
+    │
+249 │         return buf
+    │         ^^^^^^ expected item: but got Some(ReturnKw)
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/buf.fe:250:5
+    │
+250 │     }
+    │     ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/buf.fe:256:1
+    │
+256 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:269:20
+    │
+269 │     input_len: u256
+    │                    ^ expected comma after field definition
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:270:21
+    │
+270 │     output_len: u256
+    │                     ^ expected comma after field definition
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:271:22
+    │
+271 │     buf: MemoryBuffer
+    │                      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:273:9
+    │
+273 │     pub fn new(input_len: u256, output_len: u256) -> Self {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:278:6
+    │
+278 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:280:9
+    │
+280 │     pub fn input_len(self) -> u256 {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:280:22
+    │
+280 │     pub fn input_len(self) -> u256 {
+    │                      ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:282:6
+    │
+282 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:284:9
+    │
+284 │     pub fn output_len(self) -> u256 {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:284:23
+    │
+284 │     pub fn output_len(self) -> u256 {
+    │                       ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:286:6
+    │
+286 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:288:9
+    │
+288 │     pub fn offset(self) -> u256 {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:288:19
+    │
+288 │     pub fn offset(self) -> u256 {
+    │                   ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:290:6
+    │
+290 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:292:9
+    │
+292 │     pub fn reader(self) -> MemoryBufferReader {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:292:19
+    │
+292 │     pub fn reader(self) -> MemoryBufferReader {
+    │                   ^^^^ self is not allowed here
+
+error[1-0001]: expected comma after field definition
+    ┌─ src/buf.fe:294:6
+    │
+294 │     }
+    │      ^ expected comma after field definition
+
+error[1-0001]: function definition in struct is not allowed
+    ┌─ src/buf.fe:296:9
+    │
+296 │     pub fn writer(mut self) -> MemoryBufferWriter {
+    │         ^^ function definition in struct is not allowed
+
+error[1-0001]: self is not allowed here
+    ┌─ src/buf.fe:296:23
+    │
+296 │     pub fn writer(mut self) -> MemoryBufferWriter {
+    │                       ^^^^ self is not allowed here
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+   ┌─ src/evm.fe:74:10
+   │
+74 │   unsafe { return __add(x, y) }
+   │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+   ┌─ src/evm.fe:74:10
+   │
+74 │   unsafe { return __add(x, y) }
+   │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+   ┌─ src/evm.fe:74:12
+   │
+74 │   unsafe { return __add(x, y) }
+   │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+   ┌─ src/evm.fe:75:1
+   │
+75 │ }
+   │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+   ┌─ src/evm.fe:78:10
+   │
+78 │   unsafe { return __sub(x, y) }
+   │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+   ┌─ src/evm.fe:78:10
+   │
+78 │   unsafe { return __sub(x, y) }
+   │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+   ┌─ src/evm.fe:78:12
+   │
+78 │   unsafe { return __sub(x, y) }
+   │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+   ┌─ src/evm.fe:79:1
+   │
+79 │ }
+   │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+   ┌─ src/evm.fe:82:10
+   │
+82 │   unsafe { return __mul(x, y) }
+   │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+   ┌─ src/evm.fe:82:10
+   │
+82 │   unsafe { return __mul(x, y) }
+   │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+   ┌─ src/evm.fe:82:12
+   │
+82 │   unsafe { return __mul(x, y) }
+   │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+   ┌─ src/evm.fe:83:1
+   │
+83 │ }
+   │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+   ┌─ src/evm.fe:86:10
+   │
+86 │   unsafe { return __div(x, y) }
+   │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+   ┌─ src/evm.fe:86:10
+   │
+86 │   unsafe { return __div(x, y) }
+   │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+   ┌─ src/evm.fe:86:12
+   │
+86 │   unsafe { return __div(x, y) }
+   │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+   ┌─ src/evm.fe:87:1
+   │
+87 │ }
+   │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+   ┌─ src/evm.fe:90:10
+   │
+90 │   unsafe { return __sdiv(x, y) }
+   │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+   ┌─ src/evm.fe:90:10
+   │
+90 │   unsafe { return __sdiv(x, y) }
+   │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+   ┌─ src/evm.fe:90:12
+   │
+90 │   unsafe { return __sdiv(x, y) }
+   │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+   ┌─ src/evm.fe:91:1
+   │
+91 │ }
+   │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected ident for the function name
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ expected ident for the function name
+
+error[1-0001]: unexpected token
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ unexpected token
+
+error[1-0001]: unexpected token
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ unexpected token
+
+error[1-0001]: expected `(` for the function arguments
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ expected `(` for the function arguments
+
+error[1-0001]: unexpected token
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ unexpected token
+
+error[1-0001]: unexpected token
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ unexpected token
+
+error[1-0001]: unexpected token
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ unexpected token
+
+error[1-0001]: function body is required
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ function body is required
+
+error[1-0001]: expected newline after item definition
+   ┌─ src/evm.fe:93:8
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │        ^^^ expected newline after item definition
+
+error[1-0001]: expected identifier for the module name
+   ┌─ src/evm.fe:93:11
+   │
+93 │ pub fn mod(_ x: u256, _ y: u256) -> u256 {
+   │           ^ expected identifier for the module name
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+   ┌─ src/evm.fe:94:10
+   │
+94 │   unsafe { return __mod(x, y) }
+   │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+   ┌─ src/evm.fe:94:10
+   │
+94 │   unsafe { return __mod(x, y) }
+   │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+   ┌─ src/evm.fe:98:10
+   │
+98 │   unsafe { return __smod(x, y) }
+   │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+   ┌─ src/evm.fe:98:10
+   │
+98 │   unsafe { return __smod(x, y) }
+   │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+   ┌─ src/evm.fe:98:12
+   │
+98 │   unsafe { return __smod(x, y) }
+   │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+   ┌─ src/evm.fe:99:1
+   │
+99 │ }
+   │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:102:10
+    │
+102 │   unsafe { return __exp(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:102:10
+    │
+102 │   unsafe { return __exp(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:102:12
+    │
+102 │   unsafe { return __exp(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:103:1
+    │
+103 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:106:10
+    │
+106 │   unsafe { return __addmod(x, y, m) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:106:10
+    │
+106 │   unsafe { return __addmod(x, y, m) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:106:12
+    │
+106 │   unsafe { return __addmod(x, y, m) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:107:1
+    │
+107 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:110:10
+    │
+110 │   unsafe { return __mulmod(x, y, m) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:110:10
+    │
+110 │   unsafe { return __mulmod(x, y, m) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:110:12
+    │
+110 │   unsafe { return __mulmod(x, y, m) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:111:1
+    │
+111 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:114:10
+    │
+114 │   unsafe { return __signextend(i, x) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:114:10
+    │
+114 │   unsafe { return __signextend(i, x) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:114:12
+    │
+114 │   unsafe { return __signextend(i, x) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:115:1
+    │
+115 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:121:10
+    │
+121 │   unsafe { return __lt(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:121:10
+    │
+121 │   unsafe { return __lt(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:121:12
+    │
+121 │   unsafe { return __lt(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:122:1
+    │
+122 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:125:10
+    │
+125 │   unsafe { return __gt(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:125:10
+    │
+125 │   unsafe { return __gt(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:125:12
+    │
+125 │   unsafe { return __gt(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:126:1
+    │
+126 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:129:10
+    │
+129 │   unsafe { return __slt(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:129:10
+    │
+129 │   unsafe { return __slt(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:129:12
+    │
+129 │   unsafe { return __slt(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:130:1
+    │
+130 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:133:10
+    │
+133 │   unsafe { return __sgt(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:133:10
+    │
+133 │   unsafe { return __sgt(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:133:12
+    │
+133 │   unsafe { return __sgt(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:134:1
+    │
+134 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:137:10
+    │
+137 │   unsafe { return __eq(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:137:10
+    │
+137 │   unsafe { return __eq(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:137:12
+    │
+137 │   unsafe { return __eq(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:138:1
+    │
+138 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:141:10
+    │
+141 │   unsafe { return __iszero(x) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:141:10
+    │
+141 │   unsafe { return __iszero(x) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:141:12
+    │
+141 │   unsafe { return __iszero(x) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:142:1
+    │
+142 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:147:10
+    │
+147 │   unsafe { return __and(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:147:10
+    │
+147 │   unsafe { return __and(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:147:12
+    │
+147 │   unsafe { return __and(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:148:1
+    │
+148 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:151:10
+    │
+151 │   unsafe { return __or(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:151:10
+    │
+151 │   unsafe { return __or(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:151:12
+    │
+151 │   unsafe { return __or(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:152:1
+    │
+152 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:155:10
+    │
+155 │   unsafe { return __not(x) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:155:10
+    │
+155 │   unsafe { return __not(x) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:155:12
+    │
+155 │   unsafe { return __not(x) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:156:1
+    │
+156 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:159:10
+    │
+159 │   unsafe { return __xor(x, y) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:159:10
+    │
+159 │   unsafe { return __xor(x, y) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:159:12
+    │
+159 │   unsafe { return __xor(x, y) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:160:1
+    │
+160 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:163:10
+    │
+163 │   unsafe { return __byte(offset, value) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:163:10
+    │
+163 │   unsafe { return __byte(offset, value) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:163:12
+    │
+163 │   unsafe { return __byte(offset, value) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:164:1
+    │
+164 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:167:10
+    │
+167 │   unsafe { return __shl(bits, value) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:167:10
+    │
+167 │   unsafe { return __shl(bits, value) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:167:12
+    │
+167 │   unsafe { return __shl(bits, value) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:168:1
+    │
+168 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:171:10
+    │
+171 │   unsafe { return __shr(bits, value) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:171:10
+    │
+171 │   unsafe { return __shr(bits, value) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:171:12
+    │
+171 │   unsafe { return __shr(bits, value) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:172:1
+    │
+172 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:175:10
+    │
+175 │   unsafe { return __sar(bits, value) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:175:10
+    │
+175 │   unsafe { return __sar(bits, value) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:175:12
+    │
+175 │   unsafe { return __sar(bits, value) }
+    │            ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:176:1
+    │
+176 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:181:10
+    │
+181 │    unsafe{ __return(buf.offset(), buf.len()) }
+    │          ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:181:10
+    │
+181 │    unsafe{ __return(buf.offset(), buf.len()) }
+    │          ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:185:12
+    │
+185 │     unsafe { __revert(buf.offset(), buf.len()) }
+    │            ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:185:12
+    │
+185 │     unsafe { __revert(buf.offset(), buf.len()) }
+    │            ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:244:11
+    │
+244 │    unsafe { __calldatacopy(buf.offset(), f, buf.len()) }
+    │           ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:244:11
+    │
+244 │    unsafe { __calldatacopy(buf.offset(), f, buf.len()) }
+    │           ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:276:11
+    │
+276 │    unsafe { return __keccak256(buf.offset(), buf.len()) }
+    │           ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:276:11
+    │
+276 │    unsafe { return __keccak256(buf.offset(), buf.len()) }
+    │           ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:276:13
+    │
+276 │    unsafe { return __keccak256(buf.offset(), buf.len()) }
+    │             ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:277:1
+    │
+277 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:283:12
+    │
+283 │     unsafe { return address(__create(v, buf.offset(), buf.len())) }
+    │            ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:283:12
+    │
+283 │     unsafe { return address(__create(v, buf.offset(), buf.len())) }
+    │            ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:283:14
+    │
+283 │     unsafe { return address(__create(v, buf.offset(), buf.len())) }
+    │              ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:284:1
+    │
+284 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:287:12
+    │
+287 │     unsafe { return address(__create2(v, buf.offset(), buf.len(), s)) }
+    │            ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:287:12
+    │
+287 │     unsafe { return address(__create2(v, buf.offset(), buf.len(), s)) }
+    │            ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:287:14
+    │
+287 │     unsafe { return address(__create2(v, buf.offset(), buf.len(), s)) }
+    │              ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:288:1
+    │
+288 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:292:9
+    │
+292 │   unsafe{ return __call(gas, u256(addr), value, buf.offset(), buf.input_len(), buf.offset(), buf.output_len()) == 1 }
+    │         ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:292:9
+    │
+292 │   unsafe{ return __call(gas, u256(addr), value, buf.offset(), buf.input_len(), buf.offset(), buf.output_len()) == 1 }
+    │         ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:292:11
+    │
+292 │   unsafe{ return __call(gas, u256(addr), value, buf.offset(), buf.input_len(), buf.offset(), buf.output_len()) == 1 }
+    │           ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:293:1
+    │
+293 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:310:12
+    │
+310 │     unsafe { return __log0(buf.offset(), buf.len()) }
+    │            ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:310:12
+    │
+310 │     unsafe { return __log0(buf.offset(), buf.len()) }
+    │            ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:310:14
+    │
+310 │     unsafe { return __log0(buf.offset(), buf.len()) }
+    │              ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:311:1
+    │
+311 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:314:12
+    │
+314 │     unsafe { return __log1(buf.offset(), buf.len(), t1) }
+    │            ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:314:12
+    │
+314 │     unsafe { return __log1(buf.offset(), buf.len(), t1) }
+    │            ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:314:14
+    │
+314 │     unsafe { return __log1(buf.offset(), buf.len(), t1) }
+    │              ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:315:1
+    │
+315 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:318:12
+    │
+318 │     unsafe { return __log2(buf.offset(), buf.len(), t1, t2) }
+    │            ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:318:12
+    │
+318 │     unsafe { return __log2(buf.offset(), buf.len(), t1, t2) }
+    │            ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:318:14
+    │
+318 │     unsafe { return __log2(buf.offset(), buf.len(), t1, t2) }
+    │              ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:319:1
+    │
+319 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:322:12
+    │
+322 │     unsafe { return __log3(buf.offset(), buf.len(), t1, t2, t3) }
+    │            ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:322:12
+    │
+322 │     unsafe { return __log3(buf.offset(), buf.len(), t1, t2, t3) }
+    │            ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:322:14
+    │
+322 │     unsafe { return __log3(buf.offset(), buf.len(), t1, t2, t3) }
+    │              ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:323:1
+    │
+323 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[1-0001]: expected `fn` after `unsafe` keyword
+    ┌─ src/evm.fe:326:12
+    │
+326 │     unsafe { return __log4(buf.offset(), buf.len(), t1, t2, t3, t4) }
+    │            ^ expected `fn` after `unsafe` keyword
+
+error[1-0001]: expected item: but got Some(LBrace)
+    ┌─ src/evm.fe:326:12
+    │
+326 │     unsafe { return __log4(buf.offset(), buf.len(), t1, t2, t3, t4) }
+    │            ^ expected item: but got Some(LBrace)
+
+error[1-0001]: expected newline after item definition
+    ┌─ src/evm.fe:326:14
+    │
+326 │     unsafe { return __log4(buf.offset(), buf.len(), t1, t2, t3, t4) }
+    │              ^^^^^^ expected newline after item definition
+
+error[1-0001]: expected item: but got Some(RBrace)
+    ┌─ src/evm.fe:327:1
+    │
+327 │ }
+    │ ^ expected item: but got Some(RBrace)
+
+error[2-0002]: `math` is not found
+  ┌─ src/buf.fe:2:12
+  │
+2 │ use ingot::math
+  │            ^^^^ `math` is not found
+
+', crates/driver2/tests/std_lib.rs:13:9
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    check_std_lib
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+

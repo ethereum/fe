@@ -12,8 +12,11 @@ use common::{
     InputDb, InputFile, InputIngot,
 };
 use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
-    lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
+    analysis_pass::AnalysisPassManager,
+    diagnostics::DiagnosticVoucher,
+    hir_def::{IngotId, ModuleTree, TopLevelMod},
+    lower::{map_file_to_mod, module_tree},
+    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
@@ -58,6 +61,10 @@ impl DriverDataBase {
         self.run_on_file_with_pass_manager(top_mod, initialize_analysis_pass);
     }
 
+    pub fn run_on_ingot(&mut self, ingot: InputIngot) {
+        self.run_on_ingot_with_pass_manager(ingot, initialize_analysis_pass);
+    }
+
     pub fn run_on_file_with_pass_manager<F>(&mut self, top_mod: TopLevelMod, pm_builder: F)
     where
         F: FnOnce(&DriverDataBase) -> AnalysisPassManager<'_>,
@@ -66,6 +73,18 @@ impl DriverDataBase {
         self.diags = {
             let mut pass_manager = pm_builder(self);
             pass_manager.run_on_module(top_mod)
+        };
+    }
+
+    pub fn run_on_ingot_with_pass_manager<F>(&mut self, ingot: InputIngot, pm_builder: F)
+    where
+        F: FnOnce(&DriverDataBase) -> AnalysisPassManager<'_>,
+    {
+        let tree = module_tree(self, ingot);
+        // self.diags.clear();
+        self.diags = {
+            let mut pass_manager = pm_builder(self);
+            pass_manager.run_on_module_tree(tree)
         };
     }
 
@@ -142,7 +161,7 @@ impl Default for DriverDataBase {
     }
 }
 
-fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
+pub fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
     let mut pass_manager = AnalysisPassManager::new();
     pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
     pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));

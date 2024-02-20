@@ -1,0 +1,15 @@
+pub fn min(_ x: u256, _ y: u256) -> u256 {
+    if x < y {
+        return x
+    } else {
+        return y
+    }
+}
+
+pub fn max(_ x: u256, _ y: u256) -> u256 {
+    if x > y {
+        return x
+    } else {
+        return y
+    }
+}

@@ -1,0 +1,191 @@
+use ingot::buf::{MemoryBuffer, MemoryBufferWriter, MemoryBufferReader}
+use ingot::evm
+
+enum Precompile {
+    EcRecover
+    Sha2256
+    Ripemd160
+    Identity
+    ModExp
+    EcAdd
+    EcMul
+    EcPairing
+    Blake2f
+
+    pub fn addr(self) -> address {
+        match self {
+            Precompile::EcRecover => { return 0x01 }
+            Precompile::Sha2256 => { return 0x02 }
+            Precompile::Ripemd160 => { return 0x03 }
+            Precompile::Identity => { return 0x04 }
+            Precompile::ModExp => { return 0x05 }
+            Precompile::EcAdd => { return 0x06 }
+            Precompile::EcMul => { return 0x07 }
+            Precompile::EcPairing => { return 0x08 }
+            Precompile::Blake2f => { return 0x09 }
+        }
+    }
+
+    pub fn single_buf_call(self, mut buf: MemoryBuffer) {
+        unsafe {
+            assert evm::static_call(
+                gas: evm::gas_remaining(), 
+                addr: self.addr(), 
+                input_offset: buf.offset(), 
+                input_len: buf.len(), 
+                output_offset: buf.offset(), 
+                output_len: buf.len()
+            ) == 1
+        }
+    }
+
+    pub fn call(self, input: MemoryBuffer, mut output: MemoryBuffer) {
+        unsafe {
+            assert evm::static_call(
+                gas: evm::gas_remaining(), 
+                addr: self.addr(), 
+                input_offset: input.offset(), 
+                input_len: input.len(), 
+                output_offset: output.offset(), 
+                output_len: output.len()
+            ) == 1
+        }
+    }
+}
+
+/// EC Recover precompile call.
+pub fn ec_recover(hash: u256, v: u256, r: u256, s: u256) -> address {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 128) 
+
+    let mut writer: MemoryBufferWriter = buf.writer()
+    writer.write(value: hash)
+    writer.write(value: v)
+    writer.write(value: r)
+    writer.write(value: s)
+
+    Precompile::EcRecover.single_buf_call(buf)
+
+    let mut reader: MemoryBufferReader = buf.reader()
+    return address(reader.read_u256())
+}
+
+/// SHA2 256 precompile call.
+pub fn sha2_256(buf: MemoryBuffer) -> u256 {
+    let mut output: MemoryBuffer = MemoryBuffer::new(len: 32) 
+    let mut reader: MemoryBufferReader = output.reader()
+    Precompile::Sha2256.call(input: buf, output)
+    return reader.read_u256()
+}
+
+/// Ripemd 160 precompile call.
+pub fn ripemd_160(buf: MemoryBuffer) -> u256 {
+    let mut output: MemoryBuffer = MemoryBuffer::new(len: 32) 
+    let mut reader: MemoryBufferReader = output.reader()
+    Precompile::Ripemd160.call(input: buf, output)
+    return reader.read_u256()
+}
+
+/// Identity precompile call.
+pub fn identity(buf: MemoryBuffer) -> MemoryBuffer {
+    let mut output: MemoryBuffer = MemoryBuffer::new(len: buf.len()) 
+    Precompile::Identity.call(input: buf, output)
+    return output
+}
+
+/// Mod exp preocmpile call.
+pub fn mod_exp(
+    b_size: u256, 
+    e_size: u256, 
+    m_size: u256,
+    b: MemoryBuffer,
+    e: MemoryBuffer,
+    m: MemoryBuffer,
+) -> MemoryBuffer {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(
+        len: 96 + b_size + e_size + m_size
+    ) 
+
+    let mut writer: MemoryBufferWriter = buf.writer()
+    writer.write(value: b_size)
+    writer.write(value: e_size)
+    writer.write(value: m_size)
+    writer.write_buf(buf: b)
+    writer.write_buf(buf: e)
+    writer.write_buf(buf: m)
+
+    Precompile::ModExp.single_buf_call(buf)
+
+    let mut reader: MemoryBufferReader = buf.reader()
+    return reader.read_buf(len: m_size)
+}
+
+/// EC add precompile call.
+pub fn ec_add(x1: u256, y1: u256, x2: u256, y2: u256) -> (u256, u256) {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 128) 
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write(value: x1)
+    writer.write(value: y1)
+    writer.write(value: x2)
+    writer.write(value: y2)
+
+    Precompile::EcAdd.single_buf_call(buf)
+
+    let mut reader: MemoryBufferReader = buf.reader()
+    return (reader.read_u256(), reader.read_u256())
+}
+
+/// EC mul precompile call.
+pub fn ec_mul(x: u256, y: u256, s: u256) -> (u256, u256) {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 128) 
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write(value: x)
+    writer.write(value: y)
+    writer.write(value: s)
+
+    Precompile::EcMul.single_buf_call(buf)
+
+    let mut reader: MemoryBufferReader = buf.reader()
+    return (reader.read_u256(), reader.read_u256())
+}
+
+/// EC pairing precompile call.
+pub fn ec_pairing(buf: MemoryBuffer) -> bool {
+    let mut output: MemoryBuffer = MemoryBuffer::new(len: 32) 
+    let mut reader: MemoryBufferReader = output.reader()
+    Precompile::EcPairing.call(input: buf, output)
+    return reader.read_u256() == 1
+}
+
+/// Blake 2f precompile call.
+pub fn blake_2f(
+    rounds: u32, 
+    h: Array<u64, 8>, 
+    m: Array<u64, 16>,
+    t: Array<u64, 2>,
+    f: bool
+) ->  Array<u64, 8> {
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 213) 
+    let mut writer: MemoryBufferWriter = buf.writer()
+
+    writer.write(value: rounds)
+    for value in h { writer.write(value) }
+    for value in m { writer.write(value) }
+    for value in t { writer.write(value) }
+    writer.write(value: u8(1) if f else u8(0))
+
+    Precompile::Blake2f.single_buf_call(buf)
+
+    let mut reader: MemoryBufferReader = buf.reader()
+    return [
+        reader.read_u64(),
+        reader.read_u64(),
+        reader.read_u64(),
+        reader.read_u64(),
+        reader.read_u64(),
+        reader.read_u64(),
+        reader.read_u64(),
+        reader.read_u64()
+    ]
+}

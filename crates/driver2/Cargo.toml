@@ -12,6 +12,7 @@ description = "Provides Fe driver"
 [dependencies]
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
 codespan-reporting = "0.11"
+library2 = { path = "../library2", package = "fe-library2" }
 
 hir = { path = "../hir", package = "fe-hir" }
 common = { path = "../common2", package = "fe-common2" }
