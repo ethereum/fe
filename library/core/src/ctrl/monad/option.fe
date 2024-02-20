@@ -1,0 +1,13 @@
+use ingot::ctrl::{monad::Monad, function::Fn}
+use ingot::data::{option::Option, tuple::Tuple}
+
+impl Monad for Option {
+    fn bind<Source, Target, Morph>(self: Self<Source>, morph: Morph) -> Self<Target>
+    where Morph: Fn<(Source), Self<Target>, 1>, (Source): Tuple<1>
+    {
+        match self {
+            Self::Some(self) => morph.exec(args: (self, ))
+            Self::None => Self::None
+        }
+    }
+}

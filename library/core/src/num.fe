@@ -1,0 +1,25 @@
+use self::arith::{Add, Sub, Mul, Div, Neg, Mod, Pow}
+use ingot::ctrl::monad::Monad
+
+pub trait Num: Add + Sub + Mul + Div + Pow { }
+
+pub trait Complex<N>: Num + Neg {
+    fn re() -> N
+    fn im() -> N
+}
+
+pub trait Real: Num + Neg { }
+
+pub trait Frac<N>: Num + Neg {
+    fn nu() -> N
+    fn de() -> N
+}
+
+pub trait Int: Num + Mod + Neg { }
+
+pub trait Nat: Num + Mod { }
+
+// impl<M: * -> *> Num for M<N>
+// where M: Monad, N: Num { }
+
+impl Num for u8 { }

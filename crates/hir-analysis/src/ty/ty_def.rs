@@ -138,7 +138,7 @@ impl<'db> TyId<'db> {
 
         let ty_ingot = self.ingot(db);
         match ingot.kind(db.as_hir_db()) {
-            IngotKind::Std => ty_ingot.is_none() || ty_ingot == Some(ingot),
+            IngotKind::Core => ty_ingot.is_none() || ty_ingot == Some(ingot),
             _ => ty_ingot == Some(ingot),
         }
     }

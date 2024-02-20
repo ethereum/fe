@@ -8,7 +8,7 @@ use crate::{indexmap::IndexSet, InputDb};
 #[salsa::input(constructor = __new_impl)]
 pub struct InputIngot {
     /// An absolute path to the ingot root directory.
-    /// The all files in the ingot should be located under this directory.
+    /// All files in the ingot should be located under this directory.
     #[return_ref]
     pub path: Utf8PathBuf,
 
@@ -60,7 +60,7 @@ impl InputIngot {
     }
 
     /// Set the list of files which the ingot contains.
-    /// All files must bee set before the ingot is used.
+    /// All files must be set before the ingot is used.
     pub fn set_files(self, db: &mut dyn InputDb, files: IndexSet<InputFile>) {
         self.__set_files_impl(db).to(files);
     }
@@ -103,8 +103,8 @@ pub enum IngotKind {
     /// An external ingot which is depended on by the current ingot.
     External,
 
-    /// Standard library ingot.
-    Std,
+    /// Core library ingot.
+    Core,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

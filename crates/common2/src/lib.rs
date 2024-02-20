@@ -1,4 +1,5 @@
 pub mod diagnostics;
+pub mod home_dir;
 pub mod indexmap;
 pub mod input;
 

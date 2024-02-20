@@ -2,19 +2,23 @@ pub mod diagnostics;
 
 use std::path;
 
+use camino::Utf8PathBuf;
 use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
 };
 use common::{
     diagnostics::CompleteDiagnostic,
-    indexmap::IndexSet,
-    input::{IngotKind, Version},
+    indexmap::{IndexMap, IndexSet},
+    input::{IngotDependency, IngotKind, Version},
     InputDb, InputFile, InputIngot,
 };
 use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
-    lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
+    analysis_pass::AnalysisPassManager,
+    diagnostics::DiagnosticVoucher,
+    hir_def::TopLevelMod,
+    lower::{map_file_to_mod, module_tree},
+    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
@@ -24,6 +28,7 @@ use hir_analysis::{
     },
     HirAnalysisDb,
 };
+use resolver::ingot::{dependency_graph::DependencyGraph, src_files::SourceFiles};
 
 use crate::diagnostics::ToCsDiag;
 
@@ -69,6 +74,63 @@ impl DriverDataBase {
     {
         let mut pass_manager = pm_builder(self);
         DiagnosticsCollection(pass_manager.run_on_module(top_mod))
+    }
+
+    pub fn run_on_ingot<'db>(&'db mut self, ingot: InputIngot) -> DiagnosticsCollection<'db> {
+        self.run_on_ingot_with_pass_manager(ingot, initialize_analysis_pass)
+    }
+
+    pub fn run_on_ingot_with_pass_manager<'db, F>(
+        &'db mut self,
+        ingot: InputIngot,
+        pm_builder: F,
+    ) -> DiagnosticsCollection<'db>
+    where
+        F: FnOnce(&'db DriverDataBase) -> AnalysisPassManager<'db>,
+    {
+        let tree = module_tree(self, ingot);
+        let mut pass_manager = pm_builder(self);
+        DiagnosticsCollection(pass_manager.run_on_module_tree(tree))
+    }
+
+    pub fn local_ingot(
+        &mut self,
+        core_ingot: InputIngot,
+        dependency_graph: &DependencyGraph,
+    ) -> (InputIngot, IndexMap<Utf8PathBuf, InputIngot>) {
+        let mut all_ingots = IndexMap::new();
+
+        for path in dependency_graph.reverse_toposort() {
+            let external_ingots = dependency_graph
+                .dependencies(&path)
+                .into_iter()
+                .map(|dependency| IngotDependency {
+                    name: dependency.name,
+                    ingot: all_ingots[&dependency.target_path],
+                })
+                .collect();
+
+            all_ingots[&path] = InputIngot::new(
+                self,
+                &path.to_string(),
+                IngotKind::External,
+                Version::new(0, 0, 0),
+                external_ingots,
+            );
+        }
+
+        let local_ingot = all_ingots
+            .shift_remove(&dependency_graph.local_path)
+            .expect("local is missing from input ingots");
+        (local_ingot, all_ingots)
+    }
+
+    pub fn core_ingot(&mut self, path: &Utf8PathBuf) -> InputIngot {
+        todo!();
+    }
+
+    pub fn set_ingot_files(&mut self, ingot: InputIngot, files: SourceFiles) {
+        todo!()
     }
 
     pub fn standalone(&mut self, file_path: &path::Path, source: &str) -> InputFile {

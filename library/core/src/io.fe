@@ -1,0 +1,15 @@
+trait Read<Out> {
+    fn read(self) -> Out
+}
+
+trait Write<In> {
+    fn write(mut self, value: In)
+}
+
+trait Encode<W: Write<Self>> {
+    fn encode(mut self, mut w: W)
+}
+
+trait Decode<R: Read<Self>> {
+    fn decode(mut self, mut r: R) -> Self
+}

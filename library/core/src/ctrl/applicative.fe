@@ -1,0 +1,5 @@
+pub trait Applicative
+where Self: * -> *
+{
+    fn pure<Value>(value: Value) -> Self<Value>
+}

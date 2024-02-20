@@ -1330,7 +1330,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "parking_lot_core 0.8.0",
- "petgraph",
+ "petgraph 0.6.5",
  "pretty_assertions",
  "rstest",
  "salsa 0.16.1",
@@ -1388,10 +1388,13 @@ version = "0.26.0"
 dependencies = [
  "camino",
  "fe-parser2",
+ "git2",
  "indexmap 2.2.6",
  "salsa 0.18.0",
  "semver 1.0.23",
+ "serde",
  "smol_str",
+ "toml 0.8.15",
 ]
 
 [[package]]
@@ -1478,10 +1481,16 @@ dependencies = [
  "camino",
  "clap 4.5.21",
  "codespan-reporting",
+ "dirs",
  "fe-common2",
  "fe-hir",
  "fe-hir-analysis",
+ "fe-resolver",
+ "include_dir",
  "salsa 0.18.0",
+ "semver 1.0.23",
+ "serde",
+ "walkdir",
 ]
 
 [[package]]
@@ -1628,6 +1637,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-resolver"
+version = "0.26.0"
+dependencies = [
+ "camino",
+ "fe-common2",
+ "git2",
+ "indexmap 2.2.6",
+ "petgraph 0.5.1",
+ "semver 1.0.23",
+ "serde",
+ "smol_str",
+ "toml 0.8.15",
+]
+
+[[package]]
 name = "fe-test-files"
 version = "0.26.0"
 dependencies = [
@@ -1679,6 +1703,12 @@ dependencies = [
  "rustc-hex",
  "static_assertions",
 ]
+
+[[package]]
+name = "fixedbitset"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
 name = "fixedbitset"
@@ -2805,11 +2835,21 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "petgraph"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "467d164a6de56270bd7c4d070df81d07beace25012d5103ced4e9ff08d6afdb7"
+dependencies = [
+ "fixedbitset 0.2.0",
+ "indexmap 1.9.3",
+]
+
+[[package]]
+name = "petgraph"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
- "fixedbitset",
+ "fixedbitset 0.4.2",
  "indexmap 2.2.6",
 ]
 
@@ -4102,6 +4142,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml"
+version = "0.8.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac2caab0bf757388c6c0ae23b3293fdb463fee59434529014f85e3263b995c28"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit 0.22.16",
+]
+
+[[package]]
 name = "toml_datetime"
 version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4120,7 +4172,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -4131,7 +4183,20 @@ checksum = "6a8534fd7f78b5405e860340ad6575217ce99f38d4d5c8f2442cb5ecb50090e1"
 dependencies = [
  "indexmap 2.2.6",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.22.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "278f3d518e152219c994ce877758516bca5e118eaed6996192a774fb9fbf0788"
+dependencies = [
+ "indexmap 2.2.6",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow 0.6.24",
 ]
 
 [[package]]
@@ -4683,6 +4748,15 @@ name = "winnow"
 version = "0.5.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "winnow"
+version = "0.6.24"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8d71a593cc5c42ad7876e2c1fda56f314f3754c084128833e64f1345ff8a03a"
 dependencies = [
  "memchr",
 ]

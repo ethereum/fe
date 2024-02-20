@@ -1,0 +1,15 @@
+// impl<M: * -> *, N> Fn<1, (N), M<N>> for BindAdd<N>
+// where M: Monad, N: HAdd<N, N>, (N): Tuple<1>
+// {
+//     fn exec(self, args: (N)) -> M<N> {
+//         M::pure(t: args.0.add(rhs: self.n))
+//     }
+// }
+
+// impl<M: * -> *, N> HAdd<N, M<N>> for M<N>
+// where M: Monad, N: HAdd<N, N>, (N): Tuple<1>
+// {
+//     fn add(self, rhs: N) -> M<N> {
+//         self.bind<N, N, BindAdd<N>>(morph: BindAdd { n: rhs })
+//     }
+// }

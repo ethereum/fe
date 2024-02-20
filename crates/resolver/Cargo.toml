@@ -1,0 +1,19 @@
+[package]
+name = "fe-resolver"
+version = "0.26.0"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Resolver lib for Fe."
+
+[dependencies]
+semver = "1.0.17"
+camino = "1.1.4"
+smol_str = "0.1.24"
+toml = "0.8.13"
+serde = { version = "1", features = ["derive"] }
+git2 = "0.18.3"
+indexmap = "2.2"
+petgraph = "0.5.1"
+common = { path = "../common2", package = "fe-common2" }

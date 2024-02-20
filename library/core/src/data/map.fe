@@ -1,0 +1,4 @@
+trait Map<Key, Value> {
+    fn map_get<N: Nat>(self, key: Key) -> Value
+    fn map_set<N: Nat>(mut self, key: Key, value: Value)
+}

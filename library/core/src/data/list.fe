@@ -1,0 +1,4 @@
+trait List<Value> {
+    fn list_get<N: Nat>(self, index: N) -> Value
+    fn list_set<N: Nat>(mut self, index: N, value: Value)
+}
