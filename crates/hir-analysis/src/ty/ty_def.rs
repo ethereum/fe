@@ -148,10 +148,6 @@ impl TyId {
         Self::tuple(db, 0)
     }
 
-    pub(super) fn bot(db: &dyn HirAnalysisDb) -> Self {
-        Self::new(db, TyData::Bot)
-    }
-
     pub(super) fn const_ty(db: &dyn HirAnalysisDb, const_ty: ConstTyId) -> Self {
         Self::new(db, TyData::ConstTy(const_ty))
     }
@@ -177,10 +173,6 @@ impl TyId {
             self.data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
         )
-    }
-
-    pub(super) fn is_bot(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::Bot)
     }
 
     pub(super) fn is_string(self, db: &dyn HirAnalysisDb) -> bool {
@@ -678,8 +670,6 @@ pub enum TyData {
 
     ConstTy(ConstTyId),
 
-    Bot,
-
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
     // NOTE: For type soundness check in this level, we don't consider trait satisfiability.
@@ -1140,8 +1130,6 @@ impl HasKind for TyData {
             },
 
             TyData::ConstTy(const_ty) => const_ty.ty(db).kind(db).clone(),
-
-            TyData::Bot => Kind::Any,
 
             TyData::Invalid(_) => Kind::Any,
         }
