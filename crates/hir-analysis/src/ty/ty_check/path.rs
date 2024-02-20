@@ -1,7 +1,7 @@
 #![allow(unused)]
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Enum, IdentId, ItemKind, Partial, Pat, PatId, PathId,
+        scope_graph::ScopeId, Enum, Expr, ExprId, IdentId, ItemKind, Partial, Pat, PatId, PathId,
         VariantKind as HirVariantKind,
     },
     span::DynLazySpan,
@@ -32,8 +32,7 @@ pub(super) fn resolve_path_in_pat(
         unreachable!()
     };
 
-    let pat_span = pat.lazy_span(tc.env.body());
-
+    let pat_span = pat.lazy_span(tc.body());
     let span: DynLazySpan = match pat_data {
         Pat::Path(_, _) => pat_span.into_path_pat().path(),
         Pat::PathTuple(..) => pat_span.into_path_tuple_pat().path(),
@@ -42,7 +41,7 @@ pub(super) fn resolve_path_in_pat(
     }
     .into();
 
-    let mut resolver = PatPathResolver {
+    let mut resolver = PathResolver {
         tc,
         path,
         span: span.clone(),
@@ -66,10 +65,57 @@ pub(super) fn resolve_path_in_pat(
     }
 }
 
+pub(super) fn resolve_path_in_expr(
+    tc: &mut TyChecker,
+    path: PathId,
+    expr: ExprId,
+) -> ResolvedPathInExpr {
+    let Partial::Present(expr_data) = tc.env.expr_data(expr) else {
+        unreachable!();
+    };
+
+    let expr_span = expr.lazy_span(tc.body());
+    let span: DynLazySpan = match expr_data {
+        Expr::Path(..) => expr_span.into_path_expr().path(),
+        Expr::RecordInit(..) => expr_span.into_record_init_expr().path(),
+        _ => unreachable!(),
+    }
+    .into();
+
+    let mut resolver = PathResolver {
+        tc,
+        path,
+        span: span.clone(),
+        mode: PathMode::ExprValue,
+    };
+
+    match resolver.resolve_path() {
+        ResolvedPathInBody::Data(data) => ResolvedPathInExpr::Data(data),
+        ResolvedPathInBody::Func(func) => ResolvedPathInExpr::Func(func),
+        ResolvedPathInBody::Binding(ident, binding) => ResolvedPathInExpr::Binding(ident, binding),
+        ResolvedPathInBody::NewBinding(ident) => {
+            let diag = BodyDiag::UndefinedVariable(span, ident);
+
+            ResolvedPathInExpr::Diag(diag.into())
+        }
+        ResolvedPathInBody::Diag(diag) => ResolvedPathInExpr::Diag(diag),
+        ResolvedPathInBody::Invalid => ResolvedPathInExpr::Invalid,
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(super) enum ResolvedPathInPat {
     Data(ResolvedPathData),
     NewBinding(IdentId),
+    Diag(FuncBodyDiag),
+    Invalid,
+}
+
+#[derive(Clone, Debug)]
+pub(super) enum ResolvedPathInExpr {
+    Data(ResolvedPathData),
+    Func(ResolvedPathFunc),
+    Binding(IdentId, LocalBinding),
     Diag(FuncBodyDiag),
     Invalid,
 }
@@ -381,14 +427,14 @@ impl ResolvedPathFunc {
     }
 }
 
-struct PatPathResolver<'db, 'tc> {
+struct PathResolver<'db, 'tc> {
     tc: &'tc mut TyChecker<'db>,
     path: PathId,
     span: DynLazySpan,
     mode: PathMode,
 }
 
-impl<'db, 'env> PatPathResolver<'db, 'env> {
+impl<'db, 'env> PathResolver<'db, 'env> {
     fn resolve_path(&mut self) -> ResolvedPathInBody {
         let hir_db = self.tc.db.as_hir_db();
 
@@ -489,6 +535,8 @@ impl<'db, 'env> PatPathResolver<'db, 'env> {
             EarlyResolvedPath::Full(bucket) => self.resolve_bucket(bucket),
 
             EarlyResolvedPath::Partial { .. } => {
+                // TODO: Try resolving this partial path as an associated function(including
+                // method) or trait function.
                 let span = self.span.clone();
                 let diag = TyLowerDiag::AssocTy(span);
                 ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()))
@@ -499,10 +547,16 @@ impl<'db, 'env> PatPathResolver<'db, 'env> {
     fn resolve_bucket(&mut self, bucket: NameResBucket) -> ResolvedPathInBody {
         match self.mode {
             PathMode::ExprValue => {
-                if let Ok(res) = bucket.pick(NameDomain::Value) {
-                    self.resolve_name_res(res)
-                } else {
-                    todo!()
+                match bucket.pick(NameDomain::Value) {
+                    Ok(res) => self.resolve_name_res(res),
+                    Err(_) => {
+                        if let Ok(res) = bucket.pick(NameDomain::Type) {
+                            self.resolve_name_res(res)
+                        } else {
+                            // This error is already reported in the name resolution phase.
+                            ResolvedPathInBody::Invalid
+                        }
+                    }
                 }
             }
 

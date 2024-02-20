@@ -168,4 +168,202 @@ note:
 20 │         false
    │         ^^^^^ bool
 
+note: 
+   ┌─ test_file.fe:24:39
+   │  
+24 │   fn else_if(b1: bool, b2: bool) -> i32 {
+   │ ╭───────────────────────────────────────^
+25 │ │     if b1 {
+26 │ │         1
+27 │ │     } else if b2 {
+   · │
+31 │ │     }
+32 │ │ }
+   │ ╰─^ i32
+
+note: 
+   ┌─ test_file.fe:25:5
+   │  
+25 │ ╭     if b1 {
+26 │ │         1
+27 │ │     } else if b2 {
+28 │ │         2
+29 │ │     } else {
+30 │ │         3
+31 │ │     }
+   │ ╰─────^ i32
+
+note: 
+   ┌─ test_file.fe:25:8
+   │
+25 │     if b1 {
+   │        ^^ bool
+
+note: 
+   ┌─ test_file.fe:25:11
+   │  
+25 │       if b1 {
+   │ ╭───────────^
+26 │ │         1
+27 │ │     } else if b2 {
+   │ ╰─────^ i32
+
+note: 
+   ┌─ test_file.fe:26:9
+   │
+26 │         1
+   │         ^ i32
+
+note: 
+   ┌─ test_file.fe:27:12
+   │  
+27 │       } else if b2 {
+   │ ╭────────────^
+28 │ │         2
+29 │ │     } else {
+30 │ │         3
+31 │ │     }
+   │ ╰─────^ i32
+
+note: 
+   ┌─ test_file.fe:27:15
+   │
+27 │     } else if b2 {
+   │               ^^ bool
+
+note: 
+   ┌─ test_file.fe:27:18
+   │  
+27 │       } else if b2 {
+   │ ╭──────────────────^
+28 │ │         2
+29 │ │     } else {
+   │ ╰─────^ i32
+
+note: 
+   ┌─ test_file.fe:28:9
+   │
+28 │         2
+   │         ^ i32
+
+note: 
+   ┌─ test_file.fe:29:12
+   │  
+29 │       } else {
+   │ ╭────────────^
+30 │ │         3
+31 │ │     }
+   │ ╰─────^ i32
+
+note: 
+   ┌─ test_file.fe:30:9
+   │
+30 │         3
+   │         ^ i32
+
+note: 
+   ┌─ test_file.fe:34:45
+   │  
+34 │   fn nested(b1: bool, b2: bool) -> String<10> {
+   │ ╭─────────────────────────────────────────────^
+35 │ │     if b1 {
+36 │ │         "Foo"
+37 │ │     } else {
+   · │
+43 │ │     }
+44 │ │ }
+   │ ╰─^ String<10>
+
+note: 
+   ┌─ test_file.fe:35:5
+   │  
+35 │ ╭     if b1 {
+36 │ │         "Foo"
+37 │ │     } else {
+38 │ │         if b2 {
+   · │
+42 │ │         }
+43 │ │     }
+   │ ╰─────^ String<10>
+
+note: 
+   ┌─ test_file.fe:35:8
+   │
+35 │     if b1 {
+   │        ^^ bool
+
+note: 
+   ┌─ test_file.fe:35:11
+   │  
+35 │       if b1 {
+   │ ╭───────────^
+36 │ │         "Foo"
+37 │ │     } else {
+   │ ╰─────^ String<10>
+
+note: 
+   ┌─ test_file.fe:36:9
+   │
+36 │         "Foo"
+   │         ^^^^^ String<10>
+
+note: 
+   ┌─ test_file.fe:37:12
+   │  
+37 │       } else {
+   │ ╭────────────^
+38 │ │         if b2 {
+39 │ │             "Bar"
+40 │ │         } else {
+41 │ │             "Baz"
+42 │ │         }
+43 │ │     }
+   │ ╰─────^ String<10>
+
+note: 
+   ┌─ test_file.fe:38:9
+   │  
+38 │ ╭         if b2 {
+39 │ │             "Bar"
+40 │ │         } else {
+41 │ │             "Baz"
+42 │ │         }
+   │ ╰─────────^ String<10>
+
+note: 
+   ┌─ test_file.fe:38:12
+   │
+38 │         if b2 {
+   │            ^^ bool
+
+note: 
+   ┌─ test_file.fe:38:15
+   │  
+38 │           if b2 {
+   │ ╭───────────────^
+39 │ │             "Bar"
+40 │ │         } else {
+   │ ╰─────────^ String<10>
+
+note: 
+   ┌─ test_file.fe:39:13
+   │
+39 │             "Bar"
+   │             ^^^^^ String<10>
+
+note: 
+   ┌─ test_file.fe:40:16
+   │  
+40 │           } else {
+   │ ╭────────────────^
+41 │ │             "Baz"
+42 │ │         }
+   │ ╰─────────^ String<10>
+
+note: 
+   ┌─ test_file.fe:41:13
+   │
+41 │             "Baz"
+   │             ^^^^^ String<10>
+
 
