@@ -57,7 +57,7 @@ impl<'db> TyCheckEnv<'db> {
                 Partial::Absent => TyId::invalid(db, InvalidCause::Other),
             };
 
-            if ty.is_star_kind(db) {
+            if !ty.is_star_kind(db) {
                 ty = TyId::invalid(db, InvalidCause::Other);
             }
             let var = LocalBinding::Param(i, ty);
@@ -70,6 +70,18 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn body(&self) -> Body {
         self.body
+    }
+
+    pub(super) fn lookup_binding_ty(&self, binding: LocalBinding) -> TyId {
+        match binding {
+            LocalBinding::Local(pat) => self
+                .pat_ty
+                .get(&pat)
+                .copied()
+                .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
+
+            LocalBinding::Param(_, ty) => ty,
+        }
     }
 
     pub(super) fn enter_scope(&mut self, block: ExprId) {

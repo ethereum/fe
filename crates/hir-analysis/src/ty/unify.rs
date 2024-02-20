@@ -120,8 +120,6 @@ impl<'db> UnificationTable<'db> {
                 }
             }
 
-            (_, _) if ty1.is_bot(self.db) || ty2.is_bot(self.db) => Ok(()),
-
             _ => Err(UnificationError::TypeMismatch),
         }
     }
@@ -198,10 +196,10 @@ impl<'db> UnificationTable<'db> {
             (TyVarUniverse::String(n1), TyVarUniverse::String(n2)) => {
                 if n1 > n2 {
                     self.table
-                        .unify_var_value(var1.key, InferenceValue::Bound(ty_var2))
+                        .unify_var_value(var2.key, InferenceValue::Bound(ty_var1))
                 } else {
                     self.table
-                        .unify_var_value(var2.key, InferenceValue::Bound(ty_var1))
+                        .unify_var_value(var1.key, InferenceValue::Bound(ty_var2))
                 }
             }
 
@@ -269,7 +267,11 @@ impl<'db> UnificationTable<'db> {
 impl<'db> Subst for UnificationTable<'db> {
     fn get(&mut self, ty: TyId) -> Option<TyId> {
         match ty.data(self.db) {
-            TyData::TyVar(var) => self.probe(var.key),
+            TyData::TyVar(var) => {
+                let ty = self.probe(var.key)?;
+                Some(self.get(ty).unwrap_or(ty))
+            }
+
             TyData::ConstTy(const_ty) => {
                 if let ConstTyData::TyVar(var, _) = const_ty.data(self.db) {
                     self.probe(var.key)

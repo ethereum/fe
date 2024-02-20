@@ -550,19 +550,19 @@ pub enum BodyDiag {
         resolved: Option<DynLazySpan>,
     },
 
-    UnitVariantExpectedInPat {
+    UnitVariantExpected {
         primary: DynLazySpan,
         pat_kind: &'static str,
         hint: Option<String>,
     },
 
-    TupleVariantExpectedInPat {
+    TupleVariantExpected {
         primary: DynLazySpan,
         pat_kind: Option<&'static str>,
         hint: Option<String>,
     },
 
-    RecordVariantExpectedInPat {
+    RecordExpected {
         primary: DynLazySpan,
         pat_kind: Option<&'static str>,
         hint: Option<String>,
@@ -597,6 +597,8 @@ pub enum BodyDiag {
         missing_fields: BTreeSet<IdentId>,
         hint: Option<String>,
     },
+
+    UndefinedVariable(DynLazySpan, IdentId),
 }
 
 impl BodyDiag {
@@ -611,21 +613,21 @@ impl BodyDiag {
         Self::TypeMismatch(span, expected, actual)
     }
 
-    pub(super) fn unit_variant_expected_in_pat(
+    pub(super) fn unit_variant_expected(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
         data: ResolvedPathData,
     ) -> Self {
         let pat_kind = data.data_kind(db);
         let hint = data.initializer_hint(db);
-        Self::UnitVariantExpectedInPat {
+        Self::UnitVariantExpected {
             primary,
             pat_kind,
             hint,
         }
     }
 
-    pub(super) fn tuple_variant_expected_in_pat(
+    pub(super) fn tuple_variant_expected(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
         data: Option<ResolvedPathData>,
@@ -636,14 +638,14 @@ impl BodyDiag {
             (None, None)
         };
 
-        Self::TupleVariantExpectedInPat {
+        Self::TupleVariantExpected {
             primary,
             pat_kind,
             hint,
         }
     }
 
-    pub(super) fn record_variant_expected_in_pat(
+    pub(super) fn record_variant_expected(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
         data: Option<ResolvedPathData>,
@@ -654,7 +656,7 @@ impl BodyDiag {
             (None, None)
         };
 
-        Self::RecordVariantExpectedInPat {
+        Self::RecordExpected {
             primary,
             pat_kind,
             hint,
@@ -680,18 +682,19 @@ impl BodyDiag {
 
     fn local_code(&self) -> u16 {
         match self {
-            Self::TypeMismatch(_, _, _) => 0,
-            Self::InfiniteOccurrence(_) => 1,
-            Self::DuplicatedRestPat(_) => 2,
+            Self::TypeMismatch(..) => 0,
+            Self::InfiniteOccurrence(..) => 1,
+            Self::DuplicatedRestPat(..) => 2,
             Self::InvalidPathDomainInPat { .. } => 3,
-            Self::UnitVariantExpectedInPat { .. } => 4,
-            Self::TupleVariantExpectedInPat { .. } => 5,
-            Self::RecordVariantExpectedInPat { .. } => 6,
+            Self::UnitVariantExpected { .. } => 4,
+            Self::TupleVariantExpected { .. } => 5,
+            Self::RecordExpected { .. } => 6,
             Self::MismatchedFieldCount { .. } => 7,
             Self::DuplicatedRecordFieldBind { .. } => 8,
             Self::RecordFieldNotFound { .. } => 9,
             Self::ExplicitLabelExpectedInRecord { .. } => 10,
             Self::MissingRecordFields { .. } => 11,
+            Self::UndefinedVariable(..) => 12,
         }
     }
 
@@ -701,14 +704,15 @@ impl BodyDiag {
             Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
             Self::DuplicatedRestPat(_) => "duplicated `..` found".to_string(),
             Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
-            Self::UnitVariantExpectedInPat { .. } => "expected unit variant".to_string(),
-            Self::TupleVariantExpectedInPat { .. } => "expected tuple variant".to_string(),
-            Self::RecordVariantExpectedInPat { .. } => "expected record variant".to_string(),
+            Self::UnitVariantExpected { .. } => "expected unit variant".to_string(),
+            Self::TupleVariantExpected { .. } => "expected tuple variant".to_string(),
+            Self::RecordExpected { .. } => "expected record variant".to_string(),
             Self::MismatchedFieldCount { .. } => "field count mismatch".to_string(),
             Self::DuplicatedRecordFieldBind { .. } => "duplicated record field binding".to_string(),
             Self::RecordFieldNotFound { .. } => "specified field not found".to_string(),
             Self::ExplicitLabelExpectedInRecord { .. } => "explicit label is required".to_string(),
             Self::MissingRecordFields { .. } => "all fields are not given".to_string(),
+            Self::UndefinedVariable(..) => "undefined variable".to_string(),
         }
     }
 
@@ -748,7 +752,7 @@ impl BodyDiag {
                 diag
             }
 
-            Self::UnitVariantExpectedInPat {
+            Self::UnitVariantExpected {
                 primary,
                 pat_kind,
                 hint,
@@ -768,7 +772,7 @@ impl BodyDiag {
                 diag
             }
 
-            Self::TupleVariantExpectedInPat {
+            Self::TupleVariantExpected {
                 primary,
                 pat_kind,
                 hint,
@@ -798,7 +802,7 @@ impl BodyDiag {
                 diag
             }
 
-            Self::RecordVariantExpectedInPat {
+            Self::RecordExpected {
                 primary,
                 pat_kind,
                 hint,
@@ -923,6 +927,16 @@ impl BodyDiag {
                     ))
                 }
                 diag
+            }
+
+            Self::UndefinedVariable(primary, ident) => {
+                let ident = ident.data(db.as_hir_db());
+
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("undefined variable `{}`", ident),
+                    primary.resolve(db),
+                )]
             }
         }
     }

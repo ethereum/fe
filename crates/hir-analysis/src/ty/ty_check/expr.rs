@@ -1,7 +1,9 @@
 use hir::hir_def::{Expr, ExprId, Partial};
 
+use super::path::ResolvedPathInExpr;
 use crate::ty::{
-    ty_check::TyChecker,
+    diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
+    ty_check::{path::resolve_path_in_expr, TyChecker},
     ty_def::{InvalidCause, TyId},
 };
 
@@ -21,7 +23,7 @@ impl<'db> TyChecker<'db> {
             Expr::Un(..) => todo!(),
             Expr::Call(..) => todo!(),
             Expr::MethodCall(..) => todo!(),
-            Expr::Path(..) => todo!(),
+            Expr::Path(..) => self.check_path(expr, expr_data, expected),
             Expr::RecordInit(..) => todo!(),
             Expr::Field(..) => todo!(),
             Expr::Tuple(..) => todo!(),
@@ -47,13 +49,54 @@ impl<'db> TyChecker<'db> {
         } else {
             self.env.enter_scope(expr);
             for &stmt in stmts[..stmts.len() - 1].iter() {
-                self.check_stmt(stmt, TyId::bot(self.db));
+                let ty = self.fresh_ty();
+                self.check_stmt(stmt, ty);
             }
 
             let last_stmt = stmts[stmts.len() - 1];
             let res = self.check_stmt(last_stmt, expected);
             self.env.leave_scope();
             res
+        }
+    }
+
+    fn check_path(&mut self, expr: ExprId, expr_data: &Expr, _expected: TyId) -> TyId {
+        let path = match expr_data {
+            Expr::Path(path) => path,
+            _ => unreachable!(),
+        };
+
+        let Partial::Present(path) = path else {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
+
+        match resolve_path_in_expr(self, *path, expr) {
+            ResolvedPathInExpr::Data(data) => {
+                if data.is_unit_variant(self.db) {
+                    data.ty(self.db)
+                } else {
+                    let diag = BodyDiag::unit_variant_expected(
+                        self.db,
+                        expr.lazy_span(self.body()).into(),
+                        data,
+                    )
+                    .into();
+                    FuncBodyDiagAccumulator::push(self.db, diag);
+
+                    TyId::invalid(self.db, InvalidCause::Other)
+                }
+            }
+
+            ResolvedPathInExpr::Func(func) => func.ty(self.db),
+
+            ResolvedPathInExpr::Binding(_, binding) => self.env.lookup_binding_ty(binding),
+
+            ResolvedPathInExpr::Diag(diag) => {
+                FuncBodyDiagAccumulator::push(self.db, diag);
+                TyId::invalid(self.db, InvalidCause::Other)
+            }
+
+            ResolvedPathInExpr::Invalid => TyId::invalid(self.db, InvalidCause::Other),
         }
     }
 

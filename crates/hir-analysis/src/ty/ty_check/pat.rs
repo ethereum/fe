@@ -112,7 +112,7 @@ impl<'db> TyChecker<'db> {
                 if data.is_unit_variant(self.db) {
                     data.ty(self.db)
                 } else {
-                    let diag = BodyDiag::unit_variant_expected_in_pat(
+                    let diag = BodyDiag::unit_variant_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
                         data,
@@ -147,7 +147,7 @@ impl<'db> TyChecker<'db> {
                 if data.is_tuple_variant(self.db) {
                     data
                 } else {
-                    let diag = BodyDiag::tuple_variant_expected_in_pat(
+                    let diag = BodyDiag::tuple_variant_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
                         Some(data),
@@ -158,7 +158,7 @@ impl<'db> TyChecker<'db> {
             }
 
             ResolvedPathInPat::NewBinding(_) => {
-                let diag = BodyDiag::tuple_variant_expected_in_pat(
+                let diag = BodyDiag::tuple_variant_expected(
                     self.db,
                     pat.lazy_span(self.body()).into(),
                     None,
@@ -226,7 +226,7 @@ impl<'db> TyChecker<'db> {
                 if data.is_record(self.db) {
                     data
                 } else {
-                    let diag = BodyDiag::record_variant_expected_in_pat(
+                    let diag = BodyDiag::record_variant_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
                         Some(data),
@@ -238,7 +238,7 @@ impl<'db> TyChecker<'db> {
             }
 
             ResolvedPathInPat::NewBinding(_) => {
-                let diag = BodyDiag::record_variant_expected_in_pat(
+                let diag = BodyDiag::record_variant_expected(
                     self.db,
                     pat.lazy_span(self.body()).into(),
                     None,
