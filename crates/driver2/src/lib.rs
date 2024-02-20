@@ -13,8 +13,11 @@ use common::{
     InputDb, InputFile, InputIngot,
 };
 use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
-    lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
+    analysis_pass::AnalysisPassManager,
+    diagnostics::DiagnosticVoucher,
+    hir_def::TopLevelMod,
+    lower::{map_file_to_mod, module_tree},
+    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
@@ -69,6 +72,23 @@ impl DriverDataBase {
     {
         let mut pass_manager = pm_builder(self);
         DiagnosticsCollection(pass_manager.run_on_module(top_mod))
+    }
+
+    pub fn run_on_ingot<'db>(&'db mut self, ingot: InputIngot) -> DiagnosticsCollection<'db> {
+        self.run_on_ingot_with_pass_manager(ingot, initialize_analysis_pass)
+    }
+
+    pub fn run_on_ingot_with_pass_manager<'db, F>(
+        &'db mut self,
+        ingot: InputIngot,
+        pm_builder: F,
+    ) -> DiagnosticsCollection<'db>
+    where
+        F: FnOnce(&'db DriverDataBase) -> AnalysisPassManager<'db>,
+    {
+        let tree = module_tree(self, ingot);
+        let mut pass_manager = pm_builder(self);
+        DiagnosticsCollection(pass_manager.run_on_module_tree(tree))
     }
 
     pub fn standalone(&mut self, file_path: &path::Path, source: &str) -> InputFile {

@@ -1,0 +1,5 @@
+use ingot::data::tuple::Tuple
+
+pub trait Fn<const Arity: u8, Args, Ret> where Args: Tuple<Arity> {
+    fn exec(self, args: Args) -> Ret
+}

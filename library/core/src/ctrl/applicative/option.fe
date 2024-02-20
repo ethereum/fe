@@ -1,0 +1,8 @@
+use ingot::data::{option::Option}
+use ingot::ctrl::{applicative::Applicative, function::Fn}
+
+impl Applicative for Option {
+    fn pure<Value>(value: Value) -> Self<Value> {
+        Self::Some(value)
+    }
+}

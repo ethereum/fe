@@ -8,7 +8,7 @@ use crate::{indexmap::IndexSet, InputDb};
 #[salsa::input(constructor = __new_impl)]
 pub struct InputIngot {
     /// An absolute path to the ingot root directory.
-    /// The all files in the ingot should be located under this directory.
+    /// All files in the ingot should be located under this directory.
     #[return_ref]
     pub path: Utf8PathBuf,
 
