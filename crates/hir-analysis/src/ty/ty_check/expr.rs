@@ -3,7 +3,13 @@ use hir::hir_def::{Expr, ExprId, Partial};
 use super::path::ResolvedPathInExpr;
 use crate::ty::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
-    ty_check::{path::resolve_path_in_expr, TyChecker},
+    ty_check::{
+        path::{
+            resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
+            ResolvedPathInRecordInit,
+        },
+        TyChecker,
+    },
     ty_def::{InvalidCause, TyId},
 };
 
@@ -23,8 +29,8 @@ impl<'db> TyChecker<'db> {
             Expr::Un(..) => todo!(),
             Expr::Call(..) => todo!(),
             Expr::MethodCall(..) => todo!(),
-            Expr::Path(..) => self.check_path(expr, expr_data, expected),
-            Expr::RecordInit(..) => todo!(),
+            Expr::Path(..) => self.check_path(expr, expr_data),
+            Expr::RecordInit(..) => self.check_record_init(expr, expr_data),
             Expr::Field(..) => todo!(),
             Expr::Tuple(..) => todo!(),
             Expr::Index(..) => todo!(),
@@ -60,10 +66,9 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_path(&mut self, expr: ExprId, expr_data: &Expr, _expected: TyId) -> TyId {
-        let path = match expr_data {
-            Expr::Path(path) => path,
-            _ => unreachable!(),
+    fn check_path(&mut self, expr: ExprId, expr_data: &Expr) -> TyId {
+        let Expr::Path(path) = expr_data else {
+            unreachable!()
         };
 
         let Partial::Present(path) = path else {
@@ -98,6 +103,62 @@ impl<'db> TyChecker<'db> {
 
             ResolvedPathInExpr::Invalid => TyId::invalid(self.db, InvalidCause::Other),
         }
+    }
+
+    fn check_record_init(&mut self, expr: ExprId, expr_data: &Expr) -> TyId {
+        let Expr::RecordInit(path, fields) = expr_data else {
+            unreachable!()
+        };
+        let span = expr.lazy_span(self.body()).into_record_init_expr();
+
+        let Partial::Present(path) = path else {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
+
+        let mut data = match resolve_path_in_record_init(self, *path, expr) {
+            ResolvedPathInRecordInit::Data(data) => {
+                if data.is_record(self.db) {
+                    data
+                } else {
+                    let diag = BodyDiag::record_expected(self.db, span.path().into(), data.into());
+                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+            }
+
+            ResolvedPathInRecordInit::Diag(diag) => {
+                FuncBodyDiagAccumulator::push(self.db, diag);
+                return TyId::invalid(self.db, InvalidCause::Other);
+            }
+
+            ResolvedPathInRecordInit::Invalid => {
+                return TyId::invalid(self.db, InvalidCause::Other);
+            }
+        };
+
+        let mut rec_checker = RecordInitChecker::new(self, &mut data);
+
+        for (i, field) in fields.iter().enumerate() {
+            let label = field.label_eagerly(rec_checker.tc.db.as_hir_db(), rec_checker.tc.body());
+            let field_span = span.fields().field(i).into();
+
+            let expected = match rec_checker.feed_label(label, field_span) {
+                Ok(ty) => ty,
+                Err(diag) => {
+                    FuncBodyDiagAccumulator::push(rec_checker.tc.db, diag);
+                    TyId::invalid(rec_checker.tc.db, InvalidCause::Other)
+                }
+            };
+
+            rec_checker.tc.check_expr(field.expr, expected);
+        }
+
+        if let Err(diag) = rec_checker.finalize(span.fields().into(), false) {
+            FuncBodyDiagAccumulator::push(self.db, diag);
+        }
+
+        data.ty(self.db)
     }
 
     fn check_if(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {

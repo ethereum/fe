@@ -1,7 +1,8 @@
-#![allow(unused)]
+use std::collections::{hash_map::Entry, BTreeSet};
+
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Enum, Expr, ExprId, IdentId, ItemKind, Partial, Pat, PatId, PathId,
+        scope_graph::ScopeId, Enum, ExprId, IdentId, ItemKind, Partial, Pat, PatId, PathId,
         VariantKind as HirVariantKind,
     },
     span::DynLazySpan,
@@ -68,19 +69,13 @@ pub(super) fn resolve_path_in_pat(
 pub(super) fn resolve_path_in_expr(
     tc: &mut TyChecker,
     path: PathId,
-    expr: ExprId,
+    path_expr: ExprId,
 ) -> ResolvedPathInExpr {
-    let Partial::Present(expr_data) = tc.env.expr_data(expr) else {
-        unreachable!();
-    };
-
-    let expr_span = expr.lazy_span(tc.body());
-    let span: DynLazySpan = match expr_data {
-        Expr::Path(..) => expr_span.into_path_expr().path(),
-        Expr::RecordInit(..) => expr_span.into_record_init_expr().path(),
-        _ => unreachable!(),
-    }
-    .into();
+    let span: DynLazySpan = path_expr
+        .lazy_span(tc.body())
+        .into_path_expr()
+        .path()
+        .into();
 
     let mut resolver = PathResolver {
         tc,
@@ -103,6 +98,39 @@ pub(super) fn resolve_path_in_expr(
     }
 }
 
+pub(super) fn resolve_path_in_record_init(
+    tc: &mut TyChecker,
+    path: PathId,
+    record_init_expr: ExprId,
+) -> ResolvedPathInRecordInit {
+    let span: DynLazySpan = record_init_expr
+        .lazy_span(tc.body())
+        .into_record_init_expr()
+        .path()
+        .into();
+
+    let mut resolver = PathResolver {
+        tc,
+        path,
+        span: span.clone(),
+        mode: PathMode::RecordInit,
+    };
+
+    match resolver.resolve_path() {
+        ResolvedPathInBody::Data(data) => ResolvedPathInRecordInit::Data(data),
+        ResolvedPathInBody::Func(..) | ResolvedPathInBody::Binding(..) => {
+            let diag = BodyDiag::record_expected(tc.db, span, None);
+            ResolvedPathInRecordInit::Diag(diag.into())
+        }
+        ResolvedPathInBody::NewBinding(ident) => {
+            let diag = BodyDiag::UndefinedVariable(span, ident);
+            ResolvedPathInRecordInit::Diag(diag.into())
+        }
+        ResolvedPathInBody::Diag(diag) => ResolvedPathInRecordInit::Diag(diag),
+        ResolvedPathInBody::Invalid => ResolvedPathInRecordInit::Invalid,
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(super) enum ResolvedPathInPat {
     Data(ResolvedPathData),
@@ -116,6 +144,13 @@ pub(super) enum ResolvedPathInExpr {
     Data(ResolvedPathData),
     Func(ResolvedPathFunc),
     Binding(IdentId, LocalBinding),
+    Diag(FuncBodyDiag),
+    Invalid,
+}
+
+#[derive(Clone, Debug)]
+pub(super) enum ResolvedPathInRecordInit {
+    Data(ResolvedPathData),
     Diag(FuncBodyDiag),
     Invalid,
 }
@@ -428,7 +463,7 @@ impl ResolvedPathFunc {
 }
 
 struct PathResolver<'db, 'tc> {
-    tc: &'tc mut TyChecker<'db>,
+    pub(super) tc: &'tc mut TyChecker<'db>,
     path: PathId,
     span: DynLazySpan,
     mode: PathMode,
@@ -456,9 +491,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         match self.mode {
             PathMode::ExprValue => self.resolve_ident_expr(ident),
 
-            PathMode::RecordInit => todo!(),
-
-            PathMode::Pat => {
+            PathMode::RecordInit | PathMode::Pat => {
                 let early_resolved_path =
                     resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
                 let resolved = self.resolve_early_resolved_path(early_resolved_path);
@@ -560,15 +593,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 }
             }
 
-            PathMode::RecordInit => {
-                if let Ok(res) = bucket.pick(NameDomain::Type) {
-                    self.resolve_name_res(res)
-                } else {
-                    todo!()
-                }
-            }
-
-            PathMode::Pat => {
+            PathMode::RecordInit | PathMode::Pat => {
                 if let Ok(res) = bucket.pick(NameDomain::Value) {
                     let res = self.resolve_name_res(res);
                     if !matches!(
@@ -615,27 +640,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 ResolvedPathFunc::new(self.tc.db, func_def, &mut self.tc.table).into()
             }
 
-            _ => {
-                let diag: FuncBodyDiag = match self.mode {
-                    PathMode::ExprValue => {
-                        todo!()
-                    }
-
-                    PathMode::RecordInit => {
-                        todo!()
-                    }
-
-                    PathMode::Pat => BodyDiag::InvalidPathDomainInPat {
-                        primary: self.span.clone(),
-                        resolved: res
-                            .scope()
-                            .and_then(|scope| scope.name_span(self.tc.db.as_hir_db())),
-                    },
-                }
-                .into();
-
-                diag.into()
-            }
+            _ => ResolvedPathInBody::Invalid,
         }
     }
 }
@@ -655,4 +660,102 @@ enum PathMode {
     ExprValue,
     RecordInit,
     Pat,
+}
+
+pub(super) struct RecordInitChecker<'tc, 'db, 'a> {
+    pub(super) tc: &'tc mut TyChecker<'db>,
+    data: &'a mut ResolvedPathData,
+    already_given: FxHashMap<IdentId, DynLazySpan>,
+    invalid_field_given: bool,
+}
+
+impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
+    /// Create a new `RecordInitChecker` for the given record path.
+    ///
+    /// ## Panics
+    /// Panics if the given `data` is not a record.
+    pub(super) fn new(tc: &'tc mut TyChecker<'db>, data: &'a mut ResolvedPathData) -> Self {
+        assert!(data.is_record(tc.db));
+
+        Self {
+            tc,
+            data,
+            already_given: FxHashMap::default(),
+            invalid_field_given: false,
+        }
+    }
+
+    /// Feed a label to the checker.
+    /// Returns the type of the field if the label is valid, otherwise returns
+    /// an error.
+    pub(super) fn feed_label(
+        &mut self,
+        label: Option<IdentId>,
+        field_span: DynLazySpan,
+    ) -> Result<TyId, FuncBodyDiag> {
+        match label {
+            Some(label) => match self.already_given.entry(label) {
+                Entry::Occupied(first_use) => {
+                    let diag = BodyDiag::DuplicatedRecordFieldBind {
+                        primary: field_span.clone(),
+                        first_use: first_use.get().clone(),
+                        name: label,
+                    };
+                    self.invalid_field_given = true;
+
+                    Err(diag.into())
+                }
+
+                Entry::Vacant(entry) => {
+                    entry.insert(field_span.clone());
+                    if let Some(ty) = self.data.record_field_ty(self.tc.db, label) {
+                        Ok(ty)
+                    } else {
+                        let diag = BodyDiag::record_field_not_found(
+                            self.tc.db, field_span, self.data, label,
+                        );
+                        self.invalid_field_given = true;
+
+                        Err(diag.into())
+                    }
+                }
+            },
+
+            None => {
+                let diag = BodyDiag::ExplicitLabelExpectedInRecord {
+                    primary: field_span,
+                    hint: self.data.initializer_hint(self.tc.db),
+                };
+                self.invalid_field_given = true;
+
+                Err(diag.into())
+            }
+        }
+    }
+
+    /// Finalize the checker and return an error if there are missing fields.
+    pub(super) fn finalize(
+        self,
+        initializer_span: DynLazySpan,
+        allow_missing_field: bool,
+    ) -> Result<(), FuncBodyDiag> {
+        if !self.invalid_field_given && !allow_missing_field {
+            let expected_labels = self.data.record_labels(self.tc.db);
+            let found = self.already_given.keys().copied().collect::<FxHashSet<_>>();
+            let missing_fields: BTreeSet<IdentId> =
+                expected_labels.difference(&found).copied().collect();
+
+            if !missing_fields.is_empty() {
+                let diag = BodyDiag::MissingRecordFields {
+                    primary: initializer_span,
+                    missing_fields,
+                    hint: self.data.initializer_hint(self.tc.db),
+                };
+
+                return Err(diag.into());
+            }
+        }
+
+        Ok(())
+    }
 }

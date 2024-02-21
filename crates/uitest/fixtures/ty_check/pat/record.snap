@@ -16,16 +16,20 @@ error[8-0002]: duplicated `..` found
    │                                 ^^ `..` can be used only once
 
 error[8-0008]: duplicated record field binding
-   ┌─ record.fe:12:9
+   ┌─ record.fe:12:17
    │
 12 │     let Foo {x, x}
-   │         ^^^^^^^^^^ duplicated field binding `x`
+   │              -  ^ duplicated field binding `x`
+   │              │   
+   │              first use of `x`
 
 error[8-0008]: duplicated record field binding
-   ┌─ record.fe:18:9
+   ┌─ record.fe:18:26
    │
 18 │     let Bar::Variant {x, x}
-   │         ^^^^^^^^^^^^^^^^^^^ duplicated field binding `x`
+   │                       -  ^ duplicated field binding `x`
+   │                       │   
+   │                       first use of `x`
 
 error[8-0009]: specified field not found
    ┌─ record.fe:14:17
@@ -64,21 +68,21 @@ error[8-0010]: explicit label is required
    │                          Consider using `Bar::Variant { x, y }` instead
 
 error[8-0011]: all fields are not given
-   ┌─ record.fe:16:9
+   ┌─ record.fe:16:13
    │
 16 │     let Foo {x}
-   │         ^^^^^^^
-   │         │
-   │         missing `y`
-   │         Consider using `Foo { x, y }` instead
+   │             ^^^
+   │             │
+   │             missing `y`
+   │             Consider using `Foo { x, y }` instead
 
 error[8-0011]: all fields are not given
-   ┌─ record.fe:22:9
+   ┌─ record.fe:22:22
    │
 22 │     let Bar::Variant {}
-   │         ^^^^^^^^^^^^^^^
-   │         │
-   │         missing `x, y`
-   │         Consider using `Bar::Variant { x, y }` instead
+   │                      ^^
+   │                      │
+   │                      missing `x, y`
+   │                      Consider using `Bar::Variant { x, y }` instead
 
 
