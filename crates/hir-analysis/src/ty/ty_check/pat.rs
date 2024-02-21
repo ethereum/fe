@@ -1,13 +1,9 @@
-use std::{
-    collections::{hash_map::Entry, BTreeSet},
-    ops::Range,
-};
+use std::ops::Range;
 
-use hir::hir_def::{IdentId, Partial, Pat, PatId};
-use rustc_hash::{FxHashMap, FxHashSet};
+use hir::hir_def::{Partial, Pat, PatId};
 
 use super::{
-    path::{resolve_path_in_pat, ResolvedPathInPat},
+    path::{resolve_path_in_pat, RecordInitChecker, ResolvedPathInPat},
     TyChecker,
 };
 use crate::ty::{
@@ -221,12 +217,12 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        let mut path_data = match resolve_path_in_pat(self, *path, pat) {
+        let mut data = match resolve_path_in_pat(self, *path, pat) {
             ResolvedPathInPat::Data(data) => {
                 if data.is_record(self.db) {
                     data
                 } else {
-                    let diag = BodyDiag::record_variant_expected(
+                    let diag = BodyDiag::record_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
                         Some(data),
@@ -238,11 +234,8 @@ impl<'db> TyChecker<'db> {
             }
 
             ResolvedPathInPat::NewBinding(_) => {
-                let diag = BodyDiag::record_variant_expected(
-                    self.db,
-                    pat.lazy_span(self.body()).into(),
-                    None,
-                );
+                let diag =
+                    BodyDiag::record_expected(self.db, pat.lazy_span(self.body()).into(), None);
                 FuncBodyDiagAccumulator::push(self.db, diag.into());
 
                 return TyId::invalid(self.db, InvalidCause::Other);
@@ -258,20 +251,20 @@ impl<'db> TyChecker<'db> {
         };
 
         let hir_db = self.db.as_hir_db();
-        let mut seen_fields = FxHashMap::default();
         let mut contains_rest = false;
-        let mut contains_invalid_field = false;
 
         let pat_span = pat.lazy_span(self.body()).into_record_pat();
+        let mut rec_checker = RecordInitChecker::new(self, &mut data);
 
         for (i, field_pat) in fields.iter().enumerate() {
             let field_pat_span = pat_span.fields().field(i);
 
-            if field_pat.pat.is_rest(hir_db, self.body()) {
+            if field_pat.pat.is_rest(hir_db, rec_checker.tc.body()) {
                 if contains_rest {
-                    let diag =
-                        BodyDiag::DuplicatedRestPat(field_pat.pat.lazy_span(self.body()).into());
-                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    let diag = BodyDiag::DuplicatedRestPat(
+                        field_pat.pat.lazy_span(rec_checker.tc.body()).into(),
+                    );
+                    FuncBodyDiagAccumulator::push(rec_checker.tc.db, diag.into());
                     continue;
                 }
 
@@ -279,74 +272,23 @@ impl<'db> TyChecker<'db> {
                 continue;
             }
 
-            let expected_ty = match field_pat.label(hir_db, self.body()) {
-                Some(label) => match seen_fields.entry(label) {
-                    Entry::Occupied(i) => {
-                        let first_use = pat_span.fields().field(*i.get()).name();
-                        let diag = BodyDiag::DuplicatedRecordFieldBind {
-                            primary: pat_span.clone().into(),
-                            first_use: first_use.into(),
-                            name: label,
-                        };
-                        FuncBodyDiagAccumulator::push(self.db, diag.into());
-                        contains_invalid_field = true;
-
-                        TyId::invalid(self.db, InvalidCause::Other)
-                    }
-
-                    Entry::Vacant(entry) => {
-                        entry.insert(i);
-                        if let Some(ty) = path_data.record_field_ty(self.db, label) {
-                            ty
-                        } else {
-                            let diag = BodyDiag::record_field_not_found(
-                                self.db,
-                                field_pat_span.into(),
-                                &path_data,
-                                label,
-                            );
-                            FuncBodyDiagAccumulator::push(self.db, diag.into());
-                            contains_invalid_field = true;
-
-                            TyId::invalid(self.db, InvalidCause::Other)
-                        }
-                    }
-                },
-
-                None => {
-                    let diag = BodyDiag::ExplicitLabelExpectedInRecord {
-                        primary: field_pat_span.into(),
-                        hint: path_data.initializer_hint(self.db),
-                    };
-                    FuncBodyDiagAccumulator::push(self.db, diag.into());
-                    contains_invalid_field = true;
-
-                    TyId::invalid(self.db, InvalidCause::Other)
+            let label = field_pat.label(hir_db, rec_checker.tc.body());
+            let expected = match rec_checker.feed_label(label, field_pat_span.into()) {
+                Ok(ty) => ty,
+                Err(diag) => {
+                    FuncBodyDiagAccumulator::push(rec_checker.tc.db, diag);
+                    TyId::invalid(rec_checker.tc.db, InvalidCause::Other)
                 }
             };
 
-            self.check_pat(field_pat.pat, expected_ty);
+            rec_checker.tc.check_pat(field_pat.pat, expected);
         }
 
-        // Check for missing fields if no rest pat in the record.
-        if !contains_rest && !contains_invalid_field {
-            let expected_labels = path_data.record_labels(self.db);
-            let found = seen_fields.keys().copied().collect::<FxHashSet<_>>();
-            let missing_fields: BTreeSet<IdentId> =
-                expected_labels.difference(&found).copied().collect();
-
-            if !missing_fields.is_empty() {
-                let diag = BodyDiag::MissingRecordFields {
-                    primary: pat_span.into(),
-                    missing_fields,
-                    hint: path_data.initializer_hint(self.db),
-                };
-
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
-            }
+        if let Err(diag) = rec_checker.finalize(pat_span.fields().into(), contains_rest) {
+            FuncBodyDiagAccumulator::push(self.db, diag);
         }
 
-        path_data.ty(self.db)
+        data.ty(self.db)
     }
 
     fn unpack_rest_pat(

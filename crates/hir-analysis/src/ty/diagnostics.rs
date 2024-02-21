@@ -552,19 +552,19 @@ pub enum BodyDiag {
 
     UnitVariantExpected {
         primary: DynLazySpan,
-        pat_kind: &'static str,
+        data_kind: &'static str,
         hint: Option<String>,
     },
 
     TupleVariantExpected {
         primary: DynLazySpan,
-        pat_kind: Option<&'static str>,
+        data_kind: Option<&'static str>,
         hint: Option<String>,
     },
 
     RecordExpected {
         primary: DynLazySpan,
-        pat_kind: Option<&'static str>,
+        data_kind: Option<&'static str>,
         hint: Option<String>,
     },
 
@@ -622,7 +622,7 @@ impl BodyDiag {
         let hint = data.initializer_hint(db);
         Self::UnitVariantExpected {
             primary,
-            pat_kind,
+            data_kind: pat_kind,
             hint,
         }
     }
@@ -640,12 +640,12 @@ impl BodyDiag {
 
         Self::TupleVariantExpected {
             primary,
-            pat_kind,
+            data_kind: pat_kind,
             hint,
         }
     }
 
-    pub(super) fn record_variant_expected(
+    pub(super) fn record_expected(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
         data: Option<ResolvedPathData>,
@@ -658,7 +658,7 @@ impl BodyDiag {
 
         Self::RecordExpected {
             primary,
-            pat_kind,
+            data_kind: pat_kind,
             hint,
         }
     }
@@ -706,7 +706,7 @@ impl BodyDiag {
             Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
             Self::UnitVariantExpected { .. } => "expected unit variant".to_string(),
             Self::TupleVariantExpected { .. } => "expected tuple variant".to_string(),
-            Self::RecordExpected { .. } => "expected record variant".to_string(),
+            Self::RecordExpected { .. } => "expected record variant or struct".to_string(),
             Self::MismatchedFieldCount { .. } => "field count mismatch".to_string(),
             Self::DuplicatedRecordFieldBind { .. } => "duplicated record field binding".to_string(),
             Self::RecordFieldNotFound { .. } => "specified field not found".to_string(),
@@ -754,7 +754,7 @@ impl BodyDiag {
 
             Self::UnitVariantExpected {
                 primary,
-                pat_kind,
+                data_kind: pat_kind,
                 hint,
             } => {
                 let mut diag = vec![SubDiagnostic::new(
@@ -774,7 +774,7 @@ impl BodyDiag {
 
             Self::TupleVariantExpected {
                 primary,
-                pat_kind,
+                data_kind: pat_kind,
                 hint,
             } => {
                 let mut diag = if let Some(pat_kind) = pat_kind {
@@ -804,19 +804,22 @@ impl BodyDiag {
 
             Self::RecordExpected {
                 primary,
-                pat_kind,
+                data_kind: pat_kind,
                 hint,
             } => {
                 let mut diag = if let Some(pat_kind) = pat_kind {
                     vec![SubDiagnostic::new(
                         LabelStyle::Primary,
-                        format!("expected record variant here, but found {}", pat_kind,),
+                        format!(
+                            "expected record variant or struct here, but found {}",
+                            pat_kind,
+                        ),
                         primary.resolve(db),
                     )]
                 } else {
                     vec![SubDiagnostic::new(
                         LabelStyle::Primary,
-                        "expected record variant here".to_string(),
+                        "expected record variant or struct here".to_string(),
                         primary.resolve(db),
                     )]
                 };
