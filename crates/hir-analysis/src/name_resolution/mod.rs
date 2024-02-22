@@ -22,6 +22,7 @@ pub use name_resolver::{
 };
 pub use path_resolver::EarlyResolvedPath;
 use rustc_hash::FxHashSet;
+pub(crate) use visibility_checker::is_scope_visible_from;
 
 use self::{
     diagnostics::{ImportResolutionDiagAccumulator, NameResDiag, NameResolutionDiagAccumulator},

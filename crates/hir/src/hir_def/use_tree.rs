@@ -1,6 +1,5 @@
-use crate::{hir_def::Partial, HirDb};
-
 use super::IdentId;
+use crate::{hir_def::Partial, HirDb};
 
 #[salsa::interned]
 pub struct UsePathId {
