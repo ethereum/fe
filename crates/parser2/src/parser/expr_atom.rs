@@ -1,10 +1,5 @@
 use rowan::Checkpoint;
 
-use crate::{
-    parser::{lit, path},
-    SyntaxKind,
-};
-
 use super::{
     define_scope,
     expr::{parse_expr, parse_expr_no_struct},
@@ -13,6 +8,10 @@ use super::{
     stmt::parse_stmt,
     token_stream::TokenStream,
     Parser,
+};
+use crate::{
+    parser::{lit, path},
+    SyntaxKind,
 };
 
 pub(super) fn parse_expr_atom<S: TokenStream>(
@@ -231,11 +230,18 @@ define_scope! { RecordFieldScope, RecordField, Inheritance }
 impl super::Parse for RecordFieldScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.set_newline_as_trivia(false);
-        parser.bump_if(SyntaxKind::Ident);
 
-        if parser.bump_if(SyntaxKind::Colon) {
-            parse_expr(parser);
+        let has_label = parser.dry_run(|parser| {
+            parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::Colon]);
+            parser.bump_if(SyntaxKind::Colon)
+        });
+
+        if has_label {
+            parser.bump_if(SyntaxKind::Ident);
+            parser.bump_expected(SyntaxKind::Colon);
         }
+
+        parse_expr(parser);
     }
 }
 
