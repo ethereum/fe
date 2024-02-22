@@ -381,6 +381,15 @@ pub enum FieldParent {
     Variant(ItemKind, usize),
 }
 
+impl FieldParent {
+    pub fn scope(self) -> ScopeId {
+        match self {
+            FieldParent::Item(item) => ScopeId::Item(item),
+            FieldParent::Variant(variant, idx) => ScopeId::Variant(variant, idx),
+        }
+    }
+}
+
 struct ScopeGraphItemIterDfs<'a> {
     db: &'a dyn HirDb,
     graph: &'a ScopeGraph,

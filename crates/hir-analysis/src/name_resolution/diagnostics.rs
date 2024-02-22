@@ -66,20 +66,20 @@ impl NameResDiag {
         }
     }
 
+    pub(crate) fn invisible(
+        span: DynLazySpan,
+        name: IdentId,
+        invisible_span: Option<DynLazySpan>,
+    ) -> Self {
+        Self::Invisible(span, name, invisible_span)
+    }
+
     pub(super) fn conflict(name: IdentId, conflict_with: Vec<DynLazySpan>) -> Self {
         Self::Conflict(name, conflict_with)
     }
 
     pub(super) fn not_found(span: DynLazySpan, ident: IdentId) -> Self {
         Self::NotFound(span, ident)
-    }
-
-    pub(super) fn invisible(
-        span: DynLazySpan,
-        name: IdentId,
-        invisible_span: Option<DynLazySpan>,
-    ) -> Self {
-        Self::Invisible(span, name, invisible_span)
     }
 
     pub(super) fn ambiguous(

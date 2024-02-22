@@ -2,8 +2,9 @@ use std::collections::{hash_map::Entry, BTreeSet};
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Enum, ExprId, IdentId, ItemKind, Partial, Pat, PatId, PathId,
-        VariantKind as HirVariantKind,
+        scope_graph::{FieldParent, ScopeId},
+        Enum, ExprId, FieldDefListId as HirFieldDefListId, IdentId, ItemKind, Partial, Pat, PatId,
+        PathId, VariantKind as HirVariantKind,
     },
     span::DynLazySpan,
 };
@@ -12,12 +13,13 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::{env::LocalBinding, TyChecker};
 use crate::{
     name_resolution::{
-        resolve_path_early, resolve_query, resolve_segments_early, EarlyResolvedPath, NameDomain,
-        NameQuery, NameRes, NameResBucket, NameResKind, QueryDirective,
+        diagnostics::NameResDiag, is_scope_visible_from, resolve_path_early, resolve_query,
+        resolve_segments_early, EarlyResolvedPath, NameDomain, NameQuery, NameRes, NameResBucket,
+        NameResKind, QueryDirective,
     },
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, TyLowerDiag},
-        ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, Subst, TyId},
+        ty_def::{AdtDef, AdtFieldList, AdtRef, AdtRefId, FuncDef, Subst, TyId},
         ty_lower::{lower_adt, lower_func},
         unify::UnificationTable,
     },
@@ -306,29 +308,36 @@ impl ResolvedPathData {
     ) -> Option<TyId> {
         let hir_db = db.as_hir_db();
 
-        let (hir_field_list, field_list) = match self {
-            Self::Adt { adt, .. } => match adt.adt_ref(db).data(db) {
-                AdtRef::Struct(s) => (s.fields(hir_db), &adt.fields(db)[0]),
-                AdtRef::Contract(c) => (c.fields(hir_db), &adt.fields(db)[0]),
-
-                _ => return None,
-            },
-
-            Self::Variant { enum_, ref idx, .. } => {
-                match enum_.variants(hir_db).data(hir_db)[*idx].kind {
-                    hir::hir_def::VariantKind::Record(fields) => {
-                        (fields, &self.adt_def(db).fields(db)[*idx])
-                    }
-
-                    _ => return None,
-                }
-            }
-        };
+        let (hir_field_list, field_list) = self.record_field_list(db)?;
 
         let field_idx = hir_field_list.field_idx(hir_db, name)?;
         let ty = field_list.ty(db, field_idx);
 
         Some(ty.apply_subst(db, self.subst()))
+    }
+
+    pub(super) fn record_field_scope(
+        &mut self,
+        db: &dyn HirAnalysisDb,
+        name: IdentId,
+    ) -> Option<ScopeId> {
+        let field_idx = self.record_field_idx(db, name)?;
+
+        let parent_item: FieldParent = match self {
+            Self::Adt { adt, .. } => FieldParent::Item(adt.adt_ref(db).as_item(db)),
+            Self::Variant { enum_, idx, .. } => FieldParent::Variant((*enum_).into(), *idx),
+        };
+
+        Some(ScopeId::Field(parent_item, field_idx))
+    }
+
+    pub(super) fn record_field_idx(
+        &mut self,
+        db: &dyn HirAnalysisDb,
+        name: IdentId,
+    ) -> Option<usize> {
+        let (hir_field_list, _) = self.record_field_list(db)?;
+        hir_field_list.field_idx(db.as_hir_db(), name)
     }
 
     pub(super) fn record_labels(&mut self, db: &dyn HirAnalysisDb) -> FxHashSet<IdentId> {
@@ -427,6 +436,32 @@ impl ResolvedPathData {
     fn subst(&mut self) -> &mut impl Subst {
         match self {
             Self::Adt { args, .. } | Self::Variant { args, .. } => args,
+        }
+    }
+
+    fn record_field_list<'db>(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Option<(HirFieldDefListId, &'db AdtFieldList)> {
+        let hir_db = db.as_hir_db();
+
+        match self {
+            Self::Adt { adt, .. } => match adt.adt_ref(db).data(db) {
+                AdtRef::Struct(s) => (s.fields(hir_db), &adt.fields(db)[0]).into(),
+                AdtRef::Contract(c) => (c.fields(hir_db), &adt.fields(db)[0]).into(),
+
+                _ => None,
+            },
+
+            Self::Variant { enum_, ref idx, .. } => {
+                match enum_.variants(hir_db).data(hir_db)[*idx].kind {
+                    hir::hir_def::VariantKind::Record(fields) => {
+                        (fields, &self.adt_def(db).fields(db)[*idx]).into()
+                    }
+
+                    _ => None,
+                }
+            }
         }
     }
 }
@@ -693,7 +728,7 @@ impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
         label: Option<IdentId>,
         field_span: DynLazySpan,
     ) -> Result<TyId, FuncBodyDiag> {
-        match label {
+        let label = match label {
             Some(label) => match self.already_given.entry(label) {
                 Entry::Occupied(first_use) => {
                     let diag = BodyDiag::DuplicatedRecordFieldBind {
@@ -701,23 +736,14 @@ impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
                         first_use: first_use.get().clone(),
                         name: label,
                     };
-                    self.invalid_field_given = true;
 
-                    Err(diag.into())
+                    self.invalid_field_given = true;
+                    return Err(diag.into());
                 }
 
                 Entry::Vacant(entry) => {
                     entry.insert(field_span.clone());
-                    if let Some(ty) = self.data.record_field_ty(self.tc.db, label) {
-                        Ok(ty)
-                    } else {
-                        let diag = BodyDiag::record_field_not_found(
-                            self.tc.db, field_span, self.data, label,
-                        );
-                        self.invalid_field_given = true;
-
-                        Err(diag.into())
-                    }
+                    label
                 }
             },
 
@@ -726,10 +752,31 @@ impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
                     primary: field_span,
                     hint: self.data.initializer_hint(self.tc.db),
                 };
-                self.invalid_field_given = true;
 
-                Err(diag.into())
+                self.invalid_field_given = true;
+                return Err(diag.into());
             }
+        };
+
+        let Some(ty) = self.data.record_field_ty(self.tc.db, label) else {
+            let diag = BodyDiag::record_field_not_found(self.tc.db, field_span, self.data, label);
+
+            self.invalid_field_given = true;
+            return Err(diag.into());
+        };
+
+        let field_scope = self.data.record_field_scope(self.tc.db, label).unwrap();
+        if is_scope_visible_from(self.tc.db, field_scope, self.tc.env.scope()) {
+            Ok(ty)
+        } else {
+            let diag = NameResDiag::invisible(
+                field_span,
+                label,
+                field_scope.name_span(self.tc.db.as_hir_db()),
+            );
+
+            self.invalid_field_given = true;
+            Err(diag.into())
         }
     }
 
