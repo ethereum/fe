@@ -3,11 +3,6 @@ use std::convert::Infallible;
 use rowan::Checkpoint;
 use unwrap_infallible::UnwrapInfallible;
 
-use crate::{
-    parser::{lit, path},
-    ExpectedKind, SyntaxKind, TextRange,
-};
-
 use super::{
     define_scope,
     expr::{parse_expr, parse_expr_no_struct},
@@ -16,6 +11,10 @@ use super::{
     stmt::parse_stmt,
     token_stream::TokenStream,
     ErrProof, Parser, Recovery,
+};
+use crate::{
+    parser::{lit, path},
+    ExpectedKind, SyntaxKind, TextRange,
 };
 
 // Must be kept in sync with `parse_expr_atom`
@@ -245,12 +244,16 @@ impl super::Parse for RecordFieldScope {
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        parser.bump_if(SyntaxKind::Ident);
 
-        if parser.bump_if(SyntaxKind::Colon) {
-            parse_expr(parser)?;
+        if matches!(
+            parser.peek_two(),
+            (Some(SyntaxKind::Ident), Some(SyntaxKind::Colon))
+        ) {
+            parser.bump_if(SyntaxKind::Ident);
+            parser.bump_expected(SyntaxKind::Colon);
         }
-        Ok(())
+
+        parse_expr(parser)
     }
 }
 

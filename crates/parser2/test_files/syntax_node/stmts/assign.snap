@@ -26,11 +26,17 @@ Root@0..21
         RecordFieldList@9..15
           LBrace@9..10 "{"
           RecordField@10..11
-            Ident@10..11 "x"
+            PathExpr@10..11
+              Path@10..11
+                PathSegment@10..11
+                  Ident@10..11 "x"
           Comma@11..12 ","
           WhiteSpace@12..13 " "
           RecordField@13..14
-            Ident@13..14 "y"
+            PathExpr@13..14
+              Path@13..14
+                PathSegment@13..14
+                  Ident@13..14 "y"
           RBrace@14..15 "}"
       WhiteSpace@15..16 " "
       Eq@16..17 "="
