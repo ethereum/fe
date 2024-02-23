@@ -526,21 +526,26 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         match self.mode {
             PathMode::ExprValue => self.resolve_ident_expr(ident),
 
-            PathMode::RecordInit | PathMode::Pat => {
+            PathMode::RecordInit => {
+                let early_resolved_path =
+                    resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
+                self.resolve_early_resolved_path(early_resolved_path)
+            }
+
+            PathMode::Pat => {
                 let early_resolved_path =
                     resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
                 let resolved = self.resolve_early_resolved_path(early_resolved_path);
 
                 match resolved {
-                    ResolvedPathInBody::Diag(_) | ResolvedPathInBody::Invalid => {
+                    ResolvedPathInBody::Data(..) | ResolvedPathInBody::Binding(..) => resolved,
+                    _ => {
                         if let Some(ident) = self.path.last_segment(hir_db).to_opt() {
                             ResolvedPathInBody::NewBinding(ident)
                         } else {
                             resolved
                         }
                     }
-
-                    _ => resolved,
                 }
             }
         }
