@@ -34,7 +34,7 @@ impl<'db> TyChecker<'db> {
         let span = stmt.lazy_span(self.env.body()).into_let_stmt();
 
         let ascription = match ascription {
-            Some(ty) => self.lower_ty(*ty, span.ty_moved().into()),
+            Some(ty) => self.lower_ty(*ty, span.ty_moved().into(), true),
             None => self.fresh_ty(),
         };
 

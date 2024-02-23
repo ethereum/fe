@@ -1,0 +1,65 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/array.fe
+---
+note: 
+  ┌─ test_file.fe:1:10
+  │  
+1 │   fn foo() {
+  │ ╭──────────^
+2 │ │     let i_array: [i32; 2] = [1, 2]
+3 │ │ 
+4 │ │     let b_array = [true, false]
+5 │ │ }
+  │ ╰─^ ()
+
+note: 
+  ┌─ test_file.fe:2:9
+  │
+2 │     let i_array: [i32; 2] = [1, 2]
+  │         ^^^^^^^ [i32; 2]
+
+note: 
+  ┌─ test_file.fe:2:29
+  │
+2 │     let i_array: [i32; 2] = [1, 2]
+  │                             ^^^^^^ [i32; 2]
+
+note: 
+  ┌─ test_file.fe:2:30
+  │
+2 │     let i_array: [i32; 2] = [1, 2]
+  │                              ^ i32
+
+note: 
+  ┌─ test_file.fe:2:33
+  │
+2 │     let i_array: [i32; 2] = [1, 2]
+  │                                 ^ i32
+
+note: 
+  ┌─ test_file.fe:4:9
+  │
+4 │     let b_array = [true, false]
+  │         ^^^^^^^ [bool; 2]
+
+note: 
+  ┌─ test_file.fe:4:19
+  │
+4 │     let b_array = [true, false]
+  │                   ^^^^^^^^^^^^^ [bool; 2]
+
+note: 
+  ┌─ test_file.fe:4:20
+  │
+4 │     let b_array = [true, false]
+  │                    ^^^^ bool
+
+note: 
+  ┌─ test_file.fe:4:26
+  │
+4 │     let b_array = [true, false]
+  │                          ^^^^^ bool
+
+

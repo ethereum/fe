@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/array.fe
+---
+error[8-0000]: type mismatch
+  ┌─ array.fe:2:23
+  │
+2 │     let x: [i32; 3] = [1, 2]
+  │                       ^^^^^^ expected `[i32; 3]`, but `[i32; 2]` is given
+
+error[8-0000]: type mismatch
+  ┌─ array.fe:5:17
+  │
+5 │     let y = [1, false, 1]
+  │                 ^^^^^ expected `<integer>`, but `bool` is given
+
+

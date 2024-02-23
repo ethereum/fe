@@ -7,15 +7,15 @@ use hir::{
         kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Body, Contract, Enum, Func, FuncParam as HirFuncParam, IdentId, IngotId, ItemKind, Partial,
-        Struct, TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
+        Body, Contract, Enum, Func, FuncParam as HirFuncParam, IdentId, IngotId, IntegerId,
+        ItemKind, Partial, Struct, TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
     },
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
 
 use super::{
-    const_ty::{ConstTyData, ConstTyId},
+    const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
     constraint::{
         collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
     },
@@ -144,6 +144,18 @@ impl TyId {
         Self::new(db, TyData::TyBase(base))
     }
 
+    pub(super) fn array_with_elem(db: &dyn HirAnalysisDb, elem: TyId, len: usize) -> Self {
+        let base = TyBase::Prim(PrimTy::Array);
+        let base = Self::new(db, TyData::TyBase(base));
+        let array = TyId::app(db, base, elem);
+
+        let len = EvaluatedConstTy::LitInt(IntegerId::new(db.as_hir_db(), len.into()));
+        let len = ConstTyData::Evaluated(len, array.expected_const_ty(db).unwrap());
+        let len = TyId::const_ty(db, ConstTyId::new(db, len));
+
+        TyId::app(db, array, len)
+    }
+
     pub(super) fn unit(db: &dyn HirAnalysisDb) -> Self {
         Self::tuple(db, 0)
     }
@@ -173,6 +185,10 @@ impl TyId {
             self.data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
         )
+    }
+
+    pub(super) fn is_array(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::TyBase(TyBase::Prim(PrimTy::Array)))
     }
 
     pub(super) fn is_string(self, db: &dyn HirAnalysisDb) -> bool {
@@ -441,7 +457,7 @@ impl TyId {
         }
     }
 
-    /// Returns the next expected type of a type argument.
+    /// Returns the next expected type of a const type.
     fn expected_const_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
         let (base, args) = self.decompose_ty_app(db);
         match base.data(db) {
