@@ -1,6 +1,7 @@
 pub fn foo() {
     let x: [i32; 3] = [1, 2]
-
-
     let y = [1, false, 1]
+    
+    let x: [i32; 5] = [1; 10]
+    let x = [1; false]
 }
