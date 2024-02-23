@@ -1,0 +1,5 @@
+fn foo() {
+    let x: (i32, u32, bool) = (1, 2)
+    
+    let y: (i32, bool) = (1, 2)
+}

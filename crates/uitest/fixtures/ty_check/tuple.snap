@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/tuple.fe
+---
+error[8-0000]: type mismatch
+  ┌─ tuple.fe:2:31
+  │
+2 │     let x: (i32, u32, bool) = (1, 2)
+  │                               ^^^^^^ expected `(i32, u32, bool)`, but `(<integer>, <integer>)` is given
+
+error[8-0000]: type mismatch
+  ┌─ tuple.fe:4:30
+  │
+4 │     let y: (i32, bool) = (1, 2)
+  │                              ^ expected `bool`, but `<integer>` is given
+
+
