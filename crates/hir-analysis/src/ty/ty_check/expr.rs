@@ -2,6 +2,7 @@ use hir::hir_def::{Expr, ExprId, Partial};
 
 use super::path::ResolvedPathInExpr;
 use crate::ty::{
+    const_ty::ConstTyId,
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
     ty_check::{
         path::{
@@ -35,7 +36,7 @@ impl<'db> TyChecker<'db> {
             Expr::Tuple(..) => self.check_tuple(expr, expr_data, expected),
             Expr::Index(..) => todo!(),
             Expr::Array(..) => self.check_array(expr, expr_data, expected),
-            Expr::ArrayRep(..) => todo!(),
+            Expr::ArrayRep(..) => self.check_array_rep(expr, expr_data, expected),
             Expr::If(..) => self.check_if(expr, expr_data, expected),
             Expr::Match(..) => todo!(),
             Expr::Assign(..) => todo!(),
@@ -193,6 +194,36 @@ impl<'db> TyChecker<'db> {
         }
 
         TyId::array_with_elem(self.db, expected_elem_ty, elems.len())
+    }
+
+    fn check_array_rep(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
+        let Expr::ArrayRep(elem, len) = expr_data else {
+            unreachable!()
+        };
+
+        let expected_elem_ty = match expected.decompose_ty_app(self.db) {
+            (base, args) if base.is_array(self.db) => args[0],
+            _ => self.fresh_ty(),
+        };
+
+        self.check_expr(*elem, expected_elem_ty);
+
+        let array = TyId::app(self.db, TyId::array(self.db), expected_elem_ty);
+        if let Some(len_body) = len.to_opt() {
+            let len_ty = ConstTyId::from_body(self.db, len_body);
+            let len_ty = TyId::const_ty(self.db, len_ty);
+            let array_ty = TyId::app(self.db, array, len_ty);
+
+            if let Some(diag) = array_ty.emit_diag(self.db, len_body.lazy_span().into()) {
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+            }
+
+            array_ty
+        } else {
+            let len_ty = ConstTyId::invalid(self.db, InvalidCause::Other);
+            let len_ty = TyId::const_ty(self.db, len_ty);
+            TyId::app(self.db, array, len_ty)
+        }
     }
 
     fn check_if(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {

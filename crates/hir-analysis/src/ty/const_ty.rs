@@ -131,13 +131,15 @@ impl ConstTyId {
     pub(super) fn from_opt_body(db: &dyn HirAnalysisDb, body: Partial<Body>) -> Self {
         match body {
             Partial::Present(body) => Self::from_body(db, body),
-            Partial::Absent => {
-                let resolved = EvaluatedConstTy::Invalid;
-                let ty = TyId::invalid(db, InvalidCause::Other);
-                let data = ConstTyData::Evaluated(resolved, ty);
-                Self::new(db, data)
-            }
+            Partial::Absent => Self::invalid(db, InvalidCause::Other),
         }
+    }
+
+    pub(super) fn invalid(db: &dyn HirAnalysisDb, cause: InvalidCause) -> Self {
+        let resolved = EvaluatedConstTy::Invalid;
+        let ty = TyId::invalid(db, cause);
+        let data = ConstTyData::Evaluated(resolved, ty);
+        Self::new(db, data)
     }
 
     fn swap_ty(self, db: &dyn HirAnalysisDb, ty: TyId) -> Self {
