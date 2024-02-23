@@ -132,4 +132,32 @@ note:
 15 │     x
    │     ^ i32
 
+note: 
+   ┌─ test_file.fe:19:17
+   │  
+19 │   fn bar() -> i32 {
+   │ ╭─────────────────^
+20 │ │     let bar = 1
+21 │ │     bar
+22 │ │ }
+   │ ╰─^ i32
+
+note: 
+   ┌─ test_file.fe:20:9
+   │
+20 │     let bar = 1
+   │         ^^^ i32
+
+note: 
+   ┌─ test_file.fe:20:15
+   │
+20 │     let bar = 1
+   │               ^ i32
+
+note: 
+   ┌─ test_file.fe:21:5
+   │
+21 │     bar
+   │     ^^^ i32
+
 

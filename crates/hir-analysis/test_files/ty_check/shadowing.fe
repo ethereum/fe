@@ -14,3 +14,9 @@ fn foo() -> i32 {
 
     x
 }
+
+
+fn bar() -> i32 {
+    let bar = 1
+    bar
+}
