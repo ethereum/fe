@@ -1,0 +1,6 @@
+pub fn foo() {
+    let x: [i32; 3] = [1, 2]
+
+
+    let y = [1, false, 1]
+}

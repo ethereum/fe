@@ -34,7 +34,7 @@ impl<'db> TyChecker<'db> {
             Expr::Field(..) => todo!(),
             Expr::Tuple(..) => self.check_tuple(expr, expr_data, expected),
             Expr::Index(..) => todo!(),
-            Expr::Array(..) => todo!(),
+            Expr::Array(..) => self.check_array(expr, expr_data, expected),
             Expr::ArrayRep(..) => todo!(),
             Expr::If(..) => self.check_if(expr, expr_data, expected),
             Expr::Match(..) => todo!(),
@@ -176,6 +176,23 @@ impl<'db> TyChecker<'db> {
         }
 
         TyId::tuple_with_elems(self.db, &elem_tys)
+    }
+
+    fn check_array(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
+        let Expr::Array(elems) = expr_data else {
+            unreachable!()
+        };
+
+        let expected_elem_ty = match expected.decompose_ty_app(self.db) {
+            (base, args) if base.is_array(self.db) => args[0],
+            _ => self.fresh_ty(),
+        };
+
+        for elem in elems {
+            self.check_expr(*elem, expected_elem_ty);
+        }
+
+        TyId::array_with_elem(self.db, expected_elem_ty, elems.len())
     }
 
     fn check_if(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
