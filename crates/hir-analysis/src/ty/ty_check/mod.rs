@@ -13,7 +13,7 @@ pub(super) use path::ResolvedPathData;
 use rustc_hash::FxHashMap;
 
 use super::{
-    diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
+    diagnostics::{BodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
     ty_def::{InvalidCause, Kind, TyId, TyVarUniverse},
     ty_lower::lower_hir_ty,
     unify::{UnificationError, UnificationTable},
@@ -91,13 +91,19 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn lower_ty(&self, hir_ty: HirTyId, span: DynLazySpan) -> TyId {
+    fn lower_ty(&self, hir_ty: HirTyId, span: DynLazySpan, star_kind_required: bool) -> TyId {
         let ty = lower_hir_ty(self.db, hir_ty, self.env.scope());
-        if let Some(diag) = ty.emit_diag(self.db, span) {
+        if let Some(diag) = ty.emit_diag(self.db, span.clone()) {
             FuncBodyDiagAccumulator::push(self.db, diag.into());
         }
 
-        ty
+        if star_kind_required && ty.is_star_kind(self.db) {
+            ty
+        } else {
+            let diag: TyDiagCollection = TyLowerDiag::expected_star_kind_ty(span).into();
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            TyId::invalid(self.db, InvalidCause::Other)
+        }
     }
 
     /// Returns the fresh type variable for pattern and expr type checking. The
