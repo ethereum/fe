@@ -197,4 +197,56 @@ note:
 27 │     let f2 = Bar {t: z, u: f}
    │                            ^ Bar<bool, String<3>>
 
+note: 
+   ┌─ test_file.fe:36:11
+   │  
+36 │   fn foo3() {
+   │ ╭───────────^
+37 │ │     let bar = Bar { t: 1, u: false }
+38 │ │     let x = Wrapper { t: bar }
+39 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ test_file.fe:37:9
+   │
+37 │     let bar = Bar { t: 1, u: false }
+   │         ^^^ Bar<i32, bool>
+
+note: 
+   ┌─ test_file.fe:37:15
+   │
+37 │     let bar = Bar { t: 1, u: false }
+   │               ^^^^^^^^^^^^^^^^^^^^^^ Bar<i32, bool>
+
+note: 
+   ┌─ test_file.fe:37:24
+   │
+37 │     let bar = Bar { t: 1, u: false }
+   │                        ^ i32
+
+note: 
+   ┌─ test_file.fe:37:30
+   │
+37 │     let bar = Bar { t: 1, u: false }
+   │                              ^^^^^ bool
+
+note: 
+   ┌─ test_file.fe:38:9
+   │
+38 │     let x = Wrapper { t: bar }
+   │         ^ Wrapper<Bar, bool>
+
+note: 
+   ┌─ test_file.fe:38:13
+   │
+38 │     let x = Wrapper { t: bar }
+   │             ^^^^^^^^^^^^^^^^^^ Wrapper<Bar, bool>
+
+note: 
+   ┌─ test_file.fe:38:26
+   │
+38 │     let x = Wrapper { t: bar }
+   │                          ^^^ Bar<i32, bool>
+
 

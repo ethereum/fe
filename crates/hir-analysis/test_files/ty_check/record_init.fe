@@ -26,3 +26,14 @@ fn foo2<Z>(b: bool, z: Z) {
     
     let f2 = Bar {t: z, u: f}
 }
+
+struct Wrapper<T, U>
+where T: * -> * -> *
+{
+    t: T<i32, U>
+}
+
+fn foo3() {
+    let bar = Bar { t: 1, u: false }
+    let x = Wrapper { t: bar }
+}

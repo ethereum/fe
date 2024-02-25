@@ -400,17 +400,19 @@ impl TyId {
     where
         S: Subst + ?Sized,
     {
-        if let Some(to) = subst.get(self) {
-            return to;
-        }
-
         match self.data(db) {
             TyData::TyApp(lhs, rhs) => {
                 let lhs = lhs.apply_subst(db, subst);
                 let rhs = rhs.apply_subst(db, subst);
                 TyId::app(db, lhs, rhs)
             }
-            _ => self,
+            _ => {
+                if let Some(to) = subst.get(self) {
+                    to
+                } else {
+                    self
+                }
+            }
         }
     }
 
