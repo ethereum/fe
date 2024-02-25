@@ -28,7 +28,7 @@ pub(crate) fn check_ty_app_sat(
 
     let (_, args) = ty.decompose_ty_app(db);
 
-    for arg in args {
+    for &arg in args {
         match check_ty_app_sat(db, arg, assumptions) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
