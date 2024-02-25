@@ -661,7 +661,10 @@ impl BodyDiag {
         T: RecordLike,
     {
         let (kind_name, hint) = if let Some(mut record_like) = record_like {
-            (Some(record_like.kind_name(db)), record_like.initializer_hint(db))
+            (
+                Some(record_like.kind_name(db)),
+                record_like.initializer_hint(db),
+            )
         } else {
             (None, None)
         };

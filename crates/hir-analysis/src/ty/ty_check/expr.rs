@@ -38,7 +38,7 @@ impl<'db> TyChecker<'db> {
             Expr::Array(..) => self.check_array(expr, expr_data, expected),
             Expr::ArrayRep(..) => self.check_array_rep(expr, expr_data, expected),
             Expr::If(..) => self.check_if(expr, expr_data, expected),
-            Expr::Match(..) => todo!(),
+            Expr::Match(..) => self.check_match(expr, expr_data, expected),
             Expr::Assign(..) => todo!(),
             Expr::AugAssign(..) => todo!(),
         };
@@ -275,6 +275,32 @@ impl<'db> TyChecker<'db> {
                 TyId::unit(self.db)
             }
         }
+    }
+
+    fn check_match(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
+        let Expr::Match(scrutinee, arms) = expr_data else {
+            unreachable!()
+        };
+
+        let scrutinee_ty = self.fresh_ty();
+        self.check_expr(*scrutinee, scrutinee_ty);
+
+        let Partial::Present(arms) = arms else {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
+
+        for arm in arms {
+            self.check_pat(arm.pat, scrutinee_ty);
+
+            self.env.enter_scope(arm.body);
+            self.env.flush_pending_bindings();
+
+            self.check_expr(arm.body, expected);
+
+            self.env.leave_scope();
+        }
+
+        expected
     }
 
     fn check_expr_in_new_scope(&mut self, expr: ExprId, expected: TyId) -> TyId {

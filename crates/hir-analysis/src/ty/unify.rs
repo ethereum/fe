@@ -267,6 +267,11 @@ impl<'db> UnificationTable<'db> {
 impl<'db> Subst for UnificationTable<'db> {
     fn get(&mut self, ty: TyId) -> Option<TyId> {
         match ty.data(self.db) {
+            TyData::TyApp(lhs, rhs) => {
+                let lhs = self.get(*lhs).unwrap_or(*lhs);
+                let rhs = self.get(*rhs).unwrap_or(*rhs);
+                Some(TyId::app(self.db, lhs, rhs))
+            }
             TyData::TyVar(var) => {
                 let ty = self.probe(var.key)?;
                 Some(self.get(ty).unwrap_or(ty))
