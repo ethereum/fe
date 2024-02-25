@@ -61,7 +61,7 @@ pub(crate) fn ty_constraints(
 
     let mut subst = FxHashMap::default();
     let mut arg_idx = 0;
-    for (&param, arg) in params.iter().zip(args) {
+    for (&param, &arg) in params.iter().zip(args) {
         subst.insert(param, arg);
         arg_idx += 1;
     }

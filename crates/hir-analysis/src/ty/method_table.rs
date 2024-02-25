@@ -7,7 +7,7 @@ use super::{
     ty_lower::{lower_func, lower_hir_ty},
     unify::UnificationTable,
 };
-use crate::HirAnalysisDb;
+use crate::{ty::ty_def::TyData, HirAnalysisDb};
 
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_methods(db: &dyn HirAnalysisDb, ingot: IngotId) -> MethodTable {
@@ -23,8 +23,8 @@ pub struct MethodTable {
 
 impl MethodTable {
     pub fn prove(&self, db: &dyn HirAnalysisDb, ty: TyId, name: IdentId) -> Option<FuncDef> {
-        let base = ty.base_ty(db)?;
-        if let Some(bucket) = self.buckets.get(&base) {
+        let base = Self::extract_ty_base(ty, db)?;
+        if let Some(bucket) = self.buckets.get(base) {
             return bucket.prove(db, self.mode, ty, name);
         }
 
@@ -37,8 +37,8 @@ impl MethodTable {
         ty: TyId,
         name: IdentId,
     ) -> Option<FuncDef> {
-        let base = ty.base_ty(db)?;
-        if let Some(bucket) = self.buckets.get(&base) {
+        let base = Self::extract_ty_base(ty, db)?;
+        if let Some(bucket) = self.buckets.get(base) {
             return bucket.prove(db, TableMode::Creation, ty, name);
         }
 
@@ -58,14 +58,22 @@ impl MethodTable {
     }
 
     pub(super) fn insert(&mut self, db: &dyn HirAnalysisDb, ty: TyId, func: FuncDef) {
-        let Some(base) = ty.base_ty(db) else {
+        let Some(base) = Self::extract_ty_base(ty, db) else {
             return;
         };
 
         let name = func.name(db);
-        let bucket = self.buckets.entry(base).or_insert_with(MethodBucket::new);
+        let bucket = self.buckets.entry(*base).or_insert_with(MethodBucket::new);
         let methods = bucket.methods.entry(ty).or_default();
         methods.insert(name, func);
+    }
+
+    fn extract_ty_base(ty: TyId, db: &dyn HirAnalysisDb) -> Option<&TyBase> {
+        let base = ty.base_ty(db);
+        match base.data(db) {
+            TyData::TyBase(base) => Some(base),
+            _ => None,
+        }
     }
 }
 

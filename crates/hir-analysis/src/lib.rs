@@ -16,6 +16,8 @@ pub struct Jar(
     ty::ty_def::AdtDef,
     ty::ty_def::FuncDef,
     ty::ty_def::AdtRefId,
+    ty::ty_def::ty_generic_params,
+    ty::ty_def::decompose_ty_app,
     /// Const types.
     ty::const_ty::ConstTyId,
     ty::const_ty::evaluate_const_ty,

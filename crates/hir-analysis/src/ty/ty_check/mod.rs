@@ -9,7 +9,7 @@ use hir::{
     hir_def::{Body, ExprId, Func, LitKind, PatId, TypeId as HirTyId},
     span::DynLazySpan,
 };
-pub(super) use path::ResolvedPathData;
+pub(super) use path::RecordLike;
 use rustc_hash::FxHashMap;
 
 use super::{
