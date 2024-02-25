@@ -1,5 +1,5 @@
 #![allow(unused)]
-use hir::hir_def::{scope_graph::ScopeId, IdentId, Partial, PathId};
+use hir::hir_def::{kw, scope_graph::ScopeId, IdentId, Partial, PathId};
 
 use super::{
     name_resolver::{
@@ -114,12 +114,12 @@ impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
         let mut i_path = IntermediatePath::new(self.db, segments, scope);
         loop {
             match i_path.state(self.db) {
-                IntermediatePathState::ReadyToFinalize => {
+                IntermediatePathState::Full => {
                     let bucket = self.resolve_last_segment(&i_path)?;
                     return Ok(i_path.finalize_as_full(bucket));
                 }
 
-                IntermediatePathState::TypeConst => return Ok(i_path.finalize_as_partial()),
+                IntermediatePathState::Partial => return Ok(i_path.finalize_as_partial()),
 
                 IntermediatePathState::Unresolved => {
                     self.resolve_segment(&mut i_path)?;
@@ -173,9 +173,17 @@ impl<'a> IntermediatePath<'a> {
         }
     }
 
+    fn starts_with(&self, db: &dyn HirAnalysisDb, ident: IdentId) -> bool {
+        let Some(Partial::Present(first_seg)) = self.path.first() else {
+            return false;
+        };
+
+        *first_seg == ident
+    }
+
     /// Make a `NameQuery` to resolve the current segment.
     fn make_query(&self, db: &dyn HirAnalysisDb) -> PathResolutionResult<NameQuery> {
-        debug_assert!(self.state(db) != IntermediatePathState::TypeConst);
+        debug_assert!(self.state(db) != IntermediatePathState::Partial);
         let Partial::Present(name) = self.path[self.idx] else {
             return Err(PathResolutionError::new(
                 NameResolutionError::Invalid,
@@ -260,13 +268,15 @@ impl<'a> IntermediatePath<'a> {
     fn state(&self, db: &dyn HirAnalysisDb) -> IntermediatePathState {
         debug_assert!(self.idx < self.path.len());
 
-        let is_type_const =
-            (self.current_res.is_type() || self.current_res.is_trait()) && self.idx != 0;
+        let should_partial = (self.current_res.is_type()
+            || self.current_res.is_trait()
+            || self.starts_with(db, kw::SELF_TY))
+            && self.idx != 0;
 
-        if (self.idx == self.path.len() - 1) && !is_type_const {
-            IntermediatePathState::ReadyToFinalize
-        } else if is_type_const {
-            IntermediatePathState::TypeConst
+        if (self.idx == self.path.len() - 1) && !should_partial {
+            IntermediatePathState::Full
+        } else if should_partial {
+            IntermediatePathState::Partial
         } else {
             IntermediatePathState::Unresolved
         }
@@ -277,11 +287,11 @@ impl<'a> IntermediatePath<'a> {
 enum IntermediatePathState {
     /// The intermediate path points to the last segment of the path and need to
     /// be resolved to finalize the path resolution.
-    ReadyToFinalize,
+    Full,
 
     /// The intermediate path points to a type and the next segment need to be
     /// resolved with the type context.
-    TypeConst,
+    Partial,
 
     /// The path resolution need to be continued further.
     Unresolved,
