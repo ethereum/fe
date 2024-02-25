@@ -1095,6 +1095,7 @@ dependencies = [
  "fe-compiler-test-utils",
  "fe-hir",
  "fe-macros",
+ "if_chain",
  "itertools",
  "num-bigint",
  "once_cell",

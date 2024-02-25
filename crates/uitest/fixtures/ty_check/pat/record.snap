@@ -34,18 +34,12 @@ error[8-0008]: duplicated record field binding
 error[8-0009]: specified field not found
    ┌─ record.fe:14:17
    │
- 1 │ pub struct Foo {
-   │            --- `Foo` is defined here
-   ·
 14 │     let Foo {x, z}
    │                 ^ field `z` not found
 
 error[8-0009]: specified field not found
    ┌─ record.fe:20:26
    │
- 8 │     Variant {x: i32, y: u32}
-   │     ------------------------ `Variant` is defined here
-   ·
 20 │     let Bar::Variant {x, z}
    │                          ^ field `z` not found
 

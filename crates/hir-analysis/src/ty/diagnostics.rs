@@ -13,7 +13,7 @@ use itertools::Itertools;
 
 use super::{
     constraint::PredicateId,
-    ty_check::ResolvedPathData,
+    ty_check::RecordLike,
     ty_def::{Kind, TyId},
 };
 use crate::{name_resolution::diagnostics::NameResDiag, HirAnalysisDb};
@@ -552,19 +552,19 @@ pub enum BodyDiag {
 
     UnitVariantExpected {
         primary: DynLazySpan,
-        data_kind: &'static str,
+        kind_name: String,
         hint: Option<String>,
     },
 
     TupleVariantExpected {
         primary: DynLazySpan,
-        data_kind: Option<&'static str>,
+        kind_name: Option<String>,
         hint: Option<String>,
     },
 
     RecordExpected {
         primary: DynLazySpan,
-        data_kind: Option<&'static str>,
+        kind_name: Option<String>,
         hint: Option<String>,
     },
 
@@ -583,8 +583,6 @@ pub enum BodyDiag {
     RecordFieldNotFound {
         primary: DynLazySpan,
         label: IdentId,
-        def_span: DynLazySpan,
-        def_name: IdentId,
     },
 
     ExplicitLabelExpectedInRecord {
@@ -613,71 +611,70 @@ impl BodyDiag {
         Self::TypeMismatch(span, expected, actual)
     }
 
-    pub(super) fn unit_variant_expected(
+    pub(super) fn unit_variant_expected<T>(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
-        data: ResolvedPathData,
-    ) -> Self {
-        let pat_kind = data.data_kind(db);
-        let hint = data.initializer_hint(db);
+        mut record_like: T,
+    ) -> Self
+    where
+        T: RecordLike,
+    {
+        let kind_name = record_like.kind_name(db);
+        let hint = record_like.initializer_hint(db);
         Self::UnitVariantExpected {
             primary,
-            data_kind: pat_kind,
+            kind_name,
             hint,
         }
     }
 
-    pub(super) fn tuple_variant_expected(
+    pub(super) fn tuple_variant_expected<T>(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
-        data: Option<ResolvedPathData>,
-    ) -> Self {
-        let (pat_kind, hint) = if let Some(data) = data {
-            (Some(data.data_kind(db)), data.initializer_hint(db))
+        record_like: Option<T>,
+    ) -> Self
+    where
+        T: RecordLike,
+    {
+        let (kind_name, hint) = if let Some(mut record_like) = record_like {
+            (
+                Some(record_like.kind_name(db)),
+                record_like.initializer_hint(db),
+            )
         } else {
             (None, None)
         };
 
         Self::TupleVariantExpected {
             primary,
-            data_kind: pat_kind,
+            kind_name,
             hint,
         }
     }
 
-    pub(super) fn record_expected(
+    pub(super) fn record_expected<T>(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
-        data: Option<ResolvedPathData>,
-    ) -> Self {
-        let (pat_kind, hint) = if let Some(data) = data {
-            (Some(data.data_kind(db)), data.initializer_hint(db))
+        record_like: Option<T>,
+    ) -> Self
+    where
+        T: RecordLike,
+    {
+        let (kind_name, hint) = if let Some(mut record_like) = record_like {
+            (Some(record_like.kind_name(db)), record_like.initializer_hint(db))
         } else {
             (None, None)
         };
 
         Self::RecordExpected {
             primary,
-            data_kind: pat_kind,
+            kind_name,
             hint,
         }
     }
 
-    pub(super) fn record_field_not_found(
-        db: &dyn HirAnalysisDb,
-        primary: DynLazySpan,
-        data: &ResolvedPathData,
-        label: IdentId,
-    ) -> Self {
-        let def_span = data.def_span(db);
-        let def_name = data.def_name(db);
-
-        Self::RecordFieldNotFound {
-            primary,
-            label,
-            def_span,
-            def_name,
-        }
+    pub(super) fn record_field_not_found(primary: DynLazySpan, label: IdentId) -> Self {
+        Self::RecordFieldNotFound { primary, label }
     }
 
     fn local_code(&self) -> u16 {
@@ -754,7 +751,7 @@ impl BodyDiag {
 
             Self::UnitVariantExpected {
                 primary,
-                data_kind: pat_kind,
+                kind_name: pat_kind,
                 hint,
             } => {
                 let mut diag = vec![SubDiagnostic::new(
@@ -774,7 +771,7 @@ impl BodyDiag {
 
             Self::TupleVariantExpected {
                 primary,
-                data_kind: pat_kind,
+                kind_name: pat_kind,
                 hint,
             } => {
                 let mut diag = if let Some(pat_kind) = pat_kind {
@@ -804,7 +801,7 @@ impl BodyDiag {
 
             Self::RecordExpected {
                 primary,
-                data_kind: pat_kind,
+                kind_name: pat_kind,
                 hint,
             } => {
                 let mut diag = if let Some(pat_kind) = pat_kind {
@@ -867,27 +864,13 @@ impl BodyDiag {
                 ]
             }
 
-            Self::RecordFieldNotFound {
-                primary,
-                label,
-                def_span,
-                def_name,
-            } => {
+            Self::RecordFieldNotFound { primary, label } => {
                 let label = label.data(db.as_hir_db());
-                let def_name = def_name.data(db.as_hir_db());
-
-                vec![
-                    SubDiagnostic::new(
-                        LabelStyle::Primary,
-                        format!("field `{}` not found", label),
-                        primary.resolve(db),
-                    ),
-                    SubDiagnostic::new(
-                        LabelStyle::Secondary,
-                        format!("`{}` is defined here", def_name),
-                        def_span.resolve(db),
-                    ),
-                ]
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("field `{}` not found", label),
+                    primary.resolve(db),
+                )]
             }
 
             Self::ExplicitLabelExpectedInRecord { primary, hint } => {
