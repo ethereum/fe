@@ -1146,7 +1146,7 @@ where
         Pat::PathTuple(path, elems) => {
             if let Some(path) = path.to_opt() {
                 ctxt.with_new_ctxt(
-                    |span| span.into_path_pat().path_moved(),
+                    |span| span.into_path_tuple_pat().path_moved(),
                     |ctxt| {
                         visitor.visit_path(ctxt, path);
                     },
