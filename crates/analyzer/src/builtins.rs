@@ -149,7 +149,7 @@ impl Intrinsic {
         match self {
             __stop | __pop | __mstore | __mstore8 | __sstore | __calldatacopy | __codecopy
             | __extcodecopy | __returndatacopy | __return | __revert | __selfdestruct
-            | __invalid | __log0 | __log1 | __log2 | __log3 | __log4 => Base::Unit,
+            | __invalid | __log0 | __log1 | __log2 | __log3 | __log4 | __tstore => Base::Unit,
             _ => Base::u256(),
         }
     }
