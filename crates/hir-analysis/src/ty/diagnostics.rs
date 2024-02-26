@@ -5,7 +5,7 @@ use common::diagnostics::{
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
-    hir_def::{FuncParamName, IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias},
+    hir_def::{Func, FuncParamName, IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias},
     span::{DynLazySpan, LazySpan},
     HirDb, SpannedHirDb,
 };
@@ -597,6 +597,13 @@ pub enum BodyDiag {
     },
 
     UndefinedVariable(DynLazySpan, IdentId),
+
+    ReturnedTypeMismatch {
+        primary: DynLazySpan,
+        actual: String,
+        expected: String,
+        func: Option<Func>,
+    },
 }
 
 impl BodyDiag {
@@ -680,6 +687,23 @@ impl BodyDiag {
         Self::RecordFieldNotFound { primary, label }
     }
 
+    pub(super) fn returned_type_mismatch(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        actual: TyId,
+        expected: TyId,
+        func: Option<Func>,
+    ) -> Self {
+        let actual = actual.pretty_print(db).to_string();
+        let expected = expected.pretty_print(db).to_string();
+        Self::ReturnedTypeMismatch {
+            primary,
+            actual,
+            expected,
+            func,
+        }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(..) => 0,
@@ -695,6 +719,7 @@ impl BodyDiag {
             Self::ExplicitLabelExpectedInRecord { .. } => 10,
             Self::MissingRecordFields { .. } => 11,
             Self::UndefinedVariable(..) => 12,
+            Self::ReturnedTypeMismatch { .. } => 13,
         }
     }
 
@@ -713,6 +738,7 @@ impl BodyDiag {
             Self::ExplicitLabelExpectedInRecord { .. } => "explicit label is required".to_string(),
             Self::MissingRecordFields { .. } => "all fields are not given".to_string(),
             Self::UndefinedVariable(..) => "undefined variable".to_string(),
+            Self::ReturnedTypeMismatch { .. } => "returned type mismatch".to_string(),
         }
     }
 
@@ -926,6 +952,37 @@ impl BodyDiag {
                     format!("undefined variable `{}`", ident),
                     primary.resolve(db),
                 )]
+            }
+
+            Self::ReturnedTypeMismatch {
+                primary,
+                actual,
+                expected,
+                func,
+            } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected `{}`, but `{}` is returned", expected, actual),
+                    primary.resolve(db),
+                )];
+
+                if let Some(func) = func {
+                    if func.ret_ty(db.as_hir_db()).is_some() {
+                        diag.push(SubDiagnostic::new(
+                            LabelStyle::Secondary,
+                            format!("this function expects `{}` to be returned", expected),
+                            func.lazy_span().ret_ty_moved().resolve(db),
+                        ))
+                    } else {
+                        diag.push(SubDiagnostic::new(
+                            LabelStyle::Secondary,
+                            format!("try adding `-> {}`", actual),
+                            func.lazy_span().name_moved().resolve(db),
+                        ))
+                    }
+                }
+
+                diag
             }
         }
     }
