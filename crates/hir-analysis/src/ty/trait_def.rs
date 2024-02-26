@@ -261,10 +261,7 @@ impl TraitInstId {
         table
     }
 
-    pub(super) fn constraints(
-        self,
-        db: &dyn HirAnalysisDb,
-    ) -> (AssumptionListId, ConstraintListId) {
+    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         trait_inst_constraints(db, self)
     }
 
