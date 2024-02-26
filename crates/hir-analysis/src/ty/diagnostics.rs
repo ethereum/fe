@@ -5,7 +5,9 @@ use common::diagnostics::{
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
-    hir_def::{Func, FuncParamName, IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias},
+    hir_def::{
+        FieldIndex, Func, FuncParamName, IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias,
+    },
     span::{DynLazySpan, LazySpan},
     HirDb, SpannedHirDb,
 };
@@ -604,6 +606,14 @@ pub enum BodyDiag {
         expected: String,
         func: Option<Func>,
     },
+
+    TypeMustBeKnown(DynLazySpan),
+
+    AccessedFieldNotFound {
+        primary: DynLazySpan,
+        given_ty: String,
+        index: FieldIndex,
+    },
 }
 
 impl BodyDiag {
@@ -704,6 +714,20 @@ impl BodyDiag {
         }
     }
 
+    pub(super) fn accessed_field_not_found(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        given_ty: TyId,
+        index: FieldIndex,
+    ) -> Self {
+        let given_ty = given_ty.pretty_print(db).to_string();
+        Self::AccessedFieldNotFound {
+            primary,
+            given_ty,
+            index,
+        }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(..) => 0,
@@ -720,6 +744,8 @@ impl BodyDiag {
             Self::MissingRecordFields { .. } => 11,
             Self::UndefinedVariable(..) => 12,
             Self::ReturnedTypeMismatch { .. } => 13,
+            Self::TypeMustBeKnown(..) => 14,
+            Self::AccessedFieldNotFound { .. } => 15,
         }
     }
 
@@ -739,6 +765,8 @@ impl BodyDiag {
             Self::MissingRecordFields { .. } => "all fields are not given".to_string(),
             Self::UndefinedVariable(..) => "undefined variable".to_string(),
             Self::ReturnedTypeMismatch { .. } => "returned type mismatch".to_string(),
+            Self::TypeMustBeKnown(..) => "type must be known here".to_string(),
+            Self::AccessedFieldNotFound { .. } => "invalid field index".to_string(),
         }
     }
 
@@ -983,6 +1011,41 @@ impl BodyDiag {
                 }
 
                 diag
+            }
+
+            Self::TypeMustBeKnown(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "type must be known here".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::AccessedFieldNotFound {
+                primary,
+                given_ty,
+                index,
+            } => {
+                let message = match index {
+                    FieldIndex::Ident(ident) => {
+                        format!(
+                            "field `{}` is not found in `{}`",
+                            ident.data(db.as_hir_db()),
+                            &given_ty,
+                        )
+                    }
+                    FieldIndex::Index(index) => {
+                        format!(
+                            "field `{}` is not found in `{}`",
+                            index.data(db.as_hir_db()),
+                            &given_ty
+                        )
+                    }
+                };
+
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    message,
+                    primary.resolve(db),
+                )]
             }
         }
     }

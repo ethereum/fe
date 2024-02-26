@@ -60,7 +60,7 @@ impl ExprId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FieldIndex {
     /// The field is indexed by its name.
     /// `field.foo`.

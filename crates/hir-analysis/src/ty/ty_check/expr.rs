@@ -1,4 +1,4 @@
-use hir::hir_def::{Expr, ExprId, Partial, VariantKind};
+use hir::hir_def::{Expr, ExprId, FieldIndex, Partial, VariantKind};
 
 use super::{path::ResolvedPathInExpr, RecordLike};
 use crate::ty::{
@@ -7,7 +7,7 @@ use crate::ty::{
     ty_check::{
         path::{
             resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
-            ResolvedPathInRecordInit,
+            ResolvedPathInRecordInit, TyInBody,
         },
         TyChecker,
     },
@@ -32,7 +32,7 @@ impl<'db> TyChecker<'db> {
             Expr::MethodCall(..) => todo!(),
             Expr::Path(..) => self.check_path(expr, expr_data),
             Expr::RecordInit(..) => self.check_record_init(expr, expr_data),
-            Expr::Field(..) => todo!(),
+            Expr::Field(..) => self.check_field(expr, expr_data),
             Expr::Tuple(..) => self.check_tuple(expr, expr_data, expected),
             Expr::Index(..) => todo!(),
             Expr::Array(..) => self.check_array(expr, expr_data, expected),
@@ -189,6 +189,55 @@ impl<'db> TyChecker<'db> {
         if let Err(diag) = rec_checker.finalize(span.fields().into(), false) {
             FuncBodyDiagAccumulator::push(self.db, diag);
         }
+    }
+
+    fn check_field(&mut self, expr: ExprId, expr_data: &Expr) -> TyId {
+        let Expr::Field(indexed, index) = expr_data else {
+            unreachable!()
+        };
+        let Partial::Present(field) = index else {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
+
+        let ty = self.fresh_ty();
+        let ty = self
+            .check_expr(*indexed, ty)
+            .apply_subst(self.db, &mut self.table);
+        let (ty_base, ty_args) = ty.decompose_ty_app(self.db);
+
+        if ty_base.is_ty_var(self.db) {
+            let diag = BodyDiag::TypeMustBeKnown(indexed.lazy_span(self.body()).into());
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+            return TyId::invalid(self.db, InvalidCause::Other);
+        }
+
+        match field {
+            FieldIndex::Ident(label) => {
+                let mut ty_in_body = TyInBody::new(self.db, &mut self.table, ty);
+                if let Some(ty) = ty_in_body.record_field_ty(self.db, *label) {
+                    return ty;
+                }
+            }
+
+            FieldIndex::Index(i) => {
+                let arg_len = ty_args.len().into();
+                if ty_base.is_tuple(self.db) && i.data(self.db.as_hir_db()) < &arg_len {
+                    let i: usize = i.data(self.db.as_hir_db()).try_into().unwrap();
+                    return ty_args[i];
+                }
+            }
+        };
+
+        let diag = BodyDiag::accessed_field_not_found(
+            self.db,
+            expr.lazy_span(self.body()).into(),
+            ty,
+            *field,
+        );
+        FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+        TyId::invalid(self.db, InvalidCause::Other)
     }
 
     fn check_tuple(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
