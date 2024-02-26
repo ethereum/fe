@@ -211,6 +211,10 @@ impl TyId {
         matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self)
     }
 
+    pub(super) fn is_ty_var(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::TyVar(_))
+    }
+
     pub(super) fn is_const_ty(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::ConstTy(_))
     }
