@@ -37,8 +37,8 @@ impl<'db> TyChecker<'db> {
             Expr::Index(..) => todo!(),
             Expr::Array(..) => self.check_array(expr, expr_data, expected),
             Expr::ArrayRep(..) => self.check_array_rep(expr, expr_data, expected),
-            Expr::If(..) => self.check_if(expr, expr_data, expected),
-            Expr::Match(..) => self.check_match(expr, expr_data, expected),
+            Expr::If(..) => self.check_if(expr, expr_data),
+            Expr::Match(..) => self.check_match(expr, expr_data),
             Expr::Assign(..) => todo!(),
             Expr::AugAssign(..) => todo!(),
         };
@@ -255,29 +255,29 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_if(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
+    fn check_if(&mut self, _expr: ExprId, expr_data: &Expr) -> TyId {
         let Expr::If(cond, then, else_) = expr_data else {
             unreachable!()
         };
 
         self.check_expr(*cond, TyId::bool(self.db));
 
+        let if_ty = self.fresh_ty();
         match else_ {
             Some(else_) => {
-                self.check_expr_in_new_scope(*then, expected);
-                self.check_expr_in_new_scope(*else_, expected)
+                self.check_expr_in_new_scope(*then, if_ty);
+                self.check_expr_in_new_scope(*else_, if_ty)
             }
 
             None => {
                 // If there is no else branch, the if expression itself typed as `()`
-                let expected = self.fresh_ty();
-                self.check_expr_in_new_scope(*then, expected);
+                self.check_expr_in_new_scope(*then, if_ty);
                 TyId::unit(self.db)
             }
         }
     }
 
-    fn check_match(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
+    fn check_match(&mut self, _expr: ExprId, expr_data: &Expr) -> TyId {
         let Expr::Match(scrutinee, arms) = expr_data else {
             unreachable!()
         };
@@ -289,18 +289,19 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
+        let match_ty = self.fresh_ty();
         for arm in arms {
             self.check_pat(arm.pat, scrutinee_ty);
 
             self.env.enter_scope(arm.body);
             self.env.flush_pending_bindings();
 
-            self.check_expr(arm.body, expected);
+            self.check_expr(arm.body, match_ty);
 
             self.env.leave_scope();
         }
 
-        expected
+        match_ty
     }
 
     fn check_expr_in_new_scope(&mut self, expr: ExprId, expected: TyId) -> TyId {

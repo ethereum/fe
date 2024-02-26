@@ -123,7 +123,15 @@ impl<'db> TyChecker<'db> {
         let t = t.into();
 
         let actual = match self.table.unify(expected, actual) {
-            Ok(()) => actual,
+            Ok(()) => {
+                // FIXME: This is a temporary workaround, this should be removed when we
+                // implement subtyping.
+                if actual.apply_subst(self.db, &mut self.table).is_bot(self.db) {
+                    expected
+                } else {
+                    actual
+                }
+            }
 
             Err(UnificationError::TypeMismatch) => {
                 let actual = actual.apply_subst(self.db, &mut self.table);
