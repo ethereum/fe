@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/field_access.fe
+---
+error[8-0014]: type must be known here
+  ┌─ field_access.fe:7:5
+  │
+7 │     x.1
+  │     ^ type must be known here
+
+error[8-0015]: invalid field index
+  ┌─ field_access.fe:2:5
+  │
+2 │     x.2
+  │     ^^^ field `2` is not found in `(i32, u32)`
+
+error[8-0015]: invalid field index
+   ┌─ field_access.fe:16:5
+   │
+16 │     bar.v
+   │     ^^^^^ field `v` is not found in `Bar`
+
+

@@ -183,7 +183,20 @@ impl TyInBody {
         }
     }
 
-    fn new(db: &dyn HirAnalysisDb, table: &mut UnificationTable, ty: TyId, path: PathId) -> Self {
+    pub(super) fn new(db: &dyn HirAnalysisDb, table: &mut UnificationTable, ty: TyId) -> Self {
+        let (base, _) = ty.decompose_ty_app(db);
+        let base_name = IdentId::new(db.as_hir_db(), base.pretty_print(db).to_string());
+        let path = PathId::from_ident(db.as_hir_db(), base_name);
+
+        Self::new_from_path_type(db, table, ty, path)
+    }
+
+    fn new_from_path_type(
+        db: &dyn HirAnalysisDb,
+        table: &mut UnificationTable,
+        ty: TyId,
+        path: PathId,
+    ) -> Self {
         let args = ty.generic_args(db);
         let params = ty.generic_params(db);
         assert!(args.len() <= params.len());
@@ -454,19 +467,19 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_struct(self.tc.db, struct_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TyInBody::new(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyInBody::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Enum(enum_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_enum(self.tc.db, enum_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TyInBody::new(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyInBody::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Contract(contract_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_contract(self.tc.db, contract_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TyInBody::new(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyInBody::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
             }
 
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
@@ -477,15 +490,19 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Item(ItemKind::Func(func))) => {
                 let func_def = lower_func(self.tc.db, func).unwrap();
                 let ty = TyId::func(self.tc.db, func_def);
-                TyInBody::new(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyInBody::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Impl(impl_))) => {
                 match impl_.ty(self.tc.db.as_hir_db()).to_opt() {
                     Some(hir_ty) => {
                         let ty = lower_hir_ty(self.tc.db, hir_ty, self.tc.env.scope());
-                        let ty_in_body =
-                            TyInBody::new(self.tc.db, &mut self.tc.table, ty, self.path);
+                        let ty_in_body = TyInBody::new_from_path_type(
+                            self.tc.db,
+                            &mut self.tc.table,
+                            ty,
+                            self.path,
+                        );
                         ResolvedPathInBody::Ty(ty_in_body)
                     }
 
@@ -501,8 +518,12 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 match impl_trait.ty(self.tc.db.as_hir_db()).to_opt() {
                     Some(hir_ty) => {
                         let ty = lower_hir_ty(self.tc.db, hir_ty, self.tc.env.scope());
-                        let ty_in_body =
-                            TyInBody::new(self.tc.db, &mut self.tc.table, ty, self.path);
+                        let ty_in_body = TyInBody::new_from_path_type(
+                            self.tc.db,
+                            &mut self.tc.table,
+                            ty,
+                            self.path,
+                        );
                         ResolvedPathInBody::Ty(ty_in_body)
                     }
 
@@ -516,7 +537,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
             NameResKind::Prim(prim) => {
                 let ty = TyId::from_hir_prim_ty(self.tc.db, prim);
-                TyInBody::new(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyInBody::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
             }
 
             _ => ResolvedPathInBody::Invalid,
