@@ -35,11 +35,10 @@ pub(crate) fn check_ty_app_sat(
         }
     }
 
-    let (new_assumptions, constraints) = ty_constraints(db, ty);
+    let constraints = ty_constraints(db, ty);
 
-    let new_assumptions = assumptions.merge(db, new_assumptions);
     for &goal in constraints.predicates(db) {
-        match is_goal_satisfiable(db, goal, new_assumptions) {
+        match is_goal_satisfiable(db, goal, assumptions) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }
@@ -56,11 +55,9 @@ pub(crate) fn check_trait_inst_sat(
     trait_inst: TraitInstId,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
-    let (new_assumptions, constraints) = trait_inst.constraints(db);
-    let new_assumptions = assumptions.merge(db, new_assumptions);
-
+    let constraints = trait_inst.constraints(db);
     for &goal in constraints.predicates(db) {
-        match is_goal_satisfiable(db, goal, new_assumptions) {
+        match is_goal_satisfiable(db, goal, assumptions) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }

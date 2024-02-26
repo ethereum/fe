@@ -26,24 +26,8 @@ use crate::{
 };
 
 /// Returns a constraints list which is derived from the given type.
-/// # Returns
-///
-/// ##  The first `AssumptionListId`
-/// This is a list of assumptions that should be merged to the context where the
-/// constraints are solved.
-/// This new assumptions are obtained when the given type is a partial applied
-/// type, i.e., the assumptions describes the free type variables.
-///
-/// ## The second `ConstraintListId`
-/// This is a list of constraints that should be solved to ensure the type is
-/// valid.
 #[salsa::tracked]
-pub(crate) fn ty_constraints(
-    db: &dyn HirAnalysisDb,
-    ty: TyId,
-) -> (AssumptionListId, ConstraintListId) {
-    assert!(ty.free_inference_keys(db).is_empty());
-
+pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintListId {
     let (base, args) = ty.decompose_ty_app(db);
     let (params, base_constraints) = match base.data(db) {
         TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, *adt)),
@@ -52,10 +36,7 @@ pub(crate) fn ty_constraints(
             collect_func_def_constraints(db, *func_def),
         ),
         _ => {
-            return (
-                AssumptionListId::empty_list(db),
-                ConstraintListId::empty_list(db),
-            );
+            return ConstraintListId::empty_list(db);
         }
     };
 
@@ -76,61 +57,36 @@ pub(crate) fn ty_constraints(
 
     let constraints = base_constraints.apply_subst(db, &mut subst);
 
-    // If the predicate type is a type variable, collect it as an assumption
-    // and remove it from the constraint.
-    let mut new_assumptions = BTreeSet::new();
+    // If the constraint type contains unbound type parameters, we just ignore it.
     let mut new_constraints = BTreeSet::new();
     for &pred in constraints.predicates(db) {
-        if pred.ty(db).is_ty_var(db) {
-            new_assumptions.insert(pred);
-        } else {
+        if pred.ty(db).free_inference_keys(db).is_empty() {
             new_constraints.insert(pred);
         }
     }
 
     let ingot = constraints.ingot(db);
-    (
-        AssumptionListId::new(db, new_assumptions, ingot),
-        ConstraintListId::new(db, new_constraints, ingot),
-    )
+    ConstraintListId::new(db, new_constraints, ingot)
 }
 
 #[salsa::tracked]
 pub(crate) fn trait_inst_constraints(
     db: &dyn HirAnalysisDb,
     trait_inst: TraitInstId,
-) -> (AssumptionListId, ConstraintListId) {
+) -> ConstraintListId {
     let def_constraints = collect_trait_constraints(db, trait_inst.def(db));
     let mut subst = trait_inst.subst_table(db);
-    let self_ty_param = trait_inst.def(db).self_param(db);
-    let self_ty_kind = self_ty_param.kind(db);
 
-    subst.insert(
-        self_ty_param,
-        TyId::ty_var(
-            db,
-            TyVarUniverse::General,
-            self_ty_kind.clone(),
-            InferenceKey(0_u32),
-        ),
-    );
     let constraint = def_constraints.apply_subst(db, &mut subst);
-
-    let mut new_assumptions = BTreeSet::new();
     let mut new_constraints = BTreeSet::new();
     for &pred in constraint.predicates(db) {
-        if pred.ty(db).is_ty_var(db) {
-            new_assumptions.insert(pred);
-        } else {
+        if pred.ty(db).free_inference_keys(db).is_empty() {
             new_constraints.insert(pred);
         }
     }
 
     let ingot = constraint.ingot(db);
-    (
-        AssumptionListId::new(db, new_assumptions, ingot),
-        ConstraintListId::new(db, new_constraints, ingot),
-    )
+    ConstraintListId::new(db, new_constraints, ingot)
 }
 
 /// Collect super traits of the given trait.
