@@ -94,7 +94,10 @@ impl<'db> UnificationTable<'db> {
                 }
             }
 
-            (TyData::Invalid(_), _) | (_, TyData::Invalid(_)) => Ok(()),
+            (TyData::Invalid(_), _)
+            | (_, TyData::Invalid(_))
+            | (TyData::Bot, _)
+            | (_, TyData::Bot) => Ok(()),
 
             (TyData::ConstTy(const_ty1), TyData::ConstTy(const_ty2)) => {
                 self.unify_ty(const_ty1.ty(self.db), const_ty2.ty(self.db))?;
@@ -232,6 +235,8 @@ impl<'db> UnificationTable<'db> {
                 if value.is_integral(self.db) {
                     self.table
                         .unify_var_value(var.key, InferenceValue::Bound(value))
+                } else if value.is_bot(self.db) {
+                    Ok(())
                 } else {
                     Err(UnificationError::TypeMismatch)
                 }
@@ -239,6 +244,11 @@ impl<'db> UnificationTable<'db> {
 
             TyVarUniverse::String(n_var) => {
                 let (base, args) = value.decompose_ty_app(self.db);
+
+                if base.is_bot(self.db) {
+                    return Ok(());
+                }
+
                 if !base.is_string(self.db) || args.len() != 1 {
                     return Err(UnificationError::TypeMismatch);
                 }

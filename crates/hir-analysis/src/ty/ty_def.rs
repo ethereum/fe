@@ -104,6 +104,11 @@ impl TyId {
         }
     }
 
+    /// Returns `true` if the type is a bottom type.
+    pub fn is_bot(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::Bot)
+    }
+
     /// Returns `IngotId` that declares the type.
     pub fn ingot(self, db: &dyn HirAnalysisDb) -> Option<IngotId> {
         match self.data(db) {
@@ -330,10 +335,6 @@ impl TyId {
                 Some(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into())
             }
         }
-    }
-
-    pub(super) fn is_ty_var(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::TyVar(_))
     }
 
     /// Returns all inference keys in the type.
@@ -700,6 +701,9 @@ pub enum TyData {
     TyBase(TyBase),
 
     ConstTy(ConstTyId),
+
+    /// A bottom type.
+    Bot,
 
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
@@ -1161,6 +1165,8 @@ impl HasKind for TyData {
 
             TyData::ConstTy(const_ty) => const_ty.ty(db).kind(db).clone(),
 
+            TyData::Bot => Kind::Any,
+
             TyData::Invalid(_) => Kind::Any,
         }
     }
@@ -1264,7 +1270,8 @@ pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
         TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
         TyData::TyBase(ty_con) => ty_con.pretty_print(db),
         TyData::ConstTy(const_ty) => const_ty.pretty_print(db),
-        _ => "<invalid>".to_string(),
+        TyData::Bot => "bot".to_string(),
+        TyData::Invalid(..) => "<invalid>".to_string(),
     }
 }
 
