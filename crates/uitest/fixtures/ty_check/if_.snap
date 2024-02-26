@@ -19,6 +19,6 @@ error[8-0000]: type mismatch
    ┌─ if_.fe:17:9
    │
 17 │         false
-   │         ^^^^^ expected `i32`, but `bool` is given
+   │         ^^^^^ expected `<integer>`, but `bool` is given
 
 

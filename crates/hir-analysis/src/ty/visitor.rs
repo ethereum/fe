@@ -61,6 +61,8 @@ where
         TyData::TyBase(ty_con) => visitor.visit_ty_base(db, ty_con),
 
         TyData::ConstTy(const_ty) => visitor.visit_const_ty(db, const_ty),
+        
+        TyData::Bot => {}
 
         TyData::Invalid(cause) => visitor.visit_invalid(db, cause),
     }
