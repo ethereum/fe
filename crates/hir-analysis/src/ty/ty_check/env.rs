@@ -1,5 +1,5 @@
 use hir::hir_def::{
-    scope_graph::ScopeId, Body, Expr, ExprId, Func, IdentId, Partial, PatId, Stmt, StmtId,
+    scope_graph::ScopeId, Body, BodyKind, Expr, ExprId, Func, IdentId, Partial, PatId, Stmt, StmtId,
 };
 use rustc_hash::FxHashMap;
 
@@ -66,6 +66,15 @@ impl<'db> TyCheckEnv<'db> {
         }
 
         Ok(env)
+    }
+
+    /// Returns a function if the `body` being checked has `BodyKind::FuncBody`.
+    /// If the `body` has `BodyKind::Anonymous`, returns None
+    pub(super) fn func(&self) -> Option<Func> {
+        match self.body.body_kind(self.db.as_hir_db()) {
+            BodyKind::FuncBody => self.var_env.first()?.scope.item().try_into().ok(),
+            BodyKind::Anonymous => None,
+        }
     }
 
     pub(super) fn body(&self) -> Body {
