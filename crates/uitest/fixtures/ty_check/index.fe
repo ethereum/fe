@@ -1,0 +1,7 @@
+struct Foo {} 
+
+pub fn foo(x: [i32; 10]) -> i32 {
+    x[false]
+    let f = Foo { }
+    f[1]
+}

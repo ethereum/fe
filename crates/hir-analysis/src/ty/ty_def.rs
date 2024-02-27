@@ -76,6 +76,14 @@ impl TyId {
         }
     }
 
+    /// Returns the type of const type if the type is a const type.
+    pub fn const_ty_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+        match self.data(db) {
+            TyData::ConstTy(const_ty) => Some(const_ty.ty(db)),
+            _ => None,
+        }
+    }
+
     /// Returns `true` if the type is invalid, see [`contains_invalid`] if you
     /// want to check if the type contains any invalid types as a part of the
     /// type.
