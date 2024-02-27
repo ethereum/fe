@@ -1,11 +1,10 @@
-use crate::SyntaxKind;
-
 use super::{
     define_scope, expr_atom,
     param::{CallArgListScope, GenericArgListScope},
     token_stream::{LexicalToken, TokenStream},
     Checkpoint, Parser,
 };
+use crate::SyntaxKind;
 
 /// Parses expression.
 pub fn parse_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
@@ -34,12 +33,15 @@ fn parse_expr_with_min_bp<S: TokenStream>(
     }
 
     loop {
+        let is_trivia = parser.set_newline_as_trivia(true);
         let Some(kind) = parser.current_kind() else {
+            parser.set_newline_as_trivia(is_trivia);
             break;
         };
+        parser.set_newline_as_trivia(is_trivia);
 
         // Parse postfix operators.
-        match postfix_binding_power(kind) {
+        match postfix_binding_power(parser) {
             Some(lbp) if lbp < min_bp => break,
             Some(_) => {
                 match kind {
@@ -82,9 +84,9 @@ fn parse_expr_with_min_bp<S: TokenStream>(
 
             let (ok, _) = if kind == SyntaxKind::Dot {
                 parser.parse(FieldExprScope::default(), Some(checkpoint))
-            } else if is_asn(parser) {
+            } else if is_assign(parser) {
                 parser.parse(AssignExprScope::default(), Some(checkpoint))
-            } else if is_aug(parser) {
+            } else if is_aug_assign(parser) {
                 parser.parse(AugAssignExprScope::default(), Some(checkpoint))
             } else {
                 parser.parse(BinExprScope::default(), Some(checkpoint))
@@ -128,13 +130,23 @@ fn prefix_binding_power(kind: SyntaxKind) -> Option<u8> {
 }
 
 /// Specifies how tightly a postfix operator binds to its operand.
-fn postfix_binding_power(kind: SyntaxKind) -> Option<u8> {
+fn postfix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<u8> {
     use SyntaxKind::*;
-    match kind {
-        LBracket | LParen | Lt => Some(147),
-        Dot => Some(151),
-        _ => None,
+
+    let is_trivia = parser.set_newline_as_trivia(true);
+    if let Some(Dot) = parser.current_kind() {
+        parser.set_newline_as_trivia(is_trivia);
+        return Some(151);
     }
+
+    parser.set_newline_as_trivia(false);
+    let power = match parser.current_kind() {
+        Some(LBracket | LParen | Lt) => Some(147),
+        _ => None,
+    };
+
+    parser.set_newline_as_trivia(is_trivia);
+    power
 }
 
 /// Specifies how tightly does an infix operator bind to its left and right
@@ -142,11 +154,24 @@ fn postfix_binding_power(kind: SyntaxKind) -> Option<u8> {
 fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8)> {
     use SyntaxKind::*;
 
-    if is_aug(parser) {
+    let is_trivia = parser.set_newline_as_trivia(true);
+    if let Some(Dot) = parser.current_kind() {
+        parser.set_newline_as_trivia(is_trivia);
+        return Some((151, 150));
+    }
+
+    parser.set_newline_as_trivia(false);
+    if is_aug_assign(parser) {
+        parser.set_newline_as_trivia(is_trivia);
         return Some((11, 10));
     }
 
-    let bp = match parser.current_kind()? {
+    let Some(kind) = parser.current_kind() else {
+        parser.set_newline_as_trivia(is_trivia);
+        return None;
+    };
+
+    let bp = match kind {
         Pipe2 => (50, 51),
         Amp2 => (60, 61),
         NotEq | Eq2 => (70, 71),
@@ -173,14 +198,19 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
         Plus | Minus => (120, 121),
         Star | Slash | Percent => (130, 131),
         Star2 => (141, 140),
-        Dot => (151, 150),
         Eq => {
             // `Assign` and `AugAssign` have the same binding power
             (11, 10)
         }
-        _ => return None,
+        _ => {
+            return {
+                parser.set_newline_as_trivia(is_trivia);
+                None
+            }
+        }
     };
 
+    parser.set_newline_as_trivia(is_trivia);
     Some(bp)
 }
 
@@ -259,7 +289,7 @@ impl super::Parse for CallExprScope {
 define_scope! { MethodExprScope, MethodCallExpr, Inheritance }
 impl super::Parse for MethodExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.set_newline_as_trivia(false);
+        let is_trivia = parser.set_newline_as_trivia(true);
         parser.bump_expected(SyntaxKind::Dot);
 
         parser.bump_or_recover(SyntaxKind::Ident, "expected identifier", None);
@@ -275,8 +305,11 @@ impl super::Parse for MethodExprScope {
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
             parser.error_and_recover("expected `(`", None);
+            parser.set_newline_as_trivia(is_trivia);
             return;
         }
+
+        parser.set_newline_as_trivia(is_trivia);
         parser.parse(CallArgListScope::default(), None);
     }
 }
@@ -284,7 +317,7 @@ impl super::Parse for MethodExprScope {
 define_scope! { FieldExprScope, FieldExpr, Inheritance }
 impl super::Parse for FieldExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.set_newline_as_trivia(false);
+        let is_trivia = parser.set_newline_as_trivia(true);
         parser.bump_expected(SyntaxKind::Dot);
 
         match parser.current_token() {
@@ -304,6 +337,8 @@ impl super::Parse for FieldExprScope {
                 parser.error_and_recover("expected identifier or integer literal", None);
             }
         }
+
+        parser.set_newline_as_trivia(is_trivia);
     }
 }
 
@@ -355,7 +390,7 @@ fn is_gt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.peek_two() == (Some(SyntaxKind::Gt), Some(SyntaxKind::Eq))
 }
 
-fn is_aug<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+fn is_aug_assign<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     use SyntaxKind::*;
     matches!(
         parser.peek_three(),
@@ -368,7 +403,7 @@ fn is_aug<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     )
 }
 
-fn is_asn<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+fn is_assign<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     let nt = parser.set_newline_as_trivia(false);
     let is_asn = parser.current_kind() == Some(SyntaxKind::Eq);
     parser.set_newline_as_trivia(nt);
@@ -442,24 +477,29 @@ fn is_call_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
 
 fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.dry_run(|parser| {
-        parser.set_newline_as_trivia(false);
+        let is_trivia = parser.set_newline_as_trivia(true);
         if !parser.bump_if(SyntaxKind::Dot) {
+            parser.set_newline_as_trivia(is_trivia);
             return false;
         }
 
         if !parser.bump_if(SyntaxKind::Ident) {
+            parser.set_newline_as_trivia(is_trivia);
             return false;
         }
 
         if parser.current_kind() == Some(SyntaxKind::Lt)
             && !parser.parse(GenericArgListScope::default(), None).0
         {
+            parser.set_newline_as_trivia(is_trivia);
             return false;
         }
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
+            parser.set_newline_as_trivia(is_trivia);
             false
         } else {
+            parser.set_newline_as_trivia(is_trivia);
             parser.parse(CallArgListScope::default(), None).0
         }
     })
