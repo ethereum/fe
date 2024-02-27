@@ -23,6 +23,12 @@ note:
   ┌─ test_file.fe:3:5
   │
 3 │     x.0
+  │     ^ (i32, u32)
+
+note: 
+  ┌─ test_file.fe:3:5
+  │
+3 │     x.0
   │     ^^^ i32
 
 note: 
@@ -46,6 +52,12 @@ note:
   ┌─ test_file.fe:7:17
   │
 7 │     let elem0 = x.0
+  │                 ^ (T, U)
+
+note: 
+  ┌─ test_file.fe:7:17
+  │
+7 │     let elem0 = x.0
   │                 ^^^ T
 
 note: 
@@ -53,6 +65,12 @@ note:
   │
 8 │     let elem1 = x.1
   │         ^^^^^ U
+
+note: 
+  ┌─ test_file.fe:8:17
+  │
+8 │     let elem1 = x.1
+  │                 ^ (T, U)
 
 note: 
   ┌─ test_file.fe:8:17
@@ -99,6 +117,12 @@ note:
    ┌─ test_file.fe:18:13
    │
 18 │     let u = bar.t
+   │             ^^^ Bar<T, i32>
+
+note: 
+   ┌─ test_file.fe:18:13
+   │
+18 │     let u = bar.t
    │             ^^^^^ T
 
 note: 
@@ -106,6 +130,12 @@ note:
    │
 19 │     let t = bar.u
    │         ^ i32
+
+note: 
+   ┌─ test_file.fe:19:13
+   │
+19 │     let t = bar.u
+   │             ^^^ Bar<T, i32>
 
 note: 
    ┌─ test_file.fe:19:13

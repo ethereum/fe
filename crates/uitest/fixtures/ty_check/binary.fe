@@ -1,0 +1,7 @@
+struct Foo {}
+fn foo()) {
+    let f = Foo {}
+    f + f
+    
+    (f && f) || f
+}

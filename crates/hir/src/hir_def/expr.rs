@@ -94,7 +94,7 @@ pub enum ArithBinOp {
     /// `/`
     Div,
     /// `%`
-    Mod,
+    Rem,
     /// `**`
     Pow,
     /// `<<`

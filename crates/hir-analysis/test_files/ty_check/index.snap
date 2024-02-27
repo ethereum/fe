@@ -35,6 +35,12 @@ note:
   ┌─ test_file.fe:3:5
   │
 3 │     x[1]
+  │     ^ [u32; 3]
+
+note: 
+  ┌─ test_file.fe:3:5
+  │
+3 │     x[1]
   │     ^^^^ u32
 
 note: 

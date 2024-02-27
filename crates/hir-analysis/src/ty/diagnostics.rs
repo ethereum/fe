@@ -1092,7 +1092,7 @@ impl BodyDiag {
                 vec![
                     SubDiagnostic::new(
                         LabelStyle::Primary,
-                        format!("`{}` can't be applied for `{}`", op, ty),
+                        format!("`{}` can't be applied to `{}`", op, ty),
                         span.resolve(db),
                     ),
                     SubDiagnostic::new(
