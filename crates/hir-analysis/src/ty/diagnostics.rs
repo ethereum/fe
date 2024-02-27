@@ -6,7 +6,8 @@ use common::diagnostics::{
 use hir::{
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        FieldIndex, Func, FuncParamName, IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias,
+        FieldIndex, Func, FuncParamName, IdentId, ImplTrait, PathId, Trait,
+        TypeAlias as HirTypeAlias,
     },
     span::{DynLazySpan, LazySpan},
     HirDb, SpannedHirDb,
@@ -15,7 +16,7 @@ use itertools::Itertools;
 
 use super::{
     constraint::PredicateId,
-    ty_check::RecordLike,
+    ty_check::{RecordLike, TraitOps},
     ty_def::{Kind, TyId},
 };
 use crate::{name_resolution::diagnostics::NameResDiag, HirAnalysisDb};
@@ -615,9 +616,11 @@ pub enum BodyDiag {
         index: FieldIndex,
     },
 
-    IndexingNotSupported {
+    OpsTraitNotImplemented {
         span: DynLazySpan,
         ty: String,
+        op: IdentId,
+        trait_path: PathId,
     },
 }
 
@@ -733,13 +736,24 @@ impl BodyDiag {
         }
     }
 
-    pub(super) fn indexing_not_supported(
+    pub(super) fn ops_trait_not_implemented<T>(
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
         ty: TyId,
-    ) -> Self {
+        ops: T,
+    ) -> Self
+    where
+        T: TraitOps,
+    {
         let ty = ty.pretty_print(db).to_string();
-        Self::IndexingNotSupported { span, ty }
+        let op = ops.op_symbol(db);
+        let trait_path = ops.trait_path(db);
+        Self::OpsTraitNotImplemented {
+            span,
+            ty,
+            op,
+            trait_path,
+        }
     }
 
     fn local_code(&self) -> u16 {
@@ -760,11 +774,11 @@ impl BodyDiag {
             Self::ReturnedTypeMismatch { .. } => 13,
             Self::TypeMustBeKnown(..) => 14,
             Self::AccessedFieldNotFound { .. } => 15,
-            Self::IndexingNotSupported { .. } => 16,
+            Self::OpsTraitNotImplemented { .. } => 16,
         }
     }
 
-    fn message(&self) -> String {
+    fn message(&self, db: &dyn HirDb) -> String {
         match self {
             Self::TypeMismatch(_, _, _) => "type mismatch".to_string(),
             Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
@@ -782,7 +796,9 @@ impl BodyDiag {
             Self::ReturnedTypeMismatch { .. } => "returned type mismatch".to_string(),
             Self::TypeMustBeKnown(..) => "type must be known here".to_string(),
             Self::AccessedFieldNotFound { .. } => "invalid field index".to_string(),
-            Self::IndexingNotSupported { .. } => "this type can't be indexed".to_string(),
+            Self::OpsTraitNotImplemented { trait_path, .. } => {
+                format!("`{}` trait is not implemented", trait_path.pretty_print(db))
+            }
         }
     }
 
@@ -1064,18 +1080,28 @@ impl BodyDiag {
                 )]
             }
 
-            Self::IndexingNotSupported { span, ty } => vec![
-                SubDiagnostic::new(
-                    LabelStyle::Primary,
-                    format!("`{}` can't be indexed", ty),
-                    span.resolve(db),
-                ),
-                SubDiagnostic::new(
-                    LabelStyle::Secondary,
-                    "Try implementing `std::ops::Index` for this type".to_string(),
-                    span.resolve(db),
-                ),
-            ],
+            Self::OpsTraitNotImplemented {
+                span,
+                ty,
+                op,
+                trait_path,
+            } => {
+                let op = op.data(db.as_hir_db());
+                let trait_path = trait_path.pretty_print(db.as_hir_db());
+
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("`{}` can't be applied for `{}`", op, ty),
+                        span.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format! {"Try implementing `{}` for `{}`", trait_path, ty},
+                        span.resolve(db),
+                    ),
+                ]
+            }
         }
     }
 
@@ -1092,7 +1118,7 @@ impl DiagnosticVoucher for BodyDiag {
     fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
-        let message = self.message();
+        let message = self.message(db.as_hir_db());
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)

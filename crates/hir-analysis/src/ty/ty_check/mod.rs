@@ -5,6 +5,7 @@ mod path;
 mod stmt;
 
 use env::TyCheckEnv;
+pub(super) use expr::TraitOps;
 use hir::{
     hir_def::{Body, ExprId, Func, LitKind, PatId, TypeId as HirTyId},
     span::DynLazySpan,
@@ -126,7 +127,8 @@ impl<'db> TyChecker<'db> {
             Ok(()) => {
                 // FIXME: This is a temporary workaround, this should be removed when we
                 // implement subtyping.
-                if actual.apply_subst(self.db, &mut self.table).is_bot(self.db) {
+                let actual = actual.apply_subst(self.db, &mut self.table);
+                if actual.is_bot(self.db) {
                     expected
                 } else {
                     actual
