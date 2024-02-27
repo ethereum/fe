@@ -34,7 +34,7 @@ impl<'db> TyChecker<'db> {
             Expr::RecordInit(..) => self.check_record_init(expr, expr_data),
             Expr::Field(..) => self.check_field(expr, expr_data),
             Expr::Tuple(..) => self.check_tuple(expr, expr_data, expected),
-            Expr::Index(..) => todo!(),
+            Expr::Index(..) => self.check_index(expr, expr_data),
             Expr::Array(..) => self.check_array(expr, expr_data, expected),
             Expr::ArrayRep(..) => self.check_array_rep(expr, expr_data, expected),
             Expr::If(..) => self.check_if(expr, expr_data),
@@ -192,21 +192,25 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_field(&mut self, expr: ExprId, expr_data: &Expr) -> TyId {
-        let Expr::Field(indexed, index) = expr_data else {
+        let Expr::Field(lhs, index) = expr_data else {
             unreachable!()
         };
         let Partial::Present(field) = index else {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        let ty = self.fresh_ty();
-        let ty = self
-            .check_expr(*indexed, ty)
+        let lhs_ty = self.fresh_ty();
+        let lhs_ty = self
+            .check_expr(*lhs, lhs_ty)
             .apply_subst(self.db, &mut self.table);
-        let (ty_base, ty_args) = ty.decompose_ty_app(self.db);
+        let (ty_base, ty_args) = lhs_ty.decompose_ty_app(self.db);
+
+        if ty_base.is_invalid(self.db) {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        }
 
         if ty_base.is_ty_var(self.db) {
-            let diag = BodyDiag::TypeMustBeKnown(indexed.lazy_span(self.body()).into());
+            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
             FuncBodyDiagAccumulator::push(self.db, diag.into());
 
             return TyId::invalid(self.db, InvalidCause::Other);
@@ -214,7 +218,7 @@ impl<'db> TyChecker<'db> {
 
         match field {
             FieldIndex::Ident(label) => {
-                let mut ty_in_body = TyInBody::new(self.db, &mut self.table, ty);
+                let mut ty_in_body = TyInBody::new(self.db, &mut self.table, lhs_ty);
                 if let Some(ty) = ty_in_body.record_field_ty(self.db, *label) {
                     return ty;
                 }
@@ -232,7 +236,7 @@ impl<'db> TyChecker<'db> {
         let diag = BodyDiag::accessed_field_not_found(
             self.db,
             expr.lazy_span(self.body()).into(),
-            ty,
+            lhs_ty,
             *field,
         );
         FuncBodyDiagAccumulator::push(self.db, diag.into());
@@ -255,6 +259,42 @@ impl<'db> TyChecker<'db> {
         }
 
         TyId::tuple_with_elems(self.db, &elem_tys)
+    }
+
+    fn check_index(&mut self, _expr: ExprId, expr_data: &Expr) -> TyId {
+        let Expr::Index(lhs, index) = expr_data else {
+            unreachable!()
+        };
+
+        let lhs_ty = self.fresh_ty();
+        let lhs_ty = self
+            .check_expr(*lhs, lhs_ty)
+            .apply_subst(self.db, &mut self.table);
+        let (lhs_base, args) = lhs_ty.decompose_ty_app(self.db);
+
+        if lhs_base.is_ty_var(self.db) {
+            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            return TyId::invalid(self.db, InvalidCause::Other);
+        }
+
+        if lhs_base.is_invalid(self.db) {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        }
+
+        if lhs_base.is_array(self.db) {
+            let elem_ty = args[0];
+            let index_ty = args[1].const_ty_ty(self.db).unwrap();
+            self.check_expr(*index, index_ty);
+            return elem_ty;
+        }
+
+        // TODO: We need to check if the type implements the `Index` trait when `Index`
+        // is implemented in `std`.
+        let diag =
+            BodyDiag::indexing_not_supported(self.db, lhs.lazy_span(self.body()).into(), lhs_ty);
+        FuncBodyDiagAccumulator::push(self.db, diag.into());
+        TyId::invalid(self.db, InvalidCause::Other)
     }
 
     fn check_array(&mut self, _expr: ExprId, expr_data: &Expr, expected: TyId) -> TyId {
