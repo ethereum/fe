@@ -100,6 +100,9 @@ impl TyId {
     pub fn is_integral(self, db: &dyn HirAnalysisDb) -> bool {
         match self.data(db) {
             TyData::TyBase(ty_base) => ty_base.is_integral(),
+            TyData::TyVar(var) => {
+                matches!(var.universe, TyVarUniverse::Integral)
+            }
             _ => false,
         }
     }

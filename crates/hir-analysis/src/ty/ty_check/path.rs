@@ -20,7 +20,9 @@ use crate::{
     },
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, TyLowerDiag},
-        ty_def::{AdtDef, AdtFieldList, AdtRef, AdtRefId, FuncDef, Subst, TyData, TyId},
+        ty_def::{
+            AdtDef, AdtFieldList, AdtRef, AdtRefId, FuncDef, InvalidCause, Subst, TyData, TyId,
+        },
         ty_lower::{lower_adt, lower_func, lower_hir_ty},
         unify::UnificationTable,
     },
@@ -716,7 +718,12 @@ impl RecordLike for TyInBody {
         let field_idx = hir_field_list.field_idx(hir_db, name)?;
         let ty = field_list.ty(db, field_idx);
 
-        Some(ty.apply_subst(db, &mut self.subst))
+        if ty.is_star_kind(db) {
+            ty.apply_subst(db, &mut self.subst)
+        } else {
+            TyId::invalid(db, InvalidCause::Other)
+        }
+        .into()
     }
 
     fn record_field_list<'db>(
