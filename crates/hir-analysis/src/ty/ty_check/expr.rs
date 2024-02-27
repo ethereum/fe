@@ -1,17 +1,20 @@
-use hir::hir_def::{Expr, ExprId, FieldIndex, Partial, VariantKind};
+use hir::hir_def::{Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind};
 
 use super::{path::ResolvedPathInExpr, RecordLike};
-use crate::ty::{
-    const_ty::ConstTyId,
-    diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
-    ty_check::{
-        path::{
-            resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
-            ResolvedPathInRecordInit, TyInBody,
+use crate::{
+    ty::{
+        const_ty::ConstTyId,
+        diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
+        ty_check::{
+            path::{
+                resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
+                ResolvedPathInRecordInit, TyInBody,
+            },
+            TyChecker,
         },
-        TyChecker,
+        ty_def::{InvalidCause, TyId},
     },
-    ty_def::{InvalidCause, TyId},
+    HirAnalysisDb,
 };
 
 impl<'db> TyChecker<'db> {
@@ -25,9 +28,8 @@ impl<'db> TyChecker<'db> {
         let actual = match expr_data {
             Expr::Lit(lit) => self.lit_ty(lit),
             Expr::Block(..) => self.check_block(expr, expr_data, expected),
-
-            Expr::Bin(..) => todo!(),
-            Expr::Un(..) => todo!(),
+            Expr::Un(..) => self.check_unary(expr, expr_data),
+            Expr::Bin(..) => return TyId::invalid(self.db, InvalidCause::Other),
             Expr::Call(..) => todo!(),
             Expr::MethodCall(..) => todo!(),
             Expr::Path(..) => self.check_path(expr, expr_data),
@@ -65,6 +67,60 @@ impl<'db> TyChecker<'db> {
             self.env.leave_scope();
             res
         }
+    }
+
+    fn check_unary(&mut self, expr: ExprId, expr_data: &Expr) -> TyId {
+        let Expr::Un(lhs, op) = expr_data else {
+            unreachable!()
+        };
+        let Partial::Present(op) = op else {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
+
+        let expr_ty = self.fresh_ty();
+        let expr_ty = self.check_expr(*lhs, expr_ty);
+        let base_ty = expr_ty.base_ty(self.db);
+
+        if expr_ty.contains_invalid(self.db) {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        }
+
+        match op {
+            UnOp::Plus | UnOp::Minus => {
+                if base_ty.is_integral(self.db) {
+                    return base_ty;
+                }
+            }
+
+            UnOp::Not => {
+                if base_ty.is_bool(self.db) | base_ty.is_integral(self.db) {
+                    return base_ty;
+                }
+            }
+
+            UnOp::BitNot => {
+                // TODO: We probably remove this operator.
+                todo!()
+            }
+        }
+
+        if base_ty.is_ty_var(self.db) {
+            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            return TyId::invalid(self.db, InvalidCause::Other);
+        }
+
+        // TODO: We need to check if the type implements a trait corresponding to the
+        // operator when these traits are defined in `std`.
+        let diag = BodyDiag::ops_trait_not_implemented(
+            self.db,
+            expr.lazy_span(self.body()).into(),
+            base_ty,
+            *op,
+        );
+        FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+        TyId::invalid(self.db, InvalidCause::Other)
     }
 
     fn check_path(&mut self, expr: ExprId, expr_data: &Expr) -> TyId {
@@ -200,9 +256,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let lhs_ty = self.fresh_ty();
-        let lhs_ty = self
-            .check_expr(*lhs, lhs_ty)
-            .apply_subst(self.db, &mut self.table);
+        let lhs_ty = self.check_expr(*lhs, lhs_ty);
         let (ty_base, ty_args) = lhs_ty.decompose_ty_app(self.db);
 
         if ty_base.is_invalid(self.db) {
@@ -261,15 +315,13 @@ impl<'db> TyChecker<'db> {
         TyId::tuple_with_elems(self.db, &elem_tys)
     }
 
-    fn check_index(&mut self, _expr: ExprId, expr_data: &Expr) -> TyId {
+    fn check_index(&mut self, expr: ExprId, expr_data: &Expr) -> TyId {
         let Expr::Index(lhs, index) = expr_data else {
             unreachable!()
         };
 
         let lhs_ty = self.fresh_ty();
-        let lhs_ty = self
-            .check_expr(*lhs, lhs_ty)
-            .apply_subst(self.db, &mut self.table);
+        let lhs_ty = self.check_expr(*lhs, lhs_ty);
         let (lhs_base, args) = lhs_ty.decompose_ty_app(self.db);
 
         if lhs_base.is_ty_var(self.db) {
@@ -290,9 +342,13 @@ impl<'db> TyChecker<'db> {
         }
 
         // TODO: We need to check if the type implements the `Index` trait when `Index`
-        // is implemented in `std`.
-        let diag =
-            BodyDiag::indexing_not_supported(self.db, lhs.lazy_span(self.body()).into(), lhs_ty);
+        // is defined in `std`.
+        let diag = BodyDiag::ops_trait_not_implemented(
+            self.db,
+            expr.lazy_span(self.body()).into(),
+            lhs_ty,
+            IndexingOp {},
+        );
         FuncBodyDiagAccumulator::push(self.db, diag.into());
         TyId::invalid(self.db, InvalidCause::Other)
     }
@@ -399,5 +455,99 @@ impl<'db> TyChecker<'db> {
         self.env.leave_scope();
 
         ty
+    }
+}
+
+/// This traits are intended to be implemented by the operators that can work as
+/// a syntax sugar for a trait method. For example, binary `+` operator
+/// implements this trait to be able to work as a syntax sugar for
+/// `std::ops::Add` trait method.
+///
+/// TODO: We need to refine this trait definition to connect std library traits
+/// smoothly.
+pub(crate) trait TraitOps {
+    fn trait_path(&self, db: &dyn HirAnalysisDb) -> PathId;
+
+    fn trait_name(&self, db: &dyn HirAnalysisDb) -> IdentId;
+
+    fn trait_method_name(&self, db: &dyn HirAnalysisDb) -> IdentId;
+
+    fn op_symbol(&self, db: &dyn HirAnalysisDb) -> IdentId;
+}
+
+impl TraitOps for UnOp {
+    fn trait_path(&self, db: &dyn HirAnalysisDb) -> PathId {
+        let hir_db = db.as_hir_db();
+        let mut path_data: Vec<_> = ["std", "ops"]
+            .into_iter()
+            .map(|s| Partial::Present(IdentId::new(hir_db, s.to_string())))
+            .collect();
+        path_data.push(Partial::Present(self.trait_name(db)));
+
+        PathId::new(hir_db, path_data)
+    }
+
+    fn trait_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
+        let name = match self {
+            UnOp::Plus => "UnaryPlus",
+            UnOp::Minus => "Neg",
+            UnOp::Not => "Not",
+            UnOp::BitNot => "BitNot",
+        };
+
+        IdentId::new(db.as_hir_db(), name.to_string())
+    }
+
+    fn trait_method_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
+        let name = match self {
+            UnOp::Plus => "add",
+            UnOp::Minus => "neg",
+            UnOp::Not => "not",
+            UnOp::BitNot => "bit_not",
+        };
+
+        IdentId::new(db.as_hir_db(), name.to_string())
+    }
+
+    fn op_symbol(&self, db: &dyn HirAnalysisDb) -> IdentId {
+        let symbol = match self {
+            UnOp::Plus => "+",
+            UnOp::Minus => "-",
+            UnOp::Not => "!",
+            UnOp::BitNot => "~",
+        };
+
+        IdentId::new(db.as_hir_db(), symbol.to_string())
+    }
+}
+
+struct IndexingOp {}
+
+impl TraitOps for IndexingOp {
+    fn trait_path(&self, db: &dyn HirAnalysisDb) -> PathId {
+        let hir_db = db.as_hir_db();
+        let mut path_data: Vec<_> = ["std", "ops"]
+            .into_iter()
+            .map(|s| Partial::Present(IdentId::new(hir_db, s.to_string())))
+            .collect();
+        path_data.push(Partial::Present(self.trait_name(db)));
+
+        PathId::new(hir_db, path_data)
+    }
+
+    fn trait_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
+        let name = "Index";
+        IdentId::new(db.as_hir_db(), name.to_string())
+    }
+
+    fn trait_method_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
+        let name = "index";
+        IdentId::new(db.as_hir_db(), name.to_string())
+    }
+
+    fn op_symbol(&self, db: &dyn HirAnalysisDb) -> IdentId {
+        let symbol = "[]";
+
+        IdentId::new(db.as_hir_db(), symbol.to_string())
     }
 }
