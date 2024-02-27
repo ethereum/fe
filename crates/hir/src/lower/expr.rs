@@ -1,13 +1,12 @@
 use parser::ast::{self, prelude::*};
 
+use super::body::BodyCtxt;
 use crate::{
     hir_def::{
         expr::*, Body, GenericArgListId, IdentId, IntegerId, ItemKind, LitKind, Pat, PathId, Stmt,
     },
     span::HirOrigin,
 };
-
-use super::body::BodyCtxt;
 
 impl Expr {
     pub(super) fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::Expr) -> ExprId {
@@ -220,7 +219,7 @@ impl ArithBinOp {
             ast::ArithBinOp::Sub(_) => Self::Sub,
             ast::ArithBinOp::Mul(_) => Self::Mul,
             ast::ArithBinOp::Div(_) => Self::Div,
-            ast::ArithBinOp::Mod(_) => Self::Mod,
+            ast::ArithBinOp::Mod(_) => Self::Rem,
             ast::ArithBinOp::Pow(_) => Self::Pow,
             ast::ArithBinOp::LShift(_) => Self::LShift,
             ast::ArithBinOp::RShift(_) => Self::RShift,

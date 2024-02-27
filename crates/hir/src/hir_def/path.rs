@@ -29,6 +29,12 @@ impl PathId {
         Self::new(db, vec![Partial::Present(ident)])
     }
 
+    pub fn push(self, db: &dyn HirDb, segment: IdentId) -> Self {
+        let mut segments = self.segments(db).clone();
+        segments.push(Partial::Present(segment));
+        Self::new(db, segments)
+    }
+
     pub fn pretty_print(self, db: &dyn HirDb) -> String {
         self.segments(db)
             .iter()

@@ -1,4 +1,4 @@
-use hir::hir_def::{Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind};
+use hir::hir_def::{BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind};
 
 use super::{path::ResolvedPathInExpr, RecordLike};
 use crate::{
@@ -29,7 +29,7 @@ impl<'db> TyChecker<'db> {
             Expr::Lit(lit) => self.lit_ty(lit),
             Expr::Block(..) => self.check_block(expr, expr_data, expected),
             Expr::Un(..) => self.check_unary(expr, expr_data),
-            Expr::Bin(..) => return TyId::invalid(self.db, InvalidCause::Other),
+            Expr::Bin(..) => self.check_binary(expr, expr_data),
             Expr::Call(..) => todo!(),
             Expr::MethodCall(..) => todo!(),
             Expr::Path(..) => self.check_path(expr, expr_data),
@@ -79,7 +79,6 @@ impl<'db> TyChecker<'db> {
 
         let expr_ty = self.fresh_ty();
         let expr_ty = self.check_expr(*lhs, expr_ty);
-        let base_ty = expr_ty.base_ty(self.db);
 
         if expr_ty.contains_invalid(self.db) {
             return TyId::invalid(self.db, InvalidCause::Other);
@@ -87,14 +86,14 @@ impl<'db> TyChecker<'db> {
 
         match op {
             UnOp::Plus | UnOp::Minus => {
-                if base_ty.is_integral(self.db) {
-                    return base_ty;
+                if expr_ty.is_integral(self.db) {
+                    return expr_ty;
                 }
             }
 
             UnOp::Not => {
-                if base_ty.is_bool(self.db) | base_ty.is_integral(self.db) {
-                    return base_ty;
+                if expr_ty.is_bool(self.db) | expr_ty.is_integral(self.db) {
+                    return expr_ty;
                 }
             }
 
@@ -104,6 +103,7 @@ impl<'db> TyChecker<'db> {
             }
         }
 
+        let base_ty = expr_ty.base_ty(self.db);
         if base_ty.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
             FuncBodyDiagAccumulator::push(self.db, diag.into());
@@ -115,7 +115,106 @@ impl<'db> TyChecker<'db> {
         let diag = BodyDiag::ops_trait_not_implemented(
             self.db,
             expr.lazy_span(self.body()).into(),
-            base_ty,
+            expr_ty,
+            *op,
+        );
+        FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+        TyId::invalid(self.db, InvalidCause::Other)
+    }
+
+    fn check_binary(&mut self, expr: ExprId, expr_data: &Expr) -> TyId {
+        let Expr::Bin(lhs, rhs, op) = expr_data else {
+            unreachable!()
+        };
+        let Partial::Present(op) = op else {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
+
+        let lhs_ty = self.fresh_ty();
+        let lhs_ty = self.check_expr(*lhs, lhs_ty);
+        if lhs_ty.contains_invalid(self.db) {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        }
+
+        match op {
+            BinOp::Arith(arith_op) => {
+                use hir::hir_def::ArithBinOp::*;
+
+                let rhs_ty = self.check_expr(*rhs, lhs_ty);
+                if rhs_ty.contains_invalid(self.db) {
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+
+                match arith_op {
+                    Add | Sub | Mul | Div | Rem | Pow | LShift | RShift => {
+                        if rhs_ty.is_integral(self.db) {
+                            return rhs_ty;
+                        }
+                    }
+
+                    BitAnd | BitOr | BitXor => {
+                        if rhs_ty.is_integral(self.db) | rhs_ty.is_bool(self.db) {
+                            return rhs_ty;
+                        }
+                    }
+                }
+            }
+
+            BinOp::Comp(comp_op) => {
+                use hir::hir_def::CompBinOp::*;
+
+                let rhs_ty = self.check_expr(*rhs, lhs_ty);
+                if rhs_ty.contains_invalid(self.db) {
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+
+                match comp_op {
+                    Eq | NotEq => {
+                        if lhs_ty.is_integral(self.db) | lhs_ty.is_bool(self.db) {
+                            return TyId::bool(self.db);
+                        }
+                    }
+
+                    Lt | LtEq | Gt | GtEq => {
+                        if lhs_ty.is_integral(self.db) {
+                            return TyId::bool(self.db);
+                        }
+                    }
+                }
+            }
+
+            BinOp::Logical(logical_op) => {
+                use hir::hir_def::LogicalBinOp::*;
+
+                let rhs_ty = self.check_expr(*rhs, lhs_ty);
+                if rhs_ty.contains_invalid(self.db) {
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+
+                match logical_op {
+                    And | Or => {
+                        if lhs_ty.is_bool(self.db) & rhs_ty.is_bool(self.db) {
+                            return lhs_ty;
+                        }
+                    }
+                }
+            }
+        }
+
+        let lhs_base_ty = lhs_ty.base_ty(self.db);
+        if lhs_base_ty.is_ty_var(self.db) {
+            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            return TyId::invalid(self.db, InvalidCause::Other);
+        }
+
+        // TODO: We need to check if the type implements a trait corresponding to the
+        // operator when these traits are defined in `std`.
+        let diag = BodyDiag::ops_trait_not_implemented(
+            self.db,
+            expr.lazy_span(self.body()).into(),
+            lhs_ty,
             *op,
         );
         FuncBodyDiagAccumulator::push(self.db, diag.into());
@@ -466,88 +565,111 @@ impl<'db> TyChecker<'db> {
 /// TODO: We need to refine this trait definition to connect std library traits
 /// smoothly.
 pub(crate) trait TraitOps {
-    fn trait_path(&self, db: &dyn HirAnalysisDb) -> PathId;
-
-    fn trait_name(&self, db: &dyn HirAnalysisDb) -> IdentId;
-
-    fn trait_method_name(&self, db: &dyn HirAnalysisDb) -> IdentId;
-
-    fn op_symbol(&self, db: &dyn HirAnalysisDb) -> IdentId;
-}
-
-impl TraitOps for UnOp {
     fn trait_path(&self, db: &dyn HirAnalysisDb) -> PathId {
         let hir_db = db.as_hir_db();
-        let mut path_data: Vec<_> = ["std", "ops"]
-            .into_iter()
-            .map(|s| Partial::Present(IdentId::new(hir_db, s.to_string())))
-            .collect();
-        path_data.push(Partial::Present(self.trait_name(db)));
-
-        PathId::new(hir_db, path_data)
+        let path = std_ops_path(db);
+        path.push(hir_db, self.trait_name(db))
     }
 
     fn trait_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
-        let name = match self {
-            UnOp::Plus => "UnaryPlus",
-            UnOp::Minus => "Neg",
-            UnOp::Not => "Not",
-            UnOp::BitNot => "BitNot",
-        };
-
-        IdentId::new(db.as_hir_db(), name.to_string())
+        self.triple(db)[0]
     }
 
     fn trait_method_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
-        let name = match self {
-            UnOp::Plus => "add",
-            UnOp::Minus => "neg",
-            UnOp::Not => "not",
-            UnOp::BitNot => "bit_not",
-        };
-
-        IdentId::new(db.as_hir_db(), name.to_string())
+        self.triple(db)[1]
     }
 
     fn op_symbol(&self, db: &dyn HirAnalysisDb) -> IdentId {
-        let symbol = match self {
-            UnOp::Plus => "+",
-            UnOp::Minus => "-",
-            UnOp::Not => "!",
-            UnOp::BitNot => "~",
+        self.triple(db)[2]
+    }
+
+    ///
+    fn triple(&self, db: &dyn HirAnalysisDb) -> [IdentId; 3];
+}
+
+impl TraitOps for UnOp {
+    fn triple(&self, db: &dyn HirAnalysisDb) -> [IdentId; 3] {
+        let triple = match self {
+            UnOp::Plus => ["UnaryPlus", "add", "+"],
+            UnOp::Minus => ["Neg", "neg", "-"],
+            UnOp::Not => ["Not", "not", "!"],
+            UnOp::BitNot => ["BitNot", "bit_not", "~"],
         };
 
-        IdentId::new(db.as_hir_db(), symbol.to_string())
+        triple.map(|s| IdentId::new(db.as_hir_db(), s.to_string()))
+    }
+}
+
+impl TraitOps for BinOp {
+    fn triple(&self, db: &dyn HirAnalysisDb) -> [IdentId; 3] {
+        let triple = match self {
+            BinOp::Arith(arith_op) => {
+                use hir::hir_def::ArithBinOp::*;
+
+                match arith_op {
+                    Add => ["Add", "add", "+"],
+                    Sub => ["Sub", "sub", "-"],
+                    Mul => ["Mul", "mul", "*"],
+                    Div => ["Div", "div", "/"],
+                    Rem => ["Rem", "rem", "%"],
+                    Pow => ["Pow", "pow", "**"],
+                    LShift => ["Shl", "shl", "<<"],
+                    RShift => ["Shr", "shr", ">>"],
+                    BitAnd => ["BitAnd", "bit_and", "&"],
+                    BitOr => ["BitOr", "bit_or", "|"],
+                    BitXor => ["BitXor", "bit_xor", "^"],
+                }
+            }
+
+            BinOp::Comp(comp_op) => {
+                use hir::hir_def::CompBinOp::*;
+
+                match comp_op {
+                    Eq => ["Eq", "eq", "=="],
+                    NotEq => ["NotEq", "not_eq", "!="],
+                    Lt => ["Lt", "lt", "<"],
+                    LtEq => ["LtEq", "lt_eq", "<="],
+                    Gt => ["Gt", "gt", ">"],
+                    GtEq => ["GtEq", "gt_eq", ">="],
+                }
+            }
+
+            BinOp::Logical(logical_op) => {
+                use hir::hir_def::LogicalBinOp::*;
+
+                match logical_op {
+                    And => ["And", "and", "&&"],
+                    Or => ["Or", "or", "||"],
+                }
+            }
+        };
+
+        triple.map(|s| IdentId::new(db.as_hir_db(), s.to_string()))
     }
 }
 
 struct IndexingOp {}
 
 impl TraitOps for IndexingOp {
-    fn trait_path(&self, db: &dyn HirAnalysisDb) -> PathId {
-        let hir_db = db.as_hir_db();
-        let mut path_data: Vec<_> = ["std", "ops"]
-            .into_iter()
-            .map(|s| Partial::Present(IdentId::new(hir_db, s.to_string())))
-            .collect();
-        path_data.push(Partial::Present(self.trait_name(db)));
-
-        PathId::new(hir_db, path_data)
-    }
-
-    fn trait_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
+    fn triple(&self, db: &dyn HirAnalysisDb) -> [IdentId; 3] {
         let name = "Index";
-        IdentId::new(db.as_hir_db(), name.to_string())
-    }
-
-    fn trait_method_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
-        let name = "index";
-        IdentId::new(db.as_hir_db(), name.to_string())
-    }
-
-    fn op_symbol(&self, db: &dyn HirAnalysisDb) -> IdentId {
+        let method_name = "index";
         let symbol = "[]";
 
-        IdentId::new(db.as_hir_db(), symbol.to_string())
+        [
+            IdentId::new(db.as_hir_db(), name.to_string()),
+            IdentId::new(db.as_hir_db(), method_name.to_string()),
+            IdentId::new(db.as_hir_db(), symbol.to_string()),
+        ]
     }
+}
+
+fn std_ops_path(db: &dyn HirAnalysisDb) -> PathId {
+    let hir_db = db.as_hir_db();
+    let path_data: Vec<_> = ["std", "ops"]
+        .into_iter()
+        .map(|s| Partial::Present(IdentId::new(hir_db, s.to_string())))
+        .collect();
+
+    PathId::new(hir_db, path_data)
 }
