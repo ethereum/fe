@@ -243,9 +243,11 @@ define_scope! { ParenScope, ParenExpr, Override(RParen, Comma) }
 impl super::Parse for ParenScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         parser.bump_expected(SyntaxKind::LParen);
+        let is_trivia = parser.set_newline_as_trivia(true);
 
         if parser.bump_if(SyntaxKind::RParen) {
-            self.set_kind(SyntaxKind::ParenExpr);
+            self.set_kind(SyntaxKind::TupleExpr);
+            parser.set_newline_as_trivia(is_trivia);
             return;
         }
 
@@ -256,6 +258,7 @@ impl super::Parse for ParenScope {
         }
 
         parser.bump_or_recover(SyntaxKind::RParen, "expected `)`", None);
+        parser.set_newline_as_trivia(is_trivia);
     }
 }
 
