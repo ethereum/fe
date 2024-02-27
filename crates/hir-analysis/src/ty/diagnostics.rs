@@ -614,6 +614,11 @@ pub enum BodyDiag {
         given_ty: String,
         index: FieldIndex,
     },
+
+    IndexingNotSupported {
+        span: DynLazySpan,
+        ty: String,
+    },
 }
 
 impl BodyDiag {
@@ -728,6 +733,15 @@ impl BodyDiag {
         }
     }
 
+    pub(super) fn indexing_not_supported(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        ty: TyId,
+    ) -> Self {
+        let ty = ty.pretty_print(db).to_string();
+        Self::IndexingNotSupported { span, ty }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(..) => 0,
@@ -746,6 +760,7 @@ impl BodyDiag {
             Self::ReturnedTypeMismatch { .. } => 13,
             Self::TypeMustBeKnown(..) => 14,
             Self::AccessedFieldNotFound { .. } => 15,
+            Self::IndexingNotSupported { .. } => 16,
         }
     }
 
@@ -767,6 +782,7 @@ impl BodyDiag {
             Self::ReturnedTypeMismatch { .. } => "returned type mismatch".to_string(),
             Self::TypeMustBeKnown(..) => "type must be known here".to_string(),
             Self::AccessedFieldNotFound { .. } => "invalid field index".to_string(),
+            Self::IndexingNotSupported { .. } => "this type can't be indexed".to_string(),
         }
     }
 
@@ -1047,6 +1063,19 @@ impl BodyDiag {
                     primary.resolve(db),
                 )]
             }
+
+            Self::IndexingNotSupported { span, ty } => vec![
+                SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{}` can't be indexed", ty),
+                    span.resolve(db),
+                ),
+                SubDiagnostic::new(
+                    LabelStyle::Secondary,
+                    "Try implementing `std::ops::Index` for this type".to_string(),
+                    span.resolve(db),
+                ),
+            ],
         }
     }
 
