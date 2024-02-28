@@ -163,9 +163,9 @@ impl<'db> TyChecker<'db> {
         };
 
         match t {
-            Typeable::Expr { expr, is_mut } => {
-                let typed = TypedExpr::new(actual, is_mut);
-                self.env.type_expr(expr, typed)
+            Typeable::Expr(expr, mut typed_expr) => {
+                typed_expr.swap_ty(actual);
+                self.env.type_expr(expr, typed_expr)
             }
             Typeable::Pat(pat) => self.env.type_pat(pat, actual),
         }
@@ -207,14 +207,14 @@ impl TypedBody {
 
 #[derive(Clone, Copy, PartialEq, Eq, derive_more::From)]
 enum Typeable {
-    Expr { expr: ExprId, is_mut: bool },
+    Expr(ExprId, TypedExpr),
     Pat(PatId),
 }
 
 impl Typeable {
     fn lazy_span(self, body: Body) -> DynLazySpan {
         match self {
-            Self::Expr { expr, .. } => expr.lazy_span(body).into(),
+            Self::Expr(expr, ..) => expr.lazy_span(body).into(),
             Self::Pat(pat) => pat.lazy_span(body).into(),
         }
     }

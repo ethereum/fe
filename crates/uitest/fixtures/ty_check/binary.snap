@@ -15,7 +15,7 @@ error[8-0016]: `std::ops::Add` trait is not implemented
 4 │     f + f
   │     ^^^^^
   │     │
-  │     `+` can't be applied to `Foo`
+  │     `+` cant be applied to `Foo`
   │     Try implementing `std::ops::Add` for `Foo`
 
 error[8-0016]: `std::ops::And` trait is not implemented
@@ -24,7 +24,25 @@ error[8-0016]: `std::ops::And` trait is not implemented
 6 │     (f && f) || f
   │      ^^^^^^
   │      │
-  │      `&&` can't be applied to `Foo`
+  │      `&&` cant be applied to `Foo`
   │      Try implementing `std::ops::And` for `Foo`
+
+error[8-0016]: `std::ops::Eq` trait is not implemented
+  ┌─ binary.fe:7:5
+  │
+7 │     f == f
+  │     ^^^^^^
+  │     │
+  │     `==` cant be applied to `Foo`
+  │     Try implementing `std::ops::Eq` for `Foo`
+
+error[8-0016]: `std::ops::Ord` trait is not implemented
+  ┌─ binary.fe:8:5
+  │
+8 │     f < f
+  │     ^^^^^
+  │     │
+  │     `<` cant be applied to `Foo`
+  │     Try implementing `std::ops::Ord` for `Foo`
 
 

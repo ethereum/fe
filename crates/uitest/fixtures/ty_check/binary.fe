@@ -4,4 +4,6 @@ fn foo()) {
     f + f
     
     (f && f) || f
+    f == f
+    f < f
 }
