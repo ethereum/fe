@@ -1,7 +1,7 @@
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Body, BodyKind, Expr, ExprId, Func, IdentId, Partial, PatId, Stmt,
-        StmtId,
+        scope_graph::ScopeId, Body, BodyKind, Expr, ExprId, Func, IdentId, Partial, Pat, PatId,
+        Stmt, StmtId,
     },
     span::DynLazySpan,
 };
@@ -76,8 +76,16 @@ impl<'db> TyCheckEnv<'db> {
         Ok(env)
     }
 
+    pub(super) fn typed_expr(&self, expr: ExprId) -> Option<TypedExpr> {
+        self.expr_ty.get(&expr).copied()
+    }
+
     pub(super) fn binding_def_span(&self, binding: LocalBinding) -> DynLazySpan {
         binding.def_span(self)
+    }
+
+    pub(super) fn binding_name(&self, binding: LocalBinding) -> IdentId {
+        binding.binding_name(self)
     }
 
     /// Returns a function if the `body` being checked has `BodyKind::FuncBody`.
@@ -206,17 +214,39 @@ impl BlockEnv {
 pub(super) struct TypedExpr {
     ty: TyId,
     is_mut: bool,
+    binding: Option<LocalBinding>,
 }
 
 impl TypedExpr {
     pub(super) fn new(ty: TyId, is_mut: bool) -> Self {
-        Self { ty, is_mut }
+        Self {
+            ty,
+            is_mut,
+            binding: None,
+        }
+    }
+
+    pub(super) fn new_binding_ref(ty: TyId, is_mut: bool, binding: LocalBinding) -> Self {
+        Self {
+            ty,
+            is_mut,
+            binding: Some(binding),
+        }
+    }
+
+    pub(super) fn binding(&self) -> Option<LocalBinding> {
+        self.binding
+    }
+
+    pub(super) fn swap_ty(&mut self, ty: TyId) -> TyId {
+        std::mem::replace(&mut self.ty, ty)
     }
 
     pub(super) fn invalid(db: &dyn HirAnalysisDb) -> Self {
         Self {
             ty: TyId::invalid(db, InvalidCause::Other),
             is_mut: true,
+            binding: None,
         }
     }
 
@@ -234,11 +264,12 @@ impl TypedExpr {
         Self {
             ty: self.ty.apply_subst(db, table),
             is_mut: self.is_mut,
+            binding: self.binding,
         }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) enum LocalBinding {
     Local { pat: PatId, is_mut: bool },
     Param { idx: usize, ty: TyId, is_mut: bool },
@@ -255,7 +286,30 @@ impl LocalBinding {
         }
     }
 
-    pub(super) fn def_span<'db>(&self, env: &TyCheckEnv<'db>) -> DynLazySpan {
+    pub(super) fn binding_name(&self, env: &TyCheckEnv<'_>) -> IdentId {
+        let hir_db = env.db.as_hir_db();
+        match self {
+            Self::Local { pat, .. } => {
+                let Partial::Present(Pat::Path(Partial::Present(path), ..)) =
+                    pat.data(hir_db, env.body())
+                else {
+                    unreachable!();
+                };
+                *path.last_segment(hir_db).unwrap()
+            }
+
+            Self::Param { idx, .. } => {
+                let func = env.func().unwrap();
+                let Partial::Present(func_params) = func.params(hir_db) else {
+                    unreachable!();
+                };
+
+                func_params.data(hir_db)[*idx].name().unwrap()
+            }
+        }
+    }
+
+    fn def_span(&self, env: &TyCheckEnv<'_>) -> DynLazySpan {
         match self {
             LocalBinding::Local { pat, .. } => pat.lazy_span(env.body).into(),
             LocalBinding::Param { idx, .. } => {

@@ -622,6 +622,13 @@ pub enum BodyDiag {
         op: IdentId,
         trait_path: PathId,
     },
+
+    NonAssignableExpr(DynLazySpan),
+
+    ImmutableAssignment {
+        primary: DynLazySpan,
+        binding: Option<(IdentId, DynLazySpan)>,
+    },
 }
 
 impl BodyDiag {
@@ -775,6 +782,8 @@ impl BodyDiag {
             Self::TypeMustBeKnown(..) => 14,
             Self::AccessedFieldNotFound { .. } => 15,
             Self::OpsTraitNotImplemented { .. } => 16,
+            Self::NonAssignableExpr(..) => 17,
+            Self::ImmutableAssignment { .. } => 18,
         }
     }
 
@@ -798,6 +807,12 @@ impl BodyDiag {
             Self::AccessedFieldNotFound { .. } => "invalid field index".to_string(),
             Self::OpsTraitNotImplemented { trait_path, .. } => {
                 format!("`{}` trait is not implemented", trait_path.pretty_print(db))
+            }
+            Self::NonAssignableExpr { .. } => {
+                "not assignable left-hand side of assignment".to_string()
+            }
+            Self::ImmutableAssignment { .. } => {
+                "left-hand side of assignment is immutable".to_string()
             }
         }
     }
@@ -1092,7 +1107,7 @@ impl BodyDiag {
                 vec![
                     SubDiagnostic::new(
                         LabelStyle::Primary,
-                        format!("`{}` can't be applied to `{}`", op, ty),
+                        format!("`{}` cant be applied to `{}`", op, ty),
                         span.resolve(db),
                     ),
                     SubDiagnostic::new(
@@ -1101,6 +1116,30 @@ impl BodyDiag {
                         span.resolve(db),
                     ),
                 ]
+            }
+
+            Self::NonAssignableExpr(primary) => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "cant assign to this expression".to_string(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::ImmutableAssignment { primary, binding } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "immutable assignment".to_string(),
+                    primary.resolve(db),
+                )];
+                if let Some((name, span)) = binding {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("try changing to `mut {}`", name.data(db.as_hir_db())),
+                        span.resolve(db),
+                    ));
+                }
+                diag
             }
         }
     }

@@ -1,6 +1,12 @@
-use hir::hir_def::{BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind};
+use hir::hir_def::{
+    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind,
+};
 
-use super::{env::TypedExpr, path::ResolvedPathInExpr, RecordLike, Typeable};
+use super::{
+    env::{LocalBinding, TypedExpr},
+    path::ResolvedPathInExpr,
+    RecordLike, Typeable,
+};
 use crate::{
     ty::{
         const_ty::ConstTyId,
@@ -25,7 +31,7 @@ impl<'db> TyChecker<'db> {
             return typed;
         };
 
-        let actual = match expr_data {
+        let mut actual = match expr_data {
             Expr::Lit(lit) => {
                 let ty = self.lit_ty(lit);
                 TypedExpr::new(ty, true)
@@ -44,17 +50,14 @@ impl<'db> TyChecker<'db> {
             Expr::ArrayRep(..) => self.check_array_rep(expr, expr_data, expected),
             Expr::If(..) => self.check_if(expr, expr_data),
             Expr::Match(..) => self.check_match(expr, expr_data),
-            Expr::Assign(..) => todo!(),
-            Expr::AugAssign(..) => todo!(),
+            Expr::Assign(..) => self.check_assign(expr, expr_data),
+            Expr::AugAssign(..) => self.check_aug_assign(expr, expr_data),
         };
 
-        let typeable = Typeable::Expr {
-            expr,
-            is_mut: actual.is_mutable(self.db),
-        };
-
+        let typeable = Typeable::Expr(expr, actual);
         let ty = self.unify_ty(typeable, actual.ty(), expected);
-        TypedExpr::new(ty, actual.is_mutable(self.db))
+        actual.swap_ty(ty);
+        actual
     }
 
     fn check_block(&mut self, expr: ExprId, expr_data: &Expr, expected: TyId) -> TypedExpr {
@@ -160,13 +163,13 @@ impl<'db> TyChecker<'db> {
 
                 match arith_op {
                     Add | Sub | Mul | Div | Rem | Pow | LShift | RShift => {
-                        if rhs_ty.is_integral(self.db) {
+                        if lhs_ty.is_integral(self.db) {
                             return typed_rhs;
                         }
                     }
 
                     BitAnd | BitOr | BitXor => {
-                        if rhs_ty.is_integral(self.db) | rhs_ty.is_bool(self.db) {
+                        if lhs_ty.is_integral(self.db) | lhs_ty.is_bool(self.db) {
                             return typed_rhs;
                         }
                     }
@@ -288,7 +291,7 @@ impl<'db> TyChecker<'db> {
             ResolvedPathInExpr::Binding(_, binding) => {
                 let ty = self.env.lookup_binding_ty(binding);
                 let is_mut = binding.is_mut();
-                TypedExpr::new(ty, is_mut)
+                TypedExpr::new_binding_ref(ty, is_mut, binding)
             }
 
             ResolvedPathInExpr::Diag(diag) => {
@@ -583,12 +586,141 @@ impl<'db> TyChecker<'db> {
         TypedExpr::new(match_ty, true)
     }
 
+    fn check_assign(&mut self, _expr: ExprId, expr_data: &Expr) -> TypedExpr {
+        let Expr::Assign(lhs, rhs) = expr_data else {
+            unreachable!()
+        };
+
+        let lhs_ty = self.fresh_ty();
+        let typed_lhs = self.check_expr(*lhs, lhs_ty);
+        self.check_expr(*rhs, lhs_ty);
+
+        let result_ty = TyId::unit(self.db);
+
+        self.check_assign_lhs(*lhs, &typed_lhs);
+
+        TypedExpr::new(result_ty, true)
+    }
+
+    fn check_aug_assign(&mut self, expr: ExprId, expr_data: &Expr) -> TypedExpr {
+        use ArithBinOp::*;
+
+        let Expr::AugAssign(lhs, rhs, op) = expr_data else {
+            unreachable!()
+        };
+
+        let unit_ty = TyId::unit(self.db);
+
+        let lhs_ty = self.fresh_ty();
+        let typed_lhs = self.check_expr(*lhs, lhs_ty);
+        let lhs_ty = typed_lhs.ty();
+        if lhs_ty.contains_invalid(self.db) {
+            return TypedExpr::new(unit_ty, true);
+        }
+
+        match op {
+            Add | Sub | Mul | Div | Rem | Pow | LShift | RShift => {
+                self.check_expr(*rhs, lhs_ty);
+                if lhs_ty.is_integral(self.db) {
+                    self.check_assign_lhs(*lhs, &typed_lhs);
+                    return TypedExpr::new(unit_ty, true);
+                }
+            }
+
+            BitAnd | BitOr | BitXor => {
+                self.check_expr(*rhs, lhs_ty);
+                if lhs_ty.is_integral(self.db) | lhs_ty.is_bool(self.db) {
+                    self.check_assign_lhs(*lhs, &typed_lhs);
+                    return TypedExpr::new(unit_ty, true);
+                }
+            }
+        }
+
+        let lhs_base_ty = lhs_ty.base_ty(self.db);
+        if lhs_base_ty.is_ty_var(self.db) {
+            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            return TypedExpr::invalid(self.db);
+        }
+
+        // TODO: We need to check if the type implements a trait corresponding to the
+        // operator when these traits are defined in `std`.
+        let diag = BodyDiag::ops_trait_not_implemented(
+            self.db,
+            expr.lazy_span(self.body()).into(),
+            lhs_ty,
+            AugAssignOp(*op),
+        );
+        FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+        TypedExpr::invalid(self.db)
+    }
+
+    fn check_assign_lhs(&mut self, lhs: ExprId, typed_lhs: &TypedExpr) {
+        if !self.is_assignable_expr(lhs) {
+            let diag = BodyDiag::NonAssignableExpr(lhs.lazy_span(self.body()).into());
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+            return;
+        }
+
+        if !typed_lhs.is_mutable(self.db) {
+            let binding = self.base_binding_of_expr(lhs);
+            let diag = match binding {
+                Some(binding) => {
+                    let (ident, def_span) = (
+                        self.env.binding_name(binding),
+                        self.env.binding_def_span(binding),
+                    );
+
+                    BodyDiag::ImmutableAssignment {
+                        primary: lhs.lazy_span(self.body()).into(),
+                        binding: Some((ident, def_span)),
+                    }
+                }
+
+                None => BodyDiag::ImmutableAssignment {
+                    primary: lhs.lazy_span(self.body()).into(),
+                    binding: None,
+                },
+            };
+
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+        }
+    }
+
     fn check_expr_in_new_scope(&mut self, expr: ExprId, expected: TyId) -> TypedExpr {
         self.env.enter_scope(expr);
         let ty = self.check_expr(expr, expected);
         self.env.leave_scope();
 
         ty
+    }
+
+    fn base_binding_of_expr(&self, expr: ExprId) -> Option<LocalBinding> {
+        let Partial::Present(expr_data) = self.env.expr_data(expr) else {
+            return None;
+        };
+
+        match expr_data {
+            Expr::Field(lhs, ..) | Expr::Index(lhs, ..) => self.base_binding_of_expr(*lhs),
+            Expr::Path(..) => self.env.typed_expr(expr)?.binding(),
+            _ => None,
+        }
+    }
+
+    /// Returns `true`` if the expression can be used as an left hand side of an
+    /// assignment.
+    /// This method doesn't take mutability into account.
+    fn is_assignable_expr(&self, expr: ExprId) -> bool {
+        let Partial::Present(expr_data) = expr.data(self.db.as_hir_db(), self.body()) else {
+            return false;
+        };
+
+        matches!(
+            expr_data,
+            Expr::Path(..) | Expr::Field(..) | Expr::Index(..)
+        )
     }
 }
 
@@ -639,7 +771,7 @@ impl TraitOps for BinOp {
     fn triple(&self, db: &dyn HirAnalysisDb) -> [IdentId; 3] {
         let triple = match self {
             BinOp::Arith(arith_op) => {
-                use hir::hir_def::ArithBinOp::*;
+                use ArithBinOp::*;
 
                 match arith_op {
                     Add => ["Add", "add", "+"],
@@ -650,22 +782,23 @@ impl TraitOps for BinOp {
                     Pow => ["Pow", "pow", "**"],
                     LShift => ["Shl", "shl", "<<"],
                     RShift => ["Shr", "shr", ">>"],
-                    BitAnd => ["BitAnd", "bit_and", "&"],
-                    BitOr => ["BitOr", "bit_or", "|"],
-                    BitXor => ["BitXor", "bit_xor", "^"],
+                    BitAnd => ["BitAnd", "bitand", "&"],
+                    BitOr => ["BitOr", "bitor", "|"],
+                    BitXor => ["BitXor", "bitxor", "^"],
                 }
             }
 
             BinOp::Comp(comp_op) => {
                 use hir::hir_def::CompBinOp::*;
 
+                // Comp
                 match comp_op {
                     Eq => ["Eq", "eq", "=="],
-                    NotEq => ["NotEq", "not_eq", "!="],
-                    Lt => ["Lt", "lt", "<"],
-                    LtEq => ["LtEq", "lt_eq", "<="],
-                    Gt => ["Gt", "gt", ">"],
-                    GtEq => ["GtEq", "gt_eq", ">="],
+                    NotEq => ["Eq", "ne", "!="],
+                    Lt => ["Ord", "lt", "<"],
+                    LtEq => ["Ord", "le", "<="],
+                    Gt => ["Ord", "gt", ">"],
+                    GtEq => ["Ord", "ge", ">="],
                 }
             }
 
@@ -696,6 +829,29 @@ impl TraitOps for IndexingOp {
             IdentId::new(db.as_hir_db(), method_name.to_string()),
             IdentId::new(db.as_hir_db(), symbol.to_string()),
         ]
+    }
+}
+
+struct AugAssignOp(ArithBinOp);
+
+impl TraitOps for AugAssignOp {
+    fn triple(&self, db: &dyn HirAnalysisDb) -> [IdentId; 3] {
+        use ArithBinOp::*;
+        let triple = match self.0 {
+            Add => ["AddAssign", "add_assign", "+="],
+            Sub => ["SubAssign", "sub_assign", "-="],
+            Mul => ["MulAssign", "mul_assign", "*="],
+            Div => ["DivAssign", "div_assign", "/="],
+            Rem => ["RemAssign", "rem_assign", "%="],
+            Pow => ["PowAssign", "pow_assign", "**="],
+            LShift => ["ShlAssign", "shl_assign", "<<="],
+            RShift => ["ShrAssign", "shr_assign", ">>="],
+            BitAnd => ["BitAndAssign", "bitand_assign", "&="],
+            BitOr => ["BitOrAssign", "bitor_assign", "|="],
+            BitXor => ["BitXorAssign", "bitxor_assign", "^="],
+        };
+
+        triple.map(|s| IdentId::new(db.as_hir_db(), s.to_string()))
     }
 }
 
