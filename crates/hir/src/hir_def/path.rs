@@ -1,6 +1,5 @@
-use crate::{hir_def::Partial, HirDb};
-
 use super::{kw, IdentId};
+use crate::{hir_def::Partial, HirDb};
 
 #[salsa::interned]
 pub struct PathId {
@@ -15,6 +14,10 @@ impl PathId {
 
     pub fn len(self, db: &dyn HirDb) -> usize {
         self.segments(db).len()
+    }
+
+    pub fn is_ident(self, db: &dyn HirDb) -> bool {
+        self.len(db) == 1
     }
 
     pub fn self_ty(db: &dyn HirDb) -> Self {

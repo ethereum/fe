@@ -33,11 +33,6 @@ impl Pat {
             _ => unreachable!(),
         }
     }
-
-    /// Returns the `mut` keyword if the patter is mutable.
-    pub fn mut_token(&self) -> Option<SyntaxToken> {
-        support::token(self.syntax(), SK::MutKw)
-    }
 }
 
 ast_node! {
@@ -90,6 +85,11 @@ ast_node! {
 impl PathPat {
     pub fn path(&self) -> Option<super::Path> {
         support::child(self.syntax())
+    }
+
+    /// Returns the `mut` keyword if the patter is mutable.
+    pub fn mut_token(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::MutKw)
     }
 }
 
@@ -175,11 +175,10 @@ pub enum PatKind {
 
 #[cfg(test)]
 mod tests {
-    use crate::{lexer::Lexer, parser::Parser};
-
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
+    use crate::{lexer::Lexer, parser::Parser};
 
     fn parse_pat<T>(source: &str) -> T
     where
@@ -282,9 +281,13 @@ mod tests {
                     assert!(matches!(field.pat().unwrap().kind(), PatKind::Path(_)));
                 }
                 2 => {
+                    let PatKind::Path(pat) = field.pat().unwrap().kind() else {
+                        panic!("unexpected record pat");
+                    };
+
                     assert!(field.name().is_none());
                     assert!(matches!(field.pat().unwrap().kind(), PatKind::Path(_)));
-                    assert!(field.pat().unwrap().mut_token().is_some());
+                    assert!(pat.mut_token().is_some());
                 }
                 _ => panic!("unexpected record pat"),
             }

@@ -1,11 +1,10 @@
 use parser::ast;
 
+use super::body::BodyCtxt;
 use crate::{
     hir_def::{pat::*, IdentId, LitKind, PathId},
     span::HirOrigin,
 };
-
-use super::body::BodyCtxt;
 
 impl Pat {
     pub(super) fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::Pat) -> PatId {
@@ -30,9 +29,9 @@ impl Pat {
                 Pat::Tuple(elems)
             }
 
-            ast::PatKind::Path(path) => {
-                let path = PathId::lower_ast_partial(ctxt.f_ctxt, path.path());
-                Pat::Path(path)
+            ast::PatKind::Path(path_ast) => {
+                let path = PathId::lower_ast_partial(ctxt.f_ctxt, path_ast.path());
+                Pat::Path(path, path_ast.mut_token().is_some())
             }
 
             ast::PatKind::PathTuple(path_tup) => {
