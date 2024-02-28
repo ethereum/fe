@@ -40,7 +40,7 @@ pub(super) fn resolve_path_in_pat(
 
     let pat_span = pat.lazy_span(tc.body());
     let span: DynLazySpan = match pat_data {
-        Pat::Path(_, _) => pat_span.into_path_pat().path(),
+        Pat::Path(..) => pat_span.into_path_pat().path(),
         Pat::PathTuple(..) => pat_span.into_path_tuple_pat().path(),
         Pat::Record(..) => pat_span.into_record_pat().path(),
         _ => unreachable!(),

@@ -1,5 +1,9 @@
-use hir::hir_def::{
-    scope_graph::ScopeId, Body, BodyKind, Expr, ExprId, Func, IdentId, Partial, PatId, Stmt, StmtId,
+use hir::{
+    hir_def::{
+        scope_graph::ScopeId, Body, BodyKind, Expr, ExprId, Func, IdentId, Partial, PatId, Stmt,
+        StmtId,
+    },
+    span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
 
@@ -18,11 +22,11 @@ pub(super) struct TyCheckEnv<'db> {
     body: Body,
 
     pat_ty: FxHashMap<PatId, TyId>,
-    expr_ty: FxHashMap<ExprId, TyId>,
+    expr_ty: FxHashMap<ExprId, TypedExpr>,
 
     var_env: Vec<BlockEnv>,
 
-    pending_vars: FxHashMap<IdentId, PatId>,
+    pending_vars: FxHashMap<IdentId, LocalBinding>,
 }
 
 impl<'db> TyCheckEnv<'db> {
@@ -47,7 +51,7 @@ impl<'db> TyCheckEnv<'db> {
             return Err(());
         };
 
-        for (i, param) in params.data(hir_db).iter().enumerate() {
+        for (idx, param) in params.data(hir_db).iter().enumerate() {
             let Some(name) = param.name() else {
                 continue;
             };
@@ -60,12 +64,20 @@ impl<'db> TyCheckEnv<'db> {
             if !ty.is_star_kind(db) {
                 ty = TyId::invalid(db, InvalidCause::Other);
             }
-            let var = LocalBinding::Param(i, ty);
+            let var = LocalBinding::Param {
+                idx,
+                ty,
+                is_mut: param.is_mut,
+            };
 
             env.var_env.last_mut().unwrap().register_var(name, var);
         }
 
         Ok(env)
+    }
+
+    pub(super) fn binding_def_span(&self, binding: LocalBinding) -> DynLazySpan {
+        binding.def_span(self)
     }
 
     /// Returns a function if the `body` being checked has `BodyKind::FuncBody`.
@@ -83,13 +95,13 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn lookup_binding_ty(&self, binding: LocalBinding) -> TyId {
         match binding {
-            LocalBinding::Local(pat) => self
+            LocalBinding::Local { pat, .. } => self
                 .pat_ty
                 .get(&pat)
                 .copied()
                 .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
 
-            LocalBinding::Param(_, ty) => ty,
+            LocalBinding::Param { ty, .. } => ty,
         }
     }
 
@@ -107,8 +119,8 @@ impl<'db> TyCheckEnv<'db> {
         self.var_env.pop().unwrap();
     }
 
-    pub(super) fn type_expr(&mut self, expr: ExprId, ty: TyId) {
-        self.expr_ty.insert(expr, ty);
+    pub(super) fn type_expr(&mut self, expr: ExprId, typed: TypedExpr) {
+        self.expr_ty.insert(expr, typed);
     }
 
     pub(super) fn type_pat(&mut self, pat: PatId, ty: TyId) {
@@ -117,15 +129,15 @@ impl<'db> TyCheckEnv<'db> {
 
     /// Register a pending binding which will be added when `flush_pending_vars`
     /// is called.
-    pub(super) fn register_pending_binding(&mut self, name: IdentId, pat: PatId) {
-        self.pending_vars.insert(name, pat);
+    pub(super) fn register_pending_binding(&mut self, name: IdentId, binding: LocalBinding) {
+        self.pending_vars.insert(name, binding);
     }
 
     /// Flush pending bindings to the current scope environment.
     pub(super) fn flush_pending_bindings(&mut self) {
         let var_env = self.var_env.last_mut().unwrap();
-        for (name, pat) in self.pending_vars.drain() {
-            var_env.register_var(name, LocalBinding::Local(pat));
+        for (name, binding) in self.pending_vars.drain() {
+            var_env.register_var(name, binding);
         }
     }
 
@@ -190,8 +202,70 @@ impl BlockEnv {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(super) struct TypedExpr {
+    ty: TyId,
+    is_mut: bool,
+}
+
+impl TypedExpr {
+    pub(super) fn new(ty: TyId, is_mut: bool) -> Self {
+        Self { ty, is_mut }
+    }
+
+    pub(super) fn invalid(db: &dyn HirAnalysisDb) -> Self {
+        Self {
+            ty: TyId::invalid(db, InvalidCause::Other),
+            is_mut: true,
+        }
+    }
+
+    pub(super) fn ty(&self) -> TyId {
+        self.ty
+    }
+
+    pub(super) fn is_mutable(&self, _db: &dyn HirAnalysisDb) -> bool {
+        // TODO: We need to check both type mutability and expr mutability when we have
+        // `&mut` type.
+        self.is_mut
+    }
+
+    pub(super) fn apply_subst(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
+        Self {
+            ty: self.ty.apply_subst(db, table),
+            is_mut: self.is_mut,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(super) enum LocalBinding {
-    Local(PatId),
-    Param(usize, TyId),
+    Local { pat: PatId, is_mut: bool },
+    Param { idx: usize, ty: TyId, is_mut: bool },
+}
+
+impl LocalBinding {
+    pub(super) fn local(pat: PatId, is_mut: bool) -> Self {
+        Self::Local { pat, is_mut }
+    }
+
+    pub(super) fn is_mut(&self) -> bool {
+        match self {
+            LocalBinding::Local { is_mut, .. } | LocalBinding::Param { is_mut, .. } => *is_mut,
+        }
+    }
+
+    pub(super) fn def_span<'db>(&self, env: &TyCheckEnv<'db>) -> DynLazySpan {
+        match self {
+            LocalBinding::Local { pat, .. } => pat.lazy_span(env.body).into(),
+            LocalBinding::Param { idx, .. } => {
+                let func = env.func().unwrap();
+                func.lazy_span()
+                    .params_moved()
+                    .param(*idx)
+                    .name_moved()
+                    .into()
+            }
+        }
+    }
 }

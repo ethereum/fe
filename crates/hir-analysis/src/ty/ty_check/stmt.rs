@@ -25,7 +25,7 @@ impl<'db> TyChecker<'db> {
 
             Stmt::Return(..) => self.check_ret(stmt, stmt_data),
 
-            Stmt::Expr(expr) => self.check_expr(*expr, expected),
+            Stmt::Expr(expr) => self.check_expr(*expr, expected).ty(),
         }
     }
 

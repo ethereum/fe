@@ -3,6 +3,7 @@ use std::ops::Range;
 use hir::hir_def::{Partial, Pat, PatId, VariantKind};
 
 use super::{
+    env::LocalBinding,
     path::{resolve_path_in_pat, RecordInitChecker, ResolvedPathInPat, TyInBody},
     RecordLike, TyChecker,
 };
@@ -96,7 +97,7 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_path_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
-        let Pat::Path(path, _) = pat_data else {
+        let Pat::Path(path, is_mut) = pat_data else {
             unreachable!()
         };
 
@@ -131,8 +132,9 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
-            ResolvedPathInPat::NewBinding(binding) => {
-                self.env.register_pending_binding(binding, pat);
+            ResolvedPathInPat::NewBinding(ident) => {
+                let binding = LocalBinding::local(pat, *is_mut);
+                self.env.register_pending_binding(ident, binding);
                 self.fresh_ty()
             }
 
