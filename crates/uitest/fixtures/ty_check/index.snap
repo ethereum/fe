@@ -15,7 +15,7 @@ error[8-0016]: `std::ops::Index` trait is not implemented
 6 │     f[1]
   │     ^^^^
   │     │
-  │     `[]` can't be applied to `Foo`
+  │     `[]` cant be applied to `Foo`
   │     Try implementing `std::ops::Index` for `Foo`
 
 

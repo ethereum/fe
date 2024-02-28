@@ -9,7 +9,7 @@ error[8-0016]: `std::ops::UnaryPlus` trait is not implemented
 5 │     +f
   │     ^^
   │     │
-  │     `+` can't be applied to `Foo`
+  │     `+` cant be applied to `Foo`
   │     Try implementing `std::ops::UnaryPlus` for `Foo`
 
 error[8-0016]: `std::ops::Neg` trait is not implemented
@@ -18,7 +18,7 @@ error[8-0016]: `std::ops::Neg` trait is not implemented
 6 │     -f
   │     ^^
   │     │
-  │     `-` can't be applied to `Foo`
+  │     `-` cant be applied to `Foo`
   │     Try implementing `std::ops::Neg` for `Foo`
 
 error[8-0016]: `std::ops::Not` trait is not implemented
@@ -27,7 +27,7 @@ error[8-0016]: `std::ops::Not` trait is not implemented
 7 │     !f
   │     ^^
   │     │
-  │     `!` can't be applied to `Foo`
+  │     `!` cant be applied to `Foo`
   │     Try implementing `std::ops::Not` for `Foo`
 
 
