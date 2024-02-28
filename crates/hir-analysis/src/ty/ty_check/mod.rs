@@ -13,6 +13,7 @@ use hir::{
 pub(super) use path::RecordLike;
 use rustc_hash::FxHashMap;
 
+use self::env::TypedExpr;
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
     ty_def::{InvalidCause, Kind, TyId, TyVarUniverse},
@@ -162,7 +163,10 @@ impl<'db> TyChecker<'db> {
         };
 
         match t {
-            Typeable::Expr(expr) => self.env.type_expr(expr, actual),
+            Typeable::Expr { expr, is_mut } => {
+                let typed = TypedExpr::new(actual, is_mut);
+                self.env.type_expr(expr, typed)
+            }
             Typeable::Pat(pat) => self.env.type_pat(pat, actual),
         }
 
@@ -174,16 +178,17 @@ impl<'db> TyChecker<'db> {
 pub struct TypedBody {
     body: Option<Body>,
     pat_ty: FxHashMap<PatId, TyId>,
-    expr_ty: FxHashMap<ExprId, TyId>,
+    expr_ty: FxHashMap<ExprId, TypedExpr>,
 }
 
 impl TypedBody {
     pub fn expr_ty(&self, db: &dyn HirAnalysisDb, expr: ExprId) -> TyId {
         self.expr_ty
             .get(&expr)
-            .copied()
+            .map(|typed| typed.ty())
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
     }
+
     pub fn pat_ty(&self, db: &dyn HirAnalysisDb, pat: PatId) -> TyId {
         self.pat_ty
             .get(&pat)
@@ -202,14 +207,14 @@ impl TypedBody {
 
 #[derive(Clone, Copy, PartialEq, Eq, derive_more::From)]
 enum Typeable {
-    Expr(ExprId),
+    Expr { expr: ExprId, is_mut: bool },
     Pat(PatId),
 }
 
 impl Typeable {
     fn lazy_span(self, body: Body) -> DynLazySpan {
         match self {
-            Self::Expr(expr) => expr.lazy_span(body).into(),
+            Self::Expr { expr, .. } => expr.lazy_span(body).into(),
             Self::Pat(pat) => pat.lazy_span(body).into(),
         }
     }
