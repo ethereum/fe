@@ -1,15 +1,38 @@
+use super::{define_scope, path::PathScope, token_stream::TokenStream, Parser};
 use crate::{
-    parser::lit::{is_lit, LitScope},
+    parser::{
+        lit::{is_lit, LitScope},
+        token_stream::LexicalToken,
+    },
     SyntaxKind,
 };
-
-use super::{define_scope, path::PathScope, token_stream::TokenStream, Parser};
 
 pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     use SyntaxKind::*;
     parser.bump_trivias();
     let checkpoint = parser.checkpoint();
-    parser.bump_if(SyntaxKind::MutKw);
+    let has_mut = parser.bump_if(SyntaxKind::MutKw);
+
+    let token = parser.current_token();
+    if has_mut {
+        match token.as_ref().map(|t| t.syntax_kind()) {
+            Some(Underscore | Dot2 | LParen) => {
+                parser.error_msg_on_current_token(&format!(
+                    "`mut` is not allowed on `{}`",
+                    token.unwrap().text()
+                ));
+            }
+
+            Some(kind) if is_lit(kind) => {
+                parser.error_msg_on_current_token(&format!(
+                    "`mut` is not allowed on `{}`",
+                    token.unwrap().text()
+                ));
+            }
+
+            _ => {}
+        }
+    }
 
     let success = match parser.current_kind() {
         Some(Underscore) => parser.parse(WildCardPatScope::default(), Some(checkpoint)),

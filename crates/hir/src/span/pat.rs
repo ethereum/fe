@@ -46,6 +46,10 @@ define_lazy_span_node!(
 define_lazy_span_node!(
     LazyPathPatSpan,
     ast::PathPat,
+    @token {
+        (mut_token, mut_token),
+    }
+
     @node {
         (path, path, LazyPathSpan),
     }

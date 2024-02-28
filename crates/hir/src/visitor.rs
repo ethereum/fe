@@ -1133,7 +1133,7 @@ where
             }
         }
 
-        Pat::Path(path) => {
+        Pat::Path(path, _) => {
             if let Some(path) = path.to_opt() {
                 ctxt.with_new_ctxt(
                     |span| span.into_path_pat().path_moved(),
