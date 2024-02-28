@@ -17,13 +17,13 @@ impl<'db> TyChecker<'db> {
 
             Stmt::For(..) => todo!(),
 
-            Stmt::While(..) => todo!(),
+            Stmt::While(..) => self.check_while(stmt, stmt_data),
 
             Stmt::Continue => todo!(),
 
             Stmt::Break => todo!(),
 
-            Stmt::Return(..) => self.check_ret(stmt, stmt_data),
+            Stmt::Return(..) => self.check_return(stmt, stmt_data),
 
             Stmt::Expr(expr) => self.check_expr(*expr, expected).ty(),
         }
@@ -50,7 +50,18 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    fn check_ret(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_while(&mut self, _stmt: StmtId, stmt_data: &Stmt) -> TyId {
+        let Stmt::While(cond, body) = stmt_data else {
+            unreachable!()
+        };
+
+        self.check_expr(*cond, TyId::bool(self.db));
+        self.check_expr(*body, TyId::unit(self.db));
+
+        TyId::unit(self.db)
+    }
+
+    fn check_return(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
         let Stmt::Return(expr) = stmt_data else {
             unreachable!()
         };
