@@ -634,6 +634,12 @@ pub enum BodyDiag {
         primary: DynLazySpan,
         is_break: bool,
     },
+
+    TraitNotImplemented {
+        primary: DynLazySpan,
+        ty: String,
+        trait_name: IdentId,
+    },
 }
 
 impl BodyDiag {
@@ -790,6 +796,7 @@ impl BodyDiag {
             Self::NonAssignableExpr(..) => 17,
             Self::ImmutableAssignment { .. } => 18,
             Self::LoopControlOutsideOfLoop { .. } => 19,
+            Self::TraitNotImplemented { .. } => 20,
         }
     }
 
@@ -826,6 +833,10 @@ impl BodyDiag {
                     "`{}` is not allowed outside of a loop",
                     if *is_break { "break" } else { "continue" }
                 )
+            }
+
+            Self::TraitNotImplemented { trait_name, ty, .. } => {
+                format!("`{}` needs to be implemented for {ty}", trait_name.data(db))
             }
         }
     }
@@ -1162,6 +1173,26 @@ impl BodyDiag {
                     format!("`{}` is not allowed here", stmt),
                     primary.resolve(db),
                 )]
+            }
+
+            Self::TraitNotImplemented {
+                primary,
+                ty,
+                trait_name,
+            } => {
+                let trait_name = trait_name.data(db.as_hir_db());
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("`{trait_name}` needs to be implemented for `{ty}`"),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("consider implementing `{trait_name}` for `{ty}`"),
+                        primary.resolve(db),
+                    ),
+                ]
             }
         }
     }

@@ -1,0 +1,21 @@
+struct Foo {
+    x: i32,
+    y: u32,
+}
+
+struct Bar {
+    x: i32,
+}
+
+pub fn foo(foo: Foo) {
+    for i in foo { }
+}
+
+pub fn bar(foo_arr: [Foo; 10]) -> i32 {
+    let res = 0
+    for Bar { x } in foo_arr {
+        res += x
+    }
+    
+    res
+}
