@@ -21,7 +21,7 @@ use crate::{
 pub(super) fn is_expr_atom_head(kind: SyntaxKind) -> bool {
     use SyntaxKind::*;
     match kind {
-        IfKw | MatchKw | LBrace | LParen | LBracket => true,
+        IfKw | MatchKw | LBrace | LParen | LBracket | UnsafeKw => true,
         kind if lit::is_lit(kind) => true,
         kind if path::is_path_segment(kind) => true,
         _ => false,
@@ -37,6 +37,7 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
     match parser.current_kind() {
         Some(IfKw) => parser.parse_cp(IfExprScope::default(), None),
         Some(MatchKw) => parser.parse_cp(MatchExprScope::default(), None),
+        Some(UnsafeKw) => parser.parse_cp(UnsafeExprScope::default(), None),
         Some(LBrace) => parser.parse_cp(BlockExprScope::default(), None),
         Some(LParen) => parser.parse_cp(ParenScope::default(), None),
         Some(LBracket) => parser.parse_cp(ArrayScope::default(), None),
@@ -82,8 +83,22 @@ impl super::Parse for BlockExprScope {
                 .map(SyntaxKind::is_item_head)
                 .unwrap_or_default()
             {
-                parser.parse(ItemScope::default())?;
-                continue;
+                let is_item = if parser.current_kind() == Some(SyntaxKind::UnsafeKw) {
+                    parser.dry_run(|parser| {
+                        parser.bump();
+                        parser
+                            .current_kind()
+                            .map(SyntaxKind::is_item_head)
+                            .unwrap_or_default()
+                    })
+                } else {
+                    true
+                };
+
+                if is_item {
+                    parser.parse(ItemScope::default())?;
+                    continue;
+                }
             }
 
             parse_stmt(parser)?;
@@ -127,6 +142,17 @@ impl super::Parse for IfExprScope {
             parse_expr(parser)?;
         }
         Ok(())
+    }
+}
+
+define_scope! { UnsafeExprScope, UnsafeExpr }
+impl super::Parse for UnsafeExprScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.bump_expected(SyntaxKind::UnsafeKw);
+
+        parse_expr(parser)
     }
 }
 

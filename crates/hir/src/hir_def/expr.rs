@@ -39,6 +39,8 @@ pub enum Expr {
     /// The first `ExprId` is the scrutinee, the second is the arms.
     Match(ExprId, Partial<Vec<MatchArm>>),
 
+    Unsafe(ExprId),
+
     /// The `Assign` Expression. The first `ExprId` is the destination of the
     /// assignment, and the second `ExprId` is the rhs value of the binding.
     Assign(ExprId, ExprId),

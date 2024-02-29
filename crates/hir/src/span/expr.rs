@@ -201,6 +201,14 @@ define_lazy_span_node!(
 
 define_lazy_span_node!(LazyMatchArmSpan);
 
+define_lazy_span_node!(
+    LazyUnsafeExprSpan,
+    ast::UnsafeExpr,
+    @token {
+        (unsafe_kw, unsafe_kw),
+    }
+);
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct ExprRoot {
     expr: ExprId,
