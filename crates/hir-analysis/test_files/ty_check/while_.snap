@@ -105,9 +105,9 @@ note:
    │ ╭────────────────────────────────────────^
 12 │ │     let mut res = 1
 13 │ │     while true {
-14 │ │         res *= num
+14 │ │         if num > 1 {
    · │
-22 │ │     res
+22 │ │     return res
 23 │ │ }
    │ ╰─^ u32
 
@@ -134,8 +134,8 @@ note:
    │  
 13 │       while true {
    │ ╭────────────────^
-14 │ │         res *= num
-15 │ │         if num > 1 {
+14 │ │         if num > 1 {
+15 │ │             res *= num
 16 │ │             num -= 1
    · │
 19 │ │         }
@@ -144,58 +144,60 @@ note:
 
 note: 
    ┌─ test_file.fe:14:9
-   │
-14 │         res *= num
-   │         ^^^ u32
-
-note: 
-   ┌─ test_file.fe:14:9
-   │
-14 │         res *= num
-   │         ^^^^^^^^^^ ()
-
-note: 
-   ┌─ test_file.fe:14:16
-   │
-14 │         res *= num
-   │                ^^^ u32
-
-note: 
-   ┌─ test_file.fe:15:9
    │  
-15 │ ╭         if num > 1 {
+14 │ ╭         if num > 1 {
+15 │ │             res *= num
 16 │ │             num -= 1
 17 │ │         } else {
-18 │ │             return num
+18 │ │             return res
 19 │ │         }
    │ ╰─────────^ ()
 
 note: 
-   ┌─ test_file.fe:15:12
+   ┌─ test_file.fe:14:12
    │
-15 │         if num > 1 {
+14 │         if num > 1 {
    │            ^^^ u32
 
 note: 
-   ┌─ test_file.fe:15:12
+   ┌─ test_file.fe:14:12
    │
-15 │         if num > 1 {
+14 │         if num > 1 {
    │            ^^^^^^^ bool
 
 note: 
-   ┌─ test_file.fe:15:18
+   ┌─ test_file.fe:14:18
    │
-15 │         if num > 1 {
+14 │         if num > 1 {
    │                  ^ u32
 
 note: 
-   ┌─ test_file.fe:15:20
+   ┌─ test_file.fe:14:20
    │  
-15 │           if num > 1 {
+14 │           if num > 1 {
    │ ╭────────────────────^
+15 │ │             res *= num
 16 │ │             num -= 1
 17 │ │         } else {
    │ ╰─────────^ ()
+
+note: 
+   ┌─ test_file.fe:15:13
+   │
+15 │             res *= num
+   │             ^^^ u32
+
+note: 
+   ┌─ test_file.fe:15:13
+   │
+15 │             res *= num
+   │             ^^^^^^^^^^ ()
+
+note: 
+   ┌─ test_file.fe:15:20
+   │
+15 │             res *= num
+   │                    ^^^ u32
 
 note: 
    ┌─ test_file.fe:16:13
@@ -220,20 +222,172 @@ note:
    │  
 17 │           } else {
    │ ╭────────────────^
-18 │ │             return num
+18 │ │             return res
 19 │ │         }
    │ ╰─────────^ ()
 
 note: 
    ┌─ test_file.fe:18:20
    │
-18 │             return num
+18 │             return res
    │                    ^^^ u32
 
 note: 
-   ┌─ test_file.fe:22:5
+   ┌─ test_file.fe:22:12
    │
-22 │     res
+22 │     return res
+   │            ^^^ u32
+
+note: 
+   ┌─ test_file.fe:26:40
+   │  
+26 │   pub fn factorial3(mut num: u32) -> u32 {
+   │ ╭────────────────────────────────────────^
+27 │ │     let mut res = 1
+28 │ │     while true {
+29 │ │         num = if num > 1 {
+   · │
+37 │ │     res
+38 │ │ }
+   │ ╰─^ u32
+
+note: 
+   ┌─ test_file.fe:27:9
+   │
+27 │     let mut res = 1
+   │         ^^^^^^^ u32
+
+note: 
+   ┌─ test_file.fe:27:19
+   │
+27 │     let mut res = 1
+   │                   ^ u32
+
+note: 
+   ┌─ test_file.fe:28:11
+   │
+28 │     while true {
+   │           ^^^^ bool
+
+note: 
+   ┌─ test_file.fe:28:16
+   │  
+28 │       while true {
+   │ ╭────────────────^
+29 │ │         num = if num > 1 {
+30 │ │             res *= num
+31 │ │             num - 1
+   · │
+34 │ │         }
+35 │ │     }
+   │ ╰─────^ ()
+
+note: 
+   ┌─ test_file.fe:29:9
+   │
+29 │         num = if num > 1 {
+   │         ^^^ u32
+
+note: 
+   ┌─ test_file.fe:29:9
+   │  
+29 │ ╭         num = if num > 1 {
+30 │ │             res *= num
+31 │ │             num - 1
+32 │ │         } else {
+33 │ │             break
+34 │ │         }
+   │ ╰─────────^ ()
+
+note: 
+   ┌─ test_file.fe:29:15
+   │  
+29 │           num = if num > 1 {
+   │ ╭───────────────^
+30 │ │             res *= num
+31 │ │             num - 1
+32 │ │         } else {
+33 │ │             break
+34 │ │         }
+   │ ╰─────────^ u32
+
+note: 
+   ┌─ test_file.fe:29:18
+   │
+29 │         num = if num > 1 {
+   │                  ^^^ u32
+
+note: 
+   ┌─ test_file.fe:29:18
+   │
+29 │         num = if num > 1 {
+   │                  ^^^^^^^ bool
+
+note: 
+   ┌─ test_file.fe:29:24
+   │
+29 │         num = if num > 1 {
+   │                        ^ u32
+
+note: 
+   ┌─ test_file.fe:29:26
+   │  
+29 │           num = if num > 1 {
+   │ ╭──────────────────────────^
+30 │ │             res *= num
+31 │ │             num - 1
+32 │ │         } else {
+   │ ╰─────────^ u32
+
+note: 
+   ┌─ test_file.fe:30:13
+   │
+30 │             res *= num
+   │             ^^^ u32
+
+note: 
+   ┌─ test_file.fe:30:13
+   │
+30 │             res *= num
+   │             ^^^^^^^^^^ ()
+
+note: 
+   ┌─ test_file.fe:30:20
+   │
+30 │             res *= num
+   │                    ^^^ u32
+
+note: 
+   ┌─ test_file.fe:31:13
+   │
+31 │             num - 1
+   │             ^^^ u32
+
+note: 
+   ┌─ test_file.fe:31:13
+   │
+31 │             num - 1
+   │             ^^^^^^^ u32
+
+note: 
+   ┌─ test_file.fe:31:19
+   │
+31 │             num - 1
+   │                   ^ u32
+
+note: 
+   ┌─ test_file.fe:32:16
+   │  
+32 │           } else {
+   │ ╭────────────────^
+33 │ │             break
+34 │ │         }
+   │ ╰─────────^ u32
+
+note: 
+   ┌─ test_file.fe:37:5
+   │
+37 │     res
    │     ^^^ u32
 
 

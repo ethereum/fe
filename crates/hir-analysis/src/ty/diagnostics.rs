@@ -629,6 +629,11 @@ pub enum BodyDiag {
         primary: DynLazySpan,
         binding: Option<(IdentId, DynLazySpan)>,
     },
+
+    LoopControlOutsideOfLoop {
+        primary: DynLazySpan,
+        is_break: bool,
+    },
 }
 
 impl BodyDiag {
@@ -784,6 +789,7 @@ impl BodyDiag {
             Self::OpsTraitNotImplemented { .. } => 16,
             Self::NonAssignableExpr(..) => 17,
             Self::ImmutableAssignment { .. } => 18,
+            Self::LoopControlOutsideOfLoop { .. } => 19,
         }
     }
 
@@ -813,6 +819,13 @@ impl BodyDiag {
             }
             Self::ImmutableAssignment { .. } => {
                 "left-hand side of assignment is immutable".to_string()
+            }
+
+            Self::LoopControlOutsideOfLoop { is_break, .. } => {
+                format!(
+                    "`{}` is not allowed outside of a loop",
+                    if *is_break { "break" } else { "continue" }
+                )
             }
         }
     }
@@ -1140,6 +1153,15 @@ impl BodyDiag {
                     ));
                 }
                 diag
+            }
+
+            Self::LoopControlOutsideOfLoop { primary, is_break } => {
+                let stmt = if *is_break { "break" } else { "continue" };
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{}` is not allowed here", stmt),
+                    primary.resolve(db),
+                )]
             }
         }
     }

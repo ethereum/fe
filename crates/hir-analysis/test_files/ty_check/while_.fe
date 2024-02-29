@@ -11,13 +11,28 @@ pub fn factorial(mut num: u32) -> u32 {
 pub fn factorial2(mut num: u32) -> u32 {
     let mut res = 1
     while true {
-        res *= num
         if num > 1 {
+            res *= num
             num -= 1
         } else {
-            return num
+            return res
         }
     }
+    
+    return res
+}
 
+
+pub fn factorial3(mut num: u32) -> u32 {
+    let mut res = 1
+    while true {
+        num = if num > 1 {
+            res *= num
+            num - 1
+        } else {
+            break
+        }
+    }
+    
     res
 }

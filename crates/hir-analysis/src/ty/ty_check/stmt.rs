@@ -3,7 +3,7 @@ use hir::hir_def::{Partial, Stmt, StmtId};
 use super::TyChecker;
 use crate::ty::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
-    ty_def::{InvalidCause, TyData, TyId},
+    ty_def::{InvalidCause, TyId},
 };
 
 impl<'db> TyChecker<'db> {
@@ -19,9 +19,8 @@ impl<'db> TyChecker<'db> {
 
             Stmt::While(..) => self.check_while(stmt, stmt_data),
 
-            Stmt::Continue => todo!(),
-
-            Stmt::Break => todo!(),
+            Stmt::Continue => self.check_continue(stmt, stmt_data),
+            Stmt::Break => self.check_break(stmt, stmt_data),
 
             Stmt::Return(..) => self.check_return(stmt, stmt_data),
 
@@ -50,15 +49,48 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    fn check_while(&mut self, _stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_while(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
         let Stmt::While(cond, body) = stmt_data else {
             unreachable!()
         };
 
         self.check_expr(*cond, TyId::bool(self.db));
+
+        self.env.enter_loop(stmt);
         self.check_expr(*body, TyId::unit(self.db));
+        self.env.leave_loop();
 
         TyId::unit(self.db)
+    }
+
+    fn check_continue(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+        assert!(matches!(stmt_data, Stmt::Continue));
+
+        if self.env.current_loop().is_none() {
+            let span = stmt.lazy_span(self.env.body());
+            let diag = BodyDiag::LoopControlOutsideOfLoop {
+                primary: span.into(),
+                is_break: false,
+            };
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+        }
+
+        TyId::bot(self.db)
+    }
+
+    fn check_break(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+        assert!(matches!(stmt_data, Stmt::Break));
+
+        if self.env.current_loop().is_none() {
+            let span = stmt.lazy_span(self.env.body());
+            let diag = BodyDiag::LoopControlOutsideOfLoop {
+                primary: span.into(),
+                is_break: true,
+            };
+            FuncBodyDiagAccumulator::push(self.db, diag.into());
+        }
+
+        TyId::bot(self.db)
     }
 
     fn check_return(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
@@ -88,6 +120,6 @@ impl<'db> TyChecker<'db> {
             FuncBodyDiagAccumulator::push(self.db, diag.into());
         }
 
-        TyId::new(self.db, TyData::Bot)
+        TyId::bot(self.db)
     }
 }
