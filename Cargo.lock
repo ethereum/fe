@@ -964,7 +964,9 @@ name = "fe-common2"
 version = "0.23.0"
 dependencies = [
  "camino",
+ "ena",
  "fe-parser2",
+ "rustc-hash",
  "salsa-2022",
  "semver 1.0.17",
  "smol_str",

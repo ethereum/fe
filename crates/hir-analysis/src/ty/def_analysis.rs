@@ -21,7 +21,10 @@ use super::{
         collect_impl_block_constraints, collect_super_traits, AssumptionListId, SuperTraitCycle,
     },
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
+    diagnostics::{
+        ImplDiag, RecursiveAdtDef, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection,
+        TyLowerDiag,
+    },
     trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyData, TyId},
@@ -33,7 +36,8 @@ use crate::{
     ty::{
         diagnostics::{
             AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
-            ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
+            ImplTraitDefDiagAccumulator, RecursiveAdtDefAccumulator, TraitDefDiagAccumulator,
+            TypeAliasDefDiagAccumulator,
         },
         method_table::collect_methods,
         trait_lower::lower_impl_trait,
@@ -62,8 +66,8 @@ pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
         AdtDefDiagAccumulator::push(db, diag);
     }
 
-    if let Some(diag) = check_recursive_adt(db, adt_ref) {
-        AdtDefDiagAccumulator::push(db, diag);
+    if let Some(def) = check_recursive_adt(db, adt_ref) {
+        RecursiveAdtDefAccumulator::push(db, def);
     }
 }
 
@@ -764,7 +768,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 pub(crate) fn check_recursive_adt(
     db: &dyn HirAnalysisDb,
     adt: AdtRefId,
-) -> Option<TyDiagCollection> {
+) -> Option<RecursiveAdtDef> {
     let adt_def = lower_adt(db, adt);
     for field in adt_def.fields(db) {
         for ty in field.iter_types(db) {
@@ -781,7 +785,7 @@ fn check_recursive_adt_impl(
     db: &dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
     adt: AdtRefId,
-) -> Option<TyDiagCollection> {
+) -> Option<RecursiveAdtDef> {
     let participants: FxHashSet<_> = cycle
         .participant_keys()
         .map(|key| check_recursive_adt::key_from_id(key.key_index()))
@@ -792,11 +796,14 @@ fn check_recursive_adt_impl(
         for (ty_idx, ty) in field.iter_types(db).enumerate() {
             for field_adt_ref in ty.collect_direct_adts(db) {
                 if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-                    let diag = TyLowerDiag::recursive_type(
-                        adt.name_span(db),
-                        adt_def.variant_ty_span(db, field_idx, ty_idx),
-                    );
-                    return Some(diag.into());
+                    return Some(RecursiveAdtDef::new(
+                        adt,
+                        field_adt_ref,
+                        (
+                            adt.name_span(db),
+                            adt_def.variant_ty_span(db, field_idx, ty_idx),
+                        ),
+                    ));
                 }
             }
         }

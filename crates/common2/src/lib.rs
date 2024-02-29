@@ -1,5 +1,6 @@
 pub mod diagnostics;
 pub mod input;
+pub mod recursive_def;
 
 pub use input::{InputFile, InputIngot};
 
