@@ -27,6 +27,8 @@ pub(super) struct TyCheckEnv<'db> {
     var_env: Vec<BlockEnv>,
 
     pending_vars: FxHashMap<IdentId, LocalBinding>,
+
+    loop_stack: Vec<StmtId>,
 }
 
 impl<'db> TyCheckEnv<'db> {
@@ -43,6 +45,7 @@ impl<'db> TyCheckEnv<'db> {
             expr_ty: FxHashMap::default(),
             var_env: vec![BlockEnv::new(func.scope(), 0)],
             pending_vars: FxHashMap::default(),
+            loop_stack: Vec::new(),
         };
 
         env.enter_scope(body.expr(hir_db));
@@ -125,6 +128,18 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn leave_scope(&mut self) {
         self.var_env.pop().unwrap();
+    }
+
+    pub(super) fn enter_loop(&mut self, stmt: StmtId) {
+        self.loop_stack.push(stmt);
+    }
+
+    pub(super) fn leave_loop(&mut self) {
+        self.loop_stack.pop();
+    }
+
+    pub(super) fn current_loop(&self) -> Option<StmtId> {
+        self.loop_stack.last().copied()
     }
 
     pub(super) fn type_expr(&mut self, expr: ExprId, typed: TypedExpr) {
