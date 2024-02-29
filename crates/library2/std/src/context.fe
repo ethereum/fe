@@ -1,0 +1,174 @@
+use ingot::evm
+use ingot::error::{
+    ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE,
+    ERROR_FAILED_SEND_VALUE,
+    Error
+}
+use ingot::buf::{
+    RawCallBuffer,
+    MemoryBufferReader,
+    MemoryBufferWriter
+}
+
+struct OutOfReachMarker {}
+
+// ctx.emit(my_event) should be the only way to emit an event. We achieve this by defining the
+// private `OutOfReachMarker` here to which only the `Context` has access.
+// Now there is no way to call `emit` directly on an Emittable.
+pub trait Emittable {
+  fn emit(self, _ val: OutOfReachMarker);
+}
+
+pub struct CalldataReader {
+    cur_offset: u256
+    len: u256
+
+    pub unsafe fn new(len: u256) -> CalldataReader {
+        return CalldataReader(cur_offset: 0, len)
+    }
+
+    pub fn remainder(self) -> u256 {
+        return self.len - self.cur_offset
+    }
+
+    pub fn advance(mut self, len: u256) -> u256 {
+        self.cur_offset += len
+        assert self.cur_offset <= self.len
+        return self.cur_offset
+    }
+
+    fn read_n(mut self, len: u256) -> u256 {
+        unsafe {
+            let value: u256 = evm::call_data_load(offset: self.cur_offset)
+            self.advance(len)
+            return evm::shr(bits: 256 - len * 8, value)
+        }
+    }
+
+    pub fn read_u8(mut self) -> u8 {
+        return u8(self.read_n(len: 1))
+    }
+
+    pub fn read_u16(mut self) -> u16 {
+        return u16(self.read_n(len: 2))
+    }
+
+    pub fn read_u32(mut self) -> u32 {
+        return u32(self.read_n(len: 4))
+    }
+
+    pub fn read_u64(mut self) -> u64 {
+        return u64(self.read_n(len: 8))
+    }
+
+    pub fn read_u128(mut self) -> u128 {
+        return u128(self.read_n(len: 16))
+    }
+    pub fn read_u256(mut self) -> u256 {
+        unsafe {
+            let value: u256 = evm::call_data_load(offset: self.cur_offset)
+            self.advance(len: 32)
+            return value
+        }
+    }
+}
+
+pub struct Context {
+    pub fn base_fee(self) -> u256 {
+        unsafe { return evm::base_fee() }
+    }
+
+    pub fn block_coinbase(self) -> address {
+        unsafe { return evm::coinbase() }
+    }
+
+    pub fn prevrandao(self) -> u256 {
+        unsafe { return evm::prevrandao() }
+    }
+
+    pub fn block_number(self) -> u256 {
+        unsafe { return evm::block_number() }
+    }
+
+    pub fn block_timestamp(self) -> u256 {
+        unsafe { return evm::timestamp() }
+    }
+
+    pub fn chain_id(self) -> u256 {
+        unsafe { return evm::chain_id() }
+    }
+
+    pub fn msg_sender(self) -> address {
+        unsafe { return evm::caller() }
+    }
+
+    pub fn msg_value(self) -> u256 {
+        unsafe { return evm::call_value() }
+    }
+
+    pub fn tx_gas_price(self) -> u256 {
+        unsafe { return evm::gas_price() }
+    }
+
+    pub fn tx_origin(self) -> address {
+        unsafe { return evm::origin() }
+    }
+
+    pub fn msg_sig(self) -> u256 {
+        unsafe { return evm::shr(bits: 224, value: evm::call_data_load(offset: 0)) }
+    }
+
+    pub fn balance_of(self, _ account: address) -> u256 {
+        unsafe { return evm::balance_of(account) }
+    }
+
+    pub fn self_balance(self) -> u256 {
+        unsafe { return evm::balance() }
+    }
+
+    pub fn self_address(self) -> address {
+        unsafe { return address(__address()) }
+    }
+
+    pub fn calldata_reader(self) -> CalldataReader {
+        unsafe {
+            let len: u256 = evm::call_data_size()
+            return CalldataReader::new(len)
+        }
+    }
+
+    pub fn send_value(mut self, to: address, wei: u256) {
+        unsafe {
+            if evm::balance() < wei {
+                revert Error(code: ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE)
+            }
+            let mut buf: RawCallBuffer = RawCallBuffer::new(input_len: 0, output_len: 0)
+            let success: bool = evm::call(gas: evm::gas_remaining(), addr: to, value: wei,
+                                          buf)
+            if not success {
+                revert Error(code: ERROR_FAILED_SEND_VALUE)
+            }
+        }
+    }
+
+    /// Makes a call to the given address.
+    pub fn raw_call(
+        self,
+        addr: address,
+        value: u256,
+        mut buf: RawCallBuffer
+    ) -> bool {
+        unsafe {
+            return evm::call(
+                gas: evm::gas_remaining(),
+                addr,
+                value,
+                buf
+            )
+        }
+    }
+
+    pub fn emit<T: Emittable>(mut self, _ val: T) {
+        val.emit(OutOfReachMarker())
+    }
+}

@@ -1,0 +1,325 @@
+use ingot::buf::{MemoryBuffer, RawCallBuffer}
+
+// Basic context accessor functions.
+pub unsafe fn chain_id() -> u256 {
+  return __chainid()
+}
+
+pub unsafe fn base_fee() -> u256 {
+  return __basefee()
+}
+
+pub unsafe fn origin() -> address {
+  return address(__origin())
+}
+
+pub unsafe fn gas_price() -> u256 {
+  return __gasprice()
+}
+
+pub unsafe fn gas_limit() -> u256 {
+  return __gaslimit()
+}
+
+pub unsafe fn gas_remaining() -> u256 {
+  return __gas()
+}
+
+pub unsafe fn block_hash(_ b: u256) -> u256 {
+  return __blockhash(b)
+}
+
+pub unsafe fn coinbase() -> address {
+  return address(__coinbase())
+}
+
+pub unsafe fn timestamp() -> u256 {
+  return __timestamp()
+}
+
+pub unsafe fn block_number() -> u256 {
+  return __number()
+}
+
+pub unsafe fn prevrandao() -> u256 {
+  return __prevrandao()
+}
+
+pub unsafe fn self_address() -> address {
+  return address(__address())
+}
+
+pub unsafe fn balance_of(_ addr: address) -> u256 {
+  return __balance(u256(addr))
+}
+
+pub unsafe fn balance() -> u256 {
+  return __selfbalance()
+}
+
+pub unsafe fn caller() -> address {
+  return address(__caller())
+}
+
+pub unsafe fn call_value() -> u256 {
+  return __callvalue()
+}
+
+
+// Overflowing math ops. Should these be unsafe or named
+// `overflowing_add`, etc?
+pub fn add(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __add(x, y) }
+}
+
+pub fn sub(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __sub(x, y) }
+}
+
+pub fn mul(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __mul(x, y) }
+}
+
+pub fn div(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __div(x, y) }
+}
+
+pub fn sdiv(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __sdiv(x, y) }
+}
+
+pub fn mod(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __mod(x, y) }
+}
+
+pub fn smod(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __smod(x, y) }
+}
+
+pub fn exp(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __exp(x, y) }
+}
+
+pub fn addmod(_ x: u256, _ y: u256, _ m: u256) -> u256 {
+  unsafe { return __addmod(x, y, m) }
+}
+
+pub fn mulmod(_ x: u256, _ y: u256, _ m: u256) -> u256 {
+  unsafe { return __mulmod(x, y, m) }
+}
+
+pub fn sign_extend(_ i: u256, _ x: u256) -> u256 {
+  unsafe { return __signextend(i, x) }
+}
+
+
+// Comparison ops
+// TODO: return bool (see issue //653)
+pub fn lt(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __lt(x, y) }
+}
+
+pub fn gt(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __gt(x, y) }
+}
+
+pub fn slt(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __slt(x, y) }
+}
+
+pub fn sgt(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __sgt(x, y) }
+}
+
+pub fn eq(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __eq(x, y) }
+}
+
+pub fn is_zero(_ x: u256) -> u256 {
+  unsafe { return __iszero(x) }
+}
+
+
+// Bitwise ops
+pub fn bitwise_and(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __and(x, y) }
+}
+
+pub fn bitwise_or(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __or(x, y) }
+}
+
+pub fn bitwise_not(_ x: u256) -> u256 {
+  unsafe { return __not(x) }
+}
+
+pub fn xor(_ x: u256, _ y: u256) -> u256 {
+  unsafe { return __xor(x, y) }
+}
+
+pub fn byte(offset: u256, value: u256) -> u256 {
+  unsafe { return __byte(offset, value) }
+}
+
+pub fn shl(bits: u256, value: u256) -> u256 {
+  unsafe { return __shl(bits, value) }
+}
+
+pub fn shr(bits: u256, value: u256) -> u256 {
+  unsafe { return __shr(bits, value) }
+}
+
+pub fn sar(bits: u256, value: u256) -> u256 {
+  unsafe { return __sar(bits, value) }
+}
+
+
+// Evm state access and control
+pub fn return_mem(buf: MemoryBuffer) {
+   unsafe{ __return(buf.offset(), buf.len()) }
+}
+
+pub fn revert_mem(buf: MemoryBuffer) {
+    unsafe { __revert(buf.offset(), buf.len()) }
+}
+
+pub unsafe fn selfdestruct(_ addr: address) {
+    __selfdestruct(u256(addr))
+}
+
+// Invalid opcode. Equivalent to revert(0, 0),
+// except that all remaining gas in the current context
+// is consumed.
+pub unsafe fn invalid() {
+    __invalid()
+}
+
+pub unsafe fn stop() {
+    __stop()
+}
+
+pub unsafe fn pc() -> u256 {
+    return __pc()
+}
+
+// TODO: dunno if we should enable this
+// pub unsafe fn pop(_ x: u256) {
+//     return __pop(x)
+// }
+
+pub unsafe fn mload(offset p: u256) -> u256 {
+    return __mload(p)
+}
+
+pub unsafe fn mstore(offset p: u256, value v: u256) {
+    __mstore(p, v)
+}
+pub unsafe fn mstore8(offset p: u256, value v: u256) {
+    __mstore8(p, v)
+}
+
+pub unsafe fn sload(offset p: u256) -> u256 {
+    return __sload(p)
+}
+
+pub unsafe fn sstore(offset p: u256, value v: u256) {
+    __sstore(p, v)
+}
+
+pub unsafe fn msize() -> u256 {
+    return __msize()
+}
+
+pub unsafe fn call_data_load(offset p: u256) -> u256 {
+    return __calldataload(p)
+}
+
+pub unsafe fn call_data_size() -> u256 {
+    return __calldatasize()
+}
+
+pub fn call_data_copy(buf: MemoryBuffer, from_offset f: u256) {
+   unsafe { __calldatacopy(buf.offset(), f, buf.len()) }
+}
+
+pub unsafe fn code_size() -> u256 {
+    return __codesize()
+}
+
+pub unsafe fn code_copy(to_offset t: u256, from_offset f: u256, len: u256) {
+    __codecopy(t, f, len)
+}
+
+pub unsafe fn return_data_size() -> u256 {
+    return __returndatasize()
+}
+
+pub unsafe fn return_data_copy(to_offset t: u256, from_offset f: u256, len: u256) {
+    __returndatacopy(t, f, len)
+}
+
+pub unsafe fn extcodesize(_ addr: address) -> u256 {
+    return __extcodesize(u256(addr))
+}
+
+pub unsafe fn ext_code_copy(_ addr: address, to_offset t: u256, from_offset f: u256, len: u256) {
+    __extcodecopy(u256(addr), t, f, len)
+}
+
+pub unsafe fn ext_code_hash(_ addr: address) -> u256 {
+    return __extcodehash(u256(addr))
+}
+
+pub fn keccak256_mem(buf: MemoryBuffer) -> u256 {
+   unsafe { return __keccak256(buf.offset(), buf.len()) }
+}
+
+
+// Contract creation and calling
+
+pub fn create(value v: u256, buf: MemoryBuffer) -> address {
+    unsafe { return address(__create(v, buf.offset(), buf.len())) }
+}
+
+pub fn create2(value v: u256, buf: MemoryBuffer, salt s: u256) -> address {
+    unsafe { return address(__create2(v, buf.offset(), buf.len(), s)) }
+}
+
+// TODO: return bool (success)
+pub fn call(gas: u256, addr: address, value: u256, mut buf: RawCallBuffer) -> bool {
+  unsafe{ return __call(gas, u256(addr), value, buf.offset(), buf.input_len(), buf.offset(), buf.output_len()) == 1 }
+}
+
+pub unsafe fn call_code(gas: u256, addr: address, value: u256, input_offset: u256, input_len: u256, output_offset: u256, output_len: u256) -> u256 {
+    return __callcode(gas, u256(addr), value, input_offset, input_len, output_offset, output_len)
+}
+
+pub unsafe fn delegate_call(gas: u256, addr: address, value: u256, input_offset: u256, input_len: u256, output_offset: u256, output_len: u256) -> u256 {
+    return __delegatecall(gas, u256(addr), input_offset, input_len, output_offset, output_len)
+}
+
+pub unsafe fn static_call(gas: u256, addr: address, input_offset: u256, input_len: u256, output_offset: u256, output_len: u256) -> u256 {
+    return __staticcall(gas, u256(addr), input_offset, input_len, output_offset, output_len)
+}
+
+// Logging functions
+
+pub fn log0(buf: MemoryBuffer) {
+    unsafe { return __log0(buf.offset(), buf.len()) }
+}
+
+pub fn log1(buf: MemoryBuffer, topic1 t1: u256) {
+    unsafe { return __log1(buf.offset(), buf.len(), t1) }
+}
+
+pub fn log2(buf: MemoryBuffer, topic1 t1: u256, topic2 t2: u256) {
+    unsafe { return __log2(buf.offset(), buf.len(), t1, t2) }
+}
+
+pub fn log3(buf: MemoryBuffer, topic1 t1: u256, topic2 t2: u256, topic3 t3: u256) {
+    unsafe { return __log3(buf.offset(), buf.len(), t1, t2, t3) }
+}
+
+pub fn log4(buf: MemoryBuffer, topic1 t1: u256, topic2 t2: u256, topic3 t3: u256, topic4 t4: u256) {
+    unsafe { return __log4(buf.offset(), buf.len(), t1, t2, t3, t4) }
+}

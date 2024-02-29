@@ -1,0 +1,17 @@
+[package]
+name = "fe-codegen2"
+version = "0.23.0"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+
+[dependencies]
+hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
+hir = { path = "../hir", package = "fe-hir" }
+mir = { path = "../mir2", package = "fe-mir2" }
+fe-abi = { path = "../abi", version = "^0.23.0"}
+salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
+num-bigint = "0.4.3"
+fxhash = "0.2.1"
+indexmap = "1.6.2"
+smol_str = "0.1.21"
+yultsur = { git = "https://github.com/fe-lang/yultsur", rev = "ae85470" }

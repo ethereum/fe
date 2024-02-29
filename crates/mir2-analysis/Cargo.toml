@@ -1,0 +1,22 @@
+[package]
+name = "fe-mir2-analysis"
+version = "0.23.0"
+authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+
+[dependencies]
+fe-common2 = { path = "../common2", version = "^0.23.0" }
+fe-hir-analysis = { path = "../hir-analysis", version = "^0.23.0" }
+fe-hir = { path = "../hir", version = "^0.23.0" }
+fe-mir2 = { path = "../mir2", version = "^0.23.0" }
+salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
+smol_str = "0.1.21"
+id-arena = "2.2.1"
+fxhash = "0.2.1"
+dot2 = "1.0.0"
+
+[dev-dependencies]
+test-files = { path = "../test-files", package = "fe-test-files" }
+fe-library = { path = "../library" }
