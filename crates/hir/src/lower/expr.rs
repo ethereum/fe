@@ -29,7 +29,13 @@ impl Expr {
                     let stmt = Stmt::push_to_body(ctxt, stmt);
                     stmts.push(stmt);
                 }
-                let expr_id = ctxt.push_expr(Self::Block(stmts), HirOrigin::raw(&ast));
+                let expr_id = ctxt.push_expr(
+                    Self::Block {
+                        stmts,
+                        is_unsafe: block.unsafe_kw().is_some(),
+                    },
+                    HirOrigin::raw(&ast),
+                );
 
                 for item in block.items() {
                     ItemKind::lower_ast(ctxt.f_ctxt, item);

@@ -19,3 +19,25 @@ fn generics1<T: Trait, U>(t: T, u: Option<U>) -> T
 }
 
 fn decl<T, U>(t: MyStruct<T, U>) -> Result<T, Err> {}
+
+fn foo() {
+    unsafe {
+        bar()
+    }
+}
+
+fn foo2() {
+    unsafe    {
+        bar2()
+    }
+}
+
+pub unsafe fn foo3() {
+    unsafe
+    
+
+    {
+        bar3()
+    }
+}
+

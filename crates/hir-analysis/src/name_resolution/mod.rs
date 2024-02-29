@@ -425,7 +425,7 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         expr: ExprId,
         expr_data: &Expr,
     ) {
-        if matches!(expr_data, Expr::Block(_)) {
+        if matches!(expr_data, Expr::Block { .. }) {
             walk_expr(self, ctxt, expr)
         }
     }

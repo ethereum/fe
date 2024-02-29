@@ -3,8 +3,8 @@ source: crates/parser2/tests/syntax_node.rs
 expression: node
 input_file: crates/parser2/test_files/syntax_node/items/func.fe
 ---
-Root@0..361
-  ItemList@0..361
+Root@0..532
+  ItemList@0..532
     Item@0..32
       Func@0..30
         ItemModifier@0..3
@@ -282,7 +282,7 @@ Root@0..361
           Newline@304..305 "\n"
           RBrace@305..306 "}"
       Newline@306..308 "\n\n"
-    Item@308..361
+    Item@308..363
       Func@308..361
         FnKw@308..310 "fn"
         WhiteSpace@310..311 " "
@@ -348,4 +348,118 @@ Root@0..361
         BlockExpr@359..361
           LBrace@359..360 "{"
           RBrace@360..361 "}"
+      Newline@361..363 "\n\n"
+    Item@363..410
+      Func@363..408
+        FnKw@363..365 "fn"
+        WhiteSpace@365..366 " "
+        Ident@366..369 "foo"
+        FuncParamList@369..371
+          LParen@369..370 "("
+          RParen@370..371 ")"
+        WhiteSpace@371..372 " "
+        BlockExpr@372..408
+          LBrace@372..373 "{"
+          Newline@373..374 "\n"
+          WhiteSpace@374..378 "    "
+          ExprStmt@378..406
+            BlockExpr@378..406
+              UnsafeKw@378..384 "unsafe"
+              WhiteSpace@384..385 " "
+              LBrace@385..386 "{"
+              Newline@386..387 "\n"
+              WhiteSpace@387..395 "        "
+              ExprStmt@395..400
+                CallExpr@395..400
+                  PathExpr@395..398
+                    Path@395..398
+                      PathSegment@395..398
+                        Ident@395..398 "bar"
+                  CallArgList@398..400
+                    LParen@398..399 "("
+                    RParen@399..400 ")"
+              Newline@400..401 "\n"
+              WhiteSpace@401..405 "    "
+              RBrace@405..406 "}"
+          Newline@406..407 "\n"
+          RBrace@407..408 "}"
+      Newline@408..410 "\n\n"
+    Item@410..462
+      Func@410..460
+        FnKw@410..412 "fn"
+        WhiteSpace@412..413 " "
+        Ident@413..417 "foo2"
+        FuncParamList@417..419
+          LParen@417..418 "("
+          RParen@418..419 ")"
+        WhiteSpace@419..420 " "
+        BlockExpr@420..460
+          LBrace@420..421 "{"
+          Newline@421..422 "\n"
+          WhiteSpace@422..426 "    "
+          ExprStmt@426..458
+            BlockExpr@426..458
+              UnsafeKw@426..432 "unsafe"
+              WhiteSpace@432..436 "    "
+              LBrace@436..437 "{"
+              Newline@437..438 "\n"
+              WhiteSpace@438..446 "        "
+              ExprStmt@446..452
+                CallExpr@446..452
+                  PathExpr@446..450
+                    Path@446..450
+                      PathSegment@446..450
+                        Ident@446..450 "bar2"
+                  CallArgList@450..452
+                    LParen@450..451 "("
+                    RParen@451..452 ")"
+              Newline@452..453 "\n"
+              WhiteSpace@453..457 "    "
+              RBrace@457..458 "}"
+          Newline@458..459 "\n"
+          RBrace@459..460 "}"
+      Newline@460..462 "\n\n"
+    Item@462..532
+      Func@462..530
+        ItemModifier@462..472
+          PubKw@462..465 "pub"
+          WhiteSpace@465..466 " "
+          UnsafeKw@466..472 "unsafe"
+        WhiteSpace@472..473 " "
+        FnKw@473..475 "fn"
+        WhiteSpace@475..476 " "
+        Ident@476..480 "foo3"
+        FuncParamList@480..482
+          LParen@480..481 "("
+          RParen@481..482 ")"
+        WhiteSpace@482..483 " "
+        BlockExpr@483..530
+          LBrace@483..484 "{"
+          Newline@484..485 "\n"
+          WhiteSpace@485..489 "    "
+          ExprStmt@489..528
+            BlockExpr@489..528
+              UnsafeKw@489..495 "unsafe"
+              Newline@495..496 "\n"
+              WhiteSpace@496..500 "    "
+              Newline@500..502 "\n\n"
+              WhiteSpace@502..506 "    "
+              LBrace@506..507 "{"
+              Newline@507..508 "\n"
+              WhiteSpace@508..516 "        "
+              ExprStmt@516..522
+                CallExpr@516..522
+                  PathExpr@516..520
+                    Path@516..520
+                      PathSegment@516..520
+                        Ident@516..520 "bar3"
+                  CallArgList@520..522
+                    LParen@520..521 "("
+                    RParen@521..522 ")"
+              Newline@522..523 "\n"
+              WhiteSpace@523..527 "    "
+              RBrace@527..528 "}"
+          Newline@528..529 "\n"
+          RBrace@529..530 "}"
+      Newline@530..532 "\n\n"
 

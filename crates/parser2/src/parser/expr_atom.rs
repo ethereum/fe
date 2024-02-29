@@ -23,6 +23,7 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
     match parser.current_kind() {
         Some(IfKw) => parser.parse(IfExprScope::default(), None),
         Some(MatchKw) => parser.parse(MatchExprScope::default(), None),
+        Some(UnsafeKw) => parser.parse(BlockExprScope::default(), None),
         Some(LBrace) => parser.parse(BlockExprScope::default(), None),
         Some(LParen) => parser.parse(ParenScope::default(), None),
         Some(LBracket) => parser.parse(ArrayScope::default(), None),
@@ -53,6 +54,10 @@ define_scope! {
 }
 impl super::Parse for BlockExprScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+        if parser.current_kind() == Some(SyntaxKind::UnsafeKw) {
+            parser.bump_expected(SyntaxKind::UnsafeKw);
+        }
+
         parser.bump_expected(SyntaxKind::LBrace);
 
         loop {
@@ -67,8 +72,14 @@ impl super::Parse for BlockExprScope {
                 .map(SyntaxKind::is_item_head)
                 .unwrap_or_default()
             {
-                parser.parse(ItemScope::default(), None);
-                continue;
+                let is_unsafe_block = parser.dry_run(|parser| {
+                    parser.bump_if(SyntaxKind::UnsafeKw) && parser.bump_if(SyntaxKind::LBrace)
+                });
+
+                if !is_unsafe_block {
+                    parser.parse(ItemScope::default(), None);
+                    continue;
+                }
             }
 
             if !parse_stmt(parser, None) {
