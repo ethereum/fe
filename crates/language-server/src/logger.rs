@@ -3,7 +3,7 @@ use std::sync::Arc;
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 use tower_lsp::Client;
 
-use crate::backend::Backend;
+use crate::{backend::Backend, language_server::Server};
 
 pub struct Logger {
     pub(crate) level: Level,
@@ -43,7 +43,7 @@ impl log::Log for Logger {
     fn flush(&self) {}
 }
 
-impl Backend {
+impl Server {
     pub fn init_logger(&self, level: Level) -> Result<(), SetLoggerError> {
         let logger = Logger {
             level,
