@@ -4,9 +4,7 @@ use fxhash::FxHashMap;
 use serde::Deserialize;
 
 use crate::{
-    db::LanguageServerDatabase,
-    diagnostics::get_diagnostics,
-    workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile, Workspace},
+    backend::Backend, db::LanguageServerDatabase, diagnostics::get_diagnostics, workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile, Workspace}
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -23,32 +21,6 @@ fn run_diagnostics(
     let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
     db.analyze_top_mod(top_mod);
     db.finalize_diags()
-}
-
-pub fn get_diagnostics(
-    db: &mut LanguageServerDatabase,
-    workspace: &mut Workspace,
-    uri: lsp_types::Url,
-) -> Result<FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>>, Error> {
-    let diags = run_diagnostics(db, workspace, uri.to_file_path().unwrap().to_str().unwrap());
-    // let db = &mut *state.db.lock().unwrap();
-
-    let diagnostics = diags
-        .into_iter()
-        .flat_map(|diag| diag_to_lsp(diag, db).clone());
-
-    // we need to reduce the diagnostics to a map from URL to Vec<Diagnostic>
-    let mut result = FxHashMap::<lsp_types::Url, Vec<lsp_types::Diagnostic>>::default();
-
-    // add a null diagnostic to the result for the given URL
-    let _ = result.entry(uri.clone()).or_insert_with(Vec::new);
-
-    diagnostics.for_each(|(uri, more_diags)| {
-        let diags = result.entry(uri).or_insert_with(Vec::new);
-        diags.extend(more_diags);
-    });
-
-    Ok(result)
 }
 
 pub fn handle_document_did_open(

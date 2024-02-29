@@ -1161,6 +1161,7 @@ dependencies = [
  "fe-driver2",
  "fe-hir",
  "fe-hir-analysis",
+ "fe-language-server-macros",
  "fe-macros",
  "futures",
  "fxhash",
@@ -1176,8 +1177,18 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-macros",
+ "tokio-stream",
  "tower-lsp",
  "url",
+]
+
+[[package]]
+name = "fe-language-server-macros"
+version = "0.23.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
 ]
 
 [[package]]
@@ -3176,6 +3187,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.48",
+]
+
+[[package]]
+name = "tokio-stream"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "397c988d37662c7dda6d2208364a706264bf3d6138b11d436cbac0ad38832842"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
+ "tokio",
 ]
 
 [[package]]
