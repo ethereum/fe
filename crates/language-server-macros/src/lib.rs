@@ -2,9 +2,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::{
-    parse_macro_input, FnArg, ImplItem, ItemImpl,
-};
+use syn::{parse_macro_input, FnArg, ImplItem, ItemImpl, ReturnType};
 
 /// Macro for generating tokio channels from [`lsp-types`](https://docs.rs/lsp-types).
 ///
@@ -28,9 +26,13 @@ pub fn dispatcher(_attr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 struct LspTypeChannel<'a> {
+    // handler_name: &'a syn::Ident,
     tx_name: syn::Ident,
+    dispatcher_name: syn::Ident,
+    subscriber_name: syn::Ident,
     rx_name: syn::Ident,
     params: Option<&'a syn::Type>,
+    result: Option<&'a syn::Type>,
 }
 
 fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<LspTypeChannel> {
@@ -47,19 +49,25 @@ fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<LspTypeChannel> {
             _ => None,
         });
 
-        // let result = match &method.sig.output {
-        //     ReturnType::Default => None,
-        //     ReturnType::Type(_, ty) => Some(&**ty),
-        // };
+        let result = match &method.sig.output {
+            ReturnType::Default => None,
+            ReturnType::Type(_, ty) => Some(&**ty),
+        };
 
         let handler_name = &method.sig.ident;
         let tx_name = format_ident!("{}_tx", handler_name);
+        let dispatcher_name = format_ident!("dispatch_{}", handler_name);
+        let subscriber_name = format_ident!("subscribe_{}", handler_name);
+
         let rx_name = format_ident!("{}_rx", handler_name);
 
         calls.push(LspTypeChannel {
             tx_name,
             rx_name,
+            dispatcher_name,
+            subscriber_name,
             params,
+            result,
         });
     }
 
@@ -79,15 +87,27 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
             let tx = &channel.tx_name;
             let rx = &channel.rx_name;
             let params = channel.params;
+            let result = channel.result;
 
             // if params is None we need to use the type of () as the default
             let params = match params {
                 Some(params) => params,
                 None => &unit_type,
             };
+
+            let sender_type = match result {
+                Some(result) => quote! { tokio::sync::broadcast::Sender<(#params, OneshotResponder<#result>)> },
+                None => quote! { tokio::sync::broadcast::Sender<#params> },
+            };
+
+            let receiver_type = match result {
+                Some(result) => quote! { tokio::sync::broadcast::Receiver<(#params, OneshotResponder<#result>)> },
+                None => quote! { tokio::sync::broadcast::Receiver<#params> },
+            };
+
             quote! {
-                pub #tx: tokio::sync::broadcast::Sender<#params>,
-                pub #rx: tokio::sync::broadcast::Receiver<#params>,
+                pub #tx: #sender_type,
+                pub #rx: #receiver_type,
             }
         })
         .collect();
@@ -115,7 +135,111 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
         })
         .collect();
 
+    let dispatch_functions: proc_macro2::TokenStream = channels
+        .iter()
+        .map(|channel| {
+            let tx = &channel.tx_name;
+            let rx = &channel.rx_name;
+            let params = &channel.params;
+            
+            let params_type = match params {
+                Some(params) => params,
+                None => &unit_type,
+            };
+            let subscriber_name = &channel.subscriber_name;
+            let dispatcher_name = &channel.dispatcher_name;
+            let dispatcher_result = match channel.result {
+                Some(result) => quote!{tokio::sync::oneshot::Receiver<#result>},
+                None => quote!{()},
+                // Some(result) => quote! { tokio::sync::broadcast::Receiver<(#params, OneshotResponder<tokio::sync::oneshot::Sender<#result>>)> },
+                // None => quote! { tokio::sync::broadcast::Receiver<#params> },
+            };
+            let receiver_type = match channel.result {
+                Some(result) => quote! { tokio::sync::broadcast::Receiver<(#params_type, OneshotResponder<#result>)> },
+                None => quote! { tokio::sync::broadcast::Receiver<#params_type> },
+            };
+
+            let dispatcher_payload = match params {
+                Some(params) => quote! { params },
+                None => quote! { () },
+            };
+
+            let dispatcher_send_payload = match channel.result {
+                Some(result) => quote!{
+                    let (tx, rx) = tokio::sync::oneshot::channel::<#result>();
+                    self.#tx.send((#dispatcher_payload, OneshotResponder::from(tx))).unwrap();
+                    rx
+                },
+                None => quote!{
+                    self.#tx.send(#dispatcher_payload).unwrap();
+                },
+            };
+
+            let dispatcher_fn = match params {
+                Some(params) => quote! {
+                    pub fn #dispatcher_name(&self, params: #params) -> #dispatcher_result {
+                        #dispatcher_send_payload
+                    }
+                },
+                None => quote! {
+                    pub fn #dispatcher_name(&self) -> #dispatcher_result {
+                        #dispatcher_send_payload
+                    }
+                },
+            };
+
+                // Some(result) => quote! { tokio::sync::broadcast::Sender<(#params, OneshotResponder<tokio::sync::oneshot::Sender<#result>>)> },
+                // None => quote! { tokio::sync::broadcast::Sender<#params> },
+            let subscriber_fn = match params {
+                Some(_params) => quote! {
+                    pub fn #subscriber_name(&self) -> #receiver_type {
+                        self.#tx.subscribe()
+                    }
+                },
+                None => quote! {
+                    pub fn #subscriber_name(&self) -> #receiver_type {
+                        self.#tx.subscribe()
+                    }
+                },
+            };
+
+            quote! {
+                #dispatcher_fn
+                #subscriber_fn
+            }
+        })
+        .collect();
+
     quote! {
+        use std::fmt::Debug;
+        #[derive(Debug)]
+        pub struct OneshotResponder<T: Debug + Clone>{
+            sender: std::sync::Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Sender<T>>>>
+        }
+        impl<T: Debug + Clone> Clone for OneshotResponder<T> {
+            fn clone(&self) -> OneshotResponder<T> {
+                Self {
+                    sender: self.sender.clone()
+                }
+            }
+        }
+
+
+        impl<T: Debug + Clone> OneshotResponder<T> {
+            pub fn from(sender: tokio::sync::oneshot::Sender<T>) -> Self {
+                Self {
+                    sender: std::sync::Arc::new(std::sync::Mutex::new(Some(sender)))
+                }
+            }
+            pub fn respond(self, response: T) {
+                let mut sender = self.sender.lock().unwrap();
+                // sender.send(response.clone());
+                if let Some(sender) = sender.take() {
+                    let _ = sender.send(response).unwrap();
+                }
+            }
+        }
+
         pub struct LspChannels {
             #channel_declarations
         }
@@ -127,6 +251,7 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
                     #channel_assignments
                 }
             }
+            #dispatch_functions
         }
     }
 }

@@ -1,17 +1,14 @@
-use std::{any::Any, sync::Arc};
+use std::{sync::Arc};
 
-use log::info;
+
 use lsp_types::{
-    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions, DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult, Registration, TextDocumentItem
+    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions, DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult, Registration
 };
 
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
 use crate::{
-    backend::Backend,
     capabilities::server_capabilities,
-    diagnostics::get_diagnostics,
-    workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile},
 };
 
 // This is replaced by the `dispatcher` procedural macro!
@@ -85,41 +82,18 @@ impl Server {
 #[tower_lsp::async_trait]
 impl LanguageServer for Server {
     async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
-        let _ = self.dispatch.initialize_tx.send(initialize_params);
-        // initialize
-        let capabilities = server_capabilities();
-        let initialize_result = lsp_types::InitializeResult {
-            capabilities,
-            server_info: Some(lsp_types::ServerInfo {
-                name: String::from("fe-language-server"),
-                version: Some(String::from(env!("CARGO_PKG_VERSION"))),
-            }),
-        };
-        // setup logging
-        {
-            let _ = self.init_logger(log::Level::Info);
-        }
+        let rx = self.dispatch.dispatch_initialize(initialize_params);
 
-        // setup workspace
-        // {
-        //     let workspace = &mut self.workspace.lock().unwrap();
-        //     let db = &mut self.db.lock().unwrap();
-        //     let _ = workspace.set_workspace_root(
-        //         db,
-        //         initialize_params
-        //             .root_uri
-        //             .unwrap()
-        //             .to_file_path()
-        //             .ok()
-        //             .unwrap(),
-        //     );
-        // }
+        // setup logging
+        let _ = self.init_logger(log::Level::Info);
 
         // register watchers
         let _ = self.register_watchers().await;
 
-        Ok(initialize_result)
+        let initialize_result = rx.await.unwrap();
+        initialize_result
     }
+
     async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
         Ok(())
     }

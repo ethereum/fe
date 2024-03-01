@@ -3,7 +3,7 @@ use std::sync::Arc;
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 use tower_lsp::Client;
 
-use crate::{backend::Backend, language_server::Server};
+use crate::{language_server::Server};
 
 pub struct Logger {
     pub(crate) level: Level,
