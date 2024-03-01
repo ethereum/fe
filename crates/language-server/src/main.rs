@@ -42,34 +42,15 @@ async fn main() {
 
     let (service, socket) = tower_lsp::LspService::build(Server::new).finish();
     let server = service.inner();
-    server.init_logger(log::Level::Info).unwrap();
-    info!("initialized logger");
+    // server.init_logger(log::Level::Info).unwrap();
+    // info!("initialized logger");
 
     let client = server.client.clone();
     let messaging = server.messaging.clone();
-    let messaging_clone = messaging.clone();
+    info!("spawning backend");
+    let backend = Backend::new(client, messaging);
 
-    // tokio::spawn(
-
-    let _ = tokio::join!(
-        async move {
-            info!("spawning backend");
-            let backend = Backend::new(client, messaging);
-            let messaging = messaging_clone.lock().await;
-            backend.setup_streams(&*messaging).await;
-            info!("setup streams");
-        },
-        async move {
-            info!("spawning server");
-            tower_lsp::Server::new(stdin, stdout, socket)
-                .serve(service)
-                .await;
-        }
-    );
-    // );
-
-    // );
-
-    // {
-    // }
+    tokio::spawn(backend.setup_streams());
+    info!("spawning server");
+    tower_lsp::Server::new(stdin, stdout, socket).serve(service).await;
 }
