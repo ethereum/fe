@@ -1,9 +1,10 @@
-use std::{sync::Arc};
-
+use std::sync::Arc;
 
 use log::info;
 use lsp_types::{
-    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions, DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult, Registration
+    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
+    DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult,
+    Registration,
 };
 
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
@@ -46,11 +47,11 @@ impl Server {
 impl LanguageServer for Server {
     async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
         // setup logging
-        // let _ = self.init_logger(log::Level::Info);
-        // info!("initialized logger");
+        let _ = self.init_logger(log::Level::Info);
+        info!("initialized logger");
         // info!("initializing language server: {:?}", initialize_params);
-        let messaging = self.messaging.lock().await;
-        let rx = messaging.dispatch_initialize(initialize_params);
+        // let messaging = self.messaging.lock().await;
+        // let rx = messaging.dispatch_initialize(initialize_params);
         info!("awaiting initialization result");
         // let initialize_result = rx.await.unwrap();
         // register watchers
