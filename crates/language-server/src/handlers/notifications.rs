@@ -4,7 +4,10 @@ use fxhash::FxHashMap;
 use serde::Deserialize;
 
 use crate::{
-    backend::Backend, db::LanguageServerDatabase, diagnostics::get_diagnostics, workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile, Workspace}
+    backend::Backend,
+    db::LanguageServerDatabase,
+    diagnostics::get_diagnostics,
+    workspace::{IngotFileContext, SyncableIngotFileContext, SyncableInputFile, Workspace},
 };
 
 #[cfg(target_arch = "wasm32")]

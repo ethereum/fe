@@ -139,7 +139,7 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
         .iter()
         .map(|channel| {
             let tx = &channel.tx_name;
-            let rx = &channel.rx_name;
+            // let rx = &channel.rx_name;
             let params = &channel.params;
             
             let params_type = match params {
@@ -160,7 +160,7 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
             };
 
             let dispatcher_payload = match params {
-                Some(params) => quote! { params },
+                Some(_params) => quote! { params },
                 None => quote! { () },
             };
 

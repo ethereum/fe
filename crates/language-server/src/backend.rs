@@ -33,15 +33,14 @@ impl<'a> Backend<'a> {
         let workspace = Arc::new(Mutex::new(Workspace::default()));
         let db = Arc::new(Mutex::new(LanguageServerDatabase::default()));
         let runtime = tokio::runtime::Runtime::new().unwrap();
-        let backend = Self {
+
+        Self {
             server,
             client,
             db,
             workspace,
             runtime,
-        };
-
-        backend
+        }
     }
     pub fn setup_streams(self) {
         let db = self.db.clone();
@@ -125,7 +124,7 @@ impl<'a> Backend<'a> {
         let mut did_close_stream = BroadcastStream::new(self.server.dispatch.subscribe_did_close());
         self.runtime.spawn(async move {
             let workspace = &mut workspace_clone.lock().await;
-            let client = &mut client_clone.lock().await;
+            let _client = &mut client_clone.lock().await;
             let db = &mut db_clone.lock().await;
             while let Some(Ok(params)) = did_close_stream.next().await {
                 let input = workspace
@@ -153,7 +152,7 @@ impl<'a> Backend<'a> {
             let workspace = &mut workspace_clone.lock().await;
             let client = &mut client_clone.lock().await;
             let db = &mut db_clone.lock().await;
-            
+
             while let Some(Ok(params)) = did_change_watched_files_stream.next().await {
                 let changes = params.changes;
                 for change in changes {

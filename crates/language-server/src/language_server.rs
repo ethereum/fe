@@ -1,8 +1,9 @@
-use std::{sync::Arc};
-
+use std::sync::Arc;
 
 use lsp_types::{
-    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions, DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult, Registration
+    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
+    DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult,
+    Registration,
 };
 
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
@@ -28,7 +29,7 @@ impl Server {
                 .unwrap(),
             ),
         };
-        Ok(client.register_capability(vec![registration]).await?)
+        client.register_capability(vec![registration]).await
     }
 
     pub(crate) fn new(client: Client) -> Self {
@@ -50,8 +51,7 @@ impl LanguageServer for Server {
         // register watchers
         let _ = self.register_watchers().await;
 
-        let initialize_result = rx.await.unwrap();
-        initialize_result
+        rx.await.unwrap()
     }
 
     async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
