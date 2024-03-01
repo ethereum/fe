@@ -9,10 +9,15 @@ mod logger;
 mod util;
 mod workspace;
 
+use std::sync::Arc;
+
 use backend::Backend;
 // use backend::Backend;
 use db::Jar;
-use language_server::Server;
+use futures::future::join_all;
+use language_server::{LspChannels, Server};
+use log::info;
+use tower_lsp::Client;
 mod handlers {
     pub mod notifications;
     pub mod request;
@@ -20,17 +25,51 @@ mod handlers {
 
 #[tokio_macros::main]
 async fn main() {
+    // let runtime = tokio::runtime::Builder::new_multi_thread()
+    //     .worker_threads(2)
+    //     .enable_all()
+    //     .build()
+    //     .unwrap();
+
+    // let runtime2 = tokio::runtime::Builder::new_multi_thread()
+    //     .worker_threads(2)
+    //     .enable_all()
+    //     .build()
+    //     .unwrap();
+
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
     let (service, socket) = tower_lsp::LspService::build(Server::new).finish();
-
     let server = service.inner();
+    server.init_logger(log::Level::Info).unwrap();
+    info!("initialized logger");
 
-    let backend = Backend::new(server.client.clone(), server);
-    backend.setup_streams();
+    let client = server.client.clone();
+    let messaging = server.messaging.clone();
+    let messaging_clone = messaging.clone();
 
-    tower_lsp::Server::new(stdin, stdout, socket)
-        .serve(service)
-        .await;
+    // tokio::spawn(
+
+    let _ = tokio::join!(
+        async move {
+            info!("spawning backend");
+            let backend = Backend::new(client, messaging);
+            let messaging = messaging_clone.lock().await;
+            backend.setup_streams(&*messaging).await;
+            info!("setup streams");
+        },
+        async move {
+            info!("spawning server");
+            tower_lsp::Server::new(stdin, stdout, socket)
+                .serve(service)
+                .await;
+        }
+    );
+    // );
+
+    // );
+
+    // {
+    // }
 }

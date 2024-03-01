@@ -1,15 +1,17 @@
-use std::sync::Arc;
+use std::{sync::Arc};
 
+
+use log::info;
 use lsp_types::{
-    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
-    DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult,
-    Registration,
+    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions, DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult, Registration
 };
 
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
+use crate::capabilities::server_capabilities;
+
 pub(crate) struct Server {
-    pub(crate) dispatch: LspChannels,
+    pub(crate) messaging: Arc<tokio::sync::Mutex<LspChannels>>,
     pub(crate) client: Arc<tokio::sync::Mutex<Client>>,
 }
 
@@ -29,13 +31,13 @@ impl Server {
                 .unwrap(),
             ),
         };
-        client.register_capability(vec![registration]).await
+        Ok(client.register_capability(vec![registration]).await?)
     }
 
     pub(crate) fn new(client: Client) -> Self {
-        let dispatch = LspChannels::new();
+        let messaging = Arc::new(tokio::sync::Mutex::new(LspChannels::new()));
         let client = Arc::new(tokio::sync::Mutex::new(client));
-        Self { dispatch, client }
+        Self { messaging, client }
     }
 }
 
@@ -43,15 +45,28 @@ impl Server {
 #[tower_lsp::async_trait]
 impl LanguageServer for Server {
     async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
-        let rx = self.dispatch.dispatch_initialize(initialize_params);
-
         // setup logging
-        let _ = self.init_logger(log::Level::Info);
-
+        // let _ = self.init_logger(log::Level::Info);
+        // info!("initialized logger");
+        // info!("initializing language server: {:?}", initialize_params);
+        let messaging = self.messaging.lock().await;
+        let rx = messaging.dispatch_initialize(initialize_params);
+        info!("awaiting initialization result");
+        // let initialize_result = rx.await.unwrap();
         // register watchers
         let _ = self.register_watchers().await;
+        info!("registered watchers");
 
-        rx.await.unwrap()
+        info!("received initialization result");
+        let capabilities = server_capabilities();
+        let initialize_result = lsp_types::InitializeResult {
+            capabilities,
+            server_info: Some(lsp_types::ServerInfo {
+                name: String::from("fe-language-server"),
+                version: Some(String::from(env!("CARGO_PKG_VERSION"))),
+            }),
+        };
+        Ok(initialize_result)
     }
 
     async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
@@ -59,18 +74,22 @@ impl LanguageServer for Server {
     }
 
     async fn did_open(&self, params: lsp_types::DidOpenTextDocumentParams) {
-        self.dispatch.dispatch_did_open(params);
+        let messaging = self.messaging.lock().await;
+        messaging.dispatch_did_open(params);
     }
 
     async fn did_change(&self, params: lsp_types::DidChangeTextDocumentParams) {
-        self.dispatch.dispatch_did_change(params);
+        let messaging = self.messaging.lock().await;
+        messaging.dispatch_did_change(params);
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        self.dispatch.dispatch_did_close(params);
+        let messaging = self.messaging.lock().await;
+        messaging.dispatch_did_close(params);
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        self.dispatch.dispatch_did_change_watched_files(params);
+        let messaging = self.messaging.lock().await;
+        messaging.dispatch_did_change_watched_files(params);
     }
 }
