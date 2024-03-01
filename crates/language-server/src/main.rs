@@ -29,7 +29,9 @@ async fn main() {
 
     let server = service.inner();
 
-    let _backend = Backend::new(server.client.clone(), server);
+    let backend = Backend::new(server.client.clone(), server);
+    backend.setup_streams();
+
     tower_lsp::Server::new(stdin, stdout, socket)
         .serve(service)
         .await;

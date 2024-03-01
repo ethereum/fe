@@ -58,7 +58,7 @@ pub fn handle_document_did_open(
 pub fn handle_document_did_close(
     db: &mut LanguageServerDatabase,
     workspace: &mut Workspace,
-    state: &mut Backend,
+    _state: &mut Backend,
     note: lsp_server::Notification,
 ) -> Result<(), Error> {
     let params = lsp_types::DidCloseTextDocumentParams::deserialize(note.params)?;
