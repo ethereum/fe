@@ -167,7 +167,15 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
             let dispatcher_send_payload = match channel.result {
                 Some(result) => quote!{
                     let (tx, rx) = tokio::sync::oneshot::channel::<#result>();
-                    self.#tx.send((#dispatcher_payload, OneshotResponder::from(tx))).unwrap();
+                    // let payload = #dispatcher_payload.clone();
+                    let oneshot = OneshotResponder::from(tx);
+                    let broadcast = self.#tx.clone();
+                    tokio::spawn(async move {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                        info!("sending oneshot sender: {:?}", #dispatcher_payload);
+                        broadcast.send((#dispatcher_payload, oneshot)).unwrap();
+                    });
+                    info!("returning oneshot receiver: {:?}", rx);
                     rx
                 },
                 None => quote!{
@@ -232,9 +240,11 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
                 }
             }
             pub fn respond(self, response: T) {
+                info!("responding with: {:?}", response);
                 let mut sender = self.sender.lock().unwrap();
                 // sender.send(response.clone());
                 if let Some(sender) = sender.take() {
+                    info!("sending response: {:?} and {:?}", response, sender);
                     let _ = sender.send(response).unwrap();
                 }
             }
