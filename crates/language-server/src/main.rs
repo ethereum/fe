@@ -52,5 +52,7 @@ async fn main() {
 
     tokio::spawn(backend.setup_streams());
     info!("spawning server");
-    tower_lsp::Server::new(stdin, stdout, socket).serve(service).await;
+    tower_lsp::Server::new(stdin, stdout, socket)
+        .serve(service)
+        .await;
 }

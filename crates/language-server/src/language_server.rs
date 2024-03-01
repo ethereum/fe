@@ -50,24 +50,16 @@ impl LanguageServer for Server {
         let _ = self.init_logger(log::Level::Info);
         info!("initialized logger");
         // info!("initializing language server: {:?}", initialize_params);
-        // let messaging = self.messaging.lock().await;
-        // let rx = messaging.dispatch_initialize(initialize_params);
+        let messaging = self.messaging.lock().await;
+        let rx = messaging.dispatch_initialize(initialize_params);
         info!("awaiting initialization result");
-        // let initialize_result = rx.await.unwrap();
+        let initialize_result = rx.await.unwrap();
         // register watchers
         let _ = self.register_watchers().await;
         info!("registered watchers");
 
         info!("received initialization result");
-        let capabilities = server_capabilities();
-        let initialize_result = lsp_types::InitializeResult {
-            capabilities,
-            server_info: Some(lsp_types::ServerInfo {
-                name: String::from("fe-language-server"),
-                version: Some(String::from(env!("CARGO_PKG_VERSION"))),
-            }),
-        };
-        Ok(initialize_result)
+        initialize_result
     }
 
     async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
