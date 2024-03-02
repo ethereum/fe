@@ -12,5 +12,5 @@ publish = false
 driver = { path = "../driver2", package = "fe-driver2" }
 hir = { path = "../hir", package = "fe-hir" }
 fe-compiler-test-utils = { path = "../test-utils" }
-dir-test = "0.1"
+dir-test = "0.2"
 wasm-bindgen-test = "0.3"

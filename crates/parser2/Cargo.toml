@@ -20,7 +20,7 @@ unwrap-infallible = "0.1.5"
 
 [dev-dependencies]
 fe-compiler-test-utils = { path = "../test-utils" }
-dir-test = "0.1"
+dir-test = "0.2"
 wasm-bindgen-test = "0.3"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
