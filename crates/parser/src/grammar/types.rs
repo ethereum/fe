@@ -11,6 +11,8 @@ use if_chain::if_chain;
 use smol_str::SmolStr;
 use vec1::Vec1;
 
+use super::generics::parse_generic_params;
+
 /// Parse a [`ModuleStmt::Struct`].
 /// # Panics
 /// Panics if the next token isn't `struct`.
@@ -26,11 +28,17 @@ pub fn parse_struct_def(
     let mut span = struct_tok.span + name.span;
     let mut fields = vec![];
     let mut functions = vec![];
+
+    let generic_params = if par.peek() == Some(TokenKind::Lt) {
+        parse_generic_params(par)?
+    } else {
+        Node::new(vec![], name.span)
+    };
+
     par.enter_block(span, "struct body must start with `{`")?;
 
     loop {
         par.eat_newlines();
-
         let attributes = if let Some(attr) = par.optional(TokenKind::Hash) {
             let attr_name = par.expect_with_notes(TokenKind::Name, "failed to parse attribute definition", |_|
                 vec!["Note: an attribute name must start with a letter or underscore, and contain letters, numbers, or underscores".into()])?;
@@ -74,6 +82,7 @@ pub fn parse_struct_def(
             fields,
             functions,
             pub_qual,
+            generic_params,
         },
         span,
     ))

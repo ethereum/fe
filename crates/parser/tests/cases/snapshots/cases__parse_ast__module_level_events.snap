@@ -1,7 +1,7 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
+assertion_line: 294
 expression: "ast_string(stringify!(module_level_events), try_parse_module,\n    r#\"\nstruct Transfer {\n    #indexed\n    sender: address\n    #indexed\n    receiver: address\n    value: u256\n}\ncontract Foo {\n    fn transfer(ctx: Context, to: address, value: u256) {\n        ctx.emit(Transfer(sender: msg.sender, receiver: to, value))\n    }\n}\n\"#)"
-
 ---
 Node(
   kind: Module(
@@ -119,6 +119,13 @@ Node(
           ],
           functions: [],
           pub_qual: None,
+          generic_params: Node(
+            kind: [],
+            span: Span(
+              start: 8,
+              end: 16,
+            ),
+          ),
         ),
         span: Span(
           start: 1,
