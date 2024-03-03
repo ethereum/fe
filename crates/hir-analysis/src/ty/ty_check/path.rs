@@ -20,9 +20,7 @@ use crate::{
     },
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, TyLowerDiag},
-        ty_def::{
-            AdtDef, AdtFieldList, AdtRef, AdtRefId, FuncDef, InvalidCause, Subst, TyData, TyId,
-        },
+        ty_def::{AdtDef, AdtFieldList, AdtRef, AdtRefId, InvalidCause, Subst, TyData, TyId},
         ty_lower::{lower_adt, lower_func, lower_hir_ty},
         unify::UnificationTable,
     },
@@ -79,7 +77,6 @@ pub(super) fn resolve_path_in_expr(
         ResolvedPathInBody::Binding(ident, binding) => ResolvedPathInExpr::Binding(ident, binding),
         ResolvedPathInBody::NewBinding(ident) => {
             let diag = BodyDiag::UndefinedVariable(span, ident);
-
             ResolvedPathInExpr::Diag(diag.into())
         }
         ResolvedPathInBody::Diag(diag) => ResolvedPathInExpr::Diag(diag),
@@ -162,7 +159,8 @@ impl TyInBody {
     }
 
     pub(crate) fn is_func(&self, db: &dyn HirAnalysisDb) -> bool {
-        self.func_def(db).is_some()
+        let base = self.ty.decompose_ty_app(db).0;
+        base.is_func(db)
     }
 
     pub(crate) fn adt_ref(&self, db: &dyn HirAnalysisDb) -> Option<AdtRefId> {
@@ -173,14 +171,6 @@ impl TyInBody {
         let base = self.ty.decompose_ty_app(db).0;
         match base.data(db) {
             TyData::TyBase(base) => base.adt(),
-            _ => None,
-        }
-    }
-
-    pub(crate) fn func_def(&self, db: &dyn HirAnalysisDb) -> Option<FuncDef> {
-        let base = self.ty.decompose_ty_app(db).0;
-        match base.data(db) {
-            TyData::TyBase(base) => base.func(),
             _ => None,
         }
     }

@@ -640,6 +640,29 @@ pub enum BodyDiag {
         ty: String,
         trait_name: IdentId,
     },
+
+    NotCallable(DynLazySpan, String),
+
+    CallGenericArgNumMismatch {
+        primary: DynLazySpan,
+        func: Func,
+        given: usize,
+        expected: usize,
+    },
+
+    CallArgNumMismatch {
+        primary: DynLazySpan,
+        func: Func,
+        given: usize,
+        expected: usize,
+    },
+
+    CallArgLabelMismatch {
+        primary: DynLazySpan,
+        func: Func,
+        given: Option<IdentId>,
+        expected: IdentId,
+    },
 }
 
 impl BodyDiag {
@@ -773,6 +796,10 @@ impl BodyDiag {
             trait_path,
         }
     }
+    pub(super) fn not_callable(db: &dyn HirAnalysisDb, span: DynLazySpan, ty: TyId) -> Self {
+        let ty = ty.pretty_print(db).to_string();
+        Self::NotCallable(span, ty)
+    }
 
     fn local_code(&self) -> u16 {
         match self {
@@ -797,6 +824,10 @@ impl BodyDiag {
             Self::ImmutableAssignment { .. } => 18,
             Self::LoopControlOutsideOfLoop { .. } => 19,
             Self::TraitNotImplemented { .. } => 20,
+            Self::NotCallable(..) => 21,
+            Self::CallGenericArgNumMismatch { .. } => 22,
+            Self::CallArgNumMismatch { .. } => 23,
+            Self::CallArgLabelMismatch { .. } => 24,
         }
     }
 
@@ -838,6 +869,15 @@ impl BodyDiag {
             Self::TraitNotImplemented { trait_name, ty, .. } => {
                 format!("`{}` needs to be implemented for {ty}", trait_name.data(db))
             }
+
+            Self::NotCallable(..) => "not callable type is given in call expression".to_string(),
+
+            Self::CallGenericArgNumMismatch { .. } => {
+                "given generic argument number mismatch".to_string()
+            }
+
+            Self::CallArgNumMismatch { .. } => "given argument number mismatch".to_string(),
+            Self::CallArgLabelMismatch { .. } => "given argument label mismatch".to_string(),
         }
     }
 
@@ -1193,6 +1233,93 @@ impl BodyDiag {
                         primary.resolve(db),
                     ),
                 ]
+            }
+
+            Self::NotCallable(primary, ty) => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{ty}` is not callable"),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::CallGenericArgNumMismatch {
+                primary,
+                func,
+                given,
+                expected,
+            } => {
+                let func_span = func.lazy_span().name_moved();
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!(
+                            "expected {} generic arguments, but {} given",
+                            expected, given
+                        ),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "function defined here".to_string(),
+                        func_span.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::CallArgNumMismatch {
+                primary,
+                func,
+                given,
+                expected,
+            } => {
+                let func_span = func.lazy_span().name_moved();
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("expected {} arguments, but {} given", expected, given),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "function defined here".to_string(),
+                        func_span.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::CallArgLabelMismatch {
+                primary,
+                func,
+                given,
+                expected,
+            } => {
+                let func_span = func.lazy_span().name_moved();
+                let mut diags = if let Some(given) = given {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!(
+                            "expected `{}` label, but `{}` given",
+                            expected.data(db.as_hir_db()),
+                            given.data(db.as_hir_db())
+                        ),
+                        primary.resolve(db),
+                    )]
+                } else {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("expected `{}` label", expected.data(db.as_hir_db())),
+                        primary.resolve(db),
+                    )]
+                };
+
+                diags.push(SubDiagnostic::new(
+                    LabelStyle::Secondary,
+                    "function defined here".to_string(),
+                    func_span.resolve(db),
+                ));
+
+                diags
             }
         }
     }
