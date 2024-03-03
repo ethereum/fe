@@ -1,11 +1,11 @@
-use crate::{hir_def::TypeId, HirDb};
-
 use super::{kw, Body, IdentId, Partial, PathId};
+use crate::{hir_def::TypeId, HirDb};
 
 #[salsa::interned]
 pub struct GenericArgListId {
     #[return_ref]
     pub data: Vec<GenericArg>,
+    pub is_given: bool,
 }
 
 impl GenericArgListId {
@@ -98,6 +98,20 @@ pub struct FuncParam {
 }
 
 impl FuncParam {
+    pub fn label_eagerly(&self) -> Option<IdentId> {
+        match self.label {
+            Some(FuncParamName::Ident(ident)) => return Some(ident),
+            Some(FuncParamName::Underscore) => return None,
+            _ => {}
+        }
+
+        if let FuncParamName::Ident(ident) = self.name.to_opt()? {
+            Some(ident)
+        } else {
+            None
+        }
+    }
+
     pub fn name(&self) -> Option<IdentId> {
         match self.name.to_opt()? {
             FuncParamName::Ident(name) => Some(name),

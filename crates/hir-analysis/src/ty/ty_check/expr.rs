@@ -12,6 +12,7 @@ use crate::{
         const_ty::ConstTyId,
         diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
         ty_check::{
+            callable::Callable,
             path::{
                 resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
                 ResolvedPathInRecordInit, TyInBody,
@@ -39,7 +40,7 @@ impl<'db> TyChecker<'db> {
             Expr::Block(..) => self.check_block(expr, expr_data, expected),
             Expr::Un(..) => self.check_unary(expr, expr_data),
             Expr::Bin(..) => self.check_binary(expr, expr_data),
-            Expr::Call(..) => todo!(),
+            Expr::Call(..) => self.check_call(expr, expr_data),
             Expr::MethodCall(..) => todo!(),
             Expr::Path(..) => self.check_path(expr, expr_data),
             Expr::RecordInit(..) => self.check_record_init(expr, expr_data),
@@ -240,6 +241,34 @@ impl<'db> TyChecker<'db> {
         FuncBodyDiagAccumulator::push(self.db, diag.into());
 
         TypedExpr::invalid(self.db)
+    }
+
+    fn check_call(&mut self, expr: ExprId, expr_data: &Expr) -> TypedExpr {
+        let Expr::Call(callee, generic_args, args) = expr_data else {
+            unreachable!()
+        };
+        let callee_ty = self.fresh_ty();
+        let callee_ty = self.check_expr(*callee, callee_ty).ty();
+
+        let mut callable =
+            match Callable::new(self.db, callee_ty, callee.lazy_span(self.body()).into()) {
+                Ok(callable) => callable,
+                Err(diag) => {
+                    FuncBodyDiagAccumulator::push(self.db, diag);
+                    return TypedExpr::invalid(self.db);
+                }
+            };
+
+        let call_span = expr.lazy_span(self.body()).into_call_expr();
+
+        if !callable.apply_generic_args(self, *generic_args, call_span.generic_args()) {
+            return TypedExpr::invalid(self.db);
+        }
+
+        callable.check_args(self, args, call_span.args_moved());
+
+        let ret_ty = callable.ret_ty(self.db);
+        TypedExpr::new(ret_ty, true)
     }
 
     fn check_path(&mut self, expr: ExprId, expr_data: &Expr) -> TypedExpr {

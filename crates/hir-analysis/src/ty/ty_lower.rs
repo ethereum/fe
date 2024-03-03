@@ -437,7 +437,7 @@ pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope:
     }
 }
 
-pub(super) fn lower_generic_arg_list(
+pub(crate) fn lower_generic_arg_list(
     db: &dyn HirAnalysisDb,
     args: GenericArgListId,
     scope: ScopeId,

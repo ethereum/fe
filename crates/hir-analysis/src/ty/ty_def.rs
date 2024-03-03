@@ -222,6 +222,10 @@ impl TyId {
         Self::new(db, TyData::TyBase(TyBase::Func(func)))
     }
 
+    pub(super) fn is_func(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::TyBase(TyBase::Func(_)))
+    }
+
     pub(super) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self)
     }
@@ -976,26 +980,20 @@ impl TyBase {
 
             Self::Adt(adt) => adt.name(db).data(db.as_hir_db()).to_string(),
 
-            Self::Func(func) => func
-                .hir_func(db)
-                .name(db.as_hir_db())
-                .to_opt()
-                .map(|name| name.data(db.as_hir_db()).as_str())
-                .unwrap_or_else(|| "<invalid>")
-                .to_string(),
+            Self::Func(func) => format!(
+                "fn {}",
+                func.hir_func(db)
+                    .name(db.as_hir_db())
+                    .to_opt()
+                    .map(|name| name.data(db.as_hir_db()).as_str())
+                    .unwrap_or_else(|| "<invalid>")
+            ),
         }
     }
 
     pub(super) fn adt(self) -> Option<AdtDef> {
         match self {
             Self::Adt(adt) => Some(adt),
-            _ => None,
-        }
-    }
-
-    pub(super) fn func(self) -> Option<FuncDef> {
-        match self {
-            Self::Func(func) => Some(func),
             _ => None,
         }
     }
