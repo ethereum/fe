@@ -1,0 +1,35 @@
+pub fn add(x: i32, y: i32) -> i32 {
+    x + y
+}
+
+pub fn use_add() -> i32 {
+    add(x: 1, y: 2)
+}
+
+pub fn make_pair<T, U>(first: T, second: U) -> (T, U) {
+    (first, second)
+}
+
+pub fn use_make_pair() -> (i32, bool) {
+    make_pair(first: 1, second: false)
+}
+
+pub fn make_pair_i32_U<U>(first: i32, second: U) -> (i32, U) {
+    make_pair(first, second)
+}
+
+pub fn make_pair_explicit(first: i32, second: u32) -> (i32, u32) {
+    make_pair<i32, u32>(first, second)
+}
+
+pub fn hkt_func<T: * -> * -> *>(t: T<i32, u32>) { }
+
+pub struct Foo<T, U> {
+    t: T,
+    u: U,
+}
+
+pub fn use_hkt_func() {
+    let foo = Foo { t: 1, u: 2 }
+    hkt_func(t: foo)
+}

@@ -15,7 +15,7 @@ impl TypeId {
     pub fn fallback_self_ty(db: &dyn HirDb) -> Self {
         Self::new(
             db,
-            TypeKind::SelfType(GenericArgListId::new(db, Vec::new())),
+            TypeKind::SelfType(GenericArgListId::new(db, Vec::new(), false)),
         )
     }
 }

@@ -1,3 +1,4 @@
+mod callable;
 mod env;
 mod expr;
 mod pat;
@@ -123,8 +124,21 @@ impl<'db> TyChecker<'db> {
         T: Into<Typeable>,
     {
         let t = t.into();
+        let actual = self.equate_ty(actual, expected, t.lazy_span(self.env.body()));
 
-        let actual = match self.table.unify(expected, actual) {
+        match t {
+            Typeable::Expr(expr, mut typed_expr) => {
+                typed_expr.swap_ty(actual);
+                self.env.type_expr(expr, typed_expr)
+            }
+            Typeable::Pat(pat) => self.env.type_pat(pat, actual),
+        }
+
+        actual
+    }
+
+    fn equate_ty(&mut self, actual: TyId, expected: TyId, span: DynLazySpan) -> TyId {
+        match self.table.unify(actual, expected) {
             Ok(()) => {
                 // FIXME: This is a temporary workaround, this should be removed when we
                 // implement subtyping.
@@ -141,36 +155,17 @@ impl<'db> TyChecker<'db> {
                 let expected = expected.apply_subst(self.db, &mut self.table);
                 FuncBodyDiagAccumulator::push(
                     self.db,
-                    BodyDiag::type_mismatch(
-                        self.db,
-                        t.lazy_span(self.env.body()),
-                        expected,
-                        actual,
-                    )
-                    .into(),
+                    BodyDiag::type_mismatch(self.db, span, expected, actual).into(),
                 );
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
             Err(UnificationError::OccursCheckFailed) => {
-                FuncBodyDiagAccumulator::push(
-                    self.db,
-                    BodyDiag::InfiniteOccurrence(t.lazy_span(self.env.body())).into(),
-                );
+                FuncBodyDiagAccumulator::push(self.db, BodyDiag::InfiniteOccurrence(span).into());
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
-        };
-
-        match t {
-            Typeable::Expr(expr, mut typed_expr) => {
-                typed_expr.swap_ty(actual);
-                self.env.type_expr(expr, typed_expr)
-            }
-            Typeable::Pat(pat) => self.env.type_pat(pat, actual),
         }
-
-        actual
     }
 }
 

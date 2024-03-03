@@ -151,6 +151,28 @@ pub struct CallArg {
     pub expr: ExprId,
 }
 
+impl CallArg {
+    /// Returns the label of the argument if
+    /// 1. the argument has an explicit label. or
+    /// 2. If 1. is not true, then the argument is labeled when the expression
+    ///    is a path expression and the path is an identifier.
+    pub fn label_eagerly(&self, db: &dyn HirDb, body: Body) -> Option<IdentId> {
+        if let Some(label) = self.label {
+            return Some(label);
+        };
+
+        let Partial::Present(Expr::Path(Partial::Present(path))) = self.expr.data(db, body) else {
+            return None;
+        };
+
+        if path.is_ident(db) {
+            path.last_segment(db).to_opt()
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Field {
     pub label: Option<IdentId>,
