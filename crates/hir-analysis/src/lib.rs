@@ -16,6 +16,8 @@ pub struct Jar(
     ty::ty_def::AdtDef,
     ty::ty_def::FuncDef,
     ty::ty_def::AdtRefId,
+    ty::ty_def::ty_generic_params,
+    ty::ty_def::decompose_ty_app,
     /// Const types.
     ty::const_ty::ConstTyId,
     ty::const_ty::evaluate_const_ty,
@@ -65,6 +67,8 @@ pub struct Jar(
     ty::constraint_solver::is_goal_satisfiable,
     ty::constraint_solver::check_ty_app_sat,
     ty::constraint_solver::check_trait_inst_sat,
+    /// Type checking.
+    ty::ty_check::check_func_body,
     /// Diagnostic accumulators.
     ty::diagnostics::AdtDefDiagAccumulator,
     ty::diagnostics::TypeAliasDefDiagAccumulator,
@@ -72,6 +76,7 @@ pub struct Jar(
     ty::diagnostics::ImplTraitDefDiagAccumulator,
     ty::diagnostics::ImplDefDiagAccumulator,
     ty::diagnostics::FuncDefDiagAccumulator,
+    ty::diagnostics::FuncBodyDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {

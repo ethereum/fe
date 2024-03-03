@@ -1,0 +1,48 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/pat/path_tuple.fe
+---
+error[8-0004]: expected unit variant
+   ┌─ path_tuple.fe:12:9
+   │
+12 │     let Foo::Variant
+   │         ^^^^^^^^^^^^
+   │         │
+   │         expected unit variant here, but found tuple variant
+   │         Consider using `Foo::Variant(_, _)` instead
+
+error[8-0005]: expected tuple variant
+   ┌─ path_tuple.fe:13:9
+   │
+13 │     let Foo::Variant2(x, y)
+   │         ^^^^^^^^^^^^^^^^^^^
+   │         │
+   │         expected tuple variant here, but found unit variant
+   │         Consider using `Foo::Variant2` instead
+
+error[8-0007]: field count mismatch
+  ┌─ path_tuple.fe:7:9
+  │
+7 │     let Foo::Variant(x, y, z)
+  │         ^^^^^^^^^^^^^^^^^^^^^ expected 2 fields here, but 3 given
+
+error[8-0007]: field count mismatch
+  ┌─ path_tuple.fe:8:9
+  │
+8 │     let Foo::Variant(.., x, y, z)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 fields here, but 3 given
+
+error[8-0007]: field count mismatch
+  ┌─ path_tuple.fe:9:9
+  │
+9 │     let Foo::Variant(x, .., y, z)
+  │         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 fields here, but 3 given
+
+error[8-0007]: field count mismatch
+   ┌─ path_tuple.fe:10:9
+   │
+10 │     let Foo::Variant(x, y, z, ..)
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 fields here, but 3 given
+
+

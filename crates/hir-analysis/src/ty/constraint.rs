@@ -26,24 +26,8 @@ use crate::{
 };
 
 /// Returns a constraints list which is derived from the given type.
-/// # Returns
-///
-/// ##  The first `AssumptionListId`
-/// This is a list of assumptions that should be merged to the context where the
-/// constraints are solved.
-/// This new assumptions are obtained when the given type is a partial applied
-/// type, i.e., the assumptions describes the free type variables.
-///
-/// ## The second `ConstraintListId`
-/// This is a list of constraints that should be solved to ensure the type is
-/// valid.
 #[salsa::tracked]
-pub(crate) fn ty_constraints(
-    db: &dyn HirAnalysisDb,
-    ty: TyId,
-) -> (AssumptionListId, ConstraintListId) {
-    assert!(ty.free_inference_keys(db).is_empty());
-
+pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintListId {
     let (base, args) = ty.decompose_ty_app(db);
     let (params, base_constraints) = match base.data(db) {
         TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, *adt)),
@@ -52,16 +36,13 @@ pub(crate) fn ty_constraints(
             collect_func_def_constraints(db, *func_def),
         ),
         _ => {
-            return (
-                AssumptionListId::empty_list(db),
-                ConstraintListId::empty_list(db),
-            );
+            return ConstraintListId::empty_list(db);
         }
     };
 
     let mut subst = FxHashMap::default();
     let mut arg_idx = 0;
-    for (&param, arg) in params.iter().zip(args) {
+    for (&param, &arg) in params.iter().zip(args) {
         subst.insert(param, arg);
         arg_idx += 1;
     }
@@ -76,61 +57,36 @@ pub(crate) fn ty_constraints(
 
     let constraints = base_constraints.apply_subst(db, &mut subst);
 
-    // If the predicate type is a type variable, collect it as an assumption
-    // and remove it from the constraint.
-    let mut new_assumptions = BTreeSet::new();
+    // If the constraint type contains unbound type parameters, we just ignore it.
     let mut new_constraints = BTreeSet::new();
     for &pred in constraints.predicates(db) {
-        if pred.ty(db).is_ty_var(db) {
-            new_assumptions.insert(pred);
-        } else {
+        if pred.ty(db).free_inference_keys(db).is_empty() {
             new_constraints.insert(pred);
         }
     }
 
     let ingot = constraints.ingot(db);
-    (
-        AssumptionListId::new(db, new_assumptions, ingot),
-        ConstraintListId::new(db, new_constraints, ingot),
-    )
+    ConstraintListId::new(db, new_constraints, ingot)
 }
 
 #[salsa::tracked]
 pub(crate) fn trait_inst_constraints(
     db: &dyn HirAnalysisDb,
     trait_inst: TraitInstId,
-) -> (AssumptionListId, ConstraintListId) {
+) -> ConstraintListId {
     let def_constraints = collect_trait_constraints(db, trait_inst.def(db));
     let mut subst = trait_inst.subst_table(db);
-    let self_ty_param = trait_inst.def(db).self_param(db);
-    let self_ty_kind = self_ty_param.kind(db);
 
-    subst.insert(
-        self_ty_param,
-        TyId::ty_var(
-            db,
-            TyVarUniverse::General,
-            self_ty_kind.clone(),
-            InferenceKey(0_u32),
-        ),
-    );
     let constraint = def_constraints.apply_subst(db, &mut subst);
-
-    let mut new_assumptions = BTreeSet::new();
     let mut new_constraints = BTreeSet::new();
     for &pred in constraint.predicates(db) {
-        if pred.ty(db).is_ty_var(db) {
-            new_assumptions.insert(pred);
-        } else {
+        if pred.ty(db).free_inference_keys(db).is_empty() {
             new_constraints.insert(pred);
         }
     }
 
     let ingot = constraint.ingot(db);
-    (
-        AssumptionListId::new(db, new_assumptions, ingot),
-        ConstraintListId::new(db, new_constraints, ingot),
-    )
+    ConstraintListId::new(db, new_constraints, ingot)
 }
 
 /// Collect super traits of the given trait.
@@ -372,8 +328,10 @@ impl<'db> SuperTraitCollector<'db> {
     fn collect(mut self) -> BTreeSet<TraitInstId> {
         let hir_trait = self.trait_.trait_(self.db);
         let hir_db = self.db.as_hir_db();
+        let self_param = self.trait_.self_param(self.db);
+
         for &super_ in hir_trait.super_traits(hir_db).iter() {
-            if let Ok(inst) = lower_trait_ref(self.db, super_, self.scope) {
+            if let Ok(inst) = lower_trait_ref(self.db, self_param, super_, self.scope) {
                 self.super_traits.insert(inst);
             }
         }
@@ -387,7 +345,7 @@ impl<'db> SuperTraitCollector<'db> {
             {
                 for bound in &pred.bounds {
                     if let TypeBound::Trait(bound) = bound {
-                        if let Ok(inst) = lower_trait_ref(self.db, *bound, self.scope) {
+                        if let Ok(inst) = lower_trait_ref(self.db, self_param, *bound, self.scope) {
                             self.super_traits.insert(inst);
                         }
                     }
@@ -496,17 +454,14 @@ impl<'db> ConstraintCollector<'db> {
 
     fn collect_constraints_from_generic_params(&mut self) {
         let param_set = collect_generic_params(self.db, self.owner);
-        let params_list = self.owner.params(self.db);
-        assert!(param_set.params(self.db).len() == params_list.len(self.db.as_hir_db()));
-        for (&ty, hir_param) in param_set
-            .params(self.db)
-            .iter()
-            .zip(params_list.data(self.db.as_hir_db()))
-        {
+        let param_list = self.owner.params(self.db);
+
+        for (i, hir_param) in param_list.data(self.db.as_hir_db()).iter().enumerate() {
             let GenericParam::Type(hir_param) = hir_param else {
                 continue;
             };
 
+            let ty = param_set.param_by_original_idx(self.db, i).unwrap();
             let bounds = &hir_param.bounds;
             self.add_bounds(ty, bounds)
         }
@@ -518,7 +473,8 @@ impl<'db> ConstraintCollector<'db> {
                 continue;
             };
 
-            let Ok(trait_inst) = lower_trait_ref(self.db, *trait_ref, self.owner.scope(self.db))
+            let Ok(trait_inst) =
+                lower_trait_ref(self.db, bound_ty, *trait_ref, self.owner.scope(self.db))
             else {
                 continue;
             };

@@ -67,6 +67,7 @@ pub(crate) fn lower_impl_trait(
 
     let trait_ = lower_trait_ref(
         db,
+        ty,
         impl_trait.trait_ref(hir_db).to_opt()?,
         impl_trait.scope(),
     )
@@ -88,14 +89,15 @@ pub(crate) fn lower_impl_trait(
 #[salsa::tracked]
 pub(crate) fn lower_trait_ref(
     db: &dyn HirAnalysisDb,
+    self_ty: TyId,
     trait_ref: TraitRefId,
     scope: ScopeId,
 ) -> Result<TraitInstId, TraitRefLowerError> {
     let hir_db = db.as_hir_db();
-    let mut args = if let Some(args) = trait_ref.generic_args(hir_db) {
-        lower_generic_arg_list(db, args, scope)
-    } else {
-        vec![]
+
+    let mut args = vec![self_ty];
+    if let Some(generic_args) = trait_ref.generic_args(hir_db) {
+        args.extend(lower_generic_arg_list(db, generic_args, scope));
     };
 
     let Partial::Present(path) = trait_ref.path(hir_db) else {
@@ -119,14 +121,20 @@ pub(crate) fn lower_trait_ref(
         }
     };
 
+    // The first parameter of the trait is the self type, so we need to skip it.
     if trait_def.params(db).len() != args.len() {
         return Err(TraitRefLowerError::ArgNumMismatch {
-            expected: trait_def.params(db).len(),
-            given: args.len(),
+            expected: trait_def.params(db).len() - 1,
+            given: args.len() - 1,
         });
     }
 
-    for (param, arg) in trait_def.params(db).iter().zip(args.iter_mut()) {
+    for (param, arg) in trait_def
+        .params(db)
+        .iter()
+        .skip(1)
+        .zip(args.iter_mut().skip(1))
+    {
         if !param.kind(db).does_match(arg.kind(db)) {
             return Err(TraitRefLowerError::ArgKindMisMatch {
                 expected: param.kind(db).clone(),

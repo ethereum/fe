@@ -256,6 +256,23 @@ impl GenericParamOwner {
         }
     }
 
+    pub fn parent(self, db: &dyn HirDb) -> Option<Self> {
+        let ScopeId::Item(item) = self.scope().parent(db)? else {
+            return None;
+        };
+
+        match item {
+            ItemKind::Func(func) => Some(GenericParamOwner::Func(func)),
+            ItemKind::Struct(struct_) => Some(GenericParamOwner::Struct(struct_)),
+            ItemKind::Enum(enum_) => Some(GenericParamOwner::Enum(enum_)),
+            ItemKind::TypeAlias(type_alias) => Some(GenericParamOwner::TypeAlias(type_alias)),
+            ItemKind::Impl(impl_) => Some(GenericParamOwner::Impl(impl_)),
+            ItemKind::Trait(trait_) => Some(GenericParamOwner::Trait(trait_)),
+            ItemKind::ImplTrait(impl_trait) => Some(GenericParamOwner::ImplTrait(impl_trait)),
+            _ => None,
+        }
+    }
+
     pub fn where_clause_owner(self) -> Option<WhereClauseOwner> {
         let item = ItemKind::from(self);
         WhereClauseOwner::from_item_opt(item)
@@ -613,6 +630,19 @@ impl Func {
 
         first_param.name.to_opt().and_then(|name| name.ident()) == Some(kw::SELF)
     }
+
+    /// Returns `true` if the function is method or associated functions.
+    pub fn is_associated_func(self, db: &dyn HirDb) -> bool {
+        let item = match self.scope().parent(db) {
+            Some(ScopeId::Item(item)) => item,
+            _ => return false,
+        };
+
+        matches!(
+            item,
+            ItemKind::Trait(_) | ItemKind::Impl(_) | ItemKind::ImplTrait(_)
+        )
+    }
 }
 
 #[salsa::tracked]
@@ -638,6 +668,20 @@ impl Struct {
 
     pub fn scope(self) -> ScopeId {
         ScopeId::from_item(self.into())
+    }
+
+    /// Returns the human readable string of the expected struct initializer.
+    /// ## Example
+    /// When `S` is a struct defined as below:
+    /// ```fe
+    /// struct S {
+    ///    x: u64,
+    ///    y: i32,
+    /// }
+    /// ```
+    /// Then this method returns ` { x, y }`.
+    pub fn format_initializer_args(self, db: &dyn HirDb) -> String {
+        self.fields(db).format_initializer_args(db)
     }
 }
 
@@ -964,6 +1008,36 @@ pub struct FieldDefListId {
     pub data: Vec<FieldDef>,
 }
 
+impl FieldDefListId {
+    pub fn get_field(self, db: &dyn HirDb, name: IdentId) -> Option<&FieldDef> {
+        self.data(db)
+            .iter()
+            .find(|field| field.name.to_opt() == Some(name))
+    }
+
+    pub fn field_idx(self, db: &dyn HirDb, name: IdentId) -> Option<usize> {
+        self.data(db)
+            .iter()
+            .position(|field| field.name.to_opt() == Some(name))
+    }
+
+    fn format_initializer_args(self, db: &dyn HirDb) -> String {
+        let args = self
+            .data(db)
+            .iter()
+            .map(|field| {
+                field
+                    .name
+                    .to_opt()
+                    .map_or_else(|| "_".to_string(), |name| name.data(db).to_string())
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        format!(" {{ {} }}", args)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldDef {
     pub name: Partial<IdentId>,
@@ -981,6 +1055,32 @@ pub struct VariantDefListId {
 pub struct VariantDef {
     pub name: Partial<IdentId>,
     pub kind: VariantKind,
+}
+
+impl VariantDef {
+    /// Returns the human readable string of the expected variant initializer.
+    /// ## Example
+    /// When enum `E` is an variant defined as below:
+    /// ```fe
+    /// enum E {
+    ///     V(u64, i32),
+    ///     S { x: u64, y: i32 },
+    /// }
+    /// ```
+    ///
+    /// Then the method returns `(_, _)` for the first variant and ` { x, y }`
+    /// for the second variant.
+    pub fn format_initializer_args(&self, db: &dyn HirDb) -> String {
+        match self.kind {
+            VariantKind::Unit => "".to_string(),
+            VariantKind::Tuple(tup) => {
+                let args = (0..tup.len(db)).map(|_| "_").collect::<Vec<_>>().join(", ");
+                format!("({})", args)
+            }
+
+            VariantKind::Record(fields) => fields.format_initializer_args(db),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

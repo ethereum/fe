@@ -127,7 +127,7 @@ impl ReturnStmt {
     /// Returns `true` if there is an expression or `Error` node after `return`
     /// keyword.
     pub fn has_value(&self) -> bool {
-        self.syntax().children().count() > 1
+        self.syntax().children().count() >= 1
     }
 }
 
@@ -155,15 +155,14 @@ pub enum StmtKind {
 
 #[cfg(test)]
 mod tests {
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    use super::*;
     use crate::{
         ast::{PatKind, TypeKind},
         lexer::Lexer,
         parser::Parser,
     };
-
-    use super::*;
-
-    use wasm_bindgen_test::wasm_bindgen_test;
 
     fn parse_stmt<T>(source: &str) -> T
     where

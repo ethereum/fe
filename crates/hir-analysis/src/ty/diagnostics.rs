@@ -5,7 +5,10 @@ use common::diagnostics::{
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
-    hir_def::{FuncParamName, IdentId, ImplTrait, Trait, TypeAlias as HirTypeAlias},
+    hir_def::{
+        FieldIndex, Func, FuncParamName, IdentId, ImplTrait, PathId, Trait,
+        TypeAlias as HirTypeAlias,
+    },
     span::{DynLazySpan, LazySpan},
     HirDb, SpannedHirDb,
 };
@@ -13,9 +16,10 @@ use itertools::Itertools;
 
 use super::{
     constraint::PredicateId,
+    ty_check::{RecordLike, TraitOps},
     ty_def::{Kind, TyId},
 };
-use crate::HirAnalysisDb;
+use crate::{name_resolution::diagnostics::NameResDiag, HirAnalysisDb};
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
@@ -29,6 +33,25 @@ pub struct ImplDefDiagAccumulator(pub(super) TyDiagCollection);
 pub struct FuncDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
+#[salsa::accumulator]
+pub struct FuncBodyDiagAccumulator(pub(super) FuncBodyDiag);
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
+pub enum FuncBodyDiag {
+    Ty(TyDiagCollection),
+    Body(BodyDiag),
+    NameRes(NameResDiag),
+}
+
+impl FuncBodyDiag {
+    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
+        match self {
+            Self::Ty(diag) => diag.to_voucher(),
+            Self::Body(diag) => Box::new(diag.clone()) as _,
+            Self::NameRes(diag) => Box::new(diag.clone()) as _,
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum TyDiagCollection {
@@ -512,6 +535,809 @@ impl DiagnosticVoucher for TyLowerDiag {
         let severity = self.severity();
         let error_code = self.error_code();
         let message = self.message();
+        let sub_diags = self.sub_diags(db);
+
+        CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum BodyDiag {
+    TypeMismatch(DynLazySpan, String, String),
+    InfiniteOccurrence(DynLazySpan),
+
+    DuplicatedRestPat(DynLazySpan),
+
+    InvalidPathDomainInPat {
+        primary: DynLazySpan,
+        resolved: Option<DynLazySpan>,
+    },
+
+    UnitVariantExpected {
+        primary: DynLazySpan,
+        kind_name: String,
+        hint: Option<String>,
+    },
+
+    TupleVariantExpected {
+        primary: DynLazySpan,
+        kind_name: Option<String>,
+        hint: Option<String>,
+    },
+
+    RecordExpected {
+        primary: DynLazySpan,
+        kind_name: Option<String>,
+        hint: Option<String>,
+    },
+
+    MismatchedFieldCount {
+        primary: DynLazySpan,
+        expected: usize,
+        given: usize,
+    },
+
+    DuplicatedRecordFieldBind {
+        primary: DynLazySpan,
+        first_use: DynLazySpan,
+        name: IdentId,
+    },
+
+    RecordFieldNotFound {
+        primary: DynLazySpan,
+        label: IdentId,
+    },
+
+    ExplicitLabelExpectedInRecord {
+        primary: DynLazySpan,
+        hint: Option<String>,
+    },
+
+    MissingRecordFields {
+        primary: DynLazySpan,
+        missing_fields: BTreeSet<IdentId>,
+        hint: Option<String>,
+    },
+
+    UndefinedVariable(DynLazySpan, IdentId),
+
+    ReturnedTypeMismatch {
+        primary: DynLazySpan,
+        actual: String,
+        expected: String,
+        func: Option<Func>,
+    },
+
+    TypeMustBeKnown(DynLazySpan),
+
+    AccessedFieldNotFound {
+        primary: DynLazySpan,
+        given_ty: String,
+        index: FieldIndex,
+    },
+
+    OpsTraitNotImplemented {
+        span: DynLazySpan,
+        ty: String,
+        op: IdentId,
+        trait_path: PathId,
+    },
+
+    NonAssignableExpr(DynLazySpan),
+
+    ImmutableAssignment {
+        primary: DynLazySpan,
+        binding: Option<(IdentId, DynLazySpan)>,
+    },
+
+    LoopControlOutsideOfLoop {
+        primary: DynLazySpan,
+        is_break: bool,
+    },
+
+    TraitNotImplemented {
+        primary: DynLazySpan,
+        ty: String,
+        trait_name: IdentId,
+    },
+
+    NotCallable(DynLazySpan, String),
+
+    CallGenericArgNumMismatch {
+        primary: DynLazySpan,
+        func: Func,
+        given: usize,
+        expected: usize,
+    },
+
+    CallArgNumMismatch {
+        primary: DynLazySpan,
+        func: Func,
+        given: usize,
+        expected: usize,
+    },
+
+    CallArgLabelMismatch {
+        primary: DynLazySpan,
+        func: Func,
+        given: Option<IdentId>,
+        expected: IdentId,
+    },
+}
+
+impl BodyDiag {
+    pub(super) fn type_mismatch(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        expected: TyId,
+        actual: TyId,
+    ) -> Self {
+        let expected = expected.pretty_print(db).to_string();
+        let actual = actual.pretty_print(db).to_string();
+        Self::TypeMismatch(span, expected, actual)
+    }
+
+    pub(super) fn unit_variant_expected<T>(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        mut record_like: T,
+    ) -> Self
+    where
+        T: RecordLike,
+    {
+        let kind_name = record_like.kind_name(db);
+        let hint = record_like.initializer_hint(db);
+        Self::UnitVariantExpected {
+            primary,
+            kind_name,
+            hint,
+        }
+    }
+
+    pub(super) fn tuple_variant_expected<T>(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        record_like: Option<T>,
+    ) -> Self
+    where
+        T: RecordLike,
+    {
+        let (kind_name, hint) = if let Some(mut record_like) = record_like {
+            (
+                Some(record_like.kind_name(db)),
+                record_like.initializer_hint(db),
+            )
+        } else {
+            (None, None)
+        };
+
+        Self::TupleVariantExpected {
+            primary,
+            kind_name,
+            hint,
+        }
+    }
+
+    pub(super) fn record_expected<T>(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        record_like: Option<T>,
+    ) -> Self
+    where
+        T: RecordLike,
+    {
+        let (kind_name, hint) = if let Some(mut record_like) = record_like {
+            (
+                Some(record_like.kind_name(db)),
+                record_like.initializer_hint(db),
+            )
+        } else {
+            (None, None)
+        };
+
+        Self::RecordExpected {
+            primary,
+            kind_name,
+            hint,
+        }
+    }
+
+    pub(super) fn record_field_not_found(primary: DynLazySpan, label: IdentId) -> Self {
+        Self::RecordFieldNotFound { primary, label }
+    }
+
+    pub(super) fn returned_type_mismatch(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        actual: TyId,
+        expected: TyId,
+        func: Option<Func>,
+    ) -> Self {
+        let actual = actual.pretty_print(db).to_string();
+        let expected = expected.pretty_print(db).to_string();
+        Self::ReturnedTypeMismatch {
+            primary,
+            actual,
+            expected,
+            func,
+        }
+    }
+
+    pub(super) fn accessed_field_not_found(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        given_ty: TyId,
+        index: FieldIndex,
+    ) -> Self {
+        let given_ty = given_ty.pretty_print(db).to_string();
+        Self::AccessedFieldNotFound {
+            primary,
+            given_ty,
+            index,
+        }
+    }
+
+    pub(super) fn ops_trait_not_implemented<T>(
+        db: &dyn HirAnalysisDb,
+        span: DynLazySpan,
+        ty: TyId,
+        ops: T,
+    ) -> Self
+    where
+        T: TraitOps,
+    {
+        let ty = ty.pretty_print(db).to_string();
+        let op = ops.op_symbol(db);
+        let trait_path = ops.trait_path(db);
+        Self::OpsTraitNotImplemented {
+            span,
+            ty,
+            op,
+            trait_path,
+        }
+    }
+    pub(super) fn not_callable(db: &dyn HirAnalysisDb, span: DynLazySpan, ty: TyId) -> Self {
+        let ty = ty.pretty_print(db).to_string();
+        Self::NotCallable(span, ty)
+    }
+
+    fn local_code(&self) -> u16 {
+        match self {
+            Self::TypeMismatch(..) => 0,
+            Self::InfiniteOccurrence(..) => 1,
+            Self::DuplicatedRestPat(..) => 2,
+            Self::InvalidPathDomainInPat { .. } => 3,
+            Self::UnitVariantExpected { .. } => 4,
+            Self::TupleVariantExpected { .. } => 5,
+            Self::RecordExpected { .. } => 6,
+            Self::MismatchedFieldCount { .. } => 7,
+            Self::DuplicatedRecordFieldBind { .. } => 8,
+            Self::RecordFieldNotFound { .. } => 9,
+            Self::ExplicitLabelExpectedInRecord { .. } => 10,
+            Self::MissingRecordFields { .. } => 11,
+            Self::UndefinedVariable(..) => 12,
+            Self::ReturnedTypeMismatch { .. } => 13,
+            Self::TypeMustBeKnown(..) => 14,
+            Self::AccessedFieldNotFound { .. } => 15,
+            Self::OpsTraitNotImplemented { .. } => 16,
+            Self::NonAssignableExpr(..) => 17,
+            Self::ImmutableAssignment { .. } => 18,
+            Self::LoopControlOutsideOfLoop { .. } => 19,
+            Self::TraitNotImplemented { .. } => 20,
+            Self::NotCallable(..) => 21,
+            Self::CallGenericArgNumMismatch { .. } => 22,
+            Self::CallArgNumMismatch { .. } => 23,
+            Self::CallArgLabelMismatch { .. } => 24,
+        }
+    }
+
+    fn message(&self, db: &dyn HirDb) -> String {
+        match self {
+            Self::TypeMismatch(_, _, _) => "type mismatch".to_string(),
+            Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
+            Self::DuplicatedRestPat(_) => "duplicated `..` found".to_string(),
+            Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
+            Self::UnitVariantExpected { .. } => "expected unit variant".to_string(),
+            Self::TupleVariantExpected { .. } => "expected tuple variant".to_string(),
+            Self::RecordExpected { .. } => "expected record variant or struct".to_string(),
+            Self::MismatchedFieldCount { .. } => "field count mismatch".to_string(),
+            Self::DuplicatedRecordFieldBind { .. } => "duplicated record field binding".to_string(),
+            Self::RecordFieldNotFound { .. } => "specified field not found".to_string(),
+            Self::ExplicitLabelExpectedInRecord { .. } => "explicit label is required".to_string(),
+            Self::MissingRecordFields { .. } => "all fields are not given".to_string(),
+            Self::UndefinedVariable(..) => "undefined variable".to_string(),
+            Self::ReturnedTypeMismatch { .. } => "returned type mismatch".to_string(),
+            Self::TypeMustBeKnown(..) => "type must be known here".to_string(),
+            Self::AccessedFieldNotFound { .. } => "invalid field index".to_string(),
+            Self::OpsTraitNotImplemented { trait_path, .. } => {
+                format!("`{}` trait is not implemented", trait_path.pretty_print(db))
+            }
+            Self::NonAssignableExpr { .. } => {
+                "not assignable left-hand side of assignment".to_string()
+            }
+            Self::ImmutableAssignment { .. } => {
+                "left-hand side of assignment is immutable".to_string()
+            }
+
+            Self::LoopControlOutsideOfLoop { is_break, .. } => {
+                format!(
+                    "`{}` is not allowed outside of a loop",
+                    if *is_break { "break" } else { "continue" }
+                )
+            }
+
+            Self::TraitNotImplemented { trait_name, ty, .. } => {
+                format!("`{}` needs to be implemented for {ty}", trait_name.data(db))
+            }
+
+            Self::NotCallable(..) => "not callable type is given in call expression".to_string(),
+
+            Self::CallGenericArgNumMismatch { .. } => {
+                "given generic argument number mismatch".to_string()
+            }
+
+            Self::CallArgNumMismatch { .. } => "given argument number mismatch".to_string(),
+            Self::CallArgLabelMismatch { .. } => "given argument label mismatch".to_string(),
+        }
+    }
+
+    fn sub_diags(&self, db: &dyn SpannedHirDb) -> Vec<SubDiagnostic> {
+        match self {
+            Self::TypeMismatch(span, expected, actual) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                format!("expected `{}`, but `{}` is given", expected, actual),
+                span.resolve(db),
+            )],
+
+            Self::InfiniteOccurrence(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "infinite sized type found".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::DuplicatedRestPat(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "`..` can be used only once".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::InvalidPathDomainInPat { primary, resolved } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "expected type or enum variant here".to_string(),
+                    primary.resolve(db),
+                )];
+                if let Some(resolved) = resolved {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "this item given".to_string(),
+                        resolved.resolve(db),
+                    ))
+                }
+                diag
+            }
+
+            Self::UnitVariantExpected {
+                primary,
+                kind_name: pat_kind,
+                hint,
+            } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected unit variant here, but found {}", pat_kind,),
+                    primary.resolve(db),
+                )];
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+                diag
+            }
+
+            Self::TupleVariantExpected {
+                primary,
+                kind_name: pat_kind,
+                hint,
+            } => {
+                let mut diag = if let Some(pat_kind) = pat_kind {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("expected tuple variant here, but found {}", pat_kind,),
+                        primary.resolve(db),
+                    )]
+                } else {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        "expected tuple variant here".to_string(),
+                        primary.resolve(db),
+                    )]
+                };
+
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+
+                diag
+            }
+
+            Self::RecordExpected {
+                primary,
+                kind_name: pat_kind,
+                hint,
+            } => {
+                let mut diag = if let Some(pat_kind) = pat_kind {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!(
+                            "expected record variant or struct here, but found {}",
+                            pat_kind,
+                        ),
+                        primary.resolve(db),
+                    )]
+                } else {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        "expected record variant or struct here".to_string(),
+                        primary.resolve(db),
+                    )]
+                };
+
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+
+                diag
+            }
+
+            Self::MismatchedFieldCount {
+                primary,
+                expected,
+                given,
+            } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected {} fields here, but {} given", expected, given,),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::DuplicatedRecordFieldBind {
+                primary,
+                first_use,
+                name,
+            } => {
+                let name = name.data(db.as_hir_db());
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("duplicated field binding `{}`", name),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("first use of `{}`", name),
+                        first_use.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::RecordFieldNotFound { primary, label } => {
+                let label = label.data(db.as_hir_db());
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("field `{}` not found", label),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::ExplicitLabelExpectedInRecord { primary, hint } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "explicit label is required".to_string(),
+                    primary.resolve(db),
+                )];
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+
+                diag
+            }
+
+            Self::MissingRecordFields {
+                primary,
+                missing_fields,
+                hint,
+            } => {
+                let missing = missing_fields
+                    .iter()
+                    .map(|id| id.data(db.as_hir_db()))
+                    .join(", ");
+
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format! {"missing `{}`", missing},
+                    primary.resolve(db),
+                )];
+                if let Some(hint) = hint {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("Consider using `{}` instead", hint),
+                        primary.resolve(db),
+                    ))
+                }
+                diag
+            }
+
+            Self::UndefinedVariable(primary, ident) => {
+                let ident = ident.data(db.as_hir_db());
+
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("undefined variable `{}`", ident),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::ReturnedTypeMismatch {
+                primary,
+                actual,
+                expected,
+                func,
+            } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("expected `{}`, but `{}` is returned", expected, actual),
+                    primary.resolve(db),
+                )];
+
+                if let Some(func) = func {
+                    if func.ret_ty(db.as_hir_db()).is_some() {
+                        diag.push(SubDiagnostic::new(
+                            LabelStyle::Secondary,
+                            format!("this function expects `{}` to be returned", expected),
+                            func.lazy_span().ret_ty_moved().resolve(db),
+                        ))
+                    } else {
+                        diag.push(SubDiagnostic::new(
+                            LabelStyle::Secondary,
+                            format!("try adding `-> {}`", actual),
+                            func.lazy_span().name_moved().resolve(db),
+                        ))
+                    }
+                }
+
+                diag
+            }
+
+            Self::TypeMustBeKnown(span) => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                "type must be known here".to_string(),
+                span.resolve(db),
+            )],
+
+            Self::AccessedFieldNotFound {
+                primary,
+                given_ty,
+                index,
+            } => {
+                let message = match index {
+                    FieldIndex::Ident(ident) => {
+                        format!(
+                            "field `{}` is not found in `{}`",
+                            ident.data(db.as_hir_db()),
+                            &given_ty,
+                        )
+                    }
+                    FieldIndex::Index(index) => {
+                        format!(
+                            "field `{}` is not found in `{}`",
+                            index.data(db.as_hir_db()),
+                            &given_ty
+                        )
+                    }
+                };
+
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    message,
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::OpsTraitNotImplemented {
+                span,
+                ty,
+                op,
+                trait_path,
+            } => {
+                let op = op.data(db.as_hir_db());
+                let trait_path = trait_path.pretty_print(db.as_hir_db());
+
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("`{}` cant be applied to `{}`", op, ty),
+                        span.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format! {"Try implementing `{}` for `{}`", trait_path, ty},
+                        span.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::NonAssignableExpr(primary) => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "cant assign to this expression".to_string(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::ImmutableAssignment { primary, binding } => {
+                let mut diag = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "immutable assignment".to_string(),
+                    primary.resolve(db),
+                )];
+                if let Some((name, span)) = binding {
+                    diag.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("try changing to `mut {}`", name.data(db.as_hir_db())),
+                        span.resolve(db),
+                    ));
+                }
+                diag
+            }
+
+            Self::LoopControlOutsideOfLoop { primary, is_break } => {
+                let stmt = if *is_break { "break" } else { "continue" };
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{}` is not allowed here", stmt),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::TraitNotImplemented {
+                primary,
+                ty,
+                trait_name,
+            } => {
+                let trait_name = trait_name.data(db.as_hir_db());
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("`{trait_name}` needs to be implemented for `{ty}`"),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("consider implementing `{trait_name}` for `{ty}`"),
+                        primary.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::NotCallable(primary, ty) => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{ty}` is not callable"),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::CallGenericArgNumMismatch {
+                primary,
+                func,
+                given,
+                expected,
+            } => {
+                let func_span = func.lazy_span().name_moved();
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!(
+                            "expected {} generic arguments, but {} given",
+                            expected, given
+                        ),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "function defined here".to_string(),
+                        func_span.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::CallArgNumMismatch {
+                primary,
+                func,
+                given,
+                expected,
+            } => {
+                let func_span = func.lazy_span().name_moved();
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("expected {} arguments, but {} given", expected, given),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        "function defined here".to_string(),
+                        func_span.resolve(db),
+                    ),
+                ]
+            }
+
+            Self::CallArgLabelMismatch {
+                primary,
+                func,
+                given,
+                expected,
+            } => {
+                let func_span = func.lazy_span().name_moved();
+                let mut diags = if let Some(given) = given {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!(
+                            "expected `{}` label, but `{}` given",
+                            expected.data(db.as_hir_db()),
+                            given.data(db.as_hir_db())
+                        ),
+                        primary.resolve(db),
+                    )]
+                } else {
+                    vec![SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("expected `{}` label", expected.data(db.as_hir_db())),
+                        primary.resolve(db),
+                    )]
+                };
+
+                diags.push(SubDiagnostic::new(
+                    LabelStyle::Secondary,
+                    "function defined here".to_string(),
+                    func_span.resolve(db),
+                ));
+
+                diags
+            }
+        }
+    }
+
+    fn severity(&self) -> Severity {
+        Severity::Error
+    }
+}
+
+impl DiagnosticVoucher for BodyDiag {
+    fn error_code(&self) -> GlobalErrorCode {
+        GlobalErrorCode::new(DiagnosticPass::TyCheck, self.local_code())
+    }
+
+    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+        let severity = self.severity();
+        let error_code = self.error_code();
+        let message = self.message(db.as_hir_db());
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)

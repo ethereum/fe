@@ -103,7 +103,7 @@ impl HirPropertyFormatter {
                 .iter()
                 .map(|(prop, span)| {
                     let (span, diag) = self.property_to_diag(db, *top_mod, prop, span.clone());
-                    ((span.file, span.range.start()), diag)
+                    ((span.file, (span.range.start(), span.range.end())), diag)
                 })
                 .collect::<BTreeMap<_, _>>();
 

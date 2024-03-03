@@ -1,8 +1,7 @@
 use cranelift_entity::entity_impl;
 
-use crate::{span::expr::LazyExprSpan, HirDb};
-
 use super::{Body, GenericArgListId, IdentId, IntegerId, LitKind, Partial, PatId, PathId, StmtId};
+use crate::{span::expr::LazyExprSpan, HirDb};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
@@ -40,8 +39,8 @@ pub enum Expr {
     /// The first `ExprId` is the scrutinee, the second is the arms.
     Match(ExprId, Partial<Vec<MatchArm>>),
 
-    /// The `Assign` Expression. The first `ExprId` is the destination of the assignment,
-    /// and the second `ExprId` is the rhs value of the binding.
+    /// The `Assign` Expression. The first `ExprId` is the destination of the
+    /// assignment, and the second `ExprId` is the rhs value of the binding.
     Assign(ExprId, ExprId),
 
     AugAssign(ExprId, ExprId, ArithBinOp),
@@ -61,7 +60,7 @@ impl ExprId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum FieldIndex {
     /// The field is indexed by its name.
     /// `field.foo`.
@@ -95,7 +94,7 @@ pub enum ArithBinOp {
     /// `/`
     Div,
     /// `%`
-    Mod,
+    Rem,
     /// `**`
     Pow,
     /// `<<`
@@ -152,8 +151,52 @@ pub struct CallArg {
     pub expr: ExprId,
 }
 
+impl CallArg {
+    /// Returns the label of the argument if
+    /// 1. the argument has an explicit label. or
+    /// 2. If 1. is not true, then the argument is labeled when the expression
+    ///    is a path expression and the path is an identifier.
+    pub fn label_eagerly(&self, db: &dyn HirDb, body: Body) -> Option<IdentId> {
+        if let Some(label) = self.label {
+            return Some(label);
+        };
+
+        let Partial::Present(Expr::Path(Partial::Present(path))) = self.expr.data(db, body) else {
+            return None;
+        };
+
+        if path.is_ident(db) {
+            path.last_segment(db).to_opt()
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Field {
     pub label: Option<IdentId>,
     pub expr: ExprId,
+}
+
+impl Field {
+    /// Returns the label of the field if
+    /// 1. the filed has an explicit label. or
+    /// 2. If 1. is not true, then the field is labeled when the expression is a
+    ///    path expression and the path is an identifier.
+    pub fn label_eagerly(&self, db: &dyn HirDb, body: Body) -> Option<IdentId> {
+        if let Some(label) = self.label {
+            return Some(label);
+        };
+
+        let Partial::Present(Expr::Path(Partial::Present(path))) = self.expr.data(db, body) else {
+            return None;
+        };
+
+        if path.is_ident(db) {
+            path.last_segment(db).to_opt()
+        } else {
+            None
+        }
+    }
 }

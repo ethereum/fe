@@ -28,18 +28,17 @@ pub(crate) fn check_ty_app_sat(
 
     let (_, args) = ty.decompose_ty_app(db);
 
-    for arg in args {
+    for &arg in args {
         match check_ty_app_sat(db, arg, assumptions) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }
     }
 
-    let (new_assumptions, constraints) = ty_constraints(db, ty);
+    let constraints = ty_constraints(db, ty);
 
-    let new_assumptions = assumptions.merge(db, new_assumptions);
     for &goal in constraints.predicates(db) {
-        match is_goal_satisfiable(db, goal, new_assumptions) {
+        match is_goal_satisfiable(db, goal, assumptions) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }
@@ -56,11 +55,9 @@ pub(crate) fn check_trait_inst_sat(
     trait_inst: TraitInstId,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
-    let (new_assumptions, constraints) = trait_inst.constraints(db);
-    let new_assumptions = assumptions.merge(db, new_assumptions);
-
+    let constraints = trait_inst.constraints(db);
     for &goal in constraints.predicates(db) {
-        match is_goal_satisfiable(db, goal, new_assumptions) {
+        match is_goal_satisfiable(db, goal, assumptions) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }
@@ -151,8 +148,8 @@ impl<'db> ConstraintSolver<'db> {
 
                 // If the `impl` can matches the goal by unifying the goal type, then we can
                 // obtain a subgaols which is specified by the `impl`.
-                if table.unify(gen_impl.ty(self.db), goal_ty)
-                    && table.unify(gen_impl.trait_(self.db), goal_trait)
+                if table.unify(gen_impl.ty(self.db), goal_ty).is_ok()
+                    && table.unify(gen_impl.trait_(self.db), goal_trait).is_ok()
                 {
                     let mut subst = SubstComposition::compose(&mut gen_param_map, &mut table);
                     let constraints = impl_.constraints(self.db);

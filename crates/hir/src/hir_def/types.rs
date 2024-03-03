@@ -1,6 +1,5 @@
-use crate::HirDb;
-
 use super::{Body, GenericArgListId, Partial, PathId};
+use crate::HirDb;
 
 #[salsa::interned]
 pub struct TypeId {
@@ -16,7 +15,7 @@ impl TypeId {
     pub fn fallback_self_ty(db: &dyn HirDb) -> Self {
         Self::new(
             db,
-            TypeKind::SelfType(GenericArgListId::new(db, Vec::new())),
+            TypeKind::SelfType(GenericArgListId::new(db, Vec::new(), false)),
         )
     }
 }
@@ -40,5 +39,9 @@ pub struct TupleTypeId {
 impl TupleTypeId {
     pub fn to_ty(self, db: &dyn HirDb) -> TypeId {
         TypeId::new(db, TypeKind::Tuple(self))
+    }
+
+    pub fn len(self, db: &dyn HirDb) -> usize {
+        self.data(db).len()
     }
 }

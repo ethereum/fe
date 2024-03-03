@@ -44,7 +44,7 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
         .filter(|impl_| {
             let mut table = UnificationTable::new(db);
             let (gen_impl, _) = impl_.generalize(db, &mut table);
-            table.unify(gen_impl.trait_(db), trait_)
+            table.unify(gen_impl.trait_(db), trait_).is_ok()
         })
         .cloned()
         .collect()
@@ -136,6 +136,10 @@ impl Implementor {
         self.trait_(db).def(db)
     }
 
+    pub(crate) fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.params(db)
+    }
+
     /// Generalizes the implementor by replacing all type parameters with fresh
     /// type variables.
     pub(super) fn generalize(
@@ -145,13 +149,14 @@ impl Implementor {
     ) -> (Self, impl Subst) {
         let mut subst = FxHashMap::default();
         for &param in self.params(db) {
-            let var = table.new_var_from_param(db, param);
+            let var = table.new_var_from_param(param);
             subst.insert(param, var);
         }
 
         let hir_impl = self.hir_impl_trait(db);
         let trait_ = self.trait_(db).apply_subst(db, &mut subst);
         let ty = self.ty(db).apply_subst(db, &mut subst);
+
         let params = self
             .params(db)
             .iter()
@@ -177,7 +182,7 @@ impl Implementor {
         let (generalized_self, _) = self.generalize(db, table);
         let (generalized_other, _) = other.generalize(db, table);
 
-        table.unify(generalized_self, generalized_other)
+        table.unify(generalized_self, generalized_other).is_ok()
     }
 
     pub(super) fn methods(self, db: &dyn HirAnalysisDb) -> &BTreeMap<IdentId, FuncDef> {
@@ -208,6 +213,9 @@ impl TraitInstId {
         let mut s = self.def(db).name(db).unwrap_or("<unknown>").to_string();
 
         let mut args = self.substs(db).iter().map(|ty| ty.pretty_print(db));
+        // Skip the first type parameter since it's the implementor type.
+        args.next();
+
         if let Some(first) = args.next() {
             s.push('<');
             s.push_str(first);
@@ -240,7 +248,11 @@ impl TraitInstId {
         )
     }
 
+    /// Returns subst from the trait definition parameter to this instantiated
+    /// parameters.
     pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> FxHashMap<TyId, TyId> {
+        assert!(self.def(db).params(db).len() == self.substs(db).len());
+
         let mut table = FxHashMap::default();
         for (from, to) in self.def(db).params(db).iter().zip(self.substs(db)) {
             table.insert(*from, *to);
@@ -249,10 +261,7 @@ impl TraitInstId {
         table
     }
 
-    pub(super) fn constraints(
-        self,
-        db: &dyn HirAnalysisDb,
-    ) -> (AssumptionListId, ConstraintListId) {
+    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
         trait_inst_constraints(db, self)
     }
 
@@ -279,6 +288,7 @@ impl TraitInstId {
 #[salsa::tracked]
 pub struct TraitDef {
     pub trait_: Trait,
+    #[return_ref]
     pub(crate) param_set: GenericParamTypeSet,
     #[return_ref]
     pub methods: BTreeMap<IdentId, TraitMethod>,
@@ -291,6 +301,10 @@ impl TraitDef {
 
     pub fn self_param(self, db: &dyn HirAnalysisDb) -> TyId {
         self.param_set(db).trait_self(db).unwrap()
+    }
+
+    pub fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        self.param_set(db).original_params(db)
     }
 }
 

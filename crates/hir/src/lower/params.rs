@@ -1,8 +1,7 @@
 use parser::ast::{self};
 
-use crate::hir_def::{kw, params::*, Body, IdentId, Partial, TypeId};
-
 use super::FileLowerCtxt;
+use crate::hir_def::{kw, params::*, Body, IdentId, Partial, TypeId};
 
 impl GenericArgListId {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::GenericArgList) -> Self {
@@ -10,7 +9,7 @@ impl GenericArgListId {
             .into_iter()
             .map(|arg| GenericArg::lower_ast(ctxt, arg))
             .collect();
-        Self::new(ctxt.db(), args)
+        Self::new(ctxt.db(), args, true)
     }
 
     pub(super) fn lower_ast_opt(
@@ -18,7 +17,7 @@ impl GenericArgListId {
         ast: Option<ast::GenericArgList>,
     ) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
-            .unwrap_or_else(|| Self::new(ctxt.db(), Vec::new()))
+            .unwrap_or_else(|| Self::new(ctxt.db(), Vec::new(), false))
     }
 }
 

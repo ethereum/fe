@@ -13,7 +13,7 @@ use salsa::function::Configuration;
 use super::{
     const_ty::{ConstTyData, ConstTyId},
     ty_def::{
-        AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
+        AdtDef, AdtFieldList, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
     },
 };
 use crate::{
@@ -42,6 +42,8 @@ pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
     AdtTyBuilder::new(db, adt).build()
 }
 
+/// Lower func to [`FuncDef`]. This function returns `None` iff the function
+/// name is `Partial::Absent`.
 #[salsa::tracked]
 pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
     let name = func.name(db.as_hir_db()).to_opt()?;
@@ -115,7 +117,8 @@ pub(crate) fn evaluate_params_precursor(
 ) -> Vec<TyId> {
     set.params_precursor(db)
         .iter()
-        .map(|p| p.evaluate(db, set.scope(db)))
+        .enumerate()
+        .map(|(i, p)| p.evaluate(db, set.scope(db), i))
         .collect()
 }
 
@@ -359,7 +362,7 @@ impl<'db> TyBuilder<'db> {
                 let owner_id = GenericParamOwnerId::new(self.db, owner);
 
                 let params = collect_generic_params(self.db, owner_id);
-                return Either::Left(params.get_param(self.db, idx).unwrap());
+                return Either::Left(params.param_by_original_idx(self.db, idx).unwrap());
             }
             _ => unreachable!(),
         };
@@ -434,7 +437,7 @@ pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope:
     }
 }
 
-pub(super) fn lower_generic_arg_list(
+pub(crate) fn lower_generic_arg_list(
     db: &dyn HirAnalysisDb,
     args: GenericArgListId,
     scope: ScopeId,
@@ -449,7 +452,7 @@ struct AdtTyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     adt: AdtRefId,
     params: GenericParamTypeSet,
-    variants: Vec<AdtField>,
+    variants: Vec<AdtFieldList>,
 }
 
 impl<'db> AdtTyBuilder<'db> {
@@ -498,10 +501,13 @@ impl<'db> AdtTyBuilder<'db> {
     fn collect_field_types(&mut self, fields: FieldDefListId) {
         let scope = self.adt.scope(self.db);
 
-        fields.data(self.db.as_hir_db()).iter().for_each(|field| {
-            let variant = AdtField::new(field.name, vec![field.ty], scope);
-            self.variants.push(variant);
-        })
+        let fields = fields
+            .data(self.db.as_hir_db())
+            .iter()
+            .map(|field| field.ty)
+            .collect();
+
+        self.variants.push(AdtFieldList::new(fields, scope));
     }
 
     fn collect_enum_variant_types(&mut self, variants: VariantDefListId) {
@@ -524,7 +530,7 @@ impl<'db> AdtTyBuilder<'db> {
                     VariantKind::Unit => vec![],
                 };
 
-                let variant = AdtField::new(variant.name, tys, scope);
+                let variant = AdtFieldList::new(tys, scope);
                 self.variants.push(variant)
             })
     }
@@ -534,8 +540,9 @@ impl<'db> AdtTyBuilder<'db> {
 #[salsa::interned]
 pub struct GenericParamTypeSet {
     params_precursor: Vec<TyParamPrecursor>,
-    pub trait_self: Option<TyId>,
+    // pub trait_self: Option<TyId>,
     scope: ScopeId,
+    offset_to_original: usize,
 }
 
 impl GenericParamTypeSet {
@@ -543,14 +550,35 @@ impl GenericParamTypeSet {
         evaluate_params_precursor(db, self)
     }
 
-    pub(crate) fn empty(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
-        Self::new(db, Vec::new(), None, scope)
+    pub(crate) fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        let offset = self.offset_to_original(db);
+        &self.params(db)[offset..]
     }
 
-    fn get_param(&self, db: &dyn HirAnalysisDb, idx: usize) -> Option<TyId> {
+    pub(crate) fn empty(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
+        Self::new(db, Vec::new(), scope, 0)
+    }
+
+    pub(super) fn trait_self(&self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+        let params = self.params_precursor(db);
+        let cand = params.first()?;
+
+        if cand.is_trait_self() {
+            Some(cand.evaluate(db, self.scope(db), 0))
+        } else {
+            None
+        }
+    }
+
+    pub(super) fn param_by_original_idx(
+        &self,
+        db: &dyn HirAnalysisDb,
+        original_idx: usize,
+    ) -> Option<TyId> {
+        let idx = self.offset_to_original(db) + original_idx;
         self.params_precursor(db)
             .get(idx)
-            .map(|p| p.evaluate(db, self.scope(db)))
+            .map(|p| p.evaluate(db, self.scope(db), idx))
     }
 }
 
@@ -558,19 +586,31 @@ struct GenericParamCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner,
     params: Vec<TyParamPrecursor>,
-    /// The self type of the trait.
-    trait_self: TyParamPrecursor,
+    offset_to_original: usize,
 }
 
 impl<'db> GenericParamCollector<'db> {
     fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwner) -> Self {
-        let trait_self = TyParamPrecursor::trait_self(None);
+        let params = match owner {
+            GenericParamOwner::Trait(_) => {
+                vec![TyParamPrecursor::trait_self(None)]
+            }
 
+            GenericParamOwner::Func(func) if func.is_associated_func(db.as_hir_db()) => {
+                let parent = owner.parent(db.as_hir_db()).unwrap();
+                collect_generic_params(db, GenericParamOwnerId::new(db, parent))
+                    .params_precursor(db)
+            }
+
+            _ => vec![],
+        };
+
+        let offset_to_original = params.len();
         Self {
             db,
             owner,
-            params: Vec::new(),
-            trait_self,
+            params,
+            offset_to_original,
         }
     }
 
@@ -578,6 +618,8 @@ impl<'db> GenericParamCollector<'db> {
         let hir_db = self.db.as_hir_db();
         let param_list = self.owner.params(hir_db);
         for (idx, param) in param_list.data(hir_db).iter().enumerate() {
+            let idx = idx + self.offset_to_original;
+
             match param {
                 GenericParam::Type(param) => {
                     let name = param.name;
@@ -614,8 +656,11 @@ impl<'db> GenericParamCollector<'db> {
                 }
 
                 ParamLoc::TraitSelf => {
-                    if self.trait_self.kind.is_none() {
-                        self.trait_self.kind = self.extract_kind(pred.bounds.as_slice());
+                    let kind = self.extract_kind(pred.bounds.as_slice());
+                    let trait_self = self.trait_self_ty_mut().unwrap();
+
+                    if trait_self.kind.is_none() {
+                        trait_self.kind = kind;
                     }
                 }
 
@@ -628,10 +673,12 @@ impl<'db> GenericParamCollector<'db> {
         self.collect_generic_params();
         self.collect_kind_in_where_clause();
 
-        let trait_self = matches!(self.owner, GenericParamOwner::Trait(_))
-            .then(|| self.trait_self.evaluate(self.db, self.owner.scope()));
-
-        GenericParamTypeSet::new(self.db, self.params, trait_self, self.owner.scope())
+        GenericParamTypeSet::new(
+            self.db,
+            self.params,
+            self.owner.scope(),
+            self.offset_to_original,
+        )
     }
 
     fn extract_kind(&self, bounds: &[TypeBound]) -> Option<Kind> {
@@ -674,7 +721,11 @@ impl<'db> GenericParamCollector<'db> {
         match resolve_path_early(self.db, path, self.owner.scope()) {
             EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
                 Ok(res) => match res.kind {
-                    NameResKind::Scope(ScopeId::GenericParam(_, idx)) => ParamLoc::Idx(idx),
+                    NameResKind::Scope(ScopeId::GenericParam(scope, idx))
+                        if self.owner.scope().item() == scope =>
+                    {
+                        ParamLoc::Idx(idx + self.offset_to_original)
+                    }
                     _ => ParamLoc::NonParam,
                 },
                 Err(_) => ParamLoc::NonParam,
@@ -682,6 +733,11 @@ impl<'db> GenericParamCollector<'db> {
 
             EarlyResolvedPath::Partial { .. } => ParamLoc::NonParam,
         }
+    }
+
+    fn trait_self_ty_mut(&mut self) -> Option<&mut TyParamPrecursor> {
+        let cand = self.params.get_mut(0)?;
+        cand.is_trait_self().then_some(cand)
     }
 }
 
@@ -695,23 +751,26 @@ enum ParamLoc {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyParamPrecursor {
     name: Partial<IdentId>,
-    idx: Option<usize>,
+    original_idx: Option<usize>,
     kind: Option<Kind>,
     const_ty_ty: Option<HirTyId>,
     is_const_ty: bool,
 }
 
 impl TyParamPrecursor {
-    fn evaluate(&self, db: &dyn HirAnalysisDb, scope: ScopeId) -> TyId {
+    fn evaluate(&self, db: &dyn HirAnalysisDb, scope: ScopeId, lowered_idx: usize) -> TyId {
         let Partial::Present(name) = self.name else {
             return TyId::invalid(db, InvalidCause::Other);
         };
 
-        let param = TyParam {
-            name,
-            idx: self.idx,
-            kind: self.kind.clone().unwrap_or(Kind::Star),
-        };
+        let kind = self.kind.clone().unwrap_or(Kind::Star);
+
+        if self.original_idx.is_none() {
+            let param = TyParam::trait_self(kind);
+            return TyId::new(db, TyData::TyParam(param));
+        }
+
+        let param = TyParam::normal_param(name, lowered_idx, kind);
 
         if !self.is_const_ty {
             return TyId::new(db, TyData::TyParam(param));
@@ -738,7 +797,7 @@ impl TyParamPrecursor {
     fn ty_param(name: Partial<IdentId>, idx: usize, kind: Option<Kind>) -> Self {
         Self {
             name,
-            idx: idx.into(),
+            original_idx: idx.into(),
             kind,
             const_ty_ty: None,
             is_const_ty: false,
@@ -748,7 +807,7 @@ impl TyParamPrecursor {
     fn const_ty_param(name: Partial<IdentId>, idx: usize, ty: Option<HirTyId>) -> Self {
         Self {
             name,
-            idx: idx.into(),
+            original_idx: idx.into(),
             kind: None,
             const_ty_ty: ty,
             is_const_ty: true,
@@ -759,11 +818,15 @@ impl TyParamPrecursor {
         let name = Partial::Present(kw::SELF_TY);
         Self {
             name,
-            idx: None,
+            original_idx: None,
             kind,
             const_ty_ty: None,
             is_const_ty: false,
         }
+    }
+
+    fn is_trait_self(&self) -> bool {
+        self.original_idx.is_none()
     }
 }
 

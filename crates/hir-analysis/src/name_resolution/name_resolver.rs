@@ -87,17 +87,17 @@ impl QueryDirective {
     }
 
     /// Disallow lexical scope lookup.
-    pub fn disallow_lex(&mut self) -> &mut Self {
+    pub fn disallow_lex(mut self) -> Self {
         self.allow_lex = false;
         self
     }
 
-    pub(super) fn disallow_external(&mut self) -> &mut Self {
+    pub(super) fn disallow_external(mut self) -> Self {
         self.allow_external = false;
         self
     }
 
-    pub(super) fn disallow_glob(&mut self) -> &mut Self {
+    pub(super) fn disallow_glob(mut self) -> Self {
         self.allow_glob = false;
         self
     }
@@ -339,7 +339,11 @@ impl NameRes {
     pub fn pretty_path(&self, db: &dyn HirAnalysisDb) -> Option<String> {
         match self.kind {
             NameResKind::Scope(scope) => scope.pretty_path(db.as_hir_db()),
-            NameResKind::Prim(prim) => prim.name().data(db.as_hir_db()).clone().into(),
+            NameResKind::Prim(prim) => prim
+                .name(db.as_hir_db())
+                .data(db.as_hir_db())
+                .clone()
+                .into(),
         }
     }
 
@@ -415,7 +419,7 @@ impl NameResKind {
     pub fn name(self, db: &dyn HirAnalysisDb) -> IdentId {
         match self {
             NameResKind::Scope(scope) => scope.name(db.as_hir_db()).unwrap(),
-            NameResKind::Prim(prim) => prim.name(),
+            NameResKind::Prim(prim) => prim.name(db.as_hir_db()),
         }
     }
 }
@@ -610,7 +614,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         for &prim in PrimTy::all_types() {
             // We don't care about the result of `push` because we assume builtin types are
             // guaranteed to be unique.
-            if query.name == prim.name() {
+            if query.name == prim.name(self.db.as_hir_db()) {
                 bucket.push(&NameRes::new_prim(prim));
             }
         }
@@ -766,7 +770,7 @@ pub enum NameResolutionError {
     /// The name is found, but it's ambiguous.
     Ambiguous(Vec<NameRes>),
 
-    /// The name is found ,but it can't be used in the middle of a use path.
+    /// The name is found, but it can't be used in the middle of a use path.
     InvalidPathSegment(NameRes),
 
     /// The definition conflicts with other definitions.
@@ -818,73 +822,6 @@ impl ResolvedQueryCacheStore {
         self.cache.insert(query, result);
     }
 }
-
-/// Each resolved name is associated with a domain that indicates which domain
-/// the name belongs to.
-/// The multiple same names can be introduced in a same scope as long as they
-/// are in different domains.
-///
-/// E.g., A `Foo` in the below example can be introduced in the same scope as a
-/// type and variant at the same time.
-/// ```fe
-/// struct Foo {}
-/// enum MyEnum {
-///     Foo
-/// }
-/// use MyEnum::Foo
-/// ```
-// #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-// pub enum NameDomain {
-//     /// The domain is associated with all items except for items that belongs to
-//     /// the `Value` domain.
-//     Type = 0b1,
-//     /// The domain is associated with a local variable and items that are
-//     /// guaranteed not to have associated names. e.g., `fn`, `const` or enum
-//     /// variables.
-//     Value = 0b10,
-//
-//     /// The domain is associated with both `Type` and `Value`. This domain is
-//     /// used to represent const type parameters.
-//     #[doc(hidden)]
-//     TypeAndValue = 0b11,
-//
-//     /// The domain is associated with struct fields.
-//     Field = 0b100,
-// }
-// impl NameDomain {
-//     pub(super) fn from_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self
-// {         match scope {
-//             ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_))
-//             | ScopeId::FuncParam(..)
-//             | ScopeId::Block(..) => Self::Value,
-//             ScopeId::Item(_) => Self::Type,
-//             ScopeId::GenericParam(parent, idx) => {
-//                 let parent =
-// GenericParamOwner::from_item_opt(parent).unwrap();
-//
-//                 let param =
-// &parent.params(db.as_hir_db()).data(db.as_hir_db())[idx];
-// match param {                     GenericParam::Type(_) => NameDomain::Type,
-//                     GenericParam::Const(_) => NameDomain::Type |
-// NameDomain::Value,                 }
-//             }
-//             ScopeId::Field(..) => Self::Field,
-//             ScopeId::Variant(..) => Self::Value,
-//         }
-//     }
-//
-//     pub(super) fn disjoint(self) -> impl Iterator<Item = Self> {
-//     match self {
-//     Self::Type => Either::Left(std::iter::once(Self::Type)),
-//     Self::Value => Either::Left(std::iter::once(Self::Value)),
-//     Self::TypeAndValue => {
-//
-//    Either::Right(std::iter::once(Self::Type).
-//     chain(std::iter::once(Self::Value)))         }
-//     Self::Field => Either::Left(std::iter::once(Self::Field)),
-//     }
-//     }
-// }
 
 /// Each resolved name is associated with a domain that indicates which domain
 /// the name belongs to.
