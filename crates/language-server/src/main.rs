@@ -9,13 +9,11 @@ mod logger;
 mod util;
 mod workspace;
 
-
-
 use backend::Backend;
 // use backend::Backend;
 use db::Jar;
 
-use language_server::{Server};
+use language_server::Server;
 use log::info;
 
 mod handlers {

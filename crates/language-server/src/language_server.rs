@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use log::{info, error};
+use log::{error, info};
 use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
     DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult,
