@@ -3,8 +3,8 @@ use std::io::BufRead;
 use common::input::IngotKind;
 use hir_analysis::name_resolution::{EarlyResolvedPath, NameRes};
 use log::info;
-use lsp_server::{Response, ResponseError};
-use serde::Deserialize;
+use lsp_server::{ResponseError};
+
 use tower_lsp::jsonrpc::Result;
 
 use crate::{
@@ -103,7 +103,9 @@ pub fn handle_hover(
     Ok(Some(result))
 }
 
-use lsp_types::{lsif::ResultSet, GotoDefinitionResponse, Hover, TextDocumentPositionParams, GotoDefinitionParams};
+use lsp_types::{
+    GotoDefinitionParams, GotoDefinitionResponse, Hover,
+};
 
 pub fn handle_goto_definition(
     db: &mut LanguageServerDatabase,
@@ -149,7 +151,7 @@ pub fn handle_goto_definition(
         .collect::<Vec<_>>()
         .join("\n");
 
-    let error = (!errors.is_empty()).then_some(ResponseError {
+    let _error = (!errors.is_empty()).then_some(ResponseError {
         code: lsp_types::error_codes::SERVER_CANCELLED as i32,
         message: errors,
         data: None,

@@ -72,7 +72,8 @@ impl Backend {
             BroadcastStream::new(messaging.subscribe_did_change_watched_files()).fuse();
 
         let mut hover_stream = BroadcastStream::new(messaging.subscribe_hover()).fuse();
-        let mut goto_definition_stream = BroadcastStream::new(messaging.subscribe_goto_definition()).fuse();
+        let mut goto_definition_stream =
+            BroadcastStream::new(messaging.subscribe_goto_definition()).fuse();
 
         // This is very important! We absolutely need to drop the messaging lock here.
         // TODO: make this more ergonomic and foolproof somehow
