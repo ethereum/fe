@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use log::info;
+use log::{info, error};
 use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
     DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult,
@@ -8,8 +8,6 @@ use lsp_types::{
 };
 
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
-
-use crate::capabilities::server_capabilities;
 
 pub(crate) struct Server {
     pub(crate) messaging: Arc<tokio::sync::Mutex<LspChannels>>,
@@ -32,7 +30,7 @@ impl Server {
                 .unwrap(),
             ),
         };
-        Ok(client.register_capability(vec![registration]).await?)
+        client.register_capability(vec![registration]).await
     }
 
     pub(crate) fn new(client: Client) -> Self {
@@ -84,5 +82,20 @@ impl LanguageServer for Server {
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
         let messaging = self.messaging.lock().await;
         messaging.dispatch_did_change_watched_files(params);
+    }
+
+    async fn hover(&self, params: lsp_types::HoverParams) -> Result<Option<lsp_types::Hover>> {
+        let messaging = self.messaging.lock().await;
+        let rx = messaging.dispatch_hover(params);
+        rx.await.unwrap()
+    }
+
+    async fn goto_definition(
+        &self,
+        params: lsp_types::GotoDefinitionParams,
+    ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+        let messaging = self.messaging.lock().await;
+        let rx = messaging.dispatch_goto_definition(params);
+        rx.await.unwrap()
     }
 }

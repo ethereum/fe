@@ -5,6 +5,7 @@ use hir_analysis::name_resolution::{EarlyResolvedPath, NameRes};
 use log::info;
 use lsp_server::{Response, ResponseError};
 use serde::Deserialize;
+use tower_lsp::jsonrpc::Result;
 
 use crate::{
     db::LanguageServerDatabase,
@@ -16,16 +17,16 @@ use crate::{
 pub fn handle_hover(
     db: &mut LanguageServerDatabase,
     workspace: &mut Workspace,
-    req: lsp_server::Request,
-) -> Result<(), anyhow::Error> {
+    params: lsp_types::HoverParams,
+) -> Result<Option<Hover>> {
+    info!("handling hover");
     // TODO: get more relevant information for the hover
-    let params = lsp_types::HoverParams::deserialize(req.params)?;
     let file_path = &params
         .text_document_position_params
         .text_document
         .uri
         .path();
-    let file = std::fs::File::open(file_path)?;
+    let file = std::fs::File::open(file_path).unwrap();
     let reader = std::io::BufReader::new(file);
     let line = reader
         .lines()
@@ -33,7 +34,7 @@ pub fn handle_hover(
         .unwrap()
         .unwrap();
 
-    let file_text = std::fs::read_to_string(file_path)?;
+    let file_text = std::fs::read_to_string(file_path).unwrap();
 
     // let cursor: Cursor = params.text_document_position_params.position.into();
     let cursor: Cursor = to_offset_from_position(
@@ -99,29 +100,20 @@ pub fn handle_hover(
             }),
         range: None,
     };
-    let _response_message = Response {
-        id: req.id,
-        result: Some(serde_json::to_value(result)?),
-        error: None,
-    };
-
-    // state.send_response(response_message)?;
-    Ok(())
+    Ok(Some(result))
 }
 
-use lsp_types::TextDocumentPositionParams;
+use lsp_types::{lsif::ResultSet, GotoDefinitionResponse, Hover, TextDocumentPositionParams, GotoDefinitionParams};
 
 pub fn handle_goto_definition(
     db: &mut LanguageServerDatabase,
     workspace: &mut Workspace,
-    req: lsp_server::Request,
-) -> Result<(), anyhow::Error> {
-    info!("handling goto definition request: {:?}", req);
-    let params = TextDocumentPositionParams::deserialize(req.params)?;
-
+    params: GotoDefinitionParams,
+) -> Result<Option<GotoDefinitionResponse>> {
     // Convert the position to an offset in the file
-    let file_text = std::fs::read_to_string(params.text_document.uri.path())?;
-    let cursor: Cursor = to_offset_from_position(params.position, file_text.as_str());
+    let params = params.text_document_position_params;
+    let file_text = std::fs::read_to_string(params.text_document.uri.path()).ok();
+    let cursor: Cursor = to_offset_from_position(params.position, file_text.unwrap().as_str());
 
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
@@ -139,7 +131,7 @@ pub fn handle_goto_definition(
         }) => {
             vec![res.scope()]
         }
-        None => return Ok(()),
+        None => return Ok(None),
     };
 
     let locations = scopes
@@ -163,22 +155,11 @@ pub fn handle_goto_definition(
         data: None,
     });
 
-    // Send the response
-    let response_message = Response {
-        id: req.id,
-        result: Some(serde_json::to_value(
-            lsp_types::GotoDefinitionResponse::Array(
-                locations
-                    .into_iter()
-                    .filter_map(std::result::Result::ok)
-                    .collect(),
-            ),
-        )?),
-        error,
-    };
-
-    info!("goto definition response: {:?}", response_message);
-
     // state.send_response(response_message)?;
-    Ok(())
+    Ok(Some(lsp_types::GotoDefinitionResponse::Array(
+        locations
+            .into_iter()
+            .filter_map(std::result::Result::ok)
+            .collect(),
+    )))
 }

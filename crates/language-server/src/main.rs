@@ -9,15 +9,15 @@ mod logger;
 mod util;
 mod workspace;
 
-use std::sync::Arc;
+
 
 use backend::Backend;
 // use backend::Backend;
 use db::Jar;
-use futures::future::join_all;
-use language_server::{LspChannels, Server};
+
+use language_server::{Server};
 use log::info;
-use tower_lsp::Client;
+
 mod handlers {
     pub mod notifications;
     pub mod request;

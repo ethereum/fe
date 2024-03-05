@@ -1,3 +1,4 @@
+use crate::handlers::request::{handle_goto_definition, handle_hover};
 use crate::workspace::SyncableIngotFileContext;
 use futures::TryStreamExt;
 use lsp_types::TextDocumentItem;
@@ -70,6 +71,9 @@ impl Backend {
         let mut did_change_watched_files_stream =
             BroadcastStream::new(messaging.subscribe_did_change_watched_files()).fuse();
 
+        let mut hover_stream = BroadcastStream::new(messaging.subscribe_hover()).fuse();
+        let mut goto_definition_stream = BroadcastStream::new(messaging.subscribe_goto_definition()).fuse();
+
         // This is very important! We absolutely need to drop the messaging lock here.
         // TODO: make this more ergonomic and foolproof somehow
         std::mem::drop(messaging);
@@ -115,7 +119,7 @@ impl Backend {
                     on_change(client_wrapped.clone(), workspace, db, doc).await;
                 }
                 Some(Ok(params)) = did_close_stream.next() => {
-                    let client = &mut client_wrapped.lock().await;
+                    let _client = &mut client_wrapped.lock().await;
                     let input = workspace
                         .input_from_file_path(
                             db,
@@ -176,6 +180,14 @@ impl Backend {
                             .await;
                         }
                     }
+                }
+                Some(Ok((params, responder))) = hover_stream.next() => {
+                    let response = handle_hover(db, workspace, params);
+                    responder.respond(response);
+                }
+                Some(Ok((params, responder))) = goto_definition_stream.next() => {
+                    let response = handle_goto_definition(db, workspace, params);
+                    responder.respond(response);
                 }
             }
         }
