@@ -166,22 +166,17 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
             let dispatcher_send_payload = match channel.result {
                 Some(result) => quote!{
                     let (tx, rx) = tokio::sync::oneshot::channel::<#result>();
-                    // let payload = #dispatcher_payload.clone();
                     let oneshot = OneshotResponder::from(tx);
                     let broadcast = self.#tx.clone();
-                    tokio::spawn(async move {
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                        info!("sending oneshot sender: {:?}", #dispatcher_payload);
-                        match broadcast.send((#dispatcher_payload, oneshot)) {
-                            Ok(_) => info!("sent oneshot sender"),
-                            Err(e) => error!("failed to send oneshot sender"),
-                        }
-                    });
+                    info!("sending oneshot sender: {:?}", #dispatcher_payload);
+                    match broadcast.send((#dispatcher_payload, oneshot)) {
+                        Ok(_) => info!("sent oneshot sender"),
+                        Err(e) => error!("failed to send oneshot sender"),
+                    }
                     info!("returning oneshot receiver: {:?}", rx);
                     rx
                 },
                 None => quote!{
-                    // self.#tx.send(#dispatcher_payload).unwrap();
                     match self.#tx.send(#dispatcher_payload) {
                         Ok(_) => info!("sent notification"),
                         Err(e) => error!("failed to send notification: {:?}", e),
@@ -202,8 +197,6 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
                 },
             };
 
-                // Some(result) => quote! { tokio::sync::broadcast::Sender<(#params, OneshotResponder<tokio::sync::oneshot::Sender<#result>>)> },
-                // None => quote! { tokio::sync::broadcast::Sender<#params> },
             let subscriber_fn = match params {
                 Some(_params) => quote! {
                     pub fn #subscriber_name(&self) -> #receiver_type {
@@ -225,41 +218,6 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
-        use std::fmt::Debug;
-        #[derive(Debug)]
-        pub struct OneshotResponder<T: Debug + Clone>{
-            sender: std::sync::Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Sender<T>>>>
-        }
-        impl<T: Debug + Clone> Clone for OneshotResponder<T> {
-            fn clone(&self) -> OneshotResponder<T> {
-                Self {
-                    sender: self.sender.clone()
-                }
-            }
-        }
-
-
-        impl<T: Debug + Clone> OneshotResponder<T> {
-            pub fn from(sender: tokio::sync::oneshot::Sender<T>) -> Self {
-                Self {
-                    sender: std::sync::Arc::new(std::sync::Mutex::new(Some(sender)))
-                }
-            }
-            pub fn respond(self, response: T) {
-                info!("responding with: {:?}", response);
-                let mut sender = self.sender.lock().unwrap();
-
-                // sender.send(response.clone());
-                if let Some(sender) = sender.take() {
-                    info!("sending response: {:?} and {:?}", response, sender);
-                    match sender.send(response) {
-                        Ok(_) => info!("Response sent successfully"),
-                        Err(e) => error!("Failed to send response: {:?}", e),
-                    }
-                }
-            }
-        }
-
         pub struct LspChannels {
             #channel_declarations
         }

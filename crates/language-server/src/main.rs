@@ -6,6 +6,7 @@ mod globals;
 mod goto;
 mod language_server;
 mod logger;
+mod oneshot_responder;
 mod util;
 mod workspace;
 
@@ -22,25 +23,11 @@ mod handlers {
 
 #[tokio_macros::main]
 async fn main() {
-    // let runtime = tokio::runtime::Builder::new_multi_thread()
-    //     .worker_threads(2)
-    //     .enable_all()
-    //     .build()
-    //     .unwrap();
-
-    // let runtime2 = tokio::runtime::Builder::new_multi_thread()
-    //     .worker_threads(2)
-    //     .enable_all()
-    //     .build()
-    //     .unwrap();
-
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
     let (service, socket) = tower_lsp::LspService::build(Server::new).finish();
     let server = service.inner();
-    // server.init_logger(log::Level::Info).unwrap();
-    // info!("initialized logger");
 
     let client = server.client.clone();
     let messaging = server.messaging.clone();
