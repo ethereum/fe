@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+use lsp_types::MessageType;
 use tower_lsp::Client;
-
-use crate::language_server::Server;
 
 pub struct Logger {
     pub(crate) level: Level,
-    pub(crate) client: Arc<tokio::sync::Mutex<Client>>,
+    log_sender: tokio::sync::mpsc::UnboundedSender<(String, MessageType)>,
 }
 
 impl log::Log for Logger {
@@ -16,42 +15,43 @@ impl log::Log for Logger {
         metadata.level() <= logger.level
     }
 
-    // TODO: investigate performance implications of spawning tasks for each log message
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             let message = format!("{} - {}", record.level(), record.args());
-            let level = record.level();
-            let client = self.client.clone();
-            tokio::spawn(async move {
-                let client = client.lock().await;
-                client
-                    .log_message(
-                        match level {
-                            log::Level::Error => lsp_types::MessageType::ERROR,
-                            log::Level::Warn => lsp_types::MessageType::WARNING,
-                            log::Level::Info => lsp_types::MessageType::INFO,
-                            log::Level::Debug => lsp_types::MessageType::LOG,
-                            log::Level::Trace => lsp_types::MessageType::LOG,
-                        },
-                        message,
-                    )
-                    .await;
-            });
+            let message_type = match record.level() {
+                log::Level::Error => MessageType::ERROR,
+                log::Level::Warn => MessageType::WARNING,
+                log::Level::Info => MessageType::INFO,
+                log::Level::Debug => MessageType::LOG,
+                log::Level::Trace => MessageType::LOG,
+            };
+            self.log_sender.send((message, message_type)).unwrap();
         }
     }
 
     fn flush(&self) {}
 }
 
-impl Server {
-    pub fn init_logger(&self, level: Level) -> Result<(), SetLoggerError> {
-        let logger = Logger {
-            level,
-            client: self.client.clone(),
-        };
-        let static_logger = Box::leak(Box::new(logger));
-        log::set_logger(static_logger)?;
-        log::set_max_level(LevelFilter::Debug);
-        Ok(())
+pub fn setup_logger(
+    level: Level,
+) -> Result<tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>, SetLoggerError> {
+    let (log_sender, log_receiver) =
+        tokio::sync::mpsc::unbounded_channel::<(String, MessageType)>();
+    let logger = Logger { level, log_sender };
+    let static_logger = Box::leak(Box::new(logger));
+    log::set_logger(static_logger)?;
+    log::set_max_level(LevelFilter::Debug);
+    Ok(log_receiver)
+}
+
+pub async fn handle_log_messages(
+    mut rx: tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>,
+    client: Arc<tokio::sync::Mutex<Client>>,
+) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+    loop {
+        let (message, message_type) = rx.recv().await.unwrap();
+        // let message_type = match
+        let client = client.lock().await;
+        client.log_message(message_type, message).await;
     }
 }
