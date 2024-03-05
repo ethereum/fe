@@ -38,6 +38,7 @@ impl Server {
     pub(crate) fn new(client: Client) -> Self {
         let messaging = Arc::new(tokio::sync::Mutex::new(LspChannels::new()));
         let client = Arc::new(tokio::sync::Mutex::new(client));
+
         Self { messaging, client }
     }
 }
@@ -47,8 +48,6 @@ impl Server {
 impl LanguageServer for Server {
     async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
         // setup logging
-        let _ = self.init_logger(log::Level::Info);
-        info!("initialized logger");
         // info!("initializing language server: {:?}", initialize_params);
         let messaging = self.messaging.lock().await;
         let rx = messaging.dispatch_initialize(initialize_params);

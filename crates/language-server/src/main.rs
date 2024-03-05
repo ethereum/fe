@@ -11,11 +11,11 @@ mod util;
 mod workspace;
 
 use backend::Backend;
-// use backend::Backend;
 use db::Jar;
 
 use language_server::Server;
-use log::info;
+
+use crate::logger::{handle_log_messages, setup_logger};
 
 mod handlers {
     pub mod request;
@@ -31,12 +31,17 @@ async fn main() {
 
     let client = server.client.clone();
     let messaging = server.messaging.clone();
-    info!("spawning backend");
     let backend = Backend::new(client, messaging);
 
-    tokio::spawn(backend.setup_streams());
-    info!("spawning server");
-    tower_lsp::Server::new(stdin, stdout, socket)
-        .serve(service)
-        .await;
+    let rx = setup_logger(log::Level::Info).unwrap();
+
+    tokio::select! {
+        // setup logging
+        _ = handle_log_messages(rx, server.client.clone()) => {},
+        // setup streams
+        _ = backend.setup_streams() => {},
+        // start the server
+        _ = tower_lsp::Server::new(stdin, stdout, socket)
+            .serve(service) => {}
+    }
 }
