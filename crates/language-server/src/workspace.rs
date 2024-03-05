@@ -318,7 +318,7 @@ impl Workspace {
         let previous_ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
         for path in previous_ingot_context_file_keys {
             if !actual_paths.contains(path) {
-                ingot_context.remove_file(db, path);
+                let _ = ingot_context.remove_file(db, path);
             }
         }
 

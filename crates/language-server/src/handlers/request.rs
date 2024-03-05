@@ -3,7 +3,6 @@ use std::io::BufRead;
 use common::input::IngotKind;
 use hir_analysis::name_resolution::{EarlyResolvedPath, NameRes};
 use log::info;
-use lsp_server::{ResponseError};
 
 use tower_lsp::jsonrpc::Result;
 
@@ -13,6 +12,7 @@ use crate::{
     util::{to_lsp_location_from_scope, to_offset_from_position},
     workspace::{IngotFileContext, Workspace},
 };
+use lsp_server::ResponseError;
 
 pub fn handle_hover(
     db: &mut LanguageServerDatabase,
@@ -103,9 +103,7 @@ pub fn handle_hover(
     Ok(Some(result))
 }
 
-use lsp_types::{
-    GotoDefinitionParams, GotoDefinitionResponse, Hover,
-};
+use lsp_types::{GotoDefinitionParams, GotoDefinitionResponse, Hover};
 
 pub fn handle_goto_definition(
     db: &mut LanguageServerDatabase,
