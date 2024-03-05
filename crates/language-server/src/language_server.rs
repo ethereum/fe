@@ -7,6 +7,8 @@ use lsp_types::{
     Registration,
 };
 
+use crate::oneshot_responder::OneshotResponder;
+
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
 pub(crate) struct Server {
