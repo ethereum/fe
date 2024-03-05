@@ -17,7 +17,6 @@ use language_server::Server;
 use log::info;
 
 mod handlers {
-    pub mod notifications;
     pub mod request;
 }
 
