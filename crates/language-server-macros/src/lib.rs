@@ -10,11 +10,14 @@ use syn::{parse_macro_input, FnArg, ImplItem, ItemImpl, ReturnType};
 /// a struct full of tokio broadcast channels that can be used to signal the server to handle
 /// defined requests and notifications.
 #[proc_macro_attribute]
-pub fn dispatcher(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn message_channels(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let attr = parse_macro_input!(attr as Option<syn::Ident>);
+    let channel_struct_name = format_ident!("{}", attr.map_or("MessageChannels".to_string(), |attr| attr.to_string()));
+
     let lang_server_trait_impl = parse_macro_input!(item as ItemImpl);
 
     let method_calls = parse_method_calls(&lang_server_trait_impl);
-    let channel_struct = gen_channel_struct(&method_calls);
+    let channel_struct = gen_channel_struct(&method_calls, channel_struct_name);
 
     let tokens = quote! {
         #channel_struct
@@ -25,17 +28,17 @@ pub fn dispatcher(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // item
 }
 
-struct LspTypeChannel<'a> {
+struct MessageTypeChannel<'a> {
     // handler_name: &'a syn::Ident,
     tx_name: syn::Ident,
-    dispatcher_name: syn::Ident,
-    subscriber_name: syn::Ident,
+    sender_fn_name: syn::Ident,
+    subscribe_fn_name: syn::Ident,
     rx_name: syn::Ident,
     params: Option<&'a syn::Type>,
     result: Option<&'a syn::Type>,
 }
 
-fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<LspTypeChannel> {
+fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<MessageTypeChannel> {
     let mut calls = Vec::new();
 
     for item in &lang_server_trait.items {
@@ -56,16 +59,16 @@ fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<LspTypeChannel> {
 
         let handler_name = &method.sig.ident;
         let tx_name = format_ident!("{}_tx", handler_name);
-        let dispatcher_name = format_ident!("dispatch_{}", handler_name);
-        let subscriber_name = format_ident!("subscribe_{}", handler_name);
+        let sender_fn_name = format_ident!("send_{}", handler_name);
+        let subscribe_fn_name = format_ident!("subscribe_{}", handler_name);
 
         let rx_name = format_ident!("{}_rx", handler_name);
 
-        calls.push(LspTypeChannel {
+        calls.push(MessageTypeChannel {
             tx_name,
             rx_name,
-            dispatcher_name,
-            subscriber_name,
+            sender_fn_name,
+            subscribe_fn_name,
             params,
             result,
         });
@@ -74,7 +77,7 @@ fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<LspTypeChannel> {
     calls
 }
 
-fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
+fn gen_channel_struct(channels: &[MessageTypeChannel], channel_struct_name: syn::Ident) -> proc_macro2::TokenStream {
     // unit type
     let unit_type = syn::Type::Tuple(syn::TypeTuple {
         paren_token: syn::token::Paren::default(),
@@ -135,7 +138,7 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
         })
         .collect();
 
-    let dispatch_functions: proc_macro2::TokenStream = channels
+    let send_functions: proc_macro2::TokenStream = channels
         .iter()
         .map(|channel| {
             let tx = &channel.tx_name;
@@ -145,9 +148,9 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
                 Some(params) => params,
                 None => &unit_type,
             };
-            let subscriber_name = &channel.subscriber_name;
-            let dispatcher_name = &channel.dispatcher_name;
-            let dispatcher_result = match channel.result {
+            let subscribe_fn_name = &channel.subscribe_fn_name;
+            let sender_fn_name = &channel.sender_fn_name;
+            let sender_fn_result = match channel.result {
                 Some(result) => quote!{tokio::sync::oneshot::Receiver<#result>},
                 None => quote!{()},
                 // Some(result) => quote! { tokio::sync::broadcast::Receiver<(#params, OneshotResponder<tokio::sync::oneshot::Sender<#result>>)> },
@@ -158,18 +161,18 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
                 None => quote! { tokio::sync::broadcast::Receiver<#params_type> },
             };
 
-            let dispatcher_payload = match params {
+            let payload = match params {
                 Some(_params) => quote! { params },
                 None => quote! { () },
             };
 
-            let dispatcher_send_payload = match channel.result {
+            let send_payload = match channel.result {
                 Some(result) => quote!{
                     let (tx, rx) = tokio::sync::oneshot::channel::<#result>();
                     let oneshot = OneshotResponder::from(tx);
                     let broadcast = self.#tx.clone();
-                    info!("sending oneshot sender: {:?}", #dispatcher_payload);
-                    match broadcast.send((#dispatcher_payload, oneshot)) {
+                    info!("sending oneshot sender: {:?}", #payload);
+                    match broadcast.send((#payload, oneshot)) {
                         Ok(_) => info!("sent oneshot sender"),
                         Err(e) => error!("failed to send oneshot sender"),
                     }
@@ -177,7 +180,7 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
                     rx
                 },
                 None => quote!{
-                    match self.#tx.send(#dispatcher_payload) {
+                    match self.#tx.send(#payload) {
                         Ok(_) => info!("sent notification"),
                         Err(e) => error!("failed to send notification: {:?}", e),
                     }
@@ -186,25 +189,25 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
 
             let dispatcher_fn = match params {
                 Some(params) => quote! {
-                    pub fn #dispatcher_name(&self, params: #params) -> #dispatcher_result {
-                        #dispatcher_send_payload
+                    pub fn #sender_fn_name(&self, params: #params) -> #sender_fn_result {
+                        #send_payload
                     }
                 },
                 None => quote! {
-                    pub fn #dispatcher_name(&self) -> #dispatcher_result {
-                        #dispatcher_send_payload
+                    pub fn #sender_fn_name(&self) -> #sender_fn_result {
+                        #send_payload
                     }
                 },
             };
 
             let subscriber_fn = match params {
                 Some(_params) => quote! {
-                    pub fn #subscriber_name(&self) -> #receiver_type {
+                    pub fn #subscribe_fn_name(&self) -> #receiver_type {
                         self.#tx.subscribe()
                     }
                 },
                 None => quote! {
-                    pub fn #subscriber_name(&self) -> #receiver_type {
+                    pub fn #subscribe_fn_name(&self) -> #receiver_type {
                         self.#tx.subscribe()
                     }
                 },
@@ -218,18 +221,18 @@ fn gen_channel_struct(channels: &[LspTypeChannel]) -> proc_macro2::TokenStream {
         .collect();
 
     quote! {
-        pub struct LspChannels {
+        pub struct #channel_struct_name {
             #channel_declarations
         }
 
-        impl LspChannels {
+        impl #channel_struct_name {
             pub fn new() -> Self {
                 #channel_instantiations
                 Self {
                     #channel_assignments
                 }
             }
-            #dispatch_functions
+            #send_functions
         }
     }
 }

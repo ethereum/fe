@@ -10,7 +10,7 @@ use crate::db::LanguageServerDatabase;
 
 use crate::diagnostics::get_diagnostics;
 use crate::globals::LANGUAGE_ID;
-use crate::language_server::LspChannels;
+use crate::language_server::MessageChannels;
 use crate::workspace::{IngotFileContext, SyncableInputFile, Workspace};
 
 use log::info;
@@ -20,14 +20,14 @@ use tokio_stream::StreamExt;
 use tower_lsp::Client;
 
 pub struct Backend {
-    pub(crate) messaging: Arc<Mutex<LspChannels>>,
+    pub(crate) messaging: Arc<Mutex<MessageChannels>>,
     pub(crate) client: Arc<Mutex<Client>>,
     pub(crate) db: LanguageServerDatabase,
     pub(crate) workspace: Workspace,
 }
 
 impl Backend {
-    pub fn new(client: Arc<Mutex<Client>>, messaging: Arc<Mutex<LspChannels>>) -> Self {
+    pub fn new(client: Arc<Mutex<Client>>, messaging: Arc<Mutex<MessageChannels>>) -> Self {
         let db = LanguageServerDatabase::default();
         let workspace = Workspace::default();
 
