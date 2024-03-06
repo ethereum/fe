@@ -35,11 +35,18 @@ async fn main() {
 
     let rx = setup_logger(log::Level::Info).unwrap();
 
+    // separate runtime for the backend
+    let backend_runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(4)
+        .enable_all()
+        .build()
+        .unwrap();
+
+    backend_runtime.spawn(backend.handle_streams());
+
     tokio::select! {
         // setup logging
         _ = handle_log_messages(rx, server.client.clone()) => {},
-        // setup streams
-        _ = backend.setup_streams() => {},
         // start the server
         _ = tower_lsp::Server::new(stdin, stdout, socket)
             .serve(service) => {}

@@ -38,7 +38,7 @@ impl Backend {
             workspace,
         }
     }
-    pub async fn setup_streams(mut self) {
+    pub async fn handle_streams(mut self) {
         info!("setting up streams");
         info!("what's next");
         let workspace = &mut self.workspace;
