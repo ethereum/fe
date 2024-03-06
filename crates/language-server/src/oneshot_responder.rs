@@ -1,10 +1,11 @@
 use std::fmt::Debug;
 
-use log::{error, info};
+use log::{debug, error};
 #[derive(Debug)]
 pub struct OneshotResponder<T: Debug + Clone> {
     pub(crate) sender: std::sync::Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Sender<T>>>>,
 }
+
 impl<T: Debug + Clone> Clone for OneshotResponder<T> {
     fn clone(&self) -> OneshotResponder<T> {
         Self {
@@ -20,15 +21,21 @@ impl<T: Debug + Clone> OneshotResponder<T> {
         }
     }
     pub fn respond(self, response: T) {
-        info!("responding with: {:?}", response);
+        debug!("responding with: {:?}", response);
         let mut sender = self.sender.lock().unwrap();
 
-        // sender.send(response.clone());
-        if let Some(sender) = sender.take() {
-            info!("sending response: {:?} and {:?}", response, sender);
-            match sender.send(response) {
-                Ok(_) => info!("Response sent successfully"),
-                Err(e) => error!("Failed to send response: {:?}", e),
+        match sender.take() {
+            Some(sender) => {
+                debug!("sending response: {:?} and {:?}", response, sender);
+                match sender.send(response) {
+                    Ok(_) => {
+                        debug!("Response sent successfully")
+                    },
+                    Err(e) => error!("Failed to send response: {:?}", e),
+                }
+            }
+            None => {
+                error!("OneshotResponder already responded");
             }
         }
     }
