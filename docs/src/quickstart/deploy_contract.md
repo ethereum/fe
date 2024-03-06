@@ -131,10 +131,10 @@ The response arrives in the form of hex-encoded bytes padded with zeroes:
 Foundry provides a built-in method to convert this hex string into human-readable ASCII. You can do this as follows:
 
 ```sh
-cast to_ascii "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000087765203c33204665000000000000000000000000000000000000000000000000"
+cast --to-ascii "0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000087765203c33204665000000000000000000000000000000000000000000000000"
 ```
 
-or simply pipe the output of the `cast call` to `to_ascii` to do the query and conversion in a single command:
+or simply pipe the output of the `cast call` to `cast --to-ascii` to do the query and conversion in a single command:
 
 ```sh
 cast call --rpc-url https://rpc.sepolia.org <contract-address> "get_msg(address)" <your-account-address-that-signed-the-guestbook> | cast --to-ascii
