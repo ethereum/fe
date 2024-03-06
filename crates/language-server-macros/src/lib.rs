@@ -12,7 +12,10 @@ use syn::{parse_macro_input, FnArg, ImplItem, ItemImpl, ReturnType};
 #[proc_macro_attribute]
 pub fn message_channels(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr = parse_macro_input!(attr as Option<syn::Ident>);
-    let channel_struct_name = format_ident!("{}", attr.map_or("MessageChannels".to_string(), |attr| attr.to_string()));
+    let channel_struct_name = format_ident!(
+        "{}",
+        attr.map_or("MessageChannels".to_string(), |attr| attr.to_string())
+    );
 
     let lang_server_trait_impl = parse_macro_input!(item as ItemImpl);
 
@@ -77,7 +80,10 @@ fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<MessageTypeChannel> {
     calls
 }
 
-fn gen_channel_struct(channels: &[MessageTypeChannel], channel_struct_name: syn::Ident) -> proc_macro2::TokenStream {
+fn gen_channel_struct(
+    channels: &[MessageTypeChannel],
+    channel_struct_name: syn::Ident,
+) -> proc_macro2::TokenStream {
     // unit type
     let unit_type = syn::Type::Tuple(syn::TypeTuple {
         paren_token: syn::token::Paren::default(),
