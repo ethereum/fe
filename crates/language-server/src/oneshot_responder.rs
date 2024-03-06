@@ -30,7 +30,7 @@ impl<T: Debug + Clone> OneshotResponder<T> {
                 match sender.send(response) {
                     Ok(_) => {
                         debug!("Response sent successfully")
-                    },
+                    }
                     Err(e) => error!("Failed to send response: {:?}", e),
                 }
             }
