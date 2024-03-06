@@ -40,11 +40,10 @@ impl Backend {
     }
     pub async fn handle_streams(mut self) {
         info!("setting up streams");
-        info!("what's next");
         let workspace = &mut self.workspace;
         let db = &mut self.db;
 
-        let client_wrapped = self.client.clone();
+        let client = self.client.clone();
         let messaging = self.messaging.clone();
         let messaging = messaging.lock().await;
 
@@ -83,9 +82,8 @@ impl Backend {
         loop {
             tokio::select! {
                 Some(result) = initialized_stream.next() => {
-                    info!("received initialize request {:?}", result);
                     if let Ok((initialization_params, responder)) = result {
-                        info!("initializing language server: {:?}", initialization_params);
+                        info!("initializing language server!");
                         // setup workspace
                         let _ = workspace.set_workspace_root(
                             db,
@@ -105,7 +103,6 @@ impl Backend {
                                 version: Some(String::from(env!("CARGO_PKG_VERSION"))),
                             }),
                         };
-                        info!("initializing language server!");
                         responder.respond(Ok(initialize_result));
                     }
                 }
@@ -117,10 +114,9 @@ impl Backend {
                 }
                 Some(Ok(doc)) = change_stream.next() => {
                     info!("change detected: {:?}", doc.uri);
-                    on_change(client_wrapped.clone(), workspace, db, doc).await;
+                    on_change(client.clone(), workspace, db, doc).await;
                 }
                 Some(Ok(params)) = did_close_stream.next() => {
-                    let _client = &mut client_wrapped.lock().await;
                     let input = workspace
                         .input_from_file_path(
                             db,

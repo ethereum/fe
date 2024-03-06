@@ -50,6 +50,7 @@ impl LanguageServer for Server {
         // forward the initialize request to the messaging system
         let messaging = self.messaging.lock().await;
         let rx = messaging.send_initialize(initialize_params);
+
         info!("awaiting initialization result");
         let initialize_result = rx.await.unwrap();
 
