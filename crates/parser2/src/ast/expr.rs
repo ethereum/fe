@@ -913,7 +913,6 @@ mod tests {
 
         let if_expr: IfExpr = parse_expr("if { true } { return } else { continue }");
         if let ExprKind::Block(stmts) = if_expr.cond().unwrap().kind() {
-            dbg!(&stmts);
             assert!(matches!(
                 stmts.into_iter().next().unwrap().kind(),
                 crate::ast::StmtKind::Expr(_)

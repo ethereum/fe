@@ -5,7 +5,7 @@ use super::{
     define_scope, parse_list, token_stream::TokenStream, Checkpoint, ErrProof, Parser, Recovery,
 };
 
-use crate::SyntaxKind;
+use crate::{ExpectedKind, SyntaxKind};
 
 pub(super) fn parse_attr_list<S: TokenStream>(
     parser: &mut Parser<S>,
@@ -40,7 +40,13 @@ impl super::Parse for AttrListScope {
                 _ => break,
             };
             parser.set_newline_as_trivia(false);
-            if parser.find(SyntaxKind::Newline, None)? {
+            if parser.find(
+                SyntaxKind::Newline,
+                ExpectedKind::Separator {
+                    separator: SyntaxKind::Newline,
+                    element: SyntaxKind::Attr,
+                },
+            )? {
                 parser.bump();
             }
         }
@@ -61,10 +67,7 @@ impl super::Parse for AttrScope {
         parser.bump_expected(SyntaxKind::Pound);
 
         parser.set_scope_recovery_stack(&[SyntaxKind::LParen]);
-        if parser.find(
-            SyntaxKind::Ident,
-            Some("expected an attribute name after `#`"),
-        )? {
+        if parser.find(SyntaxKind::Ident, ExpectedKind::Name(SyntaxKind::Attr))? {
             parser.bump()
         }
 
@@ -89,6 +92,7 @@ impl super::Parse for AttrArgListScope {
         parse_list(
             parser,
             false,
+            SyntaxKind::AttrArgList,
             (SyntaxKind::LParen, SyntaxKind::RParen),
             |parser| parser.parse(AttrArgScope::default()),
         )
@@ -104,16 +108,16 @@ impl super::Parse for AttrArgScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        let msg = Some("expected attribute argument in the form `key: value`");
+        let expected_err = ExpectedKind::Syntax(SyntaxKind::AttrArg);
 
         parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Colon]);
-        if parser.find_and_pop(SyntaxKind::Ident, msg)? {
+        if parser.find_and_pop(SyntaxKind::Ident, expected_err)? {
             parser.bump();
         }
-        if parser.find_and_pop(SyntaxKind::Colon, msg)? {
+        if parser.find_and_pop(SyntaxKind::Colon, expected_err)? {
             parser.bump();
         }
-        if parser.find(SyntaxKind::Ident, msg)? {
+        if parser.find(SyntaxKind::Ident, expected_err)? {
             parser.bump();
         }
         Ok(())

@@ -47,7 +47,7 @@ impl DiagnosticVoucher for ParserError {
             self.error.msg(),
             vec![SubDiagnostic::new(
                 LabelStyle::Primary,
-                self.error.msg(),
+                self.error.label(),
                 Some(span),
             )],
             vec![],

@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/syntax_node/items/trait.fe
 ---
 Root@0..652
   ItemList@0..652
-    Item@0..17
+    Item@0..15
       Trait@0..15
         TraitKw@0..5 "trait"
         WhiteSpace@5..6 " "
@@ -14,8 +14,8 @@ Root@0..652
         TraitItemList@13..15
           LBrace@13..14 "{"
           RBrace@14..15 "}"
-      Newline@15..17 "\n\n"
-    Item@17..184
+    Newline@15..17 "\n\n"
+    Item@17..182
       Trait@17..182
         ItemModifier@17..20
           PubKw@17..20 "pub"
@@ -175,8 +175,8 @@ Root@0..652
               RBrace@179..180 "}"
           Newline@180..181 "\n"
           RBrace@181..182 "}"
-      Newline@182..184 "\n\n"
-    Item@184..274
+    Newline@182..184 "\n\n"
+    Item@184..271
       Trait@184..271
         ItemModifier@184..187
           PubKw@184..187 "pub"
@@ -248,8 +248,8 @@ Root@0..652
                           Ident@266..269 "Sub"
           Newline@269..270 "\n"
           RBrace@270..271 "}"
-      Newline@271..274 "\n\n\n"
-    Item@274..357
+    Newline@271..274 "\n\n\n"
+    Item@274..355
       Trait@274..355
         ItemModifier@274..277
           PubKw@274..277 "pub"
@@ -308,8 +308,8 @@ Root@0..652
               RParen@352..353 ")"
           Newline@353..354 "\n"
           RBrace@354..355 "}"
-      Newline@355..357 "\n\n"
-    Item@357..595
+    Newline@355..357 "\n\n"
+    Item@357..592
       Impl@357..592
         ImplKw@357..361 "impl"
         GenericParamList@361..364
@@ -483,7 +483,7 @@ Root@0..652
               RBrace@589..590 "}"
           Newline@590..591 "\n"
           RBrace@591..592 "}"
-      Newline@592..595 "\n\n\n"
+    Newline@592..595 "\n\n\n"
     Item@595..652
       Trait@595..652
         ItemModifier@595..598

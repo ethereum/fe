@@ -4,7 +4,7 @@ use rowan::Checkpoint;
 
 use crate::{
     parser::{lit, path},
-    SyntaxKind,
+    ExpectedKind, SyntaxKind, TextRange,
 };
 
 use super::{
@@ -17,6 +17,18 @@ use super::{
     ErrProof, Parser, Recovery,
 };
 
+// Must be kept in sync with `parse_expr_atom`
+pub(super) fn is_expr_atom_head(kind: SyntaxKind) -> bool {
+    use SyntaxKind::*;
+    match kind {
+        IfKw | MatchKw | LBrace | LParen | LBracket => true,
+        kind if lit::is_lit(kind) => true,
+        kind if path::is_path_segment(kind) => true,
+        _ => false,
+    }
+}
+
+/// Panics if `!is_expr_atom_head(parser.current_kind())`
 pub(super) fn parse_expr_atom<S: TokenStream>(
     parser: &mut Parser<S>,
     allow_record_init: bool,
@@ -34,9 +46,7 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
         Some(kind) if path::is_path_segment(kind) => {
             parser.parse_cp(PathExprScope::new(allow_record_init), None)
         }
-        _ => parser
-            .error_and_recover("expected expression") // xxx
-            .map(|()| parser.checkpoint()),
+        _ => unreachable!(),
     }
 }
 
@@ -83,7 +93,13 @@ impl super::Parse for BlockExprScope {
             parser.bump_if(SyntaxKind::Newline);
         }
 
-        if parser.find(SyntaxKind::RBrace, Some("missing closing `}` for block"))? {
+        if parser.find(
+            SyntaxKind::RBrace,
+            crate::ExpectedKind::ClosingBracket {
+                bracket: SyntaxKind::RBrace,
+                parent: SyntaxKind::BlockExpr,
+            },
+        )? {
             parser.bump();
         }
         Ok(())
@@ -100,7 +116,7 @@ impl super::Parse for IfExprScope {
         parser.set_scope_recovery_stack(&[SyntaxKind::LBrace, SyntaxKind::ElseKw]);
         parse_expr_no_struct(parser)?;
 
-        if parser.find_and_pop(SyntaxKind::LBrace, Some("missing `if` body"))? {
+        if parser.find_and_pop(SyntaxKind::LBrace, ExpectedKind::Body(SyntaxKind::IfExpr))? {
             parser.parse(BlockExprScope::default())?;
         }
 
@@ -122,8 +138,10 @@ impl super::Parse for MatchExprScope {
         parser.bump_expected(SyntaxKind::MatchKw);
 
         parse_expr_no_struct(parser)?;
-        if parser.find(SyntaxKind::LBrace, None)? {
-            dbg!(parser.current_kind());
+        if parser.find(
+            SyntaxKind::LBrace,
+            ExpectedKind::Body(SyntaxKind::MatchExpr),
+        )? {
             parser.parse(MatchArmListScope::default())?;
         }
         Ok(())
@@ -166,7 +184,7 @@ impl super::Parse for MatchArmScope {
         parser.set_scope_recovery_stack(&[SyntaxKind::FatArrow]);
         parse_pat(parser)?;
 
-        if parser.find_and_pop(SyntaxKind::FatArrow, None)? {
+        if parser.find_and_pop(SyntaxKind::FatArrow, ExpectedKind::Unspecified)? {
             parser.bump();
         }
         parse_expr(parser)
@@ -188,8 +206,14 @@ impl super::Parse for PathExprScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        // xxx "expected an expression"?
-        parser.or_recover(|p| p.parse(path::PathScope::default()))?;
+        parser.or_recover(|p| {
+            p.parse(path::PathScope::default()).map_err(|_| {
+                crate::ParseError::Msg(
+                    "expected an expression".into(),
+                    TextRange::empty(p.end_of_prev_token),
+                )
+            })
+        })?;
 
         if parser.current_kind() == Some(SyntaxKind::LBrace) && self.allow_record_init {
             self.set_kind(SyntaxKind::RecordInitExpr);
@@ -207,6 +231,7 @@ impl super::Parse for RecordFieldListScope {
         parse_list(
             parser,
             true,
+            SyntaxKind::RecordFieldList,
             (SyntaxKind::LBrace, SyntaxKind::RBrace),
             |parser| parser.parse(RecordFieldScope::default()),
         )
@@ -299,7 +324,10 @@ impl super::Parse for ArrayScope {
 
         if parser.find(
             SyntaxKind::RBracket,
-            Some("missing closing `]` in array definition"),
+            ExpectedKind::ClosingBracket {
+                bracket: SyntaxKind::RBracket,
+                parent: SyntaxKind::ArrayExpr,
+            },
         )? {
             parser.bump();
         }

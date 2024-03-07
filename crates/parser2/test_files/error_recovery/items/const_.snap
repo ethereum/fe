@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/error_recovery/items/const_.fe
 ---
 Root@0..44
   ItemList@0..44
-    Item@0..14
+    Item@0..12
       Const@0..12
         ConstKw@0..5 "const"
         WhiteSpace@5..6 " "
@@ -16,9 +16,9 @@ Root@0..44
         LitExpr@10..12
           Lit@10..12
             Int@10..12 "10"
-      Newline@12..14 "\n\n"
-    Item@14..29
-      Const@14..29
+    Newline@12..14 "\n\n"
+    Item@14..26
+      Const@14..26
         ConstKw@14..19 "const"
         WhiteSpace@19..20 " "
         Ident@20..21 "X"
@@ -28,9 +28,8 @@ Root@0..44
           Path@23..26
             PathSegment@23..26
               Ident@23..26 "i32"
-        WhiteSpace@26..27 " "
-        Error@27..29
-          Newline@27..29 "\n\n"
+    WhiteSpace@26..27 " "
+    Newline@27..29 "\n\n"
     Item@29..44
       Const@29..44
         ConstKw@29..34 "const"

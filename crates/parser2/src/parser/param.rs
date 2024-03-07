@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 
-use crate::{ParseError, SyntaxKind};
+use crate::{ExpectedKind, ParseError, SyntaxKind};
 
 use super::{
     define_scope,
@@ -25,6 +25,7 @@ impl super::Parse for FuncParamListScope {
         parse_list(
             parser,
             false,
+            SyntaxKind::FuncParamList,
             (SyntaxKind::LParen, SyntaxKind::RParen),
             |parser| parser.parse(FnParamScope::new(self.allow_self)),
         )
@@ -72,7 +73,7 @@ impl super::Parse for FnParamScope {
                 }
                 if parser.find(
                     SyntaxKind::Colon,
-                    Some("missing type bound for fn parameter"),
+                    ExpectedKind::TypeSpecifier(SyntaxKind::FnParam),
                 )? {
                     parser.bump();
                     parse_type(parser, None)?;
@@ -93,20 +94,26 @@ impl super::Parse for GenericParamListScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parse_list(parser, false, (SyntaxKind::Lt, SyntaxKind::Gt), |parser| {
-            parser.expect(
-                &[SyntaxKind::Ident, SyntaxKind::ConstKw, SyntaxKind::Gt],
-                None,
-            )?;
-            match parser.current_kind() {
-                Some(SyntaxKind::ConstKw) => parser.parse(ConstGenericParamScope::default()),
-                Some(SyntaxKind::Ident) => {
-                    parser.parse(TypeGenericParamScope::new(self.disallow_trait_bound))
+        parse_list(
+            parser,
+            false,
+            SyntaxKind::GenericParamList,
+            (SyntaxKind::Lt, SyntaxKind::Gt),
+            |parser| {
+                parser.expect(
+                    &[SyntaxKind::Ident, SyntaxKind::ConstKw, SyntaxKind::Gt],
+                    None,
+                )?;
+                match parser.current_kind() {
+                    Some(SyntaxKind::ConstKw) => parser.parse(ConstGenericParamScope::default()),
+                    Some(SyntaxKind::Ident) => {
+                        parser.parse(TypeGenericParamScope::new(self.disallow_trait_bound))
+                    }
+                    Some(SyntaxKind::Gt) => Ok(()),
+                    _ => unreachable!(),
                 }
-                Some(SyntaxKind::Gt) => Ok(()),
-                _ => unreachable!(),
-            }
-        })
+            },
+        )
     }
 }
 
@@ -123,10 +130,16 @@ impl super::Parse for ConstGenericParamScope {
         parser.bump_expected(SyntaxKind::ConstKw);
 
         parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Colon]);
-        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+        if parser.find_and_pop(
+            SyntaxKind::Ident,
+            ExpectedKind::Name(SyntaxKind::ConstGenericParam),
+        )? {
             parser.bump();
         }
-        if parser.find_and_pop(SyntaxKind::Colon, None)? {
+        if parser.find_and_pop(
+            SyntaxKind::Colon,
+            ExpectedKind::TypeSpecifier(SyntaxKind::ConstGenericParam),
+        )? {
             parser.bump();
             parse_type(parser, None)?;
         }
@@ -211,7 +224,13 @@ fn parse_kind_bound<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recove
 
     if parser.bump_if(SyntaxKind::LParen) {
         parse_kind_bound(parser)?;
-        if parser.find(SyntaxKind::RParen, None)? {
+        if parser.find(
+            SyntaxKind::RParen,
+            ExpectedKind::ClosingBracket {
+                bracket: SyntaxKind::RParen,
+                parent: SyntaxKind::TypeBound,
+            },
+        )? {
             parser.bump();
         }
     } else if parser.current_kind() == Some(SyntaxKind::Star) {
@@ -266,10 +285,9 @@ impl super::Parse for TraitRefScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        // xxx add test that triggers this
         parser.or_recover(|parser| {
             parser.parse(PathScope::default()).map_err(|_| {
-                ParseError::expected(&[SyntaxKind::TraitRef], None, parser.current_pos)
+                ParseError::expected(&[SyntaxKind::TraitRef], None, parser.end_of_prev_token)
             })
         })?;
 
@@ -289,9 +307,13 @@ impl super::Parse for GenericArgListScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parse_list(parser, false, (SyntaxKind::Lt, SyntaxKind::Gt), |parser| {
-            parser.parse(GenericArgScope::default())
-        })
+        parse_list(
+            parser,
+            false,
+            SyntaxKind::GenericArgList,
+            (SyntaxKind::Lt, SyntaxKind::Gt),
+            |parser| parser.parse(GenericArgScope::default()),
+        )
     }
 }
 
@@ -335,6 +357,7 @@ impl super::Parse for CallArgListScope {
         parse_list(
             parser,
             false,
+            SyntaxKind::CallArgList,
             (SyntaxKind::LParen, SyntaxKind::RParen),
             |parser| parser.parse(CallArgScope::default()),
         )
@@ -379,27 +402,34 @@ impl super::Parse for WhereClauseScope {
                 _ => break,
             }
 
-            if !parser.bump_if(SyntaxKind::Comma) {
-                if parser.current_kind().is_some() && is_type_start(parser.current_kind().unwrap())
-                {
-                    parser.set_newline_as_trivia(false);
-                    let newline = parser.current_kind() == Some(SyntaxKind::Newline);
-                    parser.set_newline_as_trivia(true);
+            if !parser.bump_if(SyntaxKind::Comma)
+                && parser.current_kind().is_some()
+                && is_type_start(parser.current_kind().unwrap())
+            {
+                parser.set_newline_as_trivia(false);
+                let newline = parser.current_kind() == Some(SyntaxKind::Newline);
+                parser.set_newline_as_trivia(true);
 
-                    if newline {
-                        parser.add_error(ParseError::expected(
-                            &[SyntaxKind::Comma],
-                            None,
-                            parser.current_pos,
-                        ));
-                    } else if parser.find(SyntaxKind::Comma, None)? {
-                        parser.bump();
-                    } else {
-                        break;
-                    }
+                if newline {
+                    parser.add_error(ParseError::expected(
+                        &[SyntaxKind::Comma],
+                        None,
+                        parser.current_pos,
+                    ));
+                } else if parser.find(
+                    SyntaxKind::Comma,
+                    ExpectedKind::Separator {
+                        separator: SyntaxKind::Comma,
+                        element: SyntaxKind::WherePredicate,
+                    },
+                )? {
+                    parser.bump();
+                } else {
+                    break;
                 }
             }
         }
+
         if pred_count == 0 {
             parser.error("`where` clause requires one or more type constraints");
         }
@@ -419,8 +449,8 @@ impl super::Parse for WherePredicateScope {
         } else {
             parser.add_error(ParseError::expected(
                 &[SyntaxKind::Colon],
-                Some("missing type bound in `where` clause"),
-                parser.current_pos,
+                Some(ExpectedKind::TypeSpecifier(SyntaxKind::WherePredicate)),
+                parser.end_of_prev_token,
             ));
         }
         Ok(())

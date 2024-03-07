@@ -6,7 +6,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 
 use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
-use crate::{syntax_node::SyntaxNode, GreenNode, ParseError, SyntaxKind, TextRange};
+use crate::{syntax_node::SyntaxNode, ExpectedKind, GreenNode, ParseError, SyntaxKind, TextRange};
 
 pub mod token_stream;
 
@@ -72,36 +72,6 @@ impl<S: TokenStream> Parser<S> {
         self.peek_non_trivia()
     }
 
-    // xxx doc
-    pub fn current_token_range(&mut self) -> Option<TextRange> {
-        let mut start = self.current_pos;
-        if !self.is_newline_trivia {
-            for tok in &self.next_trivias {
-                if tok.syntax_kind() == SyntaxKind::Newline {
-                    return Some(TextRange::new(start, start + tok.text_size()));
-                }
-                start += tok.text_size();
-            }
-        }
-
-        while let Some(next) = self.stream.peek().map(|tok| tok.syntax_kind()) {
-            if self.is_trivia(next) {
-                let next = self.stream.next().unwrap();
-                start += next.text_size();
-
-                self.next_trivias.push_back(next);
-                continue;
-            } else {
-                return Some(TextRange::new(
-                    start,
-                    start + self.stream.peek().unwrap().text_size(),
-                ));
-            }
-        }
-
-        None
-    }
-
     /// Returns the current non-trivia token kind of the parser.
     pub fn current_kind(&mut self) -> Option<SyntaxKind> {
         self.current_token().map(|tok| tok.syntax_kind())
@@ -150,7 +120,7 @@ impl<S: TokenStream> Parser<S> {
             Ok(())
         } else {
             let pos = self.current_pos;
-            let (index, unexpected) = self.recover(None);
+            let (index, unexpected) = self.recover();
             let proof = if unexpected.is_some() {
                 ErrProof(())
             } else {
@@ -163,11 +133,10 @@ impl<S: TokenStream> Parser<S> {
         r
     }
 
-    // xxx
     pub fn expect(
         &mut self,
         expected: &[SyntaxKind],
-        msg: Option<&str>,
+        kind: Option<ExpectedKind>,
     ) -> Result<(), Recovery<ErrProof>> {
         let current = self.current_kind();
 
@@ -179,11 +148,11 @@ impl<S: TokenStream> Parser<S> {
             Ok(())
         } else {
             let pos = self.current_pos;
-            let (index, unexpected) = self.recover(None);
+            let (index, unexpected) = self.recover();
             let proof = if unexpected.is_some() {
                 ErrProof(())
             } else {
-                self.add_error(ParseError::expected(expected, msg, pos))
+                self.add_error(ParseError::expected(expected, kind, pos))
             };
             self.pop_recovery_stack();
             self.allow_local_recovery(Err(Recovery(index, proof)))
@@ -229,10 +198,9 @@ impl<S: TokenStream> Parser<S> {
         mut scope: T,
         checkpoint: Option<Checkpoint>,
     ) -> Result<Checkpoint, E>
-    // xxx checkpoint handling
     where
         T: Parse<Error = E> + 'static,
-        E: XxxRecoveryThing,
+        E: Recoverable,
     {
         let checkpoint = self.enter(scope.clone(), checkpoint);
         let start_checkpoint = self.checkpoint();
@@ -245,37 +213,22 @@ impl<S: TokenStream> Parser<S> {
     pub fn parse<T, E>(&mut self, scope: T) -> Result<(), E>
     where
         T: Parse<Error = E> + 'static,
-        E: XxxRecoveryThing,
+        E: Recoverable,
     {
-        self.parse_cp(scope, None).map(|_| ())
+        self.parse_ok(scope).map(|_| ())
     }
 
-    // xxx do we ever want to use this?
-    pub fn parses_without_error<T, E>(&mut self, mut scope: T) -> bool
+    pub fn parse_ok<T, E>(&mut self, mut scope: T) -> Result<bool, E>
     where
         T: Parse<Error = E> + 'static,
-        E: XxxRecoveryThing,
-    {
-        debug_assert!(self.is_dry_run());
-        let checkpoint = self.enter(scope.clone(), None);
-        let r = scope.parse(self);
-        let is_err = self.leave(checkpoint);
-        r.is_ok() && !is_err
-    }
-
-    // xxx remove?
-    pub fn parse_or_recover<T>(&mut self, mut scope: T) -> Result<(), Recovery<ErrProof>>
-    where
-        T: Parse<Error = ParseError> + 'static,
+        E: Recoverable,
     {
         let checkpoint = self.enter(scope.clone(), None);
         let res = scope.parse(self);
         self.leave(checkpoint);
-        if let Err(err) = res {
-            let proof = self.add_error(err);
-            self.try_recover().map_err(|r| r.add_err_proof(proof))?;
-        }
-        Ok(())
+        let ok = res.is_ok();
+        let res = self.allow_local_recovery(res);
+        res.map(|_| ok)
     }
 
     pub fn or_recover<F>(&mut self, f: F) -> Result<(), Recovery<ErrProof>>
@@ -301,7 +254,7 @@ impl<S: TokenStream> Parser<S> {
         if !self.parents.is_empty() {
             self.bump_trivias();
         }
-        // xxx don't push current scope onto parents stack
+
         self.parents
             .push(ScopeEntry::new(Box::new(scope), self.is_newline_trivia));
         // `is_newline_trivia` is always `true` when entering a scope.
@@ -332,10 +285,6 @@ impl<S: TokenStream> Parser<S> {
     }
 
     pub fn add_error(&mut self, err: ParseError) -> ErrProof {
-        eprintln!(
-            "add_error: {err:?} {}",
-            std::backtrace::Backtrace::capture()
-        );
         self.parents.last_mut().unwrap().is_err = true;
         self.errors.push(err);
         ErrProof(())
@@ -354,21 +303,6 @@ impl<S: TokenStream> Parser<S> {
             TextRange::empty(self.end_of_prev_token),
         ));
         self.try_recover().map_err(|r| r.add_err_proof(proof))
-    }
-
-    // xxx check uses of error_and_recover
-    pub fn recover_and_error_if_no_skipped_tokens(
-        &mut self,
-        msg: &str,
-    ) -> Result<(), Recovery<ErrProof>> {
-        let (index, unexpected) = self.recover(None);
-        if unexpected.is_none() {
-            self.add_error(ParseError::Msg(
-                msg.into(),
-                TextRange::empty(self.current_pos),
-            ));
-        }
-        self.allow_local_recovery(Err(Recovery(index, ErrProof(()))))
     }
 
     /// Runs the parser in the dry run mode.
@@ -432,16 +366,16 @@ impl<S: TokenStream> Parser<S> {
     pub fn find(
         &mut self,
         kind: SyntaxKind,
-        msg: Option<&str>,
+        err: ExpectedKind,
     ) -> Result<bool, Recovery<ErrProof>> {
         self.scope_aux_recovery().push(kind);
-        self.find_and_pop(kind, msg)
+        self.find_and_pop(kind, err)
     }
 
     pub fn find_and_pop(
         &mut self,
         kind: SyntaxKind,
-        msg: Option<&str>,
+        err: ExpectedKind,
     ) -> Result<bool, Recovery<ErrProof>> {
         debug_assert_eq!(self.scope_aux_recovery().last(), Some(&kind));
 
@@ -453,7 +387,7 @@ impl<S: TokenStream> Parser<S> {
             if self.current_kind() == Some(kind) {
                 Ok(true)
             } else {
-                let proof = self.add_error(ParseError::expected(&[kind], msg, pos));
+                let proof = self.add_error(ParseError::expected(&[kind], Some(err), pos));
                 r.map(|_| false).map_err(|rec| rec.add_err_proof(proof))
             }
         };
@@ -462,26 +396,15 @@ impl<S: TokenStream> Parser<S> {
     }
 
     pub fn try_recover(&mut self) -> Result<(), Recovery<()>> {
-        let (index, _) = self.recover(None);
+        let (index, _) = self.recover();
         self.allow_local_recovery(Err(Recovery(index, ())))
     }
 
-    // xxx remove checkpoint arg?
     /// Consumes tokens until a recovery token is found, and reports an error on any
     /// unexpected tokens.
-    /// Returns the index of the scope that matched the recovery token.
-    fn recover(
-        &mut self,
-        checkpoint: Option<Checkpoint>,
-    ) -> (Option<ScopeIndex>, Option<rowan::TextSize>) {
-        if !self.is_dry_run() {
-            eprintln!(
-                "recover! {:?} {:?} scopes: {:#?}",
-                self.current_kind(),
-                self.current_token().map(|t| t.text().to_string()),
-                self.parents
-            );
-        }
+    /// Returns the index of the scope that matched the recovery token,
+    /// and the total string length of the unexpected tokens.
+    fn recover(&mut self) -> (Option<ScopeIndex>, Option<rowan::TextSize>) {
         let mut unexpected = None;
         let mut open_brackets_in_error = FxHashMap::default();
         let mut match_scope_index = None;
@@ -502,12 +425,6 @@ impl<S: TokenStream> Parser<S> {
                 .find(|(_i, scope)| scope.is_recovery_match(kind))
             {
                 match_scope_index = Some(scope_index);
-                if !self.is_dry_run() {
-                    eprintln!(
-                        "recovered at {scope_index} on {kind:?}, {:#?}",
-                        self.parents[scope_index]
-                    );
-                }
                 break;
             }
 
@@ -515,16 +432,7 @@ impl<S: TokenStream> Parser<S> {
                 if !self.parents.is_empty() {
                     self.bump_trivias();
                 }
-                unexpected = Some((
-                    self.current_pos,
-                    checkpoint.unwrap_or_else(|| self.checkpoint()),
-                ));
-            }
-            if !self.is_dry_run() {
-                eprintln!(
-                    "skipping {kind:?} {:?}",
-                    self.current_token().unwrap().text()
-                );
+                unexpected = Some((self.current_pos, self.checkpoint()));
             }
             self.bump();
         }
@@ -535,22 +443,23 @@ impl<S: TokenStream> Parser<S> {
                     .start_node_at(checkpoint, SyntaxKind::Error.into());
                 self.builder.finish_node();
 
-                self.add_error(ParseError::Unexpected(TextRange::new(
-                    start_pos,
-                    self.current_pos,
-                )));
+                self.add_error(ParseError::Unexpected(
+                    format!(
+                        "unexpected syntax while parsing {}",
+                        self.parents.last().unwrap().scope.syntax_kind().describe()
+                    ),
+                    TextRange::new(start_pos, self.current_pos),
+                ));
             }
         }
 
-        eprintln!("{}", std::backtrace::Backtrace::capture());
         (
             match_scope_index.map(ScopeIndex),
             unexpected.map(|(start_pos, _)| start_pos),
         )
     }
 
-    // xxx
-    fn allow_local_recovery<E: XxxRecoveryThing>(&self, r: Result<(), E>) -> Result<(), E> {
+    fn allow_local_recovery<E: Recoverable>(&self, r: Result<(), E>) -> Result<(), E> {
         match r {
             Ok(()) => Ok(()),
             Err(e) if e.is_local_recovery(self) => Ok(()),
@@ -689,16 +598,15 @@ impl<S: TokenStream> Parser<S> {
         self.add_error(ParseError::Msg(msg.into(), TextRange::new(start, end)))
     }
 
-    // xxx remove this or error_msg_on_current_token
-    /// Wrap the current token in a `SyntaxKind::Error`, and add `msg` to the error list.
-    fn unexpected_token_error(&mut self, msg: &str, checkpoint: Option<Checkpoint>) {
-        let checkpoint = self.enter(ErrorScope::default(), checkpoint);
+    /// Wrap the current token in a `SyntaxKind::Error`, and add a `ParseError::Unexpected`.
+    fn unexpected_token_error(&mut self, msg: String) {
+        let checkpoint = self.enter(ErrorScope::default(), None);
 
         let start_pos = self.current_pos;
         self.bump();
 
-        self.add_error(ParseError::Msg(
-            msg.into(),
+        self.add_error(ParseError::Unexpected(
+            msg,
             TextRange::new(start_pos, self.current_pos),
         ));
         self.leave(checkpoint);
@@ -755,14 +663,14 @@ impl From<Recovery<ErrProof>> for Recovery<()> {
     }
 }
 
-pub trait XxxRecoveryThing {
+pub trait Recoverable {
     fn is_local_recovery<S: TokenStream>(&self, _parser: &Parser<S>) -> bool {
         false
     }
 }
-impl XxxRecoveryThing for ParseError {}
-impl XxxRecoveryThing for Infallible {}
-impl<T> XxxRecoveryThing for Recovery<T> {
+impl Recoverable for ParseError {}
+impl Recoverable for Infallible {}
+impl<T> Recoverable for Recovery<T> {
     fn is_local_recovery<S: TokenStream>(&self, parser: &Parser<S>) -> bool {
         self.0
             .as_ref()
@@ -964,12 +872,12 @@ use define_scope;
 #[doc(hidden)]
 use define_scope_struct;
 
-// xxx move
 /// Parse a comma-separated list of elements, with trailing commas allowed.
 /// Panics if `parser.current_kind() != Some(brackets.0)`
 fn parse_list<S: TokenStream, F>(
     parser: &mut Parser<S>,
     newline_delim: bool,
+    list_kind: SyntaxKind,
     brackets: (SyntaxKind, SyntaxKind),
     element: F,
 ) -> Result<(), Recovery<ErrProof>>
@@ -978,13 +886,18 @@ where
 {
     parser.bump_expected(brackets.0);
 
+    let expected_closing_bracket = Some(ExpectedKind::ClosingBracket {
+        bracket: brackets.1,
+        parent: list_kind,
+    });
+
     loop {
         if parser.bump_if(brackets.1) {
             return Ok(());
         }
+
         element(parser)?;
 
-        dbg!(parser.current_token().map(|t| t.text().to_string()));
         if parser.current_kind() != Some(SyntaxKind::Comma)
             && parser.current_kind() != Some(brackets.1)
         {
@@ -993,13 +906,12 @@ where
             let newline = parser.current_kind() == Some(SyntaxKind::Newline) || {
                 parser.with_recovery_tokens(
                     |parser| {
-                        // xxx clean
                         let pos = parser.current_pos;
-                        let (index, unexpected) = parser.recover(None);
+                        let (index, unexpected) = parser.recover();
                         if unexpected.is_none() {
                             parser.add_error(ParseError::expected(
                                 &[brackets.1, SyntaxKind::Comma],
-                                None,
+                                expected_closing_bracket,
                                 pos,
                             ));
                         }
@@ -1012,24 +924,22 @@ where
             parser.set_newline_as_trivia(nt);
 
             if newline {
-                dbg!(newline_delim);
                 parser.add_error(ParseError::expected(
                     &[brackets.1, SyntaxKind::Comma],
-                    None,
+                    expected_closing_bracket,
                     parser.current_pos,
                 ));
                 if !newline_delim {
                     return Ok(());
                 }
             } else {
-                parser.expect(&[brackets.1, SyntaxKind::Comma], None)?;
+                parser.expect(&[brackets.1, SyntaxKind::Comma], expected_closing_bracket)?;
                 if !parser.bump_if(SyntaxKind::Comma) {
                     break;
                 }
             }
         } else if !parser.bump_if(SyntaxKind::Comma) {
-            dbg!("2", parser.current_kind());
-            parser.expect(&[brackets.1], None)?;
+            parser.expect(&[brackets.1], expected_closing_bracket)?;
             break;
         }
     }

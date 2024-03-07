@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/error_recovery/items/struct_.fe
 ---
 Root@0..160
   ItemList@0..160
-    Item@0..76
+    Item@0..74
       Struct@0..74
         ItemModifier@0..3
           PubKw@0..3 "pub"
@@ -68,7 +68,7 @@ Root@0..160
                   Ident@69..72 "foo"
           Newline@72..73 "\n"
           RBrace@73..74 "}"
-      Newline@74..76 "\n\n"
+    Newline@74..76 "\n\n"
     Item@76..160
       Struct@76..160
         ItemModifier@76..79

@@ -9,11 +9,11 @@ error[1-0001]: expected expression
 3 │     x + = 1
   │        ^ expected expression
 
-error[1-0001]: unexpected syntax
+error[1-0001]: unexpected syntax while parsing binary expression
   ┌─ operators.fe:3:9
   │
 3 │     x + = 1
-  │         ^^^ unexpected syntax
+  │         ^^^ unexpected
 
 error[1-0001]: expected expression
   ┌─ operators.fe:5:8
@@ -21,11 +21,11 @@ error[1-0001]: expected expression
 5 │     x -    = 1
   │        ^ expected expression
 
-error[1-0001]: unexpected syntax
+error[1-0001]: unexpected syntax while parsing binary expression
   ┌─ operators.fe:5:12
   │
 5 │     x -    = 1
-  │            ^^^ unexpected syntax
+  │            ^^^ unexpected
 
 error[1-0001]: expected expression
   ┌─ operators.fe:6:8
@@ -33,11 +33,11 @@ error[1-0001]: expected expression
 6 │     x * = 1
   │        ^ expected expression
 
-error[1-0001]: unexpected syntax
+error[1-0001]: unexpected syntax while parsing binary expression
   ┌─ operators.fe:6:9
   │
 6 │     x * = 1
-  │         ^^^ unexpected syntax
+  │         ^^^ unexpected
 
 error[1-0001]: expected expression
   ┌─ operators.fe:8:8
@@ -45,11 +45,11 @@ error[1-0001]: expected expression
 8 │     x < < 1
   │        ^ expected expression
 
-error[1-0001]: unexpected syntax
+error[1-0001]: unexpected syntax while parsing binary expression
   ┌─ operators.fe:8:9
   │
 8 │     x < < 1
-  │         ^^^ unexpected syntax
+  │         ^^^ unexpected
 
 error[1-0001]: expected expression
    ┌─ operators.fe:10:8
@@ -57,10 +57,10 @@ error[1-0001]: expected expression
 10 │     x < = 1
    │        ^ expected expression
 
-error[1-0001]: unexpected syntax
+error[1-0001]: unexpected syntax while parsing binary expression
    ┌─ operators.fe:10:9
    │
 10 │     x < = 1
-   │         ^^^ unexpected syntax
+   │         ^^^ unexpected
 
 

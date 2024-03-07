@@ -9,10 +9,16 @@ error[1-0001]: only `fn` is allowed in this block
 4 │     struct Foo {
   │     ^^^^^^ only `fn` is allowed in this block
 
-error[1-0001]: unexpected syntax
-  ┌─ extern_.fe:4:5
+error[1-0001]: expected name for field
+  ┌─ extern_.fe:6:8
   │
-4 │     struct Foo {
-  │     ^^^^^^^^^^^^ unexpected syntax
+6 │     pub unsafe fn foo()
+  │        ^ expected identifier
+
+error[1-0001]: unexpected syntax while parsing function definition
+  ┌─ extern_.fe:7:1
+  │
+7 │ }
+  │ ^ unexpected
 
 

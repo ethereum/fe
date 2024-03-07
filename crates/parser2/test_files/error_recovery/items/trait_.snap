@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/error_recovery/items/trait_.fe
 ---
 Root@0..133
   ItemList@0..133
-    Item@0..20
+    Item@0..18
       Trait@0..18
         TraitKw@0..5 "trait"
         WhiteSpace@5..6 " "
@@ -23,8 +23,8 @@ Root@0..133
         TraitItemList@16..18
           LBrace@16..17 "{"
           RBrace@17..18 "}"
-      Newline@18..20 "\n\n"
-    Item@20..37
+    Newline@18..20 "\n\n"
+    Item@20..35
       Trait@20..35
         TraitKw@20..25 "trait"
         WhiteSpace@25..26 " "
@@ -38,7 +38,7 @@ Root@0..133
         TraitItemList@33..35
           LBrace@33..34 "{"
           RBrace@34..35 "}"
-      Newline@35..37 "\n\n"
+    Newline@35..37 "\n\n"
     Item@37..51
       Trait@37..51
         TraitKw@37..42 "trait"
@@ -52,7 +52,7 @@ Root@0..133
           WhiteSpace@49..50 " "
           Gt@50..51 ">"
     Newline@51..53 "\n\n"
-    Item@53..87
+    Item@53..85
       Trait@53..85
         TraitKw@53..58 "trait"
         WhiteSpace@58..59 " "
@@ -88,7 +88,7 @@ Root@0..133
         TraitItemList@83..85
           LBrace@83..84 "{"
           RBrace@84..85 "}"
-      Newline@85..87 "\n\n"
+    Newline@85..87 "\n\n"
     Item@87..133
       Trait@87..133
         TraitKw@87..92 "trait"

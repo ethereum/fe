@@ -549,7 +549,6 @@ mod tests {
                 }
             "#;
         let s: Struct = parse_item(source);
-        dbg!(&s);
         assert_eq!(s.name().unwrap().text(), "Foo");
         let mut count = 0;
         for field in s.fields().unwrap() {

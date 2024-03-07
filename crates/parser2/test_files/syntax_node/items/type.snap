@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/syntax_node/items/type.fe
 ---
 Root@0..54
   ItemList@0..54
-    Item@0..21
+    Item@0..18
       TypeAlias@0..18
         ItemModifier@0..3
           PubKw@0..3 "pub"
@@ -20,8 +20,8 @@ Root@0..54
           Path@15..18
             PathSegment@15..18
               Ident@15..18 "i32"
-      WhiteSpace@18..19 " "
-      Newline@19..21 "\n\n"
+    WhiteSpace@18..19 " "
+    Newline@19..21 "\n\n"
     Item@21..54
       TypeAlias@21..54
         TypeKw@21..25 "type"

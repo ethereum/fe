@@ -4,8 +4,8 @@ expression: node
 input_file: crates/parser2/test_files/error_recovery/items/func.fe
 ---
 Root@0..133
-  ItemList@0..133
-    Item@0..80
+  ItemList@0..132
+    Item@0..78
       Func@0..78
         FnKw@0..2 "fn"
         WhiteSpace@2..3 " "
@@ -95,8 +95,8 @@ Root@0..133
           LBrace@74..75 "{"
           Newline@75..77 "\n\n"
           RBrace@77..78 "}"
-      Newline@78..80 "\n\n"
-    Item@80..133
+    Newline@78..80 "\n\n"
+    Item@80..132
       Func@80..132
         FnKw@80..82 "fn"
         WhiteSpace@82..83 " "
@@ -152,5 +152,5 @@ Root@0..133
           LBrace@128..129 "{"
           Newline@129..131 "\n\n"
           RBrace@131..132 "}"
-      Newline@132..133 "\n"
+  Newline@132..133 "\n"
 

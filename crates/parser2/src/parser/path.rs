@@ -38,7 +38,7 @@ impl super::Parse for PathSegmentScope {
             _ => Err(ParseError::expected(
                 &[SyntaxKind::PathSegment],
                 None,
-                parser.current_pos,
+                parser.end_of_prev_token,
             )),
         }
     }

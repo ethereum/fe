@@ -1,4 +1,4 @@
-use crate::SyntaxKind;
+use crate::{ExpectedKind, SyntaxKind};
 
 use super::{
     attr::parse_attr_list,
@@ -29,7 +29,7 @@ impl super::Parse for StructScope {
             SyntaxKind::LBrace,
         ]);
 
-        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+        if parser.find_and_pop(SyntaxKind::Ident, ExpectedKind::Name(SyntaxKind::Struct))? {
             parser.bump();
         }
 
@@ -39,7 +39,7 @@ impl super::Parse for StructScope {
         parser.expect_and_pop_recovery_stack()?;
         parse_where_clause_opt(parser)?;
 
-        if parser.find_and_pop(SyntaxKind::LBrace, Some("struct field definition"))? {
+        if parser.find_and_pop(SyntaxKind::LBrace, ExpectedKind::Body(SyntaxKind::Struct))? {
             parser.parse(RecordFieldDefListScope::default())?;
         }
         Ok(())
@@ -62,6 +62,7 @@ impl super::Parse for RecordFieldDefListScope {
         parse_list(
             parser,
             true,
+            SyntaxKind::RecordFieldDefList,
             (SyntaxKind::LBrace, SyntaxKind::RBrace),
             |parser| parser.parse(RecordFieldDefScope::default()),
         )
@@ -99,11 +100,17 @@ impl super::Parse for RecordFieldDefScope {
 
         parser.set_scope_recovery_stack(&[SyntaxKind::Colon]);
 
-        if parser.find(SyntaxKind::Ident, Some("expected a field name"))? {
+        if parser.find(
+            SyntaxKind::Ident,
+            ExpectedKind::Name(SyntaxKind::RecordField),
+        )? {
             parser.bump();
         }
 
-        if parser.find(SyntaxKind::Colon, Some("missing field type"))? {
+        if parser.find(
+            SyntaxKind::Colon,
+            ExpectedKind::TypeSpecifier(SyntaxKind::RecordField),
+        )? {
             parser.bump();
             parse_type(parser, None).map(|_| ())?;
         }

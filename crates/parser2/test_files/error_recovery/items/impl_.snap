@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/error_recovery/items/impl_.fe
 ---
 Root@0..56
   ItemList@0..56
-    Item@0..39
+    Item@0..37
       Impl@0..37
         ImplKw@0..4 "impl"
         WhiteSpace@4..5 " "
@@ -49,7 +49,7 @@ Root@0..56
           LBrace@34..35 "{"
           WhiteSpace@35..36 " "
           RBrace@36..37 "}"
-      Newline@37..39 "\n\n"
+    Newline@37..39 "\n\n"
     Item@39..56
       Impl@39..56
         ImplKw@39..43 "impl"

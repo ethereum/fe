@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/syntax_node/items/impl.fe
 ---
 Root@0..272
   ItemList@0..272
-    Item@0..139
+    Item@0..137
       Impl@0..137
         ImplKw@0..4 "impl"
         GenericParamList@4..12
@@ -112,7 +112,7 @@ Root@0..272
               RBrace@134..135 "}"
           Newline@135..136 "\n"
           RBrace@136..137 "}"
-      Newline@137..139 "\n\n"
+    Newline@137..139 "\n\n"
     Item@139..272
       Impl@139..272
         ImplKw@139..143 "impl"

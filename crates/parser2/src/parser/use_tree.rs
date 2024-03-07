@@ -1,4 +1,4 @@
-use std::{cell::Cell, rc::Rc};
+use std::{cell::Cell, convert::identity, rc::Rc};
 
 use crate::{parser::path::is_path_segment, ParseError, SyntaxKind, TextRange};
 
@@ -19,7 +19,7 @@ impl super::Parse for UseTreeScope {
         }
 
         let use_path_scope = UsePathScope::default();
-        parser.parse_or_recover(use_path_scope.clone())?;
+        parser.or_recover(|p| p.parse(use_path_scope.clone()))?;
         let is_glob = use_path_scope.is_glob.get();
 
         if parser.current_kind() == Some(SyntaxKind::AsKw) {
@@ -27,7 +27,7 @@ impl super::Parse for UseTreeScope {
                 parser.error_msg_on_current_token("can't use `as` with `*`");
             }
             if parser.current_kind() == Some(SyntaxKind::AsKw) {
-                parser.parse_or_recover(UseTreeAliasScope::default())?;
+                parser.or_recover(|p| p.parse(UseTreeAliasScope::default()))?;
             }
             return Ok(());
         }
@@ -57,6 +57,7 @@ impl super::Parse for UseTreeListScope {
         parse_list(
             parser,
             true,
+            SyntaxKind::UseTreeList,
             (SyntaxKind::LBrace, SyntaxKind::RBrace),
             |parser| parser.parse(UseTreeScope::default()),
         )
@@ -78,7 +79,9 @@ impl super::Parse for UsePathScope {
         loop {
             let is_path_segment = parser.dry_run(|parser| {
                 parser.bump_if(SyntaxKind::Colon2)
-                    && parser.parses_without_error(UsePathSegmentScope::default())
+                    && parser
+                        .parse_ok(UsePathSegmentScope::default())
+                        .is_ok_and(identity)
             });
             if is_path_segment {
                 if self.is_glob.get() {
@@ -112,7 +115,7 @@ impl super::Parse for UsePathSegmentScope {
             _ => {
                 return Err(ParseError::Msg(
                     "expected identifier or `self`".into(),
-                    TextRange::empty(parser.current_pos),
+                    TextRange::empty(parser.end_of_prev_token),
                 ));
             }
         }

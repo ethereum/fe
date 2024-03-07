@@ -4,8 +4,8 @@ expression: node
 input_file: crates/parser2/test_files/error_recovery/items/enum_.fe
 ---
 Root@0..150
-  ItemList@0..150
-    Item@0..65
+  ItemList@0..149
+    Item@0..63
       Enum@0..63
         ItemModifier@0..3
           PubKw@0..3 "pub"
@@ -67,8 +67,8 @@ Root@0..150
             Ident@60..61 "Z"
           Newline@61..62 "\n"
           RBrace@62..63 "}"
-      Newline@63..65 "\n\n"
-    Item@65..150
+    Newline@63..65 "\n\n"
+    Item@65..149
       Enum@65..149
         ItemModifier@65..68
           PubKw@65..68 "pub"
@@ -160,5 +160,5 @@ Root@0..150
               RParen@146..147 ")"
           Newline@147..148 "\n"
           RBrace@148..149 "}"
-      Newline@149..150 "\n"
+  Newline@149..150 "\n"
 

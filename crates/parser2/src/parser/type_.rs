@@ -1,4 +1,4 @@
-use crate::{ParseError, SyntaxKind};
+use crate::{ExpectedKind, ParseError, SyntaxKind};
 
 use super::{
     define_scope,
@@ -89,6 +89,7 @@ impl super::Parse for TupleTypeScope {
         parse_list(
             parser,
             false,
+            SyntaxKind::TupleType,
             (SyntaxKind::LParen, SyntaxKind::RParen),
             |parser| {
                 parse_type(parser, None)?;
@@ -114,13 +115,19 @@ impl super::Parse for ArrayTypeScope {
 
         parse_type(parser, None)?;
 
-        if parser.find_and_pop(SyntaxKind::SemiColon, None)? {
+        if parser.find_and_pop(SyntaxKind::SemiColon, ExpectedKind::Unspecified)? {
             parser.bump();
         }
 
         parse_expr(parser)?;
 
-        if parser.find_and_pop(SyntaxKind::RBracket, None)? {
+        if parser.find_and_pop(
+            SyntaxKind::RBracket,
+            ExpectedKind::ClosingBracket {
+                bracket: SyntaxKind::RBracket,
+                parent: SyntaxKind::ArrayType,
+            },
+        )? {
             parser.bump();
         }
         Ok(())

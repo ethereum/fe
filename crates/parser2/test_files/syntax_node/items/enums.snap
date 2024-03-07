@@ -4,8 +4,8 @@ expression: node
 input_file: crates/parser2/test_files/syntax_node/items/enums.fe
 ---
 Root@0..493
-  ItemList@0..493
-    Item@0..15
+  ItemList@0..492
+    Item@0..13
       Enum@0..13
         EnumKw@0..4 "enum"
         WhiteSpace@4..5 " "
@@ -14,8 +14,8 @@ Root@0..493
         VariantDefList@11..13
           LBrace@11..12 "{"
           RBrace@12..13 "}"
-      Newline@13..15 "\n\n"
-    Item@15..59
+    Newline@13..15 "\n\n"
+    Item@15..57
       Enum@15..57
         EnumKw@15..19 "enum"
         WhiteSpace@19..20 " "
@@ -47,8 +47,8 @@ Root@0..493
               RParen@54..55 ")"
           Newline@55..56 "\n"
           RBrace@56..57 "}"
-      Newline@57..59 "\n\n"
-    Item@59..142
+    Newline@57..59 "\n\n"
+    Item@59..140
       Enum@59..140
         EnumKw@59..63 "enum"
         WhiteSpace@63..64 " "
@@ -105,8 +105,8 @@ Root@0..493
               RBrace@137..138 "}"
           Newline@138..139 "\n"
           RBrace@139..140 "}"
-      Newline@140..142 "\n\n"
-    Item@142..204
+    Newline@140..142 "\n\n"
+    Item@142..202
       Enum@142..202
         EnumKw@142..146 "enum"
         WhiteSpace@146..147 " "
@@ -156,8 +156,8 @@ Root@0..493
           Comma@199..200 ","
           Newline@200..201 "\n"
           RBrace@201..202 "}"
-      Newline@202..204 "\n\n"
-    Item@204..308
+    Newline@202..204 "\n\n"
+    Item@204..306
       Enum@204..306
         EnumKw@204..208 "enum"
         WhiteSpace@208..209 " "
@@ -261,8 +261,8 @@ Root@0..493
           Comma@303..304 ","
           Newline@304..305 "\n"
           RBrace@305..306 "}"
-      Newline@306..308 "\n\n"
-    Item@308..436
+    Newline@306..308 "\n\n"
+    Item@308..434
       Enum@308..434
         EnumKw@308..312 "enum"
         WhiteSpace@312..313 " "
@@ -416,8 +416,8 @@ Root@0..493
               RParen@431..432 ")"
           Newline@432..433 "\n"
           RBrace@433..434 "}"
-      Newline@434..436 "\n\n"
-    Item@436..493
+    Newline@434..436 "\n\n"
+    Item@436..492
       Enum@436..492
         EnumKw@436..440 "enum"
         WhiteSpace@440..441 " "
@@ -479,5 +479,5 @@ Root@0..493
               RParen@489..490 ")"
           WhiteSpace@490..491 " "
           RBrace@491..492 "}"
-      Newline@492..493 "\n"
+  Newline@492..493 "\n"
 

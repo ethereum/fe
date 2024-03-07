@@ -106,6 +106,7 @@ impl super::Parse for TuplePatElemListScope {
         parse_list(
             parser,
             false,
+            SyntaxKind::TuplePatElemList,
             (SyntaxKind::LParen, SyntaxKind::RParen),
             parse_pat,
         )
@@ -118,13 +119,8 @@ impl super::Parse for PathPatScope {
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.or_recover(|p| {
-            p.parse(PathScope::default()).map_err(|e| {
-                ParseError::expected(
-                    &[SyntaxKind::PathPat],
-                    Some("expected a pattern"),
-                    e.range().start(),
-                )
-            })
+            p.parse(PathScope::default())
+                .map_err(|e| ParseError::expected(&[SyntaxKind::PathPat], None, e.range().start()))
         })?;
 
         parser.set_newline_as_trivia(false);
@@ -148,6 +144,7 @@ impl super::Parse for RecordPatFieldListScope {
         parse_list(
             parser,
             true,
+            SyntaxKind::RecordPatFieldList,
             (SyntaxKind::LBrace, SyntaxKind::RBrace),
             |parser| parser.parse(RecordPatFieldScope::default()),
         )

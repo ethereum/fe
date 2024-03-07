@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/syntax_node/structs/generics.fe
 ---
 Root@0..563
   ItemList@0..563
-    Item@0..78
+    Item@0..76
       Struct@0..76
         ItemModifier@0..3
           PubKw@0..3 "pub"
@@ -64,8 +64,8 @@ Root@0..563
           Comma@73..74 ","
           Newline@74..75 "\n"
           RBrace@75..76 "}"
-      Newline@76..78 "\n\n"
-    Item@78..192
+    Newline@76..78 "\n\n"
+    Item@78..190
       Struct@78..190
         ItemModifier@78..81
           PubKw@78..81 "pub"
@@ -153,8 +153,8 @@ Root@0..563
           Comma@187..188 ","
           Newline@188..189 "\n"
           RBrace@189..190 "}"
-      Newline@190..192 "\n\n"
-    Item@192..416
+    Newline@190..192 "\n\n"
+    Item@192..414
       Struct@192..414
         ItemModifier@192..195
           PubKw@192..195 "pub"
@@ -342,7 +342,7 @@ Root@0..563
           Comma@411..412 ","
           Newline@412..413 "\n"
           RBrace@413..414 "}"
-      Newline@414..416 "\n\n"
+    Newline@414..416 "\n\n"
     Item@416..563
       Struct@416..563
         ItemModifier@416..419

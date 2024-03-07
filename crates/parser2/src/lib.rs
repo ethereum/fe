@@ -26,25 +26,51 @@ pub fn parse_source_file(text: &str) -> (GreenNode, Vec<ParseError>) {
 /// An parse error which is accumulated in the [`parser::Parser`] while parsing.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ParseError {
-    Expected(SmallVec<[SyntaxKind; 2]>, Option<String>, TextSize),
-    Unexpected(TextRange),
-
+    Expected(SmallVec<[SyntaxKind; 2]>, ExpectedKind, TextSize),
+    Unexpected(String, TextRange),
     Msg(String, TextRange),
 }
 
 impl ParseError {
-    pub fn expected(tokens: &[SyntaxKind], msg: Option<&str>, pos: TextSize) -> Self {
+    pub fn expected(tokens: &[SyntaxKind], kind: Option<ExpectedKind>, pos: TextSize) -> Self {
         ParseError::Expected(
             SmallVec::from_slice(tokens),
-            msg.map(|s| s.to_string()),
+            kind.unwrap_or(ExpectedKind::Unspecified),
             pos,
         )
     }
 
     pub fn msg(&self) -> String {
         match self {
-            ParseError::Expected(_, Some(msg), _) => msg.clone(),
-            ParseError::Expected(tokens, None, _) => {
+            ParseError::Expected(_, exp, _) => match exp {
+                ExpectedKind::Body(kind) => format!("{} requires a body", kind.describe()),
+                ExpectedKind::Name(kind) => format!("expected name for {}", kind.describe()),
+                ExpectedKind::ClosingBracket { bracket, parent } => format!(
+                    "missing closing {} for {}",
+                    bracket.describe(),
+                    parent.describe()
+                ),
+                ExpectedKind::Separator { separator, element } => {
+                    format!(
+                        "expected {} separator after {}",
+                        separator.describe(),
+                        element.describe()
+                    )
+                }
+                ExpectedKind::TypeSpecifier(kind) => {
+                    format!("missing type bound for {}", kind.describe())
+                }
+                ExpectedKind::Syntax(kind) => format!("expected {}", kind.describe()),
+                ExpectedKind::Unspecified => self.label(),
+            },
+            ParseError::Unexpected(m, _) => m.clone(),
+            ParseError::Msg(m, _) => m.clone(),
+        }
+    }
+
+    pub fn label(&self) -> String {
+        match self {
+            ParseError::Expected(tokens, _, _) => {
                 if tokens.len() == 1 {
                     return format!("expected {}", tokens[0].describe());
                 }
@@ -59,15 +85,35 @@ impl ParseError {
                 }
                 s
             }
-            ParseError::Unexpected(_) => "unexpected syntax".into(),
-            ParseError::Msg(m, _) => m.clone(),
+            ParseError::Unexpected(_, _) => "unexpected".into(),
+            ParseError::Msg(msg, _) => msg.clone(),
         }
     }
 
     pub fn range(&self) -> TextRange {
         match self {
             ParseError::Expected(_, _, pos) => TextRange::empty(*pos),
-            ParseError::Unexpected(r) | ParseError::Msg(_, r) => *r,
+            ParseError::Unexpected(_, r) | ParseError::Msg(_, r) => *r,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ExpectedKind {
+    Body(SyntaxKind),
+    Name(SyntaxKind),
+    ClosingBracket {
+        bracket: SyntaxKind,
+        parent: SyntaxKind,
+    },
+    TypeSpecifier(SyntaxKind),
+    Separator {
+        separator: SyntaxKind,
+        element: SyntaxKind,
+    },
+    Syntax(SyntaxKind),
+    Unspecified,
+    // TODO:
+    //  - newline after attribute in attrlistscope
+    //
 }

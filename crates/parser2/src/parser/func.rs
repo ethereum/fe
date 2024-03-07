@@ -1,4 +1,4 @@
-use crate::SyntaxKind;
+use crate::{ExpectedKind, SyntaxKind};
 
 use super::{
     define_scope,
@@ -49,8 +49,6 @@ fn parse_normal_fn_def_impl<S: TokenStream>(
     parser: &mut Parser<S>,
     allow_self: bool,
 ) -> Result<(), Recovery<ErrProof>> {
-    // xxx check where newlines are allowed
-
     parser.set_scope_recovery_stack(&[
         SyntaxKind::Ident,
         SyntaxKind::Lt,
@@ -60,14 +58,17 @@ fn parse_normal_fn_def_impl<S: TokenStream>(
         SyntaxKind::LBrace,
     ]);
 
-    if parser.find_and_pop(SyntaxKind::Ident, None)? {
+    if parser.find_and_pop(SyntaxKind::Ident, ExpectedKind::Name(SyntaxKind::Func))? {
         parser.bump();
     }
 
     parser.expect_and_pop_recovery_stack()?;
     parse_generic_params_opt(parser, false)?;
 
-    if parser.find_and_pop(SyntaxKind::LParen, None)? {
+    if parser.find_and_pop(
+        SyntaxKind::LParen,
+        ExpectedKind::Syntax(SyntaxKind::FuncParamList),
+    )? {
         parser.parse(FuncParamListScope::new(allow_self))?;
     }
 
@@ -79,7 +80,7 @@ fn parse_normal_fn_def_impl<S: TokenStream>(
     parser.expect_and_pop_recovery_stack()?;
     parse_where_clause_opt(parser)?;
 
-    if parser.find_and_pop(SyntaxKind::LBrace, None)? {
+    if parser.find_and_pop(SyntaxKind::LBrace, ExpectedKind::Body(SyntaxKind::Func))? {
         parser.parse(BlockExprScope::default())?;
     }
     Ok(())
@@ -97,14 +98,17 @@ fn parse_trait_fn_def_impl<S: TokenStream>(
         SyntaxKind::LBrace,
     ]);
 
-    if parser.find_and_pop(SyntaxKind::Ident, None)? {
+    if parser.find_and_pop(SyntaxKind::Ident, ExpectedKind::Name(SyntaxKind::Func))? {
         parser.bump();
     }
 
     parser.expect_and_pop_recovery_stack()?;
     parse_generic_params_opt(parser, false)?;
 
-    if parser.find_and_pop(SyntaxKind::LParen, None)? {
+    if parser.find_and_pop(
+        SyntaxKind::LParen,
+        ExpectedKind::Syntax(SyntaxKind::FuncParamList),
+    )? {
         parser.parse(FuncParamListScope::new(true))?;
     }
 
@@ -127,11 +131,14 @@ fn parse_extern_fn_def_impl<S: TokenStream>(
 ) -> Result<(), Recovery<ErrProof>> {
     parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::LParen, SyntaxKind::Arrow]);
 
-    if parser.find_and_pop(SyntaxKind::Ident, None)? {
+    if parser.find_and_pop(SyntaxKind::Ident, ExpectedKind::Name(SyntaxKind::Func))? {
         parser.bump();
     }
 
-    if parser.find_and_pop(SyntaxKind::LParen, None)? {
+    if parser.find_and_pop(
+        SyntaxKind::LParen,
+        ExpectedKind::Syntax(SyntaxKind::FuncParamList),
+    )? {
         parser.parse(FuncParamListScope::new(true))?;
     }
 

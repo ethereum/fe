@@ -520,8 +520,6 @@ impl SyntaxKind {
             )
     }
 
-    // xxx
-    /// Panics if `self` is not a token kind
     pub fn describe(self) -> &'static str {
         match self {
             SyntaxKind::Newline => "newline",
@@ -559,9 +557,9 @@ impl SyntaxKind {
             SyntaxKind::Pipe2 => "`||`",
             SyntaxKind::Lt => "`<`",
             SyntaxKind::Gt => "`>`",
-            SyntaxKind::Eq => "``",
-            SyntaxKind::Eq2 => "``",
-            SyntaxKind::NotEq => "``",
+            SyntaxKind::Eq => "`=`",
+            SyntaxKind::Eq2 => "`==`",
+            SyntaxKind::NotEq => "`!=`",
             SyntaxKind::AsKw => "`as`",
             SyntaxKind::TrueKw => "`true`",
             SyntaxKind::FalseKw => "`false`",
@@ -599,12 +597,197 @@ impl SyntaxKind {
             SyntaxKind::LtEq => "`<=`",
             SyntaxKind::GtEq => "`>=`",
 
-            SyntaxKind::PathType => "a type name",
-            SyntaxKind::TraitRef => "a trait name",
-            SyntaxKind::PathSegment => "a path segment",
-            SyntaxKind::PathPat => "a pattern",
-            _ => unimplemented!(),
+            SyntaxKind::PathType => "type",
+            SyntaxKind::TraitRef => "trait name",
+            SyntaxKind::PathSegment => "path segment",
+            SyntaxKind::PathPat => "pattern",
+
+            SyntaxKind::ArrayExpr => "array definition",
+            SyntaxKind::RecordFieldDef => "field",
+            SyntaxKind::IndexExpr => "index expression",
+            SyntaxKind::BlockExpr => "block",
+            SyntaxKind::TypeBound => "type bound",
+            SyntaxKind::CallArgList => "function call arguments",
+
+            SyntaxKind::InvalidToken => unimplemented!(),
+            SyntaxKind::WhiteSpace => "whitespace",
+            SyntaxKind::Comment => "comment",
+            SyntaxKind::DocComment => "doc comment",
+
+            SyntaxKind::Lit => "literal",
+            SyntaxKind::BinExpr => "binary expression",
+            SyntaxKind::UnExpr => "unary expression",
+            SyntaxKind::CallExpr => "function call expression",
+            SyntaxKind::CallArg => "function call argument",
+            SyntaxKind::MethodCallExpr => "method call expression",
+            SyntaxKind::GenericArgList => "generic type argument list",
+            SyntaxKind::TypeGenericArg => "generic type argument",
+            SyntaxKind::ConstGenericArg => "generic const argument",
+            SyntaxKind::PathExpr => "path",
+            SyntaxKind::RecordInitExpr => "record initialization expression",
+            SyntaxKind::RecordFieldList => "record field list",
+            SyntaxKind::RecordField => "field",
+            SyntaxKind::FieldExpr => "field",
+            SyntaxKind::TupleExpr => "tuple expression",
+            SyntaxKind::ArrayRepExpr => "array expression",
+            SyntaxKind::LitExpr => "literal expression",
+            SyntaxKind::IfExpr => "`if` expression",
+            SyntaxKind::MatchExpr => "`match` expression",
+            SyntaxKind::ParenExpr => "parenthesized expression",
+            SyntaxKind::AssignExpr => "assignment expression",
+            SyntaxKind::AugAssignExpr => "augmented assignment expression",
+            SyntaxKind::LetStmt => "`let` statement",
+            SyntaxKind::ForStmt => "`for` statement",
+            SyntaxKind::WhileStmt => "`while` statement",
+            SyntaxKind::ContinueStmt => "`continue` statement",
+            SyntaxKind::BreakStmt => "`break` statement",
+            SyntaxKind::ReturnStmt => "`return` statement",
+            SyntaxKind::ExprStmt => "`expr` statement",
+            SyntaxKind::WildCardPat => "wildcard pattern",
+            SyntaxKind::RestPat => "`..` pattern",
+            SyntaxKind::LitPat => "literal pattern",
+            SyntaxKind::TuplePat => "tuple pattern",
+            SyntaxKind::TuplePatElemList => "tuple pattern element list",
+            SyntaxKind::PathTuplePat => "path tuple pattern",
+            SyntaxKind::RecordPat => "record pattern",
+            SyntaxKind::RecordPatFieldList => "record pattern field list",
+            SyntaxKind::RecordPatField => "record pattern field",
+            SyntaxKind::OrPat => "`or` pattern",
+            SyntaxKind::MatchArm => "`match` arm",
+            SyntaxKind::MatchArmList => "`match` arm list",
+            SyntaxKind::Item => "item",
+            SyntaxKind::Mod => "`mod`",
+            SyntaxKind::Func => "function definition",
+            SyntaxKind::Struct => "struct definition",
+            SyntaxKind::Contract => "contract definition",
+            SyntaxKind::Enum => "enum definition",
+            SyntaxKind::TypeAlias => "type alias",
+            SyntaxKind::Impl => "`impl` block",
+            SyntaxKind::ImplItemList => "`impl` item list",
+            SyntaxKind::Trait => "trait definition",
+            SyntaxKind::SuperTraitList => "supertrait list",
+            SyntaxKind::TraitItemList => "`trait` item list",
+            SyntaxKind::ImplTrait => "`impl` trait block",
+            SyntaxKind::ImplTraitItemList => "`impl` trait item list",
+            SyntaxKind::Const => "const definition",
+            SyntaxKind::Use => "`use` statement",
+            SyntaxKind::UseTree => "`use` tree",
+            SyntaxKind::UseTreeList => "`use` tree list",
+            SyntaxKind::UsePath => "`use` path",
+            SyntaxKind::UsePathSegment => "`use` path segment",
+            SyntaxKind::UseTreeRename => "`use as` rename",
+            SyntaxKind::Extern => "`extern` block",
+            SyntaxKind::ExternItemList => "`extern` body",
+            SyntaxKind::ItemList => "item list",
+            SyntaxKind::ItemModifier => "item modifier",
+            SyntaxKind::PtrType => "pointer type",
+            SyntaxKind::SelfType => "`Self` type",
+            SyntaxKind::TupleType => "tuple type definition",
+            SyntaxKind::ArrayType => "array type definition",
+            SyntaxKind::Path => "path",
+            SyntaxKind::Attr => "attribute",
+            SyntaxKind::AttrArgList => "attribute argument list",
+            SyntaxKind::AttrArg => "attribute argument",
+            SyntaxKind::DocCommentAttr => "doc comment",
+            SyntaxKind::AttrList => "attribute list",
+            SyntaxKind::Visibility => "visibility modifier",
+            SyntaxKind::RecordFieldDefList => "record field list",
+            SyntaxKind::VariantDef => "`enum` variant definition",
+            SyntaxKind::VariantDefList => "`enum` variant list",
+            SyntaxKind::TypeGenericParam => "generic type parameter",
+            SyntaxKind::ConstGenericParam => "constant generic parameter",
+            SyntaxKind::GenericParamList => "generic parameter list",
+            SyntaxKind::FuncSignature => "function signature",
+            SyntaxKind::FuncParamList => "function parameter list",
+            SyntaxKind::FnParam => "function parameter",
+            SyntaxKind::TypeBoundList => "type bound list",
+            SyntaxKind::KindBoundAbs => "kind bound",
+            SyntaxKind::KindBoundMono => "kind bound",
+            SyntaxKind::WhereClause => "`where` clause",
+            SyntaxKind::WherePredicate => "`where` predicate",
+            SyntaxKind::Root => todo!(),
+            SyntaxKind::Error => todo!(),
         }
+    }
+
+    pub fn is_token(self) -> bool {
+        matches!(
+            self,
+            SyntaxKind::Newline
+                | SyntaxKind::Ident
+                | SyntaxKind::Int
+                | SyntaxKind::String
+                | SyntaxKind::LParen
+                | SyntaxKind::RParen
+                | SyntaxKind::LBrace
+                | SyntaxKind::RBrace
+                | SyntaxKind::LBracket
+                | SyntaxKind::RBracket
+                | SyntaxKind::Colon
+                | SyntaxKind::Colon2
+                | SyntaxKind::SemiColon
+                | SyntaxKind::Dot
+                | SyntaxKind::Dot2
+                | SyntaxKind::Comma
+                | SyntaxKind::Arrow
+                | SyntaxKind::FatArrow
+                | SyntaxKind::Underscore
+                | SyntaxKind::Pound
+                | SyntaxKind::Plus
+                | SyntaxKind::Minus
+                | SyntaxKind::Star
+                | SyntaxKind::Star2
+                | SyntaxKind::Slash
+                | SyntaxKind::Percent
+                | SyntaxKind::Tilde
+                | SyntaxKind::Not
+                | SyntaxKind::Hat
+                | SyntaxKind::Amp
+                | SyntaxKind::Amp2
+                | SyntaxKind::Pipe
+                | SyntaxKind::Pipe2
+                | SyntaxKind::Lt
+                | SyntaxKind::Gt
+                | SyntaxKind::Eq
+                | SyntaxKind::Eq2
+                | SyntaxKind::NotEq
+                | SyntaxKind::AsKw
+                | SyntaxKind::TrueKw
+                | SyntaxKind::FalseKw
+                | SyntaxKind::BreakKw
+                | SyntaxKind::ContinueKw
+                | SyntaxKind::ContractKw
+                | SyntaxKind::FnKw
+                | SyntaxKind::ModKw
+                | SyntaxKind::ConstKw
+                | SyntaxKind::IfKw
+                | SyntaxKind::ElseKw
+                | SyntaxKind::MatchKw
+                | SyntaxKind::ForKw
+                | SyntaxKind::InKw
+                | SyntaxKind::WhereKw
+                | SyntaxKind::WhileKw
+                | SyntaxKind::PubKw
+                | SyntaxKind::ReturnKw
+                | SyntaxKind::SelfKw
+                | SyntaxKind::SelfTypeKw
+                | SyntaxKind::StructKw
+                | SyntaxKind::EnumKw
+                | SyntaxKind::TraitKw
+                | SyntaxKind::ImplKw
+                | SyntaxKind::TypeKw
+                | SyntaxKind::LetKw
+                | SyntaxKind::MutKw
+                | SyntaxKind::UseKw
+                | SyntaxKind::ExternKw
+                | SyntaxKind::UnsafeKw
+                | SyntaxKind::IngotKw
+                | SyntaxKind::SuperKw
+                | SyntaxKind::LShift
+                | SyntaxKind::RShift
+                | SyntaxKind::LtEq
+                | SyntaxKind::GtEq
+        )
     }
 }
 

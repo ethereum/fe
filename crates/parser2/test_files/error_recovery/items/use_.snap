@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/error_recovery/items/use_.fe
 ---
 Root@0..63
   ItemList@0..63
-    Item@0..19
+    Item@0..18
       Use@0..18
         UseKw@0..3 "use"
         WhiteSpace@3..4 " "
@@ -22,8 +22,8 @@ Root@0..63
             Colon2@15..17 "::"
             UsePathSegment@17..18
               Ident@17..18 "A"
-      Newline@18..19 "\n"
-    Item@19..43
+    Newline@18..19 "\n"
+    Item@19..42
       Use@19..42
         UseKw@19..22 "use"
         WhiteSpace@22..23 " "
@@ -51,7 +51,7 @@ Root@0..63
                 UsePathSegment@40..41
                   Ident@40..41 "B"
             RBrace@41..42 "}"
-      Newline@42..43 "\n"
+    Newline@42..43 "\n"
     Item@43..63
       Use@43..63
         UseKw@43..46 "use"

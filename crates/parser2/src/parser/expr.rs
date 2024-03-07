@@ -1,13 +1,14 @@
-use std::convert::Infallible;
+use std::convert::{identity, Infallible};
 use unwrap_infallible::UnwrapInfallible;
 
 use super::{
-    define_scope, expr_atom,
+    define_scope,
+    expr_atom::{self, is_expr_atom_head},
     param::{CallArgListScope, GenericArgListScope},
     token_stream::TokenStream,
     Checkpoint, ErrProof, Parser, Recovery,
 };
-use crate::SyntaxKind;
+use crate::{ExpectedKind, SyntaxKind};
 
 /// Parses expression.
 pub fn parse_expr<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
@@ -112,8 +113,10 @@ fn parse_expr_atom<S: TokenStream>(
         Some(kind) if prefix_binding_power(kind).is_some() => {
             parser.parse_cp(UnExprScope::default(), None)
         }
-        Some(_) => expr_atom::parse_expr_atom(parser, allow_struct_init),
-        None => parser
+        Some(kind) if is_expr_atom_head(kind) => {
+            expr_atom::parse_expr_atom(parser, allow_struct_init)
+        }
+        _ => parser
             .error_and_recover("expected expression")
             .map(|_| parser.checkpoint()),
     }
@@ -273,7 +276,10 @@ impl super::Parse for IndexExprScope {
 
         if parser.find(
             SyntaxKind::RBracket,
-            Some("missing closing `]` in index expression"),
+            ExpectedKind::ClosingBracket {
+                bracket: SyntaxKind::RBracket,
+                parent: SyntaxKind::IndexExpr,
+            },
         )? {
             parser.bump();
         }
@@ -293,7 +299,10 @@ impl super::Parse for CallExprScope {
             parser.parse(GenericArgListScope::default())?;
         }
 
-        if parser.find_and_pop(SyntaxKind::LParen, None)? {
+        if parser.find_and_pop(
+            SyntaxKind::LParen,
+            ExpectedKind::Syntax(SyntaxKind::CallArgList),
+        )? {
             parser.parse(CallArgListScope::default())?;
         }
         Ok(())
@@ -309,7 +318,10 @@ impl super::Parse for MethodExprScope {
         parser.set_newline_as_trivia(false);
 
         parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Lt, SyntaxKind::LParen]);
-        if parser.find_and_pop(SyntaxKind::Ident, None)? {
+        if parser.find_and_pop(
+            SyntaxKind::Ident,
+            ExpectedKind::Name(SyntaxKind::MethodCallExpr),
+        )? {
             parser.bump();
         }
 
@@ -318,7 +330,10 @@ impl super::Parse for MethodExprScope {
             parser.parse(GenericArgListScope::default())?;
         }
 
-        if parser.find_and_pop(SyntaxKind::LParen, None)? {
+        if parser.find_and_pop(
+            SyntaxKind::LParen,
+            ExpectedKind::Syntax(SyntaxKind::CallArgList),
+        )? {
             parser.parse(CallArgListScope::default())?;
         }
         Ok(())
@@ -472,14 +487,18 @@ fn is_call_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
 
         let mut is_call = true;
         if parser.current_kind() == Some(SyntaxKind::Lt) {
-            // xxx `call` error recovery test: "without error" should only apply to base scope
-            is_call &= parser.parses_without_error(GenericArgListScope::default())
+            is_call &= parser
+                .parse_ok(GenericArgListScope::default())
+                .is_ok_and(identity)
         }
 
         if parser.current_kind() != Some(SyntaxKind::LParen) {
             false
         } else {
-            is_call && parser.parses_without_error(CallArgListScope::default())
+            is_call
+                && parser
+                    .parse_ok(CallArgListScope::default())
+                    .is_ok_and(identity)
         }
     })
 }
@@ -496,7 +515,9 @@ fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
         }
 
         if parser.current_kind() == Some(SyntaxKind::Lt)
-            && !parser.parses_without_error(GenericArgListScope::default())
+            && !parser
+                .parse_ok(GenericArgListScope::default())
+                .is_ok_and(identity)
         {
             return false;
         }
@@ -505,7 +526,9 @@ fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
             false
         } else {
             parser.set_newline_as_trivia(is_trivia);
-            parser.parses_without_error(CallArgListScope::default())
+            parser
+                .parse_ok(CallArgListScope::default())
+                .is_ok_and(identity)
         }
     });
     parser.set_newline_as_trivia(is_trivia);

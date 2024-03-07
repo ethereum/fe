@@ -1,6 +1,6 @@
 use std::convert::Infallible;
 
-use crate::SyntaxKind;
+use crate::{ExpectedKind, SyntaxKind};
 
 use super::{
     define_scope,
@@ -37,7 +37,7 @@ impl super::Parse for LetStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::LetKw);
         parser.set_newline_as_trivia(false);
-        parse_pat(parser)?; // xxx "expected pattern" error msg
+        parse_pat(parser)?;
 
         if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.bump_expected(SyntaxKind::Colon);
@@ -58,15 +58,18 @@ impl super::Parse for ForStmtScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::ForKw);
 
-        parser.set_scope_recovery_stack(&[SyntaxKind::InKw, SyntaxKind::LBrace]);
+        parser.set_scope_recovery_stack(&[SyntaxKind::InKw, SyntaxKind::Ident, SyntaxKind::LBrace]);
         parse_pat(parser)?;
 
-        if parser.find_and_pop(SyntaxKind::InKw, None)? {
+        if parser.find_and_pop(SyntaxKind::InKw, ExpectedKind::Unspecified)? {
             parser.bump();
         }
         parse_expr_no_struct(parser)?;
 
-        if parser.find_and_pop(SyntaxKind::LBrace, None)? {
+        // pop `Ident` recovery token, which is only included because it solves a contrived test case
+        parser.pop_recovery_stack();
+
+        if parser.find_and_pop(SyntaxKind::LBrace, ExpectedKind::Body(SyntaxKind::ForStmt))? {
             parser.parse(BlockExprScope::default())?;
         }
         Ok(())
@@ -83,7 +86,10 @@ impl super::Parse for WhileStmtScope {
         parser.set_scope_recovery_stack(&[SyntaxKind::LBrace]);
         parse_expr_no_struct(parser)?;
 
-        if parser.find_and_pop(SyntaxKind::LBrace, None)? {
+        if parser.find_and_pop(
+            SyntaxKind::LBrace,
+            ExpectedKind::Body(SyntaxKind::WhileStmt),
+        )? {
             parser.parse(BlockExprScope::default())?;
         }
         Ok(())

@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/syntax_node/items/func.fe
 ---
 Root@0..351
   ItemList@0..351
-    Item@0..32
+    Item@0..30
       Func@0..30
         ItemModifier@0..3
           PubKw@0..3 "pub"
@@ -36,8 +36,8 @@ Root@0..351
                 Int@27..28 "1"
           Newline@28..29 "\n"
           RBrace@29..30 "}"
-      Newline@30..32 "\n\n"
-    Item@32..82
+    Newline@30..32 "\n\n"
+    Item@32..80
       Func@32..80
         FnKw@32..34 "fn"
         WhiteSpace@34..35 " "
@@ -83,8 +83,8 @@ Root@0..351
                 Int@77..78 "1"
           Newline@78..79 "\n"
           RBrace@79..80 "}"
-      Newline@80..82 "\n\n"
-    Item@82..180
+    Newline@80..82 "\n\n"
+    Item@82..178
       Func@82..178
         FnKw@82..84 "fn"
         WhiteSpace@84..85 " "
@@ -158,8 +158,8 @@ Root@0..351
                 Int@175..176 "1"
           Newline@176..177 "\n"
           RBrace@177..178 "}"
-      Newline@178..180 "\n\n"
-    Item@180..298
+    Newline@178..180 "\n\n"
+    Item@180..296
       Func@180..296
         FnKw@180..182 "fn"
         WhiteSpace@182..183 " "
@@ -279,7 +279,7 @@ Root@0..351
                   Ident@293..294 "t"
           Newline@294..295 "\n"
           RBrace@295..296 "}"
-      Newline@296..298 "\n\n"
+    Newline@296..298 "\n\n"
     Item@298..351
       Func@298..351
         FnKw@298..300 "fn"
