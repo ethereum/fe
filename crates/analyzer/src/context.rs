@@ -26,7 +26,7 @@ use indexmap::IndexMap;
 use num_bigint::BigInt;
 use smol_str::SmolStr;
 use std::{
-    cell::RefCell,
+    sync::RwLock,
     collections::HashMap,
     fmt::{self, Debug},
     hash::Hash,
@@ -320,7 +320,7 @@ impl DiagnosticVoucher {
 
 #[derive(Default)]
 pub struct TempContext {
-    pub diagnostics: RefCell<Vec<Diagnostic>>,
+    pub diagnostics: RwLock<Vec<Diagnostic>>,
 }
 impl AnalyzerContext for TempContext {
     fn db(&self) -> &dyn AnalyzerDb {
@@ -396,7 +396,7 @@ impl AnalyzerContext for TempContext {
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
-        self.diagnostics.borrow_mut().push(diag)
+        self.diagnostics.write().unwrap().push(diag)
     }
 
     fn get_context_type(&self) -> Option<TypeId> {

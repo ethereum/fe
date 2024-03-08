@@ -11,6 +11,7 @@ use crate::{
         types::{self, Type},
     },
     traversal::types::type_desc,
+    TakeableRwLock,
 };
 use fe_common::diagnostics::Label;
 use fe_parser::ast;

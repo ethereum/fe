@@ -20,21 +20,21 @@ use fe_parser::{
     Label,
 };
 use indexmap::IndexMap;
-use std::{cell::RefCell, collections::BTreeMap};
+use std::{sync::RwLock, collections::BTreeMap};
 
 pub struct ItemScope<'a> {
     db: &'a dyn AnalyzerDb,
     module: ModuleId,
-    expressions: RefCell<IndexMap<NodeId, ExpressionAttributes>>,
-    pub diagnostics: RefCell<Vec<Diagnostic>>,
+    expressions: RwLock<IndexMap<NodeId, ExpressionAttributes>>,
+    pub diagnostics: RwLock<Vec<Diagnostic>>,
 }
 impl<'a> ItemScope<'a> {
     pub fn new(db: &'a dyn AnalyzerDb, module: ModuleId) -> Self {
         Self {
             db,
             module,
-            expressions: RefCell::new(IndexMap::default()),
-            diagnostics: RefCell::new(vec![]),
+            expressions: RwLock::new(IndexMap::default()),
+            diagnostics: RwLock::new(vec![]),
         }
     }
 }
@@ -46,18 +46,20 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
 
     fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
         self.expressions
-            .borrow_mut()
+            .write()
+            .unwrap()
             .insert(node.id, attributes)
             .expect_none("expression attributes already exist");
     }
 
     fn update_expression(&self, node: &Node<ast::Expr>, f: &dyn Fn(&mut ExpressionAttributes)) {
-        f(self.expressions.borrow_mut().get_mut(&node.id).unwrap())
+        f(self.expressions.write().unwrap().get_mut(&node.id).unwrap())
     }
 
     fn expr_typ(&self, expr: &Node<Expr>) -> Type {
         self.expressions
-            .borrow()
+            .read()
+            .unwrap()
             .get(&expr.id)
             .unwrap()
             .typ
@@ -172,7 +174,7 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
-        self.diagnostics.borrow_mut().push(diag)
+        self.diagnostics.write().unwrap().push(diag)
     }
 
     /// Gets `std::context::Context` if it exists
@@ -194,8 +196,8 @@ impl<'a> AnalyzerContext for ItemScope<'a> {
 pub struct FunctionScope<'a> {
     pub db: &'a dyn AnalyzerDb,
     pub function: FunctionId,
-    pub body: RefCell<FunctionBody>,
-    pub diagnostics: RefCell<Vec<Diagnostic>>,
+    pub body: RwLock<FunctionBody>,
+    pub diagnostics: RwLock<Vec<Diagnostic>>,
 }
 
 impl<'a> FunctionScope<'a> {
@@ -203,8 +205,8 @@ impl<'a> FunctionScope<'a> {
         Self {
             db,
             function,
-            body: RefCell::new(FunctionBody::default()),
-            diagnostics: RefCell::new(vec![]),
+            body: RwLock::new(FunctionBody::default()),
+            diagnostics: RwLock::new(vec![]),
         }
     }
 
@@ -215,7 +217,8 @@ impl<'a> FunctionScope<'a> {
     pub fn map_variable_type<T>(&self, node: &Node<T>, typ: TypeId) {
         self.add_node(node);
         self.body
-            .borrow_mut()
+            .write()
+            .unwrap()
             .var_types
             .insert(node.id, typ)
             .expect_none("variable has already registered")
@@ -224,14 +227,15 @@ impl<'a> FunctionScope<'a> {
     pub fn map_pattern_matrix(&self, node: &Node<ast::FuncStmt>, matrix: PatternMatrix) {
         debug_assert!(matches!(node.kind, ast::FuncStmt::Match { .. }));
         self.body
-            .borrow_mut()
+            .write()
+            .unwrap()
             .matches
             .insert(node.id, matrix)
             .expect_none("match statement attributes already exists")
     }
 
     fn add_node<T>(&self, node: &Node<T>) {
-        self.body.borrow_mut().spans.insert(node.id, node.span);
+        self.body.write().unwrap().spans.insert(node.id, node.span);
     }
 }
 
@@ -241,13 +245,13 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
-        self.diagnostics.borrow_mut().push(diag)
+        self.diagnostics.write().unwrap().push(diag)
     }
 
     fn add_expression(&self, node: &Node<ast::Expr>, attributes: ExpressionAttributes) {
         self.add_node(node);
         self.body
-            .borrow_mut()
+            .write().unwrap()
             .expressions
             .insert(node.id, attributes)
             .expect_none("expression attributes already exist");
@@ -256,7 +260,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
     fn update_expression(&self, node: &Node<ast::Expr>, f: &dyn Fn(&mut ExpressionAttributes)) {
         f(self
             .body
-            .borrow_mut()
+            .write().unwrap()
             .expressions
             .get_mut(&node.id)
             .unwrap())
@@ -264,7 +268,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
 
     fn expr_typ(&self, expr: &Node<Expr>) -> Type {
         self.body
-            .borrow()
+            .read().unwrap()
             .expressions
             .get(&expr.id)
             .unwrap()
@@ -274,7 +278,7 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
 
     fn add_constant(&self, _name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant) {
         self.body
-            .borrow_mut()
+            .write().unwrap()
             .expressions
             .get_mut(&expr.id)
             .expect("expression attributes must exist before adding constant value")
@@ -305,13 +309,13 @@ impl<'a> AnalyzerContext for FunctionScope<'a> {
         // TODO: should probably take the Expr::Call node, rather than the function node
         self.add_node(node);
         self.body
-            .borrow_mut()
+            .write().unwrap()
             .calls
             .insert(node.id, call_type)
             .expect_none("call attributes already exist");
     }
     fn get_call(&self, node: &Node<ast::Expr>) -> Option<CallType> {
-        self.body.borrow().calls.get(&node.id).cloned()
+        self.body.read().unwrap().calls.get(&node.id).cloned()
     }
 
     fn is_in_function(&self) -> bool {
@@ -448,7 +452,7 @@ pub struct BlockScope<'a, 'b> {
     pub parent: Option<&'a BlockScope<'a, 'b>>,
     /// Maps Name -> (Type, is_const, span)
     pub variable_defs: BTreeMap<String, (TypeId, bool, Span)>,
-    pub constant_defs: RefCell<BTreeMap<String, Constant>>,
+    pub constant_defs: RwLock<BTreeMap<String, Constant>>,
     pub typ: BlockScopeType,
 }
 
@@ -500,7 +504,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
 
     fn add_constant(&self, name: &Node<ast::SmolStr>, expr: &Node<ast::Expr>, value: Constant) {
         self.constant_defs
-            .borrow_mut()
+            .write().unwrap()
             .insert(name.kind.clone().to_string(), value.clone())
             .expect_none("expression attributes already exist");
 
@@ -512,7 +516,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
         name: &ast::SmolStr,
         span: Span,
     ) -> Result<Option<Constant>, IncompleteItem> {
-        if let Some(constant) = self.constant_defs.borrow().get(name.as_str()) {
+        if let Some(constant) = self.constant_defs.read().unwrap().get(name.as_str()) {
             Ok(Some(constant.clone()))
         } else if let Some(parent) = self.parent {
             parent.constant_value_by_name(name, span)
@@ -567,7 +571,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
     }
 
     fn add_diagnostic(&self, diag: Diagnostic) {
-        self.root.diagnostics.borrow_mut().push(diag)
+        self.root.diagnostics.write().unwrap().push(diag)
     }
 
     fn get_context_type(&self) -> Option<TypeId> {
@@ -581,7 +585,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             root,
             parent: None,
             variable_defs: BTreeMap::new(),
-            constant_defs: RefCell::new(BTreeMap::new()),
+            constant_defs: RwLock::new(BTreeMap::new()),
             typ,
         }
     }
@@ -591,7 +595,7 @@ impl<'a, 'b> BlockScope<'a, 'b> {
             root: self.root,
             parent: Some(self),
             variable_defs: BTreeMap::new(),
-            constant_defs: RefCell::new(BTreeMap::new()),
+            constant_defs: RwLock::new(BTreeMap::new()),
             typ,
         }
     }

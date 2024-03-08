@@ -7,7 +7,7 @@ use fe_driver as driver;
 
 use primitive_types::{H160, U256};
 use std::{
-    cell::RefCell,
+    sync::RwLock,
     collections::BTreeMap,
     fmt::{Display, Formatter},
     str::FromStr,
@@ -31,12 +31,12 @@ macro_rules! assert_harness_gas_report {
 
 #[derive(Default, Debug)]
 pub struct GasReporter {
-    records: RefCell<Vec<GasRecord>>,
+    records: RwLock<Vec<GasRecord>>,
 }
 
 impl GasReporter {
     pub fn add_record(&self, description: &str, gas_used: u64) {
-        self.records.borrow_mut().push(GasRecord {
+        self.records.write().unwrap().push(GasRecord {
             description: description.to_string(),
             gas_used,
         })
@@ -50,7 +50,7 @@ impl GasReporter {
 
 impl Display for GasReporter {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for record in self.records.borrow().iter() {
+        for record in self.records.read().unwrap().iter() {
             writeln!(f, "{} used {} gas", record.description, record.gas_used)?;
         }
 
