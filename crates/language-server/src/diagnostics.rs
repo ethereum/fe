@@ -128,19 +128,19 @@ impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
 }
 
 fn run_diagnostics(
-    db: &mut LanguageServerDatabase,
-    workspace: &mut Workspace,
+    db: &LanguageServerDatabase,
+    workspace: &Workspace,
     path: &str,
 ) -> Vec<common::diagnostics::CompleteDiagnostic> {
     let file_path = path;
     let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
-    db.analyze_top_mod(top_mod);
-    db.finalize_diags()
+    let diags = db.analyze_top_mod(top_mod);
+    db.finalize_diags(diags)
 }
 
 pub fn get_diagnostics(
-    db: &mut LanguageServerDatabase,
-    workspace: &mut Workspace,
+    db: &LanguageServerDatabase,
+    workspace: &Workspace,
     uri: lsp_types::Url,
 ) -> Result<FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>>, Error> {
     let diags = run_diagnostics(db, workspace, uri.to_file_path().unwrap().to_str().unwrap());
