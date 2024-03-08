@@ -131,7 +131,7 @@ mod tests {
 
         let fe_source_path = ingot_base_dir.join(fixture.path());
         let fe_source_path = fe_source_path.to_str().unwrap();
-        let input = workspace.input_from_file_path(db, fixture.path());
+        let input = workspace.touch_input_from_file_path(db, fixture.path());
         assert_eq!(input.unwrap().ingot(db).kind(db), IngotKind::Local);
 
         input
@@ -142,7 +142,7 @@ mod tests {
             .top_mod_from_file_path(db, fe_source_path)
             .unwrap();
 
-        let ingot = workspace.ingot_from_file_path(db, fixture.path());
+        let ingot = workspace.touch_ingot_from_file_path(db, fixture.path());
         assert_eq!(ingot.unwrap().kind(db), IngotKind::Local);
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
@@ -192,7 +192,7 @@ mod tests {
     fn test_goto_enclosing_path(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
-        let input = workspace.input_from_file_path(db, fixture.path()).unwrap();
+        let input = workspace.touch_input_from_file_path(db, fixture.path()).unwrap();
         input.set_text(db).to((*fixture.content()).to_string());
         let top_mod = workspace
             .top_mod_from_file_path(db, fixture.path())
@@ -247,7 +247,7 @@ mod tests {
         let workspace = &mut Workspace::default();
 
         workspace
-            .input_from_file_path(db, fixture.path())
+            .touch_input_from_file_path(db, fixture.path())
             .unwrap()
             .set_text(db)
             .to((*fixture.content()).to_string());

@@ -118,7 +118,7 @@ impl Backend {
                 }
                 Some(Ok(params)) = did_close_stream.next() => {
                     let input = workspace
-                        .input_from_file_path(
+                        .touch_input_from_file_path(
                             db,
                             params
                                 .text_document
@@ -143,13 +143,13 @@ impl Backend {
                                 // this is inefficient, a hack for now
                                 let _ = workspace.sync(db);
                                 let input = workspace
-                                    .input_from_file_path(db, path.to_str().unwrap())
+                                    .touch_input_from_file_path(db, path.to_str().unwrap())
                                     .unwrap();
                                 let _ = input.sync(db, None);
                             }
                             lsp_types::FileChangeType::CHANGED => {
                                 let input = workspace
-                                    .input_from_file_path(db, path.to_str().unwrap())
+                                    .touch_input_from_file_path(db, path.to_str().unwrap())
                                     .unwrap();
                                 let _ = input.sync(db, None);
                             }
@@ -200,7 +200,7 @@ async fn on_change(
     let client = &mut client.lock().await;
     let diagnostics = {
         let input = workspace
-            .input_from_file_path(
+            .touch_input_from_file_path(
                 db,
                 params
                     .uri
