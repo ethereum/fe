@@ -1,0 +1,26 @@
+use ingot::evm
+
+pub trait Eq {
+    fn compare(self, other: Self) -> bool;
+}
+
+impl Eq for bool {
+    fn compare(self, other: Self) -> bool {
+        return (not self and not other) or (self and other) //xor inverse
+    }
+}
+
+impl Eq for String<32> { 
+    fn compare(self, other: Self) -> bool {return false}
+}
+
+impl Eq for () {
+    fn compare(self, other: Self) -> bool {return false}
+}
+
+
+// impl Eq for Array {    //Dynamically allocate Arrays 
+//     fn compare(self, other: self) -> bool {
+//         if(self.len())
+//     }
+// }

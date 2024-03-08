@@ -1,5 +1,6 @@
 use ingot::evm
 use ingot::math
+use ingot::cmp::Eq
 
 unsafe fn avail() -> u256 {
     let ptr: u256 = evm::mload(offset: 64)
@@ -353,37 +354,34 @@ pub struct RawCallBuffer {
     }
 }
 
-pub trait Eq {
-    fn compare(self, mut buf: MemoryBuffer) -> bool;
-}
 
 impl Eq for MemoryBuffer {
-   fn compare(self, mut buf: MemoryBuffer) -> bool {
+   fn compare(self, buf: Self) -> bool {
         if(self.len() != buf.len()){
             return false
         }
-        let mut reader: MemoryBufferReader = self.reader()
-        let mut reader2: MemoryBufferReader = buf.reader()
-        let mut bytes_remaining: u256 = reader.remainder()
-        while true {
-            if bytes_remaining >= 32 {
-            bytes_remaining = bytes_remaining - 32
-            if(reader.read_u256() != reader2.read_u256()){
-                 return false
-                }
-            } else if bytes_remaining == 0 {
-                return true
-            } else {
-            bytes_remaining = bytes_remaining - 1
-            if(reader.read_u8() != reader2.read_u8()){
-                 return false
+        else {
+            let mut reader: MemoryBufferReader = self.reader()
+            let mut reader2: MemoryBufferReader = buf.reader()
+            let mut bytes_remaining: u256 = reader.remainder()
+            while true {
+                if bytes_remaining >= 32 {
+                        bytes_remaining = bytes_remaining - 32
+                            if(reader.read_u256() != reader2.read_u256()){
+                                return false
+                        }
+                } else if bytes_remaining == 0 {
+                    return true
+                } else {
+                        bytes_remaining = bytes_remaining - 1
+                        if(reader.read_u8() != reader2.read_u8()){
+                            return false
+                        }
                 }
             }
+            //unreachable required by analyzer
+            return false
         }
-        return true
+        
    }
-}
-
-impl Eq for () { // missing impl in mir_lower_std_lib error
-      fn compare(self, mut buf: MemoryBuffer) -> bool  {return false}
 }

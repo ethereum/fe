@@ -207,8 +207,14 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     // Type
     #[salsa::invoke(queries::types::all_impls)]
     fn all_impls(&self, ty: TypeId) -> Rc<[ImplId]>;
+    #[salsa::invoke(queries::types::all_impls_of_name)]
+    fn all_impls_of_name(&self, ty: SmolStr) -> Rc<[ImplId]>;
+    #[salsa::invoke(queries::types::get_eq_trait)]
+    fn get_eq_trait(&self, ty: TypeId) -> TraitId;
     #[salsa::invoke(queries::types::impl_for)]
     fn impl_for(&self, ty: TypeId, treit: TraitId) -> Option<ImplId>;
+    #[salsa::invoke(queries::types::impl_from_name)]
+    fn impl_from_name(&self, ty: SmolStr, treit: SmolStr) -> Option<ImplId>;
     #[salsa::invoke(queries::types::function_sigs)]
     fn function_sigs(&self, ty: TypeId, name: SmolStr) -> Rc<[FunctionSigId]>;
 

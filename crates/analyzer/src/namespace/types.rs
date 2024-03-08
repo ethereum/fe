@@ -169,6 +169,14 @@ impl TypeId {
         matches!(self.typ(db), Type::Mut(_))
     }
 
+    pub fn eq_trait_implemented(&self, db: &dyn AnalyzerDb) -> bool {
+        if let Type::Struct(id) = self.typ(db) {
+            id.name(db) == "MemoryBuffer"
+        } else {
+            false
+        }
+    }
+
     pub fn name(&self, db: &dyn AnalyzerDb) -> SmolStr {
         self.typ(db).name(db)
     }
@@ -187,6 +195,16 @@ impl TypeId {
     /// implementation per concrete type and trait.
     pub fn get_impl_for(&self, db: &dyn AnalyzerDb, trait_: TraitId) -> Option<ImplId> {
         db.impl_for(*self, trait_)
+    }
+
+    pub fn get_eq_trait(&self, db: &dyn AnalyzerDb) -> TraitId {
+        db.get_eq_trait(*self)
+    }
+
+    /// Return the `impl` for the given trait name. There can only ever be a single
+    /// implementation per concrete type and trait.
+    pub fn get_impl_of_eq_for(ti: SmolStr, db: &dyn AnalyzerDb, trait_: SmolStr) -> Option<ImplId> {
+        db.impl_from_name(ti, trait_)
     }
 
     /// Looks up all possible candidates of the given function name that are implemented via traits.

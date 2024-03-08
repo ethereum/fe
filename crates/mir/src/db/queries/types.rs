@@ -278,6 +278,13 @@ impl TypeId {
         self.size_of(db, 1) == 0
     }
 
+    pub fn eq_trait_implemented(&self, db: &dyn MirDb) -> bool {
+        match self.data(db).kind {
+            TypeKind::MPtr(inner) => inner.deref(db).0 == 2,
+            _ => false,
+        }
+    }
+
     pub fn align_of(self, db: &dyn MirDb, slot_size: usize) -> usize {
         if self.is_primitive(db) {
             1
