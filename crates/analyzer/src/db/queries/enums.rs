@@ -19,6 +19,7 @@ use crate::{
     },
     traversal::types::type_desc,
     AnalyzerDb,
+    TakeableRwLock,
 };
 
 pub fn enum_all_variants(db: &dyn AnalyzerDb, enum_: EnumId) -> Rc<[EnumVariantId]> {

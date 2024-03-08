@@ -9,6 +9,7 @@ use crate::{
         types::TypeId,
     },
     AnalyzerDb,
+    TakeableRwLock,
 };
 use std::rc::Rc;
 

@@ -12,6 +12,7 @@ use crate::{
         functions::traverse_statements,
         types::{type_desc, type_desc_to_trait},
     },
+    TakeableRwLock,
 };
 use fe_common::diagnostics::Label;
 use fe_parser::{
@@ -344,9 +345,20 @@ pub fn function_body(db: &dyn AnalyzerDb, function: FunctionId) -> Analysis<Rc<F
     // a type or fn used in this fn body, because of the `DiagnosticVoucher`
     // system. (See the definition of `FatalError`)
     let _ = traverse_statements(&mut block_scope, &def.body);
+    let value = {
+    let body_guard = scope.body.read().unwrap();
+        Rc::new((*body_guard).clone())
+    };
+
+    let diagnostics = {
+        let diagnostics_guard = scope.diagnostics.read().unwrap();
+        (*diagnostics_guard).clone().into()
+    };
+
+
     Analysis {
-        value: Rc::new(scope.body.into_inner()),
-        diagnostics: scope.diagnostics.into_inner().into(),
+        value,
+        diagnostics
     }
 }
 

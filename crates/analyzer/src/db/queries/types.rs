@@ -13,6 +13,7 @@ use crate::{
     },
     traversal::types::type_desc,
     AnalyzerDb,
+    TakeableRwLock,
 };
 
 /// Returns all `impl` for the given type from the current ingot as well as

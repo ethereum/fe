@@ -8,6 +8,7 @@ use crate::{
         scopes::ItemScope,
     },
     AnalyzerDb,
+    TakeableRwLock,
 };
 use std::rc::Rc;
 

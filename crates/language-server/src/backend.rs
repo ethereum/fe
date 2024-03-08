@@ -28,17 +28,22 @@ pub struct Backend {
 }
 
 impl Backend {
-    pub fn new(client: Arc<RwLock<Client>>, messaging: Arc<RwLock<MessageChannels>>) -> Self {
-        let db = Arc::new(RwLock::new(LanguageServerDatabase::default()));
-        let workspace = Workspace::default();
+    // pub fn new(
+    //     client: Arc<RwLock<Client>>,
+    //     messaging: Arc<RwLock<MessageChannels>>,
+    //     db: Arc<RwLock<LanguageServerDatabase>>,
+    //     workspace: Workspace,
+    // ) -> Self {
+    //     let db = Arc::new(RwLock::new(LanguageServerDatabase::default()));
+    //     let workspace = Workspace::default();
 
-        Self {
-            messaging,
-            client,
-            db,
-            workspace,
-        }
-    }
+    //     Self {
+    //         messaging,
+    //         client,
+    //         db,
+    //         workspace,
+    //     }
+    // }
     pub async fn handle_streams(mut self) {
         info!("setting up streams");
         let workspace = &mut self.workspace;
