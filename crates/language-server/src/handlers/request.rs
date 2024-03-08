@@ -44,7 +44,7 @@ pub fn handle_hover(
     // let file_path = std::path::Path::new(file_path);
     info!("getting hover info for file_path: {:?}", file_path);
     let ingot = workspace
-        .input_from_file_path(db, file_path)
+        .touch_input_from_file_path(db, file_path)
         .map(|input| input.ingot(db));
 
     // info!("got ingot: {:?} of type {:?}", ingot, ingot.map(|ingot| ingot.kind(&mut state.db)));
