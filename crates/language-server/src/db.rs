@@ -36,23 +36,13 @@ impl<DB> LanguageServerDb for DB where
 )]
 pub struct LanguageServerDatabase {
     storage: salsa::Storage<Self>,
-    diags: Vec<Box<dyn DiagnosticVoucher>>,
 }
 
 impl LanguageServerDatabase {
-    pub fn analyze_top_mod(&mut self, top_mod: TopLevelMod) {
-        self.run_on_file_with_pass_manager(top_mod, initialize_analysis_pass);
-    }
-
-    pub fn run_on_file_with_pass_manager<F>(&mut self, top_mod: TopLevelMod, pm_builder: F)
-    where
-        F: FnOnce(&Self) -> AnalysisPassManager<'_>,
+    pub fn analyze_top_mod(&self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>>
     {
-        self.diags.clear();
-        self.diags = {
-            let mut pass_manager = pm_builder(self);
-            pass_manager.run_on_module(top_mod)
-        };
+        let mut pass_manager = initialize_analysis_pass(self);
+        pass_manager.run_on_module(top_mod)
     }
 
     pub fn find_enclosing_item(
@@ -85,8 +75,8 @@ impl LanguageServerDatabase {
         smallest_enclosing_item
     }
 
-    pub fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {
-        let mut diags: Vec<_> = self.diags.iter().map(|d| d.to_complete(self)).collect();
+    pub fn finalize_diags(&self, diags: Vec<Box<dyn DiagnosticVoucher>>) -> Vec<CompleteDiagnostic> {
+        let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
             std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
             ord => ord,
@@ -103,7 +93,6 @@ impl Default for LanguageServerDatabase {
     fn default() -> Self {
         let db = Self {
             storage: Default::default(),
-            diags: Vec::new(),
         };
         db.prefill();
         db

@@ -114,7 +114,8 @@ impl Backend {
                 }
                 Some(Ok(doc)) = change_stream.next() => {
                     info!("change detected: {:?}", doc.uri);
-                    on_change(client.clone(), workspace, db, doc).await;
+                    update_inputs(workspace, db, &doc).await;
+                    handle_diagnostics(client.clone(), workspace, db, &doc).await;
                 }
                 Some(Ok(params)) = did_close_stream.next() => {
                     let input = workspace
@@ -163,15 +164,21 @@ impl Backend {
                         // collect diagnostics for the file
                         if change.typ != lsp_types::FileChangeType::DELETED {
                             let text = std::fs::read_to_string(path).unwrap();
-                            on_change(
+                            update_inputs(workspace, db, &TextDocumentItem {
+                                uri: uri.clone(),
+                                language_id: LANGUAGE_ID.to_string(),
+                                version: 0,
+                                text: text.clone(),
+                            }).await;
+                            handle_diagnostics(
                                 self.client.clone(),
                                 workspace,
                                 db,
-                                TextDocumentItem {
+                                &TextDocumentItem {
                                     uri: uri.clone(),
                                     language_id: LANGUAGE_ID.to_string(),
                                     version: 0,
-                                    text,
+                                    text: text,
                                 },
                             )
                             .await;
@@ -191,34 +198,44 @@ impl Backend {
     }
 }
 
-async fn on_change(
-    client: Arc<Mutex<Client>>,
+async fn update_inputs(
     workspace: &mut Workspace,
     db: &mut LanguageServerDatabase,
-    params: TextDocumentItem,
+    params: &TextDocumentItem,
 ) {
-    let client = &mut client.lock().await;
-    let diagnostics = {
-        let input = workspace
-            .touch_input_from_file_path(
-                db,
-                params
-                    .uri
-                    .to_file_path()
-                    .expect("Failed to convert URI to file path")
-                    .to_str()
-                    .expect("Failed to convert file path to string"),
-            )
-            .unwrap();
-        let _ = input.sync(db, Some(params.text));
-        get_diagnostics(db, workspace, params.uri.clone())
-    };
+    let input = workspace
+        .touch_input_from_file_path(
+            db,
+            params
+                .uri
+                .to_file_path()
+                .expect("Failed to convert URI to file path")
+                .to_str()
+                .expect("Failed to convert file path to string"),
+        )
+        .unwrap();
+    let _ = input.sync(db, Some(params.text.clone()));
+}
+
+async fn handle_diagnostics(
+    client: Arc<Mutex<Client>>,
+    workspace: &Workspace,
+    db: &LanguageServerDatabase,
+    params: &TextDocumentItem,
+) {
+    // let client = &mut client.lock().await;
+    let diagnostics = get_diagnostics(db, workspace, params.uri.clone());
 
     let diagnostics = diagnostics
         .unwrap()
         .into_iter()
-        .map(|(uri, diags)| client.publish_diagnostics(uri, diags, None))
+        .map(|(uri, diags)| async {
+            let client = client.clone();
+            let client = client.lock().await;
+            client.publish_diagnostics(uri, diags, None).await
+        })
         .collect::<Vec<_>>();
+
 
     futures::future::join_all(diagnostics).await;
 }
