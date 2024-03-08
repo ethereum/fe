@@ -36,8 +36,14 @@ async fn main() {
     let rx = setup_logger(log::Level::Info).unwrap();
 
     // separate runtime for the backend
-    let backend_runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(4)
+    // let backend_runtime = tokio::runtime::Builder::new_multi_thread()
+    //     .worker_threads(4)
+    //     .enable_all()
+    //     .build()
+    //     .unwrap();
+
+    // use a single threaded runtime instead
+    let backend_runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap();
