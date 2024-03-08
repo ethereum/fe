@@ -46,7 +46,7 @@ impl LanguageServerDatabase {
     }
 
     pub fn find_enclosing_item(
-        &mut self,
+        &self,
         top_mod: TopLevelMod,
         cursor: Cursor,
     ) -> Option<ItemKind> {
