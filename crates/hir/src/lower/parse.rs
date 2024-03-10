@@ -54,4 +54,8 @@ impl<'db> DiagnosticVoucher<'db> for ParserError {
             error_code,
         )
     }
+
+    fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
+        Box::new(self.clone())
+    }
 }

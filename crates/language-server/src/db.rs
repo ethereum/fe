@@ -10,6 +10,7 @@ use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     HirAnalysisDb,
 };
+use salsa::{ParallelDatabase, Snapshot};
 
 use crate::goto::Cursor;
 
@@ -46,7 +47,7 @@ impl LanguageServerDatabase {
     }
 
     pub fn find_enclosing_item(
-        &mut self,
+        &self,
         top_mod: TopLevelMod,
         cursor: Cursor,
     ) -> Option<ItemKind> {
@@ -75,7 +76,7 @@ impl LanguageServerDatabase {
         smallest_enclosing_item
     }
 
-    pub fn finalize_diags(&self, diags: Vec<Box<dyn DiagnosticVoucher>>) -> Vec<CompleteDiagnostic> {
+    pub fn finalize_diags(&self, diags: &Vec<Box<dyn DiagnosticVoucher>>) -> Vec<CompleteDiagnostic> {
         let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
             std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
@@ -96,6 +97,14 @@ impl Default for LanguageServerDatabase {
         };
         db.prefill();
         db
+    }
+}
+
+impl ParallelDatabase for LanguageServerDatabase {
+    fn snapshot(&self) -> Snapshot<Self> {
+        Snapshot::new(LanguageServerDatabase {
+            storage: self.storage.snapshot(),
+        })
     }
 }
 

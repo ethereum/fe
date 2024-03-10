@@ -286,4 +286,8 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
 
         CompleteDiagnostic::new(self.severity(), message, sub_diags, vec![], error_code)
     }
+
+    fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
+        Box::new(self.clone())
+    }
 }

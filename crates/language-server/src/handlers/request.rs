@@ -1,9 +1,11 @@
 use std::io::BufRead;
 
-use common::input::IngotKind;
-use hir_analysis::name_resolution::{EarlyResolvedPath, NameRes};
+use common::{input::IngotKind, InputDb};
+use hir::SpannedHirDb;
+use hir_analysis::{name_resolution::{EarlyResolvedPath, NameRes}, HirAnalysisDb};
 use log::info;
 
+use salsa::{ParallelDatabase, Snapshot};
 use tower_lsp::jsonrpc::Result;
 
 use crate::{
@@ -15,8 +17,8 @@ use crate::{
 use lsp_server::ResponseError;
 
 pub fn handle_hover(
-    db: &mut LanguageServerDatabase,
-    workspace: &mut Workspace,
+    db: &Snapshot<LanguageServerDatabase>,
+    workspace: &Workspace,
     params: lsp_types::HoverParams,
 ) -> Result<Option<Hover>> {
     info!("handling hover");
@@ -26,15 +28,16 @@ pub fn handle_hover(
         .text_document
         .uri
         .path();
-    let file = std::fs::File::open(file_path).unwrap();
-    let reader = std::io::BufReader::new(file);
-    let line = reader
+    info!("getting hover info for file_path: {:?}", file_path);
+    let input = workspace.get_input_from_file_path(db, file_path);
+    let ingot = input.map(|input| input.ingot(db.as_input_db()));
+
+    let file_text = input.unwrap().text(db.as_input_db());
+    let line = file_text
         .lines()
         .nth(params.text_document_position_params.position.line as usize)
-        .unwrap()
         .unwrap();
 
-    let file_text = std::fs::read_to_string(file_path).unwrap();
 
     // let cursor: Cursor = params.text_document_position_params.position.into();
     let cursor: Cursor = to_offset_from_position(
@@ -42,16 +45,12 @@ pub fn handle_hover(
         file_text.as_str(),
     );
     // let file_path = std::path::Path::new(file_path);
-    info!("getting hover info for file_path: {:?}", file_path);
-    let ingot = workspace
-        .touch_input_from_file_path(db, file_path)
-        .map(|input| input.ingot(db));
 
     // info!("got ingot: {:?} of type {:?}", ingot, ingot.map(|ingot| ingot.kind(&mut state.db)));
 
     let ingot_info: Option<String> = {
         let ingot_type = match ingot {
-            Some(ingot) => match ingot.kind(db) {
+            Some(ingot) => match ingot.kind(db.as_input_db()) {
                 IngotKind::StandAlone => None,
                 IngotKind::Local => Some("Local ingot"),
                 IngotKind::External => Some("External ingot"),
@@ -59,10 +58,10 @@ pub fn handle_hover(
             },
             None => Some("No ingot information available"),
         };
-        let ingot_file_count = ingot.unwrap().files(db).len();
+        let ingot_file_count = ingot.unwrap().files(db.as_input_db()).len();
         let ingot_path = ingot
             .unwrap()
-            .path(db)
+            .path(db.as_input_db())
             .strip_prefix(workspace.root_path.clone().unwrap_or("".into()))
             .ok();
 
@@ -71,19 +70,19 @@ pub fn handle_hover(
         })
     };
 
-    let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
+    let top_mod = workspace.top_mod_from_file_path(&db.snapshot(), file_path).unwrap();
     let early_resolution = goto_enclosing_path(db, top_mod, cursor);
 
     let goto_info = match early_resolution {
         Some(EarlyResolvedPath::Full(bucket)) => bucket
             .iter()
-            .map(|x| x.pretty_path(db).unwrap())
+            .map(|x| x.pretty_path(db.as_hir_analysis_db()).unwrap())
             .collect::<Vec<_>>()
             .join("\n"),
         Some(EarlyResolvedPath::Partial {
             res,
             unresolved_from: _,
-        }) => res.pretty_path(db).unwrap(),
+        }) => res.pretty_path(db.as_hir_analysis_db()).unwrap(),
         None => String::from("No goto info available"),
     };
 
@@ -106,8 +105,8 @@ pub fn handle_hover(
 use lsp_types::{GotoDefinitionParams, GotoDefinitionResponse, Hover};
 
 pub fn handle_goto_definition(
-    db: &mut LanguageServerDatabase,
-    workspace: &mut Workspace,
+    db: &Snapshot<LanguageServerDatabase>,
+    workspace: &Workspace,
     params: GotoDefinitionParams,
 ) -> Result<Option<GotoDefinitionResponse>> {
     // Convert the position to an offset in the file
@@ -117,7 +116,7 @@ pub fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
-    let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
+    let top_mod = workspace.top_mod_from_file_path(&db.snapshot(), file_path).unwrap();
     let goto_info = goto_enclosing_path(db, top_mod, cursor);
 
     // Convert the goto info to a Location
@@ -137,13 +136,13 @@ pub fn handle_goto_definition(
     let locations = scopes
         .iter()
         .filter_map(|scope| *scope)
-        .map(|scope| to_lsp_location_from_scope(scope, db))
+        .map(|scope| to_lsp_location_from_scope(scope, db.as_spanned_hir_db()))
         .collect::<Vec<_>>();
 
     let errors = scopes
         .iter()
         .filter_map(|scope| *scope)
-        .map(|scope| to_lsp_location_from_scope(scope, db))
+        .map(|scope| to_lsp_location_from_scope(scope, db.as_spanned_hir_db()))
         .filter_map(std::result::Result::err)
         .map(|err| err.to_string())
         .collect::<Vec<_>>()

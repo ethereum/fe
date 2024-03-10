@@ -5,9 +5,10 @@ use common::{
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
-use hir::{hir_def::TopLevelMod, lower::map_file_to_mod};
+use hir::{hir_def::TopLevelMod, lower::map_file_to_mod, LowerHirDb};
 use log::info;
 use patricia_tree::StringPatriciaMap;
+use salsa::Snapshot;
 
 use crate::db::LanguageServerDatabase;
 
@@ -26,7 +27,7 @@ pub trait IngotFileContext {
     ) -> Option<InputFile>;
     fn get_ingot_from_file_path(
         &self,
-        db: &LanguageServerDatabase,
+        db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<InputIngot>;
     fn touch_ingot_from_file_path(
@@ -36,12 +37,12 @@ pub trait IngotFileContext {
     ) -> Option<InputIngot>;
     fn get_input_from_file_path(
         &self,
-        db: &LanguageServerDatabase,
+        db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<InputFile>;
     fn top_mod_from_file_path(
         &self,
-        db: &LanguageServerDatabase,
+        db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<TopLevelMod>;
     fn rename_file(
@@ -121,7 +122,7 @@ impl IngotFileContext for LocalIngotContext {
 
     fn get_input_from_file_path(
         &self,
-        _db: &LanguageServerDatabase,
+        _db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<InputFile> {
         self.files.get(path).copied()
@@ -137,7 +138,7 @@ impl IngotFileContext for LocalIngotContext {
 
     fn get_ingot_from_file_path(
         &self,
-        _db: &LanguageServerDatabase,
+        _db: &Snapshot<LanguageServerDatabase>,
         _path: &str,
     ) -> Option<InputIngot> {
         Some(self.ingot)
@@ -145,11 +146,11 @@ impl IngotFileContext for LocalIngotContext {
 
     fn top_mod_from_file_path(
         &self,
-        db: &LanguageServerDatabase,
+        db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<TopLevelMod> {
         let file = self.get_input_from_file_path(db, path)?;
-        Some(map_file_to_mod(db, file))
+        Some(map_file_to_mod(db.as_lower_hir_db(), file))
     }
 
     fn rename_file(
@@ -211,7 +212,7 @@ impl IngotFileContext for StandaloneIngotContext {
 
     fn get_input_from_file_path(
         &self,
-        _db: &LanguageServerDatabase,
+        _db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<InputFile> {
         self.files.get(path).copied()
@@ -243,7 +244,7 @@ impl IngotFileContext for StandaloneIngotContext {
 
     fn get_ingot_from_file_path(
             &self,
-            _db: &LanguageServerDatabase,
+            _db: &Snapshot<LanguageServerDatabase>,
             path: &str,
         ) -> Option<InputIngot> {
         // this shouldn't mutate, it should only get the ingot or return `None`
@@ -254,11 +255,11 @@ impl IngotFileContext for StandaloneIngotContext {
 
     fn top_mod_from_file_path(
         &self,
-        db: &LanguageServerDatabase,
+        db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<TopLevelMod> {
         let file = self.get_input_from_file_path(db, path)?;
-        Some(map_file_to_mod(db, file))
+        Some(map_file_to_mod(db.as_lower_hir_db(), file))
     }
 
     fn rename_file(
@@ -425,7 +426,7 @@ impl IngotFileContext for Workspace {
 
     fn get_input_from_file_path(
         &self,
-        db: &LanguageServerDatabase,
+        db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<InputFile> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
@@ -451,7 +452,7 @@ impl IngotFileContext for Workspace {
 
     fn get_ingot_from_file_path(
         &self,
-        db: &LanguageServerDatabase,
+        db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<InputIngot> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
@@ -464,7 +465,7 @@ impl IngotFileContext for Workspace {
 
     fn top_mod_from_file_path(
         &self,
-        db: &LanguageServerDatabase,
+        db: &Snapshot<LanguageServerDatabase>,
         path: &str,
     ) -> Option<TopLevelMod> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
@@ -580,6 +581,8 @@ impl SyncableIngotFileContext for Workspace {
 
 #[cfg(test)]
 mod tests {
+
+    use salsa::ParallelDatabase;
 
     use crate::workspace::{get_containing_ingot_mut, IngotFileContext, Workspace, FE_CONFIG_SUFFIX};
     use std::path::PathBuf;
@@ -730,7 +733,7 @@ mod tests {
             // file.sync(&mut db, None);
 
             // this would panic if a file has been added to multiple ingots
-            let _top_mod = workspace.top_mod_from_file_path(&mut db, src_path.as_str());
+            let _top_mod = workspace.top_mod_from_file_path(&db.snapshot(), src_path.as_str());
         }
     }
 
