@@ -40,17 +40,3 @@ pub fn analyze_module(db: &dyn AnalyzerDb, module_id: ModuleId) -> Result<(), Ve
         Err(diagnostics)
     }
 }
-
-
-use std::sync::RwLock;
-use std::mem;
-
-pub trait TakeableRwLock<T: Default> {
-    fn take(&self) -> T;
-}
-impl<T: Default> TakeableRwLock<T> for RwLock<T> {
-    fn take(&self) -> T {
-        let mut write_guard = self.write().unwrap();
-        mem::replace(&mut *write_guard, T::default())
-    }
-}

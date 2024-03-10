@@ -10,13 +10,10 @@ mod oneshot_responder;
 mod util;
 mod workspace;
 
-use std::sync::Arc;
-
 use backend::Backend;
 use db::Jar;
 
 use language_server::Server;
-use tokio::sync::RwLock;
 
 use crate::logger::{handle_log_messages, setup_logger};
 
@@ -34,12 +31,7 @@ async fn main() {
 
     let client = server.client.clone();
     let messaging = server.messaging.clone();
-    let backend = Backend{
-        client,
-        messaging,
-        db: Arc::new(RwLock::new(db::LanguageServerDatabase::default())),
-        workspace: workspace::Workspace::default(),
-    };
+    let backend = Backend::new(client, messaging);
 
     let rx = setup_logger(log::Level::Info).unwrap();
 

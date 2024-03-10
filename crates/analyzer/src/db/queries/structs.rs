@@ -14,7 +14,6 @@ use crate::{
     },
     traversal::types::type_desc,
     AnalyzerDb,
-    TakeableRwLock,
 };
 use fe_common::utils::humanize::pluralize_conditionally;
 use fe_parser::{ast, Label};

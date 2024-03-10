@@ -13,7 +13,6 @@ use crate::{
     },
     traversal::{const_expr, expressions, types::type_desc},
     AnalyzerDb,
-    TakeableRwLock,
 };
 use fe_common::{diagnostics::Label, files::Utf8Path, Span};
 use fe_parser::{ast, node::Node};
@@ -454,7 +453,7 @@ pub fn module_constant_value(
     }
 
     // Clear diagnostics emitted from `module_constant_type`.
-    scope.diagnostics.write().unwrap().clear();
+    scope.diagnostics.borrow_mut().clear();
 
     // Perform constant evaluation.
     let value = const_expr::eval_expr(&mut scope, &constant_data.ast.kind.value);
