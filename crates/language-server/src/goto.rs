@@ -61,7 +61,7 @@ fn smallest_enclosing_path(cursor: Cursor, path_map: &GotoPathMap) -> Option<Got
 }
 
 pub fn goto_enclosing_path(
-    db: &LanguageServerDatabase,
+    db: &mut LanguageServerDatabase,
     top_mod: TopLevelMod,
     cursor: Cursor,
 ) -> Option<EarlyResolvedPath> {
