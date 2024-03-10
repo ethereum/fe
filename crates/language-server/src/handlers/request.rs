@@ -15,33 +15,39 @@ use crate::{
 use lsp_server::ResponseError;
 
 pub fn handle_hover(
-    db: &LanguageServerDatabase,
-    workspace: &Workspace,
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
     params: lsp_types::HoverParams,
 ) -> Result<Option<Hover>> {
+    info!("handling hover");
+    // TODO: get more relevant information for the hover
     let file_path = &params
         .text_document_position_params
         .text_document
         .uri
         .path();
-
-    info!("handling hover");
-    info!("getting hover info for file_path: {:?}", file_path);
-    let input = workspace.get_input_from_file_path(db, file_path);
-    let ingot = input.map(|input| input.ingot(db));
-
-    // TODO: get more relevant information for the hover
-    let file_text = input.unwrap().text(db).to_string();
-    let line = file_text
+    let file = std::fs::File::open(file_path).unwrap();
+    let reader = std::io::BufReader::new(file);
+    let line = reader
         .lines()
         .nth(params.text_document_position_params.position.line as usize)
         .unwrap()
-        .to_string();
+        .unwrap();
 
+    let file_text = std::fs::read_to_string(file_path).unwrap();
+
+    // let cursor: Cursor = params.text_document_position_params.position.into();
     let cursor: Cursor = to_offset_from_position(
         params.text_document_position_params.position,
         file_text.as_str(),
     );
+    // let file_path = std::path::Path::new(file_path);
+    info!("getting hover info for file_path: {:?}", file_path);
+    let ingot = workspace
+        .touch_input_from_file_path(db, file_path)
+        .map(|input| input.ingot(db));
+
+    // info!("got ingot: {:?} of type {:?}", ingot, ingot.map(|ingot| ingot.kind(&mut state.db)));
 
     let ingot_info: Option<String> = {
         let ingot_type = match ingot {
@@ -100,8 +106,8 @@ pub fn handle_hover(
 use lsp_types::{GotoDefinitionParams, GotoDefinitionResponse, Hover};
 
 pub fn handle_goto_definition(
-    db: &LanguageServerDatabase,
-    workspace: &Workspace,
+    db: &mut LanguageServerDatabase,
+    workspace: &mut Workspace,
     params: GotoDefinitionParams,
 ) -> Result<Option<GotoDefinitionResponse>> {
     // Convert the position to an offset in the file
