@@ -73,6 +73,8 @@ pub enum Intrinsic {
     __sload,          // (p)
     __sstore,         // (p, v) -> ()
     __msize,          // ()
+    __tstore,         // (p, v) -> ()
+    __tload,          // (p)
     __gas,            // ()
     __address,        // ()
     __balance,        // (a)
@@ -126,12 +128,12 @@ impl Intrinsic {
             | __invalid | __chainid => 0,
 
             __not | __iszero | __pop | __mload | __balance | __sload | __calldataload
-            | __extcodesize | __extcodehash | __selfdestruct | __blockhash => 1,
+            | __extcodesize | __extcodehash | __selfdestruct | __blockhash | __tload => 1,
 
             __add | __sub | __mul | __div | __sdiv | __mod | __smod | __exp | __lt | __gt
             | __slt | __sgt | __eq | __and | __or | __xor | __byte | __shl | __shr | __sar
             | __signextend | __keccak256 | __mstore | __mstore8 | __sstore | __return
-            | __revert | __log0 => 2,
+            | __revert | __log0 | __tstore => 2,
 
             __addmod | __mulmod | __calldatacopy | __codecopy | __returndatacopy | __create
             | __log1 => 3,
@@ -147,7 +149,7 @@ impl Intrinsic {
         match self {
             __stop | __pop | __mstore | __mstore8 | __sstore | __calldatacopy | __codecopy
             | __extcodecopy | __returndatacopy | __return | __revert | __selfdestruct
-            | __invalid | __log0 | __log1 | __log2 | __log3 | __log4 => Base::Unit,
+            | __invalid | __log0 | __log1 | __log2 | __log3 | __log4 | __tstore => Base::Unit,
             _ => Base::u256(),
         }
     }
