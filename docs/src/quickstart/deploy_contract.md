@@ -137,7 +137,7 @@ cast to_ascii "0x000000000000000000000000000000000000000000000000000000000000002
 or simply pipe the output of the `cast call` to `to_ascii` to do the query and conversion in a single command:
 
 ```sh
-cast call --rpc-url https://rpc.sepolia.org <contract-address> "get_msg(address)" <your-account-address-that-signed-the-guestbook> | cast --to-ascii
+cast call --rpc-url http://localhost:8545 <contract-address> "get_msg(address)" <your-account-address-that-signed-the-guestbook> | cast --to-ascii
 ```
 
 Either way, the response will be the message you passed to the `sign(string)` function.
