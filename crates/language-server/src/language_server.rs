@@ -12,13 +12,13 @@ use crate::oneshot_responder::OneshotResponder;
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
 pub(crate) struct Server {
-    pub(crate) messaging: Arc<tokio::sync::Mutex<MessageChannels>>,
-    pub(crate) client: Arc<tokio::sync::Mutex<Client>>,
+    pub(crate) messaging: Arc<tokio::sync::RwLock<MessageChannels>>,
+    pub(crate) client: Arc<tokio::sync::RwLock<Client>>,
 }
 
 impl Server {
     pub(crate) async fn register_watchers(&self) -> Result<()> {
-        let client = self.client.lock().await;
+        let client = self.client.read().await;
         let registration = Registration {
             id: String::from("watch-fe-files"),
             method: String::from("workspace/didChangeWatchedFiles"),
@@ -36,8 +36,8 @@ impl Server {
     }
 
     pub(crate) fn new(client: Client) -> Self {
-        let messaging = Arc::new(tokio::sync::Mutex::new(MessageChannels::new()));
-        let client = Arc::new(tokio::sync::Mutex::new(client));
+        let messaging = Arc::new(tokio::sync::RwLock::new(MessageChannels::new()));
+        let client = Arc::new(tokio::sync::RwLock::new(client));
 
         Self { messaging, client }
     }
@@ -48,7 +48,7 @@ impl Server {
 impl LanguageServer for Server {
     async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
         // forward the initialize request to the messaging system
-        let messaging = self.messaging.lock().await;
+        let messaging = self.messaging.read().await;
         let rx = messaging.send_initialize(initialize_params);
 
         info!("awaiting initialization result");
@@ -67,27 +67,27 @@ impl LanguageServer for Server {
     }
 
     async fn did_open(&self, params: lsp_types::DidOpenTextDocumentParams) {
-        let messaging = self.messaging.lock().await;
+        let messaging = self.messaging.read().await;
         messaging.send_did_open(params);
     }
 
     async fn did_change(&self, params: lsp_types::DidChangeTextDocumentParams) {
-        let messaging = self.messaging.lock().await;
+        let messaging = self.messaging.read().await;
         messaging.send_did_change(params);
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        let messaging = self.messaging.lock().await;
+        let messaging = self.messaging.read().await;
         messaging.send_did_close(params);
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        let messaging = self.messaging.lock().await;
+        let messaging = self.messaging.read().await;
         messaging.send_did_change_watched_files(params);
     }
 
     async fn hover(&self, params: lsp_types::HoverParams) -> Result<Option<lsp_types::Hover>> {
-        let messaging = self.messaging.lock().await;
+        let messaging = self.messaging.read().await;
         let rx = messaging.send_hover(params);
         rx.await.unwrap()
     }
@@ -96,7 +96,7 @@ impl LanguageServer for Server {
         &self,
         params: lsp_types::GotoDefinitionParams,
     ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-        let messaging = self.messaging.lock().await;
+        let messaging = self.messaging.read().await;
         let rx = messaging.send_goto_definition(params);
         rx.await.unwrap()
     }

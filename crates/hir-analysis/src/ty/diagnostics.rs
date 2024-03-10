@@ -516,6 +516,10 @@ impl DiagnosticVoucher for TyLowerDiag {
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
     }
+
+    fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
+        Box::new(self.clone())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -613,6 +617,10 @@ impl DiagnosticVoucher for TraitLowerDiag {
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
+    }
+
+    fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
+        Box::new(self.clone())
     }
 }
 
@@ -812,6 +820,10 @@ impl DiagnosticVoucher for TraitConstraintDiag {
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
+    }
+
+    fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
+        Box::new(self.clone())
     }
 }
 
@@ -1258,5 +1270,9 @@ impl DiagnosticVoucher for ImplDiag {
         let sub_diags = self.sub_diags(db);
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
+    }
+
+    fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
+        Box::new(self.clone())
     }
 }

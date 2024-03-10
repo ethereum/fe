@@ -2,8 +2,9 @@ use crate::handlers::request::{handle_goto_definition, handle_hover};
 use crate::workspace::SyncableIngotFileContext;
 use futures::TryStreamExt;
 use lsp_types::TextDocumentItem;
+use salsa::{ParallelDatabase, Snapshot};
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::capabilities::server_capabilities;
 use crate::db::LanguageServerDatabase;
@@ -20,16 +21,16 @@ use tokio_stream::StreamExt;
 use tower_lsp::Client;
 
 pub struct Backend {
-    pub(crate) messaging: Arc<Mutex<MessageChannels>>,
-    pub(crate) client: Arc<Mutex<Client>>,
+    pub(crate) messaging: Arc<RwLock<MessageChannels>>,
+    pub(crate) client: Arc<RwLock<Client>>,
     pub(crate) db: LanguageServerDatabase,
-    pub(crate) workspace: Workspace,
+    pub(crate) workspace: Arc<RwLock<Workspace>>,
 }
 
 impl Backend {
-    pub fn new(client: Arc<Mutex<Client>>, messaging: Arc<Mutex<MessageChannels>>) -> Self {
+    pub fn new(client: Arc<RwLock<Client>>, messaging: Arc<RwLock<MessageChannels>>) -> Self {
         let db = LanguageServerDatabase::default();
-        let workspace = Workspace::default();
+        let workspace = Arc::new(RwLock::new(Workspace::default()));
 
         Self {
             messaging,
@@ -40,12 +41,12 @@ impl Backend {
     }
     pub async fn handle_streams(mut self) {
         info!("setting up streams");
-        let workspace = &mut self.workspace;
+        let workspace = self.workspace.clone();
         let db = &mut self.db;
 
         let client = self.client.clone();
         let messaging = self.messaging.clone();
-        let messaging = messaging.lock().await;
+        let messaging = messaging.read().await;
 
         let mut initialized_stream = BroadcastStream::new(messaging.subscribe_initialize()).fuse();
         let mut shutdown_stream = BroadcastStream::new(messaging.subscribe_shutdown()).fuse();
@@ -85,6 +86,8 @@ impl Backend {
                     if let Ok((initialization_params, responder)) = result {
                         info!("initializing language server!");
                         // setup workspace
+                        // let workspace = self.workspace.clone();
+                        let mut workspace = self.workspace.write().await;
                         let _ = workspace.set_workspace_root(
                             db,
                             initialization_params
@@ -114,10 +117,13 @@ impl Backend {
                 }
                 Some(Ok(doc)) = change_stream.next() => {
                     info!("change detected: {:?}", doc.uri);
-                    update_inputs(workspace, db, &doc).await;
-                    handle_diagnostics(client.clone(), workspace, db, &doc).await;
+                    update_inputs(workspace.clone(), db, &doc).await;
+                    tokio::spawn(
+                        handle_diagnostics(client.clone(), workspace.clone(), db.snapshot(), doc)
+                    );
                 }
                 Some(Ok(params)) = did_close_stream.next() => {
+                    let workspace = &mut workspace.write().await;
                     let input = workspace
                         .touch_input_from_file_path(
                             db,
@@ -142,6 +148,7 @@ impl Backend {
                             lsp_types::FileChangeType::CREATED => {
                                 // TODO: handle this more carefully!
                                 // this is inefficient, a hack for now
+                                let workspace = &mut workspace.write().await;
                                 let _ = workspace.sync(db);
                                 let input = workspace
                                     .touch_input_from_file_path(db, path.to_str().unwrap())
@@ -149,12 +156,14 @@ impl Backend {
                                 let _ = input.sync(db, None);
                             }
                             lsp_types::FileChangeType::CHANGED => {
+                                let workspace = &mut workspace.write().await;
                                 let input = workspace
                                     .touch_input_from_file_path(db, path.to_str().unwrap())
                                     .unwrap();
                                 let _ = input.sync(db, None);
                             }
                             lsp_types::FileChangeType::DELETED => {
+                                let workspace = &mut workspace.write().await;
                                 // TODO: handle this more carefully!
                                 // this is inefficient, a hack for now
                                 let _ = workspace.sync(db);
@@ -164,7 +173,7 @@ impl Backend {
                         // collect diagnostics for the file
                         if change.typ != lsp_types::FileChangeType::DELETED {
                             let text = std::fs::read_to_string(path).unwrap();
-                            update_inputs(workspace, db, &TextDocumentItem {
+                            update_inputs(workspace.clone(), db, &TextDocumentItem {
                                 uri: uri.clone(),
                                 language_id: LANGUAGE_ID.to_string(),
                                 version: 0,
@@ -172,9 +181,9 @@ impl Backend {
                             }).await;
                             handle_diagnostics(
                                 self.client.clone(),
-                                workspace,
-                                db,
-                                &TextDocumentItem {
+                                workspace.clone(),
+                                db.snapshot(),
+                                TextDocumentItem {
                                     uri: uri.clone(),
                                     language_id: LANGUAGE_ID.to_string(),
                                     version: 0,
@@ -186,11 +195,13 @@ impl Backend {
                     }
                 }
                 Some(Ok((params, responder))) = hover_stream.next() => {
-                    let response = handle_hover(db, workspace, params);
+                    let workspace = &workspace.read().await;
+                    let response = handle_hover(&db.snapshot(), workspace, params);
                     responder.respond(response);
                 }
                 Some(Ok((params, responder))) = goto_definition_stream.next() => {
-                    let response = handle_goto_definition(db, workspace, params);
+                    let workspace = &workspace.read().await;
+                    let response = handle_goto_definition(&db.snapshot(), workspace, params);
                     responder.respond(response);
                 }
             }
@@ -199,10 +210,11 @@ impl Backend {
 }
 
 async fn update_inputs(
-    workspace: &mut Workspace,
+    workspace: Arc<RwLock<Workspace>>,
     db: &mut LanguageServerDatabase,
     params: &TextDocumentItem,
 ) {
+    let workspace = &mut workspace.write().await;
     let input = workspace
         .touch_input_from_file_path(
             db,
@@ -218,20 +230,21 @@ async fn update_inputs(
 }
 
 async fn handle_diagnostics(
-    client: Arc<Mutex<Client>>,
-    workspace: &Workspace,
-    db: &LanguageServerDatabase,
-    params: &TextDocumentItem,
+    client: Arc<RwLock<Client>>,
+    workspace: Arc<RwLock<Workspace>>,
+    db: Snapshot<LanguageServerDatabase>,
+    params: TextDocumentItem,
 ) {
+    let workspace = &workspace.read().await;
     // let client = &mut client.lock().await;
-    let diagnostics = get_diagnostics(db, workspace, params.uri.clone());
+    let diagnostics = get_diagnostics(&db, workspace, params.uri.clone());
 
     let diagnostics = diagnostics
         .unwrap()
         .into_iter()
         .map(|(uri, diags)| async {
             let client = client.clone();
-            let client = client.lock().await;
+            let client = client.read().await;
             client.publish_diagnostics(uri, diags, None).await
         })
         .collect::<Vec<_>>();
