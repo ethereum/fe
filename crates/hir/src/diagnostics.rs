@@ -54,4 +54,3 @@ impl DiagnosticVoucher for Box<dyn DiagnosticVoucher> {
         self.as_ref().clone_box()
     }
 }
-

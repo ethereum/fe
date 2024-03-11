@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use common::{input::IngotKind, InputDb};
 use hir::SpannedHirDb;
-use hir_analysis::{name_resolution::{EarlyResolvedPath, NameRes}, HirAnalysisDb};
+use hir_analysis::{
+    name_resolution::{EarlyResolvedPath, NameRes},
+    HirAnalysisDb,
+};
 use log::info;
 
 use salsa::{ParallelDatabase, Snapshot};
@@ -22,7 +25,7 @@ pub async fn handle_hover(
     workspace: Arc<RwLock<Workspace>>,
     params: lsp_types::HoverParams,
 ) -> Result<Option<Hover>> {
-    let workspace = workspace.read().await;    
+    let workspace = workspace.read().await;
     info!("handling hover");
     // TODO: get more relevant information for the hover
     let file_path = &params
@@ -39,7 +42,6 @@ pub async fn handle_hover(
         .lines()
         .nth(params.text_document_position_params.position.line as usize)
         .unwrap();
-
 
     // let cursor: Cursor = params.text_document_position_params.position.into();
     let cursor: Cursor = to_offset_from_position(
@@ -72,7 +74,9 @@ pub async fn handle_hover(
         })
     };
 
-    let top_mod = workspace.top_mod_from_file_path(&db.snapshot(), file_path).unwrap();
+    let top_mod = workspace
+        .top_mod_from_file_path(&db.snapshot(), file_path)
+        .unwrap();
     let early_resolution = goto_enclosing_path(&db, top_mod, cursor);
 
     let goto_info = match early_resolution {
@@ -119,7 +123,9 @@ pub async fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
-    let top_mod = workspace.top_mod_from_file_path(&db.snapshot(), file_path).unwrap();
+    let top_mod = workspace
+        .top_mod_from_file_path(&db.snapshot(), file_path)
+        .unwrap();
     let goto_info = goto_enclosing_path(&db, top_mod, cursor);
 
     // Convert the goto info to a Location

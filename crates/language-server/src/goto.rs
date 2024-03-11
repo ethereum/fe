@@ -82,7 +82,11 @@ pub fn goto_enclosing_path(
     let (path_id, scope_id) = goto_starting_path;
 
     // Resolve path.
-    let resolved_path = hir_analysis::name_resolution::resolve_path_early(db.as_hir_analysis_db(), path_id, scope_id);
+    let resolved_path = hir_analysis::name_resolution::resolve_path_early(
+        db.as_hir_analysis_db(),
+        path_id,
+        scope_id,
+    );
 
     Some(resolved_path)
 }
@@ -194,7 +198,9 @@ mod tests {
     fn test_goto_enclosing_path(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
-        let input = workspace.touch_input_from_file_path(db, fixture.path()).unwrap();
+        let input = workspace
+            .touch_input_from_file_path(db, fixture.path())
+            .unwrap();
         input.set_text(db).to((*fixture.content()).to_string());
         let top_mod = workspace
             .top_mod_from_file_path(&db.snapshot(), fixture.path())

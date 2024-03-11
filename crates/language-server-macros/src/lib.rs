@@ -10,7 +10,7 @@ use syn::{parse_macro_input, FnArg, ImplItem, ItemImpl, ReturnType};
 /// a struct full of tokio mpsc channels that can be used to signal the server to handle
 /// defined requests and notifications.
 #[proc_macro_attribute]
-pub fn message_channels(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn message_channels(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // let attr = parse_macro_input!(attr as Option<syn::Ident>);
     let channel_senders_struct_name = format_ident!(
         "MessageSenders",
@@ -45,7 +45,7 @@ struct MessageTypeChannel<'a> {
     tx_name: syn::Ident,
     stream_name: syn::Ident,
     sender_fn_name: syn::Ident,
-    subscribe_fn_name: syn::Ident,
+    // subscribe_fn_name: syn::Ident,
     rx_name: syn::Ident,
     params: Option<&'a syn::Type>,
     result: Option<&'a syn::Type>,
@@ -74,7 +74,6 @@ fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<MessageTypeChannel> {
         let tx_name = format_ident!("{}_tx", handler_name);
         let stream_name = format_ident!("{}_stream", handler_name);
         let sender_fn_name = format_ident!("send_{}", handler_name);
-        let subscribe_fn_name = format_ident!("subscribe_{}", handler_name);
 
         let rx_name = format_ident!("{}_rx", handler_name);
 
@@ -83,7 +82,6 @@ fn parse_method_calls(lang_server_trait: &ItemImpl) -> Vec<MessageTypeChannel> {
             stream_name,
             rx_name,
             sender_fn_name,
-            subscribe_fn_name,
             params,
             result,
         });
@@ -107,7 +105,6 @@ fn gen_channel_structs(
         .iter()
         .map(|channel| {
             let tx = &channel.tx_name;
-            // let rx = &channel.rx_name;
             let params = channel.params;
             let result = channel.result;
 
@@ -131,8 +128,6 @@ fn gen_channel_structs(
     let channel_receivers_declarations: proc_macro2::TokenStream = channels
         .iter()
         .map(|channel| {
-            // let tx = &channel.tx_name;
-            let rx = &channel.rx_name;
             let stream_name = &channel.stream_name;
             let params = channel.params;
             let result = channel.result;
@@ -142,25 +137,12 @@ fn gen_channel_structs(
                 Some(params) => params,
                 None => &unit_type,
             };
-
-            // let sender_type = match result {
-            //     Some(result) => quote! { tokio::sync::mpsc::Sender<(#params, tokio::sync::oneshot::Sender<#result>)> },
-            //     None => quote! { tokio::sync::mpsc::Sender<#params> },
-            // };
-
-            let receiver_type = match result {
-                Some(result) => quote! { tokio::sync::mpsc::Receiver<(#params, tokio::sync::oneshot::Sender<#result>)> },
-                None => quote! { tokio::sync::mpsc::Receiver<#params> },
-            };
-
             let stream_type = match result {
                 Some(result) => quote! { tokio_stream::wrappers::ReceiverStream<(#params, tokio::sync::oneshot::Sender<#result>)> },
                 None => quote! { tokio_stream::wrappers::ReceiverStream<#params> },
             };
 
             quote! {
-                // pub #tx: #sender_type,
-                // pub #rx: #receiver_type,
                 pub #stream_name: #stream_type,
             }
         })

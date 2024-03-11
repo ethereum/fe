@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use log::{error, info};
 use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
@@ -55,7 +53,7 @@ impl LanguageServer for Server {
                     info!("registered watchers");
                 }
                 initialize_result
-            },
+            }
             Err(e) => {
                 error!("Failed to initialize: {}", e);
                 return Err(tower_lsp::jsonrpc::Error::internal_error());

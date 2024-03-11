@@ -6,17 +6,13 @@ mod globals;
 mod goto;
 mod language_server;
 mod logger;
-mod oneshot_responder;
 mod util;
 mod workspace;
-
-use std::sync::Arc;
 
 use backend::Backend;
 use db::Jar;
 
 use language_server::Server;
-use tokio::sync::RwLock;
 
 use crate::logger::{handle_log_messages, setup_logger};
 
