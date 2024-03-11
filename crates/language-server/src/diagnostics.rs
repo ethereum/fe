@@ -6,7 +6,8 @@ use codespan_reporting as cs;
 use cs::{diagnostic as cs_diag, files as cs_files};
 
 use common::{
-    diagnostics::{LabelStyle, Severity}, InputDb, InputFile
+    diagnostics::{LabelStyle, Severity},
+    InputDb, InputFile,
 };
 use fxhash::FxHashMap;
 use hir::diagnostics::DiagnosticVoucher;
@@ -133,7 +134,7 @@ fn run_diagnostics(
     path: &str,
 ) -> Vec<common::diagnostics::CompleteDiagnostic> {
     let file_path = path;
-    let top_mod = workspace.top_mod_from_file_path(&db, file_path).unwrap();
+    let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
     let diags = &db.analyze_top_mod(top_mod);
     db.finalize_diags(diags)
 }

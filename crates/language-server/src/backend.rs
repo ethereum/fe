@@ -1,10 +1,10 @@
 use crate::handlers::request::{handle_goto_definition, handle_hover};
 use crate::workspace::SyncableIngotFileContext;
-use futures::TryStreamExt;
+
 use lsp_types::TextDocumentItem;
 use salsa::{ParallelDatabase, Snapshot};
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 
 use crate::capabilities::server_capabilities;
 use crate::db::LanguageServerDatabase;
@@ -16,7 +16,6 @@ use crate::workspace::{IngotFileContext, SyncableInputFile, Workspace};
 
 use log::info;
 
-use tokio_stream::wrappers::{BroadcastStream, ReceiverStream};
 use tokio_stream::StreamExt;
 use tower_lsp::Client;
 
@@ -69,48 +68,44 @@ impl Backend {
         )
         .fuse();
         let mut did_close_stream = messaging.did_close_stream.fuse();
-        let mut did_change_watched_files_stream =
-            messaging.did_change_watched_files_stream.fuse();
+        let mut did_change_watched_files_stream = messaging.did_change_watched_files_stream.fuse();
 
         let mut hover_stream = messaging.hover_stream.fuse();
-        let mut goto_definition_stream =
-            messaging.goto_definition_stream.fuse();
+        let mut goto_definition_stream = messaging.goto_definition_stream.fuse();
 
         info!("streams set up, looping on them now");
         loop {
             tokio::select! {
                 Some(result) = initialized_stream.next() => {
-                    if let (initialization_params, responder) = result {
-                        info!("initializing language server!");
-                        // setup workspace
-                        // let workspace = self.workspace.clone();
-                        let mut workspace = self.workspace.write().await;
-                        let _ = workspace.set_workspace_root(
-                            db,
-                            initialization_params
-                                .root_uri
-                                .unwrap()
-                                .to_file_path()
-                                .ok()
-                                .unwrap(),
-                        );
+                    let (initialization_params, responder) = result;
+                    info!("initializing language server!");
+                    // setup workspace
+                    // let workspace = self.workspace.clone();
+                    let mut workspace = self.workspace.write().await;
+                    let _ = workspace.set_workspace_root(
+                        db,
+                        initialization_params
+                            .root_uri
+                            .unwrap()
+                            .to_file_path()
+                            .ok()
+                            .unwrap(),
+                    );
 
-                        let capabilities = server_capabilities();
-                        let initialize_result = lsp_types::InitializeResult {
-                            capabilities,
-                            server_info: Some(lsp_types::ServerInfo {
-                                name: String::from("fe-language-server"),
-                                version: Some(String::from(env!("CARGO_PKG_VERSION"))),
-                            }),
-                        };
-                        responder.send(Ok(initialize_result));
-                    }
+                    let capabilities = server_capabilities();
+                    let initialize_result = lsp_types::InitializeResult {
+                        capabilities,
+                        server_info: Some(lsp_types::ServerInfo {
+                            name: String::from("fe-language-server"),
+                            version: Some(String::from(env!("CARGO_PKG_VERSION"))),
+                        }),
+                    };
+                    let _ = responder.send(Ok(initialize_result));
                 }
                 Some(result) = shutdown_stream.next() => {
-                    if let (_, responder) = result {
-                        info!("shutting down language server");
-                        responder.send(Ok(()));
-                    }
+                    let (_, responder) = result;
+                    info!("shutting down language server");
+                    let _ = responder.send(Ok(()));
                 }
                 Some(doc) = change_stream.next() => {
                     info!("change detected: {:?}", doc.uri);
@@ -180,7 +175,7 @@ impl Backend {
                                 version: 0,
                                 text: text.clone(),
                             }).await;
-                            
+
                             let client = client.clone();
                             let workspace = workspace.clone();
                             let db = db.snapshot();
@@ -208,7 +203,7 @@ impl Backend {
                             Ok(None)
                         }
                     };
-                    responder.send(response);
+                    let _ = responder.send(response);
                 }
                 Some((params, responder)) = goto_definition_stream.next() => {
                     let db = db.snapshot();
@@ -220,7 +215,7 @@ impl Backend {
                             None
                         }
                     };
-                    responder.send(Ok(response));
+                    let _ = responder.send(Ok(response));
                 }
             }
         }
@@ -260,11 +255,8 @@ async fn handle_diagnostics(
     let diagnostics = diagnostics
         .unwrap()
         .into_iter()
-        .map(|(uri, diags)| async {
-            client.publish_diagnostics(uri, diags, None).await
-        })
+        .map(|(uri, diags)| async { client.publish_diagnostics(uri, diags, None).await })
         .collect::<Vec<_>>();
-
 
     futures::future::join_all(diagnostics).await;
 }

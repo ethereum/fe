@@ -40,17 +40,12 @@ pub struct LanguageServerDatabase {
 }
 
 impl LanguageServerDatabase {
-    pub fn analyze_top_mod(&self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>>
-    {
+    pub fn analyze_top_mod(&self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
         let mut pass_manager = initialize_analysis_pass(self);
         pass_manager.run_on_module(top_mod)
     }
 
-    pub fn find_enclosing_item(
-        &self,
-        top_mod: TopLevelMod,
-        cursor: Cursor,
-    ) -> Option<ItemKind> {
+    pub fn find_enclosing_item(&self, top_mod: TopLevelMod, cursor: Cursor) -> Option<ItemKind> {
         let items = top_mod
             .scope_graph(self.as_hir_db())
             .items_dfs(self.as_hir_db());
@@ -76,7 +71,10 @@ impl LanguageServerDatabase {
         smallest_enclosing_item
     }
 
-    pub fn finalize_diags(&self, diags: &Vec<Box<dyn DiagnosticVoucher>>) -> Vec<CompleteDiagnostic> {
+    pub fn finalize_diags(
+        &self,
+        diags: &Vec<Box<dyn DiagnosticVoucher>>,
+    ) -> Vec<CompleteDiagnostic> {
         let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
             std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),

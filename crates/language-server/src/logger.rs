@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 use lsp_types::MessageType;
 use tower_lsp::Client;
