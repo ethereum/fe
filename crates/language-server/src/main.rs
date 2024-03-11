@@ -1,4 +1,5 @@
 mod backend;
+mod stream_buffer_until;
 mod capabilities;
 mod db;
 mod diagnostics;
@@ -8,7 +9,6 @@ mod language_server;
 mod logger;
 mod util;
 mod workspace;
-mod buffer_release_stream;
 
 use backend::Backend;
 use db::Jar;

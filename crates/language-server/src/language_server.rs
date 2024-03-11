@@ -46,18 +46,22 @@ impl LanguageServer for Server {
         info!("awaiting initialization result");
         match rx.await {
             Ok(initialize_result) => {
-                // register file watchers
-                if let Err(e) = self.register_watchers().await {
-                    error!("Failed to register file watchers: {}", e);
-                } else {
-                    info!("registered watchers");
-                }
                 initialize_result
             }
             Err(e) => {
                 error!("Failed to initialize: {}", e);
                 return Err(tower_lsp::jsonrpc::Error::internal_error());
             }
+        }
+    }
+
+    async fn initialized(&self, _params: lsp_types::InitializedParams) {
+        info!("initialized... registering file watchers");
+        // register file watchers
+        if let Err(e) = self.register_watchers().await {
+            error!("Failed to register file watchers: {}", e);
+        } else {
+            info!("registered watchers");
         }
     }
 
