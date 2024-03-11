@@ -1,10 +1,15 @@
 use crate::handlers::request::{handle_goto_definition, handle_hover};
+use crate::stream_buffer_until::BufferUntilStreamExt as _;
 use crate::workspace::SyncableIngotFileContext;
 
+use fork_stream::StreamExt as _;
 use futures::StreamExt;
+use futures_concurrency::prelude::*;
 use lsp_types::TextDocumentItem;
 use salsa::{ParallelDatabase, Snapshot};
+use stream_operators::StreamOps;
 use tokio_stream::wrappers::ReceiverStream;
+
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -18,11 +23,9 @@ use crate::workspace::{IngotFileContext, SyncableInputFile, Workspace};
 
 use log::info;
 
-use fork_stream::StreamExt as _;
 // use tokio_stream::StreamExt;
-use stream_operators::StreamOps;
+
 use tower_lsp::Client;
-use debounced::debounced;
 
 pub struct Backend {
     pub(crate) messaging: MessageReceivers,
@@ -55,9 +58,68 @@ impl Backend {
 
         let mut initialized_stream = messaging.initialize_stream.fuse();
         let mut shutdown_stream = messaging.shutdown_stream.fuse();
+        let mut did_close_stream = messaging.did_close_stream.fuse();
+        let mut did_change_watched_files_stream = messaging.did_change_watched_files_stream.fork();
+
+        let mut need_filesystem_sync = did_change_watched_files_stream
+            .clone()
+            .debounce_time(std::time::Duration::from_millis(10));
+
+        // let need_filesystem_sync = flat_did_change_watched_files.filter(|change| {
+        //     let change_type = change.typ.clone();
+        //     async move {
+        //         matches!(
+        //             change_type,
+        //             lsp_types::FileChangeType::CREATED | lsp_types::FileChangeType::DELETED
+        //         )
+        //     }
+        // });
+
+        let (filesystem_recently_synced_tx, filesystem_recently_synced_rx) =
+            tokio::sync::mpsc::channel::<()>(1);
+        let filesystem_recently_synced_stream = ReceiverStream::new(filesystem_recently_synced_rx);
+
+        let flat_did_change_watched_files =
+            did_change_watched_files_stream.map(|params| futures::stream::iter(params.changes)).flatten().fork();
+
+        let did_change_watched_file_stream = flat_did_change_watched_files.clone().filter(|change| {
+            let change_type = change.typ.clone();
+            Box::pin(async move {
+                matches!(change_type, lsp_types::FileChangeType::CHANGED)
+            })
+        });
+
+        let did_create_watched_file_stream = flat_did_change_watched_files.clone().filter(|change| {
+            let change_type = change.typ.clone();
+            Box::pin(async move {
+                matches!(change_type, lsp_types::FileChangeType::CREATED)
+            })
+        });
         let did_open_stream = messaging.did_open_stream.fuse();
         let did_change_stream = messaging.did_change_stream.fuse();
-        let mut change_stream = tokio_stream::StreamExt::merge(
+        let change_stream = (
+            did_change_watched_file_stream.map(|change| {
+                let uri = change.uri;
+                let path = uri.to_file_path().unwrap();
+                let text = std::fs::read_to_string(path).unwrap();
+                TextDocumentItem {
+                    uri: uri.clone(),
+                    language_id: LANGUAGE_ID.to_string(),
+                    version: 0,
+                    text,
+                }
+            }),
+            did_create_watched_file_stream.map(|change| {
+                let uri = change.uri;
+                let path = uri.to_file_path().unwrap();
+                let text = std::fs::read_to_string(path).unwrap();
+                TextDocumentItem {
+                    uri: uri.clone(),
+                    language_id: LANGUAGE_ID.to_string(),
+                    version: 0,
+                    text,
+                }
+            }),
             did_open_stream.map(|params| TextDocumentItem {
                 uri: params.text_document.uri,
                 language_id: LANGUAGE_ID.to_string(),
@@ -70,26 +132,11 @@ impl Backend {
                 version: params.text_document.version,
                 text: params.content_changes[0].text.clone(),
             }),
-        )
+        ).merge()
         .fuse();
-        let mut did_close_stream = messaging.did_close_stream.fuse();
-        let mut did_change_watched_files_stream = messaging.did_change_watched_files_stream.fuse();
-        
-        // let flat_did_change_watched_files =
-        //     did_change_watched_files_stream.flat_map(|params| tokio_stream::iter(params.changes));
-        // let need_filesystem_sync = flat_did_change_watched_files.fork().filter(|change| {
-        //     let change_type = change.typ.clone();
-        //     async move {
-        //         matches!(
-        //             change_type,
-        //             lsp_types::FileChangeType::CREATED | lsp_types::FileChangeType::DELETED
-        //         )
-        //     }
-        // });
+        let mut change_stream = change_stream.buffer_until(filesystem_recently_synced_stream);
 
-        // let (filesystem_synced_tx, filesystem_synced_rx) = tokio::sync::mpsc::channel::<()>(1);
-        // let filesystem_just_synced_stream = ReceiverStream::new(filesystem_synced_rx);
-        // let need_filesystem_sync_debounced = need_filesystem_sync.debounce_time(std::time::Duration::from_millis(50));
+        // let need_filesystem_sync_debounced = need_filesystem_sync; //.debounce_time(std::time::Duration::from_millis(10));
 
         let mut hover_stream = messaging.hover_stream.fuse();
         let mut goto_definition_stream = messaging.goto_definition_stream.fuse();
@@ -128,6 +175,15 @@ impl Backend {
                     info!("shutting down language server");
                     let _ = responder.send(Ok(()));
                 }
+                Some(_) = need_filesystem_sync.next() => {
+                    let workspace = &mut workspace.write().await;
+                    let _ = workspace.sync(db);
+                    filesystem_recently_synced_tx.send(()).await.unwrap();
+                }
+                // Some(_) = need_filesystem_sync_debounced.next() => {
+                //     info!("filesystem recently synced");
+                //     // let _ = filesystem_recently_synced_tx.send(());
+                // }
                 Some(doc) = change_stream.next() => {
                     info!("change detected: {:?}", doc.uri);
                     update_inputs(workspace.clone(), db, doc.clone()).await;
@@ -155,65 +211,65 @@ impl Backend {
                         .unwrap();
                     let _ = input.sync(db, None);
                 }
-                Some(params) = did_change_watched_files_stream.next() => {
-                    let changes = params.changes;
-                    for change in changes {
-                        let uri = change.uri;
-                        let path = uri.to_file_path().unwrap();
+                // Some(params) = did_change_watched_files_stream.next() => {
+                //     let changes = params.changes;
+                //     for change in changes {
+                //         let uri = change.uri;
+                //         let path = uri.to_file_path().unwrap();
 
-                        match change.typ {
-                            lsp_types::FileChangeType::CREATED => {
-                                // TODO: handle this more carefully!
-                                // this is inefficient, a hack for now
-                                let workspace = &mut workspace.write().await;
-                                let _ = workspace.sync(db);
-                                let input = workspace
-                                    .touch_input_from_file_path(db, path.to_str().unwrap())
-                                    .unwrap();
-                                let _ = input.sync(db, None);
-                            }
-                            lsp_types::FileChangeType::CHANGED => {
-                                let workspace = &mut workspace.write().await;
-                                let input = workspace
-                                    .touch_input_from_file_path(db, path.to_str().unwrap())
-                                    .unwrap();
-                                let _ = input.sync(db, None);
-                            }
-                            lsp_types::FileChangeType::DELETED => {
-                                let workspace = &mut workspace.write().await;
-                                // TODO: handle this more carefully!
-                                // this is inefficient, a hack for now
-                                let _ = workspace.sync(db);
-                            }
-                            _ => {}
-                        }
-                        // collect diagnostics for the file
-                        if change.typ != lsp_types::FileChangeType::DELETED {
-                            let text = std::fs::read_to_string(path).unwrap();
-                            update_inputs(workspace.clone(), db, TextDocumentItem {
-                                uri: uri.clone(),
-                                language_id: LANGUAGE_ID.to_string(),
-                                version: 0,
-                                text: text.clone(),
-                            }).await;
+                //         match change.typ {
+                //             lsp_types::FileChangeType::CREATED => {
+                //                 // TODO: handle this more carefully!
+                //                 // this is inefficient, a hack for now
+                //                 let workspace = &mut workspace.write().await;
+                //                 let _ = workspace.sync(db);
+                //                 let input = workspace
+                //                     .touch_input_from_file_path(db, path.to_str().unwrap())
+                //                     .unwrap();
+                //                 let _ = input.sync(db, None);
+                //             }
+                //             lsp_types::FileChangeType::CHANGED => {
+                //                 let workspace = &mut workspace.write().await;
+                //                 let input = workspace
+                //                     .touch_input_from_file_path(db, path.to_str().unwrap())
+                //                     .unwrap();
+                //                 let _ = input.sync(db, None);
+                //             }
+                //             lsp_types::FileChangeType::DELETED => {
+                //                 let workspace = &mut workspace.write().await;
+                //                 // TODO: handle this more carefully!
+                //                 // this is inefficient, a hack for now
+                //                 let _ = workspace.sync(db);
+                //             }
+                //             _ => {}
+                //         }
+                //         // collect diagnostics for the file
+                //         if change.typ != lsp_types::FileChangeType::DELETED {
+                //             let text = std::fs::read_to_string(path).unwrap();
+                //             update_inputs(workspace.clone(), db, TextDocumentItem {
+                //                 uri: uri.clone(),
+                //                 language_id: LANGUAGE_ID.to_string(),
+                //                 version: 0,
+                //                 text: text.clone(),
+                //             }).await;
 
-                            let client = client.clone();
-                            let workspace = workspace.clone();
-                            let db = db.snapshot();
+                //             let client = client.clone();
+                //             let workspace = workspace.clone();
+                //             let db = db.snapshot();
 
-                            tokio::spawn(
-                                async move {
-                                    handle_diagnostics(
-                                        client,
-                                        workspace,
-                                        db,
-                                        uri.clone(),
-                                    ).await
-                                }
-                            );
-                        }
-                    }
-                }
+                //             tokio::spawn(
+                //                 async move {
+                //                     handle_diagnostics(
+                //                         client,
+                //                         workspace,
+                //                         db,
+                //                         uri.clone(),
+                //                     ).await
+                //                 }
+                //             );
+                //         }
+                //     }
+                // }
                 Some((params, responder)) = hover_stream.next() => {
                     let db = db.snapshot();
                     let workspace = workspace.clone();
