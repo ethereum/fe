@@ -46,12 +46,10 @@ pub fn setup_logger(
 
 pub async fn handle_log_messages(
     mut rx: tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>,
-    client: Arc<tokio::sync::RwLock<Client>>,
+    client: Client,
 ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
     loop {
         let (message, message_type) = rx.recv().await.unwrap();
-        // let message_type = match
-        let client = client.read().await;
         client.log_message(message_type, message).await;
     }
 }

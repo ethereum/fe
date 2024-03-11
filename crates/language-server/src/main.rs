@@ -10,10 +10,13 @@ mod oneshot_responder;
 mod util;
 mod workspace;
 
+use std::sync::Arc;
+
 use backend::Backend;
 use db::Jar;
 
 use language_server::Server;
+use tokio::sync::RwLock;
 
 use crate::logger::{handle_log_messages, setup_logger};
 
@@ -26,12 +29,14 @@ async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let (service, socket) = tower_lsp::LspService::build(Server::new).finish();
+    // let message_channels = language_server::MessageChannels::new();
+    let (message_senders, message_receivers) = language_server::setup_message_channels();
+    let (service, socket) =
+        tower_lsp::LspService::build(|client| Server::new(client, message_senders)).finish();
     let server = service.inner();
 
     let client = server.client.clone();
-    let messaging = server.messaging.clone();
-    let backend = Backend::new(client, messaging);
+    let backend = Backend::new(client, message_receivers);
 
     let rx = setup_logger(log::Level::Info).unwrap();
 
