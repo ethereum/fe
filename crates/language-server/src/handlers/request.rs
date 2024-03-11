@@ -1,4 +1,4 @@
-use std::io::BufRead;
+use std::sync::Arc;
 
 use common::{input::IngotKind, InputDb};
 use hir::SpannedHirDb;
@@ -6,6 +6,7 @@ use hir_analysis::{name_resolution::{EarlyResolvedPath, NameRes}, HirAnalysisDb}
 use log::info;
 
 use salsa::{ParallelDatabase, Snapshot};
+use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 
 use crate::{
@@ -16,11 +17,12 @@ use crate::{
 };
 use lsp_server::ResponseError;
 
-pub fn handle_hover(
-    db: &Snapshot<LanguageServerDatabase>,
-    workspace: &Workspace,
+pub async fn handle_hover(
+    db: Snapshot<LanguageServerDatabase>,
+    workspace: Arc<RwLock<Workspace>>,
     params: lsp_types::HoverParams,
 ) -> Result<Option<Hover>> {
+    let workspace = workspace.read().await;    
     info!("handling hover");
     // TODO: get more relevant information for the hover
     let file_path = &params
@@ -29,7 +31,7 @@ pub fn handle_hover(
         .uri
         .path();
     info!("getting hover info for file_path: {:?}", file_path);
-    let input = workspace.get_input_from_file_path(db, file_path);
+    let input = workspace.get_input_from_file_path(&db, file_path);
     let ingot = input.map(|input| input.ingot(db.as_input_db()));
 
     let file_text = input.unwrap().text(db.as_input_db());
@@ -71,7 +73,7 @@ pub fn handle_hover(
     };
 
     let top_mod = workspace.top_mod_from_file_path(&db.snapshot(), file_path).unwrap();
-    let early_resolution = goto_enclosing_path(db, top_mod, cursor);
+    let early_resolution = goto_enclosing_path(&db, top_mod, cursor);
 
     let goto_info = match early_resolution {
         Some(EarlyResolvedPath::Full(bucket)) => bucket
@@ -104,11 +106,12 @@ pub fn handle_hover(
 
 use lsp_types::{GotoDefinitionParams, GotoDefinitionResponse, Hover};
 
-pub fn handle_goto_definition(
-    db: &Snapshot<LanguageServerDatabase>,
-    workspace: &Workspace,
+pub async fn handle_goto_definition(
+    db: Snapshot<LanguageServerDatabase>,
+    workspace: Arc<RwLock<Workspace>>,
     params: GotoDefinitionParams,
 ) -> Result<Option<GotoDefinitionResponse>> {
+    let workspace = workspace.read().await;
     // Convert the position to an offset in the file
     let params = params.text_document_position_params;
     let file_text = std::fs::read_to_string(params.text_document.uri.path()).ok();
@@ -117,7 +120,7 @@ pub fn handle_goto_definition(
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
     let top_mod = workspace.top_mod_from_file_path(&db.snapshot(), file_path).unwrap();
-    let goto_info = goto_enclosing_path(db, top_mod, cursor);
+    let goto_info = goto_enclosing_path(&db, top_mod, cursor);
 
     // Convert the goto info to a Location
     let scopes = match goto_info {
