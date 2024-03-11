@@ -8,6 +8,7 @@ mod language_server;
 mod logger;
 mod util;
 mod workspace;
+mod buffer_release_stream;
 
 use backend::Backend;
 use db::Jar;

@@ -1,8 +1,10 @@
 use crate::handlers::request::{handle_goto_definition, handle_hover};
 use crate::workspace::SyncableIngotFileContext;
 
+use futures::StreamExt;
 use lsp_types::TextDocumentItem;
 use salsa::{ParallelDatabase, Snapshot};
+use tokio_stream::wrappers::ReceiverStream;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -16,8 +18,11 @@ use crate::workspace::{IngotFileContext, SyncableInputFile, Workspace};
 
 use log::info;
 
-use tokio_stream::StreamExt;
+use fork_stream::StreamExt as _;
+// use tokio_stream::StreamExt;
+use stream_operators::StreamOps;
 use tower_lsp::Client;
+use debounced::debounced;
 
 pub struct Backend {
     pub(crate) messaging: MessageReceivers,
@@ -69,6 +74,22 @@ impl Backend {
         .fuse();
         let mut did_close_stream = messaging.did_close_stream.fuse();
         let mut did_change_watched_files_stream = messaging.did_change_watched_files_stream.fuse();
+        
+        // let flat_did_change_watched_files =
+        //     did_change_watched_files_stream.flat_map(|params| tokio_stream::iter(params.changes));
+        // let need_filesystem_sync = flat_did_change_watched_files.fork().filter(|change| {
+        //     let change_type = change.typ.clone();
+        //     async move {
+        //         matches!(
+        //             change_type,
+        //             lsp_types::FileChangeType::CREATED | lsp_types::FileChangeType::DELETED
+        //         )
+        //     }
+        // });
+
+        // let (filesystem_synced_tx, filesystem_synced_rx) = tokio::sync::mpsc::channel::<()>(1);
+        // let filesystem_just_synced_stream = ReceiverStream::new(filesystem_synced_rx);
+        // let need_filesystem_sync_debounced = need_filesystem_sync.debounce_time(std::time::Duration::from_millis(50));
 
         let mut hover_stream = messaging.hover_stream.fuse();
         let mut goto_definition_stream = messaging.goto_definition_stream.fuse();
