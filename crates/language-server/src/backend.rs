@@ -117,9 +117,13 @@ impl Backend {
                 }
                 Some(Ok(doc)) = change_stream.next() => {
                     info!("change detected: {:?}", doc.uri);
-                    update_inputs(workspace.clone(), db, &doc).await;
+                    update_inputs(workspace.clone(), db, doc.clone()).await;
+
+                    let db = db.snapshot();
+                    let client = client.clone();
+                    let workspace = workspace.clone();
                     tokio::spawn(
-                        handle_diagnostics(client.clone(), workspace.clone(), db.snapshot(), doc)
+                        async move { handle_diagnostics(client, workspace, db, doc.uri).await }
                     );
                 }
                 Some(Ok(params)) = did_close_stream.next() => {
@@ -173,36 +177,53 @@ impl Backend {
                         // collect diagnostics for the file
                         if change.typ != lsp_types::FileChangeType::DELETED {
                             let text = std::fs::read_to_string(path).unwrap();
-                            update_inputs(workspace.clone(), db, &TextDocumentItem {
+                            update_inputs(workspace.clone(), db, TextDocumentItem {
                                 uri: uri.clone(),
                                 language_id: LANGUAGE_ID.to_string(),
                                 version: 0,
                                 text: text.clone(),
                             }).await;
-                            handle_diagnostics(
-                                self.client.clone(),
-                                workspace.clone(),
-                                db.snapshot(),
-                                TextDocumentItem {
-                                    uri: uri.clone(),
-                                    language_id: LANGUAGE_ID.to_string(),
-                                    version: 0,
-                                    text: text,
-                                },
-                            )
-                            .await;
+                            
+                            let client = client.clone();
+                            let workspace = workspace.clone();
+                            let db = db.snapshot();
+
+                            tokio::spawn(
+                                async move {
+                                    handle_diagnostics(
+                                        client,
+                                        workspace,
+                                        db,
+                                        uri.clone(),
+                                    ).await
+                                }
+                            );
                         }
                     }
                 }
                 Some(Ok((params, responder))) = hover_stream.next() => {
-                    let workspace = &workspace.read().await;
-                    let response = handle_hover(&db.snapshot(), workspace, params);
+                    let db = db.snapshot();
+                    let workspace = workspace.clone();
+                    let response = match tokio::spawn(handle_hover(db, workspace, params)).await {
+                        Ok(response) => response,
+                        Err(e) => {
+                            eprintln!("Error handling hover: {:?}", e);
+                            Ok(None)
+                        }
+                    };
                     responder.respond(response);
                 }
                 Some(Ok((params, responder))) = goto_definition_stream.next() => {
-                    let workspace = &workspace.read().await;
-                    let response = handle_goto_definition(&db.snapshot(), workspace, params);
-                    responder.respond(response);
+                    let db = db.snapshot();
+                    let workspace = workspace.clone();
+                    let response = match handle_goto_definition(db, workspace, params).await {
+                        Ok(response) => response,
+                        Err(e) => {
+                            eprintln!("Error handling goto definition: {:?}", e);
+                            None
+                        }
+                    };
+                    responder.respond(Ok(response));
                 }
             }
         }
@@ -212,7 +233,7 @@ impl Backend {
 async fn update_inputs(
     workspace: Arc<RwLock<Workspace>>,
     db: &mut LanguageServerDatabase,
-    params: &TextDocumentItem,
+    params: TextDocumentItem,
 ) {
     let workspace = &mut workspace.write().await;
     let input = workspace
@@ -233,11 +254,11 @@ async fn handle_diagnostics(
     client: Arc<RwLock<Client>>,
     workspace: Arc<RwLock<Workspace>>,
     db: Snapshot<LanguageServerDatabase>,
-    params: TextDocumentItem,
+    url: lsp_types::Url,
 ) {
     let workspace = &workspace.read().await;
     // let client = &mut client.lock().await;
-    let diagnostics = get_diagnostics(&db, workspace, params.uri.clone());
+    let diagnostics = get_diagnostics(&db, workspace, url.clone());
 
     let diagnostics = diagnostics
         .unwrap()
