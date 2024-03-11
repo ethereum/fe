@@ -7,18 +7,15 @@ use lsp_types::{
     Registration,
 };
 
-use crate::oneshot_responder::OneshotResponder;
-
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
 pub(crate) struct Server {
-    pub(crate) messaging: Arc<tokio::sync::RwLock<MessageChannels>>,
-    pub(crate) client: Arc<tokio::sync::RwLock<Client>>,
+    pub(crate) messaging: MessageSenders,
+    pub(crate) client: Client,
 }
 
 impl Server {
     pub(crate) async fn register_watchers(&self) -> Result<()> {
-        let client = self.client.read().await;
         let registration = Registration {
             id: String::from("watch-fe-files"),
             method: String::from("workspace/didChangeWatchedFiles"),
@@ -32,13 +29,10 @@ impl Server {
                 .unwrap(),
             ),
         };
-        client.register_capability(vec![registration]).await
+        self.client.register_capability(vec![registration]).await
     }
 
-    pub(crate) fn new(client: Client) -> Self {
-        let messaging = Arc::new(tokio::sync::RwLock::new(MessageChannels::new()));
-        let client = Arc::new(tokio::sync::RwLock::new(client));
-
+    pub(crate) fn new(client: Client, messaging: MessageSenders) -> Self {
         Self { messaging, client }
     }
 }
@@ -48,18 +42,25 @@ impl Server {
 impl LanguageServer for Server {
     async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
         // forward the initialize request to the messaging system
-        let messaging = self.messaging.read().await;
-        let rx = messaging.send_initialize(initialize_params);
+        // let messaging = self.messaging.read().await;
+        let rx = self.messaging.send_initialize(initialize_params).await;
 
         info!("awaiting initialization result");
-        let initialize_result = rx.await.unwrap();
-
-        // register file watchers
-        let _ = self.register_watchers().await;
-        info!("registered watchers");
-
-        info!("received initialization result");
-        initialize_result
+        match rx.await {
+            Ok(initialize_result) => {
+                // register file watchers
+                if let Err(e) = self.register_watchers().await {
+                    error!("Failed to register file watchers: {}", e);
+                } else {
+                    info!("registered watchers");
+                }
+                initialize_result
+            },
+            Err(e) => {
+                error!("Failed to initialize: {}", e);
+                return Err(tower_lsp::jsonrpc::Error::internal_error());
+            }
+        }
     }
 
     async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
@@ -67,28 +68,23 @@ impl LanguageServer for Server {
     }
 
     async fn did_open(&self, params: lsp_types::DidOpenTextDocumentParams) {
-        let messaging = self.messaging.read().await;
-        messaging.send_did_open(params);
+        self.messaging.send_did_open(params).await;
     }
 
     async fn did_change(&self, params: lsp_types::DidChangeTextDocumentParams) {
-        let messaging = self.messaging.read().await;
-        messaging.send_did_change(params);
+        self.messaging.send_did_change(params).await;
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        let messaging = self.messaging.read().await;
-        messaging.send_did_close(params);
+        self.messaging.send_did_close(params).await;
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        let messaging = self.messaging.read().await;
-        messaging.send_did_change_watched_files(params);
+        self.messaging.send_did_change_watched_files(params).await;
     }
 
     async fn hover(&self, params: lsp_types::HoverParams) -> Result<Option<lsp_types::Hover>> {
-        let messaging = self.messaging.read().await;
-        let rx = messaging.send_hover(params);
+        let rx = self.messaging.send_hover(params).await;
         rx.await.unwrap()
     }
 
@@ -96,8 +92,8 @@ impl LanguageServer for Server {
         &self,
         params: lsp_types::GotoDefinitionParams,
     ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-        let messaging = self.messaging.read().await;
-        let rx = messaging.send_goto_definition(params);
+        // let messaging = self.messaging.read().await;
+        let rx = self.messaging.send_goto_definition(params).await;
         rx.await.unwrap()
     }
 }
