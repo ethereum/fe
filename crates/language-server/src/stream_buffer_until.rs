@@ -1,4 +1,6 @@
 use futures::stream::Stream;
+use futures::stream::{iter, Iter};
+use log::info;
 use std::{
     collections::VecDeque,
     fmt::Debug,
@@ -18,12 +20,12 @@ pub struct BufferUntilStream<I, T, U> {
     ready_buffer: VecDeque<U>,
 }
 
-impl<I, T, U> BufferUntilStream<I, T, U>
+impl<'s, I, T, U> BufferUntilStream<I, T, U>
 where
     I: Stream<Item = U>,
     T: Stream,
 {
-    fn new(input_stream: I, trigger_stream: T) -> Self {
+    pub fn new(input_stream: I, trigger_stream: T) -> Self {
         BufferUntilStream {
             input_stream,
             trigger_stream,
@@ -31,46 +33,71 @@ where
             ready_buffer: VecDeque::new(),
         }
     }
+
+    pub fn input_stream_mut(&mut self) -> &mut I {
+        &mut self.input_stream
+    }
+
+    pub fn input_stream(&self) -> &I {
+        &self.input_stream
+    }
+
+    pub fn trigger_stream_mut(&mut self) -> &mut T {
+        &mut self.trigger_stream
+    }
+
+    pub fn trigger_stream(&self) -> &T {
+        &self.trigger_stream
+    }
 }
 impl<I, T, U: Debug> Stream for BufferUntilStream<I, T, U>
 where
     I: Stream<Item = U>,
     T: Stream,
 {
-    type Item = I::Item;
+    type Item = Iter<std::collections::vec_deque::IntoIter<U>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
         let ready_buffer: &mut VecDeque<U> = this.ready_buffer;
         let pending_buffer: &mut VecDeque<U> = this.pending_buffer;
 
+        let mut finished = false;
+
         // Check if the input_stream has a new value
         while let Poll::Ready(Some(item)) = this.input_stream.as_mut().poll_next(cx) {
-            println!("Received item from input_stream: {:?}", item);
+            info!("Received item from input_stream: {:?}", item);
             pending_buffer.push_back(item);
         }
 
-        // Drain the ready buffer
-        if let Some(item) = ready_buffer.pop_front() {
-            println!("Returning item from ready_buffer: {:?}", item);
-            return Poll::Ready(Some(item));
+        if let Poll::Ready(None) = this.input_stream.as_mut().poll_next(cx) {
+            info!("input_stream finished");
+            finished = true;
         }
 
-        // Check if the trigger_stream has a new value
-        if let Poll::Ready(Some(_)) = this.trigger_stream.poll_next(cx) {
-            // Move the pending buffer to the ready buffer
-            println!("Triggered, moving pending_buffer to ready_buffer");
-            ready_buffer.append(pending_buffer);
-            println!("Ready buffer length after trigger: {}", ready_buffer.len());
-
-            // Return the next item from the ready buffer
-            if let Some(item) = ready_buffer.pop_front() {
-                println!("Returning item from ready_buffer after trigger: {:?}", item);
-                return Poll::Ready(Some(item));
+        match this.trigger_stream.as_mut().poll_next(cx) {
+            Poll::Ready(Some(_)) => {
+                info!("Triggered, moving pending_buffer to ready_buffer");
+                ready_buffer.append(pending_buffer);
+            }
+            Poll::Ready(None) => {
+                ready_buffer.append(pending_buffer);
+            }
+            _ => {
+                finished = true;
             }
         }
 
-        Poll::Pending
+        // Send any ready buffer or finish up
+        if ready_buffer.len() > 0 {
+            info!("Returning items stream from ready_buffer");
+            let current_ready_buffer = std::mem::replace(this.ready_buffer, VecDeque::new());
+            return Poll::Ready(Some(iter(current_ready_buffer.into_iter())));
+        } else if finished {
+            return Poll::Ready(None);
+        } else {
+            Poll::Pending
+        }
     }
 }
 
@@ -82,7 +109,7 @@ where
     fn buffer_until(self, trigger: T) -> BufferUntilStream<I, T, U>;
 }
 
-impl<I, T, U: Debug> BufferUntilStreamExt<I, T, U> for I
+impl<'s, I, T, U: Debug> BufferUntilStreamExt<I, T, U> for I
 where
     I: Stream<Item = U>,
     T: Stream,
@@ -109,15 +136,13 @@ mod tests {
         let mut accumulating_stream = BufferUntilStream::new(
             UnboundedReceiverStream::from(input_receiver),
             BroadcastStream::from(trigger_receiver),
-        );
+        ).flatten();
 
         input_sender.send(1).unwrap();
         input_sender.send(2).unwrap();
         input_sender.send(3).unwrap();
 
-        while let Some(item) = accumulating_stream.next().now_or_never().flatten()
-        // timeout(Duration::from_millis(0), accumulating_stream.next()).await
-        {
+        while let Some(item) = accumulating_stream.next().now_or_never().flatten() {
             output.push(item);
         }
         assert_eq!(output, Vec::<i32>::new());
@@ -151,5 +176,14 @@ mod tests {
             output.push(item);
         }
         assert_eq!(output, vec![1, 2, 3, 4, 5, 6]);
+
+        drop(trigger_sender);
+
+        while let Some(item) = accumulating_stream.next().now_or_never().flatten() {
+            output.push(item);
+        }
+        assert_eq!(output, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     }
+    
+    // TODO: write tests for end of input stream
 }
