@@ -25,6 +25,7 @@ mod handlers {
 async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
+    console_subscriber::init();
 
     // let message_channels = language_server::MessageChannels::new();
     let (message_senders, message_receivers) = language_server::setup_message_channels();
@@ -39,7 +40,7 @@ async fn main() {
 
     // separate runtime for the backend
     let backend_runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(4)
+        .worker_threads(1)
         .enable_all()
         .build()
         .unwrap();

@@ -37,7 +37,7 @@ patricia_tree = "0.6.2"
 glob = "0.3.1"
 url = "2.4.1"
 tower-lsp = "0.20.0"
-tokio = { version = "1.35.1", features = ["full", "io-std"] }
+tokio = { version = "1.35.1", features = ["full", "io-std", "tracing"] }
 tokio-macros = "2.2.0"
 futures = "0.3.28"
 tokio-stream = { version = "0.1.14", features = ["sync"] }
@@ -47,3 +47,4 @@ stream-operators = "0.1.1"
 pin-project = "1.1.5"
 merge-streams = "0.1.2"
 futures-concurrency = "7.5.0"
+console-subscriber = "0.2.0"

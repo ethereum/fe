@@ -154,7 +154,7 @@ fn gen_channel_structs(
             let tx = &channel.tx_name;
             let rx = &channel.rx_name;
             quote! {
-                let (#tx, #rx) = tokio::sync::mpsc::channel(100);
+                let (#tx, #rx) = tokio::sync::mpsc::channel(10000);
             }
         })
         .collect();
