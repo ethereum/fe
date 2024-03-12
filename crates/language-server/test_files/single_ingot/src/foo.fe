@@ -5,5 +5,4 @@ pub fn foo() {
 
 pub struct Foo {
   pub x: i32
-
 }

@@ -1,5 +1,4 @@
 mod backend;
-mod stream_buffer_until;
 mod capabilities;
 mod db;
 mod diagnostics;
@@ -7,6 +6,7 @@ mod globals;
 mod goto;
 mod language_server;
 mod logger;
+mod stream_buffer_until;
 mod util;
 mod workspace;
 
@@ -39,13 +39,13 @@ async fn main() {
     let rx = setup_logger(log::Level::Info).unwrap();
 
     // separate runtime for the backend
-    let backend_runtime = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(1)
-        .enable_all()
-        .build()
-        .unwrap();
+    // let backend_runtime = tokio::runtime::Builder::new_multi_thread()
+    //     .worker_threads(4)
+    //     .enable_all()
+    //     .build()
+    //     .unwrap();
 
-    backend_runtime.spawn(backend.handle_streams());
+    // backend_runtime.spawn(backend.handle_streams());
 
     tokio::select! {
         // setup logging
@@ -53,5 +53,7 @@ async fn main() {
         // start the server
         _ = tower_lsp::Server::new(stdin, stdout, socket)
             .serve(service) => {}
+        // backend
+        _ = backend.handle_streams() => {}
     }
 }

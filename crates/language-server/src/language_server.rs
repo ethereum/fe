@@ -41,13 +41,11 @@ impl LanguageServer for Server {
     async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
         // forward the initialize request to the messaging system
         // let messaging = self.messaging.read().await;
-        let rx = self.messaging.send_initialize(initialize_params).await;
+        let rx = self.messaging.send_initialize(initialize_params);
 
         info!("awaiting initialization result");
         match rx.await {
-            Ok(initialize_result) => {
-                initialize_result
-            }
+            Ok(initialize_result) => initialize_result,
             Err(e) => {
                 error!("Failed to initialize: {}", e);
                 return Err(tower_lsp::jsonrpc::Error::internal_error());
@@ -70,26 +68,26 @@ impl LanguageServer for Server {
     }
 
     async fn did_open(&self, params: lsp_types::DidOpenTextDocumentParams) {
-        self.messaging.send_did_open(params).await;
+        self.messaging.send_did_open(params);
     }
 
     async fn did_change(&self, params: lsp_types::DidChangeTextDocumentParams) {
-        info!("sending did change to channel of capacity {}", self.messaging.did_change_tx.capacity());
-        self.messaging.send_did_change(params).await;
+        // info!("sending did change to channel of capacity {}", self.messaging.did_change_tx.capacity());
+        self.messaging.send_did_change(params);
     }
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
-        self.messaging.send_did_close(params).await;
+        self.messaging.send_did_close(params);
     }
 
     async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
-        self.messaging.send_did_change_watched_files(params).await;
+        self.messaging.send_did_change_watched_files(params);
     }
 
     async fn hover(&self, params: lsp_types::HoverParams) -> Result<Option<lsp_types::Hover>> {
-        info!("sending hover to channel of capacity {}", self.messaging.hover_tx.capacity());
-        let rx = self.messaging.send_hover(params).await;
-        rx.await.unwrap()
+        // info!("sending hover to channel of capacity {}", self.messaging.hover_tx.capacity());
+        let rx = self.messaging.send_hover(params);
+        rx.await.expect("hover response")
     }
 
     async fn goto_definition(
@@ -97,7 +95,7 @@ impl LanguageServer for Server {
         params: lsp_types::GotoDefinitionParams,
     ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
         // let messaging = self.messaging.read().await;
-        let rx = self.messaging.send_goto_definition(params).await;
-        rx.await.unwrap()
+        let rx = self.messaging.send_goto_definition(params);
+        rx.await.expect("goto definition response")
     }
 }
