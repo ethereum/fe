@@ -1,5 +1,6 @@
 use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
 use lsp_types::MessageType;
+use tokio::task::yield_now;
 use tower_lsp::Client;
 
 pub struct Logger {
@@ -49,5 +50,6 @@ pub async fn handle_log_messages(
     loop {
         let (message, message_type) = rx.recv().await.unwrap();
         client.log_message(message_type, message).await;
+        yield_now().await;
     }
 }

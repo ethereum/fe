@@ -34,21 +34,21 @@ where
         }
     }
 
-    pub fn input_stream_mut(&mut self) -> &mut I {
-        &mut self.input_stream
-    }
+    // pub fn input_stream_mut(&mut self) -> &mut I {
+    //     &mut self.input_stream
+    // }
 
-    pub fn input_stream(&self) -> &I {
-        &self.input_stream
-    }
+    // pub fn input_stream(&self) -> &I {
+    //     &self.input_stream
+    // }
 
-    pub fn trigger_stream_mut(&mut self) -> &mut T {
-        &mut self.trigger_stream
-    }
+    // pub fn trigger_stream_mut(&mut self) -> &mut T {
+    //     &mut self.trigger_stream
+    // }
 
-    pub fn trigger_stream(&self) -> &T {
-        &self.trigger_stream
-    }
+    // pub fn trigger_stream(&self) -> &T {
+    //     &self.trigger_stream
+    // }
 }
 impl<I, T, U: Debug> Stream for BufferUntilStream<I, T, U>
 where
@@ -89,10 +89,10 @@ where
         }
 
         // Send any ready buffer or finish up
-        if ready_buffer.len() > 0 {
+        if !ready_buffer.is_empty() {
             info!("Returning items stream from ready_buffer");
-            let current_ready_buffer = std::mem::replace(this.ready_buffer, VecDeque::new());
-            return Poll::Ready(Some(iter(current_ready_buffer.into_iter())));
+            let current_ready_buffer = std::mem::take(this.ready_buffer);
+            Poll::Ready(Some(iter(current_ready_buffer)))
         } else if finished {
             return Poll::Ready(None);
         } else {
@@ -136,7 +136,8 @@ mod tests {
         let mut accumulating_stream = BufferUntilStream::new(
             UnboundedReceiverStream::from(input_receiver),
             BroadcastStream::from(trigger_receiver),
-        ).flatten();
+        )
+        .flatten();
 
         input_sender.send(1).unwrap();
         input_sender.send(2).unwrap();
@@ -184,6 +185,6 @@ mod tests {
         }
         assert_eq!(output, vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     }
-    
+
     // TODO: write tests for end of input stream
 }

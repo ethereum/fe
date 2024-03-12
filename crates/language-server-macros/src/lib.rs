@@ -115,8 +115,8 @@ fn gen_channel_structs(
             };
 
             let sender_type = match result {
-                Some(result) => quote! { tokio::sync::mpsc::Sender<(#params, tokio::sync::oneshot::Sender<#result>)> },
-                None => quote! { tokio::sync::mpsc::Sender<#params> },
+                Some(result) => quote! { tokio::sync::mpsc::UnboundedSender<(#params, tokio::sync::oneshot::Sender<#result>)> },
+                None => quote! { tokio::sync::mpsc::UnboundedSender<#params> },
             };
 
             quote! {
@@ -138,8 +138,8 @@ fn gen_channel_structs(
                 None => &unit_type,
             };
             let stream_type = match result {
-                Some(result) => quote! { tokio_stream::wrappers::ReceiverStream<(#params, tokio::sync::oneshot::Sender<#result>)> },
-                None => quote! { tokio_stream::wrappers::ReceiverStream<#params> },
+                Some(result) => quote! { tokio_stream::wrappers::UnboundedReceiverStream<(#params, tokio::sync::oneshot::Sender<#result>)> },
+                None => quote! { tokio_stream::wrappers::UnboundedReceiverStream<#params> },
             };
 
             quote! {
@@ -154,7 +154,7 @@ fn gen_channel_structs(
             let tx = &channel.tx_name;
             let rx = &channel.rx_name;
             quote! {
-                let (#tx, #rx) = tokio::sync::mpsc::channel(10000);
+                let (#tx, #rx) = tokio::sync::mpsc::unbounded_channel();
             }
         })
         .collect();
@@ -176,7 +176,7 @@ fn gen_channel_structs(
             let rx = &channel.rx_name;
             quote! {
                 // #rx,
-                #stream_name: tokio_stream::wrappers::ReceiverStream::new(#rx),
+                #stream_name: tokio_stream::wrappers::UnboundedReceiverStream::new(#rx),
             }
         })
         .collect();
@@ -202,29 +202,23 @@ fn gen_channel_structs(
                     let (oneshot_tx, oneshot_rx) = tokio::sync::oneshot::channel::<#result>();
                     let mpsc = self.#tx.clone();
                     info!("sending oneshot sender: {:?}", #payload);
-                    match mpsc.send((#payload, oneshot_tx)).await {
-                        Ok(_) => info!("sent oneshot sender"),
-                        Err(e) => error!("failed to send oneshot sender"),
-                    }
+                    mpsc.send((#payload, oneshot_tx)).expect("send payload with oneshot");
                     info!("returning oneshot receiver: {:?}", oneshot_rx);
                     oneshot_rx
                 },
                 None => quote! {
-                    match self.#tx.send(#payload).await {
-                        Ok(_) => info!("sent notification"),
-                        Err(e) => error!("failed to send notification: {:?}", e),
-                    }
+                    self.#tx.send(#payload).expect("send payload");
                 },
             };
 
             let dispatcher_fn = match params {
                 Some(params) => quote! {
-                    pub async fn #sender_fn_name(&self, params: #params) -> #sender_fn_result {
+                    pub fn #sender_fn_name(&self, params: #params) -> #sender_fn_result {
                         #send_payload
                     }
                 },
                 None => quote! {
-                    pub async fn #sender_fn_name(&self) -> #sender_fn_result {
+                    pub fn #sender_fn_name(&self) -> #sender_fn_result {
                         #send_payload
                     }
                 },

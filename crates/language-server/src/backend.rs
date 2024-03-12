@@ -1,14 +1,15 @@
 use crate::handlers::request::{handle_goto_definition, handle_hover};
-use crate::stream_buffer_until::BufferUntilStreamExt as _;
+
 use crate::workspace::SyncableIngotFileContext;
 
 use fork_stream::StreamExt as _;
+use futures::stream::iter;
 use futures::StreamExt;
 use futures_concurrency::prelude::*;
 use lsp_types::TextDocumentItem;
 use salsa::{ParallelDatabase, Snapshot};
 use stream_operators::StreamOps;
-use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -32,6 +33,7 @@ pub struct Backend {
     pub(crate) client: Client,
     pub(crate) db: LanguageServerDatabase,
     pub(crate) workspace: Arc<RwLock<Workspace>>,
+    workers: tokio::runtime::Runtime,
 }
 
 impl Backend {
@@ -39,11 +41,17 @@ impl Backend {
         let db = LanguageServerDatabase::default();
         let workspace = Arc::new(RwLock::new(Workspace::default()));
 
+        let workers = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(4)
+            .enable_all()
+            .build()
+            .unwrap();
         Self {
             messaging,
             client,
             db,
             workspace,
+            workers,
         }
     }
     pub async fn handle_streams(mut self) {
@@ -59,45 +67,51 @@ impl Backend {
         let mut initialized_stream = messaging.initialize_stream.fuse();
         let mut shutdown_stream = messaging.shutdown_stream.fuse();
         let mut did_close_stream = messaging.did_close_stream.fuse();
-        let mut did_change_watched_files_stream = messaging.did_change_watched_files_stream.fork();
+        let did_change_watched_files_stream = messaging.did_change_watched_files_stream.fork();
+
+        // let mut need_filesystem_sync = did_change_watched_files_stream
+        //     .clone()
+        //     .debounce_time(std::time::Duration::from_millis(500));
 
         let mut need_filesystem_sync = did_change_watched_files_stream
             .clone()
-            .debounce_time(std::time::Duration::from_millis(10));
-
-        // let need_filesystem_sync = flat_did_change_watched_files.filter(|change| {
-        //     let change_type = change.typ.clone();
-        //     async move {
-        //         matches!(
-        //             change_type,
-        //             lsp_types::FileChangeType::CREATED | lsp_types::FileChangeType::DELETED
-        //         )
-        //     }
-        // });
+            .map(|params| iter(params.changes.into_iter()))
+            .flatten()
+            .filter(|change| {
+                let change_type = change.typ;
+                Box::pin(async move {
+                    matches!(
+                        change_type,
+                        lsp_types::FileChangeType::CREATED | lsp_types::FileChangeType::DELETED
+                    )
+                })
+            })
+            .debounce_time(std::time::Duration::from_millis(500));
 
         let (filesystem_recently_synced_tx, filesystem_recently_synced_rx) =
-            tokio::sync::mpsc::channel::<()>(1);
-        let filesystem_recently_synced_stream = ReceiverStream::new(filesystem_recently_synced_rx);
+            tokio::sync::mpsc::unbounded_channel::<()>();
+        let _filesystem_recently_synced_stream =
+            UnboundedReceiverStream::new(filesystem_recently_synced_rx);
 
-        let flat_did_change_watched_files =
-            did_change_watched_files_stream.map(|params| futures::stream::iter(params.changes)).flatten().fork();
+        let flat_did_change_watched_files = did_change_watched_files_stream
+            .map(|params| futures::stream::iter(params.changes))
+            .flatten()
+            .fork();
 
-        let did_change_watched_file_stream = flat_did_change_watched_files.clone().filter(|change| {
-            let change_type = change.typ.clone();
-            Box::pin(async move {
-                matches!(change_type, lsp_types::FileChangeType::CHANGED)
-            })
-        });
+        let did_change_watched_file_stream =
+            flat_did_change_watched_files.clone().filter(|change| {
+                let change_type = change.typ;
+                Box::pin(async move { matches!(change_type, lsp_types::FileChangeType::CHANGED) })
+            });
 
-        let did_create_watched_file_stream = flat_did_change_watched_files.clone().filter(|change| {
-            let change_type = change.typ.clone();
-            Box::pin(async move {
-                matches!(change_type, lsp_types::FileChangeType::CREATED)
-            })
-        });
+        let did_create_watched_file_stream =
+            flat_did_change_watched_files.clone().filter(|change| {
+                let change_type = change.typ;
+                Box::pin(async move { matches!(change_type, lsp_types::FileChangeType::CREATED) })
+            });
         let did_open_stream = messaging.did_open_stream.fuse();
         let did_change_stream = messaging.did_change_stream.fuse();
-        let change_stream = (
+        let mut change_stream = (
             did_change_watched_file_stream.map(|change| {
                 let uri = change.uri;
                 let path = uri.to_file_path().unwrap();
@@ -132,9 +146,10 @@ impl Backend {
                 version: params.text_document.version,
                 text: params.content_changes[0].text.clone(),
             }),
-        ).merge()
-        .fuse();
-        let mut change_stream = change_stream.buffer_until(filesystem_recently_synced_stream).flatten();
+        )
+            .merge()
+            .fuse();
+        // let mut change_stream = change_stream.buffer_until(filesystem_recently_synced_stream).flatten();
 
         // let need_filesystem_sync_debounced = need_filesystem_sync; //.debounce_time(std::time::Duration::from_millis(10));
 
@@ -176,9 +191,10 @@ impl Backend {
                     let _ = responder.send(Ok(()));
                 }
                 Some(_) = need_filesystem_sync.next() => {
+                    info!("filesystem recently synced");
                     let workspace = &mut workspace.write().await;
                     let _ = workspace.sync(db);
-                    filesystem_recently_synced_tx.send(()).await.unwrap();
+                    filesystem_recently_synced_tx.send(()).unwrap();
                 }
                 // Some(_) = need_filesystem_sync_debounced.next() => {
                 //     info!("filesystem recently synced");
@@ -191,7 +207,7 @@ impl Backend {
                     let db = db.snapshot();
                     let client = client.clone();
                     let workspace = workspace.clone();
-                    tokio::spawn(
+                    self.workers.spawn(
                         async move { handle_diagnostics(client, workspace, db, doc.uri).await }
                     );
                 }
@@ -273,14 +289,14 @@ impl Backend {
                 Some((params, responder)) = hover_stream.next() => {
                     let db = db.snapshot();
                     let workspace = workspace.clone();
-                    let response = handle_hover(db, workspace, params).await;
-                    // let response = match tokio::spawn(handle_hover(db, workspace, params)).await {
-                    //     Ok(response) => response,
-                    //     Err(e) => {
-                    //         eprintln!("Error handling hover: {:?}", e);
-                    //         Ok(None)
-                    //     }
-                    // };
+                    // let response = handle_hover(db, workspace, params).await;
+                    let response = match self.workers.spawn(handle_hover(db, workspace, params)).await {
+                        Ok(response) => response,
+                        Err(e) => {
+                            eprintln!("Error handling hover: {:?}", e);
+                            Ok(None)
+                        }
+                    };
                     let _ = responder.send(response);
                 }
                 Some((params, responder)) = goto_definition_stream.next() => {
@@ -296,6 +312,7 @@ impl Backend {
                     let _ = responder.send(Ok(response));
                 }
             }
+            tokio::task::yield_now().await;
         }
     }
 }
