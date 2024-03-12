@@ -74,6 +74,7 @@ impl LanguageServer for Server {
     }
 
     async fn did_change(&self, params: lsp_types::DidChangeTextDocumentParams) {
+        info!("sending did change to channel of capacity {}", self.messaging.did_change_tx.capacity());
         self.messaging.send_did_change(params).await;
     }
 
@@ -86,6 +87,7 @@ impl LanguageServer for Server {
     }
 
     async fn hover(&self, params: lsp_types::HoverParams) -> Result<Option<lsp_types::Hover>> {
+        info!("sending hover to channel of capacity {}", self.messaging.hover_tx.capacity());
         let rx = self.messaging.send_hover(params).await;
         rx.await.unwrap()
     }

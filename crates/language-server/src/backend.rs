@@ -134,7 +134,7 @@ impl Backend {
             }),
         ).merge()
         .fuse();
-        let mut change_stream = change_stream.buffer_until(filesystem_recently_synced_stream);
+        let mut change_stream = change_stream.buffer_until(filesystem_recently_synced_stream).flatten();
 
         // let need_filesystem_sync_debounced = need_filesystem_sync; //.debounce_time(std::time::Duration::from_millis(10));
 
@@ -273,13 +273,14 @@ impl Backend {
                 Some((params, responder)) = hover_stream.next() => {
                     let db = db.snapshot();
                     let workspace = workspace.clone();
-                    let response = match tokio::spawn(handle_hover(db, workspace, params)).await {
-                        Ok(response) => response,
-                        Err(e) => {
-                            eprintln!("Error handling hover: {:?}", e);
-                            Ok(None)
-                        }
-                    };
+                    let response = handle_hover(db, workspace, params).await;
+                    // let response = match tokio::spawn(handle_hover(db, workspace, params)).await {
+                    //     Ok(response) => response,
+                    //     Err(e) => {
+                    //         eprintln!("Error handling hover: {:?}", e);
+                    //         Ok(None)
+                    //     }
+                    // };
                     let _ = responder.send(response);
                 }
                 Some((params, responder)) = goto_definition_stream.next() => {
