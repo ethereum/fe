@@ -1,5 +1,6 @@
 use crate::handlers::request::{handle_goto_definition, handle_hover};
 
+use crate::stream_buffer_until::BufferUntilStreamExt;
 use crate::workspace::SyncableIngotFileContext;
 
 use fork_stream::StreamExt as _;
@@ -9,7 +10,7 @@ use futures_concurrency::prelude::*;
 use lsp_types::TextDocumentItem;
 use salsa::{ParallelDatabase, Snapshot};
 use stream_operators::StreamOps;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::wrappers::{IntervalStream, UnboundedReceiverStream};
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -73,7 +74,7 @@ impl Backend {
         //     .clone()
         //     .debounce_time(std::time::Duration::from_millis(500));
 
-        let mut need_filesystem_sync = did_change_watched_files_stream
+        let mut need_filetree_sync = did_change_watched_files_stream
             .clone()
             .map(|params| iter(params.changes.into_iter()))
             .flatten()
@@ -85,13 +86,13 @@ impl Backend {
                         lsp_types::FileChangeType::CREATED | lsp_types::FileChangeType::DELETED
                     )
                 })
-            })
-            .debounce_time(std::time::Duration::from_millis(500));
+            });
+        // .debounce_time(std::time::Duration::from_millis(50));
 
         let (filesystem_recently_synced_tx, filesystem_recently_synced_rx) =
             tokio::sync::mpsc::unbounded_channel::<()>();
-        let _filesystem_recently_synced_stream =
-            UnboundedReceiverStream::new(filesystem_recently_synced_rx);
+        let filesystem_recently_synced_stream =
+            UnboundedReceiverStream::new(filesystem_recently_synced_rx).fork();
 
         let flat_did_change_watched_files = did_change_watched_files_stream
             .map(|params| futures::stream::iter(params.changes))
@@ -112,28 +113,28 @@ impl Backend {
         let did_open_stream = messaging.did_open_stream.fuse();
         let did_change_stream = messaging.did_change_stream.fuse();
         let mut change_stream = (
-            did_change_watched_file_stream.map(|change| {
-                let uri = change.uri;
-                let path = uri.to_file_path().unwrap();
-                let text = std::fs::read_to_string(path).unwrap();
-                TextDocumentItem {
-                    uri: uri.clone(),
-                    language_id: LANGUAGE_ID.to_string(),
-                    version: 0,
-                    text,
-                }
-            }),
-            did_create_watched_file_stream.map(|change| {
-                let uri = change.uri;
-                let path = uri.to_file_path().unwrap();
-                let text = std::fs::read_to_string(path).unwrap();
-                TextDocumentItem {
-                    uri: uri.clone(),
-                    language_id: LANGUAGE_ID.to_string(),
-                    version: 0,
-                    text,
-                }
-            }),
+            // did_change_watched_file_stream.map(|change| {
+            //     let uri = change.uri;
+            //     let path = uri.to_file_path().unwrap();
+            //     let text = std::fs::read_to_string(path).unwrap();
+            //     TextDocumentItem {
+            //         uri: uri.clone(),
+            //         language_id: LANGUAGE_ID.to_string(),
+            //         version: 0,
+            //         text,
+            //     }
+            // }),
+            // did_create_watched_file_stream.map(|change| {
+            //     let uri = change.uri;
+            //     let path = uri.to_file_path().unwrap();
+            //     let text = std::fs::read_to_string(path).unwrap();
+            //     TextDocumentItem {
+            //         uri: uri.clone(),
+            //         language_id: LANGUAGE_ID.to_string(),
+            //         version: 0,
+            //         text,
+            //     }
+            // }),
             did_open_stream.map(|params| TextDocumentItem {
                 uri: params.text_document.uri,
                 language_id: LANGUAGE_ID.to_string(),
@@ -148,10 +149,8 @@ impl Backend {
             }),
         )
             .merge()
+            .debounce_time(std::time::Duration::from_millis(20))
             .fuse();
-        // let mut change_stream = change_stream.buffer_until(filesystem_recently_synced_stream).flatten();
-
-        // let need_filesystem_sync_debounced = need_filesystem_sync; //.debounce_time(std::time::Duration::from_millis(10));
 
         let mut hover_stream = messaging.hover_stream.fuse();
         let mut goto_definition_stream = messaging.goto_definition_stream.fuse();
@@ -175,6 +174,8 @@ impl Backend {
                             .unwrap(),
                     );
 
+                    let _ = workspace.sync(db);
+
                     let capabilities = server_capabilities();
                     let initialize_result = lsp_types::InitializeResult {
                         capabilities,
@@ -190,19 +191,45 @@ impl Backend {
                     info!("shutting down language server");
                     let _ = responder.send(Ok(()));
                 }
-                Some(_) = need_filesystem_sync.next() => {
-                    info!("filesystem recently synced");
-                    let workspace = &mut workspace.write().await;
-                    let _ = workspace.sync(db);
-                    filesystem_recently_synced_tx.send(()).unwrap();
+                Some(change) = need_filetree_sync.next() => {
+                    let change_type = change.typ.clone();
+                    let path_buf = change.uri.to_file_path().unwrap();
+                    let path = path_buf.to_str().unwrap();
+                    match change_type {
+                        lsp_types::FileChangeType::CREATED => {
+                            // let workspace = &mut workspace.write().await;
+                            // workspace.sync(db).expect("Failed to sync workspace");
+                            // let input = workspace
+                            //     .touch_input_from_file_path(db, path)
+                            //     .unwrap();
+
+                            // let ingot = workspace
+                            //     .touch_ingot_from_file_path(db, path)
+                            //     .unwrap();
+
+                            // let config_path = ingot.path(db).as_str();
+                            // let mut context = workspace.ingot_context_from_config_path(db, config_path).expect("Failed to get ingot context");
+                            // let files = context.files.insert(path, input);
+
+                        }
+                        lsp_types::FileChangeType::DELETED => {
+                            let workspace = &mut workspace.write().await;
+                            let input = workspace
+                                .touch_input_from_file_path(
+                                    db,
+                                    path
+                                )
+                                .unwrap();
+                            let _ = input.sync(db, None);
+                        }
+                        _ => {}
+                    }
                 }
-                // Some(_) = need_filesystem_sync_debounced.next() => {
-                //     info!("filesystem recently synced");
-                //     // let _ = filesystem_recently_synced_tx.send(());
-                // }
                 Some(doc) = change_stream.next() => {
                     info!("change detected: {:?}", doc.uri);
-                    update_inputs(workspace.clone(), db, doc.clone()).await;
+                    update_input(workspace.clone(), db, doc.clone()).await;
+                    // wait 2 seconds before syncing the filesystem
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
                     let db = db.snapshot();
                     let client = client.clone();
@@ -227,65 +254,6 @@ impl Backend {
                         .unwrap();
                     let _ = input.sync(db, None);
                 }
-                // Some(params) = did_change_watched_files_stream.next() => {
-                //     let changes = params.changes;
-                //     for change in changes {
-                //         let uri = change.uri;
-                //         let path = uri.to_file_path().unwrap();
-
-                //         match change.typ {
-                //             lsp_types::FileChangeType::CREATED => {
-                //                 // TODO: handle this more carefully!
-                //                 // this is inefficient, a hack for now
-                //                 let workspace = &mut workspace.write().await;
-                //                 let _ = workspace.sync(db);
-                //                 let input = workspace
-                //                     .touch_input_from_file_path(db, path.to_str().unwrap())
-                //                     .unwrap();
-                //                 let _ = input.sync(db, None);
-                //             }
-                //             lsp_types::FileChangeType::CHANGED => {
-                //                 let workspace = &mut workspace.write().await;
-                //                 let input = workspace
-                //                     .touch_input_from_file_path(db, path.to_str().unwrap())
-                //                     .unwrap();
-                //                 let _ = input.sync(db, None);
-                //             }
-                //             lsp_types::FileChangeType::DELETED => {
-                //                 let workspace = &mut workspace.write().await;
-                //                 // TODO: handle this more carefully!
-                //                 // this is inefficient, a hack for now
-                //                 let _ = workspace.sync(db);
-                //             }
-                //             _ => {}
-                //         }
-                //         // collect diagnostics for the file
-                //         if change.typ != lsp_types::FileChangeType::DELETED {
-                //             let text = std::fs::read_to_string(path).unwrap();
-                //             update_inputs(workspace.clone(), db, TextDocumentItem {
-                //                 uri: uri.clone(),
-                //                 language_id: LANGUAGE_ID.to_string(),
-                //                 version: 0,
-                //                 text: text.clone(),
-                //             }).await;
-
-                //             let client = client.clone();
-                //             let workspace = workspace.clone();
-                //             let db = db.snapshot();
-
-                //             tokio::spawn(
-                //                 async move {
-                //                     handle_diagnostics(
-                //                         client,
-                //                         workspace,
-                //                         db,
-                //                         uri.clone(),
-                //                     ).await
-                //                 }
-                //             );
-                //         }
-                //     }
-                // }
                 Some((params, responder)) = hover_stream.next() => {
                     let db = db.snapshot();
                     let workspace = workspace.clone();
@@ -317,24 +285,20 @@ impl Backend {
     }
 }
 
-async fn update_inputs(
+async fn update_input(
     workspace: Arc<RwLock<Workspace>>,
     db: &mut LanguageServerDatabase,
-    params: TextDocumentItem,
+    path: &str,
+    contents: Option<String>,
 ) {
     let workspace = &mut workspace.write().await;
     let input = workspace
         .touch_input_from_file_path(
             db,
-            params
-                .uri
-                .to_file_path()
-                .expect("Failed to convert URI to file path")
-                .to_str()
-                .expect("Failed to convert file path to string"),
+            path
         )
         .unwrap();
-    let _ = input.sync(db, Some(params.text.clone()));
+    let _ = input.sync(db, contents);
 }
 
 async fn handle_diagnostics(

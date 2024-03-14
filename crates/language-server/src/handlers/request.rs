@@ -18,7 +18,7 @@ use crate::{
     util::{to_lsp_location_from_scope, to_offset_from_position},
     workspace::{IngotFileContext, Workspace},
 };
-use lsp_server::ResponseError;
+// use tower_lsp::lsp_types::{ResponseError, Url};
 
 pub async fn handle_hover(
     db: Snapshot<LanguageServerDatabase>,
@@ -157,11 +157,11 @@ pub async fn handle_goto_definition(
         .collect::<Vec<_>>()
         .join("\n");
 
-    let _error = (!errors.is_empty()).then_some(ResponseError {
-        code: lsp_types::error_codes::SERVER_CANCELLED as i32,
-        message: errors,
-        data: None,
-    });
+    // let _error = (!errors.is_empty()).then_some(ResponseError{
+    //     code: lsp_types::error_codes::SERVER_CANCELLED as i32,
+    //     message: errors,
+    //     data: None,
+    // });
 
     // state.send_response(response_message)?;
     Ok(Some(lsp_types::GotoDefinitionResponse::Array(
