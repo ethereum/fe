@@ -7,7 +7,10 @@ use super::{Body, GenericArgListId, IdentId, IntegerId, LitKind, Partial, PatId,
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Lit(LitKind),
-    Block(Vec<StmtId>),
+    Block {
+        stmts: Vec<StmtId>,
+        is_unsafe: bool,
+    },
     /// The first `ExprId` is the lhs, the second is the rhs.
     ///
     /// and a `BinOp`.

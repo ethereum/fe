@@ -1057,6 +1057,7 @@ dependencies = [
  "fe-common2",
  "fe-hir",
  "fe-hir-analysis",
+ "fe-library2",
  "fe-macros",
  "salsa-2022",
 ]
@@ -1139,6 +1140,14 @@ dependencies = [
 name = "fe-library"
 version = "0.23.0"
 dependencies = [
+ "include_dir",
+]
+
+[[package]]
+name = "fe-library2"
+version = "0.23.0"
+dependencies = [
+ "fe-common2",
  "include_dir",
 ]
 

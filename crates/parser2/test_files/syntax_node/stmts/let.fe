@@ -21,3 +21,7 @@ let x = match b {
     MyEnum::A(x) | MyEnum::B(x) => x
     _ => 0
 }
+
+let z = unsafe {
+    foo()
+}

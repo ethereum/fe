@@ -164,7 +164,7 @@ impl<'db> Visitor for BlockOrderCalculator<'db> {
         expr: ExprId,
         expr_data: &Expr,
     ) {
-        if ctxt.body() == self.body && matches!(expr_data, Expr::Block(..)) {
+        if ctxt.body() == self.body && matches!(expr_data, Expr::Block { .. }) {
             self.order.insert(expr, self.fresh_number);
             self.fresh_number += 1;
         }
