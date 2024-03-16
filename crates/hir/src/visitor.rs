@@ -909,7 +909,7 @@ where
             },
         ),
 
-        Expr::Block(stmts) => {
+        Expr::Block { stmts, .. } => {
             let s_graph = ctxt.top_mod().scope_graph(ctxt.db);
             let scope = ctxt.scope();
             for item in s_graph.child_items(scope) {
@@ -1987,7 +1987,7 @@ where
     /// `scope` is the scope that encloses the expression.
     pub fn with_expr(db: &'db dyn HirDb, scope: ScopeId, body: Body, expr: ExprId) -> Self {
         let scope_id = match expr.data(db, body) {
-            Partial::Present(Expr::Block(_)) => ScopeId::Block(body, expr),
+            Partial::Present(Expr::Block { .. }) => ScopeId::Block(body, expr),
             _ => scope,
         };
 

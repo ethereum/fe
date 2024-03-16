@@ -74,6 +74,10 @@ impl BlockExpr {
     pub fn items(&self) -> impl Iterator<Item = super::Item> {
         support::children(self.syntax())
     }
+
+    pub fn unsafe_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::UnsafeKw)
+    }
 }
 
 ast_node! {

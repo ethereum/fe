@@ -71,6 +71,13 @@ impl super::Parse for ItemScope {
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
         use crate::SyntaxKind::*;
 
+        // if parser.peek_two() == (Some(UnsafeKw), Some(LBrace)) {
+        //     parser.parse(BlockExprScope::default(), None);
+        //     return;
+        // } else {
+        //     println!("{:?}", parser.peek_two(),)
+        // }
+
         let mut checkpoint = attr::parse_attr_list(parser);
         let modifier_scope = ItemModifierScope::default();
         let modifier = match parser.current_kind() {
