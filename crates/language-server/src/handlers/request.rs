@@ -18,7 +18,6 @@ use crate::{
     util::{to_lsp_location_from_scope, to_offset_from_position},
     workspace::{IngotFileContext, Workspace},
 };
-// use tower_lsp::lsp_types::{ResponseError, Url};
 
 pub async fn handle_hover(
     db: Snapshot<LanguageServerDatabase>,
@@ -34,7 +33,7 @@ pub async fn handle_hover(
         .uri
         .path();
     info!("getting hover info for file_path: {:?}", file_path);
-    let input = workspace.get_input_from_file_path(file_path);
+    let input = workspace.get_input_for_file_path(file_path);
     let ingot = input.map(|input| input.ingot(db.as_input_db()));
 
     let file_text = input.unwrap().text(db.as_input_db());
@@ -43,14 +42,10 @@ pub async fn handle_hover(
         .nth(params.text_document_position_params.position.line as usize)
         .unwrap();
 
-    // let cursor: Cursor = params.text_document_position_params.position.into();
     let cursor: Cursor = to_offset_from_position(
         params.text_document_position_params.position,
         file_text.as_str(),
     );
-    // let file_path = std::path::Path::new(file_path);
-
-    // info!("got ingot: {:?} of type {:?}", ingot, ingot.map(|ingot| ingot.kind(&mut state.db)));
 
     let ingot_info: Option<String> = {
         let ingot_type = match ingot {
@@ -75,7 +70,7 @@ pub async fn handle_hover(
     };
 
     let top_mod = workspace
-        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
+        .top_mod_for_file_path(db.as_lower_hir_db(), file_path)
         .unwrap();
     let early_resolution = goto_enclosing_path(&db, top_mod, cursor);
 
@@ -124,7 +119,7 @@ pub async fn handle_goto_definition(
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
     let top_mod = workspace
-        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
+        .top_mod_for_file_path(db.as_lower_hir_db(), file_path)
         .unwrap();
     let goto_info = goto_enclosing_path(&db, top_mod, cursor);
 

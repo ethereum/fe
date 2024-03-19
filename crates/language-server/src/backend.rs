@@ -23,8 +23,6 @@ use crate::workspace::{IngotFileContext, SyncableInputFile, Workspace};
 
 use log::info;
 
-// use tokio_stream::StreamExt;
-
 use tower_lsp::Client;
 
 pub struct Backend {
@@ -232,7 +230,7 @@ async fn update_input(
 ) {
     info!("updating input for {:?}", path);
     let workspace = &mut workspace.write().await;
-    let input = workspace.touch_input_from_file_path(db, path).unwrap();
+    let input = workspace.touch_input_for_file_path(db, path).unwrap();
     if let Some(contents) = contents {
         let _ = input.sync_from_text(db, contents);
     }
