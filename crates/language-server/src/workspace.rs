@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, path::PathBuf};
+use std::{borrow::Cow, collections::BTreeSet, path::PathBuf};
 
 use anyhow::Result;
 use common::{
@@ -10,6 +10,12 @@ use log::info;
 use patricia_tree::StringPatriciaMap;
 
 use crate::db::LanguageServerDatabase;
+
+use rust_embed::RustEmbed;
+
+#[derive(RustEmbed)]
+#[folder = "../library/std"]
+struct StdLib;
 
 const FE_CONFIG_SUFFIX: &str = "fe.toml";
 fn ingot_directory_key(path: String) -> String {
@@ -249,13 +255,43 @@ impl Workspace {
         }
     }
 
+    pub fn load_std_lib(
+        &mut self,
+        db: &mut LanguageServerDatabase,
+        root_path: &PathBuf,
+    ) -> Result<()> {
+        let root_path = root_path.to_str().unwrap();
+        self
+            .touch_ingot_for_file_path(db, &format!("{}/std/fe.toml", root_path))
+            .unwrap();
+
+        info!("Loading std lib...");
+
+        StdLib::iter().for_each(|path: Cow<'static, str>| {
+            let path = path.as_ref();
+            let std_path = format!("{}/std/{}", root_path, path);
+            info!("adding std file... {:?} --- {:?}", std_path, path);
+            if let Some(file) = StdLib::get(path) {
+                let contents = String::from_utf8(file.data.as_ref().to_vec());
+                if let Ok(contents) = contents {
+                    let input = self.touch_input_for_file_path(
+                        db,
+                        &std_path,
+                    );
+                    input.unwrap().set_text(db).to(contents);
+                };
+            };
+        });
+        Ok(())
+    }
+
     pub fn set_workspace_root(
         &mut self,
         db: &mut LanguageServerDatabase,
-        root_path: PathBuf,
+        root_path: &PathBuf,
     ) -> Result<()> {
         let path = root_path;
-        self.root_path = Some(path);
+        self.root_path = Some(path.to_path_buf());
         self.sync(db)
     }
 
@@ -592,7 +628,7 @@ mod tests {
         let mut workspace = Workspace::default();
         let mut db = crate::db::LanguageServerDatabase::default();
 
-        let _ = workspace.set_workspace_root(&mut db, ingot_base_dir.clone());
+        let _ = workspace.set_workspace_root(&mut db, &ingot_base_dir);
         // panic!("wtf? {:?}", ingot_base_dir);
 
         assert_eq!(workspace.ingot_contexts.len(), 1);
@@ -621,7 +657,7 @@ mod tests {
 
         assert!(workspace.ingot_contexts.len() == 2);
 
-        let _ = workspace.set_workspace_root(&mut db, PathBuf::from(&path));
+        let _ = workspace.set_workspace_root(&mut db, &PathBuf::from(&path));
 
         // get all top level modules for .fe files in the workspace
         let fe_files = glob::glob(&format!("{path}/**/*.fe"))
