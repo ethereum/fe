@@ -142,17 +142,21 @@ impl Backend {
                     info!("initializing language server!");
                     // setup workspace
                     // let workspace = self.workspace.clone();
-                    let mut workspace = self.workspace.write().await;
-                    let _ = workspace.set_workspace_root(
-                        db,
+
+                    let root =
                         initialization_params
                             .root_uri
                             .unwrap()
                             .to_file_path()
                             .ok()
-                            .unwrap(),
-                    );
+                            .unwrap();
 
+                    let mut workspace = self.workspace.write().await;
+                    let _ = workspace.set_workspace_root(
+                        db,
+                        &root
+                    );
+                    let _ = workspace.load_std_lib(db, &root);
                     let _ = workspace.sync(db);
 
                     let capabilities = server_capabilities();

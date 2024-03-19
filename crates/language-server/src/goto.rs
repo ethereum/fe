@@ -132,7 +132,7 @@ mod tests {
         let ingot_base_dir = Path::new(&cargo_manifest_dir).join("test_files/single_ingot");
 
         let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default();
+        let workspace = &mut Workspace::default(db);
 
         let _ = workspace.set_workspace_root(db, ingot_base_dir.clone());
 
@@ -198,7 +198,7 @@ mod tests {
     )]
     fn test_goto_enclosing_path(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default();
+        let workspace = &mut Workspace::default(db);
         let input = workspace
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
@@ -253,7 +253,7 @@ mod tests {
     )]
     fn test_smallest_enclosing_path(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default();
+        let workspace = &mut Workspace::default(db);
 
         workspace
             .touch_input_for_file_path(db, fixture.path())
