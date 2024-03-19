@@ -19,7 +19,7 @@
             "type": "extensionHost",
             // we need to enable backtrace on the extension host
             "env": {
-                "RUST_BACKTRACE": "1"
+                "RUST_BACKTRACE": "full"
             }
             // we need to disable rust-analyzer it's so slow
 

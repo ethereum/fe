@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use common::{input::IngotKind, InputDb};
-use hir::SpannedHirDb;
+use hir::{LowerHirDb, SpannedHirDb};
 use hir_analysis::{
     name_resolution::{EarlyResolvedPath, NameRes},
     HirAnalysisDb,
 };
 use log::info;
 
-use salsa::{ParallelDatabase, Snapshot};
+use salsa::{Snapshot};
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 
@@ -34,7 +34,7 @@ pub async fn handle_hover(
         .uri
         .path();
     info!("getting hover info for file_path: {:?}", file_path);
-    let input = workspace.get_input_from_file_path(&db, file_path);
+    let input = workspace.get_input_from_file_path(file_path);
     let ingot = input.map(|input| input.ingot(db.as_input_db()));
 
     let file_text = input.unwrap().text(db.as_input_db());
@@ -75,7 +75,7 @@ pub async fn handle_hover(
     };
 
     let top_mod = workspace
-        .top_mod_from_file_path(&db.snapshot(), file_path)
+        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
         .unwrap();
     let early_resolution = goto_enclosing_path(&db, top_mod, cursor);
 
@@ -124,7 +124,7 @@ pub async fn handle_goto_definition(
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
     let top_mod = workspace
-        .top_mod_from_file_path(&db.snapshot(), file_path)
+        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
         .unwrap();
     let goto_info = goto_enclosing_path(&db, top_mod, cursor);
 
@@ -148,7 +148,7 @@ pub async fn handle_goto_definition(
         .map(|scope| to_lsp_location_from_scope(scope, db.as_spanned_hir_db()))
         .collect::<Vec<_>>();
 
-    let errors = scopes
+    let _errors = scopes
         .iter()
         .filter_map(|scope| *scope)
         .map(|scope| to_lsp_location_from_scope(scope, db.as_spanned_hir_db()))

@@ -20,7 +20,7 @@ pub struct BufferUntilStream<I, T, U> {
     ready_buffer: VecDeque<U>,
 }
 
-impl<'s, I, T, U> BufferUntilStream<I, T, U>
+impl<I, T, U> BufferUntilStream<I, T, U>
 where
     I: Stream<Item = U>,
     T: Stream,
@@ -109,7 +109,7 @@ where
     fn buffer_until(self, trigger: T) -> BufferUntilStream<I, T, U>;
 }
 
-impl<'s, I, T, U: Debug> BufferUntilStreamExt<I, T, U> for I
+impl<I, T, U: Debug> BufferUntilStreamExt<I, T, U> for I
 where
     I: Stream<Item = U>,
     T: Stream,

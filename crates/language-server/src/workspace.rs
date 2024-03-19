@@ -8,7 +8,6 @@ use common::{
 use hir::{hir_def::TopLevelMod, lower::map_file_to_mod, LowerHirDb};
 use log::info;
 use patricia_tree::StringPatriciaMap;
-use salsa::Snapshot;
 
 use crate::db::LanguageServerDatabase;
 
@@ -20,38 +19,24 @@ fn ingot_directory_key(path: String) -> String {
 }
 
 pub trait IngotFileContext {
+    fn get_input_from_file_path(&self, path: &str) -> Option<InputFile>;
     fn touch_input_from_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
     ) -> Option<InputFile>;
-    fn get_ingot_from_file_path(
-        &self,
-        db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<InputIngot>;
+    fn get_ingot_from_file_path(&self, path: &str) -> Option<InputIngot>;
     fn touch_ingot_from_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
     ) -> Option<InputIngot>;
-    fn get_input_from_file_path(
-        &self,
-        db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<InputFile>;
-    fn top_mod_from_file_path(
-        &self,
-        db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<TopLevelMod>;
-    fn rename_file(
+    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod>;
+    fn remove_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
-        old_path: &str,
-        new_path: &str,
+        path: &str,
     ) -> Result<()>;
-    fn remove_file(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Result<()>;
 }
 
 pub struct LocalIngotContext {
@@ -117,14 +102,11 @@ impl IngotFileContext for LocalIngotContext {
             |file| Some(*file),
         );
         self.files.insert(path, input.unwrap());
+        ingot.set_files(db, self.files.values().copied().collect());
         input
     }
 
-    fn get_input_from_file_path(
-        &self,
-        _db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<InputFile> {
+    fn get_input_from_file_path(&self, path: &str) -> Option<InputFile> {
         self.files.get(path).copied()
     }
 
@@ -136,43 +118,52 @@ impl IngotFileContext for LocalIngotContext {
         Some(self.ingot)
     }
 
-    fn get_ingot_from_file_path(
-        &self,
-        _db: &Snapshot<LanguageServerDatabase>,
-        _path: &str,
-    ) -> Option<InputIngot> {
+    fn get_ingot_from_file_path(&self, _path: &str) -> Option<InputIngot> {
         Some(self.ingot)
     }
 
     fn top_mod_from_file_path(
         &self,
-        db: &Snapshot<LanguageServerDatabase>,
+        db: &dyn LowerHirDb,
         path: &str,
     ) -> Option<TopLevelMod> {
-        let file = self.get_input_from_file_path(db, path)?;
+        let file = self.get_input_from_file_path(path)?;
         Some(map_file_to_mod(db.as_lower_hir_db(), file))
     }
 
-    fn rename_file(
+    // fn rename_file(
+    //     &mut self,
+    //     db: &mut LanguageServerDatabase,
+    //     old_path: &str,
+    //     new_path: &str,
+    // ) -> Result<()> {
+    //     let file = self.files.remove(old_path);
+    //     if let Some(file) = file {
+    //         file.set_path(db).to(new_path.into());
+    //         self.files.insert(new_path, file);
+    //     }
+    //     Ok(())
+    // }
+
+    fn remove_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
-        old_path: &str,
-        new_path: &str,
+        path: &str,
     ) -> Result<()> {
-        let file = self.files.remove(old_path);
-        if let Some(file) = file {
-            file.set_path(db).to(new_path.into());
-            self.files.insert(new_path, file);
-        }
-        Ok(())
-    }
-
-    fn remove_file(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Result<()> {
         let file = self.files.remove(path);
-        if let Some(file) = file {
-            file.remove_from_ingot(db)?;
+
+        if let Some(_file) = file {
+            let ingot = self.ingot;
+            let new_ingot_files = self
+                .files
+                .values()
+                .copied()
+                .collect::<BTreeSet<InputFile>>();
+            ingot.set_files(db, new_ingot_files);
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("File not found in ingot"))
         }
-        Ok(())
     }
 }
 
@@ -210,11 +201,7 @@ impl IngotFileContext for StandaloneIngotContext {
         input_file
     }
 
-    fn get_input_from_file_path(
-        &self,
-        _db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<InputFile> {
+    fn get_input_from_file_path(&self, path: &str) -> Option<InputFile> {
         self.files.get(path).copied()
     }
 
@@ -242,44 +229,25 @@ impl IngotFileContext for StandaloneIngotContext {
             )
     }
 
-    fn get_ingot_from_file_path(
-        &self,
-        _db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<InputIngot> {
+    fn get_ingot_from_file_path(&self, path: &str) -> Option<InputIngot> {
         // this shouldn't mutate, it should only get the ingot or return `None`
         get_containing_ingot(&self.ingots, path).copied()
     }
 
-    fn top_mod_from_file_path(
-        &self,
-        db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<TopLevelMod> {
-        let file = self.get_input_from_file_path(db, path)?;
+    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
+        let file = self.get_input_from_file_path(path)?;
         Some(map_file_to_mod(db.as_lower_hir_db(), file))
     }
 
-    fn rename_file(
+    fn remove_input_for_file_path(
         &mut self,
-        db: &mut LanguageServerDatabase,
-        old_path: &str,
-        new_path: &str,
+        _db: &mut LanguageServerDatabase,
+        path: &str,
     ) -> Result<()> {
-        let file = self.files.remove(old_path);
-        if let Some(file) = file {
-            file.set_path(db).to(new_path.into());
-            self.files.insert(new_path, file);
-        }
-        Ok(())
-    }
-
-    fn remove_file(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Result<()> {
         let file = self.files.remove(path);
-        if let Some(file) = file {
-            file.remove_from_ingot(db)?;
+        if let Some(_file) = file {
+            self.ingots.remove(path);
         }
-        self.ingots.remove(path);
         Ok(())
     }
 }
@@ -372,7 +340,7 @@ impl Workspace {
         let previous_ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
         for path in previous_ingot_context_file_keys {
             if !actual_paths.contains(path) {
-                let _ = ingot_context.remove_file(db, path);
+                let _ = ingot_context.remove_input_for_file_path(db, path);
             }
         }
 
@@ -423,17 +391,12 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn get_input_from_file_path(
-        &self,
-        db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<InputFile> {
+    fn get_input_from_file_path(&self, path: &str) -> Option<InputFile> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
-            ctx.get_input_from_file_path(db, path)
+            ctx.get_input_from_file_path(path)
         } else {
-            self.standalone_ingot_context
-                .get_input_from_file_path(db, path)
+            self.standalone_ingot_context.get_input_from_file_path(path)
         }
     }
 
@@ -451,25 +414,16 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn get_ingot_from_file_path(
-        &self,
-        db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<InputIngot> {
+    fn get_ingot_from_file_path(&self, path: &str) -> Option<InputIngot> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
-            ctx.get_ingot_from_file_path(db, path)
+            ctx.get_ingot_from_file_path(path)
         } else {
-            self.standalone_ingot_context
-                .get_ingot_from_file_path(db, path)
+            self.standalone_ingot_context.get_ingot_from_file_path(path)
         }
     }
 
-    fn top_mod_from_file_path(
-        &self,
-        db: &Snapshot<LanguageServerDatabase>,
-        path: &str,
-    ) -> Option<TopLevelMod> {
+    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             Some(ctx.top_mod_from_file_path(db, path).unwrap())
@@ -479,38 +433,26 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn rename_file(
+    fn remove_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
-        old_path: &str,
-        new_path: &str,
+        path: &str,
     ) -> Result<()> {
-        let ctx = get_containing_ingot_mut(&mut self.ingot_contexts, old_path);
-        if let Some(ctx) = ctx {
-            ctx.rename_file(db, old_path, new_path)
-        } else {
-            self.standalone_ingot_context
-                .rename_file(db, old_path, new_path)
-        }
-    }
-
-    fn remove_file(&mut self, db: &mut LanguageServerDatabase, path: &str) -> Result<()> {
         let ctx = get_containing_ingot_mut(&mut self.ingot_contexts, path);
         if let Some(ctx) = ctx {
-            ctx.remove_file(db, path)
+            ctx.remove_input_for_file_path(db, path)
         } else {
-            self.standalone_ingot_context.remove_file(db, path)?;
+            self.standalone_ingot_context
+                .remove_input_for_file_path(db, path)?;
             Ok(())
         }
     }
 }
 
 pub trait SyncableInputFile {
-    fn sync(&self, db: &mut LanguageServerDatabase, contents: Option<String>) -> Result<()>;
+    // fn sync(&self, db: &mut LanguageServerDatabase, contents: Option<String>) -> Result<()>;
     fn sync_from_fs(&self, db: &mut LanguageServerDatabase) -> Result<()>;
     fn sync_from_text(&self, db: &mut LanguageServerDatabase, contents: String) -> Result<()>;
-    fn remove_from_ingot(&self, db: &mut LanguageServerDatabase) -> Result<()>;
-    // fn rename(&self, db: &mut LanguageServerDatabase, new_path: String) -> Result<()>;
 }
 
 impl SyncableInputFile for InputFile {
@@ -524,29 +466,22 @@ impl SyncableInputFile for InputFile {
         self.set_text(db).to(contents);
         Ok(())
     }
-    fn sync(&self, db: &mut LanguageServerDatabase, contents: Option<String>) -> Result<()> {
-        // check to see if the file actually exists anymore:
-        let path = self.path(db);
-        if !path.exists() {
-            info!(
-                "File {:?} no longer exists... removing from workspace",
-                path
-            );
-            // if not let's remove it from the ingot
-            self.remove_from_ingot(db)
-        } else if let Some(contents) = contents {
-            self.sync_from_text(db, contents)
-        } else {
-            self.sync_from_fs(db)
-        }
-    }
-    fn remove_from_ingot(&self, db: &mut LanguageServerDatabase) -> Result<()> {
-        let ingot = self.ingot(db);
-        let mut files = ingot.files(db).clone();
-        files.remove(self);
-        ingot.set_files(db, files);
-        Ok(())
-    }
+    // fn sync(&self, db: &mut LanguageServerDatabase, contents: Option<String>) -> Result<()> {
+    //     // check to see if the file actually exists anymore:
+    //     let path = self.path(db);
+    //     if !path.exists() {
+    //         info!(
+    //             "File {:?} no longer exists... removing from workspace",
+    //             path
+    //         );
+    //         // if not let's remove it from the ingot
+    //         self.remove_from_ingot(db)
+    //     } else if let Some(contents) = contents {
+    //         self.sync_from_text(db, contents)
+    //     } else {
+    //         self.sync_from_fs(db)
+    //     }
+    // }
 }
 
 pub trait SyncableIngotFileContext {
@@ -583,8 +518,6 @@ impl SyncableIngotFileContext for Workspace {
 
 #[cfg(test)]
 mod tests {
-
-    use salsa::ParallelDatabase;
 
     use crate::workspace::{
         get_containing_ingot_mut, IngotFileContext, Workspace, FE_CONFIG_SUFFIX,
@@ -741,7 +674,7 @@ mod tests {
             // file.sync(&mut db, None);
 
             // this would panic if a file has been added to multiple ingots
-            let _top_mod = workspace.top_mod_from_file_path(&db.snapshot(), src_path.as_str());
+            let _top_mod = workspace.top_mod_from_file_path(&db, src_path.as_str());
         }
     }
 

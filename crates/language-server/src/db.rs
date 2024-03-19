@@ -73,7 +73,7 @@ impl LanguageServerDatabase {
 
     pub fn finalize_diags(
         &self,
-        diags: &Vec<Box<dyn DiagnosticVoucher>>,
+        diags: &[Box<dyn DiagnosticVoucher>],
     ) -> Vec<CompleteDiagnostic> {
         let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
