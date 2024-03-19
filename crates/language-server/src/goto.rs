@@ -132,9 +132,9 @@ mod tests {
         let ingot_base_dir = Path::new(&cargo_manifest_dir).join("test_files/single_ingot");
 
         let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default(db);
+        let workspace = &mut Workspace::default();
 
-        let _ = workspace.set_workspace_root(db, ingot_base_dir.clone());
+        let _ = workspace.set_workspace_root(db, &ingot_base_dir);
 
         let fe_source_path = ingot_base_dir.join(fixture.path());
         let fe_source_path = fe_source_path.to_str().unwrap();
@@ -146,7 +146,7 @@ mod tests {
             .set_text(db)
             .to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_for_file_path(db.as_lower_hir_db(), fe_source_path)
+            .top_mod_from_file_path(db.as_lower_hir_db(), fe_source_path)
             .unwrap();
 
         let ingot = workspace.touch_ingot_for_file_path(db, fixture.path());
@@ -198,13 +198,13 @@ mod tests {
     )]
     fn test_goto_enclosing_path(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default(db);
+        let workspace = &mut Workspace::default();
         let input = workspace
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
         input.set_text(db).to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_for_file_path(db.as_lower_hir_db(), fixture.path())
+            .top_mod_from_file_path(db.as_lower_hir_db(), fixture.path())
             .unwrap();
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
@@ -253,7 +253,7 @@ mod tests {
     )]
     fn test_smallest_enclosing_path(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default(db);
+        let workspace = &mut Workspace::default();
 
         workspace
             .touch_input_for_file_path(db, fixture.path())
@@ -261,7 +261,7 @@ mod tests {
             .set_text(db)
             .to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_for_file_path(db.as_lower_hir_db(), fixture.path())
+            .top_mod_from_file_path(db.as_lower_hir_db(), fixture.path())
             .unwrap();
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);

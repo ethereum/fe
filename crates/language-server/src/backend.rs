@@ -2,13 +2,16 @@ use crate::handlers::request::{handle_goto_definition, handle_hover};
 
 use crate::workspace::SyncableIngotFileContext;
 
+use common::InputDb;
 use fork_stream::StreamExt as _;
+use futures_batch::ChunksTimeoutStreamExt;
+use fxhash::FxHashSet;
 
 use futures::StreamExt;
 use futures_concurrency::prelude::*;
 use lsp_types::TextDocumentItem;
 use salsa::{ParallelDatabase, Snapshot};
-use stream_operators::StreamOps;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -22,6 +25,8 @@ use crate::language_server::MessageReceivers;
 use crate::workspace::{IngotFileContext, SyncableInputFile, Workspace};
 
 use log::info;
+
+// use tokio_stream::StreamExt;
 
 use tower_lsp::Client;
 
@@ -58,12 +63,9 @@ impl Backend {
 
         let client = self.client.clone();
         let messaging = self.messaging;
-        // let messaging = self.messaging.clone();
-        // let messaging = messaging.read().await;
 
         let mut initialized_stream = messaging.initialize_stream.fuse();
         let mut shutdown_stream = messaging.shutdown_stream.fuse();
-        // let mut did_close_stream = messaging.did_close_stream.fuse();
         let did_change_watched_files_stream = messaging.did_change_watched_files_stream.fork();
 
         let flat_did_change_watched_files = did_change_watched_files_stream
@@ -83,11 +85,13 @@ impl Backend {
                 Box::pin(async move { matches!(change_type, lsp_types::FileChangeType::CREATED) })
             });
 
-        let mut did_delete_watch_file_stream =
-            flat_did_change_watched_files.clone().filter(|change| {
+        let mut did_delete_watch_file_stream = flat_did_change_watched_files
+            .clone()
+            .filter(|change| {
                 let change_type = change.typ;
                 Box::pin(async move { matches!(change_type, lsp_types::FileChangeType::DELETED) })
-            });
+            })
+            .fuse();
 
         let did_open_stream = messaging.did_open_stream.fuse();
         let did_change_stream = messaging.did_change_stream.fuse();
@@ -128,7 +132,12 @@ impl Backend {
             }),
         )
             .merge()
-            .debounce_time(std::time::Duration::from_millis(20))
+            .fuse();
+
+        let (tx_needs_diagnostics, rx_needs_diagnostics) = tokio::sync::mpsc::unbounded_channel();
+
+        let mut diagnostics_stream = UnboundedReceiverStream::from(rx_needs_diagnostics)
+            .chunks_timeout(500, std::time::Duration::from_millis(30))
             .fuse();
 
         let mut hover_stream = messaging.hover_stream.fuse();
@@ -140,8 +149,6 @@ impl Backend {
                 Some(result) = initialized_stream.next() => {
                     let (initialization_params, responder) = result;
                     info!("initializing language server!");
-                    // setup workspace
-                    // let workspace = self.workspace.clone();
 
                     let root =
                         initialization_params
@@ -180,6 +187,7 @@ impl Backend {
                     let path = path.to_str().unwrap();
                     let workspace = workspace.clone();
                     let _ = workspace.write().await.remove_input_for_file_path(db, path);
+                    let _ = tx_needs_diagnostics.send(path.to_string());
                 }
                 Some(doc) = change_stream.next() => {
                     info!("change detected: {:?}", doc.uri);
@@ -187,18 +195,36 @@ impl Backend {
                     let path = path_buf.to_str().unwrap();
                     let contents = Some(doc.text);
                     update_input(workspace.clone(), db, path, contents).await;
+                    let _ = tx_needs_diagnostics.send(path.to_string());
+                }
+                Some(files_need_diagnostics) = diagnostics_stream.next() => {
+                    info!("files need diagnostics: {:?}", files_need_diagnostics);
+                    let mut ingots_need_diagnostics = FxHashSet::default();
+                    for file in files_need_diagnostics {
+                        let workspace = workspace.clone();
+                        let workspace = workspace.read().await;
+                        let ingot = workspace.get_ingot_for_file_path(&file).unwrap();
+                        ingots_need_diagnostics.insert(ingot);
+                    }
 
-                    let db = db.snapshot();
-                    let client = client.clone();
-                    let workspace = workspace.clone();
-                    self.workers.spawn(
-                        async move { handle_diagnostics(client, workspace, db, doc.uri).await }
-                    );
+                    info!("ingots need diagnostics: {:?}", ingots_need_diagnostics);
+                    for ingot in ingots_need_diagnostics.into_iter() {
+                        for file in ingot.files(db.as_input_db()) {
+                            let file = *file;
+                            let path = file.path(db.as_input_db());
+                            let path = lsp_types::Url::from_file_path(path).unwrap();
+                            let db = db.snapshot();
+                            let client = client.clone();
+                            let workspace = workspace.clone();
+                            self.workers.spawn(
+                                async move { handle_diagnostics(client.clone(), workspace.clone(), db, path).await }
+                            );
+                        }
+                    }
                 }
                 Some((params, responder)) = hover_stream.next() => {
                     let db = db.snapshot();
                     let workspace = workspace.clone();
-                    // let response = handle_hover(db, workspace, params).await;
                     let response = match self.workers.spawn(handle_hover(db, workspace, params)).await {
                         Ok(response) => response,
                         Err(e) => {

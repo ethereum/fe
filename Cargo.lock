@@ -1290,6 +1290,7 @@ dependencies = [
  "fe-macros",
  "fork_stream",
  "futures",
+ "futures-batch",
  "futures-concurrency",
  "fxhash",
  "glob",
@@ -1523,6 +1524,17 @@ dependencies = [
  "futures-sink",
  "futures-task",
  "futures-util",
+]
+
+[[package]]
+name = "futures-batch"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6f444c45a1cb86f2a7e301469fd50a82084a60dadc25d94529a8312276ecb71a"
+dependencies = [
+ "futures",
+ "futures-timer",
+ "pin-utils",
 ]
 
 [[package]]

@@ -6,6 +6,7 @@ mod globals;
 mod goto;
 mod language_server;
 mod logger;
+mod stream_buffer_until;
 mod util;
 mod workspace;
 
