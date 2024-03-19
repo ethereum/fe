@@ -135,7 +135,7 @@ fn run_diagnostics(
 ) -> Vec<common::diagnostics::CompleteDiagnostic> {
     let file_path = path;
     let top_mod = workspace
-        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
+        .top_mod_for_file_path(db.as_lower_hir_db(), file_path)
         .unwrap();
     let diags = &db.analyze_top_mod(top_mod);
     db.finalize_diags(diags)
