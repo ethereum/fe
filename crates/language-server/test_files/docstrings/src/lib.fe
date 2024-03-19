@@ -1,0 +1,8 @@
+use stuff::{ return_three, return_four }
+
+/// ## `return_seven`
+/// ### a function of numbers
+/// #### returns the 3+4=7
+fn return_seven() {
+  return_three() + return_four()
+}
