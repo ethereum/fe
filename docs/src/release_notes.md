@@ -1581,7 +1581,7 @@ This is the first non-alpha release of Fe. Read our [announcement](https://blog.
 
   **Implementation details:**
 
-  Mostly copied Rust's crate system, but use the the term *ingot* instead of crate.
+  Mostly copied Rust's crate system, but use the term *ingot* instead of crate.
 
   Below is an example of an ingot's file tree, as supported by the current implementation.
 

@@ -60,7 +60,7 @@
         * [Path expressions](spec/expressions/path.md)
         * [Literal expressions](spec/expressions/literal.md)
         * [Arithmetic Operators](spec/expressions/arithmetic_operators.md)
-        * [Comparision Operators](spec/expressions/comparison_operators.md)
+        * [Comparison Operators](spec/expressions/comparison_operators.md)
         * [Boolean Operators](spec/expressions/boolean_operators.md)
         * [Unary Operators](spec/expressions/unary_operators.md)
     * [Type System](spec/type_system/index.md)
