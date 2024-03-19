@@ -99,6 +99,7 @@ mod tests {
     use common::input::IngotKind;
     use dir_test::{dir_test, Fixture};
     use fe_compiler_test_utils::snap_test;
+    use hir::LowerHirDb;
     use salsa::ParallelDatabase;
     use std::path::Path;
 
@@ -145,7 +146,7 @@ mod tests {
             .set_text(db)
             .to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_from_file_path(&db.snapshot(), fe_source_path)
+            .top_mod_from_file_path(db.as_lower_hir_db(), fe_source_path)
             .unwrap();
 
         let ingot = workspace.touch_ingot_from_file_path(db, fixture.path());
@@ -203,7 +204,7 @@ mod tests {
             .unwrap();
         input.set_text(db).to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_from_file_path(&db.snapshot(), fixture.path())
+            .top_mod_from_file_path(db.as_lower_hir_db(), fixture.path())
             .unwrap();
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
@@ -260,7 +261,7 @@ mod tests {
             .set_text(db)
             .to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_from_file_path(&db.snapshot(), fixture.path())
+            .top_mod_from_file_path(db.as_lower_hir_db(), fixture.path())
             .unwrap();
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);

@@ -10,7 +10,7 @@ use common::{
     InputDb, InputFile,
 };
 use fxhash::FxHashMap;
-use hir::diagnostics::DiagnosticVoucher;
+use hir::{diagnostics::DiagnosticVoucher, LowerHirDb};
 use salsa::Snapshot;
 
 use crate::{
@@ -134,7 +134,7 @@ fn run_diagnostics(
     path: &str,
 ) -> Vec<common::diagnostics::CompleteDiagnostic> {
     let file_path = path;
-    let top_mod = workspace.top_mod_from_file_path(db, file_path).unwrap();
+    let top_mod = workspace.top_mod_from_file_path(db.as_lower_hir_db(), file_path).unwrap();
     let diags = &db.analyze_top_mod(top_mod);
     db.finalize_diags(diags)
 }
