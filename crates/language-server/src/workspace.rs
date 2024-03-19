@@ -122,11 +122,7 @@ impl IngotFileContext for LocalIngotContext {
         Some(self.ingot)
     }
 
-    fn top_mod_from_file_path(
-        &self,
-        db: &dyn LowerHirDb,
-        path: &str,
-    ) -> Option<TopLevelMod> {
+    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
         let file = self.get_input_from_file_path(path)?;
         Some(map_file_to_mod(db.as_lower_hir_db(), file))
     }

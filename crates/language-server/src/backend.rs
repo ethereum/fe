@@ -1,6 +1,5 @@
 use crate::handlers::request::{handle_goto_definition, handle_hover};
 
-
 use crate::workspace::SyncableIngotFileContext;
 
 use fork_stream::StreamExt as _;
@@ -10,7 +9,6 @@ use futures_concurrency::prelude::*;
 use lsp_types::TextDocumentItem;
 use salsa::{ParallelDatabase, Snapshot};
 use stream_operators::StreamOps;
-
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -234,12 +232,7 @@ async fn update_input(
 ) {
     info!("updating input for {:?}", path);
     let workspace = &mut workspace.write().await;
-    let input = workspace
-        .touch_input_from_file_path(
-            db,
-            path
-        )
-        .unwrap();
+    let input = workspace.touch_input_from_file_path(db, path).unwrap();
     if let Some(contents) = contents {
         let _ = input.sync_from_text(db, contents);
     }

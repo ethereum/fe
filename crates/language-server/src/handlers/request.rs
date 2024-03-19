@@ -8,7 +8,7 @@ use hir_analysis::{
 };
 use log::info;
 
-use salsa::{Snapshot};
+use salsa::Snapshot;
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 
