@@ -1,0 +1,9 @@
+/// A function that returns `3`
+pub fn return_three() {
+  3
+}
+
+/// ## A function that returns 4
+pub fn return_four() {
+  4
+}
