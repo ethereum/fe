@@ -1,4 +1,8 @@
-use std::{borrow::Cow, collections::BTreeSet, path::PathBuf};
+use std::{
+    borrow::Cow,
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Result;
 use common::{
@@ -37,7 +41,7 @@ pub trait IngotFileContext {
         db: &mut LanguageServerDatabase,
         path: &str,
     ) -> Option<InputIngot>;
-    fn top_mod_for_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod>;
+    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod>;
     fn remove_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
@@ -128,7 +132,7 @@ impl IngotFileContext for LocalIngotContext {
         Some(self.ingot)
     }
 
-    fn top_mod_for_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
+    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
         let file = self.get_input_for_file_path(path)?;
         Some(map_file_to_mod(db.as_lower_hir_db(), file))
     }
@@ -222,7 +226,7 @@ impl IngotFileContext for StandaloneIngotContext {
         get_containing_ingot(&self.ingots, path).copied()
     }
 
-    fn top_mod_for_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
+    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
         let file = self.get_input_for_file_path(path)?;
         Some(map_file_to_mod(db.as_lower_hir_db(), file))
     }
@@ -258,11 +262,10 @@ impl Workspace {
     pub fn load_std_lib(
         &mut self,
         db: &mut LanguageServerDatabase,
-        root_path: &PathBuf,
+        root_path: &Path,
     ) -> Result<()> {
         let root_path = root_path.to_str().unwrap();
-        self
-            .touch_ingot_for_file_path(db, &format!("{}/std/fe.toml", root_path))
+        self.touch_ingot_for_file_path(db, &format!("{}/std/fe.toml", root_path))
             .unwrap();
 
         info!("Loading std lib...");
@@ -274,10 +277,7 @@ impl Workspace {
             if let Some(file) = StdLib::get(path) {
                 let contents = String::from_utf8(file.data.as_ref().to_vec());
                 if let Ok(contents) = contents {
-                    let input = self.touch_input_for_file_path(
-                        db,
-                        &std_path,
-                    );
+                    let input = self.touch_input_for_file_path(db, &std_path);
                     input.unwrap().set_text(db).to(contents);
                 };
             };
@@ -288,14 +288,14 @@ impl Workspace {
     pub fn set_workspace_root(
         &mut self,
         db: &mut LanguageServerDatabase,
-        root_path: &PathBuf,
+        root_path: &Path,
     ) -> Result<()> {
         let path = root_path;
         self.root_path = Some(path.to_path_buf());
         self.sync(db)
     }
 
-    pub fn ingot_context_for_config_path(
+    pub fn ingot_context_from_config_path(
         &mut self,
         db: &LanguageServerDatabase,
         config_path: &str,
@@ -322,7 +322,7 @@ impl Workspace {
             .collect::<Vec<String>>();
 
         for path in paths {
-            self.ingot_context_for_config_path(db, path);
+            self.ingot_context_from_config_path(db, path);
         }
 
         let existing_keys: Vec<String> = self.ingot_contexts.keys().collect();
@@ -351,7 +351,9 @@ impl Workspace {
         info!("Found {} files in ingot", actual_paths.len());
         info!("Syncing ingot files: {:?}", actual_paths);
 
-        let ingot_context = self.ingot_context_for_config_path(db, config_path).unwrap();
+        let ingot_context = self
+            .ingot_context_from_config_path(db, config_path)
+            .unwrap();
 
         let previous_ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
         for path in previous_ingot_context_file_keys {
@@ -439,13 +441,13 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn top_mod_for_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
+    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
-            Some(ctx.top_mod_for_file_path(db, path).unwrap())
+            Some(ctx.top_mod_from_file_path(db, path).unwrap())
         } else {
             self.standalone_ingot_context
-                .top_mod_for_file_path(db, path)
+                .top_mod_from_file_path(db, path)
         }
     }
 
@@ -560,7 +562,7 @@ mod tests {
         let mut workspace = Workspace::default();
 
         let _ingot_context_ingot = {
-            let ingot_context = workspace.ingot_context_for_config_path(
+            let ingot_context = workspace.ingot_context_from_config_path(
                 &crate::db::LanguageServerDatabase::default(),
                 config_path,
             );
@@ -595,7 +597,7 @@ mod tests {
         let mut db = crate::db::LanguageServerDatabase::default();
 
         let ingot_context_ingot = {
-            let ingot_context = workspace.ingot_context_for_config_path(&db, config_path);
+            let ingot_context = workspace.ingot_context_from_config_path(&db, config_path);
 
             assert!(ingot_context.is_some());
             ingot_context.map(|ctx| ctx.ingot)
@@ -674,7 +676,7 @@ mod tests {
             // file.sync(&mut db, None);
 
             // this would panic if a file has been added to multiple ingots
-            let _top_mod = workspace.top_mod_for_file_path(&db, src_path.as_str());
+            let _top_mod = workspace.top_mod_from_file_path(&db, src_path.as_str());
         }
     }
 
@@ -700,7 +702,7 @@ mod tests {
         workspace.sync_ingot_files(&mut db, &foo_config);
 
         let foo_context = workspace
-            .ingot_context_for_config_path(&db, &foo_config)
+            .ingot_context_from_config_path(&db, &foo_config)
             .unwrap();
 
         assert!(foo_context.files.len() == 1);
