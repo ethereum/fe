@@ -6,7 +6,7 @@ use hir_analysis::{
     name_resolution::{EarlyResolvedPath, NameRes},
     HirAnalysisDb,
 };
-use log::info;
+use tracing::info;
 
 use salsa::Snapshot;
 use tokio::sync::RwLock;

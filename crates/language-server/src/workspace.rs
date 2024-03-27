@@ -10,8 +10,8 @@ use common::{
     InputFile, InputIngot,
 };
 use hir::{hir_def::TopLevelMod, lower::map_file_to_mod, LowerHirDb};
-use log::info;
 use patricia_tree::StringPatriciaMap;
+use tracing::info;
 
 use crate::db::LanguageServerDatabase;
 

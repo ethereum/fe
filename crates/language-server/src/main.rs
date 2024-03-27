@@ -12,6 +12,7 @@ mod workspace;
 
 use backend::Backend;
 use db::Jar;
+use tracing::Level;
 
 use language_server::Server;
 
@@ -25,9 +26,8 @@ mod handlers {
 async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
-    console_subscriber::init();
+    let rx = setup_logger(Level::INFO).unwrap();
 
-    // let message_channels = language_server::MessageChannels::new();
     let (message_senders, message_receivers) = language_server::setup_message_channels();
     let (service, socket) =
         tower_lsp::LspService::build(|client| Server::new(client, message_senders)).finish();
@@ -35,8 +35,6 @@ async fn main() {
 
     let client = server.client.clone();
     let backend = Backend::new(client, message_receivers);
-
-    let rx = setup_logger(log::Level::Info).unwrap();
 
     // separate runtime for the backend
     // let backend_runtime = tokio::runtime::Builder::new_multi_thread()

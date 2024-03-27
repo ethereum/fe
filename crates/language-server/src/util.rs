@@ -4,8 +4,8 @@ use common::{
 };
 use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
-use log::error;
 use lsp_types::Position;
+use tracing::error;
 use url::Url;
 
 pub fn calculate_line_offsets(text: &str) -> Vec<usize> {

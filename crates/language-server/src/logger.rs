@@ -1,55 +1,74 @@
-use log::{Level, LevelFilter, Metadata, Record, SetLoggerError};
+use std::io::Write;
+
 use lsp_types::MessageType;
 use tokio::task::yield_now;
 use tower_lsp::Client;
-
-pub struct Logger {
-    pub(crate) level: Level,
-    log_sender: tokio::sync::mpsc::UnboundedSender<(String, MessageType)>,
-}
-
-impl log::Log for Logger {
-    fn enabled(&self, metadata: &Metadata) -> bool {
-        let logger = self;
-        metadata.level() <= logger.level
-    }
-
-    fn log(&self, record: &Record) {
-        if self.enabled(record.metadata()) {
-            let message = format!("{} - {}", record.level(), record.args());
-            let message_type = match record.level() {
-                log::Level::Error => MessageType::ERROR,
-                log::Level::Warn => MessageType::WARNING,
-                log::Level::Info => MessageType::INFO,
-                log::Level::Debug => MessageType::LOG,
-                log::Level::Trace => MessageType::LOG,
-            };
-            self.log_sender.send((message, message_type)).unwrap();
-        }
-    }
-
-    fn flush(&self) {}
-}
-
-pub fn setup_logger(
-    level: Level,
-) -> Result<tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>, SetLoggerError> {
-    let (log_sender, log_receiver) =
-        tokio::sync::mpsc::unbounded_channel::<(String, MessageType)>();
-    let logger = Logger { level, log_sender };
-    let static_logger = Box::leak(Box::new(logger));
-    log::set_logger(static_logger)?;
-    log::set_max_level(LevelFilter::Debug);
-    Ok(log_receiver)
-}
+use tracing_subscriber::fmt::writer::MakeWriterExt;
+use tracing_subscriber::fmt::MakeWriter;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::prelude::*;
 
 pub async fn handle_log_messages(
     mut rx: tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>,
     client: Client,
 ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
     loop {
-        let (message, message_type) = rx.recv().await.unwrap();
-        client.log_message(message_type, message).await;
-        yield_now().await;
+        if let Some((message, message_type)) = rx.recv().await {
+            client.log_message(message_type, message).await;
+            yield_now().await;
+        }
     }
+}
+
+#[derive(Clone)]
+pub struct LoggerLayer {
+    log_sender: tokio::sync::mpsc::UnboundedSender<(String, MessageType)>,
+}
+
+impl Write for LoggerLayer {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let message = String::from_utf8_lossy(buf).to_string();
+        let _ = self.log_sender.send((message, MessageType::LOG));
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+impl MakeWriter<'_> for LoggerLayer {
+    type Writer = Self;
+    fn make_writer(&self) -> Self::Writer {
+        self.clone()
+    }
+}
+
+pub fn setup_logger(
+    level: tracing::Level,
+) -> Result<tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>, Box<dyn std::error::Error>>
+{
+    let (log_sender, log_receiver) =
+        tokio::sync::mpsc::unbounded_channel::<(String, MessageType)>();
+    let logger = LoggerLayer { log_sender };
+    let logger = logger.with_max_level(level);
+
+    let pretty_logger = tracing_subscriber::fmt::layer()
+        .event_format(tracing_subscriber::fmt::format::format().pretty())
+        .with_ansi(false)
+        .with_writer(logger);
+
+    #[cfg(tokio_unstable)]
+    let console_layer = console_subscriber::spawn();
+
+    #[cfg(tokio_unstable)]
+    tracing_subscriber::registry()
+        .with(pretty_logger)
+        .with(console_layer)
+        .init();
+
+    #[cfg(not(tokio_unstable))]
+    tracing_subscriber::registry().with(pretty_logger).init();
+
+    Ok(log_receiver)
 }

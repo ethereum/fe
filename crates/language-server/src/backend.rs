@@ -24,7 +24,7 @@ use crate::globals::LANGUAGE_ID;
 use crate::language_server::MessageReceivers;
 use crate::workspace::{IngotFileContext, SyncableInputFile, Workspace};
 
-use log::info;
+use tracing::info;
 
 // use tokio_stream::StreamExt;
 
