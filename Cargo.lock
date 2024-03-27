@@ -1228,6 +1228,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-language-server-macros"
+version = "0.23.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.68",
+]
+
+[[package]]
 name = "fe-library"
 version = "0.26.0"
 dependencies = [
@@ -3427,7 +3436,6 @@ checksum = "bbae76ab933c85776efabc971569dd6119c580d8f5d448769dec1764bf796ef2"
 dependencies = [
  "native-tls",
  "tokio",
- "tokio-util",
 ]
 
 [[package]]
