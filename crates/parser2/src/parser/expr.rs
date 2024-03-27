@@ -216,7 +216,7 @@ fn infix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<(u8, u8
     Some(bp)
 }
 
-define_scope! { UnExprScope, UnExpr, Inheritance }
+define_scope! { UnExprScope, UnExpr }
 impl super::Parse for UnExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -229,7 +229,7 @@ impl super::Parse for UnExprScope {
     }
 }
 
-define_scope! { BinExprScope, BinExpr, Inheritance }
+define_scope! { BinExprScope, BinExpr }
 impl super::Parse for BinExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -241,7 +241,7 @@ impl super::Parse for BinExprScope {
     }
 }
 
-define_scope! { AugAssignExprScope, AugAssignExpr, Inheritance }
+define_scope! { AugAssignExprScope, AugAssignExpr }
 impl super::Parse for AugAssignExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -253,7 +253,7 @@ impl super::Parse for AugAssignExprScope {
     }
 }
 
-define_scope! { AssignExprScope, AssignExpr, Inheritance }
+define_scope! { AssignExprScope, AssignExpr }
 impl super::Parse for AssignExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -265,7 +265,7 @@ impl super::Parse for AssignExprScope {
     }
 }
 
-define_scope! { IndexExprScope, IndexExpr, Override(RBracket, Newline) }
+define_scope! { IndexExprScope, IndexExpr, (RBracket, Newline) }
 impl super::Parse for IndexExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -287,7 +287,7 @@ impl super::Parse for IndexExprScope {
     }
 }
 
-define_scope! { CallExprScope, CallExpr, Inheritance }
+define_scope! { CallExprScope, CallExpr }
 impl super::Parse for CallExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -309,7 +309,7 @@ impl super::Parse for CallExprScope {
     }
 }
 
-define_scope! { MethodExprScope, MethodCallExpr, Inheritance }
+define_scope! { MethodExprScope, MethodCallExpr }
 impl super::Parse for MethodExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -340,7 +340,7 @@ impl super::Parse for MethodExprScope {
     }
 }
 
-define_scope! { FieldExprScope, FieldExpr, Inheritance }
+define_scope! { FieldExprScope, FieldExpr }
 impl super::Parse for FieldExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -353,7 +353,7 @@ impl super::Parse for FieldExprScope {
     }
 }
 
-define_scope! { pub(super) LShiftScope, LShift, Inheritance }
+define_scope! { pub(super) LShiftScope, LShift }
 impl super::Parse for LShiftScope {
     type Error = Infallible;
 
@@ -364,7 +364,7 @@ impl super::Parse for LShiftScope {
     }
 }
 
-define_scope! { pub(super) RShiftScope, RShift, Inheritance }
+define_scope! { pub(super) RShiftScope, RShift }
 impl super::Parse for RShiftScope {
     type Error = Infallible;
 
@@ -375,7 +375,7 @@ impl super::Parse for RShiftScope {
     }
 }
 
-define_scope! { pub(super) LtEqScope, LtEq, Inheritance }
+define_scope! { pub(super) LtEqScope, LtEq }
 impl super::Parse for LtEqScope {
     type Error = Infallible;
 
@@ -386,7 +386,7 @@ impl super::Parse for LtEqScope {
     }
 }
 
-define_scope! { pub(super) GtEqScope, GtEq, Inheritance }
+define_scope! { pub(super) GtEqScope, GtEq }
 impl super::Parse for GtEqScope {
     type Error = Infallible;
 

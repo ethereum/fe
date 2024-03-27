@@ -30,7 +30,7 @@ pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery
     }
 }
 
-define_scope! { LetStmtScope, LetStmt, Inheritance }
+define_scope! { LetStmtScope, LetStmt }
 impl super::Parse for LetStmtScope {
     type Error = Recovery<ErrProof>;
 
@@ -51,7 +51,7 @@ impl super::Parse for LetStmtScope {
     }
 }
 
-define_scope! { ForStmtScope, ForStmt, Inheritance }
+define_scope! { ForStmtScope, ForStmt }
 impl super::Parse for ForStmtScope {
     type Error = Recovery<ErrProof>;
 
@@ -76,7 +76,7 @@ impl super::Parse for ForStmtScope {
     }
 }
 
-define_scope! { WhileStmtScope, WhileStmt, Inheritance }
+define_scope! { WhileStmtScope, WhileStmt }
 impl super::Parse for WhileStmtScope {
     type Error = Recovery<ErrProof>;
 
@@ -96,7 +96,7 @@ impl super::Parse for WhileStmtScope {
     }
 }
 
-define_scope! { ContinueStmtScope, ContinueStmt, Inheritance }
+define_scope! { ContinueStmtScope, ContinueStmt }
 impl super::Parse for ContinueStmtScope {
     type Error = Infallible;
 
@@ -106,7 +106,7 @@ impl super::Parse for ContinueStmtScope {
     }
 }
 
-define_scope! { BreakStmtScope, BreakStmt, Inheritance }
+define_scope! { BreakStmtScope, BreakStmt }
 impl super::Parse for BreakStmtScope {
     type Error = Infallible;
 
@@ -116,7 +116,7 @@ impl super::Parse for BreakStmtScope {
     }
 }
 
-define_scope! { ReturnStmtScope, ReturnStmt, Inheritance }
+define_scope! { ReturnStmtScope, ReturnStmt }
 impl super::Parse for ReturnStmtScope {
     type Error = Recovery<ErrProof>;
 
@@ -134,7 +134,7 @@ impl super::Parse for ReturnStmtScope {
     }
 }
 
-define_scope! { ExprStmtScope, ExprStmt, Inheritance }
+define_scope! { ExprStmtScope, ExprStmt }
 impl super::Parse for ExprStmtScope {
     type Error = Recovery<ErrProof>;
 

@@ -21,7 +21,7 @@ define_scope! {
     #[doc(hidden)]
     pub ItemListScope {inside_mod: bool},
     ItemList,
-    Override(
+    (
         ModKw,
         FnKw,
         StructKw,
@@ -93,8 +93,7 @@ impl super::Parse for ItemListScope {
 define_scope! {
     #[doc(hidden)]
     pub(super) ItemScope,
-    Item,
-    Inheritance
+    Item
 }
 impl super::Parse for ItemScope {
     type Error = Recovery<ErrProof>;
@@ -152,8 +151,7 @@ impl super::Parse for ItemScope {
 
 define_scope! {
     ItemModifierScope {kind: Rc<Cell<ModifierKind>>},
-    ItemModifier,
-    Inheritance
+    ItemModifier
 }
 impl super::Parse for ItemModifierScope {
     type Error = Infallible;
@@ -228,7 +226,7 @@ impl ModifierKind {
     }
 }
 
-define_scope! { ModScope, Mod, Inheritance }
+define_scope! { ModScope, Mod }
 impl super::Parse for ModScope {
     type Error = Recovery<ErrProof>;
 
@@ -251,7 +249,7 @@ impl super::Parse for ModScope {
     }
 }
 
-define_scope! { ContractScope, Contract, Inheritance }
+define_scope! { ContractScope, Contract }
 impl super::Parse for ContractScope {
     type Error = Recovery<ErrProof>;
 
@@ -270,7 +268,7 @@ impl super::Parse for ContractScope {
     }
 }
 
-define_scope! { EnumScope, Enum, Inheritance }
+define_scope! { EnumScope, Enum }
 impl super::Parse for EnumScope {
     type Error = Recovery<ErrProof>;
 
@@ -301,7 +299,7 @@ impl super::Parse for EnumScope {
     }
 }
 
-define_scope! { VariantDefListScope, VariantDefList, Override(Comma, RBrace) }
+define_scope! { VariantDefListScope, VariantDefList, (Comma, RBrace) }
 impl super::Parse for VariantDefListScope {
     type Error = Recovery<ErrProof>;
 
@@ -316,7 +314,7 @@ impl super::Parse for VariantDefListScope {
     }
 }
 
-define_scope! { VariantDefScope, VariantDef, Inheritance }
+define_scope! { VariantDefScope, VariantDef }
 impl super::Parse for VariantDefScope {
     type Error = Recovery<ErrProof>;
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
@@ -331,7 +329,7 @@ impl super::Parse for VariantDefScope {
     }
 }
 
-define_scope! { TraitScope, Trait, Inheritance }
+define_scope! { TraitScope, Trait }
 impl super::Parse for TraitScope {
     type Error = Recovery<ErrProof>;
 
@@ -366,7 +364,7 @@ impl super::Parse for TraitScope {
     }
 }
 
-define_scope! {SuperTraitListScope, SuperTraitList, Inheritance(Plus)}
+define_scope! {SuperTraitListScope, SuperTraitList, (Plus)}
 impl super::Parse for SuperTraitListScope {
     type Error = Recovery<ErrProof>;
 
@@ -380,7 +378,7 @@ impl super::Parse for SuperTraitListScope {
     }
 }
 
-define_scope! { TraitItemListScope, TraitItemList, Override(RBrace, Newline, FnKw) }
+define_scope! { TraitItemListScope, TraitItemList, (RBrace, Newline, FnKw) }
 impl super::Parse for TraitItemListScope {
     type Error = Recovery<ErrProof>;
 
@@ -389,7 +387,7 @@ impl super::Parse for TraitItemListScope {
     }
 }
 
-define_scope! { ImplScope, Impl, Override(ForKw, LBrace) }
+define_scope! { ImplScope, Impl, (ForKw, LBrace) }
 impl super::Parse for ImplScope {
     type Error = Recovery<ErrProof>;
 
@@ -440,7 +438,7 @@ impl super::Parse for ImplScope {
     }
 }
 
-define_scope! { ImplTraitItemListScope, ImplTraitItemList, Override(RBrace, FnKw) }
+define_scope! { ImplTraitItemListScope, ImplTraitItemList, (RBrace, FnKw) }
 impl super::Parse for ImplTraitItemListScope {
     type Error = Recovery<ErrProof>;
 
@@ -449,7 +447,7 @@ impl super::Parse for ImplTraitItemListScope {
     }
 }
 
-define_scope! { ImplItemListScope, ImplItemList, Override(RBrace, FnKw) }
+define_scope! { ImplItemListScope, ImplItemList, (RBrace, FnKw) }
 impl super::Parse for ImplItemListScope {
     type Error = Recovery<ErrProof>;
 
@@ -458,7 +456,7 @@ impl super::Parse for ImplItemListScope {
     }
 }
 
-define_scope! { UseScope, Use, Inheritance }
+define_scope! { UseScope, Use }
 impl super::Parse for UseScope {
     type Error = Recovery<ErrProof>;
 
@@ -468,7 +466,7 @@ impl super::Parse for UseScope {
     }
 }
 
-define_scope! { ConstScope, Const, Inheritance }
+define_scope! { ConstScope, Const }
 impl super::Parse for ConstScope {
     type Error = Recovery<ErrProof>;
 
@@ -498,7 +496,7 @@ impl super::Parse for ConstScope {
     }
 }
 
-define_scope! { ExternScope, Extern, Inheritance }
+define_scope! { ExternScope, Extern }
 impl super::Parse for ExternScope {
     type Error = Recovery<ErrProof>;
 
@@ -513,7 +511,7 @@ impl super::Parse for ExternScope {
     }
 }
 
-define_scope! { ExternItemListScope, ExternItemList, Override(PubKw, UnsafeKw, FnKw) }
+define_scope! { ExternItemListScope, ExternItemList, (PubKw, UnsafeKw, FnKw) }
 impl super::Parse for ExternItemListScope {
     type Error = Recovery<ErrProof>;
 
@@ -522,7 +520,7 @@ impl super::Parse for ExternItemListScope {
     }
 }
 
-define_scope! { TypeAliasScope, TypeAlias, Inheritance }
+define_scope! { TypeAliasScope, TypeAlias }
 impl super::Parse for TypeAliasScope {
     type Error = Recovery<ErrProof>;
 

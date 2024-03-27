@@ -13,8 +13,7 @@ define_scope! {
     pub(crate) FuncScope {
         fn_def_scope: FuncDefScope
     },
-    Func,
-    Inheritance
+    Func
 }
 
 #[derive(Clone, Copy, Debug)]

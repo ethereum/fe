@@ -33,7 +33,7 @@ pub(crate) fn is_type_start(kind: SyntaxKind) -> bool {
     }
 }
 
-define_scope!(PtrTypeScope, PtrType, Inheritance);
+define_scope!(PtrTypeScope, PtrType);
 impl super::Parse for PtrTypeScope {
     type Error = Recovery<ErrProof>;
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
@@ -43,7 +43,7 @@ impl super::Parse for PtrTypeScope {
     }
 }
 
-define_scope!(pub(crate) PathTypeScope , PathType, Inheritance);
+define_scope!(pub(crate) PathTypeScope , PathType);
 impl super::Parse for PathTypeScope {
     type Error = Recovery<ErrProof>;
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
@@ -62,7 +62,7 @@ impl super::Parse for PathTypeScope {
     }
 }
 
-define_scope!(pub(super) SelfTypeScope, SelfType, Inheritance);
+define_scope!(pub(super) SelfTypeScope, SelfType);
 impl super::Parse for SelfTypeScope {
     type Error = Recovery<ErrProof>;
 
@@ -75,14 +75,7 @@ impl super::Parse for SelfTypeScope {
         Ok(())
     }
 }
-define_scope! {
-    pub(crate) TupleTypeScope,
-    TupleType,
-    Override(
-        RParen,
-        Comma
-    )
-}
+define_scope! { pub(crate) TupleTypeScope, TupleType, (RParen, Comma) }
 impl super::Parse for TupleTypeScope {
     type Error = Recovery<ErrProof>;
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
@@ -99,11 +92,7 @@ impl super::Parse for TupleTypeScope {
     }
 }
 
-define_scope! {
-    ArrayTypeScope,
-    ArrayType,
-    Inheritance
-}
+define_scope! { ArrayTypeScope, ArrayType }
 impl super::Parse for ArrayTypeScope {
     type Error = Recovery<ErrProof>;
 

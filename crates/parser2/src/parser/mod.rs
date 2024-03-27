@@ -2,7 +2,7 @@ use std::{collections::VecDeque, convert::Infallible};
 
 pub(crate) use item::ItemListScope;
 
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
 use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
@@ -624,7 +624,7 @@ impl<S: TokenStream> Parser<S> {
 
 pub trait ParsingScope {
     /// Returns the recovery method of the current scope.
-    fn recovery_method(&self) -> &RecoveryMethod;
+    fn recovery_tokens(&self) -> &[SyntaxKind];
 
     fn syntax_kind(&self) -> SyntaxKind;
 }
@@ -689,34 +689,6 @@ struct DryRunState<S: TokenStream> {
     next_trivias: VecDeque<S::Token>,
 }
 
-/// Represents the recovery method of the current scope.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RecoveryMethod {
-    /// Uses the recovery method of the parent scope and its own recovery set.
-    Inheritance(FxHashSet<SyntaxKind>),
-
-    /// The scope has its own recovery set and don't use parent scope's recovery
-    /// set.
-    Override(FxHashSet<SyntaxKind>),
-}
-
-impl RecoveryMethod {
-    fn inheritance(tokens: &[SyntaxKind]) -> Self {
-        Self::Inheritance(tokens.iter().copied().collect())
-    }
-
-    fn override_(tokens: &[SyntaxKind]) -> Self {
-        Self::Override(tokens.iter().copied().collect())
-    }
-
-    fn recovery_set(&self) -> &FxHashSet<SyntaxKind> {
-        match self {
-            RecoveryMethod::Inheritance(set) => set,
-            RecoveryMethod::Override(set) => set,
-        }
-    }
-}
-
 struct ScopeEntry {
     scope: Box<dyn ParsingScope>,
     is_newline_trivia: bool,
@@ -734,8 +706,7 @@ impl ScopeEntry {
     }
 
     fn is_recovery_match(&self, kind: SyntaxKind) -> bool {
-        self.scope.recovery_method().recovery_set().contains(&kind)
-            || self.aux_recovery_tokens.contains(&kind)
+        self.scope.recovery_tokens().contains(&kind) || self.aux_recovery_tokens.contains(&kind)
     }
 }
 
@@ -763,37 +734,19 @@ where
     }
 }
 
-define_scope! {
-    ErrorScope,
-    Error,
-    Inheritance
-}
-
-define_scope! {
-    pub RootScope,
-    Root,
-    Override()
-}
+define_scope! { ErrorScope, Error }
+define_scope! { pub RootScope, Root }
 
 macro_rules! define_scope {
     (
         $(#[$attrs: meta])*
         $visibility: vis $scope_name: ident $({ $($field: ident: $ty: ty),* })?,
-        $kind: path,
-        Inheritance $(($($recoveries: path), *))?
+        $kind: path
     ) => {
         crate::parser::define_scope_struct! {$visibility $scope_name {$($($field: $ty), *)?}, $kind}
         impl crate::parser::ParsingScope for $scope_name {
-            fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
-                lazy_static::lazy_static! {
-                    pub(super) static ref RECOVERY_METHOD: crate::parser::RecoveryMethod = {
-                        #[allow(unused)]
-                        use crate::SyntaxKind::*;
-                        crate::parser::RecoveryMethod::inheritance(&[$($($recoveries), *)?])
-                    };
-                }
-
-                &RECOVERY_METHOD
+            fn recovery_tokens(&self) -> &[crate::SyntaxKind] {
+                &[]
             }
 
             fn syntax_kind(&self) -> crate::SyntaxKind {
@@ -806,21 +759,21 @@ macro_rules! define_scope {
         $(#[$attrs: meta])*
         $visibility: vis $scope_name: ident $({ $($field: ident: $ty: ty),* })?,
         $kind: path,
-        Override($($recoveries: path), *)
+        ($($recoveries: path), *)
     ) => {
         crate::parser::define_scope_struct! {$visibility $scope_name {$($($field: $ty), *)?}, $kind}
 
         impl crate::parser::ParsingScope for $scope_name {
-            fn recovery_method(&self) -> &crate::parser::RecoveryMethod {
+            fn recovery_tokens(&self) -> &[crate::SyntaxKind] {
                 lazy_static::lazy_static! {
-                    pub(super) static ref RECOVERY_METHOD: crate::parser::RecoveryMethod = {
+                    pub(super) static ref RECOVERY_TOKENS: smallvec::SmallVec<[SyntaxKind; 4]> = {
                         #[allow(unused)]
                         use crate::SyntaxKind::*;
-                        crate::parser::RecoveryMethod::override_(&[$($recoveries), *])
+                        smallvec::SmallVec::from_slice(&[$($recoveries), *])
                     };
                 }
 
-                &RECOVERY_METHOD
+                &RECOVERY_TOKENS
             }
 
             fn syntax_kind(&self) -> crate::SyntaxKind {

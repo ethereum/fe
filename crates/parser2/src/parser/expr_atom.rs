@@ -53,7 +53,7 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
 define_scope! {
     pub(crate) BlockExprScope,
     BlockExpr,
-    Override(
+    (
         RBrace,
         Newline,
         LetKw,
@@ -106,7 +106,7 @@ impl super::Parse for BlockExprScope {
     }
 }
 
-define_scope! { IfExprScope, IfExpr, Inheritance }
+define_scope! { IfExprScope, IfExpr }
 impl super::Parse for IfExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -130,7 +130,7 @@ impl super::Parse for IfExprScope {
     }
 }
 
-define_scope! { MatchExprScope, MatchExpr, Inheritance }
+define_scope! { MatchExprScope, MatchExpr }
 impl super::Parse for MatchExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -148,7 +148,7 @@ impl super::Parse for MatchExprScope {
     }
 }
 
-define_scope! { MatchArmListScope, MatchArmList, Override(SyntaxKind::Newline, SyntaxKind::RBrace) }
+define_scope! { MatchArmListScope, MatchArmList, (SyntaxKind::Newline, SyntaxKind::RBrace) }
 impl super::Parse for MatchArmListScope {
     type Error = Recovery<ErrProof>;
 
@@ -174,7 +174,7 @@ impl super::Parse for MatchArmListScope {
     }
 }
 
-define_scope! { MatchArmScope, MatchArm, Inheritance }
+define_scope! { MatchArmScope, MatchArm }
 impl super::Parse for MatchArmScope {
     type Error = Recovery<ErrProof>;
 
@@ -191,7 +191,7 @@ impl super::Parse for MatchArmScope {
     }
 }
 
-define_scope! { pub(crate) LitExprScope, LitExpr, Inheritance }
+define_scope! { pub(crate) LitExprScope, LitExpr }
 impl super::Parse for LitExprScope {
     type Error = Infallible;
 
@@ -201,7 +201,7 @@ impl super::Parse for LitExprScope {
     }
 }
 
-define_scope! { PathExprScope{ allow_record_init: bool }, PathExpr, Inheritance }
+define_scope! { PathExprScope{ allow_record_init: bool }, PathExpr }
 impl super::Parse for PathExprScope {
     type Error = Recovery<ErrProof>;
 
@@ -223,7 +223,7 @@ impl super::Parse for PathExprScope {
     }
 }
 
-define_scope! { RecordFieldListScope, RecordFieldList, Override(RBrace, Comma) }
+define_scope! { RecordFieldListScope, RecordFieldList, (RBrace, Comma) }
 impl super::Parse for RecordFieldListScope {
     type Error = Recovery<ErrProof>;
 
@@ -238,7 +238,7 @@ impl super::Parse for RecordFieldListScope {
     }
 }
 
-define_scope! { RecordFieldScope, RecordField, Inheritance }
+define_scope! { RecordFieldScope, RecordField }
 impl super::Parse for RecordFieldScope {
     type Error = Recovery<ErrProof>;
 
@@ -253,7 +253,7 @@ impl super::Parse for RecordFieldScope {
     }
 }
 
-define_scope! { ParenScope, ParenExpr, Override(RParen, Comma) }
+define_scope! { ParenScope, ParenExpr, (RParen, Comma) }
 impl super::Parse for ParenScope {
     type Error = Recovery<ErrProof>;
 
@@ -283,11 +283,7 @@ impl super::Parse for ParenScope {
     }
 }
 
-define_scope! {
-    ArrayScope,
-    ArrayExpr,
-    Override(RBracket, Comma, SemiColon)
-}
+define_scope! { ArrayScope, ArrayExpr, (RBracket, Comma, SemiColon) }
 impl super::Parse for ArrayScope {
     type Error = Recovery<ErrProof>;
 

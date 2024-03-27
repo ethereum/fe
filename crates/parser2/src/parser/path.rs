@@ -6,7 +6,7 @@ define_scope! {
     #[doc(hidden)]
     pub PathScope,
     Path,
-    Inheritance(Colon2)
+    (Colon2)
 }
 impl super::Parse for PathScope {
     type Error = ParseError;
@@ -21,11 +21,7 @@ impl super::Parse for PathScope {
     }
 }
 
-define_scope! {
-    PathSegmentScope,
-    PathSegment,
-    Inheritance
-}
+define_scope! { PathSegmentScope, PathSegment }
 impl super::Parse for PathSegmentScope {
     type Error = ParseError;
 

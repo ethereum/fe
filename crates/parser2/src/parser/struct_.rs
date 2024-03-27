@@ -11,11 +11,7 @@ use super::{
     ErrProof, Parser, Recovery,
 };
 
-define_scope! {
-    pub(crate) StructScope,
-    Struct,
-    Inheritance
-}
+define_scope! { pub(crate) StructScope, Struct }
 impl super::Parse for StructScope {
     type Error = Recovery<ErrProof>;
 
@@ -49,11 +45,7 @@ impl super::Parse for StructScope {
 define_scope! {
     pub(crate) RecordFieldDefListScope,
     RecordFieldDefList,
-    Override(
-        RBrace,
-        Comma,
-        Newline
-    )
+    (RBrace, Comma, Newline)
 }
 impl super::Parse for RecordFieldDefListScope {
     type Error = Recovery<ErrProof>;
@@ -69,11 +61,7 @@ impl super::Parse for RecordFieldDefListScope {
     }
 }
 
-define_scope! {
-    RecordFieldDefScope,
-    RecordFieldDef,
-    Inheritance
-}
+define_scope! { RecordFieldDefScope, RecordFieldDef }
 impl super::Parse for RecordFieldDefScope {
     type Error = Recovery<ErrProof>;
 

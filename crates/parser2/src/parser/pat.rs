@@ -57,7 +57,7 @@ pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<
     Ok(())
 }
 
-define_scope! { WildCardPatScope, WildCardPat, Inheritance(SyntaxKind::Pipe) }
+define_scope! { WildCardPatScope, WildCardPat, (Pipe) }
 impl super::Parse for WildCardPatScope {
     type Error = Infallible;
 
@@ -68,7 +68,7 @@ impl super::Parse for WildCardPatScope {
     }
 }
 
-define_scope! { RestPatScope, RestPat, Inheritance }
+define_scope! { RestPatScope, RestPat }
 impl super::Parse for RestPatScope {
     type Error = Infallible;
 
@@ -79,7 +79,7 @@ impl super::Parse for RestPatScope {
     }
 }
 
-define_scope! { LitPatScope, LitPat, Inheritance(SyntaxKind::Pipe) }
+define_scope! { LitPatScope, LitPat, (Pipe) }
 impl super::Parse for LitPatScope {
     type Error = Infallible;
 
@@ -89,7 +89,7 @@ impl super::Parse for LitPatScope {
     }
 }
 
-define_scope! { TuplePatScope, TuplePat, Inheritance }
+define_scope! { TuplePatScope, TuplePat }
 impl super::Parse for TuplePatScope {
     type Error = Recovery<ErrProof>;
 
@@ -98,7 +98,7 @@ impl super::Parse for TuplePatScope {
     }
 }
 
-define_scope! { TuplePatElemListScope, TuplePatElemList, Override(RParen, Comma) }
+define_scope! { TuplePatElemListScope, TuplePatElemList, (RParen, Comma) }
 impl super::Parse for TuplePatElemListScope {
     type Error = Recovery<ErrProof>;
 
@@ -113,7 +113,7 @@ impl super::Parse for TuplePatElemListScope {
     }
 }
 
-define_scope! { PathPatScope, PathPat, Inheritance(Pipe) }
+define_scope! { PathPatScope, PathPat, (Pipe) }
 impl super::Parse for PathPatScope {
     type Error = Recovery<ErrProof>;
 
@@ -136,7 +136,7 @@ impl super::Parse for PathPatScope {
     }
 }
 
-define_scope! { RecordPatFieldListScope, RecordPatFieldList, Override(Comma, RBrace) }
+define_scope! { RecordPatFieldListScope, RecordPatFieldList, (Comma, RBrace) }
 impl super::Parse for RecordPatFieldListScope {
     type Error = Recovery<ErrProof>;
 
@@ -151,7 +151,7 @@ impl super::Parse for RecordPatFieldListScope {
     }
 }
 
-define_scope! { RecordPatFieldScope, RecordPatField, Inheritance }
+define_scope! { RecordPatFieldScope, RecordPatField }
 impl super::Parse for RecordPatFieldScope {
     type Error = Recovery<ErrProof>;
 
@@ -168,7 +168,7 @@ impl super::Parse for RecordPatFieldScope {
     }
 }
 
-define_scope! { OrPatScope, OrPat, Inheritance(SyntaxKind::Pipe) }
+define_scope! { OrPatScope, OrPat, (Pipe) }
 impl super::Parse for OrPatScope {
     type Error = Recovery<ErrProof>;
 

@@ -16,7 +16,7 @@ use super::{
 define_scope! {
     pub(crate) FuncParamListScope{ allow_self: bool},
     FuncParamList,
-    Override(RParen, Comma)
+    (RParen, Comma)
 }
 impl super::Parse for FuncParamListScope {
     type Error = Recovery<ErrProof>;
@@ -32,11 +32,7 @@ impl super::Parse for FuncParamListScope {
     }
 }
 
-define_scope! {
-    FnParamScope{allow_self: bool},
-    FnParam,
-    Inheritance
-}
+define_scope! { FnParamScope{allow_self: bool}, FnParam }
 impl super::Parse for FnParamScope {
     type Error = Recovery<ErrProof>;
 
@@ -88,7 +84,7 @@ impl super::Parse for FnParamScope {
 define_scope! {
     pub(crate) GenericParamListScope {disallow_trait_bound: bool},
     GenericParamList,
-    Override(Comma, Gt)
+    (Comma, Gt)
 }
 impl super::Parse for GenericParamListScope {
     type Error = Recovery<ErrProof>;
@@ -117,11 +113,7 @@ impl super::Parse for GenericParamListScope {
     }
 }
 
-define_scope! {
-    ConstGenericParamScope,
-    ConstGenericParam,
-    Inheritance
-}
+define_scope! { ConstGenericParamScope, ConstGenericParam }
 impl super::Parse for ConstGenericParamScope {
     type Error = Recovery<ErrProof>;
 
@@ -154,8 +146,7 @@ impl super::Parse for ConstGenericParamScope {
 
 define_scope! {
     TypeGenericParamScope {disallow_trait_bound: bool},
-    TypeGenericParam,
-    Inheritance
+    TypeGenericParam
 }
 impl super::Parse for TypeGenericParamScope {
     type Error = Recovery<ErrProof>;
@@ -174,7 +165,7 @@ impl super::Parse for TypeGenericParamScope {
 define_scope! {
     TypeBoundListScope{disallow_trait_bound: bool},
     TypeBoundList,
-    Inheritance(Plus)
+    (Plus)
 }
 impl super::Parse for TypeBoundListScope {
     type Error = Recovery<ErrProof>;
@@ -193,8 +184,7 @@ impl super::Parse for TypeBoundListScope {
 
 define_scope! {
     TypeBoundScope{disallow_trait_bound: bool},
-    TypeBound,
-    Inheritance
+    TypeBound
 }
 impl super::Parse for TypeBoundScope {
     type Error = Recovery<ErrProof>;
@@ -248,11 +238,7 @@ fn parse_kind_bound<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recove
     Ok(())
 }
 
-define_scope! {
-    KindBoundMonoScope,
-    KindBoundMono,
-    Inheritance
-}
+define_scope! { KindBoundMonoScope, KindBoundMono }
 impl super::Parse for KindBoundMonoScope {
     type Error = Infallible;
 
@@ -262,11 +248,7 @@ impl super::Parse for KindBoundMonoScope {
     }
 }
 
-define_scope! {
-    KindBoundAbsScope,
-    KindBoundAbs,
-    Inheritance
-}
+define_scope! { KindBoundAbsScope, KindBoundAbs }
 impl super::Parse for KindBoundAbsScope {
     type Error = Recovery<ErrProof>;
 
@@ -276,11 +258,7 @@ impl super::Parse for KindBoundAbsScope {
     }
 }
 
-define_scope! {
-    pub(super) TraitRefScope,
-    TraitRef,
-    Inheritance
-}
+define_scope! { pub(super) TraitRefScope, TraitRef }
 impl super::Parse for TraitRefScope {
     type Error = Recovery<ErrProof>;
 
@@ -301,7 +279,7 @@ impl super::Parse for TraitRefScope {
 define_scope! {
     pub(crate) GenericArgListScope,
     GenericArgList,
-    Override(Gt, Comma)
+    (Gt, Comma)
 }
 impl super::Parse for GenericArgListScope {
     type Error = Recovery<ErrProof>;
@@ -317,11 +295,7 @@ impl super::Parse for GenericArgListScope {
     }
 }
 
-define_scope! {
-    GenericArgScope,
-    TypeGenericArg,
-    Override()
-}
+define_scope! { GenericArgScope, TypeGenericArg }
 impl super::Parse for GenericArgScope {
     type Error = Recovery<ErrProof>;
 
@@ -349,7 +323,7 @@ impl super::Parse for GenericArgScope {
     }
 }
 
-define_scope! { pub(crate) CallArgListScope, CallArgList, Override(RParen, Comma) }
+define_scope! { pub(crate) CallArgListScope, CallArgList, (RParen, Comma) }
 impl super::Parse for CallArgListScope {
     type Error = Recovery<ErrProof>;
 
@@ -364,7 +338,7 @@ impl super::Parse for CallArgListScope {
     }
 }
 
-define_scope! { CallArgScope, CallArg, Override(Comma, RParen) }
+define_scope! { CallArgScope, CallArg, (Comma, RParen) }
 impl super::Parse for CallArgScope {
     type Error = Recovery<ErrProof>;
 
@@ -383,7 +357,7 @@ impl super::Parse for CallArgScope {
     }
 }
 
-define_scope! { pub(crate) WhereClauseScope, WhereClause, Inheritance(Newline) }
+define_scope! { pub(crate) WhereClauseScope, WhereClause, (Newline) }
 impl super::Parse for WhereClauseScope {
     type Error = Recovery<ErrProof>;
 
@@ -437,7 +411,7 @@ impl super::Parse for WhereClauseScope {
     }
 }
 
-define_scope! { pub(crate) WherePredicateScope, WherePredicate, Inheritance }
+define_scope! { pub(crate) WherePredicateScope, WherePredicate }
 impl super::Parse for WherePredicateScope {
     type Error = Recovery<ErrProof>;
 

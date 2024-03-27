@@ -4,11 +4,7 @@ use crate::SyntaxKind;
 
 use super::{define_scope, token_stream::TokenStream, Parser};
 
-define_scope! {
-    pub(crate) LitScope,
-    Lit,
-    Inheritance
-}
+define_scope! { pub(crate) LitScope, Lit }
 impl super::Parse for LitScope {
     type Error = Infallible;
 

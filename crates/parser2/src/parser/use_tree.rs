@@ -4,11 +4,7 @@ use crate::{parser::path::is_path_segment, ParseError, SyntaxKind, TextRange};
 
 use super::{define_scope, parse_list, token_stream::TokenStream, ErrProof, Parser, Recovery};
 
-define_scope! {
-    pub(crate) UseTreeScope,
-    UseTree,
-    Inheritance
-}
+define_scope! { pub(crate) UseTreeScope, UseTree }
 impl super::Parse for UseTreeScope {
     type Error = Recovery<ErrProof>;
 
@@ -45,11 +41,7 @@ impl super::Parse for UseTreeScope {
     }
 }
 
-define_scope! {
-    UseTreeListScope,
-    UseTreeList,
-    Override(Comma, RBrace)
-}
+define_scope! { UseTreeListScope, UseTreeList, (Comma, RBrace) }
 impl super::Parse for UseTreeListScope {
     type Error = Recovery<ErrProof>;
 
@@ -67,7 +59,7 @@ impl super::Parse for UseTreeListScope {
 define_scope! {
     UsePathScope{ is_glob: Rc<Cell<bool>>},
     UsePath,
-    Inheritance(Colon2)
+    (Colon2)
 }
 impl super::Parse for UsePathScope {
     type Error = ParseError;
@@ -99,11 +91,7 @@ impl super::Parse for UsePathScope {
     }
 }
 
-define_scope! {
-    UsePathSegmentScope,
-    UsePathSegment,
-    Inheritance
-}
+define_scope! { UsePathSegmentScope, UsePathSegment }
 impl super::Parse for UsePathSegmentScope {
     type Error = ParseError;
 
@@ -123,11 +111,7 @@ impl super::Parse for UsePathSegmentScope {
     }
 }
 
-define_scope! {
-    UseTreeAliasScope,
-    UseTreeRename,
-    Inheritance
-}
+define_scope! { UseTreeAliasScope, UseTreeRename }
 impl super::Parse for UseTreeAliasScope {
     type Error = ParseError;
 

@@ -17,13 +17,7 @@ pub(super) fn parse_attr_list<S: TokenStream>(
     }
 }
 
-define_scope! {
-    pub(crate) AttrListScope,
-    AttrList,
-    Override(
-        Newline
-    )
-}
+define_scope! { pub(crate) AttrListScope, AttrList, (Newline) }
 impl super::Parse for AttrListScope {
     type Error = Recovery<ErrProof>;
 
@@ -54,11 +48,7 @@ impl super::Parse for AttrListScope {
     }
 }
 
-define_scope! {
-    AttrScope,
-    Attr,
-    Inheritance
-}
+define_scope! { AttrScope, Attr }
 impl super::Parse for AttrScope {
     type Error = Recovery<ErrProof>;
 
@@ -80,11 +70,7 @@ impl super::Parse for AttrScope {
     }
 }
 
-define_scope! {
-    AttrArgListScope,
-    AttrArgList,
-    Override(Comma, RParen)
-}
+define_scope! { AttrArgListScope, AttrArgList, (Comma, RParen) }
 impl super::Parse for AttrArgListScope {
     type Error = Recovery<ErrProof>;
 
@@ -99,11 +85,7 @@ impl super::Parse for AttrArgListScope {
     }
 }
 
-define_scope! {
-    AttrArgScope,
-    AttrArg,
-    Inheritance
-}
+define_scope! { AttrArgScope, AttrArg }
 impl super::Parse for AttrArgScope {
     type Error = Recovery<ErrProof>;
 
@@ -124,11 +106,7 @@ impl super::Parse for AttrArgScope {
     }
 }
 
-define_scope! {
-    DocCommentAttrScope,
-    DocCommentAttr,
-    Inheritance
-}
+define_scope! { DocCommentAttrScope, DocCommentAttr }
 impl super::Parse for DocCommentAttrScope {
     type Error = Infallible;
 
