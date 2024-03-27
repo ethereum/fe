@@ -1,9 +1,9 @@
-use log::{error, info};
 use lsp_types::{
     DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
     DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult,
     Registration,
 };
+use tracing::{error, info};
 
 use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
