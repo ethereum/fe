@@ -2,12 +2,18 @@ use fxhash::FxHashMap;
 use hir::{
     hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod},
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
-    HirDb,
+    HirDb, LowerHirDb, SpannedHirDb,
 };
-use hir_analysis::{name_resolution::EarlyResolvedPath, HirAnalysisDb};
+use hir_analysis::{
+    name_resolution::{EarlyResolvedPath, NameRes},
+    HirAnalysisDb,
+};
 use salsa::Snapshot;
 
-use crate::backend::db::{LanguageServerDatabase, LanguageServerDb};
+use crate::{
+    backend::db::{LanguageServerDatabase, LanguageServerDb},
+    util::{to_lsp_location_from_scope, to_offset_from_position},
+};
 use common::diagnostics::Span;
 use hir::span::LazySpan;
 
@@ -89,6 +95,71 @@ pub fn goto_enclosing_path(
     );
 
     Some(resolved_path)
+}
+
+use lsp_types::{GotoDefinitionParams, GotoDefinitionResponse};
+
+use crate::backend::workspace::{IngotFileContext, Workspace};
+// use crate::diagnostics::get_diagnostics;
+
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+use tower_lsp::jsonrpc::Result;
+
+pub async fn goto_helper(
+    db: Snapshot<LanguageServerDatabase>,
+    workspace: Arc<RwLock<Workspace>>,
+    params: GotoDefinitionParams,
+) -> Result<Option<GotoDefinitionResponse>> {
+    let workspace = workspace.read().await;
+    // Convert the position to an offset in the file
+    let params = params.text_document_position_params;
+    let file_text = std::fs::read_to_string(params.text_document.uri.path()).ok();
+    let cursor: Cursor = to_offset_from_position(params.position, file_text.unwrap().as_str());
+
+    // Get the module and the goto info
+    let file_path = params.text_document.uri.path();
+    let top_mod = workspace
+        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
+        .unwrap();
+    let goto_info = goto_enclosing_path(&db, top_mod, cursor);
+
+    // Convert the goto info to a Location
+    let scopes = match goto_info {
+        Some(EarlyResolvedPath::Full(bucket)) => {
+            bucket.iter().map(NameRes::scope).collect::<Vec<_>>()
+        }
+        Some(EarlyResolvedPath::Partial {
+            res,
+            unresolved_from: _,
+        }) => {
+            vec![res.scope()]
+        }
+        None => return Ok(None),
+    };
+
+    let locations = scopes
+        .iter()
+        .filter_map(|scope| *scope)
+        .map(|scope| to_lsp_location_from_scope(scope, db.as_spanned_hir_db()))
+        .collect::<Vec<_>>();
+
+    let _errors = scopes
+        .iter()
+        .filter_map(|scope| *scope)
+        .map(|scope| to_lsp_location_from_scope(scope, db.as_spanned_hir_db()))
+        .filter_map(std::result::Result::err)
+        .map(|err| err.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Ok(Some(lsp_types::GotoDefinitionResponse::Array(
+        locations
+            .into_iter()
+            .filter_map(std::result::Result::ok)
+            .collect(),
+    )))
 }
 
 #[cfg(test)]

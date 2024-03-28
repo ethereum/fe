@@ -1,26 +1,22 @@
-use super::helpers::{goto_helper, hover_helper};
+use super::goto::goto_helper;
+use super::hover::hover_helper;
 use crate::backend::Backend;
 
 use crate::backend::workspace::SyncableIngotFileContext;
+use crate::functionality::diagnostics::diagnostics_workload;
 
 use common::InputDb;
 use fxhash::FxHashSet;
 
 use lsp_types::TextDocumentItem;
-use salsa::{ParallelDatabase, Snapshot};
+use salsa::ParallelDatabase;
 
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use super::capabilities::server_capabilities;
 
-use crate::backend::db::LanguageServerDatabase;
-use crate::capabilities::server_capabilities;
-
-use crate::backend::workspace::{IngotFileContext, SyncableInputFile, Workspace};
-use crate::diagnostics::get_diagnostics;
+use crate::backend::workspace::{IngotFileContext, SyncableInputFile};
+// use crate::diagnostics::get_diagnostics;
 
 use tracing::info;
-
-use tower_lsp::Client;
 
 impl Backend {
     pub(super) async fn handle_initialized(
@@ -160,24 +156,4 @@ impl Backend {
         };
         let _ = responder.send(Ok(response));
     }
-}
-
-pub(super) async fn diagnostics_workload(
-    client: Client,
-    workspace: Arc<RwLock<Workspace>>,
-    db: Snapshot<LanguageServerDatabase>,
-    url: lsp_types::Url,
-) {
-    info!("handling diagnostics for {:?}", url);
-    let workspace = &workspace.read().await;
-    let diagnostics = get_diagnostics(&db, workspace, url.clone());
-
-    let client = client.clone();
-    let diagnostics = diagnostics
-        .unwrap()
-        .into_iter()
-        .map(|(uri, diags)| async { client.publish_diagnostics(uri, diags, None).await })
-        .collect::<Vec<_>>();
-
-    futures::future::join_all(diagnostics).await;
 }

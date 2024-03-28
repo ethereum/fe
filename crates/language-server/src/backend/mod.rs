@@ -1,7 +1,4 @@
 pub(crate) mod db;
-mod handlers;
-mod helpers;
-pub(crate) mod streams;
 pub(crate) mod workspace;
 use db::LanguageServerDatabase;
 use std::sync::Arc;
@@ -11,10 +8,10 @@ use workspace::Workspace;
 use tower_lsp::Client;
 
 pub struct Backend {
-    client: Client,
-    db: LanguageServerDatabase,
-    workspace: Arc<RwLock<Workspace>>,
-    workers: tokio::runtime::Runtime,
+    pub(super) client: Client,
+    pub(super) db: LanguageServerDatabase,
+    pub(super) workspace: Arc<RwLock<Workspace>>,
+    pub(super) workers: tokio::runtime::Runtime,
 }
 
 impl Backend {

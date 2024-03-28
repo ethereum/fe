@@ -1,8 +1,6 @@
 mod backend;
-mod capabilities;
-mod diagnostics;
+mod functionality;
 mod globals;
-mod goto;
 mod logger;
 mod server;
 mod util;
@@ -45,6 +43,6 @@ async fn main() {
         _ = tower_lsp::Server::new(stdin, stdout, socket)
             .serve(service) => {}
         // backend
-        _ = backend::streams::setup_streams(&mut backend, message_receivers) => {}
+        _ = functionality::streams::setup_streams(&mut backend, message_receivers) => {}
     }
 }

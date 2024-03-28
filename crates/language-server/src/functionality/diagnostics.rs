@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::{ops::Range, sync::Arc};
 
 use camino::Utf8Path;
 use clap::Error;
@@ -12,6 +12,9 @@ use common::{
 use fxhash::FxHashMap;
 use hir::{diagnostics::DiagnosticVoucher, LowerHirDb};
 use salsa::Snapshot;
+use tokio::sync::RwLock;
+use tower_lsp::Client;
+use tracing::info;
 
 use crate::{
     backend::db::{LanguageServerDatabase, LanguageServerDb},
@@ -164,4 +167,24 @@ pub fn get_diagnostics(
     });
 
     Ok(result)
+}
+
+pub(super) async fn diagnostics_workload(
+    client: Client,
+    workspace: Arc<RwLock<Workspace>>,
+    db: Snapshot<LanguageServerDatabase>,
+    url: lsp_types::Url,
+) {
+    info!("handling diagnostics for {:?}", url);
+    let workspace = &workspace.read().await;
+    let diagnostics = get_diagnostics(&db, workspace, url.clone());
+
+    let client = client.clone();
+    let diagnostics = diagnostics
+        .unwrap()
+        .into_iter()
+        .map(|(uri, diags)| async { client.publish_diagnostics(uri, diags, None).await })
+        .collect::<Vec<_>>();
+
+    futures::future::join_all(diagnostics).await;
 }
