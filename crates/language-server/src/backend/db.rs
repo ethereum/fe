@@ -1,9 +1,6 @@
 use common::{diagnostics::CompleteDiagnostic, InputDb};
 use hir::{
-    analysis_pass::AnalysisPassManager,
-    diagnostics::DiagnosticVoucher,
-    hir_def::{ItemKind, TopLevelMod},
-    span::{DynLazySpan, LazySpan},
+    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
     HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use hir_analysis::{
@@ -11,8 +8,6 @@ use hir_analysis::{
     HirAnalysisDb,
 };
 use salsa::{ParallelDatabase, Snapshot};
-
-use crate::functionality::goto::Cursor;
 
 #[salsa::jar(db = LanguageServerDb)]
 pub struct Jar(crate::functionality::diagnostics::file_line_starts);
@@ -45,32 +40,6 @@ impl LanguageServerDatabase {
         pass_manager.run_on_module(top_mod)
     }
 
-    pub fn find_enclosing_item(&self, top_mod: TopLevelMod, cursor: Cursor) -> Option<ItemKind> {
-        let items = top_mod
-            .scope_graph(self.as_hir_db())
-            .items_dfs(self.as_hir_db());
-
-        let mut smallest_enclosing_item = None;
-        let mut smallest_range_size = None;
-
-        for item in items {
-            let lazy_item_span = DynLazySpan::from(item.lazy_span());
-            let item_span = lazy_item_span
-                .resolve(SpannedHirDb::as_spanned_hir_db(self))
-                .unwrap();
-
-            if item_span.range.contains(cursor) {
-                let range_size = item_span.range.end() - item_span.range.start();
-                if smallest_range_size.is_none() || range_size < smallest_range_size.unwrap() {
-                    smallest_enclosing_item = Some(item);
-                    smallest_range_size = Some(range_size);
-                }
-            }
-        }
-
-        smallest_enclosing_item
-    }
-
     pub fn finalize_diags(&self, diags: &[Box<dyn DiagnosticVoucher>]) -> Vec<CompleteDiagnostic> {
         let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
@@ -78,6 +47,9 @@ impl LanguageServerDatabase {
             ord => ord,
         });
         diags
+    }
+    pub fn as_language_server_db(&self) -> &dyn LanguageServerDb {
+        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
     }
 }
 

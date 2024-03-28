@@ -1,5 +1,3 @@
-use super::goto::goto_helper;
-use super::hover::hover_helper;
 use crate::backend::Backend;
 
 use crate::backend::workspace::SyncableIngotFileContext;
@@ -11,10 +9,9 @@ use fxhash::FxHashSet;
 use lsp_types::TextDocumentItem;
 use salsa::ParallelDatabase;
 
-use super::capabilities::server_capabilities;
+use super::{capabilities::server_capabilities, hover::hover_helper};
 
 use crate::backend::workspace::{IngotFileContext, SyncableInputFile};
-// use crate::diagnostics::get_diagnostics;
 
 use tracing::info;
 
@@ -136,24 +133,5 @@ impl Backend {
             }
         };
         let _ = responder.send(response);
-    }
-
-    pub(super) async fn handle_goto_definition(
-        &mut self,
-        params: lsp_types::GotoDefinitionParams,
-        responder: tokio::sync::oneshot::Sender<
-            Result<Option<lsp_types::GotoDefinitionResponse>, tower_lsp::jsonrpc::Error>,
-        >,
-    ) {
-        let db = self.db.snapshot();
-        let workspace = self.workspace.clone();
-        let response = match goto_helper(db, workspace, params).await {
-            Ok(response) => response,
-            Err(e) => {
-                eprintln!("Error handling goto definition: {:?}", e);
-                None
-            }
-        };
-        let _ = responder.send(Ok(response));
     }
 }

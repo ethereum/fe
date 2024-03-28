@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use common::{input::IngotKind, InputDb};
+use common::InputDb;
 use hir::LowerHirDb;
-use hir_analysis::{name_resolution::EarlyResolvedPath, HirAnalysisDb};
+use hir::{HirDb, SpannedHirDb};
+
 use lsp_types::Hover;
 use tracing::info;
 
@@ -16,7 +17,8 @@ use crate::{
     util::to_offset_from_position,
 };
 
-use super::goto::{goto_enclosing_path, Cursor};
+use super::goto::{get_goto_target_scopes_for_cursor, Cursor};
+use super::item_info::{get_item_definition_markdown, get_item_docstring, get_item_path_markdown};
 
 pub async fn hover_helper(
     db: Snapshot<LanguageServerDatabase>,
@@ -31,71 +33,47 @@ pub async fn hover_helper(
         .uri
         .path();
     info!("getting hover info for file_path: {:?}", file_path);
-    let input = workspace.get_input_for_file_path(file_path);
-    let ingot = input.map(|input| input.ingot(db.as_input_db()));
 
+    let input = workspace.get_input_for_file_path(file_path);
     let file_text = input.unwrap().text(db.as_input_db());
-    let line = file_text
-        .lines()
-        .nth(params.text_document_position_params.position.line as usize)
-        .unwrap();
 
     let cursor: Cursor = to_offset_from_position(
         params.text_document_position_params.position,
         file_text.as_str(),
     );
 
-    let ingot_info: Option<String> = {
-        let ingot_type = match ingot {
-            Some(ingot) => match ingot.kind(db.as_input_db()) {
-                IngotKind::StandAlone => None,
-                IngotKind::Local => Some("Local ingot"),
-                IngotKind::External => Some("External ingot"),
-                IngotKind::Std => Some("Standard library"),
-            },
-            None => Some("No ingot information available"),
-        };
-        let ingot_file_count = ingot.unwrap().files(db.as_input_db()).len();
-        let ingot_path = ingot
-            .unwrap()
-            .path(db.as_input_db())
-            .strip_prefix(workspace.root_path.clone().unwrap_or("".into()))
-            .ok();
-
-        ingot_type.map(|ingot_type| {
-            format!("{ingot_type} with {ingot_file_count} files at path: {ingot_path:?}")
-        })
-    };
-
     let top_mod = workspace
         .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
         .unwrap();
-    let early_resolution = goto_enclosing_path(&db, top_mod, cursor);
+    let goto_info = &get_goto_target_scopes_for_cursor(db.as_language_server_db(), top_mod, cursor)
+        .unwrap_or_default();
 
-    let goto_info = match early_resolution {
-        Some(EarlyResolvedPath::Full(bucket)) => bucket
-            .iter()
-            .map(|x| x.pretty_path(db.as_hir_analysis_db()).unwrap())
-            .collect::<Vec<_>>()
-            .join("\n"),
-        Some(EarlyResolvedPath::Partial {
-            res,
-            unresolved_from: _,
-        }) => res.pretty_path(db.as_hir_analysis_db()).unwrap(),
-        None => String::from("No goto info available"),
-    };
+    let hir_db = db.as_hir_db();
+    let scopes_info = goto_info
+        .iter()
+        .map(|scope| {
+            let item = &scope.item();
+            let pretty_path = get_item_path_markdown(item, hir_db);
+            let definition_source = get_item_definition_markdown(item, db.as_spanned_hir_db());
+            let docs = get_item_docstring(item, hir_db);
+
+            let result = [pretty_path, definition_source, docs]
+                .iter()
+                .filter_map(|info| info.clone().map(|info| format!("{}\n", info)))
+                .collect::<Vec<String>>()
+                .join("\n");
+
+            result
+        })
+        .collect::<Vec<String>>();
+
+    let info = scopes_info.join("\n---\n");
 
     let result = lsp_types::Hover {
         contents: lsp_types::HoverContents::Markup(lsp_types::MarkupContent {
-                kind: lsp_types::MarkupKind::Markdown,
-                value: format!(
-                    "### Hovering over:\n```{}```\n\n{}\n\n### Goto Info: \n\n{}\n\n### Ingot info: \n\n{:?}",
-                    &line,
-                    serde_json::to_string_pretty(&params).unwrap(),
-                    goto_info,
-                    ingot_info,
-                ),
-            }),
+            kind: lsp_types::MarkupKind::Markdown,
+            value: info,
+        }),
         range: None,
     };
     Ok(Some(result))
