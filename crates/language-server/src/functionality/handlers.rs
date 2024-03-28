@@ -13,7 +13,7 @@ use super::{capabilities::server_capabilities, hover::hover_helper};
 
 use crate::backend::workspace::{IngotFileContext, SyncableInputFile};
 
-use tracing::info;
+use tracing::{error, info};
 
 impl Backend {
     pub(super) async fn handle_initialized(
@@ -58,7 +58,9 @@ impl Backend {
         let path = params.uri.to_file_path().unwrap();
         info!("file deleted: {:?}", path);
         let path = path.to_str().unwrap();
-        let _ = self.workspace.remove_input_for_file_path(&mut self.db, path);
+        let _ = self
+            .workspace
+            .remove_input_for_file_path(&mut self.db, path);
         let _ = tx_needs_diagnostics.send(path.to_string());
     }
 
@@ -72,7 +74,8 @@ impl Backend {
         let path = path_buf.to_str().unwrap();
         let contents = Some(doc.text);
         if let Some(contents) = contents {
-            let input = self.workspace
+            let input = self
+                .workspace
                 .touch_input_for_file_path(&mut self.db, path)
                 .unwrap();
             let _ = input.sync_from_text(&mut self.db, contents);
@@ -81,31 +84,26 @@ impl Backend {
     }
 
     pub(super) async fn handle_diagnostics(&mut self, files_need_diagnostics: Vec<String>) {
-        info!("files need diagnostics: {:?}", files_need_diagnostics);
-        let mut ingots_need_diagnostics = FxHashSet::default();
-        for file in files_need_diagnostics {
-            let ingot = self.workspace.get_ingot_for_file_path(&file).unwrap();
-            ingots_need_diagnostics.insert(ingot);
-        }
-
-        info!("ingots need diagnostics: {:?}", ingots_need_diagnostics);
-        let ingot_files_need_diagnostics = ingots_need_diagnostics
+        let ingot_files_need_diagnostics: FxHashSet<_> = files_need_diagnostics
             .into_iter()
+            .filter_map(|file| self.workspace.get_ingot_for_file_path(&file))
             .flat_map(|ingot| ingot.files(self.db.as_input_db()))
             .cloned()
-            .collect::<Vec<_>>();
+            .collect();
 
         let db = self.db.snapshot();
         let client = self.client.clone();
         let compute_and_send_diagnostics = self
             .workers
-            .spawn_blocking(move || db.get_lsp_diagnostics(ingot_files_need_diagnostics))
+            .spawn_blocking(move || {
+                db.get_lsp_diagnostics(ingot_files_need_diagnostics.into_iter().collect())
+            })
             .and_then(|diagnostics| async move {
-                let client = client.clone();
-                let send_diagnostics = diagnostics.into_iter().map(|(path, diagnostic)| async {
-                    client.publish_diagnostics(path, diagnostic, None).await
-                });
-                futures::future::join_all(send_diagnostics).await;
+                futures::future::join_all(diagnostics.into_iter().map(|(path, diagnostic)| {
+                    let client = client.clone();
+                    async move { client.publish_diagnostics(path, diagnostic, None).await }
+                }))
+                .await;
                 Ok(())
             });
         tokio::spawn(compute_and_send_diagnostics);
@@ -126,20 +124,14 @@ impl Backend {
                 .uri
                 .path(),
         );
-        match file {
-            Some(file) => {
-                let response = match hover_helper(db, file, params) {
-                    Ok(response) => response,
-                    Err(e) => {
-                        eprintln!("Error handling hover: {:?}", e);
-                        None
-                    }
-                };
-                let _ = responder.send(Ok(response));
-            }
-            None => {
-                let _ = responder.send(Ok(None));
-            }
-        }
+
+        let response = file.and_then(|file| {
+            hover_helper(db, file, params).unwrap_or_else(|e| {
+                error!("Error handling hover: {:?}", e);
+                None
+            })
+        });
+
+        let _ = responder.send(Ok(response));
     }
 }
