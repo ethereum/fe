@@ -25,14 +25,15 @@
         "id": "fe",
         "extensions": [
           ".fe"
-        ]
+        ],
+        "configuration": "./language-configuration.json"
       }
     ],
     "grammars": [
       {
-          "language": "fe",
-          "scopeName": "source.fe",
-          "path": "./fe.tmLanguage.json"
+        "language": "fe",
+        "scopeName": "source.fe",
+        "path": "./fe.tmLanguage.json"
       }
     ]
   },
