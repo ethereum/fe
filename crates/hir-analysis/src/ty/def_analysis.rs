@@ -884,6 +884,7 @@ fn analyze_trait_ref(
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, derive_more::From)]
 enum DefKind {
     Adt(AdtDef),
