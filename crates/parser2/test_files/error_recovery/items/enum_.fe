@@ -1,11 +1,11 @@
 pub enum MyEnum<T> {
     X(u32, T
     A
-    Y(T, u32) A
+    Y(T, u32) B
     Z
 }
 
-pub enum MyEnum2<T, U> 
+pub enum MyEnum2<T, U>
 where
     T: * -> (* -> *
     U: * -> *

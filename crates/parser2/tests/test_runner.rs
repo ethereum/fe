@@ -30,7 +30,7 @@ impl TestRunner {
     /// Constructs a test runner for parsing a list of expressions.
     pub fn item_list(should_success: bool) -> Self {
         fn parse(parser: &mut Parser<lexer::Lexer>) {
-            parser.parse(ItemListScope::default(), None);
+            parser.parse(ItemListScope::default());
         }
 
         Self::new(parse, should_success)
@@ -44,7 +44,7 @@ impl TestRunner {
             bump_newlines(parser);
             while parser.current_kind().is_some() {
                 bump_newlines(parser);
-                parse_stmt(parser, None);
+                parse_stmt(parser);
                 bump_newlines(parser);
             }
         }
@@ -90,14 +90,14 @@ impl TestRunner {
         let (cst, errors) = parser.finish_to_node();
 
         for error in &errors {
-            println!("{}@{:?}", error.msg, error.range);
+            println!("{}@{:?}", error.msg(), error.range());
         }
         if self.should_success {
             assert! {errors.is_empty()}
         } else {
             assert! {!errors.is_empty()}
         }
-        assert!(input == cst.to_string());
+        assert_eq!(input, cst.to_string());
 
         cst
     }

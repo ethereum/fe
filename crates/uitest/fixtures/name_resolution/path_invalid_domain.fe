@@ -10,7 +10,7 @@ pub trait MyTWithGenerics<T> {}
 use MyE::Var
 
 pub enum MyE2<T, U>
-where T: MyE
+where T: MyE,
       U: MyTWithGenerics<MyT>
 {
     Variant(MyC),

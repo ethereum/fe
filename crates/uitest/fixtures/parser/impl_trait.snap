@@ -3,46 +3,34 @@ source: crates/uitest/tests/parser.rs
 expression: diags
 input_file: crates/uitest/fixtures/parser/impl_trait.fe
 ---
-error[1-0001]: unexpected syntax
+error[1-0001]: unexpected syntax while parsing generic type argument list
   ┌─ impl_trait.fe:1:12
   │
 1 │ impl X<T, u))> for Y<T where T: X {}
-  │            ^^ unexpected syntax
+  │            ^^ unexpected
 
-error[1-0001]: expected closing `>`
+error[1-0001]: missing closing `>` for generic type argument list
   ┌─ impl_trait.fe:1:23
   │
 1 │ impl X<T, u))> for Y<T where T: X {}
-  │                       ^ expected closing `>`
+  │                       ^ expected `>` or `,`
 
-error[1-0001]: expected newline after type bounds
-  ┌─ impl_trait.fe:1:34
-  │
-1 │ impl X<T, u))> for Y<T where T: X {}
-  │                                  ^ expected newline after type bounds
-
-error[1-0001]: expected closing `>`
+error[1-0001]: missing closing `>` for generic type argument list
   ┌─ impl_trait.fe:3:12
   │
 3 │ impl X<T, u for Y<T where T: X {}
-  │            ^ expected closing `>`
+  │            ^ expected `>` or `,`
 
-error[1-0001]: expected closing `>`
+error[1-0001]: missing closing `>` for generic type argument list
   ┌─ impl_trait.fe:3:20
   │
 3 │ impl X<T, u for Y<T where T: X {}
-  │                    ^ expected closing `>`
+  │                    ^ expected `>` or `,`
 
-error[1-0001]: expected newline after type bounds
-  ┌─ impl_trait.fe:3:31
-  │
-3 │ impl X<T, u for Y<T where T: X {}
-  │                               ^ expected newline after type bounds
-
-error[1-0001]: unexpected syntax
+error[1-0001]: unexpected syntax while parsing `impl` trait block
   ┌─ impl_trait.fe:5:8
   │
 5 │ impl X @ for Y {}
-  │        ^ unexpected syntax
+  │        ^ unexpected
 
 

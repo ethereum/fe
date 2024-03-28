@@ -26,8 +26,8 @@ where Foo::Bar<T>: Trait
 
 enum HKTEnum<T: * -> *, U, V, W>
 where
-   U: (* -> *) -> *
-   V: * -> * -> (* -> *)
+   U: (* -> *) -> *,
+   V: * -> * -> (* -> *),
    W: * -> * -> * -> *
 {
     Foo(U<T>)

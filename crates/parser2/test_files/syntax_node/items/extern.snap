@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/syntax_node/items/extern.fe
 ---
 Root@0..146
   ItemList@0..146
-    Item@0..13
+    Item@0..11
       Extern@0..11
         ExternKw@0..6 "extern"
         WhiteSpace@6..7 " "
@@ -13,7 +13,7 @@ Root@0..146
           LBrace@7..8 "{"
           Newline@8..10 "\n\n"
           RBrace@10..11 "}"
-      Newline@11..13 "\n\n"
+    Newline@11..13 "\n\n"
     Item@13..146
       Extern@13..146
         ExternKw@13..19 "extern"

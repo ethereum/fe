@@ -1,93 +1,73 @@
-use crate::SyntaxKind;
+use crate::{ExpectedKind, SyntaxKind};
 
 use super::{
     attr::parse_attr_list,
     define_scope,
     func::FuncScope,
     param::{parse_generic_params_opt, parse_where_clause_opt},
+    parse_list,
     token_stream::TokenStream,
     type_::parse_type,
-    Parser,
+    ErrProof, Parser, Recovery,
 };
 
-define_scope! {
-    pub(crate) StructScope,
-    Struct,
-    Inheritance
-}
+define_scope! { pub(crate) StructScope, Struct }
 impl super::Parse for StructScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::StructKw);
 
-        parser.with_next_expected_tokens(
-            |parser| {
-                if !parser.bump_if(SyntaxKind::Ident) {
-                    parser.error_and_recover("expected ident for the struct name", None)
-                }
-            },
-            &[SyntaxKind::Lt, SyntaxKind::LBrace, SyntaxKind::WhereKw],
-        );
+        parser.set_scope_recovery_stack(&[
+            SyntaxKind::Ident,
+            SyntaxKind::Lt,
+            SyntaxKind::WhereKw,
+            SyntaxKind::LBrace,
+        ]);
 
-        parser.with_next_expected_tokens(
-            |parser| parse_generic_params_opt(parser, false),
-            &[SyntaxKind::LBrace, SyntaxKind::WhereKw],
-        );
-
-        parser.with_next_expected_tokens(parse_where_clause_opt, &[SyntaxKind::LBrace]);
-
-        if parser.current_kind() == Some(SyntaxKind::LBrace) {
-            parser.parse(RecordFieldDefListScope::default(), None);
-        } else {
-            parser.error_and_recover("expected struct field definition", None);
+        if parser.find_and_pop(SyntaxKind::Ident, ExpectedKind::Name(SyntaxKind::Struct))? {
+            parser.bump();
         }
+
+        parser.expect_and_pop_recovery_stack()?;
+        parse_generic_params_opt(parser, false)?;
+
+        parser.expect_and_pop_recovery_stack()?;
+        parse_where_clause_opt(parser)?;
+
+        if parser.find_and_pop(SyntaxKind::LBrace, ExpectedKind::Body(SyntaxKind::Struct))? {
+            parser.parse(RecordFieldDefListScope::default())?;
+        }
+        Ok(())
     }
 }
 
 define_scope! {
     pub(crate) RecordFieldDefListScope,
     RecordFieldDefList,
-    Override(
-        RBrace,
-        Newline
-    )
+    (RBrace, Comma, Newline)
 }
 impl super::Parse for RecordFieldDefListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LBrace);
-        parser.set_newline_as_trivia(true);
+    type Error = Recovery<ErrProof>;
 
-        loop {
-            if parser.current_kind() == Some(SyntaxKind::RBrace) || parser.current_kind().is_none()
-            {
-                break;
-            }
-
-            parser.parse(RecordFieldDefScope::default(), None);
-
-            if !parser.bump_if(SyntaxKind::Comma)
-                && parser.current_kind() != Some(SyntaxKind::RBrace)
-            {
-                parser.error("expected comma after field definition");
-            }
-        }
-
-        parser.bump_or_recover(
-            SyntaxKind::RBrace,
-            "expected the closing brace of the struct definition",
-            None,
-        );
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            true,
+            SyntaxKind::RecordFieldDefList,
+            (SyntaxKind::LBrace, SyntaxKind::RBrace),
+            |parser| parser.parse(RecordFieldDefScope::default()),
+        )
     }
 }
 
-define_scope! {
-    RecordFieldDefScope,
-    RecordFieldDef,
-    Inheritance
-}
+define_scope! { RecordFieldDefScope, RecordFieldDef }
 impl super::Parse for RecordFieldDefScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        parse_attr_list(parser);
+        parse_attr_list(parser)?;
 
         parser.bump_if(SyntaxKind::PubKw);
         // Since the Fe-V2 doesn't support method definition in a struct, we add an
@@ -101,26 +81,27 @@ impl super::Parse for RecordFieldDefScope {
         if parser.current_kind() == Some(SyntaxKind::FnKw) {
             parser.error_msg_on_current_token("function definition in struct is not allowed");
             let checkpoint = parser.enter(super::ErrorScope::new(), None);
-            parser.parse(FuncScope::default(), None);
+            parser.parse(FuncScope::default())?;
             parser.leave(checkpoint);
-            return;
+            return Ok(());
         }
 
-        parser.with_next_expected_tokens(
-            |parser| {
-                if !parser.bump_if(SyntaxKind::Ident) {
-                    parser.error_and_recover("expected ident for the field name", None);
-                }
-            },
-            &[SyntaxKind::Colon],
-        );
-        if parser.bump_if(SyntaxKind::Colon) {
-            parser.with_next_expected_tokens(
-                |parser| parse_type(parser, None),
-                &[SyntaxKind::Comma, SyntaxKind::Newline, SyntaxKind::RBrace],
-            );
-        } else {
-            parser.error_and_recover("expected `name: type` for the field definition", None);
+        parser.set_scope_recovery_stack(&[SyntaxKind::Colon]);
+
+        if parser.find(
+            SyntaxKind::Ident,
+            ExpectedKind::Name(SyntaxKind::RecordField),
+        )? {
+            parser.bump();
         }
+
+        if parser.find(
+            SyntaxKind::Colon,
+            ExpectedKind::TypeSpecifier(SyntaxKind::RecordField),
+        )? {
+            parser.bump();
+            parse_type(parser, None).map(|_| ())?;
+        }
+        Ok(())
     }
 }

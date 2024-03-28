@@ -11,9 +11,9 @@ fn baz(from sender: address, mut to recipient: address, _ val: u256, _ _: u256) 
 }
 
 fn generics1<T: Trait, U>(t: T, u: Option<U>) -> T
-    where Result<T>: Trait 
+    where Result<T>: Trait,
           Option<U>: Clone
-          
+
 {
     t
 }

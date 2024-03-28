@@ -1,124 +1,118 @@
-use super::{define_scope, token_stream::TokenStream, Checkpoint, Parser};
+use std::convert::Infallible;
+use unwrap_infallible::UnwrapInfallible;
 
-use crate::SyntaxKind;
+use super::{
+    define_scope, parse_list, token_stream::TokenStream, Checkpoint, ErrProof, Parser, Recovery,
+};
 
-pub(super) fn parse_attr_list<S: TokenStream>(parser: &mut Parser<S>) -> Option<Checkpoint> {
+use crate::{ExpectedKind, SyntaxKind};
+
+pub(super) fn parse_attr_list<S: TokenStream>(
+    parser: &mut Parser<S>,
+) -> Result<Option<Checkpoint>, Recovery<ErrProof>> {
     if let Some(SyntaxKind::DocComment) | Some(SyntaxKind::Pound) = parser.current_kind() {
-        Some(parser.parse(AttrListScope::default(), None).1)
+        parser.parse_cp(AttrListScope::default(), None).map(Some)
     } else {
-        None
+        Ok(None)
     }
 }
 
-define_scope! {
-    pub(crate) AttrListScope,
-    AttrList,
-    Override(
-        Newline
-    )
-}
+define_scope! { pub(crate) AttrListScope, AttrList, (Newline) }
 impl super::Parse for AttrListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         loop {
             parser.set_newline_as_trivia(true);
             match parser.current_kind() {
-                Some(SyntaxKind::Pound) => parser.parse(AttrScope::default(), None),
-                Some(SyntaxKind::DocComment) => parser.parse(DocCommentAttrScope::default(), None),
+                Some(SyntaxKind::Pound) => {
+                    parser.parse(AttrScope::default())?;
+                }
+                Some(SyntaxKind::DocComment) => parser
+                    .parse(DocCommentAttrScope::default())
+                    .unwrap_infallible(),
                 _ => break,
             };
             parser.set_newline_as_trivia(false);
-            parser.bump_or_recover(
+            if parser.find(
                 SyntaxKind::Newline,
-                "expected newline after Attribute",
-                None,
-            )
+                ExpectedKind::Separator {
+                    separator: SyntaxKind::Newline,
+                    element: SyntaxKind::Attr,
+                },
+            )? {
+                parser.bump();
+            }
         }
+        Ok(())
     }
 }
 
-define_scope! {
-    AttrScope,
-    Attr,
-    Inheritance
-}
+define_scope! { AttrScope, Attr }
 impl super::Parse for AttrScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Pound);
-        parser.with_recovery_tokens(
-            |parser| {
-                parser.bump_or_recover(SyntaxKind::Ident, "expected attribute name", None);
-            },
-            &[SyntaxKind::LParen],
-        );
+
+        parser.set_scope_recovery_stack(&[SyntaxKind::LParen]);
+        if parser.find(SyntaxKind::Ident, ExpectedKind::Name(SyntaxKind::Attr))? {
+            parser.bump()
+        }
 
         if parser.current_kind() == Some(SyntaxKind::LParen) {
-            parser.parse(AttrArgListScope::default(), None);
+            parser.pop_recovery_stack();
+            parser.parse(AttrArgListScope::default())
+        } else {
+            Ok(())
         }
     }
 }
 
-define_scope! {
-    AttrArgListScope,
-    AttrArgList,
-    Override(
-        RParen
-    )
-}
+define_scope! { AttrArgListScope, AttrArgList, (Comma, RParen) }
 impl super::Parse for AttrArgListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LParen);
-        if parser.bump_if(SyntaxKind::RParen) {
-            return;
-        }
+    type Error = Recovery<ErrProof>;
 
-        parser.with_next_expected_tokens(
-            |parser| parser.parse(AttrArgScope::default(), None),
-            &[SyntaxKind::Comma, SyntaxKind::RParen],
-        );
-        while parser.bump_if(SyntaxKind::Comma) {
-            parser.with_next_expected_tokens(
-                |parser| parser.parse(AttrArgScope::default(), None),
-                &[SyntaxKind::Comma, SyntaxKind::RParen],
-            );
-        }
-
-        parser.bump_or_recover(SyntaxKind::RParen, "expected `)`", None);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            false,
+            SyntaxKind::AttrArgList,
+            (SyntaxKind::LParen, SyntaxKind::RParen),
+            |parser| parser.parse(AttrArgScope::default()),
+        )
     }
 }
 
-define_scope! {
-    AttrArgScope,
-    AttrArg,
-    Override(
-        Comma,
-        RParen
-    )
-}
+define_scope! { AttrArgScope, AttrArg }
 impl super::Parse for AttrArgScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.with_next_expected_tokens(
-            |parser| parser.bump_or_recover(SyntaxKind::Ident, "Expected `key: value`", None),
-            &[SyntaxKind::Colon],
-        );
+    type Error = Recovery<ErrProof>;
 
-        parser.with_next_expected_tokens(
-            |parser| parser.bump_or_recover(SyntaxKind::Colon, "Expected `key: value`", None),
-            &[SyntaxKind::Ident],
-        );
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        let expected_err = ExpectedKind::Syntax(SyntaxKind::AttrArg);
 
-        parser.bump_or_recover(SyntaxKind::Ident, "Expected `key: value`", None);
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Colon]);
+        if parser.find_and_pop(SyntaxKind::Ident, expected_err)? {
+            parser.bump();
+        }
+        if parser.find_and_pop(SyntaxKind::Colon, expected_err)? {
+            parser.bump();
+        }
+        if parser.find(SyntaxKind::Ident, expected_err)? {
+            parser.bump();
+        }
+        Ok(())
     }
 }
 
-define_scope! {
-    DocCommentAttrScope,
-    DocCommentAttr,
-    Inheritance
-}
+define_scope! { DocCommentAttrScope, DocCommentAttr }
 impl super::Parse for DocCommentAttrScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::DocComment);
         parser.bump_if(SyntaxKind::Newline);
+        Ok(())
     }
 }

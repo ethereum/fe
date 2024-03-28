@@ -1,4 +1,4 @@
-use crate::SyntaxKind;
+use crate::{ParseError, SyntaxKind};
 
 use super::{define_scope, token_stream::TokenStream, Parser};
 
@@ -6,30 +6,36 @@ define_scope! {
     #[doc(hidden)]
     pub PathScope,
     Path,
-    Inheritance(Colon2)
+    (Colon2)
 }
 impl super::Parse for PathScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = ParseError;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        parser.parse(PathSegmentScope::default(), None);
+        parser.parse(PathSegmentScope::default())?;
         while parser.bump_if(SyntaxKind::Colon2) {
-            parser.parse(PathSegmentScope::default(), None);
+            parser.parse(PathSegmentScope::default())?;
         }
+        Ok(())
     }
 }
 
-define_scope! {
-    PathSegmentScope,
-    PathSegment,
-    Inheritance
-}
+define_scope! { PathSegmentScope, PathSegment }
 impl super::Parse for PathSegmentScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = ParseError;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         match parser.current_kind() {
             Some(kind) if is_path_segment(kind) => {
                 parser.bump();
+                Ok(())
             }
-            _ => parser.error_and_recover("expected path segment", None),
+            _ => Err(ParseError::expected(
+                &[SyntaxKind::PathSegment],
+                None,
+                parser.end_of_prev_token,
+            )),
         }
     }
 }

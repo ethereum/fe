@@ -7,4 +7,4 @@ opt-level = 3
 
 [profile.dev]
 # Speeds up the build. May need to diable for debugging.
-debug = 0
+debug = 1

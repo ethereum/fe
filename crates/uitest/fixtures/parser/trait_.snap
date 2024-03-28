@@ -3,58 +3,22 @@ source: crates/uitest/tests/parser.rs
 expression: diags
 input_file: crates/uitest/fixtures/parser/trait_.fe
 ---
-error[1-0001]: expected type parameter
-  ┌─ trait_.fe:1:16
-  │
-1 │ trait Foo<T, Y,>{}
-  │                ^ expected type parameter
-
-error[1-0001]: expected type parameter
-  ┌─ trait_.fe:3:14
+error[1-0001]: expected identifier, `const` or `>`
+  ┌─ trait_.fe:3:13
   │
 3 │ trait Bar<Y, {}
-  │              ^ expected type parameter
+  │             ^ expected identifier, `const` or `>`
 
-error[1-0001]: expected closing `>`
-  ┌─ trait_.fe:3:14
-  │
-3 │ trait Bar<Y, {}
-  │              ^ expected closing `>`
-
-error[1-0001]: expected type parameter
-  ┌─ trait_.fe:5:14
-  │
-5 │ trait Bar<T, >
-  │              ^ expected type parameter
-
-error[1-0001]: expected trait body
+error[1-0001]: expected `{`, `where` or `:`
   ┌─ trait_.fe:5:15
   │
 5 │ trait Bar<T, >
-  │               ^ expected trait body
+  │               ^ expected `{`, `where` or `:`
 
-error[1-0001]: expected type parameter
-  ┌─ trait_.fe:7:16
-  │
-7 │ trait Bar<Y, T,> where T: Add {}
-  │                ^ expected type parameter
-
-error[1-0001]: expected newline after type bounds
-  ┌─ trait_.fe:7:30
-  │
-7 │ trait Bar<Y, T,> where T: Add {}
-  │                              ^ expected newline after type bounds
-
-error[1-0001]: expected type parameter
+error[1-0001]: unexpected syntax while parsing generic parameter list
   ┌─ trait_.fe:9:11
   │
 9 │ trait Bar<<Y, K: Sub>  
-  │           ^ expected type parameter
-
-error[1-0001]: unexpected syntax
-  ┌─ trait_.fe:9:11
-  │
-9 │ trait Bar<<Y, K: Sub>  
-  │           ^^ unexpected syntax
+  │           ^ unexpected
 
 

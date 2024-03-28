@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/syntax_node/items/mod.fe
 ---
 Root@0..146
   ItemList@0..146
-    Item@0..109
+    Item@0..107
       Mod@0..107
         ItemModifier@0..3
           PubKw@0..3 "pub"
@@ -18,7 +18,7 @@ Root@0..146
           LBrace@12..13 "{"
           Newline@13..14 "\n"
           WhiteSpace@14..18 "    "
-          Item@18..79
+          Item@18..78
             Func@18..78
               FnKw@18..20 "fn"
               WhiteSpace@20..21 " "
@@ -65,11 +65,11 @@ Root@0..146
                 Newline@72..73 "\n"
                 WhiteSpace@73..77 "    "
                 RBrace@77..78 "}"
-            Newline@78..79 "\n"
+          Newline@78..79 "\n"
           WhiteSpace@79..83 "    "
           Newline@83..84 "\n"
           WhiteSpace@84..88 "    "
-          Item@88..106
+          Item@88..105
             Struct@88..105
               ItemModifier@88..91
                 PubKw@88..91 "pub"
@@ -81,9 +81,9 @@ Root@0..146
               RecordFieldDefList@103..105
                 LBrace@103..104 "{"
                 RBrace@104..105 "}"
-            Newline@105..106 "\n"
+          Newline@105..106 "\n"
           RBrace@106..107 "}"
-      Newline@107..109 "\n\n"
+    Newline@107..109 "\n\n"
     Item@109..146
       Mod@109..146
         ItemModifier@109..112
@@ -97,7 +97,7 @@ Root@0..146
           LBrace@121..122 "{"
           Newline@122..123 "\n"
           WhiteSpace@123..127 "    "
-          Item@127..145
+          Item@127..144
             Struct@127..144
               ItemModifier@127..130
                 PubKw@127..130 "pub"
@@ -109,6 +109,6 @@ Root@0..146
               RecordFieldDefList@142..144
                 LBrace@142..143 "{"
                 RBrace@143..144 "}"
-            Newline@144..145 "\n"
+          Newline@144..145 "\n"
           RBrace@145..146 "}"
 

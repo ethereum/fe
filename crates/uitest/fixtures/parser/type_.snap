@@ -3,16 +3,10 @@ source: crates/uitest/tests/parser.rs
 expression: diags
 input_file: crates/uitest/fixtures/parser/type_.fe
 ---
-error[1-0001]: expected type parameter
-  ┌─ type_.fe:1:16
+error[1-0001]: expected identifier, `const` or `>`
+  ┌─ type_.fe:1:15
   │
 1 │ type Result<T, = Result<T, E>
-  │                ^ expected type parameter
-
-error[1-0001]: expected closing `>`
-  ┌─ type_.fe:1:16
-  │
-1 │ type Result<T, = Result<T, E>
-  │                ^ expected closing `>`
+  │               ^ expected identifier, `const` or `>`
 
 

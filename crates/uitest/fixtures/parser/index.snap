@@ -3,13 +3,13 @@ source: crates/uitest/tests/parser.rs
 expression: diags
 input_file: crates/uitest/fixtures/parser/index.fe
 ---
-error[1-0001]: unexpected syntax
+error[1-0001]: unexpected syntax while parsing index expression
   ┌─ index.fe:2:5
   │
 2 │ x[1 a]
-  │     ^ unexpected syntax
+  │     ^ unexpected
 
-error[1-0001]: expected `]`
+error[1-0001]: missing closing `]` for index expression
   ┌─ index.fe:3:8
   │
 3 │ x[2 + 3

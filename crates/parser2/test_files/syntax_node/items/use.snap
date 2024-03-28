@@ -4,8 +4,8 @@ expression: node
 input_file: crates/parser2/test_files/syntax_node/items/use.fe
 ---
 Root@0..308
-  ItemList@0..308
-    Item@0..13
+  ItemList@0..307
+    Item@0..12
       Use@0..12
         UseKw@0..3 "use"
         WhiteSpace@3..4 " "
@@ -16,8 +16,8 @@ Root@0..308
             Colon2@7..9 "::"
             UsePathSegment@9..12
               Ident@9..12 "Bar"
-      Newline@12..13 "\n"
-    Item@13..30
+    Newline@12..13 "\n"
+    Item@13..29
       Use@13..29
         ItemModifier@13..16
           PubKw@13..16 "pub"
@@ -31,8 +31,8 @@ Root@0..308
             Colon2@24..26 "::"
             UsePathSegment@26..29
               Ident@26..29 "Bar"
-      Newline@29..30 "\n"
-    Item@30..41
+    Newline@29..30 "\n"
+    Item@30..40
       Use@30..40
         UseKw@30..33 "use"
         WhiteSpace@33..34 " "
@@ -43,8 +43,8 @@ Root@0..308
             Colon2@37..39 "::"
             UsePathSegment@39..40
               Star@39..40 "*"
-      Newline@40..41 "\n"
-    Item@41..62
+    Newline@40..41 "\n"
+    Item@41..61
       Use@41..61
         UseKw@41..44 "use"
         WhiteSpace@44..45 " "
@@ -60,8 +60,8 @@ Root@0..308
             AsKw@54..56 "as"
             WhiteSpace@56..57 " "
             Ident@57..61 "Bar1"
-      Newline@61..62 "\n"
-    Item@62..83
+    Newline@61..62 "\n"
+    Item@62..81
       Use@62..81
         UseKw@62..65 "use"
         WhiteSpace@65..66 " "
@@ -77,8 +77,8 @@ Root@0..308
             AsKw@77..79 "as"
             WhiteSpace@79..80 " "
             Underscore@80..81 "_"
-      Newline@81..83 "\n\n"
-    Item@83..103
+    Newline@81..83 "\n\n"
+    Item@83..102
       Use@83..102
         UseKw@83..86 "use"
         WhiteSpace@86..87 " "
@@ -100,8 +100,8 @@ Root@0..308
                 UsePathSegment@98..101
                   Ident@98..101 "Bar"
             RBrace@101..102 "}"
-      Newline@102..103 "\n"
-    Item@103..124
+    Newline@102..103 "\n"
+    Item@103..123
       Use@103..123
         UseKw@103..106 "use"
         WhiteSpace@106..107 " "
@@ -123,8 +123,8 @@ Root@0..308
                 UsePathSegment@119..122
                   Ident@119..122 "Bar"
             RBrace@122..123 "}"
-      Newline@123..124 "\n"
-    Item@124..153
+    Newline@123..124 "\n"
+    Item@124..152
       Use@124..152
         UseKw@124..127 "use"
         WhiteSpace@127..128 " "
@@ -151,8 +151,8 @@ Root@0..308
                 WhiteSpace@146..147 " "
                 Ident@147..151 "Bar1"
             RBrace@151..152 "}"
-      Newline@152..153 "\n"
-    Item@153..204
+    Newline@152..153 "\n"
+    Item@153..202
       Use@153..202
         UseKw@153..156 "use"
         WhiteSpace@156..157 " "
@@ -204,8 +204,8 @@ Root@0..308
                 UsePathSegment@200..201
                   Star@200..201 "*"
             RBrace@201..202 "}"
-      Newline@202..204 "\n\n"
-    Item@204..273
+    Newline@202..204 "\n\n"
+    Item@204..272
       Use@204..272
         UseKw@204..207 "use"
         WhiteSpace@207..208 " "
@@ -262,8 +262,8 @@ Root@0..308
                 UsePathSegment@270..271
                   Ident@270..271 "T"
             RBrace@271..272 "}"
-      Newline@272..273 "\n"
-    Item@273..280
+    Newline@272..273 "\n"
+    Item@273..278
       Use@273..278
         UseKw@273..276 "use"
         WhiteSpace@276..277 " "
@@ -271,8 +271,8 @@ Root@0..308
           UsePath@277..278
             UsePathSegment@277..278
               Star@277..278 "*"
-      Newline@278..280 "\n\n"
-    Item@280..293
+    Newline@278..280 "\n\n"
+    Item@280..292
       Use@280..292
         UseKw@280..283 "use"
         WhiteSpace@283..284 " "
@@ -283,8 +283,8 @@ Root@0..308
             Colon2@289..291 "::"
             UsePathSegment@291..292
               Star@291..292 "*"
-      Newline@292..293 "\n"
-    Item@293..308
+    Newline@292..293 "\n"
+    Item@293..307
       Use@293..307
         UseKw@293..296 "use"
         WhiteSpace@296..297 " "
@@ -295,5 +295,5 @@ Root@0..308
             Colon2@302..304 "::"
             UsePathSegment@304..307
               Ident@304..307 "Foo"
-      Newline@307..308 "\n"
+  Newline@307..308 "\n"
 

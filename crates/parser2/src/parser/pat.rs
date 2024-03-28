@@ -1,13 +1,16 @@
-use super::{define_scope, path::PathScope, token_stream::TokenStream, Parser};
+use std::convert::Infallible;
+
+use super::{define_scope, path::PathScope, token_stream::TokenStream, ErrProof, Parser, Recovery};
 use crate::{
     parser::{
         lit::{is_lit, LitScope},
+        parse_list,
         token_stream::LexicalToken,
     },
-    SyntaxKind,
+    ParseError, SyntaxKind,
 };
 
-pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery<ErrProof>> {
     use SyntaxKind::*;
     parser.bump_trivias();
     let checkpoint = parser.checkpoint();
@@ -34,123 +37,143 @@ pub fn parse_pat<S: TokenStream>(parser: &mut Parser<S>) -> bool {
         }
     }
 
-    let success = match parser.current_kind() {
-        Some(Underscore) => parser.parse(WildCardPatScope::default(), Some(checkpoint)),
-        Some(Dot2) => parser.parse(RestPatScope::default(), Some(checkpoint)),
-        Some(LParen) => parser.parse(TuplePatScope::default(), Some(checkpoint)),
-        Some(kind) if is_lit(kind) => parser.parse(LitPatScope::default(), Some(checkpoint)),
-        _ => parser.parse(PathPatScope::default(), Some(checkpoint)),
-    }
-    .0;
+    match parser.current_kind() {
+        Some(Underscore) => parser
+            .parse_cp(WildCardPatScope::default(), Some(checkpoint))
+            .unwrap(),
+        Some(Dot2) => parser
+            .parse_cp(RestPatScope::default(), Some(checkpoint))
+            .unwrap(),
+        Some(LParen) => parser.parse_cp(TuplePatScope::default(), Some(checkpoint))?,
+        Some(kind) if is_lit(kind) => parser
+            .parse_cp(LitPatScope::default(), Some(checkpoint))
+            .unwrap(),
+        _ => parser.parse_cp(PathPatScope::default(), Some(checkpoint))?,
+    };
 
     if parser.current_kind() == Some(SyntaxKind::Pipe) {
-        parser.parse(OrPatScope::default(), Some(checkpoint)).0 && success
-    } else {
-        success
+        parser.parse_cp(OrPatScope::default(), Some(checkpoint))?;
     }
+    Ok(())
 }
 
-define_scope! { WildCardPatScope, WildCardPat, Inheritance(SyntaxKind::Pipe) }
+define_scope! { WildCardPatScope, WildCardPat, (Pipe) }
 impl super::Parse for WildCardPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Underscore);
+        Ok(())
     }
 }
 
-define_scope! { RestPatScope, RestPat, Inheritance }
+define_scope! { RestPatScope, RestPat }
 impl super::Parse for RestPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
         parser.bump_expected(SyntaxKind::Dot2);
+        Ok(())
     }
 }
 
-define_scope! { LitPatScope, LitPat, Inheritance(SyntaxKind::Pipe) }
+define_scope! { LitPatScope, LitPat, (Pipe) }
 impl super::Parse for LitPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Infallible;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        parser.parse(LitScope::default(), None);
+        parser.parse(LitScope::default())
     }
 }
 
-define_scope! { TuplePatScope, TuplePat, Inheritance }
+define_scope! { TuplePatScope, TuplePat }
 impl super::Parse for TuplePatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.parse(TuplePatElemListScope::default(), None);
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.parse(TuplePatElemListScope::default())
     }
 }
 
-define_scope! { TuplePatElemListScope, TuplePatElemList, Override(RParen) }
+define_scope! { TuplePatElemListScope, TuplePatElemList, (RParen, Comma) }
 impl super::Parse for TuplePatElemListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LParen);
-        if parser.bump_if(SyntaxKind::RParen) {
-            return;
-        }
+    type Error = Recovery<ErrProof>;
 
-        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::RParen, SyntaxKind::Comma]);
-        while parser.bump_if(SyntaxKind::Comma) {
-            parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::RParen, SyntaxKind::Comma]);
-        }
-
-        parser.bump_or_recover(SyntaxKind::RParen, "expected `)`", None);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            false,
+            SyntaxKind::TuplePatElemList,
+            (SyntaxKind::LParen, SyntaxKind::RParen),
+            parse_pat,
+        )
     }
 }
 
-define_scope! { PathPatScope, PathPat, Inheritance(Pipe) }
+define_scope! { PathPatScope, PathPat, (Pipe) }
 impl super::Parse for PathPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        if !parser.parse(PathScope::default(), None).0 {
-            return;
-        }
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.or_recover(|p| {
+            p.parse(PathScope::default())
+                .map_err(|e| ParseError::expected(&[SyntaxKind::PathPat], None, e.range().start()))
+        })?;
 
         parser.set_newline_as_trivia(false);
         if parser.current_kind() == Some(SyntaxKind::LParen) {
             self.set_kind(SyntaxKind::PathTuplePat);
-            parser.parse(TuplePatElemListScope::default(), None);
+            parser.parse(TuplePatElemListScope::default())
         } else if parser.current_kind() == Some(SyntaxKind::LBrace) {
             self.set_kind(SyntaxKind::RecordPat);
-            parser.parse(RecordPatFieldListScope::default(), None);
+            parser.parse(RecordPatFieldListScope::default())
+        } else {
+            Ok(())
         }
     }
 }
 
-define_scope! { RecordPatFieldListScope, RecordPatFieldList, Override(Comma, RBrace) }
+define_scope! { RecordPatFieldListScope, RecordPatFieldList, (Comma, RBrace) }
 impl super::Parse for RecordPatFieldListScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
-        parser.bump_expected(SyntaxKind::LBrace);
-        if parser.bump_if(SyntaxKind::RBrace) {
-            return;
-        }
+    type Error = Recovery<ErrProof>;
 
-        parser.parse(RecordPatFieldScope::default(), None);
-        while parser.bump_if(SyntaxKind::Comma) {
-            parser.parse(RecordPatFieldScope::default(), None);
-        }
-
-        parser.bump_or_recover(SyntaxKind::RBrace, "expected `}`", None);
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_list(
+            parser,
+            true,
+            SyntaxKind::RecordPatFieldList,
+            (SyntaxKind::LBrace, SyntaxKind::RBrace),
+            |parser| parser.parse(RecordPatFieldScope::default()),
+        )
     }
 }
 
-define_scope! { RecordPatFieldScope, RecordPatField, Override(Comma, RBrace) }
+define_scope! { RecordPatFieldScope, RecordPatField }
 impl super::Parse for RecordPatFieldScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         let has_label = parser.dry_run(|parser| {
+            //
             parser.bump_if(SyntaxKind::Ident) && parser.bump_if(SyntaxKind::Colon)
         });
         if has_label {
             parser.bump_expected(SyntaxKind::Ident);
             parser.bump_expected(SyntaxKind::Colon);
         }
-        parser.with_next_expected_tokens(parse_pat, &[SyntaxKind::Comma, SyntaxKind::RBrace]);
+        parse_pat(parser)
     }
 }
 
-define_scope! { OrPatScope, OrPat, Inheritance(SyntaxKind::Pipe) }
+define_scope! { OrPatScope, OrPat, (Pipe) }
 impl super::Parse for OrPatScope {
-    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Pipe);
-        parse_pat(parser);
+        parse_pat(parser)
     }
 }

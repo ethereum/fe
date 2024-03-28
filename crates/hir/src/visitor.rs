@@ -2171,8 +2171,8 @@ mod tests {
     fn visitor() {
         let mut db = TestDb::default();
         let text = r#"
-            #[attr1]
-            #[attr2]
+            #attr1
+            #attr2
             fn foo<T: 'static, V: Add>() {
                 1
                 "foo"
@@ -2197,8 +2197,8 @@ mod tests {
         );
 
         assert_eq!(visitor.attributes.len(), 2);
-        assert_eq!("#[attr1]", db.text_at(top_mod, &visitor.attributes[0]));
-        assert_eq!("#[attr2]", db.text_at(top_mod, &visitor.attributes[1]));
+        assert_eq!("#attr1", db.text_at(top_mod, &visitor.attributes[0]));
+        assert_eq!("#attr2", db.text_at(top_mod, &visitor.attributes[1]));
 
         assert_eq!(visitor.lit_ints.len(), 2);
         assert_eq!("1", db.text_at(top_mod, &visitor.lit_ints[0]));
