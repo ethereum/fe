@@ -12,10 +12,10 @@ use hir_analysis::{
 };
 use salsa::{ParallelDatabase, Snapshot};
 
-use crate::goto::Cursor;
+use crate::functionality::goto::Cursor;
 
 #[salsa::jar(db = LanguageServerDb)]
-pub struct Jar(crate::diagnostics::file_line_starts);
+pub struct Jar(crate::functionality::diagnostics::file_line_starts);
 
 pub trait LanguageServerDb:
     salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
