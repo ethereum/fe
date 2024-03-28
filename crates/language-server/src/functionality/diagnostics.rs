@@ -1,26 +1,18 @@
-use std::{ops::Range, sync::Arc};
+use std::ops::Range;
 
 use camino::Utf8Path;
-use clap::Error;
+
 use codespan_reporting as cs;
 use cs::{diagnostic as cs_diag, files as cs_files};
 
 use common::{
     diagnostics::{LabelStyle, Severity},
-    InputDb, InputFile,
+    InputFile,
 };
-use fxhash::FxHashMap;
-use hir::{diagnostics::DiagnosticVoucher, LowerHirDb};
-use salsa::Snapshot;
-use tokio::sync::RwLock;
-use tower_lsp::Client;
-use tracing::info;
 
-use crate::{
-    backend::db::{LanguageServerDatabase, LanguageServerDb},
-    backend::workspace::{IngotFileContext, Workspace},
-    util::diag_to_lsp,
-};
+use hir::diagnostics::DiagnosticVoucher;
+
+use crate::backend::db::{LanguageServerDatabase, LanguageServerDb};
 
 pub trait ToCsDiag {
     fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile>;
@@ -129,62 +121,4 @@ impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
 
         Ok(Range { start, end })
     }
-}
-
-fn run_diagnostics(
-    db: &Snapshot<LanguageServerDatabase>,
-    workspace: &Workspace,
-    path: &str,
-) -> Vec<common::diagnostics::CompleteDiagnostic> {
-    let file_path = path;
-    let top_mod = workspace
-        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
-        .unwrap();
-    let diags = &db.analyze_top_mod(top_mod);
-    db.finalize_diags(diags)
-}
-
-pub fn get_diagnostics(
-    db: &Snapshot<LanguageServerDatabase>,
-    workspace: &Workspace,
-    uri: lsp_types::Url,
-) -> Result<FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>>, Error> {
-    let diags = run_diagnostics(db, workspace, uri.to_file_path().unwrap().to_str().unwrap());
-
-    let diagnostics = diags
-        .into_iter()
-        .flat_map(|diag| diag_to_lsp(diag, db.as_input_db()).clone());
-
-    // we need to reduce the diagnostics to a map from URL to Vec<Diagnostic>
-    let mut result = FxHashMap::<lsp_types::Url, Vec<lsp_types::Diagnostic>>::default();
-
-    // add a null diagnostic to the result for the given URL
-    let _ = result.entry(uri.clone()).or_insert_with(Vec::new);
-
-    diagnostics.for_each(|(uri, more_diags)| {
-        let diags = result.entry(uri).or_insert_with(Vec::new);
-        diags.extend(more_diags);
-    });
-
-    Ok(result)
-}
-
-pub(super) async fn diagnostics_workload(
-    client: Client,
-    workspace: Arc<RwLock<Workspace>>,
-    db: Snapshot<LanguageServerDatabase>,
-    url: lsp_types::Url,
-) {
-    info!("handling diagnostics for {:?}", url);
-    let workspace = &workspace.read().await;
-    let diagnostics = get_diagnostics(&db, workspace, url.clone());
-
-    let client = client.clone();
-    let diagnostics = diagnostics
-        .unwrap()
-        .into_iter()
-        .map(|(uri, diags)| async { client.publish_diagnostics(uri, diags, None).await })
-        .collect::<Vec<_>>();
-
-    futures::future::join_all(diagnostics).await;
 }

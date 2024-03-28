@@ -1,13 +1,16 @@
-use common::{diagnostics::CompleteDiagnostic, InputDb};
+use common::{diagnostics::CompleteDiagnostic, InputDb, InputFile};
+use fxhash::FxHashMap;
 use hir::{
     analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
-    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
+    lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     HirAnalysisDb,
 };
 use salsa::{ParallelDatabase, Snapshot};
+
+use crate::util::diag_to_lsp;
 
 #[salsa::jar(db = LanguageServerDb)]
 pub struct Jar(crate::functionality::diagnostics::file_line_starts);
@@ -48,6 +51,29 @@ impl LanguageServerDatabase {
         });
         diags
     }
+
+    pub fn get_lsp_diagnostics(
+        &self,
+        files: Vec<InputFile>,
+    ) -> FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>> {
+        let mut result = FxHashMap::<lsp_types::Url, Vec<lsp_types::Diagnostic>>::default();
+        files
+            .iter()
+            .flat_map(|file| {
+                let top_mod = map_file_to_mod(self, *file);
+                let diagnostics = self.analyze_top_mod(top_mod);
+                self.finalize_diags(&diagnostics)
+                    .into_iter()
+                    .flat_map(|diag| diag_to_lsp(diag, self.as_input_db()).clone())
+            })
+            .for_each(|(uri, more_diags)| {
+                let _ = result.entry(uri.clone()).or_insert_with(Vec::new);
+                let diags = result.entry(uri).or_insert_with(Vec::new);
+                diags.extend(more_diags);
+            });
+        result
+    }
+
     pub fn as_language_server_db(&self) -> &dyn LanguageServerDb {
         <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
     }

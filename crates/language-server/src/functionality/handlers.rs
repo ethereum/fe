@@ -1,9 +1,9 @@
 use crate::backend::Backend;
 
 use crate::backend::workspace::SyncableIngotFileContext;
-use crate::functionality::diagnostics::diagnostics_workload;
 
 use common::InputDb;
+use futures::TryFutureExt;
 use fxhash::FxHashSet;
 
 use lsp_types::TextDocumentItem;
@@ -97,19 +97,26 @@ impl Backend {
         }
 
         info!("ingots need diagnostics: {:?}", ingots_need_diagnostics);
-        for ingot in ingots_need_diagnostics.into_iter() {
-            for file in ingot.files(self.db.as_input_db()) {
-                let file = *file;
-                let path = file.path(self.db.as_input_db());
-                let path = lsp_types::Url::from_file_path(path).unwrap();
-                let db = self.db.snapshot();
-                let client = self.client.clone();
-                let workspace = self.workspace.clone();
-                self.workers.spawn(async move {
-                    diagnostics_workload(client.clone(), workspace.clone(), db, path).await
+        let ingot_files_need_diagnostics = ingots_need_diagnostics
+            .into_iter()
+            .flat_map(|ingot| ingot.files(self.db.as_input_db()))
+            .cloned()
+            .collect::<Vec<_>>();
+
+        let db = self.db.snapshot();
+        let client = self.client.clone();
+        let compute_and_send_diagnostics = self
+            .workers
+            .spawn_blocking(move || db.get_lsp_diagnostics(ingot_files_need_diagnostics))
+            .and_then(|diagnostics| async move {
+                let client = client.clone();
+                let send_diagnostics = diagnostics.into_iter().map(|(path, diagnostic)| async {
+                    client.publish_diagnostics(path, diagnostic, None).await
                 });
-            }
-        }
+                futures::future::join_all(send_diagnostics).await;
+                Ok(())
+            });
+        tokio::spawn(compute_and_send_diagnostics);
     }
 
     pub(super) async fn handle_hover(
@@ -121,17 +128,27 @@ impl Backend {
     ) {
         let db = self.db.snapshot();
         let workspace = self.workspace.clone();
-        let response = match self
-            .workers
-            .spawn(hover_helper(db, workspace, params))
-            .await
-        {
-            Ok(response) => response,
-            Err(e) => {
-                eprintln!("Error handling hover: {:?}", e);
-                Ok(None)
+        let file = workspace.read().await.get_input_for_file_path(
+            params
+                .text_document_position_params
+                .text_document
+                .uri
+                .path(),
+        );
+        match file {
+            Some(file) => {
+                let response = match hover_helper(db, file, params) {
+                    Ok(response) => response,
+                    Err(e) => {
+                        eprintln!("Error handling hover: {:?}", e);
+                        None
+                    }
+                };
+                let _ = responder.send(Ok(response));
             }
-        };
-        let _ = responder.send(response);
+            None => {
+                let _ = responder.send(Ok(None));
+            }
+        }
     }
 }

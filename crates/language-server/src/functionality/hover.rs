@@ -1,6 +1,5 @@
-use std::sync::Arc;
-
-use common::InputDb;
+use common::{InputDb, InputFile};
+use hir::lower::map_file_to_mod;
 use hir::LowerHirDb;
 use hir::{HirDb, SpannedHirDb};
 
@@ -8,43 +7,28 @@ use lsp_types::Hover;
 use tracing::info;
 
 use salsa::Snapshot;
-use tokio::sync::RwLock;
+
 use tower_lsp::jsonrpc::Result;
 
-use crate::{
-    backend::db::LanguageServerDatabase,
-    backend::workspace::{IngotFileContext, Workspace},
-    util::to_offset_from_position,
-};
+use crate::{backend::db::LanguageServerDatabase, util::to_offset_from_position};
 
 use super::goto::{get_goto_target_scopes_for_cursor, Cursor};
 use super::item_info::{get_item_definition_markdown, get_item_docstring, get_item_path_markdown};
 
-pub async fn hover_helper(
+pub fn hover_helper(
     db: Snapshot<LanguageServerDatabase>,
-    workspace: Arc<RwLock<Workspace>>,
+    input: InputFile,
     params: lsp_types::HoverParams,
 ) -> Result<Option<Hover>> {
-    let workspace = workspace.read().await;
     info!("handling hover");
-    let file_path = &params
-        .text_document_position_params
-        .text_document
-        .uri
-        .path();
-    info!("getting hover info for file_path: {:?}", file_path);
-
-    let input = workspace.get_input_for_file_path(file_path);
-    let file_text = input.unwrap().text(db.as_input_db());
+    let file_text = input.text(db.as_input_db());
 
     let cursor: Cursor = to_offset_from_position(
         params.text_document_position_params.position,
         file_text.as_str(),
     );
 
-    let top_mod = workspace
-        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
-        .unwrap();
+    let top_mod = map_file_to_mod(db.as_lower_hir_db(), input);
     let goto_info = &get_goto_target_scopes_for_cursor(db.as_language_server_db(), top_mod, cursor)
         .unwrap_or_default();
 

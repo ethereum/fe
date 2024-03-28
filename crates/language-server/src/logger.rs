@@ -51,7 +51,13 @@ pub fn setup_logger(
     let (log_sender, log_receiver) =
         tokio::sync::mpsc::unbounded_channel::<(String, MessageType)>();
     let logger = LoggerLayer { log_sender };
-    let logger = logger.with_max_level(level);
+    let logger = logger
+        .with_filter(|metadata| {
+            metadata
+                .module_path()
+                .map_or(false, |path| path.starts_with("fe_language_server"))
+        })
+        .with_max_level(level);
 
     let pretty_logger = tracing_subscriber::fmt::layer()
         .event_format(tracing_subscriber::fmt::format::format().pretty())

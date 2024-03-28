@@ -10,8 +10,10 @@ pub mod calculations {
     4
   }
 
+  /// which one is it?
   pub mod ambiguous {
   
   }
+  /// is it this one?
   pub fn ambiguous() {}
 }
