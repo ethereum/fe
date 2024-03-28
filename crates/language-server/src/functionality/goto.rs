@@ -203,8 +203,6 @@ impl Backend {
             Result<Option<lsp_types::GotoDefinitionResponse>, tower_lsp::jsonrpc::Error>,
         >,
     ) {
-        let workspace = self.workspace.clone();
-        let workspace = workspace.read().await;
         // Convert the position to an offset in the file
         let params = params.text_document_position_params;
         let file_text = std::fs::read_to_string(params.text_document.uri.path()).ok();
@@ -212,7 +210,7 @@ impl Backend {
 
         // Get the module and the goto info
         let file_path = params.text_document.uri.path();
-        let top_mod = workspace
+        let top_mod = self.workspace
             .top_mod_from_file_path(self.db.as_lower_hir_db(), file_path)
             .unwrap();
 

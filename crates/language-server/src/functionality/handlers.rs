@@ -27,10 +27,9 @@ impl Backend {
 
         let root = params.root_uri.unwrap().to_file_path().ok().unwrap();
 
-        let mut workspace = self.workspace.write().await;
-        let _ = workspace.set_workspace_root(&mut self.db, &root);
-        let _ = workspace.load_std_lib(&mut self.db, &root);
-        let _ = workspace.sync(&mut self.db);
+        let _ = self.workspace.set_workspace_root(&mut self.db, &root);
+        let _ = self.workspace.load_std_lib(&mut self.db, &root);
+        let _ = self.workspace.sync(&mut self.db);
 
         let capabilities = server_capabilities();
         let initialize_result = lsp_types::InitializeResult {
@@ -59,11 +58,7 @@ impl Backend {
         let path = params.uri.to_file_path().unwrap();
         info!("file deleted: {:?}", path);
         let path = path.to_str().unwrap();
-        let workspace = self.workspace.clone();
-        let _ = workspace
-            .write()
-            .await
-            .remove_input_for_file_path(&mut self.db, path);
+        let _ = self.workspace.remove_input_for_file_path(&mut self.db, path);
         let _ = tx_needs_diagnostics.send(path.to_string());
     }
 
@@ -77,8 +72,7 @@ impl Backend {
         let path = path_buf.to_str().unwrap();
         let contents = Some(doc.text);
         if let Some(contents) = contents {
-            let workspace = &mut self.workspace.write().await;
-            let input = workspace
+            let input = self.workspace
                 .touch_input_for_file_path(&mut self.db, path)
                 .unwrap();
             let _ = input.sync_from_text(&mut self.db, contents);
@@ -90,9 +84,7 @@ impl Backend {
         info!("files need diagnostics: {:?}", files_need_diagnostics);
         let mut ingots_need_diagnostics = FxHashSet::default();
         for file in files_need_diagnostics {
-            let workspace = self.workspace.clone();
-            let workspace = workspace.read().await;
-            let ingot = workspace.get_ingot_for_file_path(&file).unwrap();
+            let ingot = self.workspace.get_ingot_for_file_path(&file).unwrap();
             ingots_need_diagnostics.insert(ingot);
         }
 
@@ -127,8 +119,7 @@ impl Backend {
         >,
     ) {
         let db = self.db.snapshot();
-        let workspace = self.workspace.clone();
-        let file = workspace.read().await.get_input_for_file_path(
+        let file = self.workspace.get_input_for_file_path(
             params
                 .text_document_position_params
                 .text_document
