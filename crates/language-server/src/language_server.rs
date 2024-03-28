@@ -35,12 +35,11 @@ impl Server {
     }
 }
 
-#[language_server_macros::message_channels(MessageChannels)]
+#[language_server_macros::message_channels]
 #[tower_lsp::async_trait]
 impl LanguageServer for Server {
     async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
         // forward the initialize request to the messaging system
-        // let messaging = self.messaging.read().await;
         let rx = self.messaging.send_initialize(initialize_params);
 
         info!("awaiting initialization result");
@@ -72,7 +71,6 @@ impl LanguageServer for Server {
     }
 
     async fn did_change(&self, params: lsp_types::DidChangeTextDocumentParams) {
-        // info!("sending did change to channel of capacity {}", self.messaging.did_change_tx.capacity());
         self.messaging.send_did_change(params);
     }
 
@@ -85,7 +83,6 @@ impl LanguageServer for Server {
     }
 
     async fn hover(&self, params: lsp_types::HoverParams) -> Result<Option<lsp_types::Hover>> {
-        // info!("sending hover to channel of capacity {}", self.messaging.hover_tx.capacity());
         let rx = self.messaging.send_hover(params);
         rx.await.expect("hover response")
     }
@@ -94,7 +91,6 @@ impl LanguageServer for Server {
         &self,
         params: lsp_types::GotoDefinitionParams,
     ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
-        // let messaging = self.messaging.read().await;
         let rx = self.messaging.send_goto_definition(params);
         rx.await.expect("goto definition response")
     }
