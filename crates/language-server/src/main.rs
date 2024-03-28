@@ -1,26 +1,19 @@
 mod backend;
 mod capabilities;
-mod db;
 mod diagnostics;
 mod globals;
 mod goto;
-mod language_server;
 mod logger;
-mod stream_buffer_until;
+mod server;
 mod util;
-mod workspace;
 
+use backend::db::Jar;
 use backend::Backend;
-use db::Jar;
 use tracing::Level;
 
-use language_server::Server;
+use server::Server;
 
 use crate::logger::{handle_log_messages, setup_logger};
-
-mod handlers {
-    pub mod request;
-}
 
 #[tokio_macros::main]
 async fn main() {
@@ -28,13 +21,13 @@ async fn main() {
     let stdout = tokio::io::stdout();
     let rx = setup_logger(Level::INFO).unwrap();
 
-    let (message_senders, message_receivers) = language_server::setup_message_channels();
+    let (message_senders, message_receivers) = server::setup_message_channels();
     let (service, socket) =
         tower_lsp::LspService::build(|client| Server::new(client, message_senders)).finish();
     let server = service.inner();
 
     let client = server.client.clone();
-    let backend = Backend::new(client, message_receivers);
+    let mut backend = Backend::new(client);
 
     // separate runtime for the backend
     // let backend_runtime = tokio::runtime::Builder::new_multi_thread()
@@ -52,6 +45,6 @@ async fn main() {
         _ = tower_lsp::Server::new(stdin, stdout, socket)
             .serve(service) => {}
         // backend
-        _ = backend.handle_streams() => {}
+        _ = backend::streams::setup_streams(&mut backend, message_receivers) => {}
     }
 }

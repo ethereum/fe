@@ -14,9 +14,9 @@ use hir::{diagnostics::DiagnosticVoucher, LowerHirDb};
 use salsa::Snapshot;
 
 use crate::{
-    db::{LanguageServerDatabase, LanguageServerDb},
+    backend::db::{LanguageServerDatabase, LanguageServerDb},
+    backend::workspace::{IngotFileContext, Workspace},
     util::diag_to_lsp,
-    workspace::{IngotFileContext, Workspace},
 };
 
 pub trait ToCsDiag {
