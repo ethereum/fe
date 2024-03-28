@@ -1,18 +1,23 @@
-use foo::Foo
+use ingot::foo::Why
 
-mod baz {
-    use super::Foo
-    
-    pub struct Bar {
-        x: Foo
+mod who {
+  use super::Why
+  pub mod what {
+    pub fn how() {}
+    pub mod how {
+      use ingot::Why
+      pub struct When {
+        x: Why
+      }
     }
-
-    fn bar() -> () {
-        let x: Foo
-    }
+  }
+  pub struct Bar {
+    x: Why
+  }
 }
 
 fn bar() -> () {
-    let y: Foo
-    let z: baz::Bar
+    let y: Why
+    let z = who::what::how
+    let z: who::what::how::When
 }
