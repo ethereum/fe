@@ -10,11 +10,12 @@ use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     HirAnalysisDb,
 };
+use salsa::{ParallelDatabase, Snapshot};
 
-use crate::goto::Cursor;
+use crate::functionality::goto::Cursor;
 
 #[salsa::jar(db = LanguageServerDb)]
-pub struct Jar(crate::diagnostics::file_line_starts);
+pub struct Jar(crate::functionality::diagnostics::file_line_starts);
 
 pub trait LanguageServerDb:
     salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
@@ -36,30 +37,15 @@ impl<DB> LanguageServerDb for DB where
 )]
 pub struct LanguageServerDatabase {
     storage: salsa::Storage<Self>,
-    diags: Vec<Box<dyn DiagnosticVoucher>>,
 }
 
 impl LanguageServerDatabase {
-    pub fn analyze_top_mod(&mut self, top_mod: TopLevelMod) {
-        self.run_on_file_with_pass_manager(top_mod, initialize_analysis_pass);
+    pub fn analyze_top_mod(&self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
+        let mut pass_manager = initialize_analysis_pass(self);
+        pass_manager.run_on_module(top_mod)
     }
 
-    pub fn run_on_file_with_pass_manager<F>(&mut self, top_mod: TopLevelMod, pm_builder: F)
-    where
-        F: FnOnce(&Self) -> AnalysisPassManager<'_>,
-    {
-        self.diags.clear();
-        self.diags = {
-            let mut pass_manager = pm_builder(self);
-            pass_manager.run_on_module(top_mod)
-        };
-    }
-
-    pub fn find_enclosing_item(
-        &mut self,
-        top_mod: TopLevelMod,
-        cursor: Cursor,
-    ) -> Option<ItemKind> {
+    pub fn find_enclosing_item(&self, top_mod: TopLevelMod, cursor: Cursor) -> Option<ItemKind> {
         let items = top_mod
             .scope_graph(self.as_hir_db())
             .items_dfs(self.as_hir_db());
@@ -85,8 +71,8 @@ impl LanguageServerDatabase {
         smallest_enclosing_item
     }
 
-    pub fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {
-        let mut diags: Vec<_> = self.diags.iter().map(|d| d.to_complete(self)).collect();
+    pub fn finalize_diags(&self, diags: &[Box<dyn DiagnosticVoucher>]) -> Vec<CompleteDiagnostic> {
+        let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
             std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
             ord => ord,
@@ -103,10 +89,17 @@ impl Default for LanguageServerDatabase {
     fn default() -> Self {
         let db = Self {
             storage: Default::default(),
-            diags: Vec::new(),
         };
         db.prefill();
         db
+    }
+}
+
+impl ParallelDatabase for LanguageServerDatabase {
+    fn snapshot(&self) -> Snapshot<Self> {
+        Snapshot::new(LanguageServerDatabase {
+            storage: self.storage.snapshot(),
+        })
     }
 }
 

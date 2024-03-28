@@ -1,157 +1,97 @@
-use super::state::ServerState;
-use anyhow::Result;
-use lsp_server::{Connection, Notification};
-use lsp_types::{HoverProviderCapability, InitializeParams, ServerCapabilities};
+use lsp_types::{
+    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
+    DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult,
+    Registration,
+};
+use tracing::{error, info};
 
-#[cfg(target_arch = "wasm32")]
-use crate::util::DummyFilePathConversion;
+use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
-fn server_capabilities() -> ServerCapabilities {
-    ServerCapabilities {
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
-        // full sync mode for now
-        text_document_sync: Some(lsp_types::TextDocumentSyncCapability::Kind(
-            lsp_types::TextDocumentSyncKind::FULL,
-        )),
-        // goto definition
-        definition_provider: Some(lsp_types::OneOf::Left(true)),
-        // support for workspace add/remove changes
-        workspace: Some(lsp_types::WorkspaceServerCapabilities {
-            workspace_folders: Some(lsp_types::WorkspaceFoldersServerCapabilities {
-                supported: Some(true),
-                change_notifications: Some(lsp_types::OneOf::Left(true)),
-            }),
-            file_operations: Some(lsp_types::WorkspaceFileOperationsServerCapabilities {
-                did_create: Some(lsp_types::FileOperationRegistrationOptions {
-                    filters: vec![lsp_types::FileOperationFilter {
-                        scheme: Some(String::from("file")),
-                        pattern: lsp_types::FileOperationPattern {
-                            glob: String::from("**/*"),
-                            options: None,
-                            // options: Some(lsp_types::FileOperationPatternOptions {
-                            //     ignore_case: Some(true),
-                            // }),
-                            matches: None,
-                        },
+pub(crate) struct Server {
+    pub(crate) messaging: MessageSenders,
+    pub(crate) client: Client,
+}
+
+impl Server {
+    pub(crate) async fn register_watchers(&self) -> Result<()> {
+        let registration = Registration {
+            id: String::from("watch-fe-files"),
+            method: String::from("workspace/didChangeWatchedFiles"),
+            register_options: Some(
+                serde_json::to_value(DidChangeWatchedFilesRegistrationOptions {
+                    watchers: vec![FileSystemWatcher {
+                        glob_pattern: GlobPattern::String("**/*.fe".to_string()),
+                        kind: None,
                     }],
-                }),
-                did_rename: Some(lsp_types::FileOperationRegistrationOptions {
-                    filters: vec![lsp_types::FileOperationFilter {
-                        scheme: Some(String::from("file")),
-                        pattern: lsp_types::FileOperationPattern {
-                            glob: String::from("**/*"),
-                            options: None,
-                            // options: Some(lsp_types::FileOperationPatternOptions {
-                            //     ignore_case: Some(true),
-                            // }),
-                            matches: None,
-                        },
-                    }],
-                }),
-                did_delete: Some(lsp_types::FileOperationRegistrationOptions {
-                    filters: vec![lsp_types::FileOperationFilter {
-                        scheme: Some(String::from("file")),
-                        pattern: lsp_types::FileOperationPattern {
-                            glob: String::from("**/*"),
-                            options: None,
-                            // options: Some(lsp_types::FileOperationPatternOptions {
-                            //     ignore_case: Some(true),
-                            // }),
-                            matches: None,
-                        },
-                    }],
-                }),
-                will_create: None,
-                will_rename: None,
-                will_delete: None,
-                // TODO: implement file operation refactors and workspace cache updates
-                // will_create: Some(lsp_types::FileOperationRegistrationOptions {
-                //     filters: vec![lsp_types::FileOperationFilter {
-                //         scheme: Some(String::from("file")),
-                //         pattern: lsp_types::FileOperationPattern {
-                //             glob: String::from("**/*"),
-                //             options: None,
-                //             matches: None,
-                //         },
-                //     }],
-                // }),
-                // will_rename: Some(lsp_types::FileOperationRegistrationOptions {
-                //     filters: vec![lsp_types::FileOperationFilter {
-                //         scheme: Some(String::from("file")),
-                //         pattern: lsp_types::FileOperationPattern {
-                //             glob: String::from("**/*"),
-                //             options: None,
-                //             matches: None,
-                //         },
-                //     }],
-                // }),
-                // will_delete: Some(lsp_types::FileOperationRegistrationOptions {
-                //     filters: vec![lsp_types::FileOperationFilter {
-                //         scheme: Some(String::from("file")),
-                //         pattern: lsp_types::FileOperationPattern {
-                //             glob: String::from("**/*"),
-                //             options: None,
-                //             matches: None,
-                //         },
-                //     }],
-                // }),
-            }),
-        }),
-        // ..Default::default()
-        ..Default::default()
+                })
+                .unwrap(),
+            ),
+        };
+        self.client.register_capability(vec![registration]).await
+    }
+
+    pub(crate) fn new(client: Client, messaging: MessageSenders) -> Self {
+        Self { messaging, client }
     }
 }
 
-pub fn run_server() -> Result<()> {
-    let (connection, io_threads) = Connection::stdio();
+#[language_server_macros::message_channels]
+#[tower_lsp::async_trait]
+impl LanguageServer for Server {
+    async fn initialize(&self, initialize_params: InitializeParams) -> Result<InitializeResult> {
+        // forward the initialize request to the messaging system
+        let rx = self.messaging.send_initialize(initialize_params);
 
-    let (request_id, _initialize_params) = connection.initialize_start()?;
-    let initialize_params: InitializeParams = serde_json::from_value(_initialize_params)?;
-    // let debug_params = initialize_params.clone();
-    // todo: actually use initialization params
+        info!("awaiting initialization result");
+        match rx.await {
+            Ok(initialize_result) => initialize_result,
+            Err(e) => {
+                error!("Failed to initialize: {}", e);
+                return Err(tower_lsp::jsonrpc::Error::internal_error());
+            }
+        }
+    }
 
-    let capabilities = server_capabilities();
+    async fn initialized(&self, _params: lsp_types::InitializedParams) {
+        info!("initialized... registering file watchers");
+        // register file watchers
+        if let Err(e) = self.register_watchers().await {
+            error!("Failed to register file watchers: {}", e);
+        } else {
+            info!("registered watchers");
+        }
+    }
 
-    let initialize_result = lsp_types::InitializeResult {
-        capabilities,
-        server_info: Some(lsp_types::ServerInfo {
-            name: String::from("fe-language-server"),
-            version: Some(String::from(env!("CARGO_PKG_VERSION"))),
-        }),
-    };
+    async fn shutdown(&self) -> tower_lsp::jsonrpc::Result<()> {
+        Ok(())
+    }
 
-    let initialize_result = serde_json::to_value(initialize_result).unwrap();
+    async fn did_open(&self, params: lsp_types::DidOpenTextDocumentParams) {
+        self.messaging.send_did_open(params);
+    }
 
-    connection.initialize_finish(request_id, initialize_result)?;
-    // send a "hello" message to the client
-    connection
-        .sender
-        .send(lsp_server::Message::Notification(Notification {
-            method: String::from("window/showMessage"),
-            params: serde_json::to_value(lsp_types::ShowMessageParams {
-                typ: lsp_types::MessageType::INFO,
-                message: String::from("hello from the Fe language server"),
-            })
-            .unwrap(),
-        }))?;
+    async fn did_change(&self, params: lsp_types::DidChangeTextDocumentParams) {
+        self.messaging.send_did_change(params);
+    }
 
-    let mut state = ServerState::new(connection.sender);
-    let _ = state.init_logger(log::Level::Info);
-    state.workspace.set_workspace_root(
-        &mut state.db,
-        initialize_params
-            .root_uri
-            .unwrap()
-            .to_file_path()
-            .ok()
-            .unwrap(),
-    )?;
-    // info!("TESTING");
-    // info!("initialized with params: {:?}", debug_params);
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        self.messaging.send_did_close(params);
+    }
 
-    let result = state.run(connection.receiver);
+    async fn did_change_watched_files(&self, params: DidChangeWatchedFilesParams) {
+        self.messaging.send_did_change_watched_files(params);
+    }
 
-    io_threads.join().unwrap();
+    async fn hover(&self, params: lsp_types::HoverParams) -> Result<Option<lsp_types::Hover>> {
+        let rx = self.messaging.send_hover(params);
+        rx.await.expect("hover response")
+    }
 
-    result
+    async fn goto_definition(
+        &self,
+        params: lsp_types::GotoDefinitionParams,
+    ) -> Result<Option<lsp_types::GotoDefinitionResponse>> {
+        let rx = self.messaging.send_goto_definition(params);
+        rx.await.expect("goto definition response")
+    }
 }

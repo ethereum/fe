@@ -2,11 +2,18 @@ use fxhash::FxHashMap;
 use hir::{
     hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod},
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
-    HirDb,
+    HirDb, LowerHirDb, SpannedHirDb,
 };
-use hir_analysis::name_resolution::EarlyResolvedPath;
+use hir_analysis::{
+    name_resolution::{EarlyResolvedPath, NameRes},
+    HirAnalysisDb,
+};
+use salsa::Snapshot;
 
-use crate::db::{LanguageServerDatabase, LanguageServerDb};
+use crate::{
+    backend::db::{LanguageServerDatabase, LanguageServerDb},
+    util::{to_lsp_location_from_scope, to_offset_from_position},
+};
 use common::diagnostics::Span;
 use hir::span::LazySpan;
 
@@ -61,7 +68,7 @@ fn smallest_enclosing_path(cursor: Cursor, path_map: &GotoPathMap) -> Option<Got
 }
 
 pub fn goto_enclosing_path(
-    db: &mut LanguageServerDatabase,
+    db: &Snapshot<LanguageServerDatabase>,
     top_mod: TopLevelMod,
     cursor: Cursor,
 ) -> Option<EarlyResolvedPath> {
@@ -81,19 +88,90 @@ pub fn goto_enclosing_path(
     let (path_id, scope_id) = goto_starting_path;
 
     // Resolve path.
-    let resolved_path = hir_analysis::name_resolution::resolve_path_early(db, path_id, scope_id);
+    let resolved_path = hir_analysis::name_resolution::resolve_path_early(
+        db.as_hir_analysis_db(),
+        path_id,
+        scope_id,
+    );
 
     Some(resolved_path)
 }
 
+use lsp_types::{GotoDefinitionParams, GotoDefinitionResponse};
+
+use crate::backend::workspace::{IngotFileContext, Workspace};
+// use crate::diagnostics::get_diagnostics;
+
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+use tower_lsp::jsonrpc::Result;
+
+pub async fn goto_helper(
+    db: Snapshot<LanguageServerDatabase>,
+    workspace: Arc<RwLock<Workspace>>,
+    params: GotoDefinitionParams,
+) -> Result<Option<GotoDefinitionResponse>> {
+    let workspace = workspace.read().await;
+    // Convert the position to an offset in the file
+    let params = params.text_document_position_params;
+    let file_text = std::fs::read_to_string(params.text_document.uri.path()).ok();
+    let cursor: Cursor = to_offset_from_position(params.position, file_text.unwrap().as_str());
+
+    // Get the module and the goto info
+    let file_path = params.text_document.uri.path();
+    let top_mod = workspace
+        .top_mod_from_file_path(db.as_lower_hir_db(), file_path)
+        .unwrap();
+    let goto_info = goto_enclosing_path(&db, top_mod, cursor);
+
+    // Convert the goto info to a Location
+    let scopes = match goto_info {
+        Some(EarlyResolvedPath::Full(bucket)) => {
+            bucket.iter().map(NameRes::scope).collect::<Vec<_>>()
+        }
+        Some(EarlyResolvedPath::Partial {
+            res,
+            unresolved_from: _,
+        }) => {
+            vec![res.scope()]
+        }
+        None => return Ok(None),
+    };
+
+    let locations = scopes
+        .iter()
+        .filter_map(|scope| *scope)
+        .map(|scope| to_lsp_location_from_scope(scope, db.as_spanned_hir_db()))
+        .collect::<Vec<_>>();
+
+    let _errors = scopes
+        .iter()
+        .filter_map(|scope| *scope)
+        .map(|scope| to_lsp_location_from_scope(scope, db.as_spanned_hir_db()))
+        .filter_map(std::result::Result::err)
+        .map(|err| err.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Ok(Some(lsp_types::GotoDefinitionResponse::Array(
+        locations
+            .into_iter()
+            .filter_map(std::result::Result::ok)
+            .collect(),
+    )))
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::workspace::{IngotFileContext, Workspace};
+    use crate::backend::workspace::{IngotFileContext, Workspace};
 
     use super::*;
     use common::input::IngotKind;
     use dir_test::{dir_test, Fixture};
     use fe_compiler_test_utils::snap_test;
+    use hir::LowerHirDb;
+    use salsa::ParallelDatabase;
     use std::path::Path;
 
     fn extract_multiple_cursor_positions_from_spans(
@@ -127,11 +205,11 @@ mod tests {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
 
-        let _ = workspace.set_workspace_root(db, ingot_base_dir.clone());
+        let _ = workspace.set_workspace_root(db, &ingot_base_dir);
 
         let fe_source_path = ingot_base_dir.join(fixture.path());
         let fe_source_path = fe_source_path.to_str().unwrap();
-        let input = workspace.input_from_file_path(db, fixture.path());
+        let input = workspace.touch_input_for_file_path(db, fixture.path());
         assert_eq!(input.unwrap().ingot(db).kind(db), IngotKind::Local);
 
         input
@@ -139,17 +217,17 @@ mod tests {
             .set_text(db)
             .to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_from_file_path(db, fe_source_path)
+            .top_mod_from_file_path(db.as_lower_hir_db(), fe_source_path)
             .unwrap();
 
-        let ingot = workspace.ingot_from_file_path(db, fixture.path());
+        let ingot = workspace.touch_ingot_for_file_path(db, fixture.path());
         assert_eq!(ingot.unwrap().kind(db), IngotKind::Local);
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
         let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
 
         for cursor in &cursors {
-            let early_resolution = goto_enclosing_path(db, top_mod, *cursor);
+            let early_resolution = goto_enclosing_path(&db.snapshot(), top_mod, *cursor);
 
             let goto_info = match early_resolution {
                 Some(EarlyResolvedPath::Full(bucket)) => {
@@ -192,10 +270,12 @@ mod tests {
     fn test_goto_enclosing_path(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
-        let input = workspace.input_from_file_path(db, fixture.path()).unwrap();
+        let input = workspace
+            .touch_input_for_file_path(db, fixture.path())
+            .unwrap();
         input.set_text(db).to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_from_file_path(db, fixture.path())
+            .top_mod_from_file_path(db.as_lower_hir_db(), fixture.path())
             .unwrap();
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
@@ -203,7 +283,7 @@ mod tests {
         let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
 
         for cursor in &cursors {
-            let resolved_path = goto_enclosing_path(db, top_mod, *cursor);
+            let resolved_path = goto_enclosing_path(&db.snapshot(), top_mod, *cursor);
 
             if let Some(path) = resolved_path {
                 match path {
@@ -247,12 +327,12 @@ mod tests {
         let workspace = &mut Workspace::default();
 
         workspace
-            .input_from_file_path(db, fixture.path())
+            .touch_input_for_file_path(db, fixture.path())
             .unwrap()
             .set_text(db)
             .to((*fixture.content()).to_string());
         let top_mod = workspace
-            .top_mod_from_file_path(db, fixture.path())
+            .top_mod_from_file_path(db.as_lower_hir_db(), fixture.path())
             .unwrap();
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
