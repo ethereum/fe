@@ -13,7 +13,7 @@ use hir::{hir_def::TopLevelMod, lower::map_file_to_mod, LowerHirDb};
 use patricia_tree::StringPatriciaMap;
 use tracing::info;
 
-use crate::db::LanguageServerDatabase;
+use super::db::LanguageServerDatabase;
 
 use rust_embed::RustEmbed;
 
@@ -521,7 +521,7 @@ impl SyncableIngotFileContext for Workspace {
 #[cfg(test)]
 mod tests {
 
-    use crate::workspace::{
+    use crate::backend::workspace::{
         get_containing_ingot_mut, IngotFileContext, Workspace, FE_CONFIG_SUFFIX,
     };
     use std::path::PathBuf;
@@ -530,7 +530,7 @@ mod tests {
 
     #[test]
     fn test_standalone_context() {
-        let mut db = crate::db::LanguageServerDatabase::default();
+        let mut db = crate::backend::db::LanguageServerDatabase::default();
         let file_path = "tests/data/ingot1/src/main.fe";
 
         let ctx = &mut StandaloneIngotContext::new();
@@ -550,7 +550,7 @@ mod tests {
     #[test]
     fn test_workspace_standalone_ingot() {
         let mut workspace = Workspace::default();
-        let mut db = crate::db::LanguageServerDatabase::default();
+        let mut db = crate::backend::db::LanguageServerDatabase::default();
         let file_path = "tests/data/ingot1/src/main.fe";
         let file = workspace.touch_input_for_file_path(&mut db, file_path);
         assert!(file.is_some());
@@ -563,7 +563,7 @@ mod tests {
 
         let _ingot_context_ingot = {
             let ingot_context = workspace.ingot_context_from_config_path(
-                &crate::db::LanguageServerDatabase::default(),
+                &crate::backend::db::LanguageServerDatabase::default(),
                 config_path,
             );
 
@@ -584,7 +584,7 @@ mod tests {
         assert!(containing_ingot.as_deref().is_some());
 
         let ingot = workspace.touch_ingot_for_file_path(
-            &mut crate::db::LanguageServerDatabase::default(),
+            &mut crate::backend::db::LanguageServerDatabase::default(),
             file_path,
         );
         assert!(ingot.is_some());
@@ -594,7 +594,7 @@ mod tests {
     fn test_workspace_local_ingot() {
         let config_path = "tests/data/ingot1/fe.toml";
         let mut workspace = Workspace::default();
-        let mut db = crate::db::LanguageServerDatabase::default();
+        let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         let ingot_context_ingot = {
             let ingot_context = workspace.ingot_context_from_config_path(&db, config_path);
@@ -628,7 +628,7 @@ mod tests {
         let _ingot_config_path = &ingot_base_dir.join("fe.toml");
 
         let mut workspace = Workspace::default();
-        let mut db = crate::db::LanguageServerDatabase::default();
+        let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         let _ = workspace.set_workspace_root(&mut db, &ingot_base_dir);
         // panic!("wtf? {:?}", ingot_base_dir);
@@ -653,7 +653,7 @@ mod tests {
         );
 
         let mut workspace = Workspace::default();
-        let mut db = crate::db::LanguageServerDatabase::default();
+        let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         workspace.sync_local_ingots(&mut db, &path);
 
@@ -692,7 +692,7 @@ mod tests {
         );
 
         let mut workspace = Workspace::default();
-        let mut db = crate::db::LanguageServerDatabase::default();
+        let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         workspace.sync_local_ingots(&mut db, &path);
 
@@ -725,7 +725,7 @@ mod tests {
         let dangling_path = format!("{crate_dir}/test_files/messy/dangling.fe");
 
         let mut workspace = Workspace::default();
-        let mut db = crate::db::LanguageServerDatabase::default();
+        let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         workspace.sync_local_ingots(&mut db, &messy_workspace_path);
         let dangling_file = workspace

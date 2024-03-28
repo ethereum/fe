@@ -13,21 +13,19 @@ use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 
 use crate::{
-    db::LanguageServerDatabase,
+    backend::db::LanguageServerDatabase,
+    backend::workspace::{IngotFileContext, Workspace},
     goto::{goto_enclosing_path, Cursor},
     util::{to_lsp_location_from_scope, to_offset_from_position},
-    workspace::{IngotFileContext, Workspace},
 };
-// use tower_lsp::lsp_types::{ResponseError, Url};
 
-pub async fn handle_hover(
+pub async fn hover_helper(
     db: Snapshot<LanguageServerDatabase>,
     workspace: Arc<RwLock<Workspace>>,
     params: lsp_types::HoverParams,
 ) -> Result<Option<Hover>> {
     let workspace = workspace.read().await;
     info!("handling hover");
-    // TODO: get more relevant information for the hover
     let file_path = &params
         .text_document_position_params
         .text_document
@@ -43,14 +41,10 @@ pub async fn handle_hover(
         .nth(params.text_document_position_params.position.line as usize)
         .unwrap();
 
-    // let cursor: Cursor = params.text_document_position_params.position.into();
     let cursor: Cursor = to_offset_from_position(
         params.text_document_position_params.position,
         file_text.as_str(),
     );
-    // let file_path = std::path::Path::new(file_path);
-
-    // info!("got ingot: {:?} of type {:?}", ingot, ingot.map(|ingot| ingot.kind(&mut state.db)));
 
     let ingot_info: Option<String> = {
         let ingot_type = match ingot {
@@ -110,7 +104,7 @@ pub async fn handle_hover(
 
 use lsp_types::{GotoDefinitionParams, GotoDefinitionResponse, Hover};
 
-pub async fn handle_goto_definition(
+pub async fn goto_helper(
     db: Snapshot<LanguageServerDatabase>,
     workspace: Arc<RwLock<Workspace>>,
     params: GotoDefinitionParams,
@@ -157,13 +151,6 @@ pub async fn handle_goto_definition(
         .collect::<Vec<_>>()
         .join("\n");
 
-    // let _error = (!errors.is_empty()).then_some(ResponseError{
-    //     code: lsp_types::error_codes::SERVER_CANCELLED as i32,
-    //     message: errors,
-    //     data: None,
-    // });
-
-    // state.send_response(response_message)?;
     Ok(Some(lsp_types::GotoDefinitionResponse::Array(
         locations
             .into_iter()

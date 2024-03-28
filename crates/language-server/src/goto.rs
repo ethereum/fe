@@ -7,7 +7,7 @@ use hir::{
 use hir_analysis::{name_resolution::EarlyResolvedPath, HirAnalysisDb};
 use salsa::Snapshot;
 
-use crate::db::{LanguageServerDatabase, LanguageServerDb};
+use crate::backend::db::{LanguageServerDatabase, LanguageServerDb};
 use common::diagnostics::Span;
 use hir::span::LazySpan;
 
@@ -93,7 +93,7 @@ pub fn goto_enclosing_path(
 
 #[cfg(test)]
 mod tests {
-    use crate::workspace::{IngotFileContext, Workspace};
+    use crate::backend::workspace::{IngotFileContext, Workspace};
 
     use super::*;
     use common::input::IngotKind;
