@@ -220,7 +220,7 @@ impl<'db> DefAnalyzer<'db> {
 
     fn for_impl(db: &'db dyn HirAnalysisDb, impl_: HirImpl, ty: TyId) -> Self {
         let assumptions = collect_impl_block_constraints(db, impl_);
-        let def = DefKind::Impl(impl_, ty);
+        let def = DefKind::Impl(impl_);
         Self {
             db,
             def,
@@ -384,7 +384,7 @@ impl<'db> DefAnalyzer<'db> {
                 self.visit_impl_trait(&mut ctxt, impl_trait);
             }
 
-            DefKind::Impl(hir_impl, _) => {
+            DefKind::Impl(hir_impl) => {
                 let mut ctxt = VisitorCtxt::with_impl(self.db.as_hir_db(), hir_impl);
                 self.visit_impl(&mut ctxt, hir_impl)
             }
@@ -889,7 +889,7 @@ enum DefKind {
     Adt(AdtDef),
     Trait(TraitDef),
     ImplTrait(Implementor),
-    Impl(HirImpl, TyId),
+    Impl(HirImpl),
     Func(FuncDef),
 }
 
@@ -899,7 +899,7 @@ impl DefKind {
             Self::Adt(def) => def.params(db),
             Self::Trait(def) => def.params(db),
             Self::ImplTrait(def) => def.params(db),
-            Self::Impl(hir_impl, _) => {
+            Self::Impl(hir_impl) => {
                 collect_generic_params(db, GenericParamOwnerId::new(db, hir_impl.into())).params(db)
             }
             Self::Func(def) => def.params(db),
@@ -927,7 +927,7 @@ impl DefKind {
             Self::Adt(def) => def.adt_ref(db).scope(db),
             Self::Trait(def) => def.trait_(db).scope(),
             Self::ImplTrait(def) => def.hir_impl_trait(db).scope(),
-            Self::Impl(hir_impl, _) => hir_impl.scope(),
+            Self::Impl(hir_impl) => hir_impl.scope(),
             Self::Func(def) => def.hir_func(db).scope(),
         }
     }
