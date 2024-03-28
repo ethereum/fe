@@ -191,9 +191,6 @@ pub fn get_goto_target_scopes_for_cursor(
 }
 
 use crate::backend::workspace::IngotFileContext;
-// use crate::diagnostics::get_diagnostics;
-
-// use tower_lsp::jsonrpc::Result;
 
 impl Backend {
     pub(super) async fn handle_goto_definition(
@@ -210,7 +207,8 @@ impl Backend {
 
         // Get the module and the goto info
         let file_path = params.text_document.uri.path();
-        let top_mod = self.workspace
+        let top_mod = self
+            .workspace
             .top_mod_from_file_path(self.db.as_lower_hir_db(), file_path)
             .unwrap();
 

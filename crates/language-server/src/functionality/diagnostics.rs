@@ -6,13 +6,23 @@ use codespan_reporting as cs;
 use cs::{diagnostic as cs_diag, files as cs_files};
 
 use common::{
-    diagnostics::{LabelStyle, Severity},
-    InputFile,
+    diagnostics::{CompleteDiagnostic, LabelStyle, Severity},
+    InputDb, InputFile,
 };
 
-use hir::diagnostics::DiagnosticVoucher;
+use fxhash::FxHashMap;
+use hir::{
+    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
+    lower::map_file_to_mod, ParsingPass,
+};
+use hir_analysis::name_resolution::{
+    DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass,
+};
 
-use crate::backend::db::{LanguageServerDatabase, LanguageServerDb};
+use crate::{
+    backend::db::{LanguageServerDatabase, LanguageServerDb},
+    util::diag_to_lsp,
+};
 
 pub trait ToCsDiag {
     fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile>;
@@ -121,4 +131,51 @@ impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
 
         Ok(Range { start, end })
     }
+}
+
+impl LanguageServerDatabase {
+    pub fn analyze_top_mod(&self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
+        let mut pass_manager = initialize_analysis_pass(self);
+        pass_manager.run_on_module(top_mod)
+    }
+
+    pub fn finalize_diags(&self, diags: &[Box<dyn DiagnosticVoucher>]) -> Vec<CompleteDiagnostic> {
+        let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
+        diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+            ord => ord,
+        });
+        diags
+    }
+
+    pub fn get_lsp_diagnostics(
+        &self,
+        files: Vec<InputFile>,
+    ) -> FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>> {
+        let mut result = FxHashMap::<lsp_types::Url, Vec<lsp_types::Diagnostic>>::default();
+        files
+            .iter()
+            .flat_map(|file| {
+                let top_mod = map_file_to_mod(self, *file);
+                let diagnostics = self.analyze_top_mod(top_mod);
+                self.finalize_diags(&diagnostics)
+                    .into_iter()
+                    .flat_map(|diag| diag_to_lsp(diag, self.as_input_db()).clone())
+            })
+            .for_each(|(uri, more_diags)| {
+                let _ = result.entry(uri.clone()).or_insert_with(Vec::new);
+                let diags = result.entry(uri).or_insert_with(Vec::new);
+                diags.extend(more_diags);
+            });
+        result
+    }
+}
+
+fn initialize_analysis_pass(db: &LanguageServerDatabase) -> AnalysisPassManager<'_> {
+    let mut pass_manager = AnalysisPassManager::new();
+    pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
+    pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
+    pass_manager
 }
