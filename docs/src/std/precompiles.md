@@ -191,7 +191,7 @@ pub fn ec_add(x1: u256, y1: u256, x2: u256, y2: u256)-> (u256,u256)
 
 ### Returns
 
-`ec_add` returns a a tuple of `u256`, `(u256, u256)`.
+`ec_add` returns a tuple of `u256`, `(u256, u256)`.
 
 ### Example
 
@@ -218,7 +218,7 @@ pub fn ec_mul(x: u256, y: u256, s: u256)-> (u256,u256)
 
 ### Returns
 
-`ec_mul` returns a a tuple of `u256`, `(u256, u256)`.
+`ec_mul` returns a tuple of `u256`, `(u256, u256)`.
 
 ### Example
 
