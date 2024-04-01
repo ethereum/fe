@@ -11,71 +11,47 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use tracing::info;
 
+pub struct FileChange {
+    pub uri: url::Url,
+    pub kind: ChangeKind,
+}
+pub enum ChangeKind {
+    Open(String),
+    Create,
+    Edit(Option<String>),
+    Delete,
+}
+
 pub async fn setup_streams(backend: &mut Backend, mut receivers: MessageReceivers) {
     info!("setting up streams");
     let mut initialized_stream = receivers.initialize_stream.fuse();
     let mut shutdown_stream = receivers.shutdown_stream.fuse();
-    let did_change_watched_files_stream = receivers.did_change_watched_files_stream.fork();
 
-    let flat_did_change_watched_files = did_change_watched_files_stream
-        .map(|params| futures::stream::iter(params.changes))
-        .flatten()
-        .fork();
-
-    let did_change_watched_file_stream = flat_did_change_watched_files.clone().filter(|change| {
-        let change_type = change.typ;
-        Box::pin(async move { matches!(change_type, lsp_types::FileChangeType::CHANGED) })
-    });
-
-    let did_create_watched_file_stream = flat_did_change_watched_files.clone().filter(|change| {
-        let change_type = change.typ;
-        Box::pin(async move { matches!(change_type, lsp_types::FileChangeType::CREATED) })
-    });
-
-    let mut did_delete_watch_file_stream = flat_did_change_watched_files
-        .clone()
-        .filter(|change| {
-            let change_type = change.typ;
-            Box::pin(async move { matches!(change_type, lsp_types::FileChangeType::DELETED) })
-        })
-        .fuse();
-
-    let did_open_stream = (&mut receivers.did_open_stream).fuse();
-    let did_change_stream = (&mut receivers.did_change_stream).fuse();
     let mut change_stream = (
-        did_change_watched_file_stream.map(|change| {
-            let uri = change.uri;
-            let path = uri.to_file_path().unwrap();
-            let text = std::fs::read_to_string(path).unwrap();
-            TextDocumentItem {
-                uri: uri.clone(),
-                language_id: LANGUAGE_ID.to_string(),
-                version: 0,
-                text,
-            }
-        }),
-        did_create_watched_file_stream.map(|change| {
-            let uri = change.uri;
-            let path = uri.to_file_path().unwrap();
-            let text = std::fs::read_to_string(path).unwrap();
-            TextDocumentItem {
-                uri: uri.clone(),
-                language_id: LANGUAGE_ID.to_string(),
-                version: 0,
-                text,
-            }
-        }),
-        did_open_stream.map(|params| TextDocumentItem {
+        receivers
+            .did_change_watched_files_stream
+            .map(|params| futures::stream::iter(params.changes))
+            .flatten()
+            .fuse()
+            .map(|event| {
+                let kind = match event.typ {
+                    FileChangeType::CHANGED => ChangeKind::Edit(None),
+                    FileChangeType::CREATED => ChangeKind::Create,
+                    FileChangeType::DELETED => ChangeKind::Delete,
+                    _ => unreachable!(),
+                };
+                FileChange {
+                    uri: event.uri,
+                    kind,
+                }
+            }),
+        receivers.did_open_stream.fuse().map(|params| FileChange {
             uri: params.text_document.uri,
-            language_id: LANGUAGE_ID.to_string(),
-            version: params.text_document.version,
-            text: params.text_document.text,
+            kind: ChangeKind::Open(params.text_document.text),
         }),
-        did_change_stream.map(|params| TextDocumentItem {
+        receivers.did_change_stream.fuse().map(|params| FileChange {
             uri: params.text_document.uri,
-            language_id: LANGUAGE_ID.to_string(),
-            version: params.text_document.version,
-            text: params.content_changes[0].text.clone(),
+            kind: ChangeKind::Edit(Some(params.content_changes[0].text.clone())),
         }),
     )
         .merge()
@@ -96,8 +72,7 @@ pub async fn setup_streams(backend: &mut Backend, mut receivers: MessageReceiver
         tokio::select! {
             Some((params, responder)) = initialized_stream.next() => backend.handle_initialized(params, responder).await,
             Some((_, responder)) = shutdown_stream.next() => backend.handle_shutdown(responder).await,
-            Some(params) = did_delete_watch_file_stream.next() => backend.handle_deleted(params, tx_needs_diagnostics.clone()).await,
-            Some(params) = change_stream.next() => backend.handle_change(params, tx_needs_diagnostics.clone()).await,
+            Some(change) = change_stream.next() => backend.handle_change(change, tx_needs_diagnostics.clone()).await,
             Some(files_need_diagnostics) = diagnostics_stream.next() => backend.handle_diagnostics(files_need_diagnostics).await,
             Some((params, responder)) = hover_stream.next() => backend.handle_hover(params, responder).await,
             Some((params, responder)) = goto_definition_stream.next() => backend.handle_goto_definition(params, responder).await,

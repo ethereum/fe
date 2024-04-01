@@ -14,10 +14,8 @@ use crate::{
 use common::diagnostics::Span;
 use hir::span::LazySpan;
 
-pub type GotoEnclosingPath = (PathId, ScopeId);
-pub type GotoPathMap = FxHashMap<Span, GotoEnclosingPath>;
-pub type GotoEnclosingSegment = (IdentId, ScopeId);
-pub type GotoSegmentMap = FxHashMap<Span, GotoEnclosingSegment>;
+type GotoEnclosingPath = (PathId, ScopeId);
+type GotoEnclosingSegment = (IdentId, ScopeId);
 
 pub struct PathSpanCollector<'db> {
     path_map: GotoPathMap,
