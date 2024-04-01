@@ -11,7 +11,7 @@ use salsa::ParallelDatabase;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
 
-use crate::backend::workspace::{IngotFileContext, SyncableInputFile};
+use crate::backend::workspace::IngotFileContext;
 
 use tracing::{error, info};
 
@@ -78,7 +78,7 @@ impl Backend {
                 .workspace
                 .touch_input_for_file_path(&mut self.db, path)
                 .unwrap();
-            let _ = input.sync_from_text(&mut self.db, contents);
+            input.set_text(&mut self.db).to(contents);
         }
         let _ = tx_needs_diagnostics.send(path.to_string());
     }
@@ -116,7 +116,7 @@ impl Backend {
             Result<Option<lsp_types::Hover>, tower_lsp::jsonrpc::Error>,
         >,
     ) {
-        let db = self.db.snapshot();
+        // let db = self.db.snapshot();
         let file = self.workspace.get_input_for_file_path(
             params
                 .text_document_position_params
@@ -126,7 +126,7 @@ impl Backend {
         );
 
         let response = file.and_then(|file| {
-            hover_helper(db, file, params).unwrap_or_else(|e| {
+            hover_helper(&self.db, file, params).unwrap_or_else(|e| {
                 error!("Error handling hover: {:?}", e);
                 None
             })

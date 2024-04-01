@@ -467,25 +467,6 @@ impl IngotFileContext for Workspace {
     }
 }
 
-pub trait SyncableInputFile {
-    // fn sync(&self, db: &mut LanguageServerDatabase, contents: Option<String>) -> Result<()>;
-    fn sync_from_fs(&self, db: &mut LanguageServerDatabase) -> Result<()>;
-    fn sync_from_text(&self, db: &mut LanguageServerDatabase, contents: String) -> Result<()>;
-}
-
-impl SyncableInputFile for InputFile {
-    fn sync_from_fs(&self, db: &mut LanguageServerDatabase) -> Result<()> {
-        let path = self.path(db);
-        let contents = std::fs::read_to_string(path)?;
-        self.set_text(db).to(contents);
-        Ok(())
-    }
-    fn sync_from_text(&self, db: &mut LanguageServerDatabase, contents: String) -> Result<()> {
-        self.set_text(db).to(contents);
-        Ok(())
-    }
-}
-
 pub trait SyncableIngotFileContext {
     fn sync(&mut self, db: &mut LanguageServerDatabase) -> Result<()>;
 }

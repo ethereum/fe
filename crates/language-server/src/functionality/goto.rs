@@ -194,7 +194,7 @@ use crate::backend::workspace::IngotFileContext;
 
 impl Backend {
     pub(super) async fn handle_goto_definition(
-        &mut self,
+        &self,
         params: lsp_types::GotoDefinitionParams,
         responder: tokio::sync::oneshot::Sender<
             Result<Option<lsp_types::GotoDefinitionResponse>, tower_lsp::jsonrpc::Error>,
