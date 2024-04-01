@@ -7,7 +7,8 @@
         {
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}/crates/language-server/editors/vscode",
-                "${workspaceFolder}/crates/"
+                "${workspaceFolder}/crates/",
+                "--disable-extensions"
             ],
             "name": "Launch Fe VSCode Extension",
             "outFiles": [
@@ -18,8 +19,10 @@
             "type": "extensionHost",
             // we need to enable backtrace on the extension host
             "env": {
-                "RUST_BACKTRACE": "1"
+                "RUST_BACKTRACE": "full"
             }
+            // we need to disable rust-analyzer it's so slow
+
         },
     ]
 }

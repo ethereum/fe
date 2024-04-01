@@ -889,7 +889,7 @@ enum DefKind {
     Adt(AdtDef),
     Trait(TraitDef),
     ImplTrait(Implementor),
-    Impl(HirImpl, TyId),
+    Impl(HirImpl, #[allow(dead_code)] TyId),
     Func(FuncDef),
 }
 
