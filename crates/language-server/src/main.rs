@@ -1,6 +1,5 @@
 mod backend;
 mod functionality;
-mod globals;
 mod logger;
 mod server;
 mod util;

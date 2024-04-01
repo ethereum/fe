@@ -1,12 +1,9 @@
 use crate::backend::Backend;
-use fork_stream::StreamExt as _;
 use futures_batch::ChunksTimeoutStreamExt;
-
-use crate::globals::LANGUAGE_ID;
 use crate::server::MessageReceivers;
 use futures::StreamExt;
 use futures_concurrency::prelude::*;
-use lsp_types::TextDocumentItem;
+use lsp_types::FileChangeType;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use tracing::info;
