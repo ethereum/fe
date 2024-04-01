@@ -6,10 +6,13 @@ use common::InputDb;
 use futures::TryFutureExt;
 use fxhash::FxHashSet;
 
-use lsp_types::TextDocumentItem;
 use salsa::ParallelDatabase;
 
-use super::{capabilities::server_capabilities, hover::hover_helper};
+use super::{
+    capabilities::server_capabilities,
+    hover::hover_helper,
+    streams::{ChangeKind, FileChange},
+};
 
 use crate::backend::workspace::IngotFileContext;
 
@@ -50,37 +53,53 @@ impl Backend {
         let _ = responder.send(Ok(()));
     }
 
-    pub(super) async fn handle_deleted(
-        &mut self,
-        params: lsp_types::FileEvent,
-        tx_needs_diagnostics: tokio::sync::mpsc::UnboundedSender<String>,
-    ) {
-        let path = params.uri.to_file_path().unwrap();
-        info!("file deleted: {:?}", path);
-        let path = path.to_str().unwrap();
-        let _ = self
-            .workspace
-            .remove_input_for_file_path(&mut self.db, path);
-        let _ = tx_needs_diagnostics.send(path.to_string());
-    }
-
     pub(super) async fn handle_change(
         &mut self,
-        doc: TextDocumentItem,
+        change: FileChange,
         tx_needs_diagnostics: tokio::sync::mpsc::UnboundedSender<String>,
     ) {
-        info!("change detected: {:?}", doc.uri);
-        let path_buf = doc.uri.to_file_path().unwrap();
-        let path = path_buf.to_str().unwrap();
-        let contents = Some(doc.text);
-        if let Some(contents) = contents {
-            let input = self
-                .workspace
-                .touch_input_for_file_path(&mut self.db, path)
-                .unwrap();
-            input.set_text(&mut self.db).to(contents);
+        let path = change
+            .uri
+            .to_file_path()
+            .unwrap_or_else(|_| panic!("Failed to convert URI to path: {:?}", change.uri));
+
+        let path = path.to_str().unwrap();
+
+        match change.kind {
+            ChangeKind::Open(contents) => {
+                info!("file opened: {:?}", &path);
+                self.update_input_file_text(path, contents);
+            }
+            ChangeKind::Create => {
+                info!("file created: {:?}", &path);
+                let contents = tokio::fs::read_to_string(&path).await.unwrap();
+                self.update_input_file_text(path, contents)
+            }
+            ChangeKind::Edit(contents) => {
+                info!("file edited: {:?}", &path);
+                let contents = if let Some(text) = contents {
+                    text
+                } else {
+                    tokio::fs::read_to_string(&path).await.unwrap()
+                };
+                self.update_input_file_text(path, contents);
+            }
+            ChangeKind::Delete => {
+                info!("file deleted: {:?}", path);
+                self.workspace
+                    .remove_input_for_file_path(&mut self.db, path)
+                    .unwrap();
+            }
         }
-        let _ = tx_needs_diagnostics.send(path.to_string());
+        tx_needs_diagnostics.send(path.to_string()).unwrap();
+    }
+
+    fn update_input_file_text(&mut self, path: &str, contents: String) {
+        let input = self
+            .workspace
+            .touch_input_for_file_path(&mut self.db, path)
+            .unwrap();
+        input.set_text(&mut self.db).to(contents);
     }
 
     pub(super) async fn handle_diagnostics(&mut self, files_need_diagnostics: Vec<String>) {

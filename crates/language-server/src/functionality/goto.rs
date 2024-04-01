@@ -18,8 +18,8 @@ type GotoEnclosingPath = (PathId, ScopeId);
 type GotoEnclosingSegment = (IdentId, ScopeId);
 
 pub struct PathSpanCollector<'db> {
-    path_map: GotoPathMap,
-    ident_map: GotoSegmentMap,
+    path_map: FxHashMap<Span, GotoEnclosingPath>,
+    ident_map: FxHashMap<Span, GotoEnclosingSegment>,
     db: &'db dyn LanguageServerDb,
 }
 
@@ -68,7 +68,7 @@ impl<'db> Visitor for PathSpanCollector<'db> {
     }
 }
 
-fn smallest_enclosing_path(cursor: Cursor, path_map: &GotoPathMap) -> Option<GotoEnclosingPath> {
+fn smallest_enclosing_path(cursor: Cursor, path_map: &FxHashMap<Span, GotoEnclosingPath>) -> Option<GotoEnclosingPath> {
     let mut smallest_enclosing_path = None;
     let mut smallest_range_size = None;
 
@@ -87,7 +87,7 @@ fn smallest_enclosing_path(cursor: Cursor, path_map: &GotoPathMap) -> Option<Got
 
 fn smallest_enclosing_ident(
     cursor: Cursor,
-    ident_map: &GotoSegmentMap,
+    ident_map: &FxHashMap<Span, GotoEnclosingSegment>
 ) -> Option<GotoEnclosingSegment> {
     let mut smallest_enclosing_segment = None;
     let mut smallest_range_size = None;
