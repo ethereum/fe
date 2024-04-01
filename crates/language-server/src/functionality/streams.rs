@@ -1,7 +1,7 @@
 use crate::backend::Backend;
-use futures_batch::ChunksTimeoutStreamExt;
 use crate::server::MessageReceivers;
 use futures::StreamExt;
+use futures_batch::ChunksTimeoutStreamExt;
 use futures_concurrency::prelude::*;
 use lsp_types::FileChangeType;
 use tokio_stream::wrappers::UnboundedReceiverStream;

@@ -2,7 +2,7 @@ use fxhash::FxHashMap;
 use hir::{
     hir_def::{scope_graph::ScopeId, IdentId, ItemKind, Partial, PathId, TopLevelMod},
     span::DynLazySpan,
-    visitor::{prelude::LazyPathSpan, walk_path, Visitor, VisitorCtxt},
+    visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
     LowerHirDb, SpannedHirDb,
 };
 use hir_analysis::name_resolution::{EarlyResolvedPath, NameDomain, NameRes};
@@ -14,81 +14,64 @@ use crate::{
 use common::diagnostics::Span;
 use hir::span::LazySpan;
 
-type GotoEnclosingPath = (PathId, ScopeId);
-type GotoEnclosingSegment = (IdentId, ScopeId);
+pub type Cursor = rowan::TextSize;
+struct GotoEnclosingPathSegment {
+    path: PathId,
+    idx: usize,
+    scope: ScopeId,
+}
+impl GotoEnclosingPathSegment {
+    fn segments<'db>(&self, db: &'db dyn LanguageServerDb) -> &'db [Partial<IdentId>] {
+        &self.path.segments(db.as_hir_db())[0..self.idx + 1]
+    }
+    fn is_intermediate(&self, db: &dyn LanguageServerDb) -> bool {
+        self.idx < self.path.segments(db.as_hir_db()).len() - 1
+    }
+}
 
-pub struct PathSpanCollector<'db> {
-    path_map: FxHashMap<Span, GotoEnclosingPath>,
-    ident_map: FxHashMap<Span, GotoEnclosingSegment>,
+struct PathSegmentSpanCollector<'db> {
+    segment_map: FxHashMap<Span, GotoEnclosingPathSegment>,
     db: &'db dyn LanguageServerDb,
 }
 
-impl<'db> PathSpanCollector<'db> {
-    pub fn new(db: &'db dyn LanguageServerDb) -> Self {
+impl<'db> PathSegmentSpanCollector<'db> {
+    fn new(db: &'db dyn LanguageServerDb) -> Self {
         Self {
-            path_map: FxHashMap::default(),
-            ident_map: FxHashMap::default(),
+            segment_map: FxHashMap::default(),
             db,
         }
     }
 }
 
-pub type Cursor = rowan::TextSize;
-
-impl<'db> Visitor for PathSpanCollector<'db> {
+impl<'db> Visitor for PathSegmentSpanCollector<'db> {
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
-        let Some(span) = ctxt
-            .span()
-            .and_then(|lazy_span| lazy_span.resolve(self.db.as_spanned_hir_db()))
-        else {
+        let Some(path_span) = ctxt.span() else {
             return;
         };
 
         let scope = ctxt.scope();
-        self.path_map.insert(span, (path, scope));
-        walk_path(self, ctxt, path);
-    }
+        for i in 0..path.segments(self.db.as_hir_db()).iter().len() {
+            let Some(segment_span) = path_span.segment(i).resolve(self.db.as_spanned_hir_db())
+            else {
+                continue;
+            };
 
-    fn visit_ident(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'_, hir::visitor::prelude::LazySpanAtom>,
-        ident: hir::hir_def::IdentId,
-    ) {
-        // keep track of `Span` --> `(IdentId, ScopeId)` so we can get more detailed information
-        // about the part of the path over which the cursor is hovering
-        let Some(span) = ctxt
-            .span()
-            .and_then(|lazy_span| lazy_span.resolve(self.db.as_spanned_hir_db()))
-        else {
-            return;
-        };
-
-        let scope = ctxt.scope();
-        self.ident_map.insert(span, (ident, scope));
-    }
-}
-
-fn smallest_enclosing_path(cursor: Cursor, path_map: &FxHashMap<Span, GotoEnclosingPath>) -> Option<GotoEnclosingPath> {
-    let mut smallest_enclosing_path = None;
-    let mut smallest_range_size = None;
-
-    for (span, enclosing_path) in path_map {
-        if span.range.contains(cursor) {
-            let range_size = span.range.end() - span.range.start();
-            if smallest_range_size.is_none() || range_size < smallest_range_size.unwrap() {
-                smallest_enclosing_path = Some(*enclosing_path);
-                smallest_range_size = Some(range_size);
-            }
+            self.segment_map.insert(
+                segment_span,
+                GotoEnclosingPathSegment {
+                    path,
+                    idx: i,
+                    scope,
+                },
+            );
         }
     }
-
-    smallest_enclosing_path
 }
 
-fn smallest_enclosing_ident(
+fn smallest_enclosing_segment(
     cursor: Cursor,
-    ident_map: &FxHashMap<Span, GotoEnclosingSegment>
-) -> Option<GotoEnclosingSegment> {
+    ident_map: &FxHashMap<Span, GotoEnclosingPathSegment>,
+) -> Option<&GotoEnclosingPathSegment> {
     let mut smallest_enclosing_segment = None;
     let mut smallest_range_size = None;
 
@@ -96,7 +79,7 @@ fn smallest_enclosing_ident(
         if span.range.contains(cursor) {
             let range_size = span.range.end() - span.range.start();
             if smallest_range_size.is_none() || range_size < smallest_range_size.unwrap() {
-                smallest_enclosing_segment = Some(*enclosing_segment);
+                smallest_enclosing_segment = Some(enclosing_segment);
                 smallest_range_size = Some(range_size);
             }
         }
@@ -143,34 +126,23 @@ pub fn get_goto_target_scopes_for_cursor(
     let item: ItemKind = find_enclosing_item(db.as_spanned_hir_db(), top_mod, cursor)?;
 
     let mut visitor_ctxt = VisitorCtxt::with_item(db.as_hir_db(), item);
-    let mut path_collector = PathSpanCollector::new(db);
-    path_collector.visit_item(&mut visitor_ctxt, item);
+    let mut path_segment_collector = PathSegmentSpanCollector::new(db);
+    path_segment_collector.visit_item(&mut visitor_ctxt, item);
 
-    let (cursor_ident, _) = smallest_enclosing_ident(cursor, &path_collector.ident_map)?;
-    let (cursor_path, cursor_path_scope) =
-        smallest_enclosing_path(cursor, &path_collector.path_map)?;
+    let cursor_segment = smallest_enclosing_segment(cursor, &path_segment_collector.segment_map)?;
 
-    // we need to get the segment upto and including `cursor_ident`
-    let mut segments = cursor_path.segments(db.as_hir_db()).clone();
-    let is_partial = if let Some(pos) = segments.iter().position(|ident| match ident {
-        Partial::Present(ident) => *ident == cursor_ident,
-        Partial::Absent => false,
-    }) {
-        segments.truncate(pos + 1);
-        segments.len() < cursor_path.segments(db.as_hir_db()).len()
-    } else {
-        false
-    };
-
+    let segments = cursor_segment.segments(db);
+    let is_intermediate_segment = cursor_segment.is_intermediate(db);
+    // let is_partial = cursor_segment.idx < cursor_segment.path.segments(db.as_jar_db()).len();
     let resolved_segments = hir_analysis::name_resolution::resolve_segments_early(
         db.as_hir_analysis_db(),
-        segments.as_slice(),
-        cursor_path_scope,
+        segments,
+        cursor_segment.scope,
     );
 
     let scopes = match resolved_segments {
         EarlyResolvedPath::Full(bucket) => {
-            if is_partial {
+            if is_intermediate_segment {
                 match bucket.pick(NameDomain::Type) {
                     Ok(res) => res.scope().iter().cloned().collect::<Vec<_>>(),
                     _ => bucket.iter().filter_map(NameRes::scope).collect::<Vec<_>>(),
@@ -272,13 +244,14 @@ mod tests {
         top_mod: TopLevelMod,
     ) -> Vec<rowan::TextSize> {
         let mut visitor_ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
-        let mut path_collector = PathSpanCollector::new(db);
+        // let mut path_collector = PathSpanCollector::new(db);
+        let mut path_collector = PathSegmentSpanCollector::new(db);
         path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
 
-        let ident_map = path_collector.ident_map;
+        let segment_map = path_collector.segment_map;
 
         let mut cursors = Vec::new();
-        for (span, _) in ident_map {
+        for (span, _) in segment_map {
             let cursor = span.range.start();
             cursors.push(cursor);
         }
@@ -406,15 +379,15 @@ mod tests {
 
         for cursor in &cursors {
             let mut visitor_ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
-            let mut path_collector = PathSpanCollector::new(db);
+            let mut path_collector = PathSegmentSpanCollector::new(db);
             path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
 
-            let path_map = path_collector.path_map;
-            let enclosing_path = smallest_enclosing_path(*cursor, &path_map);
+            let path_map = path_collector.segment_map;
+            let enclosing_path_segment = smallest_enclosing_segment(*cursor, &path_map);
 
-            if let Some((path, scope)) = enclosing_path {
+            if let Some(GotoEnclosingPathSegment { path, scope, .. }) = enclosing_path_segment {
                 let resolved_enclosing_path =
-                    hir_analysis::name_resolution::resolve_path_early(db, path, scope);
+                    hir_analysis::name_resolution::resolve_path_early(db, *path, *scope);
 
                 let res = match resolved_enclosing_path {
                     EarlyResolvedPath::Full(bucket) => bucket
