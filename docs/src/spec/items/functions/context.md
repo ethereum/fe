@@ -1,6 +1,6 @@
 # Context
 
-`Context` is used frequently in Fe smart contracts. It is used to gate access to EVM features for reading and modifyng the blockchain.
+`Context` is used frequently in Fe smart contracts. It is used to gate access to EVM features for reading and modifying the blockchain.
 
 ## Rationale
 

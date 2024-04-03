@@ -91,7 +91,7 @@ Here, you are not only using `self` but you are prepending it with `mut`. `mut` 
 
 #### Context
 
-Context is used to gate access to certain features including emitting logs, creating contracts, reading messages and transferring ETH. It is conventional to name the context object `ctx`. The `Context` object needs to be passed as the *first* parameter to a function unless the function also takes `self`, in which case the `Context` object should be passed as the second parameter. `Context` must be expicitly made mutable if it will invoke functions that changes the blockchain data, whereas an immutable reference to `Context` can be used where read-only access to the blockchain is needed.
+Context is used to gate access to certain features including emitting logs, creating contracts, reading messages and transferring ETH. It is conventional to name the context object `ctx`. The `Context` object needs to be passed as the *first* parameter to a function unless the function also takes `self`, in which case the `Context` object should be passed as the second parameter. `Context` must be explicitly made mutable if it will invoke functions that changes the blockchain data, whereas an immutable reference to `Context` can be used where read-only access to the blockchain is needed.
 
 Read more on [Context in Fe](https://github.com/ethereum/fe/issues/558)
 
