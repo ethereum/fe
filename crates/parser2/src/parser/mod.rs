@@ -2,7 +2,6 @@ use std::{collections::VecDeque, convert::Infallible};
 
 pub(crate) use item::ItemListScope;
 
-use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 
 use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
@@ -406,17 +405,8 @@ impl<S: TokenStream> Parser<S> {
     /// and the total string length of the unexpected tokens.
     fn recover(&mut self) -> (Option<ScopeIndex>, Option<rowan::TextSize>) {
         let mut unexpected = None;
-        let mut open_brackets_in_error = FxHashMap::default();
         let mut match_scope_index = None;
         while let Some(kind) = self.current_kind() {
-            if kind.is_open_bracket_kind() {
-                *open_brackets_in_error.entry(kind).or_insert(0) += 1;
-            } else if let Some(open_bracket) = kind.corresponding_open_bracket_kind() {
-                if open_brackets_in_error.get(&open_bracket).unwrap_or(&0) != &0 {
-                    *open_brackets_in_error.get_mut(&open_bracket).unwrap() -= 1;
-                }
-            }
-
             if let Some((scope_index, _)) = self
                 .parents
                 .iter()
