@@ -1,6 +1,7 @@
 use std::convert::Infallible;
 
 use rowan::Checkpoint;
+use unwrap_infallible::UnwrapInfallible;
 
 use crate::{
     parser::{lit, path},
@@ -40,9 +41,9 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
         Some(LBrace) => parser.parse_cp(BlockExprScope::default(), None),
         Some(LParen) => parser.parse_cp(ParenScope::default(), None),
         Some(LBracket) => parser.parse_cp(ArrayScope::default(), None),
-        Some(kind) if lit::is_lit(kind) => parser
+        Some(kind) if lit::is_lit(kind) => Ok(parser
             .parse_cp(LitExprScope::default(), None)
-            .map_err(|e| e.into()),
+            .unwrap_infallible()),
         Some(kind) if path::is_path_segment(kind) => {
             parser.parse_cp(PathExprScope::new(allow_record_init), None)
         }

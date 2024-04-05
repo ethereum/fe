@@ -728,7 +728,6 @@ mod tests {
         let u: Use = parse_item(source);
         let use_tree = u.use_tree().unwrap();
         let mut count = 0;
-        dbg!(use_tree.path().unwrap());
         for segment in use_tree.path().unwrap() {
             match count {
                 0 => {

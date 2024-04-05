@@ -1,5 +1,7 @@
 use std::convert::Infallible;
 
+use unwrap_infallible::UnwrapInfallible;
+
 use crate::{ExpectedKind, ParseError, SyntaxKind};
 
 use super::{
@@ -224,7 +226,9 @@ fn parse_kind_bound<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recove
             parser.bump();
         }
     } else if parser.current_kind() == Some(SyntaxKind::Star) {
-        parser.parse(KindBoundMonoScope::default())?;
+        parser
+            .parse(KindBoundMonoScope::default())
+            .unwrap_infallible();
     } else {
         // guaranteed by `expected`, unless other recovery
         // other tokens are added to the current scope
@@ -309,7 +313,7 @@ impl super::Parse for GenericArgScope {
 
             Some(kind) if kind.is_literal_leaf() => {
                 self.set_kind(SyntaxKind::ConstGenericArg);
-                parser.parse(LitExprScope::default())?;
+                parser.parse(LitExprScope::default()).unwrap_infallible();
             }
 
             _ => {

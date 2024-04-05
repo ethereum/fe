@@ -34,7 +34,6 @@ pub struct Parser<S: TokenStream> {
     stream: BackTrackableTokenStream<S>,
 
     builder: rowan::GreenNodeBuilder<'static>,
-    /// The second element holds `is_newline_trivia` of the parent.
     parents: Vec<ScopeEntry>,
     errors: Vec<ParseError>,
 
@@ -640,18 +639,6 @@ impl Recovery<()> {
 
 #[derive(Debug)]
 pub struct ErrProof(());
-
-impl<T> From<Infallible> for Recovery<T> {
-    fn from(_value: Infallible) -> Self {
-        unreachable!()
-    }
-}
-
-impl From<Recovery<ErrProof>> for Recovery<()> {
-    fn from(r: Recovery<ErrProof>) -> Self {
-        Recovery(r.0, ())
-    }
-}
 
 pub trait Recoverable {
     fn is_local_recovery<S: TokenStream>(&self, _parser: &Parser<S>) -> bool {

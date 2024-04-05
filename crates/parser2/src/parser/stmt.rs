@@ -1,5 +1,7 @@
 use std::convert::Infallible;
 
+use unwrap_infallible::UnwrapInfallible;
+
 use crate::{ExpectedKind, SyntaxKind};
 
 use super::{
@@ -19,12 +21,16 @@ pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery
         Some(LetKw) => parser.parse(LetStmtScope::default()),
         Some(ForKw) => parser.parse(ForStmtScope::default()),
         Some(WhileKw) => parser.parse(WhileStmtScope::default()),
-        Some(ContinueKw) => parser
-            .parse(ContinueStmtScope::default())
-            .map_err(|e| e.into()),
-        Some(BreakKw) => parser
-            .parse(BreakStmtScope::default())
-            .map_err(|e| e.into()),
+        Some(ContinueKw) => {
+            parser
+                .parse(ContinueStmtScope::default())
+                .unwrap_infallible();
+            Ok(())
+        }
+        Some(BreakKw) => {
+            parser.parse(BreakStmtScope::default()).unwrap_infallible();
+            Ok(())
+        }
         Some(ReturnKw) => parser.parse(ReturnStmtScope::default()),
         _ => parser.parse(ExprStmtScope::default()),
     }
