@@ -74,7 +74,7 @@ pub(super) fn resolve_path_in_expr(
     match resolver.resolve_path() {
         ResolvedPathInBody::Ty(ty_in_body) => ResolvedPathInExpr::Ty(ty_in_body),
         ResolvedPathInBody::Variant(variant) => ResolvedPathInExpr::Variant(variant),
-        ResolvedPathInBody::Binding(ident, binding) => ResolvedPathInExpr::Binding(ident, binding),
+        ResolvedPathInBody::Binding(ident, binding) => ResolvedPathInExpr::Binding(binding),
         ResolvedPathInBody::NewBinding(ident) => {
             let diag = BodyDiag::UndefinedVariable(span, ident);
             ResolvedPathInExpr::Diag(diag.into())
@@ -129,7 +129,7 @@ pub(super) enum ResolvedPathInPat {
 pub(super) enum ResolvedPathInExpr {
     Ty(TyInBody),
     Variant(ResolvedVariant),
-    Binding(IdentId, LocalBinding),
+    Binding(LocalBinding),
     Diag(FuncBodyDiag),
     Invalid,
 }

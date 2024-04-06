@@ -1,3 +1,4 @@
+#![allow(unused)]
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::TopLevelMod};
 
 use self::{

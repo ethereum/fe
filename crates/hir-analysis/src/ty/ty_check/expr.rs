@@ -317,7 +317,7 @@ impl<'db> TyChecker<'db> {
                 TypedExpr::new(ty, true)
             }
 
-            ResolvedPathInExpr::Binding(_, binding) => {
+            ResolvedPathInExpr::Binding(binding) => {
                 let ty = self.env.lookup_binding_ty(binding);
                 let is_mut = binding.is_mut();
                 TypedExpr::new_binding_ref(ty, is_mut, binding)

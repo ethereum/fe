@@ -4,6 +4,7 @@ mod expr;
 mod pat;
 mod path;
 mod stmt;
+mod method_selection;
 
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;

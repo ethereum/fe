@@ -373,7 +373,7 @@ impl<'db> DefAnalyzer<'db> {
         }
 
         let method_table = collect_methods(self.db, func.ingot(self.db));
-        let maybe_conflict = match method_table.prove_eager(self.db, self_ty, func.name(self.db)) {
+        let maybe_conflict = match method_table.probe_eager(self.db, self_ty, func.name(self.db)) {
             Some(func_def) => func_def,
             None => unreachable!(),
         };
