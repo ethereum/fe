@@ -5,7 +5,7 @@
 
 use super::{
     constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
-    trait_def::{TraitEnv, TraitInstId},
+    trait_def::{ingot_trait_env, TraitEnv, TraitInstId},
     ty_def::{Subst, TyId},
     unify::UnificationTable,
 };
@@ -106,7 +106,7 @@ struct ConstraintSolver<'db> {
 impl<'db> ConstraintSolver<'db> {
     fn new(db: &'db dyn HirAnalysisDb, goal: Goal, assumptions: AssumptionListId) -> Self {
         let ingot = assumptions.ingot(db);
-        let env = TraitEnv::new(db, ingot);
+        let env = ingot_trait_env(db, ingot);
 
         Self {
             db,
@@ -138,7 +138,7 @@ impl<'db> ConstraintSolver<'db> {
         // current goal.
         let Some(sub_goals) = self
             .env
-            .implementors_for(self.db, goal_trait)
+            .impls_of_trait(self.db, goal_trait)
             .iter()
             .find_map(|impl_| {
                 let mut table = UnificationTable::new(self.db);

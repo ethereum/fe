@@ -33,7 +33,7 @@ pub(crate) fn ingot_trait_env(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitEn
 
 /// Returns all [`Implementor`]s for the given trait inst.
 #[salsa::tracked(return_ref)]
-pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) -> Vec<Implementor> {
+pub(crate) fn impls_of_trait(db: &dyn HirAnalysisDb, trait_: TraitInstId) -> Vec<Implementor> {
     let env = ingot_trait_env(db, trait_.ingot(db));
     let Some(impls) = env.impls.get(&trait_.def(db)) else {
         return vec![];
@@ -50,23 +50,47 @@ pub(crate) fn trait_implementors(db: &dyn HirAnalysisDb, trait_: TraitInstId) ->
         .collect()
 }
 
+#[salsa::tracked(return_ref)]
+pub(crate) fn impls_of_ty(db: &dyn HirAnalysisDb, ty: TyId, ingot: IngotId) -> Vec<Implementor> {
+    let env = ingot_trait_env(db, ingot);
+    if ty.contains_invalid(db) {
+        return vec![];
+    }
+
+    let Some(cands) = env.ty_to_implementors.get(&ty.base_ty(db)) else {
+        return vec![];
+    };
+
+    cands
+        .iter()
+        .copied()
+        .filter(|impl_| {
+            let mut table = UnificationTable::new(db);
+            let impl_ty = impl_.ty(db).generalize(db, &mut UnificationTable::new(db));
+
+            table.unify(impl_ty, ty).is_ok()
+        })
+        .collect()
+}
+
 /// Represents the trait environment of an ingot, which maintain all trait
 /// implementors which can be used in the ingot.
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(crate) struct TraitEnv {
     pub(super) impls: FxHashMap<TraitDef, Vec<Implementor>>,
     hir_to_implementor: FxHashMap<ImplTrait, Implementor>,
+
+    /// This maintains a mapping from the base type to the implementors.
+    ty_to_implementors: FxHashMap<TyId, Vec<Implementor>>,
+
     ingot: IngotId,
 }
 
 impl TraitEnv {
-    pub(super) fn new(db: &dyn HirAnalysisDb, ingot: IngotId) -> &Self {
-        ingot_trait_env(db, ingot)
-    }
-
     fn collect(db: &dyn HirAnalysisDb, ingot: IngotId) -> Self {
         let mut impls: FxHashMap<_, Vec<Implementor>> = FxHashMap::default();
         let mut hir_to_implementor: FxHashMap<ImplTrait, Implementor> = FxHashMap::default();
+        let mut ty_to_implementors: FxHashMap<TyId, Vec<Implementor>> = FxHashMap::default();
 
         for impl_map in ingot
             .external_ingots(db.as_hir_db())
@@ -87,23 +111,31 @@ impl TraitEnv {
                         .iter()
                         .map(|implementor| (implementor.hir_impl_trait(db), *implementor)),
                 );
+
+                for implementor in implementors {
+                    ty_to_implementors
+                        .entry(implementor.ty(db).base_ty(db))
+                        .or_default()
+                        .push(*implementor);
+                }
             }
         }
 
         Self {
             impls,
             hir_to_implementor,
+            ty_to_implementors,
             ingot,
         }
     }
 
     /// Returns all implementors of the given instantiated trait.
-    pub(crate) fn implementors_for<'db>(
+    pub(crate) fn impls_of_trait<'db>(
         &self,
         db: &'db dyn HirAnalysisDb,
         trait_: TraitInstId,
     ) -> &'db [Implementor] {
-        trait_implementors(db, trait_)
+        impls_of_trait(db, trait_)
     }
 
     /// Returns the corresponding implementor of the given `impl Trait` type.

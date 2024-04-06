@@ -22,16 +22,16 @@ pub struct MethodTable {
 }
 
 impl MethodTable {
-    pub fn prove(&self, db: &dyn HirAnalysisDb, ty: TyId, name: IdentId) -> Option<FuncDef> {
+    pub fn probe(&self, db: &dyn HirAnalysisDb, ty: TyId, name: IdentId) -> Option<FuncDef> {
         let base = Self::extract_ty_base(ty, db)?;
         if let Some(bucket) = self.buckets.get(base) {
-            return bucket.prove(db, self.mode, ty, name);
+            return bucket.probe(db, self.mode, ty, name);
         }
 
         None
     }
 
-    pub(super) fn prove_eager(
+    pub(super) fn probe_eager(
         &self,
         db: &dyn HirAnalysisDb,
         ty: TyId,
@@ -39,7 +39,7 @@ impl MethodTable {
     ) -> Option<FuncDef> {
         let base = Self::extract_ty_base(ty, db)?;
         if let Some(bucket) = self.buckets.get(base) {
-            return bucket.prove(db, TableMode::Creation, ty, name);
+            return bucket.probe(db, TableMode::Creation, ty, name);
         }
 
         None
@@ -89,7 +89,7 @@ impl MethodBucket {
         }
     }
 
-    fn prove(
+    fn probe(
         &self,
         db: &dyn HirAnalysisDb,
         mode: TableMode,
@@ -172,7 +172,7 @@ impl<'db> MethodCollector<'db> {
 
         if self
             .method_table
-            .prove(self.db, ty, func.name(self.db))
+            .probe(self.db, ty, func.name(self.db))
             .is_none()
         {
             self.method_table.insert(self.db, ty, func)
