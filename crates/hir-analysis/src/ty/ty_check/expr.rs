@@ -600,14 +600,14 @@ impl<'db> TyChecker<'db> {
             return TypedExpr::invalid(self.db);
         };
 
-        let match_ty = self.fresh_ty();
+        let mut match_ty = self.fresh_ty();
         for arm in arms {
             self.check_pat(arm.pat, scrutinee_ty);
 
             self.env.enter_scope(arm.body);
             self.env.flush_pending_bindings();
 
-            self.check_expr(arm.body, match_ty);
+            match_ty = self.check_expr(arm.body, match_ty).ty();
 
             self.env.leave_scope();
         }
