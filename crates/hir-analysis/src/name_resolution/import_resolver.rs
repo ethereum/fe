@@ -667,7 +667,7 @@ impl<'db> ImportResolver<'db> {
 pub struct ResolvedImports {
     pub named_resolved: FxHashMap<ScopeId, NamedImportSet>,
     pub glob_resolved: FxHashMap<ScopeId, GlobImportSet>,
-    pub unnamed_resolved: Vec<NameResBucket>,
+    pub unnamed_resolved: FxHashMap<ScopeId, Vec<NameResBucket>>,
 }
 
 pub(super) trait Importer {
@@ -687,7 +687,7 @@ pub(super) trait Importer {
         &'a self,
         db: &'a dyn HirAnalysisDb,
         scope: ScopeId,
-    ) -> &'a [NameResBucket];
+    ) -> Option<&'a [NameResBucket]>;
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -718,8 +718,11 @@ impl Importer for DefaultImporter {
         &'a self,
         db: &'a dyn HirAnalysisDb,
         scope: ScopeId,
-    ) -> &'a [NameResBucket] {
-        &resolved_imports_for_scope(db, scope).unnamed_resolved
+    ) -> Option<&'a [NameResBucket]> {
+        resolved_imports_for_scope(db, scope)
+            .unnamed_resolved
+            .get(&scope)
+            .map(|v| v.as_slice())
     }
 }
 
@@ -915,7 +918,11 @@ impl IntermediateResolvedImports {
         let imported_name = match i_use.imported_name(db) {
             Some(name) => name,
             None => {
-                self.resolved_imports.unnamed_resolved.push(bucket);
+                self.resolved_imports
+                    .unnamed_resolved
+                    .entry(scope)
+                    .or_default()
+                    .push(bucket);
                 return Ok(());
             }
         };
@@ -1012,11 +1019,17 @@ impl Importer for IntermediateResolvedImports {
         &'a self,
         db: &'a dyn HirAnalysisDb,
         scope: ScopeId,
-    ) -> &'a [NameResBucket] {
+    ) -> Option<&'a [NameResBucket]> {
         if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
-            &resolved_imports_for_scope(db, scope).unnamed_resolved
+            resolved_imports_for_scope(db, scope)
+                .unnamed_resolved
+                .get(&scope)
+                .map(|v| v.as_slice())
         } else {
-            &self.resolved_imports.unnamed_resolved
+            self.resolved_imports
+                .unnamed_resolved
+                .get(&scope)
+                .map(|v| v.as_slice())
         }
     }
 }
