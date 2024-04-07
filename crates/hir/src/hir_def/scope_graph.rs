@@ -219,6 +219,16 @@ impl ScopeId {
         }
     }
 
+    /// Returns the direct child items of the given `scope`.
+    pub fn child_items(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+        self.scope_graph(db).child_items(self)
+    }
+
+    /// Returns the direct child scopes of the given `scope`
+    pub fn children(self, db: &dyn HirDb) -> impl Iterator<Item = ScopeId> + '_ {
+        self.scope_graph(db).children(self)
+    }
+
     /// Returns `true` if the scope is a type.
     pub fn is_type(self) -> bool {
         match self {
