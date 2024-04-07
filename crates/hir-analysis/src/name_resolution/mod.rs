@@ -3,6 +3,7 @@ pub mod diagnostics;
 mod import_resolver;
 mod name_resolver;
 mod path_resolver;
+pub(crate) mod traits_in_scope;
 mod visibility_checker;
 
 use either::Either;
@@ -22,6 +23,7 @@ pub use name_resolver::{
 };
 pub use path_resolver::EarlyResolvedPath;
 use rustc_hash::FxHashSet;
+pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
 use self::{
@@ -167,7 +169,7 @@ impl<'db> ModuleAnalysisPass for DefConflictAnalysisPass<'db> {
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> ResolvedImports {
+pub fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> ResolvedImports {
     let resolver = import_resolver::ImportResolver::new(db, ingot);
     let (imports, diags) = resolver.resolve_imports();
     for diag in diags {

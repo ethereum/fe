@@ -7,6 +7,8 @@ pub struct Jar(
     name_resolution::resolve_imports,
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
     name_resolution::diagnostics::ImportResolutionDiagAccumulator,
+    name_resolution::traits_in_scope::available_traits_in_scope_impl,
+    name_resolution::traits_in_scope::TraitScope,
     /// Type system.
     ty::ty_def::TyId,
     ty::ty_def::ty_kind,

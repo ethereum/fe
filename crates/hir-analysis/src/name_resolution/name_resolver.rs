@@ -12,7 +12,7 @@ use hir::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
-        GenericParam, GenericParamOwner, IdentId, ItemKind, Use,
+        GenericParam, GenericParamOwner, IdentId, ItemKind, Trait, Use,
     },
     span::DynLazySpan,
 };
@@ -294,36 +294,40 @@ impl NameRes {
     }
 
     /// Returns `true` if the resolution is a type.
-    pub(crate) fn is_type(&self) -> bool {
+    pub fn is_type(&self) -> bool {
         match self.kind {
             NameResKind::Prim(_) => true,
             NameResKind::Scope(scope) => scope.is_type(),
         }
     }
 
-    /// Returns `true` if the resolution is a trait.
-    pub(crate) fn is_trait(&self) -> bool {
+    pub fn trait_(&self) -> Option<Trait> {
         match self.kind {
-            NameResKind::Prim(_) => false,
-            NameResKind::Scope(scope) => scope.is_trait(),
+            NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) => Some(trait_),
+            _ => None,
         }
     }
 
-    pub(crate) fn is_enum(&self) -> bool {
+    /// Returns `true` if the resolution is a trait.
+    pub fn is_trait(&self) -> bool {
+        self.trait_().is_some()
+    }
+
+    pub fn is_enum(&self) -> bool {
         match self.kind {
             NameResKind::Prim(_) => false,
             NameResKind::Scope(scope) => scope.is_enum(),
         }
     }
 
-    pub(crate) fn is_mod(&self) -> bool {
+    pub fn is_mod(&self) -> bool {
         match self.kind {
             NameResKind::Prim(_) => false,
             NameResKind::Scope(scope) => scope.is_mod(),
         }
     }
 
-    pub(crate) fn is_value(&self) -> bool {
+    pub fn is_value(&self) -> bool {
         !self.is_type() && !self.is_trait()
     }
 
