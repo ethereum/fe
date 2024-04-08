@@ -4,7 +4,6 @@ mod expr;
 mod pat;
 mod path;
 mod stmt;
-mod method_selection;
 
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
@@ -18,7 +17,7 @@ use rustc_hash::FxHashMap;
 use self::env::TypedExpr;
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
-    ty_def::{InvalidCause, Kind, TyId, TyVarUniverse},
+    ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
     unify::{UnificationError, UnificationTable},
 };
@@ -86,11 +85,11 @@ impl<'db> TyChecker<'db> {
     fn lit_ty(&mut self, lit: &LitKind) -> TyId {
         match lit {
             LitKind::Bool(_) => TyId::bool(self.db),
-            LitKind::Int(_) => self.table.new_var(TyVarUniverse::Integral, &Kind::Star),
+            LitKind::Int(_) => self.table.new_var(TyVarSort::Integral, &Kind::Star),
             LitKind::String(s) => {
                 let len_bytes = s.len_bytes(self.db.as_hir_db());
                 self.table
-                    .new_var(TyVarUniverse::String(len_bytes), &Kind::Star)
+                    .new_var(TyVarSort::String(len_bytes), &Kind::Star)
             }
         }
     }
@@ -111,9 +110,9 @@ impl<'db> TyChecker<'db> {
     }
 
     /// Returns the fresh type variable for pattern and expr type checking. The
-    /// kind of the type variable is `*`, and the universe is `General`.
+    /// kind of the type variable is `*`, and the sort is `General`.
     fn fresh_ty(&mut self) -> TyId {
-        self.table.new_var(TyVarUniverse::General, &Kind::Star)
+        self.table.new_var(TyVarSort::General, &Kind::Star)
     }
 
     fn fresh_tys_n(&mut self, n: usize) -> Vec<TyId> {

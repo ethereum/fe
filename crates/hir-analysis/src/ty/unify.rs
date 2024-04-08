@@ -6,7 +6,7 @@ use num_bigint::BigUint;
 
 use super::{
     trait_def::{Implementor, TraitInstId},
-    ty_def::{Kind, Subst, TyData, TyId, TyVar, TyVarUniverse},
+    ty_def::{Kind, Subst, TyData, TyId, TyVar, TyVarSort},
 };
 use crate::{
     ty::const_ty::{ConstTyData, EvaluatedConstTy},
@@ -127,17 +127,17 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
-    pub fn new_var(&mut self, universe: TyVarUniverse, kind: &Kind) -> TyId {
+    pub fn new_var(&mut self, sort: TyVarSort, kind: &Kind) -> TyId {
         let key = self.new_key(kind);
-        TyId::ty_var(self.db, universe, kind.clone(), key)
+        TyId::ty_var(self.db, sort, kind.clone(), key)
     }
 
     pub(super) fn new_var_from_param(&mut self, ty: TyId) -> TyId {
         match ty.data(self.db) {
             TyData::TyParam(param) => {
                 let key = self.new_key(&param.kind);
-                let universe = TyVarUniverse::General;
-                TyId::ty_var(self.db, universe, param.kind.clone(), key)
+                let sort = TyVarSort::General;
+                TyId::ty_var(self.db, sort, param.kind.clone(), key)
             }
 
             TyData::ConstTy(const_ty) => {
@@ -165,12 +165,12 @@ impl<'db> UnificationTable<'db> {
 
     /// Try to unify two type variables.
     ///
-    /// When the two variables are in the same universe, we can just unify them.
+    /// When the two variables are in the same sort, we can just unify them.
     ///
-    /// When the two variables are *NOT* in the same universe, a type variable
-    /// that has a broader universe are narrowed down to the narrower one.
+    /// When the two variables are *NOT* in the same sort, a type variable
+    /// that has a broader sort are narrowed down to the narrower one.
     ///
-    /// NOTE: This assumes that we have only two universes: General and Int.
+    /// NOTE: This assumes that we have only two sorts: General and Int.
     fn unify_var_var(&mut self, ty_var1: TyId, ty_var2: TyId) -> UnificationResult {
         let (var1, var2) = match (ty_var1.data(self.db), ty_var2.data(self.db)) {
             (TyData::TyVar(var1), TyData::TyVar(var2)) => (var1, var2),
@@ -183,20 +183,18 @@ impl<'db> UnificationTable<'db> {
             _ => panic!(),
         };
 
-        match (var1.universe, var2.universe) {
-            (universe1, universe2) if universe1 == universe2 => {
-                self.table.unify_var_var(var1.key, var2.key)
-            }
+        match (var1.sort, var2.sort) {
+            (sort1, sort2) if sort1 == sort2 => self.table.unify_var_var(var1.key, var2.key),
 
-            (TyVarUniverse::General, _) => self
+            (TyVarSort::General, _) => self
                 .table
                 .unify_var_value(var1.key, InferenceValue::Bound(ty_var2)),
 
-            (_, TyVarUniverse::General) => self
+            (_, TyVarSort::General) => self
                 .table
                 .unify_var_value(var2.key, InferenceValue::Bound(ty_var1)),
 
-            (TyVarUniverse::String(n1), TyVarUniverse::String(n2)) => {
+            (TyVarSort::String(n1), TyVarSort::String(n2)) => {
                 if n1 > n2 {
                     self.table
                         .unify_var_value(var2.key, InferenceValue::Bound(ty_var1))
@@ -213,8 +211,8 @@ impl<'db> UnificationTable<'db> {
     /// Try to unify a type variable to a type.
     /// We perform the following checks:
     /// 1. Occurrence check: The same type variable must not occur in the type.
-    /// 2. Universe check: The universe of the type variable must match the
-    ///    universe of the type.
+    /// 2. Universe check: The sort of the type variable must match the sort of
+    ///    the type.
     fn unify_var_value(&mut self, var: &TyVar, value: TyId) -> UnificationResult {
         if value.free_inference_keys(self.db).contains(&var.key) {
             return Err(UnificationError::OccursCheckFailed);
@@ -226,12 +224,12 @@ impl<'db> UnificationTable<'db> {
                 .unify_var_value(var.key, InferenceValue::Bound(value));
         }
 
-        match var.universe {
-            TyVarUniverse::General => self
+        match var.sort {
+            TyVarSort::General => self
                 .table
                 .unify_var_value(var.key, InferenceValue::Bound(value)),
 
-            TyVarUniverse::Integral => {
+            TyVarSort::Integral => {
                 if value.is_integral(self.db) {
                     self.table
                         .unify_var_value(var.key, InferenceValue::Bound(value))
@@ -242,7 +240,7 @@ impl<'db> UnificationTable<'db> {
                 }
             }
 
-            TyVarUniverse::String(n_var) => {
+            TyVarSort::String(n_var) => {
                 let (base, args) = value.decompose_ty_app(self.db);
 
                 if base.is_bot(self.db) {

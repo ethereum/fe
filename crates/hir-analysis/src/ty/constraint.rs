@@ -19,7 +19,7 @@ use super::{
 use crate::{
     ty::{
         trait_lower::{lower_impl_trait, lower_trait},
-        ty_def::TyVarUniverse,
+        ty_def::TyVarSort,
         unify::InferenceKey,
     },
     HirAnalysisDb,
@@ -50,7 +50,7 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintList
     // Generalize unbound type parameters.
     for &arg in params.iter().skip(arg_idx) {
         let key = InferenceKey(arg_idx as u32);
-        let ty_var = TyId::ty_var(db, TyVarUniverse::General, arg.kind(db).clone(), key);
+        let ty_var = TyId::ty_var(db, TyVarSort::General, arg.kind(db).clone(), key);
         subst.insert(arg, ty_var);
         arg_idx += 1;
     }
