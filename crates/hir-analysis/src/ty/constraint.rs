@@ -11,10 +11,12 @@ use salsa::function::Configuration;
 
 use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
+    fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
     ty_def::{AdtDef, FuncDef, Subst, TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
+    visitor::{TypeVisitable, TypeVisitor},
 };
 use crate::{
     ty::{
@@ -195,7 +197,7 @@ pub(crate) fn collect_func_def_constraints(
             let Some(implementor) = lower_impl_trait(db, impl_trait) else {
                 return func_constraints;
             };
-            collect_implementor_constraints(db, implementor)
+            collect_implementor_constraints(db, implementor.instantiate_identity())
         }
 
         _ => return func_constraints,
@@ -248,6 +250,27 @@ impl PredicateId {
     }
 }
 
+impl<'db> TypeVisitable<'db> for PredicateId {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TypeVisitor<'db>,
+    {
+        self.ty(visitor.db()).visit_with(visitor);
+        self.trait_inst(visitor.db()).visit_with(visitor);
+    }
+}
+
+impl<'db> TypeFoldable<'db> for PredicateId {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TypeFolder<'db>,
+    {
+        let ty = self.ty(folder.db()).super_fold_with(folder);
+        let trait_inst = self.trait_inst(folder.db()).super_fold_with(folder);
+        Self::new(folder.db(), ty, trait_inst)
+    }
+}
+
 /// The list of predicates.
 #[salsa::interned]
 pub(crate) struct PredicateListId {
@@ -289,6 +312,30 @@ impl PredicateListId {
             .collect();
 
         Self::new(db, predicates, self.ingot(db))
+    }
+}
+
+impl<'db> TypeVisitable<'db> for PredicateListId {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TypeVisitor<'db>,
+    {
+        self.predicates(visitor.db()).visit_with(visitor)
+    }
+}
+
+impl<'db> TypeFoldable<'db> for PredicateListId {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TypeFolder<'db>,
+    {
+        let predicates = self
+            .predicates(folder.db())
+            .iter()
+            .map(|pred| pred.super_fold_with(folder))
+            .collect();
+
+        Self::new(folder.db(), predicates, self.ingot(folder.db()))
     }
 }
 

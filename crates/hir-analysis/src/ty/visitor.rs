@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use super::{
     const_ty::{ConstTyData, ConstTyId},
     trait_def::{Implementor, TraitInstId},
@@ -122,6 +124,18 @@ where
 }
 
 impl<'db, T> TypeVisitable<'db> for &[T]
+where
+    T: TypeVisitable<'db>,
+{
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TypeVisitor<'db>,
+    {
+        self.iter().for_each(|ty| ty.visit_with(visitor))
+    }
+}
+
+impl<'db, T> TypeVisitable<'db> for BTreeSet<T>
 where
     T: TypeVisitable<'db>,
 {

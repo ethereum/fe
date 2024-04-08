@@ -5,6 +5,7 @@
 
 use super::{
     constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
+    fold::TypeFoldable,
     trait_def::{ingot_trait_env, TraitEnv, TraitInstId},
     ty_def::{Subst, TyId},
     unify::UnificationTable,
@@ -145,18 +146,15 @@ impl<'db> ConstraintSolver<'db> {
             .iter()
             .find_map(|impl_| {
                 let mut table = UnificationTable::new(self.db);
-                // Generalize the implementor by lifting all type parameters to
-                // free type variables.
-                let (gen_impl, mut gen_param_map) = impl_.generalize(self.db, &mut table);
+                let gen_impl = table.instantiate_with_fresh_vars(*impl_);
 
                 // If the `impl` can matches the goal by unifying the goal type, then we can
                 // obtain a subgoals which is specified by the `impl`.
                 if table.unify(gen_impl.ty(self.db), goal_ty).is_ok()
                     && table.unify(gen_impl.trait_(self.db), goal_trait).is_ok()
                 {
-                    let mut subst = SubstComposition::compose(&mut gen_param_map, &mut table);
-                    let constraints = impl_.constraints(self.db);
-                    Some(constraints.apply_subst(self.db, &mut subst))
+                    let constraints = impl_.instantiate_identity().constraints(self.db);
+                    Some(constraints.fold_with(&mut table))
                 } else {
                     None
                 }

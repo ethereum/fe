@@ -29,6 +29,10 @@ where
         self.value
     }
 
+    pub fn skip_binder(self) -> T {
+        self.value
+    }
+
     pub fn instantiate(self, db: &'db dyn HirAnalysisDb, args: &[TyId]) -> T {
         let mut folder = InstantiateFolder { db, args };
         self.value.fold_with(&mut folder)
