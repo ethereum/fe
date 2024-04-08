@@ -8,7 +8,8 @@ use hir::hir_def::{
 use rustc_hash::FxHashMap;
 
 use super::{
-    trait_def::{Implementor, TraitDef, TraitInstId, TraitMethod},
+    binder::Binder,
+    trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId, TraitMethod},
     ty_def::{FuncDef, InvalidCause, Kind, TyId},
     ty_lower::{
         collect_generic_params, lower_generic_arg_list, GenericParamOwnerId, GenericParamTypeSet,
@@ -24,7 +25,7 @@ use crate::{
     HirAnalysisDb,
 };
 
-type TraitImplTable = FxHashMap<TraitDef, Vec<Implementor>>;
+type TraitImplTable = FxHashMap<TraitDef, Vec<Binder<Implementor>>>;
 
 #[salsa::tracked]
 pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
@@ -55,7 +56,7 @@ pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> Tra
 pub(crate) fn lower_impl_trait(
     db: &dyn HirAnalysisDb,
     impl_trait: ImplTrait,
-) -> Option<Implementor> {
+) -> Option<Binder<Implementor>> {
     let hir_db = db.as_hir_db();
     let scope = impl_trait.scope();
 
@@ -82,7 +83,9 @@ pub(crate) fn lower_impl_trait(
     let param_owner = GenericParamOwnerId::new(db, impl_trait.into());
     let params = collect_generic_params(db, param_owner).params(db).to_vec();
 
-    Some(Implementor::new(db, trait_, ty, params, impl_trait))
+    let implementor = Implementor::new(db, trait_, ty, params, impl_trait);
+
+    Some(Binder::bind(implementor))
 }
 
 /// Lower a trait reference to a trait instance.
@@ -290,7 +293,7 @@ impl<'db> ImplementorCollector<'db> {
 
             if !self.does_conflict(implementor) {
                 self.impl_table
-                    .entry(implementor.trait_def(self.db))
+                    .entry(implementor.instantiate_identity().trait_def(self.db))
                     .or_default()
                     .push(implementor);
             }
@@ -300,8 +303,8 @@ impl<'db> ImplementorCollector<'db> {
     }
 
     /// Returns `true` if `implementor` conflicts with any existing implementor.
-    fn does_conflict(&mut self, implementor: Implementor) -> bool {
-        let def = implementor.trait_def(self.db);
+    fn does_conflict(&mut self, implementor: Binder<Implementor>) -> bool {
+        let def = implementor.instantiate_identity().trait_def(self.db);
         for impl_map in self
             .const_impl_maps
             .iter()
@@ -312,7 +315,7 @@ impl<'db> ImplementorCollector<'db> {
             };
             for already_implemented in impls {
                 let mut table = UnificationTable::new(self.db);
-                if already_implemented.does_conflict(self.db, implementor, &mut table) {
+                if does_impl_trait_conflict(self.db, *already_implemented, implementor) {
                     return true;
                 }
             }

@@ -31,11 +31,13 @@ use super::{
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
     ty::{
+        binder::Binder,
         diagnostics::{
             AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
             ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
         },
         method_table::collect_methods,
+        trait_def::does_impl_trait_conflict,
         trait_lower::lower_impl_trait,
         ty_lower::{lower_func, lower_hir_ty, lower_type_alias},
         unify::UnificationTable,
@@ -108,9 +110,10 @@ pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
         }
     };
 
-    let method_diags = ImplTraitMethodAnalyzer::new(db, implementor).analyze();
+    let method_diags =
+        ImplTraitMethodAnalyzer::new(db, implementor.instantiate_identity()).analyze();
 
-    let analyzer = DefAnalyzer::for_trait_impl(db, implementor);
+    let analyzer = DefAnalyzer::for_trait_impl(db, implementor.instantiate_identity());
     let diags = analyzer.analyze();
     for diag in method_diags.into_iter().chain(diags) {
         ImplTraitDefDiagAccumulator::push(db, diag);
@@ -1000,7 +1003,7 @@ impl DefKind {
 fn analyze_impl_trait_specific_error(
     db: &dyn HirAnalysisDb,
     impl_trait: ImplTrait,
-) -> Result<Implementor, Vec<TyDiagCollection>> {
+) -> Result<Binder<Implementor>, Vec<TyDiagCollection>> {
     let mut diags = vec![];
     let hir_db = db.as_hir_db();
     // We don't need to report error because it should be reported from the parser.
@@ -1064,21 +1067,21 @@ fn analyze_impl_trait_specific_error(
 
     fn analyze_conflict_impl(
         db: &dyn HirAnalysisDb,
-        implementor: Implementor,
+        implementor: Binder<Implementor>,
         diags: &mut Vec<TyDiagCollection>,
     ) {
-        let trait_ = implementor.trait_(db);
+        let trait_ = implementor.skip_binder().trait_(db);
         let env = ingot_trait_env(db, trait_.ingot(db));
         let Some(impls) = env.impls.get(&trait_.def(db)) else {
             return;
         };
 
         for cand in impls {
-            if cand.does_conflict(db, implementor, &mut UnificationTable::new(db)) {
+            if does_impl_trait_conflict(db, *cand, implementor) {
                 diags.push(
                     TraitLowerDiag::conflict_impl(
-                        cand.hir_impl_trait(db),
-                        implementor.hir_impl_trait(db),
+                        cand.skip_binder().hir_impl_trait(db),
+                        implementor.skip_binder().hir_impl_trait(db),
                     )
                     .into(),
                 );
@@ -1090,14 +1093,17 @@ fn analyze_impl_trait_specific_error(
 
     // 5. Checks if implementor type satisfies the kind bound which is required by
     //    the trait.
-    let expected_kind = implementor.trait_def(db).expected_implementor_kind(db);
+    let expected_kind = implementor
+        .instantiate_identity()
+        .trait_def(db)
+        .expected_implementor_kind(db);
     if ty.kind(db) != expected_kind {
         diags.push(
             TraitConstraintDiag::kind_mismatch(
                 db,
                 impl_trait.lazy_span().ty().into(),
                 expected_kind,
-                implementor.ty(db),
+                implementor.instantiate_identity().ty(db),
             )
             .into(),
         );
@@ -1110,7 +1116,7 @@ fn analyze_impl_trait_specific_error(
     let trait_def = trait_inst.def(db);
     subst.insert(trait_def.self_param(db), ty);
     let trait_constraints = trait_def.constraints(db);
-    let assumptions = implementor.constraints(db);
+    let assumptions = implementor.instantiate_identity().constraints(db);
 
     for goal in trait_constraints.predicates(db) {
         if !goal.ty(db).contains_trait_self(db) {

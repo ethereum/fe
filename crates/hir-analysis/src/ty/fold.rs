@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use super::{
     trait_def::{Implementor, TraitInstId},
     ty_def::{TyData, TyId},
@@ -57,6 +59,20 @@ impl<'db> TypeFoldable<'db> for TyId {
 impl<'db, T> TypeFoldable<'db> for Vec<T>
 where
     T: TypeFoldable<'db>,
+{
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TypeFolder<'db>,
+    {
+        self.into_iter()
+            .map(|ty| ty.super_fold_with(folder))
+            .collect()
+    }
+}
+
+impl<'db, T> TypeFoldable<'db> for BTreeSet<T>
+where
+    T: TypeFoldable<'db> + Ord,
 {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
