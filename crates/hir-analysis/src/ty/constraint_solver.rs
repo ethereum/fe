@@ -9,7 +9,10 @@ use super::{
     ty_def::{Subst, TyId},
     unify::UnificationTable,
 };
-use crate::{ty::constraint::ty_constraints, HirAnalysisDb};
+use crate::{
+    ty::{constraint::ty_constraints, ty_def::free_inference_keys},
+    HirAnalysisDb,
+};
 
 type Goal = PredicateId;
 
@@ -24,7 +27,7 @@ pub(crate) fn check_ty_app_sat(
     ty: TyId,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
-    assert!(ty.free_inference_keys(db).is_empty());
+    assert!(free_inference_keys(db, ty).is_empty());
 
     let (_, args) = ty.decompose_ty_app(db);
 

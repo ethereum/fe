@@ -22,7 +22,7 @@ use super::{
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId, GenericParamTypeSet},
     unify::{InferenceKey, UnificationTable},
-    visitor::TyVisitor,
+    visitor::{TypeVisitable, TypeVisitor},
 };
 use crate::{
     ty::constraint_solver::{check_ty_app_sat, GoalSatisfiability},
@@ -254,7 +254,7 @@ impl TyId {
     }
 
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
-        !self.type_params(db).is_empty()
+        !collect_type_params(db, self).is_empty()
     }
 
     pub(super) fn contains_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
@@ -266,7 +266,7 @@ impl TyId {
     }
 
     pub(super) fn generalize(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
-        let params = self.type_params(db);
+        let params = collect_type_params(db, self);
         let mut subst = FxHashMap::default();
         for &param in params.iter() {
             let new_var = table.new_var_from_param(param);
@@ -282,13 +282,20 @@ impl TyId {
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        struct EmitDiagVisitor {
+        struct EmitDiagVisitor<'db> {
+            db: &'db dyn HirAnalysisDb,
             diag: Option<TyDiagCollection>,
             span: DynLazySpan,
         }
 
-        impl TyVisitor for EmitDiagVisitor {
-            fn visit_invalid(&mut self, db: &dyn HirAnalysisDb, cause: &InvalidCause) {
+        impl<'db> TypeVisitor<'db> for EmitDiagVisitor<'db> {
+            fn db(&self) -> &'db dyn HirAnalysisDb {
+                self.db
+            }
+
+            fn visit_invalid(&mut self, cause: &InvalidCause) {
+                let db = self.db;
+
                 let span = self.span.clone();
                 let diag = match cause {
                     InvalidCause::NotFullyApplied => {
@@ -338,8 +345,13 @@ impl TyId {
             }
         }
 
-        let mut visitor = EmitDiagVisitor { diag: None, span };
-        visitor.visit_ty(db, self);
+        let mut visitor = EmitDiagVisitor {
+            db,
+            diag: None,
+            span,
+        };
+
+        visitor.visit_ty(self);
         visitor.diag
     }
 
@@ -358,16 +370,6 @@ impl TyId {
                 Some(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into())
             }
         }
-    }
-
-    /// Returns all inference keys in the type.
-    pub(super) fn free_inference_keys(self, db: &dyn HirAnalysisDb) -> &BTreeSet<InferenceKey> {
-        free_inference_keys(db, self)
-    }
-
-    /// Returns all generics parameters in the type.
-    pub(super) fn type_params(self, db: &dyn HirAnalysisDb) -> &BTreeSet<TyId> {
-        collect_type_params(db, self)
     }
 
     pub(super) fn ty_var(
@@ -1245,44 +1247,74 @@ impl HasKind for FuncDef {
     }
 }
 
-#[salsa::tracked(return_ref)]
-pub(crate) fn free_inference_keys(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<InferenceKey> {
-    struct FreeInferenceKeyCollector(BTreeSet<InferenceKey>);
-    impl TyVisitor for FreeInferenceKeyCollector {
-        fn visit_var(&mut self, _db: &dyn HirAnalysisDb, var: &TyVar) {
-            self.0.insert(var.key);
+pub(crate) fn free_inference_keys<'db, V>(
+    db: &'db dyn HirAnalysisDb,
+    visitable: V,
+) -> BTreeSet<InferenceKey>
+where
+    V: TypeVisitable<'db>,
+{
+    struct FreeInferenceKeyCollector<'db> {
+        db: &'db dyn HirAnalysisDb,
+        keys: BTreeSet<InferenceKey>,
+    }
+
+    impl<'db> TypeVisitor<'db> for FreeInferenceKeyCollector<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_var(&mut self, var: &TyVar) {
+            self.keys.insert(var.key);
         }
     }
 
-    let mut collector = FreeInferenceKeyCollector(BTreeSet::new());
-    collector.visit_ty(db, ty);
-    collector.0
+    let mut collector = FreeInferenceKeyCollector {
+        db,
+        keys: BTreeSet::new(),
+    };
+
+    visitable.visit_with(&mut collector);
+    collector.keys
 }
 
-#[salsa::tracked(return_ref)]
-pub(crate) fn collect_type_params(db: &dyn HirAnalysisDb, ty: TyId) -> BTreeSet<TyId> {
-    struct TypeParamCollector(BTreeSet<TyId>);
-    impl TyVisitor for TypeParamCollector {
-        fn visit_param(&mut self, _db: &dyn HirAnalysisDb, param: &TyParam) {
-            let param_ty = TyId::new(_db, TyData::TyParam(param.clone()));
-            self.0.insert(param_ty);
+pub(crate) fn collect_type_params<'db, V>(
+    db: &'db dyn HirAnalysisDb,
+    visitable: V,
+) -> BTreeSet<TyId>
+where
+    V: TypeVisitable<'db>,
+{
+    struct TypeParamCollector<'db> {
+        db: &'db dyn HirAnalysisDb,
+        params: BTreeSet<TyId>,
+    };
+
+    impl<'db> TypeVisitor<'db> for TypeParamCollector<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
         }
 
-        fn visit_const_param(
-            &mut self,
-            db: &dyn HirAnalysisDb,
-            param: &TyParam,
-            const_ty_ty: TyId,
-        ) {
+        fn visit_param(&mut self, param: &TyParam) {
+            let param_ty = TyId::new(self.db, TyData::TyParam(param.clone()));
+            self.params.insert(param_ty);
+        }
+
+        fn visit_const_param(&mut self, param: &TyParam, const_ty_ty: TyId) {
+            let db = self.db;
             let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param.clone(), const_ty_ty));
             let const_param_ty = TyId::new(db, TyData::ConstTy(const_ty));
-            self.0.insert(const_param_ty);
+            self.params.insert(const_param_ty);
         }
     }
 
-    let mut collector = TypeParamCollector(BTreeSet::new());
-    collector.visit_ty(db, ty);
-    collector.0
+    let mut collector = TypeParamCollector {
+        db,
+        params: BTreeSet::new(),
+    };
+
+    visitable.visit_with(&mut collector);
+    collector.params
 }
 
 #[salsa::tracked(return_ref)]
@@ -1345,24 +1377,31 @@ fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
 /// e.g., `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
 #[salsa::tracked(return_ref)]
 pub(crate) fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
-    struct TyAppDecomposer {
+    struct TyAppDecomposer<'db> {
+        db: &'db dyn HirAnalysisDb,
         base: Option<TyId>,
         args: Vec<TyId>,
     }
 
-    impl TyVisitor for TyAppDecomposer {
-        fn visit_ty(&mut self, db: &dyn HirAnalysisDb, ty: TyId) {
+    impl<'db> TypeVisitor<'db> for TyAppDecomposer<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_ty(&mut self, ty: TyId) {
+            let db = self.db;
+
             match ty.data(db) {
                 TyData::TyApp(lhs, rhs) => {
-                    self.visit_ty(db, *lhs);
+                    self.visit_ty(*lhs);
                     self.args.push(*rhs);
                 }
                 _ => self.base = Some(ty),
             }
         }
 
-        fn visit_app(&mut self, db: &dyn HirAnalysisDb, lhs: TyId, rhs: TyId) {
-            self.visit_ty(db, lhs);
+        fn visit_app(&mut self, lhs: TyId, rhs: TyId) {
+            self.visit_ty(lhs);
             self.args.push(rhs);
         }
     }
@@ -1370,10 +1409,12 @@ pub(crate) fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<T
     match ty.data(db) {
         TyData::TyApp(lhs, rhs) => {
             let mut decomposer = TyAppDecomposer {
+                db,
                 base: None,
                 args: Vec::new(),
             };
-            decomposer.visit_app(db, *lhs, *rhs);
+
+            ty.visit_with(&mut decomposer);
             (
                 decomposer.base.unwrap(),
                 decomposer.args.into_iter().collect(),

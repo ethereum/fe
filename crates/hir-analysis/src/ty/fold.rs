@@ -3,12 +3,13 @@ use super::{
     trait_def::{Implementor, TraitInstId},
     ty_def::{TyData, TyId},
     unify::{Unifiable, UnificationTable},
+    visitor::TypeVisitable,
 };
 use crate::HirAnalysisDb;
 
 pub trait TypeFoldable<'db>
 where
-    Self: Sized,
+    Self: Sized + TypeVisitable<'db>,
 {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where

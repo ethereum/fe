@@ -8,7 +8,7 @@ use num_bigint::BigUint;
 use super::{
     fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitInstId},
-    ty_def::{Kind, Subst, TyData, TyId, TyVar, TyVarSort},
+    ty_def::{free_inference_keys, Kind, Subst, TyData, TyId, TyVar, TyVarSort},
 };
 use crate::{
     ty::const_ty::{ConstTyData, EvaluatedConstTy},
@@ -210,7 +210,7 @@ impl<'db> UnificationTable<'db> {
     /// 2. Universe check: The sort of the type variable must match the sort of
     ///    the type.
     fn unify_var_value(&mut self, var: &TyVar, value: TyId) -> UnificationResult {
-        if value.free_inference_keys(self.db).contains(&var.key) {
+        if free_inference_keys(self.db, value).contains(&var.key) {
             return Err(UnificationError::OccursCheckFailed);
         }
 
