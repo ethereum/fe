@@ -6,6 +6,7 @@ use ena::unify::{InPlace, InPlaceUnificationTable, UnifyKey, UnifyValue};
 use num_bigint::BigUint;
 
 use super::{
+    binder::Binder,
     fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitInstId},
     ty_def::{free_inference_keys, Kind, Subst, TyData, TyId, TyVar, TyVarSort},
@@ -152,6 +153,13 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
+    pub fn instantiate_with_fresh_vars<T>(&mut self, value: Binder<T>) -> T
+    where
+        T: TypeFoldable<'db>,
+    {
+        value.instantiate_with(self.db, |ty| self.new_var_from_param(ty))
+    }
+
     pub fn new_key(&mut self, kind: &Kind, sort: TyVarSort) -> InferenceKey {
         self.table
             .new_key(InferenceValue::Unbound(kind.clone(), sort))
@@ -196,7 +204,7 @@ impl<'db> UnificationTable<'db> {
                 self.table.unify_var_var(var1.key, var2.key)
             }
 
-            (TyVarSort::String(n1), TyVarSort::String(n2)) => {
+            (TyVarSort::String(_), TyVarSort::String(_)) => {
                 self.table.unify_var_var(var1.key, var2.key)
             }
 

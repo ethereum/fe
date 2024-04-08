@@ -12,7 +12,7 @@ use hir::{
     },
     span::DynLazySpan,
 };
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
     const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
@@ -1281,14 +1281,14 @@ where
 pub(crate) fn collect_type_params<'db, V>(
     db: &'db dyn HirAnalysisDb,
     visitable: V,
-) -> BTreeSet<TyId>
+) -> FxHashSet<TyId>
 where
     V: TypeVisitable<'db>,
 {
     struct TypeParamCollector<'db> {
         db: &'db dyn HirAnalysisDb,
-        params: BTreeSet<TyId>,
-    };
+        params: FxHashSet<TyId>,
+    }
 
     impl<'db> TypeVisitor<'db> for TypeParamCollector<'db> {
         fn db(&self) -> &'db dyn HirAnalysisDb {
@@ -1310,7 +1310,7 @@ where
 
     let mut collector = TypeParamCollector {
         db,
-        params: BTreeSet::new(),
+        params: FxHashSet::default(),
     };
 
     visitable.visit_with(&mut collector);
@@ -1399,30 +1399,16 @@ pub(crate) fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<T
                 _ => self.base = Some(ty),
             }
         }
-
-        fn visit_app(&mut self, lhs: TyId, rhs: TyId) {
-            self.visit_ty(lhs);
-            self.args.push(rhs);
-        }
     }
 
-    match ty.data(db) {
-        TyData::TyApp(lhs, rhs) => {
-            let mut decomposer = TyAppDecomposer {
-                db,
-                base: None,
-                args: Vec::new(),
-            };
+    let mut decomposer = TyAppDecomposer {
+        db,
+        base: None,
+        args: Vec::new(),
+    };
 
-            ty.visit_with(&mut decomposer);
-            (
-                decomposer.base.unwrap(),
-                decomposer.args.into_iter().collect(),
-            )
-        }
-
-        _ => (ty, vec![]),
-    }
+    ty.visit_with(&mut decomposer);
+    (decomposer.base.unwrap(), decomposer.args)
 }
 
 #[salsa::tracked(return_ref)]
