@@ -175,8 +175,7 @@ pub(crate) fn lower_trait_ref(
         }
     }
 
-    let ingot = scope.ingot(hir_db);
-    Ok(TraitInstId::new(db, trait_def, args, ingot))
+    Ok(TraitInstId::new(db, trait_def, args))
 }
 
 #[salsa::tracked(return_ref)]

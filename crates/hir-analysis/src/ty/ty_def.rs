@@ -49,7 +49,7 @@ impl TyId {
 
     /// Returns the current arguments of the type.
     /// ## Example
-    /// `TyApp<TyApp<Adt, T>, U>` returns `[T, U]`.
+    /// Calling this method for `TyApp<TyApp<Adt, T>, U>` returns `[T, U]`.
     pub fn generic_args(self, db: &dyn HirAnalysisDb) -> &[TyId] {
         let (_, args) = self.decompose_ty_app(db);
         args
@@ -855,6 +855,19 @@ pub enum TyVarSort {
 
     /// Type variable that can be unified with only integral types.
     Integral,
+}
+
+impl PartialOrd for TyVarSort {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match (self, other) {
+            (Self::General, Self::General) => Some(std::cmp::Ordering::Equal),
+            (Self::General, _) => Some(std::cmp::Ordering::Less),
+            (_, Self::General) => Some(std::cmp::Ordering::Greater),
+            (Self::String(n1), Self::String(n2)) => n1.partial_cmp(n2),
+            (Self::String(_), _) | (_, Self::String(_)) => None,
+            (Self::Integral, Self::Integral) => Some(std::cmp::Ordering::Equal),
+        }
+    }
 }
 
 impl TyVar {

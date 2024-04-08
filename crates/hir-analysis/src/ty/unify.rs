@@ -1,10 +1,12 @@
 //! This module contains the unification table for type inference and trait
 //! satisfiability checking.
 
+use either::Either;
 use ena::unify::{InPlace, InPlaceUnificationTable, UnifyKey, UnifyValue};
 use num_bigint::BigUint;
 
 use super::{
+    fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitInstId},
     ty_def::{Kind, Subst, TyData, TyId, TyVar, TyVarSort},
 };
@@ -81,9 +83,7 @@ impl<'db> UnificationTable<'db> {
 
             (TyData::TyApp(ty1_1, ty1_2), TyData::TyApp(ty2_1, ty2_2)) => {
                 self.unify_ty(*ty1_1, *ty2_1)?;
-                let ty1_2 = self.apply(self.db, *ty1_2);
-                let ty2_2 = self.apply(self.db, *ty2_2);
-                self.unify_ty(ty1_2, ty2_2)
+                self.unify_ty(*ty1_2, *ty2_2)
             }
 
             (TyData::TyParam(_), TyData::TyParam(_)) | (TyData::TyBase(_), TyData::TyBase(_)) => {
@@ -128,21 +128,21 @@ impl<'db> UnificationTable<'db> {
     }
 
     pub fn new_var(&mut self, sort: TyVarSort, kind: &Kind) -> TyId {
-        let key = self.new_key(kind);
+        let key = self.new_key(kind, sort);
         TyId::ty_var(self.db, sort, kind.clone(), key)
     }
 
     pub(super) fn new_var_from_param(&mut self, ty: TyId) -> TyId {
         match ty.data(self.db) {
             TyData::TyParam(param) => {
-                let key = self.new_key(&param.kind);
                 let sort = TyVarSort::General;
+                let key = self.new_key(&param.kind, sort);
                 TyId::ty_var(self.db, sort, param.kind.clone(), key)
             }
 
             TyData::ConstTy(const_ty) => {
                 if let ConstTyData::TyParam(_, ty) = const_ty.data(self.db) {
-                    let key = self.new_key(ty.kind(self.db));
+                    let key = self.new_key(ty.kind(self.db), TyVarSort::General);
                     TyId::const_ty_var(self.db, *ty, key)
                 } else {
                     panic!()
@@ -152,14 +152,20 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
-    pub fn new_key(&mut self, kind: &Kind) -> InferenceKey {
-        self.table.new_key(InferenceValue::Unbound(kind.clone()))
+    pub fn new_key(&mut self, kind: &Kind, sort: TyVarSort) -> InferenceKey {
+        self.table
+            .new_key(InferenceValue::Unbound(kind.clone(), sort))
     }
 
-    fn probe(&mut self, key: InferenceKey) -> Option<TyId> {
+    pub fn probe(&mut self, key: InferenceKey) -> Either<TyId, TyVar> {
+        let root_key = self.table.find(key);
         match self.table.probe_value(key) {
-            InferenceValue::Bound(ty) => Some(ty),
-            InferenceValue::Unbound(_) => None,
+            InferenceValue::Bound(ty) => Either::Left(ty),
+            InferenceValue::Unbound(kind, sort) => Either::Right(TyVar {
+                key: root_key,
+                kind,
+                sort,
+            }),
         }
     }
 
@@ -170,7 +176,7 @@ impl<'db> UnificationTable<'db> {
     /// When the two variables are *NOT* in the same sort, a type variable
     /// that has a broader sort are narrowed down to the narrower one.
     ///
-    /// NOTE: This assumes that we have only two sorts: General and Int.
+    /// NOTE: This method assumes that we have only two sorts: General and Int.
     fn unify_var_var(&mut self, ty_var1: TyId, ty_var2: TyId) -> UnificationResult {
         let (var1, var2) = match (ty_var1.data(self.db), ty_var2.data(self.db)) {
             (TyData::TyVar(var1), TyData::TyVar(var2)) => (var1, var2),
@@ -186,22 +192,12 @@ impl<'db> UnificationTable<'db> {
         match (var1.sort, var2.sort) {
             (sort1, sort2) if sort1 == sort2 => self.table.unify_var_var(var1.key, var2.key),
 
-            (TyVarSort::General, _) => self
-                .table
-                .unify_var_value(var1.key, InferenceValue::Bound(ty_var2)),
-
-            (_, TyVarSort::General) => self
-                .table
-                .unify_var_value(var2.key, InferenceValue::Bound(ty_var1)),
+            (TyVarSort::General, _) | (_, TyVarSort::General) => {
+                self.table.unify_var_var(var1.key, var2.key)
+            }
 
             (TyVarSort::String(n1), TyVarSort::String(n2)) => {
-                if n1 > n2 {
-                    self.table
-                        .unify_var_value(var2.key, InferenceValue::Bound(ty_var1))
-                } else {
-                    self.table
-                        .unify_var_value(var1.key, InferenceValue::Bound(ty_var2))
-                }
+                self.table.unify_var_var(var1.key, var2.key)
             }
 
             (_, _) => Err(UnificationError::TypeMismatch),
@@ -224,15 +220,33 @@ impl<'db> UnificationTable<'db> {
                 .unify_var_value(var.key, InferenceValue::Bound(value));
         }
 
-        match var.sort {
+        let root_key = self.table.find(var.key);
+        let root_value = self.table.probe_value(root_key);
+        let root_var = match root_value {
+            InferenceValue::Unbound(kind, sort) => TyVar {
+                key: root_key,
+                sort,
+                kind,
+            },
+
+            InferenceValue::Bound(ty) => {
+                if ty == value {
+                    return Ok(());
+                } else {
+                    return Err(UnificationError::TypeMismatch);
+                }
+            }
+        };
+
+        match root_var.sort {
             TyVarSort::General => self
                 .table
-                .unify_var_value(var.key, InferenceValue::Bound(value)),
+                .unify_var_value(root_var.key, InferenceValue::Bound(value)),
 
             TyVarSort::Integral => {
                 if value.is_integral(self.db) {
                     self.table
-                        .unify_var_value(var.key, InferenceValue::Bound(value))
+                        .unify_var_value(root_var.key, InferenceValue::Bound(value))
                 } else if value.is_bot(self.db) {
                     Ok(())
                 } else {
@@ -263,7 +277,7 @@ impl<'db> UnificationTable<'db> {
 
                 if &BigUint::from(n_var) <= n_value.data(self.db.as_hir_db()) {
                     self.table
-                        .unify_var_value(var.key, InferenceValue::Bound(value))
+                        .unify_var_value(root_var.key, InferenceValue::Bound(value))
                 } else {
                     Err(UnificationError::TypeMismatch)
                 }
@@ -280,20 +294,55 @@ impl<'db> Subst for UnificationTable<'db> {
                 let rhs = self.get(*rhs).unwrap_or(*rhs);
                 Some(TyId::app(self.db, lhs, rhs))
             }
-            TyData::TyVar(var) => {
-                let ty = self.probe(var.key)?;
-                Some(self.get(ty).unwrap_or(ty))
-            }
+
+            TyData::TyVar(var) => match self.probe(var.key) {
+                Either::Left(ty) => Some(ty),
+                Either::Right(var) => Some(TyId::new(self.db, TyData::TyVar(var))),
+            },
 
             TyData::ConstTy(const_ty) => {
-                if let ConstTyData::TyVar(var, _) = const_ty.data(self.db) {
-                    self.probe(var.key)
+                if let ConstTyData::TyVar(var, ty) = const_ty.data(self.db) {
+                    match self.probe(var.key) {
+                        Either::Left(ty) => Some(ty),
+                        Either::Right(var) => Some(TyId::const_ty_var(self.db, *ty, var.key)),
+                    }
                 } else {
                     None
                 }
             }
+
             _ => None,
         }
+    }
+}
+
+impl<'db> TypeFolder<'db> for UnificationTable<'db> {
+    fn db(&self) -> &'db dyn HirAnalysisDb {
+        self.db
+    }
+
+    fn fold_ty(&mut self, ty: TyId) -> TyId {
+        match ty.data(self.db) {
+            TyData::TyVar(var) => {
+                return match self.probe(var.key) {
+                    Either::Left(ty) => ty,
+                    Either::Right(var) => TyId::new(self.db, TyData::TyVar(var)),
+                }
+            }
+
+            TyData::ConstTy(const_ty) => {
+                if let ConstTyData::TyVar(var, ty) = const_ty.data(self.db) {
+                    return match self.probe(var.key) {
+                        Either::Left(ty) => ty,
+                        Either::Right(var) => TyId::const_ty_var(self.db, *ty, var.key),
+                    };
+                }
+            }
+
+            _ => {}
+        }
+
+        ty.super_fold_with(self)
     }
 }
 
@@ -303,7 +352,7 @@ pub struct InferenceKey(pub(super) u32);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InferenceValue {
     Bound(TyId),
-    Unbound(Kind),
+    Unbound(Kind, TyVarSort),
 }
 
 impl UnifyKey for InferenceKey {
@@ -327,21 +376,25 @@ impl UnifyValue for InferenceValue {
 
     fn unify_values(v1: &Self, v2: &Self) -> Result<Self, Self::Error> {
         match (v1, v2) {
-            (InferenceValue::Unbound(k1), InferenceValue::Unbound(k2)) => {
+            (InferenceValue::Unbound(k1, sort1), InferenceValue::Unbound(k2, sort2)) => {
                 assert!(k1.does_match(k2));
-                Ok(InferenceValue::Unbound(k1.clone()))
+                if sort1 < sort2 {
+                    Ok(InferenceValue::Unbound(k2.clone(), *sort2))
+                } else {
+                    Ok(InferenceValue::Unbound(k1.clone(), *sort1))
+                }
             }
 
-            (InferenceValue::Unbound(_), InferenceValue::Bound(ty))
-            | (InferenceValue::Bound(ty), InferenceValue::Unbound(_)) => {
+            (InferenceValue::Unbound(_, _), InferenceValue::Bound(ty))
+            | (InferenceValue::Bound(ty), InferenceValue::Unbound(_, _)) => {
                 Ok(InferenceValue::Bound(*ty))
             }
 
             (InferenceValue::Bound(ty1), InferenceValue::Bound(ty2)) => {
-                if ty1 != ty2 {
-                    Err(UnificationError::TypeMismatch)
-                } else {
+                if ty1 == ty2 {
                     Ok(InferenceValue::Bound(*ty1))
+                } else {
+                    Err(UnificationError::TypeMismatch)
                 }
             }
         }
@@ -365,7 +418,7 @@ impl Unifiable for TraitInstId {
             return Err(UnificationError::TypeMismatch);
         }
 
-        for (&self_arg, &other_arg) in self.substs(db).iter().zip(other.substs(db)) {
+        for (&self_arg, &other_arg) in self.args(db).iter().zip(other.args(db)) {
             table.unify_ty(self_arg, other_arg)?;
         }
 
