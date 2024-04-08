@@ -1,8 +1,6 @@
 use super::{
-    const_ty::ConstTyData,
     trait_def::{Implementor, TraitInstId},
     ty_def::{TyData, TyId},
-    unify::{Unifiable, UnificationTable},
     visitor::TypeVisitable,
 };
 use crate::HirAnalysisDb;

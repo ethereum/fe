@@ -15,6 +15,7 @@ use self::{
 };
 use crate::HirAnalysisDb;
 
+pub mod binder;
 pub mod const_ty;
 pub mod constraint_solver;
 pub mod def_analysis;
