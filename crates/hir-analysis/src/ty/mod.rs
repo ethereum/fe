@@ -19,6 +19,7 @@ pub mod const_ty;
 pub mod constraint_solver;
 pub mod def_analysis;
 pub mod diagnostics;
+pub mod fold;
 pub mod method_table;
 pub mod trait_def;
 pub mod trait_lower;
