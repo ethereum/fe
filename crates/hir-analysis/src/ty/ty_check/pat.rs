@@ -9,7 +9,7 @@ use super::{
 };
 use crate::ty::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
-    ty_def::{InvalidCause, Kind, TyId, TyVarUniverse},
+    ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
 };
 
@@ -22,7 +22,7 @@ impl<'db> TyChecker<'db> {
 
         let ty = match pat_data {
             Pat::WildCard => {
-                let ty_var = self.table.new_var(TyVarUniverse::General, &Kind::Star);
+                let ty_var = self.table.new_var(TyVarSort::General, &Kind::Star);
                 self.unify_ty(pat, ty_var, expected)
             }
 

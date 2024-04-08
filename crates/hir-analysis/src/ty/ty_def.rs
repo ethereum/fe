@@ -101,7 +101,7 @@ impl TyId {
         match self.data(db) {
             TyData::TyBase(ty_base) => ty_base.is_integral(),
             TyData::TyVar(var) => {
-                matches!(var.universe, TyVarUniverse::Integral)
+                matches!(var.sort, TyVarSort::Integral)
             }
             _ => false,
         }
@@ -372,23 +372,16 @@ impl TyId {
 
     pub(super) fn ty_var(
         db: &dyn HirAnalysisDb,
-        universe: TyVarUniverse,
+        sort: TyVarSort,
         kind: Kind,
         key: InferenceKey,
     ) -> Self {
-        Self::new(
-            db,
-            TyData::TyVar(TyVar {
-                universe,
-                kind,
-                key,
-            }),
-        )
+        Self::new(db, TyData::TyVar(TyVar { sort, kind, key }))
     }
 
     pub(super) fn const_ty_var(db: &dyn HirAnalysisDb, ty: TyId, key: InferenceKey) -> Self {
         let ty_var = TyVar {
-            universe: TyVarUniverse::General,
+            sort: TyVarSort::General,
             kind: ty.kind(db).clone(),
             key,
         };
@@ -419,7 +412,7 @@ impl TyId {
         Self::new(db, TyData::TyApp(abs, arg))
     }
 
-    /// Apply type arguments to the type.
+    /// Apply substitution to the type.
     pub(crate) fn apply_subst<S>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> TyId
     where
         S: Subst + ?Sized,
@@ -844,15 +837,15 @@ impl fmt::Display for Kind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TyVar {
-    pub universe: TyVarUniverse,
+    pub sort: TyVarSort,
     pub kind: Kind,
     pub(super) key: InferenceKey,
 }
 
-/// Represents the universe of a type variable that indicates what type domain
+/// Represents the sort of a type variable that indicates what type domain
 /// can be unified with the type variable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TyVarUniverse {
+pub enum TyVarSort {
     /// Type variable that can be unified with any other types.
     General,
 
@@ -866,10 +859,10 @@ pub enum TyVarUniverse {
 
 impl TyVar {
     pub(super) fn pretty_print(&self) -> String {
-        match self.universe {
-            TyVarUniverse::General => ("_").to_string(),
-            TyVarUniverse::Integral => "<integer>".to_string(),
-            TyVarUniverse::String(n) => format!("String<{}>", n).to_string(),
+        match self.sort {
+            TyVarSort::General => ("_").to_string(),
+            TyVarSort::Integral => "<integer>".to_string(),
+            TyVarSort::String(n) => format!("String<{}>", n).to_string(),
         }
     }
 }

@@ -5,7 +5,7 @@ use super::{
     unify::UnificationTable,
 };
 use crate::{
-    ty::ty_def::{Kind, TyBase, TyData, TyVarUniverse},
+    ty::ty_def::{Kind, TyBase, TyData, TyVarSort},
     HirAnalysisDb,
 };
 
@@ -49,7 +49,7 @@ pub(crate) fn evaluate_const_ty(
 
         Expr::Lit(LitKind::Int(i)) => (
             EvaluatedConstTy::LitInt(*i),
-            table.new_var(TyVarUniverse::Integral, &Kind::Star),
+            table.new_var(TyVarSort::Integral, &Kind::Star),
         ),
 
         _ => {
