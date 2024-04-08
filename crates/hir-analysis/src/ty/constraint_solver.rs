@@ -147,7 +147,7 @@ impl<'db> ConstraintSolver<'db> {
                 let (gen_impl, mut gen_param_map) = impl_.generalize(self.db, &mut table);
 
                 // If the `impl` can matches the goal by unifying the goal type, then we can
-                // obtain a subgaols which is specified by the `impl`.
+                // obtain a subgoals which is specified by the `impl`.
                 if table.unify(gen_impl.ty(self.db), goal_ty).is_ok()
                     && table.unify(gen_impl.trait_(self.db), goal_trait).is_ok()
                 {

@@ -235,16 +235,14 @@ impl Implementor {
 pub struct TraitInstId {
     pub def: TraitDef,
     #[return_ref]
-    pub substs: Vec<TyId>,
-
-    pub(super) ingot: IngotId,
+    pub args: Vec<TyId>,
 }
 
 impl TraitInstId {
     pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
         let mut s = self.def(db).name(db).unwrap_or("<unknown>").to_string();
 
-        let mut args = self.substs(db).iter().map(|ty| ty.pretty_print(db));
+        let mut args = self.args(db).iter().map(|ty| ty.pretty_print(db));
         // Skip the first type parameter since it's the implementor type.
         args.next();
 
@@ -272,21 +270,24 @@ impl TraitInstId {
         TraitInstId::new(
             db,
             self.def(db),
-            self.substs(db)
+            self.args(db)
                 .iter()
                 .map(|ty| ty.apply_subst(db, subst))
                 .collect(),
-            self.ingot(db),
         )
+    }
+
+    pub(super) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
+        self.def(db).ingot(db)
     }
 
     /// Returns subst from the trait definition parameter to this instantiated
     /// parameters.
     pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> FxHashMap<TyId, TyId> {
-        assert!(self.def(db).params(db).len() == self.substs(db).len());
+        assert!(self.def(db).params(db).len() == self.args(db).len());
 
         let mut table = FxHashMap::default();
-        for (from, to) in self.def(db).params(db).iter().zip(self.substs(db)) {
+        for (from, to) in self.def(db).params(db).iter().zip(self.args(db)) {
             table.insert(*from, *to);
         }
 
