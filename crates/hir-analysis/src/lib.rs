@@ -12,8 +12,6 @@ pub struct Jar(
     /// Type system.
     ty::ty_def::TyId,
     ty::ty_def::ty_kind,
-    ty::ty_def::free_inference_keys,
-    ty::ty_def::collect_type_params,
     ty::ty_def::pretty_print_ty,
     ty::ty_def::AdtDef,
     ty::ty_def::FuncDef,

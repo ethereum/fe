@@ -26,7 +26,7 @@ use super::{
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyData, TyId},
     ty_lower::{collect_generic_params, lower_adt, lower_kind, GenericParamOwnerId},
-    visitor::{walk_ty, TyVisitor},
+    visitor::{walk_ty, TypeVisitor},
 };
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
@@ -39,6 +39,7 @@ use crate::{
         trait_lower::lower_impl_trait,
         ty_lower::{lower_func, lower_hir_ty, lower_type_alias},
         unify::UnificationTable,
+        visitor::TypeVisitable,
     },
     HirAnalysisDb,
 };
@@ -857,27 +858,33 @@ impl TyId {
     /// Collect all adts inside types which are not wrapped by indirect type
     /// wrapper like pointer or reference.
     fn collect_direct_adts(self, db: &dyn HirAnalysisDb) -> FxHashSet<AdtRefId> {
-        struct AdtCollector {
+        struct AdtCollector<'db> {
+            db: &'db dyn HirAnalysisDb,
             adts: FxHashSet<AdtRefId>,
         }
 
-        impl TyVisitor for AdtCollector {
-            fn visit_app(&mut self, db: &dyn HirAnalysisDb, abs: TyId, arg: TyId) {
-                if !abs.is_indirect(db) {
-                    walk_ty(self, db, arg)
+        impl<'db> TypeVisitor<'db> for AdtCollector<'db> {
+            fn db(&self) -> &'db dyn HirAnalysisDb {
+                self.db
+            }
+
+            fn visit_app(&mut self, abs: TyId, arg: TyId) {
+                if !abs.is_indirect(self.db) {
+                    walk_ty(self, arg)
                 }
             }
 
-            fn visit_adt(&mut self, db: &dyn HirAnalysisDb, adt: AdtDef) {
-                self.adts.insert(adt.adt_ref(db));
+            fn visit_adt(&mut self, adt: AdtDef) {
+                self.adts.insert(adt.adt_ref(self.db));
             }
         }
 
         let mut collector = AdtCollector {
+            db,
             adts: FxHashSet::default(),
         };
 
-        walk_ty(&mut collector, db, self);
+        self.visit_with(&mut collector);
         collector.adts
     }
 }
