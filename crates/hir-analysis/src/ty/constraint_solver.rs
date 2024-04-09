@@ -3,15 +3,20 @@
 //! but the algorithm here is slightly extended to support multi parametrized
 //! traits.
 
+use rustc_hash::FxHashSet;
+
 use super::{
-    constraint::{compute_super_assumptions, AssumptionListId, PredicateId, PredicateListId},
+    constraint::{collect_trait_constraints, AssumptionListId, PredicateId, PredicateListId},
     fold::TypeFoldable,
     trait_def::{ingot_trait_env, TraitEnv, TraitInstId},
     ty_def::{Subst, TyId},
     unify::UnificationTable,
 };
 use crate::{
-    ty::{constraint::ty_constraints, ty_def::free_inference_keys},
+    ty::{
+        constraint::{collect_super_traits, ty_constraints},
+        ty_def::free_inference_keys,
+    },
     HirAnalysisDb,
 };
 
@@ -59,7 +64,8 @@ pub(crate) fn check_trait_inst_sat(
     trait_inst: TraitInstId,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
-    let constraints = trait_inst.constraints(db);
+    let constraints =
+        collect_trait_constraints(db, trait_inst.def(db)).instantiate(db, trait_inst.args(db));
     for &goal in constraints.predicates(db) {
         match is_goal_satisfiable(db, goal, assumptions) {
             GoalSatisfiability::Satisfied => {}
@@ -131,9 +137,9 @@ impl<'db> ConstraintSolver<'db> {
             return GoalSatisfiability::Satisfied;
         }
 
-        let super_assumptions = compute_super_assumptions(self.db, self.assumptions);
-        if self.assumptions.does_satisfy(self.db, self.goal)
-            || super_assumptions.does_satisfy(self.db, self.goal)
+        let derived_assumptions = self.derived_assumptions();
+        if self.assumptions.predicates(self.db).contains(&self.goal)
+            || derived_assumptions.contains(&self.goal)
         {
             return GoalSatisfiability::Satisfied;
         }
@@ -178,12 +184,28 @@ impl<'db> ConstraintSolver<'db> {
 
         GoalSatisfiability::Satisfied
     }
-}
 
-impl PredicateListId {
-    /// Returns `true` if the given predicate list satisfies the given goal.
-    fn does_satisfy(self, db: &dyn HirAnalysisDb, goal: Goal) -> bool {
-        self.predicates(db).contains(&goal)
+    /// Returns the assumptions that are derived by sub trait relations.
+    fn derived_assumptions(&self) -> FxHashSet<PredicateId> {
+        let mut assumptions = FxHashSet::default();
+        for &pred in self.assumptions.predicates(self.db) {
+            let trait_ = pred.trait_inst(self.db);
+            let ty = pred.ty(self.db);
+            let Ok(super_traits) = collect_super_traits(self.db, trait_.def(self.db)) else {
+                continue;
+            };
+
+            for &super_trait in super_traits
+                .clone()
+                .instantiate(self.db, trait_.args(self.db))
+                .iter()
+            {
+                let super_pred = PredicateId::new(self.db, ty, super_trait);
+                assumptions.insert(super_pred);
+            }
+        }
+
+        assumptions
     }
 }
 

@@ -185,12 +185,12 @@ pub(crate) fn lower_trait_ref(
 pub(crate) fn collect_implementor_methods(
     db: &dyn HirAnalysisDb,
     implementor: Implementor,
-) -> BTreeMap<IdentId, FuncDef> {
+) -> BTreeMap<IdentId, Binder<FuncDef>> {
     let mut methods = BTreeMap::default();
 
     for method in implementor.hir_impl_trait(db).methods(db.as_hir_db()) {
         if let Some(func) = lower_func(db, method) {
-            methods.insert(func.name(db), func);
+            methods.insert(func.name(db), Binder::bind(func));
         }
     }
 
@@ -225,7 +225,7 @@ struct TraitBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: Trait,
     param_set: GenericParamTypeSet,
-    methods: BTreeMap<IdentId, TraitMethod>,
+    methods: BTreeMap<IdentId, Binder<TraitMethod>>,
 }
 
 impl<'db> TraitBuilder<'db> {
@@ -264,7 +264,9 @@ impl<'db> TraitBuilder<'db> {
             let trait_method = TraitMethod(func);
             // We can simply ignore the conflict here because it's already handled by the
             // name resolution.
-            self.methods.entry(name).or_insert(trait_method);
+            self.methods
+                .entry(name)
+                .or_insert(Binder::bind(trait_method));
         }
     }
 }

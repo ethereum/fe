@@ -18,11 +18,12 @@ use salsa::function::Configuration;
 use super::{
     const_ty::ConstTyId,
     constraint::{
-        collect_impl_block_constraints, collect_super_traits, AssumptionListId, SuperTraitCycle,
+        collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
+        collect_super_traits, AssumptionListId, SuperTraitCycle,
     },
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
-    trait_def::{ingot_trait_env, Implementor, TraitDef, TraitMethod},
+    trait_def::{ingot_trait_env, Implementor, TraitDef, TraitInstId, TraitMethod},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyData, TyId},
     ty_lower::{collect_generic_params, lower_adt, lower_kind, GenericParamOwnerId},
@@ -32,6 +33,7 @@ use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
     ty::{
         binder::Binder,
+        constraint::collect_trait_constraints,
         diagnostics::{
             AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
             ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
@@ -198,7 +200,7 @@ pub struct DefAnalyzer<'db> {
 impl<'db> DefAnalyzer<'db> {
     fn for_adt(db: &'db dyn HirAnalysisDb, adt: AdtRefId) -> Self {
         let def = lower_adt(db, adt);
-        let assumptions = def.constraints(db);
+        let assumptions = collect_adt_constraints(db, def).instantiate_identity();
         Self {
             db,
             def: def.into(),
@@ -211,7 +213,7 @@ impl<'db> DefAnalyzer<'db> {
 
     fn for_trait(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
         let def = lower_trait(db, trait_);
-        let assumptions = def.constraints(db);
+        let assumptions = collect_trait_constraints(db, def).instantiate_identity();
         Self {
             db,
             def: def.into(),
@@ -223,7 +225,7 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     fn for_impl(db: &'db dyn HirAnalysisDb, impl_: HirImpl, ty: TyId) -> Self {
-        let assumptions = collect_impl_block_constraints(db, impl_);
+        let assumptions = collect_impl_block_constraints(db, impl_).instantiate_identity();
         let def = DefKind::Impl(impl_);
         Self {
             db,
@@ -249,7 +251,7 @@ impl<'db> DefAnalyzer<'db> {
 
     fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef) -> Self {
         let hir_db = db.as_hir_db();
-        let assumptions = func.constraints(db);
+        let assumptions = collect_func_def_constraints(db, func).instantiate_identity();
         let self_ty = match func.hir_func(db).scope().parent(hir_db).unwrap() {
             ScopeId::Item(ItemKind::Trait(trait_)) => lower_trait(db, trait_).self_param(db).into(),
             ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => {
@@ -740,7 +742,10 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         }
 
         let def = std::mem::replace(&mut self.def, func.into());
-        let constraints = std::mem::replace(&mut self.assumptions, func.constraints(self.db));
+        let constraints = std::mem::replace(
+            &mut self.assumptions,
+            collect_func_def_constraints(self.db, func).instantiate_identity(),
+        );
 
         walk_func(self, ctxt, hir_func);
 
@@ -1112,17 +1117,12 @@ fn analyze_impl_trait_specific_error(
 
     // 6. Checks if the implementor ty satisfies the trait constraints required by
     //    the trait.
-    let mut subst = trait_inst.subst_table(db);
     let trait_def = trait_inst.def(db);
-    subst.insert(trait_def.self_param(db), ty);
-    let trait_constraints = trait_def.constraints(db);
+    let trait_constraints =
+        collect_trait_constraints(db, trait_def).instantiate(db, trait_inst.args(db));
     let assumptions = implementor.instantiate_identity().constraints(db);
 
-    for goal in trait_constraints.predicates(db) {
-        if !goal.ty(db).contains_trait_self(db) {
-            continue;
-        }
-        let goal = goal.apply_subst(db, &mut subst);
+    for &goal in trait_constraints.predicates(db) {
         match is_goal_satisfiable(db, goal, assumptions) {
             GoalSatisfiability::Satisfied => {}
             GoalSatisfiability::NotSatisfied(_) => {
@@ -1174,8 +1174,8 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         let trait_methods = self.implementor.trait_def(self.db).methods(self.db);
         let mut required_methods: BTreeSet<_> = trait_methods
             .iter()
-            .filter_map(|(name, trait_method)| {
-                if !trait_method.has_default_impl(self.db) {
+            .filter_map(|(name, &trait_method)| {
+                if !trait_method.skip_binder().has_default_impl(self.db) {
                     Some(*name)
                 } else {
                     None
@@ -1201,7 +1201,11 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
             };
 
             required_methods.remove(name);
-            self.analyze_method(*impl_method, *trait_method);
+            self.analyze_trait_method(
+                *impl_method,
+                *trait_method,
+                self.implementor.trait_(self.db),
+            );
         }
 
         if !required_methods.is_empty() {
@@ -1221,38 +1225,39 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         self.diags
     }
 
-    fn analyze_method(&mut self, impl_method: FuncDef, expected_method: TraitMethod) {
-        // TODO: We need to check label integrity.
-        let mut subst = self.implementor.subst_table(self.db);
+    fn analyze_trait_method(
+        &mut self,
+        impl_method: Binder<FuncDef>,
+        trait_method: Binder<TraitMethod>,
+        trait_inst: TraitInstId,
+    ) {
+        let impl_method = impl_method.instantiate_identity();
+        let trait_method_def = trait_method.instantiate_identity();
 
-        let mut is_err = false;
         let hir_impl_method = impl_method.hir_func(self.db);
-        let hir_expected_method = expected_method.0.hir_func(self.db);
+        let hir_expected_method = trait_method_def.0.hir_func(self.db);
 
         // Checks if the number of parameters are the same.
-        let method_params = impl_method.original_params(self.db);
-        let expected_params = expected_method.0.original_params(self.db);
-        if method_params.len() != expected_params.len() {
+        let impl_params = impl_method.original_params(self.db);
+        let trait_params = trait_method_def.0.original_params(self.db);
+        if impl_params.len() != trait_params.len() {
             self.diags.push(
                 ImplDiag::method_param_num_mismatch(
                     hir_impl_method.lazy_span().name().into(),
-                    expected_params.len(),
-                    method_params.len(),
+                    trait_params.len(),
+                    impl_params.len(),
                 )
                 .into(),
             );
-            is_err = true;
+            return;
         };
 
-        if is_err {
-            return;
-        }
+        let mut is_err = false;
 
         // Checks if the generic parameter kinds are the same.
-        for (idx, (&expected_param, &method_param)) in
-            expected_params.iter().zip(method_params).enumerate()
+        for (idx, (&trait_param, &method_param)) in trait_params.iter().zip(impl_params).enumerate()
         {
-            let expected_kind = expected_param.kind(self.db);
+            let expected_kind = trait_param.kind(self.db);
             let given_kind = method_param.kind(self.db);
 
             if expected_kind != given_kind {
@@ -1266,23 +1271,28 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                 );
                 is_err = true;
             }
-
-            subst.insert(expected_param, method_param);
         }
 
         if is_err {
             return;
         }
 
-        let expected_arg_tys = expected_method.0.arg_tys(self.db);
+        let trait_m_args: Vec<_> = trait_inst
+            .args(self.db)
+            .iter()
+            .chain(impl_params.iter())
+            .copied()
+            .collect();
+        let trait_method = trait_method.instantiate(self.db, &trait_m_args);
+        let trait_arg_tys = trait_method.0.arg_tys(self.db);
         let method_arg_tys = impl_method.arg_tys(self.db);
 
         // Checks if the arity are the same.
-        if expected_arg_tys.len() != method_arg_tys.len() {
+        if trait_arg_tys.len() != method_arg_tys.len() {
             self.diags.push(
                 ImplDiag::method_arg_num_mismatch(
                     hir_impl_method.lazy_span().params_moved().into(),
-                    expected_arg_tys.len(),
+                    trait_arg_tys.len(),
                     method_arg_tys.len(),
                 )
                 .into(),
@@ -1295,7 +1305,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         }
 
         // Checks if the argument labels are the same.
-        for (idx, (expected_param, method_param)) in expected_method
+        for (idx, (expected_param, method_param)) in trait_method
             .0
             .hir_params(self.db)
             .iter()
@@ -1337,11 +1347,10 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         }
 
         // Checks if the argument types are the same.
-        for (idx, (expected_arg_ty, &method_arg_ty)) in
-            expected_arg_tys.iter().zip(method_arg_tys).enumerate()
+        for (idx, (&trait_arg_ty, &method_arg_ty)) in
+            trait_arg_tys.iter().zip(method_arg_tys).enumerate()
         {
-            let expected_arg_ty = expected_arg_ty.apply_subst(self.db, &mut subst);
-            if !method_arg_ty.contains_invalid(self.db) && expected_arg_ty != method_arg_ty {
+            if !method_arg_ty.contains_invalid(self.db) && trait_arg_ty != method_arg_ty {
                 let span = impl_method
                     .hir_func(self.db)
                     .lazy_span()
@@ -1349,7 +1358,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                     .param(idx)
                     .into();
                 self.diags.push(
-                    ImplDiag::method_arg_ty_mismatch(self.db, span, expected_arg_ty, method_arg_ty)
+                    ImplDiag::method_arg_ty_mismatch(self.db, span, trait_arg_ty, method_arg_ty)
                         .into(),
                 );
                 is_err = true;
@@ -1357,10 +1366,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         }
 
         // Checks if the return type is the same.
-        let expected_ret_ty = expected_method
-            .0
-            .ret_ty(self.db)
-            .apply_subst(self.db, &mut subst);
+        let expected_ret_ty = trait_method.0.ret_ty(self.db);
         let method_ret_ty = impl_method.ret_ty(self.db);
         if !method_ret_ty.contains_invalid(self.db) && expected_ret_ty != method_ret_ty {
             self.diags.push(
@@ -1380,19 +1386,18 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
             return;
         }
 
-        // Check if the method constraints are stricter than the trait constraints.
+        // Checks if the method constraints are stricter than the trait constraints.
         // This check is performed by checking if the `impl_method` constraints are
         // satisfied under the assumptions that is obtained from the `expected_method`
         // constraints.
-        let expected_constraints = expected_method
-            .0
-            .constraints(self.db)
-            .apply_subst(self.db, &mut subst);
-        let method_constraints = impl_method.constraints(self.db);
+        let trait_m_constraints = collect_func_def_constraints(self.db, trait_method.0)
+            .instantiate(self.db, &trait_m_args);
+        let impl_m_constraints =
+            collect_func_def_constraints(self.db, impl_method).instantiate_identity();
         let mut unsatisfied_goals = vec![];
-        for &goal in method_constraints.predicates(self.db) {
+        for &goal in impl_m_constraints.predicates(self.db) {
             if !matches!(
-                is_goal_satisfiable(self.db, goal, expected_constraints),
+                is_goal_satisfiable(self.db, goal, trait_m_constraints),
                 GoalSatisfiability::Satisfied
             ) {
                 unsatisfied_goals.push(goal);

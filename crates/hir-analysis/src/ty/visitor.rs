@@ -2,7 +2,8 @@ use std::collections::BTreeSet;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
-    trait_def::{Implementor, TraitInstId},
+    constraint::{PredicateId, PredicateListId},
+    trait_def::{Implementor, TraitInstId, TraitMethod},
     ty_def::{AdtDef, FuncDef, InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
 };
 use crate::HirAnalysisDb;
@@ -165,5 +166,45 @@ impl<'db> TypeVisitable<'db> for Implementor {
         let db = visitor.db();
         self.ty(db).visit_with(visitor);
         self.params(db).visit_with(visitor);
+    }
+}
+
+impl<'db> TypeVisitable<'db> for FuncDef {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TypeVisitor<'db>,
+    {
+        let db = visitor.db();
+        self.params(db).visit_with(visitor);
+        self.arg_tys(db).visit_with(visitor);
+        self.ret_ty(db).visit_with(visitor);
+    }
+}
+
+impl<'db> TypeVisitable<'db> for TraitMethod {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: super::visitor::TypeVisitor<'db>,
+    {
+        self.0.visit_with(visitor);
+    }
+}
+
+impl<'db> TypeVisitable<'db> for PredicateId {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TypeVisitor<'db>,
+    {
+        self.ty(visitor.db()).visit_with(visitor);
+        self.trait_inst(visitor.db()).visit_with(visitor);
+    }
+}
+
+impl<'db> TypeVisitable<'db> for PredicateListId {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TypeVisitor<'db>,
+    {
+        self.predicates(visitor.db()).visit_with(visitor)
     }
 }

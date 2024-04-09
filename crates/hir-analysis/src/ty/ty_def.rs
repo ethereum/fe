@@ -598,10 +598,6 @@ impl AdtDef {
     ) -> Option<GenericParamOwnerId> {
         self.adt_ref(db).generic_owner_id(db)
     }
-
-    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
-        collect_adt_constraints(db, self)
-    }
 }
 
 #[salsa::tracked]
@@ -610,7 +606,7 @@ pub struct FuncDef {
 
     pub name: IdentId,
 
-    params_set: GenericParamTypeSet,
+    pub params_set: GenericParamTypeSet,
 
     /// Argument types of the function.
     #[return_ref]
@@ -645,10 +641,6 @@ impl FuncDef {
         } else {
             None
         }
-    }
-
-    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
-        collect_func_def_constraints(db, self)
     }
 
     pub(super) fn hir_params(self, db: &dyn HirAnalysisDb) -> &[HirFuncParam] {
