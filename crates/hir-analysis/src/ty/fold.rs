@@ -1,8 +1,9 @@
 use std::collections::BTreeSet;
 
 use super::{
-    trait_def::{Implementor, TraitInstId},
-    ty_def::{TyData, TyId},
+    constraint::{PredicateId, PredicateListId},
+    trait_def::{Implementor, TraitInstId, TraitMethod},
+    ty_def::{FuncDef, TyData, TyId},
     visitor::TypeVisitable,
 };
 use crate::HirAnalysisDb;
@@ -65,7 +66,7 @@ where
         F: TypeFolder<'db>,
     {
         self.into_iter()
-            .map(|ty| ty.super_fold_with(folder))
+            .map(|inner| inner.fold_with(folder))
             .collect()
     }
 }
@@ -78,9 +79,7 @@ where
     where
         F: TypeFolder<'db>,
     {
-        self.into_iter()
-            .map(|ty| ty.super_fold_with(folder))
-            .collect()
+        self.into_iter().map(|ty| ty.fold_with(folder)).collect()
     }
 }
 
@@ -117,5 +116,64 @@ impl<'db> TypeFoldable<'db> for Implementor {
         let hir_impl_trait = self.hir_impl_trait(db);
 
         Implementor::new(db, trait_inst, ty, params, hir_impl_trait)
+    }
+}
+
+impl<'db> TypeFoldable<'db> for FuncDef {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TypeFolder<'db>,
+    {
+        let db = folder.db();
+        let arg_tys = self
+            .arg_tys(db)
+            .iter()
+            .map(|ty| ty.fold_with(folder))
+            .collect();
+        let ret_ty = self.ret_ty(db).fold_with(folder);
+
+        FuncDef::new(
+            db,
+            self.hir_func(db),
+            self.name(db),
+            self.params_set(db),
+            arg_tys,
+            self.ret_ty(db),
+        )
+    }
+}
+
+impl<'db> TypeFoldable<'db> for TraitMethod {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TypeFolder<'db>,
+    {
+        TraitMethod(self.0.fold_with(folder))
+    }
+}
+
+impl<'db> TypeFoldable<'db> for PredicateId {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TypeFolder<'db>,
+    {
+        let ty = self.ty(folder.db()).fold_with(folder);
+        let trait_inst = self.trait_inst(folder.db()).fold_with(folder);
+        Self::new(folder.db(), ty, trait_inst)
+    }
+}
+
+impl<'db> TypeFoldable<'db> for PredicateListId {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TypeFolder<'db>,
+    {
+        let predicates = self
+            .predicates(folder.db())
+            .iter()
+            .map(|pred| pred.fold_with(folder))
+            .collect();
+
+        Self::new(folder.db(), predicates, self.ingot(folder.db()))
     }
 }

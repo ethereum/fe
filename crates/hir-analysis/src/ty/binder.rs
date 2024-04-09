@@ -10,13 +10,13 @@ use super::{
 };
 use crate::HirAnalysisDb;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Binder<T> {
     value: T,
 }
 
 impl<T> Binder<T> {
-    pub fn bind(value: T) -> Self {
+    pub const fn bind(value: T) -> Self {
         Binder { value }
     }
 }

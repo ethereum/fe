@@ -11,8 +11,7 @@ use rustc_hash::FxHashMap;
 use super::{
     binder::Binder,
     constraint::{
-        collect_super_traits, collect_trait_constraints, trait_inst_constraints, AssumptionListId,
-        ConstraintListId,
+        collect_super_traits, collect_trait_constraints, AssumptionListId, ConstraintListId,
     },
     constraint_solver::{check_trait_inst_sat, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
@@ -20,6 +19,7 @@ use super::{
     ty_def::{FuncDef, Kind, Subst, TyId},
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
+    visitor::TypeVisitable,
 };
 use crate::{
     ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
@@ -184,18 +184,11 @@ impl Implementor {
     /// Returns the constraints that the implementor requires when the
     /// implementation is selected.
     pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
-        collect_implementor_constraints(db, self)
+        collect_implementor_constraints(db, self).instantiate(db, self.params(db))
     }
 
-    pub(super) fn methods(self, db: &dyn HirAnalysisDb) -> &BTreeMap<IdentId, FuncDef> {
+    pub(super) fn methods(self, db: &dyn HirAnalysisDb) -> &BTreeMap<IdentId, Binder<FuncDef>> {
         collect_implementor_methods(db, self)
-    }
-
-    pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> FxHashMap<TyId, TyId> {
-        let mut table = self.trait_(db).subst_table(db);
-
-        table.insert(self.trait_(db).def(db).self_param(db), self.ty(db));
-        table
     }
 }
 
@@ -264,23 +257,6 @@ impl TraitInstId {
         self.def(db).ingot(db)
     }
 
-    /// Returns subst from the trait definition parameter to this instantiated
-    /// parameters.
-    pub(super) fn subst_table(self, db: &dyn HirAnalysisDb) -> FxHashMap<TyId, TyId> {
-        assert!(self.def(db).params(db).len() == self.args(db).len());
-
-        let mut table = FxHashMap::default();
-        for (from, to) in self.def(db).params(db).iter().zip(self.args(db)) {
-            table.insert(*from, *to);
-        }
-
-        table
-    }
-
-    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
-        trait_inst_constraints(db, self)
-    }
-
     pub(super) fn emit_sat_diag(
         self,
         db: &dyn HirAnalysisDb,
@@ -307,7 +283,7 @@ pub struct TraitDef {
     #[return_ref]
     pub(crate) param_set: GenericParamTypeSet,
     #[return_ref]
-    pub methods: BTreeMap<IdentId, TraitMethod>,
+    pub methods: BTreeMap<IdentId, Binder<TraitMethod>>,
 }
 
 impl TraitDef {
@@ -345,13 +321,9 @@ impl TraitDef {
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
-    pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &BTreeSet<TraitInstId> {
-        const _EMPTY: &BTreeSet<TraitInstId> = &BTreeSet::new();
+    pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &Binder<BTreeSet<TraitInstId>> {
+        const _EMPTY: &Binder<BTreeSet<TraitInstId>> = &Binder::bind(BTreeSet::new());
         collect_super_traits(db, self).as_ref().unwrap_or(_EMPTY)
-    }
-
-    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
-        collect_trait_constraints(db, self)
     }
 
     fn name(self, db: &dyn HirAnalysisDb) -> Option<&str> {

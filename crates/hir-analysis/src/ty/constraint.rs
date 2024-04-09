@@ -20,6 +20,7 @@ use super::{
 };
 use crate::{
     ty::{
+        binder::Binder,
         trait_lower::{lower_impl_trait, lower_trait},
         ty_def::{free_inference_keys, TyVarSort},
         unify::InferenceKey,
@@ -42,22 +43,17 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintList
         }
     };
 
-    let mut subst = FxHashMap::default();
+    let mut args = args.to_vec();
     let mut arg_idx = 0;
-    for (&param, &arg) in params.iter().zip(args) {
-        subst.insert(param, arg);
-        arg_idx += 1;
-    }
 
     // Generalize unbound type parameters.
-    for &arg in params.iter().skip(arg_idx) {
-        let key = InferenceKey(arg_idx as u32);
+    for &arg in params.iter().skip(args.len()) {
+        let key = InferenceKey(args.len() as u32);
         let ty_var = TyId::ty_var(db, TyVarSort::General, arg.kind(db).clone(), key);
-        subst.insert(arg, ty_var);
-        arg_idx += 1;
+        args.push(ty_var);
     }
 
-    let constraints = base_constraints.apply_subst(db, &mut subst);
+    let constraints = base_constraints.instantiate(db, &args);
 
     // If the constraint type contains unbound type parameters, we just ignore it.
     let mut new_constraints = BTreeSet::new();
@@ -71,32 +67,13 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintList
     ConstraintListId::new(db, new_constraints, ingot)
 }
 
-#[salsa::tracked]
-pub(crate) fn trait_inst_constraints(
-    db: &dyn HirAnalysisDb,
-    trait_inst: TraitInstId,
-) -> ConstraintListId {
-    let def_constraints = collect_trait_constraints(db, trait_inst.def(db));
-    let mut subst = trait_inst.subst_table(db);
-
-    let constraint = def_constraints.apply_subst(db, &mut subst);
-    let mut new_constraints = BTreeSet::new();
-    for &pred in constraint.predicates(db) {
-        if free_inference_keys(db, pred.ty(db)).is_empty() {
-            new_constraints.insert(pred);
-        }
-    }
-
-    let ingot = constraint.ingot(db);
-    ConstraintListId::new(db, new_constraints, ingot)
-}
-
 /// Collect super traits of the given trait.
+/// The returned trait ref is bound by the given trait's generic parameters.
 #[salsa::tracked(return_ref, recovery_fn = recover_collect_super_traits)]
 pub(crate) fn collect_super_traits(
     db: &dyn HirAnalysisDb,
     trait_: TraitDef,
-) -> Result<BTreeSet<TraitInstId>, SuperTraitCycle> {
+) -> Result<Binder<BTreeSet<TraitInstId>>, SuperTraitCycle> {
     let collector = SuperTraitCollector::new(db, trait_);
     let insts = collector.collect();
 
@@ -109,26 +86,10 @@ pub(crate) fn collect_super_traits(
     }
 
     if cycles.is_empty() {
-        Ok(insts)
+        Ok(Binder::bind(insts))
     } else {
         Err(SuperTraitCycle(cycles))
     }
-}
-
-/// Returns a list of super trait instances of the given trait instance.
-#[salsa::tracked(return_ref)]
-pub(crate) fn super_trait_insts(
-    db: &dyn HirAnalysisDb,
-    trait_inst: TraitInstId,
-) -> BTreeSet<TraitInstId> {
-    let trait_def = trait_inst.def(db);
-    let super_traits = trait_def.super_traits(db);
-    let mut subst = trait_inst.subst_table(db);
-
-    super_traits
-        .iter()
-        .map(|trait_| trait_.apply_subst(db, &mut subst))
-        .collect()
 }
 
 /// Collect trait constraints that are specified by the given trait definition.
@@ -138,31 +99,34 @@ pub(crate) fn super_trait_insts(
 pub(crate) fn collect_trait_constraints(
     db: &dyn HirAnalysisDb,
     trait_: TraitDef,
-) -> ConstraintListId {
+) -> Binder<ConstraintListId> {
     let hir_trait = trait_.trait_(db);
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_trait.into()));
 
-    collector.collect()
+    Binder::bind(collector.collect())
 }
 
 /// Collect constraints that are specified by the given ADT definition.
 #[salsa::tracked]
-pub(crate) fn collect_adt_constraints(db: &dyn HirAnalysisDb, adt: AdtDef) -> ConstraintListId {
+pub(crate) fn collect_adt_constraints(
+    db: &dyn HirAnalysisDb,
+    adt: AdtDef,
+) -> Binder<ConstraintListId> {
     let Some(owner) = adt.as_generic_param_owner(db) else {
-        return ConstraintListId::empty_list(db);
+        return Binder::bind(ConstraintListId::empty_list(db));
     };
     let collector = ConstraintCollector::new(db, owner);
 
-    collector.collect()
+    Binder::bind(collector.collect())
 }
 
 #[salsa::tracked]
 pub(crate) fn collect_impl_block_constraints(
     db: &dyn HirAnalysisDb,
     impl_: Impl,
-) -> ConstraintListId {
+) -> Binder<ConstraintListId> {
     let owner = GenericParamOwnerId::new(db, impl_.into());
-    ConstraintCollector::new(db, owner).collect()
+    Binder::bind(ConstraintCollector::new(db, owner).collect())
 }
 
 /// Collect constraints that are specified by the given implementor(i.e., impl
@@ -171,22 +135,23 @@ pub(crate) fn collect_impl_block_constraints(
 pub(crate) fn collect_implementor_constraints(
     db: &dyn HirAnalysisDb,
     implementor: Implementor,
-) -> ConstraintListId {
+) -> Binder<ConstraintListId> {
     let impl_trait = implementor.hir_impl_trait(db);
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, impl_trait.into()));
 
-    collector.collect()
+    Binder::bind(collector.collect())
 }
 
 #[salsa::tracked]
 pub(crate) fn collect_func_def_constraints(
     db: &dyn HirAnalysisDb,
     func: FuncDef,
-) -> ConstraintListId {
+) -> Binder<ConstraintListId> {
     let hir_func = func.hir_func(db);
 
-    let func_constraints =
-        ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect();
+    let func_constraints = Binder::bind(
+        ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect(),
+    );
 
     let parent_constraints = match hir_func.scope().parent_item(db.as_hir_db()) {
         Some(ItemKind::Trait(trait_)) => collect_trait_constraints(db, lower_trait(db, trait_)),
@@ -203,29 +168,11 @@ pub(crate) fn collect_func_def_constraints(
         _ => return func_constraints,
     };
 
-    func_constraints.merge(db, parent_constraints)
-}
-
-/// Returns a list of assumptions derived from the given assumptions by looking
-/// up super traits.
-#[salsa::tracked(return_ref)]
-pub(crate) fn compute_super_assumptions(
-    db: &dyn HirAnalysisDb,
-    assumptions: AssumptionListId,
-) -> AssumptionListId {
-    let ingot = assumptions.ingot(db);
-    let mut super_assumptions = BTreeSet::new();
-
-    for pred in assumptions.predicates(db) {
-        let ty = pred.ty(db);
-        let inst = pred.trait_inst(db);
-        for &super_inst in super_trait_insts(db, inst) {
-            let super_pred = PredicateId::new(db, ty, super_inst);
-            super_assumptions.insert(super_pred);
-        }
-    }
-
-    AssumptionListId::new(db, super_assumptions, ingot)
+    Binder::bind(
+        func_constraints
+            .instantiate_identity()
+            .merge(db, parent_constraints.instantiate_identity()),
+    )
 }
 
 /// Describes a predicate indicating `ty` implements `trait_`.
@@ -247,27 +194,6 @@ impl PredicateId {
         let ty = self.ty(db);
         let trait_ = self.trait_inst(db);
         format!("{}: {}", ty.pretty_print(db), trait_.pretty_print(db))
-    }
-}
-
-impl<'db> TypeVisitable<'db> for PredicateId {
-    fn visit_with<V>(&self, visitor: &mut V)
-    where
-        V: TypeVisitor<'db>,
-    {
-        self.ty(visitor.db()).visit_with(visitor);
-        self.trait_inst(visitor.db()).visit_with(visitor);
-    }
-}
-
-impl<'db> TypeFoldable<'db> for PredicateId {
-    fn super_fold_with<F>(self, folder: &mut F) -> Self
-    where
-        F: TypeFolder<'db>,
-    {
-        let ty = self.ty(folder.db()).super_fold_with(folder);
-        let trait_inst = self.trait_inst(folder.db()).super_fold_with(folder);
-        Self::new(folder.db(), ty, trait_inst)
     }
 }
 
@@ -315,30 +241,6 @@ impl PredicateListId {
     }
 }
 
-impl<'db> TypeVisitable<'db> for PredicateListId {
-    fn visit_with<V>(&self, visitor: &mut V)
-    where
-        V: TypeVisitor<'db>,
-    {
-        self.predicates(visitor.db()).visit_with(visitor)
-    }
-}
-
-impl<'db> TypeFoldable<'db> for PredicateListId {
-    fn super_fold_with<F>(self, folder: &mut F) -> Self
-    where
-        F: TypeFolder<'db>,
-    {
-        let predicates = self
-            .predicates(folder.db())
-            .iter()
-            .map(|pred| pred.super_fold_with(folder))
-            .collect();
-
-        Self::new(folder.db(), predicates, self.ingot(folder.db()))
-    }
-}
-
 pub(super) type AssumptionListId = PredicateListId;
 pub(super) type ConstraintListId = PredicateListId;
 
@@ -346,7 +248,7 @@ pub(crate) fn recover_collect_super_traits(
     _db: &dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
     _trait_: TraitDef,
-) -> Result<BTreeSet<TraitInstId>, SuperTraitCycle> {
+) -> Result<Binder<BTreeSet<TraitInstId>>, SuperTraitCycle> {
     let mut trait_cycle = BTreeSet::new();
     for key in cycle.participant_keys() {
         trait_cycle.insert(collect_super_traits::key_from_id(key.key_index()));
@@ -442,7 +344,13 @@ impl<'db> ConstraintCollector<'db> {
         if let GenericParamOwner::Trait(trait_) = self.owner.data(self.db) {
             let trait_def = lower_trait(self.db, trait_);
             let self_param = trait_def.self_param(self.db);
-            for &inst in trait_def.super_traits(self.db).iter() {
+            let super_traits = trait_def
+                .super_traits(self.db)
+                .clone()
+                .instantiate(self.db, trait_def.params(self.db));
+
+            for &super_trait in super_traits.iter() {
+                let inst = super_trait;
                 self.push_predicate(self_param, inst)
             }
         }
@@ -490,7 +398,7 @@ impl<'db> ConstraintCollector<'db> {
             let ty = lower_hir_ty(self.db, hir_ty, self.owner.scope(self.db));
 
             // We don't need to collect super traits, please refer to
-            // `collect_super_traits` // function for details.
+            // [`collect_super_traits`] function for details.
             if ty.is_invalid(self.db) || ty.is_trait_self(self.db) {
                 return;
             }
