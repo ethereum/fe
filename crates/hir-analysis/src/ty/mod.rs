@@ -31,6 +31,7 @@ pub mod visitor;
 
 pub(crate) mod constraint;
 
+mod method_cmp;
 mod unify;
 
 /// An analysis pass for type definitions.

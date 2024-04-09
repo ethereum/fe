@@ -23,6 +23,7 @@ use super::{
     },
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
+    method_cmp::compare_impl_method,
     trait_def::{ingot_trait_env, Implementor, TraitDef, TraitInstId, TraitMethod},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{AdtDef, AdtRef, AdtRefId, FuncDef, InvalidCause, TyData, TyId},
@@ -1183,8 +1184,8 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
             })
             .collect();
 
-        for (name, impl_method) in impl_methods {
-            let Some(trait_method) = trait_methods.get(name) else {
+        for (name, impl_m) in impl_methods {
+            let Some(trait_m) = trait_methods.get(name) else {
                 self.diags.push(
                     ImplDiag::method_not_defined_in_trait(
                         self.implementor
@@ -1200,12 +1201,15 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                 continue;
             };
 
-            required_methods.remove(name);
-            self.analyze_trait_method(
-                *impl_method,
-                *trait_method,
+            compare_impl_method(
+                self.db,
+                *impl_m,
+                *trait_m,
                 self.implementor.trait_(self.db),
+                &mut self.diags,
             );
+
+            required_methods.remove(name);
         }
 
         if !required_methods.is_empty() {
@@ -1223,198 +1227,6 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         }
 
         self.diags
-    }
-
-    fn analyze_trait_method(
-        &mut self,
-        impl_method: Binder<FuncDef>,
-        trait_method: Binder<TraitMethod>,
-        trait_inst: TraitInstId,
-    ) {
-        let impl_method = impl_method.instantiate_identity();
-        let trait_method_def = trait_method.instantiate_identity();
-
-        let hir_impl_method = impl_method.hir_func(self.db);
-        let hir_expected_method = trait_method_def.0.hir_func(self.db);
-
-        // Checks if the number of parameters are the same.
-        let impl_params = impl_method.original_params(self.db);
-        let trait_params = trait_method_def.0.original_params(self.db);
-        if impl_params.len() != trait_params.len() {
-            self.diags.push(
-                ImplDiag::method_param_num_mismatch(
-                    hir_impl_method.lazy_span().name().into(),
-                    trait_params.len(),
-                    impl_params.len(),
-                )
-                .into(),
-            );
-            return;
-        };
-
-        let mut is_err = false;
-
-        // Checks if the generic parameter kinds are the same.
-        for (idx, (&trait_param, &method_param)) in trait_params.iter().zip(impl_params).enumerate()
-        {
-            let expected_kind = trait_param.kind(self.db);
-            let given_kind = method_param.kind(self.db);
-
-            if expected_kind != given_kind {
-                let span = hir_impl_method
-                    .lazy_span()
-                    .generic_params()
-                    .param(idx)
-                    .into();
-                self.diags.push(
-                    ImplDiag::method_param_kind_mismatch(span, expected_kind, given_kind).into(),
-                );
-                is_err = true;
-            }
-        }
-
-        if is_err {
-            return;
-        }
-
-        let trait_m_args: Vec<_> = trait_inst
-            .args(self.db)
-            .iter()
-            .chain(impl_params.iter())
-            .copied()
-            .collect();
-        let trait_method = trait_method.instantiate(self.db, &trait_m_args);
-        let trait_arg_tys = trait_method.0.arg_tys(self.db);
-        let method_arg_tys = impl_method.arg_tys(self.db);
-
-        // Checks if the arity are the same.
-        if trait_arg_tys.len() != method_arg_tys.len() {
-            self.diags.push(
-                ImplDiag::method_arg_num_mismatch(
-                    hir_impl_method.lazy_span().params_moved().into(),
-                    trait_arg_tys.len(),
-                    method_arg_tys.len(),
-                )
-                .into(),
-            );
-            is_err = true;
-        }
-
-        if is_err {
-            return;
-        }
-
-        // Checks if the argument labels are the same.
-        for (idx, (expected_param, method_param)) in trait_method
-            .0
-            .hir_params(self.db)
-            .iter()
-            .zip(impl_method.hir_params(self.db))
-            .enumerate()
-        {
-            let Some(expected_label) = expected_param
-                .label
-                .or_else(|| expected_param.name.to_opt())
-            else {
-                continue;
-            };
-
-            let Some(method_label) = method_param.label.or_else(|| method_param.name.to_opt())
-            else {
-                continue;
-            };
-
-            if expected_label != method_label {
-                let primary = hir_impl_method.lazy_span().params_moved().param(idx).into();
-                let sub = hir_expected_method
-                    .lazy_span()
-                    .params_moved()
-                    .param(idx)
-                    .into();
-
-                self.diags.push(
-                    ImplDiag::method_arg_label_mismatch(
-                        self.db,
-                        primary,
-                        sub,
-                        expected_label,
-                        method_label,
-                    )
-                    .into(),
-                );
-                is_err = true;
-            }
-        }
-
-        // Checks if the argument types are the same.
-        for (idx, (&trait_arg_ty, &method_arg_ty)) in
-            trait_arg_tys.iter().zip(method_arg_tys).enumerate()
-        {
-            if !method_arg_ty.contains_invalid(self.db) && trait_arg_ty != method_arg_ty {
-                let span = impl_method
-                    .hir_func(self.db)
-                    .lazy_span()
-                    .params_moved()
-                    .param(idx)
-                    .into();
-                self.diags.push(
-                    ImplDiag::method_arg_ty_mismatch(self.db, span, trait_arg_ty, method_arg_ty)
-                        .into(),
-                );
-                is_err = true;
-            }
-        }
-
-        // Checks if the return type is the same.
-        let expected_ret_ty = trait_method.0.ret_ty(self.db);
-        let method_ret_ty = impl_method.ret_ty(self.db);
-        if !method_ret_ty.contains_invalid(self.db) && expected_ret_ty != method_ret_ty {
-            self.diags.push(
-                ImplDiag::method_ret_type_mismatch(
-                    self.db,
-                    impl_method.hir_func(self.db).lazy_span().ret_ty().into(),
-                    expected_ret_ty,
-                    method_ret_ty,
-                )
-                .into(),
-            );
-
-            is_err = true;
-        }
-
-        if is_err {
-            return;
-        }
-
-        // Checks if the method constraints are stricter than the trait constraints.
-        // This check is performed by checking if the `impl_method` constraints are
-        // satisfied under the assumptions that is obtained from the `expected_method`
-        // constraints.
-        let trait_m_constraints = collect_func_def_constraints(self.db, trait_method.0)
-            .instantiate(self.db, &trait_m_args);
-        let impl_m_constraints =
-            collect_func_def_constraints(self.db, impl_method).instantiate_identity();
-        let mut unsatisfied_goals = vec![];
-        for &goal in impl_m_constraints.predicates(self.db) {
-            if !matches!(
-                is_goal_satisfiable(self.db, goal, trait_m_constraints),
-                GoalSatisfiability::Satisfied
-            ) {
-                unsatisfied_goals.push(goal);
-            }
-        }
-
-        if !unsatisfied_goals.is_empty() {
-            unsatisfied_goals.sort_by_key(|goal| goal.ty(self.db).pretty_print(self.db));
-            self.diags.push(
-                ImplDiag::method_stricter_bound(
-                    self.db,
-                    impl_method.hir_func(self.db).lazy_span().name().into(),
-                    &unsatisfied_goals,
-                )
-                .into(),
-            );
-        }
     }
 }
 
