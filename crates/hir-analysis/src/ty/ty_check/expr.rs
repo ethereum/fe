@@ -15,7 +15,7 @@ use crate::{
             callable::Callable,
             path::{
                 resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
-                ResolvedPathInRecordInit, TermTy,
+                ResolvedPathInRecordInit,
             },
             TyChecker,
         },
@@ -281,9 +281,9 @@ impl<'db> TyChecker<'db> {
         };
 
         match resolve_path_in_expr(self, *path, expr) {
-            ResolvedPathInExpr::Ty(mut ty) => {
-                let ty = if ty.is_func(self.db) {
-                    ty.ty(self.db)
+            ResolvedPathInExpr::Ty(ty) => {
+                if ty.is_func(self.db) {
+                    ExprProp::new(ty, true)
                 } else {
                     // TODO: Refine this diagnostic.
                     let diag = BodyDiag::unit_variant_expected(
@@ -294,12 +294,11 @@ impl<'db> TyChecker<'db> {
                     .into();
                     FuncBodyDiagAccumulator::push(self.db, diag);
 
-                    TyId::invalid(self.db, InvalidCause::Other)
-                };
-                ExprProp::new(ty, true)
+                    ExprProp::invalid(self.db)
+                }
             }
 
-            ResolvedPathInExpr::Variant(mut variant) => {
+            ResolvedPathInExpr::Variant(variant) => {
                 let ty = if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
                     variant.ty(self.db)
                 } else {
@@ -343,20 +342,16 @@ impl<'db> TyChecker<'db> {
         };
 
         match resolve_path_in_record_init(self, *path, expr) {
-            ResolvedPathInRecordInit::Ty(mut ty_in_body) => {
-                let ty = if ty_in_body.is_record(self.db) {
-                    let ty = ty_in_body.ty(self.db);
-                    self.check_record_init_fields(ty_in_body, expr);
-                    ty
+            ResolvedPathInRecordInit::Ty(mut ty) => {
+                if ty.is_record(self.db) {
+                    self.check_record_init_fields(ty, expr);
+                    ExprProp::new(ty, true)
                 } else {
-                    let diag =
-                        BodyDiag::record_expected(self.db, span.path().into(), Some(ty_in_body));
+                    let diag = BodyDiag::record_expected(self.db, span.path().into(), Some(ty));
                     FuncBodyDiagAccumulator::push(self.db, diag.into());
 
-                    TyId::invalid(self.db, InvalidCause::Other)
-                };
-
-                ExprProp::new(ty, true)
+                    ExprProp::invalid(self.db)
+                }
             }
 
             ResolvedPathInRecordInit::Variant(mut variant) => {
@@ -430,9 +425,8 @@ impl<'db> TyChecker<'db> {
 
         match field {
             FieldIndex::Ident(label) => {
-                let mut ty_in_body = TermTy::new(self.db, &mut self.table, lhs_ty);
-                if let Some(ty) = ty_in_body.record_field_ty(self.db, *label) {
-                    return ExprProp::new(ty, typed_lhs.is_mut);
+                if let Some(field_ty) = lhs_ty.record_field_ty(self.db, *label) {
+                    return ExprProp::new(field_ty, typed_lhs.is_mut);
                 }
             }
 

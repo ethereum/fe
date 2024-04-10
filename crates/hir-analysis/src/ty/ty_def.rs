@@ -208,34 +208,40 @@ impl TyId {
     }
 
     pub(super) fn is_func(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::TyBase(TyBase::Func(_)))
+        matches!(self.base_ty(db).data(db), TyData::TyBase(TyBase::Func(_)))
     }
 
     pub(super) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self)
+        matches!(self.base_ty(db).data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self)
     }
 
     pub(super) fn is_ty_var(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::TyVar(_))
+        matches!(self.base_ty(db).data(db), TyData::TyVar(_))
     }
 
     pub(super) fn is_const_ty(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::ConstTy(_))
+        matches!(self.base_ty(db).data(db), TyData::ConstTy(_))
     }
 
     pub(super) fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(
-            self.data(db),
+            self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
         )
     }
 
     pub(super) fn is_array(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::TyBase(TyBase::Prim(PrimTy::Array)))
+        matches!(
+            self.base_ty(db).data(db),
+            TyData::TyBase(TyBase::Prim(PrimTy::Array))
+        )
     }
 
     pub(super) fn is_string(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::TyBase(TyBase::Prim(PrimTy::String)))
+        matches!(
+            self.base_ty(db).data(db),
+            TyData::TyBase(TyBase::Prim(PrimTy::String))
+        )
     }
 
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {

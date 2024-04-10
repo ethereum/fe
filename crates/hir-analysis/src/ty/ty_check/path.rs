@@ -102,7 +102,7 @@ pub(super) fn resolve_path_in_record_init(
         ResolvedPathInBody::Variant(variant) => ResolvedPathInRecordInit::Variant(variant),
 
         ResolvedPathInBody::Binding(..) => {
-            let diag = BodyDiag::record_expected::<TermTy>(tc.db, span, None);
+            let diag = BodyDiag::record_expected::<TyId>(tc.db, span, None);
             ResolvedPathInRecordInit::Diag(diag.into())
         }
 
@@ -118,7 +118,7 @@ pub(super) fn resolve_path_in_record_init(
 
 #[derive(Clone, Debug)]
 pub(super) enum ResolvedPathInPat {
-    Ty(TermTy),
+    Ty(TyId),
     Variant(ResolvedVariant),
     NewBinding(IdentId),
     Diag(FuncBodyDiag),
@@ -127,7 +127,7 @@ pub(super) enum ResolvedPathInPat {
 
 #[derive(Clone, Debug)]
 pub(super) enum ResolvedPathInExpr {
-    Ty(TermTy),
+    Ty(TyId),
     Variant(ResolvedVariant),
     Binding(LocalBinding),
     Diag(FuncBodyDiag),
@@ -136,63 +136,37 @@ pub(super) enum ResolvedPathInExpr {
 
 #[derive(Clone, Debug)]
 pub(super) enum ResolvedPathInRecordInit {
-    Ty(TermTy),
+    Ty(TyId),
     Variant(ResolvedVariant),
     Diag(FuncBodyDiag),
     Invalid,
 }
 
-#[derive(Clone, Debug)]
-pub struct TermTy {
-    ty: TyId,
-    path: PathId,
-}
-
-impl TermTy {
-    pub(crate) fn ty(&self, db: &dyn HirAnalysisDb) -> TyId {
-        self.ty
-    }
-
-    pub(crate) fn is_func(&self, db: &dyn HirAnalysisDb) -> bool {
-        let base = self.ty.decompose_ty_app(db).0;
-        base.is_func(db)
-    }
-
+impl TyId {
     pub(crate) fn adt_ref(&self, db: &dyn HirAnalysisDb) -> Option<AdtRefId> {
         self.adt_def(db).map(|def| def.adt_ref(db))
     }
 
     pub(crate) fn adt_def(&self, db: &dyn HirAnalysisDb) -> Option<AdtDef> {
-        let base = self.ty.decompose_ty_app(db).0;
+        let base = self.decompose_ty_app(db).0;
         match base.data(db) {
             TyData::TyBase(base) => base.adt(),
             _ => None,
         }
     }
 
-    pub(super) fn new(db: &dyn HirAnalysisDb, table: &mut UnificationTable, ty: TyId) -> Self {
-        let (base, _) = ty.decompose_ty_app(db);
-        let base_name = IdentId::new(db.as_hir_db(), base.pretty_print(db).to_string());
-        let path = PathId::from_ident(db.as_hir_db(), base_name);
-
-        Self::new_from_path_type(db, table, ty, path)
-    }
-
-    fn new_from_path_type(
+    fn instantiate_for_term(
         db: &dyn HirAnalysisDb,
         table: &mut UnificationTable,
         mut ty: TyId,
-        path: PathId,
     ) -> Self {
-        let args = ty.generic_args(db);
-
         // Make fresh type variables for each unbound type parameter.
         while let Some(prop) = ty.applicable_ty(db) {
             let arg = table.new_var_for(prop);
             ty = TyId::app(db, ty, arg);
         }
 
-        Self { ty, path }
+        ty
     }
 }
 
@@ -445,19 +419,19 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_struct(self.tc.db, struct_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TermTy::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Enum(enum_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_enum(self.tc.db, enum_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TermTy::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Contract(contract_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_contract(self.tc.db, contract_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TermTy::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
             }
 
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
@@ -468,20 +442,15 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Item(ItemKind::Func(func))) => {
                 let func_def = lower_func(self.tc.db, func).unwrap();
                 let ty = TyId::func(self.tc.db, func_def);
-                TermTy::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Impl(impl_))) => {
                 match impl_.ty(self.tc.db.as_hir_db()).to_opt() {
                     Some(hir_ty) => {
                         let ty = lower_hir_ty(self.tc.db, hir_ty, self.tc.env.scope());
-                        let ty_in_body = TermTy::new_from_path_type(
-                            self.tc.db,
-                            &mut self.tc.table,
-                            ty,
-                            self.path,
-                        );
-                        ResolvedPathInBody::Ty(ty_in_body)
+                        let ty = TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty);
+                        ResolvedPathInBody::Ty(ty)
                     }
 
                     None => ResolvedPathInBody::Invalid,
@@ -496,12 +465,8 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 match impl_trait.ty(self.tc.db.as_hir_db()).to_opt() {
                     Some(hir_ty) => {
                         let ty = lower_hir_ty(self.tc.db, hir_ty, self.tc.env.scope());
-                        let ty_in_body = TermTy::new_from_path_type(
-                            self.tc.db,
-                            &mut self.tc.table,
-                            ty,
-                            self.path,
-                        );
+                        let ty_in_body =
+                            TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty);
                         ResolvedPathInBody::Ty(ty_in_body)
                     }
 
@@ -515,7 +480,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
             NameResKind::Prim(prim) => {
                 let ty = TyId::from_hir_prim_ty(self.tc.db, prim);
-                TermTy::new_from_path_type(self.tc.db, &mut self.tc.table, ty, self.path).into()
+                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
             }
 
             _ => ResolvedPathInBody::Invalid,
@@ -525,7 +490,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
 #[derive(Clone, Debug, derive_more::From)]
 enum ResolvedPathInBody {
-    Ty(TermTy),
+    Ty(TyId),
     Variant(ResolvedVariant),
     #[from(ignore)]
     Binding(IdentId, LocalBinding),
@@ -656,7 +621,7 @@ where
 pub(crate) trait RecordLike {
     fn is_record(&self, db: &dyn HirAnalysisDb) -> bool;
 
-    fn record_field_ty(&mut self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId>;
+    fn record_field_ty(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId>;
 
     fn record_field_list<'db>(
         &self,
@@ -674,10 +639,10 @@ pub(crate) trait RecordLike {
 
     fn initializer_hint(&self, db: &dyn HirAnalysisDb) -> Option<String>;
 
-    fn kind_name(&mut self, db: &dyn HirAnalysisDb) -> String;
+    fn kind_name(&self, db: &dyn HirAnalysisDb) -> String;
 }
 
-impl RecordLike for TermTy {
+impl RecordLike for TyId {
     fn is_record(&self, db: &dyn HirAnalysisDb) -> bool {
         let Some(adt_ref) = self.adt_ref(db) else {
             return false;
@@ -686,8 +651,8 @@ impl RecordLike for TermTy {
         matches!(adt_ref.data(db), AdtRef::Struct(..))
     }
 
-    fn record_field_ty(&mut self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId> {
-        let args = self.ty(db).generic_args(db);
+    fn record_field_ty(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId> {
+        let args = self.generic_args(db);
         let hir_db = db.as_hir_db();
 
         let (hir_field_list, field_list) = self.record_field_list(db)?;
@@ -745,31 +710,30 @@ impl RecordLike for TermTy {
             .collect()
     }
 
-    fn kind_name(&mut self, db: &dyn HirAnalysisDb) -> String {
+    fn kind_name(&self, db: &dyn HirAnalysisDb) -> String {
         if let Some(adt_ref) = self.adt_ref(db) {
             adt_ref.kind_name(db).to_string()
         } else if self.is_func(db) {
             "fn".to_string()
         } else {
-            self.ty(db).pretty_print(db).to_string()
+            self.pretty_print(db).to_string()
         }
     }
 
     fn initializer_hint(&self, db: &dyn HirAnalysisDb) -> Option<String> {
         let hir_db = db.as_hir_db();
 
-        let expected_sub_pat = if self.adt_ref(db).is_some() {
+        if self.adt_ref(db).is_some() {
             let AdtRef::Struct(s) = self.adt_ref(db)?.data(db) else {
                 return None;
             };
 
-            s.format_initializer_args(db.as_hir_db())
+            let name = s.name(hir_db).unwrap().data(hir_db);
+            let init_args = s.format_initializer_args(db.as_hir_db());
+            Some(format!("{}{}", name, init_args))
         } else {
-            return None;
-        };
-
-        let path = self.path.pretty_print(hir_db);
-        Some(format!("{}{}", path, expected_sub_pat))
+            None
+        }
     }
 }
 
@@ -778,7 +742,7 @@ impl RecordLike for ResolvedVariant {
         matches!(self.variant_kind(db), HirVariantKind::Record(..))
     }
 
-    fn record_field_ty(&mut self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId> {
+    fn record_field_ty(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId> {
         let args = self.ty(db).generic_args(db);
         let hir_db = db.as_hir_db();
 
@@ -822,7 +786,7 @@ impl RecordLike for ResolvedVariant {
             .collect()
     }
 
-    fn kind_name(&mut self, db: &dyn HirAnalysisDb) -> String {
+    fn kind_name(&self, db: &dyn HirAnalysisDb) -> String {
         let hir_db = db.as_hir_db();
         match self.enum_.variants(hir_db).data(hir_db)[self.idx].kind {
             HirVariantKind::Unit => "unit variant",
