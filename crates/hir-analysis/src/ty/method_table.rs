@@ -3,6 +3,7 @@ use hir::hir_def::{IdentId, Impl, IngotId};
 use rustc_hash::FxHashMap;
 
 use super::{
+    binder::Binder,
     ty_def::{FuncDef, InvalidCause, TyBase, TyId},
     ty_lower::{lower_func, lower_hir_ty},
     unify::UnificationTable,
@@ -64,7 +65,7 @@ impl MethodTable {
 
         let name = func.name(db);
         let bucket = self.buckets.entry(*base).or_insert_with(MethodBucket::new);
-        let methods = bucket.methods.entry(ty).or_default();
+        let methods = bucket.methods.entry(Binder::bind(ty)).or_default();
         methods.insert(name, func);
     }
 
@@ -79,7 +80,7 @@ impl MethodTable {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct MethodBucket {
-    methods: FxHashMap<TyId, FxHashMap<IdentId, FuncDef>>,
+    methods: FxHashMap<Binder<TyId>, FxHashMap<IdentId, FuncDef>>,
 }
 
 impl MethodBucket {
@@ -96,11 +97,11 @@ impl MethodBucket {
         ty: TyId,
         name: IdentId,
     ) -> Option<FuncDef> {
-        for (cand_ty, funcs) in self.methods.iter() {
+        for (&cand_ty, funcs) in self.methods.iter() {
             let mut table = UnificationTable::new(db);
-            let cand_ty = cand_ty.generalize(db, &mut table);
+            let cand_ty = table.instantiate_with_fresh_vars(cand_ty);
             let ty = if mode == TableMode::Creation {
-                ty.generalize(db, &mut table)
+                table.instantiate_with_fresh_vars(Binder::bind(ty))
             } else {
                 ty
             };
@@ -166,7 +167,7 @@ impl<'db> MethodCollector<'db> {
 
     fn insert(&mut self, ty: TyId, func: FuncDef) {
         let ty = match func.receiver_ty(self.db) {
-            Some(ty) => ty,
+            Some(ty) => ty.instantiate_identity(),
             None => ty,
         };
 

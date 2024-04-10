@@ -1,3 +1,5 @@
+use std::thread::current;
+
 use hir::{
     hir_def::{CallArg, GenericArgListId},
     span::{expr::LazyCallArgListSpan, params::LazyGenericArgListSpan, DynLazySpan},
@@ -8,6 +10,7 @@ use rustc_hash::FxHashMap;
 use super::TyChecker;
 use crate::{
     ty::{
+        binder::Binder,
         diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator},
         ty_def::{FuncDef, TyBase, TyData, TyId},
         ty_lower::lower_generic_arg_list,
@@ -17,7 +20,7 @@ use crate::{
 
 pub(super) struct Callable {
     func_def: FuncDef,
-    subst: FxHashMap<TyId, TyId>,
+    args: Vec<TyId>,
 }
 
 impl Callable {
@@ -39,24 +42,17 @@ impl Callable {
         let params = ty.generic_args(db);
         assert_eq!(params.len(), args.len());
 
-        let subst = ty
-            .generic_params(db)
-            .iter()
-            .copied()
-            .zip(args.iter().copied())
-            .collect();
-
         Ok(Self {
             func_def: *func_def,
-            subst,
+            args: args.to_vec(),
         })
     }
 
-    pub(super) fn ret_ty(&mut self, db: &dyn HirAnalysisDb) -> TyId {
-        self.func_def.ret_ty(db).apply_subst(db, &mut self.subst)
+    pub(super) fn ret_ty(&self, db: &dyn HirAnalysisDb) -> TyId {
+        self.func_def.ret_ty(db).instantiate(db, &self.args)
     }
 
-    pub(super) fn apply_generic_args(
+    pub(super) fn unify_generic_args(
         &mut self,
         tc: &mut TyChecker,
         args: GenericArgListId,
@@ -70,29 +66,31 @@ impl Callable {
         }
 
         let given_args = lower_generic_arg_list(db, args, tc.env.scope());
-        let params = self.func_def.original_params(db);
-        if params.len() != given_args.len() {
+        let offset = self.func_def.offset_to_explicit_params_position(db);
+        let current_args = &mut self.args[offset..];
+
+        if current_args.len() != given_args.len() {
             let diag = BodyDiag::CallGenericArgNumMismatch {
                 primary: span.into(),
                 func: self.func_def.hir_func(db),
                 given: given_args.len(),
-                expected: params.len(),
+                expected: current_args.len(),
             }
             .into();
             FuncBodyDiagAccumulator::push(db, diag);
+
             return false;
         }
 
-        for (i, (&given, param)) in given_args.iter().zip(params.iter()).enumerate() {
-            let expected = self.subst.get_mut(param).unwrap();
-            *expected = tc.equate_ty(given, *expected, span.arg(i).into());
+        for (i, (&given, arg)) in given_args.iter().zip(current_args.iter_mut()).enumerate() {
+            *arg = tc.equate_ty(given, *arg, span.arg(i).into());
         }
 
         true
     }
 
     pub(super) fn check_args(
-        &mut self,
+        &self,
         tc: &mut TyChecker,
         args: &[CallArg],
         span: LazyCallArgListSpan,
@@ -144,7 +142,7 @@ impl Callable {
                 }
             }
 
-            let expected = expected.apply_subst(db, &mut self.subst);
+            let expected = expected.instantiate(db, &self.args);
             tc.check_expr(given.expr, expected);
         }
     }

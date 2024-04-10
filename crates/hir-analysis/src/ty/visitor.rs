@@ -169,27 +169,6 @@ impl<'db> TypeVisitable<'db> for Implementor {
     }
 }
 
-impl<'db> TypeVisitable<'db> for FuncDef {
-    fn visit_with<V>(&self, visitor: &mut V)
-    where
-        V: TypeVisitor<'db>,
-    {
-        let db = visitor.db();
-        self.params(db).visit_with(visitor);
-        self.arg_tys(db).visit_with(visitor);
-        self.ret_ty(db).visit_with(visitor);
-    }
-}
-
-impl<'db> TypeVisitable<'db> for TraitMethod {
-    fn visit_with<V>(&self, visitor: &mut V)
-    where
-        V: super::visitor::TypeVisitor<'db>,
-    {
-        self.0.visit_with(visitor);
-    }
-}
-
 impl<'db> TypeVisitable<'db> for PredicateId {
     fn visit_with<V>(&self, visitor: &mut V)
     where
