@@ -14,7 +14,7 @@ use hir::{
 pub(super) use path::RecordLike;
 use rustc_hash::FxHashMap;
 
-use self::env::TypedExpr;
+use self::env::ExprProp;
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
@@ -173,7 +173,7 @@ impl<'db> TyChecker<'db> {
 pub struct TypedBody {
     body: Option<Body>,
     pat_ty: FxHashMap<PatId, TyId>,
-    expr_ty: FxHashMap<ExprId, TypedExpr>,
+    expr_ty: FxHashMap<ExprId, ExprProp>,
 }
 
 impl TypedBody {
@@ -202,7 +202,7 @@ impl TypedBody {
 
 #[derive(Clone, Copy, PartialEq, Eq, derive_more::From)]
 enum Typeable {
-    Expr(ExprId, TypedExpr),
+    Expr(ExprId, ExprProp),
     Pat(PatId),
 }
 

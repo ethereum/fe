@@ -18,6 +18,7 @@ use super::{
 };
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    ty::binder::Binder,
     HirAnalysisDb,
 };
 
@@ -54,10 +55,12 @@ pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
             .data(db.as_hir_db())
             .iter()
             .map(|arg| {
-                arg.ty
+                let ty = arg
+                    .ty
                     .to_opt()
                     .map(|ty| lower_hir_ty(db, ty, func.scope()))
-                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
+                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other));
+                Binder::bind(ty)
             })
             .collect(),
         Partial::Absent => vec![],
@@ -68,7 +71,14 @@ pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
         .map(|ty| lower_hir_ty(db, ty, func.scope()))
         .unwrap_or_else(|| TyId::unit(db));
 
-    Some(FuncDef::new(db, func, name, params_set, args, ret_ty))
+    Some(FuncDef::new(
+        db,
+        func,
+        name,
+        params_set,
+        args,
+        Binder::bind(ret_ty),
+    ))
 }
 
 /// Collects the generic parameters of the given generic parameter owner.
@@ -542,7 +552,7 @@ pub struct GenericParamTypeSet {
     params_precursor: Vec<TyParamPrecursor>,
     // pub trait_self: Option<TyId>,
     scope: ScopeId,
-    offset_to_original: usize,
+    offset_to_explicit: usize,
 }
 
 impl GenericParamTypeSet {
@@ -550,8 +560,8 @@ impl GenericParamTypeSet {
         evaluate_params_precursor(db, self)
     }
 
-    pub(crate) fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
-        let offset = self.offset_to_original(db);
+    pub(crate) fn explicit_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+        let offset = self.offset_to_explicit(db);
         &self.params(db)[offset..]
     }
 
@@ -570,12 +580,16 @@ impl GenericParamTypeSet {
         }
     }
 
+    pub(super) fn offset_to_explicit_params_position(&self, db: &dyn HirAnalysisDb) -> usize {
+        self.offset_to_explicit(db)
+    }
+
     pub(super) fn param_by_original_idx(
         &self,
         db: &dyn HirAnalysisDb,
         original_idx: usize,
     ) -> Option<TyId> {
-        let idx = self.offset_to_original(db) + original_idx;
+        let idx = self.offset_to_explicit(db) + original_idx;
         self.params_precursor(db)
             .get(idx)
             .map(|p| p.evaluate(db, self.scope(db), idx))

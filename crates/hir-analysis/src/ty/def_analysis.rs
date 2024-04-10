@@ -373,7 +373,7 @@ impl<'db> DefAnalyzer<'db> {
     fn verify_method_conflict(&mut self, func: FuncDef) -> bool {
         let self_ty = func
             .receiver_ty(self.db)
-            .unwrap_or_else(|| self.self_ty.unwrap());
+            .map_or_else(|| self.self_ty.unwrap(), |ty| ty.instantiate_identity());
 
         if self_ty.contains_invalid(self.db) {
             return true;
@@ -826,7 +826,7 @@ pub(crate) fn check_recursive_adt(
     let adt_def = lower_adt(db, adt);
     for field in adt_def.fields(db) {
         for ty in field.iter_types(db) {
-            for adt_ref in ty.collect_direct_adts(db) {
+            for adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
                 check_recursive_adt(db, adt_ref);
             }
         }
@@ -848,7 +848,7 @@ fn check_recursive_adt_impl(
     let adt_def = lower_adt(db, adt);
     for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
         for (ty_idx, ty) in field.iter_types(db).enumerate() {
-            for field_adt_ref in ty.collect_direct_adts(db) {
+            for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
                 if participants.contains(&field_adt_ref) && participants.contains(&adt) {
                     let diag = TyLowerDiag::recursive_type(
                         adt.name_span(db),
@@ -967,7 +967,7 @@ impl DefKind {
             Self::Impl(hir_impl) => {
                 collect_generic_params(db, GenericParamOwnerId::new(db, hir_impl.into())).params(db)
             }
-            Self::Func(def) => def.original_params(db),
+            Self::Func(def) => def.explicit_params(db),
         }
     }
 
@@ -1176,7 +1176,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         let mut required_methods: BTreeSet<_> = trait_methods
             .iter()
             .filter_map(|(name, &trait_method)| {
-                if !trait_method.skip_binder().has_default_impl(self.db) {
+                if !trait_method.has_default_impl(self.db) {
                     Some(*name)
                 } else {
                     None

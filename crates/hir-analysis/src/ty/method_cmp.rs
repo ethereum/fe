@@ -10,45 +10,39 @@ use crate::HirAnalysisDb;
 
 pub(super) fn compare_impl_method(
     db: &dyn HirAnalysisDb,
-    impl_m: Binder<FuncDef>,
-    trait_m: Binder<TraitMethod>,
+    impl_m: FuncDef,
+    trait_m: TraitMethod,
     trait_inst: TraitInstId,
     sink: &mut Vec<TyDiagCollection>,
 ) {
-    if !compare_generic_param_num(db, impl_m.skip_binder(), trait_m.skip_binder().0, sink) {
+    if !compare_generic_param_num(db, impl_m, trait_m.0, sink) {
         return;
     }
 
-    if !compare_generic_param_kind(db, impl_m.skip_binder(), trait_m.skip_binder().0, sink) {
+    if !compare_generic_param_kind(db, impl_m, trait_m.0, sink) {
         return;
     }
 
-    // Instantiate trait method with the type arguments of the trait instance and
-    // the impl method type parameters.
-    // This should be done after ensuring that the number of generic parameters and
-    // their kinds are the same.
-    let impl_m = impl_m.instantiate_identity();
-    let subst: Vec<_> = trait_inst
-        .args(db)
-        .iter()
-        .chain(impl_m.original_params(db).iter())
-        .copied()
-        .collect();
-    let trait_m = trait_m.instantiate(db, &subst).0;
-
-    if !compare_arity(db, impl_m, trait_m, sink) {
+    if !compare_arity(db, impl_m, trait_m.0, sink) {
         return;
     }
 
     // Compare the argument labels, argument types, and return type of the impl
     // method with the trait method.
-    let mut err = !compare_arg_label(db, impl_m, trait_m, sink);
-    err |= !compare_ty(db, impl_m, trait_m, sink);
+    let mut err = !compare_arg_label(db, impl_m, trait_m.0, sink);
+
+    let map_to_impl: Vec<_> = trait_inst
+        .args(db)
+        .iter()
+        .chain(impl_m.explicit_params(db).iter())
+        .copied()
+        .collect();
+    err |= !compare_ty(db, impl_m, trait_m.0, &map_to_impl, sink);
     if err {
         return;
     }
 
-    compare_constraints(db, impl_m, trait_m, &subst, sink);
+    compare_constraints(db, impl_m, trait_m.0, &map_to_impl, sink);
 }
 
 /// Checks if the number of generic parameters of the implemented method is the
@@ -60,8 +54,8 @@ fn compare_generic_param_num(
     trait_m: FuncDef,
     sink: &mut Vec<TyDiagCollection>,
 ) -> bool {
-    let impl_params = impl_m.original_params(db);
-    let trait_params = trait_m.original_params(db);
+    let impl_params = impl_m.explicit_params(db);
+    let trait_params = trait_m.explicit_params(db);
 
     let hir_impl_m = impl_m.hir_func(db);
     let hir_trait_m = trait_m.hir_func(db);
@@ -91,9 +85,9 @@ fn compare_generic_param_kind(
 ) -> bool {
     let mut err = false;
     for (idx, (&trait_m_param, &impl_m_param)) in trait_m
-        .original_params(db)
+        .explicit_params(db)
         .iter()
-        .zip(impl_m.original_params(db))
+        .zip(impl_m.explicit_params(db))
         .enumerate()
     {
         let trait_m_kind = trait_m_param.kind(db);
@@ -202,6 +196,7 @@ fn compare_ty(
     db: &dyn HirAnalysisDb,
     impl_m: FuncDef,
     trait_m: FuncDef,
+    map_to_impl: &[TyId],
     sink: &mut Vec<TyDiagCollection>,
 ) -> bool {
     let mut err = false;
@@ -209,6 +204,8 @@ fn compare_ty(
     let trait_m_arg_tys = trait_m.arg_tys(db);
 
     for (idx, (&trait_m_ty, &impl_m_ty)) in trait_m_arg_tys.iter().zip(impl_m_arg_tys).enumerate() {
+        let trait_m_ty = trait_m_ty.instantiate(db, map_to_impl);
+        let impl_m_ty = impl_m_ty.instantiate_identity();
         if !impl_m_ty.contains_invalid(db) && trait_m_ty != impl_m_ty {
             let span = impl_m
                 .hir_func(db)
@@ -221,8 +218,8 @@ fn compare_ty(
         }
     }
 
-    let impl_m_ret_ty = impl_m.ret_ty(db);
-    let trait_m_ret_ty = trait_m.ret_ty(db);
+    let impl_m_ret_ty = impl_m.ret_ty(db).instantiate_identity();
+    let trait_m_ret_ty = trait_m.ret_ty(db).instantiate(db, map_to_impl);
     if !impl_m_ret_ty.contains_invalid(db) && trait_m_ret_ty != impl_m_ret_ty {
         sink.push(
             ImplDiag::method_ret_type_mismatch(
@@ -249,11 +246,12 @@ fn compare_constraints(
     db: &dyn HirAnalysisDb,
     impl_m: FuncDef,
     trait_m: FuncDef,
-    subst: &[TyId],
+    map_to_impl: &[TyId],
     sink: &mut Vec<TyDiagCollection>,
 ) -> bool {
     let impl_m_constraints = collect_func_def_constraints(db, impl_m).instantiate_identity();
-    let trait_m_constraints = collect_func_def_constraints(db, trait_m).instantiate(db, subst);
+    let trait_m_constraints =
+        collect_func_def_constraints(db, trait_m).instantiate(db, map_to_impl);
     let mut unsatisfied_goals = vec![];
     for &goal in impl_m_constraints.predicates(db) {
         if !matches!(

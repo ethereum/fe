@@ -4,10 +4,11 @@ use hir::hir_def::{Partial, Pat, PatId, VariantKind};
 
 use super::{
     env::LocalBinding,
-    path::{resolve_path_in_pat, RecordInitChecker, ResolvedPathInPat, TyInBody},
+    path::{resolve_path_in_pat, RecordInitChecker, ResolvedPathInPat, TermTy},
     RecordLike, TyChecker,
 };
 use crate::ty::{
+    binder::Binder,
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
@@ -152,7 +153,7 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        let (mut variant, expected_elems) = match resolve_path_in_pat(self, *path, pat) {
+        let (variant, expected_elems) = match resolve_path_in_pat(self, *path, pat) {
             ResolvedPathInPat::Ty(ty_in_body) => {
                 let diag = BodyDiag::tuple_variant_expected(
                     self.db,
@@ -177,7 +178,7 @@ impl<'db> TyChecker<'db> {
             },
 
             ResolvedPathInPat::NewBinding(_) => {
-                let diag = BodyDiag::tuple_variant_expected::<TyInBody>(
+                let diag = BodyDiag::tuple_variant_expected::<TermTy>(
                     self.db,
                     pat.lazy_span(self.body()).into(),
                     None,
@@ -230,7 +231,7 @@ impl<'db> TyChecker<'db> {
             let elem_ty = match hir_ty.to_opt() {
                 Some(ty) => {
                     let ty = lower_hir_ty(self.db, ty, self.env.scope());
-                    ty.apply_subst(self.db, variant.subst())
+                    Binder::bind(ty).instantiate(self.db, variant.args())
                 }
                 _ => TyId::invalid(self.db, InvalidCause::Other),
             };
@@ -283,7 +284,7 @@ impl<'db> TyChecker<'db> {
             }
 
             ResolvedPathInPat::NewBinding(_) => {
-                let diag = BodyDiag::record_expected::<TyInBody>(
+                let diag = BodyDiag::record_expected::<TermTy>(
                     self.db,
                     pat.lazy_span(self.body()).into(),
                     None,

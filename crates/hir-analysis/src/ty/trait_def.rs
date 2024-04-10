@@ -187,7 +187,7 @@ impl Implementor {
         collect_implementor_constraints(db, self).instantiate(db, self.params(db))
     }
 
-    pub(super) fn methods(self, db: &dyn HirAnalysisDb) -> &BTreeMap<IdentId, Binder<FuncDef>> {
+    pub(super) fn methods(self, db: &dyn HirAnalysisDb) -> &BTreeMap<IdentId, FuncDef> {
         collect_implementor_methods(db, self)
     }
 }
@@ -283,7 +283,7 @@ pub struct TraitDef {
     #[return_ref]
     pub(crate) param_set: GenericParamTypeSet,
     #[return_ref]
-    pub methods: BTreeMap<IdentId, Binder<TraitMethod>>,
+    pub methods: BTreeMap<IdentId, TraitMethod>,
 }
 
 impl TraitDef {
@@ -296,7 +296,7 @@ impl TraitDef {
     }
 
     pub fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
-        self.param_set(db).original_params(db)
+        self.param_set(db).explicit_params(db)
     }
 }
 

@@ -22,7 +22,7 @@ pub(super) struct TyCheckEnv<'db> {
     body: Body,
 
     pat_ty: FxHashMap<PatId, TyId>,
-    expr_ty: FxHashMap<ExprId, TypedExpr>,
+    expr_ty: FxHashMap<ExprId, ExprProp>,
 
     var_env: Vec<BlockEnv>,
 
@@ -79,7 +79,7 @@ impl<'db> TyCheckEnv<'db> {
         Ok(env)
     }
 
-    pub(super) fn typed_expr(&self, expr: ExprId) -> Option<TypedExpr> {
+    pub(super) fn typed_expr(&self, expr: ExprId) -> Option<ExprProp> {
         self.expr_ty.get(&expr).copied()
     }
 
@@ -142,7 +142,7 @@ impl<'db> TyCheckEnv<'db> {
         self.loop_stack.last().copied()
     }
 
-    pub(super) fn type_expr(&mut self, expr: ExprId, typed: TypedExpr) {
+    pub(super) fn type_expr(&mut self, expr: ExprId, typed: ExprProp) {
         self.expr_ty.insert(expr, typed);
     }
 
@@ -226,13 +226,13 @@ impl BlockEnv {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct TypedExpr {
+pub(super) struct ExprProp {
     ty: TyId,
     is_mut: bool,
     binding: Option<LocalBinding>,
 }
 
-impl TypedExpr {
+impl ExprProp {
     pub(super) fn new(ty: TyId, is_mut: bool) -> Self {
         Self {
             ty,

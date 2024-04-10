@@ -9,7 +9,7 @@ use super::{
     binder::Binder,
     fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitInstId},
-    ty_def::{free_inference_keys, Kind, Subst, TyData, TyId, TyVar, TyVarSort},
+    ty_def::{free_inference_keys, ApplicableTyProp, Kind, Subst, TyData, TyId, TyVar, TyVarSort},
 };
 use crate::{
     ty::const_ty::{ConstTyData, EvaluatedConstTy},
@@ -150,6 +150,17 @@ impl<'db> UnificationTable<'db> {
                 }
             }
             _ => panic!(),
+        }
+    }
+
+    pub(super) fn new_var_for(&mut self, ty_prop: ApplicableTyProp) -> TyId {
+        let kind = ty_prop.kind;
+        let sort = TyVarSort::General;
+        let key = self.new_key(&kind, sort);
+
+        match ty_prop.const_ty {
+            Some(const_ty) => TyId::const_ty_var(self.db, const_ty, key),
+            None => TyId::ty_var(self.db, TyVarSort::General, kind, key),
         }
     }
 
