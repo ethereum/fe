@@ -16,7 +16,7 @@ use super::{
     constraint_solver::{check_trait_inst_sat, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     trait_lower::collect_implementor_methods,
-    ty_def::{FuncDef, Kind, Subst, TyId},
+    ty_def::{FuncDef, Kind, TyId},
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
     visitor::TypeVisitable,
@@ -233,24 +233,6 @@ impl TraitInstId {
         }
 
         s
-    }
-
-    /// Apply substitutions to this trait.
-    /// Which is to say, replace all type parameters with their corresponding
-    /// type in the `subst`.
-    pub(super) fn apply_subst<S: Subst>(
-        self,
-        db: &dyn HirAnalysisDb,
-        subst: &mut S,
-    ) -> TraitInstId {
-        TraitInstId::new(
-            db,
-            self.def(db),
-            self.args(db)
-                .iter()
-                .map(|ty| ty.apply_subst(db, subst))
-                .collect(),
-        )
     }
 
     pub(super) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {

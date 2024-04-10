@@ -4,6 +4,7 @@ use super::{
     const_ty::{ConstTyData, ConstTyId},
     constraint::{PredicateId, PredicateListId},
     trait_def::{Implementor, TraitInstId, TraitMethod},
+    ty_check::ExprProp,
     ty_def::{AdtDef, FuncDef, InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
 };
 use crate::HirAnalysisDb;
@@ -185,5 +186,14 @@ impl<'db> TypeVisitable<'db> for PredicateListId {
         V: TypeVisitor<'db>,
     {
         self.predicates(visitor.db()).visit_with(visitor)
+    }
+}
+
+impl<'db> TypeVisitable<'db> for ExprProp {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TypeVisitor<'db>,
+    {
+        self.ty.visit_with(visitor)
     }
 }

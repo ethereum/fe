@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use super::{
     constraint::{PredicateId, PredicateListId},
     trait_def::{Implementor, TraitInstId, TraitMethod},
+    ty_check::ExprProp,
     ty_def::{FuncDef, TyData, TyId},
     visitor::TypeVisitable,
 };
@@ -119,39 +120,6 @@ impl<'db> TypeFoldable<'db> for Implementor {
     }
 }
 
-// impl<'db> TypeFoldable<'db> for FuncDef {
-//     fn super_fold_with<F>(self, folder: &mut F) -> Self
-//     where
-//         F: TypeFolder<'db>,
-//     {
-//         let db = folder.db();
-//         let arg_tys = self
-//             .arg_tys(db)
-//             .iter()
-//             .map(|ty| ty.fold_with(folder))
-//             .collect();
-//         let ret_ty = self.ret_ty(db).fold_with(folder);
-//
-//         FuncDef::new(
-//             db,
-//             self.hir_func(db),
-//             self.name(db),
-//             self.params_set(db),
-//             arg_tys,
-//             self.ret_ty(db),
-//         )
-//     }
-// }
-
-// impl<'db> TypeFoldable<'db> for TraitMethod {
-//     fn super_fold_with<F>(self, folder: &mut F) -> Self
-//     where
-//         F: TypeFolder<'db>,
-//     {
-//         TraitMethod(self.0.fold_with(folder))
-//     }
-// }
-
 impl<'db> TypeFoldable<'db> for PredicateId {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
@@ -175,5 +143,15 @@ impl<'db> TypeFoldable<'db> for PredicateListId {
             .collect();
 
         Self::new(folder.db(), predicates, self.ingot(folder.db()))
+    }
+}
+
+impl<'db> TypeFoldable<'db> for ExprProp {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TypeFolder<'db>,
+    {
+        let ty = self.ty.fold_with(folder);
+        Self { ty, ..self }
     }
 }
