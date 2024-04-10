@@ -56,7 +56,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let typeable = Typeable::Expr(expr, actual);
-        let ty = self.unify_ty(typeable, actual.ty(), expected);
+        let ty = self.unify_ty(typeable, actual.ty, expected);
         actual.swap_ty(ty);
         actual
     }
@@ -92,7 +92,7 @@ impl<'db> TyChecker<'db> {
 
         let expr_ty = self.fresh_ty();
         let typed_expr = self.check_expr(*lhs, expr_ty);
-        let expr_ty = typed_expr.ty();
+        let expr_ty = typed_expr.ty;
 
         if expr_ty.contains_invalid(self.db) {
             return ExprProp::invalid(self.db);
@@ -147,7 +147,7 @@ impl<'db> TyChecker<'db> {
 
         let lhs_ty = self.fresh_ty();
         let typed_lhs = self.check_expr(*lhs, lhs_ty);
-        let lhs_ty = typed_lhs.ty();
+        let lhs_ty = typed_lhs.ty;
         if lhs_ty.contains_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
@@ -157,7 +157,7 @@ impl<'db> TyChecker<'db> {
                 use hir::hir_def::ArithBinOp::*;
 
                 let typed_rhs = self.check_expr(*rhs, lhs_ty);
-                let rhs_ty = typed_rhs.ty();
+                let rhs_ty = typed_rhs.ty;
                 if rhs_ty.contains_invalid(self.db) {
                     return ExprProp::invalid(self.db);
                 }
@@ -181,7 +181,7 @@ impl<'db> TyChecker<'db> {
                 use hir::hir_def::CompBinOp::*;
 
                 let typed_rhs = self.check_expr(*rhs, lhs_ty);
-                let rhs_ty = typed_rhs.ty();
+                let rhs_ty = typed_rhs.ty;
                 if rhs_ty.contains_invalid(self.db) {
                     return ExprProp::invalid(self.db);
                 }
@@ -207,7 +207,7 @@ impl<'db> TyChecker<'db> {
                 use hir::hir_def::LogicalBinOp::*;
 
                 let typed_rhs = self.check_expr(*rhs, lhs_ty);
-                let rhs_ty = typed_rhs.ty();
+                let rhs_ty = typed_rhs.ty;
                 if rhs_ty.contains_invalid(self.db) {
                     return ExprProp::invalid(self.db);
                 }
@@ -248,7 +248,7 @@ impl<'db> TyChecker<'db> {
             unreachable!()
         };
         let callee_ty = self.fresh_ty();
-        let callee_ty = self.check_expr(*callee, callee_ty).ty();
+        let callee_ty = self.check_expr(*callee, callee_ty).ty;
 
         let mut callable =
             match Callable::new(self.db, callee_ty, callee.lazy_span(self.body()).into()) {
@@ -414,7 +414,7 @@ impl<'db> TyChecker<'db> {
 
         let lhs_ty = self.fresh_ty();
         let typed_lhs = self.check_expr(*lhs, lhs_ty);
-        let lhs_ty = typed_lhs.ty();
+        let lhs_ty = typed_lhs.ty;
         let (ty_base, ty_args) = lhs_ty.decompose_ty_app(self.db);
 
         if ty_base.is_invalid(self.db) {
@@ -432,7 +432,7 @@ impl<'db> TyChecker<'db> {
             FieldIndex::Ident(label) => {
                 let mut ty_in_body = TermTy::new(self.db, &mut self.table, lhs_ty);
                 if let Some(ty) = ty_in_body.record_field_ty(self.db, *label) {
-                    return ExprProp::new(ty, typed_lhs.is_mutable(self.db));
+                    return ExprProp::new(ty, typed_lhs.is_mut);
                 }
             }
 
@@ -441,7 +441,7 @@ impl<'db> TyChecker<'db> {
                 if ty_base.is_tuple(self.db) && i.data(self.db.as_hir_db()) < &arg_len {
                     let i: usize = i.data(self.db.as_hir_db()).try_into().unwrap();
                     let ty = ty_args[i];
-                    return ExprProp::new(ty, typed_lhs.is_mutable(self.db));
+                    return ExprProp::new(ty, typed_lhs.is_mut);
                 }
             }
         };
@@ -482,7 +482,7 @@ impl<'db> TyChecker<'db> {
 
         let lhs_ty = self.fresh_ty();
         let typed_lhs = self.check_expr(*lhs, lhs_ty);
-        let lhs_ty = typed_lhs.ty();
+        let lhs_ty = typed_lhs.ty;
         let (lhs_base, args) = lhs_ty.decompose_ty_app(self.db);
 
         if lhs_base.is_ty_var(self.db) {
@@ -499,7 +499,7 @@ impl<'db> TyChecker<'db> {
             let elem_ty = args[0];
             let index_ty = args[1].const_ty_ty(self.db).unwrap();
             self.check_expr(*index, index_ty);
-            return ExprProp::new(elem_ty, typed_lhs.is_mutable(self.db));
+            return ExprProp::new(elem_ty, typed_lhs.is_mut);
         }
 
         // TODO: We need to check if the type implements the `Index` trait when `Index`
@@ -575,7 +575,7 @@ impl<'db> TyChecker<'db> {
         let ty = match else_ {
             Some(else_) => {
                 self.check_expr_in_new_scope(*then, if_ty);
-                self.check_expr_in_new_scope(*else_, if_ty).ty()
+                self.check_expr_in_new_scope(*else_, if_ty).ty
             }
 
             None => {
@@ -607,7 +607,7 @@ impl<'db> TyChecker<'db> {
             self.env.enter_scope(arm.body);
             self.env.flush_pending_bindings();
 
-            match_ty = self.check_expr(arm.body, match_ty).ty();
+            match_ty = self.check_expr(arm.body, match_ty).ty;
 
             self.env.leave_scope();
         }
@@ -642,7 +642,7 @@ impl<'db> TyChecker<'db> {
 
         let lhs_ty = self.fresh_ty();
         let typed_lhs = self.check_expr(*lhs, lhs_ty);
-        let lhs_ty = typed_lhs.ty();
+        let lhs_ty = typed_lhs.ty;
         if lhs_ty.contains_invalid(self.db) {
             return ExprProp::new(unit_ty, true);
         }
@@ -693,7 +693,7 @@ impl<'db> TyChecker<'db> {
             return;
         }
 
-        if !typed_lhs.is_mutable(self.db) {
+        if !typed_lhs.is_mut {
             let binding = self.base_binding_of_expr(lhs);
             let diag = match binding {
                 Some(binding) => {

@@ -20,7 +20,7 @@ use crate::{
     },
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, TyLowerDiag},
-        ty_def::{AdtDef, AdtFieldList, AdtRef, AdtRefId, InvalidCause, Subst, TyData, TyId},
+        ty_def::{AdtDef, AdtFieldList, AdtRef, AdtRefId, InvalidCause, TyData, TyId},
         ty_lower::{lower_adt, lower_func, lower_hir_ty},
         unify::UnificationTable,
     },

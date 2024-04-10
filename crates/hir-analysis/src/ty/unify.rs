@@ -9,7 +9,7 @@ use super::{
     binder::Binder,
     fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitInstId},
-    ty_def::{free_inference_keys, ApplicableTyProp, Kind, Subst, TyData, TyId, TyVar, TyVarSort},
+    ty_def::{free_inference_keys, ApplicableTyProp, Kind, TyData, TyId, TyVar, TyVarSort},
 };
 use crate::{
     ty::const_ty::{ConstTyData, EvaluatedConstTy},
@@ -72,8 +72,8 @@ impl<'db> UnificationTable<'db> {
             return Err(UnificationError::TypeMismatch);
         }
 
-        let ty1 = self.apply(self.db, ty1);
-        let ty2 = self.apply(self.db, ty2);
+        let ty1 = ty1.fold_with(self);
+        let ty2 = ty2.fold_with(self);
 
         match (ty1.data(self.db), ty2.data(self.db)) {
             (TyData::TyVar(_), TyData::TyVar(_)) => self.unify_var_var(ty1, ty2),
@@ -301,36 +301,6 @@ impl<'db> UnificationTable<'db> {
                     Err(UnificationError::TypeMismatch)
                 }
             }
-        }
-    }
-}
-
-impl<'db> Subst for UnificationTable<'db> {
-    fn get(&mut self, ty: TyId) -> Option<TyId> {
-        match ty.data(self.db) {
-            TyData::TyApp(lhs, rhs) => {
-                let lhs = self.get(*lhs).unwrap_or(*lhs);
-                let rhs = self.get(*rhs).unwrap_or(*rhs);
-                Some(TyId::app(self.db, lhs, rhs))
-            }
-
-            TyData::TyVar(var) => match self.probe(var.key) {
-                Either::Left(ty) => Some(ty),
-                Either::Right(var) => Some(TyId::new(self.db, TyData::TyVar(var))),
-            },
-
-            TyData::ConstTy(const_ty) => {
-                if let ConstTyData::TyVar(var, ty) = const_ty.data(self.db) {
-                    match self.probe(var.key) {
-                        Either::Left(ty) => Some(ty),
-                        Either::Right(var) => Some(TyId::const_ty_var(self.db, *ty, var.key)),
-                    }
-                } else {
-                    None
-                }
-            }
-
-            _ => None,
         }
     }
 }

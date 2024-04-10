@@ -9,7 +9,7 @@ use super::{
     constraint::{collect_trait_constraints, AssumptionListId, PredicateId, PredicateListId},
     fold::TypeFoldable,
     trait_def::{ingot_trait_env, TraitEnv, TraitInstId},
-    ty_def::{Subst, TyId},
+    ty_def::TyId,
     unify::UnificationTable,
 };
 use crate::{
@@ -126,7 +126,7 @@ impl<'db> ConstraintSolver<'db> {
         }
     }
 
-    /// The main entry point of the constraint solver, whici performs actual
+    /// The main entry point of the constraint solver, which performs actual
     /// solving.
     fn solve(self) -> GoalSatisfiability {
         let goal_ty = self.goal.ty(self.db);
@@ -206,32 +206,5 @@ impl<'db> ConstraintSolver<'db> {
         }
 
         assumptions
-    }
-}
-
-/// A substitution that composes multiple substitutions.
-struct SubstComposition<'a, 'b, S1, S2> {
-    first: &'a mut S1,
-    second: &'b mut S2,
-}
-
-impl<'a, 'b, S1, S2> SubstComposition<'a, 'b, S1, S2> {
-    /// Creates a new `SubstComposition` from two substitutions.
-    fn compose(first: &'a mut S1, second: &'b mut S2) -> Self {
-        Self { first, second }
-    }
-}
-
-impl<'a, 'b, S1, S2> Subst for SubstComposition<'a, 'b, S1, S2>
-where
-    S1: Subst,
-    S2: Subst,
-{
-    fn get(&mut self, from: TyId) -> Option<TyId> {
-        self.second.get(self.first.get(from)?)
-    }
-
-    fn apply(&mut self, db: &dyn HirAnalysisDb, ty: TyId) -> TyId {
-        self.second.apply(db, self.first.apply(db, ty))
     }
 }

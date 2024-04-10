@@ -101,17 +101,17 @@ pub(crate) fn lower_type_alias(
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
         return Ok(TyAlias {
             alias,
-            alias_to: TyId::invalid(db, InvalidCause::Other),
+            alias_to: Binder::bind(TyId::invalid(db, InvalidCause::Other)),
             param_set,
         });
     };
 
     let alias_to = lower_hir_ty(db, hir_ty, alias.scope());
-    let alias_to = if alias_to.contains_invalid(db) {
+    let alias_to = Binder::bind(if alias_to.contains_invalid(db) {
         TyId::invalid(db, InvalidCause::Other)
     } else {
         alias_to
-    };
+    });
     Ok(TyAlias {
         alias,
         alias_to,
@@ -180,37 +180,13 @@ impl AliasCycle {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct TyAlias {
     alias: HirTypeAlias,
-    alias_to: TyId,
+    alias_to: Binder<TyId>,
     param_set: GenericParamTypeSet,
 }
 
 impl TyAlias {
     fn params<'db>(&self, db: &'db dyn HirAnalysisDb) -> &'db [TyId] {
         self.param_set.params(db)
-    }
-
-    fn apply_subst(&self, db: &dyn HirAnalysisDb, arg_tys: &[TyId]) -> TyId {
-        if arg_tys.len() < self.params(db).len() {
-            return TyId::invalid(
-                db,
-                InvalidCause::UnboundTypeAliasParam {
-                    alias: self.alias,
-                    n_given_args: arg_tys.len(),
-                },
-            );
-        }
-        let mut subst = FxHashMap::default();
-
-        for (&param, &arg) in self.params(db).iter().zip(arg_tys.iter()) {
-            let arg = if param.kind(db) != arg.kind(db) {
-                TyId::invalid(db, InvalidCause::kind_mismatch(param.kind(db).into(), arg))
-            } else {
-                arg
-            };
-            subst.insert(param, arg);
-        }
-
-        self.alias_to.apply_subst(db, &mut subst)
     }
 }
 
@@ -261,19 +237,17 @@ impl<'db> TyBuilder<'db> {
                 .fold(ty, |acc, arg| TyId::app(self.db, acc, arg)),
 
             Either::Right(alias) => {
-                if alias.alias_to.contains_invalid(self.db) {
-                    return TyId::invalid(self.db, InvalidCause::Other);
+                if arg_tys.len() < alias.params(self.db).len() {
+                    return TyId::invalid(
+                        self.db,
+                        InvalidCause::UnboundTypeAliasParam {
+                            alias: alias.alias,
+                            n_given_args: arg_tys.len(),
+                        },
+                    );
                 }
 
-                let ty = alias.apply_subst(self.db, &arg_tys);
-                if !ty.is_invalid(self.db) {
-                    let param_num = alias.params(self.db).len();
-                    arg_tys[param_num..]
-                        .iter()
-                        .fold(ty, |acc, arg| TyId::app(self.db, acc, *arg))
-                } else {
-                    ty
-                }
+                alias.alias_to.instantiate(self.db, &arg_tys)
             }
         }
     }

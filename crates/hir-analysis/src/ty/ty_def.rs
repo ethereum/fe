@@ -250,17 +250,6 @@ impl TyId {
         }
     }
 
-    pub(super) fn generalize(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
-        let params = collect_type_params(db, self);
-        let mut subst = FxHashMap::default();
-        for &param in params.iter() {
-            let new_var = table.new_var_from_param(param);
-            subst.insert(param, new_var);
-        }
-
-        self.apply_subst(db, &mut subst)
-    }
-
     /// Emit diagnostics for the type if the type contains invalid types.
     pub(super) fn emit_diag(
         self,
@@ -393,27 +382,6 @@ impl TyId {
         };
 
         Self::new(db, TyData::TyApp(lhs, rhs))
-    }
-
-    /// Apply substitution to the type.
-    pub(crate) fn apply_subst<S>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> TyId
-    where
-        S: Subst + ?Sized,
-    {
-        match self.data(db) {
-            TyData::TyApp(lhs, rhs) => {
-                let lhs = lhs.apply_subst(db, subst);
-                let rhs = rhs.apply_subst(db, subst);
-                TyId::app(db, lhs, rhs)
-            }
-            _ => {
-                if let Some(to) = subst.get(self) {
-                    to
-                } else {
-                    self
-                }
-            }
-        }
     }
 
     /// Returns `true` if the type is a pointer or a pointer application.
@@ -1186,20 +1154,6 @@ impl AdtRef {
             Self::Struct(s) => s.scope(),
             Self::Contract(c) => c.scope(),
         }
-    }
-}
-
-pub trait Subst {
-    fn get(&mut self, from: TyId) -> Option<TyId>;
-
-    fn apply(&mut self, db: &dyn HirAnalysisDb, ty: TyId) -> TyId {
-        ty.apply_subst(db, self)
-    }
-}
-
-impl Subst for FxHashMap<TyId, TyId> {
-    fn get(&mut self, from: TyId) -> Option<TyId> {
-        FxHashMap::get(self, &from).copied()
     }
 }
 

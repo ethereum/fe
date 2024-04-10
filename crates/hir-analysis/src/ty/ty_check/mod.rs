@@ -5,6 +5,7 @@ mod pat;
 mod path;
 mod stmt;
 
+pub use env::ExprProp;
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
 use hir::{
@@ -14,9 +15,9 @@ use hir::{
 pub(super) use path::RecordLike;
 use rustc_hash::FxHashMap;
 
-use self::env::ExprProp;
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
+    fold::TypeFoldable,
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
     unify::{UnificationError, UnificationTable},
@@ -142,7 +143,7 @@ impl<'db> TyChecker<'db> {
             Ok(()) => {
                 // FIXME: This is a temporary workaround, this should be removed when we
                 // implement subtyping.
-                let actual = actual.apply_subst(self.db, &mut self.table);
+                let actual = actual.fold_with(&mut self.table);
                 if actual.is_bot(self.db) {
                     expected
                 } else {
@@ -151,8 +152,8 @@ impl<'db> TyChecker<'db> {
             }
 
             Err(UnificationError::TypeMismatch) => {
-                let actual = actual.apply_subst(self.db, &mut self.table);
-                let expected = expected.apply_subst(self.db, &mut self.table);
+                let actual = actual.fold_with(&mut self.table);
+                let expected = expected.fold_with(&mut self.table);
                 FuncBodyDiagAccumulator::push(
                     self.db,
                     BodyDiag::type_mismatch(self.db, span, expected, actual).into(),
@@ -180,7 +181,7 @@ impl TypedBody {
     pub fn expr_ty(&self, db: &dyn HirAnalysisDb, expr: ExprId) -> TyId {
         self.expr_ty
             .get(&expr)
-            .map(|typed| typed.ty())
+            .map(|typed| typed.ty)
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
     }
 

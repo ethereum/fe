@@ -14,7 +14,7 @@ use super::{
     fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, FuncDef, Subst, TyBase, TyData, TyId},
+    ty_def::{AdtDef, FuncDef, TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
     visitor::{TypeVisitable, TypeVisitor},
 };
@@ -183,13 +183,6 @@ pub struct PredicateId {
 }
 
 impl PredicateId {
-    /// Applies the given substitution to the predicate.
-    pub fn apply_subst<S: Subst>(self, db: &dyn HirAnalysisDb, subst: &mut S) -> Self {
-        let ty = self.ty(db).apply_subst(db, subst);
-        let trait_ = self.trait_inst(db).apply_subst(db, subst);
-        Self::new(db, ty, trait_)
-    }
-
     pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
         let ty = self.ty(db);
         let trait_ = self.trait_inst(db);
@@ -228,16 +221,6 @@ impl PredicateListId {
 
     pub(super) fn contains(self, db: &dyn HirAnalysisDb, pred: PredicateId) -> bool {
         self.predicates(db).contains(&pred)
-    }
-
-    pub(super) fn apply_subst<S: Subst>(self, db: &dyn HirAnalysisDb, s: &mut S) -> Self {
-        let predicates = self
-            .predicates(db)
-            .iter()
-            .map(|pred| pred.apply_subst(db, s))
-            .collect();
-
-        Self::new(db, predicates, self.ingot(db))
     }
 }
 

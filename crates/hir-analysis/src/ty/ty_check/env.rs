@@ -10,6 +10,7 @@ use rustc_hash::FxHashMap;
 use super::TypedBody;
 use crate::{
     ty::{
+        fold::TypeFoldable,
         ty_def::{InvalidCause, TyId},
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
@@ -167,11 +168,11 @@ impl<'db> TyCheckEnv<'db> {
     pub(super) fn finish(mut self, table: &mut UnificationTable) -> TypedBody {
         self.expr_ty
             .values_mut()
-            .for_each(|ty| *ty = ty.apply_subst(self.db, table));
+            .for_each(|ty| *ty = ty.fold_with(table));
 
         self.pat_ty
             .values_mut()
-            .for_each(|ty| *ty = ty.apply_subst(self.db, table));
+            .for_each(|ty| *ty = ty.fold_with(table));
 
         TypedBody {
             body: Some(self.body),
@@ -226,10 +227,10 @@ impl BlockEnv {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct ExprProp {
-    ty: TyId,
-    is_mut: bool,
-    binding: Option<LocalBinding>,
+pub struct ExprProp {
+    pub ty: TyId,
+    pub is_mut: bool,
+    pub(crate) binding: Option<LocalBinding>,
 }
 
 impl ExprProp {
@@ -264,28 +265,10 @@ impl ExprProp {
             binding: None,
         }
     }
-
-    pub(super) fn ty(&self) -> TyId {
-        self.ty
-    }
-
-    pub(super) fn is_mutable(&self, _db: &dyn HirAnalysisDb) -> bool {
-        // TODO: We need to check both type mutability and expr mutability when we have
-        // `&mut` type.
-        self.is_mut
-    }
-
-    pub(super) fn apply_subst(self, db: &dyn HirAnalysisDb, table: &mut UnificationTable) -> Self {
-        Self {
-            ty: self.ty.apply_subst(db, table),
-            is_mut: self.is_mut,
-            binding: self.binding,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) enum LocalBinding {
+pub(crate) enum LocalBinding {
     Local { pat: PatId, is_mut: bool },
     Param { idx: usize, ty: TyId, is_mut: bool },
 }
