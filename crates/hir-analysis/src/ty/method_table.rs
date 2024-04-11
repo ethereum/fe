@@ -4,6 +4,7 @@ use rustc_hash::FxHashMap;
 
 use super::{
     binder::Binder,
+    canonical::Canonical,
     ty_def::{FuncDef, InvalidCause, TyBase, TyId},
     ty_lower::{lower_func, lower_hir_ty},
     unify::UnificationTable,
@@ -23,10 +24,17 @@ pub struct MethodTable {
 }
 
 impl MethodTable {
-    pub fn probe(&self, db: &dyn HirAnalysisDb, ty: TyId, name: IdentId) -> Option<FuncDef> {
+    pub fn probe(
+        &self,
+        db: &dyn HirAnalysisDb,
+        ty: Canonical<TyId>,
+        name: IdentId,
+    ) -> Option<FuncDef> {
+        let mut table = UnificationTable::new(db);
+        let ty = ty.decanonicalize(&mut table);
         let base = Self::extract_ty_base(ty, db)?;
         if let Some(bucket) = self.buckets.get(base) {
-            return bucket.probe(db, self.mode, ty, name);
+            return bucket.probe(&mut table, self.mode, ty, name);
         }
 
         None
@@ -35,12 +43,14 @@ impl MethodTable {
     pub(super) fn probe_eager(
         &self,
         db: &dyn HirAnalysisDb,
-        ty: TyId,
+        ty: Canonical<TyId>,
         name: IdentId,
     ) -> Option<FuncDef> {
+        let mut table = UnificationTable::new(db);
+        let ty = ty.decanonicalize(&mut table);
         let base = Self::extract_ty_base(ty, db)?;
         if let Some(bucket) = self.buckets.get(base) {
-            return bucket.probe(db, TableMode::Creation, ty, name);
+            return bucket.probe(&mut table, TableMode::Creation, ty, name);
         }
 
         None
@@ -92,13 +102,13 @@ impl MethodBucket {
 
     fn probe(
         &self,
-        db: &dyn HirAnalysisDb,
+        table: &mut UnificationTable,
         mode: TableMode,
         ty: TyId,
         name: IdentId,
     ) -> Option<FuncDef> {
         for (&cand_ty, funcs) in self.methods.iter() {
-            let mut table = UnificationTable::new(db);
+            let snapshot = table.snapshot();
             let cand_ty = table.instantiate_with_fresh_vars(cand_ty);
             let ty = if mode == TableMode::Creation {
                 table.instantiate_with_fresh_vars(Binder::bind(ty))
@@ -111,6 +121,7 @@ impl MethodBucket {
                     return Some(*func);
                 }
             }
+            table.rollback_to(snapshot);
         }
 
         None
@@ -173,7 +184,11 @@ impl<'db> MethodCollector<'db> {
 
         if self
             .method_table
-            .probe(self.db, ty, func.name(self.db))
+            .probe(
+                self.db,
+                Canonical::canonicalize(self.db, ty),
+                func.name(self.db),
+            )
             .is_none()
         {
             self.method_table.insert(self.db, ty, func)

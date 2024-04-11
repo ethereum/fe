@@ -1,7 +1,7 @@
 use std::thread::current;
 
 use hir::{
-    hir_def::{CallArg, GenericArgListId},
+    hir_def::{CallArg, GenericArgListId, IdentId},
     span::{expr::LazyCallArgListSpan, params::LazyGenericArgListSpan, DynLazySpan},
 };
 use if_chain::if_chain;
@@ -92,8 +92,9 @@ impl Callable {
     pub(super) fn check_args(
         &self,
         tc: &mut TyChecker,
-        args: &[CallArg],
+        args: &[(Option<IdentId>, TyId)],
         span: LazyCallArgListSpan,
+        receiver_span: Option<DynLazySpan>,
     ) {
         let db = tc.db;
         let hir_db = db.as_hir_db();
@@ -124,17 +125,22 @@ impl Callable {
         for (i, (given, expected)) in args.iter().zip(expected_args.iter()).enumerate() {
             if_chain! {
                 if let Some(expected_label) = params[i].label_eagerly();
-                if Some(expected_label) != given.label_eagerly(hir_db, tc.body());
+                if Some(expected_label) != given.0;
+                let idx = if receiver_span.is_some() {
+                    i - 1
+                } else {
+                    i
+                };
                 then {
-                    let primary = if given.label.is_some() {
-                        span.arg(i).label().into()
+                    let primary = if given.0.is_some() {
+                        span.arg(idx).label().into()
                     } else {
-                        span.arg(i).into()
+                        span.arg(idx).into()
                     };
                     let diag = BodyDiag::CallArgLabelMismatch {
                         primary,
                         func: self.func_def.hir_func(db),
-                        given: given.label_eagerly(hir_db, tc.body()),
+                        given: given.0,
                         expected: expected_label,
                     }
                     .into();
@@ -143,7 +149,16 @@ impl Callable {
             }
 
             let expected = expected.instantiate(db, &self.args);
-            tc.check_expr(given.expr, expected);
+            let span = if let Some(receiver_span) = &receiver_span {
+                if i == 0 {
+                    receiver_span.clone()
+                } else {
+                    span.arg(i - 1).expr().into()
+                }
+            } else {
+                span.arg(i).expr().into()
+            };
+            tc.equate_ty(given.1, expected, span);
         }
     }
 }

@@ -663,6 +663,18 @@ pub enum BodyDiag {
         given: Option<IdentId>,
         expected: IdentId,
     },
+
+    AmbiguousMethodCall {
+        primary: DynLazySpan,
+        method_name: IdentId,
+        cands: Vec<Func>,
+    },
+
+    MethodNotFound {
+        primary: DynLazySpan,
+        method_name: IdentId,
+        ty: String,
+    },
 }
 
 impl BodyDiag {
@@ -801,6 +813,20 @@ impl BodyDiag {
         Self::NotCallable(span, ty)
     }
 
+    pub(super) fn method_not_found(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        method_name: IdentId,
+        ty: TyId,
+    ) -> Self {
+        let ty = ty.pretty_print(db).to_string();
+        Self::MethodNotFound {
+            primary,
+            method_name,
+            ty,
+        }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(..) => 0,
@@ -828,6 +854,8 @@ impl BodyDiag {
             Self::CallGenericArgNumMismatch { .. } => 22,
             Self::CallArgNumMismatch { .. } => 23,
             Self::CallArgLabelMismatch { .. } => 24,
+            Self::AmbiguousMethodCall { .. } => 25,
+            Self::MethodNotFound { .. } => 26,
         }
     }
 
@@ -878,6 +906,18 @@ impl BodyDiag {
 
             Self::CallArgNumMismatch { .. } => "given argument number mismatch".to_string(),
             Self::CallArgLabelMismatch { .. } => "given argument label mismatch".to_string(),
+
+            Self::AmbiguousMethodCall { method_name, .. } => {
+                format!("`{}` is ambiguous ", method_name.data(db))
+            }
+
+            Self::MethodNotFound {
+                primary,
+                method_name,
+                ty,
+            } => {
+                format!("`{}` is not found", method_name.data(db))
+            }
         }
     }
 
@@ -1320,6 +1360,42 @@ impl BodyDiag {
                 ));
 
                 diags
+            }
+
+            Self::AmbiguousMethodCall {
+                primary,
+                method_name,
+                cands: candidates,
+            } => {
+                let method_name = method_name.data(db.as_hir_db());
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{}` is ambiguous", method_name),
+                    primary.resolve(db),
+                )];
+
+                for (i, candidate) in candidates.iter().enumerate() {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("#{i}candidate defined here"),
+                        candidate.lazy_span().name_moved().resolve(db),
+                    ));
+                }
+
+                diags
+            }
+
+            Self::MethodNotFound {
+                primary,
+                method_name,
+                ty,
+            } => {
+                let method_name = method_name.data(db.as_hir_db());
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{}` is not found in `{}`", method_name, ty),
+                    primary.resolve(db),
+                )]
             }
         }
     }

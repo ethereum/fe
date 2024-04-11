@@ -7,7 +7,10 @@ use super::{
     ty_def::{FuncDef, TyData, TyId},
     visitor::TypeVisitable,
 };
-use crate::HirAnalysisDb;
+use crate::{
+    ty::const_ty::{ConstTyData, ConstTyId},
+    HirAnalysisDb,
+};
 
 pub trait TypeFoldable<'db>
 where
@@ -44,6 +47,28 @@ impl<'db> TypeFoldable<'db> for TyId {
                 let arg = folder.fold_ty(*arg);
 
                 TyId::app(db, abs, arg)
+            }
+
+            ConstTy(cty) => {
+                use ConstTyData::*;
+                let cty_data = match cty.data(db) {
+                    TyVar(var, ty) => {
+                        let ty = folder.fold_ty(*ty);
+                        TyVar(var.clone(), ty)
+                    }
+                    TyParam(param, ty) => {
+                        let ty = folder.fold_ty(*ty);
+                        TyParam(param.clone(), ty)
+                    }
+                    Evaluated(val, ty) => {
+                        let ty = folder.fold_ty(*ty);
+                        Evaluated(val.clone(), ty)
+                    }
+                    UnEvaluated(body) => UnEvaluated(*body),
+                };
+
+                let const_ty = ConstTyId::new(db, cty_data);
+                TyId::const_ty(db, const_ty)
             }
 
             TyVar(_) | TyParam(_) | TyBase(_) | ConstTy(_) | Bot | Invalid(_) => self,

@@ -16,6 +16,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::function::Configuration;
 
 use super::{
+    canonical::Canonical,
     const_ty::ConstTyId,
     constraint::{
         collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
@@ -380,7 +381,11 @@ impl<'db> DefAnalyzer<'db> {
         }
 
         let method_table = collect_methods(self.db, func.ingot(self.db));
-        let maybe_conflict = match method_table.probe_eager(self.db, self_ty, func.name(self.db)) {
+        let maybe_conflict = match method_table.probe_eager(
+            self.db,
+            Canonical::canonicalize(self.db, self_ty),
+            func.name(self.db),
+        ) {
             Some(func_def) => func_def,
             None => unreachable!(),
         };

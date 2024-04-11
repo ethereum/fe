@@ -31,6 +31,7 @@ pub mod visitor;
 
 pub(crate) mod constraint;
 
+mod canonical;
 mod method_cmp;
 mod unify;
 

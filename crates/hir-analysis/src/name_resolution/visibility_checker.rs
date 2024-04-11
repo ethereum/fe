@@ -1,27 +1,42 @@
-use hir::hir_def::{scope_graph::ScopeId, Use};
+use hir::hir_def::{scope_graph::ScopeId, ItemKind, Use};
 
 use crate::HirAnalysisDb;
 
-/// Return `true` if the given `target_scope` is visible from the `ref_scope`.
-/// The resolved name is visible from `ref_scope` if
-/// 1. It is declared as public, or
-/// 2. The `ref_scope` is a transitive reflexive child of the scope where the
+/// Return `true` if the given `scope` is visible from the `scope`.
 /// name is defined.
 pub(crate) fn is_scope_visible_from(
     db: &dyn HirAnalysisDb,
     scope: ScopeId,
     from_scope: ScopeId,
 ) -> bool {
+    let hir_db = db.as_hir_db();
     // If resolved is public, then it is visible.
-    if scope.data(db.as_hir_db()).vis.is_pub() {
+    if scope.data(hir_db).vis.is_pub() {
         return true;
     }
 
-    let Some(def_scope) = (if matches!(scope, ScopeId::Field(..) | ScopeId::Variant(..)) {
-        let parent_item = scope.item();
-        ScopeId::Item(parent_item).parent(db.as_hir_db())
-    } else {
-        scope.parent(db.as_hir_db())
+    let Some(def_scope) = (match scope {
+        ScopeId::Item(ItemKind::Func(func)) => {
+            let parent_item = scope.parent_item(hir_db);
+            if matches!(parent_item, Some(ItemKind::Trait(..))) {
+                return true;
+            }
+
+            if func.is_associated_func(hir_db) {
+                scope
+                    .parent_item(hir_db)
+                    .and_then(|item| ScopeId::Item(item).parent(hir_db))
+            } else {
+                Some(scope)
+            }
+        }
+        ScopeId::Item(_) => scope.parent(hir_db),
+        ScopeId::Field(..) | ScopeId::Variant(..) => {
+            let parent_item = scope.item();
+            ScopeId::Item(parent_item).parent(hir_db)
+        }
+
+        _ => scope.parent(hir_db),
     }) else {
         return false;
     };

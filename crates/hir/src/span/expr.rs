@@ -1,14 +1,13 @@
 use parser::ast;
 
+use super::{
+    body_source_map, define_lazy_span_node,
+    transition::{ChainInitiator, ResolvedOrigin, SpanTransitionChain},
+};
 use crate::{
     hir_def::{Body, ExprId},
     span::{params::LazyGenericArgListSpan, path::LazyPathSpan, LazyLitSpan, LazySpanAtom},
     SpannedHirDb,
-};
-
-use super::{
-    body_source_map, define_lazy_span_node,
-    transition::{ChainInitiator, ResolvedOrigin, SpanTransitionChain},
 };
 
 define_lazy_span_node!(LazyExprSpan, ast::Expr,);
@@ -170,6 +169,9 @@ define_lazy_span_node!(
     ast::CallArg,
     @token {
         (label, label),
+    }
+    @node {
+        (expr, expr, LazyExprSpan),
     }
 );
 

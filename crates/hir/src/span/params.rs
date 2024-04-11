@@ -1,8 +1,7 @@
 use parser::ast;
 
-use crate::span::{path::LazyPathSpan, LazySpanAtom};
-
 use super::{define_lazy_span_node, types::LazyTySpan};
+use crate::span::{path::LazyPathSpan, LazySpanAtom};
 
 define_lazy_span_node!(
     LazyFuncParamListSpan,

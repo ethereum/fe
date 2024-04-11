@@ -1,18 +1,21 @@
 use hir::hir_def::{
-    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind,
+    kw, ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind,
 };
 
 use super::{
     env::{ExprProp, LocalBinding},
+    method_selection::MethodSelectionError,
     path::ResolvedPathInExpr,
     RecordLike, Typeable,
 };
 use crate::{
     ty::{
+        canonical::Canonical,
         const_ty::ConstTyId,
         diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
         ty_check::{
-            callable::Callable,
+            callable::{self, Callable},
+            method_selection::{select_method_candidate, Candidate},
             path::{
                 resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
                 ResolvedPathInRecordInit,
@@ -41,7 +44,7 @@ impl<'db> TyChecker<'db> {
             Expr::Un(..) => self.check_unary(expr, expr_data),
             Expr::Bin(..) => self.check_binary(expr, expr_data),
             Expr::Call(..) => self.check_call(expr, expr_data),
-            Expr::MethodCall(..) => todo!(),
+            Expr::MethodCall(..) => self.check_method_call(expr, expr_data),
             Expr::Path(..) => self.check_path(expr, expr_data),
             Expr::RecordInit(..) => self.check_record_init(expr, expr_data),
             Expr::Field(..) => self.check_field(expr, expr_data),
@@ -250,6 +253,10 @@ impl<'db> TyChecker<'db> {
         let callee_ty = self.fresh_ty();
         let callee_ty = self.check_expr(*callee, callee_ty).ty;
 
+        if callee_ty.contains_invalid(self.db) {
+            return ExprProp::invalid(self.db);
+        }
+
         let mut callable =
             match Callable::new(self.db, callee_ty, callee.lazy_span(self.body()).into()) {
                 Ok(callable) => callable,
@@ -260,13 +267,96 @@ impl<'db> TyChecker<'db> {
             };
 
         let call_span = expr.lazy_span(self.body()).into_call_expr();
+        let args = args
+            .iter()
+            .map(|&arg| {
+                let label = arg.label_eagerly(self.db.as_hir_db(), self.body());
+                let arg_ty = self.fresh_ty();
+                (label, self.check_expr(arg.expr, arg_ty).ty)
+            })
+            .collect::<Vec<_>>();
 
         if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
             return ExprProp::invalid(self.db);
         }
 
-        callable.check_args(self, args, call_span.args_moved());
+        callable.check_args(self, &args, call_span.args_moved(), None);
 
+        let ret_ty = callable.ret_ty(self.db);
+        ExprProp::new(ret_ty, true)
+    }
+
+    fn check_method_call(&mut self, expr: ExprId, expr_data: &Expr) -> ExprProp {
+        let Expr::MethodCall(receiver, method_name, generic_args, args) = expr_data else {
+            unreachable!()
+        };
+        let call_span = expr.lazy_span(self.body()).into_method_call_expr();
+        let Some(method_name) = method_name.to_opt() else {
+            return ExprProp::invalid(self.db);
+        };
+
+        let receiver_ty = self.fresh_ty();
+        let receiver_ty = self.check_expr(*receiver, receiver_ty).ty;
+        if receiver_ty.contains_invalid(self.db) {
+            return ExprProp::invalid(self.db);
+        }
+
+        let assumptions = self.env.assumptions();
+
+        let candidate = match select_method_candidate(
+            self.db,
+            (
+                Canonical::canonicalize(self.db, receiver_ty),
+                receiver.lazy_span(self.body()).into(),
+            ),
+            (method_name, call_span.method_name().into()),
+            self.env.scope(),
+            assumptions,
+        ) {
+            Ok(candidate) => candidate,
+            Err(diag) => {
+                FuncBodyDiagAccumulator::push(self.db, diag);
+                return ExprProp::invalid(self.db);
+            }
+        };
+
+        let func_ty = match candidate {
+            Candidate::InherentMethod(func_def) => {
+                let mut func_ty = TyId::func(self.db, func_def);
+                for arg in receiver_ty.generic_args(self.db) {
+                    func_ty = TyId::app(self.db, func_ty, *arg);
+                }
+                func_ty.instantiate_for_term(self)
+            }
+            _ => todo!(),
+        };
+
+        let mut callable =
+            match Callable::new(self.db, func_ty, receiver.lazy_span(self.body()).into()) {
+                Ok(callable) => callable,
+                Err(diag) => {
+                    FuncBodyDiagAccumulator::push(self.db, diag);
+                    return ExprProp::invalid(self.db);
+                }
+            };
+
+        let mut checked_args = vec![(Some(kw::SELF), receiver_ty)];
+        for arg in args {
+            let label = arg.label_eagerly(self.db.as_hir_db(), self.body());
+            let arg_ty = self.fresh_ty();
+            checked_args.push((label, self.check_expr(arg.expr, arg_ty).ty))
+        }
+
+        if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
+            return ExprProp::invalid(self.db);
+        }
+
+        callable.check_args(
+            self,
+            &checked_args,
+            call_span.args_moved(),
+            Some(receiver.lazy_span(self.body()).into()),
+        );
         let ret_ty = callable.ret_ty(self.db);
         ExprProp::new(ret_ty, true)
     }

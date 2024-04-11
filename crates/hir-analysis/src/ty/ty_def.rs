@@ -27,7 +27,7 @@ use super::{
 };
 use crate::{
     ty::{
-        constraint_solver::{check_ty_app_sat, GoalSatisfiability},
+        constraint_solver::{check_ty_wf, GoalSatisfiability},
         ty_lower::collect_generic_params,
     },
     HirAnalysisDb,
@@ -341,7 +341,7 @@ impl TyId {
         assumptions: AssumptionListId,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        match check_ty_app_sat(db, self, assumptions) {
+        match check_ty_wf(db, self, assumptions) {
             GoalSatisfiability::Satisfied => None,
             GoalSatisfiability::NotSatisfied(goal) => {
                 Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into())
@@ -648,6 +648,10 @@ impl FuncDef {
         }
     }
 
+    pub fn is_method(self, db: &dyn HirAnalysisDb) -> bool {
+        self.hir_func(db).is_method(db.as_hir_db())
+    }
+
     pub fn offset_to_explicit_params_position(self, db: &dyn HirAnalysisDb) -> usize {
         self.params_set(db).offset_to_explicit_params_position(db)
     }
@@ -803,10 +807,10 @@ impl InvalidCause {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Kind {
-    /// Represents monotypes, `*`.
+    /// Represents star kind, i.e., `*` kind.
     Star,
 
-    /// Represents higher order types.
+    /// Represents higher kinded types.
     /// e.g.,
     /// `* -> *`, `(* -> *) -> *` or `* -> (* -> *) -> *`
     Abs(Box<Kind>, Box<Kind>),

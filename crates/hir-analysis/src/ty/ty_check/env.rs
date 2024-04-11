@@ -10,9 +10,10 @@ use rustc_hash::FxHashMap;
 use super::TypedBody;
 use crate::{
     ty::{
+        constraint::{collect_func_def_constraints, AssumptionListId},
         fold::TypeFoldable,
-        ty_def::{InvalidCause, TyId},
-        ty_lower::lower_hir_ty,
+        ty_def::{FuncDef, InvalidCause, TyId},
+        ty_lower::{lower_func, lower_hir_ty},
         unify::UnificationTable,
     },
     HirAnalysisDb,
@@ -94,10 +95,19 @@ impl<'db> TyCheckEnv<'db> {
 
     /// Returns a function if the `body` being checked has `BodyKind::FuncBody`.
     /// If the `body` has `BodyKind::Anonymous`, returns None
-    pub(super) fn func(&self) -> Option<Func> {
-        match self.body.body_kind(self.db.as_hir_db()) {
+    pub(super) fn func(&self) -> Option<FuncDef> {
+        let func = match self.body.body_kind(self.db.as_hir_db()) {
             BodyKind::FuncBody => self.var_env.first()?.scope.item().try_into().ok(),
             BodyKind::Anonymous => None,
+        }?;
+
+        lower_func(self.db, func)
+    }
+
+    pub(super) fn assumptions(&self) -> AssumptionListId {
+        match self.func() {
+            Some(func) => collect_func_def_constraints(self.db, func).instantiate_identity(),
+            None => AssumptionListId::empty_list(self.db),
         }
     }
 
@@ -298,7 +308,7 @@ impl LocalBinding {
 
             Self::Param { idx, .. } => {
                 let func = env.func().unwrap();
-                let Partial::Present(func_params) = func.params(hir_db) else {
+                let Partial::Present(func_params) = func.hir_func(env.db).params(hir_db) else {
                     unreachable!();
                 };
 
@@ -311,7 +321,7 @@ impl LocalBinding {
         match self {
             LocalBinding::Local { pat, .. } => pat.lazy_span(env.body).into(),
             LocalBinding::Param { idx, .. } => {
-                let func = env.func().unwrap();
+                let func = env.func().unwrap().hir_func(env.db);
                 func.lazy_span()
                     .params_moved()
                     .param(*idx)
