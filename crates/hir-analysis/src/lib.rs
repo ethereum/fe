@@ -63,8 +63,8 @@ pub struct Jar(
     ty::constraint::PredicateId,
     ty::constraint::PredicateListId,
     ty::constraint_solver::is_goal_satisfiable,
-    ty::constraint_solver::check_ty_app_sat,
-    ty::constraint_solver::check_trait_inst_sat,
+    ty::constraint_solver::check_ty_wf,
+    ty::constraint_solver::check_trait_inst_wf,
     /// Type checking.
     ty::ty_check::check_func_body,
     /// Diagnostic accumulators.

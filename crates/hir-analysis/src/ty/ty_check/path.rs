@@ -6,7 +6,7 @@ use hir::{
         Enum, ExprId, FieldDefListId as HirFieldDefListId, IdentId, ItemKind, Partial, Pat, PatId,
         PathId, VariantKind as HirVariantKind,
     },
-    span::DynLazySpan,
+    span::{path::LazyPathSpan, DynLazySpan},
 };
 use if_chain::if_chain;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -19,7 +19,9 @@ use crate::{
         NameResKind, QueryDirective,
     },
     ty::{
+        canonical::Canonical,
         diagnostics::{BodyDiag, FuncBodyDiag, TyLowerDiag},
+        ty_check::method_selection::{select_method_candidate, Candidate},
         ty_def::{AdtDef, AdtFieldList, AdtRef, AdtRefId, InvalidCause, TyData, TyId},
         ty_lower::{lower_adt, lower_func, lower_hir_ty},
         unify::UnificationTable,
@@ -37,15 +39,14 @@ pub(super) fn resolve_path_in_pat(
     };
 
     let pat_span = pat.lazy_span(tc.body());
-    let span: DynLazySpan = match pat_data {
+    let span = match pat_data {
         Pat::Path(..) => pat_span.into_path_pat().path(),
         Pat::PathTuple(..) => pat_span.into_path_tuple_pat().path(),
         Pat::Record(..) => pat_span.into_record_pat().path(),
         _ => unreachable!(),
-    }
-    .into();
+    };
 
-    let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::Pat);
+    let mut resolver = PathResolver::new(tc, path, span, PathMode::Pat);
 
     match resolver.resolve_path() {
         ResolvedPathInBody::Ty(ty_in_body) => ResolvedPathInPat::Ty(ty_in_body),
@@ -63,11 +64,7 @@ pub(super) fn resolve_path_in_expr(
     path: PathId,
     path_expr: ExprId,
 ) -> ResolvedPathInExpr {
-    let span: DynLazySpan = path_expr
-        .lazy_span(tc.body())
-        .into_path_expr()
-        .path()
-        .into();
+    let span = path_expr.lazy_span(tc.body()).into_path_expr().path();
 
     let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::ExprValue);
 
@@ -76,7 +73,7 @@ pub(super) fn resolve_path_in_expr(
         ResolvedPathInBody::Variant(variant) => ResolvedPathInExpr::Variant(variant),
         ResolvedPathInBody::Binding(ident, binding) => ResolvedPathInExpr::Binding(binding),
         ResolvedPathInBody::NewBinding(ident) => {
-            let diag = BodyDiag::UndefinedVariable(span, ident);
+            let diag = BodyDiag::UndefinedVariable(span.into(), ident);
             ResolvedPathInExpr::Diag(diag.into())
         }
         ResolvedPathInBody::Diag(diag) => ResolvedPathInExpr::Diag(diag),
@@ -89,11 +86,10 @@ pub(super) fn resolve_path_in_record_init(
     path: PathId,
     record_init_expr: ExprId,
 ) -> ResolvedPathInRecordInit {
-    let span: DynLazySpan = record_init_expr
+    let span = record_init_expr
         .lazy_span(tc.body())
         .into_record_init_expr()
-        .path()
-        .into();
+        .path();
 
     let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::RecordInit);
 
@@ -102,12 +98,12 @@ pub(super) fn resolve_path_in_record_init(
         ResolvedPathInBody::Variant(variant) => ResolvedPathInRecordInit::Variant(variant),
 
         ResolvedPathInBody::Binding(..) => {
-            let diag = BodyDiag::record_expected::<TyId>(tc.db, span, None);
+            let diag = BodyDiag::record_expected::<TyId>(tc.db, span.clone().into(), None);
             ResolvedPathInRecordInit::Diag(diag.into())
         }
 
         ResolvedPathInBody::NewBinding(ident) => {
-            let diag = BodyDiag::UndefinedVariable(span, ident);
+            let diag = BodyDiag::UndefinedVariable(span.into(), ident);
             ResolvedPathInRecordInit::Diag(diag.into())
         }
 
@@ -155,18 +151,16 @@ impl TyId {
         }
     }
 
-    fn instantiate_for_term(
-        db: &dyn HirAnalysisDb,
-        table: &mut UnificationTable,
-        mut ty: TyId,
-    ) -> Self {
+    /// Instantiate the type with fresh type variables for each unbound type
+    /// parameter.
+    pub(super) fn instantiate_for_term(mut self, tc: &mut TyChecker) -> Self {
         // Make fresh type variables for each unbound type parameter.
-        while let Some(prop) = ty.applicable_ty(db) {
-            let arg = table.new_var_for(prop);
-            ty = TyId::app(db, ty, arg);
+        while let Some(prop) = self.applicable_ty(tc.db) {
+            let arg = tc.table.new_var_for(prop);
+            self = TyId::app(tc.db, self, arg);
         }
 
-        ty
+        self
     }
 }
 
@@ -227,12 +221,12 @@ impl ResolvedVariant {
 struct PathResolver<'db, 'tc> {
     pub(super) tc: &'tc mut TyChecker<'db>,
     path: PathId,
-    span: DynLazySpan,
+    span: LazyPathSpan,
     mode: PathMode,
 }
 
 impl<'db, 'env> PathResolver<'db, 'env> {
-    fn new(tc: &'env mut TyChecker<'db>, path: PathId, span: DynLazySpan, mode: PathMode) -> Self {
+    fn new(tc: &'env mut TyChecker<'db>, path: PathId, span: LazyPathSpan, mode: PathMode) -> Self {
         Self {
             tc,
             path,
@@ -342,7 +336,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         let db = self.tc.db;
         let hir_db = db.as_hir_db();
 
-        let ty_in_body = match self.resolve_name_res(&res) {
+        let receiver_ty = match self.resolve_name_res(&res) {
             ResolvedPathInBody::Ty(ty) => ty,
 
             ResolvedPathInBody::Variant(_)
@@ -357,7 +351,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         // Check the possibility of resolving the partial path as an enum variant.
         if_chain! {
             if unresolved_from + 1 == self.path.len(hir_db);
-            if let Some(adt_ref) = ty_in_body.adt_ref(db);
+            if let Some(adt_ref) = receiver_ty.adt_ref(db);
             if let AdtRef::Enum(enum_) = adt_ref.data(db);
             then {
                 let segments = &self.path.segments(hir_db)[unresolved_from..];
@@ -369,13 +363,50 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             }
         }
 
+        if unresolved_from == self.path.len(hir_db) - 1 {
+            let Some(ident) = self.path.last_segment(hir_db).to_opt() else {
+                return ResolvedPathInBody::Invalid;
+            };
+
+            let candidate = match select_method_candidate(
+                db,
+                (
+                    Canonical::canonicalize(self.tc.db, receiver_ty),
+                    self.span.clone().into(),
+                ),
+                (ident, self.span.segment(self.path.len(hir_db) - 1).into()),
+                self.tc.env.scope(),
+                self.tc.env.assumptions(),
+            ) {
+                Ok(candidate) => candidate,
+                Err(diag) => return ResolvedPathInBody::Diag(diag),
+            };
+
+            match candidate {
+                Candidate::InherentMethod(func_def) => {
+                    let mut method_ty = TyId::func(db, func_def);
+                    for &arg in receiver_ty.generic_args(db) {
+                        method_ty = TyId::app(db, method_ty, arg);
+                    }
+
+                    return ResolvedPathInBody::Ty(method_ty.instantiate_for_term(self.tc));
+                }
+
+                Candidate::TraitMethod(func_def) => {
+                    let mut method_ty = TyId::func(db, func_def);
+                    method_ty = TyId::app(db, method_ty, receiver_ty);
+                    return ResolvedPathInBody::Ty(method_ty.instantiate_for_term(self.tc));
+                }
+            }
+        }
+
         // Try to resolve the partial as method call.
         // TODO: Try resolving this partial path as an associated function
         // function (i.e., method or trait function).
 
         // If the partial path is not resolved as an enum variant or method call,
         // report an error.
-        let diag = TyLowerDiag::AssocTy(self.span.clone());
+        let diag = TyLowerDiag::AssocTy(self.span.clone().into());
         ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()))
     }
 
@@ -419,19 +450,19 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_struct(self.tc.db, struct_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
+                ty.instantiate_for_term(self.tc).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Enum(enum_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_enum(self.tc.db, enum_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
+                ty.instantiate_for_term(self.tc).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Contract(contract_))) => {
                 let adt = lower_adt(self.tc.db, AdtRefId::from_contract(self.tc.db, contract_));
                 let ty = TyId::adt(self.tc.db, adt);
-                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
+                ty.instantiate_for_term(self.tc).into()
             }
 
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
@@ -442,14 +473,14 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Item(ItemKind::Func(func))) => {
                 let func_def = lower_func(self.tc.db, func).unwrap();
                 let ty = TyId::func(self.tc.db, func_def);
-                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
+                ty.instantiate_for_term(self.tc).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Impl(impl_))) => {
                 match impl_.ty(self.tc.db.as_hir_db()).to_opt() {
                     Some(hir_ty) => {
                         let ty = lower_hir_ty(self.tc.db, hir_ty, self.tc.env.scope());
-                        let ty = TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty);
+                        let ty = ty.instantiate_for_term(self.tc);
                         ResolvedPathInBody::Ty(ty)
                     }
 
@@ -465,9 +496,8 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 match impl_trait.ty(self.tc.db.as_hir_db()).to_opt() {
                     Some(hir_ty) => {
                         let ty = lower_hir_ty(self.tc.db, hir_ty, self.tc.env.scope());
-                        let ty_in_body =
-                            TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty);
-                        ResolvedPathInBody::Ty(ty_in_body)
+                        let ty = ty.instantiate_for_term(self.tc);
+                        ResolvedPathInBody::Ty(ty)
                     }
 
                     None => ResolvedPathInBody::Invalid,
@@ -480,7 +510,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
             NameResKind::Prim(prim) => {
                 let ty = TyId::from_hir_prim_ty(self.tc.db, prim);
-                TyId::instantiate_for_term(self.tc.db, &mut self.tc.table, ty).into()
+                ty.instantiate_for_term(self.tc).into()
             }
 
             _ => ResolvedPathInBody::Invalid,

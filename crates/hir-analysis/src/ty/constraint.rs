@@ -120,6 +120,10 @@ pub(crate) fn collect_adt_constraints(
     Binder::bind(collector.collect())
 }
 
+struct MyFoo<T: Clone> {
+    t: T,
+}
+
 #[salsa::tracked]
 pub(crate) fn collect_impl_block_constraints(
     db: &dyn HirAnalysisDb,

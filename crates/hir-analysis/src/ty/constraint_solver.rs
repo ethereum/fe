@@ -22,13 +22,13 @@ use crate::{
 
 type Goal = PredicateId;
 
-/// Checks if the arguments of the given type applications satisfies the
-/// constraints under the given assumptions.
+/// Checks if the given type is well-formed, i.e., the arguments of the given
+/// type applications satisfies the constraints under the given assumptions.
 ///
 /// # Panics
 /// This function panics if the given type contains free inference keys.
 #[salsa::tracked]
-pub(crate) fn check_ty_app_sat(
+pub(crate) fn check_ty_wf(
     db: &dyn HirAnalysisDb,
     ty: TyId,
     assumptions: AssumptionListId,
@@ -38,7 +38,7 @@ pub(crate) fn check_ty_app_sat(
     let (_, args) = ty.decompose_ty_app(db);
 
     for &arg in args {
-        match check_ty_app_sat(db, arg, assumptions) {
+        match check_ty_wf(db, arg, assumptions) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }
@@ -56,16 +56,17 @@ pub(crate) fn check_ty_app_sat(
     GoalSatisfiability::Satisfied
 }
 
-/// Checks if the given argument of the given trait instantiation satisfies the
-/// constraints under the given assumptions.
+/// Checks if the given trait instance are well-formed, i.e., the arguments of
+/// the trait satisfies all constraints under the given assumptions.
 #[salsa::tracked]
-pub(crate) fn check_trait_inst_sat(
+pub(crate) fn check_trait_inst_wf(
     db: &dyn HirAnalysisDb,
     trait_inst: TraitInstId,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
     let constraints =
         collect_trait_constraints(db, trait_inst.def(db)).instantiate(db, trait_inst.args(db));
+
     for &goal in constraints.predicates(db) {
         match is_goal_satisfiable(db, goal, assumptions) {
             GoalSatisfiability::Satisfied => {}

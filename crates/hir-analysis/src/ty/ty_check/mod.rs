@@ -1,6 +1,7 @@
 mod callable;
 mod env;
 mod expr;
+mod method_selection;
 mod pat;
 mod path;
 mod stmt;

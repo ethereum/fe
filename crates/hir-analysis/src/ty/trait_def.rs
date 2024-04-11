@@ -13,7 +13,7 @@ use super::{
     constraint::{
         collect_super_traits, collect_trait_constraints, AssumptionListId, ConstraintListId,
     },
-    constraint_solver::{check_trait_inst_sat, GoalSatisfiability},
+    constraint_solver::{check_trait_inst_wf, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     trait_lower::collect_implementor_methods,
     ty_def::{FuncDef, Kind, TyId},
@@ -245,7 +245,7 @@ impl TraitInstId {
         assumptions: AssumptionListId,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        match check_trait_inst_sat(db, self, assumptions) {
+        match check_trait_inst_wf(db, self, assumptions) {
             GoalSatisfiability::Satisfied => None,
             GoalSatisfiability::NotSatisfied(goal) => {
                 Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into())
