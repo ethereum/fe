@@ -4,8 +4,8 @@ expression: node
 input_file: crates/parser2/test_files/syntax_node/items/const.fe
 ---
 Root@0..160
-  ItemList@0..160
-    Item@0..24
+  ItemList@0..159
+    Item@0..22
       Const@0..22
         ItemModifier@0..3
           PubKw@0..3 "pub"
@@ -25,8 +25,8 @@ Root@0..160
         LitExpr@21..22
           Lit@21..22
             Int@21..22 "1"
-      Newline@22..24 "\n\n"
-    Item@24..160
+    Newline@22..24 "\n\n"
+    Item@24..159
       Const@24..159
         ConstKw@24..29 "const"
         WhiteSpace@29..30 " "
@@ -139,5 +139,5 @@ Root@0..160
                   RBrace@156..157 "}"
           Newline@157..158 "\n"
           RBrace@158..159 "}"
-      Newline@159..160 "\n"
+  Newline@159..160 "\n"
 

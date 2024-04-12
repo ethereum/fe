@@ -48,10 +48,10 @@ Root@0..71
         ForKw@33..36 "for"
         WhiteSpace@36..37 " "
         PathPat@37..38
-          Path@37..38
-            PathSegment@37..38
-              Error@37..38
-                InvalidToken@37..38 "@"
+          Path@37..37
+            PathSegment@37..37
+          Error@37..38
+            InvalidToken@37..38 "@"
         WhiteSpace@38..39 " "
         InKw@39..41 "in"
         WhiteSpace@41..42 " "
@@ -68,10 +68,10 @@ Root@0..71
         ForKw@50..53 "for"
         WhiteSpace@53..54 " "
         PathPat@54..55
-          Path@54..55
-            PathSegment@54..55
-              Error@54..55
-                InvalidToken@54..55 "@"
+          Path@54..54
+            PathSegment@54..54
+          Error@54..55
+            InvalidToken@54..55 "@"
         WhiteSpace@55..56 " "
         InKw@56..58 "in"
         WhiteSpace@58..59 " "

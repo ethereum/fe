@@ -1,14 +1,14 @@
-if x y {
+if a b {
 }
 
-if x {
+if c {
 
-} else x {}
+} else d {}
 
-if x { } else x if x { } else { }
+if e { } else f if g { } else { }
 
-if x {
-    10    
+if h {
+    10
 else {
     1
 }

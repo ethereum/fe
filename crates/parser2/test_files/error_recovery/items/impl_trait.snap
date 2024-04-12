@@ -5,14 +5,14 @@ input_file: crates/parser2/test_files/error_recovery/items/impl_trait.fe
 ---
 Root@0..90
   ItemList@0..90
-    Item@0..38
+    Item@0..36
       ImplTrait@0..36
         ImplKw@0..4 "impl"
         WhiteSpace@4..5 " "
         TraitRef@5..14
           Path@5..6
             PathSegment@5..6
-              Ident@5..6 "X"
+              Ident@5..6 "A"
           GenericArgList@6..14
             Lt@6..7 "<"
             TypeGenericArg@7..8
@@ -22,14 +22,14 @@ Root@0..90
                     Ident@7..8 "T"
             Comma@8..9 ","
             WhiteSpace@9..10 " "
-            TypeGenericArg@10..13
+            TypeGenericArg@10..11
               PathType@10..11
                 Path@10..11
                   PathSegment@10..11
                     Ident@10..11 "u"
-              Error@11..13
-                RParen@11..12 ")"
-                RParen@12..13 ")"
+            Error@11..13
+              RParen@11..12 ")"
+              RParen@12..13 ")"
             Gt@13..14 ">"
         WhiteSpace@14..15 " "
         ForKw@15..18 "for"
@@ -37,7 +37,7 @@ Root@0..90
         PathType@19..22
           Path@19..20
             PathSegment@19..20
-              Ident@19..20 "Y"
+              Ident@19..20 "B"
           GenericArgList@20..22
             Lt@20..21 "<"
             TypeGenericArg@21..22
@@ -66,15 +66,15 @@ Root@0..90
         ImplTraitItemList@34..36
           LBrace@34..35 "{"
           RBrace@35..36 "}"
-      Newline@36..38 "\n\n"
-    Item@38..73
+    Newline@36..38 "\n\n"
+    Item@38..71
       ImplTrait@38..71
         ImplKw@38..42 "impl"
         WhiteSpace@42..43 " "
         TraitRef@43..49
           Path@43..44
             PathSegment@43..44
-              Ident@43..44 "X"
+              Ident@43..44 "C"
           GenericArgList@44..49
             Lt@44..45 "<"
             TypeGenericArg@45..46
@@ -95,7 +95,7 @@ Root@0..90
         PathType@54..57
           Path@54..55
             PathSegment@54..55
-              Ident@54..55 "Y"
+              Ident@54..55 "D"
           GenericArgList@55..57
             Lt@55..56 "<"
             TypeGenericArg@56..57
@@ -124,7 +124,7 @@ Root@0..90
         ImplTraitItemList@69..71
           LBrace@69..70 "{"
           RBrace@70..71 "}"
-      Newline@71..73 "\n\n"
+    Newline@71..73 "\n\n"
     Item@73..90
       ImplTrait@73..90
         ImplKw@73..77 "impl"
@@ -132,7 +132,7 @@ Root@0..90
         TraitRef@78..79
           Path@78..79
             PathSegment@78..79
-              Ident@78..79 "X"
+              Ident@78..79 "E"
         WhiteSpace@79..80 " "
         Error@80..81
           InvalidToken@80..81 "@"
@@ -142,7 +142,7 @@ Root@0..90
         PathType@86..87
           Path@86..87
             PathSegment@86..87
-              Ident@86..87 "Y"
+              Ident@86..87 "F"
         WhiteSpace@87..88 " "
         ImplTraitItemList@88..90
           LBrace@88..89 "{"

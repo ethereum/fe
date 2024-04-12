@@ -4,7 +4,7 @@ pub struct Wrapper1<T>
     value: T
 }
 
-// (* -> *) -> * -> * 
+// (* -> *) -> * -> *
 pub struct Wrapper2<T, U>
 where T: * -> *
 {
@@ -14,7 +14,7 @@ where T: * -> *
 
 // ((* -> *) -> *) -> (* -> *) -> *
 pub struct Wrapper3<T, U>
-where T: (* -> *) -> * -> *
+where T: (* -> *) -> * -> *,
       U: * -> *
 {
     value: T<U, i32>

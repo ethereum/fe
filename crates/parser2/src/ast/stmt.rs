@@ -171,7 +171,7 @@ mod tests {
     {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        crate::parser::stmt::parse_stmt(&mut parser, None);
+        crate::parser::stmt::parse_stmt(&mut parser).unwrap();
         Stmt::cast(parser.finish_to_node().0)
             .unwrap()
             .kind()
@@ -218,7 +218,7 @@ mod tests {
         let source = r#"
             while { x } {
                 bar
-            } 
+            }
         "#;
 
         let while_stmt: WhileStmt = parse_stmt(source);

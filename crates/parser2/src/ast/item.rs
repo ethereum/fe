@@ -475,7 +475,7 @@ mod tests {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
 
-        parser.parse(ItemListScope::default(), None);
+        let _ = parser.parse(ItemListScope::default());
         let (node, errs) = parser.finish_to_node();
         for e in errs {
             eprintln!("{:?}", e);
@@ -549,7 +549,6 @@ mod tests {
                 }
             "#;
         let s: Struct = parse_item(source);
-        dbg!(&s);
         assert_eq!(s.name().unwrap().text(), "Foo");
         let mut count = 0;
         for field in s.fields().unwrap() {

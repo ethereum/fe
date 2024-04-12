@@ -5,7 +5,7 @@ input_file: crates/parser2/test_files/syntax_node/items/contract.fe
 ---
 Root@0..90
   ItemList@0..90
-    Item@0..19
+    Item@0..17
       Contract@0..17
         ContractKw@0..8 "contract"
         WhiteSpace@8..9 " "
@@ -14,7 +14,7 @@ Root@0..90
         RecordFieldDefList@15..17
           LBrace@15..16 "{"
           RBrace@16..17 "}"
-      Newline@17..19 "\n\n"
+    Newline@17..19 "\n\n"
     Item@19..90
       Contract@19..90
         ItemModifier@19..22

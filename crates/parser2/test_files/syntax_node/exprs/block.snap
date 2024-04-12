@@ -8,7 +8,7 @@ Root@0..75
     LBrace@0..1 "{"
     Newline@1..2 "\n"
     WhiteSpace@2..6 "    "
-    Item@6..21
+    Item@6..20
       Use@6..20
         UseKw@6..9 "use"
         WhiteSpace@9..10 " "
@@ -19,9 +19,9 @@ Root@0..75
             Colon2@15..17 "::"
             UsePathSegment@17..20
               Ident@17..20 "Foo"
-      Newline@20..21 "\n"
+    Newline@20..21 "\n"
     WhiteSpace@21..25 "    "
-    Item@25..39
+    Item@25..38
       Struct@25..38
         StructKw@25..31 "struct"
         WhiteSpace@31..32 " "
@@ -30,9 +30,9 @@ Root@0..75
         RecordFieldDefList@36..38
           LBrace@36..37 "{"
           RBrace@37..38 "}"
-      Newline@38..39 "\n"
+    Newline@38..39 "\n"
     WhiteSpace@39..43 "    "
-    Item@43..55
+    Item@43..54
       Func@43..54
         FnKw@43..45 "fn"
         WhiteSpace@45..46 " "
@@ -44,7 +44,7 @@ Root@0..75
         BlockExpr@52..54
           LBrace@52..53 "{"
           RBrace@53..54 "}"
-      Newline@54..55 "\n"
+    Newline@54..55 "\n"
     WhiteSpace@55..59 "    "
     Newline@59..60 "\n"
     WhiteSpace@60..64 "    "

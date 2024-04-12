@@ -79,7 +79,7 @@ mod tests {
     fn parse_path(source: &str) -> Path {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        parser.parse(PathScope::default(), None);
+        parser.parse(PathScope::default()).unwrap();
         Path::cast(parser.finish_to_node().0).unwrap()
     }
 

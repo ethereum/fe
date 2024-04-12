@@ -3,22 +3,10 @@ source: crates/uitest/tests/parser.rs
 expression: diags
 input_file: crates/uitest/fixtures/parser/impl_.fe
 ---
-error[1-0001]: expected path segment
-  ┌─ impl_.fe:2:5
+error[1-0001]: expected type
+  ┌─ impl_.fe:1:12
   │
-2 │     where T: Integer
-  │     ^ expected path segment
-
-error[1-0001]: expected closing `>`
-  ┌─ impl_.fe:2:5
-  │
-2 │     where T: Integer
-  │     ^ expected closing `>`
-
-error[1-0001]: expected path segment
-  ┌─ impl_.fe:5:13
-  │
-5 │ impl Foo<T, >
-  │             ^ expected path segment
+1 │ impl Foo<T, 
+  │            ^ expected type
 
 

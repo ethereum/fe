@@ -15,9 +15,9 @@ pub trait Foo2<T: Bar> {
 }
 
 impl<T: Bar> Foo2<T> for i32 {
-    fn foo<U>(self, t: T, u: U) 
-    where 
-        T: Bar + Baz 
+    fn foo<U>(self, t: T, u: U)
+    where
+        T: Bar + Baz,
         U: Bar
     {}
 }

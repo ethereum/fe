@@ -137,7 +137,7 @@ mod tests {
     fn parse_attr_list(source: &str) -> AttrList {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
-        parser.parse(AttrListScope::default(), None);
+        parser.parse(AttrListScope::default()).unwrap();
         AttrList::cast(parser.finish_to_node().0).unwrap()
     }
 
