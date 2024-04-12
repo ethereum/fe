@@ -9,6 +9,7 @@ use super::{
     RecordLike, Typeable,
 };
 use crate::{
+    name_resolution::{diagnostics::NameResDiag, is_scope_visible_from},
     ty::{
         canonical::Canonical,
         const_ty::ConstTyId,
@@ -516,6 +517,21 @@ impl<'db> TyChecker<'db> {
         match field {
             FieldIndex::Ident(label) => {
                 if let Some(field_ty) = lhs_ty.record_field_ty(self.db, *label) {
+                    if let Some(scope) = lhs_ty.record_field_scope(self.db, *label) {
+                        if !is_scope_visible_from(self.db, scope, self.env.scope()) {
+                            // Check the visibility of the field.
+                            let diag = NameResDiag::invisible(
+                                expr.lazy_span(self.body())
+                                    .into_field_expr()
+                                    .accessor()
+                                    .into(),
+                                *label,
+                                scope.name_span(self.db.as_hir_db()),
+                            );
+
+                            FuncBodyDiagAccumulator::push(self.db, diag.into());
+                        }
+                    }
                     return ExprProp::new(field_ty, typed_lhs.is_mut);
                 }
             }
