@@ -1,7 +1,10 @@
 use std::collections::BTreeSet;
 
-use common::diagnostics::{
-    CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, SubDiagnostic,
+use common::{
+    diagnostics::{
+        CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, SubDiagnostic,
+    },
+    recursive_def::RecursiveDef,
 };
 use hir::{
     diagnostics::DiagnosticVoucher,
@@ -11,11 +14,12 @@ use hir::{
 };
 use itertools::Itertools;
 
+use crate::HirAnalysisDb;
+
 use super::{
     constraint::PredicateId,
-    ty_def::{Kind, TyId},
+    ty_def::{AdtRefId, Kind, TyId},
 };
-use crate::HirAnalysisDb;
 
 #[salsa::accumulator]
 pub struct AdtDefDiagAccumulator(pub(super) TyDiagCollection);
@@ -29,6 +33,10 @@ pub struct ImplDefDiagAccumulator(pub(super) TyDiagCollection);
 pub struct FuncDefDiagAccumulator(pub(super) TyDiagCollection);
 #[salsa::accumulator]
 pub struct TypeAliasDefDiagAccumulator(pub(super) TyDiagCollection);
+#[salsa::accumulator]
+pub struct RecursiveAdtDefAccumulator(pub(super) RecursiveAdtDef);
+
+pub type RecursiveAdtDef = RecursiveDef<AdtRefId, (DynLazySpan, DynLazySpan)>;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum TyDiagCollection {
@@ -53,10 +61,7 @@ impl TyDiagCollection {
 pub enum TyLowerDiag {
     ExpectedStarKind(DynLazySpan),
     InvalidTypeArgKind(DynLazySpan, String),
-    RecursiveType {
-        primary_span: DynLazySpan,
-        field_span: DynLazySpan,
-    },
+    AdtRecursion(Vec<RecursiveAdtDef>),
 
     UnboundTypeAliasParam {
         span: DynLazySpan,
@@ -140,11 +145,8 @@ impl TyLowerDiag {
         Self::InvalidTypeArgKind(span, msg)
     }
 
-    pub(super) fn recursive_type(primary_span: DynLazySpan, field_span: DynLazySpan) -> Self {
-        Self::RecursiveType {
-            primary_span,
-            field_span,
-        }
+    pub(super) fn adt_recursion(defs: Vec<RecursiveAdtDef>) -> Self {
+        Self::AdtRecursion(defs)
     }
 
     pub(super) fn unbound_type_alias_param(
@@ -249,7 +251,7 @@ impl TyLowerDiag {
         match self {
             Self::ExpectedStarKind(_) => 0,
             Self::InvalidTypeArgKind(_, _) => 1,
-            Self::RecursiveType { .. } => 2,
+            Self::AdtRecursion { .. } => 2,
             Self::UnboundTypeAliasParam { .. } => 3,
             Self::TypeAliasCycle { .. } => 4,
             Self::InconsistentKindBound(_, _) => 5,
@@ -270,7 +272,7 @@ impl TyLowerDiag {
         match self {
             Self::ExpectedStarKind(_) => "expected `*` kind in this context".to_string(),
             Self::InvalidTypeArgKind(_, _) => "invalid type argument kind".to_string(),
-            Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
+            Self::AdtRecursion { .. } => "recursive type is not allowed".to_string(),
 
             Self::UnboundTypeAliasParam { .. } => {
                 "all type parameters of type alias must be given".to_string()
@@ -326,22 +328,23 @@ impl TyLowerDiag {
                 span.resolve(db),
             )],
 
-            Self::RecursiveType {
-                primary_span,
-                field_span,
-            } => {
-                vec![
-                    SubDiagnostic::new(
+            Self::AdtRecursion(defs) => {
+                let mut diags = vec![];
+
+                for RecursiveAdtDef { site, .. } in defs {
+                    diags.push(SubDiagnostic::new(
                         LabelStyle::Primary,
                         "recursive type definition".to_string(),
-                        primary_span.resolve(db),
-                    ),
-                    SubDiagnostic::new(
+                        site.0.resolve(db),
+                    ));
+                    diags.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
                         "recursion occurs here".to_string(),
-                        field_span.resolve(db),
-                    ),
-                ]
+                        site.1.resolve(db),
+                    ));
+                }
+
+                diags
             }
 
             Self::UnboundTypeAliasParam {

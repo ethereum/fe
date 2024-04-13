@@ -1,7 +1,7 @@
 ---
 source: crates/uitest/tests/ty.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty/recursive_type.fe
+input_file: crates/uitest/fixtures/ty/def/recursive_type.fe
 ---
 error[3-0002]: recursive type is not allowed
   ┌─ recursive_type.fe:1:12
@@ -12,24 +12,18 @@ error[3-0002]: recursive type is not allowed
   │        -- recursion occurs here
 
 error[3-0002]: recursive type is not allowed
-  ┌─ recursive_type.fe:5:12
-  │
-5 │ pub struct S2 {
-  │            ^^ recursive type definition
-6 │     s: S3
-  │        -- recursion occurs here
-
-error[3-0002]: recursive type is not allowed
-   ┌─ recursive_type.fe:9:12
+   ┌─ recursive_type.fe:5:12
    │
+ 5 │ pub struct S2 {
+   │            ^^ recursive type definition
+ 6 │     s: S3
+   │        -- recursion occurs here
+   ·
  9 │ pub struct S3 {
    │            ^^ recursive type definition
 10 │     s: S4
    │        -- recursion occurs here
-
-error[3-0002]: recursive type is not allowed
-   ┌─ recursive_type.fe:13:12
-   │
+   ·
 13 │ pub struct S4 {
    │            ^^ recursive type definition
 14 │     s: S2
