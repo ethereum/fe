@@ -1,10 +1,9 @@
 use parser::ast::{self, prelude::*};
 
+use super::FileLowerCtxt;
 use crate::hir_def::{
     Body, GenericArgListId, Partial, PathId, TraitRefId, TupleTypeId, TypeId, TypeKind,
 };
-
-use super::FileLowerCtxt;
 
 impl TypeId {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Type) -> Self {
@@ -35,6 +34,8 @@ impl TypeId {
                     .into();
                 TypeKind::Array(elem_ty, body)
             }
+
+            ast::TypeKind::Never(_) => TypeKind::Never,
         };
 
         TypeId::new(ctxt.db(), kind)

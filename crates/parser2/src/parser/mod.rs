@@ -1,7 +1,6 @@
 use std::{collections::VecDeque, convert::Infallible};
 
 pub(crate) use item::ItemListScope;
-
 use smallvec::SmallVec;
 
 use self::token_stream::{BackTrackableTokenStream, LexicalToken, TokenStream};
@@ -398,8 +397,8 @@ impl<S: TokenStream> Parser<S> {
         self.allow_local_recovery(Err(Recovery(index, ())))
     }
 
-    /// Consumes tokens until a recovery token is found, and reports an error on any
-    /// unexpected tokens.
+    /// Consumes tokens until a recovery token is found, and reports an error on
+    /// any unexpected tokens.
     /// Returns the index of the scope that matched the recovery token,
     /// and the total string length of the unexpected tokens.
     fn recover(&mut self) -> (Option<ScopeIndex>, Option<rowan::TextSize>) {
@@ -587,7 +586,8 @@ impl<S: TokenStream> Parser<S> {
         self.add_error(ParseError::Msg(msg.into(), TextRange::new(start, end)))
     }
 
-    /// Wrap the current token in a `SyntaxKind::Error`, and add a `ParseError::Unexpected`.
+    /// Wrap the current token in a `SyntaxKind::Error`, and add a
+    /// `ParseError::Unexpected`.
     fn unexpected_token_error(&mut self, msg: String) {
         let checkpoint = self.enter(ErrorScope::default(), None);
 
@@ -653,6 +653,18 @@ impl<T> Recoverable for Recovery<T> {
             .as_ref()
             .map(|i| parser.is_current_scope(*i))
             .unwrap_or(false)
+    }
+}
+
+impl From<Infallible> for ErrProof {
+    fn from(_: Infallible) -> ErrProof {
+        ErrProof(())
+    }
+}
+
+impl From<Recovery<Infallible>> for Recovery<ErrProof> {
+    fn from(recovery: Recovery<Infallible>) -> Self {
+        Self(recovery.0, recovery.1.into())
     }
 }
 

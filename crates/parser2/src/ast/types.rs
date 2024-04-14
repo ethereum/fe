@@ -12,6 +12,7 @@ ast_node! {
     | SK::SelfType
     | SK::TupleType
     | SK::ArrayType
+    | SK::NeverType
 }
 impl Type {
     pub fn kind(&self) -> TypeKind {
@@ -21,6 +22,7 @@ impl Type {
             SK::SelfType => TypeKind::SelfType(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::TupleType => TypeKind::Tuple(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ArrayType => TypeKind::Array(AstNode::cast(self.syntax().clone()).unwrap()),
+            SK::NeverType => TypeKind::Never(AstNode::cast(self.syntax().clone()).unwrap()),
             _ => unreachable!(),
         }
     }
@@ -119,6 +121,11 @@ impl ArrayType {
     }
 }
 
+ast_node! {
+    pub struct NeverType,
+    SK::NeverType,
+}
+
 /// A specific kind of type.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum TypeKind {
@@ -127,14 +134,15 @@ pub enum TypeKind {
     SelfType(SelfType),
     Tuple(TupleType),
     Array(ArrayType),
+    Never(NeverType),
 }
 
 #[cfg(test)]
 mod tests {
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     use super::*;
     use crate::{ast::prelude::*, lexer::Lexer, parser};
-
-    use wasm_bindgen_test::wasm_bindgen_test;
 
     fn parse_type<T>(source: &str) -> T
     where

@@ -1,8 +1,7 @@
 use parser::ast;
 
-use crate::span::{item::LazyBodySpan, params::LazyGenericArgListSpan, path::LazyPathSpan};
-
 use super::define_lazy_span_node;
+use crate::span::{item::LazyBodySpan, params::LazyGenericArgListSpan, path::LazyPathSpan};
 
 define_lazy_span_node!(LazyTySpan);
 impl LazyTySpan {

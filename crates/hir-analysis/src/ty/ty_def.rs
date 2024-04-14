@@ -101,9 +101,9 @@ impl TyId {
         }
     }
 
-    /// Returns `true` if the type is a bottom type.
-    pub fn is_bot(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::Bot)
+    /// Returns `true` if the type is a never type.
+    pub fn is_never(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.data(db), TyData::Never)
     }
 
     /// Returns `IngotId` that declares the type.
@@ -192,8 +192,8 @@ impl TyId {
         Self::tuple(db, 0)
     }
 
-    pub(super) fn bot(db: &dyn HirAnalysisDb) -> Self {
-        Self::new(db, TyData::Bot)
+    pub(super) fn never(db: &dyn HirAnalysisDb) -> Self {
+        Self::new(db, TyData::Never)
     }
 
     pub(super) fn const_ty(db: &dyn HirAnalysisDb, const_ty: ConstTyId) -> Self {
@@ -821,8 +821,8 @@ pub enum TyData {
 
     ConstTy(ConstTyId),
 
-    /// A bottom type.
-    Bot,
+    /// A never(bottom) type.
+    Never,
 
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
@@ -1270,7 +1270,7 @@ impl HasKind for TyData {
 
             TyData::ConstTy(const_ty) => const_ty.ty(db).kind(db).clone(),
 
-            TyData::Bot => Kind::Any,
+            TyData::Never => Kind::Any,
 
             TyData::Invalid(_) => Kind::Any,
         }
@@ -1405,7 +1405,7 @@ pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
         TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
         TyData::TyBase(ty_con) => ty_con.pretty_print(db),
         TyData::ConstTy(const_ty) => const_ty.pretty_print(db),
-        TyData::Bot => "bot".to_string(),
+        TyData::Never => "!".to_string(),
         TyData::Invalid(..) => "<invalid>".to_string(),
     }
 }
