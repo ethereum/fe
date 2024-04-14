@@ -447,6 +447,15 @@ pub fn all_top_modules_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<TopLevelM
 }
 
 #[salsa::tracked(return_ref)]
+pub fn all_enums_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<Enum> {
+    ingot
+        .all_modules(db)
+        .iter()
+        .flat_map(|top_mod| top_mod.all_enums(db).iter().copied())
+        .collect()
+}
+
+#[salsa::tracked(return_ref)]
 pub fn all_impl_traits_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<ImplTrait> {
     ingot
         .all_modules(db)

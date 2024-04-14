@@ -43,7 +43,7 @@ impl IngotId {
         module_tree_impl(db, self.inner(db))
     }
 
-    pub fn all_modules(self, db: &dyn HirDb) -> &Vec<TopLevelMod> {
+    pub fn all_modules(self, db: &dyn HirDb) -> &[TopLevelMod] {
         all_top_modules_in_ingot(db, self)
     }
 
@@ -52,14 +52,18 @@ impl IngotId {
     }
 
     pub fn external_ingots(self, db: &dyn HirDb) -> &[(IdentId, IngotId)] {
-        external_ingots_impl(db, self.inner(db)).as_slice()
+        external_ingots_impl(db, self.inner(db))
     }
 
     pub fn kind(self, db: &dyn HirDb) -> IngotKind {
         self.inner(db).kind(db.as_input_db())
     }
 
-    pub fn all_impl_traits(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
+    pub fn all_enums(self, db: &dyn HirDb) -> &[Enum] {
+        all_enums_in_ingot(db, self)
+    }
+
+    pub fn all_impl_traits(self, db: &dyn HirDb) -> &[ImplTrait] {
         all_impl_traits_in_ingot(db, self)
     }
 

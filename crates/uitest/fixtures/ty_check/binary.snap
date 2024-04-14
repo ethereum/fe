@@ -3,12 +3,6 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty_check/binary.fe
 ---
-error[1-0001]: unexpected syntax
-  ┌─ binary.fe:2:9
-  │
-2 │ fn foo()) {
-  │         ^ unexpected syntax
-
 error[8-0016]: `std::ops::Add` trait is not implemented
   ┌─ binary.fe:4:5
   │

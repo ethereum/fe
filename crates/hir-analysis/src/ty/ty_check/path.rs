@@ -4,7 +4,7 @@ use hir::{
     hir_def::{
         scope_graph::{FieldParent, ScopeId},
         Enum, ExprId, FieldDefListId as HirFieldDefListId, IdentId, ItemKind, Partial, Pat, PatId,
-        PathId, VariantKind as HirVariantKind,
+        PathId, VariantDef, VariantKind as HirVariantKind,
     },
     span::{path::LazyPathSpan, DynLazySpan},
 };
@@ -22,7 +22,7 @@ use crate::{
         canonical::Canonical,
         diagnostics::{BodyDiag, FuncBodyDiag, TyLowerDiag},
         ty_check::method_selection::{select_method_candidate, Candidate},
-        ty_def::{AdtDef, AdtFieldList, AdtRef, AdtRefId, InvalidCause, TyData, TyId},
+        ty_def::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, TyData, TyId},
         ty_lower::{lower_adt, lower_func, lower_hir_ty},
         unify::UnificationTable,
     },
@@ -49,7 +49,7 @@ pub(super) fn resolve_path_in_pat(
     let mut resolver = PathResolver::new(tc, path, span, PathMode::Pat);
 
     match resolver.resolve_path() {
-        ResolvedPathInBody::Ty(ty_in_body) => ResolvedPathInPat::Ty(ty_in_body),
+        ResolvedPathInBody::Ty(ty) => ResolvedPathInPat::Ty(ty),
         ResolvedPathInBody::Variant(variant) => ResolvedPathInPat::Variant(variant),
         ResolvedPathInBody::Binding(binding, _) | ResolvedPathInBody::NewBinding(binding) => {
             ResolvedPathInPat::NewBinding(binding)
@@ -69,7 +69,7 @@ pub(super) fn resolve_path_in_expr(
     let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::ExprValue);
 
     match resolver.resolve_path() {
-        ResolvedPathInBody::Ty(ty_in_body) => ResolvedPathInExpr::Ty(ty_in_body),
+        ResolvedPathInBody::Ty(ty) => ResolvedPathInExpr::Ty(ty),
         ResolvedPathInBody::Variant(variant) => ResolvedPathInExpr::Variant(variant),
         ResolvedPathInBody::Binding(ident, binding) => ResolvedPathInExpr::Binding(binding),
         ResolvedPathInBody::NewBinding(ident) => {
@@ -94,7 +94,7 @@ pub(super) fn resolve_path_in_record_init(
     let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::RecordInit);
 
     match resolver.resolve_path() {
-        ResolvedPathInBody::Ty(ty_in_body) => ResolvedPathInRecordInit::Ty(ty_in_body),
+        ResolvedPathInBody::Ty(ty) => ResolvedPathInRecordInit::Ty(ty),
         ResolvedPathInBody::Variant(variant) => ResolvedPathInRecordInit::Variant(variant),
 
         ResolvedPathInBody::Binding(..) => {
@@ -269,9 +269,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
                 match resolved {
                     ResolvedPathInBody::Variant(..) => resolved,
-                    ResolvedPathInBody::Ty(ref ty_in_body) if ty_in_body.is_record(self.tc.db) => {
-                        resolved
-                    }
+                    ResolvedPathInBody::Ty(ref ty) if ty.is_record(self.tc.db) => resolved,
                     _ => {
                         if let Some(ident) = self.path.last_segment(hir_db).to_opt() {
                             ResolvedPathInBody::NewBinding(ident)
@@ -364,50 +362,64 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
 
         if unresolved_from == self.path.len(hir_db) - 1 {
-            let Some(ident) = self.path.last_segment(hir_db).to_opt() else {
+            let Some(name) = self.path.last_segment(hir_db).to_opt() else {
                 return ResolvedPathInBody::Invalid;
             };
-
-            let candidate = match select_method_candidate(
-                db,
-                (
-                    Canonical::canonicalize(self.tc.db, receiver_ty),
-                    self.span.clone().into(),
-                ),
-                (ident, self.span.segment(self.path.len(hir_db) - 1).into()),
-                self.tc.env.scope(),
-                self.tc.env.assumptions(),
-            ) {
-                Ok(candidate) => candidate,
-                Err(diag) => return ResolvedPathInBody::Diag(diag),
-            };
-
-            match candidate {
-                Candidate::InherentMethod(func_def) => {
-                    let mut method_ty = TyId::func(db, func_def);
-                    for &arg in receiver_ty.generic_args(db) {
-                        method_ty = TyId::app(db, method_ty, arg);
-                    }
-
-                    return ResolvedPathInBody::Ty(method_ty.instantiate_for_term(self.tc));
-                }
-
-                Candidate::TraitMethod(func_def) => {
-                    let mut method_ty = TyId::func(db, func_def);
-                    method_ty = TyId::app(db, method_ty, receiver_ty);
-                    return ResolvedPathInBody::Ty(method_ty.instantiate_for_term(self.tc));
-                }
+            if let Some(resolved) = self.select_method_candidate(receiver_ty, name) {
+                return resolved;
             }
         }
-
-        // Try to resolve the partial as method call.
-        // TODO: Try resolving this partial path as an associated function
-        // function (i.e., method or trait function).
 
         // If the partial path is not resolved as an enum variant or method call,
         // report an error.
         let diag = TyLowerDiag::AssocTy(self.span.clone().into());
         ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()))
+    }
+
+    fn select_method_candidate(
+        &mut self,
+        receiver_ty: TyId,
+        name: IdentId,
+    ) -> Option<ResolvedPathInBody> {
+        let db = self.tc.db;
+        let hir_db = self.tc.db.as_hir_db();
+
+        let candidate = match select_method_candidate(
+            db,
+            (
+                Canonical::canonicalize(db, receiver_ty),
+                self.span.clone().into(),
+            ),
+            (name, self.span.segment(self.path.len(hir_db) - 1).into()),
+            self.tc.env.scope(),
+            self.tc.env.assumptions(),
+        ) {
+            Ok(candidate) => candidate,
+            Err(diag) => return Some(ResolvedPathInBody::Diag(diag)),
+        };
+
+        match candidate {
+            Candidate::InherentMethod(func_def) => {
+                let mut method_ty = TyId::func(db, func_def);
+                for &arg in receiver_ty.generic_args(db) {
+                    method_ty = TyId::app(db, method_ty, arg);
+                }
+
+                return Some(ResolvedPathInBody::Ty(
+                    method_ty.instantiate_for_term(self.tc),
+                ));
+            }
+
+            Candidate::TraitMethod(func_def) => {
+                let mut method_ty = TyId::func(db, func_def);
+                method_ty = TyId::app(db, method_ty, receiver_ty);
+                return Some(ResolvedPathInBody::Ty(
+                    method_ty.instantiate_for_term(self.tc),
+                ));
+            }
+        }
+
+        None
     }
 
     fn resolve_bucket(&mut self, bucket: NameResBucket) -> ResolvedPathInBody {
@@ -467,7 +479,28 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
                 let enum_: Enum = parent.try_into().unwrap();
-                ResolvedVariant::new(self.tc.db, &mut self.tc.table, enum_, idx, self.path).into()
+                let db = self.tc.db;
+                let hir_db = db.as_hir_db();
+                let variant_def = &enum_.variants(hir_db).data(hir_db)[idx];
+                if_chain! {
+                    if self.mode == PathMode::ExprValue;
+                    if matches!(variant_def.kind, HirVariantKind::Tuple(_));
+                    then {
+                        let adt_ref = AdtRefId::new(db, enum_.into());
+                        let receiver_ty = TyId::adt(db, lower_adt(db, adt_ref)).instantiate_for_term(self.tc);
+                        let name = variant_def.name.to_opt().unwrap();
+                        self.select_method_candidate(receiver_ty, name).unwrap()
+                    } else {
+                        ResolvedVariant::new(
+                            self.tc.db,
+                            &mut self.tc.table,
+                            enum_,
+                            idx,
+                            self.path,
+                        )
+                        .into()
+                    }
+                }
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Func(func))) => {
@@ -529,6 +562,7 @@ enum ResolvedPathInBody {
     Invalid,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum PathMode {
     ExprValue,
     RecordInit,
@@ -656,7 +690,7 @@ pub(crate) trait RecordLike {
     fn record_field_list<'db>(
         &self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId, &'db AdtFieldList)>;
+    ) -> Option<(HirFieldDefListId, &'db AdtField)>;
 
     fn record_field_idx(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<usize> {
         let (hir_field_list, _) = self.record_field_list(db)?;
@@ -701,7 +735,7 @@ impl RecordLike for TyId {
     fn record_field_list<'db>(
         &self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId, &'db AdtFieldList)> {
+    ) -> Option<(HirFieldDefListId, &'db AdtField)> {
         let hir_db = db.as_hir_db();
 
         let adt_def = self.adt_def(db)?;
@@ -785,7 +819,7 @@ impl RecordLike for ResolvedVariant {
     fn record_field_list<'db>(
         &self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId, &'db AdtFieldList)> {
+    ) -> Option<(HirFieldDefListId, &'db AdtField)> {
         match self.variant_kind(db) {
             hir::hir_def::VariantKind::Record(fields) => {
                 (fields, &self.adt_def(db).fields(db)[self.idx]).into()
