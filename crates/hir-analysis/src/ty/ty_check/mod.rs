@@ -140,12 +140,21 @@ impl<'db> TyChecker<'db> {
     }
 
     fn equate_ty(&mut self, actual: TyId, expected: TyId, span: DynLazySpan) -> TyId {
+        // FIXME: This is a temporary workaround, this should be removed when we
+        // implement subtyping.
+        if expected.is_never(self.db) && !actual.is_never(self.db) {
+            let diag = BodyDiag::type_mismatch(self.db, span, expected, actual).into();
+            dbg!("FOOOOOOOOOOOO");
+            FuncBodyDiagAccumulator::push(self.db, diag);
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
+
         match self.table.unify(actual, expected) {
             Ok(()) => {
                 // FIXME: This is a temporary workaround, this should be removed when we
                 // implement subtyping.
                 let actual = actual.fold_with(&mut self.table);
-                if actual.is_bot(self.db) {
+                if actual.is_never(self.db) {
                     expected
                 } else {
                     actual

@@ -28,6 +28,7 @@ pub enum TypeKind {
     Tuple(TupleTypeId),
     /// The first `TypeId` is the element type, the second `Body` is the length.
     Array(Partial<TypeId>, Partial<Body>),
+    Never,
 }
 
 #[salsa::interned]

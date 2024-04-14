@@ -118,7 +118,7 @@ impl<'db> TyChecker<'db> {
             FuncBodyDiagAccumulator::push(self.db, diag.into());
         }
 
-        TyId::bot(self.db)
+        TyId::never(self.db)
     }
 
     fn check_break(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
@@ -133,7 +133,7 @@ impl<'db> TyChecker<'db> {
             FuncBodyDiagAccumulator::push(self.db, diag.into());
         }
 
-        TyId::bot(self.db)
+        TyId::never(self.db)
     }
 
     fn check_return(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
@@ -163,6 +163,6 @@ impl<'db> TyChecker<'db> {
             FuncBodyDiagAccumulator::push(self.db, diag.into());
         }
 
-        TyId::bot(self.db)
+        TyId::never(self.db)
     }
 }

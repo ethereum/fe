@@ -74,7 +74,7 @@ where
 
         TyData::ConstTy(const_ty) => visitor.visit_const_ty(const_ty),
 
-        TyData::Bot => {}
+        TyData::Never => {}
 
         TyData::Invalid(cause) => visitor.visit_invalid(cause),
     }

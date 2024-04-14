@@ -1,4 +1,4 @@
-use crate::{ExpectedKind, ParseError, SyntaxKind};
+use std::convert::Infallible;
 
 use super::{
     define_scope,
@@ -9,6 +9,7 @@ use super::{
     token_stream::TokenStream,
     Checkpoint, ErrProof, Parser, Recovery,
 };
+use crate::{ExpectedKind, ParseError, SyntaxKind};
 
 pub fn parse_type<S: TokenStream>(
     parser: &mut Parser<S>,
@@ -19,6 +20,9 @@ pub fn parse_type<S: TokenStream>(
         Some(SyntaxKind::SelfTypeKw) => parser.parse_cp(SelfTypeScope::new(), checkpoint),
         Some(SyntaxKind::LParen) => parser.parse_cp(TupleTypeScope::default(), checkpoint),
         Some(SyntaxKind::LBracket) => parser.parse_cp(ArrayTypeScope::default(), checkpoint),
+        Some(SyntaxKind::Not) => parser
+            .parse_cp(NeverTypeScope::default(), checkpoint)
+            .map_err(|e| e.into()),
         _ => parser.parse_cp(PathTypeScope::default(), checkpoint),
     }
 }
@@ -119,6 +123,16 @@ impl super::Parse for ArrayTypeScope {
         )? {
             parser.bump();
         }
+        Ok(())
+    }
+}
+
+define_scope! {NeverTypeScope, NeverType}
+impl super::Parse for NeverTypeScope {
+    type Error = Recovery<Infallible>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.bump_expected(SyntaxKind::Not);
         Ok(())
     }
 }

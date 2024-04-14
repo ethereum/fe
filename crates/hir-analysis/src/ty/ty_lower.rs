@@ -218,6 +218,8 @@ impl<'db> TyBuilder<'db> {
                 let array_1 = TyId::app(self.db, array, elem_ty);
                 TyId::app(self.db, array_1, len_ty)
             }
+
+            HirTyKind::Never => TyId::never(self.db),
         }
     }
 

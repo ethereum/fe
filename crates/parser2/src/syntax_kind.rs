@@ -399,6 +399,8 @@ pub enum SyntaxKind {
     TupleType,
     /// `[i32; 4]`
     ArrayType,
+    /// `!`
+    NeverType,
 
     // Paths. These are non-leaf nodes.
     /// `Segment1::Segment2`
@@ -683,6 +685,7 @@ impl SyntaxKind {
             SyntaxKind::PtrType => "pointer type",
             SyntaxKind::SelfType => "`Self` type",
             SyntaxKind::TupleType => "tuple type definition",
+            SyntaxKind::NeverType => "never type",
             SyntaxKind::ArrayType => "array type definition",
             SyntaxKind::Path => "path",
             SyntaxKind::Attr => "attribute",

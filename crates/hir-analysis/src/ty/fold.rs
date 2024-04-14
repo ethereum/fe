@@ -71,7 +71,7 @@ impl<'db> TypeFoldable<'db> for TyId {
                 TyId::const_ty(db, const_ty)
             }
 
-            TyVar(_) | TyParam(_) | TyBase(_) | ConstTy(_) | Bot | Invalid(_) => self,
+            TyVar(_) | TyParam(_) | TyBase(_) | ConstTy(_) | Never | Invalid(_) => self,
         }
     }
 

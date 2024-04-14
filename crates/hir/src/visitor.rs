@@ -1713,6 +1713,8 @@ where
                 );
             },
         ),
+
+        TypeKind::Never => {}
     }
 }
 
