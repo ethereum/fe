@@ -246,7 +246,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         } else {
             let early_resolved_path =
                 resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
-            self.resolve_early_resolved_path(early_resolved_path)
+            self.resolve_path_late(early_resolved_path)
         }
     }
 
@@ -259,13 +259,13 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             PathMode::RecordInit => {
                 let early_resolved_path =
                     resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
-                self.resolve_early_resolved_path(early_resolved_path)
+                self.resolve_path_late(early_resolved_path)
             }
 
             PathMode::Pat => {
                 let early_resolved_path =
                     resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
-                let resolved = self.resolve_early_resolved_path(early_resolved_path);
+                let resolved = self.resolve_path_late(early_resolved_path);
 
                 match resolved {
                     ResolvedPathInBody::Variant(..) => resolved,
@@ -320,7 +320,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_early_resolved_path(&mut self, early: EarlyResolvedPath) -> ResolvedPathInBody {
+    fn resolve_path_late(&mut self, early: EarlyResolvedPath) -> ResolvedPathInBody {
         match early {
             EarlyResolvedPath::Full(bucket) => self.resolve_bucket(bucket),
 
@@ -357,7 +357,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 let segments = &self.path.segments(hir_db)[unresolved_from..];
                 let scope = enum_.scope();
                 let early = resolve_segments_early(self.tc.db, segments, scope);
-                if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_early_resolved_path(early) {
+                if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_path_late(early) {
                     return resolved;
                 }
             }

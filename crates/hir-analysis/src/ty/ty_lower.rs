@@ -73,7 +73,7 @@ pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
 
     Some(FuncDef::new(
         db,
-        func,
+        func.into(),
         name,
         params_set,
         args,

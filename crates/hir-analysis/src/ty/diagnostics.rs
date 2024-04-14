@@ -645,21 +645,21 @@ pub enum BodyDiag {
 
     CallGenericArgNumMismatch {
         primary: DynLazySpan,
-        func: Func,
+        def_span: DynLazySpan,
         given: usize,
         expected: usize,
     },
 
     CallArgNumMismatch {
         primary: DynLazySpan,
-        func: Func,
+        def_span: DynLazySpan,
         given: usize,
         expected: usize,
     },
 
     CallArgLabelMismatch {
         primary: DynLazySpan,
-        func: Func,
+        def_span: DynLazySpan,
         given: Option<IdentId>,
         expected: IdentId,
     },
@@ -667,7 +667,7 @@ pub enum BodyDiag {
     AmbiguousMethodCall {
         primary: DynLazySpan,
         method_name: IdentId,
-        cands: Vec<Func>,
+        cand_spans: Vec<DynLazySpan>,
     },
 
     MethodNotFound {
@@ -1285,11 +1285,10 @@ impl BodyDiag {
 
             Self::CallGenericArgNumMismatch {
                 primary,
-                func,
+                def_span,
                 given,
                 expected,
             } => {
-                let func_span = func.lazy_span().name_moved();
                 vec![
                     SubDiagnostic::new(
                         LabelStyle::Primary,
@@ -1302,18 +1301,17 @@ impl BodyDiag {
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
                         "function defined here".to_string(),
-                        func_span.resolve(db),
+                        def_span.resolve(db),
                     ),
                 ]
             }
 
             Self::CallArgNumMismatch {
                 primary,
-                func,
+                def_span,
                 given,
                 expected,
             } => {
-                let func_span = func.lazy_span().name_moved();
                 vec![
                     SubDiagnostic::new(
                         LabelStyle::Primary,
@@ -1323,18 +1321,17 @@ impl BodyDiag {
                     SubDiagnostic::new(
                         LabelStyle::Secondary,
                         "function defined here".to_string(),
-                        func_span.resolve(db),
+                        def_span.resolve(db),
                     ),
                 ]
             }
 
             Self::CallArgLabelMismatch {
                 primary,
-                func,
+                def_span,
                 given,
                 expected,
             } => {
-                let func_span = func.lazy_span().name_moved();
                 let mut diags = if let Some(given) = given {
                     vec![SubDiagnostic::new(
                         LabelStyle::Primary,
@@ -1356,7 +1353,7 @@ impl BodyDiag {
                 diags.push(SubDiagnostic::new(
                     LabelStyle::Secondary,
                     "function defined here".to_string(),
-                    func_span.resolve(db),
+                    def_span.resolve(db),
                 ));
 
                 diags
@@ -1365,7 +1362,7 @@ impl BodyDiag {
             Self::AmbiguousMethodCall {
                 primary,
                 method_name,
-                cands: candidates,
+                cand_spans: candidates,
             } => {
                 let method_name = method_name.data(db.as_hir_db());
                 let mut diags = vec![SubDiagnostic::new(
@@ -1378,7 +1375,7 @@ impl BodyDiag {
                     diags.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
                         format!("#{i}candidate defined here"),
-                        candidate.lazy_span().name_moved().resolve(db),
+                        candidate.resolve(db),
                     ));
                 }
 

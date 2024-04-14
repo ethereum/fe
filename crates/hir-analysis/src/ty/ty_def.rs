@@ -7,10 +7,11 @@ use hir::{
         kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Body, Contract, Enum, Func, FuncParam as HirFuncParam, IdentId, IngotId, IntegerId,
-        ItemKind, Partial, Struct, TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
+        Body, Contract, Enum, Func, FuncParam as HirFuncParam, FuncParamListId, IdentId, IngotId,
+        IntegerId, ItemKind, Partial, Struct, TypeAlias as HirTypeAlias, TypeId as HirTyId,
+        VariantKind,
     },
-    span::DynLazySpan,
+    span::{lazy_spans, DynLazySpan},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -607,7 +608,7 @@ impl AdtDef {
 
 #[salsa::tracked]
 pub struct FuncDef {
-    pub hir_func: Func,
+    pub hir_def: HirFuncDef,
 
     pub name: IdentId,
 
@@ -623,13 +624,19 @@ pub struct FuncDef {
 
 impl FuncDef {
     pub fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
-        self.hir_func(db)
-            .top_mod(db.as_hir_db())
-            .ingot(db.as_hir_db())
+        self.hir_def(db).ingot(db)
     }
 
     pub fn name_span(self, db: &dyn HirAnalysisDb) -> DynLazySpan {
-        self.hir_func(db).lazy_span().name_moved().into()
+        self.hir_def(db).name_span()
+    }
+
+    pub fn param_list_span(self, db: &dyn HirAnalysisDb) -> DynLazySpan {
+        self.hir_def(db).param_list_span()
+    }
+
+    pub fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
+        self.hir_def(db).scope()
     }
 
     pub fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
@@ -641,28 +648,112 @@ impl FuncDef {
     }
 
     pub fn receiver_ty(self, db: &dyn HirAnalysisDb) -> Option<Binder<TyId>> {
-        if self.hir_func(db).is_method(db.as_hir_db()) {
-            self.arg_tys(db).first().copied()
-        } else {
-            None
-        }
+        self.is_method(db)
+            .then(|| self.arg_tys(db).first().copied().unwrap())
     }
 
     pub fn is_method(self, db: &dyn HirAnalysisDb) -> bool {
-        self.hir_func(db).is_method(db.as_hir_db())
+        self.hir_def(db).is_method(db)
     }
 
     pub fn offset_to_explicit_params_position(self, db: &dyn HirAnalysisDb) -> usize {
         self.params_set(db).offset_to_explicit_params_position(db)
     }
 
-    pub(super) fn hir_params(self, db: &dyn HirAnalysisDb) -> &[HirFuncParam] {
-        const EMPTY: &[HirFuncParam] = &[];
-        self.hir_func(db)
-            .params(db.as_hir_db())
-            .to_opt()
-            .map(|list| list.data(db.as_hir_db()).as_ref())
-            .unwrap_or(EMPTY)
+    pub fn hir_func_def(self, db: &dyn HirAnalysisDb) -> Option<Func> {
+        if let HirFuncDef::Func(func) = self.hir_def(db) {
+            Some(func)
+        } else {
+            None
+        }
+    }
+
+    pub fn param_span(self, db: &dyn HirAnalysisDb, idx: usize) -> DynLazySpan {
+        self.hir_def(db).param_span(idx)
+    }
+
+    pub fn param_label(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<IdentId> {
+        self.hir_def(db).param_label(db, idx)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+pub enum HirFuncDef {
+    Func(Func),
+    TupleVariant(Enum, usize),
+}
+
+impl HirFuncDef {
+    pub fn name_span(self) -> DynLazySpan {
+        match self {
+            Self::Func(func) => func.lazy_span().name_moved().into(),
+            Self::TupleVariant(enum_, idx) => enum_
+                .lazy_span()
+                .variants_moved()
+                .variant_moved(idx)
+                .name_moved()
+                .into(),
+        }
+    }
+
+    pub fn is_method(self, db: &dyn HirAnalysisDb) -> bool {
+        match self {
+            Self::Func(func) => func.is_method(db.as_hir_db()),
+            Self::TupleVariant(..) => false,
+        }
+    }
+
+    pub fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
+        let top_mod = match self {
+            Self::Func(func) => func.top_mod(db.as_hir_db()),
+            Self::TupleVariant(enum_, ..) => enum_.top_mod(db.as_hir_db()),
+        };
+
+        top_mod.ingot(db.as_hir_db())
+    }
+
+    pub fn scope(self) -> ScopeId {
+        match self {
+            Self::Func(func) => func.scope(),
+            Self::TupleVariant(enum_, idx) => ScopeId::Variant(enum_.into(), idx),
+        }
+    }
+
+    pub fn param_list_span(self) -> DynLazySpan {
+        match self {
+            Self::Func(func) => func.lazy_span().params_moved().into(),
+            Self::TupleVariant(enum_, idx) => enum_
+                .lazy_span()
+                .variants_moved()
+                .variant(idx)
+                .tuple_type()
+                .into(),
+        }
+    }
+
+    pub fn param_label(self, db: &dyn HirAnalysisDb, idx: usize) -> Option<IdentId> {
+        let Self::Func(func) = self else {
+            return None;
+        };
+
+        func.params(db.as_hir_db())
+            .to_opt()?
+            .data(db.as_hir_db())
+            .get(idx)?
+            .label_eagerly()
+    }
+
+    pub fn param_span(self, idx: usize) -> DynLazySpan {
+        match self {
+            Self::Func(func) => func.lazy_span().params_moved().param(idx).into(),
+            Self::TupleVariant(enum_, variant_idx) => enum_
+                .lazy_span()
+                .variants_moved()
+                .variant_moved(idx)
+                .tuple_type_moved()
+                .elem_ty_moved(idx)
+                .into(),
+        }
     }
 }
 
@@ -998,14 +1089,7 @@ impl TyBase {
 
             Self::Adt(adt) => adt.name(db).data(db.as_hir_db()).to_string(),
 
-            Self::Func(func) => format!(
-                "fn {}",
-                func.hir_func(db)
-                    .name(db.as_hir_db())
-                    .to_opt()
-                    .map(|name| name.data(db.as_hir_db()).as_str())
-                    .unwrap_or_else(|| "<invalid>")
-            ),
+            Self::Func(func) => format!("fn {}", func.name(db).data(db.as_hir_db())),
         }
     }
 
@@ -1150,7 +1234,7 @@ impl AdtRefId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
 pub enum AdtRef {
     Enum(Enum),
     Struct(Struct),

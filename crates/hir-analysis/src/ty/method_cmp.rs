@@ -57,15 +57,12 @@ fn compare_generic_param_num(
     let impl_params = impl_m.explicit_params(db);
     let trait_params = trait_m.explicit_params(db);
 
-    let hir_impl_m = impl_m.hir_func(db);
-    let hir_trait_m = trait_m.hir_func(db);
-
     if impl_params.len() == trait_params.len() {
         true
     } else {
         sink.push(
             ImplDiag::method_param_num_mismatch(
-                hir_impl_m.lazy_span().name().into(),
+                impl_m.name_span(db),
                 trait_params.len(),
                 impl_params.len(),
             )
@@ -95,12 +92,12 @@ fn compare_generic_param_kind(
 
         if !trait_m_kind.does_match(impl_m_kind) {
             let span = impl_m
-                .hir_func(db)
+                .hir_func_def(db)
+                .unwrap()
                 .lazy_span()
-                .generic_params()
-                .param(idx)
+                .generic_params_moved()
+                .param_moved(idx)
                 .into();
-
             sink.push(ImplDiag::method_param_kind_mismatch(span, trait_m_kind, impl_m_kind).into());
             err = true;
         }
@@ -121,16 +118,13 @@ fn compare_arity(
     let impl_m_arity = impl_m.arg_tys(db).len();
     let trait_m_arity = trait_m.arg_tys(db).len();
 
-    let hir_impl_method = impl_m.hir_func(db);
-    let hir_trait_method = trait_m.hir_func(db);
-
     // Checks if the arity are the same.
     if impl_m_arity == trait_m_arity {
         true
     } else {
         sink.push(
             ImplDiag::method_arg_num_mismatch(
-                hir_impl_method.lazy_span().params_moved().into(),
+                impl_m.param_list_span(db),
                 trait_m_arity,
                 impl_m_arity,
             )
@@ -149,14 +143,23 @@ fn compare_arg_label(
     trait_m: FuncDef,
     sink: &mut Vec<TyDiagCollection>,
 ) -> bool {
-    let mut err = false;
-    let hir_impl_method = impl_m.hir_func(db);
-    let hir_trait_method = trait_m.hir_func(db);
+    let hir_db = db.as_hir_db();
 
-    for (idx, (expected_param, method_param)) in trait_m
-        .hir_params(db)
+    let mut err = false;
+    let hir_impl_m = impl_m.hir_func_def(db).unwrap();
+    let hir_trait_m = trait_m.hir_func_def(db).unwrap();
+
+    let (Some(impl_m_params), Some(trait_m_params)) = (
+        hir_impl_m.params(hir_db).to_opt(),
+        hir_trait_m.params(hir_db).to_opt(),
+    ) else {
+        return true;
+    };
+
+    for (idx, (expected_param, method_param)) in trait_m_params
+        .data(hir_db)
         .iter()
-        .zip(impl_m.hir_params(db))
+        .zip(impl_m_params.data(hir_db))
         .enumerate()
     {
         let Some(expected_label) = expected_param
@@ -171,12 +174,8 @@ fn compare_arg_label(
         };
 
         if expected_label != method_label {
-            let primary = hir_impl_method.lazy_span().params_moved().param(idx).into();
-            let sub = hir_trait_method
-                .lazy_span()
-                .params_moved()
-                .param(idx)
-                .into();
+            let primary = hir_impl_m.lazy_span().params_moved().param(idx).into();
+            let sub = hir_trait_m.lazy_span().params_moved().param(idx).into();
 
             sink.push(
                 ImplDiag::method_arg_label_mismatch(db, primary, sub, expected_label, method_label)
@@ -207,12 +206,7 @@ fn compare_ty(
         let trait_m_ty = trait_m_ty.instantiate(db, map_to_impl);
         let impl_m_ty = impl_m_ty.instantiate_identity();
         if !impl_m_ty.contains_invalid(db) && trait_m_ty != impl_m_ty {
-            let span = impl_m
-                .hir_func(db)
-                .lazy_span()
-                .params_moved()
-                .param(idx)
-                .into();
+            let span = impl_m.param_span(db, idx);
             sink.push(ImplDiag::method_arg_ty_mismatch(db, span, trait_m_ty, impl_m_ty).into());
             err = true;
         }
@@ -224,7 +218,7 @@ fn compare_ty(
         sink.push(
             ImplDiag::method_ret_type_mismatch(
                 db,
-                impl_m.hir_func(db).lazy_span().ret_ty().into(),
+                impl_m.hir_func_def(db).unwrap().lazy_span().ret_ty().into(),
                 trait_m_ret_ty,
                 impl_m_ret_ty,
             )
@@ -267,12 +261,7 @@ fn compare_constraints(
     } else {
         unsatisfied_goals.sort_by_key(|goal| goal.ty(db).pretty_print(db));
         sink.push(
-            ImplDiag::method_stricter_bound(
-                db,
-                impl_m.hir_func(db).lazy_span().name().into(),
-                &unsatisfied_goals,
-            )
-            .into(),
+            ImplDiag::method_stricter_bound(db, impl_m.name_span(db), &unsatisfied_goals).into(),
         );
         false
     }

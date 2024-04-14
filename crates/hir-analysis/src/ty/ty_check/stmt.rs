@@ -157,7 +157,7 @@ impl<'db> TyChecker<'db> {
                 span.into(),
                 returned_ty,
                 self.expected,
-                func.map(|f| f.hir_func(self.db)),
+                func.map(|f| f.hir_func_def(self.db).unwrap()),
             );
 
             FuncBodyDiagAccumulator::push(self.db, diag.into());

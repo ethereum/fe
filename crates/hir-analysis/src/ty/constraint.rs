@@ -14,7 +14,7 @@ use super::{
     fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, FuncDef, TyBase, TyData, TyId},
+    ty_def::{AdtDef, FuncDef, HirFuncDef, TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
     visitor::{TypeVisitable, TypeVisitor},
 };
@@ -22,7 +22,8 @@ use crate::{
     ty::{
         binder::Binder,
         trait_lower::{lower_impl_trait, lower_trait},
-        ty_def::{free_inference_keys, TyVarSort},
+        ty_def::{free_inference_keys, AdtRefId, TyVarSort},
+        ty_lower::lower_adt,
         unify::InferenceKey,
     },
     HirAnalysisDb,
@@ -151,7 +152,14 @@ pub(crate) fn collect_func_def_constraints(
     db: &dyn HirAnalysisDb,
     func: FuncDef,
 ) -> Binder<ConstraintListId> {
-    let hir_func = func.hir_func(db);
+    let hir_func = match func.hir_def(db) {
+        HirFuncDef::Func(func) => func,
+        HirFuncDef::TupleVariant(enum_, _) => {
+            let adt_ref = AdtRefId::new(db, enum_.into());
+            let adt = lower_adt(db, adt_ref);
+            return collect_adt_constraints(db, adt);
+        }
+    };
 
     let func_constraints = Binder::bind(
         ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect(),

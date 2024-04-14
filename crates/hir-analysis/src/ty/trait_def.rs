@@ -287,7 +287,11 @@ pub struct TraitMethod(pub FuncDef);
 
 impl TraitMethod {
     pub fn has_default_impl(self, db: &dyn HirAnalysisDb) -> bool {
-        self.0.hir_func(db).body(db.as_hir_db()).is_some()
+        self.0
+            .hir_func_def(db)
+            .unwrap()
+            .body(db.as_hir_db())
+            .is_some()
     }
 }
 

@@ -58,11 +58,11 @@ pub(super) fn select_method_candidate(
         Ok(candidate) => Ok(candidate),
 
         Err(MethodSelectionError::Ambiguous(cands)) => {
-            let cands = cands.into_iter().map(|cand| cand.hir_func(db)).collect();
+            let cand_spans = cands.into_iter().map(|cand| cand.name_span(db)).collect();
             let diag = BodyDiag::AmbiguousMethodCall {
                 primary: method_name.1,
                 method_name: method_name.0,
-                cands,
+                cand_spans,
             };
 
             Err(diag.into())
@@ -175,7 +175,7 @@ impl<'db> MethodSelector<'db> {
     }
 
     fn is_visible(&self, def: FuncDef) -> bool {
-        is_scope_visible_from(self.db, def.hir_func(self.db).scope(), self.scope)
+        is_scope_visible_from(self.db, def.scope(self.db), self.scope)
     }
 }
 
