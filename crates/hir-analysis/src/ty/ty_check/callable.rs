@@ -72,7 +72,7 @@ impl Callable {
         if current_args.len() != given_args.len() {
             let diag = BodyDiag::CallGenericArgNumMismatch {
                 primary: span.into(),
-                func: self.func_def.hir_func(db),
+                def_span: self.func_def.name_span(db),
                 given: given_args.len(),
                 expected: current_args.len(),
             }
@@ -99,22 +99,13 @@ impl Callable {
         let db = tc.db;
         let hir_db = db.as_hir_db();
 
-        let Some(params) = self
-            .func_def
-            .hir_func(db)
-            .params(hir_db)
-            .to_opt()
-            .map(|param| param.data(hir_db))
-        else {
-            return;
-        };
-
-        if args.len() != params.len() {
+        let expected_arity = self.func_def.arg_tys(db).len();
+        if args.len() != expected_arity {
             let diag = BodyDiag::CallArgNumMismatch {
                 primary: span.into(),
-                func: self.func_def.hir_func(db),
+                def_span: self.func_def.name_span(db),
                 given: args.len(),
-                expected: params.len(),
+                expected: expected_arity,
             }
             .into();
             FuncBodyDiagAccumulator::push(db, diag);
@@ -124,7 +115,7 @@ impl Callable {
         let expected_args = self.func_def.arg_tys(db);
         for (i, (given, expected)) in args.iter().zip(expected_args.iter()).enumerate() {
             if_chain! {
-                if let Some(expected_label) = params[i].label_eagerly();
+                if let Some(expected_label) = self.func_def.param_label(db, i);
                 if Some(expected_label) != given.0;
                 let idx = if receiver_span.is_some() {
                     i - 1
@@ -139,7 +130,7 @@ impl Callable {
                     };
                     let diag = BodyDiag::CallArgLabelMismatch {
                         primary,
-                        func: self.func_def.hir_func(db),
+                        def_span: self.func_def.name_span(db),
                         given: given.0,
                         expected: expected_label,
                     }

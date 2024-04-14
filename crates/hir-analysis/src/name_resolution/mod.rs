@@ -442,7 +442,7 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
     fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: PatId, pat_data: &Pat) {
         match pat_data {
             Pat::PathTuple { .. } | Pat::Record { .. } => {
-                self.path_ctxt.push(ExpectedPathKind::PatWithArg)
+                self.path_ctxt.push(ExpectedPathKind::Record)
             }
             _ => self.path_ctxt.push(ExpectedPathKind::Pat),
         }
@@ -450,8 +450,21 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         self.path_ctxt.pop();
     }
 
-    fn visit_expr(&mut self, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: ExprId, _: &Expr) {
-        self.path_ctxt.push(ExpectedPathKind::Expr);
+    fn visit_expr(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+        expr: ExprId,
+        expr_data: &Expr,
+    ) {
+        match expr_data {
+            Expr::RecordInit(..) => {
+                self.path_ctxt.push(ExpectedPathKind::Record);
+            }
+
+            _ => {
+                self.path_ctxt.push(ExpectedPathKind::Expr);
+            }
+        }
         walk_expr(self, ctxt, expr);
         self.path_ctxt.pop();
     }
@@ -534,7 +547,7 @@ enum ExpectedPathKind {
     Type,
     Trait,
     Value,
-    PatWithArg,
+    Record,
     Pat,
     Expr,
 }
@@ -545,7 +558,7 @@ impl ExpectedPathKind {
             ExpectedPathKind::Type => NameDomain::Type,
             ExpectedPathKind::Trait => NameDomain::Type,
             ExpectedPathKind::Value => NameDomain::Value,
-            ExpectedPathKind::Pat | ExpectedPathKind::PatWithArg | ExpectedPathKind::Expr => {
+            ExpectedPathKind::Pat | ExpectedPathKind::Record | ExpectedPathKind::Expr => {
                 NameDomain::Value | NameDomain::Type
             }
         }

@@ -254,7 +254,13 @@ impl<'db> DefAnalyzer<'db> {
     fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef) -> Self {
         let hir_db = db.as_hir_db();
         let assumptions = collect_func_def_constraints(db, func).instantiate_identity();
-        let self_ty = match func.hir_func(db).scope().parent(hir_db).unwrap() {
+        let self_ty = match func
+            .hir_func_def(db)
+            .unwrap()
+            .scope()
+            .parent(hir_db)
+            .unwrap()
+        {
             ScopeId::Item(ItemKind::Trait(trait_)) => lower_trait(db, trait_).self_param(db).into(),
             ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => {
                 match impl_trait.ty(hir_db).to_opt() {
@@ -393,8 +399,8 @@ impl<'db> DefAnalyzer<'db> {
         if maybe_conflict != func {
             self.diags.push(
                 ImplDiag::conflict_method_impl(
-                    func.hir_func(self.db).lazy_span().name().into(),
-                    maybe_conflict.hir_func(self.db).lazy_span().name().into(),
+                    func.name_span(self.db),
+                    maybe_conflict.name_span(self.db),
                 )
                 .into(),
             );
@@ -445,9 +451,9 @@ impl<'db> DefAnalyzer<'db> {
             }
 
             DefKind::Func(func) => {
-                let func = func.hir_func(self.db);
-                let mut ctxt = VisitorCtxt::with_func(self.db.as_hir_db(), func);
-                self.visit_func(&mut ctxt, func);
+                let hir_func = func.hir_func_def(self.db).unwrap();
+                let mut ctxt = VisitorCtxt::with_func(self.db.as_hir_db(), hir_func);
+                self.visit_func(&mut ctxt, hir_func);
             }
         }
 
@@ -998,7 +1004,7 @@ impl DefKind {
             Self::Trait(def) => def.trait_(db).scope(),
             Self::ImplTrait(def) => def.hir_impl_trait(db).scope(),
             Self::Impl(hir_impl) => hir_impl.scope(),
-            Self::Func(def) => def.hir_func(db).scope(),
+            Self::Func(def) => def.scope(db),
         }
     }
 }

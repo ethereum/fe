@@ -308,7 +308,9 @@ impl LocalBinding {
 
             Self::Param { idx, .. } => {
                 let func = env.func().unwrap();
-                let Partial::Present(func_params) = func.hir_func(env.db).params(hir_db) else {
+                let Partial::Present(func_params) =
+                    func.hir_func_def(env.db).unwrap().params(hir_db)
+                else {
                     unreachable!();
                 };
 
@@ -321,8 +323,9 @@ impl LocalBinding {
         match self {
             LocalBinding::Local { pat, .. } => pat.lazy_span(env.body).into(),
             LocalBinding::Param { idx, .. } => {
-                let func = env.func().unwrap().hir_func(env.db);
-                func.lazy_span()
+                let hir_func = env.func().unwrap().hir_func_def(env.db).unwrap();
+                hir_func
+                    .lazy_span()
                     .params_moved()
                     .param(*idx)
                     .name_moved()
