@@ -14,7 +14,7 @@ use super::{
     fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, FuncDef, HirFuncDef, TyBase, TyData, TyId},
+    ty_def::{AdtDef, FuncDef, HirFuncDefKind, TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
     visitor::{TypeVisitable, TypeVisitor},
 };
@@ -153,8 +153,8 @@ pub(crate) fn collect_func_def_constraints(
     func: FuncDef,
 ) -> Binder<ConstraintListId> {
     let hir_func = match func.hir_def(db) {
-        HirFuncDef::Func(func) => func,
-        HirFuncDef::TupleVariant(enum_, _) => {
+        HirFuncDefKind::Func(func) => func,
+        HirFuncDefKind::VariantCtor(enum_, _) => {
             let adt_ref = AdtRefId::new(db, enum_.into());
             let adt = lower_adt(db, adt_ref);
             return collect_adt_constraints(db, adt);

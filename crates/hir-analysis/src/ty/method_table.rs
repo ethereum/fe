@@ -1,20 +1,33 @@
 use common::input::IngotKind;
-use hir::hir_def::{IdentId, Impl, IngotId};
+use hir::hir_def::{Enum, IdentId, Impl, IngotId, VariantKind};
 use rustc_hash::FxHashMap;
 
 use super::{
     binder::Binder,
     canonical::Canonical,
-    ty_def::{FuncDef, InvalidCause, TyBase, TyId},
+    ty_def::{AdtRefId, FuncDef, InvalidCause, TyBase, TyId},
     ty_lower::{lower_func, lower_hir_ty},
     unify::UnificationTable,
 };
-use crate::{ty::ty_def::TyData, HirAnalysisDb};
+use crate::{
+    ty::{
+        ty_def::{HirFuncDefKind, TyData},
+        ty_lower::{lower_adt, GenericParamTypeSet},
+    },
+    HirAnalysisDb,
+};
 
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_methods(db: &dyn HirAnalysisDb, ingot: IngotId) -> MethodTable {
+    let mut collector = MethodCollector::new(db, ingot);
+
+    let enums = ingot.all_enums(db.as_hir_db());
+    collector.collect_variant_ctors(enums);
+
     let impls = ingot.all_impls(db.as_hir_db());
-    MethodCollector::new(db, ingot).collect(impls)
+
+    collector.collect_impls(impls);
+    collector.finalize()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,7 +162,53 @@ impl<'db> MethodCollector<'db> {
         }
     }
 
-    fn collect(mut self, impls: &[Impl]) -> MethodTable {
+    fn collect_variant_ctors(&mut self, enums: &[Enum]) {
+        let hir_db = self.db.as_hir_db();
+        for &enum_ in enums {
+            let adt_ref = AdtRefId::new(self.db, enum_.into());
+            let adt = lower_adt(self.db, adt_ref);
+            for (i, variant) in enum_.variants(hir_db).data(hir_db).iter().enumerate() {
+                if !matches!(variant.kind, VariantKind::Tuple(_)) {
+                    continue;
+                };
+                let Some(name) = variant.name.to_opt() else {
+                    continue;
+                };
+                let Some(variant) = adt.fields(self.db).get(i) else {
+                    continue;
+                };
+
+                let arg_tys = variant.iter_types(self.db).collect();
+
+                let mut ret_ty = TyId::adt(self.db, adt);
+                let adt_param_set = adt.param_set(self.db);
+
+                for &generic_param in adt_param_set.params(self.db) {
+                    ret_ty = TyId::app(self.db, ret_ty, generic_param);
+                }
+
+                let param_set = GenericParamTypeSet::new(
+                    self.db,
+                    adt_param_set.params_precursor(self.db).to_vec(),
+                    adt_param_set.scope(self.db),
+                    adt_param_set.len(self.db),
+                );
+
+                let func = FuncDef::new(
+                    self.db,
+                    HirFuncDefKind::VariantCtor(enum_, i),
+                    name,
+                    param_set,
+                    arg_tys,
+                    Binder::bind(ret_ty),
+                );
+
+                self.insert(ret_ty, func)
+            }
+        }
+    }
+
+    fn collect_impls(&mut self, impls: &[Impl]) {
         for impl_ in impls {
             let ty = match impl_.ty(self.db.as_hir_db()).to_opt() {
                 Some(ty) => lower_hir_ty(self.db, ty, impl_.scope()),
@@ -172,7 +231,9 @@ impl<'db> MethodCollector<'db> {
                 self.insert(ty, func)
             }
         }
+    }
 
+    fn finalize(self) -> MethodTable {
         self.method_table.finalize()
     }
 

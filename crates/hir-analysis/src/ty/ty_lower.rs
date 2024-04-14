@@ -13,7 +13,7 @@ use salsa::function::Configuration;
 use super::{
     const_ty::{ConstTyData, ConstTyId},
     ty_def::{
-        AdtDef, AdtFieldList, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
+        AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
     },
 };
 use crate::{
@@ -436,7 +436,7 @@ struct AdtTyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     adt: AdtRefId,
     params: GenericParamTypeSet,
-    variants: Vec<AdtFieldList>,
+    variants: Vec<AdtField>,
 }
 
 impl<'db> AdtTyBuilder<'db> {
@@ -491,7 +491,7 @@ impl<'db> AdtTyBuilder<'db> {
             .map(|field| field.ty)
             .collect();
 
-        self.variants.push(AdtFieldList::new(fields, scope));
+        self.variants.push(AdtField::new(fields, scope));
     }
 
     fn collect_enum_variant_types(&mut self, variants: VariantDefListId) {
@@ -514,18 +514,17 @@ impl<'db> AdtTyBuilder<'db> {
                     VariantKind::Unit => vec![],
                 };
 
-                let variant = AdtFieldList::new(tys, scope);
+                let variant = AdtField::new(tys, scope);
                 self.variants.push(variant)
             })
     }
 }
 
-#[doc(hidden)]
 #[salsa::interned]
 pub struct GenericParamTypeSet {
-    params_precursor: Vec<TyParamPrecursor>,
-    // pub trait_self: Option<TyId>,
-    scope: ScopeId,
+    #[return_ref]
+    pub(crate) params_precursor: Vec<TyParamPrecursor>,
+    pub(crate) scope: ScopeId,
     offset_to_explicit: usize,
 }
 
@@ -541,6 +540,10 @@ impl GenericParamTypeSet {
 
     pub(crate) fn empty(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
         Self::new(db, Vec::new(), scope, 0)
+    }
+
+    pub(crate) fn len(self, db: &dyn HirAnalysisDb) -> usize {
+        self.params_precursor(db).len()
     }
 
     pub(super) fn trait_self(&self, db: &dyn HirAnalysisDb) -> Option<TyId> {
@@ -588,6 +591,7 @@ impl<'db> GenericParamCollector<'db> {
                 let parent = owner.parent(db.as_hir_db()).unwrap();
                 collect_generic_params(db, GenericParamOwnerId::new(db, parent))
                     .params_precursor(db)
+                    .to_vec()
             }
 
             _ => vec![],

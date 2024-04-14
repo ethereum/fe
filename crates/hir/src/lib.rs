@@ -52,6 +52,7 @@ pub struct Jar(
     hir_def::UsePathId,
     /// Utility methods for analysis.
     hir_def::all_top_modules_in_ingot,
+    hir_def::all_enums_in_ingot,
     hir_def::all_impls_in_ingot,
     hir_def::all_impl_traits_in_ingot,
     hir_def::all_items_in_top_mod,
@@ -174,7 +175,6 @@ impl<DB> SpannedHirDb for DB where DB: salsa::DbWithJar<SpannedJar> + HirDb {}
 
 #[cfg(test)]
 mod test_db {
-    use super::HirDb;
     use std::collections::BTreeSet;
 
     use common::{
@@ -182,6 +182,7 @@ mod test_db {
         InputFile, InputIngot,
     };
 
+    use super::HirDb;
     use crate::{
         hir_def::{scope_graph::ScopeGraph, ItemKind, TopLevelMod},
         lower::{map_file_to_mod, scope_graph},

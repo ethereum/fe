@@ -1,5 +1,5 @@
 struct Foo {}
-fn foo()) {
+fn foo() {
     let f = Foo {}
     f + f
     

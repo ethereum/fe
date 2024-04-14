@@ -534,12 +534,12 @@ pub struct AdtDef {
 
     /// Type parameters of the ADT.
     #[return_ref]
-    param_set: GenericParamTypeSet,
+    pub param_set: GenericParamTypeSet,
 
     /// Fields of the ADT, if the ADT is an enum, this represents variants.
     /// Otherwise, `fields[0]` represents all fields of the struct.
     #[return_ref]
-    pub fields: Vec<AdtFieldList>,
+    pub fields: Vec<AdtField>,
 }
 
 impl AdtDef {
@@ -608,7 +608,7 @@ impl AdtDef {
 
 #[salsa::tracked]
 pub struct FuncDef {
-    pub hir_def: HirFuncDef,
+    pub hir_def: HirFuncDefKind,
 
     pub name: IdentId,
 
@@ -661,7 +661,7 @@ impl FuncDef {
     }
 
     pub fn hir_func_def(self, db: &dyn HirAnalysisDb) -> Option<Func> {
-        if let HirFuncDef::Func(func) = self.hir_def(db) {
+        if let HirFuncDefKind::Func(func) = self.hir_def(db) {
             Some(func)
         } else {
             None
@@ -678,16 +678,16 @@ impl FuncDef {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
-pub enum HirFuncDef {
+pub enum HirFuncDefKind {
     Func(Func),
-    TupleVariant(Enum, usize),
+    VariantCtor(Enum, usize),
 }
 
-impl HirFuncDef {
+impl HirFuncDefKind {
     pub fn name_span(self) -> DynLazySpan {
         match self {
             Self::Func(func) => func.lazy_span().name_moved().into(),
-            Self::TupleVariant(enum_, idx) => enum_
+            Self::VariantCtor(enum_, idx) => enum_
                 .lazy_span()
                 .variants_moved()
                 .variant_moved(idx)
@@ -699,14 +699,14 @@ impl HirFuncDef {
     pub fn is_method(self, db: &dyn HirAnalysisDb) -> bool {
         match self {
             Self::Func(func) => func.is_method(db.as_hir_db()),
-            Self::TupleVariant(..) => false,
+            Self::VariantCtor(..) => false,
         }
     }
 
     pub fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
         let top_mod = match self {
             Self::Func(func) => func.top_mod(db.as_hir_db()),
-            Self::TupleVariant(enum_, ..) => enum_.top_mod(db.as_hir_db()),
+            Self::VariantCtor(enum_, ..) => enum_.top_mod(db.as_hir_db()),
         };
 
         top_mod.ingot(db.as_hir_db())
@@ -715,14 +715,14 @@ impl HirFuncDef {
     pub fn scope(self) -> ScopeId {
         match self {
             Self::Func(func) => func.scope(),
-            Self::TupleVariant(enum_, idx) => ScopeId::Variant(enum_.into(), idx),
+            Self::VariantCtor(enum_, idx) => ScopeId::Variant(enum_.into(), idx),
         }
     }
 
     pub fn param_list_span(self) -> DynLazySpan {
         match self {
             Self::Func(func) => func.lazy_span().params_moved().into(),
-            Self::TupleVariant(enum_, idx) => enum_
+            Self::VariantCtor(enum_, idx) => enum_
                 .lazy_span()
                 .variants_moved()
                 .variant(idx)
@@ -746,7 +746,7 @@ impl HirFuncDef {
     pub fn param_span(self, idx: usize) -> DynLazySpan {
         match self {
             Self::Func(func) => func.lazy_span().params_moved().param(idx).into(),
-            Self::TupleVariant(enum_, variant_idx) => enum_
+            Self::VariantCtor(enum_, variant_idx) => enum_
                 .lazy_span()
                 .variants_moved()
                 .variant_moved(idx)
@@ -760,7 +760,7 @@ impl HirFuncDef {
 /// This struct represents a field of an ADT. If the ADT is an enum, this
 /// represents a variant.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct AdtFieldList {
+pub struct AdtField {
     /// Fields of the variant.
     /// If the adt is an struct or contract,
     /// the length of the vector is always 1.
@@ -771,7 +771,7 @@ pub struct AdtFieldList {
 
     scope: ScopeId,
 }
-impl AdtFieldList {
+impl AdtField {
     pub fn ty(&self, db: &dyn HirAnalysisDb, i: usize) -> Binder<TyId> {
         let ty = if let Some(ty) = self.tys[i].to_opt() {
             lower_hir_ty(db, ty, self.scope)
