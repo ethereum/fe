@@ -27,7 +27,7 @@ pub(crate) fn is_scope_visible_from(
                     .parent_item(hir_db)
                     .and_then(|item| ScopeId::Item(item).parent(hir_db))
             } else {
-                Some(scope)
+                scope.parent(hir_db)
             }
         }
         ScopeId::Item(_) => scope.parent(hir_db),
