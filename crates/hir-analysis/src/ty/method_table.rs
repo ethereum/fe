@@ -33,7 +33,6 @@ pub(crate) fn collect_methods(db: &dyn HirAnalysisDb, ingot: IngotId) -> MethodT
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MethodTable {
     buckets: FxHashMap<TyBase, MethodBucket>,
-    mode: TableMode,
 }
 
 impl MethodTable {
@@ -42,15 +41,8 @@ impl MethodTable {
         db: &dyn HirAnalysisDb,
         ty: Canonical<TyId>,
         name: IdentId,
-    ) -> Option<FuncDef> {
-        let mut table = UnificationTable::new(db);
-        let ty = ty.decanonicalize(&mut table);
-        let base = Self::extract_ty_base(ty, db)?;
-        if let Some(bucket) = self.buckets.get(base) {
-            return bucket.probe(&mut table, self.mode, ty, name);
-        }
-
-        None
+    ) -> Vec<FuncDef> {
+        self.probe_impl(db, ty, name, TableMode::Lookup)
     }
 
     pub(super) fn probe_eager(
@@ -58,26 +50,17 @@ impl MethodTable {
         db: &dyn HirAnalysisDb,
         ty: Canonical<TyId>,
         name: IdentId,
-    ) -> Option<FuncDef> {
-        let mut table = UnificationTable::new(db);
-        let ty = ty.decanonicalize(&mut table);
-        let base = Self::extract_ty_base(ty, db)?;
-        if let Some(bucket) = self.buckets.get(base) {
-            return bucket.probe(&mut table, TableMode::Creation, ty, name);
-        }
-
-        None
+    ) -> Vec<FuncDef> {
+        self.probe_impl(db, ty, name, TableMode::Creation)
     }
 
     pub(super) fn new() -> Self {
         Self {
             buckets: FxHashMap::default(),
-            mode: TableMode::Creation,
         }
     }
 
     pub(super) fn finalize(mut self) -> Self {
-        self.mode = TableMode::Lookup;
         self
     }
 
@@ -97,6 +80,26 @@ impl MethodTable {
         match base.data(db) {
             TyData::TyBase(base) => Some(base),
             _ => None,
+        }
+    }
+
+    fn probe_impl(
+        &self,
+        db: &dyn HirAnalysisDb,
+        ty: Canonical<TyId>,
+        name: IdentId,
+        mode: TableMode,
+    ) -> Vec<FuncDef> {
+        let mut table = UnificationTable::new(db);
+        let ty = ty.decanonicalize(&mut table);
+        let Some(base) = Self::extract_ty_base(ty, db) else {
+            return vec![];
+        };
+
+        if let Some(bucket) = self.buckets.get(base) {
+            bucket.probe(&mut table, mode, ty, name)
+        } else {
+            vec![]
         }
     }
 }
@@ -119,7 +122,8 @@ impl MethodBucket {
         mode: TableMode,
         ty: TyId,
         name: IdentId,
-    ) -> Option<FuncDef> {
+    ) -> Vec<FuncDef> {
+        let mut methods = vec![];
         for (&cand_ty, funcs) in self.methods.iter() {
             let snapshot = table.snapshot();
             let cand_ty = table.instantiate_with_fresh_vars(cand_ty);
@@ -131,13 +135,13 @@ impl MethodBucket {
 
             if table.unify(cand_ty, ty).is_ok() {
                 if let Some(func) = funcs.get(&name) {
-                    return Some(*func);
+                    methods.push(*func)
                 }
             }
             table.rollback_to(snapshot);
         }
 
-        None
+        methods
     }
 }
 
@@ -250,7 +254,7 @@ impl<'db> MethodCollector<'db> {
                 Canonical::canonicalize(self.db, ty),
                 func.name(self.db),
             )
-            .is_none()
+            .is_empty()
         {
             self.method_table.insert(self.db, ty, func)
         }

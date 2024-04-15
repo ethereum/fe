@@ -290,7 +290,7 @@ impl<'db> DefAnalyzer<'db> {
     /// 2. the given `ty` is not const type
     /// TODO: This method is a stop-gap implementation until we design a true
     /// const type system.
-    fn verify_normal_star_type(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
+    fn verify_term_type_kind(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
         if !ty.has_star_kind(self.db) {
             self.diags
@@ -377,7 +377,7 @@ impl<'db> DefAnalyzer<'db> {
         true
     }
 
-    fn verify_method_conflict(&mut self, func: FuncDef) -> bool {
+    fn check_method_conflict(&mut self, func: FuncDef) -> bool {
         let self_ty = func
             .receiver_ty(self.db)
             .map_or_else(|| self.self_ty.unwrap(), |ty| ty.instantiate_identity());
@@ -387,27 +387,25 @@ impl<'db> DefAnalyzer<'db> {
         }
 
         let method_table = collect_methods(self.db, func.ingot(self.db));
-        let maybe_conflict = match method_table.probe_eager(
+
+        for cand in method_table.probe_eager(
             self.db,
             Canonical::canonicalize(self.db, self_ty),
             func.name(self.db),
         ) {
-            Some(func_def) => func_def,
-            None => unreachable!(),
-        };
-
-        if maybe_conflict != func {
-            self.diags.push(
-                ImplDiag::conflict_method_impl(
-                    func.name_span(self.db),
-                    maybe_conflict.name_span(self.db),
-                )
-                .into(),
-            );
-            false
-        } else {
-            true
+            if cand != func {
+                self.diags.push(
+                    ImplDiag::conflict_method_impl(
+                        func.name_span(self.db),
+                        cand.name_span(self.db),
+                    )
+                    .into(),
+                );
+                return false;
+            }
         }
+
+        true
     }
 
     fn scope(&self) -> ScopeId {
@@ -515,7 +513,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             return;
         };
 
-        if !self.verify_normal_star_type(ty, ctxt.span().unwrap().ty().into()) {
+        if !self.verify_term_type_kind(ty, ctxt.span().unwrap().ty().into()) {
             return;
         }
 
@@ -559,7 +557,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
                     continue;
                 };
 
-                self.verify_normal_star_type(elem_ty, span.elem_ty(i).into());
+                self.verify_term_type_kind(elem_ty, span.elem_ty(i).into());
             }
         }
         walk_variant_def(self, ctxt, variant);
@@ -741,7 +739,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         if matches!(
             ctxt.scope().parent_item(self.db.as_hir_db()).unwrap(),
             ItemKind::Impl(_)
-        ) && !self.verify_method_conflict(func)
+        ) && !self.check_method_conflict(func)
         {
             return;
         }
@@ -762,7 +760,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         walk_func(self, ctxt, hir_func);
 
         if let Some(ret_ty) = hir_func.ret_ty(self.db.as_hir_db()) {
-            self.verify_normal_star_type(ret_ty, hir_func.lazy_span().ret_ty().into());
+            self.verify_term_type_kind(ret_ty, hir_func.lazy_span().ret_ty().into());
         }
 
         self.assumptions = constraints;
@@ -821,7 +819,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             self.verify_self_type(hir_ty, ty_span.clone());
         }
 
-        if !self.verify_normal_star_type(hir_ty, ty_span) {
+        if !self.verify_term_type_kind(hir_ty, ty_span) {
             return;
         }
 

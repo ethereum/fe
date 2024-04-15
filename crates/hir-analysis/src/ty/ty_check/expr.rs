@@ -323,10 +323,7 @@ impl<'db> TyChecker<'db> {
 
         let func_ty = match candidate {
             Candidate::InherentMethod(func_def) => {
-                let mut func_ty = TyId::func(self.db, func_def);
-                for arg in receiver_ty.generic_args(self.db) {
-                    func_ty = TyId::app(self.db, func_ty, *arg);
-                }
+                let func_ty = TyId::func(self.db, func_def);
                 func_ty.instantiate_for_term(self)
             }
             _ => todo!(),
