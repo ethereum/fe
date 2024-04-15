@@ -338,11 +338,11 @@ impl<'db> TyChecker<'db> {
                 }
             };
 
-        let mut checked_args = vec![(Some(kw::SELF), receiver_ty)];
+        let mut arg_tys = vec![(Some(kw::SELF), receiver_ty)];
         for arg in args {
             let label = arg.label_eagerly(self.db.as_hir_db(), self.body());
             let arg_ty = self.fresh_ty();
-            checked_args.push((label, self.check_expr(arg.expr, arg_ty).ty))
+            arg_tys.push((label, self.check_expr(arg.expr, arg_ty).ty))
         }
 
         if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
@@ -351,7 +351,7 @@ impl<'db> TyChecker<'db> {
 
         callable.check_args(
             self,
-            &checked_args,
+            &arg_tys,
             call_span.args_moved(),
             Some(receiver.lazy_span(self.body()).into()),
         );
