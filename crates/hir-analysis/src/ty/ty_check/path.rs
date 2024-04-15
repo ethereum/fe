@@ -1,5 +1,6 @@
 use std::collections::{hash_map::Entry, BTreeSet};
 
+use either::Either;
 use hir::{
     hir_def::{
         scope_graph::{FieldParent, ScopeId},
@@ -21,6 +22,8 @@ use crate::{
     ty::{
         canonical::Canonical,
         diagnostics::{BodyDiag, FuncBodyDiag, TyLowerDiag},
+        trait_def::TraitDef,
+        trait_lower::lower_trait,
         ty_check::method_selection::{select_method_candidate, Candidate},
         ty_def::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, TyData, TyId},
         ty_lower::{lower_adt, lower_func, lower_hir_ty},
@@ -46,10 +49,18 @@ pub(super) fn resolve_path_in_pat(
         _ => unreachable!(),
     };
 
-    let mut resolver = PathResolver::new(tc, path, span, PathMode::Pat);
+    let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::Pat);
 
     match resolver.resolve_path() {
         ResolvedPathInBody::Ty(ty) => ResolvedPathInPat::Ty(ty),
+        ResolvedPathInBody::Trait(trait_) => {
+            let diag = BodyDiag::NotValue {
+                primary: span.into(),
+                item: trait_.trait_(tc.db).into(),
+            };
+
+            ResolvedPathInPat::Diag(diag.into())
+        }
         ResolvedPathInBody::Variant(variant) => ResolvedPathInPat::Variant(variant),
         ResolvedPathInBody::Binding(binding, _) | ResolvedPathInBody::NewBinding(binding) => {
             ResolvedPathInPat::NewBinding(binding)
@@ -70,6 +81,13 @@ pub(super) fn resolve_path_in_expr(
 
     match resolver.resolve_path() {
         ResolvedPathInBody::Ty(ty) => ResolvedPathInExpr::Ty(ty),
+        ResolvedPathInBody::Trait(trait_) => {
+            let diag = BodyDiag::NotValue {
+                primary: span.into(),
+                item: trait_.trait_(tc.db).into(),
+            };
+            ResolvedPathInExpr::Diag(diag.into())
+        }
         ResolvedPathInBody::Variant(variant) => ResolvedPathInExpr::Variant(variant),
         ResolvedPathInBody::Binding(_, binding) => ResolvedPathInExpr::Binding(binding),
         ResolvedPathInBody::NewBinding(ident) => {
@@ -96,6 +114,14 @@ pub(super) fn resolve_path_in_record_init(
     match resolver.resolve_path() {
         ResolvedPathInBody::Ty(ty) => ResolvedPathInRecordInit::Ty(ty),
         ResolvedPathInBody::Variant(variant) => ResolvedPathInRecordInit::Variant(variant),
+
+        ResolvedPathInBody::Trait(trait_) => {
+            let diag = BodyDiag::NotValue {
+                primary: span.into(),
+                item: trait_.trait_(tc.db).into(),
+            };
+            ResolvedPathInRecordInit::Diag(diag.into())
+        }
 
         ResolvedPathInBody::Binding(..) => {
             let diag = BodyDiag::record_expected::<TyId>(tc.db, span.clone().into(), None);
@@ -324,6 +350,9 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
         let receiver_ty = match self.resolve_name_res(&res) {
             ResolvedPathInBody::Ty(ty) => ty,
+            ResolvedPathInBody::Trait(trait_) => {
+                return self.resolve_trait_partial(trait_, unresolved_from);
+            }
 
             ResolvedPathInBody::Variant(_)
             | ResolvedPathInBody::Binding(_, _)
@@ -362,6 +391,32 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         // report an error.
         let diag = TyLowerDiag::AssocTy(self.span.clone().into());
         ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()))
+    }
+
+    fn resolve_trait_partial(
+        &mut self,
+        trait_: TraitDef,
+        unresolved_from: usize,
+    ) -> ResolvedPathInBody {
+        let hir_db = self.tc.db.as_hir_db();
+
+        if unresolved_from + 1 != self.path.len(hir_db) {
+            let diag = TyLowerDiag::AssocTy(self.span.clone().into());
+            return ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()));
+        }
+
+        let Some(name) = self.path.last_segment(hir_db).to_opt() else {
+            return ResolvedPathInBody::Invalid;
+        };
+
+        let Some(trait_method) = trait_.methods(self.tc.db).get(&name) else {
+            let span = self.span.segment(unresolved_from).into();
+            let diag = BodyDiag::method_not_found(self.tc.db, span, name, Either::Right(trait_));
+            return ResolvedPathInBody::Diag(diag.into());
+        };
+
+        let ty = TyId::func(self.tc.db, trait_method.0);
+        self.tc.table.instantiate_to_term(ty).into()
     }
 
     fn select_method_candidate(
@@ -507,8 +562,8 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 }
             }
 
-            NameResKind::Scope(ScopeId::Item(ItemKind::Trait(_))) => {
-                todo!()
+            NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) => {
+                lower_trait(self.tc.db, trait_).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::ImplTrait(impl_trait))) => {
@@ -540,6 +595,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 #[derive(Clone, Debug, derive_more::From)]
 enum ResolvedPathInBody {
     Ty(TyId),
+    Trait(TraitDef),
     Variant(ResolvedVariant),
     #[from(ignore)]
     Binding(IdentId, LocalBinding),
