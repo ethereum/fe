@@ -1,5 +1,5 @@
 use hir::{
-    hir_def::{GenericArgListId, IdentId},
+    hir_def::{kw, GenericArgListId, IdentId},
     span::{expr::LazyCallArgListSpan, params::LazyGenericArgListSpan, DynLazySpan},
 };
 use if_chain::if_chain;
@@ -117,6 +117,7 @@ impl Callable {
         for (i, (given, expected)) in args.iter().zip(expected_args.iter()).enumerate() {
             if_chain! {
                 if let Some(expected_label) = self.func_def.param_label(db, i);
+                if expected_label != kw::SELF;
                 if Some(expected_label) != given.0;
                 let idx = if receiver_span.is_some() {
                     i - 1

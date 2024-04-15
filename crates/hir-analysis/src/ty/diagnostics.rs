@@ -3,10 +3,11 @@ use std::collections::BTreeSet;
 use common::diagnostics::{
     CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, SubDiagnostic,
 };
+use either::Either;
 use hir::{
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        FieldIndex, Func, FuncParamName, IdentId, ImplTrait, PathId, Trait,
+        FieldIndex, Func, FuncParamName, IdentId, ImplTrait, ItemKind, PathId, Trait,
         TypeAlias as HirTypeAlias,
     },
     span::{DynLazySpan, LazySpan},
@@ -16,6 +17,7 @@ use itertools::Itertools;
 
 use super::{
     constraint::PredicateId,
+    trait_def::TraitDef,
     ty_check::{RecordLike, TraitOps},
     ty_def::{Kind, TyId},
 };
@@ -684,7 +686,12 @@ pub enum BodyDiag {
     MethodNotFound {
         primary: DynLazySpan,
         method_name: IdentId,
-        ty: String,
+        receiver: String,
+    },
+
+    NotValue {
+        primary: DynLazySpan,
+        item: ItemKind,
     },
 }
 
@@ -828,13 +835,21 @@ impl BodyDiag {
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
         method_name: IdentId,
-        ty: TyId,
+        receiver: Either<TyId, TraitDef>,
     ) -> Self {
-        let ty = ty.pretty_print(db).to_string();
+        let receiver = match receiver {
+            Either::Left(ty) => ty.pretty_print(db),
+            Either::Right(trait_) => trait_
+                .trait_(db)
+                .name(db.as_hir_db())
+                .unwrap()
+                .data(db.as_hir_db()),
+        };
+
         Self::MethodNotFound {
             primary,
             method_name,
-            ty,
+            receiver: receiver.to_string(),
         }
     }
 
@@ -869,6 +884,7 @@ impl BodyDiag {
             Self::AmbiguousTraitMethodCall { .. } => 26,
             Self::InvisibleTraitMethod { .. } => 27,
             Self::MethodNotFound { .. } => 28,
+            Self::NotValue { .. } => 29,
         }
     }
 
@@ -928,6 +944,10 @@ impl BodyDiag {
 
             Self::MethodNotFound { method_name, .. } => {
                 format!("`{}` is not found", method_name.data(db))
+            }
+
+            Self::NotValue { item, .. } => {
+                format!("`{}` is not a value", item.kind_name())
             }
         }
     }
@@ -1441,12 +1461,20 @@ impl BodyDiag {
             Self::MethodNotFound {
                 primary,
                 method_name,
-                ty,
+                receiver: ty,
             } => {
                 let method_name = method_name.data(db.as_hir_db());
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
                     format!("`{}` is not found in `{}`", method_name, ty),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::NotValue { primary, item } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{}` cannot be used as a value", item.kind_name()),
                     primary.resolve(db),
                 )]
             }

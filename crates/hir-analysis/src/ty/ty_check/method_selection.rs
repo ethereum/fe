@@ -1,3 +1,4 @@
+use either::Either;
 use hir::{
     hir_def::{scope_graph::ScopeId, IdentId, Trait},
     span::DynLazySpan,
@@ -105,7 +106,8 @@ pub(super) fn select_method_candidate(
 
         Err(MethodSelectionError::NotFound) => {
             let base_ty = receiver.0.value.base_ty(db);
-            let diag = BodyDiag::method_not_found(db, method_name.1, method_name.0, base_ty);
+            let diag =
+                BodyDiag::method_not_found(db, method_name.1, method_name.0, Either::Left(base_ty));
             Err(diag.into())
         }
 
