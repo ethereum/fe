@@ -14,7 +14,6 @@ use super::{
     ty_lower::{
         collect_generic_params, lower_generic_arg_list, GenericParamOwnerId, GenericParamTypeSet,
     },
-    unify::UnificationTable,
 };
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
@@ -314,7 +313,6 @@ impl<'db> ImplementorCollector<'db> {
                 continue;
             };
             for already_implemented in impls {
-                let mut table = UnificationTable::new(self.db);
                 if does_impl_trait_conflict(self.db, *already_implemented, implementor) {
                     return true;
                 }

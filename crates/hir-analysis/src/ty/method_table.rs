@@ -60,7 +60,7 @@ impl MethodTable {
         }
     }
 
-    pub(super) fn finalize(mut self) -> Self {
+    pub(super) fn finalize(self) -> Self {
         self
     }
 

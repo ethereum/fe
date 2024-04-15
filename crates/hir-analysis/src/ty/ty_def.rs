@@ -7,30 +7,24 @@ use hir::{
         kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Body, Contract, Enum, Func, FuncParam as HirFuncParam, FuncParamListId, IdentId, IngotId,
-        IntegerId, ItemKind, Partial, Struct, TypeAlias as HirTypeAlias, TypeId as HirTyId,
-        VariantKind,
+        Body, Contract, Enum, Func, IdentId, IngotId, IntegerId, ItemKind, Partial, Struct,
+        TypeAlias as HirTypeAlias, TypeId as HirTyId, VariantKind,
     },
-    span::{lazy_spans, DynLazySpan},
+    span::DynLazySpan,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashSet;
 
 use super::{
     binder::Binder,
     const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
-    constraint::{
-        collect_adt_constraints, collect_func_def_constraints, AssumptionListId, ConstraintListId,
-    },
+    constraint::AssumptionListId,
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     ty_lower::{lower_hir_ty, GenericParamOwnerId, GenericParamTypeSet},
-    unify::{InferenceKey, UnificationTable},
+    unify::InferenceKey,
     visitor::{TypeVisitable, TypeVisitor},
 };
 use crate::{
-    ty::{
-        constraint_solver::{check_ty_wf, GoalSatisfiability},
-        ty_lower::collect_generic_params,
-    },
+    ty::constraint_solver::{check_ty_wf, GoalSatisfiability},
     HirAnalysisDb,
 };
 
@@ -247,14 +241,6 @@ impl TyId {
 
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
         !collect_type_params(db, self).is_empty()
-    }
-
-    pub(super) fn contains_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
-        match self.data(db) {
-            TyData::TyParam(ty_param) => ty_param.is_trait_self,
-            TyData::TyApp(lhs, rhs) => lhs.contains_trait_self(db) || rhs.contains_trait_self(db),
-            _ => false,
-        }
     }
 
     /// Emit diagnostics for the type if the type contains invalid types.
@@ -749,7 +735,7 @@ impl HirFuncDefKind {
             Self::VariantCtor(enum_, variant_idx) => enum_
                 .lazy_span()
                 .variants_moved()
-                .variant_moved(idx)
+                .variant_moved(variant_idx)
                 .tuple_type_moved()
                 .elem_ty_moved(idx)
                 .into(),
@@ -1011,15 +997,6 @@ impl TyParam {
             name,
             idx,
             kind,
-            is_trait_self: false,
-        }
-    }
-
-    pub(super) fn const_param(name: IdentId, idx: usize) -> Self {
-        Self {
-            name,
-            idx,
-            kind: Kind::Star,
             is_trait_self: false,
         }
     }

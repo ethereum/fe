@@ -6,17 +6,14 @@ use std::collections::BTreeSet;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, IngotId, ItemKind, TypeBound,
 };
-use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
 
 use super::{
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    fold::{TypeFoldable, TypeFolder},
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
     ty_def::{AdtDef, FuncDef, HirFuncDefKind, TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
-    visitor::{TypeVisitable, TypeVisitor},
 };
 use crate::{
     ty::{
@@ -45,7 +42,6 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintList
     };
 
     let mut args = args.to_vec();
-    let mut arg_idx = 0;
 
     // Generalize unbound type parameters.
     for &arg in params.iter().skip(args.len()) {
@@ -119,10 +115,6 @@ pub(crate) fn collect_adt_constraints(
     let collector = ConstraintCollector::new(db, owner);
 
     Binder::bind(collector.collect())
-}
-
-struct MyFoo<T: Clone> {
-    t: T,
 }
 
 #[salsa::tracked]

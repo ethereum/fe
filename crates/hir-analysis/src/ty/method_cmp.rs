@@ -1,5 +1,4 @@
 use super::{
-    binder::Binder,
     constraint::collect_func_def_constraints,
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{ImplDiag, TyDiagCollection},

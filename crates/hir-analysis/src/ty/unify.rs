@@ -171,6 +171,19 @@ impl<'db> UnificationTable<'db> {
         value.instantiate_with(self.db, |ty| self.new_var_from_param(ty))
     }
 
+    pub fn instantiate_to_term(&mut self, mut ty: TyId) -> TyId {
+        if ty.contains_invalid(self.db) {
+            return ty;
+        };
+
+        while let Some(prop) = ty.applicable_ty(self.db) {
+            let arg = self.new_var_for(prop);
+            ty = TyId::app(self.db, ty, arg);
+        }
+
+        ty
+    }
+
     pub fn new_key(&mut self, kind: &Kind, sort: TyVarSort) -> InferenceKey {
         self.table
             .new_key(InferenceValue::Unbound(kind.clone(), sort))

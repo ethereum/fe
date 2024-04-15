@@ -6,7 +6,7 @@
 use rustc_hash::FxHashSet;
 
 use super::{
-    constraint::{collect_trait_constraints, AssumptionListId, PredicateId, PredicateListId},
+    constraint::{collect_trait_constraints, AssumptionListId, PredicateId},
     fold::TypeFoldable,
     trait_def::{ingot_trait_env, TraitEnv, TraitInstId},
     ty_def::TyId,

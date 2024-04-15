@@ -664,10 +664,21 @@ pub enum BodyDiag {
         expected: IdentId,
     },
 
-    AmbiguousMethodCall {
+    AmbiguousInherentMethodCall {
         primary: DynLazySpan,
         method_name: IdentId,
         cand_spans: Vec<DynLazySpan>,
+    },
+
+    AmbiguousTraitMethodCall {
+        primary: DynLazySpan,
+        method_name: IdentId,
+        cand_insts: Vec<String>,
+    },
+
+    InvisibleTraitMethod {
+        primary: DynLazySpan,
+        traits: Vec<Trait>,
     },
 
     MethodNotFound {
@@ -692,7 +703,7 @@ impl BodyDiag {
     pub(super) fn unit_variant_expected<T>(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
-        mut record_like: T,
+        record_like: T,
     ) -> Self
     where
         T: RecordLike,
@@ -714,7 +725,7 @@ impl BodyDiag {
     where
         T: RecordLike,
     {
-        let (kind_name, hint) = if let Some(mut record_like) = record_like {
+        let (kind_name, hint) = if let Some(record_like) = record_like {
             (
                 Some(record_like.kind_name(db)),
                 record_like.initializer_hint(db),
@@ -738,7 +749,7 @@ impl BodyDiag {
     where
         T: RecordLike,
     {
-        let (kind_name, hint) = if let Some(mut record_like) = record_like {
+        let (kind_name, hint) = if let Some(record_like) = record_like {
             (
                 Some(record_like.kind_name(db)),
                 record_like.initializer_hint(db),
@@ -854,8 +865,10 @@ impl BodyDiag {
             Self::CallGenericArgNumMismatch { .. } => 22,
             Self::CallArgNumMismatch { .. } => 23,
             Self::CallArgLabelMismatch { .. } => 24,
-            Self::AmbiguousMethodCall { .. } => 25,
-            Self::MethodNotFound { .. } => 26,
+            Self::AmbiguousInherentMethodCall { .. } => 25,
+            Self::AmbiguousTraitMethodCall { .. } => 26,
+            Self::InvisibleTraitMethod { .. } => 27,
+            Self::MethodNotFound { .. } => 28,
         }
     }
 
@@ -907,15 +920,13 @@ impl BodyDiag {
             Self::CallArgNumMismatch { .. } => "given argument number mismatch".to_string(),
             Self::CallArgLabelMismatch { .. } => "given argument label mismatch".to_string(),
 
-            Self::AmbiguousMethodCall { method_name, .. } => {
-                format!("`{}` is ambiguous ", method_name.data(db))
-            }
+            Self::AmbiguousInherentMethodCall { .. } => "ambiguous method call".to_string(),
 
-            Self::MethodNotFound {
-                primary,
-                method_name,
-                ty,
-            } => {
+            Self::AmbiguousTraitMethodCall { .. } => "ambiguous trait method call".to_string(),
+
+            Self::InvisibleTraitMethod { .. } => "trait is not in the scope".to_string(),
+
+            Self::MethodNotFound { method_name, .. } => {
                 format!("`{}` is not found", method_name.data(db))
             }
         }
@@ -1359,7 +1370,7 @@ impl BodyDiag {
                 diags
             }
 
-            Self::AmbiguousMethodCall {
+            Self::AmbiguousInherentMethodCall {
                 primary,
                 method_name,
                 cand_spans: candidates,
@@ -1371,12 +1382,57 @@ impl BodyDiag {
                     primary.resolve(db),
                 )];
 
-                for (i, candidate) in candidates.iter().enumerate() {
+                for candidate in candidates.iter() {
                     diags.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("candidate `#{i}` is defined here"),
+                        format!("{method_name} is defined here"),
                         candidate.resolve(db),
                     ));
+                }
+
+                diags
+            }
+
+            Self::AmbiguousTraitMethodCall {
+                primary,
+                method_name,
+                cand_insts,
+            } => {
+                let method_name = method_name.data(db.as_hir_db());
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{}` is ambiguous", method_name),
+                    primary.resolve(db),
+                )];
+
+                for cand in cand_insts.iter() {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("candidate: {cand}"),
+                        primary.resolve(db),
+                    ));
+                }
+
+                diags
+            }
+
+            Self::InvisibleTraitMethod { primary, traits } => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "trait is not imported to the scope, consider trying the following suggestion"
+                        .to_string(),
+                    primary.resolve(db),
+                )];
+
+                for trait_ in traits {
+                    if let Some(path) = trait_.scope().pretty_path(db.as_hir_db()) {
+                        let diag = SubDiagnostic::new(
+                            LabelStyle::Secondary,
+                            format!("`use {path}`"),
+                            primary.resolve(db),
+                        );
+                        diags.push(diag);
+                    };
                 }
 
                 diags

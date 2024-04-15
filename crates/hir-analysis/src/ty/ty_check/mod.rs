@@ -17,8 +17,10 @@ pub(super) use path::RecordLike;
 use rustc_hash::FxHashMap;
 
 use super::{
+    canonical::Canonical,
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
     fold::TypeFoldable,
+    trait_def::{TraitInstId, TraitMethod},
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
     unify::{UnificationError, UnificationTable},
@@ -144,7 +146,6 @@ impl<'db> TyChecker<'db> {
         // implement subtyping.
         if expected.is_never(self.db) && !actual.is_never(self.db) {
             let diag = BodyDiag::type_mismatch(self.db, span, expected, actual).into();
-            dbg!("FOOOOOOOOOOOO");
             FuncBodyDiagAccumulator::push(self.db, diag);
             return TyId::invalid(self.db, InvalidCause::Other);
         };
@@ -223,5 +224,26 @@ impl Typeable {
             Self::Expr(expr, ..) => expr.lazy_span(body).into(),
             Self::Pat(pat) => pat.lazy_span(body).into(),
         }
+    }
+}
+
+impl TraitMethod {
+    fn instantiate_with_inst(
+        self,
+        tc: &mut TyChecker,
+        receiver_ty: TyId,
+        inst: Canonical<TraitInstId>,
+    ) -> TyId {
+        let mut ty = TyId::func(tc.db, self.0);
+        let inst = inst.decanonicalize(&mut tc.table);
+
+        for &arg in inst.args(tc.db) {
+            ty = TyId::app(tc.db, ty, arg);
+        }
+
+        let inst_self = tc.table.instantiate_to_term(inst.self_ty(tc.db));
+        tc.table.unify(inst_self, receiver_ty).unwrap();
+
+        tc.table.instantiate_to_term(ty)
     }
 }

@@ -3,10 +3,9 @@ use std::collections::hash_map::Entry;
 use rustc_hash::FxHashMap;
 
 use super::{
-    const_ty::{self, ConstTyData},
+    const_ty::ConstTyData,
     fold::{TypeFoldable, TypeFolder},
-    ty_def::{collect_type_params, TyData, TyId},
-    ty_lower::collect_generic_params,
+    ty_def::{TyData, TyId},
 };
 use crate::HirAnalysisDb;
 
@@ -29,8 +28,8 @@ where
         self.value
     }
 
-    pub fn skip_binder(self) -> T {
-        self.value
+    pub fn skip_binder(&self) -> &T {
+        &self.value
     }
 
     pub fn instantiate(self, db: &'db dyn HirAnalysisDb, args: &[TyId]) -> T {

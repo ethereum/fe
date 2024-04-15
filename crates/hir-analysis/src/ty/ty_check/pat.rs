@@ -115,7 +115,7 @@ impl<'db> TyChecker<'db> {
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
-            ResolvedPathInPat::Variant(mut variant) => {
+            ResolvedPathInPat::Variant(variant) => {
                 if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
                     variant.ty(self.db)
                 } else {
@@ -259,7 +259,7 @@ impl<'db> TyChecker<'db> {
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
-            ResolvedPathInPat::Variant(mut variant) if variant.is_record(self.db) => {
+            ResolvedPathInPat::Variant(variant) if variant.is_record(self.db) => {
                 let ty = variant.ty(self.db);
                 self.check_record_pat_fields(variant, pat);
                 ty

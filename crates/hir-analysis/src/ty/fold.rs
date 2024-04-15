@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 use super::{
     constraint::{PredicateId, PredicateListId},
-    trait_def::{Implementor, TraitInstId, TraitMethod},
+    trait_def::{Implementor, TraitInstId},
     ty_check::ExprProp,
-    ty_def::{FuncDef, TyData, TyId},
+    ty_def::{TyData, TyId},
     visitor::TypeVisitable,
 };
 use crate::{
@@ -71,7 +71,7 @@ impl<'db> TypeFoldable<'db> for TyId {
                 TyId::const_ty(db, const_ty)
             }
 
-            TyVar(_) | TyParam(_) | TyBase(_) | ConstTy(_) | Never | Invalid(_) => self,
+            TyVar(_) | TyParam(_) | TyBase(_) | Never | Invalid(_) => self,
         }
     }
 

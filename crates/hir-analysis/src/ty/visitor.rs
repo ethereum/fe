@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use super::{
     const_ty::{ConstTyData, ConstTyId},
     constraint::{PredicateId, PredicateListId},
-    trait_def::{Implementor, TraitInstId, TraitMethod},
+    trait_def::{Implementor, TraitInstId},
     ty_check::ExprProp,
     ty_def::{AdtDef, FuncDef, InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
 };
