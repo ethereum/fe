@@ -1,14 +1,12 @@
 use hir::{
-    hir_def::{CallArg, GenericArgListId, IdentId},
+    hir_def::{GenericArgListId, IdentId},
     span::{expr::LazyCallArgListSpan, params::LazyGenericArgListSpan, DynLazySpan},
 };
 use if_chain::if_chain;
-use rustc_hash::FxHashMap;
 
 use super::TyChecker;
 use crate::{
     ty::{
-        binder::Binder,
         diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator},
         ty_def::{FuncDef, TyBase, TyData, TyId},
         ty_lower::lower_generic_arg_list,
@@ -95,7 +93,6 @@ impl Callable {
         receiver_span: Option<DynLazySpan>,
     ) {
         let db = tc.db;
-        let hir_db = db.as_hir_db();
 
         let expected_arity = self.func_def.arg_tys(db).len();
         if args.len() != expected_arity {

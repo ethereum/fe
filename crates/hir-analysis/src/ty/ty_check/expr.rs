@@ -4,7 +4,6 @@ use hir::hir_def::{
 
 use super::{
     env::{ExprProp, LocalBinding},
-    method_selection::MethodSelectionError,
     path::ResolvedPathInExpr,
     RecordLike, Typeable,
 };
@@ -15,7 +14,7 @@ use crate::{
         const_ty::ConstTyId,
         diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
         ty_check::{
-            callable::{self, Callable},
+            callable::Callable,
             method_selection::{select_method_candidate, Candidate},
             path::{
                 resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
@@ -324,9 +323,14 @@ impl<'db> TyChecker<'db> {
         let func_ty = match candidate {
             Candidate::InherentMethod(func_def) => {
                 let func_ty = TyId::func(self.db, func_def);
-                func_ty.instantiate_for_term(self)
+                self.table.instantiate_to_term(func_ty)
             }
-            _ => todo!(),
+
+            Candidate::TraitMethod(cand) => {
+                let inst = cand.inst;
+                let trait_method = cand.method;
+                trait_method.instantiate_with_inst(self, receiver_ty, inst)
+            }
         };
 
         let mut callable =
@@ -430,7 +434,7 @@ impl<'db> TyChecker<'db> {
         };
 
         match resolve_path_in_record_init(self, *path, expr) {
-            ResolvedPathInRecordInit::Ty(mut ty) => {
+            ResolvedPathInRecordInit::Ty(ty) => {
                 if ty.is_record(self.db) {
                     self.check_record_init_fields(ty, expr);
                     ExprProp::new(ty, true)
@@ -442,7 +446,7 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
-            ResolvedPathInRecordInit::Variant(mut variant) => {
+            ResolvedPathInRecordInit::Variant(variant) => {
                 let ty = variant.ty(self.db);
                 self.check_record_init_fields(variant, expr);
                 ExprProp::new(ty, true)

@@ -10,16 +10,14 @@ use rustc_hash::FxHashMap;
 
 use super::{
     binder::Binder,
-    constraint::{
-        collect_super_traits, collect_trait_constraints, AssumptionListId, ConstraintListId,
-    },
+    canonical::Canonical,
+    constraint::{collect_super_traits, AssumptionListId, ConstraintListId},
     constraint_solver::{check_trait_inst_wf, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     trait_lower::collect_implementor_methods,
     ty_def::{FuncDef, Kind, TyId},
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
-    visitor::TypeVisitable,
 };
 use crate::{
     ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
@@ -57,9 +55,11 @@ pub(crate) fn impls_of_trait(
 #[salsa::tracked(return_ref)]
 pub(crate) fn impls_of_ty(
     db: &dyn HirAnalysisDb,
-    ty: TyId,
     ingot: IngotId,
+    ty: Canonical<TyId>,
 ) -> Vec<Binder<Implementor>> {
+    let mut table = UnificationTable::new(db);
+    let ty = ty.decanonicalize(&mut table);
     let env = ingot_trait_env(db, ingot);
     if ty.contains_invalid(db) {
         return vec![];
@@ -73,11 +73,16 @@ pub(crate) fn impls_of_ty(
         .iter()
         .copied()
         .filter(|impl_| {
-            let mut table = UnificationTable::new(db);
-            let impl_ = table.instantiate_with_fresh_vars(*impl_);
-            let impl_ty = impl_.ty(db);
+            let snapshot = table.snapshot();
 
-            table.unify(impl_ty, ty).is_ok()
+            let impl_ = table.instantiate_with_fresh_vars(*impl_);
+            let impl_ty = table.instantiate_to_term(impl_.ty(db));
+            let ty = table.instantiate_to_term(ty);
+            let is_ok = table.unify(impl_ty, ty).is_ok();
+
+            table.rollback_to(snapshot);
+
+            is_ok
         })
         .collect()
 }
@@ -235,6 +240,10 @@ impl TraitInstId {
         s
     }
 
+    pub fn self_ty(self, db: &dyn HirAnalysisDb) -> TyId {
+        self.args(db)[0]
+    }
+
     pub(super) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
         self.def(db).ingot(db)
     }
@@ -282,7 +291,7 @@ impl TraitDef {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct TraitMethod(pub FuncDef);
 
 impl TraitMethod {

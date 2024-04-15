@@ -7,7 +7,6 @@ use hir::hir_def::{
     Partial, PathId, TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId,
     TypeKind as HirTyKind, VariantDefListId, VariantKind, WhereClauseId,
 };
-use rustc_hash::FxHashMap;
 use salsa::function::Configuration;
 
 use super::{
