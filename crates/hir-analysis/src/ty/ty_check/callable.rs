@@ -1,5 +1,3 @@
-use std::thread::current;
-
 use hir::{
     hir_def::{CallArg, GenericArgListId, IdentId},
     span::{expr::LazyCallArgListSpan, params::LazyGenericArgListSpan, DynLazySpan},
@@ -101,11 +99,17 @@ impl Callable {
 
         let expected_arity = self.func_def.arg_tys(db).len();
         if args.len() != expected_arity {
+            let (given, expected) = if receiver_span.is_some() {
+                (args.len() - 1, expected_arity - 1)
+            } else {
+                (args.len(), expected_arity)
+            };
+
             let diag = BodyDiag::CallArgNumMismatch {
                 primary: span.into(),
                 def_span: self.func_def.name_span(db),
-                given: args.len(),
-                expected: expected_arity,
+                given,
+                expected,
             }
             .into();
             FuncBodyDiagAccumulator::push(db, diag);
