@@ -109,14 +109,15 @@ impl<'db> TyChecker<'db> {
             }
 
             UnOp::Not => {
-                if expr_ty.is_bool(self.db) | expr_ty.is_integral(self.db) {
+                if expr_ty.is_bool(self.db) {
                     return typed_expr;
                 }
             }
 
             UnOp::BitNot => {
-                // TODO: We probably remove this operator.
-                todo!()
+                if expr_ty.is_integral(self.db) {
+                    return typed_expr;
+                }
             }
         }
 
