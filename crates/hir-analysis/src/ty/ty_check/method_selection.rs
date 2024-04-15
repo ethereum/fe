@@ -127,8 +127,8 @@ impl<'db> CandidateAssembler<'db> {
     fn assemble_method_candidates(&mut self) {
         let ingot = self.scope.ingot(self.db.as_hir_db());
         let method_table = collect_methods(self.db, ingot);
-        if let Some(func_def) = method_table.probe(self.db, self.receiver_ty, self.method_name) {
-            self.candidates.push(Candidate::InherentMethod(func_def));
+        for method in method_table.probe(self.db, self.receiver_ty, self.method_name) {
+            self.candidates.push(Candidate::InherentMethod(method));
         }
     }
 

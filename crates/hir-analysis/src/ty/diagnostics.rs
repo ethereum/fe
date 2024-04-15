@@ -1374,7 +1374,7 @@ impl BodyDiag {
                 for (i, candidate) in candidates.iter().enumerate() {
                     diags.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("#{i}candidate defined here"),
+                        format!("candidate `#{i}` is defined here"),
                         candidate.resolve(db),
                     ));
                 }
