@@ -59,6 +59,7 @@ pub struct Jar(
     ty::constraint::collect_implementor_constraints,
     ty::constraint::collect_impl_block_constraints,
     ty::constraint::collect_func_def_constraints,
+    ty::constraint::collect_func_def_constraints_impl,
     ty::constraint::ty_constraints,
     ty::constraint::PredicateId,
     ty::constraint::PredicateListId,
