@@ -242,9 +242,9 @@ fn compare_constraints(
     map_to_impl: &[TyId],
     sink: &mut Vec<TyDiagCollection>,
 ) -> bool {
-    let impl_m_constraints = collect_func_def_constraints(db, impl_m).instantiate_identity();
+    let impl_m_constraints = collect_func_def_constraints(db, impl_m, false).instantiate_identity();
     let trait_m_constraints =
-        collect_func_def_constraints(db, trait_m).instantiate(db, map_to_impl);
+        collect_func_def_constraints(db, trait_m, false).instantiate(db, map_to_impl);
     let mut unsatisfied_goals = vec![];
     for &goal in impl_m_constraints.predicates(db) {
         if !matches!(

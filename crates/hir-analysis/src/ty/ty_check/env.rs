@@ -106,7 +106,7 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn assumptions(&self) -> AssumptionListId {
         match self.func() {
-            Some(func) => collect_func_def_constraints(self.db, func).instantiate_identity(),
+            Some(func) => collect_func_def_constraints(self.db, func, true).instantiate_identity(),
             None => AssumptionListId::empty_list(self.db),
         }
     }

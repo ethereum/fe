@@ -252,7 +252,7 @@ impl<'db> DefAnalyzer<'db> {
 
     fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef) -> Self {
         let hir_db = db.as_hir_db();
-        let assumptions = collect_func_def_constraints(db, func).instantiate_identity();
+        let assumptions = collect_func_def_constraints(db, func, true).instantiate_identity();
         let self_ty = match func
             .hir_func_def(db)
             .unwrap()
@@ -764,7 +764,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         let def = std::mem::replace(&mut self.def, func.into());
         let constraints = std::mem::replace(
             &mut self.assumptions,
-            collect_func_def_constraints(self.db, func).instantiate_identity(),
+            collect_func_def_constraints(self.db, func, true).instantiate_identity(),
         );
 
         walk_func(self, ctxt, hir_func);

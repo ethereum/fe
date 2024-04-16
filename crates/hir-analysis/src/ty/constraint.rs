@@ -34,7 +34,7 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintList
         TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, *adt)),
         TyData::TyBase(TyBase::Func(func_def)) => (
             func_def.params(db),
-            collect_func_def_constraints(db, *func_def),
+            collect_func_def_constraints(db, *func_def, true),
         ),
         _ => {
             return ConstraintListId::empty_list(db);
@@ -143,19 +143,25 @@ pub(crate) fn collect_implementor_constraints(
 pub(crate) fn collect_func_def_constraints(
     db: &dyn HirAnalysisDb,
     func: FuncDef,
+    include_parent: bool,
 ) -> Binder<ConstraintListId> {
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
         HirFuncDefKind::VariantCtor(enum_, _) => {
             let adt_ref = AdtRefId::new(db, enum_.into());
             let adt = lower_adt(db, adt_ref);
-            return collect_adt_constraints(db, adt);
+            if include_parent {
+                return collect_adt_constraints(db, adt);
+            } else {
+                return Binder::bind(ConstraintListId::empty_list(db));
+            }
         }
     };
 
-    let func_constraints = Binder::bind(
-        ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect(),
-    );
+    let func_constraints = collect_func_def_constraints_impl(db, func);
+    if !include_parent {
+        return func_constraints;
+    }
 
     let parent_constraints = match hir_func.scope().parent_item(db.as_hir_db()) {
         Some(ItemKind::Trait(trait_)) => collect_trait_constraints(db, lower_trait(db, trait_)),
@@ -176,6 +182,25 @@ pub(crate) fn collect_func_def_constraints(
         func_constraints
             .instantiate_identity()
             .merge(db, parent_constraints.instantiate_identity()),
+    )
+}
+
+#[salsa::tracked]
+pub(crate) fn collect_func_def_constraints_impl(
+    db: &dyn HirAnalysisDb,
+    func: FuncDef,
+) -> Binder<ConstraintListId> {
+    let hir_func = match func.hir_def(db) {
+        HirFuncDefKind::Func(func) => func,
+        HirFuncDefKind::VariantCtor(enum_, _) => {
+            let adt_ref = AdtRefId::new(db, enum_.into());
+            let adt = lower_adt(db, adt_ref);
+            return collect_adt_constraints(db, adt);
+        }
+    };
+
+    Binder::bind(
+        ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect(),
     )
 }
 
