@@ -716,6 +716,17 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         };
 
         let impl_ty = lower_hir_ty(self.db, impl_ty, impl_.scope());
+        if !impl_ty.is_inherent_impl_allowed(self.db, self.scope().ingot(self.db.as_hir_db())) {
+            let base = impl_ty.base_ty(self.db);
+            let diag = ImplDiag::InherentImplIsNotAllowed {
+                primary: ctxt.span().unwrap().target_ty().into(),
+                ty: base.pretty_print(self.db).to_string(),
+                is_nominal: !base.is_param(self.db),
+            };
+
+            self.diags.push(diag.into());
+        }
+
         if let Some(ty) = impl_ty.emit_diag(self.db, ctxt.span().unwrap().target_ty().into()) {
             self.diags.push(ty);
         } else {

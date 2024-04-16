@@ -2,6 +2,7 @@
 
 use std::{collections::BTreeSet, fmt};
 
+use common::input::IngotKind;
 use hir::{
     hir_def::{
         kw,
@@ -136,6 +137,18 @@ impl TyId {
         pretty_print_ty(db, self)
     }
 
+    pub fn is_inherent_impl_allowed(self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {
+        if self.is_param(db) {
+            return false;
+        };
+
+        let ty_ingot = self.ingot(db);
+        match ingot.kind(db.as_hir_db()) {
+            IngotKind::Std => ty_ingot.is_none() || ty_ingot == Some(ingot),
+            _ => ty_ingot == Some(ingot),
+        }
+    }
+
     /// Decompose type application into the base type and type arguments, this
     /// doesn't perform deconstruction recursively. e.g.,
     /// `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
@@ -237,6 +250,10 @@ impl TyId {
             self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::String))
         )
+    }
+
+    pub(super) fn is_param(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.base_ty(db).data(db), TyData::TyParam(_))
     }
 
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {

@@ -1,4 +1,3 @@
-use common::input::IngotKind;
 use hir::hir_def::{Enum, IdentId, Impl, IngotId, VariantKind};
 use rustc_hash::FxHashMap;
 
@@ -219,11 +218,7 @@ impl<'db> MethodCollector<'db> {
                 None => TyId::invalid(self.db, InvalidCause::Other),
             };
 
-            if ty.contains_invalid(self.db) {
-                continue;
-            }
-
-            if !is_ty_implementable_in(self.db, ty, self.ingot) {
+            if ty.contains_invalid(self.db) | !ty.is_inherent_impl_allowed(self.db, self.ingot) {
                 continue;
             }
 
@@ -258,13 +253,5 @@ impl<'db> MethodCollector<'db> {
         {
             self.method_table.insert(self.db, ty, func)
         }
-    }
-}
-
-fn is_ty_implementable_in(db: &dyn HirAnalysisDb, ty: TyId, ingot: IngotId) -> bool {
-    let ty_ingot = ty.ingot(db);
-    match ingot.kind(db.as_hir_db()) {
-        IngotKind::Std => ty_ingot.is_none() || ty_ingot == Some(ingot),
-        _ => ty_ingot == Some(ingot),
     }
 }
