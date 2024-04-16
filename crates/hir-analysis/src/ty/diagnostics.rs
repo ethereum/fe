@@ -1858,6 +1858,12 @@ pub enum ImplDiag {
         primary: DynLazySpan,
         message: String,
     },
+
+    InherentImplIsNotAllowed {
+        primary: DynLazySpan,
+        ty: String,
+        is_nominal: bool,
+    },
 }
 
 impl ImplDiag {
@@ -2027,6 +2033,7 @@ impl ImplDiag {
             Self::MethodRetTyMismatch { .. } => 8,
             Self::MethodStricterBound { .. } => 9,
             Self::InvalidSelfType { .. } => 10,
+            Self::InherentImplIsNotAllowed { .. } => 11,
         }
     }
 
@@ -2077,6 +2084,8 @@ impl ImplDiag {
             }
 
             Self::InvalidSelfType { .. } => "invalid type for `self` argument".to_string(),
+
+            Self::InherentImplIsNotAllowed { .. } => "inherent impl is not allowed".to_string(),
         }
     }
 
@@ -2218,6 +2227,24 @@ impl ImplDiag {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
                     message.clone(),
+                    primary.resolve(db),
+                )]
+            }
+
+            Self::InherentImplIsNotAllowed {
+                primary,
+                ty,
+                is_nominal,
+            } => {
+                let msg = if *is_nominal {
+                    format!("inherent impl is not allowed for foreign type `{}`", ty)
+                } else {
+                    "inherent impl is not allowed for non nominal type".to_string()
+                };
+
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    msg,
                     primary.resolve(db),
                 )]
             }
