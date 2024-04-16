@@ -200,8 +200,9 @@ impl<'db> CandidateAssembler<'db> {
         let receiver_ty = self.receiver_ty.decanonicalize(&mut table);
         for &pred in self.assumptions.predicates(self.db) {
             let snapshot = table.snapshot();
+            let pred_ty = table.instantiate_to_term(pred.ty(self.db));
 
-            if table.unify(receiver_ty, pred.ty(self.db)).is_ok() {
+            if table.unify(receiver_ty, pred_ty).is_ok() {
                 if let Some(trait_method) = pred
                     .trait_inst(self.db)
                     .def(self.db)
