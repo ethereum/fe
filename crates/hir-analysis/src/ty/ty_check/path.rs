@@ -4,8 +4,8 @@ use either::Either;
 use hir::{
     hir_def::{
         scope_graph::{FieldParent, ScopeId},
-        Const, Enum, ExprId, FieldDefListId as HirFieldDefListId, IdentId, ItemKind, Partial, Pat,
-        PatId, PathId, VariantKind as HirVariantKind,
+        Enum, FieldDefListId as HirFieldDefListId, IdentId, ItemKind, PathId,
+        VariantKind as HirVariantKind,
     },
     span::{path::LazyPathSpan, DynLazySpan},
 };
@@ -32,140 +32,13 @@ use crate::{
     HirAnalysisDb,
 };
 
-pub(super) fn resolve_path_in_pat(
+pub(super) fn resolve_path(
     tc: &mut TyChecker,
     path: PathId,
-    pat: PatId,
-) -> ResolvedPathInPat {
-    let Partial::Present(pat_data) = pat.data(tc.db.as_hir_db(), tc.env.body()) else {
-        unreachable!()
-    };
-
-    let pat_span = pat.lazy_span(tc.body());
-    let span = match pat_data {
-        Pat::Path(..) => pat_span.into_path_pat().path(),
-        Pat::PathTuple(..) => pat_span.into_path_tuple_pat().path(),
-        Pat::Record(..) => pat_span.into_record_pat().path(),
-        _ => unreachable!(),
-    };
-
-    let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::Pat);
-
-    match resolver.resolve_path() {
-        ResolvedPathInBody::Ty(ty) => ResolvedPathInPat::Ty(ty),
-        ResolvedPathInBody::Const(ty, _) => ResolvedPathInPat::Ty(ty),
-        ResolvedPathInBody::Trait(trait_) => {
-            let diag = BodyDiag::NotValue {
-                primary: span.into(),
-                item: trait_.trait_(tc.db).into(),
-            };
-
-            ResolvedPathInPat::Diag(diag.into())
-        }
-        ResolvedPathInBody::Variant(variant) => ResolvedPathInPat::Variant(variant),
-        ResolvedPathInBody::Binding(binding, _) | ResolvedPathInBody::NewBinding(binding) => {
-            ResolvedPathInPat::NewBinding(binding)
-        }
-        ResolvedPathInBody::Diag(diag) => ResolvedPathInPat::Diag(diag),
-        ResolvedPathInBody::Invalid => ResolvedPathInPat::Invalid,
-    }
-}
-
-pub(super) fn resolve_path_in_expr(
-    tc: &mut TyChecker,
-    path: PathId,
-    path_expr: ExprId,
-) -> ResolvedPathInExpr {
-    let span = path_expr.lazy_span(tc.body()).into_path_expr().path();
-
-    let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::ExprValue);
-
-    match resolver.resolve_path() {
-        ResolvedPathInBody::Ty(ty) => ResolvedPathInExpr::Ty(ty),
-        ResolvedPathInBody::Const(ty, const_) => ResolvedPathInExpr::Const(ty, const_),
-        ResolvedPathInBody::Trait(trait_) => {
-            let diag = BodyDiag::NotValue {
-                primary: span.into(),
-                item: trait_.trait_(tc.db).into(),
-            };
-            ResolvedPathInExpr::Diag(diag.into())
-        }
-        ResolvedPathInBody::Variant(variant) => ResolvedPathInExpr::Variant(variant),
-        ResolvedPathInBody::Binding(_, binding) => ResolvedPathInExpr::Binding(binding),
-        ResolvedPathInBody::NewBinding(ident) => {
-            let diag = BodyDiag::UndefinedVariable(span.into(), ident);
-            ResolvedPathInExpr::Diag(diag.into())
-        }
-        ResolvedPathInBody::Diag(diag) => ResolvedPathInExpr::Diag(diag),
-        ResolvedPathInBody::Invalid => ResolvedPathInExpr::Invalid,
-    }
-}
-
-pub(super) fn resolve_path_in_record_init(
-    tc: &mut TyChecker,
-    path: PathId,
-    record_init_expr: ExprId,
-) -> ResolvedPathInRecordInit {
-    let span = record_init_expr
-        .lazy_span(tc.body())
-        .into_record_init_expr()
-        .path();
-
-    let mut resolver = PathResolver::new(tc, path, span.clone(), PathMode::RecordInit);
-
-    match resolver.resolve_path() {
-        ResolvedPathInBody::Ty(ty) => ResolvedPathInRecordInit::Ty(ty),
-        ResolvedPathInBody::Const(ty, _) => ResolvedPathInRecordInit::Ty(ty),
-        ResolvedPathInBody::Variant(variant) => ResolvedPathInRecordInit::Variant(variant),
-
-        ResolvedPathInBody::Trait(trait_) => {
-            let diag = BodyDiag::NotValue {
-                primary: span.into(),
-                item: trait_.trait_(tc.db).into(),
-            };
-            ResolvedPathInRecordInit::Diag(diag.into())
-        }
-
-        ResolvedPathInBody::Binding(..) => {
-            let diag = BodyDiag::record_expected::<TyId>(tc.db, span.clone().into(), None);
-            ResolvedPathInRecordInit::Diag(diag.into())
-        }
-
-        ResolvedPathInBody::NewBinding(ident) => {
-            let diag = BodyDiag::UndefinedVariable(span.into(), ident);
-            ResolvedPathInRecordInit::Diag(diag.into())
-        }
-
-        ResolvedPathInBody::Diag(diag) => ResolvedPathInRecordInit::Diag(diag),
-        ResolvedPathInBody::Invalid => ResolvedPathInRecordInit::Invalid,
-    }
-}
-
-#[derive(Clone, Debug)]
-pub(super) enum ResolvedPathInPat {
-    Ty(TyId),
-    Variant(ResolvedVariant),
-    NewBinding(IdentId),
-    Diag(FuncBodyDiag),
-    Invalid,
-}
-
-#[derive(Clone, Debug)]
-pub(super) enum ResolvedPathInExpr {
-    Ty(TyId),
-    Const(TyId, Const),
-    Variant(ResolvedVariant),
-    Binding(LocalBinding),
-    Diag(FuncBodyDiag),
-    Invalid,
-}
-
-#[derive(Clone, Debug)]
-pub(super) enum ResolvedPathInRecordInit {
-    Ty(TyId),
-    Variant(ResolvedVariant),
-    Diag(FuncBodyDiag),
-    Invalid,
+    span: LazyPathSpan,
+    mode: ResolutionMode,
+) -> ResolvedPathInBody {
+    PathResolver::new(tc, path, span.clone(), mode).resolve_path()
 }
 
 impl TyId {
@@ -240,11 +113,16 @@ struct PathResolver<'db, 'tc> {
     pub(super) tc: &'tc mut TyChecker<'db>,
     path: PathId,
     span: LazyPathSpan,
-    mode: PathMode,
+    mode: ResolutionMode,
 }
 
 impl<'db, 'env> PathResolver<'db, 'env> {
-    fn new(tc: &'env mut TyChecker<'db>, path: PathId, span: LazyPathSpan, mode: PathMode) -> Self {
+    fn new(
+        tc: &'env mut TyChecker<'db>,
+        path: PathId,
+        span: LazyPathSpan,
+        mode: ResolutionMode,
+    ) -> Self {
         Self {
             tc,
             path,
@@ -272,15 +150,15 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         let hir_db = self.tc.db.as_hir_db();
 
         match self.mode {
-            PathMode::ExprValue => self.resolve_ident_expr(ident),
+            ResolutionMode::ExprValue => self.resolve_ident_expr(ident),
 
-            PathMode::RecordInit => {
+            ResolutionMode::RecordInit => {
                 let early_resolved_path =
                     resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
                 self.resolve_path_late(early_resolved_path)
             }
 
-            PathMode::Pat => {
+            ResolutionMode::Pat => {
                 let early_resolved_path =
                     resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
                 let resolved = self.resolve_path_late(early_resolved_path);
@@ -354,7 +232,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
         let receiver_ty = match self.resolve_name_res(&res) {
             ResolvedPathInBody::Ty(ty) => ty,
-            ResolvedPathInBody::Const(ty, _) => ty,
+            ResolvedPathInBody::Const(ty) => ty,
             ResolvedPathInBody::Trait(trait_) => {
                 return self.resolve_trait_partial(trait_, unresolved_from);
             }
@@ -470,7 +348,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
     fn resolve_bucket(&mut self, bucket: NameResBucket) -> ResolvedPathInBody {
         match self.mode {
-            PathMode::ExprValue => {
+            ResolutionMode::ExprValue => {
                 match bucket.pick(NameDomain::Value) {
                     Ok(res) => self.resolve_name_res(res),
                     Err(_) => {
@@ -484,7 +362,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 }
             }
 
-            PathMode::RecordInit | PathMode::Pat => {
+            ResolutionMode::RecordInit | ResolutionMode::Pat => {
                 if let Ok(res) = bucket.pick(NameDomain::Value) {
                     let res = self.resolve_name_res(res);
                     if !matches!(
@@ -529,7 +407,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 let enum_: Enum = parent.try_into().unwrap();
                 let variant_def = &enum_.variants(hir_db).data(hir_db)[idx];
                 if_chain! {
-                    if self.mode == PathMode::ExprValue;
+                    if self.mode == ResolutionMode::ExprValue;
                     if matches!(variant_def.kind, HirVariantKind::Tuple(_));
                     then {
                         let adt_ref = AdtRefId::new(db, enum_.into());
@@ -590,7 +468,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                     TyId::invalid(db, InvalidCause::Other)
                 };
 
-                ResolvedPathInBody::Const(ty, const_)
+                ResolvedPathInBody::Const(ty)
             }
 
             NameResKind::Prim(prim) => {
@@ -604,10 +482,11 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 }
 
 #[derive(Clone, Debug, derive_more::From)]
-enum ResolvedPathInBody {
+pub(super) enum ResolvedPathInBody {
     Ty(TyId),
     Trait(TraitDef),
-    Const(TyId, Const),
+    #[from(ignore)]
+    Const(TyId),
     Variant(ResolvedVariant),
     #[from(ignore)]
     Binding(IdentId, LocalBinding),
@@ -617,7 +496,7 @@ enum ResolvedPathInBody {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-enum PathMode {
+pub(super) enum ResolutionMode {
     ExprValue,
     RecordInit,
     Pat,

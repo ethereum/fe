@@ -4,7 +4,7 @@ use hir::hir_def::{
 
 use super::{
     env::{ExprProp, LocalBinding},
-    path::ResolvedPathInExpr,
+    path::{resolve_path, ResolutionMode, ResolvedPathInBody},
     RecordLike, Typeable,
 };
 use crate::{
@@ -16,10 +16,7 @@ use crate::{
         ty_check::{
             callable::Callable,
             method_selection::{select_method_candidate, Candidate},
-            path::{
-                resolve_path_in_expr, resolve_path_in_record_init, RecordInitChecker,
-                ResolvedPathInRecordInit,
-            },
+            path::RecordInitChecker,
             TyChecker,
         },
         ty_def::{InvalidCause, TyId},
@@ -373,8 +370,10 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
 
-        match resolve_path_in_expr(self, *path, expr) {
-            ResolvedPathInExpr::Ty(ty) => {
+        let span = expr.lazy_span(self.body()).into_path_expr();
+
+        match resolve_path(self, *path, span.path(), ResolutionMode::ExprValue) {
+            ResolvedPathInBody::Ty(ty) => {
                 if ty.is_func(self.db) {
                     ExprProp::new(ty, true)
                 } else {
@@ -391,9 +390,18 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
-            ResolvedPathInExpr::Const(ty, _) => ExprProp::new(ty, true),
+            ResolvedPathInBody::Trait(trait_) => {
+                let diag = BodyDiag::NotValue {
+                    primary: span.into(),
+                    item: trait_.trait_(self.db).into(),
+                };
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                ExprProp::invalid(self.db)
+            }
 
-            ResolvedPathInExpr::Variant(variant) => {
+            ResolvedPathInBody::Const(ty) => ExprProp::new(ty, true),
+
+            ResolvedPathInBody::Variant(variant) => {
                 let ty = if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
                     variant.ty(self.db)
                 } else {
@@ -411,18 +419,25 @@ impl<'db> TyChecker<'db> {
                 ExprProp::new(ty, true)
             }
 
-            ResolvedPathInExpr::Binding(binding) => {
+            ResolvedPathInBody::NewBinding(ident) => {
+                let diag = BodyDiag::UndefinedVariable(span.into(), ident);
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+                ExprProp::invalid(self.db)
+            }
+
+            ResolvedPathInBody::Binding(_, binding) => {
                 let ty = self.env.lookup_binding_ty(binding);
                 let is_mut = binding.is_mut();
                 ExprProp::new_binding_ref(ty, is_mut, binding)
             }
 
-            ResolvedPathInExpr::Diag(diag) => {
+            ResolvedPathInBody::Diag(diag) => {
                 FuncBodyDiagAccumulator::push(self.db, diag);
                 ExprProp::invalid(self.db)
             }
 
-            ResolvedPathInExpr::Invalid => ExprProp::invalid(self.db),
+            ResolvedPathInBody::Invalid => ExprProp::invalid(self.db),
         }
     }
 
@@ -436,8 +451,8 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
 
-        match resolve_path_in_record_init(self, *path, expr) {
-            ResolvedPathInRecordInit::Ty(ty) => {
+        match resolve_path(self, *path, span.path(), ResolutionMode::RecordInit) {
+            ResolvedPathInBody::Ty(ty) | ResolvedPathInBody::Const(ty) => {
                 if ty.is_record(self.db) {
                     self.check_record_init_fields(ty, expr);
                     ExprProp::new(ty, true)
@@ -449,18 +464,39 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
-            ResolvedPathInRecordInit::Variant(variant) => {
+            ResolvedPathInBody::Variant(variant) => {
                 let ty = variant.ty(self.db);
                 self.check_record_init_fields(variant, expr);
                 ExprProp::new(ty, true)
             }
 
-            ResolvedPathInRecordInit::Diag(diag) => {
+            ResolvedPathInBody::Trait(trait_) => {
+                let diag = BodyDiag::NotValue {
+                    primary: span.into(),
+                    item: trait_.trait_(self.db).into(),
+                };
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                ExprProp::invalid(self.db)
+            }
+
+            ResolvedPathInBody::Binding(..) => {
+                let diag = BodyDiag::record_expected::<TyId>(self.db, span.into(), None);
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                ExprProp::invalid(self.db)
+            }
+
+            ResolvedPathInBody::NewBinding(_) => {
+                let diag = BodyDiag::record_expected::<TyId>(self.db, span.into(), None);
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                ExprProp::invalid(self.db)
+            }
+
+            ResolvedPathInBody::Diag(diag) => {
                 FuncBodyDiagAccumulator::push(self.db, diag);
                 ExprProp::invalid(self.db)
             }
 
-            ResolvedPathInRecordInit::Invalid => ExprProp::invalid(self.db),
+            ResolvedPathInBody::Invalid => ExprProp::invalid(self.db),
         }
     }
 
