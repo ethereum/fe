@@ -391,6 +391,8 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
+            ResolvedPathInExpr::Const(ty, _) => ExprProp::new(ty, true),
+
             ResolvedPathInExpr::Variant(variant) => {
                 let ty = if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
                     variant.ty(self.db)

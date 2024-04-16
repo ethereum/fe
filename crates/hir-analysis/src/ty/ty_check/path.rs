@@ -4,8 +4,8 @@ use either::Either;
 use hir::{
     hir_def::{
         scope_graph::{FieldParent, ScopeId},
-        Enum, ExprId, FieldDefListId as HirFieldDefListId, IdentId, ItemKind, Partial, Pat, PatId,
-        PathId, VariantKind as HirVariantKind,
+        Const, Enum, ExprId, FieldDefListId as HirFieldDefListId, IdentId, ItemKind, Partial, Pat,
+        PatId, PathId, VariantKind as HirVariantKind,
     },
     span::{path::LazyPathSpan, DynLazySpan},
 };
@@ -53,6 +53,7 @@ pub(super) fn resolve_path_in_pat(
 
     match resolver.resolve_path() {
         ResolvedPathInBody::Ty(ty) => ResolvedPathInPat::Ty(ty),
+        ResolvedPathInBody::Const(ty, _) => ResolvedPathInPat::Ty(ty),
         ResolvedPathInBody::Trait(trait_) => {
             let diag = BodyDiag::NotValue {
                 primary: span.into(),
@@ -81,6 +82,7 @@ pub(super) fn resolve_path_in_expr(
 
     match resolver.resolve_path() {
         ResolvedPathInBody::Ty(ty) => ResolvedPathInExpr::Ty(ty),
+        ResolvedPathInBody::Const(ty, const_) => ResolvedPathInExpr::Const(ty, const_),
         ResolvedPathInBody::Trait(trait_) => {
             let diag = BodyDiag::NotValue {
                 primary: span.into(),
@@ -113,6 +115,7 @@ pub(super) fn resolve_path_in_record_init(
 
     match resolver.resolve_path() {
         ResolvedPathInBody::Ty(ty) => ResolvedPathInRecordInit::Ty(ty),
+        ResolvedPathInBody::Const(ty, _) => ResolvedPathInRecordInit::Ty(ty),
         ResolvedPathInBody::Variant(variant) => ResolvedPathInRecordInit::Variant(variant),
 
         ResolvedPathInBody::Trait(trait_) => {
@@ -150,6 +153,7 @@ pub(super) enum ResolvedPathInPat {
 #[derive(Clone, Debug)]
 pub(super) enum ResolvedPathInExpr {
     Ty(TyId),
+    Const(TyId, Const),
     Variant(ResolvedVariant),
     Binding(LocalBinding),
     Diag(FuncBodyDiag),
@@ -350,6 +354,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
         let receiver_ty = match self.resolve_name_res(&res) {
             ResolvedPathInBody::Ty(ty) => ty,
+            ResolvedPathInBody::Const(ty, _) => ty,
             ResolvedPathInBody::Trait(trait_) => {
                 return self.resolve_trait_partial(trait_, unresolved_from);
             }
@@ -499,29 +504,29 @@ impl<'db, 'env> PathResolver<'db, 'env> {
     }
 
     fn resolve_name_res(&mut self, res: &NameRes) -> ResolvedPathInBody {
+        let db = self.tc.db;
+        let hir_db = db.as_hir_db();
         match res.kind {
             NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
-                let adt = lower_adt(self.tc.db, AdtRefId::from_struct(self.tc.db, struct_));
-                let ty = TyId::adt(self.tc.db, adt);
+                let adt = lower_adt(db, AdtRefId::from_struct(db, struct_));
+                let ty = TyId::adt(db, adt);
                 self.tc.table.instantiate_to_term(ty).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Enum(enum_))) => {
-                let adt = lower_adt(self.tc.db, AdtRefId::from_enum(self.tc.db, enum_));
-                let ty = TyId::adt(self.tc.db, adt);
+                let adt = lower_adt(db, AdtRefId::from_enum(db, enum_));
+                let ty = TyId::adt(db, adt);
                 self.tc.table.instantiate_to_term(ty).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Contract(contract_))) => {
-                let adt = lower_adt(self.tc.db, AdtRefId::from_contract(self.tc.db, contract_));
-                let ty = TyId::adt(self.tc.db, adt);
+                let adt = lower_adt(db, AdtRefId::from_contract(db, contract_));
+                let ty = TyId::adt(db, adt);
                 self.tc.table.instantiate_to_term(ty).into()
             }
 
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
                 let enum_: Enum = parent.try_into().unwrap();
-                let db = self.tc.db;
-                let hir_db = db.as_hir_db();
                 let variant_def = &enum_.variants(hir_db).data(hir_db)[idx];
                 if_chain! {
                     if self.mode == PathMode::ExprValue;
@@ -533,7 +538,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                         self.select_method_candidate(receiver_ty, name).unwrap()
                     } else {
                         ResolvedVariant::new(
-                            self.tc.db,
+                            db,
                             &mut self.tc.table,
                             enum_,
                             idx,
@@ -545,15 +550,15 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Func(func))) => {
-                let func_def = lower_func(self.tc.db, func).unwrap();
-                let ty = TyId::func(self.tc.db, func_def);
+                let func_def = lower_func(db, func).unwrap();
+                let ty = TyId::func(db, func_def);
                 self.tc.table.instantiate_to_term(ty).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Impl(impl_))) => {
-                match impl_.ty(self.tc.db.as_hir_db()).to_opt() {
+                match impl_.ty(hir_db).to_opt() {
                     Some(hir_ty) => {
-                        let ty = lower_hir_ty(self.tc.db, hir_ty, self.tc.env.scope());
+                        let ty = lower_hir_ty(db, hir_ty, self.tc.env.scope());
                         let ty = self.tc.table.instantiate_to_term(ty);
                         ResolvedPathInBody::Ty(ty)
                     }
@@ -563,13 +568,13 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) => {
-                lower_trait(self.tc.db, trait_).into()
+                lower_trait(db, trait_).into()
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::ImplTrait(impl_trait))) => {
-                match impl_trait.ty(self.tc.db.as_hir_db()).to_opt() {
+                match impl_trait.ty(hir_db).to_opt() {
                     Some(hir_ty) => {
-                        let ty = lower_hir_ty(self.tc.db, hir_ty, self.tc.env.scope());
+                        let ty = lower_hir_ty(db, hir_ty, self.tc.env.scope());
                         let ty = self.tc.table.instantiate_to_term(ty);
                         ResolvedPathInBody::Ty(ty)
                     }
@@ -578,12 +583,18 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 }
             }
 
-            NameResKind::Scope(ScopeId::Item(ItemKind::Const(_))) => {
-                todo!()
+            NameResKind::Scope(ScopeId::Item(ItemKind::Const(const_))) => {
+                let ty = if let Some(ty) = const_.ty(hir_db).to_opt() {
+                    lower_hir_ty(db, ty, self.tc.env.scope())
+                } else {
+                    TyId::invalid(db, InvalidCause::Other)
+                };
+
+                ResolvedPathInBody::Const(ty, const_)
             }
 
             NameResKind::Prim(prim) => {
-                let ty = TyId::from_hir_prim_ty(self.tc.db, prim);
+                let ty = TyId::from_hir_prim_ty(db, prim);
                 self.tc.table.instantiate_to_term(ty).into()
             }
 
@@ -596,6 +607,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 enum ResolvedPathInBody {
     Ty(TyId),
     Trait(TraitDef),
+    Const(TyId, Const),
     Variant(ResolvedVariant),
     #[from(ignore)]
     Binding(IdentId, LocalBinding),
