@@ -4,7 +4,7 @@ use hir::hir_def::{Partial, Pat, PatId, VariantKind};
 
 use super::{
     env::LocalBinding,
-    path::{resolve_path_in_pat, RecordInitChecker, ResolvedPathInPat},
+    path::{resolve_path, RecordInitChecker, ResolutionMode, ResolvedPathInBody},
     RecordLike, TyChecker,
 };
 use crate::ty::{
@@ -106,8 +106,10 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        match resolve_path_in_pat(self, *path, pat) {
-            ResolvedPathInPat::Ty(ty) => {
+        let span = pat.lazy_span(self.body()).into_path_pat();
+
+        match resolve_path(self, *path, span.path(), ResolutionMode::Pat) {
+            ResolvedPathInBody::Ty(ty) | ResolvedPathInBody::Const(ty) => {
                 let diag =
                     BodyDiag::unit_variant_expected(self.db, pat.lazy_span(self.body()).into(), ty);
 
@@ -115,7 +117,17 @@ impl<'db> TyChecker<'db> {
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
-            ResolvedPathInPat::Variant(variant) => {
+            ResolvedPathInBody::Trait(trait_) => {
+                let diag = BodyDiag::NotValue {
+                    primary: span.into(),
+                    item: trait_.trait_(self.db).into(),
+                };
+
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                TyId::invalid(self.db, InvalidCause::Other)
+            }
+
+            ResolvedPathInBody::Variant(variant) => {
                 if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
                     variant.ty(self.db)
                 } else {
@@ -130,18 +142,18 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
-            ResolvedPathInPat::NewBinding(ident) => {
+            ResolvedPathInBody::Binding(ident, _) | ResolvedPathInBody::NewBinding(ident) => {
                 let binding = LocalBinding::local(pat, *is_mut);
                 self.env.register_pending_binding(ident, binding);
                 self.fresh_ty()
             }
 
-            ResolvedPathInPat::Diag(diag) => {
+            ResolvedPathInBody::Diag(diag) => {
                 FuncBodyDiagAccumulator::push(self.db, diag);
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
-            ResolvedPathInPat::Invalid => TyId::invalid(self.db, InvalidCause::Other),
+            ResolvedPathInBody::Invalid => TyId::invalid(self.db, InvalidCause::Other),
         }
     }
 
@@ -150,51 +162,64 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        let (variant, expected_elems) = match resolve_path_in_pat(self, *path, pat) {
-            ResolvedPathInPat::Ty(ty) => {
-                let diag = BodyDiag::tuple_variant_expected(
-                    self.db,
-                    pat.lazy_span(self.body()).into(),
-                    Some(ty),
-                );
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
-                return TyId::invalid(self.db, InvalidCause::Other);
-            }
+        let span = pat.lazy_span(self.body()).into_path_tuple_pat();
 
-            ResolvedPathInPat::Variant(variant) => match variant.variant_kind(self.db) {
-                VariantKind::Tuple(elems) => (variant, elems),
-                _ => {
+        let (variant, expected_elems) =
+            match resolve_path(self, *path, span.path(), ResolutionMode::Pat) {
+                ResolvedPathInBody::Ty(ty) | ResolvedPathInBody::Const(ty) => {
                     let diag = BodyDiag::tuple_variant_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
-                        Some(variant),
+                        Some(ty),
                     );
                     FuncBodyDiagAccumulator::push(self.db, diag.into());
                     return TyId::invalid(self.db, InvalidCause::Other);
                 }
-            },
 
-            ResolvedPathInPat::NewBinding(_) => {
-                let diag = BodyDiag::tuple_variant_expected::<TyId>(
-                    self.db,
-                    pat.lazy_span(self.body()).into(),
-                    None,
-                );
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                ResolvedPathInBody::Trait(trait_) => {
+                    let diag = BodyDiag::NotValue {
+                        primary: span.into(),
+                        item: trait_.trait_(self.db).into(),
+                    };
 
-                return TyId::invalid(self.db, InvalidCause::Other);
-            }
+                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
 
-            ResolvedPathInPat::Diag(diag) => {
-                FuncBodyDiagAccumulator::push(self.db, diag);
+                ResolvedPathInBody::Variant(variant) => match variant.variant_kind(self.db) {
+                    VariantKind::Tuple(elems) => (variant, elems),
+                    _ => {
+                        let diag = BodyDiag::tuple_variant_expected(
+                            self.db,
+                            pat.lazy_span(self.body()).into(),
+                            Some(variant),
+                        );
 
-                return TyId::invalid(self.db, InvalidCause::Other);
-            }
+                        FuncBodyDiagAccumulator::push(self.db, diag.into());
+                        return TyId::invalid(self.db, InvalidCause::Other);
+                    }
+                },
 
-            ResolvedPathInPat::Invalid => {
-                return TyId::invalid(self.db, InvalidCause::Other);
-            }
-        };
+                ResolvedPathInBody::Binding(..) | ResolvedPathInBody::NewBinding(_) => {
+                    let diag = BodyDiag::tuple_variant_expected::<TyId>(
+                        self.db,
+                        pat.lazy_span(self.body()).into(),
+                        None,
+                    );
+
+                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+
+                ResolvedPathInBody::Diag(diag) => {
+                    FuncBodyDiagAccumulator::push(self.db, diag);
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+
+                ResolvedPathInBody::Invalid => {
+                    return TyId::invalid(self.db, InvalidCause::Other);
+                }
+            };
 
         let pat_ty = variant.ty(self.db);
         let expected_len = expected_elems.len(self.db.as_hir_db());
@@ -245,13 +270,25 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        match resolve_path_in_pat(self, *path, pat) {
-            ResolvedPathInPat::Ty(ty) if ty.is_record(self.db) => {
+        let span = pat.lazy_span(self.body()).into_record_pat();
+
+        match resolve_path(self, *path, span.path(), ResolutionMode::Pat) {
+            ResolvedPathInBody::Ty(ty) if ty.is_record(self.db) => {
                 self.check_record_pat_fields(ty, pat);
                 ty
             }
 
-            ResolvedPathInPat::Ty(ty) => {
+            ResolvedPathInBody::Trait(trait_) => {
+                let diag = BodyDiag::NotValue {
+                    primary: span.into(),
+                    item: trait_.trait_(self.db).into(),
+                };
+
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                TyId::invalid(self.db, InvalidCause::Other)
+            }
+
+            ResolvedPathInBody::Ty(ty) | ResolvedPathInBody::Const(ty) => {
                 let diag =
                     BodyDiag::record_expected(self.db, pat.lazy_span(self.body()).into(), Some(ty));
                 FuncBodyDiagAccumulator::push(self.db, diag.into());
@@ -259,13 +296,13 @@ impl<'db> TyChecker<'db> {
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
-            ResolvedPathInPat::Variant(variant) if variant.is_record(self.db) => {
+            ResolvedPathInBody::Variant(variant) if variant.is_record(self.db) => {
                 let ty = variant.ty(self.db);
                 self.check_record_pat_fields(variant, pat);
                 ty
             }
 
-            ResolvedPathInPat::Variant(variant) => {
+            ResolvedPathInBody::Variant(variant) => {
                 let diag = BodyDiag::record_expected(
                     self.db,
                     pat.lazy_span(self.body()).into(),
@@ -276,7 +313,7 @@ impl<'db> TyChecker<'db> {
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
-            ResolvedPathInPat::NewBinding(_) => {
+            ResolvedPathInBody::Binding(..) | ResolvedPathInBody::NewBinding(_) => {
                 let diag = BodyDiag::record_expected::<TyId>(
                     self.db,
                     pat.lazy_span(self.body()).into(),
@@ -287,13 +324,13 @@ impl<'db> TyChecker<'db> {
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
-            ResolvedPathInPat::Diag(diag) => {
+            ResolvedPathInBody::Diag(diag) => {
                 FuncBodyDiagAccumulator::push(self.db, diag);
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
-            ResolvedPathInPat::Invalid => TyId::invalid(self.db, InvalidCause::Other),
+            ResolvedPathInBody::Invalid => TyId::invalid(self.db, InvalidCause::Other),
         }
     }
 
