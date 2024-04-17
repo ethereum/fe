@@ -1271,7 +1271,7 @@ fn find_const_ty_param(
 
     let owner = GenericParamOwnerId::from_item_opt(db, item).unwrap();
     let param_set = collect_generic_params(db, owner);
-    let ty = param_set.params(db).get(idx)?;
+    let ty = param_set.param_by_original_idx(db, idx)?;
     match ty.data(db) {
         TyData::ConstTy(const_ty) => Some(*const_ty),
         _ => None,

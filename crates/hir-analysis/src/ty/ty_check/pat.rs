@@ -1,5 +1,6 @@
 use std::ops::Range;
 
+use either::Either;
 use hir::hir_def::{Partial, Pat, PatId, VariantKind};
 
 use super::{
@@ -109,7 +110,9 @@ impl<'db> TyChecker<'db> {
         let span = pat.lazy_span(self.body()).into_path_pat();
 
         match resolve_path(self, *path, span.path(), ResolutionMode::Pat) {
-            ResolvedPathInBody::Ty(ty) | ResolvedPathInBody::Const(ty) => {
+            ResolvedPathInBody::Ty(ty)
+            | ResolvedPathInBody::Func(ty)
+            | ResolvedPathInBody::Const(ty) => {
                 let diag =
                     BodyDiag::unit_variant_expected(self.db, pat.lazy_span(self.body()).into(), ty);
 
@@ -120,7 +123,7 @@ impl<'db> TyChecker<'db> {
             ResolvedPathInBody::Trait(trait_) => {
                 let diag = BodyDiag::NotValue {
                     primary: span.into(),
-                    item: trait_.trait_(self.db).into(),
+                    given: Either::Left(trait_.trait_(self.db).into()),
                 };
 
                 FuncBodyDiagAccumulator::push(self.db, diag.into());
@@ -166,7 +169,9 @@ impl<'db> TyChecker<'db> {
 
         let (variant, expected_elems) =
             match resolve_path(self, *path, span.path(), ResolutionMode::Pat) {
-                ResolvedPathInBody::Ty(ty) | ResolvedPathInBody::Const(ty) => {
+                ResolvedPathInBody::Ty(ty)
+                | ResolvedPathInBody::Func(ty)
+                | ResolvedPathInBody::Const(ty) => {
                     let diag = BodyDiag::tuple_variant_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
@@ -179,7 +184,7 @@ impl<'db> TyChecker<'db> {
                 ResolvedPathInBody::Trait(trait_) => {
                     let diag = BodyDiag::NotValue {
                         primary: span.into(),
-                        item: trait_.trait_(self.db).into(),
+                        given: Either::Left(trait_.trait_(self.db).into()),
                     };
 
                     FuncBodyDiagAccumulator::push(self.db, diag.into());
@@ -278,21 +283,23 @@ impl<'db> TyChecker<'db> {
                 ty
             }
 
-            ResolvedPathInBody::Trait(trait_) => {
-                let diag = BodyDiag::NotValue {
-                    primary: span.into(),
-                    item: trait_.trait_(self.db).into(),
-                };
-
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
-                TyId::invalid(self.db, InvalidCause::Other)
-            }
-
-            ResolvedPathInBody::Ty(ty) | ResolvedPathInBody::Const(ty) => {
+            ResolvedPathInBody::Ty(ty)
+            | ResolvedPathInBody::Func(ty)
+            | ResolvedPathInBody::Const(ty) => {
                 let diag =
                     BodyDiag::record_expected(self.db, pat.lazy_span(self.body()).into(), Some(ty));
                 FuncBodyDiagAccumulator::push(self.db, diag.into());
 
+                TyId::invalid(self.db, InvalidCause::Other)
+            }
+
+            ResolvedPathInBody::Trait(trait_) => {
+                let diag = BodyDiag::NotValue {
+                    primary: span.into(),
+                    given: Either::Left(trait_.trait_(self.db).into()),
+                };
+
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
