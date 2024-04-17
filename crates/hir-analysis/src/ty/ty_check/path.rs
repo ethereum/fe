@@ -26,7 +26,9 @@ use crate::{
         trait_lower::lower_trait,
         ty_check::method_selection::{select_method_candidate, Candidate},
         ty_def::{AdtDef, AdtField, AdtRef, AdtRefId, InvalidCause, TyData, TyId},
-        ty_lower::{lower_adt, lower_func, lower_hir_ty},
+        ty_lower::{
+            collect_generic_params, lower_adt, lower_func, lower_hir_ty, GenericParamOwnerId,
+        },
         unify::UnificationTable,
     },
     HirAnalysisDb,
@@ -232,6 +234,13 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
         let receiver_ty = match self.resolve_name_res(&res) {
             ResolvedPathInBody::Ty(ty) => ty,
+
+            ResolvedPathInBody::Func(..) => {
+                // If the partial path is not resolved as an enum variant or method call,
+                // report an error.
+                let diag = TyLowerDiag::AssocTy(self.span.clone().into());
+                return ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()));
+            }
             ResolvedPathInBody::Const(ty) => ty,
             ResolvedPathInBody::Trait(trait_) => {
                 return self.resolve_trait_partial(trait_, unresolved_from);
@@ -299,7 +308,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         };
 
         let ty = TyId::func(self.tc.db, trait_method.0);
-        self.tc.table.instantiate_to_term(ty).into()
+        ResolvedPathInBody::Func(self.tc.table.instantiate_to_term(ty))
     }
 
     fn select_method_candidate(
@@ -331,7 +340,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                     method_ty = TyId::app(db, method_ty, arg);
                 }
 
-                Some(ResolvedPathInBody::Ty(
+                Some(ResolvedPathInBody::Func(
                     self.tc.table.instantiate_to_term(method_ty),
                 ))
             }
@@ -341,7 +350,9 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 let inst = cand.inst;
 
                 let method_ty = method.instantiate_with_inst(self.tc, receiver_ty, inst);
-                Some(ResolvedPathInBody::Ty(method_ty))
+                Some(ResolvedPathInBody::Func(
+                    self.tc.table.instantiate_to_term(method_ty),
+                ))
             }
         }
     }
@@ -388,19 +399,19 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
                 let adt = lower_adt(db, AdtRefId::from_struct(db, struct_));
                 let ty = TyId::adt(db, adt);
-                self.tc.table.instantiate_to_term(ty).into()
+                ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Enum(enum_))) => {
                 let adt = lower_adt(db, AdtRefId::from_enum(db, enum_));
                 let ty = TyId::adt(db, adt);
-                self.tc.table.instantiate_to_term(ty).into()
+                ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Contract(contract_))) => {
                 let adt = lower_adt(db, AdtRefId::from_contract(db, contract_));
                 let ty = TyId::adt(db, adt);
-                self.tc.table.instantiate_to_term(ty).into()
+                ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
             }
 
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
@@ -415,14 +426,13 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                         let name = variant_def.name.to_opt().unwrap();
                         self.select_method_candidate(receiver_ty, name).unwrap()
                     } else {
-                        ResolvedVariant::new(
+                        ResolvedPathInBody::Variant(ResolvedVariant::new(
                             db,
                             &mut self.tc.table,
                             enum_,
                             idx,
                             self.path,
-                        )
-                        .into()
+                        ))
                     }
                 }
             }
@@ -430,7 +440,8 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Item(ItemKind::Func(func))) => {
                 let func_def = lower_func(db, func).unwrap();
                 let ty = TyId::func(db, func_def);
-                self.tc.table.instantiate_to_term(ty).into()
+
+                ResolvedPathInBody::Func(self.tc.table.instantiate_to_term(ty))
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Impl(impl_))) => {
@@ -446,7 +457,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) => {
-                lower_trait(db, trait_).into()
+                ResolvedPathInBody::Trait(lower_trait(db, trait_))
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::ImplTrait(impl_trait))) => {
@@ -471,9 +482,19 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 ResolvedPathInBody::Const(ty)
             }
 
+            NameResKind::Scope(ScopeId::GenericParam(parent, idx)) => {
+                let owner = GenericParamOwnerId::from_item_opt(db, parent).unwrap();
+                let param_set = collect_generic_params(db, owner);
+                let Some(ty) = param_set.param_by_original_idx(db, idx) else {
+                    return ResolvedPathInBody::Invalid;
+                };
+
+                ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
+            }
+
             NameResKind::Prim(prim) => {
                 let ty = TyId::from_hir_prim_ty(db, prim);
-                self.tc.table.instantiate_to_term(ty).into()
+                ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
             }
 
             _ => ResolvedPathInBody::Invalid,
@@ -481,14 +502,17 @@ impl<'db, 'env> PathResolver<'db, 'env> {
     }
 }
 
-#[derive(Clone, Debug, derive_more::From)]
+#[derive(Clone, Debug)]
 pub(super) enum ResolvedPathInBody {
     Ty(TyId),
+
+    /// The path is resolved to function.
+    /// In case of the function is associated functions, the function type is
+    /// automatically instantiated in the in the process of path resolution.
+    Func(TyId),
     Trait(TraitDef),
-    #[from(ignore)]
     Const(TyId),
     Variant(ResolvedVariant),
-    #[from(ignore)]
     Binding(IdentId, LocalBinding),
     NewBinding(IdentId),
     Diag(FuncBodyDiag),

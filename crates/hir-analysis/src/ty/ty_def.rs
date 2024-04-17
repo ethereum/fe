@@ -256,6 +256,15 @@ impl TyId {
         matches!(self.base_ty(db).data(db), TyData::TyParam(_))
     }
 
+    /// Returns `true` if the base type is a user defined `struct` type.
+    pub(super) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
+        let base_ty = self.base_ty(db);
+        match base_ty.data(db) {
+            TyData::TyBase(TyBase::Adt(adt)) => adt.is_struct(db),
+            _ => false,
+        }
+    }
+
     pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
         !collect_type_params(db, self).is_empty()
     }
@@ -556,6 +565,10 @@ impl AdtDef {
 
     pub(crate) fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
         self.param_set(db).explicit_params(db)
+    }
+
+    pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.adt_ref(db).data(db), AdtRef::Struct(_))
     }
 
     pub(crate) fn variant_ty_span(

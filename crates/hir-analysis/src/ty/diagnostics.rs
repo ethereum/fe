@@ -691,7 +691,7 @@ pub enum BodyDiag {
 
     NotValue {
         primary: DynLazySpan,
-        item: ItemKind,
+        given: Either<ItemKind, TyId>,
     },
 }
 
@@ -946,9 +946,7 @@ impl BodyDiag {
                 format!("`{}` is not found", method_name.data(db))
             }
 
-            Self::NotValue { item, .. } => {
-                format!("`{}` is not a value", item.kind_name())
-            }
+            Self::NotValue { .. } => "value is expected".to_string(),
         }
     }
 
@@ -1471,10 +1469,16 @@ impl BodyDiag {
                 )]
             }
 
-            Self::NotValue { primary, item } => {
+            Self::NotValue { primary, given } => {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("`{}` cannot be used as a value", item.kind_name()),
+                    format!(
+                        "`{}` cannot be used as a value",
+                        match given {
+                            Either::Left(item) => item.kind_name(),
+                            Either::Right(_) => "type",
+                        }
+                    ),
                     primary.resolve(db),
                 )]
             }

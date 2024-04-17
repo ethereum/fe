@@ -1,3 +1,4 @@
+use either::Either;
 use hir::hir_def::{
     kw, ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind,
 };
@@ -374,26 +375,30 @@ impl<'db> TyChecker<'db> {
 
         match resolve_path(self, *path, span.path(), ResolutionMode::ExprValue) {
             ResolvedPathInBody::Ty(ty) => {
-                if ty.is_func(self.db) {
-                    ExprProp::new(ty, true)
+                if let Some(const_ty_ty) = ty.const_ty_ty(self.db) {
+                    ExprProp::new(const_ty_ty, true)
                 } else {
-                    // TODO: Refine this diagnostic.
-                    let diag = BodyDiag::unit_variant_expected(
-                        self.db,
-                        expr.lazy_span(self.body()).into(),
-                        ty,
-                    )
-                    .into();
+                    let diag = if ty.is_struct(self.db) {
+                        BodyDiag::unit_variant_expected(self.db, span.into(), ty).into()
+                    } else {
+                        BodyDiag::NotValue {
+                            primary: span.into(),
+                            given: Either::Right(ty),
+                        }
+                        .into()
+                    };
                     FuncBodyDiagAccumulator::push(self.db, diag);
 
                     ExprProp::invalid(self.db)
                 }
             }
 
+            ResolvedPathInBody::Func(ty) => ExprProp::new(ty, true),
+
             ResolvedPathInBody::Trait(trait_) => {
                 let diag = BodyDiag::NotValue {
                     primary: span.into(),
-                    item: trait_.trait_(self.db).into(),
+                    given: Either::Left(trait_.trait_(self.db).into()),
                 };
                 FuncBodyDiagAccumulator::push(self.db, diag.into());
                 ExprProp::invalid(self.db)
@@ -452,7 +457,7 @@ impl<'db> TyChecker<'db> {
         };
 
         match resolve_path(self, *path, span.path(), ResolutionMode::RecordInit) {
-            ResolvedPathInBody::Ty(ty) | ResolvedPathInBody::Const(ty) => {
+            ResolvedPathInBody::Ty(ty) => {
                 if ty.is_record(self.db) {
                     self.check_record_init_fields(ty, expr);
                     ExprProp::new(ty, true)
@@ -464,6 +469,13 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
+            ResolvedPathInBody::Func(ty) | ResolvedPathInBody::Const(ty) => {
+                let diag = BodyDiag::record_expected(self.db, span.path().into(), Some(ty));
+                FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+                ExprProp::invalid(self.db)
+            }
+
             ResolvedPathInBody::Variant(variant) => {
                 let ty = variant.ty(self.db);
                 self.check_record_init_fields(variant, expr);
@@ -473,7 +485,7 @@ impl<'db> TyChecker<'db> {
             ResolvedPathInBody::Trait(trait_) => {
                 let diag = BodyDiag::NotValue {
                     primary: span.into(),
-                    item: trait_.trait_(self.db).into(),
+                    given: Either::Left(trait_.trait_(self.db).into()),
                 };
                 FuncBodyDiagAccumulator::push(self.db, diag.into());
                 ExprProp::invalid(self.db)
