@@ -1,5 +1,5 @@
 use hir::{
-    hir_def::{kw, GenericArgListId, IdentId},
+    hir_def::{CallArg, ExprId, GenericArgListId},
     span::{expr::LazyCallArgListSpan, params::LazyGenericArgListSpan, DynLazySpan},
 };
 use if_chain::if_chain;
@@ -17,7 +17,7 @@ use crate::{
 
 pub(super) struct Callable {
     func_def: FuncDef,
-    args: Vec<TyId>,
+    generic_args: Vec<TyId>,
 }
 
 impl Callable {
@@ -41,12 +41,12 @@ impl Callable {
 
         Ok(Self {
             func_def: *func_def,
-            args: args.to_vec(),
+            generic_args: args.to_vec(),
         })
     }
 
     pub(super) fn ret_ty(&self, db: &dyn HirAnalysisDb) -> TyId {
-        self.func_def.ret_ty(db).instantiate(db, &self.args)
+        self.func_def.ret_ty(db).instantiate(db, &self.generic_args)
     }
 
     pub(super) fn unify_generic_args(
@@ -64,7 +64,7 @@ impl Callable {
 
         let given_args = lower_generic_arg_list(db, args, tc.env.scope());
         let offset = self.func_def.offset_to_explicit_params_position(db);
-        let current_args = &mut self.args[offset..];
+        let current_args = &mut self.generic_args[offset..];
 
         if current_args.len() != given_args.len() {
             let diag = BodyDiag::CallGenericArgNumMismatch {
@@ -89,52 +89,54 @@ impl Callable {
     pub(super) fn check_args(
         &self,
         tc: &mut TyChecker,
-        args: &[(Option<IdentId>, TyId)],
+        args: &[CallArg],
         span: LazyCallArgListSpan,
-        receiver_span: Option<DynLazySpan>,
+        receiver: Option<(ExprId, TyId)>,
     ) {
         let db = tc.db;
 
         let expected_arity = self.func_def.arg_tys(db).len();
-        if args.len() != expected_arity {
-            let (given, expected) = if receiver_span.is_some() {
-                (args.len() - 1, expected_arity - 1)
-            } else {
-                (args.len(), expected_arity)
-            };
-
+        let given_arity = if receiver.is_some() {
+            args.len() + 1
+        } else {
+            args.len()
+        };
+        if given_arity != expected_arity {
             let diag = BodyDiag::CallArgNumMismatch {
                 primary: span.into(),
                 def_span: self.func_def.name_span(db),
-                given,
-                expected,
+                given: given_arity,
+                expected: expected_arity,
             }
             .into();
             FuncBodyDiagAccumulator::push(db, diag);
             return;
         }
 
-        let expected_args = self.func_def.arg_tys(db);
-        for (i, (given, expected)) in args.iter().zip(expected_args.iter()).enumerate() {
+        let mut expected_args = self.func_def.arg_tys(db).iter();
+        if let Some(receiver) = receiver {
+            let expected = expected_args
+                .next()
+                .unwrap()
+                .instantiate(db, &self.generic_args);
+            tc.equate_ty(receiver.1, expected, receiver.0.lazy_span(tc.body()).into());
+        };
+
+        for (i, (given, expected)) in args.iter().zip(expected_args).enumerate() {
             if_chain! {
                 if let Some(expected_label) = self.func_def.param_label(db, i);
-                if expected_label != kw::SELF;
-                if Some(expected_label) != given.0;
-                let idx = if receiver_span.is_some() {
-                    i - 1
-                } else {
-                    i
-                };
+                let given_label = given.label_eagerly(db.as_hir_db(), tc.body());
+                if Some(expected_label) != given_label;
                 then {
-                    let primary = if given.0.is_some() {
-                        span.arg(idx).label().into()
+                    let primary = if given.label.is_some() {
+                        span.arg(i).label().into()
                     } else {
-                        span.arg(idx).into()
+                        span.arg(i).into()
                     };
                     let diag = BodyDiag::CallArgLabelMismatch {
                         primary,
                         def_span: self.func_def.name_span(db),
-                        given: given.0,
+                        given: given_label,
                         expected: expected_label,
                     }
                     .into();
@@ -142,17 +144,10 @@ impl Callable {
                 }
             }
 
-            let expected = expected.instantiate(db, &self.args);
-            let span = if let Some(receiver_span) = &receiver_span {
-                if i == 0 {
-                    receiver_span.clone()
-                } else {
-                    span.arg(i - 1).expr().into()
-                }
-            } else {
-                span.arg(i).expr().into()
-            };
-            tc.equate_ty(given.1, expected, span);
+            let expected = expected.instantiate(db, &self.generic_args);
+            let given_ty = tc.fresh_ty();
+            let given_ty = tc.check_expr(given.expr, given_ty).ty;
+            tc.equate_ty(given_ty, expected, span.arg(i).expr().into());
         }
     }
 }

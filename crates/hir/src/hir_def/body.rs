@@ -9,15 +9,14 @@ use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
 use parser::ast::{self, prelude::*};
 use rustc_hash::FxHashMap;
 
+use super::{
+    scope_graph::ScopeId, Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod,
+    TrackedItemId,
+};
 use crate::{
     span::{item::LazyBodySpan, HirOrigin},
     visitor::prelude::*,
     HirDb,
-};
-
-use super::{
-    scope_graph::ScopeId, Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod,
-    TrackedItemId,
 };
 
 #[salsa::tracked]
@@ -72,7 +71,7 @@ impl Body {
     /// Currently, this is only used for testing.
     /// When it turns out to be generally useful, we need to consider to let
     /// salsa track this method.
-    pub fn block_order(self, db: &dyn HirDb) -> FxHashMap<ExprId, usize> {
+    pub fn iter_block(self, db: &dyn HirDb) -> FxHashMap<ExprId, usize> {
         BlockOrderCalculator::new(db, self).calculate()
     }
 }

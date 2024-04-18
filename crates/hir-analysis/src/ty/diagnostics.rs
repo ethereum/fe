@@ -19,7 +19,7 @@ use super::{
     constraint::PredicateId,
     trait_def::TraitDef,
     ty_check::{RecordLike, TraitOps},
-    ty_def::{Kind, TyId},
+    ty_def::{Kind, TyData, TyId, TyVarSort},
 };
 use crate::{name_resolution::diagnostics::NameResDiag, HirAnalysisDb};
 
@@ -693,6 +693,12 @@ pub enum BodyDiag {
         primary: DynLazySpan,
         given: Either<ItemKind, TyId>,
     },
+
+    TypeAnnotationNeeded {
+        primary: DynLazySpan,
+        ty: Option<String>,
+        is_integral: bool,
+    },
 }
 
 impl BodyDiag {
@@ -853,6 +859,23 @@ impl BodyDiag {
         }
     }
 
+    pub(super) fn type_annotation_needed(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        ty: TyId,
+    ) -> Self {
+        let (ty, is_integral) = match ty.base_ty(db).data(db) {
+            TyData::TyVar(var) => (None, matches!(var.sort, TyVarSort::Integral)),
+            _ => (ty.pretty_print(db).to_string().into(), false),
+        };
+
+        Self::TypeAnnotationNeeded {
+            primary,
+            ty,
+            is_integral,
+        }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(..) => 0,
@@ -885,6 +908,7 @@ impl BodyDiag {
             Self::InvisibleTraitMethod { .. } => 27,
             Self::MethodNotFound { .. } => 28,
             Self::NotValue { .. } => 29,
+            Self::TypeAnnotationNeeded { .. } => 30,
         }
     }
 
@@ -947,6 +971,7 @@ impl BodyDiag {
             }
 
             Self::NotValue { .. } => "value is expected".to_string(),
+            Self::TypeAnnotationNeeded { .. } => "type annotation is needed".to_string(),
         }
     }
 
@@ -1481,6 +1506,32 @@ impl BodyDiag {
                     ),
                     primary.resolve(db),
                 )]
+            }
+
+            Self::TypeAnnotationNeeded {
+                primary,
+                ty,
+                is_integral,
+            } => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "type annotation is needed".to_string(),
+                    primary.resolve(db),
+                )];
+
+                let sub_diag_msg = match ty {
+                    Some(ty) => format!("consider giving `: {ty}` here"),
+                    None if *is_integral => "no default type is provided for an integer type. consider giving integer type".to_string(),
+                    None => "consider giving `: Type` here".to_string(),
+                };
+
+                diags.push(SubDiagnostic::new(
+                    LabelStyle::Secondary,
+                    sub_diag_msg,
+                    primary.resolve(db),
+                ));
+
+                diags
             }
         }
     }

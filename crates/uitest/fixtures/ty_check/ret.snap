@@ -7,7 +7,7 @@ error[8-0000]: type mismatch
    ┌─ ret.fe:15:9
    │
 15 │         false
-   │         ^^^^^ expected `<integer>`, but `bool` is given
+   │         ^^^^^ expected `{integer}`, but `bool` is given
 
 error[8-0013]: returned type mismatch
   ┌─ ret.fe:2:5

@@ -23,7 +23,7 @@ use crate::{
         binder::Binder,
         func_def::HirFuncDefKind,
         trait_lower::{lower_impl_trait, lower_trait},
-        ty_def::{free_inference_keys, TyVarSort},
+        ty_def::{inference_keys, TyVarSort},
         unify::InferenceKey,
     },
     HirAnalysisDb,
@@ -58,7 +58,7 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintList
     // If the constraint type contains unbound type parameters, we just ignore it.
     let mut new_constraints = BTreeSet::new();
     for &pred in constraints.predicates(db) {
-        if free_inference_keys(db, pred.ty(db)).is_empty() {
+        if inference_keys(db, pred.ty(db)).is_empty() {
             new_constraints.insert(pred);
         }
     }

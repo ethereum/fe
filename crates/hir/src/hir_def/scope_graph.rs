@@ -368,7 +368,7 @@ impl ScopeId {
     }
     pub fn pretty_path(self, db: &dyn HirDb) -> Option<String> {
         let name = match self {
-            ScopeId::Block(body, expr) => format!("{{block{}}}", body.block_order(db)[&expr]),
+            ScopeId::Block(body, expr) => format!("{{block{}}}", body.iter_block(db)[&expr]),
             ScopeId::Item(ItemKind::Body(body)) => match body.body_kind(db) {
                 BodyKind::FuncBody => "{fn_body}".to_string(),
                 BodyKind::Anonymous => "{anonymous_body}".to_string(),

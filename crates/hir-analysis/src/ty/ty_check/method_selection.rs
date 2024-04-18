@@ -199,25 +199,20 @@ impl<'db> CandidateAssembler<'db> {
 
         let mut table = UnificationTable::new(self.db);
         let receiver_ty = self.receiver_ty.decanonicalize(&mut table);
+
+        let mut insert_trait_method_cand = |inst: TraitInstId| {
+            if let Some(trait_method) = inst.def(self.db).methods(self.db).get(&self.method_name) {
+                let cand = TraitMethodCand::new(self.db, inst, *trait_method, None);
+                self.candidates.push(cand.into());
+            }
+        };
         for &pred in self.assumptions.predicates(self.db) {
             let snapshot = table.snapshot();
             let pred_ty = table.instantiate_to_term(pred.ty(self.db));
 
             if table.unify(receiver_ty, pred_ty).is_ok() {
-                if let Some(trait_method) = pred
-                    .trait_inst(self.db)
-                    .def(self.db)
-                    .methods(self.db)
-                    .get(&self.method_name)
-                {
-                    let cand = TraitMethodCand::new(
-                        self.db,
-                        pred.trait_inst(self.db),
-                        *trait_method,
-                        None,
-                    );
-                    self.candidates.push(cand.into());
-                }
+                let trait_inst = pred.trait_inst(self.db);
+                insert_trait_method_cand(trait_inst);
             }
 
             table.rollback_to(snapshot);

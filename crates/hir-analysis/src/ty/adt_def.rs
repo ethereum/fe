@@ -51,6 +51,10 @@ impl AdtDef {
         matches!(self.adt_ref(db).data(db), AdtRef::Struct(_))
     }
 
+    pub fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
+        self.adt_ref(db).scope(db)
+    }
+
     pub(crate) fn variant_ty_span(
         self,
         db: &dyn HirAnalysisDb,
