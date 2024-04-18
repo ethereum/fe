@@ -3,7 +3,7 @@ use hir::hir_def::{IdentId, Partial, Stmt, StmtId};
 use super::TyChecker;
 use crate::ty::{
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
-    fold::TypeFoldable,
+    fold::TyFoldable,
     ty_def::{InvalidCause, TyId},
 };
 
@@ -59,7 +59,7 @@ impl<'db> TyChecker<'db> {
         // `Iterator` trait when `std::iter::Iterator` is implemented.
         let elem_ty = if base.is_array(self.db) {
             arg[0]
-        } else if base.is_invalid(self.db) {
+        } else if base.has_invalid(self.db) {
             TyId::invalid(self.db, InvalidCause::Other)
         } else if base.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(expr.lazy_span(self.body()).into());

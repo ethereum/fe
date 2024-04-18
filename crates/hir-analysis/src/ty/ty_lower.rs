@@ -62,7 +62,7 @@ pub(crate) fn lower_type_alias(
     };
 
     let alias_to = lower_hir_ty(db, hir_ty, alias.scope());
-    let alias_to = Binder::bind(if alias_to.contains_invalid(db) {
+    let alias_to = Binder::bind(if alias_to.has_invalid(db) {
         TyId::invalid(db, InvalidCause::Other)
     } else {
         alias_to
@@ -342,7 +342,7 @@ impl<'db> TyBuilder<'db> {
     /// returns the `TyId::Invalid` with proper `InvalidCause`.
     fn resolve_path(&mut self, path: PathId) -> Either<NameResKind, TyId> {
         match resolve_path_early(self.db, path, self.scope) {
-            EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
+            EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::TYPE) {
                 Ok(res) => Either::Left(res.kind),
 
                 // This error is already handled by the name resolution.
@@ -580,7 +580,7 @@ impl<'db> GenericParamCollector<'db> {
         };
 
         match resolve_path_early(self.db, path, self.owner.scope()) {
-            EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
+            EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::TYPE) {
                 Ok(res) => match res.kind {
                     NameResKind::Scope(ScopeId::GenericParam(scope, idx))
                         if self.owner.scope().item() == scope =>
@@ -640,7 +640,7 @@ impl TyParamPrecursor {
         let const_ty_ty = match self.const_ty_ty {
             Some(ty) => {
                 let ty = lower_hir_ty(db, ty, scope);
-                if !(ty.contains_invalid(db) || ty.is_integral(db) || ty.is_bool(db)) {
+                if !(ty.has_invalid(db) || ty.is_integral(db) || ty.is_bool(db)) {
                     TyId::invalid(db, InvalidCause::InvalidConstParamTy { ty })
                 } else {
                     ty

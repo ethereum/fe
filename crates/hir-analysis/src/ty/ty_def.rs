@@ -2,6 +2,7 @@
 
 use std::{collections::BTreeSet, fmt};
 
+use bitflags::bitflags;
 use common::input::IngotKind;
 use hir::{
     hir_def::{
@@ -11,7 +12,6 @@ use hir::{
     },
     span::DynLazySpan,
 };
-use rustc_hash::FxHashSet;
 
 use super::{
     adt_def::AdtDef,
@@ -20,7 +20,7 @@ use super::{
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     func_def::FuncDef,
     unify::InferenceKey,
-    visitor::{TypeVisitable, TypeVisitor},
+    visitor::{TyVisitable, TyVisitor},
 };
 use crate::{
     ty::constraint_solver::{check_ty_wf, GoalSatisfiability},
@@ -61,13 +61,6 @@ impl TyId {
             TyData::ConstTy(const_ty) => Some(const_ty.ty(db)),
             _ => None,
         }
-    }
-
-    /// Returns `true` if the type is invalid, see [`contains_invalid`] if you
-    /// want to check if the type contains any invalid types as a part of the
-    /// type.
-    pub fn is_invalid(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.data(db), TyData::Invalid(_))
     }
 
     /// Returns `true` is the type has `*` kind.
@@ -116,14 +109,16 @@ impl TyId {
         }
     }
 
-    /// Returns `true` if the type contains invalid types as an argument.
-    pub fn contains_invalid(self, db: &dyn HirAnalysisDb) -> bool {
-        match self.data(db) {
-            TyData::Invalid(_) => true,
-            TyData::TyApp(lhs, rhs) => lhs.contains_invalid(db) || rhs.contains_invalid(db),
-            TyData::ConstTy(const_ty) => const_ty.ty(db).contains_invalid(db),
-            _ => false,
-        }
+    pub fn flags(self, db: &dyn HirAnalysisDb) -> TyFlags {
+        ty_flags(db, self)
+    }
+
+    pub fn has_invalid(self, db: &dyn HirAnalysisDb) -> bool {
+        self.flags(db).contains(TyFlags::HAS_INVALID)
+    }
+
+    pub fn has_param(self, db: &dyn HirAnalysisDb) -> bool {
+        self.flags(db).contains(TyFlags::HAS_PARAM)
     }
 
     /// Returns `true` if the type has a `*` kind.
@@ -263,10 +258,6 @@ impl TyId {
         }
     }
 
-    pub(super) fn contains_ty_param(self, db: &dyn HirAnalysisDb) -> bool {
-        !collect_type_params(db, self).is_empty()
-    }
-
     /// Emit diagnostics for the type if the type contains invalid types.
     pub(super) fn emit_diag(
         self,
@@ -279,7 +270,7 @@ impl TyId {
             span: DynLazySpan,
         }
 
-        impl<'db> TypeVisitor<'db> for EmitDiagVisitor<'db> {
+        impl<'db> TyVisitor<'db> for EmitDiagVisitor<'db> {
             fn db(&self) -> &'db dyn HirAnalysisDb {
                 self.db
             }
@@ -334,6 +325,10 @@ impl TyId {
 
                 self.diag.get_or_insert(diag);
             }
+        }
+
+        if !self.has_invalid(db) {
+            return None;
         }
 
         let mut visitor = EmitDiagVisitor {
@@ -440,7 +435,7 @@ impl TyId {
     ) -> Result<TyId, InvalidCause> {
         match (expected_ty, self.data(db)) {
             (Some(expected_const_ty), TyData::ConstTy(const_ty)) => {
-                if expected_const_ty.is_invalid(db) {
+                if expected_const_ty.has_invalid(db) {
                     Err(InvalidCause::Other)
                 } else {
                     let evaluated_const_ty = const_ty.evaluate(db, expected_const_ty.into());
@@ -454,7 +449,7 @@ impl TyId {
             }
 
             (Some(expected_const_ty), _) => {
-                if expected_const_ty.is_invalid(db) {
+                if expected_const_ty.has_invalid(db) {
                     Err(InvalidCause::Other)
                 } else {
                     Err(InvalidCause::ConstTyExpected {
@@ -984,14 +979,14 @@ pub(crate) fn free_inference_keys<'db, V>(
     visitable: V,
 ) -> BTreeSet<InferenceKey>
 where
-    V: TypeVisitable<'db>,
+    V: TyVisitable<'db>,
 {
     struct FreeInferenceKeyCollector<'db> {
         db: &'db dyn HirAnalysisDb,
         keys: BTreeSet<InferenceKey>,
     }
 
-    impl<'db> TypeVisitor<'db> for FreeInferenceKeyCollector<'db> {
+    impl<'db> TyVisitor<'db> for FreeInferenceKeyCollector<'db> {
         fn db(&self) -> &'db dyn HirAnalysisDb {
             self.db
         }
@@ -1008,45 +1003,6 @@ where
 
     visitable.visit_with(&mut collector);
     collector.keys
-}
-
-pub(crate) fn collect_type_params<'db, V>(
-    db: &'db dyn HirAnalysisDb,
-    visitable: V,
-) -> FxHashSet<TyId>
-where
-    V: TypeVisitable<'db>,
-{
-    struct TypeParamCollector<'db> {
-        db: &'db dyn HirAnalysisDb,
-        params: FxHashSet<TyId>,
-    }
-
-    impl<'db> TypeVisitor<'db> for TypeParamCollector<'db> {
-        fn db(&self) -> &'db dyn HirAnalysisDb {
-            self.db
-        }
-
-        fn visit_param(&mut self, param: &TyParam) {
-            let param_ty = TyId::new(self.db, TyData::TyParam(param.clone()));
-            self.params.insert(param_ty);
-        }
-
-        fn visit_const_param(&mut self, param: &TyParam, const_ty_ty: TyId) {
-            let db = self.db;
-            let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param.clone(), const_ty_ty));
-            let const_param_ty = TyId::new(db, TyData::ConstTy(const_ty));
-            self.params.insert(const_param_ty);
-        }
-    }
-
-    let mut collector = TypeParamCollector {
-        db,
-        params: FxHashSet::default(),
-    };
-
-    visitable.visit_with(&mut collector);
-    collector.params
 }
 
 #[salsa::tracked(return_ref)]
@@ -1115,7 +1071,7 @@ pub(crate) fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<T
         args: Vec<TyId>,
     }
 
-    impl<'db> TypeVisitor<'db> for TyAppDecomposer<'db> {
+    impl<'db> TyVisitor<'db> for TyAppDecomposer<'db> {
         fn db(&self) -> &'db dyn HirAnalysisDb {
             self.db
         }
@@ -1141,4 +1097,47 @@ pub(crate) fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<T
 
     ty.visit_with(&mut decomposer);
     (decomposer.base.unwrap(), decomposer.args)
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct TyFlags: u32 {
+        const HAS_INVALID =  0b0000_0001;
+        const HAS_VAR = 0b0000_0010;
+        const HAS_PARAM = 0b0000_0100;
+    }
+}
+
+#[salsa::tracked]
+pub(crate) fn ty_flags(db: &dyn HirAnalysisDb, ty: TyId) -> TyFlags {
+    struct Collector<'db> {
+        db: &'db dyn HirAnalysisDb,
+        flags: TyFlags,
+    }
+
+    impl<'db> TyVisitor<'db> for Collector<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_var(&mut self, _: &TyVar) {
+            self.flags.insert(TyFlags::HAS_VAR);
+        }
+
+        fn visit_param(&mut self, _: &TyParam) {
+            self.flags.insert(TyFlags::HAS_PARAM)
+        }
+
+        fn visit_invalid(&mut self, _: &InvalidCause) {
+            self.flags.insert(TyFlags::HAS_INVALID)
+        }
+    }
+
+    let mut collector = Collector {
+        db,
+        flags: TyFlags::empty(),
+    };
+
+    ty.visit_with(&mut collector);
+    collector.flags
 }

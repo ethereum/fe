@@ -79,7 +79,7 @@ fn check_const_ty(
     expected_ty: Option<TyId>,
     table: &mut UnificationTable,
 ) -> Result<TyId, InvalidCause> {
-    if const_ty_ty.is_invalid(db) {
+    if const_ty_ty.has_invalid(db) {
         return Err(InvalidCause::Other);
     }
 

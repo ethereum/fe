@@ -60,13 +60,13 @@ impl<'db, 'a> Visitor for PathVisitor<'db, 'a> {
             return;
         }
 
-        self.domain_stack.push(NameDomain::Type);
+        self.domain_stack.push(NameDomain::TYPE);
         walk_item(self, ctxt, item);
         self.domain_stack.pop();
     }
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {
-        self.domain_stack.push(NameDomain::Type);
+        self.domain_stack.push(NameDomain::TYPE);
         walk_ty(self, ctxt, ty);
         self.domain_stack.pop();
     }

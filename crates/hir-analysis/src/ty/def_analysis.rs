@@ -31,7 +31,7 @@ use super::{
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{InvalidCause, TyData, TyId},
     ty_lower::{collect_generic_params, lower_kind, GenericParamOwnerId},
-    visitor::{walk_ty, TypeVisitor},
+    visitor::{walk_ty, TyVisitor},
 };
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
@@ -48,7 +48,7 @@ use crate::{
         trait_def::does_impl_trait_conflict,
         trait_lower::lower_impl_trait,
         ty_lower::{lower_hir_ty, lower_type_alias},
-        visitor::TypeVisitable,
+        visitor::TyVisitable,
     },
     HirAnalysisDb,
 };
@@ -328,7 +328,7 @@ impl<'db> DefAnalyzer<'db> {
                 if let EarlyResolvedPath::Full(bucket) =
                     resolve_path_early(self.db, path, parent_scope)
                 {
-                    if let Ok(res) = bucket.pick(NameDomain::Type) {
+                    if let Ok(res) = bucket.pick(NameDomain::TYPE) {
                         if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) =
                             res.kind
                         {
@@ -355,7 +355,7 @@ impl<'db> DefAnalyzer<'db> {
         let expected_ty = self.self_ty.unwrap();
 
         let param_ty = lower_hir_ty(self.db, self_ty, self.def.scope(self.db));
-        if !param_ty.contains_invalid(self.db) && !expected_ty.contains_invalid(self.db) {
+        if !param_ty.has_invalid(self.db) && !expected_ty.has_invalid(self.db) {
             let (expected_base_ty, expected_param_ty_args) = expected_ty.decompose_ty_app(self.db);
             let (param_base_ty, param_ty_args) = param_ty.decompose_ty_app(self.db);
 
@@ -385,7 +385,7 @@ impl<'db> DefAnalyzer<'db> {
             .receiver_ty(self.db)
             .map_or_else(|| self.self_ty.unwrap(), |ty| ty.instantiate_identity());
 
-        if self_ty.contains_invalid(self.db) {
+        if self_ty.has_invalid(self.db) {
             return true;
         }
 
@@ -488,21 +488,21 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
         let ty = lower_hir_ty(self.db, hir_ty, self.scope());
 
-        if !ty.contains_invalid(self.db) && !ty.contains_ty_param(self.db) {
+        if ty.is_const_ty(self.db) {
+            let diag =
+                TraitConstraintDiag::const_ty_bound(self.db, ty, ctxt.span().unwrap().ty().into())
+                    .into();
+            self.diags.push(diag);
+            return;
+        }
+
+        if !ty.has_invalid(self.db) && !ty.has_param(self.db) {
             let diag = TraitConstraintDiag::concrete_type_bound(
                 self.db,
                 ctxt.span().unwrap().ty().into(),
                 ty,
             )
             .into();
-            self.diags.push(diag);
-            return;
-        }
-
-        if ty.is_const_ty(self.db) {
-            let diag =
-                TraitConstraintDiag::const_ty_bound(self.db, ty, ctxt.span().unwrap().ty().into())
-                    .into();
             self.diags.push(diag);
             return;
         }
@@ -528,8 +528,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         if let Some(const_ty) = find_const_ty_param(self.db, name, ctxt.scope()) {
             let const_ty_ty = const_ty.ty(self.db);
             let field_ty = lower_hir_ty(self.db, ty, ctxt.scope());
-            if !const_ty_ty.contains_invalid(self.db)
-                && !field_ty.contains_invalid(self.db)
+            if !const_ty_ty.has_invalid(self.db)
+                && !field_ty.has_invalid(self.db)
                 && field_ty != const_ty_ty
             {
                 self.diags.push(
@@ -581,7 +581,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
             let path = PathId::from_ident(self.db.as_hir_db(), name);
             if let EarlyResolvedPath::Full(bucket) = resolve_path_early(self.db, path, parent_scope)
             {
-                if let Ok(res) = bucket.pick(NameDomain::Type) {
+                if let Ok(res) = bucket.pick(NameDomain::TYPE) {
                     if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) = res.kind
                     {
                         self.diags.push(
@@ -895,7 +895,7 @@ impl TyId {
             adts: FxHashSet<AdtRefId>,
         }
 
-        impl<'db> TypeVisitor<'db> for AdtCollector<'db> {
+        impl<'db> TyVisitor<'db> for AdtCollector<'db> {
             fn db(&self) -> &'db dyn HirAnalysisDb {
                 self.db
             }
@@ -1064,7 +1064,7 @@ fn analyze_impl_trait_specific_error(
     // If there is any error at the point, it means that `Implementor` is not
     // well-formed and no more analysis is needed to reduce the amount of error
     // messages.
-    if !diags.is_empty() || ty.contains_invalid(db) {
+    if !diags.is_empty() || ty.has_invalid(db) {
         return Err(diags);
     }
 
@@ -1263,7 +1263,7 @@ fn find_const_ty_param(
         return None;
     };
 
-    let res = bucket.pick(NameDomain::Value).as_ref().ok()?;
+    let res = bucket.pick(NameDomain::VALUE).as_ref().ok()?;
     let NameResKind::Scope(scope) = res.kind else {
         return None;
     };

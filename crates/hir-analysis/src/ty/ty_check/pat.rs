@@ -68,7 +68,7 @@ impl<'db> TyChecker<'db> {
         let actual = TyId::tuple_with_elems(self.db, &actual);
 
         let unified = self.unify_ty(pat, actual, expected);
-        if unified.contains_invalid(self.db) {
+        if unified.has_invalid(self.db) {
             pat_tup.iter().for_each(|&pat| {
                 self.env
                     .type_pat(pat, TyId::invalid(self.db, InvalidCause::Other));

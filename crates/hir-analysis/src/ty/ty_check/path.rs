@@ -360,10 +360,10 @@ impl<'db, 'env> PathResolver<'db, 'env> {
     fn resolve_bucket(&mut self, bucket: NameResBucket) -> ResolvedPathInBody {
         match self.mode {
             ResolutionMode::ExprValue => {
-                match bucket.pick(NameDomain::Value) {
+                match bucket.pick(NameDomain::VALUE) {
                     Ok(res) => self.resolve_name_res(res),
                     Err(_) => {
-                        if let Ok(res) = bucket.pick(NameDomain::Type) {
+                        if let Ok(res) = bucket.pick(NameDomain::TYPE) {
                             self.resolve_name_res(res)
                         } else {
                             // This error is already reported in the name resolution phase.
@@ -374,7 +374,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             }
 
             ResolutionMode::RecordInit | ResolutionMode::Pat => {
-                if let Ok(res) = bucket.pick(NameDomain::Value) {
+                if let Ok(res) = bucket.pick(NameDomain::VALUE) {
                     let res = self.resolve_name_res(res);
                     if !matches!(
                         res,
@@ -384,7 +384,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                     }
                 }
 
-                match bucket.pick(NameDomain::Type) {
+                match bucket.pick(NameDomain::TYPE) {
                     Ok(res) => self.resolve_name_res(res),
                     Err(_) => ResolvedPathInBody::Invalid,
                 }

@@ -241,7 +241,7 @@ impl<'a> IntermediatePath<'a> {
     /// If the `bucket` doesn't contain proper resolution, then an error is
     /// returned.
     fn proceed(&mut self, bucket: NameResBucket) -> PathResolutionResult<()> {
-        let next_res = match bucket.pick(NameDomain::Type) {
+        let next_res = match bucket.pick(NameDomain::TYPE) {
             Ok(res) => Ok(res.clone()),
             Err(NameResolutionError::NotFound) => {
                 if let Some(res) = bucket.iter().next() {

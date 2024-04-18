@@ -59,7 +59,7 @@ pub(crate) fn lower_impl_trait(
 
     let hir_ty = impl_trait.ty(hir_db).to_opt()?;
     let ty = lower_hir_ty(db, hir_ty, scope);
-    if ty.contains_invalid(db) {
+    if ty.has_invalid(db) {
         return None;
     }
 
@@ -105,7 +105,7 @@ pub(crate) fn lower_trait_ref(
     };
 
     let trait_def = match resolve_path_early(db, path, scope) {
-        EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::Type) {
+        EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::TYPE) {
             Ok(res) => {
                 let NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) = res.kind else {
                     return Err(TraitRefLowerError::Other);

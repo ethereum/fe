@@ -4,6 +4,7 @@ use std::{
     fmt, mem,
 };
 
+use bitflags::bitflags;
 use either::Either;
 use hir::{
     hir_def::{
@@ -392,14 +393,14 @@ impl NameRes {
     }
 
     pub(super) fn is_importable(&self) -> bool {
-        matches!(self.domain, NameDomain::Type | NameDomain::Value)
+        matches!(self.domain, NameDomain::TYPE | NameDomain::VALUE)
     }
 
     fn new_prim(prim: PrimTy) -> Self {
         Self {
             kind: prim.into(),
             derivation: NameDerivation::Prim,
-            domain: NameDomain::Type,
+            domain: NameDomain::TYPE,
         }
     }
 }
@@ -608,7 +609,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                     // guaranteed to be unique.
                     bucket.push(&NameRes::new_from_scope(
                         ScopeId::from_item((ingot.root_mod(hir_db)).into()),
-                        NameDomain::Type,
+                        NameDomain::TYPE,
                         NameDerivation::External,
                     ))
                 }
@@ -827,86 +828,50 @@ impl ResolvedQueryCacheStore {
     }
 }
 
-/// Each resolved name is associated with a domain that indicates which domain
-/// the name belongs to.
-/// The multiple same names can be introduced in a same scope as long as they
-/// are in different domains.
-///
-/// E.g., A `Foo` in the below example can be introduced in the same scope as a
-/// type and variant at the same time.
-/// ```fe
-/// struct Foo {}
-/// enum MyEnum {
-///     Foo
-/// }
-/// use MyEnum::Foo
-/// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NameDomain {
-    _inner: u8,
+bitflags! {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    /// Each resolved name is associated with a domain that indicates which domain
+    /// the name belongs to.
+    /// The multiple same names can be introduced in a same scope as long as they
+    /// are in different domains.
+    ///
+    /// E.g., A `Foo` in the below example can be introduced in the same scope as a
+    /// type and variant at the same time.
+    /// ```fe
+    /// struct Foo {}
+    /// enum MyEnum {
+    ///     Foo
+    /// }
+    /// use MyEnum::Foo
+    /// ```
+    pub struct NameDomain: u8
+        {
+            const TYPE = 0b00000001;
+            const VALUE = 0b00000010;
+            const FIELD = 0b100;
+            const Invalid = 0b0;
+        }
 }
 
 #[allow(non_upper_case_globals)]
 impl NameDomain {
-    /// The domain is associated with all items except for items that belongs to
-    /// the `Value` domain.
-    pub const Type: Self = Self { _inner: 0b1 };
-    /// The domain is associated with a local variable and items that are
-    /// guaranteed not to have associated names. e.g., `fn`, `const` or enum
-    /// variables.
-    pub const Value: Self = Self { _inner: 0b10 };
-    /// The domain is associated with struct fields.
-    pub const Field: Self = Self { _inner: 0b100 };
-
-    const Invalid: Self = Self { _inner: 0b0 };
-
     pub(super) fn from_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
         match scope {
             ScopeId::Item(ItemKind::Func(_) | ItemKind::Const(_))
             | ScopeId::FuncParam(..)
-            | ScopeId::Block(..) => Self::Value,
-            ScopeId::Item(_) => Self::Type,
+            | ScopeId::Block(..) => Self::VALUE,
+            ScopeId::Item(_) => Self::TYPE,
             ScopeId::GenericParam(parent, idx) => {
                 let parent = GenericParamOwner::from_item_opt(parent).unwrap();
 
                 let param = &parent.params(db.as_hir_db()).data(db.as_hir_db())[idx];
                 match param {
-                    GenericParam::Type(_) => NameDomain::Type,
-                    GenericParam::Const(_) => NameDomain::Type | NameDomain::Value,
+                    GenericParam::Type(_) => NameDomain::TYPE,
+                    GenericParam::Const(_) => NameDomain::TYPE | NameDomain::VALUE,
                 }
             }
-            ScopeId::Field(..) => Self::Field,
-            ScopeId::Variant(..) => Self::Value,
-        }
-    }
-
-    pub(super) fn iter(self) -> impl Iterator<Item = Self> {
-        struct NameDomainIter {
-            _inner: u8,
-            idx: u8,
-        }
-
-        impl Iterator for NameDomainIter {
-            type Item = NameDomain;
-
-            fn next(&mut self) -> Option<Self::Item> {
-                while self.idx < 3 {
-                    let domain = NameDomain {
-                        _inner: (1 << self.idx) & self._inner,
-                    };
-                    self.idx += 1;
-                    if domain != NameDomain::Invalid {
-                        return Some(domain);
-                    }
-                }
-
-                None
-            }
-        }
-
-        NameDomainIter {
-            _inner: self._inner,
-            idx: 0,
+            ScopeId::Field(..) => Self::FIELD,
+            ScopeId::Variant(..) => Self::VALUE,
         }
     }
 }
@@ -914,32 +879,6 @@ impl NameDomain {
 impl Default for NameDomain {
     fn default() -> Self {
         Self::Invalid
-    }
-}
-
-impl std::ops::BitOr for NameDomain {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        Self {
-            _inner: self._inner | rhs._inner,
-        }
-    }
-}
-
-impl std::ops::BitAnd for NameDomain {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        Self {
-            _inner: self._inner & rhs._inner,
-        }
-    }
-}
-
-impl std::ops::BitOrAssign for NameDomain {
-    fn bitor_assign(&mut self, rhs: Self) {
-        self._inner |= rhs._inner;
     }
 }
 

@@ -19,7 +19,7 @@ use rustc_hash::FxHashMap;
 use super::{
     canonical::Canonical,
     diagnostics::{BodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
-    fold::TypeFoldable,
+    fold::TyFoldable,
     trait_def::{TraitInstId, TraitMethod},
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,

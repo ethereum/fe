@@ -95,7 +95,7 @@ impl<'db> TyChecker<'db> {
         let typed_expr = self.check_expr(*lhs, expr_ty);
         let expr_ty = typed_expr.ty;
 
-        if expr_ty.contains_invalid(self.db) {
+        if expr_ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
@@ -150,7 +150,7 @@ impl<'db> TyChecker<'db> {
         let lhs_ty = self.fresh_ty();
         let typed_lhs = self.check_expr(*lhs, lhs_ty);
         let lhs_ty = typed_lhs.ty;
-        if lhs_ty.contains_invalid(self.db) {
+        if lhs_ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
@@ -160,7 +160,7 @@ impl<'db> TyChecker<'db> {
 
                 let typed_rhs = self.check_expr(*rhs, lhs_ty);
                 let rhs_ty = typed_rhs.ty;
-                if rhs_ty.contains_invalid(self.db) {
+                if rhs_ty.has_invalid(self.db) {
                     return ExprProp::invalid(self.db);
                 }
 
@@ -184,7 +184,7 @@ impl<'db> TyChecker<'db> {
 
                 let typed_rhs = self.check_expr(*rhs, lhs_ty);
                 let rhs_ty = typed_rhs.ty;
-                if rhs_ty.contains_invalid(self.db) {
+                if rhs_ty.has_invalid(self.db) {
                     return ExprProp::invalid(self.db);
                 }
 
@@ -210,7 +210,7 @@ impl<'db> TyChecker<'db> {
 
                 let typed_rhs = self.check_expr(*rhs, lhs_ty);
                 let rhs_ty = typed_rhs.ty;
-                if rhs_ty.contains_invalid(self.db) {
+                if rhs_ty.has_invalid(self.db) {
                     return ExprProp::invalid(self.db);
                 }
 
@@ -252,7 +252,7 @@ impl<'db> TyChecker<'db> {
         let callee_ty = self.fresh_ty();
         let callee_ty = self.check_expr(*callee, callee_ty).ty;
 
-        if callee_ty.contains_invalid(self.db) {
+        if callee_ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
@@ -296,7 +296,7 @@ impl<'db> TyChecker<'db> {
 
         let receiver_ty = self.fresh_ty();
         let receiver_ty = self.check_expr(*receiver, receiver_ty).ty;
-        if receiver_ty.contains_invalid(self.db) {
+        if receiver_ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
@@ -555,7 +555,7 @@ impl<'db> TyChecker<'db> {
         let lhs_ty = typed_lhs.ty;
         let (ty_base, ty_args) = lhs_ty.decompose_ty_app(self.db);
 
-        if ty_base.is_invalid(self.db) {
+        if ty_base.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
@@ -643,7 +643,7 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        if lhs_base.is_invalid(self.db) {
+        if lhs_base.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
@@ -795,7 +795,7 @@ impl<'db> TyChecker<'db> {
         let lhs_ty = self.fresh_ty();
         let typed_lhs = self.check_expr(*lhs, lhs_ty);
         let lhs_ty = typed_lhs.ty;
-        if lhs_ty.contains_invalid(self.db) {
+        if lhs_ty.has_invalid(self.db) {
             return ExprProp::new(unit_ty, true);
         }
 

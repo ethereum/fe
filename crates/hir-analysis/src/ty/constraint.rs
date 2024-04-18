@@ -385,7 +385,7 @@ impl<'db> ConstraintCollector<'db> {
     fn can_remove(&mut self, predicates: PredicateListId, goal: PredicateId) -> bool {
         let goal_ty = goal.ty(self.db);
 
-        if !goal_ty.contains_ty_param(self.db) {
+        if !goal_ty.has_param(self.db) {
             return true;
         }
 
@@ -414,7 +414,7 @@ impl<'db> ConstraintCollector<'db> {
 
             // We don't need to collect super traits, please refer to
             // [`collect_super_traits`] function for details.
-            if ty.is_invalid(self.db) || ty.is_trait_self(self.db) {
+            if ty.has_invalid(self.db) || ty.is_trait_self(self.db) {
                 return;
             }
 

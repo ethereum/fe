@@ -2,7 +2,7 @@ use rustc_hash::FxHashMap;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
-    fold::{TypeFoldable, TypeFolder},
+    fold::{TyFoldable, TyFolder},
     ty_def::{TyData, TyId, TyVar},
     unify::{InferenceKey, UnificationTable},
 };
@@ -15,7 +15,7 @@ pub struct Canonical<T> {
 
 impl<T> Canonical<T>
 where
-    T: for<'db> TypeFoldable<'db>,
+    T: for<'db> TyFoldable<'db>,
 {
     pub fn canonicalize(db: &dyn HirAnalysisDb, value: T) -> Self {
         let mut c = Canonicalizer::new(db);
@@ -52,7 +52,7 @@ impl<'db> Canonicalizer<'db> {
     }
 }
 
-impl<'db> TypeFolder<'db> for Canonicalizer<'db> {
+impl<'db> TyFolder<'db> for Canonicalizer<'db> {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.db
     }
@@ -104,7 +104,7 @@ impl<'a, 'db> DeCanonicalizer<'a, 'db> {
     }
 }
 
-impl<'a, 'db> TypeFolder<'db> for DeCanonicalizer<'a, 'db> {
+impl<'a, 'db> TyFolder<'db> for DeCanonicalizer<'a, 'db> {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.table.db()
     }
