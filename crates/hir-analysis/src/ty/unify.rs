@@ -9,7 +9,7 @@ use super::{
     binder::Binder,
     fold::{TyFoldable, TyFolder},
     trait_def::{Implementor, TraitInstId},
-    ty_def::{free_inference_keys, ApplicableTyProp, Kind, TyData, TyId, TyVar, TyVarSort},
+    ty_def::{inference_keys, ApplicableTyProp, Kind, TyData, TyId, TyVar, TyVarSort},
 };
 use crate::{
     ty::const_ty::{ConstTyData, EvaluatedConstTy},
@@ -112,8 +112,9 @@ impl<'db> UnificationTable<'db> {
 
                     (_, ConstTyData::TyVar(var, _)) => self.unify_var_value(var, ty1),
 
-                    (ConstTyData::Evaluated(val1, _), ConstTyData::Evaluated(val2, _)) => {
-                        if val1 == val2 {
+                    (ConstTyData::TyParam(..), ConstTyData::TyParam(..))
+                    | (ConstTyData::Evaluated(..), ConstTyData::Evaluated(..)) => {
+                        if const_ty1 == const_ty2 {
                             Ok(())
                         } else {
                             Err(UnificationError::TypeMismatch)
@@ -242,7 +243,7 @@ impl<'db> UnificationTable<'db> {
     /// 2. Universe check: The sort of the type variable must match the sort of
     ///    the type.
     fn unify_var_value(&mut self, var: &TyVar, value: TyId) -> UnificationResult {
-        if free_inference_keys(self.db, value).contains(&var.key) {
+        if inference_keys(self.db, value).contains(&var.key) {
             return Err(UnificationError::OccursCheckFailed);
         }
 

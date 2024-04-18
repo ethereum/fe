@@ -18,13 +18,31 @@ error[8-0000]: type mismatch
 error[8-0000]: type mismatch
   ┌─ array.fe:3:17
   │
-3 │     let y = [1, false, 1]
-  │                 ^^^^^ expected `<integer>`, but `bool` is given
+3 │     let z = [1, false, 1]
+  │                 ^^^^^ expected `{integer}`, but `bool` is given
 
 error[8-0000]: type mismatch
-  ┌─ array.fe:5:23
+  ┌─ array.fe:5:27
   │
-5 │     let x: [i32; 5] = [1; 10]
-  │                       ^^^^^^^ expected `[i32; 5]`, but `[i32; 10]` is given
+5 │     let mut x: [i32; 5] = [1; 10]
+  │                           ^^^^^^^ expected `[i32; 5]`, but `[i32; 10]` is given
+
+error[8-0030]: type annotation is needed
+  ┌─ array.fe:3:14
+  │
+3 │     let z = [1, false, 1]
+  │              ^
+  │              │
+  │              type annotation is needed
+  │              no default type is provided for an integer type. consider giving integer type
+
+error[8-0030]: type annotation is needed
+  ┌─ array.fe:6:14
+  │
+6 │     let x = [1; false]
+  │              ^
+  │              │
+  │              type annotation is needed
+  │              no default type is provided for an integer type. consider giving integer type
 
 

@@ -7,9 +7,8 @@ use cranelift_entity::{entity_impl, PrimaryMap};
 use dot2::label::Text;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{hir_def::ItemKind, HirDb};
-
 use super::scope_graph::{EdgeKind, ScopeGraph, ScopeId};
+use crate::{hir_def::ItemKind, HirDb};
 
 type NodeId = usize;
 
@@ -113,7 +112,7 @@ impl<'db, 'a> dot2::Labeller<'a> for ScopeGraphFormatter<'db> {
             }
 
             ScopeId::Block(body, expr) => {
-                let idx = body.block_order(self.db)[expr];
+                let idx = body.iter_block(self.db)[expr];
                 format!(
                     r#" <font color="{block_color}">{{block{block_number}}}</font> "#,
                     block_color = "#383A42",

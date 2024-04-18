@@ -10,22 +10,27 @@ pub use env::ExprProp;
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
 use hir::{
-    hir_def::{Body, ExprId, Func, LitKind, PatId, TypeId as HirTyId},
-    span::DynLazySpan,
+    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, TypeId as HirTyId},
+    span::{expr::LazyExprSpan, pat::LazyPatSpan, DynLazySpan},
+    visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
 pub(super) use path::RecordLike;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
     canonical::Canonical,
-    diagnostics::{BodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
+    constraint::AssumptionListId,
+    diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
     fold::TyFoldable,
     trait_def::{TraitInstId, TraitMethod},
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
-    unify::{UnificationError, UnificationTable},
+    unify::{InferenceKey, UnificationError, UnificationTable},
 };
-use crate::HirAnalysisDb;
+use crate::{
+    ty::ty_def::{inference_keys, TyFlags},
+    HirAnalysisDb,
+};
 
 #[salsa::tracked(return_ref)]
 pub fn check_func_body(db: &dyn HirAnalysisDb, func: Func) -> TypedBody {
@@ -67,9 +72,8 @@ impl<'db> TyChecker<'db> {
         self.check_expr(root_expr, self.expected);
     }
 
-    fn finish(mut self) -> TypedBody {
-        // TODO: check for untyped expressions and patterns.
-        self.env.finish(&mut self.table)
+    fn finish(self) -> TypedBody {
+        TyCheckerFinalizer::new(self).finish()
     }
 
     fn new(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId) -> Self {
@@ -190,10 +194,14 @@ pub struct TypedBody {
 
 impl TypedBody {
     pub fn expr_ty(&self, db: &dyn HirAnalysisDb, expr: ExprId) -> TyId {
+        self.expr_prop(db, expr).ty
+    }
+
+    pub fn expr_prop(&self, db: &dyn HirAnalysisDb, expr: ExprId) -> ExprProp {
         self.expr_ty
             .get(&expr)
-            .map(|typed| typed.ty)
-            .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
+            .copied()
+            .unwrap_or_else(|| ExprProp::invalid(db))
     }
 
     pub fn pat_ty(&self, db: &dyn HirAnalysisDb, pat: PatId) -> TyId {
@@ -245,5 +253,104 @@ impl TraitMethod {
         tc.table.unify(inst_self, receiver_ty).unwrap();
 
         tc.table.instantiate_to_term(ty)
+    }
+}
+
+struct TyCheckerFinalizer<'db> {
+    db: &'db dyn HirAnalysisDb,
+    body: TypedBody,
+    assumptions: AssumptionListId,
+    ty_vars: FxHashSet<InferenceKey>,
+    diags: Vec<FuncBodyDiag>,
+}
+
+impl<'db> TyCheckerFinalizer<'db> {
+    fn new(mut checker: TyChecker<'db>) -> Self {
+        let assumptions = checker.env.assumptions();
+        let body = checker.env.finish(&mut checker.table);
+        Self {
+            db: checker.db,
+            body,
+            assumptions,
+            ty_vars: FxHashSet::default(),
+            diags: Vec::new(),
+        }
+    }
+
+    fn finish(mut self) -> TypedBody {
+        self.check_unknown_types();
+
+        for diag in self.diags {
+            FuncBodyDiagAccumulator::push(self.db, diag);
+        }
+        self.body
+    }
+
+    fn check_unknown_types(&mut self) {
+        impl<'db> Visitor for TyCheckerFinalizer<'db> {
+            fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: PatId, _: &Pat) {
+                let ty = self.body.pat_ty(self.db, pat);
+                let span = ctxt.span().unwrap();
+                self.check_unknown(ty, span.clone().into());
+
+                walk_pat(self, ctxt, pat)
+            }
+
+            fn visit_expr(
+                &mut self,
+                ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+                expr: ExprId,
+                expr_data: &Expr,
+            ) {
+                // Skip the check if the expr is block.
+                if !matches!(expr_data, Expr::Block(..)) {
+                    let prop = self.body.expr_prop(self.db, expr);
+                    let span = ctxt.span().unwrap();
+                    self.check_unknown(prop.ty, span.clone().into());
+                    self.check_wf(prop, span.into());
+                }
+
+                walk_expr(self, ctxt, expr);
+            }
+        }
+
+        if let Some(body) = self.body.body {
+            let mut ctxt = VisitorCtxt::with_body(self.db.as_hir_db(), body);
+            self.visit_body(&mut ctxt, body);
+        }
+    }
+
+    fn check_unknown(&mut self, ty: TyId, span: DynLazySpan) {
+        let flags = ty.flags(self.db);
+        if flags.contains(TyFlags::HAS_INVALID) || !flags.contains(TyFlags::HAS_VAR) {
+            return;
+        }
+
+        let mut skip_diag = false;
+        for key in inference_keys(self.db, ty) {
+            // If at least one of the inference keys are already seen, we will skip emitting
+            // diagnostics.
+            skip_diag |= !self.ty_vars.insert(key);
+        }
+
+        if !skip_diag {
+            let diag = BodyDiag::type_annotation_needed(self.db, span, ty);
+            self.diags.push(diag.into())
+        }
+    }
+
+    fn check_wf(&mut self, prop: ExprProp, span: DynLazySpan) {
+        if prop.binding.is_some() {
+            // WF check is already performed.
+            return;
+        }
+        let flags = prop.ty.flags(self.db);
+        if flags.contains(TyFlags::HAS_INVALID) || flags.contains(TyFlags::HAS_VAR) {
+            return;
+        }
+
+        if let Some(diag) = prop.ty.emit_sat_diag(self.db, self.assumptions, span) {
+            self.diags.push(diag.into());
+        }
     }
 }

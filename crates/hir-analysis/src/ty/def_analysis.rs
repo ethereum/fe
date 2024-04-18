@@ -781,6 +781,9 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         self.def = def;
     }
 
+    fn visit_body(&mut self, _ctxt: &mut VisitorCtxt<'_, LazyBodySpan>, _body: hir::hir_def::Body) {
+    }
+
     fn visit_func_param_list(
         &mut self,
         ctxt: &mut VisitorCtxt<'_, LazyFuncParamListSpan>,

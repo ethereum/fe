@@ -1,6 +1,6 @@
 use either::Either;
 use hir::hir_def::{
-    kw, ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind,
+    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind,
 };
 
 use super::{
@@ -266,20 +266,12 @@ impl<'db> TyChecker<'db> {
             };
 
         let call_span = expr.lazy_span(self.body()).into_call_expr();
-        let args = args
-            .iter()
-            .map(|&arg| {
-                let label = arg.label_eagerly(self.db.as_hir_db(), self.body());
-                let arg_ty = self.fresh_ty();
-                (label, self.check_expr(arg.expr, arg_ty).ty)
-            })
-            .collect::<Vec<_>>();
 
         if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
             return ExprProp::invalid(self.db);
         }
 
-        callable.check_args(self, &args, call_span.args_moved(), None);
+        callable.check_args(self, args, call_span.args_moved(), None);
 
         let ret_ty = callable.ret_ty(self.db);
         ExprProp::new(ret_ty, true)
@@ -341,22 +333,15 @@ impl<'db> TyChecker<'db> {
                 }
             };
 
-        let mut arg_tys = vec![(Some(kw::SELF), receiver_ty)];
-        for arg in args {
-            let label = arg.label_eagerly(self.db.as_hir_db(), self.body());
-            let arg_ty = self.fresh_ty();
-            arg_tys.push((label, self.check_expr(arg.expr, arg_ty).ty))
-        }
-
         if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
             return ExprProp::invalid(self.db);
         }
 
         callable.check_args(
             self,
-            &arg_tys,
+            args,
             call_span.args_moved(),
-            Some(receiver.lazy_span(self.body()).into()),
+            Some((*receiver, receiver_ty)),
         );
         let ret_ty = callable.ret_ty(self.db);
         ExprProp::new(ret_ty, true)
@@ -477,9 +462,16 @@ impl<'db> TyChecker<'db> {
             }
 
             ResolvedPathInBody::Variant(variant) => {
-                let ty = variant.ty(self.db);
-                self.check_record_init_fields(variant, expr);
-                ExprProp::new(ty, true)
+                if variant.is_record(self.db) {
+                    let ty = variant.ty(self.db);
+                    self.check_record_init_fields(variant, expr);
+                    ExprProp::new(ty, true)
+                } else {
+                    let diag = BodyDiag::record_expected::<TyId>(self.db, span.path().into(), None);
+                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+
+                    ExprProp::invalid(self.db)
+                }
             }
 
             ResolvedPathInBody::Trait(trait_) => {
@@ -671,13 +663,13 @@ impl<'db> TyChecker<'db> {
             unreachable!()
         };
 
-        let expected_elem_ty = match expected.decompose_ty_app(self.db) {
+        let mut expected_elem_ty = match expected.decompose_ty_app(self.db) {
             (base, args) if base.is_array(self.db) => args[0],
             _ => self.fresh_ty(),
         };
 
         for elem in elems {
-            self.check_expr(*elem, expected_elem_ty);
+            expected_elem_ty = self.check_expr(*elem, expected_elem_ty).ty;
         }
 
         let ty = TyId::array_with_elem(self.db, expected_elem_ty, elems.len());
@@ -689,12 +681,12 @@ impl<'db> TyChecker<'db> {
             unreachable!()
         };
 
-        let expected_elem_ty = match expected.decompose_ty_app(self.db) {
+        let mut expected_elem_ty = match expected.decompose_ty_app(self.db) {
             (base, args) if base.is_array(self.db) => args[0],
             _ => self.fresh_ty(),
         };
 
-        self.check_expr(*elem, expected_elem_ty);
+        expected_elem_ty = self.check_expr(*elem, expected_elem_ty).ty;
 
         let array = TyId::app(self.db, TyId::array(self.db), expected_elem_ty);
         let ty = if let Some(len_body) = len.to_opt() {
@@ -746,7 +738,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let scrutinee_ty = self.fresh_ty();
-        self.check_expr(*scrutinee, scrutinee_ty);
+        let scrutinee_ty = self.check_expr(*scrutinee, scrutinee_ty).ty;
 
         let Partial::Present(arms) = arms else {
             return ExprProp::invalid(self.db);

@@ -257,7 +257,7 @@ impl<'db> TyChecker<'db> {
             }
             let elem_ty = match hir_ty.to_opt() {
                 Some(ty) => {
-                    let ty = lower_hir_ty(self.db, ty, self.env.scope());
+                    let ty = lower_hir_ty(self.db, ty, variant.adt_def(self.db).scope(self.db));
                     Binder::bind(ty).instantiate(self.db, variant.args())
                 }
                 _ => TyId::invalid(self.db, InvalidCause::Other),

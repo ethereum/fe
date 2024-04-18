@@ -1,6 +1,6 @@
 //! This module contains the type definitions for the Fe type system.
 
-use std::{collections::BTreeSet, fmt};
+use std::fmt;
 
 use bitflags::bitflags;
 use common::input::IngotKind;
@@ -12,6 +12,7 @@ use hir::{
     },
     span::DynLazySpan,
 };
+use rustc_hash::FxHashSet;
 
 use super::{
     adt_def::AdtDef,
@@ -710,7 +711,7 @@ impl TyVar {
     pub(super) fn pretty_print(&self) -> String {
         match self.sort {
             TyVarSort::General => ("_").to_string(),
-            TyVarSort::Integral => "<integer>".to_string(),
+            TyVarSort::Integral => "{integer}".to_string(),
             TyVarSort::String(n) => format!("String<{}>", n).to_string(),
         }
     }
@@ -974,16 +975,16 @@ impl HasKind for FuncDef {
     }
 }
 
-pub(crate) fn free_inference_keys<'db, V>(
+pub(crate) fn inference_keys<'db, V>(
     db: &'db dyn HirAnalysisDb,
     visitable: V,
-) -> BTreeSet<InferenceKey>
+) -> FxHashSet<InferenceKey>
 where
     V: TyVisitable<'db>,
 {
     struct FreeInferenceKeyCollector<'db> {
         db: &'db dyn HirAnalysisDb,
-        keys: BTreeSet<InferenceKey>,
+        keys: FxHashSet<InferenceKey>,
     }
 
     impl<'db> TyVisitor<'db> for FreeInferenceKeyCollector<'db> {
@@ -998,7 +999,7 @@ where
 
     let mut collector = FreeInferenceKeyCollector {
         db,
-        keys: BTreeSet::new(),
+        keys: FxHashSet::default(),
     };
 
     visitable.visit_with(&mut collector);

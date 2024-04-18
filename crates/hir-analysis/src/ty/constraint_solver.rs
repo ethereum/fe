@@ -15,7 +15,7 @@ use super::{
 use crate::{
     ty::{
         constraint::{collect_super_traits, ty_constraints},
-        ty_def::free_inference_keys,
+        ty_def::inference_keys,
     },
     HirAnalysisDb,
 };
@@ -33,7 +33,7 @@ pub(crate) fn check_ty_wf(
     ty: TyId,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
-    assert!(free_inference_keys(db, ty).is_empty());
+    assert!(inference_keys(db, ty).is_empty());
 
     let (_, args) = ty.decompose_ty_app(db);
 
