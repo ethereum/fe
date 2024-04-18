@@ -2,17 +2,16 @@ use hir::hir_def::{Enum, IdentId, Impl, IngotId, VariantKind};
 use rustc_hash::FxHashMap;
 
 use super::{
+    adt_def::{lower_adt, AdtRefId},
     binder::Binder,
     canonical::Canonical,
-    ty_def::{AdtRefId, FuncDef, InvalidCause, TyBase, TyId},
-    ty_lower::{lower_func, lower_hir_ty},
+    func_def::{lower_func, FuncDef, HirFuncDefKind},
+    ty_def::{InvalidCause, TyBase, TyId},
+    ty_lower::lower_hir_ty,
     unify::UnificationTable,
 };
 use crate::{
-    ty::{
-        ty_def::{HirFuncDefKind, TyData},
-        ty_lower::{lower_adt, GenericParamTypeSet},
-    },
+    ty::{ty_def::TyData, ty_lower::GenericParamTypeSet},
     HirAnalysisDb,
 };
 

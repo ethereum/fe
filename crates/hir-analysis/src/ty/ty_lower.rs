@@ -2,18 +2,18 @@ use std::collections::BTreeSet;
 
 use either::Either;
 use hir::hir_def::{
-    kw, scope_graph::ScopeId, FieldDefListId, Func, GenericArg, GenericArgListId, GenericParam,
-    GenericParamListId, GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound,
-    Partial, PathId, TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId,
-    TypeKind as HirTyKind, VariantDefListId, VariantKind, WhereClauseId,
+    kw, scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamListId,
+    GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound, Partial, PathId,
+    TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
+    WhereClauseId,
 };
 use salsa::function::Configuration;
 
 use super::{
+    adt_def::{lower_adt, AdtRefId},
     const_ty::{ConstTyData, ConstTyId},
-    ty_def::{
-        AdtDef, AdtField, AdtRef, AdtRefId, FuncDef, InvalidCause, Kind, TyData, TyId, TyParam,
-    },
+    func_def::lower_func,
+    ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
@@ -34,50 +34,6 @@ fn recover_lower_hir_ty_cycle(
     _scope: ScopeId,
 ) -> TyId {
     TyId::invalid(db, InvalidCause::RecursiveConstParamTy)
-}
-
-/// Lower HIR ADT definition(`struct/enum/contract`) to [`AdtDef`].
-#[salsa::tracked]
-pub fn lower_adt(db: &dyn HirAnalysisDb, adt: AdtRefId) -> AdtDef {
-    AdtTyBuilder::new(db, adt).build()
-}
-
-/// Lower func to [`FuncDef`]. This function returns `None` iff the function
-/// name is `Partial::Absent`.
-#[salsa::tracked]
-pub fn lower_func(db: &dyn HirAnalysisDb, func: Func) -> Option<FuncDef> {
-    let name = func.name(db.as_hir_db()).to_opt()?;
-    let params_set = collect_generic_params(db, GenericParamOwnerId::new(db, func.into()));
-
-    let args = match func.params(db.as_hir_db()) {
-        Partial::Present(args) => args
-            .data(db.as_hir_db())
-            .iter()
-            .map(|arg| {
-                let ty = arg
-                    .ty
-                    .to_opt()
-                    .map(|ty| lower_hir_ty(db, ty, func.scope()))
-                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other));
-                Binder::bind(ty)
-            })
-            .collect(),
-        Partial::Absent => vec![],
-    };
-
-    let ret_ty = func
-        .ret_ty(db.as_hir_db())
-        .map(|ty| lower_hir_ty(db, ty, func.scope()))
-        .unwrap_or_else(|| TyId::unit(db));
-
-    Some(FuncDef::new(
-        db,
-        func.into(),
-        name,
-        params_set,
-        args,
-        Binder::bind(ret_ty),
-    ))
 }
 
 /// Collects the generic parameters of the given generic parameter owner.
@@ -431,94 +387,6 @@ pub(crate) fn lower_generic_arg_list(
         .iter()
         .map(|arg| lower_generic_arg(db, arg, scope))
         .collect()
-}
-
-struct AdtTyBuilder<'db> {
-    db: &'db dyn HirAnalysisDb,
-    adt: AdtRefId,
-    params: GenericParamTypeSet,
-    variants: Vec<AdtField>,
-}
-
-impl<'db> AdtTyBuilder<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, adt: AdtRefId) -> Self {
-        Self {
-            db,
-            adt,
-            params: GenericParamTypeSet::empty(db, adt.scope(db)),
-            variants: Vec::new(),
-        }
-    }
-
-    fn build(mut self) -> AdtDef {
-        self.collect_generic_params();
-        self.collect_variants();
-        AdtDef::new(self.db, self.adt, self.params, self.variants)
-    }
-
-    fn collect_generic_params(&mut self) {
-        let owner = match self.adt.data(self.db) {
-            AdtRef::Contract(_) => return,
-            AdtRef::Enum(enum_) => enum_.into(),
-            AdtRef::Struct(struct_) => struct_.into(),
-        };
-        let owner_id = GenericParamOwnerId::new(self.db, owner);
-
-        self.params = collect_generic_params(self.db, owner_id);
-    }
-
-    fn collect_variants(&mut self) {
-        match self.adt.data(self.db) {
-            AdtRef::Struct(struct_) => {
-                self.collect_field_types(struct_.fields(self.db.as_hir_db()));
-            }
-
-            AdtRef::Contract(contract) => {
-                self.collect_field_types(contract.fields(self.db.as_hir_db()))
-            }
-
-            AdtRef::Enum(enum_) => {
-                self.collect_enum_variant_types(enum_.variants(self.db.as_hir_db()))
-            }
-        };
-    }
-
-    fn collect_field_types(&mut self, fields: FieldDefListId) {
-        let scope = self.adt.scope(self.db);
-
-        let fields = fields
-            .data(self.db.as_hir_db())
-            .iter()
-            .map(|field| field.ty)
-            .collect();
-
-        self.variants.push(AdtField::new(fields, scope));
-    }
-
-    fn collect_enum_variant_types(&mut self, variants: VariantDefListId) {
-        let scope = self.adt.scope(self.db);
-
-        variants
-            .data(self.db.as_hir_db())
-            .iter()
-            .for_each(|variant| {
-                // TODO: FIX here when record variant is introduced.
-                let tys = match variant.kind {
-                    VariantKind::Tuple(tuple_id) => tuple_id.data(self.db.as_hir_db()).clone(),
-
-                    VariantKind::Record(fields) => fields
-                        .data(self.db.as_hir_db())
-                        .iter()
-                        .map(|field| field.ty)
-                        .collect(),
-
-                    VariantKind::Unit => vec![],
-                };
-
-                let variant = AdtField::new(tys, scope);
-                self.variants.push(variant)
-            })
-    }
 }
 
 #[salsa::interned]

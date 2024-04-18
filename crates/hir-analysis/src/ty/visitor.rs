@@ -1,11 +1,13 @@
 use std::collections::BTreeSet;
 
 use super::{
+    adt_def::AdtDef,
     const_ty::{ConstTyData, ConstTyId},
     constraint::{PredicateId, PredicateListId},
+    func_def::FuncDef,
     trait_def::{Implementor, TraitInstId},
     ty_check::ExprProp,
-    ty_def::{AdtDef, FuncDef, InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
+    ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
 };
 use crate::HirAnalysisDb;
 

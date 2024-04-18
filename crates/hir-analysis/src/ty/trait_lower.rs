@@ -9,18 +9,16 @@ use rustc_hash::FxHashMap;
 
 use super::{
     binder::Binder,
+    func_def::FuncDef,
     trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId, TraitMethod},
-    ty_def::{FuncDef, InvalidCause, Kind, TyId},
+    ty_def::{InvalidCause, Kind, TyId},
     ty_lower::{
         collect_generic_params, lower_generic_arg_list, GenericParamOwnerId, GenericParamTypeSet,
     },
 };
 use crate::{
     name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
-    ty::{
-        ty_def::TyData,
-        ty_lower::{lower_func, lower_hir_ty},
-    },
+    ty::{func_def::lower_func, ty_def::TyData, ty_lower::lower_hir_ty},
     HirAnalysisDb,
 };
 

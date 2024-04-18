@@ -14,8 +14,9 @@ use super::{
     constraint::{collect_super_traits, AssumptionListId, ConstraintListId},
     constraint_solver::{check_trait_inst_wf, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
+    func_def::FuncDef,
     trait_lower::collect_implementor_methods,
-    ty_def::{FuncDef, Kind, TyId},
+    ty_def::{Kind, TyId},
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
 };

@@ -8,7 +8,8 @@ use super::TyChecker;
 use crate::{
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator},
-        ty_def::{FuncDef, TyBase, TyData, TyId},
+        func_def::FuncDef,
+        ty_def::{TyBase, TyData, TyId},
         ty_lower::lower_generic_arg_list,
     },
     HirAnalysisDb,
