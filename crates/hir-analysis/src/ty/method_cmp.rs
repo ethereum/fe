@@ -2,8 +2,9 @@ use super::{
     constraint::collect_func_def_constraints,
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{ImplDiag, TyDiagCollection},
+    func_def::FuncDef,
     trait_def::{TraitInstId, TraitMethod},
-    ty_def::{FuncDef, TyId},
+    ty_def::TyId,
 };
 use crate::HirAnalysisDb;
 

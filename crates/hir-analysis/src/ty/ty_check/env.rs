@@ -12,8 +12,9 @@ use crate::{
     ty::{
         constraint::{collect_func_def_constraints, AssumptionListId},
         fold::TypeFoldable,
-        ty_def::{FuncDef, InvalidCause, TyId},
-        ty_lower::{lower_func, lower_hir_ty},
+        func_def::{lower_func, FuncDef},
+        ty_def::{InvalidCause, TyId},
+        ty_lower::lower_hir_ty,
         unify::UnificationTable,
     },
     HirAnalysisDb,

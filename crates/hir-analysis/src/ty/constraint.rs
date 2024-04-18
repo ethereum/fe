@@ -9,18 +9,21 @@ use hir::hir_def::{
 use salsa::function::Configuration;
 
 use super::{
+    adt_def::AdtDef,
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
+    func_def::FuncDef,
     trait_def::{Implementor, TraitDef, TraitInstId},
     trait_lower::lower_trait_ref,
-    ty_def::{AdtDef, FuncDef, HirFuncDefKind, TyBase, TyData, TyId},
+    ty_def::{TyBase, TyData, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
 };
 use crate::{
     ty::{
+        adt_def::{lower_adt, AdtRefId},
         binder::Binder,
+        func_def::HirFuncDefKind,
         trait_lower::{lower_impl_trait, lower_trait},
-        ty_def::{free_inference_keys, AdtRefId, TyVarSort},
-        ty_lower::lower_adt,
+        ty_def::{free_inference_keys, TyVarSort},
         unify::InferenceKey,
     },
     HirAnalysisDb,

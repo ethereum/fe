@@ -2,43 +2,44 @@ use hir::{span::DynLazySpan, HirDb};
 
 #[salsa::jar(db = HirAnalysisDb)]
 pub struct Jar(
-    /// Functions for import/name resolutions.
+    // Functions for import/name resolutions.
     name_resolution::resolve_path_early_impl,
     name_resolution::resolve_imports,
     name_resolution::diagnostics::NameResolutionDiagAccumulator,
     name_resolution::diagnostics::ImportResolutionDiagAccumulator,
     name_resolution::traits_in_scope::available_traits_in_scope_impl,
     name_resolution::traits_in_scope::TraitScope,
-    /// Type system.
+    // Type system.
     ty::ty_def::TyId,
     ty::ty_def::ty_kind,
     ty::ty_def::pretty_print_ty,
-    ty::ty_def::AdtDef,
-    ty::ty_def::FuncDef,
-    ty::ty_def::AdtRefId,
-    // ty::ty_def::ty_generic_params,
     ty::ty_def::decompose_ty_app,
-    /// Const types.
+    // Adt types.
+    ty::adt_def::AdtDef,
+    ty::adt_def::AdtRefId,
+    ty::adt_def::lower_adt,
+    // Func type.
+    ty::func_def::FuncDef,
+    ty::func_def::lower_func,
+    // Const types.
     ty::const_ty::ConstTyId,
     ty::const_ty::evaluate_const_ty,
-    /// Type lowering.
+    // Type lowering.
     ty::ty_lower::lower_hir_ty,
-    ty::ty_lower::lower_adt,
-    ty::ty_lower::lower_func,
     ty::ty_lower::lower_type_alias,
     ty::ty_lower::collect_generic_params,
     ty::ty_lower::GenericParamOwnerId,
     ty::ty_lower::GenericParamTypeSet,
     ty::ty_lower::evaluate_params_precursor,
-    /// Trait lowering.
+    // Trait lowering.
     ty::trait_lower::lower_trait,
     ty::trait_lower::lower_trait_ref,
     ty::trait_lower::collect_trait_impls,
     ty::trait_lower::lower_impl_trait,
     ty::trait_lower::collect_implementor_methods,
-    /// Method collection.
+    // Method collection.
     ty::method_table::collect_methods,
-    /// Item Definition analysis.
+    // Item Definition analysis.
     ty::def_analysis::check_recursive_adt,
     ty::def_analysis::analyze_adt,
     ty::def_analysis::analyze_type_alias,
@@ -46,13 +47,14 @@ pub struct Jar(
     ty::def_analysis::analyze_impl,
     ty::def_analysis::analyze_impl_trait,
     ty::def_analysis::analyze_func,
-    /// Trait system.
+    // Trait system.
     ty::trait_def::TraitDef,
     ty::trait_def::TraitInstId,
     ty::trait_def::Implementor,
     ty::trait_def::ingot_trait_env,
     ty::trait_def::impls_of_trait,
     ty::trait_def::impls_of_ty,
+    // Trait constraints
     ty::constraint::collect_super_traits,
     ty::constraint::collect_trait_constraints,
     ty::constraint::collect_adt_constraints,
@@ -66,9 +68,9 @@ pub struct Jar(
     ty::constraint_solver::is_goal_satisfiable,
     ty::constraint_solver::check_ty_wf,
     ty::constraint_solver::check_trait_inst_wf,
-    /// Type checking.
+    // Type checking.
     ty::ty_check::check_func_body,
-    /// Diagnostic accumulators.
+    // Diagnostic accumulators.
     ty::diagnostics::AdtDefDiagAccumulator,
     ty::diagnostics::TypeAliasDefDiagAccumulator,
     ty::diagnostics::TraitDefDiagAccumulator,

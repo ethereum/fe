@@ -1,6 +1,7 @@
 use hir::{analysis_pass::ModuleAnalysisPass, hir_def::TopLevelMod};
 
 use self::{
+    adt_def::AdtRefId,
     def_analysis::{
         analyze_adt, analyze_func, analyze_impl, analyze_impl_trait, analyze_trait,
         analyze_type_alias,
@@ -10,16 +11,17 @@ use self::{
         ImplDefDiagAccumulator, ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator,
         TypeAliasDefDiagAccumulator,
     },
-    ty_def::AdtRefId,
 };
 use crate::HirAnalysisDb;
 
+pub mod adt_def;
 pub mod binder;
 pub mod const_ty;
 pub mod constraint_solver;
 pub mod def_analysis;
 pub mod diagnostics;
 pub mod fold;
+pub mod func_def;
 pub mod method_table;
 pub mod trait_def;
 pub mod trait_lower;
