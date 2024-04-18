@@ -62,7 +62,7 @@ pub(crate) fn impls_of_ty(
     let mut table = UnificationTable::new(db);
     let ty = ty.decanonicalize(&mut table);
     let env = ingot_trait_env(db, ingot);
-    if ty.contains_invalid(db) {
+    if ty.has_invalid(db) {
         return vec![];
     }
 

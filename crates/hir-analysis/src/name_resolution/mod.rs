@@ -555,11 +555,11 @@ enum ExpectedPathKind {
 impl ExpectedPathKind {
     fn domain(self) -> NameDomain {
         match self {
-            ExpectedPathKind::Type => NameDomain::Type,
-            ExpectedPathKind::Trait => NameDomain::Type,
-            ExpectedPathKind::Value => NameDomain::Value,
+            ExpectedPathKind::Type => NameDomain::TYPE,
+            ExpectedPathKind::Trait => NameDomain::TYPE,
+            ExpectedPathKind::Value => NameDomain::VALUE,
             ExpectedPathKind::Pat | ExpectedPathKind::Record | ExpectedPathKind::Expr => {
-                NameDomain::Value | NameDomain::Type
+                NameDomain::VALUE | NameDomain::TYPE
             }
         }
     }

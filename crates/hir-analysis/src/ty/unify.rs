@@ -7,7 +7,7 @@ use num_bigint::BigUint;
 
 use super::{
     binder::Binder,
-    fold::{TypeFoldable, TypeFolder},
+    fold::{TyFoldable, TyFolder},
     trait_def::{Implementor, TraitInstId},
     ty_def::{free_inference_keys, ApplicableTyProp, Kind, TyData, TyId, TyVar, TyVarSort},
 };
@@ -166,13 +166,13 @@ impl<'db> UnificationTable<'db> {
 
     pub fn instantiate_with_fresh_vars<T>(&mut self, value: Binder<T>) -> T
     where
-        T: TypeFoldable<'db>,
+        T: TyFoldable<'db>,
     {
         value.instantiate_with(self.db, |ty| self.new_var_from_param(ty))
     }
 
     pub fn instantiate_to_term(&mut self, mut ty: TyId) -> TyId {
-        if ty.contains_invalid(self.db) {
+        if ty.has_invalid(self.db) {
             return ty;
         };
 
@@ -246,7 +246,7 @@ impl<'db> UnificationTable<'db> {
             return Err(UnificationError::OccursCheckFailed);
         }
 
-        if value.contains_invalid(self.db) {
+        if value.has_invalid(self.db) {
             return self
                 .table
                 .unify_var_value(var.key, InferenceValue::Bound(value));
@@ -318,7 +318,7 @@ impl<'db> UnificationTable<'db> {
     }
 }
 
-impl<'db> TypeFolder<'db> for UnificationTable<'db> {
+impl<'db> TyFolder<'db> for UnificationTable<'db> {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.db
     }

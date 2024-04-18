@@ -11,13 +11,13 @@ use super::{
 };
 use crate::HirAnalysisDb;
 
-pub trait TypeVisitable<'db> {
+pub trait TyVisitable<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>;
+        V: TyVisitor<'db>;
 }
 
-pub trait TypeVisitor<'db> {
+pub trait TyVisitor<'db> {
     fn db(&self) -> &'db dyn HirAnalysisDb;
 
     fn visit_ty(&mut self, ty: TyId) {
@@ -63,7 +63,7 @@ pub trait TypeVisitor<'db> {
 
 pub fn walk_ty<'db, V>(visitor: &mut V, ty: TyId)
 where
-    V: TypeVisitor<'db> + ?Sized,
+    V: TyVisitor<'db> + ?Sized,
 {
     match ty.data(visitor.db()) {
         TyData::TyVar(var) => visitor.visit_var(var),
@@ -84,7 +84,7 @@ where
 
 pub fn walk_ty_base<'db, V>(visitor: &mut V, ty_con: &TyBase)
 where
-    V: TypeVisitor<'db> + ?Sized,
+    V: TyVisitor<'db> + ?Sized,
 {
     match ty_con {
         TyBase::Prim(prim) => visitor.visit_prim(prim),
@@ -95,7 +95,7 @@ where
 
 pub fn walk_const_ty<'db, V>(visitor: &mut V, const_ty: &ConstTyId)
 where
-    V: TypeVisitor<'db> + ?Sized,
+    V: TyVisitor<'db> + ?Sized,
 {
     let db = visitor.db();
     visitor.visit_ty(const_ty.ty(db));
@@ -106,65 +106,65 @@ where
     }
 }
 
-impl<'db> TypeVisitable<'db> for TyId {
+impl<'db> TyVisitable<'db> for TyId {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         visitor.visit_ty(*self)
     }
 }
 
-impl<'db, T> TypeVisitable<'db> for Vec<T>
+impl<'db, T> TyVisitable<'db> for Vec<T>
 where
-    T: TypeVisitable<'db>,
+    T: TyVisitable<'db>,
 {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         self.iter().for_each(|ty| ty.visit_with(visitor))
     }
 }
 
-impl<'db, T> TypeVisitable<'db> for &[T]
+impl<'db, T> TyVisitable<'db> for &[T]
 where
-    T: TypeVisitable<'db>,
+    T: TyVisitable<'db>,
 {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         self.iter().for_each(|ty| ty.visit_with(visitor))
     }
 }
 
-impl<'db, T> TypeVisitable<'db> for BTreeSet<T>
+impl<'db, T> TyVisitable<'db> for BTreeSet<T>
 where
-    T: TypeVisitable<'db>,
+    T: TyVisitable<'db>,
 {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         self.iter().for_each(|ty| ty.visit_with(visitor))
     }
 }
 
-impl<'db> TypeVisitable<'db> for TraitInstId {
+impl<'db> TyVisitable<'db> for TraitInstId {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         let db = visitor.db();
         self.args(db).visit_with(visitor);
     }
 }
 
-impl<'db> TypeVisitable<'db> for Implementor {
+impl<'db> TyVisitable<'db> for Implementor {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         let db = visitor.db();
         self.ty(db).visit_with(visitor);
@@ -172,29 +172,29 @@ impl<'db> TypeVisitable<'db> for Implementor {
     }
 }
 
-impl<'db> TypeVisitable<'db> for PredicateId {
+impl<'db> TyVisitable<'db> for PredicateId {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         self.ty(visitor.db()).visit_with(visitor);
         self.trait_inst(visitor.db()).visit_with(visitor);
     }
 }
 
-impl<'db> TypeVisitable<'db> for PredicateListId {
+impl<'db> TyVisitable<'db> for PredicateListId {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         self.predicates(visitor.db()).visit_with(visitor)
     }
 }
 
-impl<'db> TypeVisitable<'db> for ExprProp {
+impl<'db> TyVisitable<'db> for ExprProp {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TypeVisitor<'db>,
+        V: TyVisitor<'db>,
     {
         self.ty.visit_with(visitor)
     }

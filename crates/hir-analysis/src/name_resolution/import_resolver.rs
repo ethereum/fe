@@ -485,7 +485,7 @@ impl<'db> ImportResolver<'db> {
         let first_segment_ident = i_use.current_segment_ident(self.db).unwrap();
 
         let res = match self.resolve_segment(&i_use) {
-            Some(IUseResolution::Full(bucket)) => match bucket.pick(NameDomain::Type) {
+            Some(IUseResolution::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
                 Ok(res) => res.clone(),
                 _ => {
                     return;
@@ -808,7 +808,7 @@ impl IntermediateUse {
         debug_assert!(!bucket.is_empty());
         debug_assert!(!self.is_base_resolved(db));
 
-        let next_res = match bucket.pick(NameDomain::Type) {
+        let next_res = match bucket.pick(NameDomain::TYPE) {
             Ok(res) => res.clone(),
             Err(_) => {
                 let res = bucket.iter().next().unwrap();

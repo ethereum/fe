@@ -11,7 +11,7 @@ use super::TypedBody;
 use crate::{
     ty::{
         constraint::{collect_func_def_constraints, AssumptionListId},
-        fold::TypeFoldable,
+        fold::TyFoldable,
         func_def::{lower_func, FuncDef},
         ty_def::{InvalidCause, TyId},
         ty_lower::lower_hir_ty,

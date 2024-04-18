@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 
 use super::{
     const_ty::ConstTyData,
-    fold::{TypeFoldable, TypeFolder},
+    fold::{TyFoldable, TyFolder},
     ty_def::{TyData, TyId},
 };
 use crate::HirAnalysisDb;
@@ -22,7 +22,7 @@ impl<T> Binder<T> {
 
 impl<'db, T> Binder<T>
 where
-    T: TypeFoldable<'db>,
+    T: TyFoldable<'db>,
 {
     pub fn instantiate_identity(self) -> T {
         self.value
@@ -55,7 +55,7 @@ struct InstantiateFolder<'db, 'a> {
     args: &'a [TyId],
 }
 
-impl<'db, 'a> TypeFolder<'db> for InstantiateFolder<'db, 'a> {
+impl<'db, 'a> TyFolder<'db> for InstantiateFolder<'db, 'a> {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.db
     }
@@ -85,7 +85,7 @@ where
     params: FxHashMap<usize, TyId>,
 }
 
-impl<'db, F> TypeFolder<'db> for InstantiateWithFolder<'db, F>
+impl<'db, F> TyFolder<'db> for InstantiateWithFolder<'db, F>
 where
     F: FnMut(TyId) -> TyId,
 {

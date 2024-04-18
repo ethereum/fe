@@ -5,38 +5,38 @@ use super::{
     trait_def::{Implementor, TraitInstId},
     ty_check::ExprProp,
     ty_def::{TyData, TyId},
-    visitor::TypeVisitable,
+    visitor::TyVisitable,
 };
 use crate::{
     ty::const_ty::{ConstTyData, ConstTyId},
     HirAnalysisDb,
 };
 
-pub trait TypeFoldable<'db>
+pub trait TyFoldable<'db>
 where
-    Self: Sized + TypeVisitable<'db>,
+    Self: Sized + TyVisitable<'db>,
 {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>;
+        F: TyFolder<'db>;
 
     fn fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         self.super_fold_with(folder)
     }
 }
 
-pub trait TypeFolder<'db> {
+pub trait TyFolder<'db> {
     fn db(&self) -> &'db dyn HirAnalysisDb;
     fn fold_ty(&mut self, ty: TyId) -> TyId;
 }
 
-impl<'db> TypeFoldable<'db> for TyId {
+impl<'db> TyFoldable<'db> for TyId {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         use TyData::*;
 
@@ -77,19 +77,19 @@ impl<'db> TypeFoldable<'db> for TyId {
 
     fn fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         folder.fold_ty(self)
     }
 }
 
-impl<'db, T> TypeFoldable<'db> for Vec<T>
+impl<'db, T> TyFoldable<'db> for Vec<T>
 where
-    T: TypeFoldable<'db>,
+    T: TyFoldable<'db>,
 {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         self.into_iter()
             .map(|inner| inner.fold_with(folder))
@@ -97,22 +97,22 @@ where
     }
 }
 
-impl<'db, T> TypeFoldable<'db> for BTreeSet<T>
+impl<'db, T> TyFoldable<'db> for BTreeSet<T>
 where
-    T: TypeFoldable<'db> + Ord,
+    T: TyFoldable<'db> + Ord,
 {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         self.into_iter().map(|ty| ty.fold_with(folder)).collect()
     }
 }
 
-impl<'db> TypeFoldable<'db> for TraitInstId {
+impl<'db> TyFoldable<'db> for TraitInstId {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         let db = folder.db();
         let def = self.def(db);
@@ -126,10 +126,10 @@ impl<'db> TypeFoldable<'db> for TraitInstId {
     }
 }
 
-impl<'db> TypeFoldable<'db> for Implementor {
+impl<'db> TyFoldable<'db> for Implementor {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         let db = folder.db();
         let trait_inst = self.trait_(db).fold_with(folder);
@@ -145,10 +145,10 @@ impl<'db> TypeFoldable<'db> for Implementor {
     }
 }
 
-impl<'db> TypeFoldable<'db> for PredicateId {
+impl<'db> TyFoldable<'db> for PredicateId {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         let ty = self.ty(folder.db()).fold_with(folder);
         let trait_inst = self.trait_inst(folder.db()).fold_with(folder);
@@ -156,10 +156,10 @@ impl<'db> TypeFoldable<'db> for PredicateId {
     }
 }
 
-impl<'db> TypeFoldable<'db> for PredicateListId {
+impl<'db> TyFoldable<'db> for PredicateListId {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         let predicates = self
             .predicates(folder.db())
@@ -171,10 +171,10 @@ impl<'db> TypeFoldable<'db> for PredicateListId {
     }
 }
 
-impl<'db> TypeFoldable<'db> for ExprProp {
+impl<'db> TyFoldable<'db> for ExprProp {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
-        F: TypeFolder<'db>,
+        F: TyFolder<'db>,
     {
         let ty = self.ty.fold_with(folder);
         Self { ty, ..self }

@@ -14,6 +14,7 @@ pub struct Jar(
     ty::ty_def::ty_kind,
     ty::ty_def::pretty_print_ty,
     ty::ty_def::decompose_ty_app,
+    ty::ty_def::ty_flags,
     // Adt types.
     ty::adt_def::AdtDef,
     ty::adt_def::AdtRefId,

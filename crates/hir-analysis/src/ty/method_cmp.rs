@@ -205,7 +205,7 @@ fn compare_ty(
     for (idx, (&trait_m_ty, &impl_m_ty)) in trait_m_arg_tys.iter().zip(impl_m_arg_tys).enumerate() {
         let trait_m_ty = trait_m_ty.instantiate(db, map_to_impl);
         let impl_m_ty = impl_m_ty.instantiate_identity();
-        if !impl_m_ty.contains_invalid(db) && trait_m_ty != impl_m_ty {
+        if !impl_m_ty.has_invalid(db) && trait_m_ty != impl_m_ty {
             let span = impl_m.param_span(db, idx);
             sink.push(ImplDiag::method_arg_ty_mismatch(db, span, trait_m_ty, impl_m_ty).into());
             err = true;
@@ -214,7 +214,7 @@ fn compare_ty(
 
     let impl_m_ret_ty = impl_m.ret_ty(db).instantiate_identity();
     let trait_m_ret_ty = trait_m.ret_ty(db).instantiate(db, map_to_impl);
-    if !impl_m_ret_ty.contains_invalid(db) && trait_m_ret_ty != impl_m_ret_ty {
+    if !impl_m_ret_ty.has_invalid(db) && trait_m_ret_ty != impl_m_ret_ty {
         sink.push(
             ImplDiag::method_ret_type_mismatch(
                 db,

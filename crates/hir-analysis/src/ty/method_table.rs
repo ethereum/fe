@@ -217,7 +217,7 @@ impl<'db> MethodCollector<'db> {
                 None => TyId::invalid(self.db, InvalidCause::Other),
             };
 
-            if ty.contains_invalid(self.db) | !ty.is_inherent_impl_allowed(self.db, self.ingot) {
+            if ty.has_invalid(self.db) | !ty.is_inherent_impl_allowed(self.db, self.ingot) {
                 continue;
             }
 

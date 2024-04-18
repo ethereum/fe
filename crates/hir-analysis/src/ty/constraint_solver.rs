@@ -7,7 +7,7 @@ use rustc_hash::FxHashSet;
 
 use super::{
     constraint::{collect_trait_constraints, AssumptionListId, PredicateId},
-    fold::TypeFoldable,
+    fold::TyFoldable,
     trait_def::{ingot_trait_env, TraitEnv, TraitInstId},
     ty_def::TyId,
     unify::UnificationTable,
@@ -85,7 +85,7 @@ pub(crate) fn is_goal_satisfiable(
     goal: Goal,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
-    if goal.ty(db).is_invalid(db) {
+    if goal.ty(db).has_invalid(db) {
         return GoalSatisfiability::Satisfied;
     }
     ConstraintSolver::new(db, goal, assumptions).solve()
@@ -134,7 +134,7 @@ impl<'db> ConstraintSolver<'db> {
         let goal_trait = self.goal.trait_inst(self.db);
 
         // If the goal type is already invalid, we don't need to do anything.
-        if goal_ty.contains_invalid(self.db) {
+        if goal_ty.has_invalid(self.db) {
             return GoalSatisfiability::Satisfied;
         }
 
