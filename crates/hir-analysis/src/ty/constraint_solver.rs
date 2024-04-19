@@ -13,10 +13,7 @@ use super::{
     unify::UnificationTable,
 };
 use crate::{
-    ty::{
-        constraint::{collect_super_traits, ty_constraints},
-        ty_def::inference_keys,
-    },
+    ty::{constraint::ty_constraints, ty_def::inference_keys},
     HirAnalysisDb,
 };
 
@@ -192,15 +189,9 @@ impl<'db> ConstraintSolver<'db> {
         for &pred in self.assumptions.predicates(self.db) {
             let trait_ = pred.trait_inst(self.db);
             let ty = pred.ty(self.db);
-            let Ok(super_traits) = collect_super_traits(self.db, trait_.def(self.db)) else {
-                continue;
-            };
 
-            for &super_trait in super_traits
-                .clone()
-                .instantiate(self.db, trait_.args(self.db))
-                .iter()
-            {
+            for &super_trait in trait_.def(self.db).super_traits(self.db).iter() {
+                let super_trait = super_trait.instantiate(self.db, trait_.args(self.db));
                 let super_pred = PredicateId::new(self.db, ty, super_trait);
                 assumptions.insert(super_pred);
             }

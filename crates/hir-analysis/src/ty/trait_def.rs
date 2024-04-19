@@ -317,8 +317,8 @@ impl TraitDef {
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
-    pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &Binder<BTreeSet<TraitInstId>> {
-        const _EMPTY: &Binder<BTreeSet<TraitInstId>> = &Binder::bind(BTreeSet::new());
+    pub(super) fn super_traits(self, db: &dyn HirAnalysisDb) -> &BTreeSet<Binder<TraitInstId>> {
+        const _EMPTY: &BTreeSet<Binder<TraitInstId>> = &BTreeSet::new();
         collect_super_traits(db, self).as_ref().unwrap_or(_EMPTY)
     }
 

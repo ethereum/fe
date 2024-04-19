@@ -38,7 +38,7 @@ use crate::{
     ty::{
         adt_def::AdtDef,
         binder::Binder,
-        constraint::collect_trait_constraints,
+        constraint::{collect_trait_constraints, PredicateId},
         diagnostics::{
             AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
             ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
@@ -1142,42 +1142,41 @@ fn analyze_impl_trait_specific_error(
         return Err(diags);
     }
 
-    // 6. Checks if the implementor ty satisfies the trait constraints required by
-    //    the trait.
     let trait_def = trait_inst.def(db);
     let trait_constraints =
         collect_trait_constraints(db, trait_def).instantiate(db, trait_inst.args(db));
     let assumptions = implementor.instantiate_identity().constraints(db);
 
-    for &goal in trait_constraints.predicates(db) {
-        match is_goal_satisfiable(db, goal, assumptions) {
+    let mut is_satisfied =
+        |goal: PredicateId, span: DynLazySpan| match is_goal_satisfiable(db, goal, assumptions) {
             GoalSatisfiability::Satisfied => {}
             GoalSatisfiability::NotSatisfied(_) => {
-                diags.push(
-                    TraitConstraintDiag::trait_bound_not_satisfied(
-                        db,
-                        impl_trait.lazy_span().ty().into(),
-                        goal,
-                    )
-                    .into(),
-                );
-                return Err(diags);
+                diags.push(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into());
             }
             GoalSatisfiability::InfiniteRecursion(_) => {
-                diags.push(
-                    TraitConstraintDiag::infinite_bound_recursion(
-                        db,
-                        impl_trait.lazy_span().ty().into(),
-                        goal,
-                    )
-                    .into(),
-                );
-                return Err(diags);
+                diags.push(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into());
             }
-        }
+        };
+
+    // 6. Checks if the trait inst is WF.
+    let trait_ref_span: DynLazySpan = impl_trait.lazy_span().trait_ref_moved().into();
+    for &goal in trait_constraints.predicates(db) {
+        is_satisfied(goal, trait_ref_span.clone());
     }
 
-    Ok(implementor)
+    // 7. Checks if the implementor ty satisfies the super trait constraints.
+    let target_ty_span: DynLazySpan = impl_trait.lazy_span().ty().into();
+    for &super_trait in trait_def.super_traits(db) {
+        let super_trait = super_trait.instantiate(db, trait_inst.args(db));
+        let goal = PredicateId::new(db, implementor.skip_binder().ty(db), super_trait);
+        is_satisfied(goal, target_ty_span.clone())
+    }
+
+    if diags.is_empty() {
+        Ok(implementor)
+    } else {
+        Err(diags)
+    }
 }
 
 struct ImplTraitMethodAnalyzer<'db> {

@@ -9,7 +9,7 @@ use crate::{
     name_resolution::{available_traits_in_scope, diagnostics::NameResDiag, is_scope_visible_from},
     ty::{
         canonical::Canonical,
-        constraint::{collect_super_traits, AssumptionListId},
+        constraint::AssumptionListId,
         diagnostics::{BodyDiag, FuncBodyDiag},
         func_def::FuncDef,
         method_table::collect_methods,
@@ -213,6 +213,11 @@ impl<'db> CandidateAssembler<'db> {
             if table.unify(receiver_ty, pred_ty).is_ok() {
                 let trait_inst = pred.trait_inst(self.db);
                 insert_trait_method_cand(trait_inst);
+                for super_trait in trait_inst.def(self.db).super_traits(self.db) {
+                    insert_trait_method_cand(
+                        super_trait.instantiate(self.db, trait_inst.args(self.db)),
+                    )
+                }
             }
 
             table.rollback_to(snapshot);
@@ -321,12 +326,9 @@ impl<'db> MethodSelector<'db> {
 
         let mut insert_trait = |trait_def: TraitDef| {
             traits.insert(trait_def);
-            let Ok(super_traits) = collect_super_traits(self.db, trait_def) else {
-                return;
-            };
 
-            for trait_ in super_traits.skip_binder() {
-                traits.insert(trait_.def(self.db));
+            for trait_ in trait_def.super_traits(self.db) {
+                traits.insert(trait_.skip_binder().def(self.db));
             }
         };
 
