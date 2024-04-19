@@ -73,20 +73,20 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintList
 pub(crate) fn collect_super_traits(
     db: &dyn HirAnalysisDb,
     trait_: TraitDef,
-) -> Result<Binder<BTreeSet<TraitInstId>>, SuperTraitCycle> {
+) -> Result<BTreeSet<Binder<TraitInstId>>, SuperTraitCycle> {
     let collector = SuperTraitCollector::new(db, trait_);
     let insts = collector.collect();
 
     let mut cycles = BTreeSet::new();
     // Check for cycles.
     for &inst in &insts {
-        if let Err(err) = collect_super_traits(db, inst.def(db)) {
+        if let Err(err) = collect_super_traits(db, inst.skip_binder().def(db)) {
             cycles.extend(err.0.iter().copied());
         }
     }
 
     if cycles.is_empty() {
-        Ok(Binder::bind(insts))
+        Ok(insts)
     } else {
         Err(SuperTraitCycle(cycles))
     }
@@ -263,7 +263,7 @@ pub(crate) fn recover_collect_super_traits(
     _db: &dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
     _trait_: TraitDef,
-) -> Result<Binder<BTreeSet<TraitInstId>>, SuperTraitCycle> {
+) -> Result<BTreeSet<Binder<TraitInstId>>, SuperTraitCycle> {
     let mut trait_cycle = BTreeSet::new();
     for key in cycle.participant_keys() {
         trait_cycle.insert(collect_super_traits::key_from_id(key.key_index()));
@@ -275,7 +275,7 @@ pub(crate) fn recover_collect_super_traits(
 struct SuperTraitCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef,
-    super_traits: BTreeSet<TraitInstId>,
+    super_traits: BTreeSet<Binder<TraitInstId>>,
     scope: ScopeId,
 }
 
@@ -289,14 +289,14 @@ impl<'db> SuperTraitCollector<'db> {
         }
     }
 
-    fn collect(mut self) -> BTreeSet<TraitInstId> {
+    fn collect(mut self) -> BTreeSet<Binder<TraitInstId>> {
         let hir_trait = self.trait_.trait_(self.db);
         let hir_db = self.db.as_hir_db();
         let self_param = self.trait_.self_param(self.db);
 
         for &super_ in hir_trait.super_traits(hir_db).iter() {
             if let Ok(inst) = lower_trait_ref(self.db, self_param, super_, self.scope) {
-                self.super_traits.insert(inst);
+                self.super_traits.insert(Binder::bind(inst));
             }
         }
 
@@ -310,7 +310,7 @@ impl<'db> SuperTraitCollector<'db> {
                 for bound in &pred.bounds {
                     if let TypeBound::Trait(bound) = bound {
                         if let Ok(inst) = lower_trait_ref(self.db, self_param, *bound, self.scope) {
-                            self.super_traits.insert(inst);
+                            self.super_traits.insert(Binder::bind(inst));
                         }
                     }
                 }
@@ -359,15 +359,16 @@ impl<'db> ConstraintCollector<'db> {
         if let GenericParamOwner::Trait(trait_) = self.owner.data(self.db) {
             let trait_def = lower_trait(self.db, trait_);
             let self_param = trait_def.self_param(self.db);
-            let super_traits = trait_def
-                .super_traits(self.db)
-                .clone()
-                .instantiate(self.db, trait_def.params(self.db));
-
-            for &super_trait in super_traits.iter() {
-                let inst = super_trait;
-                self.push_predicate(self_param, inst)
-            }
+            self.push_predicate(
+                self_param,
+                TraitInstId::new(
+                    self.db,
+                    trait_def,
+                    collect_generic_params(self.db, self.owner)
+                        .params(self.db)
+                        .to_vec(),
+                ),
+            );
         }
 
         let mut simplified = PredicateListId::new(self.db, self.predicates.clone(), ingot);
