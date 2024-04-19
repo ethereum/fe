@@ -352,7 +352,9 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     fn verify_self_type(&mut self, self_ty: HirTyId, span: DynLazySpan) -> bool {
-        let expected_ty = self.self_ty.unwrap();
+        let Some(expected_ty) = self.self_ty else {
+            return false;
+        };
 
         let param_ty = lower_hir_ty(self.db, self_ty, self.def.scope(self.db));
         if !param_ty.has_invalid(self.db) && !expected_ty.has_invalid(self.db) {
