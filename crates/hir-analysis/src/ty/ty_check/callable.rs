@@ -1,5 +1,5 @@
 use hir::{
-    hir_def::{CallArg, ExprId, GenericArgListId},
+    hir_def::{kw, CallArg, ExprId, GenericArgListId},
     span::{expr::LazyCallArgListSpan, params::LazyGenericArgListSpan, DynLazySpan},
 };
 use if_chain::if_chain;
@@ -126,6 +126,7 @@ impl Callable {
             if_chain! {
                 if let Some(expected_label) = self.func_def.param_label(db, i);
                 let given_label = given.label_eagerly(db.as_hir_db(), tc.body());
+                if expected_label != kw::SELF;
                 if Some(expected_label) != given_label;
                 then {
                     let primary = if given.label.is_some() {
