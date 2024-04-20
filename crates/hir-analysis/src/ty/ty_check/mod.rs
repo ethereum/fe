@@ -312,6 +312,13 @@ impl<'db> TyCheckerFinalizer<'db> {
 
                 walk_expr(self, ctxt, expr);
             }
+
+            fn visit_item(
+                &mut self,
+                _: &mut VisitorCtxt<'_, hir::visitor::prelude::LazyItemSpan>,
+                _: hir::hir_def::ItemKind,
+            ) {
+            }
         }
 
         if let Some(body) = self.body.body {
