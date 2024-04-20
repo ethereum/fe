@@ -1,7 +1,7 @@
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Body, BodyKind, Expr, ExprId, Func, IdentId, Partial, Pat, PatId,
-        Stmt, StmtId,
+        prim_ty::PrimTy, scope_graph::ScopeId, Body, BodyKind, Expr, ExprId, Func, IdentId,
+        IntegerId, Partial, Pat, PatId, Stmt, StmtId,
     },
     span::DynLazySpan,
 };
@@ -10,10 +10,11 @@ use rustc_hash::FxHashMap;
 use super::TypedBody;
 use crate::{
     ty::{
+        const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
         constraint::{collect_func_def_constraints, AssumptionListId},
-        fold::TyFoldable,
+        fold::{TyFoldable, TyFolder},
         func_def::{lower_func, FuncDef},
-        ty_def::{InvalidCause, TyId},
+        ty_def::{InvalidCause, TyData, TyId, TyVarSort},
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
     },
@@ -177,13 +178,46 @@ impl<'db> TyCheckEnv<'db> {
     }
 
     pub(super) fn finish(mut self, table: &mut UnificationTable) -> TypedBody {
+        struct EnvFinisher<'a, 'db> {
+            table: &'a mut UnificationTable<'db>,
+        }
+
+        impl<'a, 'db> TyFolder<'db> for EnvFinisher<'a, 'db> {
+            fn db(&self) -> &'db dyn HirAnalysisDb {
+                self.table.db()
+            }
+
+            fn fold_ty(&mut self, ty: TyId) -> TyId {
+                let ty = self.table.fold_ty(ty);
+                let TyData::TyVar(var) = ty.data(self.db()) else {
+                    return ty.super_fold_with(self);
+                };
+
+                // String type variable fallback.
+                if let TyVarSort::String(len) = var.sort {
+                    let ty = TyId::new(self.db(), TyData::TyBase(PrimTy::String.into()));
+                    let len =
+                        EvaluatedConstTy::LitInt(IntegerId::new(self.db().as_hir_db(), len.into()));
+                    let len = ConstTyData::Evaluated(
+                        len,
+                        ty.applicable_ty(self.db()).unwrap().const_ty.unwrap(),
+                    );
+                    let len = TyId::const_ty(self.db(), ConstTyId::new(self.db(), len));
+                    TyId::app(self.db(), ty, len)
+                } else {
+                    ty.super_fold_with(self)
+                }
+            }
+        }
+
+        let mut folder = EnvFinisher { table };
         self.expr_ty
             .values_mut()
-            .for_each(|ty| *ty = ty.fold_with(table));
+            .for_each(|ty| *ty = ty.fold_with(&mut folder));
 
         self.pat_ty
             .values_mut()
-            .for_each(|ty| *ty = ty.fold_with(table));
+            .for_each(|ty| *ty = ty.fold_with(&mut folder));
 
         TypedBody {
             body: Some(self.body),
