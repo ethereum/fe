@@ -204,6 +204,9 @@ fn compare_ty(
 
     for (idx, (&trait_m_ty, &impl_m_ty)) in trait_m_arg_tys.iter().zip(impl_m_arg_tys).enumerate() {
         let trait_m_ty = trait_m_ty.instantiate(db, map_to_impl);
+        if trait_m_ty.has_invalid(db) {
+            continue;
+        }
         let impl_m_ty = impl_m_ty.instantiate_identity();
         if !impl_m_ty.has_invalid(db) && trait_m_ty != impl_m_ty {
             let span = impl_m.param_span(db, idx);
