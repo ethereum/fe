@@ -16,6 +16,8 @@ fn test_standalone(fixture: Fixture<&str>) {
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
     let (top_mod, mut prop_formatter) = db.new_stand_alone(file_name, fixture.content());
 
+    db.assert_no_diags(top_mod);
+
     for &func in top_mod.all_funcs(&db) {
         let Some(body) = func.body(&db) else {
             continue;

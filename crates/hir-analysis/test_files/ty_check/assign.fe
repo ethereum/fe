@@ -7,7 +7,7 @@ pub struct Outer {
     inner: Inner,
 }
 
-pub struct Option<T> {
+pub enum Option<T> {
     Some(T),
     None
 }
@@ -38,10 +38,10 @@ pub fn foo(opt: Option<i32>) {
     outer.inner.x = 2
     
     match opt {
-        Some(mut x) => {
+        Option::Some(mut x) => {
             x = 2
         }
-        None => {}
+        Option::None => {}
     }
     
     Gen { t: false }.t = true

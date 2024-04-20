@@ -1,7 +1,7 @@
 use foo::Bar as FooBar
 
 struct Foo {
-    x: FooBar
+    x: FooBar,
     y: foo::Bar
 }
 

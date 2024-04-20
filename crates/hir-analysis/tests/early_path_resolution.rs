@@ -4,11 +4,10 @@ use std::path::Path;
 use dir_test::{dir_test, Fixture};
 use fe_compiler_test_utils::snap_test;
 use fe_hir_analysis::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, PathAnalysisPass},
+    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain},
     HirAnalysisDb,
 };
 use hir::{
-    analysis_pass::ModuleAnalysisPass,
     hir_def::{Expr, ExprId, ItemKind, Pat, PatId, PathId, TopLevelMod, TypeId},
     visitor::prelude::*,
     HirDb, SpannedHirDb,
@@ -24,15 +23,7 @@ fn test_standalone(fixture: Fixture<&str>) {
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
     let (top_mod, mut prop_formatter) = db.new_stand_alone(file_name, fixture.content());
-
-    let mut pass = PathAnalysisPass::new(&db);
-    let diags = pass.run_on_module(top_mod);
-    if !diags.is_empty() {
-        for diag in diags {
-            println!("{}", diag.to_complete(db.as_spanned_hir_db()).message);
-        }
-        panic!("Failed to resolve paths");
-    }
+    db.assert_no_diags(top_mod);
 
     let mut ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
     PathVisitor {

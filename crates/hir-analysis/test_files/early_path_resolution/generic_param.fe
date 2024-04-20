@@ -6,10 +6,10 @@ where U: InnerTrait
 }
 
 pub struct MyS<T, U> 
-where T: TraitWithGenerics<U>
+where T: TraitWithGenerics<U>,
       U: InnerTrait
 {
-    x: T
-    y: U
+    x: T,
+    y: U,
 
 }
