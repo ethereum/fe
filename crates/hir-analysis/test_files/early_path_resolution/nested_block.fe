@@ -12,7 +12,7 @@ fn foo() {
 fn bar() {
     struct Bar {}
 
-    let x: [i32; {
+    let x: i32 = {
         {
             struct Bar {}
 
@@ -21,13 +21,13 @@ fn bar() {
                     1
                 }
             }
-            let bar: Bar
+            let bar: Bar = Bar {}
         }
         
         struct Bar {}
-        let bar: Bar
+        let bar: Bar = Bar {}
         1
-    }]
+    }
     
-    let bar: Bar
+    let bar: Bar = Bar {}
 }

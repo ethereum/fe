@@ -16,16 +16,16 @@ note:
   │            ^^^ test_file::foo::{fn_body}::{block0}::Foo
 
 note: 
-   ┌─ test_file.fe:15:13
+   ┌─ test_file.fe:15:12
    │
-15 │     let x: [i32; {
-   │             ^^^ i32
+15 │     let x: i32 = {
+   │            ^^^ i32
 
 note: 
    ┌─ test_file.fe:19:18
    │
 19 │             impl Bar {
-   │                  ^^^ test_file::bar::{fn_body}::{block0}::{anonymous_body}::{block0}::{block1}::Bar
+   │                  ^^^ test_file::bar::{fn_body}::{block0}::{block1}::{block2}::Bar
 
 note: 
    ┌─ test_file.fe:20:29
@@ -36,19 +36,19 @@ note:
 note: 
    ┌─ test_file.fe:24:22
    │
-24 │             let bar: Bar
-   │                      ^^^ test_file::bar::{fn_body}::{block0}::{anonymous_body}::{block0}::{block1}::Bar
+24 │             let bar: Bar = Bar {}
+   │                      ^^^ test_file::bar::{fn_body}::{block0}::{block1}::{block2}::Bar
 
 note: 
    ┌─ test_file.fe:28:18
    │
-28 │         let bar: Bar
-   │                  ^^^ test_file::bar::{fn_body}::{block0}::{anonymous_body}::{block0}::Bar
+28 │         let bar: Bar = Bar {}
+   │                  ^^^ test_file::bar::{fn_body}::{block0}::{block1}::Bar
 
 note: 
    ┌─ test_file.fe:32:14
    │
-32 │     let bar: Bar
+32 │     let bar: Bar = Bar {}
    │              ^^^ test_file::bar::{fn_body}::{block0}::Bar
 
 

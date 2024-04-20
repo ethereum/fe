@@ -13,11 +13,19 @@ use common::{
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
+use fe_hir_analysis::{
+    name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
+    ty::{
+        BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass, ImplTraitAnalysisPass,
+        TraitAnalysisPass, TypeAliasAnalysisPass, TypeDefAnalysisPass,
+    },
+};
 use hir::{
+    analysis_pass::AnalysisPassManager,
     hir_def::TopLevelMod,
     lower,
     span::{DynLazySpan, LazySpan},
-    HirDb, SpannedHirDb,
+    HirDb, ParsingPass, SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
 
@@ -50,6 +58,14 @@ impl HirAnalysisTestDb {
         let mut prop_formatter = HirPropertyFormatter::default();
         let top_mod = self.register_file(&mut prop_formatter, root);
         (top_mod, prop_formatter)
+    }
+
+    pub fn assert_no_diags(&self, top_mod: TopLevelMod) {
+        let mut manager = initialize_analysis_pass(self);
+        let diags = manager.run_on_module(top_mod);
+        if !diags.is_empty() {
+            panic!("this module contains errors")
+        }
     }
 
     fn register_file(
@@ -147,4 +163,20 @@ impl Default for HirPropertyFormatter {
 
 impl salsa::Database for HirAnalysisTestDb {
     fn salsa_event(&self, _: salsa::Event) {}
+}
+
+fn initialize_analysis_pass(db: &HirAnalysisTestDb) -> AnalysisPassManager<'_> {
+    let mut pass_manager = AnalysisPassManager::new();
+    pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
+    pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(TypeDefAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ImplAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(BodyAnalysisPass::new(db)));
+    pass_manager
 }

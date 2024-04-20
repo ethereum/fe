@@ -18,19 +18,19 @@ note:
 note: 
   ┌─ test_file.fe:9:7
   │
-9 │ where T: TraitWithGenerics<U>
+9 │ where T: TraitWithGenerics<U>,
   │       ^ test_file::MyS::T
 
 note: 
   ┌─ test_file.fe:9:10
   │
-9 │ where T: TraitWithGenerics<U>
+9 │ where T: TraitWithGenerics<U>,
   │          ^^^^^^^^^^^^^^^^^ test_file::TraitWithGenerics
 
 note: 
   ┌─ test_file.fe:9:28
   │
-9 │ where T: TraitWithGenerics<U>
+9 │ where T: TraitWithGenerics<U>,
   │                            ^ test_file::MyS::U
 
 note: 
@@ -48,13 +48,13 @@ note:
 note: 
    ┌─ test_file.fe:12:8
    │
-12 │     x: T
+12 │     x: T,
    │        ^ test_file::MyS::T
 
 note: 
    ┌─ test_file.fe:13:8
    │
-13 │     y: U
+13 │     y: U,
    │        ^ test_file::MyS::U
 
 

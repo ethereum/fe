@@ -293,10 +293,10 @@ note:
    ┌─ test_file.fe:40:5
    │  
 40 │ ╭     match opt {
-41 │ │         Some(mut x) => {
+41 │ │         Option::Some(mut x) => {
 42 │ │             x = 2
 43 │ │         }
-44 │ │         None => {}
+44 │ │         Option::None => {}
 45 │ │     }
    │ ╰─────^ ()
 
@@ -309,20 +309,20 @@ note:
 note: 
    ┌─ test_file.fe:41:9
    │
-41 │         Some(mut x) => {
-   │         ^^^^^^^^^^^ <invalid>
+41 │         Option::Some(mut x) => {
+   │         ^^^^^^^^^^^^^^^^^^^ Option<i32>
 
 note: 
-   ┌─ test_file.fe:41:14
+   ┌─ test_file.fe:41:22
    │
-41 │         Some(mut x) => {
-   │              ^^^^^ <invalid>
+41 │         Option::Some(mut x) => {
+   │                      ^^^^^ i32
 
 note: 
-   ┌─ test_file.fe:41:24
+   ┌─ test_file.fe:41:32
    │  
-41 │           Some(mut x) => {
-   │ ╭────────────────────────^
+41 │           Option::Some(mut x) => {
+   │ ╭────────────────────────────────^
 42 │ │             x = 2
 43 │ │         }
    │ ╰─────────^ ()
@@ -348,14 +348,14 @@ note:
 note: 
    ┌─ test_file.fe:44:9
    │
-44 │         None => {}
-   │         ^^^^ Option<i32>
+44 │         Option::None => {}
+   │         ^^^^^^^^^^^^ Option<i32>
 
 note: 
-   ┌─ test_file.fe:44:17
+   ┌─ test_file.fe:44:25
    │
-44 │         None => {}
-   │                 ^^ ()
+44 │         Option::None => {}
+   │                         ^^ ()
 
 note: 
    ┌─ test_file.fe:47:5

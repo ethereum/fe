@@ -6,7 +6,7 @@ mod foo {
     pub const Variant: i32 = 0
 
     pub enum MyEnum {
-        Variant
-        Variant2
+        Variant,
+        Variant2,
     }
 }

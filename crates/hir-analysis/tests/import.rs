@@ -18,6 +18,8 @@ fn test_standalone(fixture: Fixture<&str>) {
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
     let (top_mod, mut prop_formatter) = db.new_stand_alone(file_name, fixture.content());
 
+    db.assert_no_diags(top_mod);
+
     let mut pass = ImportAnalysisPass::new(&db);
     let resolved_imports = pass.resolve_imports(top_mod.ingot(&db));
     let diags = pass.run_on_module(top_mod);
