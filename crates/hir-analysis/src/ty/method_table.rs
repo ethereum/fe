@@ -130,6 +130,8 @@ impl MethodBucket {
             } else {
                 ty
             };
+            let ty = table.instantiate_to_term(ty);
+            let cand_ty = table.instantiate_to_term(cand_ty);
 
             if table.unify(cand_ty, ty).is_ok() {
                 if let Some(func) = funcs.get(&name) {
