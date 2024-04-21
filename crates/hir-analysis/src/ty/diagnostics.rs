@@ -1711,8 +1711,8 @@ impl TraitConstraintDiag {
         let goal = pred.trait_inst(db);
         let msg = format!(
             "`{}` doesn't implement `{}`",
-            ty.pretty_print(db),
-            goal.pretty_print(db)
+            ty.value.pretty_print(db),
+            goal.value.pretty_print(db)
         );
         Self::TraitBoundNotSat(span, msg)
     }
@@ -1726,8 +1726,8 @@ impl TraitConstraintDiag {
         let ty = pred.ty(db);
         let msg = format!(
             "infinite evaluation recursion occurs when checking `{}: {}` ",
-            ty.pretty_print(db),
-            goal.pretty_print(db)
+            ty.value.pretty_print(db),
+            goal.value.pretty_print(db)
         );
         Self::InfiniteBoundRecursion(span, msg)
     }

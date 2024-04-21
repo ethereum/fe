@@ -262,7 +262,7 @@ fn compare_constraints(
     if unsatisfied_goals.is_empty() {
         true
     } else {
-        unsatisfied_goals.sort_by_key(|goal| goal.ty(db).pretty_print(db));
+        unsatisfied_goals.sort_by_key(|goal| goal.ty(db).value.pretty_print(db));
         sink.push(
             ImplDiag::method_stricter_bound(db, impl_m.name_span(db), &unsatisfied_goals).into(),
         );
