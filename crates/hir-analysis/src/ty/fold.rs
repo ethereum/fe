@@ -1,10 +1,12 @@
 use std::collections::BTreeSet;
 
 use super::{
+    canonical::Canonical,
     constraint::{PredicateId, PredicateListId},
     trait_def::{Implementor, TraitInstId},
     ty_check::ExprProp,
     ty_def::{TyData, TyId},
+    unify::UnificationTable,
     visitor::TyVisitable,
 };
 use crate::{
@@ -150,9 +152,20 @@ impl<'db> TyFoldable<'db> for PredicateId {
     where
         F: TyFolder<'db>,
     {
-        let ty = self.ty(folder.db()).fold_with(folder);
-        let trait_inst = self.trait_inst(folder.db()).fold_with(folder);
-        Self::new(folder.db(), ty, trait_inst)
+        let mut table = UnificationTable::new(folder.db());
+        let ty = self
+            .ty(folder.db())
+            .decanonicalize(&mut table)
+            .fold_with(folder);
+        let trait_inst = self
+            .trait_inst(folder.db())
+            .decanonicalize(&mut table)
+            .fold_with(folder);
+        Self::new(
+            folder.db(),
+            Canonical::canonicalize(folder.db(), ty),
+            Canonical::canonicalize(folder.db(), trait_inst),
+        )
     }
 }
 

@@ -40,6 +40,7 @@ pub struct Jar(
     ty::trait_lower::collect_implementor_methods,
     // Method collection.
     ty::method_table::collect_methods,
+    ty::method_table::probe_method,
     // Item Definition analysis.
     ty::def_analysis::check_recursive_adt,
     ty::def_analysis::analyze_adt,

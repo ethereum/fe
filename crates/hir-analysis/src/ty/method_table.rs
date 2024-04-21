@@ -28,41 +28,48 @@ pub(crate) fn collect_methods(db: &dyn HirAnalysisDb, ingot: IngotId) -> MethodT
     collector.finalize()
 }
 
+#[salsa::tracked(return_ref)]
+pub(crate) fn probe_method(
+    db: &dyn HirAnalysisDb,
+    ingot: IngotId,
+    ty: Canonical<TyId>,
+    name: IdentId,
+) -> Vec<FuncDef> {
+    let table = collect_methods(db, ingot);
+    table.probe(db, ty, name)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MethodTable {
     buckets: FxHashMap<TyBase, MethodBucket>,
 }
 
 impl MethodTable {
-    pub fn probe(
-        &self,
-        db: &dyn HirAnalysisDb,
-        ty: Canonical<TyId>,
-        name: IdentId,
-    ) -> Vec<FuncDef> {
-        self.probe_impl(db, ty, name, TableMode::Lookup)
+    fn probe(&self, db: &dyn HirAnalysisDb, ty: Canonical<TyId>, name: IdentId) -> Vec<FuncDef> {
+        let mut table = UnificationTable::new(db);
+        let ty = ty.decanonicalize(&mut table);
+        let Some(base) = Self::extract_ty_base(ty, db) else {
+            return vec![];
+        };
+
+        if let Some(bucket) = self.buckets.get(base) {
+            bucket.probe(&mut table, ty, name)
+        } else {
+            vec![]
+        }
     }
 
-    pub(super) fn probe_eager(
-        &self,
-        db: &dyn HirAnalysisDb,
-        ty: Canonical<TyId>,
-        name: IdentId,
-    ) -> Vec<FuncDef> {
-        self.probe_impl(db, ty, name, TableMode::Creation)
-    }
-
-    pub(super) fn new() -> Self {
+    fn new() -> Self {
         Self {
             buckets: FxHashMap::default(),
         }
     }
 
-    pub(super) fn finalize(self) -> Self {
+    fn finalize(self) -> Self {
         self
     }
 
-    pub(super) fn insert(&mut self, db: &dyn HirAnalysisDb, ty: TyId, func: FuncDef) {
+    fn insert(&mut self, db: &dyn HirAnalysisDb, ty: TyId, func: FuncDef) {
         let Some(base) = Self::extract_ty_base(ty, db) else {
             return;
         };
@@ -80,26 +87,6 @@ impl MethodTable {
             _ => None,
         }
     }
-
-    fn probe_impl(
-        &self,
-        db: &dyn HirAnalysisDb,
-        ty: Canonical<TyId>,
-        name: IdentId,
-        mode: TableMode,
-    ) -> Vec<FuncDef> {
-        let mut table = UnificationTable::new(db);
-        let ty = ty.decanonicalize(&mut table);
-        let Some(base) = Self::extract_ty_base(ty, db) else {
-            return vec![];
-        };
-
-        if let Some(bucket) = self.buckets.get(base) {
-            bucket.probe(&mut table, mode, ty, name)
-        } else {
-            vec![]
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,23 +101,13 @@ impl MethodBucket {
         }
     }
 
-    fn probe(
-        &self,
-        table: &mut UnificationTable,
-        mode: TableMode,
-        ty: TyId,
-        name: IdentId,
-    ) -> Vec<FuncDef> {
+    fn probe(&self, table: &mut UnificationTable, ty: TyId, name: IdentId) -> Vec<FuncDef> {
         let mut methods = vec![];
         for (&cand_ty, funcs) in self.methods.iter() {
             let snapshot = table.snapshot();
-            let cand_ty = table.instantiate_with_fresh_vars(cand_ty);
-            let ty = if mode == TableMode::Creation {
-                table.instantiate_with_fresh_vars(Binder::bind(ty))
-            } else {
-                ty
-            };
+
             let ty = table.instantiate_to_term(ty);
+            let cand_ty = table.instantiate_with_fresh_vars(cand_ty);
             let cand_ty = table.instantiate_to_term(cand_ty);
 
             if table.unify(cand_ty, ty).is_ok() {
@@ -143,12 +120,6 @@ impl MethodBucket {
 
         methods
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum TableMode {
-    Creation,
-    Lookup,
 }
 
 struct MethodCollector<'db> {
@@ -175,19 +146,17 @@ impl<'db> MethodCollector<'db> {
                 if !matches!(variant.kind, VariantKind::Tuple(_)) {
                     continue;
                 };
-                let Some(name) = variant.name.to_opt() else {
-                    continue;
-                };
-                let Some(variant) = adt.fields(self.db).get(i) else {
+                let (Some(name), Some(variant)) =
+                    (variant.name.to_opt(), adt.fields(self.db).get(i))
+                else {
                     continue;
                 };
 
                 let arg_tys = variant.iter_types(self.db).collect();
-
                 let mut ret_ty = TyId::adt(self.db, adt);
                 let adt_param_set = adt.param_set(self.db);
 
-                for &generic_param in adt_param_set.params(self.db) {
+                for &generic_param in adt.param_set(self.db).params(self.db) {
                     ret_ty = TyId::app(self.db, ret_ty, generic_param);
                 }
 

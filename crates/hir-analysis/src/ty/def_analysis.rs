@@ -27,6 +27,7 @@ use super::{
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     func_def::FuncDef,
     method_cmp::compare_impl_method,
+    method_table::probe_method,
     trait_def::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     ty_def::{InvalidCause, TyData, TyId},
@@ -44,7 +45,6 @@ use crate::{
             ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
         },
         func_def::lower_func,
-        method_table::collect_methods,
         trait_def::does_impl_trait_conflict,
         trait_lower::lower_impl_trait,
         ty_lower::{lower_hir_ty, lower_type_alias},
@@ -391,10 +391,9 @@ impl<'db> DefAnalyzer<'db> {
             return true;
         }
 
-        let method_table = collect_methods(self.db, func.ingot(self.db));
-
-        for cand in method_table.probe_eager(
+        for &cand in probe_method(
             self.db,
+            self.scope().ingot(self.db.as_hir_db()),
             Canonical::canonicalize(self.db, self_ty),
             func.name(self.db),
         ) {
@@ -1170,7 +1169,13 @@ fn analyze_impl_trait_specific_error(
     let target_ty_span: DynLazySpan = impl_trait.lazy_span().ty().into();
     for &super_trait in trait_def.super_traits(db) {
         let super_trait = super_trait.instantiate(db, trait_inst.args(db));
-        let goal = PredicateId::new(db, implementor.skip_binder().ty(db), super_trait);
+        let goal = PredicateId::new(
+            db,
+            Canonical {
+                value: implementor.skip_binder().ty(db),
+            },
+            Canonical { value: super_trait },
+        );
         is_satisfied(goal, target_ty_span.clone())
     }
 

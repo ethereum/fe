@@ -31,13 +31,17 @@ pub(crate) fn ingot_trait_env(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitEn
     TraitEnv::collect(db, ingot)
 }
 
-/// Returns all [`Implementor`]s for the given trait inst.
+/// Returns all [`Implementor`] for the given trait inst.
 #[salsa::tracked(return_ref)]
 pub(crate) fn impls_of_trait(
     db: &dyn HirAnalysisDb,
-    trait_: TraitInstId,
+    ingot: IngotId,
+    trait_: Canonical<TraitInstId>,
 ) -> Vec<Binder<Implementor>> {
-    let env = ingot_trait_env(db, trait_.ingot(db));
+    let mut table = UnificationTable::new(db);
+    let trait_ = trait_.decanonicalize(&mut table);
+
+    let env = ingot_trait_env(db, ingot);
     let Some(impls) = env.impls.get(&trait_.def(db)) else {
         return vec![];
     };
@@ -45,9 +49,11 @@ pub(crate) fn impls_of_trait(
     impls
         .iter()
         .filter(|impl_| {
-            let mut table = UnificationTable::new(db);
+            let snapshot = table.snapshot();
             let impl_ = table.instantiate_with_fresh_vars(**impl_);
-            table.unify(impl_.trait_(db), trait_).is_ok()
+            let is_ok = table.unify(impl_.trait_(db), trait_).is_ok();
+            table.rollback_to(snapshot);
+            is_ok
         })
         .cloned()
         .collect()
@@ -148,9 +154,10 @@ impl TraitEnv {
     pub(crate) fn impls_of_trait<'db>(
         &self,
         db: &'db dyn HirAnalysisDb,
-        trait_: TraitInstId,
+        ingot: IngotId,
+        trait_: Canonical<TraitInstId>,
     ) -> &'db [Binder<Implementor>] {
-        impls_of_trait(db, trait_)
+        impls_of_trait(db, ingot, trait_)
     }
 
     /// Returns the corresponding implementor of the given `impl Trait` type.

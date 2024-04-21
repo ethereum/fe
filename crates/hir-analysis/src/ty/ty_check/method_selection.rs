@@ -12,7 +12,7 @@ use crate::{
         constraint::AssumptionListId,
         diagnostics::{BodyDiag, FuncBodyDiag},
         func_def::FuncDef,
-        method_table::collect_methods,
+        method_table::probe_method,
         trait_def::{impls_of_ty, Implementor, TraitDef, TraitInstId, TraitMethod},
         trait_lower::lower_trait,
         ty_def::TyId,
@@ -168,8 +168,7 @@ impl<'db> CandidateAssembler<'db> {
 
     fn assemble_method_candidates(&mut self) {
         let ingot = self.scope.ingot(self.db.as_hir_db());
-        let method_table = collect_methods(self.db, ingot);
-        for method in method_table.probe(self.db, self.receiver_ty, self.method_name) {
+        for &method in probe_method(self.db, ingot, self.receiver_ty, self.method_name) {
             self.candidates.push(Candidate::InherentMethod(method));
         }
     }
@@ -208,10 +207,11 @@ impl<'db> CandidateAssembler<'db> {
         };
         for &pred in self.assumptions.predicates(self.db) {
             let snapshot = table.snapshot();
-            let pred_ty = table.instantiate_to_term(pred.ty(self.db));
+            let pred_ty = pred.ty(self.db).decanonicalize(&mut table);
+            let pred_ty = table.instantiate_to_term(pred_ty);
 
             if table.unify(receiver_ty, pred_ty).is_ok() {
-                let trait_inst = pred.trait_inst(self.db);
+                let trait_inst = pred.trait_inst(self.db).decanonicalize(&mut table);
                 insert_trait_method_cand(trait_inst);
                 for super_trait in trait_inst.def(self.db).super_traits(self.db) {
                     insert_trait_method_cand(
@@ -338,7 +338,7 @@ impl<'db> MethodSelector<'db> {
         }
 
         for pred in self.assumptions.predicates(self.db) {
-            let trait_def = pred.trait_inst(self.db).def(self.db);
+            let trait_def = pred.trait_inst(self.db).value.def(self.db);
             insert_trait(trait_def)
         }
 

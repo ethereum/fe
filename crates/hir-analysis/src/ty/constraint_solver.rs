@@ -6,6 +6,7 @@
 use rustc_hash::FxHashSet;
 
 use super::{
+    canonical::Canonical,
     constraint::{collect_trait_constraints, AssumptionListId, PredicateId},
     fold::TyFoldable,
     trait_def::{ingot_trait_env, TraitEnv, TraitInstId},
@@ -82,9 +83,6 @@ pub(crate) fn is_goal_satisfiable(
     goal: Goal,
     assumptions: AssumptionListId,
 ) -> GoalSatisfiability {
-    if goal.ty(db).has_invalid(db) {
-        return GoalSatisfiability::Satisfied;
-    }
     ConstraintSolver::new(db, goal, assumptions).solve()
 }
 
@@ -127,8 +125,9 @@ impl<'db> ConstraintSolver<'db> {
     /// The main entry point of the constraint solver, which performs actual
     /// solving.
     fn solve(self) -> GoalSatisfiability {
-        let goal_ty = self.goal.ty(self.db);
-        let goal_trait = self.goal.trait_inst(self.db);
+        let mut table = UnificationTable::new(self.db);
+        let goal_ty = self.goal.ty(self.db).decanonicalize(&mut table);
+        let goal_trait = self.goal.trait_inst(self.db).decanonicalize(&mut table);
 
         // If the goal type is already invalid, we don't need to do anything.
         if goal_ty.has_invalid(self.db) {
@@ -146,22 +145,29 @@ impl<'db> ConstraintSolver<'db> {
         // current goal.
         let Some(sub_goals) = self
             .env
-            .impls_of_trait(self.db, goal_trait)
+            .impls_of_trait(
+                self.db,
+                self.assumptions.ingot(self.db),
+                self.goal.trait_inst(self.db),
+            )
             .iter()
             .find_map(|impl_| {
-                let mut table = UnificationTable::new(self.db);
+                let snapshot = table.snapshot();
                 let gen_impl = table.instantiate_with_fresh_vars(*impl_);
 
                 // If the `impl` can matches the goal by unifying the goal type, then we can
                 // obtain a subgoals which is specified by the `impl`.
-                if table.unify(gen_impl.ty(self.db), goal_ty).is_ok()
+                let res = if table.unify(gen_impl.ty(self.db), goal_ty).is_ok()
                     && table.unify(gen_impl.trait_(self.db), goal_trait).is_ok()
                 {
                     let constraints = impl_.instantiate_identity().constraints(self.db);
                     Some(constraints.fold_with(&mut table))
                 } else {
                     None
-                }
+                };
+
+                table.rollback_to(snapshot);
+                res
             })
         else {
             return GoalSatisfiability::NotSatisfied(self.goal);
@@ -190,9 +196,10 @@ impl<'db> ConstraintSolver<'db> {
             let trait_ = pred.trait_inst(self.db);
             let ty = pred.ty(self.db);
 
-            for &super_trait in trait_.def(self.db).super_traits(self.db).iter() {
-                let super_trait = super_trait.instantiate(self.db, trait_.args(self.db));
-                let super_pred = PredicateId::new(self.db, ty, super_trait);
+            for &super_trait in trait_.value.def(self.db).super_traits(self.db).iter() {
+                let super_trait = super_trait.instantiate(self.db, trait_.value.args(self.db));
+                let super_pred =
+                    PredicateId::new(self.db, ty, Canonical::canonicalize(self.db, super_trait));
                 assumptions.insert(super_pred);
             }
         }
