@@ -92,12 +92,16 @@ impl Default for HirAnalysisTestDb {
 }
 
 pub struct HirPropertyFormatter {
+    // https://github.com/rust-lang/rust/issues/46379
+    #[allow(dead_code)]
     properties: BTreeMap<TopLevelMod, Vec<(String, DynLazySpan)>>,
     top_mod_to_file: FxHashMap<TopLevelMod, CodeSpanFileId>,
     code_span_files: SimpleFiles<String, String>,
 }
 
 impl HirPropertyFormatter {
+    // https://github.com/rust-lang/rust/issues/46379
+    #[allow(dead_code)]
     pub fn push_prop(&mut self, top_mod: TopLevelMod, span: DynLazySpan, prop: String) {
         self.properties
             .entry(top_mod)
@@ -105,6 +109,8 @@ impl HirPropertyFormatter {
             .push((prop, span));
     }
 
+    // https://github.com/rust-lang/rust/issues/46379
+    #[allow(dead_code)]
     pub fn finish(&mut self, db: &dyn SpannedHirDb) -> String {
         let writer = BufferWriter::stderr(ColorChoice::Never);
         let mut buffer = writer.buffer();

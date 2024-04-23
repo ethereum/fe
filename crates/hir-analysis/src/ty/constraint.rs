@@ -414,7 +414,7 @@ impl<'db> ConstraintCollector<'db> {
             // We don't need to collect super traits, please refer to
             // [`collect_super_traits`] function for details.
             if ty.has_invalid(self.db) || ty.is_trait_self(self.db) {
-                return;
+                continue;
             }
 
             self.add_bounds(ty, &hir_pred.bounds);

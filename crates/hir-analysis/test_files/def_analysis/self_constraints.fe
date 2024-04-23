@@ -1,0 +1,14 @@
+trait Ring {}
+trait CommRing: Ring {}
+trait AddCommGroup {}
+
+trait Module<M> 
+where 
+    Self: Ring, 
+    M: AddCommGroup
+{}
+
+impl<K, M> Module<M> for K
+where K: CommRing,
+      M: AddCommGroup
+{}
