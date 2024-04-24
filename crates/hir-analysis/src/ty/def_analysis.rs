@@ -473,7 +473,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         let span = ctxt.span().unwrap();
         if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
             self.diags.push(diag)
-        } else if let Some(diag) = ty.emit_sat_diag(self.db, self.assumptions, span.into()) {
+        } else if let Some(diag) = ty.emit_wf_diag(self.db, self.assumptions, span.into()) {
             self.diags.push(diag)
         }
     }

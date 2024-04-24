@@ -1,3 +1,11 @@
+use std::{ops::RangeInclusive, str::FromStr};
+
+use fe_common::{diagnostics::Label, numeric, Span};
+use fe_parser::{ast as fe, ast::GenericArg, node::Node};
+use num_bigint::BigInt;
+use num_traits::{ToPrimitive, Zero};
+use smol_str::SmolStr;
+
 use super::borrowck;
 use crate::{
     builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
@@ -22,13 +30,6 @@ use crate::{
         utils::add_bin_operations_errors,
     },
 };
-
-use fe_common::{diagnostics::Label, numeric, Span};
-use fe_parser::{ast as fe, ast::GenericArg, node::Node};
-use num_bigint::BigInt;
-use num_traits::{ToPrimitive, Zero};
-use smol_str::SmolStr;
-use std::{ops::RangeInclusive, str::FromStr};
 
 // TODO: don't fail fatally if expected type is provided
 

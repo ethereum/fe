@@ -6,6 +6,7 @@ mod pat;
 mod path;
 mod stmt;
 
+pub use callable::Callable;
 pub use env::ExprProp;
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
@@ -183,6 +184,10 @@ impl<'db> TyChecker<'db> {
             }
         }
     }
+
+    fn register_callable(&mut self, expr: ExprId, callable: Callable) {
+        self.env.register_callable(expr, callable)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -190,6 +195,7 @@ pub struct TypedBody {
     body: Option<Body>,
     pat_ty: FxHashMap<PatId, TyId>,
     expr_ty: FxHashMap<ExprId, ExprProp>,
+    callables: FxHashMap<ExprId, Callable>,
 }
 
 impl TypedBody {
@@ -211,11 +217,16 @@ impl TypedBody {
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
     }
 
+    pub fn callable_expr(&self, expr: ExprId) -> Option<&Callable> {
+        self.callables.get(&expr)
+    }
+
     fn empty() -> Self {
         Self {
             body: None,
             pat_ty: FxHashMap::default(),
             expr_ty: FxHashMap::default(),
+            callables: FxHashMap::default(),
         }
     }
 }
@@ -307,7 +318,20 @@ impl<'db> TyCheckerFinalizer<'db> {
                     let prop = self.body.expr_prop(self.db, expr);
                     let span = ctxt.span().unwrap();
                     self.check_unknown(prop.ty, span.clone().into());
-                    self.check_wf(prop, span.into());
+                    if prop.binding.is_none() {
+                        self.check_wf(prop.ty, span.into());
+                    }
+                }
+
+                // We need this additional check for method call because the callable type is
+                // not tied to the expression type.
+                if let Expr::MethodCall(..) = expr_data {
+                    if let Some(callable) = self.body.callable_expr(expr) {
+                        let callable_ty = callable.ty(self.db);
+                        let span = ctxt.span().unwrap().into_method_call_expr().method_name();
+                        self.check_unknown(callable_ty, span.clone().into());
+                        self.check_wf(callable_ty, span.into())
+                    }
                 }
 
                 walk_expr(self, ctxt, expr);
@@ -346,17 +370,13 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
     }
 
-    fn check_wf(&mut self, prop: ExprProp, span: DynLazySpan) {
-        if prop.binding.is_some() {
-            // WF check is already performed.
-            return;
-        }
-        let flags = prop.ty.flags(self.db);
+    fn check_wf(&mut self, ty: TyId, span: DynLazySpan) {
+        let flags = ty.flags(self.db);
         if flags.contains(TyFlags::HAS_INVALID) || flags.contains(TyFlags::HAS_VAR) {
             return;
         }
 
-        if let Some(diag) = prop.ty.emit_sat_diag(self.db, self.assumptions, span) {
+        if let Some(diag) = ty.emit_wf_diag(self.db, self.assumptions, span) {
             self.diags.push(diag.into());
         }
     }

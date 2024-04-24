@@ -342,7 +342,7 @@ impl TyId {
         visitor.diag
     }
 
-    pub(super) fn emit_sat_diag(
+    pub(super) fn emit_wf_diag(
         self,
         db: &dyn HirAnalysisDb,
         assumptions: AssumptionListId,

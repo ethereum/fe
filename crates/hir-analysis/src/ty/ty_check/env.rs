@@ -7,7 +7,7 @@ use hir::{
 };
 use rustc_hash::FxHashMap;
 
-use super::TypedBody;
+use super::{Callable, TypedBody};
 use crate::{
     ty::{
         const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
@@ -27,6 +27,7 @@ pub(super) struct TyCheckEnv<'db> {
 
     pat_ty: FxHashMap<PatId, TyId>,
     expr_ty: FxHashMap<ExprId, ExprProp>,
+    callables: FxHashMap<ExprId, Callable>,
 
     var_env: Vec<BlockEnv>,
 
@@ -47,6 +48,7 @@ impl<'db> TyCheckEnv<'db> {
             body,
             pat_ty: FxHashMap::default(),
             expr_ty: FxHashMap::default(),
+            callables: FxHashMap::default(),
             var_env: vec![BlockEnv::new(func.scope(), 0)],
             pending_vars: FxHashMap::default(),
             loop_stack: Vec::new(),
@@ -91,6 +93,11 @@ impl<'db> TyCheckEnv<'db> {
         binding.def_span(self)
     }
 
+    pub(super) fn register_callable(&mut self, expr: ExprId, callable: Callable) {
+        if self.callables.insert(expr, callable).is_some() {
+            panic!("callable is already registered for the given expr")
+        }
+    }
     pub(super) fn binding_name(&self, binding: LocalBinding) -> IdentId {
         binding.binding_name(self)
     }
@@ -219,10 +226,17 @@ impl<'db> TyCheckEnv<'db> {
             .values_mut()
             .for_each(|ty| *ty = ty.fold_with(&mut folder));
 
+        let callables = self
+            .callables
+            .into_iter()
+            .map(|(expr, callable)| (expr, callable.fold_with(&mut folder)))
+            .collect();
+
         TypedBody {
             body: Some(self.body),
             pat_ty: self.pat_ty,
             expr_ty: self.expr_ty,
+            callables,
         }
     }
 

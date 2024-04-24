@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/method_bound/specialized.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ specialized.fe:29:16
+   │
+29 │     let _ = s2.f()
+   │                ^ `S2<bool>` doesn't implement `Trait`
+
+
