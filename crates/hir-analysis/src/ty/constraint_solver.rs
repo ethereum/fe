@@ -160,13 +160,14 @@ impl<'db> ConstraintSolver<'db> {
                 let res = if table.unify(gen_impl.ty(self.db), goal_ty).is_ok()
                     && table.unify(gen_impl.trait_(self.db), goal_trait).is_ok()
                 {
-                    let constraints = impl_.instantiate_identity().constraints(self.db);
+                    let constraints = gen_impl.fold_with(&mut table).constraints(self.db);
                     Some(constraints.fold_with(&mut table))
                 } else {
                     None
                 };
 
                 table.rollback_to(snapshot);
+
                 res
             })
         else {
@@ -178,7 +179,7 @@ impl<'db> ConstraintSolver<'db> {
             match is_goal_satisfiable(self.db, sub_goal, self.assumptions) {
                 GoalSatisfiability::Satisfied => {}
                 GoalSatisfiability::NotSatisfied(_) => {
-                    return GoalSatisfiability::NotSatisfied(self.goal)
+                    return GoalSatisfiability::NotSatisfied(self.goal);
                 }
                 GoalSatisfiability::InfiniteRecursion(_) => {
                     return GoalSatisfiability::InfiniteRecursion(self.goal)

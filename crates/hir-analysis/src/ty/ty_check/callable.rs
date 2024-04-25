@@ -8,16 +8,40 @@ use super::TyChecker;
 use crate::{
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator},
+        fold::{TyFoldable, TyFolder},
         func_def::FuncDef,
         ty_def::{TyBase, TyData, TyId},
         ty_lower::lower_generic_arg_list,
+        visitor::{TyVisitable, TyVisitor},
     },
     HirAnalysisDb,
 };
 
-pub(super) struct Callable {
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Callable {
     func_def: FuncDef,
     generic_args: Vec<TyId>,
+}
+
+impl<'db> TyVisitable<'db> for Callable {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TyVisitor<'db>,
+    {
+        self.generic_args.visit_with(visitor)
+    }
+}
+
+impl<'db> TyFoldable<'db> for Callable {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TyFolder<'db>,
+    {
+        Self {
+            func_def: self.func_def,
+            generic_args: self.generic_args.fold_with(folder),
+        }
+    }
 }
 
 impl Callable {
@@ -45,8 +69,17 @@ impl Callable {
         })
     }
 
-    pub(super) fn ret_ty(&self, db: &dyn HirAnalysisDb) -> TyId {
+    pub fn ret_ty(&self, db: &dyn HirAnalysisDb) -> TyId {
         self.func_def.ret_ty(db).instantiate(db, &self.generic_args)
+    }
+
+    pub fn ty(&self, db: &dyn HirAnalysisDb) -> TyId {
+        let mut ty = TyId::func(db, self.func_def);
+        for &arg in self.generic_args.iter() {
+            ty = TyId::app(db, ty, arg);
+        }
+
+        ty
     }
 
     pub(super) fn unify_generic_args(

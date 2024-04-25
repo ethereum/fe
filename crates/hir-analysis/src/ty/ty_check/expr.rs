@@ -274,6 +274,7 @@ impl<'db> TyChecker<'db> {
         callable.check_args(self, args, call_span.args_moved(), None);
 
         let ret_ty = callable.ret_ty(self.db);
+        self.register_callable(expr, callable);
         ExprProp::new(ret_ty, true)
     }
 
@@ -344,6 +345,7 @@ impl<'db> TyChecker<'db> {
             Some((*receiver, receiver_ty)),
         );
         let ret_ty = callable.ret_ty(self.db);
+        self.register_callable(expr, callable);
         ExprProp::new(ret_ty, true)
     }
 
