@@ -287,9 +287,9 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
 
-        let receiver_ty = self.fresh_ty();
-        let receiver_ty = self.check_expr(*receiver, receiver_ty).ty;
-        if receiver_ty.has_invalid(self.db) {
+        let receiver_prop = self.fresh_ty();
+        let receiver_prop = self.check_expr(*receiver, receiver_prop);
+        if receiver_prop.ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
@@ -298,7 +298,7 @@ impl<'db> TyChecker<'db> {
         let candidate = match select_method_candidate(
             self.db,
             (
-                Canonical::canonicalize(self.db, receiver_ty),
+                Canonical::canonicalize(self.db, receiver_prop.ty),
                 receiver.lazy_span(self.body()).into(),
             ),
             (method_name, call_span.method_name().into()),
@@ -321,7 +321,7 @@ impl<'db> TyChecker<'db> {
             Candidate::TraitMethod(cand) => {
                 let inst = cand.inst;
                 let trait_method = cand.method;
-                trait_method.instantiate_with_inst(self, receiver_ty, inst)
+                trait_method.instantiate_with_inst(self, receiver_prop.ty, inst)
             }
         };
 
@@ -342,7 +342,7 @@ impl<'db> TyChecker<'db> {
             self,
             args,
             call_span.args_moved(),
-            Some((*receiver, receiver_ty)),
+            Some((*receiver, receiver_prop)),
         );
         let ret_ty = callable.ret_ty(self.db);
         self.register_callable(expr, callable);

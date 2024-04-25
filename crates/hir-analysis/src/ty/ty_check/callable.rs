@@ -1,10 +1,14 @@
 use hir::{
-    hir_def::{kw, CallArg, ExprId, GenericArgListId},
-    span::{expr::LazyCallArgListSpan, params::LazyGenericArgListSpan, DynLazySpan},
+    hir_def::{kw, CallArg as HirCallArg, ExprId, GenericArgListId, IdentId},
+    span::{
+        expr::{LazyCallArgListSpan, LazyCallArgSpan},
+        params::LazyGenericArgListSpan,
+        DynLazySpan,
+    },
 };
 use if_chain::if_chain;
 
-use super::TyChecker;
+use super::{ExprProp, TyChecker};
 use crate::{
     ty::{
         diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator},
@@ -122,17 +126,17 @@ impl Callable {
     pub(super) fn check_args(
         &self,
         tc: &mut TyChecker,
-        args: &[CallArg],
+        call_args: &[HirCallArg],
         span: LazyCallArgListSpan,
-        receiver: Option<(ExprId, TyId)>,
+        receiver: Option<(ExprId, ExprProp)>,
     ) {
         let db = tc.db;
 
         let expected_arity = self.func_def.arg_tys(db).len();
         let given_arity = if receiver.is_some() {
-            args.len() + 1
+            call_args.len() + 1
         } else {
-            args.len()
+            call_args.len()
         };
         if given_arity != expected_arity {
             let diag = BodyDiag::CallArgNumMismatch {
@@ -146,31 +150,39 @@ impl Callable {
             return;
         }
 
-        let mut expected_args = self.func_def.arg_tys(db).iter();
-        if let Some(receiver) = receiver {
-            let expected = expected_args
-                .next()
-                .unwrap()
-                .instantiate(db, &self.generic_args);
-            tc.equate_ty(receiver.1, expected, receiver.0.lazy_span(tc.body()).into());
+        let mut args = if let Some((receiver_expr, receiver_prop)) = receiver {
+            let mut args = Vec::with_capacity(call_args.len() + 1);
+            let arg = CallArg::new(
+                kw::SELF.into(),
+                receiver_prop,
+                None,
+                receiver_expr.lazy_span(tc.body()).into(),
+            );
+            args.push(arg);
+            args
+        } else {
+            Vec::with_capacity(call_args.len())
         };
 
-        for (i, (given, expected)) in args.iter().zip(expected_args).enumerate() {
+        for (i, hir_arg) in call_args.iter().enumerate() {
+            let arg = CallArg::from_hir_arg(tc, hir_arg, span.arg(i));
+            args.push(arg);
+        }
+
+        for (i, (given, expected)) in args
+            .into_iter()
+            .zip(self.func_def.arg_tys(db).iter())
+            .enumerate()
+        {
             if_chain! {
                 if let Some(expected_label) = self.func_def.param_label(db, i);
-                let given_label = given.label_eagerly(db.as_hir_db(), tc.body());
                 if expected_label != kw::SELF;
-                if Some(expected_label) != given_label;
+                if Some(expected_label) != given.label;
                 then {
-                    let primary = if given.label.is_some() {
-                        span.arg(i).label().into()
-                    } else {
-                        span.arg(i).into()
-                    };
                     let diag = BodyDiag::CallArgLabelMismatch {
-                        primary,
+                        primary: given.label_span.unwrap_or(given.expr_span.clone()),
                         def_span: self.func_def.name_span(db),
-                        given: given_label,
+                        given: given.label,
                         expected: expected_label,
                     }
                     .into();
@@ -179,9 +191,41 @@ impl Callable {
             }
 
             let expected = expected.instantiate(db, &self.generic_args);
-            let given_ty = tc.fresh_ty();
-            let given_ty = tc.check_expr(given.expr, given_ty).ty;
-            tc.equate_ty(given_ty, expected, span.arg(i).expr().into());
+            tc.equate_ty(given.expr_prop.ty, expected, given.expr_span);
+        }
+    }
+}
+
+/// The lowered representation of [`HirCallArg`]
+struct CallArg {
+    label: Option<IdentId>,
+    expr_prop: ExprProp,
+    label_span: Option<DynLazySpan>,
+    expr_span: DynLazySpan,
+}
+
+impl CallArg {
+    fn from_hir_arg(tc: &mut TyChecker, arg: &HirCallArg, span: LazyCallArgSpan) -> Self {
+        let ty = tc.fresh_ty();
+        let expr_prop = tc.check_expr(arg.expr, ty);
+        let label = arg.label_eagerly(tc.db.as_hir_db(), tc.body());
+        let label_span = arg.label.is_some().then(|| span.label().into());
+        let expr_span = span.expr().into();
+
+        Self::new(label, expr_prop, label_span, expr_span)
+    }
+
+    fn new(
+        label: Option<IdentId>,
+        expr_prop: ExprProp,
+        label_span: Option<DynLazySpan>,
+        expr_span: DynLazySpan,
+    ) -> Self {
+        Self {
+            label,
+            expr_prop,
+            label_span,
+            expr_span,
         }
     }
 }
