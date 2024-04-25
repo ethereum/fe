@@ -46,7 +46,9 @@ fn get_t<T>() -> T {
 }
 
 fn foo() -> Option<bool> {
-    let mut x = Option::None
+    let mut x: Option<i32> = Option::Some(1)
     let func_obj = get_t
     x.get_or_insert(inner: func_obj())
+    
+    x.and(rhs: Option::Some(false))
 }

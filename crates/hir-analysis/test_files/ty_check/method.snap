@@ -271,58 +271,102 @@ note:
    │  
 48 │   fn foo() -> Option<bool> {
    │ ╭──────────────────────────^
-49 │ │     let mut x = Option::None
+49 │ │     let mut x: Option<i32> = Option::Some(1)
 50 │ │     let func_obj = get_t
 51 │ │     x.get_or_insert(inner: func_obj())
-52 │ │ }
+52 │ │     
+53 │ │     x.and(rhs: Option::Some(false))
+54 │ │ }
    │ ╰─^ Option<bool>
 
 note: 
    ┌─ test_file.fe:49:9
    │
-49 │     let mut x = Option::None
-   │         ^^^^^ Option<Option<bool>>
+49 │     let mut x: Option<i32> = Option::Some(1)
+   │         ^^^^^ Option<i32>
 
 note: 
-   ┌─ test_file.fe:49:17
+   ┌─ test_file.fe:49:30
    │
-49 │     let mut x = Option::None
-   │                 ^^^^^^^^^^^^ Option<Option<bool>>
+49 │     let mut x: Option<i32> = Option::Some(1)
+   │                              ^^^^^^^^^^^^ fn Some<i32>
+
+note: 
+   ┌─ test_file.fe:49:30
+   │
+49 │     let mut x: Option<i32> = Option::Some(1)
+   │                              ^^^^^^^^^^^^^^^ Option<i32>
+
+note: 
+   ┌─ test_file.fe:49:43
+   │
+49 │     let mut x: Option<i32> = Option::Some(1)
+   │                                           ^ i32
 
 note: 
    ┌─ test_file.fe:50:9
    │
 50 │     let func_obj = get_t
-   │         ^^^^^^^^ fn get_t<Option<bool>>
+   │         ^^^^^^^^ fn get_t<i32>
 
 note: 
    ┌─ test_file.fe:50:20
    │
 50 │     let func_obj = get_t
-   │                    ^^^^^ fn get_t<Option<bool>>
+   │                    ^^^^^ fn get_t<i32>
 
 note: 
    ┌─ test_file.fe:51:5
    │
 51 │     x.get_or_insert(inner: func_obj())
-   │     ^ Option<Option<bool>>
+   │     ^ Option<i32>
 
 note: 
    ┌─ test_file.fe:51:5
    │
 51 │     x.get_or_insert(inner: func_obj())
-   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Option<bool>
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i32
 
 note: 
    ┌─ test_file.fe:51:28
    │
 51 │     x.get_or_insert(inner: func_obj())
-   │                            ^^^^^^^^ fn get_t<Option<bool>>
+   │                            ^^^^^^^^ fn get_t<i32>
 
 note: 
    ┌─ test_file.fe:51:28
    │
 51 │     x.get_or_insert(inner: func_obj())
-   │                            ^^^^^^^^^^ Option<bool>
+   │                            ^^^^^^^^^^ i32
+
+note: 
+   ┌─ test_file.fe:53:5
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │     ^ Option<i32>
+
+note: 
+   ┌─ test_file.fe:53:5
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Option<bool>
+
+note: 
+   ┌─ test_file.fe:53:16
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │                ^^^^^^^^^^^^ fn Some<bool>
+
+note: 
+   ┌─ test_file.fe:53:16
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │                ^^^^^^^^^^^^^^^^^^^ Option<bool>
+
+note: 
+   ┌─ test_file.fe:53:29
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │                             ^^^^^ bool
 
 
