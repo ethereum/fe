@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/method_bound/generics.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ generics.fe:46:7
+   │
+46 │     x.clamped_add(y)
+   │       ^^^^^^^^^^^ `u32` doesn't implement `ClampedAdd<i64>`
+
+
