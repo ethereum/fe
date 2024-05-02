@@ -682,12 +682,6 @@ pub(super) trait Importer {
         db: &'a dyn HirAnalysisDb,
         scope: ScopeId,
     ) -> Option<&'a GlobImportSet>;
-
-    fn unnamed_imports<'a>(
-        &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a [NameResBucket]>;
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -712,17 +706,6 @@ impl Importer for DefaultImporter {
         resolved_imports_for_scope(db, scope)
             .glob_resolved
             .get(&scope)
-    }
-
-    fn unnamed_imports<'a>(
-        &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a [NameResBucket]> {
-        resolved_imports_for_scope(db, scope)
-            .unnamed_resolved
-            .get(&scope)
-            .map(|v| v.as_slice())
     }
 }
 
@@ -1012,24 +995,6 @@ impl Importer for IntermediateResolvedImports {
                 .get(&scope)
         } else {
             self.resolved_imports.glob_resolved.get(&scope)
-        }
-    }
-
-    fn unnamed_imports<'a>(
-        &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a [NameResBucket]> {
-        if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
-            resolved_imports_for_scope(db, scope)
-                .unnamed_resolved
-                .get(&scope)
-                .map(|v| v.as_slice())
-        } else {
-            self.resolved_imports
-                .unnamed_resolved
-                .get(&scope)
-                .map(|v| v.as_slice())
         }
     }
 }

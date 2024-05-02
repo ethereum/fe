@@ -917,15 +917,10 @@ pub(crate) trait TraitOps {
         self.triple(db)[0]
     }
 
-    fn trait_method_name(&self, db: &dyn HirAnalysisDb) -> IdentId {
-        self.triple(db)[1]
-    }
-
     fn op_symbol(&self, db: &dyn HirAnalysisDb) -> IdentId {
         self.triple(db)[2]
     }
 
-    ///
     fn triple(&self, db: &dyn HirAnalysisDb) -> [IdentId; 3];
 }
 

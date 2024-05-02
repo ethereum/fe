@@ -2,66 +2,10 @@ use std::ops::Range;
 
 use camino::Utf8Path;
 use codespan_reporting as cs;
-use cs::{diagnostic as cs_diag, files as cs_files};
-
-use common::{
-    diagnostics::{LabelStyle, Severity},
-    InputFile,
-};
-use hir::diagnostics::DiagnosticVoucher;
+use common::InputFile;
+use cs::files as cs_files;
 
 use crate::db::{LanguageServerDatabase, LanguageServerDb};
-
-pub trait ToCsDiag {
-    fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile>;
-}
-
-impl<T> ToCsDiag for T
-where
-    T: DiagnosticVoucher,
-{
-    fn to_cs(&self, db: &LanguageServerDatabase) -> cs_diag::Diagnostic<InputFile> {
-        let complete = self.to_complete(db);
-
-        let severity = convert_severity(complete.severity);
-        let code = Some(complete.error_code.to_string());
-        let message = complete.message;
-
-        let labels = complete
-            .sub_diagnostics
-            .into_iter()
-            .filter_map(|sub_diag| {
-                let span = sub_diag.span?;
-                match sub_diag.style {
-                    LabelStyle::Primary => {
-                        cs_diag::Label::new(cs_diag::LabelStyle::Primary, span.file, span.range)
-                    }
-                    LabelStyle::Secondary => {
-                        cs_diag::Label::new(cs_diag::LabelStyle::Secondary, span.file, span.range)
-                    }
-                }
-                .with_message(sub_diag.message)
-                .into()
-            })
-            .collect();
-
-        cs_diag::Diagnostic {
-            severity,
-            code,
-            message,
-            labels,
-            notes: vec![],
-        }
-    }
-}
-
-fn convert_severity(severity: Severity) -> cs_diag::Severity {
-    match severity {
-        Severity::Error => cs_diag::Severity::Error,
-        Severity::Warning => cs_diag::Severity::Warning,
-        Severity::Note => cs_diag::Severity::Note,
-    }
-}
 
 #[salsa::tracked(return_ref)]
 pub fn file_line_starts(db: &dyn LanguageServerDb, file: InputFile) -> Vec<usize> {
