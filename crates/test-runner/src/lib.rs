@@ -1,9 +1,10 @@
-use bytes::Bytes;
 use colored::Colorize;
 use ethabi::{Event, Hash, RawLog};
 use indexmap::IndexMap;
-use revm::primitives::{AccountInfo, Bytecode, Env, ExecutionResult, TransactTo, B160, U256};
-use std::fmt::Display;
+use revm::primitives::{
+    AccountInfo, Address, Bytecode, Bytes, Env, ExecutionResult, TransactTo, B256, U256,
+};
+use std::{fmt::Display, str::FromStr};
 
 pub use ethabi;
 
@@ -115,16 +116,17 @@ pub fn execute(name: &str, events: &[Event], bytecode: &str, sink: &mut TestSink
     let bytecode = Bytecode::new_raw(Bytes::copy_from_slice(&hex::decode(bytecode).unwrap()));
 
     let mut database = revm::InMemoryDB::default();
-    let test_address = B160::from(42);
-    let test_info = AccountInfo::new(U256::ZERO, 0, bytecode);
+    let test_address = Address::from_str("0000000000000000000000000000000000000042").unwrap();
+    let test_info = AccountInfo::new(U256::ZERO, 0, B256::default(), bytecode);
     database.insert_account_info(test_address, test_info);
 
     let mut env = Env::default();
     env.tx.transact_to = TransactTo::Call(test_address);
 
-    let mut evm = revm::new();
-    evm.env = env;
-    evm.database(&mut database);
+    let builder = revm::EvmBuilder::default()
+        .with_db(database)
+        .with_env(Box::new(env));
+    let mut evm = builder.build();
     let result = evm.transact_commit().expect("evm failure");
 
     if let ExecutionResult::Success { logs, .. } = result {
@@ -132,16 +134,16 @@ pub fn execute(name: &str, events: &[Event], bytecode: &str, sink: &mut TestSink
             .iter()
             .map(|log| {
                 if let Some(Some(event)) = log
-                    .topics
+                    .topics()
                     .first()
-                    .map(|sig| events.get(&Hash::from_slice(sig.as_bytes())))
+                    .map(|sig| events.get(&Hash::from_slice(sig.as_slice())))
                 {
                     let topics = log
-                        .topics
+                        .topics()
                         .iter()
-                        .map(|topic| Hash::from_slice(topic.as_bytes()))
+                        .map(|topic| Hash::from_slice(topic.as_slice()))
                         .collect();
-                    let data = log.data.clone().to_vec();
+                    let data = log.data.data.clone().to_vec();
                     let raw_log = RawLog { topics, data };
                     if let Ok(parsed_event) = event.parse_log(raw_log) {
                         format!(
