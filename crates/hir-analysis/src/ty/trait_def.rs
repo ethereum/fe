@@ -67,17 +67,26 @@ pub(crate) fn impls_of_ty(
 ) -> Vec<Binder<Implementor>> {
     let mut table = UnificationTable::new(db);
     let ty = ty.decanonicalize(&mut table);
+
     let env = ingot_trait_env(db, ingot);
     if ty.has_invalid(db) {
         return vec![];
     }
 
-    let Some(cands) = env.ty_to_implementors.get(&ty.base_ty(db)) else {
-        return vec![];
-    };
+    let mut cands = vec![];
+    for (key, insts) in env.ty_to_implementors.iter() {
+        let snapshot = table.snapshot();
+        let key = table.instantiate_with_fresh_vars(*key);
+        if table.unify(key, ty.base_ty(db)).is_ok() {
+            cands.push(insts);
+        }
+
+        table.rollback_to(snapshot);
+    }
 
     cands
-        .iter()
+        .into_iter()
+        .flatten()
         .copied()
         .filter(|impl_| {
             let snapshot = table.snapshot();
@@ -102,7 +111,7 @@ pub(crate) struct TraitEnv {
     hir_to_implementor: FxHashMap<ImplTrait, Binder<Implementor>>,
 
     /// This maintains a mapping from the base type to the implementors.
-    ty_to_implementors: FxHashMap<TyId, Vec<Binder<Implementor>>>,
+    ty_to_implementors: FxHashMap<Binder<TyId>, Vec<Binder<Implementor>>>,
 
     ingot: IngotId,
 }
@@ -112,7 +121,7 @@ impl TraitEnv {
         let mut impls: FxHashMap<_, Vec<Binder<Implementor>>> = FxHashMap::default();
         let mut hir_to_implementor: FxHashMap<ImplTrait, Binder<Implementor>> =
             FxHashMap::default();
-        let mut ty_to_implementors: FxHashMap<TyId, Vec<Binder<Implementor>>> =
+        let mut ty_to_implementors: FxHashMap<Binder<TyId>, Vec<Binder<Implementor>>> =
             FxHashMap::default();
 
         for impl_map in ingot
@@ -135,7 +144,9 @@ impl TraitEnv {
 
                 for implementor in implementors {
                     ty_to_implementors
-                        .entry(implementor.instantiate_identity().ty(db).base_ty(db))
+                        .entry(Binder::bind(
+                            implementor.instantiate_identity().ty(db).base_ty(db),
+                        ))
                         .or_default()
                         .push(*implementor);
                 }
