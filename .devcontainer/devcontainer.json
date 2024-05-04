@@ -1,0 +1,31 @@
+{
+	"name": "fe-lang-v2",
+	"image": "mcr.microsoft.com/devcontainers/rust:latest",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+	},
+	"extensions": [
+		"GitHub.vscode-github-actions",
+		"ms-vsliveshare.vsliveshare",
+		"vadimcn.vscode-lldb",
+		"matklad.rust-analyzer",
+		"serayuzgur.crates",
+		"tamasfe.even-better-toml",
+		"usernamehw.errorlens",
+		"aaron-bond.better-comments",
+		"yzhang.markdown-all-in-one"
+	],
+	"settings": {
+		"explorer.compactFolders": false,
+		"editor.rulers": [
+			80
+		],
+		"workbench.colorTheme": "Default Dark+",
+		"workbench.preferredDarkColorTheme": "Monokai",
+		"workbench.colorCustomizations": {
+			"editorRuler.foreground": "#5f5f62"
+		},
+		"workbench.activityBar.location": "top"
+	}
+}
