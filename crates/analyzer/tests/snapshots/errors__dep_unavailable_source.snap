@@ -1,0 +1,7 @@
+---
+source: crates/analyzer/tests/errors.rs
+assertion_line: 344
+expression: error_string_ingot(&path)
+---
+Unable to clone git dependency example_a.
+unexpected http status code: 404; class=Http (34)

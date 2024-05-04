@@ -39,6 +39,6 @@ Builtin functions:
 
 [NEWLINE]: ../lexical_structure/tokens.md#newline
 [IDENTIFIER]: ../lexical_structure/identifiers.md
-[_Function_]: ./functions.md
+[_Function_]: ../items/functions/index.md
 [_Type_]: ../type_system/types/index.md
 [struct type]: ../type_system/types/struct.md

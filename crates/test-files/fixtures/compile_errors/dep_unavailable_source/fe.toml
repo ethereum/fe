@@ -1,0 +1,5 @@
+name = "missing_dep"
+version = "26.0"
+
+[dependencies]
+example_a = { version = "1.0", source="https://github.com/unavailable", rev="62e530c6d2f0cb800e04c30a285b8ee08097291a" }

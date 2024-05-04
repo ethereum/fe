@@ -6,5 +6,5 @@ resolver = "2"
 opt-level = 3
 
 [profile.dev]
-# Speeds up the build. May need to diable for debugging.
+# Set to 0 to make the build faster and debugging more difficult.
 debug = 1

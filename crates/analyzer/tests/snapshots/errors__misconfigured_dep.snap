@@ -1,0 +1,11 @@
+---
+source: crates/analyzer/tests/errors.rs
+assertion_line: 342
+expression: error_string_ingot(&path)
+---
+Misconfigured dependency example_a:
+`rev` specified but no `source` given
+Misconfigured dependency example_b:
+`path` can not be used together with `rev` and `source`
+Misconfigured dependency example_c:
+`source` specified but no `rev` given

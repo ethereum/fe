@@ -1,5 +1,8 @@
-use fe_analyzer::namespace::items::{IngotId, ModuleId};
-use fe_common::{db::Upcast, files::Utf8Path};
+use fe_analyzer::{
+    namespace::items::{IngotId, ModuleId},
+    AnalyzerDb,
+};
+use fe_common::{db::Upcast, db::UpcastMut, files::Utf8Path};
 use fe_mir::{
     analysis::{ControlFlowGraph, DomTree, LoopTree, PostDomTree},
     db::{MirDb, NewDb},
@@ -33,6 +36,9 @@ fn mir_lower_std_lib() {
 
     // Should return the same id
     let std_ingot = IngotId::std_lib(&mut db);
+
+    let adb_mut: &mut dyn AnalyzerDb = db.upcast_mut();
+    adb_mut.set_root_ingot(std_ingot);
 
     let diags = std_ingot.diagnostics(&db);
     if !diags.is_empty() {

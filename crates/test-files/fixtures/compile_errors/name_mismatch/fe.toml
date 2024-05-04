@@ -1,0 +1,5 @@
+name = "version_mismatch"
+version = "1.0"
+
+[dependencies]
+my_libasdf = "../my_lib"

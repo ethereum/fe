@@ -1,11 +1,10 @@
 //! Tests for contracts that should cause compile errors
 
 use fe_analyzer::{
-    namespace::items::{IngotId, IngotMode, ModuleId},
+    namespace::items::{IngotId, ModuleId},
     TestDb,
 };
-use fe_common::{diagnostics::diagnostics_string, files::FileKind};
-use indexmap::indexmap;
+use fe_common::{diagnostics::diagnostics_string, utils::files::BuildFiles};
 use insta::assert_snapshot;
 use wasm_bindgen_test::wasm_bindgen_test;
 
@@ -22,15 +21,13 @@ fn error_string(path: &str, src: &str) -> String {
 
 fn error_string_ingot(path: &str) -> String {
     let mut db = TestDb::default();
-    let std = IngotId::std_lib(&mut db);
-    let ingot = IngotId::from_files(
-        &mut db,
-        "test_ingot",
-        IngotMode::Main,
-        FileKind::Local,
-        &test_files::fixture_dir_files(path),
-        indexmap! { "std".into() => std },
-    );
+
+    let fixture_files = test_files::fixture_dir_files("compile_errors");
+    let build_files = match BuildFiles::load_static(fixture_files, path) {
+        Ok(files) => files,
+        Err(err) => return err,
+    };
+    let ingot = IngotId::from_build_files(&mut db, &build_files);
 
     let diags = ingot.diagnostics(&db);
     if diags.is_empty() {
@@ -44,7 +41,7 @@ macro_rules! test_ingot {
         #[test]
         #[wasm_bindgen_test]
         fn $name() {
-            let path = concat!("compile_errors/", stringify!($name), "/src");
+            let path = concat!("compile_errors/", stringify!($name));
 
             if cfg!(target_arch = "wasm32") {
                 fe_common::assert_snapshot_wasm!(
@@ -104,6 +101,7 @@ test_stmt! { assert_reason_not_string, "assert true, 1" }
 test_stmt! { assign_int, "5 = 6" }
 test_stmt! { assign_call, "self.f() = 10" }
 test_stmt! { assign_type_mismatch, "let mut x: u256 = 10\nx = address(0)" }
+test_stmt! { aug_assign_non_numeric, "let mut a: u256 = 1\nlet b: bool = true\na += b" }
 test_stmt! { binary_op_add_sign_mismatch, "let a: u256 = 1\nlet b: i256 = 2\na + b" }
 test_stmt! { binary_op_lshift_bool, "let a: bool = true\nlet b: i256\na << b" }
 test_stmt! { binary_op_lshift_with_int, "let a: u256 = 1\nlet b: i256 = 2\na << b" }
@@ -341,6 +339,15 @@ test_file! { unsafe_nesting }
 test_ingot! { bad_ingot }
 test_ingot! { mainless_ingot }
 test_ingot! { bad_visibility }
+test_ingot! { missing_dep }
+test_ingot! { misconfigured_dep }
+// #[cfg(not(target_arch = "wasm32"))]
+// test_ingot! { dep_unavailable_rev }
+// #[cfg(not(target_arch = "wasm32"))]
+// test_ingot! { dep_unavailable_source }
+test_ingot! { name_mismatch }
+test_ingot! { version_mismatch }
+test_ingot! { main_dep }
 
 test_file! { ctx_not_first }
 test_file! { ctx_not_ctx_type }

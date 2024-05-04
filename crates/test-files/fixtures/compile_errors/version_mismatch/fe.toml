@@ -1,0 +1,5 @@
+name = "version_mismatch"
+version = "1.0"
+
+[dependencies]
+my_lib = { path = "../my_lib", version = "13.0" }

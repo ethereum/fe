@@ -8,6 +8,186 @@
 Fe is moving fast. Read up on all the latest improvements.
 
 [//]: # (towncrier release notes start)
+## 0.26.0 "Zircon" (2023-11-03)
+
+
+### Features
+
+
+- Give option to produce runtime bytecode as compilation artifact
+
+  Previously, the compiler could only produce the bytecode that is used
+  for the deployment of the contract. Now it can also produce the runtime
+  bytecode which is the bytecode that is saved to storage.
+
+  Being able to obtain the runtime bytecode is useful for contract
+  verification.
+
+  To obtain the runtime bytecode use the `runtime-bytecode` option
+  of the `--emit` flag (multiple options allowed).
+
+  Example Output:
+
+  - mycontract.bin (bytecode for deployment)
+  - mycontract.runtime.bin (runtime bytecode) ([#947](https://github.com/ethereum/fe/issues/947))
+
+- New `verify` command to verify onchain contracts against local source code.
+
+  People need to be able to verify that a deployed contract matches the source code
+  that the author claims was used to deploy it. Previously, there was no simple
+  way to achieve this.
+
+  These are the steps to verify a contract with the `verify` command:
+
+  1. Obtain the project's source code locally.
+  2. Ensure it is the same source code that was used to deploy the contract. (e.g. check out a specific tag)
+  2. From the project directory run `fe verify <contract-address> <json-rpc-url>`
+
+  Example:
+
+  ```bash
+  $ fe verify 0xf0adbb9ed4135d1509ad039505bada942d18755f https://example-eth-mainnet-rpc.com
+  It's a match!✨
+
+  Onchain contract:
+  Address: 0xf0adbb9ed4135d1509ad039505bada942d18755f
+  Bytecode: 0x60008..76b90
+
+  Local contract:
+  Contract name: SimpleDAO
+  Source file: /home/work/ef/simple_dao/fe_contracts/simpledao/src/main.fe
+  Bytecode: 0x60008..76b90
+
+  Hint: Run with --verbose to see the contract's source code.
+  ```
+  ([#948](https://github.com/ethereum/fe/issues/948))
+
+
+### Improved Documentation
+
+
+- Added a new page on EVM precompiles ([#944](https://github.com/ethereum/fe/issues/944))
+
+
+## 0.25.0 "Yoshiokaite" (2023-10-26)
+
+
+### Features
+
+
+- Use the project root as default path for `fe test`
+
+  Just run `fe test` from any directory of the project. ([#913](https://github.com/ethereum/fe/issues/913))
+- Completed `std::buf::MemoryBuffer` refactor. ([#917](https://github.com/ethereum/fe/issues/917))
+- Allow filtering tests to run via `fe test --filter <some-filter`
+
+  E.g. Running `fe test --filter foo` will run all tests that contain `foo` in their name. ([#919](https://github.com/ethereum/fe/issues/919))
+- Logs for successfully ran tests can be printed with the `--logs` parameter.
+
+  example: 
+
+  ```
+  // test_log.fe
+
+  use std::evm::log0
+  use std::buf::MemoryBuffer
+
+  struct MyEvent {
+    pub foo: u256
+    pub baz: bool
+    pub bar: u256
+  }
+
+  #test
+  fn test_log(mut ctx: Context) {
+    ctx.emit(MyEvent(foo: 42, baz: false, bar: 26))
+    unsafe { log0(buf: MemoryBuffer::new(len: 42)) }
+  }
+
+  ```
+
+  ```
+  $ fe test --logs test_log.fe
+  executing 1 test in test_log:
+    test_log ... passed
+
+  test_log produced the following logs:
+    MyEvent emitted by 0x0000…002a with the following parameters [foo: 2a, baz: false, bar: 1a]
+    Log { address: 0x000000000000000000000000000000000000002a, topics: [], data: b"\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x1a\0\0\0\0\0\0\0\0\0\0" }
+
+
+  1 test passed; 0 tests failed; 1 test executed
+  ```
+
+  Note: Logs are not collected for failing tests. ([#933](https://github.com/ethereum/fe/issues/933))
+- Adds 'functions' section to docs with information on `self` and `Context`. ([#937](https://github.com/ethereum/fe/issues/937))
+
+
+### Bugfixes
+
+
+- Yul codegen was failing to include string literals used in test assertions. This resulted in a compiler error.
+
+  Example:
+
+  ```
+  #test
+  fn foo() {
+      assert false, "oops"
+  }
+  ```
+
+  The example code above was failing to compile, but now it compiles and executes as expected. ([#926](https://github.com/ethereum/fe/issues/926))
+
+
+### Improved Documentation
+
+
+- Added a new tutorial: Open Auction ([#930](https://github.com/ethereum/fe/issues/930))
+
+
+## 0.24.0 "Xenotime" (2023-08-10)
+
+
+### Features
+
+
+- Added support for project manifests and project dependencies.
+
+  Example:
+
+  ```
+  my_project
+  ├── fe.toml
+  └── src
+      └── main.fe
+  ```
+
+  ```
+  # fe.toml
+  name = "my_project"
+  version = "1.0"
+
+  [dependencies]
+  my_lib = { path = "../path/to/my_lib", version = "1.0" }
+  my_other_lib = "../path/to/my_other_lib"
+  ```
+
+  Note: The current implementation supports circular dependencies. ([#908](https://github.com/ethereum/fe/issues/908))
+
+
+### Performance improvements
+
+
+- `MemoryBuffer` now allocates an extra 31 bytes. This removes the need for runtime checks and bitshifting needed to ensure safe writing to a `MemoryBuffer`'s region. ([#898](https://github.com/ethereum/fe/issues/898))
+
+
+### Improved Documentation
+
+
+- Link to vs-code extension in Quickstart Guide ([#910](https://github.com/ethereum/fe/issues/910))
+
+
 ## 0.23.0 "Wiluite" (2023-06-01)
 
 
@@ -1401,7 +1581,7 @@ This is the first non-alpha release of Fe. Read our [announcement](https://blog.
 
   **Implementation details:**
 
-  Mostly copied Rust's crate system, but use the the term *ingot* instead of crate.
+  Mostly copied Rust's crate system, but use the term *ingot* instead of crate.
 
   Below is an example of an ingot's file tree, as supported by the current implementation.
 

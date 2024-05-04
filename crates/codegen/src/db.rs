@@ -2,7 +2,11 @@
 use std::rc::Rc;
 
 use fe_abi::{contract::AbiContract, event::AbiEvent, function::AbiFunction, types::AbiType};
-use fe_analyzer::{db::AnalyzerDbStorage, namespace::items::ContractId, AnalyzerDb};
+use fe_analyzer::{
+    db::AnalyzerDbStorage,
+    namespace::items::{ContractId, ModuleId},
+    AnalyzerDb,
+};
 use fe_common::db::{SourceDb, SourceDbStorage, Upcast, UpcastMut};
 use fe_mir::{
     db::{MirDb, MirDbStorage},
@@ -31,6 +35,8 @@ pub trait CodegenDb: MirDb + Upcast<dyn MirDb> + UpcastMut<dyn MirDb> {
     fn codegen_abi_event(&self, ty: TypeId) -> AbiEvent;
     #[salsa::invoke(queries::abi::abi_contract)]
     fn codegen_abi_contract(&self, contract: ContractId) -> AbiContract;
+    #[salsa::invoke(queries::abi::abi_module_events)]
+    fn codegen_abi_module_events(&self, module: ModuleId) -> Vec<AbiEvent>;
     #[salsa::invoke(queries::abi::abi_type_maximum_size)]
     fn codegen_abi_type_maximum_size(&self, ty: TypeId) -> usize;
     #[salsa::invoke(queries::abi::abi_type_minimum_size)]
