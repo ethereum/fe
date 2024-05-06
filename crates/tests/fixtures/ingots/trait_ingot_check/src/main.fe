@@ -1,0 +1,18 @@
+use foo::{MyS, Trait}
+
+impl Trait for MyS {
+    fn x() -> u256 {
+        return 10
+    }
+}
+
+contract Foo {
+    pub fn main() -> u256 {
+        return MyS::x()
+    }
+}
+
+#test
+fn test_all() {
+    assert Foo::main() == 10
+}

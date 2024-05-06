@@ -28,27 +28,27 @@ enum Precompile {
 
     pub fn single_buf_call(self, mut buf: MemoryBuffer) {
         unsafe {
-            assert evm::static_call(
+            assert evm::static_call_2(
                 gas: evm::gas_remaining(), 
                 addr: self.addr(), 
                 input_offset: buf.offset(), 
                 input_len: buf.len(), 
                 output_offset: buf.offset(), 
                 output_len: buf.len()
-            ) == 1
+            )
         }
     }
 
-    pub fn call(self, input: MemoryBuffer, mut output: MemoryBuffer) {
+    pub fn call(self, input_buf: MemoryBuffer, mut output_buf: MemoryBuffer) {
         unsafe {
-            assert evm::static_call(
+            assert evm::static_call_2(
                 gas: evm::gas_remaining(), 
                 addr: self.addr(), 
-                input_offset: input.offset(), 
-                input_len: input.len(), 
-                output_offset: output.offset(), 
-                output_len: output.len()
-            ) == 1
+                input_offset: input_buf.offset(), 
+                input_len: input_buf.len(), 
+                output_offset: output_buf.offset(), 
+                output_len: output_buf.len()
+            )
         }
     }
 }
@@ -70,26 +70,26 @@ pub fn ec_recover(hash: u256, v: u256, r: u256, s: u256) -> address {
 }
 
 /// SHA2 256 precompile call.
-pub fn sha2_256(buf: MemoryBuffer) -> u256 {
-    let mut output: MemoryBuffer = MemoryBuffer::new(len: 32) 
-    let mut reader: MemoryBufferReader = output.reader()
-    Precompile::Sha2256.call(input: buf, output)
+pub fn sha2_256(buf input_buf: MemoryBuffer) -> u256 {
+    let mut output_buf: MemoryBuffer = MemoryBuffer::new(len: 32) 
+    let mut reader: MemoryBufferReader = output_buf.reader()
+    Precompile::Sha2256.call(input_buf, output_buf)
     return reader.read_u256()
 }
 
 /// Ripemd 160 precompile call.
-pub fn ripemd_160(buf: MemoryBuffer) -> u256 {
-    let mut output: MemoryBuffer = MemoryBuffer::new(len: 32) 
-    let mut reader: MemoryBufferReader = output.reader()
-    Precompile::Ripemd160.call(input: buf, output)
+pub fn ripemd_160(buf input_buf: MemoryBuffer) -> u256 {
+    let mut output_buf: MemoryBuffer = MemoryBuffer::new(len: 32) 
+    let mut reader: MemoryBufferReader = output_buf.reader()
+    Precompile::Ripemd160.call(input_buf, output_buf)
     return reader.read_u256()
 }
 
 /// Identity precompile call.
-pub fn identity(buf: MemoryBuffer) -> MemoryBuffer {
-    let mut output: MemoryBuffer = MemoryBuffer::new(len: buf.len()) 
-    Precompile::Identity.call(input: buf, output)
-    return output
+pub fn identity(buf input_buf: MemoryBuffer) -> MemoryBuffer {
+    let mut output_buf: MemoryBuffer = MemoryBuffer::new(len: input_buf.len()) 
+    Precompile::Identity.call(input_buf, output_buf)
+    return output_buf
 }
 
 /// Mod exp preocmpile call.
@@ -151,10 +151,10 @@ pub fn ec_mul(x: u256, y: u256, s: u256) -> (u256, u256) {
 }
 
 /// EC pairing precompile call.
-pub fn ec_pairing(buf: MemoryBuffer) -> bool {
-    let mut output: MemoryBuffer = MemoryBuffer::new(len: 32) 
-    let mut reader: MemoryBufferReader = output.reader()
-    Precompile::EcPairing.call(input: buf, output)
+pub fn ec_pairing(buf input_buf: MemoryBuffer) -> bool {
+    let mut output_buf: MemoryBuffer = MemoryBuffer::new(len: 32) 
+    let mut reader: MemoryBufferReader = output_buf.reader()
+    Precompile::EcPairing.call(input_buf, output_buf)
     return reader.read_u256() == 1
 }
 

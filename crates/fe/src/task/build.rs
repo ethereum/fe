@@ -6,12 +6,13 @@ use std::{
 
 use clap::{ArgEnum, Args};
 use fe_common::{
-    diagnostics::print_diagnostics, files::SourceFileId, utils::files::load_fe_files_from_dir,
+    diagnostics::print_diagnostics,
+    files::SourceFileId,
+    utils::files::{get_project_root, BuildFiles, ProjectMode},
 };
 use fe_driver::CompiledModule;
 
 const DEFAULT_OUTPUT_DIR_NAME: &str = "output";
-const DEFAULT_INGOT: &str = "main";
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Debug)]
 enum Emit {
@@ -19,6 +20,7 @@ enum Emit {
     Ast,
     LoweredAst,
     Bytecode,
+    RuntimeBytecode,
     Tokens,
     Yul,
 }
@@ -26,6 +28,7 @@ enum Emit {
 #[derive(Args)]
 #[clap(about = "Build the current project")]
 pub struct BuildArgs {
+    #[clap(default_value_t = get_project_root().unwrap_or(".".to_string()))]
     input_path: String,
     #[clap(short, long, default_value = DEFAULT_OUTPUT_DIR_NAME)]
     output_dir: String,
@@ -48,6 +51,7 @@ pub struct BuildArgs {
 fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
+    let with_runtime_bytecode = emit.contains(&Emit::RuntimeBytecode);
     let input_path = &compile_arg.input_path;
     let optimize = compile_arg.optimize.unwrap_or(true);
 
@@ -65,6 +69,7 @@ fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
         input_path,
         &content,
         with_bytecode,
+        with_runtime_bytecode,
         optimize,
     ) {
         Ok(module) => module,
@@ -80,6 +85,7 @@ fn build_single_file(compile_arg: &BuildArgs) -> (String, CompiledModule) {
 fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
     let emit = &compile_arg.emit;
     let with_bytecode = emit.contains(&Emit::Bytecode);
+    let with_runtime_bytecode = emit.contains(&Emit::RuntimeBytecode);
     let input_path = &compile_arg.input_path;
     let optimize = compile_arg.optimize.unwrap_or(true);
 
@@ -88,24 +94,26 @@ fn build_ingot(compile_arg: &BuildArgs) -> (String, CompiledModule) {
         std::process::exit(1)
     }
 
-    let files = match load_fe_files_from_dir(input_path) {
-        Ok(files) if files.is_empty() => {
-            eprintln!("Input directory is not an ingot: `{input_path}`");
-            std::process::exit(1)
-        }
+    let build_files = match BuildFiles::load_fs(input_path) {
         Ok(files) => files,
         Err(err) => {
-            eprintln!("Failed to load project files. Error: {err}");
+            eprintln!("Failed to load project files.\nError: {err}");
             std::process::exit(1)
         }
     };
 
+    if build_files.root_project_mode() == ProjectMode::Lib {
+        eprintln!("Unable to compile {input_path}. No build targets in library mode.");
+        eprintln!("Consider replacing `src/lib.fe` with `src/main.fe`.");
+        std::process::exit(1)
+    }
+
     let mut db = fe_driver::Db::default();
     let compiled_module = match fe_driver::compile_ingot(
         &mut db,
-        DEFAULT_INGOT, // TODO: real ingot name
-        &files,
+        &build_files,
         with_bytecode,
+        with_runtime_bytecode,
         optimize,
     ) {
         Ok(module) => module,
@@ -207,6 +215,14 @@ fn write_compiled_module(
         if targets.contains(&Emit::Bytecode) {
             let file_name = format!("{}.bin", &name);
             write_output(&contract_output_dir.join(file_name), &contract.bytecode)?;
+        }
+        #[cfg(feature = "solc-backend")]
+        if targets.contains(&Emit::RuntimeBytecode) {
+            let file_name = format!("{}.runtime.bin", &name);
+            write_output(
+                &contract_output_dir.join(file_name),
+                &contract.runtime_bytecode,
+            )?;
         }
     }
 

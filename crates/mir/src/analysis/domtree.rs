@@ -1,4 +1,4 @@
-//! This module contains dominantor tree related structs.
+//! This module contains dominator tree related structs.
 //!
 //! The algorithm is based on Keith D. Cooper., Timothy J. Harvey., and Ken
 //! Kennedy.: A Simple, Fast Dominance Algorithm: <https://www.cs.rice.edu/~keith/EMBED/dom.pdf>

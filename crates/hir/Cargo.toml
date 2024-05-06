@@ -1,6 +1,6 @@
 [package]
 name = "fe-hir"
-version = "0.23.0"
+version = "0.26.0"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -8,7 +8,7 @@ repository = "https://github.com/ethereum/fe"
 description = "Provides HIR definition and lowering for Fe lang"
 
 [dependencies]
-# We may need to fix this to a specific version, 
+# We may need to fix this to a specific version,
 # but I want to keep up with the latest version until the new Fe implemeentation is merged into the master.
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
 derive_more = "0.99"

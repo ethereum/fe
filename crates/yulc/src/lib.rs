@@ -3,16 +3,21 @@ use indexmap::map::IndexMap;
 #[derive(Debug)]
 pub struct YulcError(pub String);
 
+pub struct ContractBytecode {
+    pub bytecode: String,
+    pub runtime_bytecode: String,
+}
+
 /// Compile a map of Yul contracts to a map of bytecode contracts.
 ///
 /// Returns a `contract_name -> hex_encoded_bytecode` map.
 pub fn compile(
     contracts: impl Iterator<Item = (impl AsRef<str>, impl AsRef<str>)>,
     optimize: bool,
-) -> Result<IndexMap<String, String>, YulcError> {
+) -> Result<IndexMap<String, ContractBytecode>, YulcError> {
     contracts
         .map(|(name, yul_src)| {
-            compile_single_contract(name.as_ref(), yul_src.as_ref(), optimize)
+            compile_single_contract(name.as_ref(), yul_src.as_ref(), optimize, true)
                 .map(|bytecode| (name.as_ref().to_string(), bytecode))
         })
         .collect()
@@ -24,7 +29,8 @@ pub fn compile_single_contract(
     name: &str,
     yul_src: &str,
     optimize: bool,
-) -> Result<String, YulcError> {
+    verify_runtime_bytecode: bool,
+) -> Result<ContractBytecode, YulcError> {
     let solc_temp = include_str!("solc_temp.json");
     let input = solc_temp
         .replace("{optimizer_enabled}", &optimize.to_string())
@@ -37,11 +43,22 @@ pub fn compile_single_contract(
         .to_string()
         .replace('"', "");
 
+    let runtime_bytecode = output["contracts"]["input.yul"][name]["evm"]["deployedBytecode"]
+        ["object"]
+        .to_string()
+        .replace('"', "");
+
     if bytecode == "null" {
         return Err(YulcError(output.to_string()));
     }
+    if verify_runtime_bytecode && runtime_bytecode == "null" {
+        return Err(YulcError(output.to_string()));
+    }
 
-    Ok(bytecode)
+    Ok(ContractBytecode {
+        bytecode,
+        runtime_bytecode,
+    })
 }
 
 #[cfg(not(feature = "solc-backend"))]
@@ -50,7 +67,8 @@ pub fn compile_single_contract(
     _name: &str,
     _yul_src: &str,
     _optimize: bool,
-) -> Result<String, YulcError> {
+    _verify_runtime_bytecode: bool,
+) -> Result<ContractBytecode, YulcError> {
     // This is ugly, but required (as far as I can tell) to make
     // `cargo test --workspace` work without solc.
     panic!("fe-yulc requires 'solc-backend' feature")

@@ -1,0 +1,61 @@
+use std::buf::{
+    MemoryBuffer,
+    MemoryBufferReader,
+    MemoryBufferWriter,
+    Eq
+}
+#test
+unsafe fn test_buf_sto_u256() {
+    //create first buffer
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 32)
+    let mut writer:MemoryBufferWriter = buf.writer()
+    writer.write(value: 26)
+    let mut reader: MemoryBufferReader = buf.reader();
+
+    //store buffer in storage
+    buf.to_storage(offset: 0)
+ 
+    //read buffer from storage
+    let mut other_buf: MemoryBuffer = MemoryBuffer::from_storage(offset: 0)
+    let mut other_reader: MemoryBufferReader = other_buf.reader();
+
+    //compare buffer
+    assert other_reader.read_u256() == reader.read_u256()
+}
+
+#test
+unsafe fn test_buf_sto_u16() {
+    //create first buffer
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 2)
+    let mut writer:MemoryBufferWriter = buf.writer()
+    writer.write(value: u16(6657)) // 0001101000000001 = 26 inverted and swapped the first bit
+    let mut reader: MemoryBufferReader = buf.reader();
+
+    //store buffer in storage
+    buf.to_storage(offset: 0)
+
+    //read buffer from storage
+    let mut other_buf: MemoryBuffer = MemoryBuffer::from_storage(offset: 0)
+    let mut other_reader: MemoryBufferReader = other_buf.reader();
+
+    //compare buffer
+    assert other_reader.read_u16() == reader.read_u16()
+}
+
+#test
+unsafe fn test_buf_sto_len33() {
+    //create first buffer
+    let mut buf: MemoryBuffer = MemoryBuffer::new(len: 33)
+    let mut writer:MemoryBufferWriter = buf.writer()
+    writer.write(value: 2147475455) 
+    writer.write(value: u8(1))
+
+    //store buffer in storage
+    buf.to_storage(offset: 0)
+
+    //read buffer from storage
+    let mut other_buf: MemoryBuffer = MemoryBuffer::from_storage(offset: 0)
+
+    //compare buffer
+   assert other_buf.compare(buf)
+}

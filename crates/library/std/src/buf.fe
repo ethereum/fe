@@ -58,13 +58,61 @@ pub struct MemoryBuffer {
         return buf
     }
 
+    pub unsafe fn from_storage(offset: u256)  -> Self {
+        let mut offs: u256 = offset
+        let mut len: u256 = evm::sload(offset);
+        let mut buf: MemoryBuffer = MemoryBuffer::new(len)
+        let mut writer: MemoryBufferWriter = buf.writer();
+
+        while true {
+            offs = offs + 1
+            if len >= 32 {
+                writer.write(value: evm::sload(offset: offs))
+                len = len - 32
+            } else {
+                let mut value: u256 = evm::sload(offset: offs)
+                while len > 0 {
+                    writer.write(value: u8(evm::shr(bits: 8 * (len - 1), value)))
+                    len = len - 1
+                }
+                break
+            }
+        }
+
+        return buf
+    }
+
+
+    pub unsafe fn to_storage(self, offset: u256) {
+        let mut offs: u256 = offset
+        let mut reader: MemoryBufferReader = self.reader();
+        evm::sstore(offset: offs, value: self.len())
+        let mut agg: u256 = 0
+        let mut bytes_remaining: u256 = reader.remainder()
+        while true {
+            offs = offs + 1
+            if bytes_remaining >= 32 {
+                evm::sstore(offset: offs, value: reader.read_u256())
+                bytes_remaining = bytes_remaining - 32
+            } else {
+                while bytes_remaining > 0 {
+                    agg = evm::shl(bits: 8, value: agg)
+                    agg = agg + u256(reader.read_u8())
+                    bytes_remaining = bytes_remaining - 1
+                }
+                evm::sstore(offset: offs, value: agg)
+                break
+            }
+        }
+    }
+
     /// Length of the buffer in bytes.
     pub fn len(self) -> u256 {
         return self.len
     }
 
     /// The start of the buffer in EVM memory.
-    pub fn offset(self) -> u256 {
+    pub unsafe fn offset(self) -> u256 {
         return self.offset
     }
 
@@ -77,6 +125,7 @@ pub struct MemoryBuffer {
     pub fn writer(mut self) -> MemoryBufferWriter {
         return MemoryBufferWriter::new(buf: self)
     }
+
 }
 
 /// Memory buffer writer abstraction.
@@ -97,14 +146,16 @@ pub struct MemoryBufferWriter {
         return self.cur.remainder()
     }
 
-    pub fn write_offset(mut self, len: u256) -> u256 {
+    pub unsafe fn write_offset(mut self, len: u256) -> u256 {
         return self.buf.offset() + self.cur.advance(len)
     }
 
     pub fn write_n(mut self, value: u256, len: u256) {
-        let offset: u256 = self.write_offset(len)
         let shifted_value: u256 = evm::shl(bits: 256 - len * 8, value)
-        unsafe { evm::mstore(offset, value: shifted_value) }
+        unsafe { 
+            let offset: u256 = self.write_offset(len)
+            evm::mstore(offset, value: shifted_value) 
+        }
     }
 
     pub fn write_buf(mut self, buf: MemoryBuffer) {
@@ -134,8 +185,10 @@ pub trait MemoryBufferWrite {
 
 impl MemoryBufferWrite for u256 {
     fn write_buf(self, mut writer: MemoryBufferWriter) {
-        let offset: u256 = writer.write_offset(len: 32)
-        unsafe { evm::mstore(offset, value: self) }
+        unsafe { 
+            let offset: u256 = writer.write_offset(len: 32)
+            evm::mstore(offset, value: self) 
+        }
     }
 }
 
@@ -165,8 +218,10 @@ impl MemoryBufferWrite for u16 {
 
 impl MemoryBufferWrite for u8 {
     fn write_buf(self, mut writer: MemoryBufferWriter) {
-        let offset: u256 = writer.write_offset(len: 1)
-        unsafe { evm::mstore8(offset, value: self) }
+        unsafe { 
+            let offset: u256 = writer.write_offset(len: 1)
+            evm::mstore8(offset, value: self) 
+        }
     }
 }
 
@@ -190,13 +245,13 @@ pub struct MemoryBufferReader {
         return self.cur.remainder()
     }
 
-    fn read_offset(mut self, len: u256) -> u256 {
+    unsafe fn read_offset(mut self, len: u256) -> u256 {
         return self.buf.offset() + self.cur.advance(len)
     }
 
     fn read_n(mut self, len: u256) -> u256 {
-        let offset: u256 = self.read_offset(len)
         unsafe {
+            let offset: u256 = self.read_offset(len)
             let value: u256 = evm::mload(offset)
             return evm::shr(bits: 256 - len * 8, value)
         }
@@ -223,8 +278,8 @@ pub struct MemoryBufferReader {
     }
 
     pub fn read_u256(mut self) -> u256 {
-        let offset: u256 = self.read_offset(len: 32)
         unsafe {
+            let offset: u256 = self.read_offset(len: 32)
             let value: u256 = evm::mload(offset)
             return value
         }
@@ -285,7 +340,7 @@ pub struct RawCallBuffer {
         return self.output_len
     }
 
-    pub fn offset(self) -> u256 {
+    pub unsafe fn offset(self) -> u256 {
         return self.buf.offset()
     }
 
@@ -296,4 +351,39 @@ pub struct RawCallBuffer {
     pub fn writer(mut self) -> MemoryBufferWriter {
         return self.buf.writer()
     }
+}
+
+pub trait Eq {
+    fn compare(self, mut buf: MemoryBuffer) -> bool;
+}
+
+impl Eq for MemoryBuffer {
+   fn compare(self, mut buf: MemoryBuffer) -> bool {
+        if(self.len() != buf.len()){
+            return false
+        }
+        let mut reader: MemoryBufferReader = self.reader()
+        let mut reader2: MemoryBufferReader = buf.reader()
+        let mut bytes_remaining: u256 = reader.remainder()
+        while true {
+            if bytes_remaining >= 32 {
+            bytes_remaining = bytes_remaining - 32
+            if(reader.read_u256() != reader2.read_u256()){
+                 return false
+                }
+            } else if bytes_remaining == 0 {
+                return true
+            } else {
+            bytes_remaining = bytes_remaining - 1
+            if(reader.read_u8() != reader2.read_u8()){
+                 return false
+                }
+            }
+        }
+        return true
+   }
+}
+
+impl Eq for () { // missing impl in mir_lower_std_lib error
+      fn compare(self, mut buf: MemoryBuffer) -> bool  {return false}
 }

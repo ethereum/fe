@@ -14,9 +14,9 @@ error: the struct `OutOfReachMarker` is private
  6 │   fn emit(self, _ val: OutOfReachMarker) {
    │                        ^^^^^^^^^^^^^^^^ this struct is not `pub`
    │
-   ┌─ src/context.fe:13:8
+   ┌─ src/context.fe:14:8
    │
-13 │ struct OutOfReachMarker {}
+14 │ struct OutOfReachMarker {}
    │        ---------------- `OutOfReachMarker` is defined here
    │
    = `OutOfReachMarker` can only be used within `context`

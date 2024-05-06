@@ -346,6 +346,7 @@ pub fn deploy_contract(
         fixture,
         test_files::fixture(fixture),
         true,
+        false,
         true,
     ) {
         Ok(module) => module,
@@ -376,9 +377,12 @@ pub fn deploy_contract_from_ingot(
     contract_name: &str,
     init_params: &[ethabi::Token],
 ) -> ContractHarness {
-    let files = test_files::fixture_dir_files(path);
+    use fe_common::utils::files::BuildFiles;
+
+    let files = test_files::fixture_dir_files("ingots");
+    let build_files = BuildFiles::load_static(files, path).expect("failed to load build files");
     let mut db = driver::Db::default();
-    let compiled_module = match driver::compile_ingot(&mut db, "test", &files, true, true) {
+    let compiled_module = match driver::compile_ingot(&mut db, &build_files, true, false, true) {
         Ok(module) => module,
         Err(error) => {
             fe_common::diagnostics::print_diagnostics(&db, &error.0);
@@ -589,12 +593,18 @@ pub fn compile_solidity_contract(
 #[allow(dead_code)]
 pub fn load_contract(address: H160, fixture: &str, contract_name: &str) -> ContractHarness {
     let mut db = driver::Db::default();
-    let compiled_module =
-        driver::compile_single_file(&mut db, fixture, test_files::fixture(fixture), true, true)
-            .unwrap_or_else(|err| {
-                print_diagnostics(&db, &err.0);
-                panic!("failed to compile fixture: {fixture}");
-            });
+    let compiled_module = driver::compile_single_file(
+        &mut db,
+        fixture,
+        test_files::fixture(fixture),
+        true,
+        false,
+        true,
+    )
+    .unwrap_or_else(|err| {
+        print_diagnostics(&db, &err.0);
+        panic!("failed to compile fixture: {fixture}");
+    });
     let compiled_contract = compiled_module
         .contracts
         .get(contract_name)
@@ -714,9 +724,9 @@ impl ExecutionOutput {
 #[cfg(feature = "solc-backend")]
 fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (ExitReason, Vec<u8>) {
     let yul_code = runtime.to_yul().to_string().replace('"', "\\\"");
-    let bytecode = fe_yulc::compile_single_contract("Contract", &yul_code, false)
+    let contract_bytecode = fe_yulc::compile_single_contract("Contract", &yul_code, false, false)
         .expect("failed to compile Yul");
-    let bytecode = hex::decode(bytecode).expect("failed to decode bytecode");
+    let bytecode = hex::decode(contract_bytecode.bytecode).expect("failed to decode bytecode");
 
     if let evm::Capture::Exit((reason, _, output)) = executor.create(
         address(DEFAULT_CALLER),

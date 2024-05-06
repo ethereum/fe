@@ -1,6 +1,6 @@
 [package]
 name = "fe-language-server"
-version = "0.23.0"
+version = "0.26.0"
 edition = "2021"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 license = "Apache-2.0"
@@ -17,7 +17,7 @@ macros = { path = "../macros", package = "fe-macros" }
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
 camino = "1.1.4"
 clap = { version = "4.3", features = ["derive"] }
-fe-analyzer = {path = "../analyzer", version = "^0.23.0"}
+fe-analyzer = {path = "../analyzer", version = "^0.26.0"}
 driver = { path = "../driver2", package = "fe-driver2" }
 common = { path = "../common2", package = "fe-common2" }
 anyhow = "1.0.71"

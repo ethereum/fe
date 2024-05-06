@@ -1,0 +1,7 @@
+name = "missing_dep"
+version = "26.0"
+
+[dependencies]
+example_a = { version = "1.0", rev="62e530c6d2f0cb800e04c30a285b8ee08097291a" }
+example_b = { version = "1.0", path="./example_b", source="https://github.com/cburgdorf/ingot_example_b", rev="62e530c6d2f0cb800e04c30a285b8ee08097291a" }
+example_c = { version = "1.0", source="https://github.com/cburgdorf/ingot_example_c" }

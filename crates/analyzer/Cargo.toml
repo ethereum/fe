@@ -1,6 +1,6 @@
 [package]
 name = "fe-analyzer"
-version = "0.23.0"
+version = "0.26.0"
 authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
 license = "Apache-2.0"
@@ -8,9 +8,9 @@ repository = "https://github.com/ethereum/fe"
 
 [dependencies]
 
-fe-common = {path = "../common", version = "^0.23.0"}
-fe-parser = {path = "../parser", version = "^0.23.0"}
-fe-library = {path = "../library", version = "^0.23.0"}
+fe-common = {path = "../common", version = "^0.26.0"}
+fe-parser = {path = "../parser", version = "^0.26.0"}
+fe-library = {path = "../library", version = "^0.26.0"}
 hex = "0.4"
 num-bigint = "0.4.3"
 num-traits = "0.2.14"
@@ -28,6 +28,7 @@ smol_str = "0.1.21"
 insta = { default-features = false, version = "1.26.0" }
 rstest = "0.6.4"
 test-files = {path = "../test-files", package = "fe-test-files" }
+tests = {path = "../tests", package = "fe-compiler-tests" }
 fe-library = {path = "../library"}
 wasm-bindgen-test = "0.3"
 pretty_assertions = "1.0.0"
