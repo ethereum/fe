@@ -16,8 +16,7 @@ use hir::{
 use itertools::Itertools;
 
 use super::{
-    constraint::PredicateId,
-    trait_def::TraitDef,
+    trait_def::{TraitDef, TraitInstId},
     ty_check::{RecordLike, TraitOps},
     ty_def::{Kind, TyData, TyId, TyVarSort},
 };
@@ -1705,31 +1704,14 @@ impl TraitConstraintDiag {
     pub(super) fn trait_bound_not_satisfied(
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
-        pred: PredicateId,
+        pred: TraitInstId,
     ) -> Self {
-        let ty = pred.ty(db);
-        let goal = pred.trait_inst(db);
         let msg = format!(
             "`{}` doesn't implement `{}`",
-            ty.pretty_print(db),
-            goal.pretty_print(db)
+            pred.self_ty(db).pretty_print(db),
+            pred.pretty_print(db, false)
         );
         Self::TraitBoundNotSat(span, msg)
-    }
-
-    pub(super) fn infinite_bound_recursion(
-        db: &dyn HirAnalysisDb,
-        span: DynLazySpan,
-        pred: PredicateId,
-    ) -> Self {
-        let goal = pred.trait_inst(db);
-        let ty = pred.ty(db);
-        let msg = format!(
-            "infinite evaluation recursion occurs when checking `{}: {}` ",
-            ty.pretty_print(db),
-            goal.pretty_print(db)
-        );
-        Self::InfiniteBoundRecursion(span, msg)
     }
 
     pub(super) fn const_ty_bound(db: &dyn HirAnalysisDb, ty: TyId, span: DynLazySpan) -> Self {
@@ -2041,13 +2023,13 @@ impl ImplDiag {
     pub(super) fn method_stricter_bound(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
-        stricter_bounds: &[PredicateId],
+        stricter_bounds: &[TraitInstId],
     ) -> Self {
         let message = format!(
             "method has stricter bounds than the declared method in the trait: {}",
             stricter_bounds
                 .iter()
-                .map(|pred| format!("`{}`", pred.pretty_print(db)))
+                .map(|pred| format!("`{}`", pred.pretty_print(db, true)))
                 .join(", ")
         );
         Self::MethodStricterBound { primary, message }

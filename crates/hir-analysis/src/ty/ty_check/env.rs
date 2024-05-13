@@ -11,9 +11,10 @@ use super::{Callable, TypedBody};
 use crate::{
     ty::{
         const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
-        constraint::{collect_func_def_constraints, AssumptionListId},
+        constraint::collect_func_def_constraints,
         fold::{TyFoldable, TyFolder},
         func_def::{lower_func, FuncDef},
+        trait_resolution::PredicateListId,
         ty_def::{InvalidCause, TyData, TyId, TyVarSort},
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
@@ -113,10 +114,10 @@ impl<'db> TyCheckEnv<'db> {
         lower_func(self.db, func)
     }
 
-    pub(super) fn assumptions(&self) -> AssumptionListId {
+    pub(super) fn assumptions(&self) -> PredicateListId {
         match self.func() {
             Some(func) => collect_func_def_constraints(self.db, func, true).instantiate_identity(),
-            None => AssumptionListId::empty_list(self.db),
+            None => PredicateListId::empty_list(self.db),
         }
     }
 

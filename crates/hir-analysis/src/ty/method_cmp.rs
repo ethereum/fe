@@ -1,10 +1,10 @@
 use super::{
     canonical::Canonical,
     constraint::collect_func_def_constraints,
-    constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{ImplDiag, TyDiagCollection},
     func_def::FuncDef,
     trait_def::{TraitInstId, TraitMethod},
+    trait_resolution::{is_goal_satisfiable, GoalSatisfiability},
     ty_def::TyId,
 };
 use crate::HirAnalysisDb;
@@ -251,20 +251,21 @@ fn compare_constraints(
     let trait_m_constraints =
         collect_func_def_constraints(db, trait_m, false).instantiate(db, map_to_impl);
     let mut unsatisfied_goals = vec![];
-    for &goal in impl_m_constraints.predicates(db) {
+    for &goal in impl_m_constraints.list(db) {
         let goal = Canonical::new(db, goal);
-        if !matches!(
-            is_goal_satisfiable(db, trait_m_constraints, goal),
-            GoalSatisfiability::Satisfied
-        ) {
-            unsatisfied_goals.push(goal.value);
+        match is_goal_satisfiable(db, trait_m_constraints, goal) {
+            GoalSatisfiability::Satisfied(_) | GoalSatisfiability::ContainsInvalid => {}
+            GoalSatisfiability::NeedsConfirmation(_) => unreachable!(),
+            GoalSatisfiability::UnSat => {
+                unsatisfied_goals.push(goal.value);
+            }
         }
     }
 
     if unsatisfied_goals.is_empty() {
         true
     } else {
-        unsatisfied_goals.sort_by_key(|goal| goal.ty(db).pretty_print(db));
+        unsatisfied_goals.sort_by_key(|goal| goal.self_ty(db).pretty_print(db));
         sink.push(
             ImplDiag::method_stricter_bound(db, impl_m.name_span(db), &unsatisfied_goals).into(),
         );

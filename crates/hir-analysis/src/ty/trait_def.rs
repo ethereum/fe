@@ -11,11 +11,12 @@ use rustc_hash::FxHashMap;
 use super::{
     binder::Binder,
     canonical::Canonical,
-    constraint::{collect_super_traits, AssumptionListId, ConstraintListId},
-    constraint_solver::{check_trait_inst_wf, GoalSatisfiability},
+    constraint::collect_super_traits,
+    constraint_solver::check_trait_inst_wf,
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     func_def::FuncDef,
     trait_lower::collect_implementor_methods,
+    trait_resolution::PredicateListId,
     ty_def::{Kind, TyId},
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
@@ -161,16 +162,6 @@ impl TraitEnv {
         }
     }
 
-    /// Returns all implementors of the given instantiated trait.
-    pub(crate) fn impls_of_trait<'db>(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-        ingot: IngotId,
-        trait_: Canonical<TraitInstId>,
-    ) -> &'db [Binder<Implementor>] {
-        impls_of_trait(db, ingot, trait_)
-    }
-
     /// Returns the corresponding implementor of the given `impl Trait` type.
     pub(crate) fn map_impl_trait(&self, trait_ref: ImplTrait) -> Option<Binder<Implementor>> {
         self.hir_to_implementor.get(&trait_ref).copied()
@@ -209,7 +200,7 @@ impl Implementor {
 
     /// Returns the constraints that the implementor requires when the
     /// implementation is selected.
-    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
+    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> PredicateListId {
         collect_implementor_constraints(db, self).instantiate(db, self.params(db))
     }
 
@@ -241,24 +232,30 @@ pub struct TraitInstId {
 }
 
 impl TraitInstId {
-    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
-        let mut s = self.def(db).name(db).unwrap_or("<unknown>").to_string();
+    pub fn pretty_print(self, db: &dyn HirAnalysisDb, as_pred: bool) -> String {
+        if as_pred {
+            let inst = self.pretty_print(db, false);
+            let self_ty = self.self_ty(db);
+            format! {"{}: {}", self_ty.pretty_print(db), inst}
+        } else {
+            let mut s = self.def(db).name(db).unwrap_or("<unknown>").to_string();
 
-        let mut args = self.args(db).iter().map(|ty| ty.pretty_print(db));
-        // Skip the first type parameter since it's the implementor type.
-        args.next();
+            let mut args = self.args(db).iter().map(|ty| ty.pretty_print(db));
+            // Skip the first type parameter since it's the implementor type.
+            args.next();
 
-        if let Some(first) = args.next() {
-            s.push('<');
-            s.push_str(first);
-            for arg in args {
-                s.push_str(", ");
-                s.push_str(arg);
+            if let Some(first) = args.next() {
+                s.push('<');
+                s.push_str(first);
+                for arg in args {
+                    s.push_str(", ");
+                    s.push_str(arg);
+                }
+                s.push('>');
             }
-            s.push('>');
-        }
 
-        s
+            s
+        }
     }
 
     pub fn self_ty(self, db: &dyn HirAnalysisDb) -> TyId {
@@ -272,19 +269,12 @@ impl TraitInstId {
     pub(super) fn emit_sat_diag(
         self,
         db: &dyn HirAnalysisDb,
-        assumptions: AssumptionListId,
+        assumptions: PredicateListId,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        match check_trait_inst_wf(db, self, assumptions) {
-            GoalSatisfiability::Satisfied => None,
-            GoalSatisfiability::NotSatisfied(goal) => {
-                Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into())
-            }
-
-            GoalSatisfiability::InfiniteRecursion(goal) => {
-                Some(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into())
-            }
-        }
+        check_trait_inst_wf(db, self, assumptions).map(|unsat_goal| {
+            TraitConstraintDiag::trait_bound_not_satisfied(db, span, unsat_goal).into()
+        })
     }
 }
 

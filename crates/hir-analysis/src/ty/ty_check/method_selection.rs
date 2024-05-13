@@ -9,12 +9,12 @@ use crate::{
     name_resolution::{available_traits_in_scope, diagnostics::NameResDiag, is_scope_visible_from},
     ty::{
         canonical::{Canonical, Solution},
-        constraint::AssumptionListId,
         diagnostics::{BodyDiag, FuncBodyDiag},
         func_def::FuncDef,
         method_table::probe_method,
         trait_def::{impls_of_ty, Implementor, TraitDef, TraitInstId, TraitMethod},
         trait_lower::lower_trait,
+        trait_resolution::PredicateListId,
         ty_def::TyId,
         unify::UnificationTable,
     },
@@ -35,8 +35,11 @@ pub(super) struct TraitMethodCand {
 }
 
 impl TraitMethodCand {
-    fn new(inst: TraitInstId, method: TraitMethod, implementor: Option<Implementor>) -> Self {
-        let inst = Solution::new(inst);
+    fn new(
+        inst: Solution<TraitInstId>,
+        method: TraitMethod,
+        implementor: Option<Implementor>,
+    ) -> Self {
         Self {
             inst,
             method,
@@ -50,7 +53,7 @@ pub(super) fn select_method_candidate(
     receiver: (Canonical<TyId>, DynLazySpan),
     method_name: (IdentId, DynLazySpan),
     scope: ScopeId,
-    assumptions: AssumptionListId,
+    assumptions: PredicateListId,
 ) -> Result<Candidate, FuncBodyDiag> {
     if receiver.0.value.is_ty_var(db) {
         return Err(BodyDiag::TypeMustBeKnown(method_name.1).into());
@@ -82,13 +85,7 @@ pub(super) fn select_method_candidate(
         Err(MethodSelectionError::AmbiguousTraitMethod(cands)) => {
             let cands = cands
                 .into_iter()
-                .map(|cand| {
-                    format!(
-                        "`{}`: `{}`",
-                        cand.self_ty(db).pretty_print(db),
-                        cand.pretty_print(db)
-                    )
-                })
+                .map(|cand| format!("`{}`", cand.pretty_print(db, true)))
                 .collect();
 
             let diag = BodyDiag::AmbiguousTraitMethodCall {
@@ -128,7 +125,7 @@ fn assemble_method_candidates(
     receiver_ty: Canonical<TyId>,
     method_name: IdentId,
     scope: ScopeId,
-    assumptions: AssumptionListId,
+    assumptions: PredicateListId,
 ) -> Vec<Candidate> {
     CandidateAssembler {
         db,
@@ -150,7 +147,7 @@ struct CandidateAssembler<'db> {
     /// The scope that candidates are being assembled in.
     scope: ScopeId,
     /// The assumptions for the type bound in the current scope.
-    assumptions: AssumptionListId,
+    assumptions: PredicateListId,
     candidates: Vec<Candidate>,
 }
 
@@ -180,8 +177,11 @@ impl<'db> CandidateAssembler<'db> {
                 .methods(self.db)
                 .get(&self.method_name)
             {
+                let solution = self
+                    .receiver_ty
+                    .make_solution(self.db, implementor.trait_(self.db));
                 let cand = TraitMethodCand::new(
-                    implementor.trait_(self.db),
+                    solution,
                     *trait_method,
                     implementor.into(),
                 );
@@ -195,22 +195,20 @@ impl<'db> CandidateAssembler<'db> {
 
         let mut insert_trait_method_cand = |inst: TraitInstId| {
             if let Some(trait_method) = inst.def(self.db).methods(self.db).get(&self.method_name) {
-                let cand = TraitMethodCand::new(inst, *trait_method, None);
+                let solution = self.receiver_ty.make_solution(self.db, inst);
+                let cand = TraitMethodCand::new(solution, *trait_method, None);
                 self.candidates.push(cand.into());
             }
         };
-        for &pred in self.assumptions.predicates(self.db) {
+        for &pred in self.assumptions.list(self.db) {
             let snapshot = table.snapshot();
-            let pred_ty = pred.ty(self.db);
-            let pred_ty = table.instantiate_to_term(pred_ty);
+            let self_ty = pred.self_ty(self.db);
+            let self_ty = table.instantiate_to_term(self_ty);
 
-            if table.unify(receiver_ty, pred_ty).is_ok() {
-                let trait_inst = pred.trait_inst(self.db);
-                insert_trait_method_cand(trait_inst);
-                for super_trait in trait_inst.def(self.db).super_traits(self.db) {
-                    insert_trait_method_cand(
-                        super_trait.instantiate(self.db, trait_inst.args(self.db)),
-                    )
+            if table.unify(receiver_ty, self_ty).is_ok() {
+                insert_trait_method_cand(pred);
+                for super_trait in pred.def(self.db).super_traits(self.db) {
+                    insert_trait_method_cand(super_trait.instantiate(self.db, pred.args(self.db)))
                 }
             }
 
@@ -223,7 +221,7 @@ struct MethodSelector<'db> {
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId,
     candidates: &'db [Candidate],
-    assumptions: AssumptionListId,
+    assumptions: PredicateListId,
 }
 
 impl<'db> MethodSelector<'db> {
@@ -328,8 +326,8 @@ impl<'db> MethodSelector<'db> {
             insert_trait(trait_def);
         }
 
-        for pred in self.assumptions.predicates(self.db) {
-            let trait_def = pred.trait_inst(self.db).def(self.db);
+        for pred in self.assumptions.list(self.db) {
+            let trait_def = pred.def(self.db);
             insert_trait(trait_def)
         }
 

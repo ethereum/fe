@@ -3,11 +3,11 @@ use std::collections::BTreeSet;
 use super::{
     adt_def::AdtDef,
     const_ty::{ConstTyData, ConstTyId},
-    constraint::{PredicateId, PredicateListId},
     func_def::FuncDef,
     trait_def::{Implementor, TraitInstId},
+    trait_resolution::PredicateListId,
     ty_check::ExprProp,
-    ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyId, TyParam, TyVar},
+    ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyFlags, TyId, TyParam, TyVar},
 };
 use crate::HirAnalysisDb;
 
@@ -171,22 +171,12 @@ impl<'db> TyVisitable<'db> for Implementor {
     }
 }
 
-impl<'db> TyVisitable<'db> for PredicateId {
-    fn visit_with<V>(&self, visitor: &mut V)
-    where
-        V: TyVisitor<'db>,
-    {
-        self.ty(visitor.db()).visit_with(visitor);
-        self.trait_inst(visitor.db()).visit_with(visitor);
-    }
-}
-
 impl<'db> TyVisitable<'db> for PredicateListId {
     fn visit_with<V>(&self, visitor: &mut V)
     where
         V: TyVisitor<'db>,
     {
-        self.predicates(visitor.db()).visit_with(visitor)
+        self.list(visitor.db()).visit_with(visitor)
     }
 }
 
@@ -197,4 +187,29 @@ impl<'db> TyVisitable<'db> for ExprProp {
     {
         self.ty.visit_with(visitor)
     }
+}
+
+pub fn collect_flags<'db, V: TyVisitable<'db>>(db: &'db dyn HirAnalysisDb, v: V) -> TyFlags {
+    struct Collector<'db> {
+        db: &'db dyn HirAnalysisDb,
+        flags: TyFlags,
+    }
+    impl<'db> TyVisitor<'db> for Collector<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_ty(&mut self, ty: TyId) {
+            let ty_flags = ty.flags(self.db);
+            self.flags = self.flags.union(ty_flags);
+        }
+    }
+
+    let mut collector = Collector {
+        db,
+        flags: TyFlags::empty(),
+    };
+    v.visit_with(&mut collector);
+
+    collector.flags
 }

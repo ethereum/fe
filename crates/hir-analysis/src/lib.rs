@@ -65,11 +65,11 @@ pub struct Jar(
     ty::constraint::collect_func_def_constraints,
     ty::constraint::collect_func_def_constraints_impl,
     ty::constraint::ty_constraints,
-    ty::constraint::PredicateId,
-    ty::constraint::PredicateListId,
-    ty::constraint_solver::is_goal_satisfiable,
     ty::constraint_solver::check_ty_wf,
     ty::constraint_solver::check_trait_inst_wf,
+    // Trait Resolution,
+    ty::trait_resolution::PredicateListId,
+    ty::trait_resolution::is_goal_satisfiable,
     // Type checking.
     ty::ty_check::check_func_body,
     // Diagnostic accumulators.

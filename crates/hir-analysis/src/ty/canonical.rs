@@ -4,9 +4,9 @@ use super::{
     const_ty::{ConstTyData, ConstTyId},
     fold::{TyFoldable, TyFolder},
     ty_def::{TyData, TyId, TyVar},
-    unify::{InferenceKey, UnificationTable},
+    unify::{InferenceKey, UnificationStore, UnificationTableBase},
 };
-use crate::{ty::visitor::TyVisitor, HirAnalysisDb};
+use crate::{ty::ty_def::collect_variables, HirAnalysisDb};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Canonical<T> {
@@ -26,34 +26,35 @@ where
     /// Extract canonical query to the current environment.
     /// # Panics
     /// Panics if the table is not empty.
-    pub(super) fn extract_identity(self, table: &mut UnificationTable) -> T {
+    pub(super) fn extract_identity<S>(self, table: &mut UnificationTableBase<S>) -> T
+    where
+        S: UnificationStore,
+    {
         assert!(table.is_empty());
-        struct TyVarCollector<'db> {
-            db: &'db dyn HirAnalysisDb,
-            vars: Vec<TyVar>,
-        }
 
-        impl<'db> TyVisitor<'db> for TyVarCollector<'db> {
-            fn db(&self) -> &'db dyn HirAnalysisDb {
-                self.db
-            }
-
-            fn visit_var(&mut self, var: &TyVar) {
-                self.vars.push(var.clone());
-            }
-        }
-        let mut collector = TyVarCollector {
-            db: table.db(),
-            vars: vec![],
-        };
-        self.value.visit_with(&mut collector);
-        collector.vars.sort_unstable_by_key(|var| var.key);
-
-        for var in collector.vars {
+        for var in collect_variables(table.db(), &self.value).iter() {
             table.new_var(var.sort, &var.kind);
         }
 
         self.value
+    }
+
+    pub(super) fn make_solution<U>(&self, db: &dyn HirAnalysisDb, solution: U) -> Solution<U>
+    where
+        U: for<'db> TyFoldable<'db>,
+    {
+        let canonical_vars = collect_variables(db, &self.value).into_iter().map(|var| {
+            let ty = TyId::ty_var(db, var.sort, var.kind, var.key);
+            (ty, ty)
+        });
+        let mut canonicalizer = Canonicalizer {
+            db,
+            subst: canonical_vars.collect(),
+        };
+
+        Solution {
+            value: solution.fold_with(&mut canonicalizer),
+        }
     }
 }
 
@@ -83,9 +84,14 @@ where
     }
 
     /// Extract solution to the current environment.
-    pub fn extract_solution<U>(&self, table: &mut UnificationTable, solution: Solution<U>) -> U
+    pub fn extract_solution<U, S>(
+        &self,
+        table: &mut UnificationTableBase<S>,
+        solution: Solution<U>,
+    ) -> U
     where
         U: for<'db> TyFoldable<'db>,
+        S: UnificationStore,
     {
         let map = self.subst.clone();
         let mut extractor = SolutionExtractor::new(table, map);
@@ -94,15 +100,9 @@ where
 }
 
 /// A solution for the [`Canonical`] query.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Solution<T> {
     pub(super) value: T,
-}
-
-impl<T> Solution<T> {
-    pub(super) fn new(value: T) -> Self {
-        Self { value }
-    }
 }
 
 struct Canonicalizer<'db> {
@@ -167,20 +167,29 @@ impl<'db> TyFolder<'db> for Canonicalizer<'db> {
     }
 }
 
-struct SolutionExtractor<'a, 'db> {
-    table: &'a mut UnificationTable<'db>,
+struct SolutionExtractor<'a, 'db, S>
+where
+    S: UnificationStore,
+{
+    table: &'a mut UnificationTableBase<'db, S>,
     /// A subst from canonical type variables to the variables in the current
     /// env.
     subst: FxHashMap<TyId, TyId>,
 }
 
-impl<'a, 'db> SolutionExtractor<'a, 'db> {
-    fn new(table: &'a mut UnificationTable<'db>, subst: FxHashMap<TyId, TyId>) -> Self {
+impl<'a, 'db, S> SolutionExtractor<'a, 'db, S>
+where
+    S: UnificationStore,
+{
+    fn new(table: &'a mut UnificationTableBase<'db, S>, subst: FxHashMap<TyId, TyId>) -> Self {
         SolutionExtractor { table, subst }
     }
 }
 
-impl<'a, 'db> TyFolder<'db> for SolutionExtractor<'a, 'db> {
+impl<'a, 'db, S> TyFolder<'db> for SolutionExtractor<'a, 'db, S>
+where
+    S: UnificationStore,
+{
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.table.db()
     }

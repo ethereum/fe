@@ -25,6 +25,7 @@ pub mod func_def;
 pub mod method_table;
 pub mod trait_def;
 pub mod trait_lower;
+pub mod trait_resolution;
 pub mod ty_check;
 pub mod ty_def;
 pub mod ty_lower;

@@ -1,8 +1,8 @@
 use std::collections::BTreeSet;
 
 use super::{
-    constraint::{PredicateId, PredicateListId},
     trait_def::{Implementor, TraitInstId},
+    trait_resolution::PredicateListId,
     ty_check::ExprProp,
     ty_def::{TyData, TyId},
     visitor::TyVisitable,
@@ -144,24 +144,13 @@ impl<'db> TyFoldable<'db> for Implementor {
     }
 }
 
-impl<'db> TyFoldable<'db> for PredicateId {
-    fn super_fold_with<F>(self, folder: &mut F) -> Self
-    where
-        F: TyFolder<'db>,
-    {
-        let ty = self.ty(folder.db()).fold_with(folder);
-        let trait_inst = self.trait_inst(folder.db()).fold_with(folder);
-        Self::new(folder.db(), ty, trait_inst)
-    }
-}
-
 impl<'db> TyFoldable<'db> for PredicateListId {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
     {
         let predicates = self
-            .predicates(folder.db())
+            .list(folder.db())
             .iter()
             .map(|pred| pred.fold_with(folder))
             .collect();

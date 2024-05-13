@@ -21,14 +21,6 @@ pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<Infere
 pub(crate) type PersistentUnificationTable<'db> =
     UnificationTableBase<'db, ena::unify::Persistent<InferenceKey>>;
 
-pub(crate) struct UnificationTableBase<'db, U>
-where
-    U: ena::unify::UnificationStoreBase,
-{
-    db: &'db dyn HirAnalysisDb,
-    table: ena::unify::UnificationTable<U>,
-}
-
 pub type Snapshot<U> = ena::unify::Snapshot<U>;
 pub type UnificationResult = Result<(), UnificationError>;
 
@@ -53,6 +45,15 @@ impl<U> UnificationStore for U where
         + ena::unify::UnificationStore
         + ena::unify::UnificationStoreMut
 {
+}
+
+#[derive(Clone)]
+pub(crate) struct UnificationTableBase<'db, U>
+where
+    U: ena::unify::UnificationStoreBase,
+{
+    db: &'db dyn HirAnalysisDb,
+    table: ena::unify::UnificationTable<U>,
 }
 
 impl<'db, U> UnificationTableBase<'db, U>
@@ -280,7 +281,7 @@ where
     /// 2. Universe check: The sort of the type variable must match the sort of
     ///    the type.
     fn unify_var_value(&mut self, var: &TyVar, value: TyId) -> UnificationResult {
-        if inference_keys(self.db, value).contains(&var.key) {
+        if inference_keys(self.db, &value).contains(&var.key) {
             return Err(UnificationError::OccursCheckFailed);
         }
 

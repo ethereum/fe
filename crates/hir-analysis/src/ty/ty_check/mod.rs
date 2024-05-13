@@ -19,10 +19,10 @@ pub(super) use path::RecordLike;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
-    constraint::AssumptionListId,
     diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
     fold::TyFoldable,
     trait_def::{TraitInstId, TraitMethod},
+    trait_resolution::PredicateListId,
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
     unify::{InferenceKey, UnificationError, UnificationTable},
@@ -268,7 +268,7 @@ impl TraitMethod {
 struct TyCheckerFinalizer<'db> {
     db: &'db dyn HirAnalysisDb,
     body: TypedBody,
-    assumptions: AssumptionListId,
+    assumptions: PredicateListId,
     ty_vars: FxHashSet<InferenceKey>,
     diags: Vec<FuncBodyDiag>,
 }
@@ -356,7 +356,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
 
         let mut skip_diag = false;
-        for key in inference_keys(self.db, ty) {
+        for key in inference_keys(self.db, &ty) {
             // If at least one of the inference keys are already seen, we will skip emitting
             // diagnostics.
             skip_diag |= !self.ty_vars.insert(key);
