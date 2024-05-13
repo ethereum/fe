@@ -782,6 +782,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dogged"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2638df109789fe360f0d9998c5438dd19a36678aaf845e46f285b688b1a1657a"
+
+[[package]]
 name = "dot2"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -853,6 +859,7 @@ version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c533630cf40e9caa44bd91aadc88a75d75a4c3a12b4cfde353cbed41daa1e1f1"
 dependencies = [
+ "dogged",
  "log",
 ]
 
@@ -1260,6 +1267,7 @@ version = "0.26.0"
 dependencies = [
  "bitflags 2.5.0",
  "codespan-reporting",
+ "cranelift-entity",
  "derive_more",
  "dir-test 0.2.1",
  "either",

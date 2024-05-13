@@ -80,7 +80,7 @@ pub(crate) fn lower_impl_trait(
     let param_owner = GenericParamOwnerId::new(db, impl_trait.into());
     let params = collect_generic_params(db, param_owner).params(db).to_vec();
 
-    let implementor = Implementor::new(db, trait_, ty, params, impl_trait);
+    let implementor = Implementor::new(db, trait_, params, impl_trait);
 
     Some(Binder::bind(implementor))
 }

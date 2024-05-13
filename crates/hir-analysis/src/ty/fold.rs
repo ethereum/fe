@@ -133,7 +133,6 @@ impl<'db> TyFoldable<'db> for Implementor {
     {
         let db = folder.db();
         let trait_inst = self.trait_(db).fold_with(folder);
-        let ty = self.ty(db).fold_with(folder);
         let params = self
             .params(db)
             .iter()
@@ -141,7 +140,7 @@ impl<'db> TyFoldable<'db> for Implementor {
             .collect();
         let hir_impl_trait = self.hir_impl_trait(db);
 
-        Implementor::new(db, trait_inst, ty, params, hir_impl_trait)
+        Implementor::new(db, trait_inst, params, hir_impl_trait)
     }
 }
 

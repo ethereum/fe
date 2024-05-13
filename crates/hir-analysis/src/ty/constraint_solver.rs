@@ -11,7 +11,7 @@ use super::{
     fold::TyFoldable,
     trait_def::{ingot_trait_env, TraitEnv, TraitInstId},
     ty_def::TyId,
-    unify::UnificationTable,
+    unify::UnificationTableBase,
 };
 use crate::{
     ty::{constraint::ty_constraints, ty_def::inference_keys},
@@ -131,7 +131,7 @@ impl<'db> ConstraintSolver<'db> {
     /// The main entry point of the constraint solver, which performs actual
     /// solving.
     fn solve(self) -> GoalSatisfiability {
-        let mut table = UnificationTable::new(self.db);
+        let mut table = UnificationTableBase::new(self.db);
         let goal = self.goal.extract_identity(&mut table);
         let goal_ty = goal.ty(self.db);
         let goal_trait = goal.trait_inst(self.db);
@@ -164,7 +164,7 @@ impl<'db> ConstraintSolver<'db> {
 
                 // If the `impl` can matches the goal by unifying the goal type, then we can
                 // obtain a subgoals which is specified by the `impl`.
-                let res = if table.unify(gen_impl.ty(self.db), goal_ty).is_ok()
+                let res = if table.unify(gen_impl.self_ty(self.db), goal_ty).is_ok()
                     && table.unify(gen_impl.trait_(self.db), goal_trait).is_ok()
                 {
                     let constraints = gen_impl.fold_with(&mut table).constraints(self.db);

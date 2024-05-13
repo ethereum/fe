@@ -2,7 +2,7 @@
 //! satisfiability checking.
 
 use either::Either;
-use ena::unify::{InPlace, InPlaceUnificationTable, UnifyKey, UnifyValue};
+use ena::unify::{InPlace, UnifyKey, UnifyValue};
 use num_bigint::BigUint;
 
 use super::{
@@ -16,12 +16,20 @@ use crate::{
     HirAnalysisDb,
 };
 
-pub(crate) struct UnificationTable<'db> {
+pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<InferenceKey>>;
+
+pub(crate) type PersistentUnificationTable<'db> =
+    UnificationTableBase<'db, ena::unify::Persistent<InferenceKey>>;
+
+pub(crate) struct UnificationTableBase<'db, U>
+where
+    U: ena::unify::UnificationStoreBase,
+{
     db: &'db dyn HirAnalysisDb,
-    table: InPlaceUnificationTable<InferenceKey>,
+    table: ena::unify::UnificationTable<U>,
 }
 
-pub type Snapshot = ena::unify::Snapshot<InPlace<InferenceKey>>;
+pub type Snapshot<U> = ena::unify::Snapshot<U>;
 pub type UnificationResult = Result<(), UnificationError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,11 +38,31 @@ pub enum UnificationError {
     TypeMismatch,
 }
 
-impl<'db> UnificationTable<'db> {
+pub(crate) trait UnificationStore:
+    Default
+    + ena::unify::UnificationStoreBase<Key = InferenceKey, Value = InferenceValue>
+    + ena::unify::UnificationStore
+    + ena::unify::UnificationStoreMut
+{
+}
+
+impl<U> UnificationStore for U where
+    U: Default
+        + ena::unify::UnificationStoreBase<Key = InferenceKey, Value = InferenceValue>
+        + ena::unify::UnificationStoreBase
+        + ena::unify::UnificationStore
+        + ena::unify::UnificationStoreMut
+{
+}
+
+impl<'db, U> UnificationTableBase<'db, U>
+where
+    U: UnificationStore,
+{
     pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
         Self {
             db,
-            table: InPlaceUnificationTable::new(),
+            table: ena::unify::UnificationTable::new(),
         }
     }
 
@@ -47,11 +75,11 @@ impl<'db> UnificationTable<'db> {
         self.len() == 0
     }
 
-    pub fn rollback_to(&mut self, snapshot: Snapshot) {
+    pub fn rollback_to(&mut self, snapshot: Snapshot<U>) {
         self.table.rollback_to(snapshot);
     }
 
-    pub fn snapshot(&mut self) -> Snapshot {
+    pub fn snapshot(&mut self) -> Snapshot<U> {
         self.table.snapshot()
     }
 
@@ -328,7 +356,10 @@ impl<'db> UnificationTable<'db> {
     }
 }
 
-impl<'db> TyFolder<'db> for UnificationTable<'db> {
+impl<'db, U> TyFolder<'db> for UnificationTableBase<'db, U>
+where
+    U: UnificationStore,
+{
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.db
     }
@@ -414,17 +445,29 @@ impl UnifyValue for InferenceValue {
 }
 
 pub(crate) trait Unifiable {
-    fn unify(self, table: &mut UnificationTable, other: Self) -> UnificationResult;
+    fn unify<U: UnificationStore>(
+        self,
+        table: &mut UnificationTableBase<U>,
+        other: Self,
+    ) -> UnificationResult;
 }
 
 impl Unifiable for TyId {
-    fn unify(self, table: &mut UnificationTable, other: Self) -> UnificationResult {
+    fn unify<U: UnificationStore>(
+        self,
+        table: &mut UnificationTableBase<U>,
+        other: Self,
+    ) -> UnificationResult {
         table.unify_ty(self, other)
     }
 }
 
 impl Unifiable for TraitInstId {
-    fn unify(self, table: &mut UnificationTable, other: Self) -> UnificationResult {
+    fn unify<U: UnificationStore>(
+        self,
+        table: &mut UnificationTableBase<U>,
+        other: Self,
+    ) -> UnificationResult {
         let db = table.db;
         if self.def(db) != other.def(db) {
             return Err(UnificationError::TypeMismatch);
@@ -439,9 +482,12 @@ impl Unifiable for TraitInstId {
 }
 
 impl Unifiable for Implementor {
-    fn unify(self, table: &mut UnificationTable, other: Self) -> UnificationResult {
+    fn unify<U: UnificationStore>(
+        self,
+        table: &mut UnificationTableBase<U>,
+        other: Self,
+    ) -> UnificationResult {
         let db = table.db;
-        table.unify(self.trait_(db), other.trait_(db))?;
-        table.unify(self.ty(db), other.ty(db))
+        table.unify(self.trait_(db), other.trait_(db))
     }
 }

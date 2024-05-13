@@ -92,7 +92,7 @@ pub(crate) fn impls_of_ty(
             let snapshot = table.snapshot();
 
             let impl_ = table.instantiate_with_fresh_vars(*impl_);
-            let impl_ty = table.instantiate_to_term(impl_.ty(db));
+            let impl_ty = table.instantiate_to_term(impl_.self_ty(db));
             let ty = table.instantiate_to_term(ty);
             let is_ok = table.unify(impl_ty, ty).is_ok();
 
@@ -145,7 +145,7 @@ impl TraitEnv {
                 for implementor in implementors {
                     ty_to_implementors
                         .entry(Binder::bind(
-                            implementor.instantiate_identity().ty(db).base_ty(db),
+                            implementor.instantiate_identity().self_ty(db).base_ty(db),
                         ))
                         .or_default()
                         .push(*implementor);
@@ -184,9 +184,6 @@ pub(crate) struct Implementor {
     /// The trait that this implementor implements.
     pub(crate) trait_: TraitInstId,
 
-    /// The type that this implementor implements the trait for.
-    pub(crate) ty: TyId,
-
     /// The type parameters of this implementor.
     #[return_ref]
     pub(crate) params: Vec<TyId>,
@@ -203,6 +200,11 @@ impl Implementor {
 
     pub(crate) fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
         self.params(db)
+    }
+
+    /// The self type of the impl trait.
+    pub(crate) fn self_ty(self, db: &dyn HirAnalysisDb) -> TyId {
+        self.trait_(db).self_ty(db)
     }
 
     /// Returns the constraints that the implementor requires when the

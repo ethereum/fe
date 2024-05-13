@@ -247,7 +247,7 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def: implementor.into(),
-            self_ty: implementor.ty(db).into(),
+            self_ty: implementor.self_ty(db).into(),
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -1136,7 +1136,7 @@ fn analyze_impl_trait_specific_error(
                 db,
                 impl_trait.lazy_span().ty().into(),
                 expected_kind,
-                implementor.instantiate_identity().ty(db),
+                implementor.instantiate_identity().self_ty(db),
             )
             .into(),
         );
@@ -1153,10 +1153,14 @@ fn analyze_impl_trait_specific_error(
         match is_goal_satisfiable(db, assumptions, goal) {
             GoalSatisfiability::Satisfied => {}
             GoalSatisfiability::NotSatisfied(_) => {
-                diags.push(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal.value).into());
+                diags.push(
+                    TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal.value).into(),
+                );
             }
             GoalSatisfiability::InfiniteRecursion(_) => {
-                diags.push(TraitConstraintDiag::infinite_bound_recursion(db, span, goal.value).into());
+                diags.push(
+                    TraitConstraintDiag::infinite_bound_recursion(db, span, goal.value).into(),
+                );
             }
         }
     };
@@ -1171,7 +1175,7 @@ fn analyze_impl_trait_specific_error(
     let target_ty_span: DynLazySpan = impl_trait.lazy_span().ty().into();
     for &super_trait in trait_def.super_traits(db) {
         let super_trait = super_trait.instantiate(db, trait_inst.args(db));
-        let goal = PredicateId::new(db, implementor.skip_binder().ty(db), super_trait);
+        let goal = PredicateId::new(db, implementor.skip_binder().self_ty(db), super_trait);
         is_satisfied(goal, target_ty_span.clone())
     }
 

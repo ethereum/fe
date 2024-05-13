@@ -167,7 +167,6 @@ impl<'db> TyVisitable<'db> for Implementor {
         V: TyVisitor<'db>,
     {
         let db = visitor.db();
-        self.ty(db).visit_with(visitor);
         self.params(db).visit_with(visitor);
     }
 }
