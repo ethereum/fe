@@ -39,7 +39,7 @@ pub(crate) fn impls_of_trait(
     trait_: Canonical<TraitInstId>,
 ) -> Vec<Binder<Implementor>> {
     let mut table = UnificationTable::new(db);
-    let trait_ = trait_.decanonicalize(&mut table);
+    let trait_ = trait_.extract_identity(&mut table);
 
     let env = ingot_trait_env(db, ingot);
     let Some(impls) = env.impls.get(&trait_.def(db)) else {
@@ -66,7 +66,7 @@ pub(crate) fn impls_of_ty(
     ty: Canonical<TyId>,
 ) -> Vec<Binder<Implementor>> {
     let mut table = UnificationTable::new(db);
-    let ty = ty.decanonicalize(&mut table);
+    let ty = ty.extract_identity(&mut table);
 
     let env = ingot_trait_env(db, ingot);
     if ty.has_invalid(db) {

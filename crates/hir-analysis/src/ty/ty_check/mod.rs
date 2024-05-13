@@ -19,7 +19,6 @@ pub(super) use path::RecordLike;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
-    canonical::Canonical,
     constraint::AssumptionListId,
     diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
     fold::TyFoldable,
@@ -251,10 +250,9 @@ impl TraitMethod {
         self,
         tc: &mut TyChecker,
         receiver_ty: TyId,
-        inst: Canonical<TraitInstId>,
+        inst: TraitInstId,
     ) -> TyId {
         let mut ty = TyId::func(tc.db, self.0);
-        let inst = inst.decanonicalize(&mut tc.table);
 
         for &arg in inst.args(tc.db) {
             ty = TyId::app(tc.db, ty, arg);

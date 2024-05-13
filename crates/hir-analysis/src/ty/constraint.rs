@@ -10,6 +10,7 @@ use salsa::function::Configuration;
 
 use super::{
     adt_def::AdtDef,
+    canonical::Canonical,
     constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     func_def::FuncDef,
     trait_def::{Implementor, TraitDef, TraitInstId},
@@ -21,7 +22,6 @@ use crate::{
     ty::{
         adt_def::{lower_adt, AdtRefId},
         binder::Binder,
-        canonical::Canonical,
         func_def::HirFuncDefKind,
         trait_lower::{lower_impl_trait, lower_trait},
         ty_def::TyVarSort,
@@ -200,19 +200,15 @@ pub(crate) fn collect_func_def_constraints_impl(
 /// Describes a predicate indicating `ty` implements `trait_`.
 #[salsa::interned]
 pub struct PredicateId {
-    pub(super) ty: Canonical<TyId>,
-    pub(super) trait_inst: Canonical<TraitInstId>,
+    pub(super) ty: TyId,
+    pub(super) trait_inst: TraitInstId,
 }
 
 impl PredicateId {
     pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
         let ty = self.ty(db);
         let trait_ = self.trait_inst(db);
-        format!(
-            "{}: {}",
-            ty.value.pretty_print(db),
-            trait_.value.pretty_print(db)
-        )
+        format!("{}: {}", ty.pretty_print(db), trait_.pretty_print(db))
     }
 }
 
@@ -380,22 +376,18 @@ impl<'db> ConstraintCollector<'db> {
     fn can_remove(&mut self, predicates: PredicateListId, goal: PredicateId) -> bool {
         let goal_ty = goal.ty(self.db);
 
-        if !goal_ty.value.has_param(self.db) {
+        if !goal_ty.has_param(self.db) {
             return true;
         }
 
-        match is_goal_satisfiable(self.db, goal, predicates) {
+        match is_goal_satisfiable(self.db, predicates, Canonical::new(self.db, goal)) {
             GoalSatisfiability::Satisfied | GoalSatisfiability::InfiniteRecursion(_) => true,
             GoalSatisfiability::NotSatisfied(_) => false,
         }
     }
 
     fn push_predicate(&mut self, ty: TyId, trait_inst: TraitInstId) {
-        let pred = PredicateId::new(
-            self.db,
-            Canonical::canonicalize(self.db, ty),
-            Canonical::canonicalize(self.db, trait_inst),
-        );
+        let pred = PredicateId::new(self.db, ty, trait_inst);
         self.predicates.insert(pred);
     }
 

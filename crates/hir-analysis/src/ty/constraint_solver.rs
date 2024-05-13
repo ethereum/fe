@@ -45,7 +45,8 @@ pub(crate) fn check_ty_wf(
     let constraints = ty_constraints(db, ty);
 
     for &goal in constraints.predicates(db) {
-        match is_goal_satisfiable(db, goal, assumptions) {
+        let goal = Canonical::new(db, goal);
+        match is_goal_satisfiable(db, assumptions, goal) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }
@@ -66,7 +67,8 @@ pub(crate) fn check_trait_inst_wf(
         collect_trait_constraints(db, trait_inst.def(db)).instantiate(db, trait_inst.args(db));
 
     for &goal in constraints.predicates(db) {
-        match is_goal_satisfiable(db, goal, assumptions) {
+        let goal = Canonical::new(db, goal);
+        match is_goal_satisfiable(db, assumptions, goal) {
             GoalSatisfiability::Satisfied => {}
             err => return err,
         }
@@ -80,8 +82,8 @@ pub(crate) fn check_trait_inst_wf(
 #[salsa::tracked(recovery_fn= recover_is_goal_satisfiable)]
 pub(crate) fn is_goal_satisfiable(
     db: &dyn HirAnalysisDb,
-    goal: Goal,
     assumptions: AssumptionListId,
+    goal: Canonical<Goal>,
 ) -> GoalSatisfiability {
     ConstraintSolver::new(db, goal, assumptions).solve()
 }
@@ -89,10 +91,10 @@ pub(crate) fn is_goal_satisfiable(
 fn recover_is_goal_satisfiable(
     _db: &dyn HirAnalysisDb,
     _cycle: &salsa::Cycle,
-    goal: Goal,
     _assumptions: AssumptionListId,
+    goal: Canonical<Goal>,
 ) -> GoalSatisfiability {
-    GoalSatisfiability::InfiniteRecursion(goal)
+    GoalSatisfiability::InfiniteRecursion(goal.value)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -105,12 +107,16 @@ pub(crate) enum GoalSatisfiability {
 struct ConstraintSolver<'db> {
     db: &'db dyn HirAnalysisDb,
     env: &'db TraitEnv,
-    goal: Goal,
+    goal: Canonical<Goal>,
     assumptions: AssumptionListId,
 }
 
 impl<'db> ConstraintSolver<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, goal: Goal, assumptions: AssumptionListId) -> Self {
+    fn new(
+        db: &'db dyn HirAnalysisDb,
+        goal: Canonical<Goal>,
+        assumptions: AssumptionListId,
+    ) -> Self {
         let ingot = assumptions.ingot(db);
         let env = ingot_trait_env(db, ingot);
 
@@ -126,8 +132,9 @@ impl<'db> ConstraintSolver<'db> {
     /// solving.
     fn solve(self) -> GoalSatisfiability {
         let mut table = UnificationTable::new(self.db);
-        let goal_ty = self.goal.ty(self.db).decanonicalize(&mut table);
-        let goal_trait = self.goal.trait_inst(self.db).decanonicalize(&mut table);
+        let goal = self.goal.extract_identity(&mut table);
+        let goal_ty = goal.ty(self.db);
+        let goal_trait = goal.trait_inst(self.db);
 
         // If the goal type is already invalid, we don't need to do anything.
         if goal_ty.has_invalid(self.db) {
@@ -135,8 +142,8 @@ impl<'db> ConstraintSolver<'db> {
         }
 
         let derived_assumptions = self.derived_assumptions();
-        if self.assumptions.predicates(self.db).contains(&self.goal)
-            || derived_assumptions.contains(&self.goal)
+        if self.assumptions.predicates(self.db).contains(&goal)
+            || derived_assumptions.contains(&goal)
         {
             return GoalSatisfiability::Satisfied;
         }
@@ -148,7 +155,7 @@ impl<'db> ConstraintSolver<'db> {
             .impls_of_trait(
                 self.db,
                 self.assumptions.ingot(self.db),
-                self.goal.trait_inst(self.db),
+                Canonical::new(self.db, goal.trait_inst(self.db)),
             )
             .iter()
             .find_map(|impl_| {
@@ -171,18 +178,19 @@ impl<'db> ConstraintSolver<'db> {
                 res
             })
         else {
-            return GoalSatisfiability::NotSatisfied(self.goal);
+            return GoalSatisfiability::NotSatisfied(goal);
         };
 
         // Checks if the all sub goals are satisfied.
         for &sub_goal in sub_goals.predicates(self.db) {
-            match is_goal_satisfiable(self.db, sub_goal, self.assumptions) {
+            let sub_goal = Canonical::new(self.db, sub_goal);
+            match is_goal_satisfiable(self.db, self.assumptions, sub_goal) {
                 GoalSatisfiability::Satisfied => {}
                 GoalSatisfiability::NotSatisfied(_) => {
-                    return GoalSatisfiability::NotSatisfied(self.goal);
+                    return GoalSatisfiability::NotSatisfied(goal);
                 }
                 GoalSatisfiability::InfiniteRecursion(_) => {
-                    return GoalSatisfiability::InfiniteRecursion(self.goal)
+                    return GoalSatisfiability::InfiniteRecursion(goal)
                 }
             }
         }
@@ -197,10 +205,9 @@ impl<'db> ConstraintSolver<'db> {
             let trait_ = pred.trait_inst(self.db);
             let ty = pred.ty(self.db);
 
-            for &super_trait in trait_.value.def(self.db).super_traits(self.db).iter() {
-                let super_trait = super_trait.instantiate(self.db, trait_.value.args(self.db));
-                let super_pred =
-                    PredicateId::new(self.db, ty, Canonical::canonicalize(self.db, super_trait));
+            for &super_trait in trait_.def(self.db).super_traits(self.db).iter() {
+                let super_trait = super_trait.instantiate(self.db, trait_.args(self.db));
+                let super_pred = PredicateId::new(self.db, ty, super_trait);
                 assumptions.insert(super_pred);
             }
         }

@@ -8,7 +8,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     name_resolution::{available_traits_in_scope, diagnostics::NameResDiag, is_scope_visible_from},
     ty::{
-        canonical::Canonical,
+        canonical::{Canonical, Solution},
         constraint::AssumptionListId,
         diagnostics::{BodyDiag, FuncBodyDiag},
         func_def::FuncDef,
@@ -29,19 +29,14 @@ pub(super) enum Candidate {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) struct TraitMethodCand {
-    pub(super) inst: Canonical<TraitInstId>,
+    pub(super) inst: Solution<TraitInstId>,
     pub(super) method: TraitMethod,
     implementor: Option<Implementor>,
 }
 
 impl TraitMethodCand {
-    fn new(
-        db: &dyn HirAnalysisDb,
-        inst: TraitInstId,
-        method: TraitMethod,
-        implementor: Option<Implementor>,
-    ) -> Self {
-        let inst = Canonical::canonicalize(db, inst);
+    fn new(inst: TraitInstId, method: TraitMethod, implementor: Option<Implementor>) -> Self {
+        let inst = Solution::new(inst);
         Self {
             inst,
             method,
@@ -186,7 +181,6 @@ impl<'db> CandidateAssembler<'db> {
                 .get(&self.method_name)
             {
                 let cand = TraitMethodCand::new(
-                    self.db,
                     implementor.trait_(self.db),
                     *trait_method,
                     implementor.into(),
@@ -197,21 +191,21 @@ impl<'db> CandidateAssembler<'db> {
         }
 
         let mut table = UnificationTable::new(self.db);
-        let receiver_ty = self.receiver_ty.decanonicalize(&mut table);
+        let receiver_ty = self.receiver_ty.extract_identity(&mut table);
 
         let mut insert_trait_method_cand = |inst: TraitInstId| {
             if let Some(trait_method) = inst.def(self.db).methods(self.db).get(&self.method_name) {
-                let cand = TraitMethodCand::new(self.db, inst, *trait_method, None);
+                let cand = TraitMethodCand::new(inst, *trait_method, None);
                 self.candidates.push(cand.into());
             }
         };
         for &pred in self.assumptions.predicates(self.db) {
             let snapshot = table.snapshot();
-            let pred_ty = pred.ty(self.db).decanonicalize(&mut table);
+            let pred_ty = pred.ty(self.db);
             let pred_ty = table.instantiate_to_term(pred_ty);
 
             if table.unify(receiver_ty, pred_ty).is_ok() {
-                let trait_inst = pred.trait_inst(self.db).decanonicalize(&mut table);
+                let trait_inst = pred.trait_inst(self.db);
                 insert_trait_method_cand(trait_inst);
                 for super_trait in trait_inst.def(self.db).super_traits(self.db) {
                     insert_trait_method_cand(
@@ -242,7 +236,6 @@ impl<'db> MethodSelector<'db> {
                 _ => None,
             })
             .collect();
-
         let visible_inherent_cands: Vec<_> = inherent_cands
             .iter()
             .copied()
@@ -250,7 +243,13 @@ impl<'db> MethodSelector<'db> {
             .collect();
 
         match visible_inherent_cands.len() {
-            0 => {}
+            0 => {
+                if !inherent_cands.is_empty() {
+                    return Err(MethodSelectionError::InvisibleInherentMethod(
+                        inherent_cands[0],
+                    ));
+                }
+            }
             1 => {
                 return Ok(Candidate::InherentMethod(visible_inherent_cands[0]));
             }
@@ -262,14 +261,7 @@ impl<'db> MethodSelector<'db> {
             }
         };
 
-        if !inherent_cands.is_empty() {
-            return Err(MethodSelectionError::InvisibleInherentMethod(
-                inherent_cands[0],
-            ));
-        }
-
         let available_traits = self.available_traits();
-
         let trait_cands: Vec<_> = self
             .candidates
             .iter()
@@ -279,19 +271,18 @@ impl<'db> MethodSelector<'db> {
                 _ => None,
             })
             .collect();
-
-        let available_trait_cands: Vec<_> = trait_cands
+        let visible_trait_cands: Vec<_> = trait_cands
             .iter()
             .copied()
             .filter(|cand| available_traits.contains(&cand.inst.value.def(self.db)))
             .collect();
 
-        match available_trait_cands.len() {
+        match visible_trait_cands.len() {
             0 => {}
-            1 => return Ok(Candidate::TraitMethod(available_trait_cands[0])),
+            1 => return Ok(Candidate::TraitMethod(visible_trait_cands[0])),
             _ => {
                 return Err(MethodSelectionError::AmbiguousTraitMethod(
-                    available_trait_cands
+                    visible_trait_cands
                         .into_iter()
                         .map(|cand| {
                             if let Some(implementor) = cand.implementor {
@@ -305,16 +296,16 @@ impl<'db> MethodSelector<'db> {
             }
         }
 
-        // Suggests trait imports.
         if !trait_cands.is_empty() {
+            // Suggests trait imports.
             let traits = trait_cands
                 .into_iter()
                 .map(|cand| cand.inst.value.def(self.db).trait_(self.db))
                 .collect();
-            return Err(MethodSelectionError::InvisibleTraitMethod(traits));
+            Err(MethodSelectionError::InvisibleTraitMethod(traits))
+        } else {
+            Err(MethodSelectionError::NotFound)
         }
-
-        Err(MethodSelectionError::NotFound)
     }
 
     fn is_inherent_method_visible(&self, def: FuncDef) -> bool {
@@ -338,7 +329,7 @@ impl<'db> MethodSelector<'db> {
         }
 
         for pred in self.assumptions.predicates(self.db) {
-            let trait_def = pred.trait_inst(self.db).value.def(self.db);
+            let trait_def = pred.trait_inst(self.db).def(self.db);
             insert_trait(trait_def)
         }
 

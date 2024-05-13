@@ -38,6 +38,15 @@ impl<'db> UnificationTable<'db> {
         }
     }
 
+    /// Returns the number of the created keys.
+    pub fn len(&self) -> usize {
+        self.table.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     pub fn rollback_to(&mut self, snapshot: Snapshot) {
         self.table.rollback_to(snapshot);
     }

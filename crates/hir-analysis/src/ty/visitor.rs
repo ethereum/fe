@@ -177,8 +177,8 @@ impl<'db> TyVisitable<'db> for PredicateId {
     where
         V: TyVisitor<'db>,
     {
-        self.ty(visitor.db()).value.visit_with(visitor);
-        self.trait_inst(visitor.db()).value.visit_with(visitor);
+        self.ty(visitor.db()).visit_with(visitor);
+        self.trait_inst(visitor.db()).visit_with(visitor);
     }
 }
 
