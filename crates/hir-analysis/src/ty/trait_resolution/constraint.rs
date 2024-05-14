@@ -1,6 +1,3 @@
-//! This module contains the implementation of the constraint collection
-//! algorithms.
-
 use std::collections::BTreeSet;
 
 use hir::hir_def::{
@@ -8,23 +5,16 @@ use hir::hir_def::{
 };
 use salsa::function::Configuration;
 
-use super::{
-    adt_def::AdtDef,
-    canonical::Canonical,
-    func_def::FuncDef,
-    trait_def::{Implementor, TraitDef, TraitInstId},
-    trait_lower::lower_trait_ref,
-    trait_resolution::{is_goal_satisfiable, PredicateListId},
-    ty_def::{TyBase, TyData, TyId},
-    ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
-};
 use crate::{
     ty::{
-        adt_def::{lower_adt, AdtRefId},
+        adt_def::{lower_adt, AdtDef, AdtRefId},
         binder::Binder,
-        func_def::HirFuncDefKind,
-        trait_lower::{lower_impl_trait, lower_trait},
-        ty_def::TyVarSort,
+        func_def::{FuncDef, HirFuncDefKind},
+        trait_def::{Implementor, TraitDef, TraitInstId},
+        trait_lower::{lower_impl_trait, lower_trait, lower_trait_ref},
+        trait_resolution::PredicateListId,
+        ty_def::{TyBase, TyData, TyId, TyVarSort},
+        ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
         unify::InferenceKey,
     },
     HirAnalysisDb,
@@ -286,11 +276,6 @@ impl<'db> ConstraintCollector<'db> {
     fn collect(mut self) -> PredicateListId {
         self.collect_constraints_from_generic_params();
         self.collect_constraints_from_where_clause();
-        self.simplify()
-    }
-
-    fn simplify(&mut self) -> PredicateListId {
-        let ingot = self.owner.ingot(self.db);
 
         // Collect super traits from the trait definition and add them to the predicate
         // list.
@@ -305,26 +290,7 @@ impl<'db> ConstraintCollector<'db> {
             ));
         }
 
-        let mut simplified = PredicateListId::new(self.db, self.predicates.clone(), ingot);
-
-        for goal in std::mem::take(&mut self.predicates).into_iter() {
-            let temp_predicates = simplified.remove(self.db, goal);
-            if self.can_remove(temp_predicates, goal) {
-                simplified = temp_predicates;
-            }
-        }
-
-        simplified
-    }
-
-    fn can_remove(&mut self, predicates: PredicateListId, goal: TraitInstId) -> bool {
-        let self_ty = goal.self_ty(self.db);
-
-        if !self_ty.has_param(self.db) {
-            return true;
-        }
-
-        is_goal_satisfiable(self.db, predicates, Canonical::new(self.db, goal)).is_satisfied()
+        PredicateListId::new(self.db, self.predicates, self.owner.ingot(self.db))
     }
 
     fn push_predicate(&mut self, pred: TraitInstId) {

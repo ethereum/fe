@@ -1,10 +1,11 @@
 use super::{
     canonical::Canonical,
-    constraint::collect_func_def_constraints,
     diagnostics::{ImplDiag, TyDiagCollection},
     func_def::FuncDef,
     trait_def::{TraitInstId, TraitMethod},
-    trait_resolution::{is_goal_satisfiable, GoalSatisfiability},
+    trait_resolution::{
+        constraint::collect_func_def_constraints, is_goal_satisfiable, GoalSatisfiability,
+    },
     ty_def::TyId,
 };
 use crate::HirAnalysisDb;

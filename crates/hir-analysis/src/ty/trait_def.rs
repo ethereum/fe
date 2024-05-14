@@ -11,20 +11,19 @@ use rustc_hash::FxHashMap;
 use super::{
     binder::Binder,
     canonical::Canonical,
-    constraint::collect_super_traits,
-    constraint_solver::check_trait_inst_wf,
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     func_def::FuncDef,
     trait_lower::collect_implementor_methods,
-    trait_resolution::PredicateListId,
+    trait_resolution::{
+        check_trait_inst_wf,
+        constraint::{collect_implementor_constraints, collect_super_traits},
+        PredicateListId,
+    },
     ty_def::{Kind, TyId},
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
 };
-use crate::{
-    ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
-    HirAnalysisDb,
-};
+use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
 
 /// Returns [`TraitEnv`] for the given ingot.
 #[salsa::tracked(return_ref)]

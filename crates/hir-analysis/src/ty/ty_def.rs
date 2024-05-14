@@ -23,7 +23,7 @@ use super::{
     unify::InferenceKey,
     visitor::{TyVisitable, TyVisitor},
 };
-use crate::{ty::constraint_solver::check_ty_wf, HirAnalysisDb};
+use crate::{ty::trait_resolution::check_ty_wf, HirAnalysisDb};
 
 #[salsa::interned]
 pub struct TyId {

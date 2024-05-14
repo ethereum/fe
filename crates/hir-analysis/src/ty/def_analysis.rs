@@ -19,17 +19,19 @@ use super::{
     adt_def::{lower_adt, AdtRef, AdtRefId},
     canonical::Canonical,
     const_ty::ConstTyId,
-    constraint::{
-        collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
-        collect_super_traits, SuperTraitCycle,
-    },
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     func_def::FuncDef,
     method_cmp::compare_impl_method,
     method_table::probe_method,
     trait_def::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
-    trait_resolution::PredicateListId,
+    trait_resolution::{
+        constraint::{
+            collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
+            collect_super_traits, SuperTraitCycle,
+        },
+        PredicateListId,
+    },
     ty_def::{InvalidCause, TyData, TyId},
     ty_lower::{collect_generic_params, lower_kind, GenericParamOwnerId},
     visitor::{walk_ty, TyVisitor},
@@ -39,7 +41,6 @@ use crate::{
     ty::{
         adt_def::AdtDef,
         binder::Binder,
-        constraint::collect_trait_constraints,
         diagnostics::{
             AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
             ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
@@ -47,7 +48,9 @@ use crate::{
         func_def::lower_func,
         trait_def::{does_impl_trait_conflict, TraitInstId},
         trait_lower::lower_impl_trait,
-        trait_resolution::{is_goal_satisfiable, GoalSatisfiability},
+        trait_resolution::{
+            constraint::collect_trait_constraints, is_goal_satisfiable, GoalSatisfiability,
+        },
         ty_lower::{lower_hir_ty, lower_type_alias},
         visitor::TyVisitable,
     },

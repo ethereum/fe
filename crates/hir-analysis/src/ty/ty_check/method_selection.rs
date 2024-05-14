@@ -180,11 +180,7 @@ impl<'db> CandidateAssembler<'db> {
                 let solution = self
                     .receiver_ty
                     .make_solution(self.db, implementor.trait_(self.db));
-                let cand = TraitMethodCand::new(
-                    solution,
-                    *trait_method,
-                    implementor.into(),
-                );
+                let cand = TraitMethodCand::new(solution, *trait_method, implementor.into());
 
                 self.candidates.push(cand.into());
             }

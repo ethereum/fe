@@ -11,10 +11,9 @@ use super::{Callable, TypedBody};
 use crate::{
     ty::{
         const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
-        constraint::collect_func_def_constraints,
         fold::{TyFoldable, TyFolder},
         func_def::{lower_func, FuncDef},
-        trait_resolution::PredicateListId,
+        trait_resolution::{constraint::collect_func_def_constraints, PredicateListId},
         ty_def::{InvalidCause, TyData, TyId, TyVarSort},
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
