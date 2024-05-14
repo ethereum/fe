@@ -20,7 +20,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
-    fold::TyFoldable,
+    fold::{TyFoldable, TyFolder},
     trait_def::{TraitInstId, TraitMethod},
     trait_resolution::PredicateListId,
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
@@ -183,10 +183,6 @@ impl<'db> TyChecker<'db> {
             }
         }
     }
-
-    fn register_callable(&mut self, expr: ExprId, callable: Callable) {
-        self.env.register_callable(expr, callable)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -248,20 +244,21 @@ impl Typeable {
 impl TraitMethod {
     fn instantiate_with_inst(
         self,
-        tc: &mut TyChecker,
+        table: &mut UnificationTable,
         receiver_ty: TyId,
         inst: TraitInstId,
     ) -> TyId {
-        let mut ty = TyId::func(tc.db, self.0);
+        let db = table.db();
+        let mut ty = TyId::func(db, self.0);
 
-        for &arg in inst.args(tc.db) {
-            ty = TyId::app(tc.db, ty, arg);
+        for &arg in inst.args(db) {
+            ty = TyId::app(db, ty, arg);
         }
 
-        let inst_self = tc.table.instantiate_to_term(inst.self_ty(tc.db));
-        tc.table.unify(inst_self, receiver_ty).unwrap();
+        let inst_self = table.instantiate_to_term(inst.self_ty(db));
+        table.unify(inst_self, receiver_ty).unwrap();
 
-        tc.table.instantiate_to_term(ty)
+        table.instantiate_to_term(ty)
     }
 }
 
@@ -276,13 +273,14 @@ struct TyCheckerFinalizer<'db> {
 impl<'db> TyCheckerFinalizer<'db> {
     fn new(mut checker: TyChecker<'db>) -> Self {
         let assumptions = checker.env.assumptions();
-        let body = checker.env.finish(&mut checker.table);
+        let (body, diags) = checker.env.finish(&mut checker.table);
+
         Self {
             db: checker.db,
             body,
             assumptions,
             ty_vars: FxHashSet::default(),
-            diags: Vec::new(),
+            diags,
         }
     }
 

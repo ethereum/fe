@@ -57,7 +57,7 @@ impl FuncBodyDiag {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum TyDiagCollection {
     Ty(TyLowerDiag),
-    Satisfaction(TraitConstraintDiag),
+    Satisfiability(TraitConstraintDiag),
     TraitLower(TraitLowerDiag),
     Impl(ImplDiag),
 }
@@ -66,7 +66,7 @@ impl TyDiagCollection {
     pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
-            TyDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
+            TyDiagCollection::Satisfiability(diag) => Box::new(diag) as _,
             TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
             TyDiagCollection::Impl(diag) => Box::new(diag) as _,
         }
@@ -671,10 +671,15 @@ pub enum BodyDiag {
         cand_spans: Vec<DynLazySpan>,
     },
 
-    AmbiguousTraitMethodCall {
+    AmbiguousTrait {
         primary: DynLazySpan,
         method_name: IdentId,
-        cand_insts: Vec<String>,
+        traits: Vec<Trait>,
+    },
+
+    AmbiguousTraitInst {
+        primary: DynLazySpan,
+        cands: Vec<String>,
     },
 
     InvisibleTraitMethod {
@@ -875,6 +880,18 @@ impl BodyDiag {
         }
     }
 
+    pub(super) fn ambiguous_trait_inst(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        cands: Vec<TraitInstId>,
+    ) -> Self {
+        let cands = cands
+            .into_iter()
+            .map(|cand| cand.pretty_print(db, false))
+            .collect_vec();
+        Self::AmbiguousTraitInst { primary, cands }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(..) => 0,
@@ -903,11 +920,12 @@ impl BodyDiag {
             Self::CallArgNumMismatch { .. } => 23,
             Self::CallArgLabelMismatch { .. } => 24,
             Self::AmbiguousInherentMethodCall { .. } => 25,
-            Self::AmbiguousTraitMethodCall { .. } => 26,
-            Self::InvisibleTraitMethod { .. } => 27,
-            Self::MethodNotFound { .. } => 28,
-            Self::NotValue { .. } => 29,
-            Self::TypeAnnotationNeeded { .. } => 30,
+            Self::AmbiguousTrait { .. } => 26,
+            Self::AmbiguousTraitInst { .. } => 27,
+            Self::InvisibleTraitMethod { .. } => 28,
+            Self::MethodNotFound { .. } => 29,
+            Self::NotValue { .. } => 30,
+            Self::TypeAnnotationNeeded { .. } => 31,
         }
     }
 
@@ -961,7 +979,9 @@ impl BodyDiag {
 
             Self::AmbiguousInherentMethodCall { .. } => "ambiguous method call".to_string(),
 
-            Self::AmbiguousTraitMethodCall { .. } => "ambiguous trait method call".to_string(),
+            Self::AmbiguousTrait { .. } => "multiple trait candidates found".to_string(),
+
+            Self::AmbiguousTraitInst { .. } => "ambiguous trait implementation".to_string(),
 
             Self::InvisibleTraitMethod { .. } => "trait is not in the scope".to_string(),
 
@@ -1435,24 +1455,43 @@ impl BodyDiag {
                 diags
             }
 
-            Self::AmbiguousTraitMethodCall {
+            Self::AmbiguousTrait {
                 primary,
                 method_name,
-                cand_insts,
+                traits,
             } => {
                 let method_name = method_name.data(db.as_hir_db());
                 let mut diags = vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("`{}` is ambiguous", method_name),
+                    format!("`{method_name}` is ambiguous"),
                     primary.resolve(db),
                 )];
 
-                for cand in cand_insts.iter() {
+                for trait_ in traits.iter() {
+                    let trait_name = trait_.name(db.as_hir_db()).unwrap().data(db.as_hir_db());
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("candidate: `{trait_name}::{method_name}`"),
+                        primary.resolve(db),
+                    ));
+                }
+
+                diags
+            }
+
+            Self::AmbiguousTraitInst { primary, cands } => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "multiple implementations are found".to_string(),
+                    primary.resolve(db),
+                )];
+
+                for cand in cands {
                     diags.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
                         format!("candidate: {cand}"),
                         primary.resolve(db),
-                    ));
+                    ))
                 }
 
                 diags

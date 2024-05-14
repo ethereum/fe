@@ -15,7 +15,7 @@ error[8-0025]: ambiguous method call
 35 │     f.foo()
    │       ^^^ `foo` is ambiguous
 
-error[8-0030]: type annotation is needed
+error[8-0031]: type annotation is needed
    ┌─ ambiguous.fe:34:9
    │
 34 │     let f = Foo::default()

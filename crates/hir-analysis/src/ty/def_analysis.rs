@@ -293,7 +293,7 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     /// This method verifies if
-    /// 1. the given `ty` has `*` kind(i.e, concrete type)
+    /// 1. the given `ty` has `*` kind.
     /// 2. the given `ty` is not const type
     /// TODO: This method is a stop-gap implementation until we design a true
     /// const type system.

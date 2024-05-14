@@ -39,14 +39,36 @@ where
         self.value
     }
 
-    pub(super) fn make_solution<U>(&self, db: &dyn HirAnalysisDb, solution: U) -> Solution<U>
+    /// Make solution that corresponds to the `Canonical` query.
+    /// The `Table` should be in the same environment where the `solution` is
+    /// found.
+    pub(super) fn make_solution<S, U>(
+        &self,
+        db: &dyn HirAnalysisDb,
+        table: &mut UnificationTableBase<S>,
+        solution: U,
+    ) -> Solution<U>
     where
-        U: for<'db> TyFoldable<'db>,
+        T: Copy,
+        S: UnificationStore,
+        U: for<'db> TyFoldable<'db> + Clone,
     {
-        let canonical_vars = collect_variables(db, &self.value).into_iter().map(|var| {
-            let ty = TyId::ty_var(db, var.sort, var.kind, var.key);
-            (ty, ty)
-        });
+        let solution = solution.fold_with(table);
+
+        // Make the substitution so that it maps back from probed type variable to
+        // canonical type variables.
+        // `Probed type variable -> Canonical type variable`.
+        let canonical_vars = collect_variables(db, &self.value)
+            .into_iter()
+            .filter_map(|var| {
+                let ty = TyId::ty_var(db, var.sort, var.kind, var.key);
+                let probed = ty.fold_with(table);
+                if probed.is_ty_var(db) {
+                    Some((probed, ty))
+                } else {
+                    None
+                }
+            });
         let mut canonicalizer = Canonicalizer {
             db,
             subst: canonical_vars.collect(),

@@ -274,7 +274,7 @@ impl<'db> TyChecker<'db> {
         callable.check_args(self, args, call_span.args_moved(), None);
 
         let ret_ty = callable.ret_ty(self.db);
-        self.register_callable(expr, callable);
+        self.env.register_callable(expr, callable);
         ExprProp::new(ret_ty, true)
     }
 
@@ -319,7 +319,15 @@ impl<'db> TyChecker<'db> {
             Candidate::TraitMethod(cand) => {
                 let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
                 let trait_method = cand.method;
-                trait_method.instantiate_with_inst(self, receiver_prop.ty, inst)
+                trait_method.instantiate_with_inst(&mut self.table, receiver_prop.ty, inst)
+            }
+
+            Candidate::NeedsConfirmation(cand) => {
+                let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
+                self.env
+                    .register_confirmation(inst, call_span.clone().into());
+                let trait_method = cand.method;
+                trait_method.instantiate_with_inst(&mut self.table, receiver_prop.ty, inst)
             }
         };
 
@@ -343,7 +351,7 @@ impl<'db> TyChecker<'db> {
             Some((*receiver, receiver_prop)),
         );
         let ret_ty = callable.ret_ty(self.db);
-        self.register_callable(expr, callable);
+        self.env.register_callable(expr, callable);
         ExprProp::new(ret_ty, true)
     }
 

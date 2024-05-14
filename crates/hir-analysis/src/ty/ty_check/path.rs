@@ -331,28 +331,34 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             Err(diag) => return Some(ResolvedPathInBody::Diag(diag)),
         };
 
-        match candidate {
+        let trait_cand = match candidate {
             Candidate::InherentMethod(func_def) => {
                 let mut method_ty = TyId::func(db, func_def);
                 for &arg in receiver_ty.generic_args(db) {
                     method_ty = TyId::app(db, method_ty, arg);
                 }
 
-                Some(ResolvedPathInBody::Func(
+                return Some(ResolvedPathInBody::Func(
                     self.tc.table.instantiate_to_term(method_ty),
-                ))
+                ));
             }
 
-            Candidate::TraitMethod(cand) => {
-                let method = cand.method;
-                let inst = canonical_r_ty.extract_solution(&mut self.tc.table, cand.inst);
+            Candidate::TraitMethod(cand) | Candidate::NeedsConfirmation(cand) => cand,
+        };
 
-                let method_ty = method.instantiate_with_inst(self.tc, receiver_ty, inst);
-                Some(ResolvedPathInBody::Func(
-                    self.tc.table.instantiate_to_term(method_ty),
-                ))
-            }
+        let method = trait_cand.method;
+        let inst = canonical_r_ty.extract_solution(&mut self.tc.table, trait_cand.inst);
+
+        if matches!(candidate, Candidate::NeedsConfirmation(_)) {
+            self.tc
+                .env
+                .register_confirmation(inst, self.span.clone().into());
         }
+
+        let method_ty = method.instantiate_with_inst(&mut self.tc.table, receiver_ty, inst);
+        Some(ResolvedPathInBody::Func(
+            self.tc.table.instantiate_to_term(method_ty),
+        ))
     }
 
     fn resolve_bucket(&mut self, bucket: NameResBucket) -> ResolvedPathInBody {

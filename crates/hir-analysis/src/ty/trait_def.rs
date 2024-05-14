@@ -33,7 +33,7 @@ pub(crate) fn ingot_trait_env(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitEn
 
 /// Returns all [`Implementor`] for the given trait inst.
 #[salsa::tracked(return_ref)]
-pub(crate) fn impls_of_trait(
+pub(crate) fn impls_for_trait(
     db: &dyn HirAnalysisDb,
     ingot: IngotId,
     trait_: Canonical<TraitInstId>,
@@ -59,8 +59,9 @@ pub(crate) fn impls_of_trait(
         .collect()
 }
 
+/// Returns all [`Implementor`] for the given `ty`.
 #[salsa::tracked(return_ref)]
-pub(crate) fn impls_of_ty(
+pub(crate) fn impls_for_ty(
     db: &dyn HirAnalysisDb,
     ingot: IngotId,
     ty: Canonical<TyId>,

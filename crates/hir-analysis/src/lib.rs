@@ -54,8 +54,8 @@ pub struct Jar(
     ty::trait_def::TraitInstId,
     ty::trait_def::Implementor,
     ty::trait_def::ingot_trait_env,
-    ty::trait_def::impls_of_trait,
-    ty::trait_def::impls_of_ty,
+    ty::trait_def::impls_for_trait,
+    ty::trait_def::impls_for_ty,
     // Trait constraints
     ty::trait_resolution::constraint::collect_super_traits,
     ty::trait_resolution::constraint::collect_trait_constraints,

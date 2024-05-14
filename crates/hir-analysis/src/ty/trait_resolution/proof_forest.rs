@@ -9,7 +9,7 @@ use crate::{
         binder::Binder,
         canonical::{Canonical, Canonicalized},
         fold::{TyFoldable, TyFolder},
-        trait_def::{impls_of_trait, Implementor, TraitInstId},
+        trait_def::{impls_for_trait, Implementor, TraitInstId},
         unify::PersistentUnificationTable,
     },
     HirAnalysisDb,
@@ -105,6 +105,7 @@ impl<'db> ProofForest<'db> {
         &mut self,
         root: GeneratorNode,
         mut remaining_goals: Vec<TraitInstId>,
+
         table: PersistentUnificationTable<'db>,
     ) {
         let query = remaining_goals.pop().unwrap();
@@ -147,7 +148,7 @@ impl<'db> GeneratorNodeData<'db> {
     fn new(db: &'db dyn HirAnalysisDb, goal: Goal, assumptions: PredicateListId) -> Self {
         let mut table = PersistentUnificationTable::new(db);
         let extracted_goal = goal.extract_identity(&mut table);
-        let cands = impls_of_trait(db, assumptions.ingot(db), goal);
+        let cands = impls_for_trait(db, assumptions.ingot(db), goal);
 
         Self {
             table,
@@ -163,16 +164,15 @@ impl<'db> GeneratorNodeData<'db> {
 }
 
 impl GeneratorNode {
-    fn register_solution(self, pt: &mut ProofForest, solution: TraitInstId) {
+    fn make_solution_with(self, pt: &mut ProofForest, table: &mut PersistentUnificationTable) {
         let g_node = &mut pt.g_nodes[self];
-        let solution = g_node.goal.make_solution(g_node.table.db(), solution);
-        g_node.solutions.insert(solution);
-        if self == pt.root {
-            return;
-        }
-
-        for &c_node in g_node.dependents.iter() {
-            pt.c_stack.push((c_node, solution));
+        let solution = g_node
+            .goal
+            .make_solution(table.db(), table, g_node.extracted_goal);
+        if g_node.solutions.insert(solution) {
+            for &c_node in g_node.dependents.iter() {
+                pt.c_stack.push((c_node, solution));
+            }
         }
     }
 
@@ -193,18 +193,17 @@ impl GeneratorNode {
                 continue;
             }
 
-            let solution = gen_cand.fold_with(&mut table);
-            let constraints = solution.constraints(table.db());
+            let constraints = gen_cand.constraints(db);
 
             if constraints.list(db).is_empty() {
-                // Register solution.
-                self.register_solution(pt, solution.trait_(db))
+                self.make_solution_with(pt, &mut table)
             } else {
-                pt.new_consumer_node(
-                    self,
-                    constraints.list(db).clone().into_iter().collect(),
-                    table,
-                );
+                let sub_goals = constraints
+                    .list(db)
+                    .iter()
+                    .map(|c| c.fold_with(&mut table))
+                    .collect();
+                pt.new_consumer_node(self, sub_goals, table);
             }
 
             return true;
@@ -216,7 +215,7 @@ impl GeneratorNode {
             next_cand += 1;
             let mut table = g_node.table.clone();
             if table.unify(assumption, g_node.extracted_goal).is_ok() {
-                self.register_solution(pt, assumption);
+                self.make_solution_with(pt, &mut table);
                 return true;
             }
         }
@@ -261,22 +260,23 @@ impl ConsumerNode {
 
         // Extract solution to the current env.
         let (pending_inst, canonicalized_pending_inst) = &c_node.query;
-        let solution = canonicalized_pending_inst
-            .extract_solution(&mut table, solution)
-            .fold_with(&mut table);
+        let solution = canonicalized_pending_inst.extract_solution(&mut table, solution);
+
+        // Unifies pending inst and solution.
+        if table.unify(*pending_inst, solution).is_err() {
+            return;
+        }
 
         let tree_root = c_node.root;
 
         if c_node.remaining_goals.is_empty() {
             // If no remaining goals in the consumer node, it's the solution for the root
             // goal.
-            tree_root.register_solution(pt, solution);
+            tree_root.make_solution_with(pt, &mut table);
         } else {
             // Create a child consumer node for the subgoals.
             let remaining_goals = c_node.remaining_goals.clone();
-            if table.unify(*pending_inst, solution).is_ok() {
-                pt.new_consumer_node(tree_root, remaining_goals, table);
-            }
+            pt.new_consumer_node(tree_root, remaining_goals, table);
         }
     }
 }

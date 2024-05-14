@@ -119,6 +119,10 @@ impl TyId {
         self.flags(db).contains(TyFlags::HAS_PARAM)
     }
 
+    pub fn has_var(self, db: &dyn HirAnalysisDb) -> bool {
+        self.flags(db).contains(TyFlags::HAS_VAR)
+    }
+
     /// Returns `true` if the type has a `*` kind.
     pub fn has_star_kind(self, db: &dyn HirAnalysisDb) -> bool {
         !matches!(self.kind(db), Kind::Abs(_, _))
