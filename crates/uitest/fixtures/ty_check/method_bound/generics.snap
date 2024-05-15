@@ -7,6 +7,9 @@ error[6-0003]: trait bound is not satisfied
    ┌─ generics.fe:46:7
    │
 46 │     x.clamped_add(y)
-   │       ^^^^^^^^^^^ `u32` doesn't implement `ClampedAdd<i64>`
+   │       ^^^^^^^^^^^
+   │       │
+   │       `u32` doesn't implement `ClampedAdd<i64>`
+   │       trait bound `i64: Clamp<u32>` is not satisfied
 
 

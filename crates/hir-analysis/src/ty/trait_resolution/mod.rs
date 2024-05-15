@@ -6,7 +6,7 @@ use std::collections::BTreeSet;
 use hir::hir_def::IngotId;
 
 use super::{
-    canonical::{Canonical, Solution},
+    canonical::{Canonical, Canonicalized, Solution},
     trait_def::TraitInstId,
     ty_def::{TyFlags, TyId},
 };
@@ -16,6 +16,7 @@ use crate::{
             constraint::{collect_trait_constraints, ty_constraints},
             proof_forest::ProofForest,
         },
+        unify::UnificationTable,
         visitor::collect_flags,
     },
     HirAnalysisDb,
@@ -45,25 +46,47 @@ pub(crate) fn check_ty_wf(
     db: &dyn HirAnalysisDb,
     ty: TyId,
     assumptions: PredicateListId,
-) -> Option<TraitInstId> {
+) -> WellFormedness {
     let (_, args) = ty.decompose_ty_app(db);
 
     for &arg in args {
-        if let Some(unsat_goal) = check_ty_wf(db, arg, assumptions) {
-            return Some(unsat_goal);
+        let wf = check_ty_wf(db, arg, assumptions);
+        if !wf.is_wf() {
+            return wf;
         }
     }
 
     let constraints = ty_constraints(db, ty);
 
     for &goal in constraints.list(db) {
-        let goal = Canonical::new(db, goal);
-        if !is_goal_satisfiable(db, assumptions, goal).is_satisfied() {
-            return Some(goal.value);
+        let mut table = UnificationTable::new(db);
+        let canonical_goal = Canonicalized::new(db, goal);
+
+        if let GoalSatisfiability::UnSat(subgoal) =
+            is_goal_satisfiable(db, assumptions, canonical_goal.value)
+        {
+            let subgoal =
+                subgoal.map(|subgoal| canonical_goal.extract_solution(&mut table, subgoal));
+            return WellFormedness::IllFormed { goal, subgoal };
         }
     }
 
-    None
+    WellFormedness::WellFormed
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum WellFormedness {
+    WellFormed,
+    IllFormed {
+        goal: TraitInstId,
+        subgoal: Option<TraitInstId>,
+    },
+}
+
+impl WellFormedness {
+    fn is_wf(self) -> bool {
+        matches!(self, WellFormedness::WellFormed)
+    }
 }
 
 /// Checks if the given trait instance are well-formed, i.e., the arguments of
@@ -73,18 +96,23 @@ pub(crate) fn check_trait_inst_wf(
     db: &dyn HirAnalysisDb,
     trait_inst: TraitInstId,
     assumptions: PredicateListId,
-) -> Option<TraitInstId> {
+) -> WellFormedness {
     let constraints =
         collect_trait_constraints(db, trait_inst.def(db)).instantiate(db, trait_inst.args(db));
 
     for &goal in constraints.list(db) {
-        let goal = Canonical::new(db, goal);
-        if !is_goal_satisfiable(db, assumptions, goal).is_satisfied() {
-            return Some(goal.value);
+        let mut table = UnificationTable::new(db);
+        let canonical_goal = Canonicalized::new(db, goal);
+        if let GoalSatisfiability::UnSat(subgoal) =
+            is_goal_satisfiable(db, assumptions, canonical_goal.value)
+        {
+            let subgoal =
+                subgoal.map(|subgoal| canonical_goal.extract_solution(&mut table, subgoal));
+            return WellFormedness::IllFormed { goal, subgoal };
         }
     }
 
-    None
+    WellFormedness::WellFormed
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -96,8 +124,10 @@ pub enum GoalSatisfiability {
 
     /// Goal contains invalid.
     ContainsInvalid,
-    /// The goal is not satisfied.
-    UnSat,
+    /// The gaol is not satisfied.
+    /// It contains an unsatisfied subgoal if we can know the exact subgoal
+    /// that makes the proof step stuck.
+    UnSat(Option<Solution<TraitInstId>>),
 }
 
 impl GoalSatisfiability {

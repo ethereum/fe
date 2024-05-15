@@ -88,7 +88,10 @@ impl<'db> ProofForest<'db> {
         let solutions = std::mem::take(&mut self.g_nodes[self.root].solutions);
         match solutions.len() {
             1 => GoalSatisfiability::Satisfied(solutions.into_iter().next().unwrap()),
-            0 => GoalSatisfiability::UnSat,
+            0 => {
+                let unresolved_subgoal = self.root.unresolved_subgoal(&mut self);
+                GoalSatisfiability::UnSat(unresolved_subgoal)
+            }
             _ => GoalSatisfiability::NeedsConfirmation(solutions),
         }
     }
@@ -107,7 +110,7 @@ impl<'db> ProofForest<'db> {
         mut remaining_goals: Vec<TraitInstId>,
 
         table: PersistentUnificationTable<'db>,
-    ) {
+    ) -> ConsumerNode {
         let query = remaining_goals.pop().unwrap();
         let canonicalized_query = Canonicalized::new(self.db, query);
         let goal = canonicalized_query.value;
@@ -118,6 +121,7 @@ impl<'db> ProofForest<'db> {
             root,
             query: (query, canonicalized_query),
             table,
+            children: Vec::new(),
         };
 
         let c_node = self.c_nodes.push(c_node_data);
@@ -126,6 +130,7 @@ impl<'db> ProofForest<'db> {
         }
 
         self.goal_to_node[&goal].add_dependent(self, c_node);
+        c_node
     }
 }
 
@@ -139,6 +144,7 @@ struct GeneratorNodeData<'db> {
     cands: &'db [Binder<Implementor>],
     assumptions: PredicateListId,
     next_cand: usize,
+    children: Vec<ConsumerNode>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct GeneratorNode(u32);
@@ -159,26 +165,27 @@ impl<'db> GeneratorNodeData<'db> {
             cands,
             assumptions,
             next_cand: 0,
+            children: Vec::new(),
         }
     }
 }
 
 impl GeneratorNode {
-    fn make_solution_with(self, pt: &mut ProofForest, table: &mut PersistentUnificationTable) {
-        let g_node = &mut pt.g_nodes[self];
+    fn register_solution_with(self, pf: &mut ProofForest, table: &mut PersistentUnificationTable) {
+        let g_node = &mut pf.g_nodes[self];
         let solution = g_node
             .goal
             .make_solution(table.db(), table, g_node.extracted_goal);
         if g_node.solutions.insert(solution) {
             for &c_node in g_node.dependents.iter() {
-                pt.c_stack.push((c_node, solution));
+                pf.c_stack.push((c_node, solution));
             }
         }
     }
 
     /// Returns `false` if there is no candidate to apply.
-    fn step(self, pt: &mut ProofForest) -> bool {
-        let g_node = &mut pt.g_nodes[self];
+    fn step(self, pf: &mut ProofForest) -> bool {
+        let g_node = &mut pf.g_nodes[self];
         let db = g_node.table.db();
 
         while let Some(&cand) = g_node.cands.get(g_node.next_cand) {
@@ -196,14 +203,15 @@ impl GeneratorNode {
             let constraints = gen_cand.constraints(db);
 
             if constraints.list(db).is_empty() {
-                self.make_solution_with(pt, &mut table)
+                self.register_solution_with(pf, &mut table);
             } else {
                 let sub_goals = constraints
                     .list(db)
                     .iter()
                     .map(|c| c.fold_with(&mut table))
                     .collect();
-                pt.new_consumer_node(self, sub_goals, table);
+                let child = pf.new_consumer_node(self, sub_goals, table);
+                pf.g_nodes[self].children.push(child);
             }
 
             return true;
@@ -215,7 +223,7 @@ impl GeneratorNode {
             next_cand += 1;
             let mut table = g_node.table.clone();
             if table.unify(assumption, g_node.extracted_goal).is_ok() {
-                self.make_solution_with(pt, &mut table);
+                self.register_solution_with(pf, &mut table);
                 return true;
             }
         }
@@ -223,12 +231,21 @@ impl GeneratorNode {
         false
     }
 
-    fn add_dependent(self, pt: &mut ProofForest, dependent: ConsumerNode) {
-        let g_node = &mut pt.g_nodes[self];
+    fn add_dependent(self, pf: &mut ProofForest, dependent: ConsumerNode) {
+        let g_node = &mut pf.g_nodes[self];
         g_node.dependents.push(dependent);
         for &solution in g_node.solutions.iter() {
-            pt.c_stack.push((dependent, solution))
+            pf.c_stack.push((dependent, solution))
         }
+    }
+
+    fn unresolved_subgoal(self, pf: &mut ProofForest) -> Option<Solution> {
+        let g_node = &pf.g_nodes[self];
+        if g_node.children.len() != 1 {
+            return None;
+        }
+        let child = g_node.children[0];
+        child.unresolved_subgoal(pf)
     }
 }
 
@@ -242,14 +259,15 @@ struct ConsumerNodeData<'db> {
     /// The current pending query that is resolved by another [`GeneratorNode`].
     query: (TraitInstId, Canonicalized<TraitInstId>),
     table: PersistentUnificationTable<'db>,
+    children: Vec<ConsumerNode>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct ConsumerNode(u32);
 entity_impl!(ConsumerNode);
 
 impl ConsumerNode {
-    fn apply_solution(self, pt: &mut ProofForest, solution: Solution) {
-        let c_node = &mut pt.c_nodes[self];
+    fn apply_solution(self, pf: &mut ProofForest, solution: Solution) {
+        let c_node = &mut pf.c_nodes[self];
 
         // If the solutions is already applied, do nothing.
         if !c_node.applied_solutions.insert(solution) {
@@ -272,11 +290,27 @@ impl ConsumerNode {
         if c_node.remaining_goals.is_empty() {
             // If no remaining goals in the consumer node, it's the solution for the root
             // goal.
-            tree_root.make_solution_with(pt, &mut table);
+            tree_root.register_solution_with(pf, &mut table);
         } else {
             // Create a child consumer node for the subgoals.
             let remaining_goals = c_node.remaining_goals.clone();
-            pt.new_consumer_node(tree_root, remaining_goals, table);
+            let child = pf.new_consumer_node(tree_root, remaining_goals, table);
+            pf.c_nodes[self].children.push(child);
         }
+    }
+
+    fn unresolved_subgoal(self, pf: &mut ProofForest) -> Option<Solution> {
+        let c_node = &mut pf.c_nodes[self];
+        if c_node.children.len() != 1 {
+            let unsat = c_node.query.0;
+            let unsat = pf.g_nodes[c_node.root].goal.make_solution(
+                c_node.table.db(),
+                &mut c_node.table,
+                unsat,
+            );
+            return Some(unsat);
+        }
+
+        c_node.children[0].unresolved_subgoal(pf)
     }
 }

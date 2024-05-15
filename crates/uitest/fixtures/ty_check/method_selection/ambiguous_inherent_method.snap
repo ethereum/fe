@@ -1,10 +1,10 @@
 ---
 source: crates/uitest/tests/ty_check.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty_check/method_selection/ambiguous.fe
+input_file: crates/uitest/fixtures/ty_check/method_selection/ambiguous_inherent_method.fe
 ---
 error[8-0025]: ambiguous method call
-   ┌─ ambiguous.fe:35:7
+   ┌─ ambiguous_inherent_method.fe:35:7
    │
 22 │     fn foo(self) -> i32 {
    │        --- foo is defined here
@@ -16,7 +16,7 @@ error[8-0025]: ambiguous method call
    │       ^^^ `foo` is ambiguous
 
 error[8-0031]: type annotation is needed
-   ┌─ ambiguous.fe:34:9
+   ┌─ ambiguous_inherent_method.fe:34:9
    │
 34 │     let f = Foo::default()
    │         ^

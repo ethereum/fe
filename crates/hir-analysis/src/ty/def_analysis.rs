@@ -41,6 +41,7 @@ use crate::{
     ty::{
         adt_def::AdtDef,
         binder::Binder,
+        canonical::Canonicalized,
         diagnostics::{
             AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
             ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
@@ -1153,13 +1154,19 @@ fn analyze_impl_trait_specific_error(
     let assumptions = implementor.instantiate_identity().constraints(db);
 
     let mut is_satisfied = |goal: TraitInstId, span: DynLazySpan| {
-        let goal = Canonical::new(db, goal);
-        match is_goal_satisfiable(db, assumptions, goal) {
+        let canonical_goal = Canonicalized::new(db, goal);
+        match is_goal_satisfiable(db, assumptions, canonical_goal.value) {
             GoalSatisfiability::Satisfied(_) | GoalSatisfiability::ContainsInvalid => {}
             GoalSatisfiability::NeedsConfirmation(_) => unreachable!(),
-            GoalSatisfiability::UnSat => {
+            GoalSatisfiability::UnSat(subgoal) => {
                 diags.push(
-                    TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal.value).into(),
+                    TraitConstraintDiag::trait_bound_not_satisfied(
+                        db,
+                        span,
+                        goal,
+                        subgoal.map(|subgoal| subgoal.value),
+                    )
+                    .into(),
                 );
             }
         }

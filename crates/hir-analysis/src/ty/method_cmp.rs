@@ -253,12 +253,12 @@ fn compare_constraints(
         collect_func_def_constraints(db, trait_m, false).instantiate(db, map_to_impl);
     let mut unsatisfied_goals = vec![];
     for &goal in impl_m_constraints.list(db) {
-        let goal = Canonical::new(db, goal);
-        match is_goal_satisfiable(db, trait_m_constraints, goal) {
+        let canonical_goal = Canonical::new(db, goal);
+        match is_goal_satisfiable(db, trait_m_constraints, canonical_goal) {
             GoalSatisfiability::Satisfied(_) | GoalSatisfiability::ContainsInvalid => {}
             GoalSatisfiability::NeedsConfirmation(_) => unreachable!(),
-            GoalSatisfiability::UnSat => {
-                unsatisfied_goals.push(goal.value);
+            GoalSatisfiability::UnSat(_) => {
+                unsatisfied_goals.push(goal);
             }
         }
     }

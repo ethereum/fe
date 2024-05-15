@@ -17,7 +17,7 @@ use super::{
     trait_resolution::{
         check_trait_inst_wf,
         constraint::{collect_implementor_constraints, collect_super_traits},
-        PredicateListId,
+        PredicateListId, WellFormedness,
     },
     ty_def::{Kind, TyId},
     ty_lower::GenericParamTypeSet,
@@ -272,9 +272,13 @@ impl TraitInstId {
         assumptions: PredicateListId,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        check_trait_inst_wf(db, self, assumptions).map(|unsat_goal| {
-            TraitConstraintDiag::trait_bound_not_satisfied(db, span, unsat_goal).into()
-        })
+        if let WellFormedness::IllFormed { goal, subgoal } =
+            check_trait_inst_wf(db, self, assumptions)
+        {
+            Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal, subgoal).into())
+        } else {
+            None
+        }
     }
 }
 

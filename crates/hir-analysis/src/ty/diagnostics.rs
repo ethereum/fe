@@ -1707,7 +1707,7 @@ pub enum TraitConstraintDiag {
 
     TraitArgKindMismatch(DynLazySpan, String),
 
-    TraitBoundNotSat(DynLazySpan, String),
+    TraitBoundNotSat(DynLazySpan, String, Option<String>),
 
     InfiniteBoundRecursion(DynLazySpan, String),
 
@@ -1743,14 +1743,22 @@ impl TraitConstraintDiag {
     pub(super) fn trait_bound_not_satisfied(
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
-        pred: TraitInstId,
+        primary_goal: TraitInstId,
+        unsat_subgoal: Option<TraitInstId>,
     ) -> Self {
         let msg = format!(
             "`{}` doesn't implement `{}`",
-            pred.self_ty(db).pretty_print(db),
-            pred.pretty_print(db, false)
+            primary_goal.self_ty(db).pretty_print(db),
+            primary_goal.pretty_print(db, false)
         );
-        Self::TraitBoundNotSat(span, msg)
+
+        let unsat_subgoal = unsat_subgoal.map(|unsat| {
+            format!(
+                "trait bound `{}` is not satisfied",
+                unsat.pretty_print(db, true)
+            )
+        });
+        Self::TraitBoundNotSat(span, msg, unsat_subgoal)
     }
 
     pub(super) fn const_ty_bound(db: &dyn HirAnalysisDb, ty: TyId, span: DynLazySpan) -> Self {
@@ -1768,10 +1776,10 @@ impl TraitConstraintDiag {
             Self::KindMismatch { .. } => 0,
             Self::TraitArgNumMismatch { .. } => 1,
             Self::TraitArgKindMismatch(_, _) => 2,
-            Self::TraitBoundNotSat(_, _) => 3,
-            Self::InfiniteBoundRecursion(_, _) => 4,
-            Self::ConcreteTypeBound(_, _) => 5,
-            Self::ConstTyBound(_, _) => 6,
+            Self::TraitBoundNotSat(..) => 3,
+            Self::InfiniteBoundRecursion(..) => 4,
+            Self::ConcreteTypeBound(..) => 5,
+            Self::ConstTyBound(..) => 6,
         }
     }
 
@@ -1781,17 +1789,17 @@ impl TraitConstraintDiag {
 
             Self::TraitArgNumMismatch { .. } => "given trait argument number mismatch".to_string(),
 
-            Self::TraitArgKindMismatch(_, _) => "given trait argument kind mismatch".to_string(),
+            Self::TraitArgKindMismatch(..) => "given trait argument kind mismatch".to_string(),
 
-            Self::TraitBoundNotSat(_, _) => "trait bound is not satisfied".to_string(),
+            Self::TraitBoundNotSat(..) => "trait bound is not satisfied".to_string(),
 
-            Self::InfiniteBoundRecursion(_, _) => "infinite trait bound recursion".to_string(),
+            Self::InfiniteBoundRecursion(..) => "infinite trait bound recursion".to_string(),
 
-            Self::ConcreteTypeBound(_, _) => {
+            Self::ConcreteTypeBound(..) => {
                 "trait bound for concrete type is not allowed".to_string()
             }
 
-            Self::ConstTyBound(_, _) => "trait bound for const type is not allowed".to_string(),
+            Self::ConstTyBound(..) => "trait bound for const type is not allowed".to_string(),
         }
     }
 
@@ -1828,11 +1836,23 @@ impl TraitConstraintDiag {
                 span.resolve(db),
             )],
 
-            Self::TraitBoundNotSat(span, msg) => vec![SubDiagnostic::new(
-                LabelStyle::Primary,
-                msg.clone(),
-                span.resolve(db),
-            )],
+            Self::TraitBoundNotSat(span, msg, subgoal) => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    msg.clone(),
+                    span.resolve(db),
+                )];
+
+                if let Some(subgoal) = subgoal {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        subgoal.clone(),
+                        span.resolve(db),
+                    ))
+                }
+
+                diags
+            }
 
             Self::InfiniteBoundRecursion(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,

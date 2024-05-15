@@ -299,7 +299,7 @@ impl<'db> MethodSelector<'db> {
 
             &GoalSatisfiability::NeedsConfirmation(_)
             | GoalSatisfiability::ContainsInvalid
-            | GoalSatisfiability::UnSat => Candidate::NeedsConfirmation(TraitMethodCand::new(
+            | GoalSatisfiability::UnSat(_) => Candidate::NeedsConfirmation(TraitMethodCand::new(
                 self.receiver.make_solution(self.db, &mut table, cand),
                 method,
             )),

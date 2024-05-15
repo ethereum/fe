@@ -19,7 +19,7 @@ use super::{
     const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     func_def::FuncDef,
-    trait_resolution::PredicateListId,
+    trait_resolution::{PredicateListId, WellFormedness},
     unify::InferenceKey,
     visitor::{TyVisitable, TyVisitor},
 };
@@ -349,9 +349,11 @@ impl TyId {
         assumptions: PredicateListId,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        check_ty_wf(db, self, assumptions).map(|unsat_goal| {
-            TraitConstraintDiag::trait_bound_not_satisfied(db, span, unsat_goal).into()
-        })
+        if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(db, self, assumptions) {
+            Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal, subgoal).into())
+        } else {
+            None
+        }
     }
 
     pub(super) fn ty_var(
