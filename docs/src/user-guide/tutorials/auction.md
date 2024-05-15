@@ -25,7 +25,7 @@ You can see the entire contract [here](../example_contracts/auction_contract.md)
 
 ### Defining the `Contract` and initializing variables 
 
-A contract is Fe is defined using the `contract` keyword. A contract requires a constructor function to initialize any state variables used by the contract. If no constructor is defined, Fe will add a default with no state variables. The skeleton of the contract can look as follows:
+A contract in Fe is defined using the `contract` keyword. A contract requires a constructor function to initialize any state variables used by the contract. If no constructor is defined, Fe will add a default with no state variables. The skeleton of the contract can look as follows:
 
 ```rust
 contract Auction {
