@@ -18,6 +18,12 @@ use crate::{
 
 pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<InferenceKey>>;
 
+/// This table should only be used in the trait resolution where the performance
+/// of `clone` is the critical. This table provides the very cheap clone
+/// operation at the cost of update operations.
+///
+/// [`UnificationTable`] is probably the one that you need to use for other
+/// components.
 pub(crate) type PersistentUnificationTable<'db> =
     UnificationTableBase<'db, ena::unify::Persistent<InferenceKey>>;
 

@@ -9,6 +9,11 @@ use super::{
 };
 use crate::HirAnalysisDb;
 
+/// A `Binder` is a type constructor that binds a type variable within its
+/// scope.
+///
+/// # Type Parameters
+/// - `T`: The type being bound within the `Binder`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Binder<T> {
     value: T,
@@ -24,19 +29,60 @@ impl<'db, T> Binder<T>
 where
     T: TyFoldable<'db>,
 {
+    /// Instantiates the binder with an identity function.
+    ///
+    /// This method essentially returns the value within the binder without any
+    /// modifications.
+    ///
+    /// # Returns
+    /// The value contained within the `Binder`.
+    ///
+    /// # Note
+    /// This function is useful when you want to retrieve the value inside the
+    /// binder without applying any transformations.
     pub fn instantiate_identity(self) -> T {
         self.value
     }
 
+    /// Retrieves a reference to the value within the binder.
+    ///
+    /// This function is useful when you want to access some data that you know
+    /// doesn't depend on bounded variables in the binder.
     pub fn skip_binder(&self) -> &T {
         &self.value
     }
 
+    /// Instantiates the binder with the provided arguments.
+    ///
+    /// This method takes a reference to a `HirAnalysisDb` and a slice of `TyId`
+    /// arguments, and returns a new instance of the type contained within
+    /// the binder with the arguments applied.
+    ///
+    /// # Parameters
+    /// - `db`: A reference to the `HirAnalysisDb`.
+    /// - `args`: A slice of `TyId` that will be used to instantiate the type.
+    ///
+    /// # Returns
+    /// A new instance of the type contained within the binder with the
+    /// arguments applied.
     pub fn instantiate(self, db: &'db dyn HirAnalysisDb, args: &[TyId]) -> T {
         let mut folder = InstantiateFolder { db, args };
         self.value.fold_with(&mut folder)
     }
 
+    /// Instantiates the binder with a custom function.
+    ///
+    /// This method takes a reference to a `HirAnalysisDb` and a closure that
+    /// maps a bound variable to `TyId`, and returns a new instance of the
+    /// type contained within the binder with the custom function applied.
+    ///
+    /// # Parameters
+    /// - `db`: A reference to the `HirAnalysisDb`.
+    /// - `f`: A function that map a bouded variable to a type.
+    ///
+    /// # Returns
+    /// A new instance of the type contained within the binder with the custom
+    /// function applied.
     pub fn instantiate_with<F>(self, db: &'db dyn HirAnalysisDb, f: F) -> T
     where
         F: FnMut(TyId) -> TyId,

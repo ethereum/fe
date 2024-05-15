@@ -1,3 +1,6 @@
+//! The algorithm for the trait resolution here is based on [`Tabled Typeclass Resolution`](https://arxiv.org/abs/2001.04301).
+//! Also, [`XSB: Extending Prolog with Tabled Logic Programming`](https://arxiv.org/pdf/1012.5123) is a nice entry point for more detailed discussions about tabled logic solver.
+
 use std::collections::BTreeSet;
 
 use cranelift_entity::{entity_impl, PrimaryMap};
@@ -24,22 +27,53 @@ const MAXIMUM_SOLUTION_NUM: usize = 3;
 type Goal = Canonical<TraitInstId>;
 type Solution = crate::ty::canonical::Solution<TraitInstId>;
 
+/// A structure representing a proof forest used for solving trait goals.
+///
+/// The `ProofForest` contains generator and consumer nodes which work together
+/// to find solutions to trait goals. It maintains stacks for generator and
+/// consumer nodes to keep track of the solving process, and a mapping from
+/// goals to generator nodes to avoid redundant computations.
 pub(super) struct ProofForest<'db> {
+    /// The root generator node.
     root: GeneratorNode,
 
+    /// An arena of generator nodes.
     g_nodes: PrimaryMap<GeneratorNode, GeneratorNodeData<'db>>,
+    /// An arena of consumer nodes.
     c_nodes: PrimaryMap<ConsumerNode, ConsumerNodeData<'db>>,
+    /// A stack of generator nodes to be processed.
     g_stack: Vec<GeneratorNode>,
+    /// A stack of consumer nodes and their solutions to be processed.
     c_stack: Vec<(ConsumerNode, Solution)>,
 
+    /// A mapping from goals to generator nodes.
     goal_to_node: FxHashMap<Goal, GeneratorNode>,
 
+    /// The list of assumptions.
     assumptions: PredicateListId,
+
+    /// The maximum number of solutions.
     maximum_solution_num: usize,
+    /// The database for HIR analysis.
     db: &'db dyn HirAnalysisDb,
 }
 
 impl<'db> ProofForest<'db> {
+    /// Creates a new `ProofForest` with the given initial goal and assumptions.
+    ///
+    /// This function initializes the proof forest with a root generator node
+    /// for the given goal and sets up the necessary data structures for
+    /// solving trait goals.
+    ///
+    /// # Parameters
+    /// - `db`: A reference to the HIR analysis database.
+    /// - `goal`: The initial trait goal to be solved.
+    /// - `assumptions`: The list of assumptions to be used during the solving
+    ///   process.
+    ///
+    /// # Returns
+    /// A new instance of `ProofForest` initialized with the given goal and
+    /// assumptions.
     pub(super) fn new(
         db: &'db dyn HirAnalysisDb,
         goal: Goal,
@@ -64,6 +98,22 @@ impl<'db> ProofForest<'db> {
         forest
     }
 
+    /// Solves the trait goal using a proof forest approach.
+    ///
+    /// This function iteratively processes generator and consumer nodes until
+    /// either the maximum number of solutions is found or no more nodes can
+    /// be processed. The solving process involves:
+    /// - Popping solutions from the consumer stack and applying them.
+    /// - Stepping through generator nodes to find new solutions or sub-goals.
+    /// - Registering solutions and propagating them to dependent consumer
+    ///   nodes.
+    ///
+    /// The function returns `GoalSatisfiability` indicating the status of the
+    /// goal:
+    /// - `Satisfied` if exactly one solution is found.
+    /// - `UnSat` if no solutions are found and an unresolved subgoal is
+    ///   identified.
+    /// - `NeedsConfirmation` if multiple solutions are found.
     pub(super) fn solve(mut self) -> GoalSatisfiability {
         loop {
             if self.g_nodes[self.root].solutions.len() >= self.maximum_solution_num {
@@ -104,6 +154,27 @@ impl<'db> ProofForest<'db> {
         g_node
     }
 
+    /// Creates a new consumer node and registers it with the proof forest.
+    ///
+    /// This function takes a root generator node, a list of remaining goals,
+    /// and a persistent unification table. It creates a consumer node that
+    /// represents a sub-goal that needs to be solved and remaining
+    /// subgoals. If the goal is not already associated with a generator
+    /// node, a new generator node is created for it.
+    ///
+    /// The consumer node is then registered as a dependent of the corresponding
+    /// generator node, ensuring that solutions found for the generator node are
+    /// propagated to the consumer node.
+    ///
+    /// # Parameters
+    /// - `root`: The root generator node of the consumer node.
+    /// - `remaining_goals`: A list of trait instances that represent the
+    ///   remaining goals to be solved.
+    /// - `table`: A persistent unification table used for managing unification
+    ///   operations.
+    ///
+    /// # Returns
+    /// A new `ConsumerNode` that is registered with the proof forest.
     fn new_consumer_node(
         &mut self,
         root: GeneratorNode,
@@ -134,16 +205,30 @@ impl<'db> ProofForest<'db> {
     }
 }
 
+/// A structure representing the data associated with a generator node in the
+/// proof forest.
+///
+/// The `GeneratorNodeData` contains information about the goal, the unification
+/// table, the candidate implementors, the solutions found, and the dependents
+/// of the generator node. It also keeps track of the assumptions, the next
+/// candidate to be processed, and the child consumer nodes.
 struct GeneratorNodeData<'db> {
     table: PersistentUnificationTable<'db>,
+    /// The canonical goal associated with the generator node.
     goal: Goal,
+    /// The trait instance extracted from the goal.
     extracted_goal: TraitInstId,
-    /// Solutions that is already obtained.
+    /// A set of solutions found for the goal.
     solutions: BTreeSet<Solution>,
+    ///  A list of consumer nodes that depend on this generator node.
     dependents: Vec<ConsumerNode>,
+    ///  A list of candidate implementors for the trait.
     cands: &'db [Binder<Implementor>],
+    /// The list of assumptions for the goal.
     assumptions: PredicateListId,
+    /// The index of the next candidate to be tried.
     next_cand: usize,
+    /// A list of child consumer nodes created for sub-goals.
     children: Vec<ConsumerNode>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -171,11 +256,22 @@ impl<'db> GeneratorNodeData<'db> {
 }
 
 impl GeneratorNode {
+    /// Registers the given solution with the proof forest and propagates it to
+    /// dependent consumer nodes.
+    ///
+    /// This function canonicalizes the solution and inserts it into the set of
+    /// solutions for the generator node. If the solution is new, it
+    /// propagates the solution to all dependent consumer nodes.
+    ///
+    /// # Parameters
+    /// - `pf`: A mutable reference to the `ProofForest`.
+    /// - `table`: A mutable reference to the `PersistentUnificationTable` used
+    ///   for managing unification operations.
     fn register_solution_with(self, pf: &mut ProofForest, table: &mut PersistentUnificationTable) {
         let g_node = &mut pf.g_nodes[self];
         let solution = g_node
             .goal
-            .make_solution(table.db(), table, g_node.extracted_goal);
+            .canonicalize_solution(table.db(), table, g_node.extracted_goal);
         if g_node.solutions.insert(solution) {
             for &c_node in g_node.dependents.iter() {
                 pf.c_stack.push((c_node, solution));
@@ -183,7 +279,20 @@ impl GeneratorNode {
         }
     }
 
-    /// Returns `false` if there is no candidate to apply.
+    /// Advances the solving process for the generator node.
+    ///
+    /// This function attempts to find a new solution or sub-goal for the
+    /// generator node. It iterates through the candidate implementors and
+    /// assumptions, unifying them with the goal. If a solution is found, it
+    /// is registered. If a sub-goal is found, a new consumer node is
+    /// created to handle it.
+    ///
+    /// # Parameters
+    /// - `pf`: A mutable reference to the `ProofForest`.
+    ///
+    /// # Returns
+    /// `true` if a new solution or sub-goal was found and processed; `false`
+    /// otherwise.
     fn step(self, pf: &mut ProofForest) -> bool {
         let g_node = &mut pf.g_nodes[self];
         let db = g_node.table.db();
@@ -241,9 +350,13 @@ impl GeneratorNode {
 
     fn unresolved_subgoal(self, pf: &mut ProofForest) -> Option<Solution> {
         let g_node = &pf.g_nodes[self];
+        // If the child nodes branch out more than one, we give up identifying the
+        // unresolved subgoal to avoid generating a large number of uncertain unresolved
+        // subgoals.
         if g_node.children.len() != 1 {
             return None;
         }
+
         let child = g_node.children[0];
         child.unresolved_subgoal(pf)
     }
@@ -266,6 +379,18 @@ struct ConsumerNode(u32);
 entity_impl!(ConsumerNode);
 
 impl ConsumerNode {
+    /// Applies a given solution to the consumer node.
+    ///
+    /// This function checks if the solution has already been applied. If not,
+    /// it attempts to unify the solution with the pending query of the
+    /// consumer node. If the unification is successful and there are no
+    /// remaining goals, the solution is registered with the root generator
+    /// node. If there are remaining goals, a new consumer node is created
+    /// to handle them.
+    ///
+    /// # Parameters
+    /// - `pf`: A mutable reference to the `ProofForest`.
+    /// - `solution`: The solution to be applied.
     fn apply_solution(self, pf: &mut ProofForest, solution: Solution) {
         let c_node = &mut pf.c_nodes[self];
 
@@ -303,7 +428,7 @@ impl ConsumerNode {
         let c_node = &mut pf.c_nodes[self];
         if c_node.children.len() != 1 {
             let unsat = c_node.query.0;
-            let unsat = pf.g_nodes[c_node.root].goal.make_solution(
+            let unsat = pf.g_nodes[c_node.root].goal.canonicalize_solution(
                 c_node.table.db(),
                 &mut c_node.table,
                 unsat,

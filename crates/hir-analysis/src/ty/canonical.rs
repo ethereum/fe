@@ -23,9 +23,20 @@ where
         Canonical { value }
     }
 
-    /// Extract canonical query to the current environment.
+    /// Extracts the identity from the canonical value.
+    ///
+    /// This method initializes the unification table with new variables
+    /// based on the canonical value and then returns the canonical value
+    /// itself.
+    ///
+    /// # Parameters
+    /// - `table`: The unification table to be initialized with new variables.
+    ///
+    /// # Returns
+    /// The canonical value after initializing the unification table.
+    ///
     /// # Panics
-    /// Panics if the table is not empty.
+    /// This function will panic if the `table` is not empty.
     pub(super) fn extract_identity<S>(self, table: &mut UnificationTableBase<S>) -> T
     where
         S: UnificationStore,
@@ -39,10 +50,22 @@ where
         self.value
     }
 
-    /// Make solution that corresponds to the `Canonical` query.
-    /// The `Table` should be in the same environment where the `solution` is
-    /// found.
-    pub(super) fn make_solution<S, U>(
+    /// Canonicalize a new solution that corresponds to the canonical query.
+    /// This function creates a new solution for a canonical query by folding
+    /// the provided solution with the unification table. It then constructs
+    /// a substitution map from probed type variables to canonical type
+    /// variables, and uses this map to canonicalize the solution.
+    ///
+    /// # Parameters
+    /// - `db`: The database reference.
+    /// - `table`: The unification table must be from the same environment as
+    ///   the solution.
+    /// - `solution`: The solution to be canonicalized.
+    ///
+    /// # Returns
+    /// A `Solution<U>` where `U` is the type of the provided solution,
+    /// canonicalized to the context of the canonical query.
+    pub(super) fn canonicalize_solution<S, U>(
         &self,
         db: &dyn HirAnalysisDb,
         table: &mut UnificationTableBase<S>,
@@ -80,6 +103,8 @@ where
     }
 }
 
+/// This type contains [`Canonical`] type and auxiliary information to map back
+/// [`Solution`] that corresponds to [`Canonical`] query.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Canonicalized<T> {
     pub value: Canonical<T>,
@@ -105,7 +130,17 @@ where
         }
     }
 
-    /// Extract solution to the current environment.
+    /// Extracts the solution from the canonicalized query.
+    ///
+    /// This method takes a unification table and a solution, and returns the
+    /// solution in the context of the original query environment.
+    ///
+    /// # Parameters
+    /// - `table`: The unification table in the original query environement.
+    /// - `solution`: The solution to extract.
+    ///
+    /// # Returns
+    /// The extracted solution in the context of the original query environment.
     pub fn extract_solution<U, S>(
         &self,
         table: &mut UnificationTableBase<S>,
@@ -121,12 +156,23 @@ where
     }
 }
 
-/// A solution for the [`Canonical`] query.
+/// Represents a solution to a [`Canonical`] query.
+///
+/// This type guarantees:
+/// 1. Any type variable in the solution that is unifiable with a type variable
+///    from the [`Canonical`] query will be canonicalized to that variable.
+/// 2. All other type variables are canonicalized in a consistent manner with
+///    the [`Canonical`] type.
+///
+/// To extract the internal value into the environment where the query was
+/// created, use [`Canonicalized::extract_solution`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Solution<T> {
     pub(super) value: T,
 }
 
+/// A struct that helps in converting types to their canonical form.
+/// It maintains a mapping from original type variables to canonical variables.
 struct Canonicalizer<'db> {
     db: &'db dyn HirAnalysisDb,
     // A substitution from original type variables to canonical variables.

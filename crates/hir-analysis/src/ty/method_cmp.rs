@@ -10,6 +10,29 @@ use super::{
 };
 use crate::HirAnalysisDb;
 
+/// Compares the implementation method with the trait method to ensure they
+/// match.
+///
+/// This function performs the following checks:
+///
+/// 1. Number of generic parameters.
+/// 2. Kinds of generic parameters.
+/// 3. Arity (number of arguments).
+/// 4. Argument labels.
+/// 5. Argument types and return type.
+/// 6. Method constraints.
+///
+/// If any of these checks fail, the function will record the appropriate
+/// diagnostics.
+///
+/// # Arguments
+///
+/// * `db` - Reference to the database implementing the `HirAnalysisDb` trait.
+/// * `impl_m` - The implementation method to compare.
+/// * `trait_m` - The trait method to compare against.
+/// * `trait_inst` - The instance of the trait being checked.
+/// * `sink` - A mutable reference to a vector where diagnostic messages will be
+///   collected.
 pub(super) fn compare_impl_method(
     db: &dyn HirAnalysisDb,
     impl_m: FuncDef,

@@ -1,6 +1,3 @@
-//! The algorithm for the trait resolution here is based on [`Tabled Typeclass Resolution`](https://arxiv.org/abs/2001.04301).
-//! Also, [`XSB: Extending Prolog with Tabled Logic Programming`](https://arxiv.org/pdf/1012.5123) is a nice entry point for more detailed discussions about tabled logic solver.
-
 use std::collections::BTreeSet;
 
 use hir::hir_def::IngotId;

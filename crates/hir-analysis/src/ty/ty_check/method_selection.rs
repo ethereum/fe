@@ -292,7 +292,8 @@ impl<'db> MethodSelector<'db> {
                 table.unify(cand, solution).unwrap();
 
                 Candidate::TraitMethod(TraitMethodCand::new(
-                    self.receiver.make_solution(self.db, &mut table, cand),
+                    self.receiver
+                        .canonicalize_solution(self.db, &mut table, cand),
                     method,
                 ))
             }
@@ -300,7 +301,8 @@ impl<'db> MethodSelector<'db> {
             &GoalSatisfiability::NeedsConfirmation(_)
             | GoalSatisfiability::ContainsInvalid
             | GoalSatisfiability::UnSat(_) => Candidate::NeedsConfirmation(TraitMethodCand::new(
-                self.receiver.make_solution(self.db, &mut table, cand),
+                self.receiver
+                    .canonicalize_solution(self.db, &mut table, cand),
                 method,
             )),
         }
