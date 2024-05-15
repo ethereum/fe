@@ -1,6 +1,6 @@
 # Precompiles
 
-Precompiles are EVM functions that are prebuilt and optimized as part of the Fe standard library. There are currently nine precompiles available in Fe. The first four precompiles were defined in the original [Ethereum whitepaper](http://gavwood.com/paper.pdf) (`ec_recover`, `SHA2_256`, `ripemd_160`, `identity)`. Four more were added during the [Byzantium fork](https://ethereum.org/en/history/#byzantium) (`mod_exp`, `ec_add`, `ec_mul` and `ec_pairing`). A final precompile, `blake2f` was added in [EIP-152](https://github.com/ethereum/EIPs/issues/152) during the [Istanbul fork](https://ethereum.org/en/history/#istanbul).
+Precompiles are EVM functions that are prebuilt and optimized as part of the Fe standard library. There are currently nine precompiles available in Fe. The first four precompiles were defined in the original [Ethereum Yellow Paper](https://ethereum.github.io/yellowpaper/paper.pdf) (`ec_recover`, `SHA2_256`, `ripemd_160`, `identity)`. Four more were added during the [Byzantium fork](https://ethereum.org/en/history/#byzantium) (`mod_exp`, `ec_add`, `ec_mul` and `ec_pairing`). A final precompile, `blake2f` was added in [EIP-152](https://github.com/ethereum/EIPs/issues/152) during the [Istanbul fork](https://ethereum.org/en/history/#istanbul).
 
 The nine precompiles available in the Fe standard library are:
 
