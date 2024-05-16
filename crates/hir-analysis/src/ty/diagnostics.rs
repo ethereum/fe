@@ -682,7 +682,7 @@ pub enum BodyDiag {
         cands: Vec<String>,
     },
 
-    InvisibleTraitMethod {
+    InvisibleAmbiguousTrait {
         primary: DynLazySpan,
         traits: Vec<Trait>,
     },
@@ -922,7 +922,7 @@ impl BodyDiag {
             Self::AmbiguousInherentMethodCall { .. } => 25,
             Self::AmbiguousTrait { .. } => 26,
             Self::AmbiguousTraitInst { .. } => 27,
-            Self::InvisibleTraitMethod { .. } => 28,
+            Self::InvisibleAmbiguousTrait { .. } => 28,
             Self::MethodNotFound { .. } => 29,
             Self::NotValue { .. } => 30,
             Self::TypeAnnotationNeeded { .. } => 31,
@@ -983,7 +983,7 @@ impl BodyDiag {
 
             Self::AmbiguousTraitInst { .. } => "ambiguous trait implementation".to_string(),
 
-            Self::InvisibleTraitMethod { .. } => "trait is not in the scope".to_string(),
+            Self::InvisibleAmbiguousTrait { .. } => "trait is not in the scope".to_string(),
 
             Self::MethodNotFound { method_name, .. } => {
                 format!("`{}` is not found", method_name.data(db))
@@ -1497,10 +1497,10 @@ impl BodyDiag {
                 diags
             }
 
-            Self::InvisibleTraitMethod { primary, traits } => {
+            Self::InvisibleAmbiguousTrait { primary, traits } => {
                 let mut diags = vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    "trait is not imported to the scope, consider trying the following suggestion"
+                    "consider importing one of the following traits into the scope to resolve the ambiguity"
                         .to_string(),
                     primary.resolve(db),
                 )];

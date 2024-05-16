@@ -103,7 +103,7 @@ pub(super) fn select_method_candidate(
         }
 
         Err(MethodSelectionError::InvisibleTraitMethod(traits)) => {
-            let diag = BodyDiag::InvisibleTraitMethod {
+            let diag = BodyDiag::InvisibleAmbiguousTrait {
                 primary: method_name.1,
                 traits,
             };
@@ -234,9 +234,30 @@ impl<'db> MethodSelector<'db> {
         }
     }
 
+    /// Selects the most appropriate trait method candidate.
+    ///
+    /// This function checks the available trait method candidates and attempts
+    /// to find the best match. If there is only one candidate, it is returned.
+    /// If there are multiple candidates, it checks for visibility and
+    /// ambiguity.
+    ///
+    /// **NOTE**: If there is no ambiguity, the trait does not need to be
+    /// visible.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Candidate)` - The selected method candidate.
+    /// * `Err(MethodSelectionError)` - An error indicating the reason for
+    ///   failure.
     fn select_trait_methods(&self) -> Result<Candidate, MethodSelectionError> {
-        let available_traits = self.available_traits();
         let traits = &self.candidates.traits;
+
+        if traits.len() == 1 {
+            let (def, method) = traits.iter().next().unwrap();
+            return Ok(self.find_inst(*def, *method));
+        }
+
+        let available_traits = self.available_traits();
         let visible_traits: Vec<_> = traits
             .iter()
             .copied()
@@ -265,6 +286,23 @@ impl<'db> MethodSelector<'db> {
         }
     }
 
+    /// Finds an instance of a trait method for the given trait definition and
+    /// method.
+    ///
+    /// This function attempts to unify the receiver type with the method's self
+    /// type, and assigns type variables to the trait parameters. It then
+    /// checks if the goal is satisfiable given the current assumptions.
+    /// Depending on the result, it either returns a confirmed trait method
+    /// candidate or one that needs further confirmation.
+    ///
+    /// # Arguments
+    ///
+    /// * `def` - The trait definition.
+    /// * `method` - The trait method.
+    ///
+    /// # Returns
+    ///
+    /// A `Candidate` representing the found trait method instance.
     fn find_inst(&self, def: TraitDef, method: TraitMethod) -> Candidate {
         let mut table = UnificationTable::new(self.db);
         let receiver = self.receiver.extract_identity(&mut table);
