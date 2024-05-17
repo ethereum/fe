@@ -29,4 +29,4 @@ macros = { path = "../macros", package = "fe-macros" }
 
 [dev-dependencies]
 codespan-reporting = "0.11"
-dir-test = "0.2"
+dir-test = "0.3"

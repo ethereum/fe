@@ -28,7 +28,7 @@ yultsur = {git = "https://github.com/fe-lang/yultsur", rev = "ae85470"}
 insta = { default-features = false, version = "1.26" }
 pretty_assertions = "1.0.0"
 wasm-bindgen-test = "0.3.24"
-dir-test="0.2"
+dir-test="0.3"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 proptest = {version = "1.1.0", default-features = false, features = ["std"]}

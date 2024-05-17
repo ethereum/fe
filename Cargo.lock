@@ -720,39 +720,18 @@ dependencies = [
 
 [[package]]
 name = "dir-test"
-version = "0.1.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "035f15b4ae5cc91ca448fe9668799e3d9b09fd7381a7004e232769ff0efabb79"
+checksum = "5c44bdf9319ad5223afb7eb15a7110452b0adf0373ea6756561b2c708eef0dd1"
 dependencies = [
- "dir-test-macros 0.1.1",
-]
-
-[[package]]
-name = "dir-test"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fc943f4c1320fad6dbfe6a00070d88480c4f343e917cd7d5c5e04856ee7026c"
-dependencies = [
- "dir-test-macros 0.2.1",
+ "dir-test-macros",
 ]
 
 [[package]]
 name = "dir-test-macros"
-version = "0.1.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15699f408d3f58a1259b624d3c127721a442555136933d33cf387b81f5c9c89c"
-dependencies = [
- "glob",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "dir-test-macros"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cce5926e6ae92adcff7412e08ad0268d7eab7d15c1be1da34b7e9469a2dacb9"
+checksum = "644f96047137dfaa7a09e34d4623f9e52a1926ecc25ba32ad2ba3fc422536b25"
 dependencies = [
  "glob",
  "proc-macro2",
@@ -803,7 +782,7 @@ checksum = "855423f2158bcc73798b3b9a666ec4204597a72370dc91dbdb8e7f9519de8cc3"
 name = "driver2"
 version = "0.26.0"
 dependencies = [
- "dir-test 0.2.1",
+ "dir-test",
  "fe-compiler-test-utils",
  "fe-driver2",
  "fe-hir",
@@ -1175,7 +1154,7 @@ dependencies = [
 name = "fe-compiler-tests"
 version = "0.26.0"
 dependencies = [
- "dir-test 0.1.1",
+ "dir-test",
  "fe-common",
  "fe-driver",
  "fe-test-runner",
@@ -1185,7 +1164,7 @@ dependencies = [
 name = "fe-compiler-tests-legacy"
 version = "0.26.0"
 dependencies = [
- "dir-test 0.2.1",
+ "dir-test",
  "ethabi",
  "evm",
  "evm-runtime",
@@ -1269,7 +1248,7 @@ dependencies = [
  "codespan-reporting",
  "cranelift-entity",
  "derive_more",
- "dir-test 0.2.1",
+ "dir-test",
  "either",
  "ena",
  "fe-common2",
@@ -1295,7 +1274,7 @@ dependencies = [
  "clap 4.3.12",
  "codespan-reporting",
  "crossbeam-channel",
- "dir-test 0.2.1",
+ "dir-test",
  "fe-analyzer",
  "fe-common2",
  "fe-compiler-test-utils",
@@ -1382,7 +1361,7 @@ name = "fe-parser2"
 version = "0.26.0"
 dependencies = [
  "derive_more",
- "dir-test 0.2.1",
+ "dir-test",
  "fe-compiler-test-utils",
  "lazy_static",
  "logos",
