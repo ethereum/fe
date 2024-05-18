@@ -1,15 +1,15 @@
 ---
 source: crates/uitest/tests/ty_check.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty_check/pat/record.fe
+input_file: fixtures/ty_check/pat/record.fe
 ---
-error[8-0002]: duplicated `..` found
+error[8-0002]: duplicate `..` found
    ┌─ record.fe:13:24
    │
 13 │     let Foo {x, .., y, ..}
    │                        ^^ `..` can be used only once
 
-error[8-0002]: duplicated `..` found
+error[8-0002]: duplicate `..` found
    ┌─ record.fe:19:33
    │
 19 │     let Bar::Variant {x, .., y, ..}
@@ -79,4 +79,18 @@ error[8-0011]: all fields are not given
    │                      missing `x, y`
    │                      Consider using `Bar::Variant { x, y }` instead
 
+error[8-0032]: duplicate binding `x` in pattern
+   ┌─ record.fe:12:17
+   │
+12 │     let Foo {x, x}
+   │              -  ^ `x` is defined again here
+   │              │   
+   │              first definition of `x` in this pattern
 
+error[8-0032]: duplicate binding `x` in pattern
+   ┌─ record.fe:18:26
+   │
+18 │     let Bar::Variant {x, x}
+   │                       -  ^ `x` is defined again here
+   │                       │   
+   │                       first definition of `x` in this pattern

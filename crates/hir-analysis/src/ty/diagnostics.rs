@@ -544,6 +544,11 @@ pub enum BodyDiag<'db> {
     TypeMismatch(DynLazySpan<'db>, String, String),
     InfiniteOccurrence(DynLazySpan<'db>),
 
+    DuplicatedBinding {
+        primary: DynLazySpan<'db>,
+        conflicat_with: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
     DuplicatedRestPat(DynLazySpan<'db>),
 
     InvalidPathDomainInPat {
@@ -927,6 +932,7 @@ impl<'db> BodyDiag<'db> {
             Self::MethodNotFound { .. } => 29,
             Self::NotValue { .. } => 30,
             Self::TypeAnnotationNeeded { .. } => 31,
+            Self::DuplicatedBinding { .. } => 32,
         }
     }
 
@@ -934,7 +940,10 @@ impl<'db> BodyDiag<'db> {
         match self {
             Self::TypeMismatch(_, _, _) => "type mismatch".to_string(),
             Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
-            Self::DuplicatedRestPat(_) => "duplicated `..` found".to_string(),
+            Self::DuplicatedBinding { name, .. } => {
+                format!("duplicate binding `{}` in pattern", name.data(db))
+            }
+            Self::DuplicatedRestPat(_) => "duplicate `..` found".to_string(),
             Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
             Self::UnitVariantExpected { .. } => "expected unit variant".to_string(),
             Self::TupleVariantExpected { .. } => "expected tuple variant".to_string(),
@@ -1008,6 +1017,26 @@ impl<'db> BodyDiag<'db> {
                 "infinite sized type found".to_string(),
                 span.resolve(db),
             )],
+
+            Self::DuplicatedBinding {
+                primary,
+                conflicat_with,
+                name,
+            } => {
+                let name = name.data(db.as_hir_db());
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("`{name}` is defined again here",),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("first definition of `{name}` in this pattern"),
+                        conflicat_with.resolve(db),
+                    ),
+                ]
+            }
 
             Self::DuplicatedRestPat(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
