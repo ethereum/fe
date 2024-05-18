@@ -1,0 +1,11 @@
+pub enum E {
+    V(i32, u32)
+}
+
+fn foo(f: E) {
+    let E::V(x, x) = f
+
+    match f {
+        E::V(x, x) => ()
+    }
+}

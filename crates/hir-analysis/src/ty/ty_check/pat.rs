@@ -145,9 +145,19 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
-            ResolvedPathInBody::Binding(ident, _) | ResolvedPathInBody::NewBinding(ident) => {
+            ResolvedPathInBody::Binding(name, _) | ResolvedPathInBody::NewBinding(name) => {
                 let binding = LocalBinding::local(pat, *is_mut);
-                self.env.register_pending_binding(ident, binding);
+                if let Some(LocalBinding::Local {
+                    pat: conflict_with, ..
+                }) = self.env.register_pending_binding(name, binding)
+                {
+                    let diag = BodyDiag::DuplicatedBinding {
+                        primary: span.into(),
+                        conflicat_with: conflict_with.lazy_span(self.body()).into(),
+                        name,
+                    };
+                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                }
                 self.fresh_ty()
             }
 
