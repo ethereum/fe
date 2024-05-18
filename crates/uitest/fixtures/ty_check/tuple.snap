@@ -15,7 +15,7 @@ error[8-0000]: type mismatch
 4 │     let y: (i32, bool) = (1, 2)
   │                              ^ expected `bool`, but `{integer}` is given
 
-error[8-0031]: type annotation is needed
+error[8-0032]: type annotation is needed
   ┌─ tuple.fe:2:32
   │
 2 │     let x: (i32, u32, bool) = (1, 2)
@@ -24,7 +24,7 @@ error[8-0031]: type annotation is needed
   │                                type annotation is needed
   │                                no default type is provided for an integer type. consider giving integer type
 
-error[8-0031]: type annotation is needed
+error[8-0032]: type annotation is needed
   ┌─ tuple.fe:2:35
   │
 2 │     let x: (i32, u32, bool) = (1, 2)

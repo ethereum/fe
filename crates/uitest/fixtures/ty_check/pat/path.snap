@@ -3,7 +3,7 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty_check/pat/path.fe
 ---
-error[8-0004]: expected unit variant
+error[8-0005]: expected unit variant
   ┌─ path.fe:7:13
   │
 7 │     let x = Foo

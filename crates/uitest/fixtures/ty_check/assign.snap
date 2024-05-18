@@ -15,13 +15,13 @@ error[8-0000]: type mismatch
 36 │             t = 1
    │                 ^ expected `T`, but `{integer}` is given
 
-error[8-0017]: not assignable left-hand side of assignment
+error[8-0018]: not assignable left-hand side of assignment
    ┌─ assign.fe:31:5
    │
 31 │     1 = 1
    │     ^ cant assign to this expression
 
-error[8-0018]: left-hand side of assignment is immutable
+error[8-0019]: left-hand side of assignment is immutable
    ┌─ assign.fe:21:9
    │
 20 │     fn set_inner(self, x: i32, y: u32) {
@@ -29,7 +29,7 @@ error[8-0018]: left-hand side of assignment is immutable
 21 │         self.inner = Inner { x, y }
    │         ^^^^^^^^^^ immutable assignment
 
-error[8-0018]: left-hand side of assignment is immutable
+error[8-0019]: left-hand side of assignment is immutable
    ┌─ assign.fe:26:5
    │
 25 │ fn foo<T>(x: i32, mut y: u32, opt: Option<T>, opt2: Option<i32>) {
@@ -37,7 +37,7 @@ error[8-0018]: left-hand side of assignment is immutable
 26 │     x = 1
    │     ^ immutable assignment
 
-error[8-0018]: left-hand side of assignment is immutable
+error[8-0019]: left-hand side of assignment is immutable
    ┌─ assign.fe:43:13
    │
 42 │         Some(x) => {
@@ -45,7 +45,7 @@ error[8-0018]: left-hand side of assignment is immutable
 43 │             x = 1
    │             ^ immutable assignment
 
-error[8-0031]: type annotation is needed
+error[8-0032]: type annotation is needed
    ┌─ assign.fe:31:5
    │
 31 │     1 = 1

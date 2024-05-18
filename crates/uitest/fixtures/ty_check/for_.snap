@@ -9,7 +9,7 @@ error[8-0000]: type mismatch
 16 │     for Bar { x } in foo_arr {
    │         ^^^^^^^^^ expected `Foo`, but `Bar` is given
 
-error[8-0018]: left-hand side of assignment is immutable
+error[8-0019]: left-hand side of assignment is immutable
    ┌─ for_.fe:17:9
    │
 15 │     let res = 0
@@ -18,7 +18,7 @@ error[8-0018]: left-hand side of assignment is immutable
 17 │         res += x
    │         ^^^ immutable assignment
 
-error[8-0020]: `Iterator` needs to be implemented for Foo
+error[8-0021]: `Iterator` needs to be implemented for Foo
    ┌─ for_.fe:11:14
    │
 11 │     for i in foo { }
