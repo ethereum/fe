@@ -11,7 +11,7 @@ fe-test-runner = { path = "../test-runner", version = "^0.26.0" }
 fe-driver = { path = "../driver", version = "^0.26.0" }
 fe-common = { path = "../common", version = "^0.26.0" }
 
-dir-test = "^0.1"
+dir-test = "0.3"
 
 [features]
 solc-backend = ["fe-driver/solc-backend"]

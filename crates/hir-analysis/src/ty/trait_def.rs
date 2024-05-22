@@ -11,19 +11,19 @@ use rustc_hash::FxHashMap;
 use super::{
     binder::Binder,
     canonical::Canonical,
-    constraint::{collect_super_traits, AssumptionListId, ConstraintListId},
-    constraint_solver::{check_trait_inst_wf, GoalSatisfiability},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     func_def::FuncDef,
     trait_lower::collect_implementor_methods,
+    trait_resolution::{
+        check_trait_inst_wf,
+        constraint::{collect_implementor_constraints, collect_super_traits},
+        PredicateListId, WellFormedness,
+    },
     ty_def::{Kind, TyId},
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
 };
-use crate::{
-    ty::{constraint::collect_implementor_constraints, trait_lower::collect_trait_impls},
-    HirAnalysisDb,
-};
+use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
 
 /// Returns [`TraitEnv`] for the given ingot.
 #[salsa::tracked(return_ref)]
@@ -33,13 +33,13 @@ pub(crate) fn ingot_trait_env(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitEn
 
 /// Returns all [`Implementor`] for the given trait inst.
 #[salsa::tracked(return_ref)]
-pub(crate) fn impls_of_trait(
+pub(crate) fn impls_for_trait(
     db: &dyn HirAnalysisDb,
     ingot: IngotId,
     trait_: Canonical<TraitInstId>,
 ) -> Vec<Binder<Implementor>> {
     let mut table = UnificationTable::new(db);
-    let trait_ = trait_.decanonicalize(&mut table);
+    let trait_ = trait_.extract_identity(&mut table);
 
     let env = ingot_trait_env(db, ingot);
     let Some(impls) = env.impls.get(&trait_.def(db)) else {
@@ -59,14 +59,15 @@ pub(crate) fn impls_of_trait(
         .collect()
 }
 
+/// Returns all [`Implementor`] for the given `ty`.
 #[salsa::tracked(return_ref)]
-pub(crate) fn impls_of_ty(
+pub(crate) fn impls_for_ty(
     db: &dyn HirAnalysisDb,
     ingot: IngotId,
     ty: Canonical<TyId>,
 ) -> Vec<Binder<Implementor>> {
     let mut table = UnificationTable::new(db);
-    let ty = ty.decanonicalize(&mut table);
+    let ty = ty.extract_identity(&mut table);
 
     let env = ingot_trait_env(db, ingot);
     if ty.has_invalid(db) {
@@ -92,7 +93,7 @@ pub(crate) fn impls_of_ty(
             let snapshot = table.snapshot();
 
             let impl_ = table.instantiate_with_fresh_vars(*impl_);
-            let impl_ty = table.instantiate_to_term(impl_.ty(db));
+            let impl_ty = table.instantiate_to_term(impl_.self_ty(db));
             let ty = table.instantiate_to_term(ty);
             let is_ok = table.unify(impl_ty, ty).is_ok();
 
@@ -145,7 +146,7 @@ impl TraitEnv {
                 for implementor in implementors {
                     ty_to_implementors
                         .entry(Binder::bind(
-                            implementor.instantiate_identity().ty(db).base_ty(db),
+                            implementor.instantiate_identity().self_ty(db).base_ty(db),
                         ))
                         .or_default()
                         .push(*implementor);
@@ -161,16 +162,6 @@ impl TraitEnv {
         }
     }
 
-    /// Returns all implementors of the given instantiated trait.
-    pub(crate) fn impls_of_trait<'db>(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-        ingot: IngotId,
-        trait_: Canonical<TraitInstId>,
-    ) -> &'db [Binder<Implementor>] {
-        impls_of_trait(db, ingot, trait_)
-    }
-
     /// Returns the corresponding implementor of the given `impl Trait` type.
     pub(crate) fn map_impl_trait(&self, trait_ref: ImplTrait) -> Option<Binder<Implementor>> {
         self.hir_to_implementor.get(&trait_ref).copied()
@@ -183,9 +174,6 @@ impl TraitEnv {
 pub(crate) struct Implementor {
     /// The trait that this implementor implements.
     pub(crate) trait_: TraitInstId,
-
-    /// The type that this implementor implements the trait for.
-    pub(crate) ty: TyId,
 
     /// The type parameters of this implementor.
     #[return_ref]
@@ -205,9 +193,14 @@ impl Implementor {
         self.params(db)
     }
 
+    /// The self type of the impl trait.
+    pub(crate) fn self_ty(self, db: &dyn HirAnalysisDb) -> TyId {
+        self.trait_(db).self_ty(db)
+    }
+
     /// Returns the constraints that the implementor requires when the
     /// implementation is selected.
-    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> ConstraintListId {
+    pub(super) fn constraints(self, db: &dyn HirAnalysisDb) -> PredicateListId {
         collect_implementor_constraints(db, self).instantiate(db, self.params(db))
     }
 
@@ -239,24 +232,30 @@ pub struct TraitInstId {
 }
 
 impl TraitInstId {
-    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
-        let mut s = self.def(db).name(db).unwrap_or("<unknown>").to_string();
+    pub fn pretty_print(self, db: &dyn HirAnalysisDb, as_pred: bool) -> String {
+        if as_pred {
+            let inst = self.pretty_print(db, false);
+            let self_ty = self.self_ty(db);
+            format! {"{}: {}", self_ty.pretty_print(db), inst}
+        } else {
+            let mut s = self.def(db).name(db).unwrap_or("<unknown>").to_string();
 
-        let mut args = self.args(db).iter().map(|ty| ty.pretty_print(db));
-        // Skip the first type parameter since it's the implementor type.
-        args.next();
+            let mut args = self.args(db).iter().map(|ty| ty.pretty_print(db));
+            // Skip the first type parameter since it's the implementor type.
+            args.next();
 
-        if let Some(first) = args.next() {
-            s.push('<');
-            s.push_str(first);
-            for arg in args {
-                s.push_str(", ");
-                s.push_str(arg);
+            if let Some(first) = args.next() {
+                s.push('<');
+                s.push_str(first);
+                for arg in args {
+                    s.push_str(", ");
+                    s.push_str(arg);
+                }
+                s.push('>');
             }
-            s.push('>');
-        }
 
-        s
+            s
+        }
     }
 
     pub fn self_ty(self, db: &dyn HirAnalysisDb) -> TyId {
@@ -270,18 +269,15 @@ impl TraitInstId {
     pub(super) fn emit_sat_diag(
         self,
         db: &dyn HirAnalysisDb,
-        assumptions: AssumptionListId,
+        assumptions: PredicateListId,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        match check_trait_inst_wf(db, self, assumptions) {
-            GoalSatisfiability::Satisfied => None,
-            GoalSatisfiability::NotSatisfied(goal) => {
-                Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into())
-            }
-
-            GoalSatisfiability::InfiniteRecursion(goal) => {
-                Some(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into())
-            }
+        if let WellFormedness::IllFormed { goal, subgoal } =
+            check_trait_inst_wf(db, self, assumptions)
+        {
+            Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal, subgoal).into())
+        } else {
+            None
         }
     }
 }

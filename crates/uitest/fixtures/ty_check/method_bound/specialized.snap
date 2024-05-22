@@ -7,6 +7,9 @@ error[6-0003]: trait bound is not satisfied
    ┌─ specialized.fe:29:16
    │
 29 │     let _ = s2.f()
-   │                ^ `S2<bool>` doesn't implement `Trait`
+   │                ^
+   │                │
+   │                `S2<bool>` doesn't implement `Trait`
+   │                trait bound `S<bool>: Trait` is not satisfied
 
 

@@ -10,10 +10,16 @@ use rustc_hash::FxHashMap;
 use super::{Callable, TypedBody};
 use crate::{
     ty::{
+        canonical::{Canonical, Canonicalized},
         const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
-        constraint::{collect_func_def_constraints, AssumptionListId},
+        diagnostics::{BodyDiag, FuncBodyDiag},
         fold::{TyFoldable, TyFolder},
         func_def::{lower_func, FuncDef},
+        trait_def::TraitInstId,
+        trait_resolution::{
+            constraint::collect_func_def_constraints, is_goal_satisfiable, GoalSatisfiability,
+            PredicateListId,
+        },
         ty_def::{InvalidCause, TyData, TyId, TyVarSort},
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
@@ -29,10 +35,10 @@ pub(super) struct TyCheckEnv<'db> {
     expr_ty: FxHashMap<ExprId, ExprProp>,
     callables: FxHashMap<ExprId, Callable>,
 
+    pending_confirmations: Vec<(TraitInstId, DynLazySpan)>,
+
     var_env: Vec<BlockEnv>,
-
     pending_vars: FxHashMap<IdentId, LocalBinding>,
-
     loop_stack: Vec<StmtId>,
 }
 
@@ -49,6 +55,7 @@ impl<'db> TyCheckEnv<'db> {
             pat_ty: FxHashMap::default(),
             expr_ty: FxHashMap::default(),
             callables: FxHashMap::default(),
+            pending_confirmations: Vec::new(),
             var_env: vec![BlockEnv::new(func.scope(), 0)],
             pending_vars: FxHashMap::default(),
             loop_stack: Vec::new(),
@@ -113,10 +120,10 @@ impl<'db> TyCheckEnv<'db> {
         lower_func(self.db, func)
     }
 
-    pub(super) fn assumptions(&self) -> AssumptionListId {
+    pub(super) fn assumptions(&self) -> PredicateListId {
         match self.func() {
             Some(func) => collect_func_def_constraints(self.db, func, true).instantiate_identity(),
-            None => AssumptionListId::empty_list(self.db),
+            None => PredicateListId::empty_list(self.db),
         }
     }
 
@@ -184,60 +191,38 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
-    pub(super) fn finish(mut self, table: &mut UnificationTable) -> TypedBody {
-        struct EnvFinisher<'a, 'db> {
-            table: &'a mut UnificationTable<'db>,
-        }
+    pub(super) fn register_confirmation(&mut self, inst: TraitInstId, span: DynLazySpan) {
+        self.pending_confirmations.push((inst, span))
+    }
 
-        impl<'a, 'db> TyFolder<'db> for EnvFinisher<'a, 'db> {
-            fn db(&self) -> &'db dyn HirAnalysisDb {
-                self.table.db()
-            }
+    pub(super) fn finish(mut self, table: &mut UnificationTable) -> (TypedBody, Vec<FuncBodyDiag>) {
+        let mut prober = Prober { table };
 
-            fn fold_ty(&mut self, ty: TyId) -> TyId {
-                let ty = self.table.fold_ty(ty);
-                let TyData::TyVar(var) = ty.data(self.db()) else {
-                    return ty.super_fold_with(self);
-                };
+        let diags = self.perform_pending_confirmation(&mut prober);
 
-                // String type variable fallback.
-                if let TyVarSort::String(len) = var.sort {
-                    let ty = TyId::new(self.db(), TyData::TyBase(PrimTy::String.into()));
-                    let len =
-                        EvaluatedConstTy::LitInt(IntegerId::new(self.db().as_hir_db(), len.into()));
-                    let len = ConstTyData::Evaluated(
-                        len,
-                        ty.applicable_ty(self.db()).unwrap().const_ty.unwrap(),
-                    );
-                    let len = TyId::const_ty(self.db(), ConstTyId::new(self.db(), len));
-                    TyId::app(self.db(), ty, len)
-                } else {
-                    ty.super_fold_with(self)
-                }
-            }
-        }
-
-        let mut folder = EnvFinisher { table };
         self.expr_ty
             .values_mut()
-            .for_each(|ty| *ty = ty.fold_with(&mut folder));
+            .for_each(|ty| *ty = ty.fold_with(&mut prober));
 
         self.pat_ty
             .values_mut()
-            .for_each(|ty| *ty = ty.fold_with(&mut folder));
+            .for_each(|ty| *ty = ty.fold_with(&mut prober));
 
         let callables = self
             .callables
             .into_iter()
-            .map(|(expr, callable)| (expr, callable.fold_with(&mut folder)))
+            .map(|(expr, callable)| (expr, callable.fold_with(&mut prober)))
             .collect();
 
-        TypedBody {
-            body: Some(self.body),
-            pat_ty: self.pat_ty,
-            expr_ty: self.expr_ty,
-            callables,
-        }
+        (
+            TypedBody {
+                body: Some(self.body),
+                pat_ty: self.pat_ty,
+                expr_ty: self.expr_ty,
+                callables,
+            },
+            diags,
+        )
     }
 
     pub(super) fn expr_data(&self, expr: ExprId) -> &'db Partial<Expr> {
@@ -258,6 +243,59 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn get_block(&self, idx: usize) -> &BlockEnv {
         &self.var_env[idx]
+    }
+
+    fn perform_pending_confirmation(&self, prober: &mut Prober) -> Vec<FuncBodyDiag> {
+        let mut diags = vec![];
+        let assumptions = self.assumptions();
+        let mut changed = true;
+        // Try to perform confirmation until all pending confirmations reaches to
+        // the fixed point.
+        while changed {
+            changed = false;
+            for (inst, _) in &self.pending_confirmations {
+                let inst = inst.fold_with(prober);
+                let canonical_inst = Canonicalized::new(self.db, inst);
+                if let GoalSatisfiability::Satisfied(solution) =
+                    is_goal_satisfiable(self.db, assumptions, canonical_inst.value)
+                {
+                    let solution = canonical_inst.extract_solution(prober.table, *solution);
+                    prober.table.unify(inst, solution).unwrap();
+
+                    // We need compare old and new inst in a canonical form since a new inst might
+                    // introduce new type variable in some cases.
+                    // In other word, we need to check ⍺-equivalence to know whether the
+                    // confirmation step move forward.
+                    let new_canonical_inst = Canonical::new(self.db, inst.fold_with(prober.table));
+                    changed |= new_canonical_inst != canonical_inst.value;
+                }
+            }
+        }
+
+        // Finds ambiguous trait inst and emits diags.
+        for (inst, span) in &self.pending_confirmations {
+            let inst = inst.fold_with(prober);
+            let canonical_inst = Canonicalized::new(self.db, inst);
+            match is_goal_satisfiable(self.db, assumptions, canonical_inst.value) {
+                GoalSatisfiability::NeedsConfirmation(ambiguous) => {
+                    let insts = ambiguous
+                        .iter()
+                        .map(|solution| canonical_inst.extract_solution(prober.table, *solution))
+                        .collect();
+
+                    if !inst.self_ty(self.db).has_var(self.db) {
+                        let diag = BodyDiag::ambiguous_trait_inst(self.db, span.clone(), insts);
+                        diags.push(diag.into())
+                    }
+                }
+
+                _ => {
+                    // WF is checked by `TyCheckerFinalizer`
+                }
+            }
+        }
+
+        diags
     }
 }
 
@@ -380,6 +418,35 @@ impl LocalBinding {
                     .name_moved()
                     .into()
             }
+        }
+    }
+}
+
+struct Prober<'a, 'db> {
+    table: &'a mut UnificationTable<'db>,
+}
+
+impl<'a, 'db> TyFolder<'db> for Prober<'a, 'db> {
+    fn db(&self) -> &'db dyn HirAnalysisDb {
+        self.table.db()
+    }
+
+    fn fold_ty(&mut self, ty: TyId) -> TyId {
+        let ty = self.table.fold_ty(ty);
+        let TyData::TyVar(var) = ty.data(self.db()) else {
+            return ty.super_fold_with(self);
+        };
+
+        // String type variable fallback.
+        if let TyVarSort::String(len) = var.sort {
+            let ty = TyId::new(self.db(), TyData::TyBase(PrimTy::String.into()));
+            let len = EvaluatedConstTy::LitInt(IntegerId::new(self.db().as_hir_db(), len.into()));
+            let len =
+                ConstTyData::Evaluated(len, ty.applicable_ty(self.db()).unwrap().const_ty.unwrap());
+            let len = TyId::const_ty(self.db(), ConstTyId::new(self.db(), len));
+            TyId::app(self.db(), ty, len)
+        } else {
+            ty.super_fold_with(self)
         }
     }
 }

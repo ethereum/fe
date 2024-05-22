@@ -1,13 +1,38 @@
 use super::{
-    constraint::collect_func_def_constraints,
-    constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
+    canonical::Canonical,
     diagnostics::{ImplDiag, TyDiagCollection},
     func_def::FuncDef,
     trait_def::{TraitInstId, TraitMethod},
+    trait_resolution::{
+        constraint::collect_func_def_constraints, is_goal_satisfiable, GoalSatisfiability,
+    },
     ty_def::TyId,
 };
 use crate::HirAnalysisDb;
 
+/// Compares the implementation method with the trait method to ensure they
+/// match.
+///
+/// This function performs the following checks:
+///
+/// 1. Number of generic parameters.
+/// 2. Kinds of generic parameters.
+/// 3. Arity (number of arguments).
+/// 4. Argument labels.
+/// 5. Argument types and return type.
+/// 6. Method constraints.
+///
+/// If any of these checks fail, the function will record the appropriate
+/// diagnostics.
+///
+/// # Arguments
+///
+/// * `db` - Reference to the database implementing the `HirAnalysisDb` trait.
+/// * `impl_m` - The implementation method to compare.
+/// * `trait_m` - The trait method to compare against.
+/// * `trait_inst` - The instance of the trait being checked.
+/// * `sink` - A mutable reference to a vector where diagnostic messages will be
+///   collected.
 pub(super) fn compare_impl_method(
     db: &dyn HirAnalysisDb,
     impl_m: FuncDef,
@@ -250,19 +275,21 @@ fn compare_constraints(
     let trait_m_constraints =
         collect_func_def_constraints(db, trait_m, false).instantiate(db, map_to_impl);
     let mut unsatisfied_goals = vec![];
-    for &goal in impl_m_constraints.predicates(db) {
-        if !matches!(
-            is_goal_satisfiable(db, goal, trait_m_constraints),
-            GoalSatisfiability::Satisfied
-        ) {
-            unsatisfied_goals.push(goal);
+    for &goal in impl_m_constraints.list(db) {
+        let canonical_goal = Canonical::new(db, goal);
+        match is_goal_satisfiable(db, trait_m_constraints, canonical_goal) {
+            GoalSatisfiability::Satisfied(_) | GoalSatisfiability::ContainsInvalid => {}
+            GoalSatisfiability::NeedsConfirmation(_) => unreachable!(),
+            GoalSatisfiability::UnSat(_) => {
+                unsatisfied_goals.push(goal);
+            }
         }
     }
 
     if unsatisfied_goals.is_empty() {
         true
     } else {
-        unsatisfied_goals.sort_by_key(|goal| goal.ty(db).value.pretty_print(db));
+        unsatisfied_goals.sort_by_key(|goal| goal.self_ty(db).pretty_print(db));
         sink.push(
             ImplDiag::method_stricter_bound(db, impl_m.name_span(db), &unsatisfied_goals).into(),
         );

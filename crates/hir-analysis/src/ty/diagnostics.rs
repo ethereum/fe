@@ -16,8 +16,7 @@ use hir::{
 use itertools::Itertools;
 
 use super::{
-    constraint::PredicateId,
-    trait_def::TraitDef,
+    trait_def::{TraitDef, TraitInstId},
     ty_check::{RecordLike, TraitOps},
     ty_def::{Kind, TyData, TyId, TyVarSort},
 };
@@ -58,7 +57,7 @@ impl FuncBodyDiag {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum TyDiagCollection {
     Ty(TyLowerDiag),
-    Satisfaction(TraitConstraintDiag),
+    Satisfiability(TraitConstraintDiag),
     TraitLower(TraitLowerDiag),
     Impl(ImplDiag),
 }
@@ -67,7 +66,7 @@ impl TyDiagCollection {
     pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
-            TyDiagCollection::Satisfaction(diag) => Box::new(diag) as _,
+            TyDiagCollection::Satisfiability(diag) => Box::new(diag) as _,
             TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
             TyDiagCollection::Impl(diag) => Box::new(diag) as _,
         }
@@ -672,13 +671,18 @@ pub enum BodyDiag {
         cand_spans: Vec<DynLazySpan>,
     },
 
-    AmbiguousTraitMethodCall {
+    AmbiguousTrait {
         primary: DynLazySpan,
         method_name: IdentId,
-        cand_insts: Vec<String>,
+        traits: Vec<Trait>,
     },
 
-    InvisibleTraitMethod {
+    AmbiguousTraitInst {
+        primary: DynLazySpan,
+        cands: Vec<String>,
+    },
+
+    InvisibleAmbiguousTrait {
         primary: DynLazySpan,
         traits: Vec<Trait>,
     },
@@ -876,6 +880,18 @@ impl BodyDiag {
         }
     }
 
+    pub(super) fn ambiguous_trait_inst(
+        db: &dyn HirAnalysisDb,
+        primary: DynLazySpan,
+        cands: Vec<TraitInstId>,
+    ) -> Self {
+        let cands = cands
+            .into_iter()
+            .map(|cand| cand.pretty_print(db, false))
+            .collect_vec();
+        Self::AmbiguousTraitInst { primary, cands }
+    }
+
     fn local_code(&self) -> u16 {
         match self {
             Self::TypeMismatch(..) => 0,
@@ -904,11 +920,12 @@ impl BodyDiag {
             Self::CallArgNumMismatch { .. } => 23,
             Self::CallArgLabelMismatch { .. } => 24,
             Self::AmbiguousInherentMethodCall { .. } => 25,
-            Self::AmbiguousTraitMethodCall { .. } => 26,
-            Self::InvisibleTraitMethod { .. } => 27,
-            Self::MethodNotFound { .. } => 28,
-            Self::NotValue { .. } => 29,
-            Self::TypeAnnotationNeeded { .. } => 30,
+            Self::AmbiguousTrait { .. } => 26,
+            Self::AmbiguousTraitInst { .. } => 27,
+            Self::InvisibleAmbiguousTrait { .. } => 28,
+            Self::MethodNotFound { .. } => 29,
+            Self::NotValue { .. } => 30,
+            Self::TypeAnnotationNeeded { .. } => 31,
         }
     }
 
@@ -962,9 +979,11 @@ impl BodyDiag {
 
             Self::AmbiguousInherentMethodCall { .. } => "ambiguous method call".to_string(),
 
-            Self::AmbiguousTraitMethodCall { .. } => "ambiguous trait method call".to_string(),
+            Self::AmbiguousTrait { .. } => "multiple trait candidates found".to_string(),
 
-            Self::InvisibleTraitMethod { .. } => "trait is not in the scope".to_string(),
+            Self::AmbiguousTraitInst { .. } => "ambiguous trait implementation".to_string(),
+
+            Self::InvisibleAmbiguousTrait { .. } => "trait is not in the scope".to_string(),
 
             Self::MethodNotFound { method_name, .. } => {
                 format!("`{}` is not found", method_name.data(db))
@@ -1436,22 +1455,23 @@ impl BodyDiag {
                 diags
             }
 
-            Self::AmbiguousTraitMethodCall {
+            Self::AmbiguousTrait {
                 primary,
                 method_name,
-                cand_insts,
+                traits,
             } => {
                 let method_name = method_name.data(db.as_hir_db());
                 let mut diags = vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("`{}` is ambiguous", method_name),
+                    format!("`{method_name}` is ambiguous"),
                     primary.resolve(db),
                 )];
 
-                for cand in cand_insts.iter() {
+                for trait_ in traits.iter() {
+                    let trait_name = trait_.name(db.as_hir_db()).unwrap().data(db.as_hir_db());
                     diags.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("candidate: {cand}"),
+                        format!("candidate: `{trait_name}::{method_name}`"),
                         primary.resolve(db),
                     ));
                 }
@@ -1459,10 +1479,28 @@ impl BodyDiag {
                 diags
             }
 
-            Self::InvisibleTraitMethod { primary, traits } => {
+            Self::AmbiguousTraitInst { primary, cands } => {
                 let mut diags = vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    "trait is not imported to the scope, consider trying the following suggestion"
+                    "multiple implementations are found".to_string(),
+                    primary.resolve(db),
+                )];
+
+                for cand in cands {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("candidate: {cand}"),
+                        primary.resolve(db),
+                    ))
+                }
+
+                diags
+            }
+
+            Self::InvisibleAmbiguousTrait { primary, traits } => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    "consider importing one of the following traits into the scope to resolve the ambiguity"
                         .to_string(),
                     primary.resolve(db),
                 )];
@@ -1669,7 +1707,7 @@ pub enum TraitConstraintDiag {
 
     TraitArgKindMismatch(DynLazySpan, String),
 
-    TraitBoundNotSat(DynLazySpan, String),
+    TraitBoundNotSat(DynLazySpan, String, Option<String>),
 
     InfiniteBoundRecursion(DynLazySpan, String),
 
@@ -1705,31 +1743,22 @@ impl TraitConstraintDiag {
     pub(super) fn trait_bound_not_satisfied(
         db: &dyn HirAnalysisDb,
         span: DynLazySpan,
-        pred: PredicateId,
+        primary_goal: TraitInstId,
+        unsat_subgoal: Option<TraitInstId>,
     ) -> Self {
-        let ty = pred.ty(db);
-        let goal = pred.trait_inst(db);
         let msg = format!(
             "`{}` doesn't implement `{}`",
-            ty.value.pretty_print(db),
-            goal.value.pretty_print(db)
+            primary_goal.self_ty(db).pretty_print(db),
+            primary_goal.pretty_print(db, false)
         );
-        Self::TraitBoundNotSat(span, msg)
-    }
 
-    pub(super) fn infinite_bound_recursion(
-        db: &dyn HirAnalysisDb,
-        span: DynLazySpan,
-        pred: PredicateId,
-    ) -> Self {
-        let goal = pred.trait_inst(db);
-        let ty = pred.ty(db);
-        let msg = format!(
-            "infinite evaluation recursion occurs when checking `{}: {}` ",
-            ty.value.pretty_print(db),
-            goal.value.pretty_print(db)
-        );
-        Self::InfiniteBoundRecursion(span, msg)
+        let unsat_subgoal = unsat_subgoal.map(|unsat| {
+            format!(
+                "trait bound `{}` is not satisfied",
+                unsat.pretty_print(db, true)
+            )
+        });
+        Self::TraitBoundNotSat(span, msg, unsat_subgoal)
     }
 
     pub(super) fn const_ty_bound(db: &dyn HirAnalysisDb, ty: TyId, span: DynLazySpan) -> Self {
@@ -1747,10 +1776,10 @@ impl TraitConstraintDiag {
             Self::KindMismatch { .. } => 0,
             Self::TraitArgNumMismatch { .. } => 1,
             Self::TraitArgKindMismatch(_, _) => 2,
-            Self::TraitBoundNotSat(_, _) => 3,
-            Self::InfiniteBoundRecursion(_, _) => 4,
-            Self::ConcreteTypeBound(_, _) => 5,
-            Self::ConstTyBound(_, _) => 6,
+            Self::TraitBoundNotSat(..) => 3,
+            Self::InfiniteBoundRecursion(..) => 4,
+            Self::ConcreteTypeBound(..) => 5,
+            Self::ConstTyBound(..) => 6,
         }
     }
 
@@ -1760,17 +1789,17 @@ impl TraitConstraintDiag {
 
             Self::TraitArgNumMismatch { .. } => "given trait argument number mismatch".to_string(),
 
-            Self::TraitArgKindMismatch(_, _) => "given trait argument kind mismatch".to_string(),
+            Self::TraitArgKindMismatch(..) => "given trait argument kind mismatch".to_string(),
 
-            Self::TraitBoundNotSat(_, _) => "trait bound is not satisfied".to_string(),
+            Self::TraitBoundNotSat(..) => "trait bound is not satisfied".to_string(),
 
-            Self::InfiniteBoundRecursion(_, _) => "infinite trait bound recursion".to_string(),
+            Self::InfiniteBoundRecursion(..) => "infinite trait bound recursion".to_string(),
 
-            Self::ConcreteTypeBound(_, _) => {
+            Self::ConcreteTypeBound(..) => {
                 "trait bound for concrete type is not allowed".to_string()
             }
 
-            Self::ConstTyBound(_, _) => "trait bound for const type is not allowed".to_string(),
+            Self::ConstTyBound(..) => "trait bound for const type is not allowed".to_string(),
         }
     }
 
@@ -1807,11 +1836,23 @@ impl TraitConstraintDiag {
                 span.resolve(db),
             )],
 
-            Self::TraitBoundNotSat(span, msg) => vec![SubDiagnostic::new(
-                LabelStyle::Primary,
-                msg.clone(),
-                span.resolve(db),
-            )],
+            Self::TraitBoundNotSat(span, msg, subgoal) => {
+                let mut diags = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    msg.clone(),
+                    span.resolve(db),
+                )];
+
+                if let Some(subgoal) = subgoal {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        subgoal.clone(),
+                        span.resolve(db),
+                    ))
+                }
+
+                diags
+            }
 
             Self::InfiniteBoundRecursion(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
@@ -2041,13 +2082,13 @@ impl ImplDiag {
     pub(super) fn method_stricter_bound(
         db: &dyn HirAnalysisDb,
         primary: DynLazySpan,
-        stricter_bounds: &[PredicateId],
+        stricter_bounds: &[TraitInstId],
     ) -> Self {
         let message = format!(
             "method has stricter bounds than the declared method in the trait: {}",
             stricter_bounds
                 .iter()
-                .map(|pred| format!("`{}`", pred.pretty_print(db)))
+                .map(|pred| format!("`{}`", pred.pretty_print(db, true)))
                 .join(", ")
         );
         Self::MethodStricterBound { primary, message }

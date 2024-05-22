@@ -1,6 +1,6 @@
 //! This module contains the type definitions for the Fe type system.
 
-use std::fmt;
+use std::{collections::BTreeSet, fmt};
 
 use bitflags::bitflags;
 use common::input::IngotKind;
@@ -17,16 +17,13 @@ use rustc_hash::FxHashSet;
 use super::{
     adt_def::AdtDef,
     const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
-    constraint::AssumptionListId,
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     func_def::FuncDef,
+    trait_resolution::{PredicateListId, WellFormedness},
     unify::InferenceKey,
     visitor::{TyVisitable, TyVisitor},
 };
-use crate::{
-    ty::constraint_solver::{check_ty_wf, GoalSatisfiability},
-    HirAnalysisDb,
-};
+use crate::{ty::trait_resolution::check_ty_wf, HirAnalysisDb};
 
 #[salsa::interned]
 pub struct TyId {
@@ -120,6 +117,10 @@ impl TyId {
 
     pub fn has_param(self, db: &dyn HirAnalysisDb) -> bool {
         self.flags(db).contains(TyFlags::HAS_PARAM)
+    }
+
+    pub fn has_var(self, db: &dyn HirAnalysisDb) -> bool {
+        self.flags(db).contains(TyFlags::HAS_VAR)
     }
 
     /// Returns `true` if the type has a `*` kind.
@@ -345,17 +346,13 @@ impl TyId {
     pub(super) fn emit_wf_diag(
         self,
         db: &dyn HirAnalysisDb,
-        assumptions: AssumptionListId,
+        assumptions: PredicateListId,
         span: DynLazySpan,
     ) -> Option<TyDiagCollection> {
-        match check_ty_wf(db, self, assumptions) {
-            GoalSatisfiability::Satisfied => None,
-            GoalSatisfiability::NotSatisfied(goal) => {
-                Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into())
-            }
-            GoalSatisfiability::InfiniteRecursion(goal) => {
-                Some(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into())
-            }
+        if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(db, self, assumptions) {
+            Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal, subgoal).into())
+        } else {
+            None
         }
     }
 
@@ -679,6 +676,20 @@ pub struct TyVar {
     pub(super) key: InferenceKey,
 }
 
+impl std::cmp::PartialOrd for TyVar {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl std::cmp::Ord for TyVar {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self == other {
+            return std::cmp::Ordering::Equal;
+        }
+        self.key.cmp(&other.key)
+    }
+}
+
 /// Represents the sort of a type variable that indicates what type domain
 /// can be unified with the type variable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -975,9 +986,40 @@ impl HasKind for FuncDef {
     }
 }
 
+pub(crate) fn collect_variables<'db, V>(
+    db: &'db dyn HirAnalysisDb,
+    visitable: &V,
+) -> BTreeSet<TyVar>
+where
+    V: TyVisitable<'db>,
+{
+    struct TyVarCollector<'db> {
+        db: &'db dyn HirAnalysisDb,
+        vars: BTreeSet<TyVar>,
+    }
+
+    impl<'db> TyVisitor<'db> for TyVarCollector<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_var(&mut self, var: &TyVar) {
+            self.vars.insert(var.clone());
+        }
+    }
+    let mut collector = TyVarCollector {
+        db,
+        vars: BTreeSet::default(),
+    };
+
+    visitable.visit_with(&mut collector);
+
+    collector.vars
+}
+
 pub(crate) fn inference_keys<'db, V>(
     db: &'db dyn HirAnalysisDb,
-    visitable: V,
+    visitable: &V,
 ) -> FxHashSet<InferenceKey>
 where
     V: TyVisitable<'db>,

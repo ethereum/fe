@@ -14,18 +14,19 @@ rustc-hash = "1.1.0"
 either = "1.8"
 derive_more = "0.99"
 itertools = "0.10"
-ena = "0.14"
-
-hir = { path = "../hir", package = "fe-hir" }
-common = { path = "../common2", package = "fe-common2" }
-macros = { path = "../macros", package = "fe-macros" }
+ena = { version = "0.14", features = ["persistent"] }
 fe-compiler-test-utils = { path = "../test-utils" }
 num-bigint = "0.4"
 once_cell = "1.18"
 regex = "1.10"
 if_chain = "1.0"
 bitflags = "2.5"
+cranelift-entity = "0.91"
+
+hir = { path = "../hir", package = "fe-hir" }
+common = { path = "../common2", package = "fe-common2" }
+macros = { path = "../macros", package = "fe-macros" }
 
 [dev-dependencies]
 codespan-reporting = "0.11"
-dir-test = "0.2"
+dir-test = "0.3"

@@ -19,17 +19,19 @@ use super::{
     adt_def::{lower_adt, AdtRef, AdtRefId},
     canonical::Canonical,
     const_ty::ConstTyId,
-    constraint::{
-        collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
-        collect_super_traits, AssumptionListId, SuperTraitCycle,
-    },
-    constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
     func_def::FuncDef,
     method_cmp::compare_impl_method,
     method_table::probe_method,
     trait_def::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
+    trait_resolution::{
+        constraint::{
+            collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
+            collect_super_traits, SuperTraitCycle,
+        },
+        PredicateListId,
+    },
     ty_def::{InvalidCause, TyData, TyId},
     ty_lower::{collect_generic_params, lower_kind, GenericParamOwnerId},
     visitor::{walk_ty, TyVisitor},
@@ -39,14 +41,17 @@ use crate::{
     ty::{
         adt_def::AdtDef,
         binder::Binder,
-        constraint::{collect_trait_constraints, PredicateId},
+        canonical::Canonicalized,
         diagnostics::{
             AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
             ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
         },
         func_def::lower_func,
-        trait_def::does_impl_trait_conflict,
+        trait_def::{does_impl_trait_conflict, TraitInstId},
         trait_lower::lower_impl_trait,
+        trait_resolution::{
+            constraint::collect_trait_constraints, is_goal_satisfiable, GoalSatisfiability,
+        },
         ty_lower::{lower_hir_ty, lower_type_alias},
         visitor::TyVisitable,
     },
@@ -198,7 +203,7 @@ pub struct DefAnalyzer<'db> {
     def: DefKind,
     self_ty: Option<TyId>,
     diags: Vec<TyDiagCollection>,
-    assumptions: AssumptionListId,
+    assumptions: PredicateListId,
     current_ty: Option<(TyId, DynLazySpan)>,
 }
 
@@ -247,7 +252,7 @@ impl<'db> DefAnalyzer<'db> {
         Self {
             db,
             def: implementor.into(),
-            self_ty: implementor.ty(db).into(),
+            self_ty: implementor.self_ty(db).into(),
             diags: vec![],
             assumptions,
             current_ty: None,
@@ -289,7 +294,7 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     /// This method verifies if
-    /// 1. the given `ty` has `*` kind(i.e, concrete type)
+    /// 1. the given `ty` has `*` kind.
     /// 2. the given `ty` is not const type
     /// TODO: This method is a stop-gap implementation until we design a true
     /// const type system.
@@ -394,7 +399,7 @@ impl<'db> DefAnalyzer<'db> {
         for &cand in probe_method(
             self.db,
             self.scope().ingot(self.db.as_hir_db()),
-            Canonical::canonicalize(self.db, self_ty),
+            Canonical::new(self.db, self_ty),
             func.name(self.db),
         ) {
             if cand != func {
@@ -930,7 +935,7 @@ fn analyze_trait_ref(
     self_ty: TyId,
     trait_ref: TraitRefId,
     scope: ScopeId,
-    assumptions: Option<AssumptionListId>,
+    assumptions: Option<PredicateListId>,
     span: DynLazySpan,
 ) -> Option<TyDiagCollection> {
     let trait_inst = match lower_trait_ref(db, self_ty, trait_ref, scope) {
@@ -1136,7 +1141,7 @@ fn analyze_impl_trait_specific_error(
                 db,
                 impl_trait.lazy_span().ty().into(),
                 expected_kind,
-                implementor.instantiate_identity().ty(db),
+                implementor.instantiate_identity().self_ty(db),
             )
             .into(),
         );
@@ -1148,20 +1153,28 @@ fn analyze_impl_trait_specific_error(
         collect_trait_constraints(db, trait_def).instantiate(db, trait_inst.args(db));
     let assumptions = implementor.instantiate_identity().constraints(db);
 
-    let mut is_satisfied =
-        |goal: PredicateId, span: DynLazySpan| match is_goal_satisfiable(db, goal, assumptions) {
-            GoalSatisfiability::Satisfied => {}
-            GoalSatisfiability::NotSatisfied(_) => {
-                diags.push(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal).into());
+    let mut is_satisfied = |goal: TraitInstId, span: DynLazySpan| {
+        let canonical_goal = Canonicalized::new(db, goal);
+        match is_goal_satisfiable(db, assumptions, canonical_goal.value) {
+            GoalSatisfiability::Satisfied(_) | GoalSatisfiability::ContainsInvalid => {}
+            GoalSatisfiability::NeedsConfirmation(_) => unreachable!(),
+            GoalSatisfiability::UnSat(subgoal) => {
+                diags.push(
+                    TraitConstraintDiag::trait_bound_not_satisfied(
+                        db,
+                        span,
+                        goal,
+                        subgoal.map(|subgoal| subgoal.value),
+                    )
+                    .into(),
+                );
             }
-            GoalSatisfiability::InfiniteRecursion(_) => {
-                diags.push(TraitConstraintDiag::infinite_bound_recursion(db, span, goal).into());
-            }
-        };
+        }
+    };
 
     // 6. Checks if the trait inst is WF.
     let trait_ref_span: DynLazySpan = impl_trait.lazy_span().trait_ref_moved().into();
-    for &goal in trait_constraints.predicates(db) {
+    for &goal in trait_constraints.list(db) {
         is_satisfied(goal, trait_ref_span.clone());
     }
 
@@ -1169,14 +1182,7 @@ fn analyze_impl_trait_specific_error(
     let target_ty_span: DynLazySpan = impl_trait.lazy_span().ty().into();
     for &super_trait in trait_def.super_traits(db) {
         let super_trait = super_trait.instantiate(db, trait_inst.args(db));
-        let goal = PredicateId::new(
-            db,
-            Canonical {
-                value: implementor.skip_binder().ty(db),
-            },
-            Canonical { value: super_trait },
-        );
-        is_satisfied(goal, target_ty_span.clone())
+        is_satisfied(super_trait, target_ty_span.clone())
     }
 
     if diags.is_empty() {

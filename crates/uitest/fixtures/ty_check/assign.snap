@@ -45,7 +45,7 @@ error[8-0018]: left-hand side of assignment is immutable
 43 │             x = 1
    │             ^ immutable assignment
 
-error[8-0030]: type annotation is needed
+error[8-0031]: type annotation is needed
    ┌─ assign.fe:31:5
    │
 31 │     1 = 1

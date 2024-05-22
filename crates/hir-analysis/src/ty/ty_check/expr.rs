@@ -11,7 +11,7 @@ use super::{
 use crate::{
     name_resolution::{diagnostics::NameResDiag, is_scope_visible_from},
     ty::{
-        canonical::Canonical,
+        canonical::Canonicalized,
         const_ty::ConstTyId,
         diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
         ty_check::{
@@ -274,7 +274,7 @@ impl<'db> TyChecker<'db> {
         callable.check_args(self, args, call_span.args_moved(), None);
 
         let ret_ty = callable.ret_ty(self.db);
-        self.register_callable(expr, callable);
+        self.env.register_callable(expr, callable);
         ExprProp::new(ret_ty, true)
     }
 
@@ -295,12 +295,10 @@ impl<'db> TyChecker<'db> {
 
         let assumptions = self.env.assumptions();
 
+        let canonical_r_ty = Canonicalized::new(self.db, receiver_prop.ty);
         let candidate = match select_method_candidate(
             self.db,
-            (
-                Canonical::canonicalize(self.db, receiver_prop.ty),
-                receiver.lazy_span(self.body()).into(),
-            ),
+            (canonical_r_ty.value, receiver.lazy_span(self.body()).into()),
             (method_name, call_span.method_name().into()),
             self.env.scope(),
             assumptions,
@@ -319,9 +317,17 @@ impl<'db> TyChecker<'db> {
             }
 
             Candidate::TraitMethod(cand) => {
-                let inst = cand.inst;
+                let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
                 let trait_method = cand.method;
-                trait_method.instantiate_with_inst(self, receiver_prop.ty, inst)
+                trait_method.instantiate_with_inst(&mut self.table, receiver_prop.ty, inst)
+            }
+
+            Candidate::NeedsConfirmation(cand) => {
+                let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
+                self.env
+                    .register_confirmation(inst, call_span.clone().into());
+                let trait_method = cand.method;
+                trait_method.instantiate_with_inst(&mut self.table, receiver_prop.ty, inst)
             }
         };
 
@@ -345,7 +351,7 @@ impl<'db> TyChecker<'db> {
             Some((*receiver, receiver_prop)),
         );
         let ret_ty = callable.ret_ty(self.db);
-        self.register_callable(expr, callable);
+        self.env.register_callable(expr, callable);
         ExprProp::new(ret_ty, true)
     }
 

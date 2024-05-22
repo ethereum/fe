@@ -1,30 +1,20 @@
-//! This module contains the implementation of the constraint collection
-//! algorithms.
-
 use std::collections::BTreeSet;
 
 use hir::hir_def::{
-    scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, IngotId, ItemKind, TypeBound,
+    scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
 };
 use salsa::function::Configuration;
 
-use super::{
-    adt_def::AdtDef,
-    constraint_solver::{is_goal_satisfiable, GoalSatisfiability},
-    func_def::FuncDef,
-    trait_def::{Implementor, TraitDef, TraitInstId},
-    trait_lower::lower_trait_ref,
-    ty_def::{TyBase, TyData, TyId},
-    ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
-};
 use crate::{
     ty::{
-        adt_def::{lower_adt, AdtRefId},
+        adt_def::{lower_adt, AdtDef, AdtRefId},
         binder::Binder,
-        canonical::Canonical,
-        func_def::HirFuncDefKind,
-        trait_lower::{lower_impl_trait, lower_trait},
-        ty_def::TyVarSort,
+        func_def::{FuncDef, HirFuncDefKind},
+        trait_def::{Implementor, TraitDef, TraitInstId},
+        trait_lower::{lower_impl_trait, lower_trait, lower_trait_ref},
+        trait_resolution::PredicateListId,
+        ty_def::{TyBase, TyData, TyId, TyVarSort},
+        ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
         unify::InferenceKey,
     },
     HirAnalysisDb,
@@ -32,7 +22,7 @@ use crate::{
 
 /// Returns a constraints list which is derived from the given type.
 #[salsa::tracked]
-pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintListId {
+pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> PredicateListId {
     let (base, args) = ty.decompose_ty_app(db);
     let (params, base_constraints) = match base.data(db) {
         TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, *adt)),
@@ -41,7 +31,7 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> ConstraintList
             collect_func_def_constraints(db, *func_def, true),
         ),
         _ => {
-            return ConstraintListId::empty_list(db);
+            return PredicateListId::empty_list(db);
         }
     };
 
@@ -89,7 +79,7 @@ pub(crate) fn collect_super_traits(
 pub(crate) fn collect_trait_constraints(
     db: &dyn HirAnalysisDb,
     trait_: TraitDef,
-) -> Binder<ConstraintListId> {
+) -> Binder<PredicateListId> {
     let hir_trait = trait_.trait_(db);
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_trait.into()));
 
@@ -101,9 +91,9 @@ pub(crate) fn collect_trait_constraints(
 pub(crate) fn collect_adt_constraints(
     db: &dyn HirAnalysisDb,
     adt: AdtDef,
-) -> Binder<ConstraintListId> {
+) -> Binder<PredicateListId> {
     let Some(owner) = adt.as_generic_param_owner(db) else {
-        return Binder::bind(ConstraintListId::empty_list(db));
+        return Binder::bind(PredicateListId::empty_list(db));
     };
     let collector = ConstraintCollector::new(db, owner);
 
@@ -114,7 +104,7 @@ pub(crate) fn collect_adt_constraints(
 pub(crate) fn collect_impl_block_constraints(
     db: &dyn HirAnalysisDb,
     impl_: Impl,
-) -> Binder<ConstraintListId> {
+) -> Binder<PredicateListId> {
     let owner = GenericParamOwnerId::new(db, impl_.into());
     Binder::bind(ConstraintCollector::new(db, owner).collect())
 }
@@ -125,7 +115,7 @@ pub(crate) fn collect_impl_block_constraints(
 pub(crate) fn collect_implementor_constraints(
     db: &dyn HirAnalysisDb,
     implementor: Implementor,
-) -> Binder<ConstraintListId> {
+) -> Binder<PredicateListId> {
     let impl_trait = implementor.hir_impl_trait(db);
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, impl_trait.into()));
 
@@ -137,7 +127,7 @@ pub(crate) fn collect_func_def_constraints(
     db: &dyn HirAnalysisDb,
     func: FuncDef,
     include_parent: bool,
-) -> Binder<ConstraintListId> {
+) -> Binder<PredicateListId> {
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
         HirFuncDefKind::VariantCtor(enum_, _) => {
@@ -146,7 +136,7 @@ pub(crate) fn collect_func_def_constraints(
             if include_parent {
                 return collect_adt_constraints(db, adt);
             } else {
-                return Binder::bind(ConstraintListId::empty_list(db));
+                return Binder::bind(PredicateListId::empty_list(db));
             }
         }
     };
@@ -182,7 +172,7 @@ pub(crate) fn collect_func_def_constraints(
 pub(crate) fn collect_func_def_constraints_impl(
     db: &dyn HirAnalysisDb,
     func: FuncDef,
-) -> Binder<ConstraintListId> {
+) -> Binder<PredicateListId> {
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
         HirFuncDefKind::VariantCtor(enum_, _) => {
@@ -196,62 +186,6 @@ pub(crate) fn collect_func_def_constraints_impl(
         ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect(),
     )
 }
-
-/// Describes a predicate indicating `ty` implements `trait_`.
-#[salsa::interned]
-pub struct PredicateId {
-    pub(super) ty: Canonical<TyId>,
-    pub(super) trait_inst: Canonical<TraitInstId>,
-}
-
-impl PredicateId {
-    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> String {
-        let ty = self.ty(db);
-        let trait_ = self.trait_inst(db);
-        format!(
-            "{}: {}",
-            ty.value.pretty_print(db),
-            trait_.value.pretty_print(db)
-        )
-    }
-}
-
-/// The list of predicates.
-#[salsa::interned]
-pub(crate) struct PredicateListId {
-    #[return_ref]
-    pub(super) predicates: BTreeSet<PredicateId>,
-    pub(super) ingot: IngotId,
-}
-
-impl PredicateListId {
-    pub(super) fn remove(self, db: &dyn HirAnalysisDb, pred: PredicateId) -> Self {
-        if !self.contains(db, pred) {
-            return self;
-        };
-
-        let mut predicates = self.predicates(db).clone();
-        predicates.remove(&pred);
-        PredicateListId::new(db, predicates, self.ingot(db))
-    }
-
-    pub(super) fn merge(self, db: &dyn HirAnalysisDb, other: Self) -> Self {
-        let mut predicates = self.predicates(db).clone();
-        predicates.extend(other.predicates(db));
-        PredicateListId::new(db, predicates, self.ingot(db))
-    }
-
-    pub(super) fn empty_list(db: &dyn HirAnalysisDb) -> Self {
-        Self::new(db, BTreeSet::new(), IngotId::dummy())
-    }
-
-    pub(super) fn contains(self, db: &dyn HirAnalysisDb, pred: PredicateId) -> bool {
-        self.predicates(db).contains(&pred)
-    }
-}
-
-pub(super) type AssumptionListId = PredicateListId;
-pub(super) type ConstraintListId = PredicateListId;
 
 pub(crate) fn recover_collect_super_traits(
     _db: &dyn HirAnalysisDb,
@@ -326,7 +260,7 @@ impl SuperTraitCycle {
 struct ConstraintCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwnerId,
-    predicates: BTreeSet<PredicateId>,
+    predicates: BTreeSet<TraitInstId>,
 }
 
 impl<'db> ConstraintCollector<'db> {
@@ -339,63 +273,27 @@ impl<'db> ConstraintCollector<'db> {
         }
     }
 
-    fn collect(mut self) -> ConstraintListId {
+    fn collect(mut self) -> PredicateListId {
         self.collect_constraints_from_generic_params();
         self.collect_constraints_from_where_clause();
-        self.simplify()
-    }
-
-    fn simplify(&mut self) -> PredicateListId {
-        let ingot = self.owner.ingot(self.db);
 
         // Collect super traits from the trait definition and add them to the predicate
         // list.
         if let GenericParamOwner::Trait(trait_) = self.owner.data(self.db) {
             let trait_def = lower_trait(self.db, trait_);
-            let self_param = trait_def.self_param(self.db);
-            self.push_predicate(
-                self_param,
-                TraitInstId::new(
-                    self.db,
-                    trait_def,
-                    collect_generic_params(self.db, self.owner)
-                        .params(self.db)
-                        .to_vec(),
-                ),
-            );
+            self.push_predicate(TraitInstId::new(
+                self.db,
+                trait_def,
+                collect_generic_params(self.db, self.owner)
+                    .params(self.db)
+                    .to_vec(),
+            ));
         }
 
-        let mut simplified = PredicateListId::new(self.db, self.predicates.clone(), ingot);
-
-        for goal in std::mem::take(&mut self.predicates).into_iter() {
-            let temp_predicates = simplified.remove(self.db, goal);
-            if self.can_remove(temp_predicates, goal) {
-                simplified = temp_predicates;
-            }
-        }
-
-        simplified
+        PredicateListId::new(self.db, self.predicates, self.owner.ingot(self.db))
     }
 
-    fn can_remove(&mut self, predicates: PredicateListId, goal: PredicateId) -> bool {
-        let goal_ty = goal.ty(self.db);
-
-        if !goal_ty.value.has_param(self.db) {
-            return true;
-        }
-
-        match is_goal_satisfiable(self.db, goal, predicates) {
-            GoalSatisfiability::Satisfied | GoalSatisfiability::InfiniteRecursion(_) => true,
-            GoalSatisfiability::NotSatisfied(_) => false,
-        }
-    }
-
-    fn push_predicate(&mut self, ty: TyId, trait_inst: TraitInstId) {
-        let pred = PredicateId::new(
-            self.db,
-            Canonical::canonicalize(self.db, ty),
-            Canonical::canonicalize(self.db, trait_inst),
-        );
+    fn push_predicate(&mut self, pred: TraitInstId) {
         self.predicates.insert(pred);
     }
 
@@ -448,7 +346,7 @@ impl<'db> ConstraintCollector<'db> {
                 continue;
             };
 
-            self.push_predicate(bound_ty, trait_inst);
+            self.push_predicate(trait_inst);
         }
     }
 }

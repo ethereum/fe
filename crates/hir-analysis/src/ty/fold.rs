@@ -1,12 +1,10 @@
 use std::collections::BTreeSet;
 
 use super::{
-    canonical::Canonical,
-    constraint::{PredicateId, PredicateListId},
     trait_def::{Implementor, TraitInstId},
+    trait_resolution::PredicateListId,
     ty_check::ExprProp,
     ty_def::{TyData, TyId},
-    unify::UnificationTable,
     visitor::TyVisitable,
 };
 use crate::{
@@ -135,7 +133,6 @@ impl<'db> TyFoldable<'db> for Implementor {
     {
         let db = folder.db();
         let trait_inst = self.trait_(db).fold_with(folder);
-        let ty = self.ty(db).fold_with(folder);
         let params = self
             .params(db)
             .iter()
@@ -143,29 +140,7 @@ impl<'db> TyFoldable<'db> for Implementor {
             .collect();
         let hir_impl_trait = self.hir_impl_trait(db);
 
-        Implementor::new(db, trait_inst, ty, params, hir_impl_trait)
-    }
-}
-
-impl<'db> TyFoldable<'db> for PredicateId {
-    fn super_fold_with<F>(self, folder: &mut F) -> Self
-    where
-        F: TyFolder<'db>,
-    {
-        let mut table = UnificationTable::new(folder.db());
-        let ty = self
-            .ty(folder.db())
-            .decanonicalize(&mut table)
-            .fold_with(folder);
-        let trait_inst = self
-            .trait_inst(folder.db())
-            .decanonicalize(&mut table)
-            .fold_with(folder);
-        Self::new(
-            folder.db(),
-            Canonical::canonicalize(folder.db(), ty),
-            Canonical::canonicalize(folder.db(), trait_inst),
-        )
+        Implementor::new(db, trait_inst, params, hir_impl_trait)
     }
 }
 
@@ -175,7 +150,7 @@ impl<'db> TyFoldable<'db> for PredicateListId {
         F: TyFolder<'db>,
     {
         let predicates = self
-            .predicates(folder.db())
+            .list(folder.db())
             .iter()
             .map(|pred| pred.fold_with(folder))
             .collect();

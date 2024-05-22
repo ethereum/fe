@@ -17,7 +17,6 @@ use crate::HirAnalysisDb;
 pub mod adt_def;
 pub mod binder;
 pub mod const_ty;
-pub mod constraint_solver;
 pub mod def_analysis;
 pub mod diagnostics;
 pub mod fold;
@@ -25,12 +24,11 @@ pub mod func_def;
 pub mod method_table;
 pub mod trait_def;
 pub mod trait_lower;
+pub mod trait_resolution;
 pub mod ty_check;
 pub mod ty_def;
 pub mod ty_lower;
 pub mod visitor;
-
-pub(crate) mod constraint;
 
 mod canonical;
 mod method_cmp;

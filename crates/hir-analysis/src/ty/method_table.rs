@@ -47,7 +47,7 @@ pub struct MethodTable {
 impl MethodTable {
     fn probe(&self, db: &dyn HirAnalysisDb, ty: Canonical<TyId>, name: IdentId) -> Vec<FuncDef> {
         let mut table = UnificationTable::new(db);
-        let ty = ty.decanonicalize(&mut table);
+        let ty = ty.extract_identity(&mut table);
         let Some(base) = Self::extract_ty_base(ty, db) else {
             return vec![];
         };
@@ -214,11 +214,7 @@ impl<'db> MethodCollector<'db> {
 
         if self
             .method_table
-            .probe(
-                self.db,
-                Canonical::canonicalize(self.db, ty),
-                func.name(self.db),
-            )
+            .probe(self.db, Canonical::new(self.db, ty), func.name(self.db))
             .is_empty()
         {
             self.method_table.insert(self.db, ty, func)
