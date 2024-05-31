@@ -28,12 +28,14 @@ impl PrimTy {
             PrimTy::Int(IntTy::I64),
             PrimTy::Int(IntTy::I128),
             PrimTy::Int(IntTy::I256),
+            PrimTy::Int(IntTy::ISIZE),
             PrimTy::Uint(UintTy::U8),
             PrimTy::Uint(UintTy::U16),
             PrimTy::Uint(UintTy::U32),
             PrimTy::Uint(UintTy::U64),
             PrimTy::Uint(UintTy::U128),
             PrimTy::Uint(UintTy::U256),
+            PrimTy::Uint(UintTy::USIZE),
             PrimTy::String,
         ]
     }
@@ -47,6 +49,7 @@ pub enum IntTy {
     I64,
     I128,
     I256,
+    ISIZE,
 }
 
 impl IntTy {
@@ -58,6 +61,7 @@ impl IntTy {
             IntTy::I64 => kw::I64,
             IntTy::I128 => kw::I128,
             IntTy::I256 => kw::I256,
+            IntTy::ISIZE => kw::ISIZE,
         }
     }
 }
@@ -70,6 +74,7 @@ pub enum UintTy {
     U64,
     U128,
     U256,
+    USIZE,
 }
 
 impl UintTy {
@@ -81,6 +86,7 @@ impl UintTy {
             UintTy::U64 => kw::U64,
             UintTy::U128 => kw::U128,
             UintTy::U256 => kw::U256,
+            UintTy::USIZE => kw::USIZE,
         }
     }
 }
