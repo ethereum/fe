@@ -810,12 +810,14 @@ impl TyBase {
                 PrimTy::U64 => "u64",
                 PrimTy::U128 => "u128",
                 PrimTy::U256 => "u256",
+                PrimTy::Usize => "usize",
                 PrimTy::I8 => "i8",
                 PrimTy::I16 => "i16",
                 PrimTy::I32 => "i32",
                 PrimTy::I64 => "i64",
                 PrimTy::I128 => "i128",
                 PrimTy::I256 => "i256",
+                PrimTy::Isize => "isize",
                 PrimTy::String => "String",
                 PrimTy::Array => "[]",
                 PrimTy::Tuple(_) => "()",
@@ -849,6 +851,7 @@ impl From<HirPrimTy> for TyBase {
                 HirIntTy::I64 => Self::Prim(PrimTy::I64),
                 HirIntTy::I128 => Self::Prim(PrimTy::I128),
                 HirIntTy::I256 => Self::Prim(PrimTy::I256),
+                HirIntTy::Isize => Self::Prim(PrimTy::Isize),
             },
 
             HirPrimTy::Uint(uint_ty) => match uint_ty {
@@ -858,6 +861,7 @@ impl From<HirPrimTy> for TyBase {
                 HirUintTy::U64 => Self::Prim(PrimTy::U64),
                 HirUintTy::U128 => Self::Prim(PrimTy::U128),
                 HirUintTy::U256 => Self::Prim(PrimTy::U256),
+                HirUintTy::Usize => Self::Prim(PrimTy::Usize),
             },
 
             HirPrimTy::String => Self::Prim(PrimTy::String),
@@ -874,12 +878,14 @@ pub enum PrimTy {
     U64,
     U128,
     U256,
+    Usize,
     I8,
     I16,
     I32,
     I64,
     I128,
     I256,
+    Isize,
     String,
     Array,
     Tuple(usize),
@@ -896,12 +902,14 @@ impl PrimTy {
                 | Self::U64
                 | Self::U128
                 | Self::U256
+                | Self::Usize
                 | Self::I8
                 | Self::I16
                 | Self::I32
                 | Self::I64
                 | Self::I128
                 | Self::I256
+                | Self::Isize
         )
     }
 
