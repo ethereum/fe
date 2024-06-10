@@ -58,7 +58,7 @@ pub(crate) struct UnificationTableBase<'db, U>
 where
     U: ena::unify::UnificationStoreBase,
 {
-    db: &'db dyn HirAnalysisDb,
+    pub db: &'db dyn HirAnalysisDb,
     table: ena::unify::UnificationTable<U>,
 }
 
@@ -234,7 +234,7 @@ where
             .new_key(InferenceValue::Unbound(kind.clone(), sort))
     }
 
-    pub fn probe(&mut self, key: InferenceKey) -> Either<TyId, TyVar> {
+    fn probe_impl(&mut self, key: InferenceKey) -> Either<TyId, TyVar> {
         let root_key = self.table.find(key);
         match self.table.probe_value(key) {
             InferenceValue::Bound(ty) => Either::Left(ty),
@@ -363,39 +363,6 @@ where
     }
 }
 
-impl<'db, U> TyFolder<'db> for UnificationTableBase<'db, U>
-where
-    U: UnificationStore,
-{
-    fn db(&self) -> &'db dyn HirAnalysisDb {
-        self.db
-    }
-
-    fn fold_ty(&mut self, ty: TyId) -> TyId {
-        match ty.data(self.db) {
-            TyData::TyVar(var) => {
-                return match self.probe(var.key) {
-                    Either::Left(ty) => ty,
-                    Either::Right(var) => TyId::new(self.db, TyData::TyVar(var)),
-                }
-            }
-
-            TyData::ConstTy(const_ty) => {
-                if let ConstTyData::TyVar(var, ty) = const_ty.data(self.db) {
-                    return match self.probe(var.key) {
-                        Either::Left(ty) => ty,
-                        Either::Right(var) => TyId::const_ty_var(self.db, *ty, var.key),
-                    };
-                }
-            }
-
-            _ => {}
-        }
-
-        ty.super_fold_with(self)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct InferenceKey(pub(super) u32);
 
@@ -496,5 +463,74 @@ impl Unifiable for Implementor {
     ) -> UnificationResult {
         let db = table.db;
         table.unify(self.trait_(db), other.trait_(db))
+    }
+}
+
+impl<'db, U> TyFolder<'db> for UnificationTableBase<'db, U>
+where
+    U: UnificationStore,
+{
+    fn db(&self) -> &'db dyn HirAnalysisDb {
+        self.db
+    }
+
+    fn fold_ty(&mut self, ty: TyId) -> TyId {
+        let mut resolver = TyVarResolver {
+            table: self,
+            var_stack: vec![],
+        };
+
+        ty.fold_with(&mut resolver)
+    }
+}
+
+struct TyVarResolver<'a, 'db, U>
+where
+    U: UnificationStore,
+{
+    table: &'a mut UnificationTableBase<'db, U>,
+    var_stack: Vec<InferenceKey>,
+}
+
+impl<'a, 'db, U> TyFolder<'db> for TyVarResolver<'a, 'db, U>
+where
+    U: UnificationStore,
+{
+    fn db(&self) -> &'db dyn HirAnalysisDb {
+        self.table.db
+    }
+
+    fn fold_ty(&mut self, ty: TyId) -> TyId {
+        let db = self.table.db;
+        let (shallow_resolved, key) = match ty.data(db) {
+            TyData::TyVar(var) if !self.var_stack.contains(&var.key) => {
+                match self.table.probe_impl(var.key) {
+                    Either::Left(ty) => (ty, var.key),
+                    Either::Right(var) => return TyId::ty_var(db, var.sort, var.kind, var.key),
+                }
+            }
+
+            TyData::ConstTy(cty) => match cty.data(db) {
+                ConstTyData::TyVar(var, ty) if !self.var_stack.contains(&var.key) => {
+                    match self.table.probe_impl(var.key) {
+                        Either::Left(ty) => (ty, var.key),
+                        Either::Right(var) => {
+                            return TyId::const_ty_var(db, *ty, var.key);
+                        }
+                    }
+                }
+                _ => {
+                    return ty.super_fold_with(self);
+                }
+            },
+            _ => {
+                return ty.super_fold_with(self);
+            }
+        };
+
+        self.var_stack.push(key);
+        let resolved = shallow_resolved.fold_with(self);
+        self.var_stack.pop();
+        resolved
     }
 }
