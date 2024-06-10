@@ -61,7 +61,7 @@ impl IntTy {
             IntTy::I64 => kw::I64,
             IntTy::I128 => kw::I128,
             IntTy::I256 => kw::I256,
-            IntTy::Isize => kw::Isize,
+            IntTy::Isize => kw::ISIZE,
         }
     }
 }
@@ -86,7 +86,7 @@ impl UintTy {
             UintTy::U64 => kw::U64,
             UintTy::U128 => kw::U128,
             UintTy::U256 => kw::U256,
-            UintTy::Usize => kw::Usize,
+            UintTy::Usize => kw::USIZE,
         }
     }
 }

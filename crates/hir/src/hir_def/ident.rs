@@ -36,13 +36,13 @@ pub mod kw {
         (U64, "u64"),
         (U128, "u128"),
         (U256, "u256"),
-        (Usize, "usize"),
+        (USIZE, "usize"),
         (I8, "i8"),
         (I16, "i16"),
         (I32, "i32"),
         (I64, "i64"),
         (I128, "i128"),
         (I256, "i256"),
-        (Isize, "isize"),
+        (ISIZE, "isize"),
     }
 }
