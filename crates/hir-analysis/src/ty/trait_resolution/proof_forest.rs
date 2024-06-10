@@ -13,12 +13,21 @@ use crate::{
         canonical::{Canonical, Canonicalized},
         fold::{TyFoldable, TyFolder},
         trait_def::{impls_for_trait, Implementor, TraitInstId},
+        ty_def::{TyData, TyId},
         unify::PersistentUnificationTable,
+        visitor::{TyVisitable, TyVisitor},
     },
     HirAnalysisDb,
 };
-
-const MAXIMUM_SOLUTION_NUM: usize = 3;
+const MAXIMUM_SOLUTION_NUM: usize = 2;
+/// The maximum depth of any type that the solver will consider.
+///
+/// This constant defines the upper limit on the depth of types that the solver
+/// will handle. It is used as a termination condition to prevent the solver
+/// from entering infinite loops when encountering coinductive cycles. If a
+/// solution for subgoal or goal exceeds this limit, the solver stops search and
+/// giveup.
+const MAXIMUM_TYPE_DEPTH: usize = 256;
 
 /// The query goal.
 /// Since `TraitInstId` contains `Self` type as its first argument,
@@ -121,7 +130,9 @@ impl<'db> ProofForest<'db> {
             }
 
             if let Some((c_node, solution)) = self.c_stack.pop() {
-                c_node.apply_solution(&mut self, solution);
+                if !c_node.apply_solution(&mut self, solution) {
+                    return GoalSatisfiability::NeedsConfirmation(BTreeSet::default());
+                }
                 continue;
             }
 
@@ -391,12 +402,12 @@ impl ConsumerNode {
     /// # Parameters
     /// - `pf`: A mutable reference to the `ProofForest`.
     /// - `solution`: The solution to be applied.
-    fn apply_solution(self, pf: &mut ProofForest, solution: Solution) {
+    fn apply_solution(self, pf: &mut ProofForest, solution: Solution) -> bool {
         let c_node = &mut pf.c_nodes[self];
 
         // If the solutions is already applied, do nothing.
         if !c_node.applied_solutions.insert(solution) {
-            return;
+            return true;
         }
 
         let mut table = c_node.table.clone();
@@ -406,10 +417,7 @@ impl ConsumerNode {
         let solution = canonicalized_pending_inst.extract_solution(&mut table, solution);
 
         // Unifies pending inst and solution.
-        if table.unify(*pending_inst, solution).is_err() {
-            return;
-        }
-
+        table.unify(*pending_inst, solution).unwrap();
         let tree_root = c_node.root;
 
         if c_node.remaining_goals.is_empty() {
@@ -422,6 +430,8 @@ impl ConsumerNode {
             let child = pf.new_consumer_node(tree_root, remaining_goals, table);
             pf.c_nodes[self].children.push(child);
         }
+
+        maximum_ty_depth(pf.db, solution) <= MAXIMUM_TYPE_DEPTH
     }
 
     fn unresolved_subgoal(self, pf: &mut ProofForest) -> Option<Solution> {
@@ -438,4 +448,87 @@ impl ConsumerNode {
 
         c_node.children[0].unresolved_subgoal(pf)
     }
+}
+
+/// Computes the depth of a given type.
+///
+/// The depth of a type is defined as the maximum depth of its subcomponents
+/// plus one. For example, a simple type like `i32` has a depth of 1, while a
+/// compound type like `Option<Result<i32, String>>` would have a depth
+/// reflecting the nesting of its components.
+///
+/// # Parameters
+/// - `db`: A reference to the HIR analysis database.
+/// - `ty`: The type for which the depth is to be computed.
+///
+/// # Returns
+/// The depth of the type as a `usize`.
+///
+/// # Note
+/// This function is a stop gap solution to ensure termination when the solver
+/// encounters coinductive cycles. It serves as a temporary solution until the
+/// parser can properly handle coinductive cycles.
+#[salsa::tracked]
+pub(crate) fn ty_depth_impl(db: &dyn HirAnalysisDb, ty: TyId) -> usize {
+    match ty.data(db) {
+        TyData::ConstTy(cty) => ty_depth_impl(db, cty.ty(db)),
+        TyData::Invalid(_)
+        | TyData::Never
+        | TyData::TyBase(_)
+        | TyData::TyParam(_)
+        | TyData::TyVar(_) => 1,
+        TyData::TyApp(lhs, rhs) => {
+            let lhs_depth = ty_depth_impl(db, *lhs);
+            let rhs_depth = ty_depth_impl(db, *rhs);
+            std::cmp::max(lhs_depth, rhs_depth) + 1
+        }
+    }
+}
+
+/// Computes the maximum depth of any type within a visitable structure.
+///
+/// This function traverses the given visitable structure and computes the
+/// maximum depth of any type it encounters. The depth of a type is defined
+/// as the maximum depth of its subcomponents plus one. For example, a simple
+/// type like `i32` has a depth of 1, while a compound type like
+/// `Option<Result<i32, String>>` would have a depth reflecting the nesting
+/// of its components.
+///
+/// # Parameters
+/// - `db`: A reference to the HIR analysis database.
+/// - `v`: The visitable structure for which the maximum type depth is to be
+///   computed.
+///
+/// # Returns
+/// The maximum depth of any type within the visitable structure as a `usize`.
+///
+/// # Note
+/// This function is a stop gap solution to ensure termination when the solver
+/// encounters coinductive cycles. It serves as a temporary solution until the
+/// parser can properly handle coinductive cycles.
+fn maximum_ty_depth<V>(db: &dyn HirAnalysisDb, v: V) -> usize
+where
+    V: for<'db> TyVisitable<'db>,
+{
+    struct DepthVisitor<'db> {
+        db: &'db dyn HirAnalysisDb,
+        max_depth: usize,
+    }
+
+    impl<'db> TyVisitor<'db> for DepthVisitor<'db> {
+        fn db(&self) -> &'db dyn HirAnalysisDb {
+            self.db
+        }
+
+        fn visit_ty(&mut self, ty: TyId) {
+            let depth = ty_depth_impl(self.db, ty);
+            if depth > self.max_depth {
+                self.max_depth = depth;
+            }
+        }
+    }
+
+    let mut visitor = DepthVisitor { db, max_depth: 0 };
+    v.visit_with(&mut visitor);
+    visitor.max_depth
 }

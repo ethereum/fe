@@ -1,0 +1,37 @@
+struct Vec<T> {
+    data: T
+}
+
+impl<T> Vec<T> {
+    fn new() -> Vec<T> {
+        todo()
+    }
+}
+
+trait Clone {
+    fn clone(self) -> Self
+}
+
+extern {
+    fn todo() -> !
+}
+
+impl Clone for i32 {
+    fn clone(self) -> i32 {
+        self
+    }
+}
+
+impl<T> Clone for Vec<T>
+where T: Clone {
+    fn clone(self) -> Vec<T> {
+        Self {
+            data: self.data.clone()
+        }
+    }
+}
+
+fn foo() {
+    let v = Vec::new()
+    let _ = v.clone()
+}

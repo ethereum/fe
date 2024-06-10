@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use hir::hir_def::IngotId;
+pub(crate) use proof_forest::ty_depth_impl;
 
 use super::{
     canonical::{Canonical, Canonicalized, Solution},
@@ -116,7 +117,8 @@ pub(crate) fn check_trait_inst_wf(
 pub enum GoalSatisfiability {
     /// Goal is satisfied with the unique solution.
     Satisfied(Solution<TraitInstId>),
-    /// Goal is satisfied, but with multiple solutions.
+    /// Goal might be satisfied, but needs more type information to determine
+    /// satisfiability and uniqueness.
     NeedsConfirmation(BTreeSet<Solution<TraitInstId>>),
 
     /// Goal contains invalid.
