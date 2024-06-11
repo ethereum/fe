@@ -171,6 +171,11 @@ impl Expr {
                 Self::Match(scrutinee, arm)
             }
 
+            ast::ExprKind::Unsafe(unsafe_expr) => {
+                let inner = Self::push_to_body_opt(ctxt, unsafe_expr.inner_expr());
+                Self::Unsafe(inner)
+            }
+
             ast::ExprKind::Paren(paren) => {
                 return Self::push_to_body_opt(ctxt, paren.expr());
             }

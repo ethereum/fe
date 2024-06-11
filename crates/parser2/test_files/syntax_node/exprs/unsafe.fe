@@ -1,0 +1,11 @@
+unsafe { foo() }
+
+unsafe {
+    let a = 42
+    std::evm::mstore(offset: 0, value: a)
+    return
+}
+
+unsafe 1 + 1
+
+unsafe bar()
