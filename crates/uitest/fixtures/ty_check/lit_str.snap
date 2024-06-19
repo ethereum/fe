@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/lit_str.fe
+---
+error[8-0000]: type mismatch
+  ┌─ lit_str.fe:2:5
+  │
+2 │     "abc"
+  │     ^^^^^ expected `String<2>`, but `String<3>` is given
+
+error[8-0000]: type mismatch
+  ┌─ lit_str.fe:6:5
+  │
+6 │     "あ"
+  │     ^^^^ expected `String<1>`, but `String<3>` is given
+
+

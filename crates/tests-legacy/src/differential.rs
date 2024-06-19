@@ -1,9 +1,11 @@
-//! Tests that check for differences between Solidity and Fe implementations of similar contracts
+//! Tests that check for differences between Solidity and Fe implementations of
+//! similar contracts
 #![cfg(all(feature = "solc-backend", not(target_arch = "wasm32")))]
 use proptest::prelude::*;
 
-use fe_compiler_test_utils::*;
-use fe_compiler_test_utils::{self as test_utils};
+use fe_compiler_test_utils::{
+    *, {self as test_utils},
+};
 
 struct DualHarness {
     fe_harness: ContractHarness,

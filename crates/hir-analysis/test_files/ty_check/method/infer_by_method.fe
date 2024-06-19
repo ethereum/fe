@@ -1,0 +1,13 @@
+enum Option<T> {
+    Some(T),
+    None
+}
+
+impl Option<i32> {
+    fn foo(self) {}
+}
+
+fn foo() {
+    let x = Option::None
+    x.foo()
+}

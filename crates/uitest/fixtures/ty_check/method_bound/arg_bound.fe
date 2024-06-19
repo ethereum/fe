@@ -1,0 +1,60 @@
+use Option::*
+
+extern {
+    fn todo() -> !
+}
+
+trait Extract 
+where Self: * -> *
+{
+    fn extract<T>(self: Self<T>) -> T
+}
+
+trait Clone {
+    fn clone(self) -> Self
+}
+
+enum Option<T> {
+    Some(T),
+    None
+}
+impl Extract for Option {
+    fn extract<T>(self: Self<T>) -> T {
+        match self {
+            Some(t) => t
+            None => todo()
+        }
+    }
+}
+
+struct S<T> {
+    __priv: T
+}
+impl<T> S<T> {
+    fn new(_ t: T) -> Self {
+        Self {
+            __priv: t
+        }
+    }
+}
+
+pub fn extract<T, U>(_ t: T<U>) -> U
+where T: * -> * + Extract,
+      U: Clone,
+{
+    t.extract()
+}
+
+impl Clone for bool {
+    fn clone(self) -> bool {
+        self
+    }
+}
+
+fn foo() -> i32 {
+    let s = S::new(false)
+    extract(s)
+    
+    let opt = Some(1)
+    extract(opt)
+}

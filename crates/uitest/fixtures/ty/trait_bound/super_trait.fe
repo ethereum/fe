@@ -1,0 +1,18 @@
+pub trait SubTrait: SuperTrait1
+where Self: SuperTrait2
+{}
+
+pub trait SuperTrait1 {}
+pub trait SuperTrait2 {}
+
+impl SubTrait for u32 {}
+
+impl SuperTrait1 for i256  {} 
+impl SubTrait for i256 {}
+
+
+pub trait WrapperSub: WrapperSuper
+where Self: * -> *
+{}
+
+pub trait WrapperSuper {}

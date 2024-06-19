@@ -1,0 +1,7 @@
+{
+    use super::Foo
+    struct Foo {}
+    fn foo() {}
+    
+    let x = 1
+}

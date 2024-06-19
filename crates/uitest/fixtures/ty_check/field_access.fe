@@ -1,0 +1,17 @@
+pub fn foo1(x: (i32, u32)) -> i32 {
+    x.2
+}
+
+pub fn foo2() -> i32 {
+    let x
+    x.1
+}
+
+struct Bar {
+    t: i32,
+    u: i32,
+}
+
+pub fn foo3(bar: Bar) -> i32 {
+    bar.v
+}

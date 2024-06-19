@@ -1,9 +1,10 @@
 //! Tests for contracts that should cause compile errors
 
-use fe_analyzer::namespace::items::{IngotId, ModuleId};
-use fe_analyzer::TestDb;
-use fe_common::diagnostics::diagnostics_string;
-use fe_common::utils::files::BuildFiles;
+use fe_analyzer::{
+    namespace::items::{IngotId, ModuleId},
+    TestDb,
+};
+use fe_common::{diagnostics::diagnostics_string, utils::files::BuildFiles};
 use insta::assert_snapshot;
 use wasm_bindgen_test::wasm_bindgen_test;
 

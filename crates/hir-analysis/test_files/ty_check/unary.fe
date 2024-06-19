@@ -1,0 +1,7 @@
+pub fn foo(x: i32) {
+    let i1: i32 = +1
+    let i2 = -i1
+    let i3 = ~i2
+
+    let b = !false
+}

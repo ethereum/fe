@@ -1,0 +1,7 @@
+for i in arr {
+    sum = sum + i
+}
+
+for Struct {x, y} in s_list.iter() {
+    sum = sum + x + y
+}

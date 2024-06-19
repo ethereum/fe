@@ -1,16 +1,21 @@
-use crate::context::{AnalyzerContext, ExpressionAttributes, NamedThing};
-use crate::display::Displayable;
-use crate::errors::{self, FatalError, TypeCoercionError};
-use crate::namespace::items::{EnumVariantId, EnumVariantKind, Item, StructId, TypeDef};
-use crate::namespace::scopes::{BlockScope, BlockScopeType};
-use crate::namespace::types::{Type, TypeId};
-use crate::pattern_analysis::PatternMatrix;
-use crate::traversal::{assignments, declarations, expressions, types};
+use crate::{
+    context::{AnalyzerContext, ExpressionAttributes, NamedThing},
+    display::Displayable,
+    errors::{self, FatalError, TypeCoercionError},
+    namespace::{
+        items::{EnumVariantId, EnumVariantKind, Item, StructId, TypeDef},
+        scopes::{BlockScope, BlockScopeType},
+        types::{Type, TypeId},
+    },
+    pattern_analysis::PatternMatrix,
+    traversal::{assignments, declarations, expressions, types},
+};
 use fe_common::diagnostics::Label;
-use fe_parser::ast::{self as fe, LiteralPattern, Pattern};
-use fe_parser::node::{Node, Span};
-use indexmap::map::Entry;
-use indexmap::{IndexMap, IndexSet};
+use fe_parser::{
+    ast::{self as fe, LiteralPattern, Pattern},
+    node::{Node, Span},
+};
+use indexmap::{map::Entry, IndexMap, IndexSet};
 use smol_str::SmolStr;
 
 use super::matching_anomaly;

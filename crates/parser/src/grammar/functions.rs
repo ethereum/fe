@@ -1,12 +1,13 @@
-use super::expressions::parse_expr;
-use super::types::parse_type_desc;
+use super::{expressions::parse_expr, types::parse_type_desc};
 
-use crate::ast::{
-    BinOperator, Expr, FuncStmt, Function, FunctionArg, FunctionSignature, GenericParameter,
-    LiteralPattern, MatchArm, Path, Pattern, TypeDesc, VarDeclTarget,
+use crate::{
+    ast::{
+        BinOperator, Expr, FuncStmt, Function, FunctionArg, FunctionSignature, GenericParameter,
+        LiteralPattern, MatchArm, Path, Pattern, TypeDesc, VarDeclTarget,
+    },
+    node::{Node, Span},
+    Label, ParseFailed, ParseResult, Parser, TokenKind,
 };
-use crate::node::{Node, Span};
-use crate::{Label, ParseFailed, ParseResult, Parser, TokenKind};
 
 /// Parse a function definition without a body. The optional `pub` qualifier
 /// must be parsed by the caller, and passed in. Next token must be `unsafe` or

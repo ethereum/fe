@@ -1,0 +1,16 @@
+pub enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+impl<T, E> Result<T, E> {
+    fn foo(self) {}
+}
+
+impl<T> Result<T, i32> {
+    fn foo(self) {}
+}
+
+impl<T> Result<T> {
+    fn foo<E>(self: Self<E>) {}
+}
