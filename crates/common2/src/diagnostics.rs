@@ -166,7 +166,7 @@ impl DiagnosticPass {
             Self::MethodDefinition => 7,
             Self::TyCheck => 8,
 
-            Self::ExternalAnalysis(_) => std::u16::MAX,
+            Self::ExternalAnalysis(_) => u16::MAX,
         }
     }
 }
