@@ -1,7 +1,7 @@
 //! The algorithm for the trait resolution here is based on [`Tabled Typeclass Resolution`](https://arxiv.org/abs/2001.04301).
 //! Also, [`XSB: Extending Prolog with Tabled Logic Programming`](https://arxiv.org/pdf/1012.5123) is a nice entry point for more detailed discussions about tabled logic solver.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, BinaryHeap};
 
 use cranelift_entity::{entity_impl, PrimaryMap};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -52,8 +52,12 @@ pub(super) struct ProofForest<'db> {
     c_nodes: PrimaryMap<ConsumerNode, ConsumerNodeData<'db>>,
     /// A stack of generator nodes to be processed.
     g_stack: Vec<GeneratorNode>,
-    /// A stack of consumer nodes and their solutions to be processed.
-    c_stack: Vec<(ConsumerNode, Solution)>,
+    /// A binary heap used for managing consumer nodes and their solutions.
+    ///
+    /// This heap stores tuples of [`OrderedConsumerNode`] and [`Solution`],
+    /// allowing the solver to efficiently retrieve and prioritize
+    /// consumer nodes that are closer to the original goal.
+    c_heap: BinaryHeap<(OrderedConsumerNode, Solution)>,
 
     /// A mapping from goals to generator nodes.
     goal_to_node: FxHashMap<Goal, GeneratorNode>,
@@ -65,6 +69,29 @@ pub(super) struct ProofForest<'db> {
     maximum_solution_num: usize,
     /// The database for HIR analysis.
     db: &'db dyn HirAnalysisDb,
+}
+
+/// A structure representing an ordered consumer node in the proof forest.
+///
+/// The `OrderedConsumerNode` contains a consumer node and its root generator
+/// node. It is used to prioritize consumer nodes based on their proximity to
+/// the original goal. This allows the solver to efficiently retrieve and
+/// process consumer nodes that are closer to the original goal, improving the
+/// overall solving process.
+#[derive(Debug, PartialEq, Eq)]
+struct OrderedConsumerNode {
+    node: ConsumerNode,
+    root: GeneratorNode,
+}
+impl PartialOrd for OrderedConsumerNode {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for OrderedConsumerNode {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.root.cmp(&self.root)
+    }
 }
 
 impl<'db> ProofForest<'db> {
@@ -95,7 +122,7 @@ impl<'db> ProofForest<'db> {
             g_nodes: PrimaryMap::new(),
             c_nodes: PrimaryMap::new(),
             g_stack: Vec::new(),
-            c_stack: Vec::new(),
+            c_heap: BinaryHeap::new(),
             goal_to_node: FxHashMap::default(),
             assumptions,
             maximum_solution_num: MAXIMUM_SOLUTION_NUM,
@@ -129,8 +156,8 @@ impl<'db> ProofForest<'db> {
                 break;
             }
 
-            if let Some((c_node, solution)) = self.c_stack.pop() {
-                if !c_node.apply_solution(&mut self, solution) {
+            if let Some((c_node, solution)) = self.c_heap.pop() {
+                if !c_node.node.apply_solution(&mut self, solution) {
                     return GoalSatisfiability::NeedsConfirmation(BTreeSet::default());
                 }
                 continue;
@@ -285,7 +312,11 @@ impl GeneratorNode {
             .canonicalize_solution(table.db(), table, g_node.extracted_goal);
         if g_node.solutions.insert(solution) {
             for &c_node in g_node.dependents.iter() {
-                pf.c_stack.push((c_node, solution));
+                let ordred_c_node = OrderedConsumerNode {
+                    node: c_node,
+                    root: pf.c_nodes[c_node].root,
+                };
+                pf.c_heap.push((ordred_c_node, solution));
             }
         }
     }
@@ -355,7 +386,11 @@ impl GeneratorNode {
         let g_node = &mut pf.g_nodes[self];
         g_node.dependents.push(dependent);
         for &solution in g_node.solutions.iter() {
-            pf.c_stack.push((dependent, solution))
+            let ordered_c_node = OrderedConsumerNode {
+                node: dependent,
+                root: pf.c_nodes[dependent].root,
+            };
+            pf.c_heap.push((ordered_c_node, solution))
         }
     }
 
@@ -467,7 +502,7 @@ impl ConsumerNode {
 /// # Note
 /// This function is a stop gap solution to ensure termination when the solver
 /// encounters coinductive cycles. It serves as a temporary solution until the
-/// parser can properly handle coinductive cycles.
+/// solver can properly handle coinductive cycles.
 #[salsa::tracked]
 pub(crate) fn ty_depth_impl(db: &dyn HirAnalysisDb, ty: TyId) -> usize {
     match ty.data(db) {
@@ -505,7 +540,7 @@ pub(crate) fn ty_depth_impl(db: &dyn HirAnalysisDb, ty: TyId) -> usize {
 /// # Note
 /// This function is a stop gap solution to ensure termination when the solver
 /// encounters coinductive cycles. It serves as a temporary solution until the
-/// parser can properly handle coinductive cycles.
+/// solver can properly handle coinductive cycles.
 fn maximum_ty_depth<V>(db: &dyn HirAnalysisDb, v: V) -> usize
 where
     V: for<'db> TyVisitable<'db>,
