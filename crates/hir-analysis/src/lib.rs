@@ -69,6 +69,7 @@ pub struct Jar(
     ty::trait_resolution::is_goal_satisfiable,
     ty::trait_resolution::check_ty_wf,
     ty::trait_resolution::check_trait_inst_wf,
+    ty::trait_resolution::ty_depth_impl,
     // Type checking.
     ty::ty_check::check_func_body,
     // Diagnostic accumulators.
