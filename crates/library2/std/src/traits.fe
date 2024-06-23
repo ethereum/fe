@@ -1,0 +1,160 @@
+// Dummy trait used in testing. We can remove this once we have more useful traits
+
+pub trait Dummy {}
+
+pub trait Min {
+  fn min() -> Self;
+}
+
+impl Min for u8 {
+  fn min() -> Self {
+    return 0
+  }
+}
+
+impl Min for u16 {
+  fn min() -> Self {
+    return 0
+  }
+}
+
+impl Min for u32 {
+  fn min() -> Self {
+    return 0
+  }
+}
+
+impl Min for u64 {
+  fn min() -> Self {
+    return 0
+  }
+}
+
+impl Min for u128 {
+  fn min() -> Self {
+    return 0
+  }
+}
+
+impl Min for u256 {
+  fn min() -> Self {
+    return 0
+  }
+}
+
+impl Min for i8 {
+  fn min() -> Self {
+    return -128
+  }
+}
+
+impl Min for i16 {
+  fn min() -> Self {
+    return -32768
+  }
+}
+
+impl Min for i32 {
+  fn min() -> Self {
+    return -2147483648
+  }
+}
+
+impl Min for i64 {
+  fn min() -> Self {
+    return -9223372036854775808
+  }
+}
+
+impl Min for i128 {
+  fn min() -> Self {
+    return -170141183460469231731687303715884105728
+  }
+}
+
+impl Min for i256 {
+  fn min() -> Self {
+    return -57896044618658097711785492504343953926634992332820282019728792003956564819968
+  }
+}
+
+
+
+
+
+
+pub trait Max {
+  fn max() -> Self;
+}
+
+impl Max for u8 {
+  fn max() -> Self {
+    return 255
+  }
+}
+
+impl Max for u16 {
+  fn max() -> Self {
+    return 65535
+  }
+}
+
+impl Max for u32 {
+  fn max() -> Self {
+    return 4294967295
+  }
+}
+
+impl Max for u64 {
+  fn max() -> Self {
+    return 18446744073709551615
+  }
+}
+
+impl Max for u128 {
+  fn max() -> Self {
+    return 340282366920938463463374607431768211455
+  }
+}
+
+impl Max for u256 {
+  fn max() -> Self {
+    return 115792089237316195423570985008687907853269984665640564039457584007913129639935
+  }
+}
+
+impl Max for i8 {
+  fn max() -> Self {
+    return 127
+  }
+}
+
+impl Max for i16 {
+  fn max() -> Self {
+    return 32767
+  }
+}
+
+impl Max for i32 {
+  fn max() -> Self {
+    return 2147483647
+  }
+}
+
+impl Max for i64 {
+  fn max() -> Self {
+    return 9223372036854775807
+  }
+}
+
+impl Max for i128 {
+  fn max() -> Self {
+    return 170141183460469231731687303715884105727
+  }
+}
+
+impl Max for i256 {
+  fn max() -> Self {
+    return 57896044618658097711785492504343953926634992332820282019728792003956564819967
+  }
+}

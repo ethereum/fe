@@ -1093,6 +1093,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-codegen2"
+version = "0.23.0"
+dependencies = [
+ "fe-abi",
+ "fe-hir",
+ "fe-hir-analysis",
+ "fe-mir2",
+ "fxhash",
+ "indexmap",
+ "num-bigint",
+ "salsa-2022",
+ "smol_str",
+ "yultsur",
+]
+
+[[package]]
 name = "fe-common"
 version = "0.26.0"
 dependencies = [
@@ -1306,6 +1322,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "fe-library2"
+version = "0.23.0"
+dependencies = [
+ "fe-common2",
+ "include_dir",
+]
+
+[[package]]
 name = "fe-macros"
 version = "0.26.0"
 dependencies = [
@@ -1332,6 +1356,44 @@ dependencies = [
  "num-integer",
  "num-traits",
  "salsa",
+ "smol_str",
+]
+
+[[package]]
+name = "fe-mir2"
+version = "0.23.0"
+dependencies = [
+ "dot2",
+ "fe-common2",
+ "fe-hir",
+ "fe-hir-analysis",
+ "fe-library2",
+ "fe-parser2",
+ "fe-test-files",
+ "fxhash",
+ "id-arena",
+ "indexmap",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "salsa-2022",
+ "smol_str",
+]
+
+[[package]]
+name = "fe-mir2-analysis"
+version = "0.23.0"
+dependencies = [
+ "dot2",
+ "fe-common2",
+ "fe-hir",
+ "fe-hir-analysis",
+ "fe-library",
+ "fe-mir2",
+ "fe-test-files",
+ "fxhash",
+ "id-arena",
+ "salsa-2022",
  "smol_str",
 ]
 
