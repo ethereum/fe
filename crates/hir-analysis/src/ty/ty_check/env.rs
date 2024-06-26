@@ -29,21 +29,21 @@ use crate::{
 
 pub(super) struct TyCheckEnv<'db> {
     db: &'db dyn HirAnalysisDb,
-    body: Body,
+    body: Body<'db>,
 
-    pat_ty: FxHashMap<PatId, TyId>,
-    expr_ty: FxHashMap<ExprId, ExprProp>,
-    callables: FxHashMap<ExprId, Callable>,
+    pat_ty: FxHashMap<PatId, TyId<'db>>,
+    expr_ty: FxHashMap<ExprId, ExprProp<'db>>,
+    callables: FxHashMap<ExprId, Callable<'db>>,
 
-    pending_confirmations: Vec<(TraitInstId, DynLazySpan)>,
+    pending_confirmations: Vec<(TraitInstId<'db>, DynLazySpan<'db>)>,
 
-    var_env: Vec<BlockEnv>,
-    pending_vars: FxHashMap<IdentId, LocalBinding>,
+    var_env: Vec<BlockEnv<'db>>,
+    pending_vars: FxHashMap<IdentId<'db>, LocalBinding<'db>>,
     loop_stack: Vec<StmtId>,
 }
 
 impl<'db> TyCheckEnv<'db> {
-    pub(super) fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func) -> Result<Self, ()> {
+    pub(super) fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Result<Self, ()> {
         let hir_db = db.as_hir_db();
         let Some(body) = func.body(hir_db) else {
             return Err(());
@@ -92,26 +92,26 @@ impl<'db> TyCheckEnv<'db> {
         Ok(env)
     }
 
-    pub(super) fn typed_expr(&self, expr: ExprId) -> Option<ExprProp> {
+    pub(super) fn typed_expr(&self, expr: ExprId) -> Option<ExprProp<'db>> {
         self.expr_ty.get(&expr).copied()
     }
 
-    pub(super) fn binding_def_span(&self, binding: LocalBinding) -> DynLazySpan {
+    pub(super) fn binding_def_span(&self, binding: LocalBinding<'db>) -> DynLazySpan<'db> {
         binding.def_span(self)
     }
 
-    pub(super) fn register_callable(&mut self, expr: ExprId, callable: Callable) {
+    pub(super) fn register_callable(&mut self, expr: ExprId, callable: Callable<'db>) {
         if self.callables.insert(expr, callable).is_some() {
             panic!("callable is already registered for the given expr")
         }
     }
-    pub(super) fn binding_name(&self, binding: LocalBinding) -> IdentId {
+    pub(super) fn binding_name(&self, binding: LocalBinding<'db>) -> IdentId<'db> {
         binding.binding_name(self)
     }
 
     /// Returns a function if the `body` being checked has `BodyKind::FuncBody`.
     /// If the `body` has `BodyKind::Anonymous`, returns None
-    pub(super) fn func(&self) -> Option<FuncDef> {
+    pub(super) fn func(&self) -> Option<FuncDef<'db>> {
         let func = match self.body.body_kind(self.db.as_hir_db()) {
             BodyKind::FuncBody => self.var_env.first()?.scope.item().try_into().ok(),
             BodyKind::Anonymous => None,
@@ -120,18 +120,18 @@ impl<'db> TyCheckEnv<'db> {
         lower_func(self.db, func)
     }
 
-    pub(super) fn assumptions(&self) -> PredicateListId {
+    pub(super) fn assumptions(&self) -> PredicateListId<'db> {
         match self.func() {
             Some(func) => collect_func_def_constraints(self.db, func, true).instantiate_identity(),
             None => PredicateListId::empty_list(self.db),
         }
     }
 
-    pub(super) fn body(&self) -> Body {
+    pub(super) fn body(&self) -> Body<'db> {
         self.body
     }
 
-    pub(super) fn lookup_binding_ty(&self, binding: LocalBinding) -> TyId {
+    pub(super) fn lookup_binding_ty(&self, binding: LocalBinding<'db>) -> TyId<'db> {
         match binding {
             LocalBinding::Local { pat, .. } => self
                 .pat_ty
@@ -169,17 +169,21 @@ impl<'db> TyCheckEnv<'db> {
         self.loop_stack.last().copied()
     }
 
-    pub(super) fn type_expr(&mut self, expr: ExprId, typed: ExprProp) {
+    pub(super) fn type_expr(&mut self, expr: ExprId, typed: ExprProp<'db>) {
         self.expr_ty.insert(expr, typed);
     }
 
-    pub(super) fn type_pat(&mut self, pat: PatId, ty: TyId) {
+    pub(super) fn type_pat(&mut self, pat: PatId, ty: TyId<'db>) {
         self.pat_ty.insert(pat, ty);
     }
 
     /// Register a pending binding which will be added when `flush_pending_vars`
     /// is called.
-    pub(super) fn register_pending_binding(&mut self, name: IdentId, binding: LocalBinding) {
+    pub(super) fn register_pending_binding(
+        &mut self,
+        name: IdentId<'db>,
+        binding: LocalBinding<'db>,
+    ) {
         self.pending_vars.insert(name, binding);
     }
 
@@ -191,11 +195,14 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
-    pub(super) fn register_confirmation(&mut self, inst: TraitInstId, span: DynLazySpan) {
+    pub(super) fn register_confirmation(&mut self, inst: TraitInstId<'db>, span: DynLazySpan<'db>) {
         self.pending_confirmations.push((inst, span))
     }
 
-    pub(super) fn finish(mut self, table: &mut UnificationTable) -> (TypedBody, Vec<FuncBodyDiag>) {
+    pub(super) fn finish(
+        mut self,
+        table: &mut UnificationTable<'db>,
+    ) -> (TypedBody<'db>, Vec<FuncBodyDiag<'db>>) {
         let mut prober = Prober { table };
 
         let diags = self.perform_pending_confirmation(&mut prober);
@@ -225,15 +232,15 @@ impl<'db> TyCheckEnv<'db> {
         )
     }
 
-    pub(super) fn expr_data(&self, expr: ExprId) -> &'db Partial<Expr> {
+    pub(super) fn expr_data(&self, expr: ExprId) -> &'db Partial<Expr<'db>> {
         expr.data(self.db.as_hir_db(), self.body)
     }
 
-    pub(super) fn stmt_data(&self, stmt: StmtId) -> &'db Partial<Stmt> {
+    pub(super) fn stmt_data(&self, stmt: StmtId) -> &'db Partial<Stmt<'db>> {
         stmt.data(self.db.as_hir_db(), self.body)
     }
 
-    pub(super) fn scope(&self) -> ScopeId {
+    pub(super) fn scope(&self) -> ScopeId<'db> {
         self.var_env.last().unwrap().scope
     }
 
@@ -241,11 +248,11 @@ impl<'db> TyCheckEnv<'db> {
         self.var_env.last().unwrap().idx
     }
 
-    pub(super) fn get_block(&self, idx: usize) -> &BlockEnv {
+    pub(super) fn get_block(&self, idx: usize) -> &BlockEnv<'db> {
         &self.var_env[idx]
     }
 
-    fn perform_pending_confirmation(&self, prober: &mut Prober) -> Vec<FuncBodyDiag> {
+    fn perform_pending_confirmation(&self, prober: &mut Prober<'db, '_>) -> Vec<FuncBodyDiag<'db>> {
         let mut diags = vec![];
         let assumptions = self.assumptions();
         let mut changed = true;
@@ -299,18 +306,18 @@ impl<'db> TyCheckEnv<'db> {
     }
 }
 
-pub(super) struct BlockEnv {
-    pub(super) scope: ScopeId,
-    pub(super) vars: FxHashMap<IdentId, LocalBinding>,
+pub(super) struct BlockEnv<'db> {
+    pub(super) scope: ScopeId<'db>,
+    pub(super) vars: FxHashMap<IdentId<'db>, LocalBinding<'db>>,
     idx: usize,
 }
 
-impl BlockEnv {
-    pub(super) fn lookup_var(&self, var: IdentId) -> Option<LocalBinding> {
+impl<'db> BlockEnv<'db> {
+    pub(super) fn lookup_var(&self, var: IdentId<'db>) -> Option<LocalBinding<'db>> {
         self.vars.get(&var).copied()
     }
 
-    fn new(scope: ScopeId, idx: usize) -> Self {
+    fn new(scope: ScopeId<'db>, idx: usize) -> Self {
         Self {
             scope,
             vars: FxHashMap::default(),
@@ -318,20 +325,20 @@ impl BlockEnv {
         }
     }
 
-    fn register_var(&mut self, name: IdentId, var: LocalBinding) {
+    fn register_var(&mut self, name: IdentId<'db>, var: LocalBinding<'db>) {
         self.vars.insert(name, var);
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ExprProp {
-    pub ty: TyId,
+pub struct ExprProp<'db> {
+    pub ty: TyId<'db>,
     pub is_mut: bool,
-    pub(crate) binding: Option<LocalBinding>,
+    pub(crate) binding: Option<LocalBinding<'db>>,
 }
 
-impl ExprProp {
-    pub(super) fn new(ty: TyId, is_mut: bool) -> Self {
+impl<'db> ExprProp<'db> {
+    pub(super) fn new(ty: TyId<'db>, is_mut: bool) -> Self {
         Self {
             ty,
             is_mut,
@@ -339,7 +346,7 @@ impl ExprProp {
         }
     }
 
-    pub(super) fn new_binding_ref(ty: TyId, is_mut: bool, binding: LocalBinding) -> Self {
+    pub(super) fn new_binding_ref(ty: TyId<'db>, is_mut: bool, binding: LocalBinding<'db>) -> Self {
         Self {
             ty,
             is_mut,
@@ -347,15 +354,15 @@ impl ExprProp {
         }
     }
 
-    pub(super) fn binding(&self) -> Option<LocalBinding> {
+    pub(super) fn binding(&self) -> Option<LocalBinding<'db>> {
         self.binding
     }
 
-    pub(super) fn swap_ty(&mut self, ty: TyId) -> TyId {
+    pub(super) fn swap_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         std::mem::replace(&mut self.ty, ty)
     }
 
-    pub(super) fn invalid(db: &dyn HirAnalysisDb) -> Self {
+    pub(super) fn invalid(db: &'db dyn HirAnalysisDb) -> Self {
         Self {
             ty: TyId::invalid(db, InvalidCause::Other),
             is_mut: true,
@@ -365,12 +372,19 @@ impl ExprProp {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum LocalBinding {
-    Local { pat: PatId, is_mut: bool },
-    Param { idx: usize, ty: TyId, is_mut: bool },
+pub(crate) enum LocalBinding<'db> {
+    Local {
+        pat: PatId,
+        is_mut: bool,
+    },
+    Param {
+        idx: usize,
+        ty: TyId<'db>,
+        is_mut: bool,
+    },
 }
 
-impl LocalBinding {
+impl<'db> LocalBinding<'db> {
     pub(super) fn local(pat: PatId, is_mut: bool) -> Self {
         Self::Local { pat, is_mut }
     }
@@ -381,7 +395,7 @@ impl LocalBinding {
         }
     }
 
-    pub(super) fn binding_name(&self, env: &TyCheckEnv<'_>) -> IdentId {
+    pub(super) fn binding_name(&self, env: &TyCheckEnv<'db>) -> IdentId<'db> {
         let hir_db = env.db.as_hir_db();
         match self {
             Self::Local { pat, .. } => {
@@ -406,7 +420,7 @@ impl LocalBinding {
         }
     }
 
-    fn def_span(&self, env: &TyCheckEnv<'_>) -> DynLazySpan {
+    fn def_span(&self, env: &TyCheckEnv<'db>) -> DynLazySpan<'db> {
         match self {
             LocalBinding::Local { pat, .. } => pat.lazy_span(env.body).into(),
             LocalBinding::Param { idx, .. } => {
@@ -422,16 +436,16 @@ impl LocalBinding {
     }
 }
 
-struct Prober<'a, 'db> {
+struct Prober<'db, 'a> {
     table: &'a mut UnificationTable<'db>,
 }
 
-impl<'a, 'db> TyFolder<'db> for Prober<'a, 'db> {
+impl<'db, 'a> TyFolder<'db> for Prober<'db, 'a> {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.table.db()
     }
 
-    fn fold_ty(&mut self, ty: TyId) -> TyId {
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         let ty = self.table.fold_ty(ty);
         let TyData::TyVar(var) = ty.data(self.db()) else {
             return ty.super_fold_with(self);

@@ -22,7 +22,10 @@ use crate::{
 
 /// Returns a constraints list which is derived from the given type.
 #[salsa::tracked]
-pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> PredicateListId {
+pub(crate) fn ty_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+) -> PredicateListId<'db> {
     let (base, args) = ty.decompose_ty_app(db);
     let (params, base_constraints) = match base.data(db) {
         TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, *adt)),
@@ -39,7 +42,7 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> PredicateListI
 
     // Generalize unbound type parameters.
     for &arg in params.iter().skip(args.len()) {
-        let key = InferenceKey(args.len() as u32);
+        let key = InferenceKey(args.len() as u32, Default::default());
         let ty_var = TyId::ty_var(db, TyVarSort::General, arg.kind(db).clone(), key);
         args.push(ty_var);
     }
@@ -50,10 +53,10 @@ pub(crate) fn ty_constraints(db: &dyn HirAnalysisDb, ty: TyId) -> PredicateListI
 /// Collect super traits of the given trait.
 /// The returned trait ref is bound by the given trait's generic parameters.
 #[salsa::tracked(return_ref, recovery_fn = recover_collect_super_traits)]
-pub(crate) fn collect_super_traits(
-    db: &dyn HirAnalysisDb,
-    trait_: TraitDef,
-) -> Result<BTreeSet<Binder<TraitInstId>>, SuperTraitCycle> {
+pub(crate) fn collect_super_traits<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: TraitDef<'db>,
+) -> Result<BTreeSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
     let collector = SuperTraitCollector::new(db, trait_);
     let insts = collector.collect();
 
@@ -76,10 +79,10 @@ pub(crate) fn collect_super_traits(
 /// This constraints describes 1. the constraints about self type(i.e.,
 /// implementor type), and 2. the generic parameter constraints.
 #[salsa::tracked]
-pub(crate) fn collect_trait_constraints(
-    db: &dyn HirAnalysisDb,
-    trait_: TraitDef,
-) -> Binder<PredicateListId> {
+pub(crate) fn collect_trait_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: TraitDef<'db>,
+) -> Binder<PredicateListId<'db>> {
     let hir_trait = trait_.trait_(db);
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_trait.into()));
 
@@ -88,10 +91,10 @@ pub(crate) fn collect_trait_constraints(
 
 /// Collect constraints that are specified by the given ADT definition.
 #[salsa::tracked]
-pub(crate) fn collect_adt_constraints(
-    db: &dyn HirAnalysisDb,
-    adt: AdtDef,
-) -> Binder<PredicateListId> {
+pub(crate) fn collect_adt_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    adt: AdtDef<'db>,
+) -> Binder<PredicateListId<'db>> {
     let Some(owner) = adt.as_generic_param_owner(db) else {
         return Binder::bind(PredicateListId::empty_list(db));
     };
@@ -101,10 +104,10 @@ pub(crate) fn collect_adt_constraints(
 }
 
 #[salsa::tracked]
-pub(crate) fn collect_impl_block_constraints(
-    db: &dyn HirAnalysisDb,
-    impl_: Impl,
-) -> Binder<PredicateListId> {
+pub(crate) fn collect_impl_block_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_: Impl<'db>,
+) -> Binder<PredicateListId<'db>> {
     let owner = GenericParamOwnerId::new(db, impl_.into());
     Binder::bind(ConstraintCollector::new(db, owner).collect())
 }
@@ -112,10 +115,10 @@ pub(crate) fn collect_impl_block_constraints(
 /// Collect constraints that are specified by the given implementor(i.e., impl
 /// trait).
 #[salsa::tracked]
-pub(crate) fn collect_implementor_constraints(
-    db: &dyn HirAnalysisDb,
-    implementor: Implementor,
-) -> Binder<PredicateListId> {
+pub(crate) fn collect_implementor_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    implementor: Implementor<'db>,
+) -> Binder<PredicateListId<'db>> {
     let impl_trait = implementor.hir_impl_trait(db);
     let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, impl_trait.into()));
 
@@ -123,11 +126,11 @@ pub(crate) fn collect_implementor_constraints(
 }
 
 #[salsa::tracked]
-pub(crate) fn collect_func_def_constraints(
-    db: &dyn HirAnalysisDb,
-    func: FuncDef,
+pub(crate) fn collect_func_def_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: FuncDef<'db>,
     include_parent: bool,
-) -> Binder<PredicateListId> {
+) -> Binder<PredicateListId<'db>> {
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
         HirFuncDefKind::VariantCtor(enum_, _) => {
@@ -169,10 +172,10 @@ pub(crate) fn collect_func_def_constraints(
 }
 
 #[salsa::tracked]
-pub(crate) fn collect_func_def_constraints_impl(
-    db: &dyn HirAnalysisDb,
-    func: FuncDef,
-) -> Binder<PredicateListId> {
+pub(crate) fn collect_func_def_constraints_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: FuncDef<'db>,
+) -> Binder<PredicateListId<'db>> {
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
         HirFuncDefKind::VariantCtor(enum_, _) => {
@@ -187,11 +190,11 @@ pub(crate) fn collect_func_def_constraints_impl(
     )
 }
 
-pub(crate) fn recover_collect_super_traits(
-    _db: &dyn HirAnalysisDb,
+pub(crate) fn recover_collect_super_traits<'db>(
+    _db: &'db dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
-    _trait_: TraitDef,
-) -> Result<BTreeSet<Binder<TraitInstId>>, SuperTraitCycle> {
+    _trait_: TraitDef<'db>,
+) -> Result<BTreeSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
     let mut trait_cycle = BTreeSet::new();
     for key in cycle.participant_keys() {
         trait_cycle.insert(collect_super_traits::key_from_id(key.key_index()));
@@ -202,13 +205,13 @@ pub(crate) fn recover_collect_super_traits(
 
 struct SuperTraitCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    trait_: TraitDef,
-    super_traits: BTreeSet<Binder<TraitInstId>>,
-    scope: ScopeId,
+    trait_: TraitDef<'db>,
+    super_traits: BTreeSet<Binder<TraitInstId<'db>>>,
+    scope: ScopeId<'db>,
 }
 
 impl<'db> SuperTraitCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: TraitDef) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, trait_: TraitDef<'db>) -> Self {
         Self {
             db,
             trait_,
@@ -217,7 +220,7 @@ impl<'db> SuperTraitCollector<'db> {
         }
     }
 
-    fn collect(mut self) -> BTreeSet<Binder<TraitInstId>> {
+    fn collect(mut self) -> BTreeSet<Binder<TraitInstId<'db>>> {
         let hir_trait = self.trait_.trait_(self.db);
         let hir_db = self.db.as_hir_db();
         let self_param = self.trait_.self_param(self.db);
@@ -250,21 +253,21 @@ impl<'db> SuperTraitCollector<'db> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
-pub(crate) struct SuperTraitCycle(BTreeSet<TraitDef>);
-impl SuperTraitCycle {
-    pub fn contains(&self, def: TraitDef) -> bool {
+pub(crate) struct SuperTraitCycle<'db>(BTreeSet<TraitDef<'db>>);
+impl<'db> SuperTraitCycle<'db> {
+    pub fn contains(&self, def: TraitDef<'db>) -> bool {
         self.0.contains(&def)
     }
 }
 
 struct ConstraintCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    owner: GenericParamOwnerId,
-    predicates: BTreeSet<TraitInstId>,
+    owner: GenericParamOwnerId<'db>,
+    predicates: BTreeSet<TraitInstId<'db>>,
 }
 
 impl<'db> ConstraintCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwnerId) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwnerId<'db>) -> Self {
         Self {
             db,
             owner,
@@ -273,7 +276,7 @@ impl<'db> ConstraintCollector<'db> {
         }
     }
 
-    fn collect(mut self) -> PredicateListId {
+    fn collect(mut self) -> PredicateListId<'db> {
         self.collect_constraints_from_generic_params();
         self.collect_constraints_from_where_clause();
 
@@ -293,7 +296,7 @@ impl<'db> ConstraintCollector<'db> {
         PredicateListId::new(self.db, self.predicates, self.owner.ingot(self.db))
     }
 
-    fn push_predicate(&mut self, pred: TraitInstId) {
+    fn push_predicate(&mut self, pred: TraitInstId<'db>) {
         self.predicates.insert(pred);
     }
 

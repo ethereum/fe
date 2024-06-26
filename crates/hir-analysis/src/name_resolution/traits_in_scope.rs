@@ -102,7 +102,7 @@ impl<'db> TraitScopeKind<'db> {
         }
     }
 
-    fn to_scope(&self) -> ScopeId {
+    fn to_scope(&self) -> ScopeId<'db> {
         match self {
             TraitScopeKind::TopLevelMod(top_level_mod) => {
                 ScopeId::Item(ItemKind::TopMod(*top_level_mod))

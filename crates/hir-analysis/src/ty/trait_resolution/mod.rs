@@ -24,11 +24,11 @@ pub(crate) mod constraint;
 mod proof_forest;
 
 #[salsa::tracked(return_ref)]
-pub fn is_goal_satisfiable(
-    db: &dyn HirAnalysisDb,
-    assumptions: PredicateListId,
-    goal: Canonical<TraitInstId>,
-) -> GoalSatisfiability {
+pub fn is_goal_satisfiable<'db>(
+    db: &'db dyn HirAnalysisDb,
+    assumptions: PredicateListId<'db>,
+    goal: Canonical<TraitInstId<'db>>,
+) -> GoalSatisfiability<'db> {
     let flags = collect_flags(db, goal.value);
     if flags.contains(TyFlags::HAS_INVALID) {
         return GoalSatisfiability::ContainsInvalid;
@@ -40,11 +40,11 @@ pub fn is_goal_satisfiable(
 /// Checks if the given type is well-formed, i.e., the arguments of the given
 /// type applications satisfies the constraints under the given assumptions.
 #[salsa::tracked]
-pub(crate) fn check_ty_wf(
-    db: &dyn HirAnalysisDb,
-    ty: TyId,
-    assumptions: PredicateListId,
-) -> WellFormedness {
+pub(crate) fn check_ty_wf<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> WellFormedness<'db> {
     let (_, args) = ty.decompose_ty_app(db);
 
     for &arg in args {
@@ -73,15 +73,15 @@ pub(crate) fn check_ty_wf(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum WellFormedness {
+pub(crate) enum WellFormedness<'db> {
     WellFormed,
     IllFormed {
-        goal: TraitInstId,
-        subgoal: Option<TraitInstId>,
+        goal: TraitInstId<'db>,
+        subgoal: Option<TraitInstId<'db>>,
     },
 }
 
-impl WellFormedness {
+impl<'db> WellFormedness<'db> {
     fn is_wf(self) -> bool {
         matches!(self, WellFormedness::WellFormed)
     }
@@ -90,11 +90,11 @@ impl WellFormedness {
 /// Checks if the given trait instance are well-formed, i.e., the arguments of
 /// the trait satisfies all constraints under the given assumptions.
 #[salsa::tracked]
-pub(crate) fn check_trait_inst_wf(
-    db: &dyn HirAnalysisDb,
-    trait_inst: TraitInstId,
-    assumptions: PredicateListId,
-) -> WellFormedness {
+pub(crate) fn check_trait_inst_wf<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_inst: TraitInstId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> WellFormedness<'db> {
     let constraints =
         collect_trait_constraints(db, trait_inst.def(db)).instantiate(db, trait_inst.args(db));
 
@@ -114,22 +114,22 @@ pub(crate) fn check_trait_inst_wf(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GoalSatisfiability {
+pub enum GoalSatisfiability<'db> {
     /// Goal is satisfied with the unique solution.
-    Satisfied(Solution<TraitInstId>),
+    Satisfied(Solution<TraitInstId<'db>>),
     /// Goal might be satisfied, but needs more type information to determine
     /// satisfiability and uniqueness.
-    NeedsConfirmation(BTreeSet<Solution<TraitInstId>>),
+    NeedsConfirmation(BTreeSet<Solution<TraitInstId<'db>>>),
 
     /// Goal contains invalid.
     ContainsInvalid,
     /// The gaol is not satisfied.
     /// It contains an unsatisfied subgoal if we can know the exact subgoal
     /// that makes the proof step stuck.
-    UnSat(Option<Solution<TraitInstId>>),
+    UnSat(Option<Solution<TraitInstId<'db>>>),
 }
 
-impl GoalSatisfiability {
+impl<'db> GoalSatisfiability<'db> {
     pub fn is_satisfied(&self) -> bool {
         matches!(
             self,
@@ -139,14 +139,14 @@ impl GoalSatisfiability {
 }
 
 #[salsa::interned]
-pub struct PredicateListId {
+pub struct PredicateListId<'db> {
     #[return_ref]
-    pub list: BTreeSet<TraitInstId>,
-    pub ingot: IngotId,
+    pub list: BTreeSet<TraitInstId<'db>>,
+    pub ingot: IngotId<'db>,
 }
 
-impl PredicateListId {
-    pub(super) fn merge(self, db: &dyn HirAnalysisDb, other: Self) -> Self {
+impl<'db> PredicateListId<'db> {
+    pub(super) fn merge(self, db: &'db dyn HirAnalysisDb, other: Self) -> Self {
         let mut predicates = self.list(db).clone();
         predicates.extend(other.list(db));
         PredicateListId::new(db, predicates, self.ingot(db))
@@ -156,7 +156,7 @@ impl PredicateListId {
         Self::new(db, BTreeSet::new(), IngotId::dummy())
     }
 
-    fn extend_by_super(self, db: &dyn HirAnalysisDb) -> Self {
+    fn extend_by_super(self, db: &'db dyn HirAnalysisDb) -> Self {
         let mut list = self.list(db).clone();
         for &pred in self.list(db) {
             for &super_trait in pred.def(db).super_traits(db).iter() {

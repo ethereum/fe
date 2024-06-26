@@ -1,5 +1,5 @@
 use hir::{
-    hir_def::{kw, CallArg as HirCallArg, ExprId, GenericArgListId, IdentId},
+    hir_def::{CallArg as HirCallArg, ExprId, GenericArgListId, IdentId},
     span::{
         expr::{LazyCallArgListSpan, LazyCallArgSpan},
         params::LazyGenericArgListSpan,
@@ -22,12 +22,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Callable {
-    func_def: FuncDef,
-    generic_args: Vec<TyId>,
+pub struct Callable<'db> {
+    func_def: FuncDef<'db>,
+    generic_args: Vec<TyId<'db>>,
 }
 
-impl<'db> TyVisitable<'db> for Callable {
+impl<'db> TyVisitable<'db> for Callable<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
         V: TyVisitor<'db>,
@@ -36,7 +36,7 @@ impl<'db> TyVisitable<'db> for Callable {
     }
 }
 
-impl<'db> TyFoldable<'db> for Callable {
+impl<'db> TyFoldable<'db> for Callable<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -48,12 +48,12 @@ impl<'db> TyFoldable<'db> for Callable {
     }
 }
 
-impl Callable {
+impl<'db> Callable<'db> {
     pub(super) fn new(
-        db: &dyn HirAnalysisDb,
-        ty: TyId,
-        span: DynLazySpan,
-    ) -> Result<Self, FuncBodyDiag> {
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+        span: DynLazySpan<'db>,
+    ) -> Result<Self, FuncBodyDiag<'db>> {
         let (base, args) = ty.decompose_ty_app(db);
 
         if base.is_ty_var(db) {
@@ -73,11 +73,11 @@ impl Callable {
         })
     }
 
-    pub fn ret_ty(&self, db: &dyn HirAnalysisDb) -> TyId {
+    pub fn ret_ty(&self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         self.func_def.ret_ty(db).instantiate(db, &self.generic_args)
     }
 
-    pub fn ty(&self, db: &dyn HirAnalysisDb) -> TyId {
+    pub fn ty(&self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         let mut ty = TyId::func(db, self.func_def);
         for &arg in self.generic_args.iter() {
             ty = TyId::app(db, ty, arg);
@@ -88,9 +88,9 @@ impl Callable {
 
     pub(super) fn unify_generic_args(
         &mut self,
-        tc: &mut TyChecker,
-        args: GenericArgListId,
-        span: LazyGenericArgListSpan,
+        tc: &mut TyChecker<'db>,
+        args: GenericArgListId<'db>,
+        span: LazyGenericArgListSpan<'db>,
     ) -> bool {
         let db = tc.db;
         let hir_db = db.as_hir_db();
@@ -125,10 +125,10 @@ impl Callable {
 
     pub(super) fn check_args(
         &self,
-        tc: &mut TyChecker,
-        call_args: &[HirCallArg],
-        span: LazyCallArgListSpan,
-        receiver: Option<(ExprId, ExprProp)>,
+        tc: &mut TyChecker<'db>,
+        call_args: &[HirCallArg<'db>],
+        span: LazyCallArgListSpan<'db>,
+        receiver: Option<(ExprId, ExprProp<'db>)>,
     ) {
         let db = tc.db;
 
@@ -153,7 +153,7 @@ impl Callable {
         let mut args = if let Some((receiver_expr, receiver_prop)) = receiver {
             let mut args = Vec::with_capacity(call_args.len() + 1);
             let arg = CallArg::new(
-                kw::SELF.into(),
+                IdentId::make_self(db.as_hir_db()).into(),
                 receiver_prop,
                 None,
                 receiver_expr.lazy_span(tc.body()).into(),
@@ -176,7 +176,7 @@ impl Callable {
         {
             if_chain! {
                 if let Some(expected_label) = self.func_def.param_label(db, i);
-                if expected_label != kw::SELF;
+                if expected_label.is_self(db.as_hir_db());
                 if Some(expected_label) != given.label;
                 then {
                     let diag = BodyDiag::CallArgLabelMismatch {
@@ -197,15 +197,19 @@ impl Callable {
 }
 
 /// The lowered representation of [`HirCallArg`]
-struct CallArg {
-    label: Option<IdentId>,
-    expr_prop: ExprProp,
-    label_span: Option<DynLazySpan>,
-    expr_span: DynLazySpan,
+struct CallArg<'db> {
+    label: Option<IdentId<'db>>,
+    expr_prop: ExprProp<'db>,
+    label_span: Option<DynLazySpan<'db>>,
+    expr_span: DynLazySpan<'db>,
 }
 
-impl CallArg {
-    fn from_hir_arg(tc: &mut TyChecker, arg: &HirCallArg, span: LazyCallArgSpan) -> Self {
+impl<'db> CallArg<'db> {
+    fn from_hir_arg(
+        tc: &mut TyChecker<'db>,
+        arg: &HirCallArg<'db>,
+        span: LazyCallArgSpan<'db>,
+    ) -> Self {
         let ty = tc.fresh_ty();
         let expr_prop = tc.check_expr(arg.expr, ty);
         let label = arg.label_eagerly(tc.db.as_hir_db(), tc.body());
@@ -216,10 +220,10 @@ impl CallArg {
     }
 
     fn new(
-        label: Option<IdentId>,
-        expr_prop: ExprProp,
-        label_span: Option<DynLazySpan>,
-        expr_span: DynLazySpan,
+        label: Option<IdentId<'db>>,
+        expr_prop: ExprProp<'db>,
+        label_span: Option<DynLazySpan<'db>>,
+        expr_span: DynLazySpan<'db>,
     ) -> Self {
         Self {
             label,

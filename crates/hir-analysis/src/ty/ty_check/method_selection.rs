@@ -24,31 +24,31 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Candidate {
-    InherentMethod(FuncDef),
-    TraitMethod(TraitMethodCand),
-    NeedsConfirmation(TraitMethodCand),
+pub(super) enum Candidate<'db> {
+    InherentMethod(FuncDef<'db>),
+    TraitMethod(TraitMethodCand<'db>),
+    NeedsConfirmation(TraitMethodCand<'db>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct TraitMethodCand {
-    pub(super) inst: Solution<TraitInstId>,
-    pub(super) method: TraitMethod,
+pub(super) struct TraitMethodCand<'db> {
+    pub(super) inst: Solution<TraitInstId<'db>>,
+    pub(super) method: TraitMethod<'db>,
 }
 
-impl TraitMethodCand {
-    fn new(inst: Solution<TraitInstId>, method: TraitMethod) -> Self {
+impl<'db> TraitMethodCand<'db> {
+    fn new(inst: Solution<TraitInstId<'db>>, method: TraitMethod<'db>) -> Self {
         Self { inst, method }
     }
 }
 
-pub(super) fn select_method_candidate(
-    db: &dyn HirAnalysisDb,
-    receiver: (Canonical<TyId>, DynLazySpan),
-    method_name: (IdentId, DynLazySpan),
-    scope: ScopeId,
-    assumptions: PredicateListId,
-) -> Result<Candidate, FuncBodyDiag> {
+pub(super) fn select_method_candidate<'db>(
+    db: &'db dyn HirAnalysisDb,
+    receiver: (Canonical<TyId<'db>>, DynLazySpan<'db>),
+    method_name: (IdentId<'db>, DynLazySpan<'db>),
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Result<Candidate<'db>, FuncBodyDiag<'db>> {
     if receiver.0.value.is_ty_var(db) {
         return Err(BodyDiag::TypeMustBeKnown(method_name.1).into());
     }
@@ -112,13 +112,13 @@ pub(super) fn select_method_candidate(
     }
 }
 
-fn assemble_method_candidates(
-    db: &dyn HirAnalysisDb,
-    receiver_ty: Canonical<TyId>,
-    method_name: IdentId,
-    scope: ScopeId,
-    assumptions: PredicateListId,
-) -> AssembledCandidates {
+fn assemble_method_candidates<'db>(
+    db: &'db dyn HirAnalysisDb,
+    receiver_ty: Canonical<TyId<'db>>,
+    method_name: IdentId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> AssembledCandidates<'db> {
     CandidateAssembler {
         db,
         receiver_ty,
@@ -133,18 +133,18 @@ fn assemble_method_candidates(
 struct CandidateAssembler<'db> {
     db: &'db dyn HirAnalysisDb,
     /// The type that method is being called on.
-    receiver_ty: Canonical<TyId>,
+    receiver_ty: Canonical<TyId<'db>>,
     /// The name of the method being called.
-    method_name: IdentId,
+    method_name: IdentId<'db>,
     /// The scope that candidates are being assembled in.
-    scope: ScopeId,
+    scope: ScopeId<'db>,
     /// The assumptions for the type bound in the current scope.
-    assumptions: PredicateListId,
-    candidates: AssembledCandidates,
+    assumptions: PredicateListId<'db>,
+    candidates: AssembledCandidates<'db>,
 }
 
 impl<'db> CandidateAssembler<'db> {
-    fn assemble(mut self) -> AssembledCandidates {
+    fn assemble(mut self) -> AssembledCandidates<'db> {
         self.assemble_inherent_method_candidates();
         self.assemble_trait_method_candidates();
         self.candidates
@@ -184,7 +184,7 @@ impl<'db> CandidateAssembler<'db> {
         }
     }
 
-    fn insert_trait_method_cand(&mut self, trait_def: TraitDef) {
+    fn insert_trait_method_cand(&mut self, trait_def: TraitDef<'db>) {
         if let Some(&trait_method) = trait_def.methods(self.db).get(&self.method_name) {
             self.candidates.insert_trait(trait_def, trait_method);
         }
@@ -193,14 +193,14 @@ impl<'db> CandidateAssembler<'db> {
 
 struct MethodSelector<'db> {
     db: &'db dyn HirAnalysisDb,
-    receiver: Canonical<TyId>,
-    scope: ScopeId,
-    candidates: AssembledCandidates,
-    assumptions: PredicateListId,
+    receiver: Canonical<TyId<'db>>,
+    scope: ScopeId<'db>,
+    candidates: AssembledCandidates<'db>,
+    assumptions: PredicateListId<'db>,
 }
 
 impl<'db> MethodSelector<'db> {
-    fn select(self) -> Result<Candidate, MethodSelectionError> {
+    fn select(self) -> Result<Candidate<'db>, MethodSelectionError<'db>> {
         if let Some(res) = self.select_inherent_method() {
             return res;
         }
@@ -208,7 +208,7 @@ impl<'db> MethodSelector<'db> {
         self.select_trait_methods()
     }
 
-    fn select_inherent_method(&self) -> Option<Result<Candidate, MethodSelectionError>> {
+    fn select_inherent_method(&self) -> Option<Result<Candidate<'db>, MethodSelectionError<'db>>> {
         let inherent_methods = &self.candidates.inherent_methods;
         let visible_inherent_methods: Vec<_> = inherent_methods
             .iter()
@@ -249,7 +249,7 @@ impl<'db> MethodSelector<'db> {
     /// * `Ok(Candidate)` - The selected method candidate.
     /// * `Err(MethodSelectionError)` - An error indicating the reason for
     ///   failure.
-    fn select_trait_methods(&self) -> Result<Candidate, MethodSelectionError> {
+    fn select_trait_methods(&self) -> Result<Candidate<'db>, MethodSelectionError<'db>> {
         let traits = &self.candidates.traits;
 
         if traits.len() == 1 {
@@ -303,7 +303,7 @@ impl<'db> MethodSelector<'db> {
     /// # Returns
     ///
     /// A `Candidate` representing the found trait method instance.
-    fn find_inst(&self, def: TraitDef, method: TraitMethod) -> Candidate {
+    fn find_inst(&self, def: TraitDef<'db>, method: TraitMethod<'db>) -> Candidate<'db> {
         let mut table = UnificationTable::new(self.db);
         let receiver = self.receiver.extract_identity(&mut table);
 
@@ -350,10 +350,10 @@ impl<'db> MethodSelector<'db> {
         is_scope_visible_from(self.db, def.scope(self.db), self.scope)
     }
 
-    fn available_traits(&self) -> FxHashSet<TraitDef> {
+    fn available_traits(&self) -> FxHashSet<TraitDef<'db>> {
         let mut traits = FxHashSet::default();
 
-        let mut insert_trait = |trait_def: TraitDef| {
+        let mut insert_trait = |trait_def: TraitDef<'db>| {
             traits.insert(trait_def);
 
             for trait_ in trait_def.super_traits(self.db) {
@@ -375,26 +375,26 @@ impl<'db> MethodSelector<'db> {
     }
 }
 
-pub enum MethodSelectionError {
-    AmbiguousInherentMethod(Vec<FuncDef>),
-    AmbiguousTraitMethod(Vec<TraitDef>),
+pub enum MethodSelectionError<'db> {
+    AmbiguousInherentMethod(Vec<FuncDef<'db>>),
+    AmbiguousTraitMethod(Vec<TraitDef<'db>>),
     NotFound,
-    InvisibleInherentMethod(FuncDef),
-    InvisibleTraitMethod(Vec<Trait>),
+    InvisibleInherentMethod(FuncDef<'db>),
+    InvisibleTraitMethod(Vec<Trait<'db>>),
 }
 
 #[derive(Default)]
-struct AssembledCandidates {
-    inherent_methods: FxHashSet<FuncDef>,
-    traits: FxHashSet<(TraitDef, TraitMethod)>,
+struct AssembledCandidates<'db> {
+    inherent_methods: FxHashSet<FuncDef<'db>>,
+    traits: FxHashSet<(TraitDef<'db>, TraitMethod<'db>)>,
 }
 
-impl AssembledCandidates {
-    fn insert_inherent_method(&mut self, method: FuncDef) {
+impl<'db> AssembledCandidates<'db> {
+    fn insert_inherent_method(&mut self, method: FuncDef<'db>) {
         self.inherent_methods.insert(method);
     }
 
-    fn insert_trait(&mut self, def: TraitDef, method: TraitMethod) {
+    fn insert_trait(&mut self, def: TraitDef<'db>, method: TraitMethod<'db>) {
         self.traits.insert((def, method));
     }
 }

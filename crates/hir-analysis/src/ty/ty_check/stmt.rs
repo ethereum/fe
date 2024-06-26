@@ -8,7 +8,7 @@ use crate::ty::{
 };
 
 impl<'db> TyChecker<'db> {
-    pub(super) fn check_stmt(&mut self, stmt: StmtId, expected: TyId) -> TyId {
+    pub(super) fn check_stmt(&mut self, stmt: StmtId, expected: TyId<'db>) -> TyId<'db> {
         let Partial::Present(stmt_data) = self.env.stmt_data(stmt) else {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
@@ -24,7 +24,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_let(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_let(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         let Stmt::Let(pat, ascription, expr) = stmt_data else {
             unreachable!()
         };
@@ -45,7 +45,7 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    fn check_for(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_for(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         let Stmt::For(pat, expr, body) = stmt_data else {
             unreachable!()
         };
@@ -92,7 +92,7 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    fn check_while(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_while(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         let Stmt::While(cond, body) = stmt_data else {
             unreachable!()
         };
@@ -106,7 +106,7 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    fn check_continue(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_continue(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         assert!(matches!(stmt_data, Stmt::Continue));
 
         if self.env.current_loop().is_none() {
@@ -121,7 +121,7 @@ impl<'db> TyChecker<'db> {
         TyId::never(self.db)
     }
 
-    fn check_break(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_break(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         assert!(matches!(stmt_data, Stmt::Break));
 
         if self.env.current_loop().is_none() {
@@ -136,7 +136,7 @@ impl<'db> TyChecker<'db> {
         TyId::never(self.db)
     }
 
-    fn check_return(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_return(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         let Stmt::Return(expr) = stmt_data else {
             unreachable!()
         };

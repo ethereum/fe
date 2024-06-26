@@ -1,6 +1,8 @@
 //! This module contains the unification table for type inference and trait
 //! satisfiability checking.
 
+use std::marker::PhantomData;
+
 use either::Either;
 use ena::unify::{InPlace, UnifyKey, UnifyValue};
 use num_bigint::BigUint;
@@ -16,7 +18,7 @@ use crate::{
     HirAnalysisDb,
 };
 
-pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<InferenceKey>>;
+pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<InferenceKey<'db>>>;
 
 /// This table should only be used in the trait resolution where the performance
 /// of `clone` is the critical. This table provides the very cheap clone
@@ -25,7 +27,7 @@ pub(crate) type UnificationTable<'db> = UnificationTableBase<'db, InPlace<Infere
 /// [`UnificationTable`] is probably the one that you need to use for other
 /// components.
 pub(crate) type PersistentUnificationTable<'db> =
-    UnificationTableBase<'db, ena::unify::Persistent<InferenceKey>>;
+    UnificationTableBase<'db, ena::unify::Persistent<InferenceKey<'db>>>;
 
 pub type Snapshot<U> = ena::unify::Snapshot<U>;
 pub type UnificationResult = Result<(), UnificationError>;
@@ -36,17 +38,17 @@ pub enum UnificationError {
     TypeMismatch,
 }
 
-pub(crate) trait UnificationStore:
+pub(crate) trait UnificationStore<'db>:
     Default
-    + ena::unify::UnificationStoreBase<Key = InferenceKey, Value = InferenceValue>
+    + ena::unify::UnificationStoreBase<Key = InferenceKey<'db>, Value = InferenceValue<'db>>
     + ena::unify::UnificationStore
     + ena::unify::UnificationStoreMut
 {
 }
 
-impl<U> UnificationStore for U where
+impl<'db, U> UnificationStore<'db> for U where
     U: Default
-        + ena::unify::UnificationStoreBase<Key = InferenceKey, Value = InferenceValue>
+        + ena::unify::UnificationStoreBase<Key = InferenceKey<'db>, Value = InferenceValue<'db>>
         + ena::unify::UnificationStoreBase
         + ena::unify::UnificationStore
         + ena::unify::UnificationStoreMut
@@ -64,7 +66,7 @@ where
 
 impl<'db, U> UnificationTableBase<'db, U>
 where
-    U: UnificationStore,
+    U: UnificationStore<'db>,
 {
     pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
         Self {
@@ -92,7 +94,7 @@ where
 
     pub fn unify<T>(&mut self, lhs: T, rhs: T) -> UnificationResult
     where
-        T: Unifiable,
+        T: Unifiable<'db>,
     {
         let snapshot = self.snapshot();
         match lhs.unify(self, rhs) {
@@ -111,7 +113,7 @@ where
     /// error. This method doesn't roll back the unification table. Please
     /// refer to `unify`[Self::unify] if you need to roll back the table
     /// automatically when unification fails.
-    fn unify_ty(&mut self, ty1: TyId, ty2: TyId) -> UnificationResult {
+    fn unify_ty(&mut self, ty1: TyId<'db>, ty2: TyId<'db>) -> UnificationResult {
         if !ty1.kind(self.db).does_match(ty2.kind(self.db)) {
             return Err(UnificationError::TypeMismatch);
         }
@@ -173,12 +175,12 @@ where
         }
     }
 
-    pub fn new_var(&mut self, sort: TyVarSort, kind: &Kind) -> TyId {
+    pub fn new_var(&mut self, sort: TyVarSort, kind: &Kind) -> TyId<'db> {
         let key = self.new_key(kind, sort);
         TyId::ty_var(self.db, sort, kind.clone(), key)
     }
 
-    pub(super) fn new_var_from_param(&mut self, ty: TyId) -> TyId {
+    pub(super) fn new_var_from_param(&mut self, ty: TyId<'db>) -> TyId<'db> {
         match ty.data(self.db) {
             TyData::TyParam(param) => {
                 let sort = TyVarSort::General;
@@ -198,7 +200,7 @@ where
         }
     }
 
-    pub(super) fn new_var_for(&mut self, ty_prop: ApplicableTyProp) -> TyId {
+    pub(super) fn new_var_for(&mut self, ty_prop: ApplicableTyProp<'db>) -> TyId<'db> {
         let kind = ty_prop.kind;
         let sort = TyVarSort::General;
         let key = self.new_key(&kind, sort);
@@ -216,7 +218,7 @@ where
         value.instantiate_with(self.db, |ty| self.new_var_from_param(ty))
     }
 
-    pub fn instantiate_to_term(&mut self, mut ty: TyId) -> TyId {
+    pub fn instantiate_to_term(&mut self, mut ty: TyId<'db>) -> TyId<'db> {
         if ty.has_invalid(self.db) {
             return ty;
         };
@@ -229,12 +231,12 @@ where
         ty
     }
 
-    pub fn new_key(&mut self, kind: &Kind, sort: TyVarSort) -> InferenceKey {
+    pub fn new_key(&mut self, kind: &Kind, sort: TyVarSort) -> InferenceKey<'db> {
         self.table
             .new_key(InferenceValue::Unbound(kind.clone(), sort))
     }
 
-    fn probe_impl(&mut self, key: InferenceKey) -> Either<TyId, TyVar> {
+    fn probe_impl(&mut self, key: InferenceKey<'db>) -> Either<TyId<'db>, TyVar<'db>> {
         let root_key = self.table.find(key);
         match self.table.probe_value(key) {
             InferenceValue::Bound(ty) => Either::Left(ty),
@@ -254,7 +256,7 @@ where
     /// that has a broader sort are narrowed down to the narrower one.
     ///
     /// NOTE: This method assumes that we have only two sorts: General and Int.
-    fn unify_var_var(&mut self, ty_var1: TyId, ty_var2: TyId) -> UnificationResult {
+    fn unify_var_var(&mut self, ty_var1: TyId<'db>, ty_var2: TyId<'db>) -> UnificationResult {
         let (var1, var2) = match (ty_var1.data(self.db), ty_var2.data(self.db)) {
             (TyData::TyVar(var1), TyData::TyVar(var2)) => (var1, var2),
             (TyData::ConstTy(const_ty1), TyData::ConstTy(const_ty2)) => {
@@ -286,7 +288,7 @@ where
     /// 1. Occurrence check: The same type variable must not occur in the type.
     /// 2. Universe check: The sort of the type variable must match the sort of
     ///    the type.
-    fn unify_var_value(&mut self, var: &TyVar, value: TyId) -> UnificationResult {
+    fn unify_var_value(&mut self, var: &TyVar<'db>, value: TyId<'db>) -> UnificationResult {
         if inference_keys(self.db, &value).contains(&var.key) {
             return Err(UnificationError::OccursCheckFailed);
         }
@@ -364,23 +366,23 @@ where
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct InferenceKey(pub(super) u32);
+pub struct InferenceKey<'db>(pub(super) u32, pub(super) PhantomData<&'db ()>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum InferenceValue {
-    Bound(TyId),
+pub enum InferenceValue<'db> {
+    Bound(TyId<'db>),
     Unbound(Kind, TyVarSort),
 }
 
-impl UnifyKey for InferenceKey {
-    type Value = InferenceValue;
+impl<'db> UnifyKey for InferenceKey<'db> {
+    type Value = InferenceValue<'db>;
 
     fn index(&self) -> u32 {
         self.0
     }
 
     fn from_index(idx: u32) -> Self {
-        Self(idx)
+        Self(idx, Default::default())
     }
 
     fn tag() -> &'static str {
@@ -388,7 +390,7 @@ impl UnifyKey for InferenceKey {
     }
 }
 
-impl UnifyValue for InferenceValue {
+impl<'db> UnifyValue for InferenceValue<'db> {
     type Error = UnificationError;
 
     fn unify_values(v1: &Self, v2: &Self) -> Result<Self, Self::Error> {
@@ -418,28 +420,28 @@ impl UnifyValue for InferenceValue {
     }
 }
 
-pub(crate) trait Unifiable {
-    fn unify<U: UnificationStore>(
+pub(crate) trait Unifiable<'db> {
+    fn unify<U: UnificationStore<'db>>(
         self,
-        table: &mut UnificationTableBase<U>,
+        table: &mut UnificationTableBase<'db, U>,
         other: Self,
     ) -> UnificationResult;
 }
 
-impl Unifiable for TyId {
-    fn unify<U: UnificationStore>(
+impl<'db> Unifiable<'db> for TyId<'db> {
+    fn unify<U: UnificationStore<'db>>(
         self,
-        table: &mut UnificationTableBase<U>,
+        table: &mut UnificationTableBase<'db, U>,
         other: Self,
     ) -> UnificationResult {
         table.unify_ty(self, other)
     }
 }
 
-impl Unifiable for TraitInstId {
-    fn unify<U: UnificationStore>(
+impl<'db> Unifiable<'db> for TraitInstId<'db> {
+    fn unify<U: UnificationStore<'db>>(
         self,
-        table: &mut UnificationTableBase<U>,
+        table: &mut UnificationTableBase<'db, U>,
         other: Self,
     ) -> UnificationResult {
         let db = table.db;
@@ -455,10 +457,10 @@ impl Unifiable for TraitInstId {
     }
 }
 
-impl Unifiable for Implementor {
-    fn unify<U: UnificationStore>(
+impl<'db> Unifiable<'db> for Implementor<'db> {
+    fn unify<U: UnificationStore<'db>>(
         self,
-        table: &mut UnificationTableBase<U>,
+        table: &mut UnificationTableBase<'db, U>,
         other: Self,
     ) -> UnificationResult {
         let db = table.db;
@@ -468,13 +470,13 @@ impl Unifiable for Implementor {
 
 impl<'db, U> TyFolder<'db> for UnificationTableBase<'db, U>
 where
-    U: UnificationStore,
+    U: UnificationStore<'db>,
 {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.db
     }
 
-    fn fold_ty(&mut self, ty: TyId) -> TyId {
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         let mut resolver = TyVarResolver {
             table: self,
             var_stack: vec![],
@@ -486,21 +488,21 @@ where
 
 struct TyVarResolver<'a, 'db, U>
 where
-    U: UnificationStore,
+    U: UnificationStore<'db>,
 {
     table: &'a mut UnificationTableBase<'db, U>,
-    var_stack: Vec<InferenceKey>,
+    var_stack: Vec<InferenceKey<'db>>,
 }
 
 impl<'a, 'db, U> TyFolder<'db> for TyVarResolver<'a, 'db, U>
 where
-    U: UnificationStore,
+    U: UnificationStore<'db>,
 {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.table.db
     }
 
-    fn fold_ty(&mut self, ty: TyId) -> TyId {
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         let db = self.table.db;
         let (shallow_resolved, key) = match ty.data(db) {
             TyData::TyVar(var) if !self.var_stack.contains(&var.key) => {

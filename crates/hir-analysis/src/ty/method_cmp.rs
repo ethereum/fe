@@ -33,12 +33,12 @@ use crate::HirAnalysisDb;
 /// * `trait_inst` - The instance of the trait being checked.
 /// * `sink` - A mutable reference to a vector where diagnostic messages will be
 ///   collected.
-pub(super) fn compare_impl_method(
-    db: &dyn HirAnalysisDb,
-    impl_m: FuncDef,
-    trait_m: TraitMethod,
-    trait_inst: TraitInstId,
-    sink: &mut Vec<TyDiagCollection>,
+pub(super) fn compare_impl_method<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_m: FuncDef<'db>,
+    trait_m: TraitMethod<'db>,
+    trait_inst: TraitInstId<'db>,
+    sink: &mut Vec<TyDiagCollection<'db>>,
 ) {
     if !compare_generic_param_num(db, impl_m, trait_m.0, sink) {
         return;
@@ -73,11 +73,11 @@ pub(super) fn compare_impl_method(
 /// Checks if the number of generic parameters of the implemented method is the
 /// same as the number of generic parameters of the trait method.
 /// Returns `false` if the comparison fails.
-fn compare_generic_param_num(
-    db: &dyn HirAnalysisDb,
-    impl_m: FuncDef,
-    trait_m: FuncDef,
-    sink: &mut Vec<TyDiagCollection>,
+fn compare_generic_param_num<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_m: FuncDef<'db>,
+    trait_m: FuncDef<'db>,
+    sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let impl_params = impl_m.explicit_params(db);
     let trait_params = trait_m.explicit_params(db);
@@ -99,11 +99,11 @@ fn compare_generic_param_num(
 
 /// Checks if the generic parameter kinds are the same.
 /// Returns `false` if the comparison fails.
-fn compare_generic_param_kind(
-    db: &dyn HirAnalysisDb,
-    impl_m: FuncDef,
-    trait_m: FuncDef,
-    sink: &mut Vec<TyDiagCollection>,
+fn compare_generic_param_kind<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_m: FuncDef<'db>,
+    trait_m: FuncDef<'db>,
+    sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let mut err = false;
     for (idx, (&trait_m_param, &impl_m_param)) in trait_m
@@ -134,11 +134,11 @@ fn compare_generic_param_kind(
 /// Checks if the arity of the implemented method is the same as the arity of
 /// the trait method.
 /// Returns `false` if the comparison fails.
-fn compare_arity(
-    db: &dyn HirAnalysisDb,
-    impl_m: FuncDef,
-    trait_m: FuncDef,
-    sink: &mut Vec<TyDiagCollection>,
+fn compare_arity<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_m: FuncDef<'db>,
+    trait_m: FuncDef<'db>,
+    sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let impl_m_arity = impl_m.arg_tys(db).len();
     let trait_m_arity = trait_m.arg_tys(db).len();
@@ -162,11 +162,11 @@ fn compare_arity(
 /// Checks if the argument labels of the implemented method are the same as the
 /// argument labels of the trait method.
 /// Returns `false` if the comparison fails.
-fn compare_arg_label(
-    db: &dyn HirAnalysisDb,
-    impl_m: FuncDef,
-    trait_m: FuncDef,
-    sink: &mut Vec<TyDiagCollection>,
+fn compare_arg_label<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_m: FuncDef<'db>,
+    trait_m: FuncDef<'db>,
+    sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let hir_db = db.as_hir_db();
 
@@ -216,12 +216,12 @@ fn compare_arg_label(
 /// Checks if the argument types and return type of the implemented method are
 /// the same as the argument types and return type of the trait method.
 /// Returns `false` if the comparison fails.
-fn compare_ty(
-    db: &dyn HirAnalysisDb,
-    impl_m: FuncDef,
-    trait_m: FuncDef,
-    map_to_impl: &[TyId],
-    sink: &mut Vec<TyDiagCollection>,
+fn compare_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_m: FuncDef<'db>,
+    trait_m: FuncDef<'db>,
+    map_to_impl: &[TyId<'db>],
+    sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let mut err = false;
     let impl_m_arg_tys = impl_m.arg_tys(db);

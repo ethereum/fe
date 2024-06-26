@@ -69,7 +69,7 @@ impl<'db> ScopeGraph<'db> {
 }
 
 /// An reference to a `[ScopeData]` in a `ScopeGraph`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Update)]
 pub enum ScopeId<'db> {
     /// An item scope.
     Item(ItemKind<'db>),
@@ -385,7 +385,7 @@ impl<'db> ScopeId<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Update)]
 pub enum FieldParent<'db> {
     Item(ItemKind<'db>),
     Variant(ItemKind<'db>, usize),

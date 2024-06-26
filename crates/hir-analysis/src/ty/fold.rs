@@ -30,10 +30,10 @@ where
 
 pub trait TyFolder<'db> {
     fn db(&self) -> &'db dyn HirAnalysisDb;
-    fn fold_ty(&mut self, ty: TyId) -> TyId;
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db>;
 }
 
-impl<'db> TyFoldable<'db> for TyId {
+impl<'db> TyFoldable<'db> for TyId<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -109,7 +109,7 @@ where
     }
 }
 
-impl<'db> TyFoldable<'db> for TraitInstId {
+impl<'db> TyFoldable<'db> for TraitInstId<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -126,7 +126,7 @@ impl<'db> TyFoldable<'db> for TraitInstId {
     }
 }
 
-impl<'db> TyFoldable<'db> for Implementor {
+impl<'db> TyFoldable<'db> for Implementor<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -144,7 +144,7 @@ impl<'db> TyFoldable<'db> for Implementor {
     }
 }
 
-impl<'db> TyFoldable<'db> for PredicateListId {
+impl<'db> TyFoldable<'db> for PredicateListId<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -159,7 +159,7 @@ impl<'db> TyFoldable<'db> for PredicateListId {
     }
 }
 
-impl<'db> TyFoldable<'db> for ExprProp {
+impl<'db> TyFoldable<'db> for ExprProp<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,

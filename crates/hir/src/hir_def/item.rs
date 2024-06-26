@@ -37,6 +37,7 @@ use crate::{
     Ord,
     derive_more::From,
     derive_more::TryInto,
+    salsa::Update,
 )]
 pub enum ItemKind<'db> {
     TopMod(TopLevelMod<'db>),
@@ -1060,7 +1061,7 @@ impl<'db> FieldDefListId<'db> {
             .find(|field| field.name.to_opt() == Some(name))
     }
 
-    pub fn field_idx(self, db: &dyn HirDb, name: IdentId) -> Option<usize> {
+    pub fn field_idx(self, db: &dyn HirDb, name: IdentId<'db>) -> Option<usize> {
         self.data(db)
             .iter()
             .position(|field| field.name.to_opt() == Some(name))

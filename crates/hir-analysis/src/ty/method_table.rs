@@ -16,7 +16,10 @@ use crate::{
 };
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn collect_methods(db: &dyn HirAnalysisDb, ingot: IngotId) -> MethodTable {
+pub(crate) fn collect_methods<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: IngotId<'db>,
+) -> MethodTable<'db> {
     let mut collector = MethodCollector::new(db, ingot);
 
     let enums = ingot.all_enums(db.as_hir_db());
@@ -29,23 +32,28 @@ pub(crate) fn collect_methods(db: &dyn HirAnalysisDb, ingot: IngotId) -> MethodT
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn probe_method(
-    db: &dyn HirAnalysisDb,
-    ingot: IngotId,
-    ty: Canonical<TyId>,
-    name: IdentId,
-) -> Vec<FuncDef> {
+pub(crate) fn probe_method<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: IngotId<'db>,
+    ty: Canonical<TyId<'db>>,
+    name: IdentId<'db>,
+) -> Vec<FuncDef<'db>> {
     let table = collect_methods(db, ingot);
     table.probe(db, ty, name)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct MethodTable {
-    buckets: FxHashMap<TyBase, MethodBucket>,
+pub struct MethodTable<'db> {
+    buckets: FxHashMap<TyBase<'db>, MethodBucket<'db>>,
 }
 
-impl MethodTable {
-    fn probe(&self, db: &dyn HirAnalysisDb, ty: Canonical<TyId>, name: IdentId) -> Vec<FuncDef> {
+impl<'db> MethodTable<'db> {
+    fn probe(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        ty: Canonical<TyId<'db>>,
+        name: IdentId<'db>,
+    ) -> Vec<FuncDef<'db>> {
         let mut table = UnificationTable::new(db);
         let ty = ty.extract_identity(&mut table);
         let Some(base) = Self::extract_ty_base(ty, db) else {
@@ -69,7 +77,7 @@ impl MethodTable {
         self
     }
 
-    fn insert(&mut self, db: &dyn HirAnalysisDb, ty: TyId, func: FuncDef) {
+    fn insert(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>, func: FuncDef<'db>) {
         let Some(base) = Self::extract_ty_base(ty, db) else {
             return;
         };
@@ -80,7 +88,7 @@ impl MethodTable {
         methods.insert(name, func);
     }
 
-    fn extract_ty_base(ty: TyId, db: &dyn HirAnalysisDb) -> Option<&TyBase> {
+    fn extract_ty_base(ty: TyId<'db>, db: &'db dyn HirAnalysisDb) -> Option<&'db TyBase<'db>> {
         let base = ty.base_ty(db);
         match base.data(db) {
             TyData::TyBase(base) => Some(base),
@@ -90,18 +98,23 @@ impl MethodTable {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct MethodBucket {
-    methods: FxHashMap<Binder<TyId>, FxHashMap<IdentId, FuncDef>>,
+struct MethodBucket<'db> {
+    methods: FxHashMap<Binder<TyId<'db>>, FxHashMap<IdentId<'db>, FuncDef<'db>>>,
 }
 
-impl MethodBucket {
+impl<'db> MethodBucket<'db> {
     fn new() -> Self {
         Self {
             methods: FxHashMap::default(),
         }
     }
 
-    fn probe(&self, table: &mut UnificationTable, ty: TyId, name: IdentId) -> Vec<FuncDef> {
+    fn probe(
+        &self,
+        table: &mut UnificationTable<'db>,
+        ty: TyId<'db>,
+        name: IdentId<'db>,
+    ) -> Vec<FuncDef<'db>> {
         let mut methods = vec![];
         for (&cand_ty, funcs) in self.methods.iter() {
             let snapshot = table.snapshot();
@@ -124,12 +137,12 @@ impl MethodBucket {
 
 struct MethodCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId,
-    method_table: MethodTable,
+    ingot: IngotId<'db>,
+    method_table: MethodTable<'db>,
 }
 
 impl<'db> MethodCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, ingot: IngotId) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, ingot: IngotId<'db>) -> Self {
         Self {
             db,
             ingot,
@@ -137,7 +150,7 @@ impl<'db> MethodCollector<'db> {
         }
     }
 
-    fn collect_variant_ctors(&mut self, enums: &[Enum]) {
+    fn collect_variant_ctors(&mut self, enums: &[Enum<'db>]) {
         let hir_db = self.db.as_hir_db();
         for &enum_ in enums {
             let adt_ref = AdtRefId::new(self.db, enum_.into());
@@ -181,7 +194,7 @@ impl<'db> MethodCollector<'db> {
         }
     }
 
-    fn collect_impls(&mut self, impls: &[Impl]) {
+    fn collect_impls(&mut self, impls: &[Impl<'db>]) {
         for impl_ in impls {
             let ty = match impl_.ty(self.db.as_hir_db()).to_opt() {
                 Some(ty) => lower_hir_ty(self.db, ty, impl_.scope()),
@@ -202,11 +215,11 @@ impl<'db> MethodCollector<'db> {
         }
     }
 
-    fn finalize(self) -> MethodTable {
+    fn finalize(self) -> MethodTable<'db> {
         self.method_table.finalize()
     }
 
-    fn insert(&mut self, ty: TyId, func: FuncDef) {
+    fn insert(&mut self, ty: TyId<'db>, func: FuncDef<'db>) {
         let ty = match func.receiver_ty(self.db) {
             Some(ty) => ty.instantiate_identity(),
             None => ty,

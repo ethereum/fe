@@ -10,17 +10,17 @@ use crate::{
 };
 
 #[salsa::interned]
-pub struct ConstTyId {
+pub struct ConstTyId<'db> {
     #[return_ref]
-    pub(super) data: ConstTyData,
+    pub(super) data: ConstTyData<'db>,
 }
 
 #[salsa::tracked]
-pub(crate) fn evaluate_const_ty(
-    db: &dyn HirAnalysisDb,
-    const_ty: ConstTyId,
-    expected_ty: Option<TyId>,
-) -> ConstTyId {
+pub(crate) fn evaluate_const_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    const_ty: ConstTyId<'db>,
+    expected_ty: Option<TyId<'db>>,
+) -> ConstTyId<'db> {
     let ConstTyData::UnEvaluated(body) = const_ty.data(db) else {
         let const_ty_ty = const_ty.ty(db);
         return match check_const_ty(db, const_ty_ty, expected_ty, &mut UnificationTable::new(db)) {
@@ -73,12 +73,12 @@ pub(crate) fn evaluate_const_ty(
 
 // FIXME: When we add type inference, we need to use the inference engine to
 // check the type of the expression instead of this function.
-fn check_const_ty(
-    db: &dyn HirAnalysisDb,
-    const_ty_ty: TyId,
-    expected_ty: Option<TyId>,
-    table: &mut UnificationTable,
-) -> Result<TyId, InvalidCause> {
+fn check_const_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    const_ty_ty: TyId<'db>,
+    expected_ty: Option<TyId<'db>>,
+    table: &mut UnificationTable<'db>,
+) -> Result<TyId<'db>, InvalidCause<'db>> {
     if const_ty_ty.has_invalid(db) {
         return Err(InvalidCause::Other);
     }
@@ -98,8 +98,8 @@ fn check_const_ty(
     }
 }
 
-impl ConstTyId {
-    pub fn ty(self, db: &dyn HirAnalysisDb) -> TyId {
+impl<'db> ConstTyId<'db> {
+    pub fn ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         match self.data(db) {
             ConstTyData::TyVar(_, ty) => *ty,
             ConstTyData::TyParam(_, ty) => *ty,
@@ -119,30 +119,34 @@ impl ConstTyId {
         }
     }
 
-    pub(super) fn evaluate(self, db: &dyn HirAnalysisDb, expected_ty: Option<TyId>) -> Self {
+    pub(super) fn evaluate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        expected_ty: Option<TyId<'db>>,
+    ) -> Self {
         evaluate_const_ty(db, self, expected_ty)
     }
 
-    pub(super) fn from_body(db: &dyn HirAnalysisDb, body: Body) -> Self {
+    pub(super) fn from_body(db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Self {
         let data = ConstTyData::UnEvaluated(body);
         Self::new(db, data)
     }
 
-    pub(super) fn from_opt_body(db: &dyn HirAnalysisDb, body: Partial<Body>) -> Self {
+    pub(super) fn from_opt_body(db: &'db dyn HirAnalysisDb, body: Partial<Body<'db>>) -> Self {
         match body {
             Partial::Present(body) => Self::from_body(db, body),
             Partial::Absent => Self::invalid(db, InvalidCause::Other),
         }
     }
 
-    pub(super) fn invalid(db: &dyn HirAnalysisDb, cause: InvalidCause) -> Self {
+    pub(super) fn invalid(db: &'db dyn HirAnalysisDb, cause: InvalidCause<'db>) -> Self {
         let resolved = EvaluatedConstTy::Invalid;
         let ty = TyId::invalid(db, cause);
         let data = ConstTyData::Evaluated(resolved, ty);
         Self::new(db, data)
     }
 
-    fn swap_ty(self, db: &dyn HirAnalysisDb, ty: TyId) -> Self {
+    fn swap_ty(self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Self {
         let data = match self.data(db) {
             ConstTyData::TyVar(var, _) => ConstTyData::TyVar(var.clone(), ty),
             ConstTyData::TyParam(param, _) => ConstTyData::TyParam(param.clone(), ty),
@@ -157,21 +161,21 @@ impl ConstTyId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ConstTyData {
-    TyVar(TyVar, TyId),
-    TyParam(TyParam, TyId),
-    Evaluated(EvaluatedConstTy, TyId),
-    UnEvaluated(Body),
+pub enum ConstTyData<'db> {
+    TyVar(TyVar<'db>, TyId<'db>),
+    TyParam(TyParam<'db>, TyId<'db>),
+    Evaluated(EvaluatedConstTy<'db>, TyId<'db>),
+    UnEvaluated(Body<'db>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum EvaluatedConstTy {
-    LitInt(IntegerId),
+pub enum EvaluatedConstTy<'db> {
+    LitInt(IntegerId<'db>),
     LitBool(bool),
     Invalid,
 }
 
-impl EvaluatedConstTy {
+impl<'db> EvaluatedConstTy<'db> {
     pub fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         match self {
             EvaluatedConstTy::LitInt(val) => {

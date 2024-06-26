@@ -69,7 +69,7 @@ use crate::{
 /// - Check if the trait instantiations in the ADT satisfies the constraints.
 /// - Check if the recursive types has indirect type wrapper like pointer.
 #[salsa::tracked]
-pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
+pub fn analyze_adt<'db>(db: &'db dyn HirAnalysisDb, adt_ref: AdtRefId<'db>) {
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
     let diags = analyzer.analyze();
 
@@ -90,7 +90,7 @@ pub fn analyze_adt(db: &dyn HirAnalysisDb, adt_ref: AdtRefId) {
 ///   in type application.
 /// - Check if the trait instantiations in the trait satisfies the constraints.
 #[salsa::tracked]
-pub fn analyze_trait(db: &dyn HirAnalysisDb, trait_: Trait) {
+pub fn analyze_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) {
     let analyzer = DefAnalyzer::for_trait(db, trait_);
     let diags = analyzer.analyze();
 
@@ -111,7 +111,7 @@ pub fn analyze_trait(db: &dyn HirAnalysisDb, trait_: Trait) {
 /// - Check if the trait or type is included in the ingot which contains the
 ///   impl trait.
 #[salsa::tracked]
-pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
+pub fn analyze_impl_trait<'db>(db: &'db dyn HirAnalysisDb, impl_trait: ImplTrait<'db>) {
     let implementor = match analyze_impl_trait_specific_error(db, impl_trait) {
         Ok(implementor) => implementor,
         Err(diags) => {
@@ -133,7 +133,7 @@ pub fn analyze_impl_trait(db: &dyn HirAnalysisDb, impl_trait: ImplTrait) {
 }
 
 #[salsa::tracked]
-pub fn analyze_impl(db: &dyn HirAnalysisDb, impl_: HirImpl) {
+pub fn analyze_impl<'db>(db: &'db dyn HirAnalysisDb, impl_: HirImpl<'db>) {
     let Some(hir_ty) = impl_.ty(db.as_hir_db()).to_opt() else {
         return;
     };
@@ -148,7 +148,7 @@ pub fn analyze_impl(db: &dyn HirAnalysisDb, impl_: HirImpl) {
 }
 
 #[salsa::tracked]
-pub fn analyze_func(db: &dyn HirAnalysisDb, func: Func) {
+pub fn analyze_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) {
     let Some(func_def) = lower_func(db, func) else {
         return;
     };
@@ -170,7 +170,7 @@ pub fn analyze_func(db: &dyn HirAnalysisDb, func: Func) {
 /// included in the type system. Satisfiability is checked where the type alias
 /// is used.
 #[salsa::tracked]
-pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
+pub fn analyze_type_alias<'db>(db: &'db dyn HirAnalysisDb, alias: TypeAlias<'db>) {
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
         return;
     };
@@ -200,15 +200,15 @@ pub fn analyze_type_alias(db: &dyn HirAnalysisDb, alias: TypeAlias) {
 
 pub struct DefAnalyzer<'db> {
     db: &'db dyn HirAnalysisDb,
-    def: DefKind,
-    self_ty: Option<TyId>,
-    diags: Vec<TyDiagCollection>,
-    assumptions: PredicateListId,
-    current_ty: Option<(TyId, DynLazySpan)>,
+    def: DefKind<'db>,
+    self_ty: Option<TyId<'db>>,
+    diags: Vec<TyDiagCollection<'db>>,
+    assumptions: PredicateListId<'db>,
+    current_ty: Option<(TyId<'db>, DynLazySpan<'db>)>,
 }
 
 impl<'db> DefAnalyzer<'db> {
-    fn for_adt(db: &'db dyn HirAnalysisDb, adt: AdtRefId) -> Self {
+    fn for_adt(db: &'db dyn HirAnalysisDb, adt: AdtRefId<'db>) -> Self {
         let def = lower_adt(db, adt);
         let assumptions = collect_adt_constraints(db, def).instantiate_identity();
         Self {
@@ -221,7 +221,7 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    fn for_trait(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
+    fn for_trait(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
         let def = lower_trait(db, trait_);
         let assumptions = collect_trait_constraints(db, def).instantiate_identity();
         Self {
@@ -234,7 +234,7 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    fn for_impl(db: &'db dyn HirAnalysisDb, impl_: HirImpl, ty: TyId) -> Self {
+    fn for_impl(db: &'db dyn HirAnalysisDb, impl_: HirImpl<'db>, ty: TyId<'db>) -> Self {
         let assumptions = collect_impl_block_constraints(db, impl_).instantiate_identity();
         let def = DefKind::Impl(impl_);
         Self {
@@ -247,7 +247,7 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    fn for_trait_impl(db: &'db dyn HirAnalysisDb, implementor: Implementor) -> Self {
+    fn for_trait_impl(db: &'db dyn HirAnalysisDb, implementor: Implementor<'db>) -> Self {
         let assumptions = implementor.constraints(db);
         Self {
             db,
@@ -259,7 +259,7 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef) -> Self {
+    fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef<'db>) -> Self {
         let hir_db = db.as_hir_db();
         let assumptions = collect_func_def_constraints(db, func, true).instantiate_identity();
         let self_ty = match func
@@ -298,7 +298,7 @@ impl<'db> DefAnalyzer<'db> {
     /// 2. the given `ty` is not const type
     /// TODO: This method is a stop-gap implementation until we design a true
     /// const type system.
-    fn verify_term_type_kind(&mut self, ty: HirTyId, span: DynLazySpan) -> bool {
+    fn verify_term_type_kind(&mut self, ty: HirTyId<'db>, span: DynLazySpan<'db>) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
         if !ty.has_star_kind(self.db) {
             self.diags
@@ -356,7 +356,7 @@ impl<'db> DefAnalyzer<'db> {
         !is_conflict
     }
 
-    fn verify_self_type(&mut self, self_ty: HirTyId, span: DynLazySpan) -> bool {
+    fn verify_self_type(&mut self, self_ty: HirTyId<'db>, span: DynLazySpan<'db>) -> bool {
         let Some(expected_ty) = self.self_ty else {
             return false;
         };
@@ -387,7 +387,7 @@ impl<'db> DefAnalyzer<'db> {
         true
     }
 
-    fn check_method_conflict(&mut self, func: FuncDef) -> bool {
+    fn check_method_conflict(&mut self, func: FuncDef<'db>) -> bool {
         let self_ty = func
             .receiver_ty(self.db)
             .map_or_else(|| self.self_ty.unwrap(), |ty| ty.instantiate_identity());
@@ -417,11 +417,11 @@ impl<'db> DefAnalyzer<'db> {
         true
     }
 
-    fn scope(&self) -> ScopeId {
+    fn scope(&self) -> ScopeId<'db> {
         self.def.scope(self.db)
     }
 
-    fn analyze(mut self) -> Vec<TyDiagCollection> {
+    fn analyze(mut self) -> Vec<TyDiagCollection<'db>> {
         match self.def {
             DefKind::Adt(def) => match def.adt_ref(self.db).data(self.db) {
                 AdtRef::Struct(struct_) => {
@@ -468,12 +468,12 @@ impl<'db> DefAnalyzer<'db> {
     }
 }
 
-impl<'db> Visitor for DefAnalyzer<'db> {
+impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     // We don't need to traverse the nested item, each item kinds are explicitly
     // handled(e.g, `visit_trait` or `visit_enum`).
-    fn visit_item(&mut self, _ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, _item: ItemKind) {}
+    fn visit_item(&mut self, _ctxt: &mut VisitorCtxt<'db, LazyItemSpan>, _item: ItemKind<'db>) {}
 
-    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, hir_ty: HirTyId) {
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, hir_ty: HirTyId<'db>) {
         let ty = lower_hir_ty(self.db, hir_ty, self.scope());
         let span = ctxt.span().unwrap();
         if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
@@ -485,8 +485,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
     fn visit_where_predicate(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
-        pred: &hir::hir_def::WherePredicate,
+        ctxt: &mut VisitorCtxt<'db, LazyWherePredicateSpan<'db>>,
+        pred: &hir::hir_def::WherePredicate<'db>,
     ) {
         let Some(hir_ty) = pred.ty.to_opt() else {
             return;
@@ -517,7 +517,11 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         walk_where_predicate(self, ctxt, pred);
     }
 
-    fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
+    fn visit_field_def(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyFieldDefSpan<'db>>,
+        field: &FieldDef<'db>,
+    ) {
         let Some(ty) = field.ty.to_opt() else {
             return;
         };
@@ -556,8 +560,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
     fn visit_variant_def(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
-        variant: &hir::hir_def::VariantDef,
+        ctxt: &mut VisitorCtxt<'db, LazyVariantDefSpan<'db>>,
+        variant: &hir::hir_def::VariantDef<'db>,
     ) {
         if let VariantKind::Tuple(tuple_id) = variant.kind {
             let span = ctxt.span().unwrap().tuple_type_moved();
@@ -574,8 +578,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
     fn visit_generic_param(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
-        param: &hir::hir_def::GenericParam,
+        ctxt: &mut VisitorCtxt<'db, LazyGenericParamSpan<'db>>,
+        param: &hir::hir_def::GenericParam<'db>,
     ) {
         let ScopeId::GenericParam(_, idx) = ctxt.scope() else {
             unreachable!()
@@ -655,8 +659,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
     fn visit_trait_ref(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRefId,
+        ctxt: &mut VisitorCtxt<'db, LazyTraitRefSpan<'db>>,
+        trait_ref: TraitRefId<'db>,
     ) {
         let current_ty = self
             .current_ty
@@ -709,8 +713,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
     fn visit_super_trait_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, hir::span::item::LazySuperTraitListSpan>,
-        super_traits: &[TraitRefId],
+        ctxt: &mut VisitorCtxt<'db, hir::span::item::LazySuperTraitListSpan<'db>>,
+        super_traits: &[TraitRefId<'db>],
     ) {
         let DefKind::Trait(def) = self.def else {
             unreachable!()
@@ -720,7 +724,7 @@ impl<'db> Visitor for DefAnalyzer<'db> {
         walk_super_trait_list(self, ctxt, super_traits);
     }
 
-    fn visit_impl(&mut self, ctxt: &mut VisitorCtxt<'_, LazyImplSpan>, impl_: HirImpl) {
+    fn visit_impl(&mut self, ctxt: &mut VisitorCtxt<'db, LazyImplSpan<'db>>, impl_: HirImpl<'db>) {
         let Some(impl_ty) = impl_.ty(self.db.as_hir_db()).to_opt() else {
             return;
         };
@@ -746,8 +750,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
     fn visit_func(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFuncSpan>,
-        hir_func: hir::hir_def::Func,
+        ctxt: &mut VisitorCtxt<'db, LazyFuncSpan<'db>>,
+        hir_func: hir::hir_def::Func<'db>,
     ) {
         let Some(func) = lower_func(self.db, hir_func) else {
             return;
@@ -792,8 +796,8 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
     fn visit_func_param_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFuncParamListSpan>,
-        params: FuncParamListId,
+        ctxt: &mut VisitorCtxt<'db, LazyFuncParamListSpan<'db>>,
+        params: FuncParamListId<'db>,
     ) {
         // Checks if the argument names are not duplicated.
         let mut already_seen: FxHashMap<IdentId, usize> = FxHashMap::default();
@@ -825,20 +829,20 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 
     fn visit_func_param(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFuncParamSpan>,
-        param: &hir::hir_def::FuncParam,
+        ctxt: &mut VisitorCtxt<'db, LazyFuncParamSpan<'db>>,
+        param: &hir::hir_def::FuncParam<'db>,
     ) {
         let Some(hir_ty) = param.ty.to_opt() else {
             return;
         };
 
-        let ty_span: DynLazySpan = if param.is_self_param() && param.self_ty_fallback {
+        let ty_span: DynLazySpan = if param.is_self_param(ctxt.db()) && param.self_ty_fallback {
             ctxt.span().unwrap().name().into()
         } else {
             ctxt.span().unwrap().ty().into()
         };
 
-        if param.is_self_param() {
+        if param.is_self_param(ctxt.db()) {
             self.verify_self_type(hir_ty, ty_span.clone());
         }
 
@@ -851,10 +855,10 @@ impl<'db> Visitor for DefAnalyzer<'db> {
 }
 
 #[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
-pub(crate) fn check_recursive_adt(
-    db: &dyn HirAnalysisDb,
-    adt: AdtRefId,
-) -> Option<TyDiagCollection> {
+pub(crate) fn check_recursive_adt<'db>(
+    db: &'db dyn HirAnalysisDb,
+    adt: AdtRefId<'db>,
+) -> Option<TyDiagCollection<'db>> {
     let adt_def = lower_adt(db, adt);
     for field in adt_def.fields(db) {
         for ty in field.iter_types(db) {
@@ -867,11 +871,11 @@ pub(crate) fn check_recursive_adt(
     None
 }
 
-fn check_recursive_adt_impl(
-    db: &dyn HirAnalysisDb,
+fn check_recursive_adt_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
-    adt: AdtRefId,
-) -> Option<TyDiagCollection> {
+    adt: AdtRefId<'db>,
+) -> Option<TyDiagCollection<'db>> {
     let participants: FxHashSet<_> = cycle
         .participant_keys()
         .map(|key| check_recursive_adt::key_from_id(key.key_index()))
@@ -895,13 +899,13 @@ fn check_recursive_adt_impl(
     None
 }
 
-impl TyId {
+impl<'db> TyId<'db> {
     /// Collect all adts inside types which are not wrapped by indirect type
     /// wrapper like pointer or reference.
-    fn collect_direct_adts(self, db: &dyn HirAnalysisDb) -> FxHashSet<AdtRefId> {
+    fn collect_direct_adts(self, db: &'db dyn HirAnalysisDb) -> FxHashSet<AdtRefId<'db>> {
         struct AdtCollector<'db> {
             db: &'db dyn HirAnalysisDb,
-            adts: FxHashSet<AdtRefId>,
+            adts: FxHashSet<AdtRefId<'db>>,
         }
 
         impl<'db> TyVisitor<'db> for AdtCollector<'db> {
@@ -909,13 +913,13 @@ impl TyId {
                 self.db
             }
 
-            fn visit_app(&mut self, abs: TyId, arg: TyId) {
+            fn visit_app(&mut self, abs: TyId<'db>, arg: TyId<'db>) {
                 if !abs.is_indirect(self.db) {
                     walk_ty(self, arg)
                 }
             }
 
-            fn visit_adt(&mut self, adt: AdtDef) {
+            fn visit_adt(&mut self, adt: AdtDef<'db>) {
                 self.adts.insert(adt.adt_ref(self.db));
             }
         }
@@ -930,14 +934,14 @@ impl TyId {
     }
 }
 
-fn analyze_trait_ref(
-    db: &dyn HirAnalysisDb,
-    self_ty: TyId,
-    trait_ref: TraitRefId,
-    scope: ScopeId,
-    assumptions: Option<PredicateListId>,
-    span: DynLazySpan,
-) -> Option<TyDiagCollection> {
+fn analyze_trait_ref<'db>(
+    db: &'db dyn HirAnalysisDb,
+    self_ty: TyId<'db>,
+    trait_ref: TraitRefId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: Option<PredicateListId<'db>>,
+    span: DynLazySpan<'db>,
+) -> Option<TyDiagCollection<'db>> {
     let trait_inst = match lower_trait_ref(db, self_ty, trait_ref, scope) {
         Ok(trait_ref) => trait_ref,
 
@@ -982,16 +986,16 @@ fn analyze_trait_ref(
 }
 
 #[derive(Clone, Copy, Debug, derive_more::From)]
-enum DefKind {
-    Adt(AdtDef),
-    Trait(TraitDef),
-    ImplTrait(Implementor),
-    Impl(HirImpl),
-    Func(FuncDef),
+enum DefKind<'db> {
+    Adt(AdtDef<'db>),
+    Trait(TraitDef<'db>),
+    ImplTrait(Implementor<'db>),
+    Impl(HirImpl<'db>),
+    Func(FuncDef<'db>),
 }
 
-impl DefKind {
-    fn original_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+impl<'db> DefKind<'db> {
+    fn original_params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
         match self {
             Self::Adt(def) => def.original_params(db),
             Self::Trait(def) => def.original_params(db),
@@ -1003,7 +1007,7 @@ impl DefKind {
         }
     }
 
-    fn trait_self_param(self, db: &dyn HirAnalysisDb) -> TyId {
+    fn trait_self_param(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         if let Self::Trait(def) = self {
             def.self_param(db)
         } else {
@@ -1011,7 +1015,7 @@ impl DefKind {
         }
     }
 
-    fn collect_super_trait_cycle(self, db: &dyn HirAnalysisDb) -> Option<&SuperTraitCycle> {
+    fn collect_super_trait_cycle(self, db: &'db dyn HirAnalysisDb) -> Option<&SuperTraitCycle> {
         if let Self::Trait(def) = self {
             collect_super_traits(db, def).as_ref().err()
         } else {
@@ -1019,7 +1023,7 @@ impl DefKind {
         }
     }
 
-    fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
+    fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
         match self {
             Self::Adt(def) => def.adt_ref(db).scope(db),
             Self::Trait(def) => def.trait_(db).scope(),
@@ -1038,10 +1042,10 @@ impl DefKind {
 /// 4. If conflict occurs.
 /// 5. If implementor type satisfies the required kind bound.
 /// 6. If implementor type satisfies the required trait bound.
-fn analyze_impl_trait_specific_error(
-    db: &dyn HirAnalysisDb,
-    impl_trait: ImplTrait,
-) -> Result<Binder<Implementor>, Vec<TyDiagCollection>> {
+fn analyze_impl_trait_specific_error<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_trait: ImplTrait<'db>,
+) -> Result<Binder<Implementor<'db>>, Vec<TyDiagCollection<'db>>> {
     let mut diags = vec![];
     let hir_db = db.as_hir_db();
     // We don't need to report error because it should be reported from the parser.
@@ -1103,10 +1107,10 @@ fn analyze_impl_trait_specific_error(
         return Err(diags);
     };
 
-    fn analyze_conflict_impl(
-        db: &dyn HirAnalysisDb,
-        implementor: Binder<Implementor>,
-        diags: &mut Vec<TyDiagCollection>,
+    fn analyze_conflict_impl<'db>(
+        db: &'db dyn HirAnalysisDb,
+        implementor: Binder<Implementor<'db>>,
+        diags: &mut Vec<TyDiagCollection<'db>>,
     ) {
         let trait_ = implementor.skip_binder().trait_(db);
         let env = ingot_trait_env(db, trait_.ingot(db));
@@ -1194,12 +1198,12 @@ fn analyze_impl_trait_specific_error(
 
 struct ImplTraitMethodAnalyzer<'db> {
     db: &'db dyn HirAnalysisDb,
-    diags: Vec<TyDiagCollection>,
-    implementor: Implementor,
+    diags: Vec<TyDiagCollection<'db>>,
+    implementor: Implementor<'db>,
 }
 
 impl<'db> ImplTraitMethodAnalyzer<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, implementor: Implementor) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, implementor: Implementor<'db>) -> Self {
         Self {
             db,
             diags: vec![],
@@ -1207,7 +1211,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         }
     }
 
-    fn analyze(mut self) -> Vec<TyDiagCollection> {
+    fn analyze(mut self) -> Vec<TyDiagCollection<'db>> {
         let impl_methods = self.implementor.methods(self.db);
         let hir_trait = self.implementor.trait_def(self.db).trait_(self.db);
         let trait_methods = self.implementor.trait_def(self.db).methods(self.db);
@@ -1268,11 +1272,11 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
     }
 }
 
-fn find_const_ty_param(
-    db: &dyn HirAnalysisDb,
-    ident: IdentId,
-    scope: ScopeId,
-) -> Option<ConstTyId> {
+fn find_const_ty_param<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ident: IdentId<'db>,
+    scope: ScopeId<'db>,
+) -> Option<ConstTyId<'db>> {
     let path = PathId::from_ident(db.as_hir_db(), ident);
     let EarlyResolvedPath::Full(bucket) = resolve_path_early(db, path, scope) else {
         return None;

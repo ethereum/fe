@@ -16,7 +16,7 @@ use crate::ty::{
 };
 
 impl<'db> TyChecker<'db> {
-    pub(super) fn check_pat(&mut self, pat: PatId, expected: TyId) -> TyId {
+    pub(super) fn check_pat(&mut self, pat: PatId, expected: TyId<'db>) -> TyId<'db> {
         let Partial::Present(pat_data) = pat.data(self.db.as_hir_db(), self.body()) else {
             let actual = TyId::invalid(self.db, InvalidCause::Other);
             return self.unify_ty(pat, actual, expected);
@@ -44,7 +44,7 @@ impl<'db> TyChecker<'db> {
         self.unify_ty(pat, ty, expected)
     }
 
-    fn check_lit_pat(&mut self, _pat: PatId, pat_data: &Pat) -> TyId {
+    fn check_lit_pat(&mut self, _pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::Lit(lit) = pat_data else {
             unreachable!()
         };
@@ -55,7 +55,12 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_tuple_pat(&mut self, pat: PatId, pat_data: &Pat, expected: TyId) -> TyId {
+    fn check_tuple_pat(
+        &mut self,
+        pat: PatId,
+        pat_data: &Pat<'db>,
+        expected: TyId<'db>,
+    ) -> TyId<'db> {
         let Pat::Tuple(pat_tup) = pat_data else {
             unreachable!()
         };
@@ -98,7 +103,7 @@ impl<'db> TyChecker<'db> {
         unified
     }
 
-    fn check_path_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
+    fn check_path_pat(&mut self, pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::Path(path, is_mut) = pat_data else {
             unreachable!()
         };
@@ -160,7 +165,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_path_tuple_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
+    fn check_path_tuple_pat(&mut self, pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::PathTuple(Partial::Present(path), elems) = pat_data else {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
@@ -270,7 +275,7 @@ impl<'db> TyChecker<'db> {
         pat_ty
     }
 
-    fn check_record_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
+    fn check_record_pat(&mut self, pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::Record(Partial::Present(path), _) = pat_data else {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
@@ -343,7 +348,7 @@ impl<'db> TyChecker<'db> {
 
     fn check_record_pat_fields<T>(&mut self, mut record_like: T, pat: PatId)
     where
-        T: RecordLike,
+        T: RecordLike<'db>,
     {
         let Partial::Present(Pat::Record(_, fields)) = pat.data(self.db.as_hir_db(), self.body())
         else {
@@ -393,7 +398,7 @@ impl<'db> TyChecker<'db> {
         &mut self,
         pat_tup: &[PatId],
         expected_len: Option<usize>,
-    ) -> (Vec<TyId>, std::ops::Range<usize>) {
+    ) -> (Vec<TyId<'db>>, std::ops::Range<usize>) {
         let mut rest_start = None;
         for (i, &pat) in pat_tup.iter().enumerate() {
             if pat.is_rest(self.db.as_hir_db(), self.body()) && rest_start.replace(i).is_some() {

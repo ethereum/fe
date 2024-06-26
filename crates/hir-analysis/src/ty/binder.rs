@@ -18,6 +18,15 @@ use crate::HirAnalysisDb;
 pub struct Binder<T> {
     value: T,
 }
+unsafe impl<T> salsa::update::Update for Binder<T>
+where
+    T: salsa::update::Update,
+{
+    unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
+        let old_value = unsafe { &mut *old_pointer };
+        T::maybe_update(&mut old_value.value, new_value.value)
+    }
+}
 
 impl<T> Binder<T> {
     pub const fn bind(value: T) -> Self {
@@ -65,7 +74,7 @@ where
     /// # Returns
     /// A new instance of the type contained within the binder with the
     /// arguments applied.
-    pub fn instantiate(self, db: &'db dyn HirAnalysisDb, args: &[TyId]) -> T {
+    pub fn instantiate(self, db: &'db dyn HirAnalysisDb, args: &[TyId<'db>]) -> T {
         let mut folder = InstantiateFolder { db, args };
         self.value.fold_with(&mut folder)
     }
@@ -85,7 +94,7 @@ where
     /// function applied.
     pub fn instantiate_with<F>(self, db: &'db dyn HirAnalysisDb, f: F) -> T
     where
-        F: FnMut(TyId) -> TyId,
+        F: FnMut(TyId<'db>) -> TyId<'db>,
     {
         let mut folder = InstantiateWithFolder {
             db,
@@ -98,7 +107,7 @@ where
 
 struct InstantiateFolder<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
-    args: &'a [TyId],
+    args: &'a [TyId<'db>],
 }
 
 impl<'db, 'a> TyFolder<'db> for InstantiateFolder<'db, 'a> {
@@ -106,7 +115,7 @@ impl<'db, 'a> TyFolder<'db> for InstantiateFolder<'db, 'a> {
         self.db
     }
 
-    fn fold_ty(&mut self, ty: TyId) -> TyId {
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         match ty.data(self.db) {
             TyData::TyParam(param) => return self.args[param.idx],
             TyData::ConstTy(const_ty) => {
@@ -124,22 +133,22 @@ impl<'db, 'a> TyFolder<'db> for InstantiateFolder<'db, 'a> {
 
 struct InstantiateWithFolder<'db, F>
 where
-    F: FnMut(TyId) -> TyId,
+    F: FnMut(TyId<'db>) -> TyId<'db>,
 {
     db: &'db dyn HirAnalysisDb,
     f: F,
-    params: FxHashMap<usize, TyId>,
+    params: FxHashMap<usize, TyId<'db>>,
 }
 
 impl<'db, F> TyFolder<'db> for InstantiateWithFolder<'db, F>
 where
-    F: FnMut(TyId) -> TyId,
+    F: FnMut(TyId<'db>) -> TyId<'db>,
 {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.db
     }
 
-    fn fold_ty(&mut self, ty: TyId) -> TyId {
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         match ty.data(self.db) {
             TyData::TyParam(param) => {
                 match self.params.entry(param.idx) {
