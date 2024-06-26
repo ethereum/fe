@@ -40,22 +40,22 @@ use crate::HirAnalysisDb;
 // Resolves the given path in the given scope.
 /// It's not necessary to report any error even if the `EarlyResolvedPath`
 /// contains some errors; it's always reported from [`PathAnalysisPass`].
-pub fn resolve_path_early(
-    db: &dyn HirAnalysisDb,
-    path: PathId,
-    scope: ScopeId,
-) -> EarlyResolvedPath {
+pub fn resolve_path_early<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+) -> EarlyResolvedPath<'db> {
     resolve_segments_early(db, path.segments(db.as_hir_db()), scope)
 }
 
 /// Resolves the given path segments in the given scope.
 /// It's not necessary to report any error even if the `EarlyResolvedPath`
 /// contains some errors; it's always reported from [`PathAnalysisPass`].
-pub fn resolve_segments_early(
-    db: &dyn HirAnalysisDb,
-    segments: &[Partial<IdentId>],
-    scope: ScopeId,
-) -> EarlyResolvedPath {
+pub fn resolve_segments_early<'db>(
+    db: &'db dyn HirAnalysisDb,
+    segments: &[Partial<IdentId<'db>>],
+    scope: ScopeId<'db>,
+) -> EarlyResolvedPath<'db> {
     // Obtain cache store for the given scope.
     let cache_store = resolve_path_early_impl(db, scope.top_mod(db.as_hir_db()));
     let importer = DefaultImporter;
@@ -77,7 +77,7 @@ pub fn resolve_segments_early(
 
 /// Resolves the given query. If you don't need to resolve customized queries,
 /// consider using [`resolve_path_early`] or [`resolve_segments_early`] instead.
-pub fn resolve_query(db: &dyn HirAnalysisDb, query: NameQuery) -> NameResBucket {
+pub fn resolve_query<'db>(db: &'db dyn HirAnalysisDb, query: NameQuery<'db>) -> NameResBucket<'db> {
     let importer = DefaultImporter;
     let mut name_resolver = name_resolver::NameResolver::new_no_cache(db, &importer);
     name_resolver.resolve_query(query)
@@ -94,7 +94,7 @@ impl<'db> ImportAnalysisPass<'db> {
         Self { db }
     }
 
-    pub fn resolve_imports(&self, ingot: IngotId) -> &'db ResolvedImports {
+    pub fn resolve_imports(&self, ingot: IngotId<'db>) -> &'db ResolvedImports {
         resolve_imports(self.db, ingot)
     }
 }
@@ -169,7 +169,10 @@ impl<'db> ModuleAnalysisPass for DefConflictAnalysisPass<'db> {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> ResolvedImports {
+pub fn resolve_imports<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: IngotId<'db>,
+) -> ResolvedImports<'db> {
     let resolver = import_resolver::ImportResolver::new(db, ingot);
     let (imports, diags) = resolver.resolve_imports();
     for diag in diags {
@@ -188,10 +191,10 @@ pub fn resolve_imports(db: &dyn HirAnalysisDb, ingot: IngotId) -> ResolvedImport
 /// - the path resolution errors at expression and statement level since it
 ///   generally requires type analysis
 #[salsa::tracked(return_ref)]
-pub(crate) fn resolve_path_early_impl(
+pub(crate) fn resolve_path_early_impl<'db>(
     db: &dyn HirAnalysisDb,
-    top_mod: TopLevelMod,
-) -> ResolvedQueryCacheStore {
+    top_mod: TopLevelMod<'db>,
+) -> ResolvedQueryCacheStore<'db> {
     let importer = DefaultImporter;
     let mut visitor = EarlyPathVisitor::new(db, &importer);
 
@@ -207,13 +210,13 @@ pub(crate) fn resolve_path_early_impl(
 struct EarlyPathVisitor<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
     inner: name_resolver::NameResolver<'db, 'a>,
-    diags: Vec<diagnostics::NameResDiag>,
-    item_stack: Vec<ItemKind>,
+    diags: Vec<diagnostics::NameResDiag<'db>>,
+    item_stack: Vec<ItemKind<'db>>,
     path_ctxt: Vec<ExpectedPathKind>,
 
     /// The set of scopes that have already been conflicted to avoid duplicate
     /// diagnostics.
-    already_conflicted: FxHashSet<ScopeId>,
+    already_conflicted: FxHashSet<ScopeId<'db>>,
 }
 
 impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
@@ -231,10 +234,10 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
 
     fn verify_path(
         &mut self,
-        path: PathId,
+        path: PathId<'db>,
         scope: ScopeId,
-        span: LazyPathSpan,
-        bucket: NameResBucket,
+        span: LazyPathSpan<'db>,
+        bucket: NameResBucket<'db>,
     ) {
         let path_kind = self.path_ctxt.last().unwrap();
         let last_seg_idx = path.len(self.db.as_hir_db()) - 1;
@@ -305,7 +308,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         }
     }
 
-    fn check_conflict(&mut self, scope: ScopeId) {
+    fn check_conflict(&mut self, scope: ScopeId<'db>) {
         if !self.already_conflicted.insert(scope) {
             return;
         }
@@ -340,7 +343,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         };
     }
 
-    fn make_query_for_conflict_check(&self, scope: ScopeId) -> Option<NameQuery> {
+    fn make_query_for_conflict_check(&self, scope: ScopeId<'db>) -> Option<NameQuery<'db>> {
         let name = scope.name(self.db.as_hir_db())?;
         let directive = QueryDirective::new()
             .disallow_lex()
@@ -352,8 +355,8 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
-    fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, item: ItemKind) {
+impl<'db, 'a> Visitor<'db> for EarlyPathVisitor<'db, 'a> {
+    fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'db, LazyItemSpan<'db>>, item: ItemKind<'db>) {
         // We don't need to check use statements for conflicts because they are
         // already checked in import resolution.
         if matches!(item, ItemKind::Use(_)) {
@@ -383,8 +386,8 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     fn visit_trait_ref(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRefId,
+        ctxt: &mut VisitorCtxt<'db, LazyTraitRefSpan<'db>>,
+        trait_ref: TraitRefId<'db>,
     ) {
         self.path_ctxt.push(ExpectedPathKind::Trait);
         walk_trait_ref(self, ctxt, trait_ref);
@@ -393,8 +396,8 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     fn visit_field_def(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>,
-        field: &hir::hir_def::FieldDef,
+        ctxt: &mut VisitorCtxt<'db, LazyFieldDefSpan<'db>>,
+        field: &hir::hir_def::FieldDef<'db>,
     ) {
         let scope = ctxt.scope();
         self.check_conflict(scope);
@@ -403,8 +406,8 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     fn visit_variant_def(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
-        variant: &hir::hir_def::VariantDef,
+        ctxt: &mut VisitorCtxt<'db, LazyVariantDefSpan<'db>>,
+        variant: &hir::hir_def::VariantDef<'db>,
     ) {
         let scope = ctxt.scope();
         self.check_conflict(scope);
@@ -413,8 +416,8 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     fn visit_generic_param(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
-        param: &hir::hir_def::GenericParam,
+        ctxt: &mut VisitorCtxt<'db, LazyGenericParamSpan<'db>>,
+        param: &hir::hir_def::GenericParam<'db>,
     ) {
         let scope = ctxt.scope();
         self.check_conflict(scope);
@@ -423,15 +426,15 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     fn visit_generic_arg_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericArgListSpan>,
-        args: GenericArgListId,
+        ctxt: &mut VisitorCtxt<'db, LazyGenericArgListSpan<'db>>,
+        args: GenericArgListId<'db>,
     ) {
         self.path_ctxt.push(ExpectedPathKind::Type);
         walk_generic_arg_list(self, ctxt, args);
         self.path_ctxt.pop();
     }
 
-    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, ty: TypeId<'db>) {
         self.path_ctxt.push(ExpectedPathKind::Type);
         walk_ty(self, ctxt, ty);
         self.path_ctxt.pop();
@@ -439,7 +442,12 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     // We don't need to run path analysis on patterns, statements and expressions in
     // early path resolution.
-    fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: PatId, pat_data: &Pat) {
+    fn visit_pat(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyPatSpan<'db>>,
+        pat: PatId,
+        pat_data: &Pat<'db>,
+    ) {
         match pat_data {
             Pat::PathTuple { .. } | Pat::Record { .. } => {
                 self.path_ctxt.push(ExpectedPathKind::Record)
@@ -452,9 +460,9 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
 
     fn visit_expr(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+        ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
         expr: ExprId,
-        expr_data: &Expr,
+        expr_data: &Expr<'db>,
     ) {
         match expr_data {
             Expr::RecordInit(..) => {
@@ -469,7 +477,7 @@ impl<'db, 'a> Visitor for EarlyPathVisitor<'db, 'a> {
         self.path_ctxt.pop();
     }
 
-    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
+    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
         let dummy_cache_store = ResolvedQueryCacheStore::no_cache();
 

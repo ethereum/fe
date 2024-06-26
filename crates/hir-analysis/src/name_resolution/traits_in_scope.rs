@@ -4,17 +4,20 @@ use rustc_hash::FxHashSet;
 use crate::{name_resolution::resolve_imports, HirAnalysisDb};
 
 /// Returns the all traits that are available in the given scope.
-pub fn available_traits_in_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> &FxHashSet<Trait> {
+pub fn available_traits_in_scope<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+) -> &'db FxHashSet<Trait<'db>> {
     let scope_kind = TraitScopeKind::from_scope(db, scope);
     let trait_scope = TraitScope::new(db, scope_kind);
     available_traits_in_scope_impl(db, trait_scope)
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn available_traits_in_scope_impl(
-    db: &dyn HirAnalysisDb,
-    t_scope: TraitScope,
-) -> FxHashSet<Trait> {
+pub(crate) fn available_traits_in_scope_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    t_scope: TraitScope<'db>,
+) -> FxHashSet<Trait<'db>> {
     let mut traits = FxHashSet::default();
     let scope = t_scope.inner(db).to_scope();
 
@@ -66,19 +69,19 @@ pub(crate) fn available_traits_in_scope_impl(
 }
 
 #[salsa::interned]
-pub(crate) struct TraitScope {
-    inner: TraitScopeKind,
+pub(crate) struct TraitScope<'db> {
+    inner: TraitScopeKind<'db>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum TraitScopeKind {
-    TopLevelMod(TopLevelMod),
-    Module(Mod),
-    Block(Body, ExprId),
+enum TraitScopeKind<'db> {
+    TopLevelMod(TopLevelMod<'db>),
+    Module(Mod<'db>),
+    Block(Body<'db>, ExprId),
 }
 
-impl TraitScopeKind {
-    fn from_scope(db: &dyn HirAnalysisDb, mut scope: ScopeId) -> Self {
+impl<'db> TraitScopeKind<'db> {
+    fn from_scope(db: &'db dyn HirAnalysisDb, mut scope: ScopeId<'db>) -> Self {
         loop {
             match scope {
                 ScopeId::Item(item) => match item {

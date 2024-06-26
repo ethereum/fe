@@ -12,44 +12,44 @@ use super::NameRes;
 use crate::HirAnalysisDb;
 
 #[salsa::accumulator]
-pub struct NameResolutionDiagAccumulator(pub(super) NameResDiag);
+pub struct NameResolutionDiagAccumulator<'db>(pub(super) NameResDiag<'db>);
 
 #[salsa::accumulator]
-pub struct ImportResolutionDiagAccumulator(pub(super) NameResDiag);
+pub struct ImportResolutionDiagAccumulator<'db>(pub(super) NameResDiag<'db>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum NameResDiag {
+pub enum NameResDiag<'db> {
     /// The definition conflicts with other definitions.
-    Conflict(IdentId, Vec<DynLazySpan>),
+    Conflict(IdentId<'db>, Vec<DynLazySpan<'db>>),
 
     /// The name is not found.
-    NotFound(DynLazySpan, IdentId),
+    NotFound(DynLazySpan<'db>, IdentId<'db>),
 
     /// The resolved name is not visible.
-    Invisible(DynLazySpan, IdentId, Option<DynLazySpan>),
+    Invisible(DynLazySpan<'db>, IdentId<'db>, Option<DynLazySpan<'db>>),
 
     /// The resolved name is ambiguous.
-    Ambiguous(DynLazySpan, IdentId, Vec<DynLazySpan>),
+    Ambiguous(DynLazySpan<'db>, IdentId<'db>, Vec<DynLazySpan<'db>>),
 
     /// The name is found, but it can't be used as a middle segment of a path.
-    InvalidPathSegment(DynLazySpan, IdentId, Option<DynLazySpan>),
+    InvalidPathSegment(DynLazySpan<'db>, IdentId<'db>, Option<DynLazySpan<'db>>),
 
     /// The name is found but belongs to a different name domain other than the
     /// Type.
-    ExpectedType(DynLazySpan, IdentId, NameRes),
+    ExpectedType(DynLazySpan<'db>, IdentId<'db>, NameRes<'db>),
 
     /// The name is found but belongs to a different name domain other than the
     /// trait.
-    ExpectedTrait(DynLazySpan, IdentId, NameRes),
+    ExpectedTrait(DynLazySpan<'db>, IdentId<'db>, NameRes<'db>),
 
     /// The name is found but belongs to a different name domain other than the
     /// value.
-    ExpectedValue(DynLazySpan, IdentId, NameRes),
+    ExpectedValue(DynLazySpan<'db>, IdentId<'db>, NameRes<'db>),
 }
 
-impl NameResDiag {
+impl<'db> NameResDiag<'db> {
     /// Returns the top-level module where the diagnostic is located.
-    pub fn top_mod(&self, db: &dyn HirAnalysisDb) -> TopLevelMod {
+    pub fn top_mod(&self, db: &'db dyn HirAnalysisDb) -> TopLevelMod<'db> {
         match self {
             Self::Conflict(_, conflicts) => conflicts
                 .iter()
@@ -67,26 +67,26 @@ impl NameResDiag {
     }
 
     pub(crate) fn invisible(
-        span: DynLazySpan,
-        name: IdentId,
-        invisible_span: Option<DynLazySpan>,
+        span: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        invisible_span: Option<DynLazySpan<'db>>,
     ) -> Self {
         Self::Invisible(span, name, invisible_span)
     }
 
-    pub(super) fn conflict(name: IdentId, conflict_with: Vec<DynLazySpan>) -> Self {
+    pub(super) fn conflict(name: IdentId<'db>, conflict_with: Vec<DynLazySpan<'db>>) -> Self {
         Self::Conflict(name, conflict_with)
     }
 
-    pub(super) fn not_found(span: DynLazySpan, ident: IdentId) -> Self {
+    pub(super) fn not_found(span: DynLazySpan<'db>, ident: IdentId<'db>) -> Self {
         Self::NotFound(span, ident)
     }
 
     pub(super) fn ambiguous(
-        db: &dyn HirAnalysisDb,
-        span: DynLazySpan,
-        ident: IdentId,
-        cands: Vec<NameRes>,
+        db: &'db dyn HirAnalysisDb,
+        span: DynLazySpan<'db>,
+        ident: IdentId<'db>,
+        cands: Vec<NameRes<'db>>,
     ) -> Self {
         let cands = cands
             .into_iter()
@@ -96,10 +96,10 @@ impl NameResDiag {
     }
 
     pub(super) fn invalid_use_path_segment(
-        db: &dyn HirAnalysisDb,
-        span: DynLazySpan,
-        ident: IdentId,
-        found: NameRes,
+        db: &'db dyn HirAnalysisDb,
+        span: DynLazySpan<'db>,
+        ident: IdentId<'db>,
+        found: NameRes<'db>,
     ) -> Self {
         let found = found.kind.name_span(db);
         Self::InvalidPathSegment(span, ident, found)
@@ -280,7 +280,7 @@ impl NameResDiag {
     }
 }
 
-impl DiagnosticVoucher for NameResDiag {
+impl<'db> DiagnosticVoucher for NameResDiag<'db> {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::NameResolution, self.local_code())
     }
