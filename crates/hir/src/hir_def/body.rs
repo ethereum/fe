@@ -8,6 +8,7 @@ use std::hash::Hash;
 use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
 use parser::ast::{self, prelude::*};
 use rustc_hash::FxHashMap;
+use salsa::update::Update;
 
 use super::{
     scope_graph::ScopeId, Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod,
@@ -20,9 +21,9 @@ use crate::{
 };
 
 #[salsa::tracked]
-pub struct Body {
+pub struct Body<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
     /// The expression that evaluates to the value of the body.
     /// In case of a function body, this is always be the block expression.
@@ -31,12 +32,12 @@ pub struct Body {
     pub body_kind: BodyKind,
 
     #[return_ref]
-    pub stmts: NodeStore<StmtId, Partial<Stmt>>,
+    pub stmts: NodeStore<StmtId, Partial<Stmt<'db>>>,
     #[return_ref]
-    pub exprs: NodeStore<ExprId, Partial<Expr>>,
+    pub exprs: NodeStore<ExprId, Partial<Expr<'db>>>,
     #[return_ref]
-    pub pats: NodeStore<PatId, Partial<Pat>>,
-    pub top_mod: TopLevelMod,
+    pub pats: NodeStore<PatId, Partial<Pat<'db>>>,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) source_map: BodySourceMap,
@@ -44,12 +45,12 @@ pub struct Body {
     pub(crate) origin: HirOrigin<ast::Expr>,
 }
 
-impl Body {
-    pub fn lazy_span(self) -> LazyBodySpan {
+impl<'db> Body<'db> {
+    pub fn lazy_span(self) -> LazyBodySpan<'db> {
         LazyBodySpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 
@@ -82,7 +83,89 @@ pub enum BodyKind {
     Anonymous,
 }
 
-pub type NodeStore<K, V> = PrimaryMap<K, V>;
+#[derive(Debug)]
+pub struct NodeStore<K, V>(PrimaryMap<K, V>)
+where
+    K: EntityRef;
+
+impl<K, V> NodeStore<K, V>
+where
+    K: EntityRef,
+{
+    pub fn new() -> Self {
+        Self(PrimaryMap::new())
+    }
+}
+impl<K, V> Default for NodeStore<K, V>
+where
+    K: EntityRef,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<K, V> std::ops::Deref for NodeStore<K, V>
+where
+    K: EntityRef,
+{
+    type Target = PrimaryMap<K, V>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<K, V> std::ops::DerefMut for NodeStore<K, V>
+where
+    K: EntityRef,
+{
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<K, V> std::ops::Index<K> for NodeStore<K, V>
+where
+    K: EntityRef,
+{
+    type Output = V;
+
+    fn index(&self, k: K) -> &V {
+        &self.0[k]
+    }
+}
+
+unsafe impl<K, V> Update for NodeStore<K, V>
+where
+    K: EntityRef + Update,
+    V: Update,
+{
+    unsafe fn maybe_update(old_ptr: *mut Self, new_val: Self) -> bool {
+        let old_val = unsafe { &mut *old_ptr };
+        if old_val.len() != new_val.len() {
+            *old_val = new_val;
+            return true;
+        }
+
+        let mut changed = false;
+        for (k, v) in new_val.0.into_iter() {
+            let old_val = &mut old_val[k];
+            changed |= Update::maybe_update(old_val, v);
+        }
+
+        changed
+    }
+}
+
+/// Mutable indexing into an `PrimaryMap`.
+impl<K, V> std::ops::IndexMut<K> for NodeStore<K, V>
+where
+    K: EntityRef,
+{
+    fn index_mut(&mut self, k: K) -> &mut V {
+        &mut self.0[k]
+    }
+}
 
 pub trait SourceAst: AstNode + Clone + Hash + PartialEq + Eq {}
 impl<T> SourceAst for T where T: AstNode + Clone + Hash + PartialEq + Eq {}
@@ -152,16 +235,16 @@ where
 struct BlockOrderCalculator<'db> {
     db: &'db dyn HirDb,
     order: FxHashMap<ExprId, usize>,
-    body: Body,
+    body: Body<'db>,
     fresh_number: usize,
 }
 
-impl<'db> Visitor for BlockOrderCalculator<'db> {
+impl<'db> Visitor<'db> for BlockOrderCalculator<'db> {
     fn visit_expr(
         &mut self,
-        ctxt: &mut crate::visitor::VisitorCtxt<'_, crate::span::expr::LazyExprSpan>,
+        ctxt: &mut crate::visitor::VisitorCtxt<'db, crate::span::expr::LazyExprSpan<'db>>,
         expr: ExprId,
-        expr_data: &Expr,
+        expr_data: &Expr<'db>,
     ) {
         if ctxt.body() == self.body && matches!(expr_data, Expr::Block(..)) {
             self.order.insert(expr, self.fresh_number);
@@ -173,7 +256,7 @@ impl<'db> Visitor for BlockOrderCalculator<'db> {
 }
 
 impl<'db> BlockOrderCalculator<'db> {
-    fn new(db: &'db dyn HirDb, body: Body) -> Self {
+    fn new(db: &'db dyn HirDb, body: Body<'db>) -> Self {
         Self {
             db,
             order: FxHashMap::default(),

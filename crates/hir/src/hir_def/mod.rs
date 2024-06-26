@@ -27,7 +27,7 @@ use num_bigint::BigUint;
 pub use params::*;
 pub use pat::*;
 pub use path::*;
-use salsa::{AsId, Id};
+use salsa::update::Update;
 pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
@@ -35,15 +35,15 @@ pub use use_tree::*;
 use crate::{external_ingots_impl, HirDb};
 
 #[salsa::tracked]
-pub struct IngotId {
+pub struct IngotId<'db> {
     inner: InputIngot,
 }
-impl IngotId {
+impl<'db> IngotId<'db> {
     pub fn module_tree(self, db: &dyn HirDb) -> &ModuleTree {
         module_tree_impl(db, self.inner(db))
     }
 
-    pub fn all_modules(self, db: &dyn HirDb) -> &[TopLevelMod] {
+    pub fn all_modules(self, db: &'db dyn HirDb) -> &[TopLevelMod] {
         all_top_modules_in_ingot(db, self)
     }
 
@@ -59,49 +59,45 @@ impl IngotId {
         self.inner(db).kind(db.as_input_db())
     }
 
-    pub fn all_enums(self, db: &dyn HirDb) -> &[Enum] {
+    pub fn all_enums(self, db: &'db dyn HirDb) -> &[Enum] {
         all_enums_in_ingot(db, self)
     }
 
-    pub fn all_impl_traits(self, db: &dyn HirDb) -> &[ImplTrait] {
+    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> &[ImplTrait] {
         all_impl_traits_in_ingot(db, self)
     }
 
-    pub fn all_impls(self, db: &dyn HirDb) -> &Vec<Impl> {
+    pub fn all_impls(self, db: &'db dyn HirDb) -> &Vec<Impl> {
         all_impls_in_ingot(db, self)
     }
 
-    pub fn is_std(self, db: &dyn HirDb) -> bool {
+    pub fn is_std(self, db: &'db dyn HirDb) -> bool {
         matches!(self.kind(db), IngotKind::Std)
-    }
-
-    pub fn dummy() -> Self {
-        IngotId::from_id(Id::from_u32(u32::MAX - 1))
     }
 }
 
 #[salsa::interned]
-pub struct IntegerId {
+pub struct IntegerId<'db> {
     #[return_ref]
     pub data: BigUint,
 }
 
-impl IntegerId {
-    pub fn from_usize(db: &dyn HirDb, value: usize) -> Self {
+impl<'db> IntegerId<'db> {
+    pub fn from_usize(db: &'db dyn HirDb, value: usize) -> Self {
         let data = BigUint::from(value);
         Self::new(db, data)
     }
 }
 
 #[salsa::interned]
-pub struct StringId {
+pub struct StringId<'db> {
     /// The text of the string literal, without the quotes.
     #[return_ref]
     pub data: String,
 }
 
-impl StringId {
-    pub fn from_str(db: &dyn HirDb, value: &str) -> Self {
+impl<'db> StringId<'db> {
+    pub fn from_str(db: &'db dyn HirDb, value: &str) -> Self {
         let data = value.to_string();
         Self::new(db, data)
     }
@@ -111,10 +107,10 @@ impl StringId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
-pub enum LitKind {
-    Int(IntegerId),
-    String(StringId),
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::Update)]
+pub enum LitKind<'db> {
+    Int(IntegerId<'db>),
+    String(StringId<'db>),
     Bool(bool),
 }
 
@@ -133,6 +129,24 @@ pub enum LitKind {
 pub enum Partial<T> {
     Present(T),
     Absent,
+}
+unsafe impl<T> Update for Partial<T>
+where
+    T: Update,
+{
+    unsafe fn maybe_update(old_ptr: *mut Self, new_val: Self) -> bool {
+        use Partial::*;
+
+        let old_val = unsafe { &mut *old_ptr };
+        match (old_val, new_val) {
+            (Present(old), Present(new)) => T::maybe_update(old, new),
+            (Absent, Absent) => false,
+            (old_value, new_value) => {
+                *old_value = new_value;
+                true
+            }
+        }
+    }
 }
 
 impl<T> Partial<T> {

@@ -1,10 +1,10 @@
 use parser::ast::{self};
 
 use super::FileLowerCtxt;
-use crate::hir_def::{kw, params::*, Body, IdentId, Partial, TypeId};
+use crate::hir_def::{params::*, Body, IdentId, Partial, TypeId};
 
-impl GenericArgListId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::GenericArgList) -> Self {
+impl<'db> GenericArgListId<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::GenericArgList) -> Self {
         let args = ast
             .into_iter()
             .map(|arg| GenericArg::lower_ast(ctxt, arg))
@@ -13,7 +13,7 @@ impl GenericArgListId {
     }
 
     pub(super) fn lower_ast_opt(
-        ctxt: &mut FileLowerCtxt<'_>,
+        ctxt: &mut FileLowerCtxt<'db>,
         ast: Option<ast::GenericArgList>,
     ) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
@@ -21,8 +21,8 @@ impl GenericArgListId {
     }
 }
 
-impl GenericParamListId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::GenericParamList) -> Self {
+impl<'db> GenericParamListId<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::GenericParamList) -> Self {
         let params = ast
             .into_iter()
             .map(|param| GenericParam::lower_ast(ctxt, param))
@@ -31,7 +31,7 @@ impl GenericParamListId {
     }
 
     pub(super) fn lower_ast_opt(
-        ctxt: &mut FileLowerCtxt<'_>,
+        ctxt: &mut FileLowerCtxt<'db>,
         ast: Option<ast::GenericParamList>,
     ) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
@@ -39,8 +39,8 @@ impl GenericParamListId {
     }
 }
 
-impl FuncParamListId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParamList) -> Self {
+impl<'db> FuncParamListId<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParamList) -> Self {
         let params = ast
             .into_iter()
             .map(|param| FuncParam::lower_ast(ctxt, param))
@@ -49,8 +49,8 @@ impl FuncParamListId {
     }
 }
 
-impl WhereClauseId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::WhereClause) -> Self {
+impl<'db> WhereClauseId<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::WhereClause) -> Self {
         let predicates = ast
             .into_iter()
             .map(|pred| WherePredicate::lower_ast(ctxt, pred))
@@ -59,7 +59,7 @@ impl WhereClauseId {
     }
 
     pub(super) fn lower_ast_opt(
-        ctxt: &mut FileLowerCtxt<'_>,
+        ctxt: &mut FileLowerCtxt<'db>,
         ast: Option<ast::WhereClause>,
     ) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
@@ -67,8 +67,8 @@ impl WhereClauseId {
     }
 }
 
-impl TypeGenericParam {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeGenericParam) -> Self {
+impl<'db> TypeGenericParam<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TypeGenericParam) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let bounds = ast
             .bounds()
@@ -84,16 +84,16 @@ impl TypeGenericParam {
     }
 }
 
-impl ConstGenericParam {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::ConstGenericParam) -> Self {
+impl<'db> ConstGenericParam<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::ConstGenericParam) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         Self { name, ty }
     }
 }
 
-impl GenericArg {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::GenericArg) -> Self {
+impl<'db> GenericArg<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::GenericArg) -> Self {
         match ast.kind() {
             ast::GenericArgKind::Type(type_param) => {
                 TypeGenericArg::lower_ast(ctxt, type_param).into()
@@ -105,15 +105,15 @@ impl GenericArg {
     }
 }
 
-impl TypeGenericArg {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeGenericArg) -> Self {
+impl<'db> TypeGenericArg<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TypeGenericArg) -> Self {
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         Self { ty }
     }
 }
 
-impl ConstGenericArg {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::ConstGenericArg) -> Self {
+impl<'db> ConstGenericArg<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::ConstGenericArg) -> Self {
         let body = ast
             .expr()
             .map(|expr| Body::lower_ast_nameless(ctxt, expr))
@@ -123,8 +123,8 @@ impl ConstGenericArg {
     }
 }
 
-impl GenericParam {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::GenericParam) -> Self {
+impl<'db> GenericParam<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::GenericParam) -> Self {
         match ast.kind() {
             ast::GenericParamKind::Type(type_param) => {
                 TypeGenericParam::lower_ast(ctxt, type_param).into()
@@ -136,13 +136,14 @@ impl GenericParam {
     }
 }
 
-impl FuncParam {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParam) -> Self {
+impl<'db> FuncParam<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParam) -> Self {
         let is_mut = ast.mut_token().is_some();
         let label = ast.label().map(|ast| FuncParamName::lower_label(ctxt, ast));
         let name = ast.name().map(|ast| FuncParamName::lower_ast(ctxt, ast));
 
-        let self_ty_fallback = name.map_or(false, |name| name.is_self()) && ast.ty().is_none();
+        let self_ty_fallback =
+            name.map_or(false, |name| name.is_self(ctxt.db())) && ast.ty().is_none();
 
         let ty = if self_ty_fallback {
             Partial::Present(TypeId::fallback_self_ty(ctxt.db()))
@@ -160,8 +161,8 @@ impl FuncParam {
     }
 }
 
-impl WherePredicate {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::WherePredicate) -> Self {
+impl<'db> WherePredicate<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::WherePredicate) -> Self {
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let bounds = ast
             .bounds()
@@ -176,8 +177,8 @@ impl WherePredicate {
     }
 }
 
-impl TypeBound {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeBound) -> Self {
+impl<'db> TypeBound<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TypeBound) -> Self {
         if let Some(trait_bound) = ast.trait_bound() {
             Self::Trait(TraitRefId::lower_ast(ctxt, trait_bound))
         } else {
@@ -212,18 +213,18 @@ impl KindBound {
     }
 }
 
-impl FuncParamName {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParamName) -> Self {
+impl<'db> FuncParamName<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParamName) -> Self {
         match ast {
             ast::FuncParamName::Ident(name) => {
                 FuncParamName::Ident(IdentId::lower_token(ctxt, name))
             }
-            ast::FuncParamName::SelfParam(_) => FuncParamName::Ident(kw::SELF),
+            ast::FuncParamName::SelfParam(_) => FuncParamName::Ident(IdentId::make_self(ctxt.db())),
             ast::FuncParamName::Underscore(_) => FuncParamName::Underscore,
         }
     }
 
-    fn lower_label(ctxt: &mut FileLowerCtxt<'_>, ast: ast::FuncParamLabel) -> FuncParamName {
+    fn lower_label(ctxt: &mut FileLowerCtxt<'db>, ast: ast::FuncParamLabel) -> FuncParamName<'db> {
         match ast {
             ast::FuncParamLabel::Ident(name) => Self::Ident(IdentId::lower_token(ctxt, name)),
             ast::FuncParamLabel::Underscore(_) => Self::Underscore,

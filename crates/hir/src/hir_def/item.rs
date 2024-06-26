@@ -7,7 +7,6 @@ use common::InputFile;
 use parser::ast;
 
 use super::{
-    kw,
     scope_graph::{ScopeGraph, ScopeId},
     AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TupleTypeId,
     TypeId, UseAlias, WhereClauseId,
@@ -39,34 +38,34 @@ use crate::{
     derive_more::From,
     derive_more::TryInto,
 )]
-pub enum ItemKind {
-    TopMod(TopLevelMod),
-    Mod(Mod),
-    Func(Func),
-    Struct(Struct),
-    Contract(Contract),
-    Enum(Enum),
-    TypeAlias(TypeAlias),
-    Impl(Impl),
-    Trait(Trait),
-    ImplTrait(ImplTrait),
-    Const(Const),
-    Use(Use),
+pub enum ItemKind<'db> {
+    TopMod(TopLevelMod<'db>),
+    Mod(Mod<'db>),
+    Func(Func<'db>),
+    Struct(Struct<'db>),
+    Contract(Contract<'db>),
+    Enum(Enum<'db>),
+    TypeAlias(TypeAlias<'db>),
+    Impl(Impl<'db>),
+    Trait(Trait<'db>),
+    ImplTrait(ImplTrait<'db>),
+    Const(Const<'db>),
+    Use(Use<'db>),
     /// Body is not an `Item`, but this makes it easier for analyzers to handle
     /// it.
-    Body(Body),
+    Body(Body<'db>),
 }
 
-impl ItemKind {
-    pub fn lazy_span(self) -> LazyItemSpan {
+impl<'db> ItemKind<'db> {
+    pub fn lazy_span(self) -> LazyItemSpan<'db> {
         LazyItemSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self)
     }
 
-    pub fn name(self, db: &dyn HirDb) -> Option<IdentId> {
+    pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId> {
         use ItemKind::*;
         match self {
             TopMod(top_mod) => Some(top_mod.name(db)),
@@ -101,7 +100,7 @@ impl ItemKind {
         }
     }
 
-    pub fn name_span(self) -> Option<DynLazySpan> {
+    pub fn name_span(self) -> Option<DynLazySpan<'db>> {
         use ItemKind::*;
         match self {
             Mod(mod_) => Some(mod_.lazy_span().name().into()),
@@ -133,12 +132,12 @@ impl ItemKind {
         }
     }
 
-    pub fn ingot(self, db: &dyn HirDb) -> IngotId {
+    pub fn ingot(self, db: &'db dyn HirDb) -> IngotId {
         let top_mod = self.top_mod(db);
         top_mod.ingot(db)
     }
 
-    pub fn top_mod(self, db: &dyn HirDb) -> TopLevelMod {
+    pub fn top_mod(self, db: &'db dyn HirDb) -> TopLevelMod {
         match self {
             ItemKind::TopMod(top_mod) => top_mod,
             ItemKind::Mod(mod_) => mod_.top_mod(db),
@@ -168,8 +167,8 @@ impl ItemKind {
     }
 }
 
-impl From<GenericParamOwner> for ItemKind {
-    fn from(owner: GenericParamOwner) -> Self {
+impl<'db> From<GenericParamOwner<'db>> for ItemKind<'db> {
+    fn from(owner: GenericParamOwner<'db>) -> Self {
         match owner {
             GenericParamOwner::Func(func) => ItemKind::Func(func),
             GenericParamOwner::Struct(struct_) => ItemKind::Struct(struct_),
@@ -182,8 +181,8 @@ impl From<GenericParamOwner> for ItemKind {
     }
 }
 
-impl From<WhereClauseOwner> for ItemKind {
-    fn from(owner: WhereClauseOwner) -> Self {
+impl<'db> From<WhereClauseOwner<'db>> for ItemKind<'db> {
+    fn from(owner: WhereClauseOwner<'db>) -> Self {
         match owner {
             WhereClauseOwner::Func(func) => ItemKind::Func(func),
             WhereClauseOwner::Struct(struct_) => ItemKind::Struct(struct_),
@@ -196,22 +195,22 @@ impl From<WhereClauseOwner> for ItemKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From)]
-pub enum GenericParamOwner {
-    Func(Func),
-    Struct(Struct),
-    Enum(Enum),
-    TypeAlias(TypeAlias),
-    Impl(Impl),
-    Trait(Trait),
-    ImplTrait(ImplTrait),
+pub enum GenericParamOwner<'db> {
+    Func(Func<'db>),
+    Struct(Struct<'db>),
+    Enum(Enum<'db>),
+    TypeAlias(TypeAlias<'db>),
+    Impl(Impl<'db>),
+    Trait(Trait<'db>),
+    ImplTrait(ImplTrait<'db>),
 }
 
-impl GenericParamOwner {
-    pub fn top_mod(self, db: &dyn HirDb) -> TopLevelMod {
+impl<'db> GenericParamOwner<'db> {
+    pub fn top_mod(self, db: &'db dyn HirDb) -> TopLevelMod<'db> {
         ItemKind::from(self).top_mod(db)
     }
 
-    pub fn params(self, db: &dyn HirDb) -> GenericParamListId {
+    pub fn params(self, db: &'db dyn HirDb) -> GenericParamListId {
         match self {
             GenericParamOwner::Func(func) => func.generic_params(db),
             GenericParamOwner::Struct(struct_) => struct_.generic_params(db),
@@ -223,7 +222,7 @@ impl GenericParamOwner {
         }
     }
 
-    pub fn params_span(self) -> LazyGenericParamListSpan {
+    pub fn params_span(self) -> LazyGenericParamListSpan<'db> {
         match self {
             GenericParamOwner::Func(func) => func.lazy_span().generic_params_moved(),
             GenericParamOwner::Struct(struct_) => struct_.lazy_span().generic_params_moved(),
@@ -239,11 +238,11 @@ impl GenericParamOwner {
         }
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ItemKind::from(self).scope()
     }
 
-    pub fn from_item_opt(item: ItemKind) -> Option<Self> {
+    pub fn from_item_opt(item: ItemKind<'db>) -> Option<Self> {
         match item {
             ItemKind::Func(func) => Some(GenericParamOwner::Func(func)),
             ItemKind::Struct(struct_) => Some(GenericParamOwner::Struct(struct_)),
@@ -256,7 +255,7 @@ impl GenericParamOwner {
         }
     }
 
-    pub fn parent(self, db: &dyn HirDb) -> Option<Self> {
+    pub fn parent(self, db: &'db dyn HirDb) -> Option<Self> {
         let ScopeId::Item(item) = self.scope().parent(db)? else {
             return None;
         };
@@ -273,28 +272,28 @@ impl GenericParamOwner {
         }
     }
 
-    pub fn where_clause_owner(self) -> Option<WhereClauseOwner> {
+    pub fn where_clause_owner(self) -> Option<WhereClauseOwner<'db>> {
         let item = ItemKind::from(self);
         WhereClauseOwner::from_item_opt(item)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From)]
-pub enum WhereClauseOwner {
-    Func(Func),
-    Struct(Struct),
-    Enum(Enum),
-    Impl(Impl),
-    Trait(Trait),
-    ImplTrait(ImplTrait),
+pub enum WhereClauseOwner<'db> {
+    Func(Func<'db>),
+    Struct(Struct<'db>),
+    Enum(Enum<'db>),
+    Impl(Impl<'db>),
+    Trait(Trait<'db>),
+    ImplTrait(ImplTrait<'db>),
 }
 
-impl WhereClauseOwner {
-    pub fn top_mod(self, db: &dyn HirDb) -> TopLevelMod {
+impl<'db> WhereClauseOwner<'db> {
+    pub fn top_mod(self, db: &'db dyn HirDb) -> TopLevelMod<'db> {
         ItemKind::from(self).top_mod(db)
     }
 
-    pub fn where_clause(self, db: &dyn HirDb) -> WhereClauseId {
+    pub fn where_clause(self, db: &'db dyn HirDb) -> WhereClauseId<'db> {
         match self {
             Self::Func(func) => func.where_clause(db),
             Self::Struct(struct_) => struct_.where_clause(db),
@@ -305,7 +304,7 @@ impl WhereClauseOwner {
         }
     }
 
-    pub fn where_clause_span(self) -> LazyWhereClauseSpan {
+    pub fn where_clause_span(self) -> LazyWhereClauseSpan<'db> {
         match self {
             Self::Func(func) => func.lazy_span().where_clause_moved(),
             Self::Struct(struct_) => struct_.lazy_span().where_clause_moved(),
@@ -316,11 +315,11 @@ impl WhereClauseOwner {
         }
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ItemKind::from(self).scope()
     }
 
-    pub fn from_item_opt(item: ItemKind) -> Option<Self> {
+    pub fn from_item_opt(item: ItemKind<'db>) -> Option<Self> {
         match item {
             ItemKind::Func(func) => Some(Self::Func(func)),
             ItemKind::Struct(struct_) => Some(Self::Struct(struct_)),
@@ -334,29 +333,29 @@ impl WhereClauseOwner {
 }
 
 #[salsa::tracked]
-pub struct TopLevelMod {
+pub struct TopLevelMod<'db> {
     // No #[id] here, because `TopLevelMod` is always unique to a `InputFile` that is an argument
     // of `module_scope_graph`.
-    pub name: IdentId,
+    pub name: IdentId<'db>,
 
-    pub ingot: IngotId,
+    pub ingot: IngotId<'db>,
     pub(crate) file: InputFile,
 }
-impl TopLevelMod {
-    pub fn lazy_span(self) -> LazyTopModSpan {
+impl<'db> TopLevelMod<'db> {
+    pub fn lazy_span(self) -> LazyTopModSpan<'db> {
         LazyTopModSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 
-    pub fn scope_graph(self, db: &dyn HirDb) -> &ScopeGraph {
+    pub fn scope_graph(self, db: &'db dyn HirDb) -> &ScopeGraph<'db> {
         lower::scope_graph_impl(db, self)
     }
 
     /// Returns the child top level modules of `self`.
-    pub fn child_top_mods(self, db: &dyn HirDb) -> impl Iterator<Item = TopLevelMod> + '_ {
+    pub fn child_top_mods(self, db: &'db dyn HirDb) -> impl Iterator<Item = TopLevelMod<'db>> + '_ {
         let module_tree = self.ingot(db).module_tree(db);
         module_tree.children(self)
     }
@@ -364,19 +363,22 @@ impl TopLevelMod {
     /// Returns the top level children of this module.
     /// If you need all the children, use
     /// [`children_nested`](Self::children_nested) instead.
-    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn children_non_nested(
+        self,
+        db: &'db dyn HirDb,
+    ) -> impl Iterator<Item = ItemKind<'db>> + '_ {
         let s_graph = self.scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
 
     /// Returns all the children of this module, including nested items.
-    pub fn children_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn children_nested(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind<'db>> + '_ {
         let s_graph = self.scope_graph(db);
         s_graph.items_dfs(db)
     }
 
-    pub fn parent(self, db: &dyn HirDb) -> Option<TopLevelMod> {
+    pub fn parent(self, db: &'db dyn HirDb) -> Option<TopLevelMod<'db>> {
         let module_tree = self.ingot(db).module_tree(db);
         module_tree.parent(self)
     }
@@ -389,65 +391,68 @@ impl TopLevelMod {
 
     /// Returns all items in the top level module including ones in nested
     /// modules.
-    pub fn all_items(self, db: &dyn HirDb) -> &Vec<ItemKind> {
+    pub fn all_items(self, db: &'db dyn HirDb) -> &Vec<ItemKind> {
         all_items_in_top_mod(db, self)
     }
 
     /// Returns all structs in the top level module including ones in nested
     /// modules.
-    pub fn all_structs(self, db: &dyn HirDb) -> &Vec<Struct> {
+    pub fn all_structs(self, db: &'db dyn HirDb) -> &Vec<Struct> {
         all_structs_in_top_mod(db, self)
     }
 
     /// Returns all enums in the top level module including ones in nested
     /// modules.
-    pub fn all_enums(self, db: &dyn HirDb) -> &Vec<Enum> {
+    pub fn all_enums(self, db: &'db dyn HirDb) -> &Vec<Enum> {
         all_enums_in_top_mod(db, self)
     }
 
     /// Returns all contracts in the top level module including ones in nested
     /// modules.
-    pub fn all_contracts(self, db: &dyn HirDb) -> &Vec<Contract> {
+    pub fn all_contracts(self, db: &'db dyn HirDb) -> &Vec<Contract> {
         all_contracts_in_top_mod(db, self)
     }
 
     /// Returns all type aliases in the top level module including ones in
     /// nested modules.
-    pub fn all_type_aliases(self, db: &dyn HirDb) -> &Vec<TypeAlias> {
+    pub fn all_type_aliases(self, db: &'db dyn HirDb) -> &Vec<TypeAlias> {
         all_type_aliases_in_top_mod(db, self)
     }
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    pub fn all_traits(self, db: &dyn HirDb) -> &Vec<Trait> {
+    pub fn all_traits(self, db: &'db dyn HirDb) -> &Vec<Trait> {
         all_traits_in_top_mod(db, self)
     }
 
-    pub fn all_funcs(self, db: &dyn HirDb) -> &Vec<Func> {
+    pub fn all_funcs(self, db: &'db dyn HirDb) -> &Vec<Func> {
         all_funcs_in_top_mod(db, self)
     }
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    pub fn all_impl_traits(self, db: &dyn HirDb) -> &Vec<ImplTrait> {
+    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> &Vec<ImplTrait> {
         all_impl_trait_in_top_mod(db, self)
     }
 
     /// Returns all impls in the top level module including ones in nested
     /// modules.
-    pub fn all_impls(self, db: &dyn HirDb) -> &Vec<Impl> {
+    pub fn all_impls(self, db: &'db dyn HirDb) -> &Vec<Impl> {
         all_impl_in_top_mod(db, self)
     }
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_top_modules_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<TopLevelMod> {
+pub fn all_top_modules_in_ingot<'db>(
+    db: &'db dyn HirDb,
+    ingot: IngotId<'db>,
+) -> Vec<TopLevelMod<'db>> {
     let tree = ingot.module_tree(db);
     tree.all_modules().collect()
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_enums_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<Enum> {
+pub fn all_enums_in_ingot<'db>(db: &'db dyn HirDb, ingot: IngotId<'db>) -> Vec<Enum<'db>> {
     ingot
         .all_modules(db)
         .iter()
@@ -456,7 +461,10 @@ pub fn all_enums_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<Enum> {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_impl_traits_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<ImplTrait> {
+pub fn all_impl_traits_in_ingot<'db>(
+    db: &'db dyn HirDb,
+    ingot: IngotId<'db>,
+) -> Vec<ImplTrait<'db>> {
     ingot
         .all_modules(db)
         .iter()
@@ -465,7 +473,7 @@ pub fn all_impl_traits_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<ImplTrait
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_impls_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<Impl> {
+pub fn all_impls_in_ingot<'db>(db: &'db dyn HirDb, ingot: IngotId<'db>) -> Vec<Impl<'db>> {
     ingot
         .all_modules(db)
         .iter()
@@ -474,12 +482,18 @@ pub fn all_impls_in_ingot(db: &dyn HirDb, ingot: IngotId) -> Vec<Impl> {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_items_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<ItemKind> {
+pub fn all_items_in_top_mod<'db>(
+    db: &'db dyn HirDb,
+    top_mod: TopLevelMod<'db>,
+) -> Vec<ItemKind<'db>> {
     top_mod.children_nested(db).collect()
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_structs_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Struct> {
+pub fn all_structs_in_top_mod<'db>(
+    db: &'db dyn HirDb,
+    top_mod: TopLevelMod<'db>,
+) -> Vec<Struct<'db>> {
     all_items_in_top_mod(db, top_mod)
         .iter()
         .filter_map(|item| match item {
@@ -490,7 +504,7 @@ pub fn all_structs_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Struc
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_enums_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Enum> {
+pub fn all_enums_in_top_mod<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Vec<Enum<'db>> {
     all_items_in_top_mod(db, top_mod)
         .iter()
         .filter_map(|item| match item {
@@ -501,7 +515,10 @@ pub fn all_enums_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Enum> {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_type_aliases_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<TypeAlias> {
+pub fn all_type_aliases_in_top_mod<'db>(
+    db: &'db dyn HirDb,
+    top_mod: TopLevelMod<'db>,
+) -> Vec<TypeAlias<'db>> {
     all_items_in_top_mod(db, top_mod)
         .iter()
         .filter_map(|item| match item {
@@ -512,7 +529,10 @@ pub fn all_type_aliases_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_contracts_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Contract> {
+pub fn all_contracts_in_top_mod<'db>(
+    db: &'db dyn HirDb,
+    top_mod: TopLevelMod<'db>,
+) -> Vec<Contract<'db>> {
     all_items_in_top_mod(db, top_mod)
         .iter()
         .filter_map(|item| match item {
@@ -523,7 +543,10 @@ pub fn all_contracts_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Con
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_traits_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Trait> {
+pub fn all_traits_in_top_mod<'db>(
+    db: &'db dyn HirDb,
+    top_mod: TopLevelMod<'db>,
+) -> Vec<Trait<'db>> {
     all_items_in_top_mod(db, top_mod)
         .iter()
         .filter_map(|item| match item {
@@ -534,7 +557,7 @@ pub fn all_traits_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Trait>
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_funcs_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Func> {
+pub fn all_funcs_in_top_mod<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Vec<Func<'db>> {
     all_items_in_top_mod(db, top_mod)
         .iter()
         .filter_map(|item| match item {
@@ -545,7 +568,7 @@ pub fn all_funcs_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Func> {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_impl_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Impl> {
+pub fn all_impl_in_top_mod<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Vec<Impl<'db>> {
     all_items_in_top_mod(db, top_mod)
         .iter()
         .filter_map(|item| match item {
@@ -556,7 +579,10 @@ pub fn all_impl_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Impl> {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn all_impl_trait_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<ImplTrait> {
+pub fn all_impl_trait_in_top_mod<'db>(
+    db: &'db dyn HirDb,
+    top_mod: TopLevelMod<'db>,
+) -> Vec<ImplTrait<'db>> {
     all_items_in_top_mod(db, top_mod)
         .iter()
         .filter_map(|item| match item {
@@ -567,29 +593,29 @@ pub fn all_impl_trait_in_top_mod(db: &dyn HirDb, top_mod: TopLevelMod) -> Vec<Im
 }
 
 #[salsa::tracked]
-pub struct Mod {
+pub struct Mod<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub name: Partial<IdentId>,
-    pub attributes: AttrListId,
+    pub name: Partial<IdentId<'db>>,
+    pub attributes: AttrListId<'db>,
     pub vis: Visibility,
 
-    pub top_mod: TopLevelMod,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Mod>,
 }
-impl Mod {
-    pub fn lazy_span(self) -> LazyModSpan {
+impl<'db> Mod<'db> {
+    pub fn lazy_span(self) -> LazyModSpan<'db> {
         LazyModSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 
-    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn children_non_nested(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
@@ -597,30 +623,30 @@ impl Mod {
 }
 
 #[salsa::tracked]
-pub struct Func {
+pub struct Func<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub name: Partial<IdentId>,
-    pub attributes: AttrListId,
-    pub generic_params: GenericParamListId,
-    pub where_clause: WhereClauseId,
-    pub params: Partial<FuncParamListId>,
-    pub ret_ty: Option<TypeId>,
+    pub name: Partial<IdentId<'db>>,
+    pub attributes: AttrListId<'db>,
+    pub generic_params: GenericParamListId<'db>,
+    pub where_clause: WhereClauseId<'db>,
+    pub params: Partial<FuncParamListId<'db>>,
+    pub ret_ty: Option<TypeId<'db>>,
     pub modifier: ItemModifier,
-    pub body: Option<Body>,
+    pub body: Option<Body<'db>>,
     pub is_extern: bool,
-    pub top_mod: TopLevelMod,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Func>,
 }
-impl Func {
-    pub fn lazy_span(self) -> LazyFuncSpan {
+impl<'db> Func<'db> {
+    pub fn lazy_span(self) -> LazyFuncSpan<'db> {
         LazyFuncSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 
@@ -637,7 +663,11 @@ impl Func {
             return false;
         };
 
-        first_param.name.to_opt().and_then(|name| name.ident()) == Some(kw::SELF)
+        first_param
+            .name
+            .to_opt()
+            .and_then(|name| name.ident())
+            .map_or(false, |ident| ident.is_self(db))
     }
 
     /// Returns `true` if the function is method or associated functions.
@@ -655,27 +685,27 @@ impl Func {
 }
 
 #[salsa::tracked]
-pub struct Struct {
+pub struct Struct<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub name: Partial<IdentId>,
-    pub attributes: AttrListId,
+    pub name: Partial<IdentId<'db>>,
+    pub attributes: AttrListId<'db>,
     pub vis: Visibility,
-    pub generic_params: GenericParamListId,
-    pub where_clause: WhereClauseId,
-    pub fields: FieldDefListId,
-    pub top_mod: TopLevelMod,
+    pub generic_params: GenericParamListId<'db>,
+    pub where_clause: WhereClauseId<'db>,
+    pub fields: FieldDefListId<'db>,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Struct>,
 }
-impl Struct {
-    pub fn lazy_span(self) -> LazyStructSpan {
+impl<'db> Struct<'db> {
+    pub fn lazy_span(self) -> LazyStructSpan<'db> {
         LazyStructSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 
@@ -695,106 +725,109 @@ impl Struct {
 }
 
 #[salsa::tracked]
-pub struct Contract {
+pub struct Contract<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub name: Partial<IdentId>,
-    pub attributes: AttrListId,
+    pub name: Partial<IdentId<'db>>,
+    pub attributes: AttrListId<'db>,
     pub vis: Visibility,
-    pub fields: FieldDefListId,
-    pub top_mod: TopLevelMod,
+    pub fields: FieldDefListId<'db>,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Contract>,
 }
-impl Contract {
-    pub fn lazy_span(self) -> LazyContractSpan {
+impl<'db> Contract<'db> {
+    pub fn lazy_span(self) -> LazyContractSpan<'db> {
         LazyContractSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 }
 
 #[salsa::tracked]
-pub struct Enum {
+pub struct Enum<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub name: Partial<IdentId>,
-    pub attributes: AttrListId,
+    pub name: Partial<IdentId<'db>>,
+    pub attributes: AttrListId<'db>,
     pub vis: Visibility,
-    pub generic_params: GenericParamListId,
-    pub where_clause: WhereClauseId,
-    pub variants: VariantDefListId,
-    pub top_mod: TopLevelMod,
+    pub generic_params: GenericParamListId<'db>,
+    pub where_clause: WhereClauseId<'db>,
+    pub variants: VariantDefListId<'db>,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Enum>,
 }
-impl Enum {
-    pub fn lazy_span(self) -> LazyEnumSpan {
+impl<'db> Enum<'db> {
+    pub fn lazy_span(self) -> LazyEnumSpan<'db> {
         LazyEnumSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 }
 
 #[salsa::tracked]
-pub struct TypeAlias {
+pub struct TypeAlias<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub name: Partial<IdentId>,
-    pub attributes: AttrListId,
+    pub name: Partial<IdentId<'db>>,
+    pub attributes: AttrListId<'db>,
     pub vis: Visibility,
-    pub generic_params: GenericParamListId,
-    pub ty: Partial<TypeId>,
-    pub top_mod: TopLevelMod,
+    pub generic_params: GenericParamListId<'db>,
+    pub ty: Partial<TypeId<'db>>,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::TypeAlias>,
 }
-impl TypeAlias {
-    pub fn lazy_span(self) -> LazyTypeAliasSpan {
+impl<'db> TypeAlias<'db> {
+    pub fn lazy_span(self) -> LazyTypeAliasSpan<'db> {
         LazyTypeAliasSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 }
 
 #[salsa::tracked]
-pub struct Impl {
+pub struct Impl<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub ty: super::Partial<TypeId>,
-    pub attributes: AttrListId,
-    pub generic_params: GenericParamListId,
-    pub where_clause: WhereClauseId,
-    pub top_mod: TopLevelMod,
+    pub ty: super::Partial<TypeId<'db>>,
+    pub attributes: AttrListId<'db>,
+    pub generic_params: GenericParamListId<'db>,
+    pub where_clause: WhereClauseId<'db>,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Impl>,
 }
-impl Impl {
-    pub fn lazy_span(self) -> LazyImplSpan {
+impl<'db> Impl<'db> {
+    pub fn lazy_span(self) -> LazyImplSpan<'db> {
         LazyImplSpan::new(self)
     }
 
-    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn children_non_nested(
+        self,
+        db: &'db dyn HirDb,
+    ) -> impl Iterator<Item = ItemKind<'db>> + '_ {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
 
-    pub fn funcs(self, db: &dyn HirDb) -> impl Iterator<Item = Func> + '_ {
+    pub fn funcs(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func<'db>> + '_ {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope).filter_map(|item| match item {
@@ -803,45 +836,45 @@ impl Impl {
         })
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 }
 
 #[salsa::tracked]
-pub struct Trait {
+pub struct Trait<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub name: Partial<IdentId>,
+    pub name: Partial<IdentId<'db>>,
 
-    pub attributes: AttrListId,
+    pub attributes: AttrListId<'db>,
     pub vis: Visibility,
-    pub generic_params: GenericParamListId,
+    pub generic_params: GenericParamListId<'db>,
     #[return_ref]
-    pub super_traits: Vec<TraitRefId>,
-    pub where_clause: WhereClauseId,
-    pub top_mod: TopLevelMod,
+    pub super_traits: Vec<TraitRefId<'db>>,
+    pub where_clause: WhereClauseId<'db>,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Trait>,
 }
-impl Trait {
-    pub fn lazy_span(self) -> LazyTraitSpan {
+impl<'db> Trait<'db> {
+    pub fn lazy_span(self) -> LazyTraitSpan<'db> {
         LazyTraitSpan::new(self)
     }
 
-    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn children_non_nested(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 
-    pub fn methods(self, db: &dyn HirDb) -> impl Iterator<Item = Func> + '_ {
+    pub fn methods(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func> + '_ {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope).filter_map(|item| match item {
@@ -852,36 +885,39 @@ impl Trait {
 }
 
 #[salsa::tracked]
-pub struct ImplTrait {
+pub struct ImplTrait<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub trait_ref: Partial<TraitRefId>,
-    pub ty: Partial<TypeId>,
-    pub attributes: AttrListId,
-    pub generic_params: GenericParamListId,
-    pub where_clause: WhereClauseId,
-    pub top_mod: TopLevelMod,
+    pub trait_ref: Partial<TraitRefId<'db>>,
+    pub ty: Partial<TypeId<'db>>,
+    pub attributes: AttrListId<'db>,
+    pub generic_params: GenericParamListId<'db>,
+    pub where_clause: WhereClauseId<'db>,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
 }
-impl ImplTrait {
-    pub fn lazy_span(self) -> LazyImplTraitSpan {
+impl<'db> ImplTrait<'db> {
+    pub fn lazy_span(self) -> LazyImplTraitSpan<'db> {
         LazyImplTraitSpan::new(self)
     }
 
-    pub fn children_non_nested(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn children_non_nested(
+        self,
+        db: &'db dyn HirDb,
+    ) -> impl Iterator<Item = ItemKind<'db>> + '_ {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 
-    pub fn methods(self, db: &dyn HirDb) -> impl Iterator<Item = Func> + '_ {
+    pub fn methods(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func<'db>> + '_ {
         self.children_non_nested(db).filter_map(|item| match item {
             ItemKind::Func(func) => Some(func),
             _ => None,
@@ -890,53 +926,53 @@ impl ImplTrait {
 }
 
 #[salsa::tracked]
-pub struct Const {
+pub struct Const<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub name: Partial<IdentId>,
-    pub ty: Partial<TypeId>,
-    pub body: Partial<Body>,
+    pub name: Partial<IdentId<'db>>,
+    pub ty: Partial<TypeId<'db>>,
+    pub body: Partial<Body<'db>>,
     pub vis: Visibility,
-    pub top_mod: TopLevelMod,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Const>,
 }
-impl Const {
-    pub fn lazy_span(self) -> LazyConstSpan {
+impl<'db> Const<'db> {
+    pub fn lazy_span(self) -> LazyConstSpan<'db> {
         LazyConstSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 }
 
 #[salsa::tracked]
-pub struct Use {
+pub struct Use<'db> {
     #[id]
-    id: TrackedItemId,
+    id: TrackedItemId<'db>,
 
-    pub path: Partial<super::UsePathId>,
-    pub alias: Option<Partial<UseAlias>>,
+    pub path: Partial<super::UsePathId<'db>>,
+    pub alias: Option<Partial<UseAlias<'db>>>,
     pub vis: Visibility,
-    pub top_mod: TopLevelMod,
+    pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
     pub(crate) origin: HirOrigin<ast::Use>,
 }
-impl Use {
-    pub fn lazy_span(self) -> LazyUseSpan {
+impl<'db> Use<'db> {
+    pub fn lazy_span(self) -> LazyUseSpan<'db> {
         LazyUseSpan::new(self)
     }
 
-    pub fn scope(self) -> ScopeId {
+    pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
 
     /// Returns imported name if it is present and not a glob.
-    pub fn imported_name(&self, db: &dyn HirDb) -> Option<IdentId> {
+    pub fn imported_name(&self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
         if let Some(alias) = self.alias(db) {
             return match alias {
                 Partial::Present(UseAlias::Ident(name)) => Some(name),
@@ -951,7 +987,7 @@ impl Use {
     /// The returned span is
     /// 1. If the use has an alias, the span of the alias.
     /// 2. If the use has no alias, the span of the last segment of the path.
-    pub fn imported_name_span(&self, db: &dyn HirDb) -> Option<DynLazySpan> {
+    pub fn imported_name_span(&self, db: &'db dyn HirDb) -> Option<DynLazySpan<'db>> {
         if self.is_glob(db) {
             return None;
         }
@@ -964,7 +1000,7 @@ impl Use {
         }
     }
 
-    pub fn glob_span(&self, db: &dyn HirDb) -> Option<DynLazySpan> {
+    pub fn glob_span(&self, db: &dyn HirDb) -> Option<DynLazySpan<'db>> {
         if !self.is_glob(db) {
             return None;
         }
@@ -1012,13 +1048,13 @@ impl ItemModifier {
 }
 
 #[salsa::interned]
-pub struct FieldDefListId {
+pub struct FieldDefListId<'db> {
     #[return_ref]
-    pub data: Vec<FieldDef>,
+    pub data: Vec<FieldDef<'db>>,
 }
 
-impl FieldDefListId {
-    pub fn get_field(self, db: &dyn HirDb, name: IdentId) -> Option<&FieldDef> {
+impl<'db> FieldDefListId<'db> {
+    pub fn get_field(self, db: &'db dyn HirDb, name: IdentId<'db>) -> Option<&'db FieldDef<'db>> {
         self.data(db)
             .iter()
             .find(|field| field.name.to_opt() == Some(name))
@@ -1048,25 +1084,25 @@ impl FieldDefListId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FieldDef {
-    pub name: Partial<IdentId>,
-    pub ty: Partial<TypeId>,
+pub struct FieldDef<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub ty: Partial<TypeId<'db>>,
     pub vis: Visibility,
 }
 
 #[salsa::interned]
-pub struct VariantDefListId {
+pub struct VariantDefListId<'db> {
     #[return_ref]
-    pub data: Vec<VariantDef>,
+    pub data: Vec<VariantDef<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct VariantDef {
-    pub name: Partial<IdentId>,
-    pub kind: VariantKind,
+pub struct VariantDef<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub kind: VariantKind<'db>,
 }
 
-impl VariantDef {
+impl<'db> VariantDef<'db> {
     /// Returns the human readable string of the expected variant initializer.
     /// ## Example
     /// When enum `E` is an variant defined as below:
@@ -1093,21 +1129,21 @@ impl VariantDef {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum VariantKind {
+pub enum VariantKind<'db> {
     Unit,
-    Tuple(TupleTypeId),
-    Record(FieldDefListId),
+    Tuple(TupleTypeId<'db>),
+    Record(FieldDefListId<'db>),
 }
 
 #[salsa::interned]
-pub struct ImplItemListId {
+pub struct ImplItemListId<'db> {
     #[return_ref]
-    pub items: Vec<Func>,
+    pub items: Vec<Func<'db>>,
 }
 
-pub type TraitItemListId = ImplItemListId;
-pub type ImplTraitItemListId = ImplItemListId;
-pub type ExternItemListId = ImplItemListId;
+pub type TraitItemListId<'db> = ImplItemListId<'db>;
+pub type ImplTraitItemListId<'db> = ImplItemListId<'db>;
+pub type ExternItemListId<'db> = ImplItemListId<'db>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Visibility {
@@ -1121,27 +1157,38 @@ impl Visibility {
     }
 }
 
+#[salsa::interned]
+pub struct TrackedItemId<'db> {
+    variant: TrackedItemVariant<'db>,
+}
+
+impl<'db> TrackedItemId<'db> {
+    pub(crate) fn join(self, db: &'db dyn HirDb, variant: TrackedItemVariant<'db>) -> Self {
+        let old = self.variant(db);
+        let joined = old.join(variant);
+        Self::new(db, joined)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TrackedItemId {
-    TopLevelMod(IdentId),
-    Mod(Partial<IdentId>),
-    Func(Partial<IdentId>),
-    Struct(Partial<IdentId>),
-    Contract(Partial<IdentId>),
-    Enum(Partial<IdentId>),
-    TypeAlias(Partial<IdentId>),
-    Impl(Partial<TypeId>),
-    Trait(Partial<IdentId>),
-    ImplTrait(Partial<TraitRefId>, Partial<TypeId>),
-    Const(Partial<IdentId>),
-    Use(Partial<super::UsePathId>),
-    Extern,
+pub(crate) enum TrackedItemVariant<'db> {
+    TopLevelMod(IdentId<'db>),
+    Mod(Partial<IdentId<'db>>),
+    Func(Partial<IdentId<'db>>),
+    Struct(Partial<IdentId<'db>>),
+    Contract(Partial<IdentId<'db>>),
+    Enum(Partial<IdentId<'db>>),
+    TypeAlias(Partial<IdentId<'db>>),
+    Impl(Partial<TypeId<'db>>),
+    Trait(Partial<IdentId<'db>>),
+    ImplTrait(Partial<TraitRefId<'db>>, Partial<TypeId<'db>>),
+    Const(Partial<IdentId<'db>>),
+    Use(Partial<super::UsePathId<'db>>),
     FuncBody,
     NamelessBody,
     Joined(Box<Self>, Box<Self>),
 }
-
-impl TrackedItemId {
+impl<'db> TrackedItemVariant<'db> {
     pub(crate) fn join(self, rhs: Self) -> Self {
         Self::Joined(self.into(), rhs.into())
     }

@@ -8,7 +8,7 @@ repository = "https://github.com/ethereum/fe"
 description = "Provides procudural macros for Fe lang."
 
 [lib]
-proc_macro = true
+proc-macro = true
 
 [dependencies]
 syn = { version = "2.0", features = ["full"] }

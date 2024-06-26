@@ -51,19 +51,19 @@ define_lazy_span_node!(
     }
 );
 
-impl LazyFuncParamSpan {
-    pub fn fallback_self_ty(&self) -> LazyTySpan {
+impl<'db> LazyFuncParamSpan<'db> {
+    pub fn fallback_self_ty(&self) -> LazyTySpan<'db> {
         LazyTySpan(self.name().0)
     }
 }
 
 define_lazy_span_node!(LazyGenericParamSpan, ast::GenericParam);
-impl LazyGenericParamSpan {
-    pub fn into_type_param(self) -> LazyTypeGenericParamSpan {
+impl<'db> LazyGenericParamSpan<'db> {
+    pub fn into_type_param(self) -> LazyTypeGenericParamSpan<'db> {
         LazyTypeGenericParamSpan(self.0)
     }
 
-    pub fn into_const_param(self) -> LazyConstGenericParamSpan {
+    pub fn into_const_param(self) -> LazyConstGenericParamSpan<'db> {
         LazyConstGenericParamSpan(self.0)
     }
 }
@@ -92,8 +92,8 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(LazyGenericArgSpan);
-impl LazyGenericArgSpan {
-    pub fn into_type_arg(self) -> LazyTypeGenericArgSpan {
+impl<'db> LazyGenericArgSpan<'db> {
+    pub fn into_type_arg(self) -> LazyTypeGenericArgSpan<'db> {
         LazyTypeGenericArgSpan(self.0)
     }
 }

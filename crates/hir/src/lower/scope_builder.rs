@@ -5,7 +5,8 @@ use crate::{
     hir_def::{
         scope_graph::{EdgeKind, FieldParent, Scope, ScopeEdge, ScopeGraph, ScopeId},
         Body, ExprId, FieldDefListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind,
-        TopLevelMod, TrackedItemId, Use, VariantDefListId, VariantKind, Visibility,
+        TopLevelMod, TrackedItemId, TrackedItemVariant, Use, VariantDefListId, VariantKind,
+        Visibility,
     },
     HirDb,
 };
@@ -28,16 +29,16 @@ use crate::{
 // scope while keeping the relationship between scopes intact.
 pub(super) struct ScopeGraphBuilder<'db> {
     pub(super) db: &'db dyn HirDb,
-    pub(super) top_mod: TopLevelMod,
-    graph: IntermediateScopeGraph,
+    pub(super) top_mod: TopLevelMod<'db>,
+    graph: IntermediateScopeGraph<'db>,
     scope_stack: Vec<NodeId>,
     module_stack: Vec<NodeId>,
-    id_stack: Vec<TrackedItemId>,
+    id_stack: Vec<TrackedItemId<'db>>,
     declared_blocks: Vec<FxHashMap<NodeId, Option<ExprId>>>,
 }
 
 impl<'db> ScopeGraphBuilder<'db> {
-    pub(super) fn enter_top_mod(db: &'db dyn HirDb, top_mod: TopLevelMod) -> Self {
+    pub(super) fn enter_top_mod(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Self {
         let mut builder = Self {
             db,
             top_mod,
@@ -48,25 +49,26 @@ impl<'db> ScopeGraphBuilder<'db> {
             declared_blocks: vec![],
         };
 
-        builder.enter_item_scope(TrackedItemId::TopLevelMod(top_mod.name(db)), true);
+        let id = TrackedItemId::new(db, TrackedItemVariant::TopLevelMod(top_mod.name(db)));
+        builder.enter_item_scope(id, true);
         builder
     }
 
-    pub(super) fn build(self) -> ScopeGraph {
+    pub(super) fn build(self) -> ScopeGraph<'db> {
         self.graph.build(self.top_mod)
     }
 
-    pub(super) fn enter_item_scope(&mut self, id: TrackedItemId, is_mod: bool) {
+    pub(super) fn enter_item_scope(&mut self, id: TrackedItemId<'db>, is_mod: bool) {
         self.id_stack.push(id);
         self.enter_scope_impl(is_mod);
     }
 
-    pub(super) fn enter_body_scope(&mut self, id: TrackedItemId) {
+    pub(super) fn enter_body_scope(&mut self, id: TrackedItemId<'db>) {
         self.declared_blocks.push(FxHashMap::default());
         self.enter_item_scope(id, false);
     }
 
-    pub(super) fn leave_item_scope(&mut self, item: ItemKind) {
+    pub(super) fn leave_item_scope(&mut self, item: ItemKind<'db>) {
         use ItemKind::*;
 
         let item_node = self.scope_stack.pop().unwrap();
@@ -280,8 +282,8 @@ impl<'db> ScopeGraphBuilder<'db> {
             .add_edge(parent_node, item_node, parent_to_child_edge);
     }
 
-    pub(super) fn joined_id(&self, id: TrackedItemId) -> TrackedItemId {
-        self.id_stack.last().unwrap().clone().join(id)
+    pub(super) fn joined_id(&self, variant: TrackedItemVariant<'db>) -> TrackedItemId<'db> {
+        self.id_stack.last().unwrap().join(self.db, variant)
     }
 
     pub(super) fn enter_block_scope(&mut self) {
@@ -314,19 +316,19 @@ impl<'db> ScopeGraphBuilder<'db> {
         id
     }
 
-    fn initialize_item_scope(&mut self, node: NodeId, item: ItemKind) {
+    fn initialize_item_scope(&mut self, node: NodeId, item: ItemKind<'db>) {
         self.graph.initialize_item_scope(self.db, node, item)
     }
 
-    fn finalize_block_scope(&mut self, node: NodeId, body: Body, block: ExprId) {
+    fn finalize_block_scope(&mut self, node: NodeId, body: Body<'db>, block: ExprId) {
         self.graph.finalize_block_scope(node, body, block);
     }
 
     fn add_field_scope(
         &mut self,
         parent_node: NodeId,
-        parent: FieldParent,
-        fields: FieldDefListId,
+        parent: FieldParent<'db>,
+        fields: FieldDefListId<'db>,
     ) {
         for (i, field) in fields.data(self.db).iter().enumerate() {
             let scope_id = ScopeId::Field(parent, i);
@@ -346,8 +348,8 @@ impl<'db> ScopeGraphBuilder<'db> {
     fn add_variant_scope(
         &mut self,
         parent_node: NodeId,
-        parent_item: ItemKind,
-        variants: VariantDefListId,
+        parent_item: ItemKind<'db>,
+        variants: VariantDefListId<'db>,
     ) {
         let parent_vis = parent_item.vis(self.db);
 
@@ -374,8 +376,8 @@ impl<'db> ScopeGraphBuilder<'db> {
     fn add_func_param_scope(
         &mut self,
         parent_node: NodeId,
-        parent_item: ItemKind,
-        params: FuncParamListId,
+        parent_item: ItemKind<'db>,
+        params: FuncParamListId<'db>,
     ) {
         for (i, param) in params.data(self.db).iter().enumerate() {
             let scope_id = ScopeId::FuncParam(parent_item, i);
@@ -398,8 +400,8 @@ impl<'db> ScopeGraphBuilder<'db> {
     fn add_generic_param_scope(
         &mut self,
         parent_node: NodeId,
-        parent_item: ItemKind,
-        params: GenericParamListId,
+        parent_item: ItemKind<'db>,
+        params: GenericParamListId<'db>,
     ) {
         for (i, param) in params.data(self.db).iter().enumerate() {
             let scope_id = ScopeId::GenericParam(parent_item, i);
@@ -416,7 +418,7 @@ impl<'db> ScopeGraphBuilder<'db> {
         }
     }
 
-    fn dummy_scope(&self) -> (ScopeId, Scope) {
+    fn dummy_scope(&self) -> (ScopeId<'db>, Scope<'db>) {
         let scope_id = ScopeId::Item(self.top_mod.into());
         (scope_id, Scope::new(scope_id, Visibility::Public))
     }
@@ -427,14 +429,14 @@ struct NodeId(u32);
 entity_impl!(NodeId);
 
 #[derive(Default)]
-struct IntermediateScopeGraph {
-    nodes: PrimaryMap<NodeId, (ScopeId, Scope)>,
-    edges: FxHashMap<NodeId, Vec<(NodeId, EdgeKind)>>,
-    unresolved_uses: FxHashSet<Use>,
+struct IntermediateScopeGraph<'db> {
+    nodes: PrimaryMap<NodeId, (ScopeId<'db>, Scope<'db>)>,
+    edges: FxHashMap<NodeId, Vec<(NodeId, EdgeKind<'db>)>>,
+    unresolved_uses: FxHashSet<Use<'db>>,
 }
 
-impl IntermediateScopeGraph {
-    fn build(mut self, top_mod: TopLevelMod) -> ScopeGraph {
+impl<'db> IntermediateScopeGraph<'db> {
+    fn build(mut self, top_mod: TopLevelMod<'db>) -> ScopeGraph<'db> {
         for (from_node, edges) in self.edges {
             for (dest_node, kind) in edges {
                 let dest = self.nodes[dest_node].0;
@@ -456,11 +458,11 @@ impl IntermediateScopeGraph {
         }
     }
 
-    fn push(&mut self, scope_id: ScopeId, scope_data: Scope) -> NodeId {
+    fn push(&mut self, scope_id: ScopeId<'db>, scope_data: Scope<'db>) -> NodeId {
         self.nodes.push((scope_id, scope_data))
     }
 
-    fn initialize_item_scope(&mut self, db: &dyn HirDb, node: NodeId, item: ItemKind) {
+    fn initialize_item_scope(&mut self, db: &dyn HirDb, node: NodeId, item: ItemKind<'db>) {
         let scope_id = ScopeId::Item(item);
 
         let scope_data = &mut self.nodes[node];
@@ -469,7 +471,7 @@ impl IntermediateScopeGraph {
         scope_data.1.vis = item.vis(db);
     }
 
-    fn finalize_block_scope(&mut self, node: NodeId, body: Body, block: ExprId) {
+    fn finalize_block_scope(&mut self, node: NodeId, body: Body<'db>, block: ExprId) {
         let scope_id = ScopeId::Block(body, block);
         let scope_data = &mut self.nodes[node];
         scope_data.0 = scope_id;
@@ -484,12 +486,12 @@ impl IntermediateScopeGraph {
             .push((parent, EdgeKind::lex()));
     }
 
-    fn add_edge(&mut self, from: NodeId, dest: NodeId, kind: EdgeKind) {
+    fn add_edge(&mut self, from: NodeId, dest: NodeId, kind: EdgeKind<'db>) {
         self.edges.entry(from).or_default().push((dest, kind));
     }
 
     /// Add an edge to the graph that is not part of the current file.
-    fn add_external_edge(&mut self, from: NodeId, dest: ScopeId, kind: EdgeKind) {
+    fn add_external_edge(&mut self, from: NodeId, dest: ScopeId<'db>, kind: EdgeKind<'db>) {
         self.nodes[from].1.edges.insert(ScopeEdge { dest, kind });
     }
 }

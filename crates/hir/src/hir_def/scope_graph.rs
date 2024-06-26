@@ -14,17 +14,17 @@ use crate::{
 
 /// Represents a scope relation graph in a top-level module.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScopeGraph {
+pub struct ScopeGraph<'db> {
     /// The top-level module containing the scope graph.
-    pub top_mod: TopLevelMod,
+    pub top_mod: TopLevelMod<'db>,
     /// ///
     /// The scopes in the graph.
-    pub scopes: FxHashMap<ScopeId, Scope>,
+    pub scopes: FxHashMap<ScopeId<'db>, Scope<'db>>,
     /// The all unresolved uses in the graph, this is used in name resolution.
-    pub unresolved_uses: FxHashSet<Use>,
+    pub unresolved_uses: FxHashSet<Use<'db>>,
 }
 
-impl ScopeGraph {
+impl<'db> ScopeGraph<'db> {
     /// Represents all item scopes in a top-level module in depth-first order.
     pub fn items_dfs<'a>(&'a self, db: &'a dyn HirDb) -> impl Iterator<Item = ItemKind> + 'a {
         ScopeGraphItemIterDfs {
@@ -36,12 +36,12 @@ impl ScopeGraph {
     }
 
     /// Returns the direct child items of the given `scope`.
-    pub fn child_items(&self, scope: ScopeId) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn child_items(&self, scope: ScopeId<'db>) -> impl Iterator<Item = ItemKind<'db>> + '_ {
         self.children(scope).filter_map(|child| child.to_item())
     }
 
     /// Returns the direct child scopes of the given `scope`
-    pub fn children(&self, scope: ScopeId) -> impl Iterator<Item = ScopeId> + '_ {
+    pub fn children(&self, scope: ScopeId<'db>) -> impl Iterator<Item = ScopeId<'db>> + '_ {
         self.edges(scope).filter_map(|edge| match edge.kind {
             EdgeKind::Lex(_)
             | EdgeKind::Super(_)
@@ -54,7 +54,7 @@ impl ScopeGraph {
     }
 
     /// Returns the all edges outgoing from the given `scope`.
-    pub fn edges(&self, scope: ScopeId) -> impl Iterator<Item = &ScopeEdge> + '_ {
+    pub fn edges(&self, scope: ScopeId<'db>) -> impl Iterator<Item = &ScopeEdge<'db>> + '_ {
         self.scopes[&scope].edges.iter()
     }
 
@@ -63,35 +63,35 @@ impl ScopeGraph {
         ScopeGraphFormatter::new(db, self).render(w)
     }
 
-    pub fn scope_data(&self, scope: &ScopeId) -> &Scope {
+    pub fn scope_data(&self, scope: &ScopeId<'db>) -> &Scope {
         &self.scopes[scope]
     }
 }
 
 /// An reference to a `[ScopeData]` in a `ScopeGraph`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, strum::Display)]
-pub enum ScopeId {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ScopeId<'db> {
     /// An item scope.
-    Item(ItemKind),
+    Item(ItemKind<'db>),
 
     /// A generic parameter scope.
-    GenericParam(ItemKind, usize),
+    GenericParam(ItemKind<'db>, usize),
 
     /// A function parameter scope.
-    FuncParam(ItemKind, usize),
+    FuncParam(ItemKind<'db>, usize),
 
     /// A field scope.
-    Field(FieldParent, usize),
+    Field(FieldParent<'db>, usize),
 
     /// A variant scope.
-    Variant(ItemKind, usize),
+    Variant(ItemKind<'db>, usize),
 
     /// A block scope.
-    Block(Body, ExprId),
+    Block(Body<'db>, ExprId),
 }
-impl ScopeId {
+impl<'db> ScopeId<'db> {
     /// Returns the top level module containing this scope.
-    pub fn top_mod(&self, db: &dyn HirDb) -> TopLevelMod {
+    pub fn top_mod(&self, db: &'db dyn HirDb) -> TopLevelMod<'db> {
         match self {
             ScopeId::Item(item) => item.top_mod(db),
             ScopeId::GenericParam(item, _) => item.top_mod(db),
@@ -104,12 +104,12 @@ impl ScopeId {
     }
 
     /// Convert an item to a scope id.
-    pub fn from_item(item: ItemKind) -> Self {
+    pub fn from_item(item: ItemKind<'db>) -> Self {
         Self::Item(item)
     }
 
     /// Convert a scope id to an item if the scope is an item.
-    pub fn to_item(self) -> Option<ItemKind> {
+    pub fn to_item(self) -> Option<ItemKind<'db>> {
         match self {
             ScopeId::Item(item) => Some(item),
             _ => None,
@@ -118,7 +118,7 @@ impl ScopeId {
 
     /// Returns the nearest item that contains this scope.
     /// If the scope is item itself, returns the item.
-    pub fn item(self) -> ItemKind {
+    pub fn item(self) -> ItemKind<'db> {
         match self {
             ScopeId::Item(item) => item,
             ScopeId::GenericParam(item, _) => item,
@@ -131,11 +131,11 @@ impl ScopeId {
     }
 
     /// Returns the scope graph containing this scope.
-    pub fn scope_graph(self, db: &dyn HirDb) -> &ScopeGraph {
+    pub fn scope_graph(self, db: &'db dyn HirDb) -> &ScopeGraph<'db> {
         self.top_mod(db).scope_graph(db)
     }
 
-    pub fn edges(self, db: &dyn HirDb) -> impl Iterator<Item = &ScopeEdge> {
+    pub fn edges(self, db: &'db dyn HirDb) -> impl Iterator<Item = &ScopeEdge> {
         self.scope_graph(db).edges(self)
     }
 
@@ -172,12 +172,12 @@ impl ScopeId {
     }
 
     /// Return the `IngotId` containing the scope.
-    pub fn ingot(self, db: &dyn HirDb) -> IngotId {
+    pub fn ingot(self, db: &'db dyn HirDb) -> IngotId<'db> {
         self.top_mod(db).ingot(db)
     }
 
     /// Returns the `Scope` data for this scope.
-    pub fn data(self, db: &dyn HirDb) -> &Scope {
+    pub fn data(self, db: &'db dyn HirDb) -> &Scope {
         self.top_mod(db).scope_graph(db).scope_data(&self)
     }
 
@@ -185,7 +185,7 @@ impl ScopeId {
     /// The parent scope is
     /// 1. the lexical parent if it exists
     /// 2. the parent module if 1. does not exist
-    pub fn parent(self, db: &dyn HirDb) -> Option<Self> {
+    pub fn parent(self, db: &'db dyn HirDb) -> Option<Self> {
         let mut super_dest = None;
         for edge in self.edges(db) {
             if let EdgeKind::Lex(_) = edge.kind {
@@ -199,7 +199,7 @@ impl ScopeId {
     }
 
     /// Returns the lexical parent scope of this scope.
-    pub fn lex_parent(self, db: &dyn HirDb) -> Option<Self> {
+    pub fn lex_parent(self, db: &'db dyn HirDb) -> Option<Self> {
         self.data(db)
             .edges
             .iter()
@@ -208,7 +208,7 @@ impl ScopeId {
     }
 
     /// Returns the parent module of this scope.
-    pub fn parent_module(self, db: &dyn HirDb) -> Option<Self> {
+    pub fn parent_module(self, db: &'db dyn HirDb) -> Option<Self> {
         let parent_item = self.parent_item(db)?;
         match parent_item {
             ItemKind::Mod(_) | ItemKind::TopMod(_) => Some(Self::Item(parent_item)),
@@ -220,12 +220,12 @@ impl ScopeId {
     }
 
     /// Returns the direct child items of the given `scope`.
-    pub fn child_items(self, db: &dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn child_items(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
         self.scope_graph(db).child_items(self)
     }
 
     /// Returns the direct child scopes of the given `scope`
-    pub fn children(self, db: &dyn HirDb) -> impl Iterator<Item = ScopeId> + '_ {
+    pub fn children(self, db: &'db dyn HirDb) -> impl Iterator<Item = ScopeId> + '_ {
         self.scope_graph(db).children(self)
     }
 
@@ -252,7 +252,7 @@ impl ScopeId {
     }
 
     /// Returns the item that contains this scope.
-    pub fn parent_item(self, db: &dyn HirDb) -> Option<ItemKind> {
+    pub fn parent_item(self, db: &'db dyn HirDb) -> Option<ItemKind> {
         let mut parent = self.parent(db)?;
         loop {
             match parent {
@@ -264,7 +264,7 @@ impl ScopeId {
         }
     }
 
-    pub fn name(self, db: &dyn HirDb) -> Option<IdentId> {
+    pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId> {
         match self.data(db).id {
             ScopeId::Item(item) => item.name(db),
 
@@ -307,7 +307,7 @@ impl ScopeId {
         }
     }
 
-    pub fn name_span(self, db: &dyn HirDb) -> Option<DynLazySpan> {
+    pub fn name_span(self, db: &'db dyn HirDb) -> Option<DynLazySpan<'db>> {
         match self.data(db).id {
             ScopeId::Item(item) => item.name_span(),
 
@@ -386,13 +386,13 @@ impl ScopeId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum FieldParent {
-    Item(ItemKind),
-    Variant(ItemKind, usize),
+pub enum FieldParent<'db> {
+    Item(ItemKind<'db>),
+    Variant(ItemKind<'db>, usize),
 }
 
-impl FieldParent {
-    pub fn scope(self) -> ScopeId {
+impl<'db> FieldParent<'db> {
+    pub fn scope(self) -> ScopeId<'db> {
         match self {
             FieldParent::Item(item) => ScopeId::Item(item),
             FieldParent::Variant(variant, idx) => ScopeId::Variant(variant, idx),
@@ -400,17 +400,17 @@ impl FieldParent {
     }
 }
 
-struct ScopeGraphItemIterDfs<'a> {
-    db: &'a dyn HirDb,
-    graph: &'a ScopeGraph,
-    visited: FxHashSet<ScopeId>,
-    stack: Vec<ScopeId>,
+struct ScopeGraphItemIterDfs<'db, 'a> {
+    db: &'db dyn HirDb,
+    graph: &'a ScopeGraph<'db>,
+    visited: FxHashSet<ScopeId<'db>>,
+    stack: Vec<ScopeId<'db>>,
 }
 
-impl<'a> std::iter::Iterator for ScopeGraphItemIterDfs<'a> {
-    type Item = ItemKind;
+impl<'db, 'a> std::iter::Iterator for ScopeGraphItemIterDfs<'db, 'a> {
+    type Item = ItemKind<'db>;
 
-    fn next(&mut self) -> Option<ItemKind> {
+    fn next(&mut self) -> Option<ItemKind<'db>> {
         while let Some(scope) = self.stack.pop() {
             self.visited.insert(scope);
             for edge in self.graph.edges(scope) {
@@ -439,14 +439,14 @@ impl<'a> std::iter::Iterator for ScopeGraphItemIterDfs<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Scope {
-    pub id: ScopeId,
-    pub edges: BTreeSet<ScopeEdge>,
+pub struct Scope<'db> {
+    pub id: ScopeId<'db>,
+    pub edges: BTreeSet<ScopeEdge<'db>>,
     pub vis: Visibility,
 }
 
-impl Scope {
-    pub fn new(kind: ScopeId, vis: Visibility) -> Self {
+impl<'db> Scope<'db> {
+    pub fn new(kind: ScopeId<'db>, vis: Visibility) -> Self {
         Self {
             id: kind,
             edges: Default::default(),
@@ -460,9 +460,9 @@ impl Scope {
 /// [`EdgeKind`] is contains supplementary information about the destination
 /// scope, which is used for name resolution.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ScopeEdge {
-    pub dest: ScopeId,
-    pub kind: EdgeKind,
+pub struct ScopeEdge<'db> {
+    pub dest: ScopeId<'db>,
+    pub kind: EdgeKind<'db>,
 }
 
 /// A specific edge property definitions.
@@ -471,24 +471,24 @@ pub struct ScopeEdge {
 /// information, the reason why we need to prepare each internal types is to
 /// allow us to implement traits to each edges directly.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
-pub enum EdgeKind {
+pub enum EdgeKind<'db> {
     /// An edge to a lexical parent scope.
     Lex(LexEdge),
     /// An edge to a module.
-    Mod(ModEdge),
+    Mod(ModEdge<'db>),
     /// An edge to a type.
-    Type(TypeEdge),
+    Type(TypeEdge<'db>),
     /// An edge to a trait.
-    Trait(TraitEdge),
+    Trait(TraitEdge<'db>),
     /// An edge from a scope to a generic parameter.
-    GenericParam(GenericParamEdge),
+    GenericParam(GenericParamEdge<'db>),
     /// An edge to a value. The value is either a function or a
     /// constant.
-    Value(ValueEdge),
+    Value(ValueEdge<'db>),
     /// An edge to a field definition scope.
-    Field(FieldEdge),
+    Field(FieldEdge<'db>),
     /// An edge to a enum variant definition scope.
-    Variant(VariantEdge),
+    Variant(VariantEdge<'db>),
     /// An edge to a module that is referenced by a `super` keyword.
     Super(SuperEdge),
     /// An edge to an ingot that is referenced by a `ingot` keyword.
@@ -501,36 +501,36 @@ pub enum EdgeKind {
     Anon(AnonEdge),
 }
 
-impl EdgeKind {
+impl<'db> EdgeKind<'db> {
     pub fn lex() -> Self {
         EdgeKind::Lex(LexEdge())
     }
 
-    pub fn mod_(ident: IdentId) -> Self {
+    pub fn mod_(ident: IdentId<'db>) -> Self {
         EdgeKind::Mod(ident.into())
     }
 
-    pub fn type_(ident: IdentId) -> Self {
+    pub fn type_(ident: IdentId<'db>) -> Self {
         EdgeKind::Type(ident.into())
     }
 
-    pub fn trait_(ident: IdentId) -> Self {
+    pub fn trait_(ident: IdentId<'db>) -> Self {
         EdgeKind::Trait(ident.into())
     }
 
-    pub fn generic_param(ident: IdentId) -> Self {
+    pub fn generic_param(ident: IdentId<'db>) -> Self {
         EdgeKind::GenericParam(ident.into())
     }
 
-    pub fn value(ident: IdentId) -> Self {
+    pub fn value(ident: IdentId<'db>) -> Self {
         EdgeKind::Value(ident.into())
     }
 
-    pub fn field(ident: IdentId) -> Self {
+    pub fn field(ident: IdentId<'db>) -> Self {
         EdgeKind::Field(ident.into())
     }
 
-    pub fn variant(ident: IdentId) -> Self {
+    pub fn variant(ident: IdentId<'db>) -> Self {
         EdgeKind::Variant(ident.into())
     }
 
@@ -559,25 +559,25 @@ impl EdgeKind {
 pub struct LexEdge();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
-pub struct ModEdge(pub IdentId);
+pub struct ModEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
-pub struct TypeEdge(pub IdentId);
+pub struct TypeEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
-pub struct TraitEdge(pub IdentId);
+pub struct TraitEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
-pub struct ValueEdge(pub IdentId);
+pub struct ValueEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
-pub struct GenericParamEdge(pub IdentId);
+pub struct GenericParamEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
-pub struct FieldEdge(pub IdentId);
+pub struct FieldEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From)]
-pub struct VariantEdge(pub IdentId);
+pub struct VariantEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SuperEdge();

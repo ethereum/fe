@@ -5,8 +5,8 @@ use crate::hir_def::{
     Body, GenericArgListId, Partial, PathId, TraitRefId, TupleTypeId, TypeId, TypeKind,
 };
 
-impl TypeId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Type) -> Self {
+impl<'db> TypeId<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Type) -> Self {
         let kind = match ast.kind() {
             ast::TypeKind::Ptr(ty) => {
                 let inner = Self::lower_ast_partial(ctxt, ty.inner());
@@ -42,15 +42,15 @@ impl TypeId {
     }
 
     pub(super) fn lower_ast_partial(
-        ctxt: &mut FileLowerCtxt<'_>,
+        ctxt: &mut FileLowerCtxt<'db>,
         ast: Option<ast::Type>,
     ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()
     }
 }
 
-impl TupleTypeId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TupleType) -> Self {
+impl<'db> TupleTypeId<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TupleType) -> Self {
         let mut elem_tys = Vec::new();
         for elem in ast {
             elem_tys.push(Some(TypeId::lower_ast(ctxt, elem)).into());
@@ -59,8 +59,8 @@ impl TupleTypeId {
     }
 }
 
-impl TraitRefId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TraitRef) -> Self {
+impl<'db> TraitRefId<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitRef) -> Self {
         let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast)).into();
         let generic_args = ast
             .generic_args()
@@ -69,7 +69,7 @@ impl TraitRefId {
     }
 
     pub(super) fn lower_ast_partial(
-        ctxt: &mut FileLowerCtxt<'_>,
+        ctxt: &mut FileLowerCtxt<'db>,
         ast: Option<ast::TraitRef>,
     ) -> Partial<Self> {
         ast.map(|ast| Self::lower_ast(ctxt, ast)).into()

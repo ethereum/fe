@@ -1,5 +1,13 @@
 use parser::ast::{self, prelude::AstNode};
 
+use super::{
+    attr::LazyAttrListSpan,
+    define_lazy_span_node,
+    params::{LazyFuncParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
+    transition::SpanTransitionChain,
+    types::{LazyTupleTypeSpan, LazyTySpan},
+    use_tree::LazyUseAliasSpan,
+};
 use crate::{
     hir_def::{
         Body, Const, Contract, Enum, Func, Impl, ImplTrait, ItemKind, Mod, Struct, TopLevelMod,
@@ -13,28 +21,23 @@ use crate::{
     },
 };
 
-use super::{
-    attr::LazyAttrListSpan,
-    define_lazy_span_node,
-    params::{LazyFuncParamListSpan, LazyGenericParamListSpan, LazyWhereClauseSpan},
-    transition::SpanTransitionChain,
-    types::{LazyTupleTypeSpan, LazyTySpan},
-    use_tree::LazyUseAliasSpan,
-};
-
-define_lazy_span_node!(LazyTopModSpan, ast::Root, new(TopLevelMod),);
+define_lazy_span_node!(LazyTopModSpan, ast::Root);
+impl<'db> LazyTopModSpan<'db> {
+    pub fn new(t: TopLevelMod<'db>) -> Self {
+        Self(SpanTransitionChain::new(t))
+    }
+}
 
 define_lazy_span_node!(LazyItemSpan);
-impl LazyItemSpan {
-    pub fn new(item: ItemKind) -> Self {
-        Self(SpanTransitionChain::new(item))
+impl<'db> LazyItemSpan<'db> {
+    pub fn new(i: ItemKind<'db>) -> Self {
+        Self(SpanTransitionChain::new(i))
     }
 }
 
 define_lazy_span_node!(
     LazyModSpan,
     ast::Mod,
-    new(Mod),
     @token
     {
         (name, name),
@@ -45,11 +48,15 @@ define_lazy_span_node!(
         (modifier, modifier, LazyItemModifierSpan),
     }
 );
+impl<'db> LazyModSpan<'db> {
+    pub fn new(m: Mod<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(m))
+    }
+}
 
 define_lazy_span_node!(
     LazyFuncSpan,
     ast::Func,
-    new(Func),
     @token {
         (name, name),
     }
@@ -62,11 +69,15 @@ define_lazy_span_node!(
         (ret_ty, ret_ty, LazyTySpan),
     }
 );
+impl<'db> LazyFuncSpan<'db> {
+    pub fn new(f: Func<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(f))
+    }
+}
 
 define_lazy_span_node!(
     LazyStructSpan,
     ast::Struct,
-    new(Struct),
     @token {
         (name, name),
     }
@@ -78,11 +89,15 @@ define_lazy_span_node!(
         (fields, fields, LazyFieldDefListSpan),
     }
 );
+impl<'db> LazyStructSpan<'db> {
+    pub fn new(s: Struct<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(s))
+    }
+}
 
 define_lazy_span_node!(
     LazyContractSpan,
     ast::Contract,
-    new(Contract),
     @token {
         (name, name),
     }
@@ -92,11 +107,15 @@ define_lazy_span_node!(
         (fields, fields, LazyFieldDefListSpan),
     }
 );
+impl<'db> LazyContractSpan<'db> {
+    pub fn new(c: Contract<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(c))
+    }
+}
 
 define_lazy_span_node!(
     LazyEnumSpan,
     ast::Enum,
-    new(Enum),
     @token {
         (name, name),
     }
@@ -108,11 +127,15 @@ define_lazy_span_node!(
         (variants, variants, LazyVariantDefListSpan),
     }
 );
+impl<'db> LazyEnumSpan<'db> {
+    pub fn new(e: Enum<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(e))
+    }
+}
 
 define_lazy_span_node!(
     LazyTypeAliasSpan,
     ast::TypeAlias,
-    new(TypeAlias),
     @token {
         (alias, alias),
     }
@@ -123,11 +146,15 @@ define_lazy_span_node!(
         (ty, ty, LazyTySpan),
     }
 );
+impl<'db> LazyTypeAliasSpan<'db> {
+    pub fn new(t: TypeAlias<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(t))
+    }
+}
 
 define_lazy_span_node!(
     LazyImplSpan,
     ast::Impl,
-    new(Impl),
     @node {
         (attributes, attr_list, LazyAttrListSpan),
         (generic_params, generic_params, LazyGenericParamListSpan),
@@ -135,10 +162,15 @@ define_lazy_span_node!(
         (target_ty, ty, LazyTySpan),
     }
 );
+impl<'db> LazyImplSpan<'db> {
+    pub fn new(i: Impl<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(i))
+    }
+}
+
 define_lazy_span_node!(
     LazyTraitSpan,
     ast::Trait,
-    new(Trait),
     @token {
         (name, name),
     }
@@ -150,6 +182,11 @@ define_lazy_span_node!(
         (modifier, modifier, LazyItemModifierSpan),
     }
 );
+impl<'db> LazyTraitSpan<'db> {
+    pub fn new(t: Trait<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(t))
+    }
+}
 
 define_lazy_span_node!(
     LazySuperTraitListSpan,
@@ -162,7 +199,6 @@ define_lazy_span_node!(
 define_lazy_span_node!(
     LazyImplTraitSpan,
     ast::ImplTrait,
-    new(ImplTrait),
     @node {
         (attributes, attr_list, LazyAttrListSpan),
         (generic_params, generic_params, LazyGenericParamListSpan),
@@ -171,11 +207,15 @@ define_lazy_span_node!(
         (ty, ty, LazyTySpan),
     }
 );
+impl<'db> LazyImplTraitSpan<'db> {
+    pub fn new(i: ImplTrait<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(i))
+    }
+}
 
 define_lazy_span_node!(
     LazyConstSpan,
     ast::Const,
-    new(Const),
     @token {
         (name, name),
     }
@@ -184,22 +224,29 @@ define_lazy_span_node!(
         (ty, ty, LazyTySpan),
     }
 );
+impl<'db> LazyConstSpan<'db> {
+    pub fn new(c: Const<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(c))
+    }
+}
 
 define_lazy_span_node!(
     LazyUseSpan,
     ast::Use,
-    new(Use),
     @node {
         (attributes, attr_list, LazyAttrListSpan),
     }
 );
+impl<'db> LazyUseSpan<'db> {
+    pub fn new(u: Use<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(u))
+    }
 
-impl LazyUseSpan {
-    pub fn path(&self) -> LazyUsePathSpan {
+    pub fn path(&self) -> LazyUsePathSpan<'db> {
         self.clone().path_moved()
     }
 
-    pub fn path_moved(mut self) -> LazyUsePathSpan {
+    pub fn path_moved(mut self) -> LazyUsePathSpan<'db> {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {
@@ -225,11 +272,11 @@ impl LazyUseSpan {
         LazyUsePathSpan(self.0)
     }
 
-    pub fn alias(&self) -> LazyUseAliasSpan {
+    pub fn alias(&self) -> LazyUseAliasSpan<'db> {
         self.clone().alias_moved()
     }
 
-    pub fn alias_moved(mut self) -> LazyUseAliasSpan {
+    pub fn alias_moved(mut self) -> LazyUseAliasSpan<'db> {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {
@@ -256,7 +303,12 @@ impl LazyUseSpan {
     }
 }
 
-define_lazy_span_node!(LazyBodySpan, ast::Expr, new(Body),);
+define_lazy_span_node!(LazyBodySpan, ast::Expr);
+impl<'db> LazyBodySpan<'db> {
+    pub fn new(b: Body<'db>) -> Self {
+        Self(crate::span::transition::SpanTransitionChain::new(b))
+    }
+}
 
 define_lazy_span_node!(
     LazyFieldDefListSpan,
@@ -329,8 +381,8 @@ mod tests {
             }
         "#;
 
-        let file = db.standalone_file(text);
-        let item_tree = db.parse_source(file);
+        let input = db.standalone_file(text);
+        let item_tree = db.parse_source(input);
         let top_mod = item_tree.top_mod;
         assert_eq!(text, db.text_at(top_mod, &top_mod.lazy_span()));
     }
@@ -346,7 +398,8 @@ mod tests {
             }
         "#;
 
-        let mod_ = db.expect_item::<Mod>(text);
+        let input = db.standalone_file(text);
+        let mod_ = db.expect_item::<Mod>(input);
         let top_mod = mod_.top_mod(db.as_hir_db());
         let mod_span = mod_.lazy_span();
         assert_eq!(
@@ -367,7 +420,9 @@ mod tests {
                 where U: Add
         "#;
 
-        let fn_ = db.expect_item::<Func>(text);
+        let input = db.standalone_file(text);
+
+        let fn_ = db.expect_item::<Func>(input);
         let top_mod = fn_.top_mod(db.as_hir_db());
         let fn_span = fn_.lazy_span();
         assert_eq!("my_func", db.text_at(top_mod, &fn_span.name()));
@@ -418,7 +473,8 @@ mod tests {
                 pub y: foo::Bar<2>
             }"#;
 
-        let struct_ = db.expect_item::<Struct>(text);
+        let input = db.standalone_file(text);
+        let struct_ = db.expect_item::<Struct>(input);
         let top_mod = struct_.top_mod(db.as_hir_db());
         let struct_span = struct_.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &struct_span.name()));
@@ -449,7 +505,8 @@ mod tests {
                 }
             }"#;
 
-        let enum_ = db.expect_item::<Enum>(text);
+        let input = db.standalone_file(text);
+        let enum_ = db.expect_item::<Enum>(input);
         let top_mod = enum_.top_mod(db.as_hir_db());
         let enum_span = enum_.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &enum_span.name()));
@@ -474,7 +531,8 @@ mod tests {
             pub type Foo = u32
         "#;
 
-        let type_alias = db.expect_item::<TypeAlias>(text);
+        let input = db.standalone_file(text);
+        let type_alias = db.expect_item::<TypeAlias>(input);
         let top_mod = type_alias.top_mod(db.as_hir_db());
         let type_alias_span = type_alias.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &type_alias_span.alias()));
@@ -490,7 +548,8 @@ mod tests {
             use foo::bar::baz::Trait as _
         "#;
 
-        let use_ = db.expect_item::<Use>(text);
+        let input = db.standalone_file(text);
+        let use_ = db.expect_item::<Use>(input);
 
         let top_mod = use_.top_mod(db.as_hir_db());
         let use_span = use_.lazy_span();
@@ -511,7 +570,8 @@ mod tests {
             use foo::bar::{baz::*, qux as Alias}
         "#;
 
-        let uses = db.expect_items::<Use>(text);
+        let input = db.standalone_file(text);
+        let uses = db.expect_items::<Use>(input);
         assert_eq!(uses.len(), 2);
 
         let top_mod = uses[0].top_mod(db.as_hir_db());

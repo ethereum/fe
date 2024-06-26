@@ -4,9 +4,8 @@ use camino::Utf8Path;
 use common::{InputFile, InputIngot};
 use cranelift_entity::{entity_impl, PrimaryMap};
 
-use crate::{lower::map_file_to_mod_impl, HirDb};
-
 use super::{IdentId, IngotId, TopLevelMod};
+use crate::{lower::map_file_to_mod_impl, HirDb};
 
 /// This tree represents the structure of an ingot.
 /// Internal modules are not included in this tree, instead, they are included
@@ -55,15 +54,15 @@ use super::{IdentId, IngotId, TopLevelMod};
 /// As a result, `baz` is represented as a "floating" node.
 /// In this case, the tree is actually a forest. But we don't need to care about it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ModuleTree {
+pub struct ModuleTree<'db> {
     pub(crate) root: ModuleTreeNodeId,
-    pub(crate) module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode>,
-    pub(crate) mod_map: BTreeMap<TopLevelMod, ModuleTreeNodeId>,
+    pub(crate) module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
+    pub(crate) mod_map: BTreeMap<TopLevelMod<'db>, ModuleTreeNodeId>,
 
-    pub ingot: IngotId,
+    pub ingot: IngotId<'db>,
 }
 
-impl ModuleTree {
+impl<'db> ModuleTree<'db> {
     /// Returns the tree node data of the given id.
     pub fn node_data(&self, id: ModuleTreeNodeId) -> &ModuleTreeNode {
         &self.module_tree[id]
@@ -113,14 +112,14 @@ impl ModuleTree {
 /// top level modules. This function only depends on an ingot structure and
 /// external ingot dependency, and not depends on file contents.
 #[salsa::tracked(return_ref)]
-pub(crate) fn module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> ModuleTree {
+pub(crate) fn module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> ModuleTree<'_> {
     ModuleTreeBuilder::new(db, ingot).build()
 }
 
 /// A top level module that is one-to-one mapped to a file.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ModuleTreeNode {
-    pub top_mod: TopLevelMod,
+pub struct ModuleTreeNode<'db> {
+    pub top_mod: TopLevelMod<'db>,
     /// A parent of the top level module.
     /// This is `None` if
     /// 1. the module is a root module or
@@ -130,15 +129,15 @@ pub struct ModuleTreeNode {
     pub children: Vec<ModuleTreeNodeId>,
 }
 
-impl ModuleTreeNode {
-    fn new(top_mod: TopLevelMod) -> Self {
+impl<'db> ModuleTreeNode<'db> {
+    fn new(top_mod: TopLevelMod<'db>) -> Self {
         Self {
             top_mod,
             parent: None,
             children: Vec::new(),
         }
     }
-    pub fn name(&self, db: &dyn HirDb) -> IdentId {
+    pub fn name(&self, db: &'db dyn HirDb) -> IdentId<'db> {
         self.top_mod.name(db)
     }
 }
@@ -151,9 +150,9 @@ entity_impl!(ModuleTreeNodeId);
 struct ModuleTreeBuilder<'db> {
     db: &'db dyn HirDb,
     input_ingot: InputIngot,
-    ingot: IngotId,
-    module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode>,
-    mod_map: BTreeMap<TopLevelMod, ModuleTreeNodeId>,
+    ingot: IngotId<'db>,
+    module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
+    mod_map: BTreeMap<TopLevelMod<'db>, ModuleTreeNodeId>,
     path_map: BTreeMap<&'db Utf8Path, ModuleTreeNodeId>,
 }
 
@@ -169,7 +168,7 @@ impl<'db> ModuleTreeBuilder<'db> {
         }
     }
 
-    fn build(mut self) -> ModuleTree {
+    fn build(mut self) -> ModuleTree<'db> {
         self.set_modules();
         self.build_tree();
 

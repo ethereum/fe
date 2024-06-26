@@ -4,12 +4,12 @@ use super::define_lazy_span_node;
 use crate::span::{item::LazyBodySpan, params::LazyGenericArgListSpan, path::LazyPathSpan};
 
 define_lazy_span_node!(LazyTySpan);
-impl LazyTySpan {
+impl<'db> LazyTySpan<'db> {
     /// Convert this [`LazyTySpan`] into a [`LazyPathTypeSpan`].
     ///
     /// If the type that is pointed to by this is not a path type, the result
     /// span will point to the same span of the original type.
-    pub fn into_path_type(self) -> LazyPathTypeSpan {
+    pub fn into_path_type(self) -> LazyPathTypeSpan<'db> {
         LazyPathTypeSpan(self.0)
     }
 
@@ -17,7 +17,7 @@ impl LazyTySpan {
     ///
     /// If the type that is pointed to by this is not a pointer type, the result
     /// span will point to the same span of the original type.
-    pub fn into_ptr_type(self) -> LazyPtrTypeSpan {
+    pub fn into_ptr_type(self) -> LazyPtrTypeSpan<'db> {
         LazyPtrTypeSpan(self.0)
     }
 
@@ -25,7 +25,7 @@ impl LazyTySpan {
     ///
     /// If the type that is pointed to by this is not a tuple type, the result
     /// span will point to the same span of the original type.
-    pub fn into_tuple_type(self) -> LazyTupleTypeSpan {
+    pub fn into_tuple_type(self) -> LazyTupleTypeSpan<'db> {
         LazyTupleTypeSpan(self.0)
     }
 
@@ -33,11 +33,11 @@ impl LazyTySpan {
     ///
     /// If the type that is pointed to by this is not an array type, the result
     /// span will point to the same span of the original type.
-    pub fn into_array_type(self) -> LazyArrayTypeSpan {
+    pub fn into_array_type(self) -> LazyArrayTypeSpan<'db> {
         LazyArrayTypeSpan(self.0)
     }
 
-    pub fn into_self_type(self) -> LazySelfTypeSpan {
+    pub fn into_self_type(self) -> LazySelfTypeSpan<'db> {
         LazySelfTypeSpan(self.0)
     }
 }

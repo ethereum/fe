@@ -51,7 +51,7 @@ impl KeywordDefiner {
         }
 
         quote! {
-            impl crate::hir_def::ident::IdentId {
+            impl<'db> crate::hir_def::ident::IdentId<'db> {
                 pub fn prefill(db: &dyn crate::HirDb) {
                     #(#prefills)*
                 }

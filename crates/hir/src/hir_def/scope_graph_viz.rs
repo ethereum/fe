@@ -14,12 +14,12 @@ type NodeId = usize;
 
 pub(super) struct ScopeGraphFormatter<'db> {
     db: &'db dyn HirDb,
-    edges: PrimaryMap<EdgeId, Edge>,
-    nodes: Vec<ScopeId>,
+    edges: PrimaryMap<EdgeId, Edge<'db>>,
+    nodes: Vec<ScopeId<'db>>,
 }
 
 impl<'db> ScopeGraphFormatter<'db> {
-    fn build_formatter(&mut self, s_graph: &ScopeGraph) {
+    fn build_formatter(&mut self, s_graph: &ScopeGraph<'db>) {
         let mut visited = FxHashSet::default();
         let mut nodes_map = FxHashMap::default();
 
@@ -48,7 +48,11 @@ impl<'db> ScopeGraphFormatter<'db> {
         }
     }
 
-    fn node_id(&mut self, scope: ScopeId, nodes_map: &mut FxHashMap<ScopeId, usize>) -> NodeId {
+    fn node_id(
+        &mut self,
+        scope: ScopeId<'db>,
+        nodes_map: &mut FxHashMap<ScopeId<'db>, usize>,
+    ) -> NodeId {
         match nodes_map.entry(scope) {
             Entry::Occupied(entry) => *entry.get(),
             Entry::Vacant(entry) => {
@@ -62,7 +66,7 @@ impl<'db> ScopeGraphFormatter<'db> {
 }
 
 impl<'db> ScopeGraphFormatter<'db> {
-    pub(super) fn new(db: &'db dyn HirDb, s_graph: &ScopeGraph) -> Self {
+    pub(super) fn new(db: &'db dyn HirDb, s_graph: &ScopeGraph<'db>) -> Self {
         let nodes = Vec::new();
         let edges = PrimaryMap::new();
         let mut formatter = Self { db, edges, nodes };
@@ -193,13 +197,13 @@ pub(super) struct EdgeId(u32);
 entity_impl!(EdgeId);
 
 #[derive(Debug)]
-struct Edge {
-    kind: EdgeKind,
+struct Edge<'db> {
+    kind: EdgeKind<'db>,
     target: NodeId,
     source: NodeId,
 }
 
-impl Edge {
+impl<'db> Edge<'db> {
     fn color(&self) -> &'static str {
         match self.kind {
             EdgeKind::Lex(_) => "#F94144",

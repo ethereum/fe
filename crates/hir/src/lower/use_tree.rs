@@ -1,19 +1,18 @@
 use parser::ast::{self, prelude::*};
 
+use super::FileLowerCtxt;
 use crate::{
-    hir_def::{kw, use_tree::*, IdentId, ItemModifier, Partial, TrackedItemId, Use},
+    hir_def::{use_tree::*, IdentId, ItemModifier, Partial, TrackedItemVariant, Use},
     span::{HirOrigin, UseDesugared},
 };
 
-use super::FileLowerCtxt;
-
-impl Use {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Use) -> Vec<Self> {
+impl<'db> Use<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Use) -> Vec<Self> {
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
 
         let Some(use_tree) = ast.use_tree() else {
-            let id = ctxt.joined_id(TrackedItemId::Use(Partial::Absent));
-            ctxt.enter_item_scope(id.clone(), false);
+            let id = ctxt.joined_id(TrackedItemVariant::Use(Partial::Absent));
+            ctxt.enter_item_scope(id, false);
             let path = Partial::Absent;
             let alias = None;
             let top_mod = ctxt.top_mod();
@@ -26,8 +25,8 @@ impl Use {
         // If the use tree has no subtree, then there is no need to decompose it.
         if !use_tree.has_subtree() {
             let path = UsePathId::lower_ast_partial(ctxt, use_tree.path());
-            let id = ctxt.joined_id(TrackedItemId::Use(path));
-            ctxt.enter_item_scope(id.clone(), false);
+            let id = ctxt.joined_id(TrackedItemVariant::Use(path));
+            ctxt.enter_item_scope(id, false);
             let alias = use_tree
                 .alias()
                 .map(|alias| UseAlias::lower_ast_partial(ctxt, alias));
@@ -42,8 +41,8 @@ impl Use {
         decomposed_paths
             .into_iter()
             .map(|(path, alias, origin)| {
-                let id = ctxt.joined_id(TrackedItemId::Use(path));
-                ctxt.enter_item_scope(id.clone(), false);
+                let id = ctxt.joined_id(TrackedItemVariant::Use(path));
+                ctxt.enter_item_scope(id, false);
                 let top_mod = ctxt.top_mod();
                 let origin = HirOrigin::desugared(origin);
                 let use_ = Self::new(ctxt.db(), id, path, alias, vis, top_mod, origin);
@@ -53,8 +52,11 @@ impl Use {
     }
 }
 
-impl UsePathId {
-    fn lower_ast_partial(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::UsePath>) -> Partial<Self> {
+impl<'db> UsePathId<'db> {
+    fn lower_ast_partial(
+        ctxt: &mut FileLowerCtxt<'db>,
+        ast: Option<ast::UsePath>,
+    ) -> Partial<Self> {
         let Some(ast) = ast else {
             return Partial::Absent;
         };
@@ -67,7 +69,7 @@ impl UsePathId {
     }
 
     fn from_segments(
-        ctxt: &mut FileLowerCtxt<'_>,
+        ctxt: &mut FileLowerCtxt<'db>,
         ast_segs: Vec<ast::UsePathSegment>,
     ) -> Partial<Self> {
         if ast_segs.is_empty() {
@@ -82,25 +84,27 @@ impl UsePathId {
     }
 }
 
-impl UsePathSegment {
-    fn lower_ast_partial(ctxt: &mut FileLowerCtxt<'_>, ast: ast::UsePathSegment) -> Partial<Self> {
+impl<'db> UsePathSegment<'db> {
+    fn lower_ast_partial(ctxt: &mut FileLowerCtxt<'db>, ast: ast::UsePathSegment) -> Partial<Self> {
+        let db = ctxt.db();
+
         ast.kind()
             .map(|kind| match kind {
-                ast::UsePathSegmentKind::Ingot(_) => Self::Ident(kw::INGOT),
-                ast::UsePathSegmentKind::Super(_) => Self::Ident(kw::SUPER),
+                ast::UsePathSegmentKind::Ingot(_) => Self::Ident(IdentId::make_ingot(db)),
+                ast::UsePathSegmentKind::Super(_) => Self::Ident(IdentId::make_super(db)),
                 ast::UsePathSegmentKind::Ident(ident) => {
                     Self::Ident(IdentId::lower_token(ctxt, ident))
                 }
-                ast::UsePathSegmentKind::Self_(_) => Self::Ident(kw::SELF),
+                ast::UsePathSegmentKind::Self_(_) => Self::Ident(IdentId::make_self(db)),
                 ast::UsePathSegmentKind::Glob(_) => Self::Glob,
             })
             .into()
     }
 }
 
-impl UseAlias {
+impl<'db> UseAlias<'db> {
     pub(super) fn lower_ast_partial(
-        ctxt: &mut FileLowerCtxt<'_>,
+        ctxt: &mut FileLowerCtxt<'db>,
         ast: ast::UseAlias,
     ) -> Partial<Self> {
         if let Some(ident) = ast.ident() {
@@ -114,11 +118,15 @@ impl UseAlias {
     }
 }
 
-fn decompose_tree(
-    ctxt: &mut FileLowerCtxt<'_>,
+fn decompose_tree<'db>(
+    ctxt: &mut FileLowerCtxt<'db>,
     ast: ast::Use,
     use_tree: ast::UseTree,
-) -> Vec<(Partial<UsePathId>, Option<Partial<UseAlias>>, UseDesugared)> {
+) -> Vec<(
+    Partial<UsePathId<'db>>,
+    Option<Partial<UseAlias<'db>>>,
+    UseDesugared,
+)> {
     let use_desugared = UseDesugared::new(&ast);
     decompose_subtree(ctxt, use_tree, (vec![], use_desugared))
         .into_iter()
@@ -129,13 +137,13 @@ fn decompose_tree(
         .collect()
 }
 
-fn decompose_subtree(
-    ctxt: &mut FileLowerCtxt,
+fn decompose_subtree<'db>(
+    ctxt: &mut FileLowerCtxt<'db>,
     subtree: ast::UseTree,
     succ: (Vec<ast::UsePathSegment>, UseDesugared),
 ) -> Vec<(
     Vec<ast::UsePathSegment>,
-    Option<Partial<UseAlias>>,
+    Option<Partial<UseAlias<'db>>>,
     UseDesugared,
 )> {
     let (mut succ_path, mut succ_desugared) = succ;

@@ -1,14 +1,14 @@
-use super::{kw, Body, IdentId, Partial, PathId};
+use super::{Body, IdentId, Partial, PathId};
 use crate::{hir_def::TypeId, HirDb};
 
 #[salsa::interned]
-pub struct GenericArgListId {
+pub struct GenericArgListId<'db> {
     #[return_ref]
-    pub data: Vec<GenericArg>,
+    pub data: Vec<GenericArg<'db>>,
     pub is_given: bool,
 }
 
-impl GenericArgListId {
+impl<'db> GenericArgListId<'db> {
     pub fn len(self, db: &dyn HirDb) -> usize {
         self.data(db).len()
     }
@@ -19,37 +19,37 @@ impl GenericArgListId {
 }
 
 #[salsa::interned]
-pub struct GenericParamListId {
+pub struct GenericParamListId<'db> {
     #[return_ref]
-    pub data: Vec<GenericParam>,
+    pub data: Vec<GenericParam<'db>>,
 }
 
-impl GenericParamListId {
+impl<'db> GenericParamListId<'db> {
     pub fn len(&self, db: &dyn HirDb) -> usize {
         self.data(db).len()
     }
 }
 
 #[salsa::interned]
-pub struct FuncParamListId {
+pub struct FuncParamListId<'db> {
     #[return_ref]
-    pub data: Vec<FuncParam>,
+    pub data: Vec<FuncParam<'db>>,
 }
 
 #[salsa::interned]
-pub struct WhereClauseId {
+pub struct WhereClauseId<'db> {
     #[return_ref]
-    pub data: Vec<WherePredicate>,
+    pub data: Vec<WherePredicate<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
-pub enum GenericParam {
-    Type(TypeGenericParam),
-    Const(ConstGenericParam),
+pub enum GenericParam<'db> {
+    Type(TypeGenericParam<'db>),
+    Const(ConstGenericParam<'db>),
 }
 
-impl GenericParam {
-    pub fn name(&self) -> Partial<IdentId> {
+impl<'db> GenericParam<'db> {
+    pub fn name(&self) -> Partial<IdentId<'db>> {
         match self {
             Self::Type(ty) => ty.name,
             Self::Const(c) => c.name,
@@ -58,47 +58,47 @@ impl GenericParam {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeGenericParam {
-    pub name: Partial<IdentId>,
-    pub bounds: Vec<TypeBound>,
+pub struct TypeGenericParam<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub bounds: Vec<TypeBound<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConstGenericParam {
-    pub name: Partial<IdentId>,
-    pub ty: Partial<TypeId>,
+pub struct ConstGenericParam<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub ty: Partial<TypeId<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From)]
-pub enum GenericArg {
-    Type(TypeGenericArg),
-    Const(ConstGenericArg),
+pub enum GenericArg<'db> {
+    Type(TypeGenericArg<'db>),
+    Const(ConstGenericArg<'db>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeGenericArg {
-    pub ty: Partial<TypeId>,
+pub struct TypeGenericArg<'db> {
+    pub ty: Partial<TypeId<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConstGenericArg {
-    pub body: Partial<Body>,
+pub struct ConstGenericArg<'db> {
+    pub body: Partial<Body<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FuncParam {
+pub struct FuncParam<'db> {
     pub is_mut: bool,
-    pub label: Option<FuncParamName>,
-    pub name: Partial<FuncParamName>,
-    pub ty: Partial<TypeId>,
+    pub label: Option<FuncParamName<'db>>,
+    pub name: Partial<FuncParamName<'db>>,
+    pub ty: Partial<TypeId<'db>>,
 
     /// `true` if this parameter is `self` and the type is not specified.
     /// `ty` should have `Self` type without any type arguments.
     pub self_ty_fallback: bool,
 }
 
-impl FuncParam {
-    pub fn label_eagerly(&self) -> Option<IdentId> {
+impl<'db> FuncParam<'db> {
+    pub fn label_eagerly(&self) -> Option<IdentId<'db>> {
         match self.label {
             Some(FuncParamName::Ident(ident)) => return Some(ident),
             Some(FuncParamName::Underscore) => return None,
@@ -112,40 +112,40 @@ impl FuncParam {
         }
     }
 
-    pub fn name(&self) -> Option<IdentId> {
+    pub fn name(&self) -> Option<IdentId<'db>> {
         match self.name.to_opt()? {
             FuncParamName::Ident(name) => Some(name),
             _ => None,
         }
     }
 
-    pub fn is_self_param(&self) -> bool {
-        self.name.to_opt().map_or(false, |name| name.is_self())
+    pub fn is_self_param(&self, db: &dyn HirDb) -> bool {
+        self.name.to_opt().map_or(false, |name| name.is_self(db))
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct WherePredicate {
-    pub ty: Partial<TypeId>,
-    pub bounds: Vec<TypeBound>,
+pub struct WherePredicate<'db> {
+    pub ty: Partial<TypeId<'db>>,
+    pub bounds: Vec<TypeBound<'db>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FuncParamName {
-    Ident(IdentId),
+pub enum FuncParamName<'db> {
+    Ident(IdentId<'db>),
     Underscore,
 }
 
-impl FuncParamName {
-    pub fn ident(&self) -> Option<IdentId> {
+impl<'db> FuncParamName<'db> {
+    pub fn ident(&self) -> Option<IdentId<'db>> {
         match self {
             FuncParamName::Ident(name) => Some(*name),
             _ => None,
         }
     }
 
-    pub fn is_self(&self) -> bool {
-        self.ident() == Some(kw::SELF)
+    pub fn is_self(&self, db: &dyn HirDb) -> bool {
+        self.ident().map_or(false, |id| id.is_self(db))
     }
 
     pub fn pretty_print(&self, db: &dyn HirDb) -> String {
@@ -157,17 +157,17 @@ impl FuncParamName {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TypeBound {
-    Trait(TraitRefId),
+pub enum TypeBound<'db> {
+    Trait(TraitRefId<'db>),
     Kind(Partial<KindBound>),
 }
 
 #[salsa::interned]
-pub struct TraitRefId {
+pub struct TraitRefId<'db> {
     /// The path to the trait.
-    pub path: Partial<PathId>,
+    pub path: Partial<PathId<'db>>,
     /// The type arguments of the trait.
-    pub generic_args: Option<GenericArgListId>,
+    pub generic_args: Option<GenericArgListId<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
