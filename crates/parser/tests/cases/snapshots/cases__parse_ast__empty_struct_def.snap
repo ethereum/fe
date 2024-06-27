@@ -1,7 +1,7 @@
 ---
 source: crates/parser/tests/cases/parse_ast.rs
+assertion_line: 219
 expression: "ast_string(stringify!(empty_struct_def), try_parse_module, \"struct S {}\")"
-
 ---
 Node(
   kind: Module(
@@ -18,6 +18,13 @@ Node(
           fields: [],
           functions: [],
           pub_qual: None,
+          generic_params: Node(
+            kind: [],
+            span: Span(
+              start: 7,
+              end: 8,
+            ),
+          ),
         ),
         span: Span(
           start: 0,
