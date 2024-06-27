@@ -11,12 +11,6 @@ use hir::{
 use super::NameRes;
 use crate::HirAnalysisDb;
 
-#[salsa::accumulator]
-pub struct NameResolutionDiagAccumulator<'db>(pub(super) NameResDiag<'db>);
-
-#[salsa::accumulator]
-pub struct ImportResolutionDiagAccumulator<'db>(pub(super) NameResDiag<'db>);
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NameResDiag<'db> {
     /// The definition conflicts with other definitions.

@@ -21,7 +21,7 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
     let mut traits = FxHashSet::default();
     let scope = t_scope.inner(db).to_scope();
 
-    let imports = resolve_imports(db, scope.ingot(db.as_hir_db()));
+    let imports = &resolve_imports(db, scope.ingot(db.as_hir_db())).1;
     if let Some(named) = imports.named_resolved.get(&scope) {
         named
             .values()

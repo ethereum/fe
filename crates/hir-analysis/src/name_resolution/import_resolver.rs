@@ -1025,7 +1025,7 @@ fn resolved_imports_for_scope<'db>(
     scope: ScopeId<'db>,
 ) -> &'db ResolvedImports<'db> {
     let ingot = scope.ingot(db.as_hir_db());
-    super::resolve_imports(db, ingot)
+    &super::resolve_imports(db, ingot).1
 }
 
 impl<'db> NameRes<'db> {

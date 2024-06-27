@@ -27,10 +27,8 @@ pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
 use self::{
-    diagnostics::{ImportResolutionDiagAccumulator, NameResDiag, NameResolutionDiagAccumulator},
-    import_resolver::DefaultImporter,
-    name_resolver::ResolvedQueryCacheStore,
-    path_resolver::EarlyPathResolver,
+    diagnostics::NameResDiag, import_resolver::DefaultImporter,
+    name_resolver::ResolvedQueryCacheStore, path_resolver::EarlyPathResolver,
 };
 use crate::HirAnalysisDb;
 
@@ -57,7 +55,7 @@ pub fn resolve_segments_early<'db>(
     scope: ScopeId<'db>,
 ) -> EarlyResolvedPath<'db> {
     // Obtain cache store for the given scope.
-    let cache_store = resolve_path_early_impl(db, scope.top_mod(db.as_hir_db()));
+    let cache_store = &resolve_path_early_impl(db, scope.top_mod(db.as_hir_db())).1;
     let importer = DefaultImporter;
     // We use the cache store that is returned from `resolve_path_early` to get
     // cached results immediately.
@@ -94,17 +92,23 @@ impl<'db> ImportAnalysisPass<'db> {
         Self { db }
     }
 
-    pub fn resolve_imports(&self, ingot: IngotId<'db>) -> &'db ResolvedImports {
-        resolve_imports(self.db, ingot)
+    pub fn resolve_imports(&self, ingot: IngotId<'db>) -> &'db ResolvedImports<'db> {
+        &resolve_imports(self.db, ingot).1
     }
 }
 
-impl<'db> ModuleAnalysisPass for ImportAnalysisPass<'db> {
-    fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
+impl<'db> ModuleAnalysisPass<'db> for ImportAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod<'db>,
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let ingot = top_mod.ingot(self.db.as_hir_db());
-        resolve_imports::accumulated::<ImportResolutionDiagAccumulator>(self.db, ingot)
-            .into_iter()
-            .filter_map(|diag| (diag.top_mod(self.db) == top_mod).then(|| Box::new(diag) as _))
+        resolve_imports(self.db, ingot)
+            .0
+            .iter()
+            .filter_map(|diag| {
+                (diag.top_mod(self.db) == top_mod).then(|| Box::new(diag.clone()) as _)
+            })
             .collect()
     }
 }
@@ -129,15 +133,17 @@ impl<'db> PathAnalysisPass<'db> {
     }
 }
 
-impl<'db> ModuleAnalysisPass for PathAnalysisPass<'db> {
-    fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
-        let errors =
-            resolve_path_early_impl::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
+impl<'db> ModuleAnalysisPass<'db> for PathAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod<'db>,
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
+        let errors = &resolve_path_early_impl(self.db, top_mod).0;
 
         errors
             .into_iter()
             .filter_map(|err| {
-                (!matches!(err, NameResDiag::Conflict(..))).then(|| Box::new(err) as _)
+                (!matches!(err, NameResDiag::Conflict(..))).then(|| Box::new(err.clone()) as _)
             })
             .collect()
     }
@@ -155,15 +161,19 @@ impl<'db> DefConflictAnalysisPass<'db> {
     }
 }
 
-impl<'db> ModuleAnalysisPass for DefConflictAnalysisPass<'db> {
-    fn run_on_module(&mut self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
-        let errors =
-            resolve_path_early_impl::accumulated::<NameResolutionDiagAccumulator>(self.db, top_mod);
+// TODO: Remove this pass and move the this analysis to late pass resolution.
+impl<'db> ModuleAnalysisPass<'db> for DefConflictAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod<'db>,
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
+        let errors = &resolve_path_early_impl(self.db, top_mod).0;
 
-        // TODO: `ImplCollector`.
         errors
             .into_iter()
-            .filter_map(|err| matches!(err, NameResDiag::Conflict(..)).then(|| Box::new(err) as _))
+            .filter_map(|err| {
+                matches!(err, NameResDiag::Conflict(..)).then(|| Box::new(err.clone()) as _)
+            })
             .collect()
     }
 }
@@ -172,14 +182,10 @@ impl<'db> ModuleAnalysisPass for DefConflictAnalysisPass<'db> {
 pub fn resolve_imports<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: IngotId<'db>,
-) -> ResolvedImports<'db> {
+) -> (Vec<NameResDiag<'db>>, ResolvedImports<'db>) {
     let resolver = import_resolver::ImportResolver::new(db, ingot);
     let (imports, diags) = resolver.resolve_imports();
-    for diag in diags {
-        ImportResolutionDiagAccumulator::push(db, diag);
-    }
-
-    imports
+    (diags, imports)
 }
 
 /// Performs early path resolution and cache the resolutions for paths appeared
@@ -192,19 +198,16 @@ pub fn resolve_imports<'db>(
 ///   generally requires type analysis
 #[salsa::tracked(return_ref)]
 pub(crate) fn resolve_path_early_impl<'db>(
-    db: &dyn HirAnalysisDb,
+    db: &'db dyn HirAnalysisDb,
     top_mod: TopLevelMod<'db>,
-) -> ResolvedQueryCacheStore<'db> {
+) -> (Vec<NameResDiag<'db>>, ResolvedQueryCacheStore<'db>) {
     let importer = DefaultImporter;
     let mut visitor = EarlyPathVisitor::new(db, &importer);
 
     let mut ctxt = VisitorCtxt::with_item(db.as_hir_db(), top_mod.into());
     visitor.visit_item(&mut ctxt, top_mod.into());
 
-    for diag in visitor.diags {
-        NameResolutionDiagAccumulator::push(db, diag);
-    }
-    visitor.inner.into_cache_store()
+    (visitor.diags, visitor.inner.into_cache_store())
 }
 
 struct EarlyPathVisitor<'db, 'a> {
