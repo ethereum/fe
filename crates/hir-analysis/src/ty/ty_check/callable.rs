@@ -11,7 +11,7 @@ use if_chain::if_chain;
 use super::{ExprProp, TyChecker};
 use crate::{
     ty::{
-        diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator},
+        diagnostics::{BodyDiag, FuncBodyDiag},
         fold::{TyFoldable, TyFolder},
         func_def::FuncDef,
         ty_def::{TyBase, TyData, TyId},
@@ -109,9 +109,8 @@ impl<'db> Callable<'db> {
                 def_span: self.func_def.name_span(db),
                 given: given_args.len(),
                 expected: current_args.len(),
-            }
-            .into();
-            FuncBodyDiagAccumulator::push(db, diag);
+            };
+            tc.push_diag(diag);
 
             return false;
         }
@@ -144,9 +143,8 @@ impl<'db> Callable<'db> {
                 def_span: self.func_def.name_span(db),
                 given: given_arity,
                 expected: expected_arity,
-            }
-            .into();
-            FuncBodyDiagAccumulator::push(db, diag);
+            };
+            tc.push_diag(diag);
             return;
         }
 
@@ -184,9 +182,8 @@ impl<'db> Callable<'db> {
                         def_span: self.func_def.name_span(db),
                         given: given.label,
                         expected: expected_label,
-                    }
-                    .into();
-                    FuncBodyDiagAccumulator::push(db, diag);
+                    };
+                    tc.push_diag(diag);
                 }
             }
 

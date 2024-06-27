@@ -337,7 +337,7 @@ impl<'db> ConstraintCollector<'db> {
         }
     }
 
-    fn add_bounds(&mut self, bound_ty: TyId, bounds: &[TypeBound]) {
+    fn add_bounds(&mut self, bound_ty: TyId<'db>, bounds: &[TypeBound<'db>]) {
         for bound in bounds {
             let TypeBound::Trait(trait_ref) = bound else {
                 continue;

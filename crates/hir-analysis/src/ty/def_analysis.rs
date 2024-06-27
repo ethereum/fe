@@ -42,10 +42,6 @@ use crate::{
         adt_def::AdtDef,
         binder::Binder,
         canonical::Canonicalized,
-        diagnostics::{
-            AdtDefDiagAccumulator, FuncDefDiagAccumulator, ImplDefDiagAccumulator,
-            ImplTraitDefDiagAccumulator, TraitDefDiagAccumulator, TypeAliasDefDiagAccumulator,
-        },
         func_def::lower_func,
         trait_def::{does_impl_trait_conflict, TraitInstId},
         trait_lower::lower_impl_trait,
@@ -68,18 +64,18 @@ use crate::{
 ///   in type application.
 /// - Check if the trait instantiations in the ADT satisfies the constraints.
 /// - Check if the recursive types has indirect type wrapper like pointer.
-#[salsa::tracked]
-pub fn analyze_adt<'db>(db: &'db dyn HirAnalysisDb, adt_ref: AdtRefId<'db>) {
+#[salsa::tracked(return_ref)]
+pub fn analyze_adt<'db>(
+    db: &'db dyn HirAnalysisDb,
+    adt_ref: AdtRefId<'db>,
+) -> Vec<TyDiagCollection<'db>> {
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
-    let diags = analyzer.analyze();
-
-    for diag in diags {
-        AdtDefDiagAccumulator::push(db, diag);
-    }
+    let mut diags = analyzer.analyze();
 
     if let Some(diag) = check_recursive_adt(db, adt_ref) {
-        AdtDefDiagAccumulator::push(db, diag);
+        diags.push(diag);
     }
+    diags
 }
 
 /// This function implements analysis for the trait definition.
@@ -89,14 +85,13 @@ pub fn analyze_adt<'db>(db: &'db dyn HirAnalysisDb, adt_ref: AdtRefId<'db>) {
 /// - Check if the types in the trait satisfy the constraints which is required
 ///   in type application.
 /// - Check if the trait instantiations in the trait satisfies the constraints.
-#[salsa::tracked]
-pub fn analyze_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) {
+#[salsa::tracked(return_ref)]
+pub fn analyze_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: Trait<'db>,
+) -> Vec<TyDiagCollection<'db>> {
     let analyzer = DefAnalyzer::for_trait(db, trait_);
-    let diags = analyzer.analyze();
-
-    for diag in diags {
-        TraitDefDiagAccumulator::push(db, diag);
-    }
+    analyzer.analyze()
 }
 
 /// This function implements analysis for the trait implementation definition.
@@ -110,54 +105,52 @@ pub fn analyze_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) {
 /// - Check if the conflict doesn't occur.
 /// - Check if the trait or type is included in the ingot which contains the
 ///   impl trait.
-#[salsa::tracked]
-pub fn analyze_impl_trait<'db>(db: &'db dyn HirAnalysisDb, impl_trait: ImplTrait<'db>) {
+#[salsa::tracked(return_ref)]
+pub fn analyze_impl_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_trait: ImplTrait<'db>,
+) -> Vec<TyDiagCollection<'db>> {
     let implementor = match analyze_impl_trait_specific_error(db, impl_trait) {
         Ok(implementor) => implementor,
         Err(diags) => {
-            for diag in diags {
-                ImplTraitDefDiagAccumulator::push(db, diag);
-            }
-            return;
+            return diags;
         }
     };
 
-    let method_diags =
-        ImplTraitMethodAnalyzer::new(db, implementor.instantiate_identity()).analyze();
+    let mut diags = ImplTraitMethodAnalyzer::new(db, implementor.instantiate_identity()).analyze();
 
     let analyzer = DefAnalyzer::for_trait_impl(db, implementor.instantiate_identity());
-    let diags = analyzer.analyze();
-    for diag in method_diags.into_iter().chain(diags) {
-        ImplTraitDefDiagAccumulator::push(db, diag);
-    }
+    let def_diags = analyzer.analyze();
+
+    diags.extend(def_diags);
+    diags
 }
 
-#[salsa::tracked]
-pub fn analyze_impl<'db>(db: &'db dyn HirAnalysisDb, impl_: HirImpl<'db>) {
+#[salsa::tracked(return_ref)]
+pub fn analyze_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_: HirImpl<'db>,
+) -> Vec<TyDiagCollection<'db>> {
     let Some(hir_ty) = impl_.ty(db.as_hir_db()).to_opt() else {
-        return;
+        return Vec::new();
     };
     let ty = lower_hir_ty(db, hir_ty, impl_.scope());
 
     let analyzer = DefAnalyzer::for_impl(db, impl_, ty);
-    let diags = analyzer.analyze();
-
-    for diag in diags {
-        ImplDefDiagAccumulator::push(db, diag);
-    }
+    analyzer.analyze()
 }
 
-#[salsa::tracked]
-pub fn analyze_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) {
+#[salsa::tracked(return_ref)]
+pub fn analyze_func<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+) -> Vec<TyDiagCollection<'db>> {
     let Some(func_def) = lower_func(db, func) else {
-        return;
+        return Vec::new();
     };
 
     let analyzer = DefAnalyzer::for_func(db, func_def);
-    let diags = analyzer.analyze();
-    for diag in diags {
-        FuncDefDiagAccumulator::push(db, diag);
-    }
+    analyzer.analyze()
 }
 
 /// This function implements analysis for the type alias definition.
@@ -169,32 +162,33 @@ pub fn analyze_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) {
 /// type system treats the alias as kind of macro, meaning type alias doesn't
 /// included in the type system. Satisfiability is checked where the type alias
 /// is used.
-#[salsa::tracked]
-pub fn analyze_type_alias<'db>(db: &'db dyn HirAnalysisDb, alias: TypeAlias<'db>) {
+#[salsa::tracked(return_ref)]
+pub fn analyze_type_alias<'db>(
+    db: &'db dyn HirAnalysisDb,
+    alias: TypeAlias<'db>,
+) -> Option<TyDiagCollection<'db>> {
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
-        return;
+        return None;
     };
 
     let ty = lower_hir_ty(db, hir_ty, alias.scope());
 
     if let Err(cycle) = lower_type_alias(db, alias) {
         if cycle.representative() == alias {
-            TypeAliasDefDiagAccumulator::push(
-                db,
-                TyLowerDiag::TypeAliasCycle {
-                    primary: alias.lazy_span().ty().into(),
-                    cycle: cycle.participants().collect(),
-                }
-                .into(),
-            );
+            let diag = TyLowerDiag::TypeAliasCycle {
+                primary: alias.lazy_span().ty().into(),
+                cycle: cycle.participants().collect(),
+            };
+            return Some(diag.into());
         }
-        return;
     }
 
     // We don't need to check for bound satisfiability here because type alias
     // doesn't have trait bound, it will be checked where the type alias is used.
     if let Some(diag) = ty.emit_diag(db, alias.lazy_span().ty().into()) {
-        TypeAliasDefDiagAccumulator::push(db, diag);
+        Some(diag)
+    } else {
+        None
     }
 }
 
@@ -321,8 +315,8 @@ impl<'db> DefAnalyzer<'db> {
     // occur.
     fn verify_method_generic_param_conflict(
         &mut self,
-        params: GenericParamListId,
-        span: LazyGenericParamListSpan,
+        params: GenericParamListId<'db>,
+        span: LazyGenericParamListSpan<'db>,
     ) -> bool {
         let mut is_conflict = false;
         for (i, param) in params.data(self.db.as_hir_db()).iter().enumerate() {
@@ -634,7 +628,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
     fn visit_kind_bound(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+        ctxt: &mut VisitorCtxt<'db, LazyKindBoundSpan<'db>>,
         bound: &hir::hir_def::KindBound,
     ) {
         let Some((ty, _)) = self.current_ty else {
@@ -1157,7 +1151,7 @@ fn analyze_impl_trait_specific_error<'db>(
         collect_trait_constraints(db, trait_def).instantiate(db, trait_inst.args(db));
     let assumptions = implementor.instantiate_identity().constraints(db);
 
-    let mut is_satisfied = |goal: TraitInstId, span: DynLazySpan| {
+    let mut is_satisfied = |goal: TraitInstId<'db>, span: DynLazySpan<'db>| {
         let canonical_goal = Canonicalized::new(db, goal);
         match is_goal_satisfiable(db, assumptions, canonical_goal.value) {
             GoalSatisfiability::Satisfied(_) | GoalSatisfiability::ContainsInvalid => {}

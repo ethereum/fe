@@ -279,7 +279,7 @@ impl<'db> TyId<'db> {
                 self.db
             }
 
-            fn visit_invalid(&mut self, cause: &InvalidCause) {
+            fn visit_invalid(&mut self, cause: &InvalidCause<'db>) {
                 let db = self.db;
 
                 let span = self.span.clone();

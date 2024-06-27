@@ -22,21 +22,6 @@ use super::{
 };
 use crate::{name_resolution::diagnostics::NameResDiag, HirAnalysisDb};
 
-#[salsa::accumulator]
-pub struct AdtDefDiagAccumulator<'db>(pub(super) TyDiagCollection<'db>);
-#[salsa::accumulator]
-pub struct TraitDefDiagAccumulator<'db>(pub(super) TyDiagCollection<'db>);
-#[salsa::accumulator]
-pub struct ImplTraitDefDiagAccumulator<'db>(pub(super) TyDiagCollection<'db>);
-#[salsa::accumulator]
-pub struct ImplDefDiagAccumulator<'db>(pub(super) TyDiagCollection<'db>);
-#[salsa::accumulator]
-pub struct FuncDefDiagAccumulator<'db>(pub(super) TyDiagCollection<'db>);
-#[salsa::accumulator]
-pub struct TypeAliasDefDiagAccumulator<'db>(pub(super) TyDiagCollection<'db>);
-#[salsa::accumulator]
-pub struct FuncBodyDiagAccumulator<'db>(pub(super) FuncBodyDiag<'db>);
-
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
 pub enum FuncBodyDiag<'db> {
     Ty(TyDiagCollection<'db>),
@@ -142,7 +127,7 @@ impl<'db> TyLowerDiag<'db> {
     }
 
     pub fn invalid_type_arg_kind(
-        db: &dyn HirAnalysisDb,
+        db: &'db dyn HirAnalysisDb,
         span: DynLazySpan<'db>,
         expected: Option<Kind>,
         arg: TyId<'db>,
@@ -726,7 +711,7 @@ impl<'db> BodyDiag<'db> {
         record_like: T,
     ) -> Self
     where
-        T: RecordLike,
+        T: RecordLike<'db>,
     {
         let kind_name = record_like.kind_name(db);
         let hint = record_like.initializer_hint(db);
@@ -743,7 +728,7 @@ impl<'db> BodyDiag<'db> {
         record_like: Option<T>,
     ) -> Self
     where
-        T: RecordLike,
+        T: RecordLike<'db>,
     {
         let (kind_name, hint) = if let Some(record_like) = record_like {
             (
@@ -762,12 +747,12 @@ impl<'db> BodyDiag<'db> {
     }
 
     pub(super) fn record_expected<T>(
-        db: &dyn HirAnalysisDb,
+        db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
         record_like: Option<T>,
     ) -> Self
     where
-        T: RecordLike,
+        T: RecordLike<'db>,
     {
         let (kind_name, hint) = if let Some(record_like) = record_like {
             (

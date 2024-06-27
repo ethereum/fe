@@ -264,12 +264,12 @@ fn compare_ty<'db>(
 /// satisfied under the assumptions that is obtained from the `expected_method`
 /// constraints.
 /// Returns `false` if the comparison fails.
-fn compare_constraints(
-    db: &dyn HirAnalysisDb,
-    impl_m: FuncDef,
-    trait_m: FuncDef,
-    map_to_impl: &[TyId],
-    sink: &mut Vec<TyDiagCollection>,
+fn compare_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_m: FuncDef<'db>,
+    trait_m: FuncDef<'db>,
+    map_to_impl: &[TyId<'db>],
+    sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let impl_m_constraints = collect_func_def_constraints(db, impl_m, false).instantiate_identity();
     let trait_m_constraints =

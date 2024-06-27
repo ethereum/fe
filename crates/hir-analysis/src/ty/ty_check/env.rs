@@ -202,10 +202,10 @@ impl<'db> TyCheckEnv<'db> {
     pub(super) fn finish(
         mut self,
         table: &mut UnificationTable<'db>,
-    ) -> (TypedBody<'db>, Vec<FuncBodyDiag<'db>>) {
+        sink: &mut Vec<FuncBodyDiag<'db>>,
+    ) -> TypedBody<'db> {
         let mut prober = Prober { table };
-
-        let diags = self.perform_pending_confirmation(&mut prober);
+        self.perform_pending_confirmation(&mut prober, sink);
 
         self.expr_ty
             .values_mut()
@@ -221,15 +221,12 @@ impl<'db> TyCheckEnv<'db> {
             .map(|(expr, callable)| (expr, callable.fold_with(&mut prober)))
             .collect();
 
-        (
-            TypedBody {
-                body: Some(self.body),
-                pat_ty: self.pat_ty,
-                expr_ty: self.expr_ty,
-                callables,
-            },
-            diags,
-        )
+        TypedBody {
+            body: Some(self.body),
+            pat_ty: self.pat_ty,
+            expr_ty: self.expr_ty,
+            callables,
+        }
     }
 
     pub(super) fn expr_data(&self, expr: ExprId) -> &'db Partial<Expr<'db>> {
@@ -252,8 +249,11 @@ impl<'db> TyCheckEnv<'db> {
         &self.var_env[idx]
     }
 
-    fn perform_pending_confirmation(&self, prober: &mut Prober<'db, '_>) -> Vec<FuncBodyDiag<'db>> {
-        let mut diags = vec![];
+    fn perform_pending_confirmation(
+        &self,
+        prober: &mut Prober<'db, '_>,
+        sink: &mut Vec<FuncBodyDiag<'db>>,
+    ) {
         let assumptions = self.assumptions();
         let mut changed = true;
         // Try to perform confirmation until all pending confirmations reaches to
@@ -292,7 +292,7 @@ impl<'db> TyCheckEnv<'db> {
 
                     if !inst.self_ty(self.db).has_var(self.db) {
                         let diag = BodyDiag::ambiguous_trait_inst(self.db, span.clone(), insts);
-                        diags.push(diag.into())
+                        sink.push(diag.into())
                     }
                 }
 
@@ -301,8 +301,6 @@ impl<'db> TyCheckEnv<'db> {
                 }
             }
         }
-
-        diags
     }
 }
 

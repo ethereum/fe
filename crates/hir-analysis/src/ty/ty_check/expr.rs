@@ -13,7 +13,7 @@ use crate::{
     ty::{
         canonical::Canonicalized,
         const_ty::ConstTyId,
-        diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
+        diagnostics::BodyDiag,
         ty_check::{
             callable::Callable,
             method_selection::{select_method_candidate, Candidate},
@@ -127,7 +127,7 @@ impl<'db> TyChecker<'db> {
         let base_ty = expr_ty.base_ty(self.db);
         if base_ty.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
 
@@ -139,7 +139,7 @@ impl<'db> TyChecker<'db> {
             expr_ty,
             *op,
         );
-        FuncBodyDiagAccumulator::push(self.db, diag.into());
+        self.push_diag(diag);
 
         ExprProp::invalid(self.db)
     }
@@ -233,7 +233,7 @@ impl<'db> TyChecker<'db> {
         let lhs_base_ty = lhs_ty.base_ty(self.db);
         if lhs_base_ty.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
 
@@ -245,7 +245,7 @@ impl<'db> TyChecker<'db> {
             lhs_ty,
             *op,
         );
-        FuncBodyDiagAccumulator::push(self.db, diag.into());
+        self.push_diag(diag);
 
         ExprProp::invalid(self.db)
     }
@@ -265,7 +265,7 @@ impl<'db> TyChecker<'db> {
             match Callable::new(self.db, callee_ty, callee.lazy_span(self.body()).into()) {
                 Ok(callable) => callable,
                 Err(diag) => {
-                    FuncBodyDiagAccumulator::push(self.db, diag);
+                    self.push_diag(diag);
                     return ExprProp::invalid(self.db);
                 }
             };
@@ -310,7 +310,7 @@ impl<'db> TyChecker<'db> {
         ) {
             Ok(candidate) => candidate,
             Err(diag) => {
-                FuncBodyDiagAccumulator::push(self.db, diag);
+                self.push_diag(diag);
                 return ExprProp::invalid(self.db);
             }
         };
@@ -340,7 +340,7 @@ impl<'db> TyChecker<'db> {
             match Callable::new(self.db, func_ty, receiver.lazy_span(self.body()).into()) {
                 Ok(callable) => callable,
                 Err(diag) => {
-                    FuncBodyDiagAccumulator::push(self.db, diag);
+                    self.push_diag(diag);
                     return ExprProp::invalid(self.db);
                 }
             };
@@ -360,7 +360,7 @@ impl<'db> TyChecker<'db> {
         ExprProp::new(ret_ty, true)
     }
 
-    fn check_path(&mut self, expr: ExprId, expr_data: &Expr) -> ExprProp {
+    fn check_path(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
         let Expr::Path(path) = expr_data else {
             unreachable!()
         };
@@ -377,15 +377,14 @@ impl<'db> TyChecker<'db> {
                     ExprProp::new(const_ty_ty, true)
                 } else {
                     let diag = if ty.is_struct(self.db) {
-                        BodyDiag::unit_variant_expected(self.db, span.into(), ty).into()
+                        BodyDiag::unit_variant_expected(self.db, span.into(), ty)
                     } else {
                         BodyDiag::NotValue {
                             primary: span.into(),
                             given: Either::Right(ty),
                         }
-                        .into()
                     };
-                    FuncBodyDiagAccumulator::push(self.db, diag);
+                    self.push_diag(diag);
 
                     ExprProp::invalid(self.db)
                 }
@@ -398,7 +397,7 @@ impl<'db> TyChecker<'db> {
                     primary: span.into(),
                     given: Either::Left(trait_.trait_(self.db).into()),
                 };
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
 
@@ -412,9 +411,8 @@ impl<'db> TyChecker<'db> {
                         self.db,
                         expr.lazy_span(self.body()).into(),
                         variant,
-                    )
-                    .into();
-                    FuncBodyDiagAccumulator::push(self.db, diag);
+                    );
+                    self.push_diag(diag);
 
                     TyId::invalid(self.db, InvalidCause::Other)
                 };
@@ -424,7 +422,7 @@ impl<'db> TyChecker<'db> {
 
             ResolvedPathInBody::NewBinding(ident) => {
                 let diag = BodyDiag::UndefinedVariable(span.into(), ident);
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
 
                 ExprProp::invalid(self.db)
             }
@@ -436,7 +434,7 @@ impl<'db> TyChecker<'db> {
             }
 
             ResolvedPathInBody::Diag(diag) => {
-                FuncBodyDiagAccumulator::push(self.db, diag);
+                self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
 
@@ -461,7 +459,7 @@ impl<'db> TyChecker<'db> {
                     ExprProp::new(ty, true)
                 } else {
                     let diag = BodyDiag::record_expected(self.db, span.path().into(), Some(ty));
-                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    self.push_diag(diag);
 
                     ExprProp::invalid(self.db)
                 }
@@ -469,7 +467,7 @@ impl<'db> TyChecker<'db> {
 
             ResolvedPathInBody::Func(ty) | ResolvedPathInBody::Const(ty) => {
                 let diag = BodyDiag::record_expected(self.db, span.path().into(), Some(ty));
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
 
                 ExprProp::invalid(self.db)
             }
@@ -482,7 +480,7 @@ impl<'db> TyChecker<'db> {
                 } else {
                     let diag =
                         BodyDiag::record_expected::<TyId<'db>>(self.db, span.path().into(), None);
-                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    self.push_diag(diag);
 
                     ExprProp::invalid(self.db)
                 }
@@ -493,24 +491,24 @@ impl<'db> TyChecker<'db> {
                     primary: span.into(),
                     given: Either::Left(trait_.trait_(self.db).into()),
                 };
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
 
             ResolvedPathInBody::Binding(..) => {
                 let diag = BodyDiag::record_expected::<TyId>(self.db, span.into(), None);
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
 
             ResolvedPathInBody::NewBinding(_) => {
                 let diag = BodyDiag::record_expected::<TyId>(self.db, span.into(), None);
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
 
             ResolvedPathInBody::Diag(diag) => {
-                FuncBodyDiagAccumulator::push(self.db, diag);
+                self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
 
@@ -535,7 +533,7 @@ impl<'db> TyChecker<'db> {
             let expected = match rec_checker.feed_label(label, field_span) {
                 Ok(ty) => ty,
                 Err(diag) => {
-                    FuncBodyDiagAccumulator::push(rec_checker.tc.db, diag);
+                    rec_checker.tc.push_diag(diag);
                     TyId::invalid(rec_checker.tc.db, InvalidCause::Other)
                 }
             };
@@ -544,7 +542,7 @@ impl<'db> TyChecker<'db> {
         }
 
         if let Err(diag) = rec_checker.finalize(span.fields().into(), false) {
-            FuncBodyDiagAccumulator::push(self.db, diag);
+            self.push_diag(diag);
         }
     }
 
@@ -567,8 +565,7 @@ impl<'db> TyChecker<'db> {
 
         if ty_base.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
-
+            self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
 
@@ -587,7 +584,8 @@ impl<'db> TyChecker<'db> {
                                 scope.name_span(self.db.as_hir_db()),
                             );
 
-                            FuncBodyDiagAccumulator::push(self.db, diag.into());
+                            self.push_diag(diag);
+                            return ExprProp::invalid(self.db);
                         }
                     }
                     return ExprProp::new(field_ty, typed_lhs.is_mut);
@@ -610,7 +608,7 @@ impl<'db> TyChecker<'db> {
             lhs_ty,
             *field,
         );
-        FuncBodyDiagAccumulator::push(self.db, diag.into());
+        self.push_diag(diag);
 
         ExprProp::invalid(self.db)
     }
@@ -650,7 +648,7 @@ impl<'db> TyChecker<'db> {
 
         if lhs_base.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
 
@@ -673,7 +671,7 @@ impl<'db> TyChecker<'db> {
             lhs_ty,
             IndexingOp {},
         );
-        FuncBodyDiagAccumulator::push(self.db, diag.into());
+        self.push_diag(diag);
         ExprProp::invalid(self.db)
     }
 
@@ -724,7 +722,7 @@ impl<'db> TyChecker<'db> {
             let array_ty = TyId::app(self.db, array, len_ty);
 
             if let Some(diag) = array_ty.emit_diag(self.db, len_body.lazy_span().into()) {
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
             }
 
             array_ty
@@ -737,7 +735,7 @@ impl<'db> TyChecker<'db> {
         ExprProp::new(ty, true)
     }
 
-    fn check_if(&mut self, _expr: ExprId, expr_data: &Expr) -> ExprProp {
+    fn check_if(&mut self, _expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
         let Expr::If(cond, then, else_) = expr_data else {
             unreachable!()
         };
@@ -761,7 +759,7 @@ impl<'db> TyChecker<'db> {
         ExprProp::new(ty, true)
     }
 
-    fn check_match(&mut self, _expr: ExprId, expr_data: &Expr) -> ExprProp {
+    fn check_match(&mut self, _expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
         let Expr::Match(scrutinee, arms) = expr_data else {
             unreachable!()
         };
@@ -788,7 +786,7 @@ impl<'db> TyChecker<'db> {
         ExprProp::new(match_ty, true)
     }
 
-    fn check_assign(&mut self, _expr: ExprId, expr_data: &Expr) -> ExprProp {
+    fn check_assign(&mut self, _expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
         let Expr::Assign(lhs, rhs) = expr_data else {
             unreachable!()
         };
@@ -841,7 +839,7 @@ impl<'db> TyChecker<'db> {
         let lhs_base_ty = lhs_ty.base_ty(self.db);
         if lhs_base_ty.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
 
@@ -853,7 +851,7 @@ impl<'db> TyChecker<'db> {
             lhs_ty,
             AugAssignOp(*op),
         );
-        FuncBodyDiagAccumulator::push(self.db, diag.into());
+        self.push_diag(diag);
 
         ExprProp::invalid(self.db)
     }
@@ -861,7 +859,7 @@ impl<'db> TyChecker<'db> {
     fn check_assign_lhs(&mut self, lhs: ExprId, typed_lhs: &ExprProp<'db>) {
         if !self.is_assignable_expr(lhs) {
             let diag = BodyDiag::NonAssignableExpr(lhs.lazy_span(self.body()).into());
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
 
             return;
         }
@@ -887,7 +885,7 @@ impl<'db> TyChecker<'db> {
                 },
             };
 
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
         }
     }
 

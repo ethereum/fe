@@ -70,14 +70,6 @@ pub struct Jar(
     ty::trait_resolution::ty_depth_impl,
     // Type checking.
     ty::ty_check::check_func_body,
-    // Diagnostic accumulators.
-    ty::diagnostics::AdtDefDiagAccumulator,
-    ty::diagnostics::TypeAliasDefDiagAccumulator,
-    ty::diagnostics::TraitDefDiagAccumulator,
-    ty::diagnostics::ImplTraitDefDiagAccumulator,
-    ty::diagnostics::ImplDefDiagAccumulator,
-    ty::diagnostics::FuncDefDiagAccumulator,
-    ty::diagnostics::FuncBodyDiagAccumulator,
 );
 
 pub trait HirAnalysisDb: salsa::DbWithJar<Jar> + HirDb {

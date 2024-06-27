@@ -19,7 +19,7 @@ pub(super) use path::RecordLike;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
-    diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
+    diagnostics::{BodyDiag, FuncBodyDiag, TyDiagCollection, TyLowerDiag},
     fold::{TyFoldable, TyFolder},
     trait_def::{TraitInstId, TraitMethod},
     trait_resolution::PredicateListId,
@@ -33,9 +33,12 @@ use crate::{
 };
 
 #[salsa::tracked(return_ref)]
-pub fn check_func_body<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> TypedBody<'db> {
+pub fn check_func_body<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
     let Ok(mut checker) = TyChecker::new_with_func(db, func) else {
-        return TypedBody::empty();
+        return (Vec::new(), TypedBody::empty());
     };
 
     checker.run();
@@ -47,6 +50,7 @@ pub struct TyChecker<'db> {
     env: TyCheckEnv<'db>,
     table: UnificationTable<'db>,
     expected: TyId<'db>,
+    diags: Vec<FuncBodyDiag<'db>>,
 }
 
 impl<'db> TyChecker<'db> {
@@ -72,7 +76,7 @@ impl<'db> TyChecker<'db> {
         self.check_expr(root_expr, self.expected);
     }
 
-    fn finish(self) -> TypedBody<'db> {
+    fn finish(self) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
         TyCheckerFinalizer::new(self).finish()
     }
 
@@ -83,7 +87,12 @@ impl<'db> TyChecker<'db> {
             env,
             table,
             expected,
+            diags: Vec::new(),
         }
+    }
+
+    fn push_diag(&mut self, diag: impl Into<FuncBodyDiag<'db>>) {
+        self.diags.push(diag.into())
     }
 
     fn body(&self) -> Body<'db> {
@@ -103,21 +112,21 @@ impl<'db> TyChecker<'db> {
     }
 
     fn lower_ty(
-        &self,
+        &mut self,
         hir_ty: HirTyId<'db>,
         span: DynLazySpan<'db>,
         star_kind_required: bool,
     ) -> TyId<'db> {
         let ty = lower_hir_ty(self.db, hir_ty, self.env.scope());
         if let Some(diag) = ty.emit_diag(self.db, span.clone()) {
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag)
         }
 
         if star_kind_required && ty.is_star_kind(self.db) {
             ty
         } else {
             let diag: TyDiagCollection = TyLowerDiag::expected_star_kind_ty(span).into();
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
             TyId::invalid(self.db, InvalidCause::Other)
         }
     }
@@ -159,8 +168,8 @@ impl<'db> TyChecker<'db> {
         // FIXME: This is a temporary workaround, this should be removed when we
         // implement subtyping.
         if expected.is_never(self.db) && !actual.is_never(self.db) {
-            let diag = BodyDiag::type_mismatch(self.db, span, expected, actual).into();
-            FuncBodyDiagAccumulator::push(self.db, diag);
+            let diag = BodyDiag::type_mismatch(self.db, span, expected, actual);
+            self.push_diag(diag);
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
@@ -179,15 +188,12 @@ impl<'db> TyChecker<'db> {
             Err(UnificationError::TypeMismatch) => {
                 let actual = actual.fold_with(&mut self.table);
                 let expected = expected.fold_with(&mut self.table);
-                FuncBodyDiagAccumulator::push(
-                    self.db,
-                    BodyDiag::type_mismatch(self.db, span, expected, actual).into(),
-                );
+                self.push_diag(BodyDiag::type_mismatch(self.db, span, expected, actual));
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
             Err(UnificationError::OccursCheckFailed) => {
-                FuncBodyDiagAccumulator::push(self.db, BodyDiag::InfiniteOccurrence(span).into());
+                self.push_diag(BodyDiag::InfiniteOccurrence(span));
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
@@ -283,24 +289,20 @@ struct TyCheckerFinalizer<'db> {
 impl<'db> TyCheckerFinalizer<'db> {
     fn new(mut checker: TyChecker<'db>) -> Self {
         let assumptions = checker.env.assumptions();
-        let (body, diags) = checker.env.finish(&mut checker.table);
+        let body = checker.env.finish(&mut checker.table, &mut checker.diags);
 
         Self {
             db: checker.db,
             body,
             assumptions,
             ty_vars: FxHashSet::default(),
-            diags,
+            diags: checker.diags,
         }
     }
 
-    fn finish(mut self) -> TypedBody<'db> {
+    fn finish(mut self) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
         self.check_unknown_types();
-
-        for diag in self.diags {
-            FuncBodyDiagAccumulator::push(self.db, diag);
-        }
-        self.body
+        (self.diags, self.body)
     }
 
     fn check_unknown_types(&mut self) {

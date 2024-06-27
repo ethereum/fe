@@ -2,7 +2,7 @@ use hir::hir_def::{IdentId, Partial, Stmt, StmtId};
 
 use super::TyChecker;
 use crate::ty::{
-    diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
+    diagnostics::BodyDiag,
     fold::TyFoldable,
     ty_def::{InvalidCause, TyId},
 };
@@ -63,8 +63,7 @@ impl<'db> TyChecker<'db> {
             TyId::invalid(self.db, InvalidCause::Other)
         } else if base.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(expr.lazy_span(self.body()).into());
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
-
+            self.push_diag(diag);
             TyId::invalid(self.db, InvalidCause::Other)
         } else {
             let diag = BodyDiag::TraitNotImplemented {
@@ -72,7 +71,7 @@ impl<'db> TyChecker<'db> {
                 ty: expr_ty.pretty_print(self.db).to_string(),
                 trait_name: IdentId::new(self.db.as_hir_db(), "Iterator".to_string()),
             };
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
 
             TyId::invalid(self.db, InvalidCause::Other)
         };
@@ -115,7 +114,7 @@ impl<'db> TyChecker<'db> {
                 primary: span.into(),
                 is_break: false,
             };
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
         }
 
         TyId::never(self.db)
@@ -130,7 +129,7 @@ impl<'db> TyChecker<'db> {
                 primary: span.into(),
                 is_break: true,
             };
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
         }
 
         TyId::never(self.db)
@@ -160,7 +159,7 @@ impl<'db> TyChecker<'db> {
                 func.map(|f| f.hir_func_def(self.db).unwrap()),
             );
 
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
         }
 
         TyId::never(self.db)
