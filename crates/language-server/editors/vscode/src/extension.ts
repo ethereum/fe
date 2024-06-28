@@ -20,6 +20,7 @@ export async function activate(
 ): Promise<void> {
   // todo: bundle binary with extension (also: make this configurable?)  
   const serverPath = join(__dirname, '..', '..', '..', '..', '..', 'target', 'debug', 'fe-language-server');
+  // const serverPath = join(__dirname, '..', '..', '..', '..', '..', '..', 'async-lsp-sandbox', 'target', 'debug', 'async-lsp-sandbox');
 
   const serverExecutable: Executable = {
     command: serverPath,

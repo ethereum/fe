@@ -1,8 +1,9 @@
 use std::io::Write;
 
-use lsp_types::MessageType;
+use async_lsp::lsp_types::MessageType;
+use async_lsp::{ClientSocket, LanguageClient};
 use tokio::task::yield_now;
-use tower_lsp::Client;
+// use tower_lsp::Client;
 use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::layer::SubscriberExt;
@@ -10,7 +11,7 @@ use tracing_subscriber::prelude::*;
 
 pub async fn handle_log_messages(
     mut rx: tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>,
-    client: Client,
+    client: ClientSocket,
 ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
     loop {
         if let Some((message, message_type)) = rx.recv().await {

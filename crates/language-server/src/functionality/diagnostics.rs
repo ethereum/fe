@@ -151,8 +151,8 @@ impl LanguageServerDatabase {
     pub fn get_lsp_diagnostics(
         &self,
         files: Vec<InputFile>,
-    ) -> FxHashMap<lsp_types::Url, Vec<lsp_types::Diagnostic>> {
-        let mut result = FxHashMap::<lsp_types::Url, Vec<lsp_types::Diagnostic>>::default();
+    ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
+        let mut result = FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default();
         files
             .iter()
             .flat_map(|file| {

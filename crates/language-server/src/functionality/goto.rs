@@ -1,3 +1,4 @@
+use async_lsp::ResponseError;
 use fxhash::FxHashMap;
 use hir::{
     hir_def::{scope_graph::ScopeId, IdentId, ItemKind, Partial, PathId, TopLevelMod},
@@ -163,13 +164,10 @@ pub fn get_goto_target_scopes_for_cursor(
 use crate::backend::workspace::IngotFileContext;
 
 impl Backend {
-    pub(super) async fn handle_goto_definition(
+    pub(super) fn handle_goto_definition(
         &self,
-        params: lsp_types::GotoDefinitionParams,
-        responder: tokio::sync::oneshot::Sender<
-            Result<Option<lsp_types::GotoDefinitionResponse>, tower_lsp::jsonrpc::Error>,
-        >,
-    ) {
+        params: async_lsp::lsp_types::GotoDefinitionParams,
+    ) -> Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ResponseError> {
         // Convert the position to an offset in the file
         let params = params.text_document_position_params;
         let file_text = std::fs::read_to_string(params.text_document.uri.path()).ok();
@@ -190,8 +188,8 @@ impl Backend {
             .map(|scope| to_lsp_location_from_scope(*scope, self.db.as_spanned_hir_db()))
             .collect::<Vec<_>>();
 
-        let result: Result<Option<lsp_types::GotoDefinitionResponse>, ()> =
-            Ok(Some(lsp_types::GotoDefinitionResponse::Array(
+        let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
+            Ok(Some(async_lsp::lsp_types::GotoDefinitionResponse::Array(
                 locations
                     .into_iter()
                     .filter_map(std::result::Result::ok)
@@ -204,7 +202,7 @@ impl Backend {
                 None
             }
         };
-        let _ = responder.send(Ok(response));
+        Ok(response)
     }
 }
 #[cfg(test)]

@@ -263,7 +263,7 @@ fn gen_channel_structs(
         ///
         /// ```rust,ignore
         /// use tower_lsp::{LanguageServer, Client, jsonrpc::Result};
-        /// use lsp_types::{InitializeParams, InitializeResult};
+        /// use async_lsp::lsp_types::{InitializeParams, InitializeResult};
         ///
         /// struct Backend {
         ///     messaging: MessageSenders,
@@ -277,11 +277,11 @@ fn gen_channel_structs(
         ///
         ///         match rx.await {
         ///             Ok(result) => {
-        ///                 self.client.log_message(lsp_types::MessageType::INFO, "Server initialized!").await;
+        ///                 self.client.log_message(async_lsp::lsp_types::MessageType::INFO, "Server initialized!").await;
         ///                 Ok(result)
         ///             }
         ///             Err(e) => {
-        ///                 self.client.log_message(lsp_types::MessageType::ERROR, format!("Failed to initialize: {:?}", e)).await;
+        ///                 self.client.log_message(async_lsp::lsp_types::MessageType::ERROR, format!("Failed to initialize: {:?}", e)).await;
         ///                 Err(jsonrpc::Error::internal_error())
         ///             }
         ///         }
@@ -315,7 +315,7 @@ fn gen_channel_structs(
         ///     select! {
         ///         Some((params, responder)) = initialized_stream.next() => {
         ///             // Handle initialization request
-        ///             let result = lsp_types::InitializeResult { ... };
+        ///             let result = async_lsp::lsp_types::InitializeResult { ... };
         ///             let _ = responder.send(Ok(result));
         ///         }
         ///         // ...
