@@ -10,11 +10,14 @@ use hir::{analysis_pass::AnalysisPassManager, ParsingPass};
     glob: "*.fe"
 )]
 fn run_parser(fixture: Fixture<&str>) {
-    let mut driver = DriverDataBase::default();
+    let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
-    let top_mod = driver.top_mod_from_file(path, fixture.content());
-    driver.run_on_file_with_pass_manager(top_mod, init_parser_pass);
-    let diags = driver.format_diags();
+
+    let input_file = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(input_file);
+
+    let diags = db.run_on_file_with_pass_manager(top_mod, init_parser_pass);
+    let diags = diags.format_diags(&db);
     snap_test!(diags, fixture.path());
 }
 
@@ -26,8 +29,9 @@ fn init_parser_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
 
 #[cfg(target_family = "wasm")]
 mod wasm {
-    use super::*;
     use wasm_bindgen_test::wasm_bindgen_test;
+
+    use super::*;
 
     #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/fixtures/name_resolution",
@@ -38,9 +42,11 @@ mod wasm {
         #[wasm_bindgen_test]
     )]
     fn run_parser(fixture: Fixture<&str>) {
-        let mut driver = DriverDataBase::default();
+        let mut db = DriverDataBase::default();
         let path = Path::new(fixture.path());
-        let top_mod = driver.top_mod_from_file(path, fixture.content());
-        driver.run_on_file_with_pass_manager(top_mod, init_parser_pass);
+
+        let input_file = db.standalone(path, fixture.content());
+        let top_mod = db.top_mod(input_file);
+        db.run_on_top_mod(top_mod);
     }
 }

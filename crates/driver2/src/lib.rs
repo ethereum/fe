@@ -39,6 +39,7 @@ impl<DB> DriverDb for DB where
 {
 }
 
+#[derive(Default)]
 #[salsa::db(
     common::Jar,
     hir::Jar,
@@ -49,27 +50,27 @@ impl<DB> DriverDb for DB where
 )]
 pub struct DriverDataBase {
     storage: salsa::Storage<Self>,
-    diags: Vec<Box<dyn DiagnosticVoucher>>,
 }
 
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
-    pub fn run_on_top_mod(&mut self, top_mod: TopLevelMod) {
-        self.run_on_file_with_pass_manager(top_mod, initialize_analysis_pass);
+    pub fn run_on_top_mod<'db>(&'db self, top_mod: TopLevelMod<'db>) -> DiagnosticsCollection<'db> {
+        self.run_on_file_with_pass_manager(top_mod, initialize_analysis_pass)
     }
 
-    pub fn run_on_file_with_pass_manager<F>(&mut self, top_mod: TopLevelMod, pm_builder: F)
+    pub fn run_on_file_with_pass_manager<'db, F>(
+        &'db self,
+        top_mod: TopLevelMod<'db>,
+        pm_builder: F,
+    ) -> DiagnosticsCollection<'db>
     where
-        F: FnOnce(&DriverDataBase) -> AnalysisPassManager<'_>,
+        F: FnOnce(&'db DriverDataBase) -> AnalysisPassManager<'db>,
     {
-        self.diags.clear();
-        self.diags = {
-            let mut pass_manager = pm_builder(self);
-            pass_manager.run_on_module(top_mod)
-        };
+        let mut pass_manager = pm_builder(self);
+        DiagnosticsCollection(pass_manager.run_on_module(top_mod))
     }
 
-    pub fn top_mod_from_file(&mut self, file_path: &path::Path, source: &str) -> TopLevelMod {
+    pub fn standalone(&mut self, file_path: &path::Path, source: &str) -> InputFile {
         let kind = IngotKind::StandAlone;
 
         // We set the ingot version to 0.0.0 for stand-alone file.
@@ -84,46 +85,14 @@ impl DriverDataBase {
         );
 
         let file_name = root_file.file_name().unwrap().to_str().unwrap();
-        let file = InputFile::new(self, ingot, file_name.into(), source.to_string());
-        ingot.set_root_file(self, file);
-        ingot.set_files(self, [file].into());
-
-        map_file_to_mod(self, file)
+        let input_file = InputFile::new(self, ingot, file_name.into(), source.to_string());
+        ingot.set_root_file(self, input_file);
+        ingot.set_files(self, [input_file].into());
+        input_file
     }
 
-    /// Prints accumulated diagnostics to stderr.
-    pub fn emit_diags(&self) {
-        let writer = BufferWriter::stderr(ColorChoice::Auto);
-        let mut buffer = writer.buffer();
-        let config = term::Config::default();
-
-        for diag in self.finalize_diags() {
-            term::emit(&mut buffer, &config, self, &diag.to_cs(self)).unwrap();
-        }
-
-        eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
-    }
-
-    /// Format the accumulated diagnostics to a string.
-    pub fn format_diags(&self) -> String {
-        let writer = BufferWriter::stderr(ColorChoice::Never);
-        let mut buffer = writer.buffer();
-        let config = term::Config::default();
-
-        for diag in self.finalize_diags() {
-            term::emit(&mut buffer, &config, self, &diag.to_cs(self)).unwrap();
-        }
-
-        std::str::from_utf8(buffer.as_slice()).unwrap().to_string()
-    }
-
-    fn finalize_diags(&self) -> Vec<CompleteDiagnostic> {
-        let mut diags: Vec<_> = self.diags.iter().map(|d| d.to_complete(self)).collect();
-        diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
-            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
-            ord => ord,
-        });
-        diags
+    pub fn top_mod(&self, input: InputFile) -> TopLevelMod {
+        map_file_to_mod(self, input)
     }
 }
 
@@ -131,14 +100,40 @@ impl salsa::Database for DriverDataBase {
     fn salsa_event(&self, _: salsa::Event) {}
 }
 
-impl Default for DriverDataBase {
-    fn default() -> Self {
-        let db = Self {
-            storage: Default::default(),
-            diags: Vec::new(),
-        };
-        db.prefill();
-        db
+pub struct DiagnosticsCollection<'db>(Vec<Box<dyn DiagnosticVoucher<'db> + 'db>>);
+impl<'db> DiagnosticsCollection<'db> {
+    pub fn emit(&self, db: &'db DriverDataBase) {
+        let writer = BufferWriter::stderr(ColorChoice::Auto);
+        let mut buffer = writer.buffer();
+        let config = term::Config::default();
+
+        for diag in self.finalize(db) {
+            term::emit(&mut buffer, &config, db, &diag.to_cs(db)).unwrap();
+        }
+
+        eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
+    }
+
+    /// Format the accumulated diagnostics to a string.
+    pub fn format_diags(&self, db: &'db DriverDataBase) -> String {
+        let writer = BufferWriter::stderr(ColorChoice::Never);
+        let mut buffer = writer.buffer();
+        let config = term::Config::default();
+
+        for diag in self.finalize(db) {
+            term::emit(&mut buffer, &config, db, &diag.to_cs(db)).unwrap();
+        }
+
+        std::str::from_utf8(buffer.as_slice()).unwrap().to_string()
+    }
+
+    fn finalize(&self, db: &'db DriverDataBase) -> Vec<CompleteDiagnostic> {
+        let mut diags: Vec<_> = self.0.iter().map(|d| d.to_complete(db)).collect();
+        diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+            ord => ord,
+        });
+        diags
     }
 }
 

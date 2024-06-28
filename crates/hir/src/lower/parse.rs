@@ -34,12 +34,12 @@ pub struct ParserError {
 // `ParseError` has span information, but this is not a problem because the
 // parsing procedure itself depends on the file content, and thus span
 // information.
-impl DiagnosticVoucher for ParserError {
+impl<'db> DiagnosticVoucher<'db> for ParserError {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::Parse, 1)
     }
 
-    fn to_complete(&self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, _db: &'db dyn SpannedHirDb) -> CompleteDiagnostic {
         let error_code = self.error_code();
         let span = Span::new(self.file, self.error.range(), SpanKind::Original);
         CompleteDiagnostic::new(

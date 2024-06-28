@@ -102,7 +102,7 @@ impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn diagnostics::DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn diagnostics::DiagnosticVoucher<'db> + 'db>> {
         parse_file_impl::accumulated::<ParseErrorAccumulator>(self.db, top_mod)
             .into_iter()
             .map(|d| Box::new(d) as _)

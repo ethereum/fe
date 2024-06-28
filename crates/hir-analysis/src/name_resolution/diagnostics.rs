@@ -274,12 +274,12 @@ impl<'db> NameResDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher for NameResDiag<'db> {
+impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::NameResolution, self.local_code())
     }
 
-    fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &'db dyn hir::SpannedHirDb) -> CompleteDiagnostic {
         let error_code = self.error_code();
         let message = self.message(db.as_hir_db());
         let sub_diags = self.sub_diagnostics(db);

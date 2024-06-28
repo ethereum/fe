@@ -25,12 +25,13 @@ use hir::{
     hir_def::TopLevelMod,
     lower,
     span::{DynLazySpan, LazySpan},
-    HirDb, ParsingPass, SpannedHirDb,
+    ParsingPass, SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
 
 type CodeSpanFileId = usize;
 
+#[derive(Default)]
 #[salsa::db(
     common::Jar,
     hir::Jar,
@@ -43,20 +44,19 @@ pub struct HirAnalysisTestDb {
 }
 
 impl HirAnalysisTestDb {
-    pub fn new_stand_alone(
-        &mut self,
-        file_name: &str,
-        text: &str,
-    ) -> (TopLevelMod, HirPropertyFormatter) {
+    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> InputFile {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
         let ingot = InputIngot::new(self, file_name, kind, version, BTreeSet::default());
         let root = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into());
+        root
+    }
 
+    pub fn top_mod(&self, input: InputFile) -> (TopLevelMod, HirPropertyFormatter) {
         let mut prop_formatter = HirPropertyFormatter::default();
-        let top_mod = self.register_file(&mut prop_formatter, root);
+        let top_mod = self.register_file(&mut prop_formatter, input);
         (top_mod, prop_formatter)
     }
 
@@ -68,9 +68,9 @@ impl HirAnalysisTestDb {
         }
     }
 
-    fn register_file(
-        &self,
-        prop_formatter: &mut HirPropertyFormatter,
+    fn register_file<'db>(
+        &'db self,
+        prop_formatter: &mut HirPropertyFormatter<'db>,
         input_file: InputFile,
     ) -> TopLevelMod {
         let top_mod = lower::map_file_to_mod(self, input_file);
@@ -81,28 +81,18 @@ impl HirAnalysisTestDb {
     }
 }
 
-impl Default for HirAnalysisTestDb {
-    fn default() -> Self {
-        let db = Self {
-            storage: Default::default(),
-        };
-        db.prefill();
-        db
-    }
-}
-
-pub struct HirPropertyFormatter {
+pub struct HirPropertyFormatter<'db> {
     // https://github.com/rust-lang/rust/issues/46379
     #[allow(dead_code)]
-    properties: BTreeMap<TopLevelMod, Vec<(String, DynLazySpan)>>,
-    top_mod_to_file: FxHashMap<TopLevelMod, CodeSpanFileId>,
+    properties: BTreeMap<TopLevelMod<'db>, Vec<(String, DynLazySpan<'db>)>>,
+    top_mod_to_file: FxHashMap<TopLevelMod<'db>, CodeSpanFileId>,
     code_span_files: SimpleFiles<String, String>,
 }
 
-impl HirPropertyFormatter {
+impl<'db> HirPropertyFormatter<'db> {
     // https://github.com/rust-lang/rust/issues/46379
     #[allow(dead_code)]
-    pub fn push_prop(&mut self, top_mod: TopLevelMod, span: DynLazySpan, prop: String) {
+    pub fn push_prop(&mut self, top_mod: TopLevelMod<'db>, span: DynLazySpan<'db>, prop: String) {
         self.properties
             .entry(top_mod)
             .or_default()
@@ -111,7 +101,7 @@ impl HirPropertyFormatter {
 
     // https://github.com/rust-lang/rust/issues/46379
     #[allow(dead_code)]
-    pub fn finish(&mut self, db: &dyn SpannedHirDb) -> String {
+    pub fn finish(&mut self, db: &'db dyn SpannedHirDb) -> String {
         let writer = BufferWriter::stderr(ColorChoice::Never);
         let mut buffer = writer.buffer();
         let config = term::Config::default();
@@ -139,10 +129,10 @@ impl HirPropertyFormatter {
 
     fn property_to_diag(
         &self,
-        db: &dyn SpannedHirDb,
-        top_mod: TopLevelMod,
+        db: &'db dyn SpannedHirDb,
+        top_mod: TopLevelMod<'db>,
         prop: &str,
-        span: DynLazySpan,
+        span: DynLazySpan<'db>,
     ) -> (Span, Diagnostic<usize>) {
         let file_id = self.top_mod_to_file[&top_mod];
         let span = span.resolve(db).unwrap();
@@ -151,13 +141,13 @@ impl HirPropertyFormatter {
         (span, diag)
     }
 
-    fn register_top_mod(&mut self, path: &str, text: &str, top_mod: TopLevelMod) {
+    fn register_top_mod(&mut self, path: &str, text: &str, top_mod: TopLevelMod<'db>) {
         let file_id = self.code_span_files.add(path.to_string(), text.to_string());
         self.top_mod_to_file.insert(top_mod, file_id);
     }
 }
 
-impl Default for HirPropertyFormatter {
+impl<'db> Default for HirPropertyFormatter<'db> {
     fn default() -> Self {
         Self {
             properties: Default::default(),

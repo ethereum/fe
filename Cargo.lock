@@ -1097,7 +1097,7 @@ version = "0.26.0"
 dependencies = [
  "camino",
  "fe-parser2",
- "salsa 0.18.0",
+ "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
  "semver 1.0.23",
  "smol_str",
 ]
@@ -1190,7 +1190,7 @@ dependencies = [
  "fe-hir",
  "fe-hir-analysis",
  "fe-macros",
- "salsa 0.18.0",
+ "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
 ]
 
 [[package]]
@@ -1208,7 +1208,7 @@ dependencies = [
  "num-traits",
  "paste",
  "rustc-hash",
- "salsa 0.18.0",
+ "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
  "smallvec",
 ]
 
@@ -1231,7 +1231,7 @@ dependencies = [
  "itertools",
  "num-bigint",
  "rustc-hash",
- "salsa 0.18.0",
+ "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
  "smallvec",
 ]
 
@@ -1260,7 +1260,7 @@ dependencies = [
  "lsp-types",
  "patricia_tree",
  "rowan",
- "salsa 0.18.0",
+ "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa)",
  "serde",
  "serde_json",
  "url",
@@ -2961,6 +2961,23 @@ dependencies = [
 [[package]]
 name = "salsa"
 version = "0.18.0"
+source = "git+https://github.com/salsa-rs/salsa?rev=a1bf3a6#a1bf3a613f451af7fc0a59411c56abc47fe8e8e1"
+dependencies = [
+ "arc-swap",
+ "crossbeam",
+ "dashmap",
+ "hashlink",
+ "indexmap 2.2.6",
+ "log",
+ "parking_lot 0.12.3",
+ "rustc-hash",
+ "salsa-macros 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
+ "smallvec",
+]
+
+[[package]]
+name = "salsa"
+version = "0.18.0"
 source = "git+https://github.com/salsa-rs/salsa#a1bf3a613f451af7fc0a59411c56abc47fe8e8e1"
 dependencies = [
  "arc-swap",
@@ -2971,7 +2988,7 @@ dependencies = [
  "log",
  "parking_lot 0.12.3",
  "rustc-hash",
- "salsa-macros 0.18.0",
+ "salsa-macros 0.18.0 (git+https://github.com/salsa-rs/salsa)",
  "smallvec",
 ]
 
@@ -2985,6 +3002,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "salsa-macros"
+version = "0.18.0"
+source = "git+https://github.com/salsa-rs/salsa?rev=a1bf3a6#a1bf3a613f451af7fc0a59411c56abc47fe8e8e1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.68",
+ "synstructure",
 ]
 
 [[package]]

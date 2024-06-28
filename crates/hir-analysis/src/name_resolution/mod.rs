@@ -101,7 +101,7 @@ impl<'db> ModuleAnalysisPass<'db> for ImportAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         let ingot = top_mod.ingot(self.db.as_hir_db());
         resolve_imports(self.db, ingot)
             .0
@@ -137,7 +137,7 @@ impl<'db> ModuleAnalysisPass<'db> for PathAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         let errors = &resolve_path_early_impl(self.db, top_mod).0;
 
         errors
@@ -166,7 +166,7 @@ impl<'db> ModuleAnalysisPass<'db> for DefConflictAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         let errors = &resolve_path_early_impl(self.db, top_mod).0;
 
         errors

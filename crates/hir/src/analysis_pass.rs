@@ -3,8 +3,10 @@ use crate::{diagnostics::DiagnosticVoucher, hir_def::TopLevelMod};
 /// All analysis passes that run analysis on the HIR top level module
 /// granularity should implement this trait.
 pub trait ModuleAnalysisPass<'db> {
-    fn run_on_module(&mut self, top_mod: TopLevelMod<'db>)
-        -> Vec<Box<dyn DiagnosticVoucher + 'db>>;
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod<'db>,
+    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>>;
 }
 
 #[derive(Default)]
@@ -24,7 +26,7 @@ impl<'db> AnalysisPassManager<'db> {
     pub fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         let mut diags = vec![];
         for pass in self.module_passes.iter_mut() {
             diags.extend(pass.run_on_module(top_mod));

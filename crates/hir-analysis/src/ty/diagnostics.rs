@@ -30,7 +30,7 @@ pub enum FuncBodyDiag<'db> {
 }
 
 impl<'db> FuncBodyDiag<'db> {
-    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher + 'db> {
+    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db> {
         match self {
             Self::Ty(diag) => diag.to_voucher(),
             Self::Body(diag) => Box::new(diag.clone()) as _,
@@ -48,7 +48,7 @@ pub enum TyDiagCollection<'db> {
 }
 
 impl<'db> TyDiagCollection<'db> {
-    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher + 'db> {
+    pub(super) fn to_voucher(&self) -> Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
             TyDiagCollection::Satisfiability(diag) => Box::new(diag) as _,
@@ -515,12 +515,12 @@ impl<'db> TyLowerDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher for TyLowerDiag<'db> {
+impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code())
     }
 
-    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
         let message = self.message();
@@ -1571,12 +1571,12 @@ impl<'db> BodyDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher for BodyDiag<'db> {
+impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TyCheck, self.local_code())
     }
 
-    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
         let message = self.message(db.as_hir_db());
@@ -1669,12 +1669,12 @@ impl<'db> TraitLowerDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher for TraitLowerDiag<'db> {
+impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::ImplTraitDefinition, self.local_code())
     }
 
-    fn to_complete(&self, db: &dyn hir::SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &'db dyn hir::SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
         let message = self.message();
@@ -1883,12 +1883,12 @@ impl<'db> TraitConstraintDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher for TraitConstraintDiag<'db> {
+impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code())
     }
 
-    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
         let message = self.message();
@@ -2359,12 +2359,12 @@ impl<'db> ImplDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher for ImplDiag<'db> {
+impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
     fn error_code(&self) -> GlobalErrorCode {
         GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code())
     }
 
-    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic {
         let severity = self.severity();
         let error_code = self.error_code();
         let message = self.message(db.as_hir_db());

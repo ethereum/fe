@@ -43,7 +43,7 @@ impl<'db> ModuleAnalysisPass<'db> for AdtDefAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db>> {
         let hir_db = self.db.as_hir_db();
         let adts = top_mod
             .all_structs(hir_db)
@@ -80,7 +80,7 @@ impl<'db> ModuleAnalysisPass<'db> for BodyAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db>> {
         top_mod
             .all_funcs(self.db.as_hir_db())
             .iter()
@@ -104,7 +104,7 @@ impl<'db> ModuleAnalysisPass<'db> for TraitAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db>> {
         top_mod
             .all_traits(self.db.as_hir_db())
             .iter()
@@ -128,7 +128,7 @@ impl<'db> ModuleAnalysisPass<'db> for ImplAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db>> {
         top_mod
             .all_impls(self.db.as_hir_db())
             .iter()
@@ -153,7 +153,7 @@ impl<'db> ModuleAnalysisPass<'db> for ImplTraitAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db>> {
         top_mod
             .all_impl_traits(self.db.as_hir_db())
             .iter()
@@ -178,7 +178,7 @@ impl<'db> ModuleAnalysisPass<'db> for FuncAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db>> {
         top_mod
             .all_funcs(self.db.as_hir_db())
             .iter()
@@ -203,7 +203,7 @@ impl<'db> ModuleAnalysisPass<'db> for TypeAliasAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher + 'db>> {
+    ) -> Vec<Box<dyn hir::diagnostics::DiagnosticVoucher<'db> + 'db>> {
         top_mod
             .all_type_aliases(self.db.as_hir_db())
             .iter()

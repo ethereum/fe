@@ -313,7 +313,7 @@ impl<'db> TraitDef<'db> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, salsa::Update)]
 pub struct TraitMethod<'db>(pub FuncDef<'db>);
 
 impl<'db> TraitMethod<'db> {
