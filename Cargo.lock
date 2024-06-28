@@ -1097,6 +1097,7 @@ version = "0.26.0"
 dependencies = [
  "camino",
  "fe-parser2",
+ "indexmap 2.2.6",
  "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
  "semver 1.0.23",
  "smol_str",

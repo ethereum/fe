@@ -14,4 +14,5 @@ semver = "1.0.17"
 camino = "1.1.4"
 smol_str = "0.1.24"
 salsa = { git = "https://github.com/salsa-rs/salsa", rev = "a1bf3a6" }
+indexmap = "2.2"
 parser = { path = "../parser2", package = "fe-parser2" }
