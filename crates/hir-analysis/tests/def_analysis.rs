@@ -13,6 +13,6 @@ fn test_standalone(fixture: Fixture<&str>) {
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
     let input = db.new_stand_alone(file_name, fixture.content());
-    let (top_mod, mut prop_formatter) = db.top_mod(input);
+    let (top_mod, _) = db.top_mod(input);
     db.assert_no_diags(top_mod);
 }

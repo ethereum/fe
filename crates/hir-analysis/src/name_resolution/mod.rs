@@ -106,9 +106,8 @@ impl<'db> ModuleAnalysisPass<'db> for ImportAnalysisPass<'db> {
         resolve_imports(self.db, ingot)
             .0
             .iter()
-            .filter_map(|diag| {
-                (diag.top_mod(self.db) == top_mod).then(|| Box::new(diag.clone()) as _)
-            })
+            .filter(|diag| diag.top_mod(self.db) == top_mod)
+            .map(|diag| Box::new(diag.clone()) as _)
             .collect()
     }
 }
@@ -138,13 +137,12 @@ impl<'db> ModuleAnalysisPass<'db> for PathAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let errors = &resolve_path_early_impl(self.db, top_mod).0;
+        let diags = &resolve_path_early_impl(self.db, top_mod).0;
 
-        errors
-            .into_iter()
-            .filter_map(|err| {
-                (!matches!(err, NameResDiag::Conflict(..))).then(|| Box::new(err.clone()) as _)
-            })
+        diags
+            .iter()
+            .filter(|diag| !matches!(diag, NameResDiag::Conflict(..)))
+            .map(|diag| Box::new(diag.clone()) as _)
             .collect()
     }
 }
@@ -167,13 +165,12 @@ impl<'db> ModuleAnalysisPass<'db> for DefConflictAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let errors = &resolve_path_early_impl(self.db, top_mod).0;
+        let diags = &resolve_path_early_impl(self.db, top_mod).0;
 
-        errors
-            .into_iter()
-            .filter_map(|err| {
-                matches!(err, NameResDiag::Conflict(..)).then(|| Box::new(err.clone()) as _)
-            })
+        diags
+            .iter()
+            .filter(|diag| matches!(diag, NameResDiag::Conflict(..)))
+            .map(|diag| Box::new(diag.clone()) as _)
             .collect()
     }
 }

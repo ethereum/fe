@@ -62,7 +62,7 @@ impl<'db> ModuleAnalysisPass<'db> for AdtDefAnalysisPass<'db> {
                     .map(|c| AdtRefId::from_contract(self.db, *c)),
             );
 
-        adts.flat_map(|adt| analyze_adt(self.db, adt).into_iter())
+        adts.flat_map(|adt| analyze_adt(self.db, adt).iter())
             .map(|diag| diag.to_voucher())
             .collect()
     }
@@ -207,7 +207,7 @@ impl<'db> ModuleAnalysisPass<'db> for TypeAliasAnalysisPass<'db> {
         top_mod
             .all_type_aliases(self.db.as_hir_db())
             .iter()
-            .flat_map(|alias| analyze_type_alias(self.db, *alias).into_iter())
+            .flat_map(|alias| analyze_type_alias(self.db, *alias).iter())
             .map(|diag| diag.to_voucher())
             .collect()
     }

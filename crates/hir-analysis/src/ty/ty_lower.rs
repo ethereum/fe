@@ -3,9 +3,8 @@ use std::collections::BTreeSet;
 use either::Either;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamListId,
-    GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound, Partial, PathId,
-    TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
-    WhereClauseId,
+    GenericParamOwner, IdentId, ItemKind, KindBound as HirKindBound, Partial, PathId, TupleTypeId,
+    TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind, WhereClauseId,
 };
 use salsa::{function::FunctionIngredient, id::LookupId, ingredient::Ingredient};
 
@@ -103,11 +102,10 @@ fn recover_lower_type_alias_cycle<'db>(
         &<_ as salsa::storage::HasIngredientsFor<lower_type_alias>>::ingredient(jar).function;
     let ingredient_index = <FunctionIngredient<lower_type_alias> as Ingredient<
         dyn HirAnalysisDb,
-    >>::ingredient_index(&function_ingredient);
+    >>::ingredient_index(function_ingredient);
 
     let alias_cycle = cycle
         .participant_keys()
-        .into_iter()
         .filter_map(|key| {
             if ingredient_index == key.ingredient_index() {
                 let id = key.key_index();
@@ -743,10 +741,6 @@ pub(crate) struct GenericParamOwnerId<'db> {
 impl<'db> GenericParamOwnerId<'db> {
     pub(super) fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
         self.data(db).scope()
-    }
-
-    pub(super) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
-        self.data(db).top_mod(db.as_hir_db()).ingot(db.as_hir_db())
     }
 
     pub(super) fn where_clause(self, db: &'db dyn HirAnalysisDb) -> Option<WhereClauseId<'db>> {

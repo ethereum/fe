@@ -167,10 +167,7 @@ pub fn analyze_type_alias<'db>(
     db: &'db dyn HirAnalysisDb,
     alias: TypeAlias<'db>,
 ) -> Option<TyDiagCollection<'db>> {
-    let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
-        return None;
-    };
-
+    let hir_ty = alias.ty(db.as_hir_db()).to_opt()?;
     let ty = lower_hir_ty(db, hir_ty, alias.scope());
 
     if let Err(cycle) = lower_type_alias(db, alias) {
@@ -185,11 +182,7 @@ pub fn analyze_type_alias<'db>(
 
     // We don't need to check for bound satisfiability here because type alias
     // doesn't have trait bound, it will be checked where the type alias is used.
-    if let Some(diag) = ty.emit_diag(db, alias.lazy_span().ty().into()) {
-        Some(diag)
-    } else {
-        None
-    }
+    ty.emit_diag(db, alias.lazy_span().ty().into())
 }
 
 pub struct DefAnalyzer<'db> {

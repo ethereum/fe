@@ -1,3 +1,5 @@
+// TODO: Remove this when https://github.com/salsa-rs/salsa/pull/513 is fixed.
+#![allow(clippy::unused_unit)]
 pub mod attr;
 pub mod body;
 pub mod expr;
