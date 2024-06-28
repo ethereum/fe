@@ -155,7 +155,7 @@ impl<'db> TyFoldable<'db> for PredicateListId<'db> {
             .map(|pred| pred.fold_with(folder))
             .collect();
 
-        Self::new(folder.db(), predicates, self.ingot(folder.db()))
+        Self::new(folder.db(), predicates)
     }
 }
 

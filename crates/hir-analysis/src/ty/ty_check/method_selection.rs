@@ -321,7 +321,12 @@ impl<'db> MethodSelector<'db> {
         let cand = cand.fold_with(&mut table);
         let canonical_cand = Canonicalized::new(self.db, cand);
 
-        match is_goal_satisfiable(self.db, self.assumptions, canonical_cand.value) {
+        match is_goal_satisfiable(
+            self.db,
+            self.scope.ingot(self.db.as_hir_db()),
+            canonical_cand.value,
+            self.assumptions,
+        ) {
             GoalSatisfiability::Satisfied(solution) => {
                 // Map back the solution to the current context.
                 let solution = canonical_cand.extract_solution(&mut table, *solution);

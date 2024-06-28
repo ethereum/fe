@@ -13,7 +13,7 @@ use hir::{
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::function::Configuration;
+use salsa::id::LookupId;
 
 use super::{
     adt_def::{lower_adt, AdtRef, AdtRefId},
@@ -472,7 +472,9 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         let span = ctxt.span().unwrap();
         if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
             self.diags.push(diag)
-        } else if let Some(diag) = ty.emit_wf_diag(self.db, self.assumptions, span.into()) {
+        } else if let Some(diag) =
+            ty.emit_wf_diag(self.db, ctxt.ingot(), self.assumptions, span.into())
+        {
             self.diags.push(diag)
         }
     }
@@ -872,7 +874,10 @@ fn check_recursive_adt_impl<'db>(
 ) -> Option<TyDiagCollection<'db>> {
     let participants: FxHashSet<_> = cycle
         .participant_keys()
-        .map(|key| check_recursive_adt::key_from_id(key.key_index()))
+        .map(|key| {
+            let id = key.key_index();
+            AdtRefId::lookup_id(id, db)
+        })
         .collect();
 
     let adt_def = lower_adt(db, adt);
@@ -973,7 +978,7 @@ fn analyze_trait_ref<'db>(
     };
 
     if let Some(assumptions) = assumptions {
-        trait_inst.emit_sat_diag(db, assumptions, span)
+        trait_inst.emit_sat_diag(db, scope.ingot(db.as_hir_db()), assumptions, span)
     } else {
         None
     }
@@ -1088,7 +1093,7 @@ fn analyze_impl_trait_specific_error<'db>(
         return Err(diags);
     }
 
-    let trait_env = ingot_trait_env(db, impl_trait.top_mod(hir_db).ingot(hir_db));
+    let trait_env = ingot_trait_env(db, impl_trait_ingot);
     let Some(implementor) = trait_env.map_impl_trait(impl_trait) else {
         // Lower impl trait never fails if the trait ref and implementor type is
         // well-formed.
@@ -1153,7 +1158,7 @@ fn analyze_impl_trait_specific_error<'db>(
 
     let mut is_satisfied = |goal: TraitInstId<'db>, span: DynLazySpan<'db>| {
         let canonical_goal = Canonicalized::new(db, goal);
-        match is_goal_satisfiable(db, assumptions, canonical_goal.value) {
+        match is_goal_satisfiable(db, impl_trait_ingot, canonical_goal.value, assumptions) {
             GoalSatisfiability::Satisfied(_) | GoalSatisfiability::ContainsInvalid => {}
             GoalSatisfiability::NeedsConfirmation(_) => unreachable!(),
             GoalSatisfiability::UnSat(subgoal) => {

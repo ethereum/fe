@@ -348,10 +348,13 @@ impl<'db> TyId<'db> {
     pub(super) fn emit_wf_diag(
         self,
         db: &'db dyn HirAnalysisDb,
+        ingot: IngotId<'db>,
         assumptions: PredicateListId<'db>,
         span: DynLazySpan<'db>,
     ) -> Option<TyDiagCollection<'db>> {
-        if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(db, self, assumptions) {
+        if let WellFormedness::IllFormed { goal, subgoal } =
+            check_ty_wf(db, ingot, self, assumptions)
+        {
             Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal, subgoal).into())
         } else {
             None

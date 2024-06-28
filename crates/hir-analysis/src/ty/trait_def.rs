@@ -275,11 +275,12 @@ impl<'db> TraitInstId<'db> {
     pub(super) fn emit_sat_diag(
         self,
         db: &'db dyn HirAnalysisDb,
+        ingot: IngotId<'db>,
         assumptions: PredicateListId<'db>,
         span: DynLazySpan<'db>,
     ) -> Option<TyDiagCollection<'db>> {
         if let WellFormedness::IllFormed { goal, subgoal } =
-            check_trait_inst_wf(db, self, assumptions)
+            check_trait_inst_wf(db, ingot, self, assumptions)
         {
             Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal, subgoal).into())
         } else {

@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
 };
-use salsa::function::Configuration;
+use salsa::id::LookupId;
 
 use crate::{
     ty::{
@@ -191,13 +191,15 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
 }
 
 pub(crate) fn recover_collect_super_traits<'db>(
-    _db: &'db dyn HirAnalysisDb,
+    db: &'db dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
     _trait_: TraitDef<'db>,
 ) -> Result<BTreeSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
     let mut trait_cycle = BTreeSet::new();
     for key in cycle.participant_keys() {
-        trait_cycle.insert(collect_super_traits::key_from_id(key.key_index()));
+        let id = key.key_index();
+        let inst = TraitDef::lookup_id(id, db);
+        trait_cycle.insert(inst);
     }
 
     Err(SuperTraitCycle(trait_cycle))
@@ -293,7 +295,7 @@ impl<'db> ConstraintCollector<'db> {
             ));
         }
 
-        PredicateListId::new(self.db, self.predicates, self.owner.ingot(self.db))
+        PredicateListId::new(self.db, self.predicates)
     }
 
     fn push_predicate(&mut self, pred: TraitInstId<'db>) {

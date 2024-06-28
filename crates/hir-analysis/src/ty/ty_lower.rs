@@ -7,6 +7,7 @@ use hir::hir_def::{
     TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
     WhereClauseId,
 };
+use salsa::{function::FunctionIngredient, id::LookupId, ingredient::Ingredient};
 
 use super::{
     adt_def::{lower_adt, AdtRefId},
@@ -95,21 +96,25 @@ fn recover_lower_type_alias_cycle<'db>(
     cycle: &salsa::Cycle,
     _alias: HirTypeAlias<'db>,
 ) -> Result<TyAlias<'db>, AliasCycle<'db>> {
-    use once_cell::sync::Lazy;
-    use regex::Regex;
+    let (jar, _): (&crate::Jar, _) = db.jar();
+    // Obtain ingredient index for the `[lower_type_alias]` to filter out
+    // participants that belong to other tracked functions.
+    let function_ingredient =
+        &<_ as salsa::storage::HasIngredientsFor<lower_type_alias>>::ingredient(jar).function;
+    let ingredient_index = <FunctionIngredient<lower_type_alias> as Ingredient<
+        dyn HirAnalysisDb,
+    >>::ingredient_index(&function_ingredient);
 
-    // Filter out the cycle participants that are not type aliases.
-    // This is inefficient workaround because it's not possible to obtain the
-    // ingredient index of the tracked function. Please refer to https://github.com/salsa-rs/salsa/pull/461 for more details.
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"lower_type_alias\(?(\d)\)").unwrap());
     let alias_cycle = cycle
-        .all_participants(db)
+        .participant_keys()
         .into_iter()
-        .filter_map(|participant| {
-            let caps = RE.captures(&participant)?;
-            let id = caps.get(1)?;
-            let id = salsa::Id::from_u32(id.as_str().parse().ok()?);
-            Some(lower_type_alias::key_from_id(id))
+        .filter_map(|key| {
+            if ingredient_index == key.ingredient_index() {
+                let id = key.key_index();
+                Some(HirTypeAlias::lookup_id(id, db))
+            } else {
+                None
+            }
         })
         .collect();
 

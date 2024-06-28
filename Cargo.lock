@@ -1230,8 +1230,6 @@ dependencies = [
  "if_chain",
  "itertools",
  "num-bigint",
- "once_cell",
- "regex",
  "rustc-hash",
  "salsa 0.18.0",
  "smallvec",

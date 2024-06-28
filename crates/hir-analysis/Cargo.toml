@@ -17,8 +17,6 @@ itertools = "0.10"
 ena = { version = "0.14", features = ["persistent"] }
 fe-compiler-test-utils = { path = "../test-utils" }
 num-bigint = "0.4"
-once_cell = "1.18"
-regex = "1.10"
 if_chain = "1.0"
 bitflags = "2.5"
 cranelift-entity = "0.91"

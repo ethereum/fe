@@ -26,15 +26,16 @@ mod proof_forest;
 #[salsa::tracked(return_ref)]
 pub fn is_goal_satisfiable<'db>(
     db: &'db dyn HirAnalysisDb,
-    assumptions: PredicateListId<'db>,
+    ingot: IngotId<'db>,
     goal: Canonical<TraitInstId<'db>>,
+    assumptions: PredicateListId<'db>,
 ) -> GoalSatisfiability<'db> {
     let flags = collect_flags(db, goal.value);
     if flags.contains(TyFlags::HAS_INVALID) {
         return GoalSatisfiability::ContainsInvalid;
     };
 
-    ProofForest::new(db, goal, assumptions).solve()
+    ProofForest::new(db, ingot, goal, assumptions).solve()
 }
 
 /// Checks if the given type is well-formed, i.e., the arguments of the given
@@ -42,13 +43,14 @@ pub fn is_goal_satisfiable<'db>(
 #[salsa::tracked]
 pub(crate) fn check_ty_wf<'db>(
     db: &'db dyn HirAnalysisDb,
+    ingot: IngotId<'db>,
     ty: TyId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> WellFormedness<'db> {
     let (_, args) = ty.decompose_ty_app(db);
 
     for &arg in args {
-        let wf = check_ty_wf(db, arg, assumptions);
+        let wf = check_ty_wf(db, ingot, arg, assumptions);
         if !wf.is_wf() {
             return wf;
         }
@@ -61,7 +63,7 @@ pub(crate) fn check_ty_wf<'db>(
         let canonical_goal = Canonicalized::new(db, goal);
 
         if let GoalSatisfiability::UnSat(subgoal) =
-            is_goal_satisfiable(db, assumptions, canonical_goal.value)
+            is_goal_satisfiable(db, ingot, canonical_goal.value, assumptions)
         {
             let subgoal =
                 subgoal.map(|subgoal| canonical_goal.extract_solution(&mut table, subgoal));
@@ -92,6 +94,7 @@ impl<'db> WellFormedness<'db> {
 #[salsa::tracked]
 pub(crate) fn check_trait_inst_wf<'db>(
     db: &'db dyn HirAnalysisDb,
+    ingot: IngotId<'db>,
     trait_inst: TraitInstId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> WellFormedness<'db> {
@@ -102,7 +105,7 @@ pub(crate) fn check_trait_inst_wf<'db>(
         let mut table = UnificationTable::new(db);
         let canonical_goal = Canonicalized::new(db, goal);
         if let GoalSatisfiability::UnSat(subgoal) =
-            is_goal_satisfiable(db, assumptions, canonical_goal.value)
+            is_goal_satisfiable(db, ingot, canonical_goal.value, assumptions)
         {
             let subgoal =
                 subgoal.map(|subgoal| canonical_goal.extract_solution(&mut table, subgoal));
@@ -142,18 +145,17 @@ impl<'db> GoalSatisfiability<'db> {
 pub struct PredicateListId<'db> {
     #[return_ref]
     pub list: BTreeSet<TraitInstId<'db>>,
-    pub ingot: IngotId<'db>,
 }
 
 impl<'db> PredicateListId<'db> {
     pub(super) fn merge(self, db: &'db dyn HirAnalysisDb, other: Self) -> Self {
         let mut predicates = self.list(db).clone();
         predicates.extend(other.list(db));
-        PredicateListId::new(db, predicates, self.ingot(db))
+        PredicateListId::new(db, predicates)
     }
 
-    pub(super) fn empty_list(db: &dyn HirAnalysisDb) -> Self {
-        Self::new(db, BTreeSet::new(), IngotId::dummy())
+    pub(super) fn empty_list(db: &'db dyn HirAnalysisDb) -> Self {
+        Self::new(db, BTreeSet::new())
     }
 
     fn extend_by_super(self, db: &'db dyn HirAnalysisDb) -> Self {
@@ -165,6 +167,6 @@ impl<'db> PredicateListId<'db> {
             }
         }
 
-        Self::new(db, list, self.ingot(db))
+        Self::new(db, list)
     }
 }

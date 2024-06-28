@@ -256,6 +256,8 @@ impl<'db> TyCheckEnv<'db> {
     ) {
         let assumptions = self.assumptions();
         let mut changed = true;
+        let hir_db = self.db.as_hir_db();
+        let ingot = self.body().top_mod(hir_db).ingot(hir_db);
         // Try to perform confirmation until all pending confirmations reaches to
         // the fixed point.
         while changed {
@@ -264,7 +266,7 @@ impl<'db> TyCheckEnv<'db> {
                 let inst = inst.fold_with(prober);
                 let canonical_inst = Canonicalized::new(self.db, inst);
                 if let GoalSatisfiability::Satisfied(solution) =
-                    is_goal_satisfiable(self.db, assumptions, canonical_inst.value)
+                    is_goal_satisfiable(self.db, ingot, canonical_inst.value, assumptions)
                 {
                     let solution = canonical_inst.extract_solution(prober.table, *solution);
                     prober.table.unify(inst, solution).unwrap();
@@ -283,7 +285,7 @@ impl<'db> TyCheckEnv<'db> {
         for (inst, span) in &self.pending_confirmations {
             let inst = inst.fold_with(prober);
             let canonical_inst = Canonicalized::new(self.db, inst);
-            match is_goal_satisfiable(self.db, assumptions, canonical_inst.value) {
+            match is_goal_satisfiable(self.db, ingot, canonical_inst.value, assumptions) {
                 GoalSatisfiability::NeedsConfirmation(ambiguous) => {
                     let insts = ambiguous
                         .iter()

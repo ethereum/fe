@@ -389,7 +389,9 @@ impl<'db> TyCheckerFinalizer<'db> {
             return;
         }
 
-        if let Some(diag) = ty.emit_wf_diag(self.db, self.assumptions, span) {
+        let hir_db = self.db.as_hir_db();
+        let ingot = self.body.body.unwrap().top_mod(hir_db).ingot(hir_db);
+        if let Some(diag) = ty.emit_wf_diag(self.db, ingot, self.assumptions, span) {
             self.diags.push(diag.into());
         }
     }

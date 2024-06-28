@@ -6,10 +6,11 @@ use crate::{
         scope_graph::{FieldParent, ScopeId},
         Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
         FieldIndex, Func, FuncParam, FuncParamListId, FuncParamName, GenericArg, GenericArgListId,
-        GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind,
-        MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait,
-        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
-        UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
+        GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, IngotId, ItemKind, KindBound,
+        LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod,
+        Trait, TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias,
+        UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId,
+        WherePredicate,
     },
     span::{
         item::LazySuperTraitListSpan, lazy_spans::*, params::LazyTraitRefSpan,
@@ -2017,6 +2018,10 @@ where
 
     pub fn db(&self) -> &'db dyn HirDb {
         self.db
+    }
+
+    pub fn ingot(&self) -> IngotId<'db> {
+        self.scope().ingot(self.db)
     }
 
     pub fn span(&self) -> Option<T>

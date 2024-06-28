@@ -4,6 +4,7 @@
 use std::collections::{BTreeSet, BinaryHeap};
 
 use cranelift_entity::{entity_impl, PrimaryMap};
+use hir::hir_def::IngotId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{GoalSatisfiability, PredicateListId};
@@ -43,6 +44,8 @@ type Solution<'db> = crate::ty::canonical::Solution<TraitInstId<'db>>;
 /// consumer nodes to keep track of the solving process, and a mapping from
 /// goals to generator nodes to avoid redundant computations.
 pub(super) struct ProofForest<'db> {
+    ingot: IngotId<'db>,
+
     /// The root generator node.
     root: GeneratorNode,
 
@@ -112,12 +115,14 @@ impl<'db> ProofForest<'db> {
     /// assumptions.
     pub(super) fn new(
         db: &'db dyn HirAnalysisDb,
+        ingot: IngotId<'db>,
         goal: Goal<'db>,
         assumptions: PredicateListId<'db>,
     ) -> Self {
         let assumptions = assumptions.extend_by_super(db);
 
         let mut forest = Self {
+            ingot,
             root: GeneratorNode(0), // Set temporary root.
             g_nodes: PrimaryMap::new(),
             c_nodes: PrimaryMap::new(),
@@ -185,7 +190,8 @@ impl<'db> ProofForest<'db> {
     }
 
     fn new_generator_node(&mut self, goal: Goal<'db>) -> GeneratorNode {
-        let g_node_data = GeneratorNodeData::new(self.db, goal, self.assumptions);
+        let ingot = self.ingot;
+        let g_node_data = GeneratorNodeData::new(self.db, ingot, goal, self.assumptions);
         let g_node = self.g_nodes.push(g_node_data);
         self.goal_to_node.insert(goal, g_node);
         self.g_stack.push(g_node);
@@ -273,10 +279,15 @@ struct GeneratorNode(u32);
 entity_impl!(GeneratorNode);
 
 impl<'db> GeneratorNodeData<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, goal: Goal<'db>, assumptions: PredicateListId<'db>) -> Self {
+    fn new(
+        db: &'db dyn HirAnalysisDb,
+        ingot: IngotId<'db>,
+        goal: Goal<'db>,
+        assumptions: PredicateListId<'db>,
+    ) -> Self {
         let mut table = PersistentUnificationTable::new(db);
         let extracted_goal = goal.extract_identity(&mut table);
-        let cands = impls_for_trait(db, assumptions.ingot(db), goal);
+        let cands = impls_for_trait(db, ingot, goal);
 
         Self {
             table,
