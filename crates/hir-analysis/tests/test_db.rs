@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use codespan_reporting::{
     diagnostic::{Diagnostic, Label},
     files::SimpleFiles,
@@ -116,7 +118,7 @@ impl<'db> HirPropertyFormatter<'db> {
                     let (span, diag) = self.property_to_diag(db, *top_mod, prop, span.clone());
                     ((span.file, (span.range.start(), span.range.end())), diag)
                 })
-                .collect::<IndexMap<_, _>>();
+                .collect::<BTreeMap<_, _>>();
 
             for diag in diags.values() {
                 term::emit(&mut buffer, &config, &self.code_span_files, diag).unwrap();

@@ -580,15 +580,15 @@ mod tests {
         let use_path_span = use_span.path();
         assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
         assert_eq!("bar", db.text_at(top_mod, &use_path_span.segment(1)));
-        assert_eq!("qux", db.text_at(top_mod, &use_path_span.segment(2)));
-        assert_eq!("as Alias", db.text_at(top_mod, &use_span.alias()));
-        assert_eq!("Alias", db.text_at(top_mod, &use_span.alias().name()));
+        assert_eq!("baz", db.text_at(top_mod, &use_path_span.segment(2)));
+        assert_eq!("*", db.text_at(top_mod, &use_path_span.segment(3)));
 
         let use_span = uses[1].lazy_span();
         let use_path_span = use_span.path();
         assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
         assert_eq!("bar", db.text_at(top_mod, &use_path_span.segment(1)));
-        assert_eq!("baz", db.text_at(top_mod, &use_path_span.segment(2)));
-        assert_eq!("*", db.text_at(top_mod, &use_path_span.segment(3)));
+        assert_eq!("qux", db.text_at(top_mod, &use_path_span.segment(2)));
+        assert_eq!("as Alias", db.text_at(top_mod, &use_span.alias()));
+        assert_eq!("Alias", db.text_at(top_mod, &use_span.alias().name()));
     }
 }

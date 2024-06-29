@@ -172,11 +172,14 @@ impl<'db> Callable<'db> {
             .zip(self.func_def.arg_tys(db).iter())
             .enumerate()
         {
+            dbg!("foo");
+            dbg!(self.func_def.param_label(db, i));
             if_chain! {
                 if let Some(expected_label) = self.func_def.param_label(db, i);
-                if expected_label.is_self(db.as_hir_db());
+                if !expected_label.is_self(db.as_hir_db());
                 if Some(expected_label) != given.label;
                 then {
+                    dbg!("foo");
                     let diag = BodyDiag::CallArgLabelMismatch {
                         primary: given.label_span.unwrap_or(given.expr_span.clone()),
                         def_span: self.func_def.name_span(db),

@@ -3,16 +3,14 @@ source: crates/uitest/tests/ty.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty/def/const_generics_cycle.fe
 ---
-error[3-0009]: `T` is forbidden as a const parameter type
+error[3-0009]: invalid const parameter type
   ┌─ const_generics_cycle.fe:1:28
   │
 1 │ pub struct Foo<T, const U: T> {}
   │                            ^ only integer or bool types are allowed as a const parameter type
 
-error[3-0009]: `Bar` is forbidden as a const parameter type
+error[3-0009]: invalid const parameter type
   ┌─ const_generics_cycle.fe:2:28
   │
 2 │ pub struct Bar<T, const U: Bar> {}
   │                            ^^^ only integer or bool types are allowed as a const parameter type
-
-

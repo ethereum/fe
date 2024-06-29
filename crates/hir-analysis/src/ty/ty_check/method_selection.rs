@@ -1,3 +1,4 @@
+use common::indexmap::IndexSet;
 use either::Either;
 use hir::{
     hir_def::{scope_graph::ScopeId, IdentId, Trait},
@@ -391,7 +392,7 @@ pub enum MethodSelectionError<'db> {
 #[derive(Default)]
 struct AssembledCandidates<'db> {
     inherent_methods: FxHashSet<FuncDef<'db>>,
-    traits: FxHashSet<(TraitDef<'db>, TraitMethod<'db>)>,
+    traits: IndexSet<(TraitDef<'db>, TraitMethod<'db>)>,
 }
 
 impl<'db> AssembledCandidates<'db> {

@@ -42,7 +42,7 @@ impl<'db> ScopeGraph<'db> {
 
     /// Returns the direct child scopes of the given `scope`
     pub fn children(&self, scope: ScopeId<'db>) -> impl Iterator<Item = ScopeId<'db>> + '_ {
-        self.edges(scope).filter_map(|edge| match edge.kind {
+        self.edges(scope).iter().filter_map(|edge| match edge.kind {
             EdgeKind::Lex(_)
             | EdgeKind::Super(_)
             | EdgeKind::Ingot(_)
@@ -54,8 +54,8 @@ impl<'db> ScopeGraph<'db> {
     }
 
     /// Returns the all edges outgoing from the given `scope`.
-    pub fn edges(&self, scope: ScopeId<'db>) -> impl Iterator<Item = &ScopeEdge<'db>> + '_ {
-        self.scopes[&scope].edges.iter()
+    pub fn edges(&self, scope: ScopeId<'db>) -> &IndexSet<ScopeEdge<'db>> {
+        &self.scopes[&scope].edges
     }
 
     /// Write a scope graph as a dot file format to given `w`.
@@ -135,7 +135,7 @@ impl<'db> ScopeId<'db> {
         self.top_mod(db).scope_graph(db)
     }
 
-    pub fn edges(self, db: &'db dyn HirDb) -> impl Iterator<Item = &ScopeEdge> {
+    pub fn edges(self, db: &'db dyn HirDb) -> &IndexSet<ScopeEdge<'db>> {
         self.scope_graph(db).edges(self)
     }
 
@@ -413,7 +413,7 @@ impl<'db, 'a> std::iter::Iterator for ScopeGraphItemIterDfs<'db, 'a> {
     fn next(&mut self) -> Option<ItemKind<'db>> {
         while let Some(scope) = self.stack.pop() {
             self.visited.insert(scope);
-            for edge in self.graph.edges(scope) {
+            for edge in self.graph.edges(scope).iter().rev() {
                 let dest = edge.dest;
                 let top_mod = dest.top_mod(self.db);
                 if top_mod != self.graph.top_mod || self.visited.contains(&dest) {
@@ -631,13 +631,13 @@ mod tests {
         for (i, item) in scope_graph.items_dfs(&db).enumerate() {
             match i {
                 0 => assert!(matches!(item, ItemKind::TopMod(_))),
-                1 => assert!(matches!(item, ItemKind::Enum(_))),
-                2 => assert!(matches!(item, ItemKind::Mod(_))),
-                3 => assert!(matches!(item, ItemKind::Struct(_))),
-                4 => assert!(matches!(item, ItemKind::Mod(_))),
-                5 => assert!(matches!(item, ItemKind::Func(_))),
-                6 => assert!(matches!(item, ItemKind::Func(_))),
-                7 => assert!(matches!(item, ItemKind::Body(_))),
+                1 => assert!(matches!(item, ItemKind::Mod(_))),
+                2 => assert!(matches!(item, ItemKind::Func(_))),
+                3 => assert!(matches!(item, ItemKind::Body(_))),
+                4 => assert!(matches!(item, ItemKind::Func(_))),
+                5 => assert!(matches!(item, ItemKind::Enum(_))),
+                6 => assert!(matches!(item, ItemKind::Mod(_))),
+                7 => assert!(matches!(item, ItemKind::Struct(_))),
                 _ => unreachable!(),
             }
         }
