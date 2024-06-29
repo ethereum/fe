@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use either::Either;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamListId,
@@ -120,11 +118,11 @@ fn recover_lower_type_alias_cycle<'db>(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct AliasCycle<'db>(BTreeSet<HirTypeAlias<'db>>);
+pub(crate) struct AliasCycle<'db>(Vec<HirTypeAlias<'db>>);
 
 impl<'db> AliasCycle<'db> {
     pub(super) fn representative(&self) -> HirTypeAlias<'db> {
-        *self.0.iter().next().unwrap()
+        *self.0.first().unwrap()
     }
 
     pub(super) fn participants(&self) -> impl Iterator<Item = HirTypeAlias<'db>> + '_ {

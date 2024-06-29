@@ -172,9 +172,8 @@ impl<DB> SpannedHirDb for DB where DB: salsa::DbWithJar<SpannedJar> + HirDb {}
 
 #[cfg(test)]
 mod test_db {
-    use std::collections::BTreeSet;
-
     use common::{
+        indexmap::IndexSet,
         input::{IngotKind, Version},
         InputFile, InputIngot,
     };
@@ -244,10 +243,10 @@ mod test_db {
             let path = "hir_test";
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);
-            let ingot = InputIngot::new(self, path, kind, version, BTreeSet::default());
+            let ingot = InputIngot::new(self, path, kind, version, IndexSet::default());
             let file = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
             ingot.set_root_file(self, file);
-            ingot.set_files(self, [file].into());
+            ingot.set_files(self, [file].into_iter().collect());
             file
         }
     }

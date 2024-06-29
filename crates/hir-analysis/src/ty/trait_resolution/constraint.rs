@@ -1,5 +1,4 @@
-use std::collections::BTreeSet;
-
+use common::indexmap::IndexSet;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
 };
@@ -56,11 +55,11 @@ pub(crate) fn ty_constraints<'db>(
 pub(crate) fn collect_super_traits<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef<'db>,
-) -> Result<BTreeSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
+) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
     let collector = SuperTraitCollector::new(db, trait_);
     let insts = collector.collect();
 
-    let mut cycles = BTreeSet::new();
+    let mut cycles = IndexSet::new();
     // Check for cycles.
     for &inst in &insts {
         if let Err(err) = collect_super_traits(db, inst.skip_binder().def(db)) {
@@ -194,8 +193,8 @@ pub(crate) fn recover_collect_super_traits<'db>(
     db: &'db dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
     _trait_: TraitDef<'db>,
-) -> Result<BTreeSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
-    let mut trait_cycle = BTreeSet::new();
+) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
+    let mut trait_cycle = IndexSet::new();
     for key in cycle.participant_keys() {
         let id = key.key_index();
         let inst = TraitDef::lookup_id(id, db);
@@ -208,7 +207,7 @@ pub(crate) fn recover_collect_super_traits<'db>(
 struct SuperTraitCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef<'db>,
-    super_traits: BTreeSet<Binder<TraitInstId<'db>>>,
+    super_traits: IndexSet<Binder<TraitInstId<'db>>>,
     scope: ScopeId<'db>,
 }
 
@@ -217,12 +216,12 @@ impl<'db> SuperTraitCollector<'db> {
         Self {
             db,
             trait_,
-            super_traits: BTreeSet::default(),
+            super_traits: IndexSet::default(),
             scope: trait_.trait_(db).scope(),
         }
     }
 
-    fn collect(mut self) -> BTreeSet<Binder<TraitInstId<'db>>> {
+    fn collect(mut self) -> IndexSet<Binder<TraitInstId<'db>>> {
         let hir_trait = self.trait_.trait_(self.db);
         let hir_db = self.db.as_hir_db();
         let self_param = self.trait_.self_param(self.db);
@@ -254,8 +253,8 @@ impl<'db> SuperTraitCollector<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
-pub(crate) struct SuperTraitCycle<'db>(BTreeSet<TraitDef<'db>>);
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(crate) struct SuperTraitCycle<'db>(IndexSet<TraitDef<'db>>);
 impl<'db> SuperTraitCycle<'db> {
     pub fn contains(&self, def: TraitDef<'db>) -> bool {
         self.0.contains(&def)
@@ -265,7 +264,7 @@ impl<'db> SuperTraitCycle<'db> {
 struct ConstraintCollector<'db> {
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwnerId<'db>,
-    predicates: BTreeSet<TraitInstId<'db>>,
+    predicates: IndexSet<TraitInstId<'db>>,
 }
 
 impl<'db> ConstraintCollector<'db> {
@@ -274,7 +273,7 @@ impl<'db> ConstraintCollector<'db> {
             db,
             owner,
 
-            predicates: BTreeSet::new(),
+            predicates: IndexSet::new(),
         }
     }
 
@@ -295,7 +294,7 @@ impl<'db> ConstraintCollector<'db> {
             ));
         }
 
-        PredicateListId::new(self.db, self.predicates)
+        PredicateListId::new(self.db, self.predicates.into_iter().collect())
     }
 
     fn push_predicate(&mut self, pred: TraitInstId<'db>) {

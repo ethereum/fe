@@ -1,5 +1,3 @@
-use std::collections::{BTreeMap, BTreeSet};
-
 use codespan_reporting::{
     diagnostic::{Diagnostic, Label},
     files::SimpleFiles,
@@ -10,6 +8,7 @@ use codespan_reporting::{
 };
 use common::{
     diagnostics::Span,
+    indexmap::{IndexMap, IndexSet},
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
@@ -47,10 +46,10 @@ impl HirAnalysisTestDb {
     pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> InputFile {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
-        let ingot = InputIngot::new(self, file_name, kind, version, BTreeSet::default());
+        let ingot = InputIngot::new(self, file_name, kind, version, IndexSet::default());
         let root = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
         ingot.set_root_file(self, root);
-        ingot.set_files(self, [root].into());
+        ingot.set_files(self, [root].into_iter().collect());
         root
     }
 
@@ -84,7 +83,7 @@ impl HirAnalysisTestDb {
 pub struct HirPropertyFormatter<'db> {
     // https://github.com/rust-lang/rust/issues/46379
     #[allow(dead_code)]
-    properties: BTreeMap<TopLevelMod<'db>, Vec<(String, DynLazySpan<'db>)>>,
+    properties: IndexMap<TopLevelMod<'db>, Vec<(String, DynLazySpan<'db>)>>,
     top_mod_to_file: FxHashMap<TopLevelMod<'db>, CodeSpanFileId>,
     code_span_files: SimpleFiles<String, String>,
 }
@@ -117,7 +116,7 @@ impl<'db> HirPropertyFormatter<'db> {
                     let (span, diag) = self.property_to_diag(db, *top_mod, prop, span.clone());
                     ((span.file, (span.range.start(), span.range.end())), diag)
                 })
-                .collect::<BTreeMap<_, _>>();
+                .collect::<IndexMap<_, _>>();
 
             for diag in diags.values() {
                 term::emit(&mut buffer, &config, &self.code_span_files, diag).unwrap();

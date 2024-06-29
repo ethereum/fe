@@ -1,7 +1,5 @@
-use std::collections::BTreeMap;
-
 use camino::Utf8Path;
-use common::{InputFile, InputIngot};
+use common::{indexmap::IndexMap, InputFile, InputIngot};
 use cranelift_entity::{entity_impl, PrimaryMap};
 
 use super::{IdentId, IngotId, TopLevelMod};
@@ -14,7 +12,7 @@ use crate::{lower::map_file_to_mod_impl, HirDb};
 /// This is used in later name resolution phase.
 /// The tree is file contents agnostic, i.e., **only** depends on project
 /// structure and crate dependency.
-///  
+///
 ///
 /// Example:
 /// ```text
@@ -38,8 +36,8 @@ use crate::{lower::map_file_to_mod_impl, HirDb};
 ///     |     +------+    |         +------+
 ///     |                 |         | baz  |
 ///     |                 |         +------+
-///     v                 v         
-///  +------+          +------+     
+///     v                 v
+///  +------+          +------+
 ///  | mod2 |          | mod1 |
 ///  +------+          +------+
 ///     |                 |
@@ -57,7 +55,7 @@ use crate::{lower::map_file_to_mod_impl, HirDb};
 pub struct ModuleTree<'db> {
     pub(crate) root: ModuleTreeNodeId,
     pub(crate) module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
-    pub(crate) mod_map: BTreeMap<TopLevelMod<'db>, ModuleTreeNodeId>,
+    pub(crate) mod_map: IndexMap<TopLevelMod<'db>, ModuleTreeNodeId>,
 
     pub ingot: IngotId<'db>,
 }
@@ -152,8 +150,8 @@ struct ModuleTreeBuilder<'db> {
     input_ingot: InputIngot,
     ingot: IngotId<'db>,
     module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
-    mod_map: BTreeMap<TopLevelMod<'db>, ModuleTreeNodeId>,
-    path_map: BTreeMap<&'db Utf8Path, ModuleTreeNodeId>,
+    mod_map: IndexMap<TopLevelMod<'db>, ModuleTreeNodeId>,
+    path_map: IndexMap<&'db Utf8Path, ModuleTreeNodeId>,
 }
 
 impl<'db> ModuleTreeBuilder<'db> {
@@ -163,8 +161,8 @@ impl<'db> ModuleTreeBuilder<'db> {
             input_ingot: ingot,
             ingot: IngotId::new(db, ingot),
             module_tree: PrimaryMap::default(),
-            mod_map: BTreeMap::default(),
-            path_map: BTreeMap::default(),
+            mod_map: IndexMap::default(),
+            path_map: IndexMap::default(),
         }
     }
 
@@ -265,7 +263,7 @@ mod tests {
             "/foo/fargo",
             IngotKind::Local,
             Version::new(0, 0, 1),
-            [].into(),
+            Default::default(),
         );
         let local_root = InputFile::new(&db, local_ingot, "src/lib.fe".into(), "".into());
         let mod1 = InputFile::new(&db, local_ingot, "src/mod1.fe".into(), "".into());
@@ -277,7 +275,9 @@ mod tests {
         local_ingot.set_root_file(&mut db, local_root);
         local_ingot.set_files(
             &mut db,
-            [local_root, mod1, mod2, foo, bar, baz, floating].into(),
+            [local_root, mod1, mod2, foo, bar, baz, floating]
+                .into_iter()
+                .collect(),
         );
 
         let local_root_mod = lower::map_file_to_mod(&db, local_root);

@@ -20,7 +20,6 @@ num-bigint = "0.4"
 if_chain = "1.0"
 bitflags = "2.5"
 cranelift-entity = "0.91"
-
 hir = { path = "../hir", package = "fe-hir" }
 common = { path = "../common2", package = "fe-common2" }
 macros = { path = "../macros", package = "fe-macros" }

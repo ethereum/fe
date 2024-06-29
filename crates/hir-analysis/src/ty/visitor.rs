@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use common::indexmap::IndexSet;
 
 use super::{
     adt_def::AdtDef,
@@ -139,7 +139,7 @@ where
     }
 }
 
-impl<'db, T> TyVisitable<'db> for BTreeSet<T>
+impl<'db, T> TyVisitable<'db> for IndexSet<T>
 where
     T: TyVisitable<'db>,
 {

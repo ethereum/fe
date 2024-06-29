@@ -1,9 +1,9 @@
 //! This module contains the type definitions for the Fe type system.
 
-use std::{collections::BTreeSet, fmt};
+use std::fmt;
 
 use bitflags::bitflags;
-use common::input::IngotKind;
+use common::{indexmap::IndexSet, input::IngotKind};
 use hir::{
     hir_def::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
@@ -1006,13 +1006,13 @@ impl<'db> HasKind for FuncDef<'db> {
 pub(crate) fn collect_variables<'db, V>(
     db: &'db dyn HirAnalysisDb,
     visitable: &V,
-) -> BTreeSet<TyVar<'db>>
+) -> IndexSet<TyVar<'db>>
 where
     V: TyVisitable<'db>,
 {
     struct TyVarCollector<'db> {
         db: &'db dyn HirAnalysisDb,
-        vars: BTreeSet<TyVar<'db>>,
+        vars: IndexSet<TyVar<'db>>,
     }
 
     impl<'db> TyVisitor<'db> for TyVarCollector<'db> {
@@ -1026,7 +1026,7 @@ where
     }
     let mut collector = TyVarCollector {
         db,
-        vars: BTreeSet::default(),
+        vars: IndexSet::default(),
     };
 
     visitable.visit_with(&mut collector);

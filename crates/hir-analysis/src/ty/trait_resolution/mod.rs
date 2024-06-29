@@ -1,5 +1,4 @@
-use std::collections::BTreeSet;
-
+use common::indexmap::IndexSet;
 use hir::hir_def::IngotId;
 pub(crate) use proof_forest::ty_depth_impl;
 
@@ -122,7 +121,7 @@ pub enum GoalSatisfiability<'db> {
     Satisfied(Solution<TraitInstId<'db>>),
     /// Goal might be satisfied, but needs more type information to determine
     /// satisfiability and uniqueness.
-    NeedsConfirmation(BTreeSet<Solution<TraitInstId<'db>>>),
+    NeedsConfirmation(IndexSet<Solution<TraitInstId<'db>>>),
 
     /// Goal contains invalid.
     ContainsInvalid,
@@ -144,7 +143,7 @@ impl<'db> GoalSatisfiability<'db> {
 #[salsa::interned]
 pub struct PredicateListId<'db> {
     #[return_ref]
-    pub list: BTreeSet<TraitInstId<'db>>,
+    pub list: Vec<TraitInstId<'db>>,
 }
 
 impl<'db> PredicateListId<'db> {
@@ -155,18 +154,18 @@ impl<'db> PredicateListId<'db> {
     }
 
     pub(super) fn empty_list(db: &'db dyn HirAnalysisDb) -> Self {
-        Self::new(db, BTreeSet::new())
+        Self::new(db, Vec::new())
     }
 
     fn extend_by_super(self, db: &'db dyn HirAnalysisDb) -> Self {
-        let mut list = self.list(db).clone();
+        let mut super_traits: IndexSet<_> = self.list(db).iter().copied().collect();
         for &pred in self.list(db) {
             for &super_trait in pred.def(db).super_traits(db).iter() {
                 let super_trait = super_trait.instantiate(db, pred.args(db));
-                list.insert(super_trait);
+                super_traits.insert(super_trait);
             }
         }
 
-        Self::new(db, list)
+        Self::new(db, super_traits.into_iter().collect())
     }
 }

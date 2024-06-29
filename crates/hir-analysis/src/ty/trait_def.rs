@@ -1,7 +1,6 @@
 //! This module contains all trait related types definitions.
 
-use std::collections::{BTreeMap, BTreeSet};
-
+use common::indexmap::{IndexMap, IndexSet};
 use hir::{
     hir_def::{IdentId, ImplTrait, IngotId, Trait},
     span::DynLazySpan,
@@ -210,7 +209,7 @@ impl<'db> Implementor<'db> {
     pub(super) fn methods(
         self,
         db: &'db dyn HirAnalysisDb,
-    ) -> &BTreeMap<IdentId<'db>, FuncDef<'db>> {
+    ) -> &IndexMap<IdentId<'db>, FuncDef<'db>> {
         collect_implementor_methods(db, self)
     }
 }
@@ -296,7 +295,7 @@ pub struct TraitDef<'db> {
     #[return_ref]
     pub(crate) param_set: GenericParamTypeSet<'db>,
     #[return_ref]
-    pub methods: BTreeMap<IdentId<'db>, TraitMethod<'db>>,
+    pub methods: IndexMap<IdentId<'db>, TraitMethod<'db>>,
 }
 
 impl<'db> TraitDef<'db> {
@@ -338,9 +337,13 @@ impl<'db> TraitDef<'db> {
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
-    pub(super) fn super_traits(self, db: &'db dyn HirAnalysisDb) -> &BTreeSet<Binder<TraitInstId>> {
-        const _EMPTY: &BTreeSet<Binder<TraitInstId>> = &BTreeSet::new();
-        collect_super_traits(db, self).as_ref().unwrap_or(_EMPTY)
+    pub(super) fn super_traits(self, db: &'db dyn HirAnalysisDb) -> &IndexSet<Binder<TraitInstId>> {
+        use std::sync::OnceLock;
+        static EMPTY: OnceLock<IndexSet<Binder<TraitInstId>>> = OnceLock::new();
+
+        collect_super_traits(db, self)
+            .as_ref()
+            .unwrap_or_else(|_| EMPTY.get_or_init(IndexSet::new))
     }
 
     fn name(self, db: &'db dyn HirAnalysisDb) -> Option<&'db str> {

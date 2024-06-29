@@ -1,9 +1,7 @@
-use std::collections::BTreeSet;
-
 use camino::Utf8PathBuf;
 use smol_str::SmolStr;
 
-use crate::InputDb;
+use crate::{indexmap::IndexSet, InputDb};
 
 /// An ingot is a collection of files which are compiled together.
 /// Ingot can depend on other ingots.
@@ -23,12 +21,12 @@ pub struct InputIngot {
 
     /// A list of ingots which the current ingot depends on.
     #[return_ref]
-    pub external_ingots: BTreeSet<IngotDependency>,
+    pub external_ingots: IndexSet<IngotDependency>,
 
     /// A list of files which the current ingot contains.
     #[return_ref]
     #[set(__set_files_impl)]
-    pub files: BTreeSet<InputFile>,
+    pub files: IndexSet<InputFile>,
 
     #[set(__set_root_file_impl)]
     #[get(__get_root_file_impl)]
@@ -40,7 +38,7 @@ impl InputIngot {
         path: &str,
         kind: IngotKind,
         version: Version,
-        external_ingots: BTreeSet<IngotDependency>,
+        external_ingots: IndexSet<IngotDependency>,
     ) -> InputIngot {
         let path = Utf8PathBuf::from(path);
         let root_file = None;
@@ -50,7 +48,7 @@ impl InputIngot {
             kind,
             version,
             external_ingots,
-            BTreeSet::default(),
+            IndexSet::default(),
             root_file,
         )
     }
@@ -63,7 +61,7 @@ impl InputIngot {
 
     /// Set the list of files which the ingot contains.
     /// All files must bee set before the ingot is used.
-    pub fn set_files(self, db: &mut dyn InputDb, files: BTreeSet<InputFile>) {
+    pub fn set_files(self, db: &mut dyn InputDb, files: IndexSet<InputFile>) {
         self.__set_files_impl(db).to(files);
     }
 

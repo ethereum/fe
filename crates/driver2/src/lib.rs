@@ -1,6 +1,6 @@
 pub mod diagnostics;
 
-use std::{collections::BTreeSet, path};
+use std::path;
 
 use codespan_reporting::term::{
     self,
@@ -8,6 +8,7 @@ use codespan_reporting::term::{
 };
 use common::{
     diagnostics::CompleteDiagnostic,
+    indexmap::IndexSet,
     input::{IngotKind, Version},
     InputDb, InputFile, InputIngot,
 };
@@ -81,13 +82,13 @@ impl DriverDataBase {
             file_path.parent().unwrap().as_os_str().to_str().unwrap(),
             kind,
             version,
-            BTreeSet::new(),
+            IndexSet::new(),
         );
 
         let file_name = root_file.file_name().unwrap().to_str().unwrap();
         let input_file = InputFile::new(self, ingot, file_name.into(), source.to_string());
         ingot.set_root_file(self, input_file);
-        ingot.set_files(self, [input_file].into());
+        ingot.set_files(self, [input_file].into_iter().collect());
         input_file
     }
 

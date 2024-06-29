@@ -1,5 +1,6 @@
-use std::collections::{hash_map::Entry, BTreeSet};
+use std::collections::hash_map::Entry;
 
+use common::indexmap::IndexSet;
 use either::Either;
 use hir::{
     hir_def::{
@@ -629,13 +630,13 @@ where
         if !self.invalid_field_given && !allow_missing_field {
             let expected_labels = self.data.record_labels(self.tc.db);
             let found = self.already_given.keys().copied().collect::<FxHashSet<_>>();
-            let missing_fields: BTreeSet<IdentId> =
+            let missing_fields: IndexSet<IdentId> =
                 expected_labels.difference(&found).copied().collect();
 
             if !missing_fields.is_empty() {
                 let diag = BodyDiag::MissingRecordFields {
                     primary: initializer_span,
-                    missing_fields,
+                    missing_fields: missing_fields.into_iter().collect(),
                     hint: self.data.initializer_hint(self.tc.db),
                 };
 

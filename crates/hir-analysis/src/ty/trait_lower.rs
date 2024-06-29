@@ -1,7 +1,6 @@
 //! This module implements the trait and impl trait lowering process.
 
-use std::collections::BTreeMap;
-
+use common::indexmap::IndexMap;
 use hir::hir_def::{
     scope_graph::ScopeId, IdentId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRefId,
 };
@@ -185,8 +184,8 @@ pub(crate) fn lower_trait_ref<'db>(
 pub(crate) fn collect_implementor_methods<'db>(
     db: &'db dyn HirAnalysisDb,
     implementor: Implementor<'db>,
-) -> BTreeMap<IdentId<'db>, FuncDef<'db>> {
-    let mut methods = BTreeMap::default();
+) -> IndexMap<IdentId<'db>, FuncDef<'db>> {
+    let mut methods = IndexMap::default();
 
     for method in implementor.hir_impl_trait(db).methods(db.as_hir_db()) {
         if let Some(func) = lower_func(db, method) {
@@ -225,7 +224,7 @@ struct TraitBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
     trait_: Trait<'db>,
     param_set: GenericParamTypeSet<'db>,
-    methods: BTreeMap<IdentId<'db>, TraitMethod<'db>>,
+    methods: IndexMap<IdentId<'db>, TraitMethod<'db>>,
 }
 
 impl<'db> TraitBuilder<'db> {
@@ -237,7 +236,7 @@ impl<'db> TraitBuilder<'db> {
             db,
             trait_,
             param_set,
-            methods: BTreeMap::default(),
+            methods: IndexMap::default(),
         }
     }
 

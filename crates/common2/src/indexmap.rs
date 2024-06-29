@@ -79,7 +79,6 @@ where
 
 impl<K, V, S> Deref for IndexMap<K, V, S>
 where
-    K: Hash,
     S: BuildHasher,
 {
     type Target = indexmap::IndexMap<K, V, S>;
@@ -90,7 +89,6 @@ where
 
 impl<K, V, S> DerefMut for IndexMap<K, V, S>
 where
-    K: Hash,
     S: BuildHasher,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {
@@ -196,7 +194,6 @@ where
 
 impl<V, S> Deref for IndexSet<V, S>
 where
-    V: Hash,
     S: BuildHasher,
 {
     type Target = indexmap::IndexSet<V, S>;
@@ -207,7 +204,6 @@ where
 
 impl<V, S> DerefMut for IndexSet<V, S>
 where
-    V: Hash,
     S: BuildHasher,
 {
     fn deref_mut(&mut self) -> &mut Self::Target {

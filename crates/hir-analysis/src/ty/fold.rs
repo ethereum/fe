@@ -1,4 +1,6 @@
-use std::collections::BTreeSet;
+use std::hash::Hash;
+
+use common::indexmap::IndexSet;
 
 use super::{
     trait_def::{Implementor, TraitInstId},
@@ -97,9 +99,9 @@ where
     }
 }
 
-impl<'db, T> TyFoldable<'db> for BTreeSet<T>
+impl<'db, T> TyFoldable<'db> for IndexSet<T>
 where
-    T: TyFoldable<'db> + Ord,
+    T: TyFoldable<'db> + Hash + Eq,
 {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where

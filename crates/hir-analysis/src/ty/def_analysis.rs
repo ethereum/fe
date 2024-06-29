@@ -2,8 +2,9 @@
 //! This module is the only module in `ty` module which is allowed to emit
 //! diagnostics.
 
-use std::collections::{hash_map::Entry, BTreeSet};
+use std::collections::hash_map::Entry;
 
+use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
         scope_graph::ScopeId, FieldDef, Func, FuncParamListId, GenericParam, GenericParamListId,
@@ -1207,7 +1208,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         let impl_methods = self.implementor.methods(self.db);
         let hir_trait = self.implementor.trait_def(self.db).trait_(self.db);
         let trait_methods = self.implementor.trait_def(self.db).methods(self.db);
-        let mut required_methods: BTreeSet<_> = trait_methods
+        let mut required_methods: IndexSet<_> = trait_methods
             .iter()
             .filter_map(|(name, &trait_method)| {
                 if !trait_method.has_default_impl(self.db) {
@@ -1243,7 +1244,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                 &mut self.diags,
             );
 
-            required_methods.remove(name);
+            required_methods.shift_remove(name);
         }
 
         if !required_methods.is_empty() {
@@ -1254,7 +1255,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                         .lazy_span()
                         .ty_moved()
                         .into(),
-                    required_methods,
+                    required_methods.into_iter().collect(),
                 )
                 .into(),
             );

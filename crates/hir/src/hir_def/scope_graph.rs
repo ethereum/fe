@@ -1,5 +1,6 @@
-use std::{collections::BTreeSet, io};
+use std::io;
 
+use common::indexmap::IndexSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
@@ -17,7 +18,6 @@ use crate::{
 pub struct ScopeGraph<'db> {
     /// The top-level module containing the scope graph.
     pub top_mod: TopLevelMod<'db>,
-    /// ///
     /// The scopes in the graph.
     pub scopes: FxHashMap<ScopeId<'db>, Scope<'db>>,
     /// The all unresolved uses in the graph, this is used in name resolution.
@@ -441,7 +441,7 @@ impl<'db, 'a> std::iter::Iterator for ScopeGraphItemIterDfs<'db, 'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope<'db> {
     pub id: ScopeId<'db>,
-    pub edges: BTreeSet<ScopeEdge<'db>>,
+    pub edges: IndexSet<ScopeEdge<'db>>,
     pub vis: Visibility,
 }
 

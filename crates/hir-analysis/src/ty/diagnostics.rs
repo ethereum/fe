@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-
 use common::diagnostics::{
     CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, SubDiagnostic,
 };
@@ -584,7 +582,7 @@ pub enum BodyDiag<'db> {
 
     MissingRecordFields {
         primary: DynLazySpan<'db>,
-        missing_fields: BTreeSet<IdentId<'db>>,
+        missing_fields: Vec<IdentId<'db>>,
         hint: Option<String>,
     },
 
@@ -1913,7 +1911,7 @@ pub enum ImplDiag<'db> {
 
     NotAllTraitItemsImplemented {
         primary: DynLazySpan<'db>,
-        not_implemented: BTreeSet<IdentId<'db>>,
+        not_implemented: Vec<IdentId<'db>>,
     },
 
     MethodTypeParamNumMismatch {
@@ -1991,7 +1989,7 @@ impl<'db> ImplDiag<'db> {
 
     pub(super) fn not_all_trait_items_implemented(
         primary: DynLazySpan<'db>,
-        not_implemented: BTreeSet<IdentId<'db>>,
+        not_implemented: Vec<IdentId<'db>>,
     ) -> Self {
         Self::NotAllTraitItemsImplemented {
             primary,

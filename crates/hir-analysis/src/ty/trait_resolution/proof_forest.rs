@@ -1,8 +1,9 @@
 //! The algorithm for the trait resolution here is based on [`Tabled Typeclass Resolution`](https://arxiv.org/abs/2001.04301).
 //! Also, [`XSB: Extending Prolog with Tabled Logic Programming`](https://arxiv.org/pdf/1012.5123) is a nice entry point for more detailed discussions about tabled logic solver.
 
-use std::collections::{BTreeSet, BinaryHeap};
+use std::collections::BinaryHeap;
 
+use common::indexmap::IndexSet;
 use cranelift_entity::{entity_impl, PrimaryMap};
 use hir::hir_def::IngotId;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -163,7 +164,7 @@ impl<'db> ProofForest<'db> {
 
             if let Some((c_node, solution)) = self.c_heap.pop() {
                 if !c_node.node.apply_solution(&mut self, solution) {
-                    return GoalSatisfiability::NeedsConfirmation(BTreeSet::default());
+                    return GoalSatisfiability::NeedsConfirmation(IndexSet::default());
                 }
                 continue;
             }
@@ -262,7 +263,7 @@ struct GeneratorNodeData<'db> {
     /// The trait instance extracted from the goal.
     extracted_goal: TraitInstId<'db>,
     /// A set of solutions found for the goal.
-    solutions: BTreeSet<Solution<'db>>,
+    solutions: IndexSet<Solution<'db>>,
     ///  A list of consumer nodes that depend on this generator node.
     dependents: Vec<ConsumerNode>,
     ///  A list of candidate implementors for the trait.
@@ -293,7 +294,7 @@ impl<'db> GeneratorNodeData<'db> {
             table,
             goal,
             extracted_goal,
-            solutions: BTreeSet::default(),
+            solutions: IndexSet::default(),
             dependents: Vec::new(),
             cands,
             assumptions,
@@ -383,7 +384,7 @@ impl GeneratorNode {
         }
 
         let mut next_cand = g_node.next_cand - g_node.cands.len();
-        while let Some(&assumption) = g_node.assumptions.list(db).iter().nth(next_cand) {
+        while let Some(&assumption) = g_node.assumptions.list(db).get(next_cand) {
             g_node.next_cand += 1;
             next_cand += 1;
             let mut table = g_node.table.clone();
