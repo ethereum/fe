@@ -21,4 +21,3 @@ dot2 = "1.0"
 
 common = { path = "../common2", package = "fe-common2" }
 parser = { path = "../parser2", package = "fe-parser2" }
-macros = { path = "../macros", package = "fe-macros" }

@@ -1184,7 +1184,6 @@ dependencies = [
  "fe-common2",
  "fe-hir",
  "fe-hir-analysis",
- "fe-macros",
  "salsa 0.18.0",
 ]
 
@@ -1197,7 +1196,6 @@ dependencies = [
  "derive_more",
  "dot2 1.0.0",
  "fe-common2",
- "fe-macros",
  "fe-parser2",
  "num-bigint",
  "num-traits",
@@ -1221,7 +1219,6 @@ dependencies = [
  "fe-common2",
  "fe-compiler-test-utils",
  "fe-hir",
- "fe-macros",
  "if_chain",
  "itertools",
  "num-bigint",
@@ -1237,16 +1234,6 @@ dependencies = [
  "include_dir",
  "indexmap 1.9.3",
  "smol_str",
-]
-
-[[package]]
-name = "fe-macros"
-version = "0.26.0"
-dependencies = [
- "glob",
- "proc-macro2",
- "quote",
- "syn 2.0.68",
 ]
 
 [[package]]
