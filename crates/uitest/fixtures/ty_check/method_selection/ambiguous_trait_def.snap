@@ -21,5 +21,3 @@ error[8-0031]: type annotation is needed
    │         │
    │         type annotation is needed
    │         consider giving `: Foo<_>` here
-
-

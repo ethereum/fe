@@ -20,13 +20,13 @@ use crate::SpannedHirDb;
 ///
 /// To obtain a span from HIR nodes in a lazy manner, it's recommended to use
 /// `[LazySpan]`(crate::span::LazySpan) and types that implement `LazySpan`.
-pub trait DiagnosticVoucher: Send {
+pub trait DiagnosticVoucher<'db>: Send {
     fn error_code(&self) -> GlobalErrorCode;
     /// Makes a [`CompleteDiagnostic`].
-    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic;
+    fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic;
 }
 
-impl DiagnosticVoucher for CompleteDiagnostic {
+impl<'db> DiagnosticVoucher<'db> for CompleteDiagnostic {
     fn error_code(&self) -> GlobalErrorCode {
         self.error_code.clone()
     }
@@ -36,12 +36,12 @@ impl DiagnosticVoucher for CompleteDiagnostic {
     }
 }
 
-impl DiagnosticVoucher for Box<dyn DiagnosticVoucher> {
+impl<'db> DiagnosticVoucher<'db> for Box<dyn DiagnosticVoucher<'db> + 'db> {
     fn error_code(&self) -> GlobalErrorCode {
         self.as_ref().error_code()
     }
 
-    fn to_complete(&self, db: &dyn SpannedHirDb) -> CompleteDiagnostic {
+    fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic {
         self.as_ref().to_complete(db)
     }
 }

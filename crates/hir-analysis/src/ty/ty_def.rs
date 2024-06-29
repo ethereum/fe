@@ -1,12 +1,11 @@
 //! This module contains the type definitions for the Fe type system.
 
-use std::{collections::BTreeSet, fmt};
+use std::fmt;
 
 use bitflags::bitflags;
-use common::input::IngotKind;
+use common::{indexmap::IndexSet, input::IngotKind};
 use hir::{
     hir_def::{
-        kw,
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         Body, IdentId, IngotId, IntegerId, TypeAlias as HirTypeAlias,
     },
@@ -26,21 +25,21 @@ use super::{
 use crate::{ty::trait_resolution::check_ty_wf, HirAnalysisDb};
 
 #[salsa::interned]
-pub struct TyId {
+pub struct TyId<'db> {
     #[return_ref]
-    pub data: TyData,
+    pub data: TyData<'db>,
 }
 
-impl TyId {
+impl<'db> TyId<'db> {
     /// Returns the kind of the type.
-    pub fn kind(self, db: &dyn HirAnalysisDb) -> &Kind {
+    pub fn kind(self, db: &'db dyn HirAnalysisDb) -> &'db Kind {
         ty_kind(db, self)
     }
 
     /// Returns the current arguments of the type.
     /// ## Example
     /// Calling this method for `TyApp<TyApp<Adt, T>, U>` returns `[T, U]`.
-    pub fn generic_args(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+    pub fn generic_args(self, db: &'db dyn HirAnalysisDb) -> &'db [Self] {
         let (_, args) = self.decompose_ty_app(db);
         args
     }
@@ -49,12 +48,12 @@ impl TyId {
     /// ## Example
     /// `TyApp<Adt, i32>` returns `Adt`.
     /// `TyApp<TyParam<T>, i32>` returns `TyParam<T>`.
-    pub fn base_ty(self, db: &dyn HirAnalysisDb) -> TyId {
+    pub fn base_ty(self, db: &'db dyn HirAnalysisDb) -> Self {
         self.decompose_ty_app(db).0
     }
 
     /// Returns the type of const type if the type is a const type.
-    pub fn const_ty_ty(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+    pub fn const_ty_ty(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
         match self.data(db) {
             TyData::ConstTy(const_ty) => Some(const_ty.ty(db)),
             _ => None,
@@ -91,7 +90,7 @@ impl TyId {
     }
 
     /// Returns `IngotId` that declares the type.
-    pub fn ingot(self, db: &dyn HirAnalysisDb) -> Option<IngotId> {
+    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Option<IngotId<'db>> {
         match self.data(db) {
             TyData::TyBase(TyBase::Adt(adt)) => adt.ingot(db).into(),
             TyData::TyBase(TyBase::Func(def)) => def.ingot(db).into(),
@@ -100,7 +99,7 @@ impl TyId {
         }
     }
 
-    pub fn invalid_cause(self, db: &dyn HirAnalysisDb) -> Option<InvalidCause> {
+    pub fn invalid_cause(self, db: &'db dyn HirAnalysisDb) -> Option<InvalidCause<'db>> {
         match self.data(db) {
             TyData::Invalid(cause) => Some(cause.clone()),
             _ => None,
@@ -128,7 +127,7 @@ impl TyId {
         !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
-    pub fn pretty_print(self, db: &dyn HirAnalysisDb) -> &str {
+    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> &str {
         pretty_print_ty(db, self)
     }
 
@@ -147,20 +146,23 @@ impl TyId {
     /// Decompose type application into the base type and type arguments, this
     /// doesn't perform deconstruction recursively. e.g.,
     /// `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
-    pub(super) fn decompose_ty_app(self, db: &dyn HirAnalysisDb) -> (TyId, &[TyId]) {
+    pub(super) fn decompose_ty_app(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> (TyId<'db>, &'db [TyId<'db>]) {
         let (base, args) = decompose_ty_app(db, self);
         (*base, args)
     }
 
-    pub(super) fn ptr(db: &dyn HirAnalysisDb) -> TyId {
+    pub(super) fn ptr(db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Ptr)))
     }
 
-    pub(super) fn tuple(db: &dyn HirAnalysisDb, n: usize) -> Self {
+    pub(super) fn tuple(db: &'db dyn HirAnalysisDb, n: usize) -> Self {
         Self::new(db, TyData::TyBase(TyBase::tuple(n)))
     }
 
-    pub(super) fn tuple_with_elems(db: &dyn HirAnalysisDb, elems: &[TyId]) -> Self {
+    pub(super) fn tuple_with_elems(db: &'db dyn HirAnalysisDb, elems: &[TyId<'db>]) -> Self {
         let base = TyBase::tuple(elems.len());
         let mut ty = Self::new(db, TyData::TyBase(base));
         for &elem in elems {
@@ -169,16 +171,16 @@ impl TyId {
         ty
     }
 
-    pub(super) fn bool(db: &dyn HirAnalysisDb) -> Self {
+    pub(super) fn bool(db: &'db dyn HirAnalysisDb) -> Self {
         Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Bool)))
     }
 
-    pub(super) fn array(db: &dyn HirAnalysisDb) -> Self {
+    pub(super) fn array(db: &'db dyn HirAnalysisDb) -> Self {
         let base = TyBase::Prim(PrimTy::Array);
         Self::new(db, TyData::TyBase(base))
     }
 
-    pub(super) fn array_with_elem(db: &dyn HirAnalysisDb, elem: TyId, len: usize) -> Self {
+    pub(super) fn array_with_elem(db: &'db dyn HirAnalysisDb, elem: TyId<'db>, len: usize) -> Self {
         let base = TyBase::Prim(PrimTy::Array);
         let base = Self::new(db, TyData::TyBase(base));
         let array = TyId::app(db, base, elem);
@@ -190,23 +192,23 @@ impl TyId {
         TyId::app(db, array, len)
     }
 
-    pub(super) fn unit(db: &dyn HirAnalysisDb) -> Self {
+    pub(super) fn unit(db: &'db dyn HirAnalysisDb) -> Self {
         Self::tuple(db, 0)
     }
 
-    pub(super) fn never(db: &dyn HirAnalysisDb) -> Self {
+    pub(super) fn never(db: &'db dyn HirAnalysisDb) -> Self {
         Self::new(db, TyData::Never)
     }
 
-    pub(super) fn const_ty(db: &dyn HirAnalysisDb, const_ty: ConstTyId) -> Self {
+    pub(super) fn const_ty(db: &'db dyn HirAnalysisDb, const_ty: ConstTyId<'db>) -> Self {
         Self::new(db, TyData::ConstTy(const_ty))
     }
 
-    pub(super) fn adt(db: &dyn HirAnalysisDb, adt: AdtDef) -> Self {
+    pub(super) fn adt(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Self {
         Self::new(db, TyData::TyBase(TyBase::Adt(adt)))
     }
 
-    pub(super) fn func(db: &dyn HirAnalysisDb, func: FuncDef) -> Self {
+    pub(super) fn func(db: &'db dyn HirAnalysisDb, func: FuncDef<'db>) -> Self {
         Self::new(db, TyData::TyBase(TyBase::Func(func)))
     }
 
@@ -263,13 +265,13 @@ impl TyId {
     /// Emit diagnostics for the type if the type contains invalid types.
     pub(super) fn emit_diag(
         self,
-        db: &dyn HirAnalysisDb,
-        span: DynLazySpan,
-    ) -> Option<TyDiagCollection> {
+        db: &'db dyn HirAnalysisDb,
+        span: DynLazySpan<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
         struct EmitDiagVisitor<'db> {
             db: &'db dyn HirAnalysisDb,
-            diag: Option<TyDiagCollection>,
-            span: DynLazySpan,
+            diag: Option<TyDiagCollection<'db>>,
+            span: DynLazySpan<'db>,
         }
 
         impl<'db> TyVisitor<'db> for EmitDiagVisitor<'db> {
@@ -277,7 +279,7 @@ impl TyId {
                 self.db
             }
 
-            fn visit_invalid(&mut self, cause: &InvalidCause) {
+            fn visit_invalid(&mut self, cause: &InvalidCause<'db>) {
                 let db = self.db;
 
                 let span = self.span.clone();
@@ -291,8 +293,8 @@ impl TyId {
                             .into()
                     }
 
-                    InvalidCause::InvalidConstParamTy { ty } => {
-                        TyLowerDiag::invalid_const_param_ty(db, span, *ty).into()
+                    InvalidCause::InvalidConstParamTy => {
+                        TyLowerDiag::invalid_const_param_ty(span).into()
                     }
 
                     InvalidCause::RecursiveConstParamTy => {
@@ -345,11 +347,14 @@ impl TyId {
 
     pub(super) fn emit_wf_diag(
         self,
-        db: &dyn HirAnalysisDb,
-        assumptions: PredicateListId,
-        span: DynLazySpan,
-    ) -> Option<TyDiagCollection> {
-        if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(db, self, assumptions) {
+        db: &'db dyn HirAnalysisDb,
+        ingot: IngotId<'db>,
+        assumptions: PredicateListId<'db>,
+        span: DynLazySpan<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        if let WellFormedness::IllFormed { goal, subgoal } =
+            check_ty_wf(db, ingot, self, assumptions)
+        {
             Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal, subgoal).into())
         } else {
             None
@@ -357,15 +362,19 @@ impl TyId {
     }
 
     pub(super) fn ty_var(
-        db: &dyn HirAnalysisDb,
+        db: &'db dyn HirAnalysisDb,
         sort: TyVarSort,
         kind: Kind,
-        key: InferenceKey,
+        key: InferenceKey<'db>,
     ) -> Self {
         Self::new(db, TyData::TyVar(TyVar { sort, kind, key }))
     }
 
-    pub(super) fn const_ty_var(db: &dyn HirAnalysisDb, ty: TyId, key: InferenceKey) -> Self {
+    pub(super) fn const_ty_var(
+        db: &'db dyn HirAnalysisDb,
+        ty: TyId<'db>,
+        key: InferenceKey<'db>,
+    ) -> Self {
         let ty_var = TyVar {
             sort: TyVarSort::General,
             kind: ty.kind(db).clone(),
@@ -377,7 +386,7 @@ impl TyId {
     }
 
     /// Perform type level application.
-    pub(super) fn app(db: &dyn HirAnalysisDb, lhs: Self, rhs: Self) -> TyId {
+    pub(super) fn app(db: &'db dyn HirAnalysisDb, lhs: Self, rhs: Self) -> TyId<'db> {
         let Some(applicable_ty) = lhs.applicable_ty(db) else {
             return Self::invalid(db, InvalidCause::kind_mismatch(None, rhs));
         };
@@ -410,15 +419,15 @@ impl TyId {
         self.is_ptr(db)
     }
 
-    pub(super) fn invalid(db: &dyn HirAnalysisDb, cause: InvalidCause) -> Self {
+    pub(super) fn invalid(db: &'db dyn HirAnalysisDb, cause: InvalidCause<'db>) -> Self {
         Self::new(db, TyData::Invalid(cause))
     }
 
-    pub(super) fn from_hir_prim_ty(db: &dyn HirAnalysisDb, hir_prim: HirPrimTy) -> Self {
+    pub(super) fn from_hir_prim_ty(db: &'db dyn HirAnalysisDb, hir_prim: HirPrimTy) -> Self {
         Self::new(db, TyData::TyBase(hir_prim.into()))
     }
 
-    pub(super) fn const_ty_param(self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+    pub(super) fn const_ty_param(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
         if let TyData::ConstTy(const_ty) = self.data(db) {
             Some(const_ty.ty(db))
         } else {
@@ -428,9 +437,9 @@ impl TyId {
 
     pub(super) fn evaluate_const_ty(
         self,
-        db: &dyn HirAnalysisDb,
-        expected_ty: Option<TyId>,
-    ) -> Result<TyId, InvalidCause> {
+        db: &'db dyn HirAnalysisDb,
+        expected_ty: Option<TyId<'db>>,
+    ) -> Result<TyId<'db>, InvalidCause<'db>> {
         match (expected_ty, self.data(db)) {
             (Some(expected_const_ty), TyData::ConstTy(const_ty)) => {
                 if expected_const_ty.has_invalid(db) {
@@ -468,7 +477,7 @@ impl TyId {
     }
 
     /// Returns the property of the type that can be applied to the `self`.
-    pub fn applicable_ty(self, db: &dyn HirAnalysisDb) -> Option<ApplicableTyProp> {
+    pub fn applicable_ty(self, db: &'db dyn HirAnalysisDb) -> Option<ApplicableTyProp> {
         let applicable_kind = match self.kind(db) {
             Kind::Star => return None,
             Kind::Abs(arg, _) => *arg.clone(),
@@ -523,34 +532,34 @@ impl TyId {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ApplicableTyProp {
+pub struct ApplicableTyProp<'db> {
     /// A kind of the applicable type.
     pub kind: Kind,
     /// An expected type of const type if the applicable type is a const type.
-    pub const_ty: Option<TyId>,
+    pub const_ty: Option<TyId<'db>>,
 }
 
 #[salsa::tracked(return_ref)]
-pub fn ty_kind(db: &dyn HirAnalysisDb, ty: TyId) -> Kind {
+pub fn ty_kind<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Kind {
     ty.data(db).kind(db)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TyData {
+pub enum TyData<'db> {
     /// Type variable.
-    TyVar(TyVar),
+    TyVar(TyVar<'db>),
 
     /// Type Parameter.
-    TyParam(TyParam),
+    TyParam(TyParam<'db>),
 
     // Type application,
     // e.g., `Option<i32>` is represented as `TApp(TyConst(Option), TyConst(i32))`.
-    TyApp(TyId, TyId),
+    TyApp(TyId<'db>, TyId<'db>),
 
     /// A concrete type, e.g., `i32`, `u32`, `bool`, `String`, `Result` etc.
-    TyBase(TyBase),
+    TyBase(TyBase<'db>),
 
-    ConstTy(ConstTyId),
+    ConstTy(ConstTyId<'db>),
 
     /// A never(bottom) type.
     Never,
@@ -558,47 +567,45 @@ pub enum TyData {
     // Invalid type which means the type is ill-formed.
     // This type can be unified with any other types.
     // NOTE: For type soundness check in this level, we don't consider trait satisfiability.
-    Invalid(InvalidCause),
+    Invalid(InvalidCause<'db>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum InvalidCause {
+pub enum InvalidCause<'db> {
     /// Type is not fully applied where it is required.
     NotFullyApplied,
 
     /// Kind mismatch between two types.
     KindMismatch {
         expected: Option<Kind>,
-        given: TyId,
+        given: TyId<'db>,
     },
 
-    InvalidConstParamTy {
-        ty: TyId,
-    },
+    InvalidConstParamTy,
 
     RecursiveConstParamTy,
 
     /// The given type doesn't match the expected const type.
     ConstTyMismatch {
-        expected: TyId,
-        given: TyId,
+        expected: TyId<'db>,
+        given: TyId<'db>,
     },
 
     /// The given type is not a const type where it is required.
     ConstTyExpected {
-        expected: TyId,
+        expected: TyId<'db>,
     },
 
     /// The given type is const type where it is *NOT* required.
     NormalTypeExpected {
-        given: TyId,
+        given: TyId<'db>,
     },
 
     /// Type alias parameter is not bound.
     /// NOTE: In our type system, type alias is a macro, so we can't perform
     /// partial application to type alias.
     UnboundTypeAliasParam {
-        alias: HirTypeAlias,
+        alias: HirTypeAlias<'db>,
         n_given_args: usize,
     },
 
@@ -609,7 +616,7 @@ pub enum InvalidCause {
     // TODO: Remove this error kind and introduce a new error kind for more specific cause when
     // type inference is implemented.
     InvalidConstTyExpr {
-        body: Body,
+        body: Body<'db>,
     },
 
     // TraitConstraintNotSat(PredicateId),
@@ -618,8 +625,8 @@ pub enum InvalidCause {
     Other,
 }
 
-impl InvalidCause {
-    pub(super) fn kind_mismatch(expected: Option<&Kind>, ty: TyId) -> Self {
+impl<'db> InvalidCause<'db> {
+    pub(super) fn kind_mismatch(expected: Option<&Kind>, ty: TyId<'db>) -> Self {
         Self::KindMismatch {
             expected: expected.cloned(),
             given: ty,
@@ -670,18 +677,18 @@ impl fmt::Display for Kind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TyVar {
+pub struct TyVar<'db> {
     pub sort: TyVarSort,
     pub kind: Kind,
-    pub(super) key: InferenceKey,
+    pub(super) key: InferenceKey<'db>,
 }
 
-impl std::cmp::PartialOrd for TyVar {
+impl<'db> std::cmp::PartialOrd for TyVar<'db> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
-impl std::cmp::Ord for TyVar {
+impl<'db> std::cmp::Ord for TyVar<'db> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         if self == other {
             return std::cmp::Ordering::Equal;
@@ -718,7 +725,7 @@ impl PartialOrd for TyVarSort {
     }
 }
 
-impl TyVar {
+impl<'db> TyVar<'db> {
     pub(super) fn pretty_print(&self) -> String {
         match self.sort {
             TyVarSort::General => ("_").to_string(),
@@ -731,8 +738,8 @@ impl TyVar {
 /// Type generics parameter. We also treat `Self` type in a trait definition as
 /// a special type parameter.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TyParam {
-    pub name: IdentId,
+pub struct TyParam<'db> {
+    pub name: IdentId<'db>,
     // The index points to the lowered type parameter list, which means that the idx doesn't
     // correspond to the index of the type parameter in the original source code.
     // E.g.,
@@ -746,12 +753,12 @@ pub struct TyParam {
     pub is_trait_self: bool,
 }
 
-impl TyParam {
+impl<'db> TyParam<'db> {
     pub(super) fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         self.name.data(db.as_hir_db()).to_string()
     }
 
-    pub(super) fn normal_param(name: IdentId, idx: usize, kind: Kind) -> Self {
+    pub(super) fn normal_param(name: IdentId<'db>, idx: usize, kind: Kind) -> Self {
         Self {
             name,
             idx,
@@ -760,9 +767,9 @@ impl TyParam {
         }
     }
 
-    pub(super) fn trait_self(kind: Kind) -> Self {
+    pub(super) fn trait_self(db: &'db dyn HirAnalysisDb, kind: Kind) -> Self {
         Self {
-            name: kw::SELF_TY,
+            name: IdentId::make_self_ty(db.as_hir_db()),
             idx: 0,
             kind,
             is_trait_self: true,
@@ -771,13 +778,13 @@ impl TyParam {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
-pub enum TyBase {
+pub enum TyBase<'db> {
     Prim(PrimTy),
-    Adt(AdtDef),
-    Func(FuncDef),
+    Adt(AdtDef<'db>),
+    Func(FuncDef<'db>),
 }
 
-impl TyBase {
+impl<'db> TyBase<'db> {
     pub fn is_integral(self) -> bool {
         match self {
             Self::Prim(prim) => prim.is_integral(),
@@ -831,7 +838,7 @@ impl TyBase {
         }
     }
 
-    pub(super) fn adt(self) -> Option<AdtDef> {
+    pub(super) fn adt(self) -> Option<AdtDef<'db>> {
         match self {
             Self::Adt(adt) => Some(adt),
             _ => None,
@@ -839,7 +846,7 @@ impl TyBase {
     }
 }
 
-impl From<HirPrimTy> for TyBase {
+impl<'db> From<HirPrimTy> for TyBase<'db> {
     fn from(hir_prim: HirPrimTy) -> Self {
         match hir_prim {
             HirPrimTy::Bool => Self::Prim(PrimTy::Bool),
@@ -922,7 +929,7 @@ pub(super) trait HasKind {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind;
 }
 
-impl HasKind for TyData {
+impl<'db> HasKind for TyData<'db> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         match self {
             TyData::TyVar(ty_var) => ty_var.kind(db),
@@ -944,13 +951,13 @@ impl HasKind for TyData {
     }
 }
 
-impl HasKind for TyVar {
+impl<'db> HasKind for TyVar<'db> {
     fn kind(&self, _db: &dyn HirAnalysisDb) -> Kind {
         self.kind.clone()
     }
 }
 
-impl HasKind for TyBase {
+impl<'db> HasKind for TyBase<'db> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         match self {
             TyBase::Prim(prim) => prim.kind(db),
@@ -972,7 +979,7 @@ impl HasKind for PrimTy {
     }
 }
 
-impl HasKind for AdtDef {
+impl<'db> HasKind for AdtDef<'db> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         let mut kind = Kind::Star;
         for param in self.params(db).iter().rev() {
@@ -983,7 +990,7 @@ impl HasKind for AdtDef {
     }
 }
 
-impl HasKind for FuncDef {
+impl<'db> HasKind for FuncDef<'db> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         let mut kind = Kind::Star;
         for param in self.params(db).iter().rev() {
@@ -997,13 +1004,13 @@ impl HasKind for FuncDef {
 pub(crate) fn collect_variables<'db, V>(
     db: &'db dyn HirAnalysisDb,
     visitable: &V,
-) -> BTreeSet<TyVar>
+) -> IndexSet<TyVar<'db>>
 where
     V: TyVisitable<'db>,
 {
     struct TyVarCollector<'db> {
         db: &'db dyn HirAnalysisDb,
-        vars: BTreeSet<TyVar>,
+        vars: IndexSet<TyVar<'db>>,
     }
 
     impl<'db> TyVisitor<'db> for TyVarCollector<'db> {
@@ -1011,13 +1018,13 @@ where
             self.db
         }
 
-        fn visit_var(&mut self, var: &TyVar) {
+        fn visit_var(&mut self, var: &TyVar<'db>) {
             self.vars.insert(var.clone());
         }
     }
     let mut collector = TyVarCollector {
         db,
-        vars: BTreeSet::default(),
+        vars: IndexSet::default(),
     };
 
     visitable.visit_with(&mut collector);
@@ -1028,13 +1035,13 @@ where
 pub(crate) fn inference_keys<'db, V>(
     db: &'db dyn HirAnalysisDb,
     visitable: &V,
-) -> FxHashSet<InferenceKey>
+) -> FxHashSet<InferenceKey<'db>>
 where
     V: TyVisitable<'db>,
 {
     struct FreeInferenceKeyCollector<'db> {
         db: &'db dyn HirAnalysisDb,
-        keys: FxHashSet<InferenceKey>,
+        keys: FxHashSet<InferenceKey<'db>>,
     }
 
     impl<'db> TyVisitor<'db> for FreeInferenceKeyCollector<'db> {
@@ -1042,7 +1049,7 @@ where
             self.db
         }
 
-        fn visit_var(&mut self, var: &TyVar) {
+        fn visit_var(&mut self, var: &TyVar<'db>) {
             self.keys.insert(var.key);
         }
     }
@@ -1057,7 +1064,7 @@ where
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
+pub(crate) fn pretty_print_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
     match ty.data(db) {
         TyData::TyVar(var) => var.pretty_print(),
         TyData::TyParam(param) => param.pretty_print(db),
@@ -1069,7 +1076,7 @@ pub(crate) fn pretty_print_ty(db: &dyn HirAnalysisDb, ty: TyId) -> String {
     }
 }
 
-fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
+fn pretty_print_ty_app<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
     use PrimTy::*;
     use TyBase::*;
 
@@ -1115,11 +1122,14 @@ fn pretty_print_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> String {
 /// Decompose type application into the base type and type arguments.
 /// e.g., `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
 #[salsa::tracked(return_ref)]
-pub(crate) fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<TyId>) {
+pub(crate) fn decompose_ty_app<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+) -> (TyId<'db>, Vec<TyId<'db>>) {
     struct TyAppDecomposer<'db> {
         db: &'db dyn HirAnalysisDb,
-        base: Option<TyId>,
-        args: Vec<TyId>,
+        base: Option<TyId<'db>>,
+        args: Vec<TyId<'db>>,
     }
 
     impl<'db> TyVisitor<'db> for TyAppDecomposer<'db> {
@@ -1127,7 +1137,7 @@ pub(crate) fn decompose_ty_app(db: &dyn HirAnalysisDb, ty: TyId) -> (TyId, Vec<T
             self.db
         }
 
-        fn visit_ty(&mut self, ty: TyId) {
+        fn visit_ty(&mut self, ty: TyId<'db>) {
             let db = self.db;
 
             match ty.data(db) {
@@ -1160,7 +1170,7 @@ bitflags! {
 }
 
 #[salsa::tracked]
-pub(crate) fn ty_flags(db: &dyn HirAnalysisDb, ty: TyId) -> TyFlags {
+pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlags {
     struct Collector<'db> {
         db: &'db dyn HirAnalysisDb,
         flags: TyFlags,

@@ -1,4 +1,6 @@
-use std::collections::BTreeSet;
+use std::hash::Hash;
+
+use common::indexmap::IndexSet;
 
 use super::{
     trait_def::{Implementor, TraitInstId},
@@ -30,10 +32,10 @@ where
 
 pub trait TyFolder<'db> {
     fn db(&self) -> &'db dyn HirAnalysisDb;
-    fn fold_ty(&mut self, ty: TyId) -> TyId;
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db>;
 }
 
-impl<'db> TyFoldable<'db> for TyId {
+impl<'db> TyFoldable<'db> for TyId<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -97,9 +99,9 @@ where
     }
 }
 
-impl<'db, T> TyFoldable<'db> for BTreeSet<T>
+impl<'db, T> TyFoldable<'db> for IndexSet<T>
 where
-    T: TyFoldable<'db> + Ord,
+    T: TyFoldable<'db> + Hash + Eq,
 {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
@@ -109,7 +111,7 @@ where
     }
 }
 
-impl<'db> TyFoldable<'db> for TraitInstId {
+impl<'db> TyFoldable<'db> for TraitInstId<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -126,7 +128,7 @@ impl<'db> TyFoldable<'db> for TraitInstId {
     }
 }
 
-impl<'db> TyFoldable<'db> for Implementor {
+impl<'db> TyFoldable<'db> for Implementor<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -144,7 +146,7 @@ impl<'db> TyFoldable<'db> for Implementor {
     }
 }
 
-impl<'db> TyFoldable<'db> for PredicateListId {
+impl<'db> TyFoldable<'db> for PredicateListId<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,
@@ -155,11 +157,11 @@ impl<'db> TyFoldable<'db> for PredicateListId {
             .map(|pred| pred.fold_with(folder))
             .collect();
 
-        Self::new(folder.db(), predicates, self.ingot(folder.db()))
+        Self::new(folder.db(), predicates)
     }
 }
 
-impl<'db> TyFoldable<'db> for ExprProp {
+impl<'db> TyFoldable<'db> for ExprProp<'db> {
     fn super_fold_with<F>(self, folder: &mut F) -> Self
     where
         F: TyFolder<'db>,

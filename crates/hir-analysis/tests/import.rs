@@ -16,7 +16,8 @@ fn test_standalone(fixture: Fixture<&str>) {
     let mut db = HirAnalysisTestDb::default();
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
-    let (top_mod, mut prop_formatter) = db.new_stand_alone(file_name, fixture.content());
+    let input = db.new_stand_alone(file_name, fixture.content());
+    let (top_mod, mut prop_formatter) = db.top_mod(input);
 
     db.assert_no_diags(top_mod);
 
@@ -31,10 +32,10 @@ fn test_standalone(fixture: Fixture<&str>) {
     snap_test!(res, fixture.path());
 }
 
-fn format_imports(
-    db: &HirAnalysisTestDb,
-    prop_formatter: &mut HirPropertyFormatter,
-    imports: &ResolvedImports,
+fn format_imports<'db>(
+    db: &'db HirAnalysisTestDb,
+    prop_formatter: &mut HirPropertyFormatter<'db>,
+    imports: &ResolvedImports<'db>,
 ) -> String {
     let mut use_res_map: FxHashMap<Use, Vec<String>> = FxHashMap::default();
 

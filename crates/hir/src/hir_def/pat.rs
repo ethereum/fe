@@ -3,20 +3,20 @@ use cranelift_entity::entity_impl;
 use super::{Body, IdentId, LitKind, Partial, PathId};
 use crate::{span::pat::LazyPatSpan, HirDb};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Pat {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub enum Pat<'db> {
     WildCard,
     Rest,
-    Lit(Partial<LitKind>),
+    Lit(Partial<LitKind<'db>>),
     Tuple(Vec<PatId>),
     /// The second bool is `true` if the pat has `mut` in front of it.
-    Path(Partial<PathId>, bool),
-    PathTuple(Partial<PathId>, Vec<PatId>),
-    Record(Partial<PathId>, Vec<RecordPatField>),
+    Path(Partial<PathId<'db>>, bool),
+    PathTuple(Partial<PathId<'db>>, Vec<PatId>),
+    Record(Partial<PathId<'db>>, Vec<RecordPatField<'db>>),
     Or(PatId, PatId),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub struct PatId(u32);
 entity_impl!(PatId);
 
@@ -25,7 +25,7 @@ impl PatId {
         LazyPatSpan::new(body, self)
     }
 
-    pub fn data(self, db: &dyn HirDb, body: Body) -> &Partial<Pat> {
+    pub fn data<'db>(self, db: &'db dyn HirDb, body: Body<'db>) -> &'db Partial<Pat<'db>> {
         &body.pats(db)[self]
     }
 
@@ -34,14 +34,14 @@ impl PatId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RecordPatField {
-    pub label: Partial<IdentId>,
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct RecordPatField<'db> {
+    pub label: Partial<IdentId<'db>>,
     pub pat: PatId,
 }
 
-impl RecordPatField {
-    pub fn label(&self, db: &dyn HirDb, body: Body) -> Option<IdentId> {
+impl<'db> RecordPatField<'db> {
+    pub fn label(&self, db: &'db dyn HirDb, body: Body<'db>) -> Option<IdentId<'db>> {
         if let Partial::Present(label) = self.label {
             return Some(label);
         }

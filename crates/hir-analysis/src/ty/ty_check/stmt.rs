@@ -2,13 +2,13 @@ use hir::hir_def::{IdentId, Partial, Stmt, StmtId};
 
 use super::TyChecker;
 use crate::ty::{
-    diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
+    diagnostics::BodyDiag,
     fold::TyFoldable,
     ty_def::{InvalidCause, TyId},
 };
 
 impl<'db> TyChecker<'db> {
-    pub(super) fn check_stmt(&mut self, stmt: StmtId, expected: TyId) -> TyId {
+    pub(super) fn check_stmt(&mut self, stmt: StmtId, expected: TyId<'db>) -> TyId<'db> {
         let Partial::Present(stmt_data) = self.env.stmt_data(stmt) else {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
@@ -24,7 +24,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_let(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_let(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         let Stmt::Let(pat, ascription, expr) = stmt_data else {
             unreachable!()
         };
@@ -45,7 +45,7 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    fn check_for(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_for(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         let Stmt::For(pat, expr, body) = stmt_data else {
             unreachable!()
         };
@@ -63,8 +63,7 @@ impl<'db> TyChecker<'db> {
             TyId::invalid(self.db, InvalidCause::Other)
         } else if base.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(expr.lazy_span(self.body()).into());
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
-
+            self.push_diag(diag);
             TyId::invalid(self.db, InvalidCause::Other)
         } else {
             let diag = BodyDiag::TraitNotImplemented {
@@ -72,7 +71,7 @@ impl<'db> TyChecker<'db> {
                 ty: expr_ty.pretty_print(self.db).to_string(),
                 trait_name: IdentId::new(self.db.as_hir_db(), "Iterator".to_string()),
             };
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
 
             TyId::invalid(self.db, InvalidCause::Other)
         };
@@ -92,7 +91,7 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    fn check_while(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_while(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         let Stmt::While(cond, body) = stmt_data else {
             unreachable!()
         };
@@ -106,7 +105,7 @@ impl<'db> TyChecker<'db> {
         TyId::unit(self.db)
     }
 
-    fn check_continue(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_continue(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         assert!(matches!(stmt_data, Stmt::Continue));
 
         if self.env.current_loop().is_none() {
@@ -115,13 +114,13 @@ impl<'db> TyChecker<'db> {
                 primary: span.into(),
                 is_break: false,
             };
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
         }
 
         TyId::never(self.db)
     }
 
-    fn check_break(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_break(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         assert!(matches!(stmt_data, Stmt::Break));
 
         if self.env.current_loop().is_none() {
@@ -130,13 +129,13 @@ impl<'db> TyChecker<'db> {
                 primary: span.into(),
                 is_break: true,
             };
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
         }
 
         TyId::never(self.db)
     }
 
-    fn check_return(&mut self, stmt: StmtId, stmt_data: &Stmt) -> TyId {
+    fn check_return(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
         let Stmt::Return(expr) = stmt_data else {
             unreachable!()
         };
@@ -160,7 +159,7 @@ impl<'db> TyChecker<'db> {
                 func.map(|f| f.hir_func_def(self.db).unwrap()),
             );
 
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
         }
 
         TyId::never(self.db)

@@ -1,4 +1,4 @@
-use super::{kw, IdentId};
+use super::IdentId;
 use crate::HirDb;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -12,9 +12,9 @@ pub enum PrimTy {
 impl PrimTy {
     pub fn name(self, db: &dyn HirDb) -> IdentId {
         match self {
-            PrimTy::Bool => kw::BOOL,
-            PrimTy::Int(ty) => ty.name(),
-            PrimTy::Uint(ty) => ty.name(),
+            PrimTy::Bool => IdentId::make_bool(db),
+            PrimTy::Int(ty) => ty.name(db),
+            PrimTy::Uint(ty) => ty.name(db),
             PrimTy::String => IdentId::new(db, "String".into()),
         }
     }
@@ -53,15 +53,15 @@ pub enum IntTy {
 }
 
 impl IntTy {
-    pub fn name(self) -> IdentId {
+    pub fn name(self, db: &dyn HirDb) -> IdentId {
         match self {
-            IntTy::I8 => kw::I8,
-            IntTy::I16 => kw::I16,
-            IntTy::I32 => kw::I32,
-            IntTy::I64 => kw::I64,
-            IntTy::I128 => kw::I128,
-            IntTy::I256 => kw::I256,
-            IntTy::Isize => kw::ISIZE,
+            IntTy::I8 => IdentId::make_i8(db),
+            IntTy::I16 => IdentId::make_i16(db),
+            IntTy::I32 => IdentId::make_i32(db),
+            IntTy::I64 => IdentId::make_i64(db),
+            IntTy::I128 => IdentId::make_i128(db),
+            IntTy::I256 => IdentId::make_i256(db),
+            IntTy::Isize => IdentId::make_isize(db),
         }
     }
 }
@@ -78,15 +78,15 @@ pub enum UintTy {
 }
 
 impl UintTy {
-    pub fn name(self) -> IdentId {
+    pub fn name(self, db: &dyn HirDb) -> IdentId {
         match self {
-            UintTy::U8 => kw::U8,
-            UintTy::U16 => kw::U16,
-            UintTy::U32 => kw::U32,
-            UintTy::U64 => kw::U64,
-            UintTy::U128 => kw::U128,
-            UintTy::U256 => kw::U256,
-            UintTy::Usize => kw::USIZE,
+            UintTy::U8 => IdentId::make_u8(db),
+            UintTy::U16 => IdentId::make_u16(db),
+            UintTy::U32 => IdentId::make_u32(db),
+            UintTy::U64 => IdentId::make_u64(db),
+            UintTy::U128 => IdentId::make_u128(db),
+            UintTy::U256 => IdentId::make_u256(db),
+            UintTy::Usize => IdentId::make_usize(db),
         }
     }
 }

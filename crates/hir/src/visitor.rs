@@ -6,10 +6,11 @@ use crate::{
         scope_graph::{FieldParent, ScopeId},
         Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
         FieldIndex, Func, FuncParam, FuncParamListId, FuncParamName, GenericArg, GenericArgListId,
-        GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind,
-        MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait,
-        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
-        UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
+        GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, IngotId, ItemKind, KindBound,
+        LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod,
+        Trait, TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias,
+        UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId,
+        WherePredicate,
     },
     span::{
         item::LazySuperTraitListSpan, lazy_spans::*, params::LazyTraitRefSpan,
@@ -34,162 +35,186 @@ pub mod prelude {
 }
 
 /// A visitor for traversing the HIR.
-pub trait Visitor {
-    fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, item: ItemKind) {
+pub trait Visitor<'db> {
+    fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'db, LazyItemSpan<'db>>, item: ItemKind<'db>) {
         walk_item(self, ctxt, item)
     }
 
-    fn visit_top_mod(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTopModSpan>, top_mod: TopLevelMod) {
+    fn visit_top_mod(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyTopModSpan<'db>>,
+        top_mod: TopLevelMod<'db>,
+    ) {
         walk_top_mod(self, ctxt, top_mod)
     }
 
-    fn visit_mod(&mut self, ctxt: &mut VisitorCtxt<'_, LazyModSpan>, module: Mod) {
+    fn visit_mod(&mut self, ctxt: &mut VisitorCtxt<'db, LazyModSpan<'db>>, module: Mod<'db>) {
         walk_mod(self, ctxt, module)
     }
 
-    fn visit_func(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFuncSpan>, func: Func) {
+    fn visit_func(&mut self, ctxt: &mut VisitorCtxt<'db, LazyFuncSpan<'db>>, func: Func<'db>) {
         walk_func(self, ctxt, func)
     }
 
-    fn visit_struct(&mut self, ctxt: &mut VisitorCtxt<'_, LazyStructSpan>, struct_: Struct) {
+    fn visit_struct(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyStructSpan<'db>>,
+        struct_: Struct<'db>,
+    ) {
         walk_struct(self, ctxt, struct_)
     }
 
-    fn visit_contract(&mut self, ctxt: &mut VisitorCtxt<'_, LazyContractSpan>, contract: Contract) {
+    fn visit_contract(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyContractSpan<'db>>,
+        contract: Contract<'db>,
+    ) {
         walk_contract(self, ctxt, contract)
     }
 
-    fn visit_enum(&mut self, ctxt: &mut VisitorCtxt<'_, LazyEnumSpan>, enum_: Enum) {
+    fn visit_enum(&mut self, ctxt: &mut VisitorCtxt<'db, LazyEnumSpan<'db>>, enum_: Enum<'db>) {
         walk_enum(self, ctxt, enum_)
     }
 
     fn visit_type_alias(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTypeAliasSpan>,
-        alias: TypeAlias,
+        ctxt: &mut VisitorCtxt<'db, LazyTypeAliasSpan<'db>>,
+        alias: TypeAlias<'db>,
     ) {
         walk_type_alias(self, ctxt, alias)
     }
 
-    fn visit_impl(&mut self, ctxt: &mut VisitorCtxt<'_, LazyImplSpan>, impl_: Impl) {
+    fn visit_impl(&mut self, ctxt: &mut VisitorCtxt<'db, LazyImplSpan<'db>>, impl_: Impl<'db>) {
         walk_impl(self, ctxt, impl_)
     }
 
-    fn visit_trait(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTraitSpan>, trait_: Trait) {
+    fn visit_trait(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTraitSpan<'db>>, trait_: Trait<'db>) {
         walk_trait(self, ctxt, trait_)
     }
 
     fn visit_impl_trait(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyImplTraitSpan>,
-        impl_trait: ImplTrait,
+        ctxt: &mut VisitorCtxt<'db, LazyImplTraitSpan<'db>>,
+        impl_trait: ImplTrait<'db>,
     ) {
         walk_impl_trait(self, ctxt, impl_trait)
     }
 
-    fn visit_const(&mut self, ctxt: &mut VisitorCtxt<'_, LazyConstSpan>, constant: Const) {
+    fn visit_const(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyConstSpan<'db>>,
+        constant: Const<'db>,
+    ) {
         walk_const(self, ctxt, constant)
     }
 
-    fn visit_use(&mut self, ctxt: &mut VisitorCtxt<'_, LazyUseSpan>, use_: Use) {
+    fn visit_use(&mut self, ctxt: &mut VisitorCtxt<'db, LazyUseSpan<'db>>, use_: Use<'db>) {
         walk_use(self, ctxt, use_)
     }
 
-    fn visit_body(&mut self, ctxt: &mut VisitorCtxt<'_, LazyBodySpan>, body: Body) {
+    fn visit_body(&mut self, ctxt: &mut VisitorCtxt<'db, LazyBodySpan<'db>>, body: Body<'db>) {
         walk_body(self, ctxt, body)
     }
 
     fn visit_attribute_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyAttrListSpan>,
-        attrs: AttrListId,
+        ctxt: &mut VisitorCtxt<'db, LazyAttrListSpan<'db>>,
+        attrs: AttrListId<'db>,
     ) {
         walk_attribute_list(self, ctxt, attrs);
     }
 
-    fn visit_attribute(&mut self, ctxt: &mut VisitorCtxt<'_, LazyAttrSpan>, attr: &Attr) {
+    fn visit_attribute(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyAttrSpan<'db>>,
+        attr: &Attr<'db>,
+    ) {
         walk_attribute(self, ctxt, attr);
     }
 
     fn visit_generic_param_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericParamListSpan>,
-        params: GenericParamListId,
+        ctxt: &mut VisitorCtxt<'db, LazyGenericParamListSpan<'db>>,
+        params: GenericParamListId<'db>,
     ) {
         walk_generic_param_list(self, ctxt, params);
     }
 
     fn visit_generic_param(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
-        param: &GenericParam,
+        ctxt: &mut VisitorCtxt<'db, LazyGenericParamSpan<'db>>,
+        param: &GenericParam<'db>,
     ) {
         walk_generic_param(self, ctxt, param);
     }
 
     fn visit_generic_arg_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericArgListSpan>,
-        args: GenericArgListId,
+        ctxt: &mut VisitorCtxt<'db, LazyGenericArgListSpan<'db>>,
+        args: GenericArgListId<'db>,
     ) {
         walk_generic_arg_list(self, ctxt, args);
     }
 
     fn visit_generic_arg(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyGenericArgSpan>,
-        arg: &GenericArg,
+        ctxt: &mut VisitorCtxt<'db, LazyGenericArgSpan<'db>>,
+        arg: &GenericArg<'db>,
     ) {
         walk_generic_arg(self, ctxt, arg);
     }
 
     fn visit_call_arg_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyCallArgListSpan>,
-        args: &[CallArg],
+        ctxt: &mut VisitorCtxt<'db, LazyCallArgListSpan<'db>>,
+        args: &[CallArg<'db>],
     ) {
         walk_call_arg_list(self, ctxt, args);
     }
 
-    fn visit_call_arg(&mut self, ctxt: &mut VisitorCtxt<'_, LazyCallArgSpan>, arg: CallArg) {
+    fn visit_call_arg(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyCallArgSpan<'db>>,
+        arg: CallArg<'db>,
+    ) {
         walk_call_arg(self, ctxt, arg);
     }
 
     fn visit_type_bound_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTypeBoundListSpan>,
-        bounds: &[TypeBound],
+        ctxt: &mut VisitorCtxt<'db, LazyTypeBoundListSpan<'db>>,
+        bounds: &[TypeBound<'db>],
     ) {
         walk_type_bound_list(self, ctxt, bounds);
     }
 
     fn visit_type_bound(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTypeBoundSpan>,
-        bound: &TypeBound,
+        ctxt: &mut VisitorCtxt<'db, LazyTypeBoundSpan<'db>>,
+        bound: &TypeBound<'db>,
     ) {
         walk_type_bound(self, ctxt, bound);
     }
 
     fn visit_trait_ref(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-        trait_ref: TraitRefId,
+        ctxt: &mut VisitorCtxt<'db, LazyTraitRefSpan<'db>>,
+        trait_ref: TraitRefId<'db>,
     ) {
         walk_trait_ref(self, ctxt, trait_ref);
     }
 
     fn visit_super_trait_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazySuperTraitListSpan>,
-        super_traits: &[TraitRefId],
+        ctxt: &mut VisitorCtxt<'db, LazySuperTraitListSpan<'db>>,
+        super_traits: &[TraitRefId<'db>],
     ) {
         walk_super_trait_list(self, ctxt, super_traits);
     }
 
     fn visit_kind_bound(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+        ctxt: &mut VisitorCtxt<'db, LazyKindBoundSpan<'db>>,
         bound: &KindBound,
     ) {
         walk_kind_bound(self, ctxt, bound);
@@ -197,133 +222,149 @@ pub trait Visitor {
 
     fn visit_where_clause(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyWhereClauseSpan>,
-        where_clause: WhereClauseId,
+        ctxt: &mut VisitorCtxt<'db, LazyWhereClauseSpan<'db>>,
+        where_clause: WhereClauseId<'db>,
     ) {
         walk_where_clause(self, ctxt, where_clause);
     }
 
     fn visit_where_predicate(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
-        where_predicate: &WherePredicate,
+        ctxt: &mut VisitorCtxt<'db, LazyWherePredicateSpan<'db>>,
+        where_predicate: &WherePredicate<'db>,
     ) {
         walk_where_predicate(self, ctxt, where_predicate);
     }
 
     fn visit_func_param_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFuncParamListSpan>,
-        params: FuncParamListId,
+        ctxt: &mut VisitorCtxt<'db, LazyFuncParamListSpan<'db>>,
+        params: FuncParamListId<'db>,
     ) {
         walk_func_param_list(self, ctxt, params);
     }
 
     fn visit_func_param(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFuncParamSpan>,
-        param: &FuncParam,
+        ctxt: &mut VisitorCtxt<'db, LazyFuncParamSpan<'db>>,
+        param: &FuncParam<'db>,
     ) {
         walk_func_param(self, ctxt, param);
     }
 
     fn visit_field_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFieldListSpan>,
-        fields: &[Field],
+        ctxt: &mut VisitorCtxt<'db, LazyFieldListSpan<'db>>,
+        fields: &[Field<'db>],
     ) {
         walk_field_list(self, ctxt, fields);
     }
 
-    fn visit_field(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldSpan>, field: Field) {
+    fn visit_field(&mut self, ctxt: &mut VisitorCtxt<'db, LazyFieldSpan<'db>>, field: Field<'db>) {
         walk_field(self, ctxt, field);
     }
 
     fn visit_field_def_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyFieldDefListSpan>,
-        fields: FieldDefListId,
+        ctxt: &mut VisitorCtxt<'db, LazyFieldDefListSpan<'db>>,
+        fields: FieldDefListId<'db>,
     ) {
         walk_field_def_list(self, ctxt, fields);
     }
 
-    fn visit_field_def(&mut self, ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>, field: &FieldDef) {
+    fn visit_field_def(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyFieldDefSpan<'db>>,
+        field: &FieldDef<'db>,
+    ) {
         walk_field_def(self, ctxt, field);
     }
 
     fn visit_variant_def_list(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyVariantDefListSpan>,
-        variants: VariantDefListId,
+        ctxt: &mut VisitorCtxt<'db, LazyVariantDefListSpan<'db>>,
+        variants: VariantDefListId<'db>,
     ) {
         walk_variant_def_list(self, ctxt, variants);
     }
 
     fn visit_variant_def(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
-        variant: &VariantDef,
+        ctxt: &mut VisitorCtxt<'db, LazyVariantDefSpan<'db>>,
+        variant: &VariantDef<'db>,
     ) {
         walk_variant_def(self, ctxt, variant)
     }
 
     fn visit_stmt(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyStmtSpan>,
+        ctxt: &mut VisitorCtxt<'db, LazyStmtSpan<'db>>,
         stmt: StmtId,
-        #[allow(unused_variables)] stmt_data: &Stmt,
+        #[allow(unused_variables)] stmt_data: &Stmt<'db>,
     ) {
         walk_stmt(self, ctxt, stmt)
     }
 
     fn visit_expr(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+        ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
         expr: ExprId,
-        #[allow(unused_variables)] expr_data: &Expr,
+        #[allow(unused_variables)] expr_data: &Expr<'db>,
     ) {
         walk_expr(self, ctxt, expr)
     }
 
     fn visit_pat(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyPatSpan>,
+        ctxt: &mut VisitorCtxt<'db, LazyPatSpan<'db>>,
         pat: PatId,
-        #[allow(unused_variables)] pat_data: &Pat,
+        #[allow(unused_variables)] pat_data: &Pat<'db>,
     ) {
         walk_pat(self, ctxt, pat)
     }
 
-    fn visit_arm(&mut self, ctxt: &mut VisitorCtxt<'_, LazyMatchArmSpan>, arm: &MatchArm) {
+    fn visit_arm(&mut self, ctxt: &mut VisitorCtxt<'db, LazyMatchArmSpan<'db>>, arm: &MatchArm) {
         walk_arm(self, ctxt, arm)
     }
 
-    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
+    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         walk_path(self, ctxt, path)
     }
 
-    fn visit_use_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyUsePathSpan>, use_path: UsePathId) {
+    fn visit_use_path(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyUsePathSpan<'db>>,
+        use_path: UsePathId<'db>,
+    ) {
         walk_use_path(self, ctxt, use_path)
     }
 
-    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, ty: TypeId<'db>) {
         walk_ty(self, ctxt, ty)
     }
 
-    fn visit_tuple_type(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTupleTypeSpan>, ty: TupleTypeId) {
+    fn visit_tuple_type(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyTupleTypeSpan<'db>>,
+        ty: TupleTypeId<'db>,
+    ) {
         walk_tuple_type(self, ctxt, ty)
     }
 
     #[allow(unused_variables)]
-    fn visit_lit(&mut self, ctxt: &mut VisitorCtxt<'_, LazyLitSpan>, lit: LitKind) {}
+    fn visit_lit(&mut self, ctxt: &mut VisitorCtxt<'db, LazyLitSpan<'db>>, lit: LitKind<'db>) {}
 
     #[allow(unused_variables)]
-    fn visit_ident(&mut self, ctxt: &mut VisitorCtxt<'_, LazySpanAtom>, ident: IdentId) {}
+    fn visit_ident(&mut self, ctxt: &mut VisitorCtxt<'db, LazySpanAtom<'db>>, ident: IdentId<'db>) {
+    }
 }
 
-pub fn walk_item<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, item: ItemKind)
-where
-    V: Visitor + ?Sized,
+pub fn walk_item<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyItemSpan<'db>>,
+    item: ItemKind<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     match item {
         ItemKind::TopMod(top_mod) => {
@@ -381,21 +422,24 @@ where
     };
 }
 
-pub fn walk_top_mod<V>(
+pub fn walk_top_mod<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyTopModSpan>,
-    top_mod: TopLevelMod,
+    ctxt: &mut VisitorCtxt<'db, LazyTopModSpan<'db>>,
+    top_mod: TopLevelMod<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for child in top_mod.children_non_nested(ctxt.db) {
         visitor.visit_item(&mut VisitorCtxt::with_item(ctxt.db, child), child);
     }
 }
 
-pub fn walk_mod<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyModSpan>, mod_: Mod)
-where
-    V: Visitor + ?Sized,
+pub fn walk_mod<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyModSpan<'db>>,
+    mod_: Mod<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(name) = mod_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -419,9 +463,12 @@ where
     }
 }
 
-pub fn walk_func<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyFuncSpan>, func: Func)
-where
-    V: Visitor + ?Sized,
+pub fn walk_func<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyFuncSpan<'db>>,
+    func: Func<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(name) = func.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -479,9 +526,12 @@ where
     }
 }
 
-pub fn walk_struct<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyStructSpan>, struct_: Struct)
-where
-    V: Visitor + ?Sized,
+pub fn walk_struct<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyStructSpan<'db>>,
+    struct_: Struct<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(id) = struct_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -525,12 +575,12 @@ where
     );
 }
 
-pub fn walk_contract<V>(
+pub fn walk_contract<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyContractSpan>,
-    contract: Contract,
+    ctxt: &mut VisitorCtxt<'db, LazyContractSpan<'db>>,
+    contract: Contract<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(id) = contract.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -558,9 +608,12 @@ pub fn walk_contract<V>(
     );
 }
 
-pub fn walk_enum<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyEnumSpan>, enum_: Enum)
-where
-    V: Visitor + ?Sized,
+pub fn walk_enum<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyEnumSpan<'db>>,
+    enum_: Enum<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(id) = enum_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -604,12 +657,12 @@ where
     );
 }
 
-pub fn walk_type_alias<V>(
+pub fn walk_type_alias<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyTypeAliasSpan>,
-    alias: TypeAlias,
+    ctxt: &mut VisitorCtxt<'db, LazyTypeAliasSpan<'db>>,
+    alias: TypeAlias<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(id) = alias.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -646,9 +699,12 @@ pub fn walk_type_alias<V>(
     }
 }
 
-pub fn walk_impl<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyImplSpan>, impl_: Impl)
-where
-    V: Visitor + ?Sized,
+pub fn walk_impl<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyImplSpan<'db>>,
+    impl_: Impl<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(ty) = impl_.ty(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -688,9 +744,12 @@ where
     }
 }
 
-pub fn walk_trait<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyTraitSpan>, trait_: Trait)
-where
-    V: Visitor + ?Sized,
+pub fn walk_trait<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyTraitSpan<'db>>,
+    trait_: Trait<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(name) = trait_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -735,12 +794,12 @@ where
     }
 }
 
-pub fn walk_impl_trait<V>(
+pub fn walk_impl_trait<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyImplTraitSpan>,
-    impl_trait: ImplTrait,
+    ctxt: &mut VisitorCtxt<'db, LazyImplTraitSpan<'db>>,
+    impl_trait: ImplTrait<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(trait_ref) = impl_trait.trait_ref(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -789,9 +848,12 @@ pub fn walk_impl_trait<V>(
     }
 }
 
-pub fn walk_const<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyConstSpan>, const_: Const)
-where
-    V: Visitor + ?Sized,
+pub fn walk_const<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyConstSpan<'db>>,
+    const_: Const<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(name) = const_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -816,9 +878,12 @@ where
     }
 }
 
-pub fn walk_use<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyUseSpan>, use_: Use)
-where
-    V: Visitor + ?Sized,
+pub fn walk_use<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyUseSpan<'db>>,
+    use_: Use<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(use_path) = use_.path(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
@@ -839,17 +904,23 @@ where
     }
 }
 
-pub fn walk_body<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyBodySpan>, body: Body)
-where
-    V: Visitor + ?Sized,
+pub fn walk_body<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyBodySpan<'db>>,
+    body: Body<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     let body_expr = body.expr(ctxt.db);
     visit_node_in_body!(visitor, ctxt, &body_expr, expr);
 }
 
-pub fn walk_stmt<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyStmtSpan>, stmt: StmtId)
-where
-    V: Visitor + ?Sized,
+pub fn walk_stmt<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyStmtSpan<'db>>,
+    stmt: StmtId,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     let Partial::Present(stmt) = stmt.data(ctxt.db, ctxt.body()) else {
         return;
@@ -892,9 +963,12 @@ where
     }
 }
 
-pub fn walk_expr<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyExprSpan>, expr: ExprId)
-where
-    V: Visitor + ?Sized,
+pub fn walk_expr<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
+    expr: ExprId,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     let Partial::Present(data) = expr.data(ctxt.db, ctxt.body()) else {
         return;
@@ -1098,17 +1172,20 @@ where
     }
 }
 
-pub fn walk_arm<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyMatchArmSpan>, arm: &MatchArm)
-where
-    V: Visitor + ?Sized,
+pub fn walk_arm<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyMatchArmSpan<'db>>,
+    arm: &MatchArm,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     visit_node_in_body!(visitor, ctxt, &arm.pat, pat);
     visit_node_in_body!(visitor, ctxt, &arm.body, expr);
 }
 
-pub fn walk_pat<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: PatId)
+pub fn walk_pat<'db, V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'db, LazyPatSpan<'db>>, pat: PatId)
 where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     let Partial::Present(data) = pat.data(ctxt.db, ctxt.body()) else {
         return;
@@ -1204,12 +1281,12 @@ where
     }
 }
 
-pub fn walk_attribute_list<V>(
+pub fn walk_attribute_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyAttrListSpan>,
-    attr: AttrListId,
+    ctxt: &mut VisitorCtxt<'db, LazyAttrListSpan<'db>>,
+    attr: AttrListId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (idx, attr) in attr.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_ctxt(
@@ -1221,9 +1298,12 @@ pub fn walk_attribute_list<V>(
     }
 }
 
-pub fn walk_attribute<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyAttrSpan>, attr: &Attr)
-where
-    V: Visitor + ?Sized,
+pub fn walk_attribute<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyAttrSpan<'db>>,
+    attr: &Attr<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     match attr {
         Attr::Normal(normal_attr) => {
@@ -1280,12 +1360,12 @@ where
     }
 }
 
-pub fn walk_generic_param_list<V>(
+pub fn walk_generic_param_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyGenericParamListSpan>,
-    params: GenericParamListId,
+    ctxt: &mut VisitorCtxt<'db, LazyGenericParamListSpan<'db>>,
+    params: GenericParamListId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     let parent_item = ctxt.scope().item();
     for (i, param) in params.data(ctxt.db).iter().enumerate() {
@@ -1299,12 +1379,12 @@ pub fn walk_generic_param_list<V>(
     }
 }
 
-pub fn walk_generic_param<V>(
+pub fn walk_generic_param<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyGenericParamSpan>,
-    param: &GenericParam,
+    ctxt: &mut VisitorCtxt<'db, LazyGenericParamSpan<'db>>,
+    param: &GenericParam<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     match param {
         GenericParam::Type(ty_param) => ctxt.with_new_ctxt(
@@ -1353,12 +1433,12 @@ pub fn walk_generic_param<V>(
     }
 }
 
-pub fn walk_generic_arg_list<V>(
+pub fn walk_generic_arg_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyGenericArgListSpan>,
-    args: GenericArgListId,
+    ctxt: &mut VisitorCtxt<'db, LazyGenericArgListSpan<'db>>,
+    args: GenericArgListId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (i, arg) in args.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_ctxt(
@@ -1370,12 +1450,12 @@ pub fn walk_generic_arg_list<V>(
     }
 }
 
-pub fn walk_generic_arg<V>(
+pub fn walk_generic_arg<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyGenericArgSpan>,
-    arg: &GenericArg,
+    ctxt: &mut VisitorCtxt<'db, LazyGenericArgSpan<'db>>,
+    arg: &GenericArg<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     match arg {
         GenericArg::Type(type_arg) => {
@@ -1397,12 +1477,12 @@ pub fn walk_generic_arg<V>(
     }
 }
 
-pub fn walk_call_arg_list<V>(
+pub fn walk_call_arg_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyCallArgListSpan>,
-    args: &[CallArg],
+    ctxt: &mut VisitorCtxt<'db, LazyCallArgListSpan<'db>>,
+    args: &[CallArg<'db>],
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (idx, arg) in args.iter().copied().enumerate() {
         ctxt.with_new_ctxt(
@@ -1414,9 +1494,12 @@ pub fn walk_call_arg_list<V>(
     }
 }
 
-pub fn walk_call_arg<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyCallArgSpan>, arg: CallArg)
-where
-    V: Visitor + ?Sized,
+pub fn walk_call_arg<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyCallArgSpan<'db>>,
+    arg: CallArg<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(label) = arg.label {
         ctxt.with_new_ctxt(
@@ -1428,12 +1511,12 @@ where
     visit_node_in_body!(visitor, ctxt, &arg.expr, expr);
 }
 
-pub fn walk_func_param_list<V>(
+pub fn walk_func_param_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyFuncParamListSpan>,
-    params: FuncParamListId,
+    ctxt: &mut VisitorCtxt<'db, LazyFuncParamListSpan<'db>>,
+    params: FuncParamListId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     let parent_item = ctxt.scope().item();
     for (idx, param) in params.data(ctxt.db).iter().enumerate() {
@@ -1447,12 +1530,12 @@ pub fn walk_func_param_list<V>(
     }
 }
 
-pub fn walk_func_param<V>(
+pub fn walk_func_param<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyFuncParamSpan>,
-    param: &FuncParam,
+    ctxt: &mut VisitorCtxt<'db, LazyFuncParamSpan<'db>>,
+    param: &FuncParam<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(FuncParamName::Ident(ident)) = param.label {
         ctxt.with_new_ctxt(
@@ -1469,7 +1552,7 @@ pub fn walk_func_param<V>(
     }
 
     if let Some(ty) = param.ty.to_opt() {
-        if param.is_self_param() && param.self_ty_fallback {
+        if param.is_self_param(ctxt.db) && param.self_ty_fallback {
             ctxt.with_new_ctxt(
                 |span| span.fallback_self_ty(),
                 |ctxt| {
@@ -1482,12 +1565,12 @@ pub fn walk_func_param<V>(
     }
 }
 
-pub fn walk_field_list<V>(
+pub fn walk_field_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyFieldListSpan>,
-    fields: &[Field],
+    ctxt: &mut VisitorCtxt<'db, LazyFieldListSpan<'db>>,
+    fields: &[Field<'db>],
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (idx, field) in fields.iter().copied().enumerate() {
         ctxt.with_new_ctxt(
@@ -1499,9 +1582,12 @@ pub fn walk_field_list<V>(
     }
 }
 
-pub fn walk_field<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyFieldSpan>, field: Field)
-where
-    V: Visitor + ?Sized,
+pub fn walk_field<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyFieldSpan<'db>>,
+    field: Field<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(name) = field.label {
         ctxt.with_new_ctxt(
@@ -1513,12 +1599,12 @@ where
     visit_node_in_body!(visitor, ctxt, &field.expr, expr);
 }
 
-pub fn walk_field_def_list<V>(
+pub fn walk_field_def_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyFieldDefListSpan>,
-    fields: FieldDefListId,
+    ctxt: &mut VisitorCtxt<'db, LazyFieldDefListSpan<'db>>,
+    fields: FieldDefListId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     let parent = match ctxt.scope() {
         ScopeId::Item(item) => FieldParent::Item(item),
@@ -1536,12 +1622,12 @@ pub fn walk_field_def_list<V>(
     }
 }
 
-pub fn walk_field_def<V>(
+pub fn walk_field_def<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyFieldDefSpan>,
-    field: &FieldDef,
+    ctxt: &mut VisitorCtxt<'db, LazyFieldDefSpan<'db>>,
+    field: &FieldDef<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(name) = field.name.to_opt() {
         ctxt.with_new_ctxt(
@@ -1562,12 +1648,12 @@ pub fn walk_field_def<V>(
     }
 }
 
-pub fn walk_variant_def_list<V>(
+pub fn walk_variant_def_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyVariantDefListSpan>,
-    variants: VariantDefListId,
+    ctxt: &mut VisitorCtxt<'db, LazyVariantDefListSpan<'db>>,
+    variants: VariantDefListId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     let parent_item = ctxt.scope().item();
     for (idx, variant) in variants.data(ctxt.db).iter().enumerate() {
@@ -1581,12 +1667,12 @@ pub fn walk_variant_def_list<V>(
     }
 }
 
-pub fn walk_variant_def<V>(
+pub fn walk_variant_def<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyVariantDefSpan>,
-    variant: &VariantDef,
+    ctxt: &mut VisitorCtxt<'db, LazyVariantDefSpan<'db>>,
+    variant: &VariantDef<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(name) = variant.name.to_opt() {
         ctxt.with_new_ctxt(
@@ -1611,9 +1697,12 @@ pub fn walk_variant_def<V>(
     }
 }
 
-pub fn walk_path<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId)
-where
-    V: Visitor + ?Sized,
+pub fn walk_path<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>,
+    path: PathId<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     for (idx, segment) in path.segments(ctxt.db).iter().enumerate() {
         if let Some(ident) = segment.to_opt() {
@@ -1627,12 +1716,12 @@ where
     }
 }
 
-pub fn walk_use_path<V>(
+pub fn walk_use_path<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyUsePathSpan>,
-    path: UsePathId,
+    ctxt: &mut VisitorCtxt<'db, LazyUsePathSpan<'db>>,
+    path: UsePathId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (i, segment) in path.data(ctxt.db).iter().enumerate() {
         if let Some(UsePathSegment::Ident(ident)) = segment.to_opt() {
@@ -1646,9 +1735,12 @@ pub fn walk_use_path<V>(
     }
 }
 
-pub fn walk_ty<V>(visitor: &mut V, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId)
-where
-    V: Visitor + ?Sized,
+pub fn walk_ty<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>,
+    ty: TypeId<'db>,
+) where
+    V: Visitor<'db> + ?Sized,
 {
     match ty.data(ctxt.db) {
         TypeKind::Ptr(ty) => {
@@ -1718,12 +1810,12 @@ where
     }
 }
 
-pub fn walk_tuple_type<V>(
+pub fn walk_tuple_type<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyTupleTypeSpan>,
-    ty: TupleTypeId,
+    ctxt: &mut VisitorCtxt<'db, LazyTupleTypeSpan<'db>>,
+    ty: TupleTypeId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (i, elem) in ty.data(ctxt.db()).iter().enumerate() {
         let Some(elem) = elem.to_opt() else {
@@ -1738,12 +1830,12 @@ pub fn walk_tuple_type<V>(
     }
 }
 
-pub fn walk_type_bound_list<V>(
+pub fn walk_type_bound_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyTypeBoundListSpan>,
-    bounds: &[TypeBound],
+    ctxt: &mut VisitorCtxt<'db, LazyTypeBoundListSpan<'db>>,
+    bounds: &[TypeBound<'db>],
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (idx, bound) in bounds.iter().enumerate() {
         ctxt.with_new_ctxt(
@@ -1755,12 +1847,12 @@ pub fn walk_type_bound_list<V>(
     }
 }
 
-pub fn walk_type_bound<V>(
+pub fn walk_type_bound<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyTypeBoundSpan>,
-    bound: &TypeBound,
+    ctxt: &mut VisitorCtxt<'db, LazyTypeBoundSpan<'db>>,
+    bound: &TypeBound<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     match bound {
         TypeBound::Trait(trait_ref) => ctxt.with_new_ctxt(
@@ -1777,12 +1869,12 @@ pub fn walk_type_bound<V>(
     }
 }
 
-pub fn walk_trait_ref<V>(
+pub fn walk_trait_ref<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyTraitRefSpan>,
-    trait_ref: TraitRefId,
+    ctxt: &mut VisitorCtxt<'db, LazyTraitRefSpan<'db>>,
+    trait_ref: TraitRefId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(path) = trait_ref.path(ctxt.db()).to_opt() {
         ctxt.with_new_ctxt(
@@ -1803,12 +1895,12 @@ pub fn walk_trait_ref<V>(
     }
 }
 
-pub fn walk_super_trait_list<V>(
+pub fn walk_super_trait_list<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazySuperTraitListSpan>,
-    super_traits: &[TraitRefId],
+    ctxt: &mut VisitorCtxt<'db, LazySuperTraitListSpan<'db>>,
+    super_traits: &[TraitRefId<'db>],
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (idx, super_trait) in super_traits.iter().enumerate() {
         ctxt.with_new_ctxt(
@@ -1820,12 +1912,12 @@ pub fn walk_super_trait_list<V>(
     }
 }
 
-pub fn walk_kind_bound<V>(
+pub fn walk_kind_bound<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyKindBoundSpan>,
+    ctxt: &mut VisitorCtxt<'db, LazyKindBoundSpan<'db>>,
     bound: &KindBound,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     let KindBound::Abs(lhs, rhs) = bound else {
         return;
@@ -1850,12 +1942,12 @@ pub fn walk_kind_bound<V>(
     }
 }
 
-pub fn walk_where_clause<V>(
+pub fn walk_where_clause<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyWhereClauseSpan>,
-    predicates: WhereClauseId,
+    ctxt: &mut VisitorCtxt<'db, LazyWhereClauseSpan<'db>>,
+    predicates: WhereClauseId<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     for (idx, predicate) in predicates.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_ctxt(
@@ -1867,12 +1959,12 @@ pub fn walk_where_clause<V>(
     }
 }
 
-pub fn walk_where_predicate<V>(
+pub fn walk_where_predicate<'db, V>(
     visitor: &mut V,
-    ctxt: &mut VisitorCtxt<'_, LazyWherePredicateSpan>,
-    predicate: &WherePredicate,
+    ctxt: &mut VisitorCtxt<'db, LazyWherePredicateSpan<'db>>,
+    predicate: &WherePredicate<'db>,
 ) where
-    V: Visitor + ?Sized,
+    V: Visitor<'db> + ?Sized,
 {
     if let Some(ty) = predicate.ty.to_opt() {
         ctxt.with_new_ctxt(
@@ -1902,8 +1994,8 @@ where
     T: LazySpan,
 {
     db: &'db dyn HirDb,
-    span: DynLazySpan,
-    scope_stack: Vec<ScopeId>,
+    span: DynLazySpan<'db>,
+    scope_stack: Vec<ScopeId<'db>>,
 
     _t: PhantomData<T>,
 }
@@ -1912,9 +2004,9 @@ impl<'db, T> VisitorCtxt<'db, T>
 where
     T: LazySpan,
 {
-    pub fn new(db: &'db dyn HirDb, scope: ScopeId, span: T) -> Self
+    pub fn new(db: &'db dyn HirDb, scope: ScopeId<'db>, span: T) -> Self
     where
-        T: Into<DynLazySpan>,
+        T: Into<DynLazySpan<'db>>,
     {
         Self {
             db,
@@ -1928,19 +2020,23 @@ where
         self.db
     }
 
+    pub fn ingot(&self) -> IngotId<'db> {
+        self.scope().ingot(self.db)
+    }
+
     pub fn span(&self) -> Option<T>
     where
-        T: SpanDowncast,
+        T: SpanDowncast<'db>,
     {
         let dyn_span: DynLazySpan = self.span.clone();
         T::downcast(dyn_span)
     }
 
-    pub fn scope(&self) -> ScopeId {
+    pub fn scope(&self) -> ScopeId<'db> {
         *self.scope_stack.last().unwrap()
     }
 
-    pub fn top_mod(&self) -> TopLevelMod {
+    pub fn top_mod(&self) -> TopLevelMod<'db> {
         match self.span.0.as_ref().unwrap().root {
             ChainRoot::ItemKind(item) => item.top_mod(self.db),
             ChainRoot::TopMod(top_mod) => top_mod,
@@ -1964,7 +2060,7 @@ where
 
     /// Create a new context for visiting a pattern.
     /// `scope` is the scope that encloses the pattern.
-    pub fn with_pat(db: &'db dyn HirDb, scope: ScopeId, body: Body, pat: PatId) -> Self {
+    pub fn with_pat(db: &'db dyn HirDb, scope: ScopeId<'db>, body: Body<'db>, pat: PatId) -> Self {
         Self {
             db,
             span: LazyPatSpan::new(body, pat).into(),
@@ -1975,7 +2071,12 @@ where
 
     /// Create a new context for visiting a statement.
     /// `scope` is the scope that encloses the statement.
-    pub fn with_stmt(db: &'db dyn HirDb, scope: ScopeId, body: Body, stmt: StmtId) -> Self {
+    pub fn with_stmt(
+        db: &'db dyn HirDb,
+        scope: ScopeId<'db>,
+        body: Body<'db>,
+        stmt: StmtId,
+    ) -> Self {
         Self {
             db,
             span: LazyStmtSpan::new(body, stmt).into(),
@@ -1986,7 +2087,12 @@ where
 
     /// Create a new context for visiting an expression.
     /// `scope` is the scope that encloses the expression.
-    pub fn with_expr(db: &'db dyn HirDb, scope: ScopeId, body: Body, expr: ExprId) -> Self {
+    pub fn with_expr(
+        db: &'db dyn HirDb,
+        scope: ScopeId<'db>,
+        body: Body<'db>,
+        expr: ExprId,
+    ) -> Self {
         let scope_id = match expr.data(db, body) {
             Partial::Present(Expr::Block(_)) => ScopeId::Block(body, expr),
             _ => scope,
@@ -2003,7 +2109,7 @@ where
     /// Returns the body that encloses the current node.
     /// # panic
     /// Panics when the current node is not enclosed by a body.
-    pub fn body(&self) -> Body {
+    pub fn body(&self) -> Body<'db> {
         match self.span.0.as_ref().unwrap().root {
             ChainRoot::Body(body) => body,
             ChainRoot::Expr(expr) => expr.body,
@@ -2013,12 +2119,12 @@ where
         }
     }
 
-    fn with_new_scoped_ctxt<F1, F2, U>(&mut self, scope_id: ScopeId, f1: F1, f2: F2)
+    fn with_new_scoped_ctxt<F1, F2, U>(&mut self, scope_id: ScopeId<'db>, f1: F1, f2: F2)
     where
-        T: SpanDowncast,
+        T: SpanDowncast<'db>,
         F1: FnOnce(T) -> U,
-        F2: FnOnce(&mut VisitorCtxt<U>),
-        U: LazySpan + SpanDowncast + Into<DynLazySpan>,
+        F2: FnOnce(&mut VisitorCtxt<'db, U>),
+        U: LazySpan + SpanDowncast<'db> + Into<DynLazySpan<'db>>,
     {
         self.scope_stack.push(scope_id);
         self.with_new_ctxt(f1, f2);
@@ -2027,10 +2133,10 @@ where
 
     fn with_new_ctxt<F1, F2, U>(&mut self, f1: F1, f2: F2)
     where
-        T: SpanDowncast,
+        T: SpanDowncast<'db>,
         F1: FnOnce(T) -> U,
-        F2: FnOnce(&mut VisitorCtxt<U>),
-        U: LazySpan + SpanDowncast + Into<DynLazySpan>,
+        F2: FnOnce(&mut VisitorCtxt<'db, U>),
+        U: LazySpan + SpanDowncast<'db> + Into<DynLazySpan<'db>>,
     {
         let chain_len = self.span.0.as_ref().unwrap().len();
         let mut new_ctxt = self.transition(f1);
@@ -2043,9 +2149,9 @@ where
 
     fn transition<F, U>(&mut self, f: F) -> VisitorCtxt<'db, U>
     where
-        T: SpanDowncast,
+        T: SpanDowncast<'db>,
         F: FnOnce(T) -> U,
-        U: LazySpan + SpanDowncast + Into<DynLazySpan>,
+        U: LazySpan + SpanDowncast<'db> + Into<DynLazySpan<'db>>,
     {
         let dyn_span = mem::replace(&mut self.span, DynLazySpan::invalid());
         let scope_stack = mem::take(&mut self.scope_stack);
@@ -2107,20 +2213,20 @@ macro_rules! define_item_ctxt_ctor {
 }
 
 define_item_ctxt_ctor! {
-    (LazyItemSpan, with_item(item: ItemKind)),
-    (LazyTopModSpan, with_top_mod(top_mod: TopLevelMod)),
-    (LazyModSpan, with_mod(mod_: Mod)),
-    (LazyFuncSpan, with_func(func: Func)),
-    (LazyStructSpan, with_struct(struct_: Struct)),
-    (LazyContractSpan, with_contract(contract: Contract)),
-    (LazyEnumSpan, with_enum(enum_: Enum)),
-    (LazyTypeAliasSpan, with_type_alias(type_alias: TypeAlias)),
-    (LazyImplSpan, with_impl(impl_: Impl)),
-    (LazyTraitSpan, with_trait(trait_: Trait)),
-    (LazyImplTraitSpan, with_impl_trait(impl_trait: ImplTrait)),
-    (LazyConstSpan, with_const(const_: Const)),
-    (LazyUseSpan, with_use(use_: Use)),
-    (LazyBodySpan, with_body(body: Body)),
+    (LazyItemSpan<'db>, with_item(item: ItemKind<'db>)),
+    (LazyTopModSpan<'db>, with_top_mod(top_mod: TopLevelMod<'db>)),
+    (LazyModSpan<'db>, with_mod(mod_: Mod<'db>)),
+    (LazyFuncSpan<'db>, with_func(func: Func<'db>)),
+    (LazyStructSpan<'db>, with_struct(struct_: Struct<'db>)),
+    (LazyContractSpan<'db>, with_contract(contract: Contract<'db>)),
+    (LazyEnumSpan<'db>, with_enum(enum_: Enum<'db>)),
+    (LazyTypeAliasSpan<'db>, with_type_alias(type_alias: TypeAlias<'db>)),
+    (LazyImplSpan<'db>, with_impl(impl_: Impl<'db>)),
+    (LazyTraitSpan<'db>, with_trait(trait_: Trait<'db>)),
+    (LazyImplTraitSpan<'db>, with_impl_trait(impl_trait: ImplTrait<'db>)),
+    (LazyConstSpan<'db>, with_const(const_: Const<'db>)),
+    (LazyUseSpan<'db>, with_use(use_: Use<'db>)),
+    (LazyBodySpan<'db>, with_body(body: Body<'db>)),
 }
 
 macro_rules! visit_node_in_body {
@@ -2141,26 +2247,30 @@ mod tests {
 
     use super::*;
     use crate::test_db::TestDb;
-    struct MyVisitor {
-        generic_param_list: Option<LazyGenericParamListSpan>,
-        attributes: Vec<LazyAttrSpan>,
-        lit_ints: Vec<LazyLitSpan>,
+    struct MyVisitor<'db> {
+        generic_param_list: Option<LazyGenericParamListSpan<'db>>,
+        attributes: Vec<LazyAttrSpan<'db>>,
+        lit_ints: Vec<LazyLitSpan<'db>>,
     }
 
-    impl Visitor for MyVisitor {
-        fn visit_attribute(&mut self, ctxt: &mut VisitorCtxt<LazyAttrSpan>, _attrs: &Attr) {
+    impl<'db> Visitor<'db> for MyVisitor<'db> {
+        fn visit_attribute(
+            &mut self,
+            ctxt: &mut VisitorCtxt<'db, LazyAttrSpan<'db>>,
+            _attrs: &Attr<'db>,
+        ) {
             self.attributes.push(ctxt.span().unwrap());
         }
 
         fn visit_generic_param_list(
             &mut self,
-            ctxt: &mut VisitorCtxt<LazyGenericParamListSpan>,
-            _params: GenericParamListId,
+            ctxt: &mut VisitorCtxt<'db, LazyGenericParamListSpan<'db>>,
+            _params: GenericParamListId<'db>,
         ) {
             self.generic_param_list = Some(ctxt.span().unwrap());
         }
 
-        fn visit_lit(&mut self, ctxt: &mut VisitorCtxt<LazyLitSpan>, lit: LitKind) {
+        fn visit_lit(&mut self, ctxt: &mut VisitorCtxt<'db, LazyLitSpan<'db>>, lit: LitKind<'db>) {
             if let LitKind::Int(_) = lit {
                 self.lit_ints.push(ctxt.span().unwrap());
             }
@@ -2179,7 +2289,9 @@ mod tests {
                 42
             }"#;
 
-        let func = db.expect_item::<Func>(text);
+        let input = db.standalone_file(text);
+
+        let func = db.expect_item::<Func>(input);
         let top_mod = func.top_mod(&db);
 
         let mut visitor = MyVisitor {

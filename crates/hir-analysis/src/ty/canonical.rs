@@ -13,11 +13,11 @@ pub struct Canonical<T> {
     pub value: T,
 }
 
-impl<T> Canonical<T>
+impl<'db, T> Canonical<T>
 where
-    T: for<'db> TyFoldable<'db>,
+    T: TyFoldable<'db>,
 {
-    pub fn new(db: &dyn HirAnalysisDb, value: T) -> Self {
+    pub fn new(db: &'db dyn HirAnalysisDb, value: T) -> Self {
         let mut c = Canonicalizer::new(db);
         let value = value.fold_with(&mut c);
         Canonical { value }
@@ -37,9 +37,9 @@ where
     ///
     /// # Panics
     /// This function will panic if the `table` is not empty.
-    pub(super) fn extract_identity<S>(self, table: &mut UnificationTableBase<S>) -> T
+    pub(super) fn extract_identity<S>(self, table: &mut UnificationTableBase<'db, S>) -> T
     where
-        S: UnificationStore,
+        S: UnificationStore<'db>,
     {
         assert!(table.is_empty());
 
@@ -67,14 +67,14 @@ where
     /// canonicalized to the context of the canonical query.
     pub(super) fn canonicalize_solution<S, U>(
         &self,
-        db: &dyn HirAnalysisDb,
-        table: &mut UnificationTableBase<S>,
+        db: &'db dyn HirAnalysisDb,
+        table: &mut UnificationTableBase<'db, S>,
         solution: U,
     ) -> Solution<U>
     where
         T: Copy,
-        S: UnificationStore,
-        U: for<'db> TyFoldable<'db> + Clone,
+        S: UnificationStore<'db>,
+        U: TyFoldable<'db> + Clone,
     {
         let solution = solution.fold_with(table);
 
@@ -106,17 +106,17 @@ where
 /// This type contains [`Canonical`] type and auxiliary information to map back
 /// [`Solution`] that corresponds to [`Canonical`] query.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Canonicalized<T> {
+pub struct Canonicalized<'db, T> {
     pub value: Canonical<T>,
     // A substitution from canonical type variables to original type variables.
-    subst: FxHashMap<TyId, TyId>,
+    subst: FxHashMap<TyId<'db>, TyId<'db>>,
 }
 
-impl<T> Canonicalized<T>
+impl<'db, T> Canonicalized<'db, T>
 where
-    T: for<'db> TyFoldable<'db>,
+    T: TyFoldable<'db>,
 {
-    pub fn new(db: &dyn HirAnalysisDb, value: T) -> Self {
+    pub fn new(db: &'db dyn HirAnalysisDb, value: T) -> Self {
         let mut canonicalizer = Canonicalizer::new(db);
         let value = value.fold_with(&mut canonicalizer);
         let map = canonicalizer
@@ -143,12 +143,12 @@ where
     /// The extracted solution in the context of the original query environment.
     pub fn extract_solution<U, S>(
         &self,
-        table: &mut UnificationTableBase<S>,
+        table: &mut UnificationTableBase<'db, S>,
         solution: Solution<U>,
     ) -> U
     where
-        U: for<'db> TyFoldable<'db>,
-        S: UnificationStore,
+        U: TyFoldable<'db>,
+        S: UnificationStore<'db>,
     {
         let map = self.subst.clone();
         let mut extractor = SolutionExtractor::new(table, map);
@@ -176,7 +176,7 @@ pub struct Solution<T> {
 struct Canonicalizer<'db> {
     db: &'db dyn HirAnalysisDb,
     // A substitution from original type variables to canonical variables.
-    subst: FxHashMap<TyId, TyId>,
+    subst: FxHashMap<TyId<'db>, TyId<'db>>,
 }
 
 impl<'db> Canonicalizer<'db> {
@@ -187,12 +187,12 @@ impl<'db> Canonicalizer<'db> {
         }
     }
 
-    fn canonical_var(&mut self, var: &TyVar) -> TyVar {
+    fn canonical_var(&mut self, var: &TyVar<'db>) -> TyVar<'db> {
         let key = self.subst.len() as u32;
         TyVar {
             sort: var.sort,
             kind: var.kind.clone(),
-            key: InferenceKey(key),
+            key: InferenceKey(key, Default::default()),
         }
     }
 }
@@ -202,7 +202,7 @@ impl<'db> TyFolder<'db> for Canonicalizer<'db> {
         self.db
     }
 
-    fn fold_ty(&mut self, ty: TyId) -> TyId {
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         if let Some(&canonical) = self.subst.get(&ty) {
             return canonical;
         }
@@ -237,32 +237,35 @@ impl<'db> TyFolder<'db> for Canonicalizer<'db> {
 
 struct SolutionExtractor<'a, 'db, S>
 where
-    S: UnificationStore,
+    S: UnificationStore<'db>,
 {
     table: &'a mut UnificationTableBase<'db, S>,
     /// A subst from canonical type variables to the variables in the current
     /// env.
-    subst: FxHashMap<TyId, TyId>,
+    subst: FxHashMap<TyId<'db>, TyId<'db>>,
 }
 
 impl<'a, 'db, S> SolutionExtractor<'a, 'db, S>
 where
-    S: UnificationStore,
+    S: UnificationStore<'db>,
 {
-    fn new(table: &'a mut UnificationTableBase<'db, S>, subst: FxHashMap<TyId, TyId>) -> Self {
+    fn new(
+        table: &'a mut UnificationTableBase<'db, S>,
+        subst: FxHashMap<TyId<'db>, TyId<'db>>,
+    ) -> Self {
         SolutionExtractor { table, subst }
     }
 }
 
 impl<'a, 'db, S> TyFolder<'db> for SolutionExtractor<'a, 'db, S>
 where
-    S: UnificationStore,
+    S: UnificationStore<'db>,
 {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.table.db()
     }
 
-    fn fold_ty(&mut self, ty: TyId) -> TyId {
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         if let Some(&ty) = self.subst.get(&ty) {
             return ty;
         }

@@ -1,9 +1,11 @@
 //! The algorithm for the trait resolution here is based on [`Tabled Typeclass Resolution`](https://arxiv.org/abs/2001.04301).
 //! Also, [`XSB: Extending Prolog with Tabled Logic Programming`](https://arxiv.org/pdf/1012.5123) is a nice entry point for more detailed discussions about tabled logic solver.
 
-use std::collections::{BTreeSet, BinaryHeap};
+use std::collections::BinaryHeap;
 
+use common::indexmap::IndexSet;
 use cranelift_entity::{entity_impl, PrimaryMap};
+use hir::hir_def::IngotId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{GoalSatisfiability, PredicateListId};
@@ -33,8 +35,8 @@ const MAXIMUM_TYPE_DEPTH: usize = 256;
 /// Since `TraitInstId` contains `Self` type as its first argument,
 /// the query for `Implements<Ty, Trait<i32>>` is represented as
 /// `Trait<Ty, i32>`.
-type Goal = Canonical<TraitInstId>;
-type Solution = crate::ty::canonical::Solution<TraitInstId>;
+type Goal<'db> = Canonical<TraitInstId<'db>>;
+type Solution<'db> = crate::ty::canonical::Solution<TraitInstId<'db>>;
 
 /// A structure representing a proof forest used for solving trait goals.
 ///
@@ -43,6 +45,8 @@ type Solution = crate::ty::canonical::Solution<TraitInstId>;
 /// consumer nodes to keep track of the solving process, and a mapping from
 /// goals to generator nodes to avoid redundant computations.
 pub(super) struct ProofForest<'db> {
+    ingot: IngotId<'db>,
+
     /// The root generator node.
     root: GeneratorNode,
 
@@ -57,13 +61,13 @@ pub(super) struct ProofForest<'db> {
     /// This heap stores tuples of [`OrderedConsumerNode`] and [`Solution`],
     /// allowing the solver to efficiently retrieve and prioritize
     /// consumer nodes that are closer to the original goal.
-    c_heap: BinaryHeap<(OrderedConsumerNode, Solution)>,
+    c_heap: BinaryHeap<(OrderedConsumerNode, Solution<'db>)>,
 
     /// A mapping from goals to generator nodes.
-    goal_to_node: FxHashMap<Goal, GeneratorNode>,
+    goal_to_node: FxHashMap<Goal<'db>, GeneratorNode>,
 
     /// The list of assumptions.
-    assumptions: PredicateListId,
+    assumptions: PredicateListId<'db>,
 
     /// The maximum number of solutions.
     maximum_solution_num: usize,
@@ -112,12 +116,14 @@ impl<'db> ProofForest<'db> {
     /// assumptions.
     pub(super) fn new(
         db: &'db dyn HirAnalysisDb,
-        goal: Goal,
-        assumptions: PredicateListId,
+        ingot: IngotId<'db>,
+        goal: Goal<'db>,
+        assumptions: PredicateListId<'db>,
     ) -> Self {
         let assumptions = assumptions.extend_by_super(db);
 
         let mut forest = Self {
+            ingot,
             root: GeneratorNode(0), // Set temporary root.
             g_nodes: PrimaryMap::new(),
             c_nodes: PrimaryMap::new(),
@@ -150,7 +156,7 @@ impl<'db> ProofForest<'db> {
     /// - `UnSat` if no solutions are found and an unresolved subgoal is
     ///   identified.
     /// - `NeedsConfirmation` if multiple solutions are found.
-    pub(super) fn solve(mut self) -> GoalSatisfiability {
+    pub(super) fn solve(mut self) -> GoalSatisfiability<'db> {
         loop {
             if self.g_nodes[self.root].solutions.len() >= self.maximum_solution_num {
                 break;
@@ -158,7 +164,7 @@ impl<'db> ProofForest<'db> {
 
             if let Some((c_node, solution)) = self.c_heap.pop() {
                 if !c_node.node.apply_solution(&mut self, solution) {
-                    return GoalSatisfiability::NeedsConfirmation(BTreeSet::default());
+                    return GoalSatisfiability::NeedsConfirmation(IndexSet::default());
                 }
                 continue;
             }
@@ -184,8 +190,9 @@ impl<'db> ProofForest<'db> {
         }
     }
 
-    fn new_generator_node(&mut self, goal: Goal) -> GeneratorNode {
-        let g_node_data = GeneratorNodeData::new(self.db, goal, self.assumptions);
+    fn new_generator_node(&mut self, goal: Goal<'db>) -> GeneratorNode {
+        let ingot = self.ingot;
+        let g_node_data = GeneratorNodeData::new(self.db, ingot, goal, self.assumptions);
         let g_node = self.g_nodes.push(g_node_data);
         self.goal_to_node.insert(goal, g_node);
         self.g_stack.push(g_node);
@@ -216,8 +223,7 @@ impl<'db> ProofForest<'db> {
     fn new_consumer_node(
         &mut self,
         root: GeneratorNode,
-        mut remaining_goals: Vec<TraitInstId>,
-
+        mut remaining_goals: Vec<TraitInstId<'db>>,
         table: PersistentUnificationTable<'db>,
     ) -> ConsumerNode {
         let query = remaining_goals.pop().unwrap();
@@ -253,17 +259,17 @@ impl<'db> ProofForest<'db> {
 struct GeneratorNodeData<'db> {
     table: PersistentUnificationTable<'db>,
     /// The canonical goal associated with the generator node.
-    goal: Goal,
+    goal: Goal<'db>,
     /// The trait instance extracted from the goal.
-    extracted_goal: TraitInstId,
+    extracted_goal: TraitInstId<'db>,
     /// A set of solutions found for the goal.
-    solutions: BTreeSet<Solution>,
+    solutions: IndexSet<Solution<'db>>,
     ///  A list of consumer nodes that depend on this generator node.
     dependents: Vec<ConsumerNode>,
     ///  A list of candidate implementors for the trait.
-    cands: &'db [Binder<Implementor>],
+    cands: &'db [Binder<Implementor<'db>>],
     /// The list of assumptions for the goal.
-    assumptions: PredicateListId,
+    assumptions: PredicateListId<'db>,
     /// The index of the next candidate to be tried.
     next_cand: usize,
     /// A list of child consumer nodes created for sub-goals.
@@ -274,16 +280,21 @@ struct GeneratorNode(u32);
 entity_impl!(GeneratorNode);
 
 impl<'db> GeneratorNodeData<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, goal: Goal, assumptions: PredicateListId) -> Self {
+    fn new(
+        db: &'db dyn HirAnalysisDb,
+        ingot: IngotId<'db>,
+        goal: Goal<'db>,
+        assumptions: PredicateListId<'db>,
+    ) -> Self {
         let mut table = PersistentUnificationTable::new(db);
         let extracted_goal = goal.extract_identity(&mut table);
-        let cands = impls_for_trait(db, assumptions.ingot(db), goal);
+        let cands = impls_for_trait(db, ingot, goal);
 
         Self {
             table,
             goal,
             extracted_goal,
-            solutions: BTreeSet::default(),
+            solutions: IndexSet::default(),
             dependents: Vec::new(),
             cands,
             assumptions,
@@ -305,7 +316,11 @@ impl GeneratorNode {
     /// - `pf`: A mutable reference to the `ProofForest`.
     /// - `table`: A mutable reference to the `PersistentUnificationTable` used
     ///   for managing unification operations.
-    fn register_solution_with(self, pf: &mut ProofForest, table: &mut PersistentUnificationTable) {
+    fn register_solution_with<'db>(
+        self,
+        pf: &mut ProofForest<'db>,
+        table: &mut PersistentUnificationTable<'db>,
+    ) {
         let g_node = &mut pf.g_nodes[self];
         let solution = g_node
             .goal
@@ -369,7 +384,7 @@ impl GeneratorNode {
         }
 
         let mut next_cand = g_node.next_cand - g_node.cands.len();
-        while let Some(&assumption) = g_node.assumptions.list(db).iter().nth(next_cand) {
+        while let Some(&assumption) = g_node.assumptions.list(db).get(next_cand) {
             g_node.next_cand += 1;
             next_cand += 1;
             let mut table = g_node.table.clone();
@@ -394,7 +409,7 @@ impl GeneratorNode {
         }
     }
 
-    fn unresolved_subgoal(self, pf: &mut ProofForest) -> Option<Solution> {
+    fn unresolved_subgoal<'db>(self, pf: &mut ProofForest<'db>) -> Option<Solution<'db>> {
         let g_node = &pf.g_nodes[self];
         // If the child nodes branch out more than one, we give up identifying the
         // unresolved subgoal to avoid generating a large number of uncertain unresolved
@@ -410,13 +425,13 @@ impl GeneratorNode {
 
 struct ConsumerNodeData<'db> {
     /// Holds solutions that are already applied.
-    applied_solutions: FxHashSet<Solution>,
-    remaining_goals: Vec<TraitInstId>,
+    applied_solutions: FxHashSet<Solution<'db>>,
+    remaining_goals: Vec<TraitInstId<'db>>,
     /// The root generator node of the consumer node.
     root: GeneratorNode,
 
     /// The current pending query that is resolved by another [`GeneratorNode`].
-    query: (TraitInstId, Canonicalized<TraitInstId>),
+    query: (TraitInstId<'db>, Canonicalized<'db, TraitInstId<'db>>),
     table: PersistentUnificationTable<'db>,
     children: Vec<ConsumerNode>,
 }
@@ -437,7 +452,7 @@ impl ConsumerNode {
     /// # Parameters
     /// - `pf`: A mutable reference to the `ProofForest`.
     /// - `solution`: The solution to be applied.
-    fn apply_solution(self, pf: &mut ProofForest, solution: Solution) -> bool {
+    fn apply_solution<'db>(self, pf: &mut ProofForest<'db>, solution: Solution<'db>) -> bool {
         let c_node = &mut pf.c_nodes[self];
 
         // If the solutions is already applied, do nothing.
@@ -469,7 +484,7 @@ impl ConsumerNode {
         maximum_ty_depth(pf.db, solution) <= MAXIMUM_TYPE_DEPTH
     }
 
-    fn unresolved_subgoal(self, pf: &mut ProofForest) -> Option<Solution> {
+    fn unresolved_subgoal<'db>(self, pf: &mut ProofForest<'db>) -> Option<Solution<'db>> {
         let c_node = &mut pf.c_nodes[self];
         if c_node.children.len() != 1 {
             let unsat = c_node.query.0;
@@ -504,7 +519,7 @@ impl ConsumerNode {
 /// encounters coinductive cycles. It serves as a temporary solution until the
 /// solver can properly handle coinductive cycles.
 #[salsa::tracked]
-pub(crate) fn ty_depth_impl(db: &dyn HirAnalysisDb, ty: TyId) -> usize {
+pub(crate) fn ty_depth_impl<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> usize {
     match ty.data(db) {
         TyData::ConstTy(cty) => ty_depth_impl(db, cty.ty(db)),
         TyData::Invalid(_)
@@ -541,9 +556,9 @@ pub(crate) fn ty_depth_impl(db: &dyn HirAnalysisDb, ty: TyId) -> usize {
 /// This function is a stop gap solution to ensure termination when the solver
 /// encounters coinductive cycles. It serves as a temporary solution until the
 /// solver can properly handle coinductive cycles.
-fn maximum_ty_depth<V>(db: &dyn HirAnalysisDb, v: V) -> usize
+fn maximum_ty_depth<'db, V>(db: &'db dyn HirAnalysisDb, v: V) -> usize
 where
-    V: for<'db> TyVisitable<'db>,
+    V: TyVisitable<'db>,
 {
     struct DepthVisitor<'db> {
         db: &'db dyn HirAnalysisDb,
