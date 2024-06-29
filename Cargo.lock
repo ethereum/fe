@@ -120,12 +120,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "anyhow"
-version = "1.0.86"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
-
-[[package]]
 name = "arc-swap"
 version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1098,7 +1092,7 @@ dependencies = [
  "camino",
  "fe-parser2",
  "indexmap 2.2.6",
- "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
+ "salsa 0.18.0",
  "semver 1.0.23",
  "smol_str",
 ]
@@ -1191,7 +1185,7 @@ dependencies = [
  "fe-hir",
  "fe-hir-analysis",
  "fe-macros",
- "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
+ "salsa 0.18.0",
 ]
 
 [[package]]
@@ -1209,7 +1203,7 @@ dependencies = [
  "num-traits",
  "paste",
  "rustc-hash",
- "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
+ "salsa 0.18.0",
  "smallvec",
 ]
 
@@ -1232,39 +1226,8 @@ dependencies = [
  "itertools",
  "num-bigint",
  "rustc-hash",
- "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
+ "salsa 0.18.0",
  "smallvec",
-]
-
-[[package]]
-name = "fe-language-server"
-version = "0.26.0"
-dependencies = [
- "anyhow",
- "camino",
- "clap 4.5.7",
- "codespan-reporting",
- "crossbeam-channel",
- "dir-test",
- "fe-analyzer",
- "fe-common2",
- "fe-compiler-test-utils",
- "fe-driver2",
- "fe-hir",
- "fe-hir-analysis",
- "fe-macros",
- "fxhash",
- "glob",
- "indexmap 1.9.3",
- "log",
- "lsp-server",
- "lsp-types",
- "patricia_tree",
- "rowan",
- "salsa 0.18.0 (git+https://github.com/salsa-rs/salsa)",
- "serde",
- "serde_json",
- "url",
 ]
 
 [[package]]
@@ -2065,31 +2028,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lsp-server"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "248f65b78f6db5d8e1b1604b4098a28b43d21a8eb1deeca22b1c421b276c7095"
-dependencies = [
- "crossbeam-channel",
- "log",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "lsp-types"
-version = "0.94.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c66bfd44a06ae10647fe3f8214762e9369fd4248df1350924b4ef9e770a85ea1"
-dependencies = [
- "bitflags 1.3.2",
- "serde",
- "serde_json",
- "serde_repr",
- "url",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2384,15 +2322,6 @@ name = "path-clean"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17359afc20d7ab31fdb42bb844c8b3bb1dabd7dcf7e68428492da7f16966fcef"
-
-[[package]]
-name = "patricia_tree"
-version = "0.6.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c8e0b346244f1606d39ec7c47046286cbdcc6553dbdf25b3b9550d5e026f2ed"
-dependencies = [
- "bitflags 1.3.2",
-]
 
 [[package]]
 name = "percent-encoding"
@@ -2972,24 +2901,7 @@ dependencies = [
  "log",
  "parking_lot 0.12.3",
  "rustc-hash",
- "salsa-macros 0.18.0 (git+https://github.com/salsa-rs/salsa?rev=a1bf3a6)",
- "smallvec",
-]
-
-[[package]]
-name = "salsa"
-version = "0.18.0"
-source = "git+https://github.com/salsa-rs/salsa#a1bf3a613f451af7fc0a59411c56abc47fe8e8e1"
-dependencies = [
- "arc-swap",
- "crossbeam",
- "dashmap",
- "hashlink",
- "indexmap 2.2.6",
- "log",
- "parking_lot 0.12.3",
- "rustc-hash",
- "salsa-macros 0.18.0 (git+https://github.com/salsa-rs/salsa)",
+ "salsa-macros 0.18.0",
  "smallvec",
 ]
 
@@ -3009,17 +2921,6 @@ dependencies = [
 name = "salsa-macros"
 version = "0.18.0"
 source = "git+https://github.com/salsa-rs/salsa?rev=a1bf3a6#a1bf3a613f451af7fc0a59411c56abc47fe8e8e1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.68",
- "synstructure",
-]
-
-[[package]]
-name = "salsa-macros"
-version = "0.18.0"
-source = "git+https://github.com/salsa-rs/salsa#a1bf3a613f451af7fc0a59411c56abc47fe8e8e1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3177,17 +3078,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serde_repr"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c64451ba24fc7a6a2d60fc75dd9c83c90903b19028d4eff35e88fc1e86564e9"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.68",
 ]
 
 [[package]]
@@ -3738,7 +3628,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
- "serde",
 ]
 
 [[package]]
