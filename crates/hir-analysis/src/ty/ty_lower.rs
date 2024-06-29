@@ -19,22 +19,13 @@ use crate::{
 };
 
 /// Lowers the given HirTy to `TyId`.
-#[salsa::tracked(recovery_fn=recover_lower_hir_ty_cycle)]
+#[salsa::tracked]
 pub fn lower_hir_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: HirTyId<'db>,
     scope: ScopeId<'db>,
 ) -> TyId<'db> {
     TyBuilder::new(db, scope).lower_ty(ty)
-}
-
-fn recover_lower_hir_ty_cycle<'db>(
-    db: &'db dyn HirAnalysisDb,
-    _cycle: &salsa::Cycle,
-    _ty: HirTyId<'db>,
-    _scope: ScopeId<'db>,
-) -> TyId<'db> {
-    TyId::invalid(db, InvalidCause::RecursiveConstParamTy)
 }
 
 /// Collects the generic parameters of the given generic parameter owner.
@@ -75,19 +66,6 @@ pub(crate) fn lower_type_alias<'db>(
     })
 }
 
-#[doc(hidden)]
-#[salsa::tracked(return_ref)]
-pub(crate) fn evaluate_params_precursor<'db>(
-    db: &'db dyn HirAnalysisDb,
-    set: GenericParamTypeSet<'db>,
-) -> Vec<TyId<'db>> {
-    set.params_precursor(db)
-        .iter()
-        .enumerate()
-        .map(|(i, p)| p.evaluate(db, set.scope(db), i))
-        .collect()
-}
-
 fn recover_lower_type_alias_cycle<'db>(
     db: &'db dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
@@ -115,6 +93,19 @@ fn recover_lower_type_alias_cycle<'db>(
         .collect();
 
     Err(AliasCycle(alias_cycle))
+}
+
+#[doc(hidden)]
+#[salsa::tracked(return_ref)]
+pub(crate) fn evaluate_params_precursor<'db>(
+    db: &'db dyn HirAnalysisDb,
+    set: GenericParamTypeSet<'db>,
+) -> Vec<TyId<'db>> {
+    set.params_precursor(db)
+        .iter()
+        .enumerate()
+        .map(|(i, p)| p.evaluate(db, set.scope(db), i))
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -163,7 +154,7 @@ impl<'db> TyBuilder<'db> {
         match ty.data(self.db.as_hir_db()) {
             HirTyKind::Ptr(pointee) => self.lower_ptr(*pointee),
 
-            HirTyKind::Path(path, args) => self.lower_path(*path, *args),
+            HirTyKind::Path(path, args) => self.lower_path(*path, *args, false),
 
             HirTyKind::SelfType(args) => self.lower_self_ty(*args),
 
@@ -186,11 +177,12 @@ impl<'db> TyBuilder<'db> {
         &mut self,
         path: Partial<PathId<'db>>,
         args: GenericArgListId<'db>,
+        is_const_param_ty: bool,
     ) -> TyId<'db> {
         let path_ty = path
             .to_opt()
             .map(|path| match self.resolve_path(path) {
-                Either::Left(res) => self.lower_resolved_path(res),
+                Either::Left(res) => self.lower_resolved_path(res, is_const_param_ty),
                 Either::Right(ty) => Either::Left(ty),
             })
             .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
@@ -214,6 +206,23 @@ impl<'db> TyBuilder<'db> {
 
                 alias.alias_to.instantiate(self.db, &arg_tys)
             }
+        }
+    }
+
+    pub(super) fn lower_const_ty_ty(&mut self, ty: HirTyId<'db>) -> TyId<'db> {
+        let hir_db = self.db.as_hir_db();
+        let HirTyKind::Path(path, args) = ty.data(hir_db) else {
+            return TyId::invalid(self.db, InvalidCause::InvalidConstParamTy);
+        };
+        if !args.is_empty(hir_db) {
+            return TyId::invalid(self.db, InvalidCause::InvalidConstParamTy);
+        }
+        let ty = self.lower_path(*path, *args, true);
+
+        if ty.has_invalid(self.db) || ty.is_integral(self.db) || ty.is_bool(self.db) {
+            ty
+        } else {
+            TyId::invalid(self.db, InvalidCause::InvalidConstParamTy)
         }
     }
 
@@ -242,7 +251,7 @@ impl<'db> TyBuilder<'db> {
         let ty = match scope {
             ScopeId::Item(item) => match item {
                 ItemKind::Enum(_) | ItemKind::Struct(_) | ItemKind::Contract(_) => {
-                    self.lower_resolved_path(res).unwrap_left()
+                    self.lower_resolved_path(res, false).unwrap_left()
                 }
 
                 ItemKind::Trait(trait_) => {
@@ -299,6 +308,7 @@ impl<'db> TyBuilder<'db> {
     fn lower_resolved_path(
         &mut self,
         kind: NameResKind<'db>,
+        is_const_param_ty: bool,
     ) -> Either<TyId<'db>, &'db TyAlias<'db>> {
         let scope = match kind {
             NameResKind::Scope(scope) => scope,
@@ -310,6 +320,11 @@ impl<'db> TyBuilder<'db> {
         let item = match scope {
             ScopeId::Item(item) => item,
             ScopeId::GenericParam(item, idx) => {
+                // FIXME: Ugly hack to avoid cycle in parameter evaluation cycle. We need to
+                // consider nicer way.
+                if is_const_param_ty {
+                    return Either::Left(TyId::invalid(self.db, InvalidCause::InvalidConstParamTy));
+                }
                 let owner = GenericParamOwner::from_item_opt(item).unwrap();
                 let owner_id = GenericParamOwnerId::new(self.db, owner);
 
@@ -659,12 +674,8 @@ impl<'db> TyParamPrecursor<'db> {
 
         let const_ty_ty = match self.const_ty_ty {
             Some(ty) => {
-                let ty = lower_hir_ty(db, ty, scope);
-                if !(ty.has_invalid(db) || ty.is_integral(db) || ty.is_bool(db)) {
-                    TyId::invalid(db, InvalidCause::InvalidConstParamTy { ty })
-                } else {
-                    ty
-                }
+                let mut ty_builder = TyBuilder::new(db, scope);
+                ty_builder.lower_const_ty_ty(ty)
             }
 
             None => TyId::invalid(db, InvalidCause::Other),

@@ -93,7 +93,6 @@ pub enum TyLowerDiag<'db> {
 
     InvalidConstParamTy {
         primary: DynLazySpan<'db>,
-        pretty_ty: String,
     },
 
     RecursiveConstParamTy(DynLazySpan<'db>),
@@ -169,13 +168,8 @@ impl<'db> TyLowerDiag<'db> {
         }
     }
 
-    pub(super) fn invalid_const_param_ty(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    ) -> Self {
-        let pretty_ty = ty.pretty_print(db).to_string();
-        Self::InvalidConstParamTy { primary, pretty_ty }
+    pub(super) fn invalid_const_param_ty(primary: DynLazySpan<'db>) -> Self {
+        Self::InvalidConstParamTy { primary }
     }
 
     pub(super) fn inconsistent_kind_bound(
@@ -298,9 +292,7 @@ impl<'db> TyLowerDiag<'db> {
                 "duplicated argument name in function definition is not allowed".to_string()
             }
 
-            Self::InvalidConstParamTy { pretty_ty, .. } => {
-                format!("`{}` is forbidden as a const parameter type", pretty_ty)
-            }
+            Self::InvalidConstParamTy { .. } => "invalid const parameter type".to_string(),
 
             Self::ConstTyMismatch { .. } => {
                 "given type doesn't match the expected const type".to_string()

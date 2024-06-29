@@ -293,8 +293,8 @@ impl<'db> TyId<'db> {
                             .into()
                     }
 
-                    InvalidCause::InvalidConstParamTy { ty } => {
-                        TyLowerDiag::invalid_const_param_ty(db, span, *ty).into()
+                    InvalidCause::InvalidConstParamTy => {
+                        TyLowerDiag::invalid_const_param_ty(span).into()
                     }
 
                     InvalidCause::RecursiveConstParamTy => {
@@ -581,9 +581,7 @@ pub enum InvalidCause<'db> {
         given: TyId<'db>,
     },
 
-    InvalidConstParamTy {
-        ty: TyId<'db>,
-    },
+    InvalidConstParamTy,
 
     RecursiveConstParamTy,
 
