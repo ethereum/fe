@@ -107,7 +107,7 @@ pub(crate) fn lower_trait_ref<'db>(
     };
 
     let trait_def = match resolve_path_early(db, path, scope) {
-        EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::TYPE) {
+        Some(EarlyResolvedPath::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
             Ok(res) => {
                 let NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) = res.kind else {
                     return Err(TraitRefLowerError::Other);
@@ -118,9 +118,11 @@ pub(crate) fn lower_trait_ref<'db>(
             Err(_) => return Err(TraitRefLowerError::Other),
         },
 
-        EarlyResolvedPath::Partial { .. } => {
+        Some(EarlyResolvedPath::Partial { .. }) => {
             return Err(TraitRefLowerError::AssocTy(path));
         }
+
+        None => return Err(TraitRefLowerError::Other),
     };
 
     // The first parameter of the trait is the self type, so we need to skip it.

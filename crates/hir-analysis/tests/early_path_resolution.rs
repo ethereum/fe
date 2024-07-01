@@ -80,7 +80,7 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
         let scope = ctxt.scope();
         let resolved_path = resolve_path_early(self.db.as_hir_analysis_db(), path, scope);
         match resolved_path {
-            EarlyResolvedPath::Full(bucket) => {
+            Some(EarlyResolvedPath::Full(bucket)) => {
                 let domain = self.domain_stack.last().copied().unwrap();
                 let res = bucket.pick(domain).as_ref().unwrap();
                 let prop = res.pretty_path(self.db.as_hir_analysis_db()).unwrap();
@@ -92,13 +92,17 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
 
-            EarlyResolvedPath::Partial {
+            Some(EarlyResolvedPath::Partial {
                 res,
                 unresolved_from,
-            } => {
+            }) => {
                 let prop = res.pretty_path(self.db.as_hir_analysis_db()).unwrap();
                 let span = ctxt.span().unwrap().segment(unresolved_from - 1).into();
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
+            }
+
+            None => {
+                unreachable!();
             }
         }
     }

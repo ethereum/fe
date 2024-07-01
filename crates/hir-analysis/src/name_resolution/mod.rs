@@ -18,7 +18,7 @@ use hir::{
 };
 pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
-    NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind,
+    EarlyNameQueryId, NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind,
     NameResolutionError, QueryDirective,
 };
 pub use path_resolver::EarlyResolvedPath;
@@ -27,13 +27,19 @@ pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
 use self::{
-    diagnostics::NameResDiag, import_resolver::DefaultImporter,
-    name_resolver::ResolvedQueryCacheStore, path_resolver::EarlyPathResolver,
+    diagnostics::NameResDiag, import_resolver::DefaultImporter, path_resolver::EarlyPathResolver,
 };
 use crate::HirAnalysisDb;
 
-// TODO: Implement `resolve_path` and `resolve_segments` after implementing the
-// late path resolution.
+#[salsa::tracked(return_ref)]
+pub fn resolve_query<'db>(
+    db: &'db dyn HirAnalysisDb,
+    query: EarlyNameQueryId<'db>,
+) -> NameResBucket<'db> {
+    let importer = DefaultImporter;
+    let mut name_resolver = name_resolver::NameResolver::new(db, &importer);
+    name_resolver.resolve_query(query)
+}
 
 // Resolves the given path in the given scope.
 /// It's not necessary to report any error even if the `EarlyResolvedPath`
@@ -42,7 +48,7 @@ pub fn resolve_path_early<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-) -> EarlyResolvedPath<'db> {
+) -> Option<EarlyResolvedPath<'db>> {
     resolve_segments_early(db, path.segments(db.as_hir_db()), scope)
 }
 
@@ -53,32 +59,18 @@ pub fn resolve_segments_early<'db>(
     db: &'db dyn HirAnalysisDb,
     segments: &[Partial<IdentId<'db>>],
     scope: ScopeId<'db>,
-) -> EarlyResolvedPath<'db> {
-    // Obtain cache store for the given scope.
-    let cache_store = &resolve_path_early_impl(db, scope.top_mod(db.as_hir_db())).1;
-    let importer = DefaultImporter;
+) -> Option<EarlyResolvedPath<'db>> {
     // We use the cache store that is returned from `resolve_path_early` to get
     // cached results immediately.
-    let mut name_resolver = name_resolver::NameResolver::new_no_cache(db, &importer);
-
-    let mut resolver = EarlyPathResolver::new(db, &mut name_resolver, cache_store);
+    let mut resolver = EarlyPathResolver::new(db);
     match resolver.resolve_segments(segments, scope) {
-        Ok(res) => res.resolved,
+        Ok(res) => Some(res.resolved),
         Err(_) => {
             // It's ok to ignore the errors here and returns an empty bucket because the
             // precise errors are reported from `PathAnalysisPass`.
-            let bucket = NameResBucket::default();
-            EarlyResolvedPath::Full(bucket)
+            None
         }
     }
-}
-
-/// Resolves the given query. If you don't need to resolve customized queries,
-/// consider using [`resolve_path_early`] or [`resolve_segments_early`] instead.
-pub fn resolve_query<'db>(db: &'db dyn HirAnalysisDb, query: NameQuery<'db>) -> NameResBucket<'db> {
-    let importer = DefaultImporter;
-    let mut name_resolver = name_resolver::NameResolver::new_no_cache(db, &importer);
-    name_resolver.resolve_query(query)
 }
 
 /// Performs import resolution analysis. This pass only checks correctness of
@@ -132,14 +124,19 @@ impl<'db> PathAnalysisPass<'db> {
     }
 }
 
+/// TODO: Remove this!!!!
 impl<'db> ModuleAnalysisPass<'db> for PathAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let diags = &resolve_path_early_impl(self.db, top_mod).0;
+        let importer = DefaultImporter;
+        let mut visitor = EarlyPathVisitor::new(self.db, &importer);
+        let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), top_mod.into());
+        visitor.visit_item(&mut ctxt, top_mod.into());
 
-        diags
+        visitor
+            .diags
             .iter()
             .filter(|diag| !matches!(diag, NameResDiag::Conflict(..)))
             .map(|diag| Box::new(diag.clone()) as _)
@@ -159,15 +156,19 @@ impl<'db> DefConflictAnalysisPass<'db> {
     }
 }
 
-// TODO: Remove this pass and move the this analysis to late pass resolution.
+/// TODO: Remove this!!!!
 impl<'db> ModuleAnalysisPass<'db> for DefConflictAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let diags = &resolve_path_early_impl(self.db, top_mod).0;
+        let importer = DefaultImporter;
+        let mut visitor = EarlyPathVisitor::new(self.db, &importer);
+        let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), top_mod.into());
+        visitor.visit_item(&mut ctxt, top_mod.into());
 
-        diags
+        visitor
+            .diags
             .iter()
             .filter(|diag| matches!(diag, NameResDiag::Conflict(..)))
             .map(|diag| Box::new(diag.clone()) as _)
@@ -183,28 +184,6 @@ pub fn resolve_imports<'db>(
     let resolver = import_resolver::ImportResolver::new(db, ingot);
     let (imports, diags) = resolver.resolve_imports();
     (diags, imports)
-}
-
-/// Performs early path resolution and cache the resolutions for paths appeared
-/// in the given module. Also checks the conflict of the item definitions.
-///
-/// NOTE: This method doesn't check
-/// - the conflict in impl/impl-trait blocks since it requires ingot granularity
-///   analysis.
-/// - the path resolution errors at expression and statement level since it
-///   generally requires type analysis
-#[salsa::tracked(return_ref)]
-pub(crate) fn resolve_path_early_impl<'db>(
-    db: &'db dyn HirAnalysisDb,
-    top_mod: TopLevelMod<'db>,
-) -> (Vec<NameResDiag<'db>>, ResolvedQueryCacheStore<'db>) {
-    let importer = DefaultImporter;
-    let mut visitor = EarlyPathVisitor::new(db, &importer);
-
-    let mut ctxt = VisitorCtxt::with_item(db.as_hir_db(), top_mod.into());
-    visitor.visit_item(&mut ctxt, top_mod.into());
-
-    (visitor.diags, visitor.inner.into_cache_store())
 }
 
 struct EarlyPathVisitor<'db, 'a> {
@@ -237,7 +216,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         path: PathId<'db>,
         scope: ScopeId,
         span: LazyPathSpan<'db>,
-        bucket: NameResBucket<'db>,
+        bucket: &'db NameResBucket<'db>,
     ) {
         let path_kind = self.path_ctxt.last().unwrap();
         let last_seg_idx = path.len(self.db.as_hir_db()) - 1;
@@ -343,7 +322,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         };
     }
 
-    fn make_query_for_conflict_check(&self, scope: ScopeId<'db>) -> Option<NameQuery<'db>> {
+    fn make_query_for_conflict_check(&self, scope: ScopeId<'db>) -> Option<EarlyNameQueryId<'db>> {
         let name = scope.name(self.db.as_hir_db())?;
         let directive = QueryDirective::new()
             .disallow_lex()
@@ -351,7 +330,12 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
             .disallow_external();
 
         let parent_scope = scope.parent(self.db.as_hir_db())?;
-        Some(NameQuery::with_directive(name, parent_scope, directive))
+        Some(EarlyNameQueryId::new(
+            self.db,
+            name,
+            parent_scope,
+            directive,
+        ))
     }
 }
 
@@ -479,9 +463,8 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
-        let dummy_cache_store = ResolvedQueryCacheStore::no_cache();
 
-        let mut resolver = EarlyPathResolver::new(self.db, &mut self.inner, &dummy_cache_store);
+        let mut resolver = EarlyPathResolver::new(self.db);
         let resolved_path = match resolver.resolve_path(path, scope) {
             Ok(bucket) => bucket,
 
@@ -572,13 +555,24 @@ impl ExpectedPathKind {
         }
     }
 
-    fn pick(self, bucket: NameResBucket) -> Either<NameRes, NameRes> {
+    fn pick<'db>(self, bucket: &NameResBucket<'db>) -> Either<NameRes<'db>, NameRes<'db>> {
         debug_assert!(!bucket.is_empty());
 
         let res = match bucket.pick(self.domain()).as_ref().ok() {
             Some(res) => res.clone(),
             None => {
-                return Either::Right(bucket.into_iter().find_map(|res| res.ok()).unwrap());
+                return Either::Right(
+                    bucket
+                        .iter()
+                        .find_map(|res| {
+                            if let Ok(res) = res {
+                                Some(res.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .unwrap(),
+                );
             }
         };
 

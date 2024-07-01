@@ -2,11 +2,11 @@ use hir::{span::DynLazySpan, HirDb};
 
 #[salsa::jar(db = HirAnalysisDb)]
 pub struct Jar(
-    // Functions for import/name resolutions.
-    name_resolution::resolve_path_early_impl,
     name_resolution::resolve_imports,
     name_resolution::traits_in_scope::available_traits_in_scope_impl,
     name_resolution::traits_in_scope::TraitScope<'_>,
+    name_resolution::EarlyNameQueryId<'_>,
+    name_resolution::resolve_query,
     // Type system.
     ty::ty_def::TyId<'_>,
     ty::ty_def::ty_kind,

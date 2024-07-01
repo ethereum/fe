@@ -25,7 +25,7 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
     if let Some(named) = imports.named_resolved.get(&scope) {
         named
             .values()
-            .flat_map(|bucket| bucket.iter())
+            .flat_map(|bucket| bucket.iter_ok())
             .for_each(|name_res| {
                 if let Some(trait_) = name_res.trait_() {
                     traits.insert(trait_);
@@ -46,7 +46,7 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
     if let Some(unnamed) = imports.unnamed_resolved.get(&scope) {
         unnamed
             .iter()
-            .flat_map(|bucket| bucket.iter())
+            .flat_map(|bucket| bucket.iter_ok())
             .for_each(|name_res| {
                 if let Some(trait_) = name_res.trait_() {
                     traits.insert(trait_);

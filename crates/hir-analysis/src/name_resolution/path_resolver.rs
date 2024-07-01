@@ -1,16 +1,10 @@
-#![allow(unused)]
 use hir::hir_def::{scope_graph::ScopeId, IdentId, Partial, PathId};
 
 use super::{
-    name_resolver::{
-        NameRes, NameResBucket, NameResolutionError, NameResolver, ResolvedQueryCacheStore,
-    },
-    NameDomain, NameQuery,
+    name_resolver::{NameRes, NameResBucket, NameResolutionError},
+    resolve_query, EarlyNameQueryId, NameDomain,
 };
-use crate::{
-    name_resolution::{resolve_segments_early, QueryDirective},
-    HirAnalysisDb,
-};
+use crate::{name_resolution::QueryDirective, HirAnalysisDb};
 
 /// The result of early path resolution.
 /// There are two kinds of early resolution results:
@@ -21,7 +15,7 @@ use crate::{
 ///    Type/Trait context is needed to resolve the rest of the path.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EarlyResolvedPath<'db> {
-    Full(NameResBucket<'db>),
+    Full(&'db NameResBucket<'db>),
 
     /// The path is partially resolved; this means that the `resolved` is a type
     /// and the following segments depend on type to resolve.
@@ -57,10 +51,6 @@ impl<'db> EarlyResolvedPathWithTrajectory<'db> {
 
         None
     }
-
-    pub(super) fn resolved_at(&self, index: usize) -> &NameRes<'db> {
-        &self.trajectory[index]
-    }
 }
 
 pub type PathResolutionResult<'db, T> = Result<T, PathResolutionError<'db>>;
@@ -77,23 +67,13 @@ impl<'db> PathResolutionError<'db> {
     }
 }
 
-pub(super) struct EarlyPathResolver<'db, 'a, 'b, 'c> {
+pub(super) struct EarlyPathResolver<'db> {
     db: &'db dyn HirAnalysisDb,
-    name_resolver: &'a mut NameResolver<'db, 'b>,
-    cache_store: &'c ResolvedQueryCacheStore<'db>,
 }
 
-impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
-    pub(super) fn new(
-        db: &'db dyn HirAnalysisDb,
-        name_resolver: &'a mut NameResolver<'db, 'b>,
-        cache_store: &'c ResolvedQueryCacheStore<'db>,
-    ) -> Self {
-        Self {
-            db,
-            name_resolver,
-            cache_store,
-        }
+impl<'db> EarlyPathResolver<'db> {
+    pub(super) fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
     }
 
     /// Resolves the given `path` in the given `scope`.
@@ -140,17 +120,13 @@ impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
     fn resolve_last_segment(
         &mut self,
         i_path: &IntermediatePath<'db, '_>,
-    ) -> PathResolutionResult<'db, NameResBucket<'db>> {
+    ) -> PathResolutionResult<'db, &'db NameResBucket<'db>> {
         let query = i_path.make_query(self.db)?;
         Ok(self.resolve_query(query))
     }
 
-    fn resolve_query(&mut self, query: NameQuery<'db>) -> NameResBucket<'db> {
-        if let Some(bucket) = self.cache_store.get(query) {
-            bucket.clone()
-        } else {
-            self.name_resolver.resolve_query(query)
-        }
+    fn resolve_query(&mut self, query: EarlyNameQueryId<'db>) -> &'db NameResBucket<'db> {
+        resolve_query(self.db, query)
     }
 }
 
@@ -167,7 +143,6 @@ impl<'db, 'a> IntermediatePath<'db, 'a> {
         path: &'a [Partial<IdentId<'db>>],
         scope: ScopeId<'db>,
     ) -> Self {
-        let domain = NameDomain::from_scope(db, scope);
         Self {
             path,
             idx: 0,
@@ -180,7 +155,7 @@ impl<'db, 'a> IntermediatePath<'db, 'a> {
         }
     }
 
-    fn starts_with(&self, db: &dyn HirAnalysisDb, ident: IdentId) -> bool {
+    fn starts_with(&self, ident: IdentId) -> bool {
         let Some(Partial::Present(first_seg)) = self.path.first() else {
             return false;
         };
@@ -189,7 +164,10 @@ impl<'db, 'a> IntermediatePath<'db, 'a> {
     }
 
     /// Make a `NameQuery` to resolve the current segment.
-    fn make_query(&self, db: &'db dyn HirAnalysisDb) -> PathResolutionResult<'db, NameQuery<'db>> {
+    fn make_query(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> PathResolutionResult<'db, EarlyNameQueryId<'db>> {
         debug_assert!(self.state(db) != IntermediatePathState::Partial);
         let Partial::Present(name) = self.path[self.idx] else {
             return Err(PathResolutionError::new(
@@ -207,11 +185,11 @@ impl<'db, 'a> IntermediatePath<'db, 'a> {
 
         let mut directive = QueryDirective::new();
         if self.idx != 0 {
-            directive.disallow_external();
-            directive.disallow_lex();
+            directive = directive.disallow_external();
+            directive = directive.disallow_lex();
         }
 
-        Ok(NameQuery::with_directive(name, scope, directive))
+        Ok(EarlyNameQueryId::new(db, name, scope, directive))
     }
 
     /// Finalizes the `IntermediatePath` as a `EarlyResolvedPath::Partial`.
@@ -233,8 +211,8 @@ impl<'db, 'a> IntermediatePath<'db, 'a> {
 
     /// Finalizes the `IntermediatePath` as a `EarlyResolvedPath::Full`.
     fn finalize_as_full(
-        mut self,
-        bucket: NameResBucket<'db>,
+        self,
+        bucket: &'db NameResBucket<'db>,
     ) -> EarlyResolvedPathWithTrajectory<'db> {
         let resolved = EarlyResolvedPath::Full(bucket);
         let mut trajectory = self.trajectory;
@@ -250,11 +228,11 @@ impl<'db, 'a> IntermediatePath<'db, 'a> {
     /// Proceeds to the next segment with the given `bucket`.
     /// If the `bucket` doesn't contain proper resolution, then an error is
     /// returned.
-    fn proceed(&mut self, bucket: NameResBucket<'db>) -> PathResolutionResult<'db, ()> {
+    fn proceed(&mut self, bucket: &NameResBucket<'db>) -> PathResolutionResult<'db, ()> {
         let next_res = match bucket.pick(NameDomain::TYPE) {
             Ok(res) => Ok(res.clone()),
             Err(NameResolutionError::NotFound) => {
-                if let Some(res) = bucket.iter().next() {
+                if let Some(res) = bucket.iter_ok().next() {
                     Err(PathResolutionError::new(
                         NameResolutionError::InvalidPathSegment(res.clone()),
                         self.idx,
@@ -280,7 +258,7 @@ impl<'db, 'a> IntermediatePath<'db, 'a> {
 
         let should_partial = (self.current_res.is_type()
             || self.current_res.is_trait()
-            || self.starts_with(db, IdentId::make_self_ty(db.as_hir_db())))
+            || self.starts_with(IdentId::make_self_ty(db.as_hir_db())))
             && self.idx != 0;
 
         if (self.idx == self.path.len() - 1) && !should_partial {
