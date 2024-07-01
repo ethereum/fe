@@ -9,11 +9,14 @@ use fe_compiler_test_utils::snap_test;
     glob: "*.fe"
 )]
 fn run_ty_def(fixture: Fixture<&str>) {
-    let mut driver = DriverDataBase::default();
+    let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
-    let top_mod = driver.top_mod_from_file(path, fixture.content());
-    driver.run_on_top_mod(top_mod);
-    let diags = driver.format_diags();
+
+    let input_file = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(input_file);
+
+    let diags = db.run_on_top_mod(top_mod);
+    let diags = diags.format_diags(&db);
     snap_test!(diags, fixture.path());
 }
 
@@ -22,11 +25,14 @@ fn run_ty_def(fixture: Fixture<&str>) {
     glob: "*.fe"
 )]
 fn run_const_ty(fixture: Fixture<&str>) {
-    let mut driver = DriverDataBase::default();
+    let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
-    let top_mod = driver.top_mod_from_file(path, fixture.content());
-    driver.run_on_top_mod(top_mod);
-    let diags = driver.format_diags();
+
+    let input_file = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(input_file);
+
+    let diags = db.run_on_top_mod(top_mod);
+    let diags = diags.format_diags(&db);
     snap_test!(diags, fixture.path());
 }
 
@@ -35,11 +41,14 @@ fn run_const_ty(fixture: Fixture<&str>) {
     glob: "*.fe"
 )]
 fn run_trait_bound(fixture: Fixture<&str>) {
-    let mut driver = DriverDataBase::default();
+    let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
-    let top_mod = driver.top_mod_from_file(path, fixture.content());
-    driver.run_on_top_mod(top_mod);
-    let diags = driver.format_diags();
+
+    let input_file = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(input_file);
+
+    let diags = db.run_on_top_mod(top_mod);
+    let diags = diags.format_diags(&db);
     snap_test!(diags, fixture.path());
 }
 
@@ -48,11 +57,14 @@ fn run_trait_bound(fixture: Fixture<&str>) {
     glob: "*.fe"
 )]
 fn run_trait_impl(fixture: Fixture<&str>) {
-    let mut driver = DriverDataBase::default();
+    let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
-    let top_mod = driver.top_mod_from_file(path, fixture.content());
-    driver.run_on_top_mod(top_mod);
-    let diags = driver.format_diags();
+
+    let input_file = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(input_file);
+
+    let diags = db.run_on_top_mod(top_mod);
+    let diags = diags.format_diags(&db);
     snap_test!(diags, fixture.path());
 }
 
@@ -75,10 +87,12 @@ mod wasm {
             #[wasm_bindgen_test]
         )]
         fn run_ty_def(fixture: Fixture<&str>) {
-            let mut driver = DriverDataBase::default();
+            let mut db = DriverDataBase::default();
             let path = Path::new(fixture.path());
-            let top_mod = driver.top_mod_from_file(path, fixture.content());
-            driver.run_on_top_mod(top_mod);
+
+            let input_file = db.standalone(path, fixture.content());
+            let top_mod = db.top_mod(input_file);
+            db.run_on_top_mod(top_mod);
         }
     }
 
@@ -94,10 +108,12 @@ mod wasm {
             #[wasm_bindgen_test]
         )]
         fn run_const_ty(fixture: Fixture<&str>) {
-            let mut driver = DriverDataBase::default();
+            let mut db = DriverDataBase::default();
             let path = Path::new(fixture.path());
-            let top_mod = driver.top_mod_from_file(path, fixture.content());
-            driver.run_on_top_mod(top_mod);
+
+            let input_file = db.standalone(path, fixture.content());
+            let top_mod = db.top_mod(input_file);
+            db.run_on_top_mod(top_mod);
         }
     }
 
@@ -113,10 +129,12 @@ mod wasm {
             #[wasm_bindgen_test]
         )]
         fn run_trait_bound(fixture: Fixture<&str>) {
-            let mut driver = DriverDataBase::default();
+            let mut db = DriverDataBase::default();
             let path = Path::new(fixture.path());
-            let top_mod = driver.top_mod_from_file(path, fixture.content());
-            driver.run_on_top_mod(top_mod);
+
+            let input_file = db.standalone(path, fixture.content());
+            let top_mod = db.top_mod(input_file);
+            db.run_on_top_mod(top_mod);
         }
     }
 
@@ -132,10 +150,12 @@ mod wasm {
             #[wasm_bindgen_test]
         )]
         fn run_trait_impl(fixture: Fixture<&str>) {
-            let mut driver = DriverDataBase::default();
+            let mut db = DriverDataBase::default();
             let path = Path::new(fixture.path());
-            let top_mod = driver.top_mod_from_file(path, fixture.content());
-            driver.run_on_top_mod(top_mod);
+
+            let input_file = db.standalone(path, fixture.content());
+            let top_mod = db.top_mod(input_file);
+            db.run_on_top_mod(top_mod);
         }
     }
 }

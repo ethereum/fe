@@ -1,19 +1,18 @@
 use parser::ast::{self, prelude::*};
 
+use super::{define_lazy_span_node, LazySpanAtom};
 use crate::span::{
     transition::{LazyArg, LazyTransitionFn, ResolvedOrigin, ResolvedOriginKind},
     DesugaredOrigin,
 };
 
-use super::{define_lazy_span_node, LazySpanAtom};
-
 define_lazy_span_node!(LazyUsePathSpan);
-impl LazyUsePathSpan {
-    pub fn segment(&self, idx: usize) -> LazyUsePathSegmentSpan {
+impl<'db> LazyUsePathSpan<'db> {
+    pub fn segment(&self, idx: usize) -> LazyUsePathSegmentSpan<'db> {
         self.clone().segment_moved(idx)
     }
 
-    pub fn segment_moved(mut self, idx: usize) -> LazyUsePathSegmentSpan {
+    pub fn segment_moved(mut self, idx: usize) -> LazyUsePathSegmentSpan<'db> {
         fn f(origin: ResolvedOrigin, arg: LazyArg) -> ResolvedOrigin {
             let LazyArg::Idx(idx) = arg else {
                 unreachable!()
@@ -45,20 +44,20 @@ impl LazyUsePathSpan {
 }
 
 define_lazy_span_node!(LazyUsePathSegmentSpan);
-impl LazyUsePathSegmentSpan {
-    pub fn into_atom(self) -> LazySpanAtom {
+impl<'db> LazyUsePathSegmentSpan<'db> {
+    pub fn into_atom(self) -> LazySpanAtom<'db> {
         LazySpanAtom(self.0)
     }
 }
 
 define_lazy_span_node!(LazyUseAliasSpan, ast::UseAlias,);
 
-impl LazyUseAliasSpan {
+impl<'db> LazyUseAliasSpan<'db> {
     pub fn name(&self) -> LazySpanAtom {
         self.clone().name_moved()
     }
 
-    pub fn name_moved(mut self) -> LazySpanAtom {
+    pub fn name_moved(mut self) -> LazySpanAtom<'db> {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {

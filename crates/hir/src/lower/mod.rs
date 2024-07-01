@@ -6,15 +6,14 @@ use parser::{
     SyntaxNode, SyntaxToken,
 };
 
+use self::{item::lower_module_items, parse::parse_file_impl, scope_builder::ScopeGraphBuilder};
 use crate::{
     hir_def::{
         module_tree_impl, scope_graph::ScopeGraph, ExprId, IdentId, IngotId, IntegerId, ItemKind,
-        LitKind, ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId,
+        LitKind, ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId, TrackedItemVariant,
     },
     HirDb, LowerHirDb,
 };
-
-use self::{item::lower_module_items, parse::parse_file_impl, scope_builder::ScopeGraphBuilder};
 
 pub(crate) mod parse;
 
@@ -40,7 +39,10 @@ pub fn map_file_to_mod(db: &dyn LowerHirDb, file: InputFile) -> TopLevelMod {
 }
 
 /// Returns the scope graph of the given top-level module.
-pub fn scope_graph(db: &dyn LowerHirDb, top_mod: TopLevelMod) -> &ScopeGraph {
+pub fn scope_graph<'db>(
+    db: &'db dyn LowerHirDb,
+    top_mod: TopLevelMod<'db>,
+) -> &'db ScopeGraph<'db> {
     scope_graph_impl(db.as_hir_db(), top_mod)
 }
 
@@ -50,7 +52,11 @@ pub fn module_tree(db: &dyn LowerHirDb, ingot: InputIngot) -> &ModuleTree {
 }
 
 #[salsa::tracked]
-pub(crate) fn map_file_to_mod_impl(db: &dyn HirDb, ingot: IngotId, file: InputFile) -> TopLevelMod {
+pub(crate) fn map_file_to_mod_impl<'db>(
+    db: &'db dyn HirDb,
+    ingot: IngotId<'db>,
+    file: InputFile,
+) -> TopLevelMod<'db> {
     let path = file.path(db.as_input_db());
     let name = path.file_stem().unwrap();
     let mod_name = IdentId::new(db, name.to_string());
@@ -58,7 +64,10 @@ pub(crate) fn map_file_to_mod_impl(db: &dyn HirDb, ingot: IngotId, file: InputFi
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn scope_graph_impl(db: &dyn HirDb, top_mod: TopLevelMod) -> ScopeGraph {
+pub(crate) fn scope_graph_impl<'db>(
+    db: &'db dyn HirDb,
+    top_mod: TopLevelMod<'db>,
+) -> ScopeGraph<'db> {
     let ast = top_mod_ast(db, top_mod);
     let mut ctxt = FileLowerCtxt::enter_top_mod(db, top_mod);
 
@@ -81,13 +90,13 @@ pub(super) struct FileLowerCtxt<'db> {
 }
 
 impl<'db> FileLowerCtxt<'db> {
-    pub(super) fn enter_top_mod(db: &'db dyn HirDb, top_mod: TopLevelMod) -> Self {
+    pub(super) fn enter_top_mod(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Self {
         Self {
             builder: ScopeGraphBuilder::enter_top_mod(db, top_mod),
         }
     }
 
-    pub(super) fn build(self) -> ScopeGraph {
+    pub(super) fn build(self) -> ScopeGraph<'db> {
         self.builder.build()
     }
 
@@ -95,7 +104,7 @@ impl<'db> FileLowerCtxt<'db> {
         self.builder.db
     }
 
-    pub(super) fn top_mod(&self) -> TopLevelMod {
+    pub(super) fn top_mod(&self) -> TopLevelMod<'db> {
         self.builder.top_mod
     }
 
@@ -107,16 +116,16 @@ impl<'db> FileLowerCtxt<'db> {
         self.builder.leave_block_scope(block);
     }
 
-    pub(super) fn joined_id(&self, id: TrackedItemId) -> TrackedItemId {
+    pub(super) fn joined_id(&self, id: TrackedItemVariant<'db>) -> TrackedItemId<'db> {
         self.builder.joined_id(id)
     }
 
     /// Creates a new scope for an item.
-    fn enter_item_scope(&mut self, id: TrackedItemId, is_mod: bool) {
+    fn enter_item_scope(&mut self, id: TrackedItemId<'db>, is_mod: bool) {
         self.builder.enter_item_scope(id, is_mod);
     }
 
-    fn enter_body_scope(&mut self, id: TrackedItemId) {
+    fn enter_body_scope(&mut self, id: TrackedItemId<'db>) {
         self.builder.enter_body_scope(id);
     }
 
@@ -124,28 +133,28 @@ impl<'db> FileLowerCtxt<'db> {
     /// the scope.
     fn leave_item_scope<I>(&mut self, item: I) -> I
     where
-        I: Into<ItemKind> + Copy,
+        I: Into<ItemKind<'db>> + Copy,
     {
         self.builder.leave_item_scope(item.into());
         item
     }
 }
 
-impl IdentId {
-    fn lower_token(ctxt: &mut FileLowerCtxt<'_>, token: SyntaxToken) -> Self {
+impl<'db> IdentId<'db> {
+    fn lower_token(ctxt: &mut FileLowerCtxt<'db>, token: SyntaxToken) -> Self {
         Self::new(ctxt.db(), token.text().to_string())
     }
 
     fn lower_token_partial(
-        ctxt: &mut FileLowerCtxt<'_>,
+        ctxt: &mut FileLowerCtxt<'db>,
         token: Option<SyntaxToken>,
     ) -> Partial<Self> {
         token.map(|token| Self::lower_token(ctxt, token)).into()
     }
 }
 
-impl LitKind {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Lit) -> Self {
+impl<'db> LitKind<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Lit) -> Self {
         match ast.kind() {
             ast::LitKind::Int(int) => Self::Int(IntegerId::lower_ast(ctxt, int)),
             ast::LitKind::String(string) => {
@@ -164,8 +173,8 @@ impl LitKind {
     }
 }
 
-impl IntegerId {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::LitInt) -> Self {
+impl<'db> IntegerId<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::LitInt) -> Self {
         let text = ast.token().text();
         // Parser ensures that the text is valid pair with a radix and a number.
         if text.len() < 2 {

@@ -1,4 +1,5 @@
 pub mod diagnostics;
+pub mod indexmap;
 pub mod input;
 
 pub use input::{InputFile, InputIngot};

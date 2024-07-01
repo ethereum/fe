@@ -66,17 +66,17 @@ pub mod lazy_spans {
 /// LazySpan` usage because it doesn't implement `Clone` and `Eq` which leads to
 /// a lot of difficulties in salsa integration
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct DynLazySpan(pub(super) Option<SpanTransitionChain>);
-impl DynLazySpan {
+pub struct DynLazySpan<'db>(pub(super) Option<SpanTransitionChain<'db>>);
+impl<'db> DynLazySpan<'db> {
     pub fn invalid() -> Self {
         Self(None)
     }
 
-    pub fn top_mod(&self, db: &dyn HirDb) -> Option<TopLevelMod> {
+    pub fn top_mod(&self, db: &'db dyn HirDb) -> Option<TopLevelMod<'db>> {
         self.0.as_ref().map(|chain| chain.top_mod(db))
     }
 }
-impl LazySpan for DynLazySpan {
+impl<'db> LazySpan for DynLazySpan<'db> {
     fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span> {
         if let Some(chain) = &self.0 {
             chain.resolve(db)
@@ -86,8 +86,8 @@ impl LazySpan for DynLazySpan {
     }
 }
 
-pub trait SpanDowncast {
-    fn downcast(dyn_span: DynLazySpan) -> Option<Self>
+pub trait SpanDowncast<'db> {
+    fn downcast(dyn_span: DynLazySpan<'db>) -> Option<Self>
     where
         Self: Sized;
 }
@@ -103,55 +103,70 @@ pub fn toplevel_ast(db: &dyn SpannedHirDb, item: TopLevelMod) -> HirOrigin<ast::
     HirOrigin::raw(&top_mod_ast(db.as_hir_db(), item))
 }
 
-pub fn mod_ast(db: &dyn SpannedHirDb, item: Mod) -> &HirOrigin<ast::Mod> {
+pub fn mod_ast<'db>(db: &'db dyn SpannedHirDb, item: Mod<'db>) -> &'db HirOrigin<ast::Mod> {
     item.origin(db.as_hir_db())
 }
 
-pub fn func_ast(db: &dyn SpannedHirDb, item: Func) -> &HirOrigin<ast::Func> {
+pub fn func_ast<'db>(db: &'db dyn SpannedHirDb, item: Func<'db>) -> &'db HirOrigin<ast::Func> {
     item.origin(db.as_hir_db())
 }
 
-pub fn struct_ast(db: &dyn SpannedHirDb, item: Struct) -> &HirOrigin<ast::Struct> {
+pub fn struct_ast<'db>(
+    db: &'db dyn SpannedHirDb,
+    item: Struct<'db>,
+) -> &'db HirOrigin<ast::Struct> {
     item.origin(db.as_hir_db())
 }
 
-pub fn contract_ast(db: &dyn SpannedHirDb, item: Contract) -> &HirOrigin<ast::Contract> {
+pub fn contract_ast<'db>(
+    db: &'db dyn SpannedHirDb,
+    item: Contract<'db>,
+) -> &'db HirOrigin<ast::Contract> {
     item.origin(db.as_hir_db())
 }
 
-pub fn enum_ast(db: &dyn SpannedHirDb, item: Enum) -> &HirOrigin<ast::Enum> {
+pub fn enum_ast<'db>(db: &'db dyn SpannedHirDb, item: Enum<'db>) -> &'db HirOrigin<ast::Enum> {
     item.origin(db.as_hir_db())
 }
 
-pub fn type_alias_ast(db: &dyn SpannedHirDb, item: TypeAlias) -> &HirOrigin<ast::TypeAlias> {
+pub fn type_alias_ast<'db>(
+    db: &'db dyn SpannedHirDb,
+    item: TypeAlias<'db>,
+) -> &'db HirOrigin<ast::TypeAlias> {
     item.origin(db.as_hir_db())
 }
 
-pub fn impl_ast(db: &dyn SpannedHirDb, item: Impl) -> &HirOrigin<ast::Impl> {
+pub fn impl_ast<'db>(db: &'db dyn SpannedHirDb, item: Impl<'db>) -> &'db HirOrigin<ast::Impl> {
     item.origin(db.as_hir_db())
 }
 
-pub fn trait_ast(db: &dyn SpannedHirDb, item: Trait) -> &HirOrigin<ast::Trait> {
+pub fn trait_ast<'db>(db: &'db dyn SpannedHirDb, item: Trait<'db>) -> &'db HirOrigin<ast::Trait> {
     item.origin(db.as_hir_db())
 }
 
-pub fn impl_trait_ast(db: &dyn SpannedHirDb, item: ImplTrait) -> &HirOrigin<ast::ImplTrait> {
+pub fn impl_trait_ast<'db>(
+    db: &'db dyn SpannedHirDb,
+    item: ImplTrait<'db>,
+) -> &'db HirOrigin<ast::ImplTrait> {
     item.origin(db.as_hir_db())
 }
 
-pub fn const_ast(db: &dyn SpannedHirDb, item: Const) -> &HirOrigin<ast::Const> {
+pub fn const_ast<'db>(db: &'db dyn SpannedHirDb, item: Const<'db>) -> &'db HirOrigin<ast::Const> {
     item.origin(db.as_hir_db())
 }
 
-pub fn use_ast(db: &dyn SpannedHirDb, item: Use) -> &HirOrigin<ast::Use> {
+pub fn use_ast<'db>(db: &'db dyn SpannedHirDb, item: Use<'db>) -> &'db HirOrigin<ast::Use> {
     item.origin(db.as_hir_db())
 }
 
-pub fn body_ast(db: &dyn SpannedHirDb, item: Body) -> &HirOrigin<ast::Expr> {
+pub fn body_ast<'db>(db: &'db dyn SpannedHirDb, item: Body<'db>) -> &'db HirOrigin<ast::Expr> {
     item.origin(db.as_hir_db())
 }
 
-pub fn body_source_map(db: &dyn SpannedHirDb, item: Body) -> &crate::hir_def::BodySourceMap {
+pub fn body_source_map<'db>(
+    db: &'db dyn SpannedHirDb,
+    item: Body<'db>,
+) -> &'db crate::hir_def::BodySourceMap {
     item.source_map(db.as_hir_db())
 }
 
@@ -252,8 +267,8 @@ use transition::define_lazy_span_node;
 use self::transition::SpanTransitionChain;
 
 define_lazy_span_node!(LazySpanAtom);
-impl LazySpanAtom {
-    pub(super) fn into_lit_span(self) -> LazyLitSpan {
+impl<'db> LazySpanAtom<'db> {
+    pub(super) fn into_lit_span(self) -> LazyLitSpan<'db> {
         LazyLitSpan(self.0)
     }
 }

@@ -18,38 +18,39 @@ pub mod visitor;
 
 #[salsa::jar(db = HirDb)]
 pub struct Jar(
-    hir_def::IngotId,
+    hir_def::IngotId<'_>,
     // Tracked Hir items.
-    hir_def::TopLevelMod,
-    hir_def::Mod,
-    hir_def::Func,
-    hir_def::Struct,
-    hir_def::Contract,
-    hir_def::Enum,
-    hir_def::TypeAlias,
-    hir_def::Impl,
-    hir_def::Trait,
-    hir_def::ImplTrait,
-    hir_def::Const,
-    hir_def::Use,
+    hir_def::TopLevelMod<'_>,
+    hir_def::Mod<'_>,
+    hir_def::Func<'_>,
+    hir_def::Struct<'_>,
+    hir_def::Contract<'_>,
+    hir_def::Enum<'_>,
+    hir_def::TypeAlias<'_>,
+    hir_def::Impl<'_>,
+    hir_def::Trait<'_>,
+    hir_def::ImplTrait<'_>,
+    hir_def::Const<'_>,
+    hir_def::Use<'_>,
     // Interned structs.
-    hir_def::Body,
-    hir_def::IdentId,
-    hir_def::IntegerId,
-    hir_def::StringId,
-    hir_def::PathId,
-    hir_def::FuncParamListId,
-    hir_def::AttrListId,
-    hir_def::WhereClauseId,
-    hir_def::GenericArgListId,
-    hir_def::GenericParamListId,
-    hir_def::FieldDefListId,
-    hir_def::VariantDefListId,
-    hir_def::ImplItemListId,
-    hir_def::TypeId,
-    hir_def::TupleTypeId,
-    hir_def::TraitRefId,
-    hir_def::UsePathId,
+    hir_def::Body<'_>,
+    hir_def::IdentId<'_>,
+    hir_def::IntegerId<'_>,
+    hir_def::StringId<'_>,
+    hir_def::PathId<'_>,
+    hir_def::FuncParamListId<'_>,
+    hir_def::AttrListId<'_>,
+    hir_def::WhereClauseId<'_>,
+    hir_def::GenericArgListId<'_>,
+    hir_def::GenericParamListId<'_>,
+    hir_def::FieldDefListId<'_>,
+    hir_def::VariantDefListId<'_>,
+    hir_def::ImplItemListId<'_>,
+    hir_def::TypeId<'_>,
+    hir_def::TupleTypeId<'_>,
+    hir_def::TraitRefId<'_>,
+    hir_def::UsePathId<'_>,
+    hir_def::TrackedItemId<'_>,
     /// Utility methods for analysis.
     hir_def::all_top_modules_in_ingot,
     hir_def::all_enums_in_ingot,
@@ -97,11 +98,11 @@ impl<'db> ParsingPass<'db> {
     }
 }
 
-impl<'db> ModuleAnalysisPass for ParsingPass<'db> {
+impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
     fn run_on_module(
         &mut self,
-        top_mod: TopLevelMod,
-    ) -> Vec<Box<dyn diagnostics::DiagnosticVoucher>> {
+        top_mod: TopLevelMod<'db>,
+    ) -> Vec<Box<dyn diagnostics::DiagnosticVoucher<'db> + 'db>> {
         parse_file_impl::accumulated::<ParseErrorAccumulator>(self.db, top_mod)
             .into_iter()
             .map(|d| Box::new(d) as _)
@@ -116,7 +117,10 @@ impl<'db> ModuleAnalysisPass for ParsingPass<'db> {
 // The reason why this function is not a public API is that we want to prohibit users of `HirDb` to
 // access `InputIngot` directly.
 #[salsa::tracked(return_ref)]
-pub(crate) fn external_ingots_impl(db: &dyn HirDb, ingot: InputIngot) -> Vec<(IdentId, IngotId)> {
+pub(crate) fn external_ingots_impl(
+    db: &dyn HirDb,
+    ingot: InputIngot,
+) -> Vec<(IdentId<'_>, IngotId<'_>)> {
     let mut res = Vec::new();
     for dep in ingot.external_ingots(db.as_input_db()) {
         let name = IdentId::new(db, dep.name.to_string());
@@ -130,13 +134,6 @@ pub(crate) fn external_ingots_impl(db: &dyn HirDb, ingot: InputIngot) -> Vec<(Id
 }
 
 pub trait HirDb: salsa::DbWithJar<Jar> + InputDb {
-    fn prefill(&self)
-    where
-        Self: Sized,
-    {
-        IdentId::prefill(self)
-    }
-
     fn as_hir_db(&self) -> &dyn HirDb {
         <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
     }
@@ -175,9 +172,8 @@ impl<DB> SpannedHirDb for DB where DB: salsa::DbWithJar<SpannedJar> + HirDb {}
 
 #[cfg(test)]
 mod test_db {
-    use std::collections::BTreeSet;
-
     use common::{
+        indexmap::IndexSet,
         input::{IngotKind, Version},
         InputFile, InputIngot,
     };
@@ -189,20 +185,12 @@ mod test_db {
         span::LazySpan,
     };
 
+    #[derive(Default)]
     #[salsa::db(common::Jar, crate::Jar, crate::LowerJar, crate::SpannedJar)]
     pub(crate) struct TestDb {
         storage: salsa::Storage<Self>,
     }
 
-    impl Default for TestDb {
-        fn default() -> Self {
-            let db = Self {
-                storage: Default::default(),
-            };
-            db.prefill();
-            db
-        }
-    }
     impl salsa::Database for TestDb {
         fn salsa_event(&self, _: salsa::Event) {}
     }
@@ -224,23 +212,21 @@ mod test_db {
 
         /// Parses the given source text and returns the first inner item in the
         /// file.
-        pub fn expect_item<T>(&mut self, text: &str) -> T
+        pub fn expect_item<'db, T>(&'db self, input: InputFile) -> T
         where
-            ItemKind: TryInto<T, Error = &'static str>,
+            ItemKind<'db>: TryInto<T, Error = &'static str>,
         {
-            let file = self.standalone_file(text);
-            let tree = self.parse_source(file);
+            let tree = self.parse_source(input);
             tree.items_dfs(self)
                 .find_map(|it| it.try_into().ok())
                 .unwrap()
         }
 
-        pub fn expect_items<T>(&mut self, text: &str) -> Vec<T>
+        pub fn expect_items<'db, T>(&'db self, input: InputFile) -> Vec<T>
         where
-            ItemKind: TryInto<T, Error = &'static str>,
+            ItemKind<'db>: TryInto<T, Error = &'static str>,
         {
-            let file = self.standalone_file(text);
-            let tree = self.parse_source(file);
+            let tree = self.parse_source(input);
             tree.items_dfs(self)
                 .filter_map(|it| it.try_into().ok())
                 .collect()
@@ -257,10 +243,10 @@ mod test_db {
             let path = "hir_test";
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);
-            let ingot = InputIngot::new(self, path, kind, version, BTreeSet::default());
+            let ingot = InputIngot::new(self, path, kind, version, IndexSet::default());
             let file = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
             ingot.set_root_file(self, file);
-            ingot.set_files(self, [file].into());
+            ingot.set_files(self, [file].into_iter().collect());
             file
         }
     }

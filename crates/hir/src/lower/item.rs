@@ -1,5 +1,6 @@
 use parser::ast::{self, prelude::*};
 
+use super::FileLowerCtxt;
 use crate::{
     hir_def::{
         item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRefId,
@@ -8,16 +9,14 @@ use crate::{
     span::HirOrigin,
 };
 
-use super::FileLowerCtxt;
-
 pub(crate) fn lower_module_items(ctxt: &mut FileLowerCtxt<'_>, items: ast::ItemList) {
     for item in items {
         ItemKind::lower_ast(ctxt, item);
     }
 }
 
-impl ItemKind {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Item) {
+impl<'db> ItemKind<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Item) {
         let Some(kind) = ast.kind() else {
             return;
         };
@@ -67,11 +66,11 @@ impl ItemKind {
     }
 }
 
-impl Mod {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Mod) -> Self {
+impl<'db> Mod<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Mod) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = ctxt.joined_id(TrackedItemId::Mod(name));
-        ctxt.enter_item_scope(id.clone(), true);
+        let id = ctxt.joined_id(TrackedItemVariant::Mod(name));
+        ctxt.enter_item_scope(id, true);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -85,11 +84,15 @@ impl Mod {
     }
 }
 
-impl Func {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Func, is_extern: bool) -> Self {
+impl<'db> Func<'db> {
+    pub(super) fn lower_ast(
+        ctxt: &mut FileLowerCtxt<'db>,
+        ast: ast::Func,
+        is_extern: bool,
+    ) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = ctxt.joined_id(TrackedItemId::Func(name));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::Func(name));
+        ctxt.enter_item_scope(id, false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -124,11 +127,11 @@ impl Func {
     }
 }
 
-impl Struct {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Struct) -> Self {
+impl<'db> Struct<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Struct) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = ctxt.joined_id(TrackedItemId::Struct(name));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::Struct(name));
+        ctxt.enter_item_scope(id, false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -153,11 +156,11 @@ impl Struct {
     }
 }
 
-impl Contract {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Contract) -> Self {
+impl<'db> Contract<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Contract) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = ctxt.joined_id(TrackedItemId::Contract(name));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::Contract(name));
+        ctxt.enter_item_scope(id, false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -178,11 +181,11 @@ impl Contract {
     }
 }
 
-impl Enum {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Enum) -> Self {
+impl<'db> Enum<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Enum) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = ctxt.joined_id(TrackedItemId::Enum(name));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::Enum(name));
+        ctxt.enter_item_scope(id, false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -207,11 +210,11 @@ impl Enum {
     }
 }
 
-impl TypeAlias {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::TypeAlias) -> Self {
+impl<'db> TypeAlias<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TypeAlias) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.alias());
-        let id = ctxt.joined_id(TrackedItemId::TypeAlias(name));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::TypeAlias(name));
+        ctxt.enter_item_scope(id, false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -234,11 +237,11 @@ impl TypeAlias {
     }
 }
 
-impl Impl {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Impl) -> Self {
+impl<'db> Impl<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Impl) -> Self {
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        let id = ctxt.joined_id(TrackedItemId::Impl(ty));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::Impl(ty));
+        ctxt.enter_item_scope(id, false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -265,11 +268,11 @@ impl Impl {
     }
 }
 
-impl Trait {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Trait) -> Self {
+impl<'db> Trait<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Trait) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = ctxt.joined_id(TrackedItemId::Trait(name));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::Trait(name));
+        ctxt.enter_item_scope(id, false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
@@ -308,12 +311,12 @@ impl Trait {
     }
 }
 
-impl ImplTrait {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::ImplTrait) -> Self {
+impl<'db> ImplTrait<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::ImplTrait) -> Self {
         let trait_ref = TraitRefId::lower_ast_partial(ctxt, ast.trait_ref());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
-        let id = ctxt.joined_id(TrackedItemId::ImplTrait(trait_ref, ty));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::ImplTrait(trait_ref, ty));
+        ctxt.enter_item_scope(id, false);
 
         let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let generic_params = GenericParamListId::lower_ast_opt(ctxt, ast.generic_params());
@@ -341,11 +344,11 @@ impl ImplTrait {
     }
 }
 
-impl Const {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Const) -> Self {
+impl<'db> Const<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Const) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
-        let id = ctxt.joined_id(TrackedItemId::Const(name));
-        ctxt.enter_item_scope(id.clone(), false);
+        let id = ctxt.joined_id(TrackedItemVariant::Const(name));
+        ctxt.enter_item_scope(id, false);
 
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let body = ast.value().map(|ast| Body::lower_ast(ctxt, ast)).into();
@@ -372,8 +375,8 @@ impl ItemModifier {
     }
 }
 
-impl FieldDefListId {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::RecordFieldDefList) -> Self {
+impl<'db> FieldDefListId<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::RecordFieldDefList) -> Self {
         let fields = ast
             .into_iter()
             .map(|field| FieldDef::lower_ast(ctxt, field))
@@ -381,14 +384,14 @@ impl FieldDefListId {
         Self::new(ctxt.db(), fields)
     }
 
-    fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::RecordFieldDefList>) -> Self {
+    fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'db>, ast: Option<ast::RecordFieldDefList>) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
             .unwrap_or(Self::new(ctxt.db(), Vec::new()))
     }
 }
 
-impl FieldDef {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::RecordFieldDef) -> Self {
+impl<'db> FieldDef<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::RecordFieldDef) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let vis = if ast.pub_kw().is_some() {
@@ -401,8 +404,8 @@ impl FieldDef {
     }
 }
 
-impl VariantDefListId {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::VariantDefList) -> Self {
+impl<'db> VariantDefListId<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::VariantDefList) -> Self {
         let variants = ast
             .into_iter()
             .map(|variant| VariantDef::lower_ast(ctxt, variant))
@@ -410,14 +413,14 @@ impl VariantDefListId {
         Self::new(ctxt.db(), variants)
     }
 
-    fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::VariantDefList>) -> Self {
+    fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'db>, ast: Option<ast::VariantDefList>) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
             .unwrap_or(Self::new(ctxt.db(), Vec::new()))
     }
 }
 
-impl VariantDef {
-    fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::VariantDef) -> Self {
+impl<'db> VariantDef<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::VariantDef) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let kind = match ast.kind() {
             ast::VariantKind::Unit => VariantKind::Unit,

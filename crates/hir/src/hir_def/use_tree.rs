@@ -2,12 +2,12 @@ use super::IdentId;
 use crate::{hir_def::Partial, HirDb};
 
 #[salsa::interned]
-pub struct UsePathId {
+pub struct UsePathId<'db> {
     #[return_ref]
-    pub data: Vec<Partial<UsePathSegment>>,
+    pub data: Vec<Partial<UsePathSegment<'db>>>,
 }
 
-impl UsePathId {
+impl<'db> UsePathId<'db> {
     pub fn is_glob(&self, db: &dyn HirDb) -> bool {
         self.data(db)
             .last()
@@ -15,7 +15,7 @@ impl UsePathId {
             .map_or(false, |seg| seg.is_glob())
     }
 
-    pub fn last_ident(&self, db: &dyn HirDb) -> Option<IdentId> {
+    pub fn last_ident(&self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
         self.data(db)
             .last()
             .and_then(|seg| seg.to_opt())
@@ -46,16 +46,16 @@ impl UsePathId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UsePathSegment {
-    Ident(IdentId),
+pub enum UsePathSegment<'db> {
+    Ident(IdentId<'db>),
     /// `*`.
     Glob,
 }
 
-impl UsePathSegment {
+impl<'db> UsePathSegment<'db> {
     /// Returns the ident of the last path segment.
     /// If the last segment is a glob, returns `None`.
-    pub fn ident(self) -> Option<IdentId> {
+    pub fn ident(self) -> Option<IdentId<'db>> {
         match self {
             UsePathSegment::Ident(ident) => Some(ident),
             UsePathSegment::Glob => None,
@@ -70,8 +70,8 @@ impl UsePathSegment {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum UseAlias {
-    Ident(IdentId),
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub enum UseAlias<'db> {
+    Ident(IdentId<'db>),
     Underscore,
 }

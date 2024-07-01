@@ -8,8 +8,8 @@ use crate::{
     span::HirOrigin,
 };
 
-impl Expr {
-    pub(super) fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::Expr) -> ExprId {
+impl<'db> Expr<'db> {
+    pub(super) fn lower_ast(ctxt: &mut BodyCtxt<'_, 'db>, ast: ast::Expr) -> ExprId {
         let expr = match ast.kind() {
             ast::ExprKind::Lit(lit) => {
                 if let Some(lit) = lit.lit() {
@@ -271,8 +271,8 @@ impl MatchArm {
     }
 }
 
-impl CallArg {
-    fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::CallArg) -> Self {
+impl<'db> CallArg<'db> {
+    fn lower_ast(ctxt: &mut BodyCtxt<'_, 'db>, ast: ast::CallArg) -> Self {
         let label = ast
             .label()
             .map(|label| IdentId::lower_token(ctxt.f_ctxt, label));
@@ -281,8 +281,8 @@ impl CallArg {
     }
 }
 
-impl Field {
-    fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::RecordField) -> Self {
+impl<'db> Field<'db> {
+    fn lower_ast(ctxt: &mut BodyCtxt<'_, 'db>, ast: ast::RecordField) -> Self {
         let label = ast
             .label()
             .map(|label| IdentId::lower_token(ctxt.f_ctxt, label));

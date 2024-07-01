@@ -6,8 +6,8 @@ use crate::{
     span::HirOrigin,
 };
 
-impl Pat {
-    pub(super) fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::Pat) -> PatId {
+impl<'db> Pat<'db> {
+    pub(super) fn lower_ast(ctxt: &mut BodyCtxt<'_, 'db>, ast: ast::Pat) -> PatId {
         let pat = match &ast.kind() {
             ast::PatKind::WildCard(_) => Pat::WildCard,
 
@@ -65,7 +65,7 @@ impl Pat {
         ctxt.push_pat(pat, HirOrigin::raw(&ast))
     }
 
-    pub(super) fn lower_ast_opt(ctxt: &mut BodyCtxt<'_, '_>, ast: Option<ast::Pat>) -> PatId {
+    pub(super) fn lower_ast_opt(ctxt: &mut BodyCtxt<'_, 'db>, ast: Option<ast::Pat>) -> PatId {
         if let Some(ast) = ast {
             Pat::lower_ast(ctxt, ast)
         } else {
@@ -74,8 +74,8 @@ impl Pat {
     }
 }
 
-impl RecordPatField {
-    fn lower_ast(ctxt: &mut BodyCtxt<'_, '_>, ast: &ast::RecordPatField) -> RecordPatField {
+impl<'db> RecordPatField<'db> {
+    fn lower_ast(ctxt: &mut BodyCtxt<'_, 'db>, ast: &ast::RecordPatField) -> RecordPatField<'db> {
         let label = IdentId::lower_token_partial(ctxt.f_ctxt, ast.name());
         let pat = ast
             .pat()

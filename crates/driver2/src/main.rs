@@ -1,6 +1,5 @@
-use fe_driver2::DriverDataBase;
-
 use clap::Parser;
+use fe_driver2::DriverDataBase;
 use hir::hir_def::TopLevelMod;
 
 #[derive(Parser, Debug)]
@@ -25,9 +24,10 @@ pub fn main() {
     let source = std::fs::read_to_string(&args.file_path).unwrap();
 
     let mut db = DriverDataBase::default();
-    let top_mod = db.top_mod_from_file(path, &source);
-    db.run_on_top_mod(top_mod);
-    db.emit_diags();
+    let input_file = db.standalone(path, &source);
+    let top_mod = db.top_mod(input_file);
+    let diags = db.run_on_top_mod(top_mod);
+    diags.emit(&db);
 
     if args.dump_scope_graph {
         println!("{}", dump_scope_graph(&db, top_mod));

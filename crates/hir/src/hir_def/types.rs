@@ -2,17 +2,17 @@ use super::{Body, GenericArgListId, Partial, PathId};
 use crate::HirDb;
 
 #[salsa::interned]
-pub struct TypeId {
+pub struct TypeId<'db> {
     #[return_ref]
-    pub data: TypeKind,
+    pub data: TypeKind<'db>,
 }
 
-impl TypeId {
+impl<'db> TypeId<'db> {
     pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
         matches!(self.data(db), TypeKind::SelfType(_))
     }
 
-    pub fn fallback_self_ty(db: &dyn HirDb) -> Self {
+    pub fn fallback_self_ty(db: &'db dyn HirDb) -> Self {
         Self::new(
             db,
             TypeKind::SelfType(GenericArgListId::new(db, Vec::new(), false)),
@@ -20,25 +20,25 @@ impl TypeId {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub enum TypeKind {
-    Ptr(Partial<TypeId>),
-    Path(Partial<PathId>, GenericArgListId),
-    SelfType(GenericArgListId),
-    Tuple(TupleTypeId),
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TypeKind<'db> {
+    Ptr(Partial<TypeId<'db>>),
+    Path(Partial<PathId<'db>>, GenericArgListId<'db>),
+    SelfType(GenericArgListId<'db>),
+    Tuple(TupleTypeId<'db>),
     /// The first `TypeId` is the element type, the second `Body` is the length.
-    Array(Partial<TypeId>, Partial<Body>),
+    Array(Partial<TypeId<'db>>, Partial<Body<'db>>),
     Never,
 }
 
 #[salsa::interned]
-pub struct TupleTypeId {
+pub struct TupleTypeId<'db> {
     #[return_ref]
-    pub data: Vec<Partial<TypeId>>,
+    pub data: Vec<Partial<TypeId<'db>>>,
 }
 
-impl TupleTypeId {
-    pub fn to_ty(self, db: &dyn HirDb) -> TypeId {
+impl<'db> TupleTypeId<'db> {
+    pub fn to_ty(self, db: &'db dyn HirDb) -> TypeId {
         TypeId::new(db, TypeKind::Tuple(self))
     }
 
