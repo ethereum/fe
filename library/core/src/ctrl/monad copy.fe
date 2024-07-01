@@ -1,0 +1,173 @@
+// use self::option::Option
+
+// trait Applicative
+// where Self: * -> *
+// {
+//     fn pure<T>(t: T) -> Self<T>
+// }
+
+// impl Applicative for Option {
+//     fn pure<T>(t: T) -> Self<T> {
+//         Option::Some(t)
+//     }
+// }
+
+// trait Monad: Applicative
+// where Self: * -> *
+// {
+//     fn bind<T, F, U>(self: Self<T>) -> Self<U> where F: Fn<T, Self<U>>
+// }
+
+// impl Monad for Option {
+//     fn bind<T, F, U>(self: Self<T>) -> Self<U> where F: Fn<T, Self<U>> {
+//         match self {
+//             Self::Some(self) => F::exec(t: self)
+//             Self::None => Self::None
+//         }
+//     }
+// }
+
+// fn foo<F>(f: F)
+// where F: Fn(u8, u8, u8) -> u8 {
+// where F: Fn<{u8, u8, u8}, u8>
+
+// }
+
+// fn f(u8, u8, u8) -> u8 {} // (u8, u8, u8) -> u8
+// fn g((u8, u8, u8)) -> u8 {}  //((u8,u8,u8)) -> u8
+
+// fn main() {
+//     f(1, 2, 3) // f.exec((1, 2, 3))
+
+//     let x = (1, 2, 3)
+//     f(x)
+//     g(x)
+
+//     let args = {1, 2, 3}
+//     args.push(1)
+
+//     let args = (1, 2, 3)
+//     f (1, 2, 3)
+//     f args
+
+//     let x = ((u8, u8, u8))
+//     let x = ((u8, u8, u8),)
+
+//     f(args..) // f(x, y) f (
+// }
+// (u8, u8, u8) -> u8
+// u8 -> u8 -> u8 -> u8
+
+
+
+// impl Fn<((u8, u8, u8)), u8> for G
+
+// impl Fn<(u8, u8, u8), u8> for Foo {
+
+// }
+
+// trait Fn<T, U> where T: FnArgs {
+//     fn exect(&self, t: T) -> U
+// }
+
+// trait Fn<Arg, Ret, const Arity: usize>
+// where Arg: Tuple<Arity>
+// {
+//     fn call(self, arg : Arg) -> Ret
+// }
+
+// trait FnMut<T, U> where T: FnArgs {
+//     fn exect(&mut self, t: T) -> U
+// }
+
+// trait Tuple<const N: usize>;
+
+// fn map<T, U,F>(t: T, f: F) -> U
+// where F: Fn(T) -> U {...}
+
+// type MyFn = ()
+
+// impl<T, U> Fn<T, U> for Foo {
+//     fn exec(&self, t: T) -> U {
+//         t.element(0)
+//         t.len()
+//     }
+// }
+
+// impl Fn<(u8, u8>, Option<u8>> for MyFn {
+//     fn exec(t: (bool, bool)) -> Option<u8> {
+//         let (a, b) = t
+//         f(a, b)
+//     }
+// }
+
+// #test
+// fn my_test() {
+//     let f: MyFn = ()
+//     let a = Option::Some(true).bind<_, _, _>(f)
+//     let a: Option<u8> = Option::Some(true).bind(f)
+// }
+
+
+// sub x y = x - y
+// f = sub 1   // f 2 == 1 - 2
+// g = `sub` 1 // g 2 == 2 - 1
+
+
+// enum Result<T, E> {
+//     Ok(T)
+//     Err(E)
+// }
+// impl<E> Functor for Result<*, E> { // or Result<_, E> maybe?
+//     fn map<A, B, F: Fn<A, B>>(self: Self<A>, _ f: F) -> Self<B> {
+//         match self {
+//             Result::Ok(a) => {
+//                 return Result::Ok(f(a))
+//             }
+//             Result::Err(e) => {
+//                 return Result::Err(e)
+//             }
+//         }
+//     }
+// }
+
+
+// enum Res<E, T> { // Result<T, E>
+//     Err(E)
+//     Ok(T)
+// }
+// impl Functor for Res<MyError> {
+//     fn map<A, B, F: Fn<A, B>>(self: Self<A>, _ f: F) -> Self<B> {
+//         match self {
+//             Result::Ok(a) => {
+//                 return Result::Ok(f(a))
+//             }
+//             Result::Err(e) => {
+//                 return Result::Err(e)
+//             }
+//         }
+//     }
+// }
+
+
+
+// fn main() {
+//     let r = foo()
+//     r.map(|t| ...)
+// }
+
+
+// enum Result1<E, T>
+
+// Result<_, E>
+
+// Flip (Result)
+
+
+
+// ((+) `foldl` 0) [1..5]
+// ((`foldl` 0) [1..5]) (+)
+
+// flip :: (a -> b -> c) -> b -> a -> c
+// f :: a -> b -> c -> d -> e
+// flip f :: b -> a -> c -> d -> e

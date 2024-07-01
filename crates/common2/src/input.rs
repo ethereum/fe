@@ -10,7 +10,7 @@ use crate::InputDb;
 #[salsa::input(constructor = __new_impl)]
 pub struct InputIngot {
     /// An absolute path to the ingot root directory.
-    /// The all files in the ingot should be located under this directory.
+    /// All files in the ingot should be located under this directory.
     #[return_ref]
     pub path: Utf8PathBuf,
 
@@ -23,6 +23,7 @@ pub struct InputIngot {
 
     /// A list of ingots which the current ingot depends on.
     #[return_ref]
+    #[set(__set_external_ingots_impl)]
     pub external_ingots: BTreeSet<IngotDependency>,
 
     /// A list of files which the current ingot contains.
@@ -71,6 +72,10 @@ impl InputIngot {
     /// Panics if the root file is not set.
     pub fn root_file(&self, db: &dyn InputDb) -> InputFile {
         self.__get_root_file_impl(db).unwrap()
+    }
+
+    pub fn set_external_ingots(self, db: &mut dyn InputDb, ingots: BTreeSet<IngotDependency>) {
+        self.__set_external_ingots_impl(db).to(ingots);
     }
 }
 

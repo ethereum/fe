@@ -1,0 +1,4 @@
+pub enum Result<Ok, Err> {
+   Ok(Ok),
+   Err(Err),
+}
