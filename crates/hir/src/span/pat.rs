@@ -11,25 +11,25 @@ use crate::{
 };
 
 define_lazy_span_node!(LazyPatSpan, ast::Pat,);
-impl LazyPatSpan {
-    pub fn new(body: Body, pat: PatId) -> Self {
+impl<'db> LazyPatSpan<'db> {
+    pub fn new(body: Body<'db>, pat: PatId) -> Self {
         let root = PatRoot { pat, body };
         Self(SpanTransitionChain::new(root))
     }
 
-    pub fn into_path_pat(self) -> LazyPathPatSpan {
+    pub fn into_path_pat(self) -> LazyPathPatSpan<'db> {
         LazyPathPatSpan(self.0)
     }
 
-    pub fn into_lit_pat(self) -> LazyLitPatSpan {
+    pub fn into_lit_pat(self) -> LazyLitPatSpan<'db> {
         LazyLitPatSpan(self.0)
     }
 
-    pub fn into_path_tuple_pat(self) -> LazyPathTuplePatSpan {
+    pub fn into_path_tuple_pat(self) -> LazyPathTuplePatSpan<'db> {
         LazyPathTuplePatSpan(self.0)
     }
 
-    pub fn into_record_pat(self) -> LazyRecordPatSpan {
+    pub fn into_record_pat(self) -> LazyRecordPatSpan<'db> {
         LazyRecordPatSpan(self.0)
     }
 }
@@ -88,12 +88,12 @@ define_lazy_span_node!(
 );
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct PatRoot {
+pub(crate) struct PatRoot<'db> {
     pat: PatId,
-    pub(crate) body: Body,
+    pub(crate) body: Body<'db>,
 }
 
-impl ChainInitiator for PatRoot {
+impl<'db> ChainInitiator for PatRoot<'db> {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.pat_map.node_to_source(self.pat);

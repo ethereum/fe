@@ -24,31 +24,31 @@ pub(crate) struct ImportResolver<'db> {
     db: &'db dyn HirAnalysisDb,
 
     /// The ingot that is being resolved.
-    ingot: IngotId,
+    ingot: IngotId<'db>,
 
     /// The set of imports that have been resolved.
-    resolved_imports: IntermediateResolvedImports,
+    resolved_imports: IntermediateResolvedImports<'db>,
 
     /// The uses that have resolution is work in progress.
-    intermediate_uses: FxHashMap<ScopeId, VecDeque<IntermediateUse>>,
+    intermediate_uses: FxHashMap<ScopeId<'db>, VecDeque<IntermediateUse<'db>>>,
 
     /// The errors that have been accumulated during the import resolution.
-    accumulated_errors: Vec<NameResDiag>,
+    accumulated_errors: Vec<NameResDiag<'db>>,
 
     /// The number of imported resolutions.
     /// This is used to judge if a import resolution doesn't change in each
     /// iteration of fixed point calculation.
     /// This check rely on the fact that the number of resolutions is
     /// monotonically increasing.
-    num_imported_res: FxHashMap<Use, usize>,
+    num_imported_res: FxHashMap<Use<'db>, usize>,
 
     /// The set of imports that are suspicious to be ambiguous.
     /// In this case, the use will turns out to be ambiguous after the import
     /// resolution reaches the fixed point.
-    suspicious_imports: FxHashSet<Use>,
+    suspicious_imports: FxHashSet<Use<'db>>,
 }
 impl<'db> ImportResolver<'db> {
-    pub(crate) fn new(db: &'db dyn HirAnalysisDb, ingot: IngotId) -> Self {
+    pub(crate) fn new(db: &'db dyn HirAnalysisDb, ingot: IngotId<'db>) -> Self {
         Self {
             db,
             ingot,
@@ -60,7 +60,7 @@ impl<'db> ImportResolver<'db> {
         }
     }
 
-    pub(crate) fn resolve_imports(mut self) -> (ResolvedImports, Vec<NameResDiag>) {
+    pub(crate) fn resolve_imports(mut self) -> (ResolvedImports<'db>, Vec<NameResDiag<'db>>) {
         self.initialize_i_uses();
 
         let mut changed = true;
@@ -147,7 +147,10 @@ impl<'db> ImportResolver<'db> {
     ///
     /// The second value of the returned tuple indicates whether the resolution
     /// is progressed from the passed `IntermediateUse`.
-    fn resolve_i_use(&mut self, i_use: IntermediateUse) -> (Option<IntermediateUse>, bool) {
+    fn resolve_i_use(
+        &mut self,
+        i_use: IntermediateUse<'db>,
+    ) -> (Option<IntermediateUse<'db>>, bool) {
         if i_use.is_glob(self.db) {
             self.resolve_glob(i_use)
         } else {
@@ -156,7 +159,10 @@ impl<'db> ImportResolver<'db> {
     }
 
     /// Try to resolve the given named `IntermediateUse`.
-    fn resolve_named(&mut self, i_use: IntermediateUse) -> (Option<IntermediateUse>, bool) {
+    fn resolve_named(
+        &mut self,
+        i_use: IntermediateUse<'db>,
+    ) -> (Option<IntermediateUse<'db>>, bool) {
         let Some(i_use_res) = self.resolve_base_path(i_use.clone()) else {
             return (None, true);
         };
@@ -186,7 +192,10 @@ impl<'db> ImportResolver<'db> {
     ///
     /// The second value of the returned tuple indicates whether the resolution
     /// is progressed from the passed `IntermediateUse`.
-    fn resolve_glob(&mut self, i_use: IntermediateUse) -> (Option<IntermediateUse>, bool) {
+    fn resolve_glob(
+        &mut self,
+        i_use: IntermediateUse<'db>,
+    ) -> (Option<IntermediateUse<'db>>, bool) {
         let (base_path_resolved, changed) = {
             if i_use.is_base_resolved(self.db) {
                 (i_use, false)
@@ -278,7 +287,10 @@ impl<'db> ImportResolver<'db> {
     ///   is unchanged.
     /// - `None` if the error happens during the resolution, the error is
     ///   accumulated in the function.
-    fn resolve_base_path(&mut self, mut i_use: IntermediateUse) -> Option<IUseResolution> {
+    fn resolve_base_path(
+        &mut self,
+        mut i_use: IntermediateUse<'db>,
+    ) -> Option<IUseResolution<'db>> {
         let mut changed = false;
         if i_use.is_base_resolved(self.db) {
             return Some(IUseResolution::BasePath(i_use));
@@ -320,7 +332,7 @@ impl<'db> ImportResolver<'db> {
     ///   is unchanged.
     /// - `None` if the error happens during the resolution, the error is
     ///   accumulated in the function.
-    fn resolve_segment(&mut self, i_use: &IntermediateUse) -> Option<IUseResolution> {
+    fn resolve_segment(&mut self, i_use: &IntermediateUse<'db>) -> Option<IUseResolution<'db>> {
         // The segment is syntactically invalid. We can't perform name resolution
         // anymore.
         // We don't need to report the error here because the parser should have already
@@ -428,7 +440,7 @@ impl<'db> ImportResolver<'db> {
     }
 
     /// Returns `true` if the given `IntermediateUse` reaches the fixed point.
-    fn try_finalize_named_use(&mut self, i_use: IntermediateUse) -> bool {
+    fn try_finalize_named_use(&mut self, i_use: IntermediateUse<'db>) -> bool {
         debug_assert!(i_use.is_base_resolved(self.db));
 
         let bucket = match self.resolve_segment(&i_use) {
@@ -480,7 +492,7 @@ impl<'db> ImportResolver<'db> {
     // the external ingot, so this ambiguity is inherent in import resolution.
     // As a result, we need to add additional verification to check this kind of
     // ambiguity.
-    fn verify_ambiguity(&mut self, use_: Use) {
+    fn verify_ambiguity(&mut self, use_: Use<'db>) {
         let i_use = IntermediateUse::new(self.db, use_);
         let first_segment_ident = i_use.current_segment_ident(self.db).unwrap();
 
@@ -517,7 +529,7 @@ impl<'db> ImportResolver<'db> {
         }
     }
 
-    fn register_error(&mut self, i_use: &IntermediateUse, err: NameResolutionError) {
+    fn register_error(&mut self, i_use: &IntermediateUse<'db>, err: NameResolutionError<'db>) {
         self.suspicious_imports.remove(&i_use.use_);
 
         match err {
@@ -569,7 +581,10 @@ impl<'db> ImportResolver<'db> {
 
     /// Makes a query for the current segment of the intermediate use to be
     /// resolved.
-    fn make_query(&self, i_use: &IntermediateUse) -> NameResolutionResult<NameQuery> {
+    fn make_query(
+        &self,
+        i_use: &IntermediateUse<'db>,
+    ) -> NameResolutionResult<'db, NameQuery<'db>> {
         let Some(seg_name) = i_use.current_segment_ident(self.db) else {
             return Err(NameResolutionError::Invalid);
         };
@@ -664,35 +679,35 @@ impl<'db> ImportResolver<'db> {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct ResolvedImports {
-    pub named_resolved: FxHashMap<ScopeId, NamedImportSet>,
-    pub glob_resolved: FxHashMap<ScopeId, GlobImportSet>,
-    pub unnamed_resolved: FxHashMap<ScopeId, Vec<NameResBucket>>,
+pub struct ResolvedImports<'db> {
+    pub named_resolved: FxHashMap<ScopeId<'db>, NamedImportSet<'db>>,
+    pub glob_resolved: FxHashMap<ScopeId<'db>, GlobImportSet<'db>>,
+    pub unnamed_resolved: FxHashMap<ScopeId<'db>, Vec<NameResBucket<'db>>>,
 }
 
-pub(super) trait Importer {
+pub(super) trait Importer<'db> {
     fn named_imports<'a>(
         &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a NamedImportSet>;
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+    ) -> Option<&'a NamedImportSet<'db>>;
 
     fn glob_imports<'a>(
         &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a GlobImportSet>;
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+    ) -> Option<&'a GlobImportSet<'db>>;
 }
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(super) struct DefaultImporter;
 
-impl Importer for DefaultImporter {
+impl<'db> Importer<'db> for DefaultImporter {
     fn named_imports<'a>(
         &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a NamedImportSet> {
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+    ) -> Option<&'a NamedImportSet<'db>> {
         resolved_imports_for_scope(db, scope)
             .named_resolved
             .get(&scope)
@@ -700,30 +715,32 @@ impl Importer for DefaultImporter {
 
     fn glob_imports<'a>(
         &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a GlobImportSet> {
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+    ) -> Option<&'a GlobImportSet<'db>> {
         resolved_imports_for_scope(db, scope)
             .glob_resolved
             .get(&scope)
     }
 }
 
-pub type NamedImportSet = FxHashMap<IdentId, NameResBucket>;
+pub type NamedImportSet<'db> = FxHashMap<IdentId<'db>, NameResBucket<'db>>;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct GlobImportSet {
-    imported: FxHashMap<Use, FxHashMap<IdentId, Vec<NameRes>>>,
+pub struct GlobImportSet<'db> {
+    imported: FxHashMap<Use<'db>, FxHashMap<IdentId<'db>, Vec<NameRes<'db>>>>,
 }
-impl GlobImportSet {
+impl<'db> GlobImportSet<'db> {
     /// Returns imported resolutions for the given `name`.
-    pub fn name_res_for(&self, name: IdentId) -> impl Iterator<Item = &NameRes> {
+    pub fn name_res_for(&self, name: IdentId<'db>) -> impl Iterator<Item = &NameRes<'db>> {
         self.imported
             .values()
             .flat_map(move |v| v.get(&name).into_iter().flatten())
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&Use, &FxHashMap<IdentId, Vec<NameRes>>)> {
+    pub fn iter(
+        &self,
+    ) -> impl Iterator<Item = (&Use<'db>, &FxHashMap<IdentId<'db>, Vec<NameRes<'db>>>)> {
         self.imported.iter()
     }
 }
@@ -746,15 +763,15 @@ impl ScopeState {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-struct IntermediateUse {
-    use_: Use,
-    current_res: Option<NameRes>,
-    original_scope: ScopeId,
+struct IntermediateUse<'db> {
+    use_: Use<'db>,
+    current_res: Option<NameRes<'db>>,
+    original_scope: ScopeId<'db>,
     unresolved_from: usize,
 }
 
-impl IntermediateUse {
-    fn new(db: &dyn HirAnalysisDb, use_: Use) -> Self {
+impl<'db> IntermediateUse<'db> {
+    fn new(db: &'db dyn HirAnalysisDb, use_: Use<'db>) -> Self {
         let scope = ScopeId::from_item(use_.into())
             .lex_parent(db.as_hir_db())
             .unwrap();
@@ -767,7 +784,7 @@ impl IntermediateUse {
     }
 
     /// Returns the scope that the current resolution is pointed to.
-    fn current_scope(&self) -> Option<ScopeId> {
+    fn current_scope(&self) -> Option<ScopeId<'db>> {
         if let Some(current_res) = self.current_res.as_ref() {
             match current_res.kind {
                 NameResKind::Scope(scope) => Some(scope),
@@ -787,7 +804,11 @@ impl IntermediateUse {
     /// for use path segment. # Panics
     /// - Panics if the the base path is already resolved.
     /// - Panics if the bucket is empty.
-    fn proceed(&self, db: &dyn HirAnalysisDb, bucket: NameResBucket) -> NameResolutionResult<Self> {
+    fn proceed(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        bucket: NameResBucket<'db>,
+    ) -> NameResolutionResult<'db, Self> {
         debug_assert!(!bucket.is_empty());
         debug_assert!(!self.is_base_resolved(db));
 
@@ -812,7 +833,7 @@ impl IntermediateUse {
     }
 
     /// Returns the span of the current segment of the use.
-    fn current_segment_span(&self) -> DynLazySpan {
+    fn current_segment_span(&self) -> DynLazySpan<'db> {
         self.use_
             .lazy_span()
             .path()
@@ -820,7 +841,7 @@ impl IntermediateUse {
             .into()
     }
 
-    fn current_segment_ident(&self, db: &dyn HirAnalysisDb) -> Option<IdentId> {
+    fn current_segment_ident(&self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
         let segments = self
             .use_
             .path(db.as_hir_db())
@@ -832,7 +853,7 @@ impl IntermediateUse {
         segment.ident()
     }
 
-    fn imported_name(&self, db: &dyn HirAnalysisDb) -> Option<IdentId> {
+    fn imported_name(&self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
         self.use_.imported_name(db.as_hir_db())
     }
 
@@ -861,28 +882,28 @@ impl IntermediateUse {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum IUseResolution {
+enum IUseResolution<'db> {
     /// The all segments are resolved.
-    Full(NameResBucket),
+    Full(NameResBucket<'db>),
 
     /// The all path segments except the last one are resolved.
-    BasePath(IntermediateUse),
+    BasePath(IntermediateUse<'db>),
 
     /// The intermediate use was partially resolved, but still needs further
     /// resolution.
-    Partial(IntermediateUse),
+    Partial(IntermediateUse<'db>),
 
     /// There was no change to the intermediate use.
-    Unchanged(IntermediateUse),
+    Unchanged(IntermediateUse<'db>),
 }
 
-struct IntermediateResolvedImports {
-    resolved_imports: ResolvedImports,
-    ingot: IngotId,
+struct IntermediateResolvedImports<'db> {
+    resolved_imports: ResolvedImports<'db>,
+    ingot: IngotId<'db>,
 }
 
-impl IntermediateResolvedImports {
-    fn new(ingot: IngotId) -> Self {
+impl<'db> IntermediateResolvedImports<'db> {
+    fn new(ingot: IngotId<'db>) -> Self {
         Self {
             resolved_imports: ResolvedImports::default(),
             ingot,
@@ -891,10 +912,10 @@ impl IntermediateResolvedImports {
 
     fn set_named_bucket(
         &mut self,
-        db: &dyn HirAnalysisDb,
-        i_use: &IntermediateUse,
-        mut bucket: NameResBucket,
-    ) -> NameResolutionResult<()> {
+        db: &'db dyn HirAnalysisDb,
+        i_use: &IntermediateUse<'db>,
+        mut bucket: NameResBucket<'db>,
+    ) -> NameResolutionResult<'db, ()> {
         let scope = i_use.original_scope;
         bucket.set_derivation(NameDerivation::NamedImported(i_use.use_));
 
@@ -952,8 +973,8 @@ impl IntermediateResolvedImports {
 
     fn set_glob_resolutions(
         &mut self,
-        i_use: &IntermediateUse,
-        mut resolutions: FxHashMap<IdentId, Vec<NameRes>>,
+        i_use: &IntermediateUse<'db>,
+        mut resolutions: FxHashMap<IdentId<'db>, Vec<NameRes<'db>>>,
     ) {
         let scope = i_use.original_scope;
         for res in resolutions.values_mut().flatten() {
@@ -969,12 +990,12 @@ impl IntermediateResolvedImports {
     }
 }
 
-impl Importer for IntermediateResolvedImports {
+impl<'db> Importer<'db> for IntermediateResolvedImports<'db> {
     fn named_imports<'a>(
         &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a NamedImportSet> {
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+    ) -> Option<&'a NamedImportSet<'db>> {
         if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
             resolved_imports_for_scope(db, scope)
                 .named_resolved
@@ -986,9 +1007,9 @@ impl Importer for IntermediateResolvedImports {
 
     fn glob_imports<'a>(
         &'a self,
-        db: &'a dyn HirAnalysisDb,
-        scope: ScopeId,
-    ) -> Option<&'a GlobImportSet> {
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+    ) -> Option<&'a GlobImportSet<'db>> {
         if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
             resolved_imports_for_scope(db, scope)
                 .glob_resolved
@@ -999,12 +1020,15 @@ impl Importer for IntermediateResolvedImports {
     }
 }
 
-fn resolved_imports_for_scope(db: &dyn HirAnalysisDb, scope: ScopeId) -> &ResolvedImports {
+fn resolved_imports_for_scope<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+) -> &'db ResolvedImports<'db> {
     let ingot = scope.ingot(db.as_hir_db());
-    super::resolve_imports(db, ingot)
+    &super::resolve_imports(db, ingot).1
 }
 
-impl NameRes {
+impl<'db> NameRes<'db> {
     /// Returns true if the bucket contains an resolution that is not in the
     /// same ingot as the current resolution of the `i_use`.
     fn is_external(&self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {

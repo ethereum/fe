@@ -1,14 +1,13 @@
 use parser::ast::{self, prelude::*};
 
+use super::body::BodyCtxt;
 use crate::{
     hir_def::{stmt::*, Expr, Pat, TypeId},
     span::HirOrigin,
 };
 
-use super::body::BodyCtxt;
-
-impl Stmt {
-    pub(super) fn push_to_body(ctxt: &mut BodyCtxt<'_, '_>, ast: ast::Stmt) -> StmtId {
+impl<'db> Stmt<'db> {
+    pub(super) fn push_to_body(ctxt: &mut BodyCtxt<'_, 'db>, ast: ast::Stmt) -> StmtId {
         let (stmt, origin_kind) = match ast.kind() {
             ast::StmtKind::Let(let_) => {
                 let pat = Pat::lower_ast_opt(ctxt, let_.pat());

@@ -22,7 +22,8 @@ fn test_standalone(fixture: Fixture<&str>) {
     let mut db = HirAnalysisTestDb::default();
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
-    let (top_mod, mut prop_formatter) = db.new_stand_alone(file_name, fixture.content());
+    let input = db.new_stand_alone(file_name, fixture.content());
+    let (top_mod, mut prop_formatter) = db.top_mod(input);
     db.assert_no_diags(top_mod);
 
     let mut ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
@@ -40,13 +41,13 @@ fn test_standalone(fixture: Fixture<&str>) {
 
 struct PathVisitor<'db, 'a> {
     db: &'db HirAnalysisTestDb,
-    top_mod: TopLevelMod,
+    top_mod: TopLevelMod<'db>,
     domain_stack: Vec<NameDomain>,
-    prop_formatter: &'a mut HirPropertyFormatter,
+    prop_formatter: &'a mut HirPropertyFormatter<'db>,
 }
 
-impl<'db, 'a> Visitor for PathVisitor<'db, 'a> {
-    fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'_, LazyItemSpan>, item: ItemKind) {
+impl<'db, 'a> Visitor<'db> for PathVisitor<'db, 'a> {
+    fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'db, LazyItemSpan<'db>>, item: ItemKind<'db>) {
         if matches!(item, ItemKind::Use(_)) {
             return;
         }
@@ -56,26 +57,26 @@ impl<'db, 'a> Visitor for PathVisitor<'db, 'a> {
         self.domain_stack.pop();
     }
 
-    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'_, LazyTySpan>, ty: TypeId) {
+    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, ty: TypeId<'db>) {
         self.domain_stack.push(NameDomain::TYPE);
         walk_ty(self, ctxt, ty);
         self.domain_stack.pop();
     }
 
-    fn visit_pat(&mut self, _: &mut VisitorCtxt<'_, LazyPatSpan>, _: PatId, _: &Pat) {}
+    fn visit_pat(&mut self, _: &mut VisitorCtxt<'db, LazyPatSpan<'db>>, _: PatId, _: &Pat<'db>) {}
 
     fn visit_expr(
         &mut self,
-        ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+        ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
         expr: ExprId,
-        expr_data: &Expr,
+        expr_data: &Expr<'db>,
     ) {
         if matches!(expr_data, Expr::Block { .. }) {
             walk_expr(self, ctxt, expr);
         }
     }
 
-    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
+    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
         let resolved_path = resolve_path_early(self.db.as_hir_analysis_db(), path, scope);
         match resolved_path {

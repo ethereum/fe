@@ -11,8 +11,8 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(LazyPathSegmentSpan);
-impl LazyPathSegmentSpan {
-    pub fn into_atom(self) -> LazySpanAtom {
+impl<'db> LazyPathSegmentSpan<'db> {
+    pub fn into_atom(self) -> LazySpanAtom<'db> {
         LazySpanAtom(self.0)
     }
 }

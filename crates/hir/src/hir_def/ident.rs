@@ -1,48 +1,47 @@
+use crate::HirDb;
+
 #[salsa::interned]
-pub struct IdentId {
+pub struct IdentId<'db> {
     #[return_ref]
     pub data: String,
 }
-impl IdentId {
-    pub fn is_super(self) -> bool {
-        self == kw::SUPER
-    }
 
-    pub fn is_ingot(self) -> bool {
-        self == kw::INGOT
-    }
+macro_rules! define_keywords {
+    ($(($name: ident, $kw_str:literal),)*) => {
+        impl<'db> IdentId<'db> {
+        $(
+            paste::paste! {
+                pub fn [<make_ $name>](db: &'db dyn HirDb) -> Self {
+                    Self::new(db, $kw_str.to_string())
+                }
 
-    pub fn is_self(self) -> bool {
-        self == kw::SELF
-    }
-
-    pub fn is_self_ty(self) -> bool {
-        self == kw::SELF_TY
-    }
+                pub fn [<is_ $name>](self, db: &dyn HirDb) -> bool {
+                    self.data(db) == $kw_str
+                }
+            }
+        )+
+        }
+    };
 }
 
-pub mod kw {
-    use macros::define_keywords;
-
-    define_keywords! {
-        (INGOT, "ingot"),
-        (SUPER, "super"),
-        (SELF, "self"),
-        (SELF_TY, "Self"),
-        (BOOL, "bool"),
-        (U8, "u8"),
-        (U16, "u16"),
-        (U32, "u32"),
-        (U64, "u64"),
-        (U128, "u128"),
-        (U256, "u256"),
-        (USIZE, "usize"),
-        (I8, "i8"),
-        (I16, "i16"),
-        (I32, "i32"),
-        (I64, "i64"),
-        (I128, "i128"),
-        (I256, "i256"),
-        (ISIZE, "isize"),
-    }
+define_keywords! {
+    (ingot, "ingot"),
+    (super, "super"),
+    (self, "self"),
+    (self_ty, "Self"),
+    (bool, "bool"),
+    (u8, "u8"),
+    (u16, "u16"),
+    (u32, "u32"),
+    (u64, "u64"),
+    (u128, "u128"),
+    (u256, "u256"),
+    (usize, "usize"),
+    (i8, "i8"),
+    (i16, "i16"),
+    (i32, "i32"),
+    (i64, "i64"),
+    (i128, "i128"),
+    (i256, "i256"),
+    (isize, "isize"),
 }

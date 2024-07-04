@@ -1,5 +1,6 @@
-use std::collections::{hash_map::Entry, BTreeSet};
+use std::collections::hash_map::Entry;
 
+use common::indexmap::IndexSet;
 use either::Either;
 use hir::{
     hir_def::{
@@ -34,21 +35,21 @@ use crate::{
     HirAnalysisDb,
 };
 
-pub(super) fn resolve_path(
-    tc: &mut TyChecker,
-    path: PathId,
-    span: LazyPathSpan,
+pub(super) fn resolve_path<'db>(
+    tc: &mut TyChecker<'db>,
+    path: PathId<'db>,
+    span: LazyPathSpan<'db>,
     mode: ResolutionMode,
-) -> ResolvedPathInBody {
+) -> ResolvedPathInBody<'db> {
     PathResolver::new(tc, path, span.clone(), mode).resolve_path()
 }
 
-impl TyId {
-    pub(crate) fn adt_ref(&self, db: &dyn HirAnalysisDb) -> Option<AdtRefId> {
+impl<'db> TyId<'db> {
+    pub(crate) fn adt_ref(&self, db: &'db dyn HirAnalysisDb) -> Option<AdtRefId<'db>> {
         self.adt_def(db).map(|def| def.adt_ref(db))
     }
 
-    pub(crate) fn adt_def(&self, db: &dyn HirAnalysisDb) -> Option<AdtDef> {
+    pub(crate) fn adt_def(&self, db: &'db dyn HirAnalysisDb) -> Option<AdtDef<'db>> {
         let base = self.decompose_ty_app(db).0;
         match base.data(db) {
             TyData::TyBase(base) => base.adt(),
@@ -58,15 +59,15 @@ impl TyId {
 }
 
 #[derive(Clone, Debug)]
-pub struct ResolvedVariant {
-    enum_: Enum,
+pub struct ResolvedVariant<'db> {
+    enum_: Enum<'db>,
     idx: usize,
-    args: Vec<TyId>,
-    path: PathId,
+    args: Vec<TyId<'db>>,
+    path: PathId<'db>,
 }
 
-impl ResolvedVariant {
-    pub(super) fn ty(&self, db: &dyn HirAnalysisDb) -> TyId {
+impl<'db> ResolvedVariant<'db> {
+    pub(super) fn ty(&self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         let adt = lower_adt(db, AdtRefId::from_enum(db, self.enum_));
 
         let mut ty = TyId::adt(db, adt);
@@ -76,24 +77,24 @@ impl ResolvedVariant {
         ty
     }
 
-    pub(super) fn adt_def(&self, db: &dyn HirAnalysisDb) -> AdtDef {
+    pub(super) fn adt_def(&self, db: &'db dyn HirAnalysisDb) -> AdtDef<'db> {
         lower_adt(db, AdtRefId::from_enum(db, self.enum_))
     }
 
-    pub(super) fn variant_kind(&self, db: &dyn HirAnalysisDb) -> HirVariantKind {
+    pub(super) fn variant_kind(&self, db: &'db dyn HirAnalysisDb) -> HirVariantKind<'db> {
         self.enum_.variants(db.as_hir_db()).data(db.as_hir_db())[self.idx].kind
     }
 
-    pub(super) fn args(&self) -> &[TyId] {
+    pub(super) fn args(&self) -> &[TyId<'db>] {
         &self.args
     }
 
     fn new(
-        db: &dyn HirAnalysisDb,
-        table: &mut UnificationTable,
-        enum_: Enum,
+        db: &'db dyn HirAnalysisDb,
+        table: &mut UnificationTable<'db>,
+        enum_: Enum<'db>,
         idx: usize,
-        path: PathId,
+        path: PathId<'db>,
     ) -> Self {
         let adt = lower_adt(db, AdtRefId::from_enum(db, enum_));
         let args = adt
@@ -113,16 +114,16 @@ impl ResolvedVariant {
 
 struct PathResolver<'db, 'tc> {
     pub(super) tc: &'tc mut TyChecker<'db>,
-    path: PathId,
-    span: LazyPathSpan,
+    path: PathId<'db>,
+    span: LazyPathSpan<'db>,
     mode: ResolutionMode,
 }
 
 impl<'db, 'env> PathResolver<'db, 'env> {
     fn new(
         tc: &'env mut TyChecker<'db>,
-        path: PathId,
-        span: LazyPathSpan,
+        path: PathId<'db>,
+        span: LazyPathSpan<'db>,
         mode: ResolutionMode,
     ) -> Self {
         Self {
@@ -133,7 +134,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_path(&mut self) -> ResolvedPathInBody {
+    fn resolve_path(&mut self) -> ResolvedPathInBody<'db> {
         let hir_db = self.tc.db.as_hir_db();
 
         if self.path.is_ident(hir_db) {
@@ -148,7 +149,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_ident(&mut self, ident: IdentId) -> ResolvedPathInBody {
+    fn resolve_ident(&mut self, ident: IdentId<'db>) -> ResolvedPathInBody<'db> {
         let hir_db = self.tc.db.as_hir_db();
 
         match self.mode {
@@ -180,7 +181,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_ident_expr(&mut self, ident: IdentId) -> ResolvedPathInBody {
+    fn resolve_ident_expr(&mut self, ident: IdentId<'db>) -> ResolvedPathInBody<'db> {
         let mut current_idx = self.tc.env.current_block_idx();
         loop {
             let env = self.tc.env.get_block(current_idx);
@@ -216,7 +217,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_path_late(&mut self, early: EarlyResolvedPath) -> ResolvedPathInBody {
+    fn resolve_path_late(&mut self, early: EarlyResolvedPath<'db>) -> ResolvedPathInBody<'db> {
         match early {
             EarlyResolvedPath::Full(bucket) => self.resolve_bucket(bucket),
 
@@ -228,7 +229,11 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_partial(&mut self, res: NameRes, unresolved_from: usize) -> ResolvedPathInBody {
+    fn resolve_partial(
+        &mut self,
+        res: NameRes<'db>,
+        unresolved_from: usize,
+    ) -> ResolvedPathInBody<'db> {
         let db = self.tc.db;
         let hir_db = db.as_hir_db();
 
@@ -287,9 +292,9 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
     fn resolve_trait_partial(
         &mut self,
-        trait_: TraitDef,
+        trait_: TraitDef<'db>,
         unresolved_from: usize,
-    ) -> ResolvedPathInBody {
+    ) -> ResolvedPathInBody<'db> {
         let hir_db = self.tc.db.as_hir_db();
 
         if unresolved_from + 1 != self.path.len(hir_db) {
@@ -313,9 +318,9 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
     fn select_method_candidate(
         &mut self,
-        receiver_ty: TyId,
-        name: IdentId,
-    ) -> Option<ResolvedPathInBody> {
+        receiver_ty: TyId<'db>,
+        name: IdentId<'db>,
+    ) -> Option<ResolvedPathInBody<'db>> {
         let db = self.tc.db;
         let hir_db = self.tc.db.as_hir_db();
 
@@ -361,7 +366,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         ))
     }
 
-    fn resolve_bucket(&mut self, bucket: NameResBucket) -> ResolvedPathInBody {
+    fn resolve_bucket(&mut self, bucket: NameResBucket<'db>) -> ResolvedPathInBody<'db> {
         match self.mode {
             ResolutionMode::ExprValue => {
                 match bucket.pick(NameDomain::VALUE) {
@@ -396,7 +401,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_name_res(&mut self, res: &NameRes) -> ResolvedPathInBody {
+    fn resolve_name_res(&mut self, res: &NameRes<'db>) -> ResolvedPathInBody<'db> {
         let db = self.tc.db;
         let hir_db = db.as_hir_db();
         match res.kind {
@@ -507,19 +512,19 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 }
 
 #[derive(Clone, Debug)]
-pub(super) enum ResolvedPathInBody {
-    Ty(TyId),
+pub(super) enum ResolvedPathInBody<'db> {
+    Ty(TyId<'db>),
 
     /// The path is resolved to function.
     /// In case of the function is associated functions, the function type is
     /// automatically instantiated in the in the process of path resolution.
-    Func(TyId),
-    Trait(TraitDef),
-    Const(TyId),
-    Variant(ResolvedVariant),
-    Binding(IdentId, LocalBinding),
-    NewBinding(IdentId),
-    Diag(FuncBodyDiag),
+    Func(TyId<'db>),
+    Trait(TraitDef<'db>),
+    Const(TyId<'db>),
+    Variant(ResolvedVariant<'db>),
+    Binding(IdentId<'db>, LocalBinding<'db>),
+    NewBinding(IdentId<'db>),
+    Diag(FuncBodyDiag<'db>),
     Invalid,
 }
 
@@ -533,13 +538,13 @@ pub(super) enum ResolutionMode {
 pub(super) struct RecordInitChecker<'tc, 'db, 'a, T> {
     pub(super) tc: &'tc mut TyChecker<'db>,
     data: &'a mut T,
-    already_given: FxHashMap<IdentId, DynLazySpan>,
+    already_given: FxHashMap<IdentId<'db>, DynLazySpan<'db>>,
     invalid_field_given: bool,
 }
 
 impl<'tc, 'db, 'a, T> RecordInitChecker<'tc, 'db, 'a, T>
 where
-    T: RecordLike,
+    T: RecordLike<'db>,
 {
     /// Create a new `RecordInitChecker` for the given record path.
     ///
@@ -561,9 +566,9 @@ where
     /// an error.
     pub(super) fn feed_label(
         &mut self,
-        label: Option<IdentId>,
-        field_span: DynLazySpan,
-    ) -> Result<TyId, FuncBodyDiag> {
+        label: Option<IdentId<'db>>,
+        field_span: DynLazySpan<'db>,
+    ) -> Result<TyId<'db>, FuncBodyDiag<'db>> {
         let label = match label {
             Some(label) => match self.already_given.entry(label) {
                 Entry::Occupied(first_use) => {
@@ -619,19 +624,19 @@ where
     /// Finalize the checker and return an error if there are missing fields.
     pub(super) fn finalize(
         self,
-        initializer_span: DynLazySpan,
+        initializer_span: DynLazySpan<'db>,
         allow_missing_field: bool,
-    ) -> Result<(), FuncBodyDiag> {
+    ) -> Result<(), FuncBodyDiag<'db>> {
         if !self.invalid_field_given && !allow_missing_field {
             let expected_labels = self.data.record_labels(self.tc.db);
             let found = self.already_given.keys().copied().collect::<FxHashSet<_>>();
-            let missing_fields: BTreeSet<IdentId> =
+            let missing_fields: IndexSet<IdentId> =
                 expected_labels.difference(&found).copied().collect();
 
             if !missing_fields.is_empty() {
                 let diag = BodyDiag::MissingRecordFields {
                     primary: initializer_span,
-                    missing_fields,
+                    missing_fields: missing_fields.into_iter().collect(),
                     hint: self.data.initializer_hint(self.tc.db),
                 };
 
@@ -643,32 +648,36 @@ where
     }
 }
 
-pub(crate) trait RecordLike {
-    fn is_record(&self, db: &dyn HirAnalysisDb) -> bool;
+pub(crate) trait RecordLike<'db> {
+    fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool;
 
-    fn record_field_ty(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId>;
+    fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>>;
 
-    fn record_field_list<'db>(
+    fn record_field_list(
         &self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId, &'db AdtField)>;
+    ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)>;
 
-    fn record_field_idx(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<usize> {
+    fn record_field_idx(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<usize> {
         let (hir_field_list, _) = self.record_field_list(db)?;
         hir_field_list.field_idx(db.as_hir_db(), name)
     }
 
-    fn record_field_scope(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<ScopeId>;
+    fn record_field_scope(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        name: IdentId<'db>,
+    ) -> Option<ScopeId<'db>>;
 
-    fn record_labels(&self, db: &dyn HirAnalysisDb) -> FxHashSet<IdentId>;
+    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> FxHashSet<IdentId<'db>>;
 
-    fn initializer_hint(&self, db: &dyn HirAnalysisDb) -> Option<String>;
+    fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String>;
 
-    fn kind_name(&self, db: &dyn HirAnalysisDb) -> String;
+    fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String;
 }
 
-impl RecordLike for TyId {
-    fn is_record(&self, db: &dyn HirAnalysisDb) -> bool {
+impl<'db> RecordLike<'db> for TyId<'db> {
+    fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool {
         let Some(adt_ref) = self.adt_ref(db) else {
             return false;
         };
@@ -676,7 +685,7 @@ impl RecordLike for TyId {
         matches!(adt_ref.data(db), AdtRef::Struct(..))
     }
 
-    fn record_field_ty(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId> {
+    fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
         let args = self.generic_args(db);
         let hir_db = db.as_hir_db();
 
@@ -693,10 +702,10 @@ impl RecordLike for TyId {
         .into()
     }
 
-    fn record_field_list<'db>(
+    fn record_field_list(
         &self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId, &'db AdtField)> {
+    ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)> {
         let hir_db = db.as_hir_db();
 
         let adt_def = self.adt_def(db)?;
@@ -708,7 +717,11 @@ impl RecordLike for TyId {
         }
     }
 
-    fn record_field_scope(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<ScopeId> {
+    fn record_field_scope(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        name: IdentId<'db>,
+    ) -> Option<ScopeId<'db>> {
         let field_idx = self.record_field_idx(db, name)?;
         let adt_ref = self.adt_ref(db)?;
 
@@ -716,7 +729,7 @@ impl RecordLike for TyId {
         Some(ScopeId::Field(parent, field_idx))
     }
 
-    fn record_labels(&self, db: &dyn HirAnalysisDb) -> FxHashSet<IdentId> {
+    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> FxHashSet<IdentId<'db>> {
         let hir_db = db.as_hir_db();
         let Some(adt_ref) = self.adt_ref(db) else {
             return FxHashSet::default();
@@ -735,7 +748,7 @@ impl RecordLike for TyId {
             .collect()
     }
 
-    fn kind_name(&self, db: &dyn HirAnalysisDb) -> String {
+    fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String {
         if let Some(adt_ref) = self.adt_ref(db) {
             adt_ref.kind_name(db).to_string()
         } else if self.is_func(db) {
@@ -745,7 +758,7 @@ impl RecordLike for TyId {
         }
     }
 
-    fn initializer_hint(&self, db: &dyn HirAnalysisDb) -> Option<String> {
+    fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
         let hir_db = db.as_hir_db();
 
         if self.adt_ref(db).is_some() {
@@ -762,12 +775,12 @@ impl RecordLike for TyId {
     }
 }
 
-impl RecordLike for ResolvedVariant {
+impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
     fn is_record(&self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.variant_kind(db), HirVariantKind::Record(..))
     }
 
-    fn record_field_ty(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<TyId> {
+    fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
         let args = self.ty(db).generic_args(db);
         let hir_db = db.as_hir_db();
 
@@ -777,10 +790,10 @@ impl RecordLike for ResolvedVariant {
         Some(field_list.ty(db, field_idx).instantiate(db, args))
     }
 
-    fn record_field_list<'db>(
+    fn record_field_list(
         &self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId, &'db AdtField)> {
+    ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)> {
         match self.variant_kind(db) {
             hir::hir_def::VariantKind::Record(fields) => {
                 (fields, &self.adt_def(db).fields(db)[self.idx]).into()
@@ -790,13 +803,17 @@ impl RecordLike for ResolvedVariant {
         }
     }
 
-    fn record_field_scope(&self, db: &dyn HirAnalysisDb, name: IdentId) -> Option<ScopeId> {
+    fn record_field_scope(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        name: IdentId<'db>,
+    ) -> Option<ScopeId<'db>> {
         let field_idx = self.record_field_idx(db, name)?;
         let parent = FieldParent::Variant(self.enum_.into(), self.idx);
         Some(ScopeId::Field(parent, field_idx))
     }
 
-    fn record_labels(&self, db: &dyn HirAnalysisDb) -> FxHashSet<IdentId> {
+    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> FxHashSet<IdentId<'db>> {
         let hir_db = db.as_hir_db();
 
         let fields = match self.variant_kind(db) {
@@ -811,7 +828,7 @@ impl RecordLike for ResolvedVariant {
             .collect()
     }
 
-    fn kind_name(&self, db: &dyn HirAnalysisDb) -> String {
+    fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String {
         let hir_db = db.as_hir_db();
         match self.enum_.variants(hir_db).data(hir_db)[self.idx].kind {
             HirVariantKind::Unit => "unit variant",
@@ -821,7 +838,7 @@ impl RecordLike for ResolvedVariant {
         .to_string()
     }
 
-    fn initializer_hint(&self, db: &dyn HirAnalysisDb) -> Option<String> {
+    fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
         let hir_db = db.as_hir_db();
         let expected_sub_pat =
             self.enum_.variants(hir_db).data(hir_db)[self.idx].format_initializer_args(hir_db);

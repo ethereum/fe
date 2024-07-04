@@ -17,7 +17,7 @@ pub trait ToCsDiag {
 
 impl<T> ToCsDiag for T
 where
-    T: DiagnosticVoucher,
+    T: for<'db> DiagnosticVoucher<'db>,
 {
     fn to_cs(&self, db: &dyn DriverDb) -> cs_diag::Diagnostic<InputFile> {
         let complete = self.to_complete(db.as_spanned_hir_db());

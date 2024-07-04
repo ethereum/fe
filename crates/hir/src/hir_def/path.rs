@@ -1,14 +1,14 @@
-use super::{kw, IdentId};
+use super::IdentId;
 use crate::{hir_def::Partial, HirDb};
 
 #[salsa::interned]
-pub struct PathId {
+pub struct PathId<'db> {
     #[return_ref]
-    pub segments: Vec<Partial<IdentId>>,
+    pub segments: Vec<Partial<IdentId<'db>>>,
 }
 
-impl PathId {
-    pub fn last_segment(self, db: &dyn HirDb) -> Partial<IdentId> {
+impl<'db> PathId<'db> {
+    pub fn last_segment(self, db: &'db dyn HirDb) -> Partial<IdentId> {
         self.segments(db).last().copied().unwrap_or_default()
     }
 
@@ -20,16 +20,16 @@ impl PathId {
         self.len(db) == 1
     }
 
-    pub fn self_ty(db: &dyn HirDb) -> Self {
-        let self_ty = Partial::Present(kw::SELF_TY);
+    pub fn self_ty(db: &'db dyn HirDb) -> Self {
+        let self_ty = Partial::Present(IdentId::make_self_ty(db));
         Self::new(db, vec![self_ty])
     }
 
-    pub fn from_ident(db: &dyn HirDb, ident: IdentId) -> Self {
+    pub fn from_ident(db: &'db dyn HirDb, ident: IdentId<'db>) -> Self {
         Self::new(db, vec![Partial::Present(ident)])
     }
 
-    pub fn push(self, db: &dyn HirDb, segment: IdentId) -> Self {
+    pub fn push(self, db: &'db dyn HirDb, segment: IdentId<'db>) -> Self {
         let mut segments = self.segments(db).clone();
         segments.push(Partial::Present(segment));
         Self::new(db, segments)

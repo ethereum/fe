@@ -1,7 +1,6 @@
 //! This module implements the trait and impl trait lowering process.
 
-use std::collections::BTreeMap;
-
+use common::indexmap::IndexMap;
 use hir::hir_def::{
     scope_graph::ScopeId, IdentId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRefId,
 };
@@ -22,10 +21,10 @@ use crate::{
     HirAnalysisDb,
 };
 
-type TraitImplTable = FxHashMap<TraitDef, Vec<Binder<Implementor>>>;
+type TraitImplTable<'db> = FxHashMap<TraitDef<'db>, Vec<Binder<Implementor<'db>>>>;
 
 #[salsa::tracked]
-pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
+pub(crate) fn lower_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> TraitDef<'db> {
     TraitBuilder::new(db, trait_).build()
 }
 
@@ -35,7 +34,10 @@ pub(crate) fn lower_trait(db: &dyn HirAnalysisDb, trait_: Trait) -> TraitDef {
 /// available implementors in the ingot, please use
 /// [`TraitEnv`](super::trait_def::TraitEnv).
 #[salsa::tracked(return_ref)]
-pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> TraitImplTable {
+pub(crate) fn collect_trait_impls<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: IngotId<'db>,
+) -> TraitImplTable<'db> {
     let const_impls = ingot
         .external_ingots(db.as_hir_db())
         .iter()
@@ -50,10 +52,10 @@ pub(crate) fn collect_trait_impls(db: &dyn HirAnalysisDb, ingot: IngotId) -> Tra
 /// If the implementor type or the trait reference is ill-formed, returns
 /// `None`.
 #[salsa::tracked]
-pub(crate) fn lower_impl_trait(
-    db: &dyn HirAnalysisDb,
-    impl_trait: ImplTrait,
-) -> Option<Binder<Implementor>> {
+pub(crate) fn lower_impl_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    impl_trait: ImplTrait<'db>,
+) -> Option<Binder<Implementor<'db>>> {
     let hir_db = db.as_hir_db();
     let scope = impl_trait.scope();
 
@@ -87,12 +89,12 @@ pub(crate) fn lower_impl_trait(
 
 /// Lower a trait reference to a trait instance.
 #[salsa::tracked]
-pub(crate) fn lower_trait_ref(
-    db: &dyn HirAnalysisDb,
-    self_ty: TyId,
-    trait_ref: TraitRefId,
-    scope: ScopeId,
-) -> Result<TraitInstId, TraitRefLowerError> {
+pub(crate) fn lower_trait_ref<'db>(
+    db: &'db dyn HirAnalysisDb,
+    self_ty: TyId<'db>,
+    trait_ref: TraitRefId<'db>,
+    scope: ScopeId<'db>,
+) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
     let hir_db = db.as_hir_db();
 
     let mut args = vec![self_ty];
@@ -179,11 +181,11 @@ pub(crate) fn lower_trait_ref(
 }
 
 #[salsa::tracked(return_ref)]
-pub(crate) fn collect_implementor_methods(
-    db: &dyn HirAnalysisDb,
-    implementor: Implementor,
-) -> BTreeMap<IdentId, FuncDef> {
-    let mut methods = BTreeMap::default();
+pub(crate) fn collect_implementor_methods<'db>(
+    db: &'db dyn HirAnalysisDb,
+    implementor: Implementor<'db>,
+) -> IndexMap<IdentId<'db>, FuncDef<'db>> {
+    let mut methods = IndexMap::default();
 
     for method in implementor.hir_impl_trait(db).methods(db.as_hir_db()) {
         if let Some(func) = lower_func(db, method) {
@@ -195,22 +197,22 @@ pub(crate) fn collect_implementor_methods(
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum TraitRefLowerError {
+pub(crate) enum TraitRefLowerError<'db> {
     /// The trait reference contains an associated type, which is not supported
     /// yet.
-    AssocTy(PathId),
+    AssocTy(PathId<'db>),
 
     /// The number of arguments doesn't match the number of parameters.
     ArgNumMismatch { expected: usize, given: usize },
 
     /// The kind of the argument doesn't match the kind of the parameter of the
     /// trait.
-    ArgKindMisMatch { expected: Kind, given: TyId },
+    ArgKindMisMatch { expected: Kind, given: TyId<'db> },
 
     /// The argument type doesn't match the const parameter type.
     ArgTypeMismatch {
-        expected: Option<TyId>,
-        given: Option<TyId>,
+        expected: Option<TyId<'db>>,
+        given: Option<TyId<'db>>,
     },
 
     /// Other errors, which is reported by another pass. So we don't need to
@@ -220,13 +222,13 @@ pub(crate) enum TraitRefLowerError {
 
 struct TraitBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
-    trait_: Trait,
-    param_set: GenericParamTypeSet,
-    methods: BTreeMap<IdentId, TraitMethod>,
+    trait_: Trait<'db>,
+    param_set: GenericParamTypeSet<'db>,
+    methods: IndexMap<IdentId<'db>, TraitMethod<'db>>,
 }
 
 impl<'db> TraitBuilder<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: Trait) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
         let params_owner_id = GenericParamOwnerId::new(db, trait_.into());
         let param_set = collect_generic_params(db, params_owner_id);
 
@@ -234,11 +236,11 @@ impl<'db> TraitBuilder<'db> {
             db,
             trait_,
             param_set,
-            methods: BTreeMap::default(),
+            methods: IndexMap::default(),
         }
     }
 
-    fn build(mut self) -> TraitDef {
+    fn build(mut self) -> TraitDef<'db> {
         self.collect_params();
         self.collect_methods();
 
@@ -269,8 +271,8 @@ impl<'db> TraitBuilder<'db> {
 /// Collect all implementors in an ingot.
 struct ImplementorCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    impl_table: TraitImplTable,
-    const_impl_maps: Vec<&'db TraitImplTable>,
+    impl_table: TraitImplTable<'db>,
+    const_impl_maps: Vec<&'db TraitImplTable<'db>>,
 }
 
 impl<'db> ImplementorCollector<'db> {
@@ -282,7 +284,7 @@ impl<'db> ImplementorCollector<'db> {
         }
     }
 
-    fn collect(mut self, impl_traits: &[ImplTrait]) -> TraitImplTable {
+    fn collect(mut self, impl_traits: &[ImplTrait<'db>]) -> TraitImplTable<'db> {
         for &impl_ in impl_traits {
             let Some(implementor) = lower_impl_trait(self.db, impl_) else {
                 continue;

@@ -19,7 +19,7 @@ pub(super) use path::RecordLike;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
-    diagnostics::{BodyDiag, FuncBodyDiag, FuncBodyDiagAccumulator, TyDiagCollection, TyLowerDiag},
+    diagnostics::{BodyDiag, FuncBodyDiag, TyDiagCollection, TyLowerDiag},
     fold::{TyFoldable, TyFolder},
     trait_def::{TraitInstId, TraitMethod},
     trait_resolution::PredicateListId,
@@ -33,9 +33,12 @@ use crate::{
 };
 
 #[salsa::tracked(return_ref)]
-pub fn check_func_body(db: &dyn HirAnalysisDb, func: Func) -> TypedBody {
+pub fn check_func_body<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
     let Ok(mut checker) = TyChecker::new_with_func(db, func) else {
-        return TypedBody::empty();
+        return (Vec::new(), TypedBody::empty());
     };
 
     checker.run();
@@ -46,11 +49,12 @@ pub struct TyChecker<'db> {
     db: &'db dyn HirAnalysisDb,
     env: TyCheckEnv<'db>,
     table: UnificationTable<'db>,
-    expected: TyId,
+    expected: TyId<'db>,
+    diags: Vec<FuncBodyDiag<'db>>,
 }
 
 impl<'db> TyChecker<'db> {
-    fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func) -> Result<Self, ()> {
+    fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Result<Self, ()> {
         let env = TyCheckEnv::new_with_func(db, func)?;
         let expected_ty = match func.ret_ty(db.as_hir_db()) {
             Some(hir_ty) => {
@@ -72,25 +76,30 @@ impl<'db> TyChecker<'db> {
         self.check_expr(root_expr, self.expected);
     }
 
-    fn finish(self) -> TypedBody {
+    fn finish(self) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
         TyCheckerFinalizer::new(self).finish()
     }
 
-    fn new(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId<'db>) -> Self {
         let table = UnificationTable::new(db);
         Self {
             db,
             env,
             table,
             expected,
+            diags: Vec::new(),
         }
     }
 
-    fn body(&self) -> Body {
+    fn push_diag(&mut self, diag: impl Into<FuncBodyDiag<'db>>) {
+        self.diags.push(diag.into())
+    }
+
+    fn body(&self) -> Body<'db> {
         self.env.body()
     }
 
-    fn lit_ty(&mut self, lit: &LitKind) -> TyId {
+    fn lit_ty(&mut self, lit: &LitKind<'db>) -> TyId<'db> {
         match lit {
             LitKind::Bool(_) => TyId::bool(self.db),
             LitKind::Int(_) => self.table.new_var(TyVarSort::Integral, &Kind::Star),
@@ -102,34 +111,39 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn lower_ty(&self, hir_ty: HirTyId, span: DynLazySpan, star_kind_required: bool) -> TyId {
+    fn lower_ty(
+        &mut self,
+        hir_ty: HirTyId<'db>,
+        span: DynLazySpan<'db>,
+        star_kind_required: bool,
+    ) -> TyId<'db> {
         let ty = lower_hir_ty(self.db, hir_ty, self.env.scope());
         if let Some(diag) = ty.emit_diag(self.db, span.clone()) {
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag)
         }
 
         if star_kind_required && ty.is_star_kind(self.db) {
             ty
         } else {
             let diag: TyDiagCollection = TyLowerDiag::expected_star_kind_ty(span).into();
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
             TyId::invalid(self.db, InvalidCause::Other)
         }
     }
 
     /// Returns the fresh type variable for pattern and expr type checking. The
     /// kind of the type variable is `*`, and the sort is `General`.
-    fn fresh_ty(&mut self) -> TyId {
+    fn fresh_ty(&mut self) -> TyId<'db> {
         self.table.new_var(TyVarSort::General, &Kind::Star)
     }
 
-    fn fresh_tys_n(&mut self, n: usize) -> Vec<TyId> {
+    fn fresh_tys_n(&mut self, n: usize) -> Vec<TyId<'db>> {
         (0..n).map(|_| self.fresh_ty()).collect()
     }
 
-    fn unify_ty<T>(&mut self, t: T, actual: TyId, expected: TyId) -> TyId
+    fn unify_ty<T>(&mut self, t: T, actual: TyId<'db>, expected: TyId<'db>) -> TyId<'db>
     where
-        T: Into<Typeable>,
+        T: Into<Typeable<'db>>,
     {
         let t = t.into();
         let actual = self.equate_ty(actual, expected, t.lazy_span(self.env.body()));
@@ -145,12 +159,17 @@ impl<'db> TyChecker<'db> {
         actual
     }
 
-    fn equate_ty(&mut self, actual: TyId, expected: TyId, span: DynLazySpan) -> TyId {
+    fn equate_ty(
+        &mut self,
+        actual: TyId<'db>,
+        expected: TyId<'db>,
+        span: DynLazySpan<'db>,
+    ) -> TyId<'db> {
         // FIXME: This is a temporary workaround, this should be removed when we
         // implement subtyping.
         if expected.is_never(self.db) && !actual.is_never(self.db) {
-            let diag = BodyDiag::type_mismatch(self.db, span, expected, actual).into();
-            FuncBodyDiagAccumulator::push(self.db, diag);
+            let diag = BodyDiag::type_mismatch(self.db, span, expected, actual);
+            self.push_diag(diag);
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
@@ -169,15 +188,12 @@ impl<'db> TyChecker<'db> {
             Err(UnificationError::TypeMismatch) => {
                 let actual = actual.fold_with(&mut self.table);
                 let expected = expected.fold_with(&mut self.table);
-                FuncBodyDiagAccumulator::push(
-                    self.db,
-                    BodyDiag::type_mismatch(self.db, span, expected, actual).into(),
-                );
+                self.push_diag(BodyDiag::type_mismatch(self.db, span, expected, actual));
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
             Err(UnificationError::OccursCheckFailed) => {
-                FuncBodyDiagAccumulator::push(self.db, BodyDiag::InfiniteOccurrence(span).into());
+                self.push_diag(BodyDiag::InfiniteOccurrence(span));
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
@@ -186,33 +202,33 @@ impl<'db> TyChecker<'db> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypedBody {
-    body: Option<Body>,
-    pat_ty: FxHashMap<PatId, TyId>,
-    expr_ty: FxHashMap<ExprId, ExprProp>,
-    callables: FxHashMap<ExprId, Callable>,
+pub struct TypedBody<'db> {
+    body: Option<Body<'db>>,
+    pat_ty: FxHashMap<PatId, TyId<'db>>,
+    expr_ty: FxHashMap<ExprId, ExprProp<'db>>,
+    callables: FxHashMap<ExprId, Callable<'db>>,
 }
 
-impl TypedBody {
-    pub fn expr_ty(&self, db: &dyn HirAnalysisDb, expr: ExprId) -> TyId {
+impl<'db> TypedBody<'db> {
+    pub fn expr_ty(&self, db: &'db dyn HirAnalysisDb, expr: ExprId) -> TyId<'db> {
         self.expr_prop(db, expr).ty
     }
 
-    pub fn expr_prop(&self, db: &dyn HirAnalysisDb, expr: ExprId) -> ExprProp {
+    pub fn expr_prop(&self, db: &'db dyn HirAnalysisDb, expr: ExprId) -> ExprProp<'db> {
         self.expr_ty
             .get(&expr)
             .copied()
             .unwrap_or_else(|| ExprProp::invalid(db))
     }
 
-    pub fn pat_ty(&self, db: &dyn HirAnalysisDb, pat: PatId) -> TyId {
+    pub fn pat_ty(&self, db: &'db dyn HirAnalysisDb, pat: PatId) -> TyId<'db> {
         self.pat_ty
             .get(&pat)
             .copied()
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
     }
 
-    pub fn callable_expr(&self, expr: ExprId) -> Option<&Callable> {
+    pub fn callable_expr(&self, expr: ExprId) -> Option<&Callable<'db>> {
         self.callables.get(&expr)
     }
 
@@ -227,12 +243,12 @@ impl TypedBody {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, derive_more::From)]
-enum Typeable {
-    Expr(ExprId, ExprProp),
+enum Typeable<'db> {
+    Expr(ExprId, ExprProp<'db>),
     Pat(PatId),
 }
 
-impl Typeable {
+impl<'db> Typeable<'db> {
     fn lazy_span(self, body: Body) -> DynLazySpan {
         match self {
             Self::Expr(expr, ..) => expr.lazy_span(body).into(),
@@ -241,13 +257,13 @@ impl Typeable {
     }
 }
 
-impl TraitMethod {
+impl<'db> TraitMethod<'db> {
     fn instantiate_with_inst(
         self,
-        table: &mut UnificationTable,
-        receiver_ty: TyId,
-        inst: TraitInstId,
-    ) -> TyId {
+        table: &mut UnificationTable<'db>,
+        receiver_ty: TyId<'db>,
+        inst: TraitInstId<'db>,
+    ) -> TyId<'db> {
         let db = table.db();
         let mut ty = TyId::func(db, self.0);
 
@@ -264,38 +280,39 @@ impl TraitMethod {
 
 struct TyCheckerFinalizer<'db> {
     db: &'db dyn HirAnalysisDb,
-    body: TypedBody,
-    assumptions: PredicateListId,
-    ty_vars: FxHashSet<InferenceKey>,
-    diags: Vec<FuncBodyDiag>,
+    body: TypedBody<'db>,
+    assumptions: PredicateListId<'db>,
+    ty_vars: FxHashSet<InferenceKey<'db>>,
+    diags: Vec<FuncBodyDiag<'db>>,
 }
 
 impl<'db> TyCheckerFinalizer<'db> {
     fn new(mut checker: TyChecker<'db>) -> Self {
         let assumptions = checker.env.assumptions();
-        let (body, diags) = checker.env.finish(&mut checker.table);
+        let body = checker.env.finish(&mut checker.table, &mut checker.diags);
 
         Self {
             db: checker.db,
             body,
             assumptions,
             ty_vars: FxHashSet::default(),
-            diags,
+            diags: checker.diags,
         }
     }
 
-    fn finish(mut self) -> TypedBody {
+    fn finish(mut self) -> (Vec<FuncBodyDiag<'db>>, TypedBody<'db>) {
         self.check_unknown_types();
-
-        for diag in self.diags {
-            FuncBodyDiagAccumulator::push(self.db, diag);
-        }
-        self.body
+        (self.diags, self.body)
     }
 
     fn check_unknown_types(&mut self) {
-        impl<'db> Visitor for TyCheckerFinalizer<'db> {
-            fn visit_pat(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPatSpan>, pat: PatId, _: &Pat) {
+        impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
+            fn visit_pat(
+                &mut self,
+                ctxt: &mut VisitorCtxt<'db, LazyPatSpan<'db>>,
+                pat: PatId,
+                _: &Pat<'db>,
+            ) {
                 let ty = self.body.pat_ty(self.db, pat);
                 let span = ctxt.span().unwrap();
                 self.check_unknown(ty, span.clone().into());
@@ -305,9 +322,9 @@ impl<'db> TyCheckerFinalizer<'db> {
 
             fn visit_expr(
                 &mut self,
-                ctxt: &mut VisitorCtxt<'_, LazyExprSpan>,
+                ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
                 expr: ExprId,
-                expr_data: &Expr,
+                expr_data: &Expr<'db>,
             ) {
                 // Skip the check if the expr is block.
                 if !matches!(expr_data, Expr::Block(..)) {
@@ -335,8 +352,8 @@ impl<'db> TyCheckerFinalizer<'db> {
 
             fn visit_item(
                 &mut self,
-                _: &mut VisitorCtxt<'_, hir::visitor::prelude::LazyItemSpan>,
-                _: hir::hir_def::ItemKind,
+                _: &mut VisitorCtxt<'db, hir::visitor::prelude::LazyItemSpan<'db>>,
+                _: hir::hir_def::ItemKind<'db>,
             ) {
             }
         }
@@ -347,7 +364,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
     }
 
-    fn check_unknown(&mut self, ty: TyId, span: DynLazySpan) {
+    fn check_unknown(&mut self, ty: TyId<'db>, span: DynLazySpan<'db>) {
         let flags = ty.flags(self.db);
         if flags.contains(TyFlags::HAS_INVALID) || !flags.contains(TyFlags::HAS_VAR) {
             return;
@@ -366,13 +383,15 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
     }
 
-    fn check_wf(&mut self, ty: TyId, span: DynLazySpan) {
+    fn check_wf(&mut self, ty: TyId<'db>, span: DynLazySpan<'db>) {
         let flags = ty.flags(self.db);
         if flags.contains(TyFlags::HAS_INVALID) || flags.contains(TyFlags::HAS_VAR) {
             return;
         }
 
-        if let Some(diag) = ty.emit_wf_diag(self.db, self.assumptions, span) {
+        let hir_db = self.db.as_hir_db();
+        let ingot = self.body.body.unwrap().top_mod(hir_db).ingot(hir_db);
+        if let Some(diag) = ty.emit_wf_diag(self.db, ingot, self.assumptions, span) {
             self.diags.push(diag.into());
         }
     }

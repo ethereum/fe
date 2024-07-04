@@ -10,13 +10,13 @@ use super::{
 };
 use crate::ty::{
     binder::Binder,
-    diagnostics::{BodyDiag, FuncBodyDiagAccumulator},
+    diagnostics::BodyDiag,
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
 };
 
 impl<'db> TyChecker<'db> {
-    pub(super) fn check_pat(&mut self, pat: PatId, expected: TyId) -> TyId {
+    pub(super) fn check_pat(&mut self, pat: PatId, expected: TyId<'db>) -> TyId<'db> {
         let Partial::Present(pat_data) = pat.data(self.db.as_hir_db(), self.body()) else {
             let actual = TyId::invalid(self.db, InvalidCause::Other);
             return self.unify_ty(pat, actual, expected);
@@ -44,7 +44,7 @@ impl<'db> TyChecker<'db> {
         self.unify_ty(pat, ty, expected)
     }
 
-    fn check_lit_pat(&mut self, _pat: PatId, pat_data: &Pat) -> TyId {
+    fn check_lit_pat(&mut self, _pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::Lit(lit) = pat_data else {
             unreachable!()
         };
@@ -55,7 +55,12 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_tuple_pat(&mut self, pat: PatId, pat_data: &Pat, expected: TyId) -> TyId {
+    fn check_tuple_pat(
+        &mut self,
+        pat: PatId,
+        pat_data: &Pat<'db>,
+        expected: TyId<'db>,
+    ) -> TyId<'db> {
         let Pat::Tuple(pat_tup) = pat_data else {
             unreachable!()
         };
@@ -98,7 +103,7 @@ impl<'db> TyChecker<'db> {
         unified
     }
 
-    fn check_path_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
+    fn check_path_pat(&mut self, pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::Path(path, is_mut) = pat_data else {
             unreachable!()
         };
@@ -115,8 +120,7 @@ impl<'db> TyChecker<'db> {
             | ResolvedPathInBody::Const(ty) => {
                 let diag =
                     BodyDiag::unit_variant_expected(self.db, pat.lazy_span(self.body()).into(), ty);
-
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
@@ -126,7 +130,7 @@ impl<'db> TyChecker<'db> {
                     given: Either::Left(trait_.trait_(self.db).into()),
                 };
 
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
@@ -140,7 +144,7 @@ impl<'db> TyChecker<'db> {
                         variant,
                     );
 
-                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    self.push_diag(diag);
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
             }
@@ -152,7 +156,7 @@ impl<'db> TyChecker<'db> {
             }
 
             ResolvedPathInBody::Diag(diag) => {
-                FuncBodyDiagAccumulator::push(self.db, diag);
+                self.push_diag(diag);
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
@@ -160,7 +164,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_path_tuple_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
+    fn check_path_tuple_pat(&mut self, pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::PathTuple(Partial::Present(path), elems) = pat_data else {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
@@ -177,7 +181,7 @@ impl<'db> TyChecker<'db> {
                         pat.lazy_span(self.body()).into(),
                         Some(ty),
                     );
-                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    self.push_diag(diag);
                     return TyId::invalid(self.db, InvalidCause::Other);
                 }
 
@@ -187,7 +191,7 @@ impl<'db> TyChecker<'db> {
                         given: Either::Left(trait_.trait_(self.db).into()),
                     };
 
-                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    self.push_diag(diag);
                     return TyId::invalid(self.db, InvalidCause::Other);
                 }
 
@@ -200,7 +204,7 @@ impl<'db> TyChecker<'db> {
                             Some(variant),
                         );
 
-                        FuncBodyDiagAccumulator::push(self.db, diag.into());
+                        self.push_diag(diag);
                         return TyId::invalid(self.db, InvalidCause::Other);
                     }
                 },
@@ -212,12 +216,12 @@ impl<'db> TyChecker<'db> {
                         None,
                     );
 
-                    FuncBodyDiagAccumulator::push(self.db, diag.into());
+                    self.push_diag(diag);
                     return TyId::invalid(self.db, InvalidCause::Other);
                 }
 
                 ResolvedPathInBody::Diag(diag) => {
-                    FuncBodyDiagAccumulator::push(self.db, diag);
+                    self.push_diag(diag);
                     return TyId::invalid(self.db, InvalidCause::Other);
                 }
 
@@ -237,7 +241,7 @@ impl<'db> TyChecker<'db> {
                 given: actual_elems.len(),
             };
 
-            FuncBodyDiagAccumulator::push(self.db, diag.into());
+            self.push_diag(diag);
             return pat_ty;
         };
 
@@ -270,7 +274,7 @@ impl<'db> TyChecker<'db> {
         pat_ty
     }
 
-    fn check_record_pat(&mut self, pat: PatId, pat_data: &Pat) -> TyId {
+    fn check_record_pat(&mut self, pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::Record(Partial::Present(path), _) = pat_data else {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
@@ -288,7 +292,7 @@ impl<'db> TyChecker<'db> {
             | ResolvedPathInBody::Const(ty) => {
                 let diag =
                     BodyDiag::record_expected(self.db, pat.lazy_span(self.body()).into(), Some(ty));
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
@@ -299,7 +303,7 @@ impl<'db> TyChecker<'db> {
                     given: Either::Left(trait_.trait_(self.db).into()),
                 };
 
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
@@ -315,7 +319,7 @@ impl<'db> TyChecker<'db> {
                     pat.lazy_span(self.body()).into(),
                     Some(variant),
                 );
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
@@ -326,13 +330,13 @@ impl<'db> TyChecker<'db> {
                     pat.lazy_span(self.body()).into(),
                     None,
                 );
-                FuncBodyDiagAccumulator::push(self.db, diag.into());
+                self.push_diag(diag);
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
             ResolvedPathInBody::Diag(diag) => {
-                FuncBodyDiagAccumulator::push(self.db, diag);
+                self.push_diag(diag);
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
@@ -343,7 +347,7 @@ impl<'db> TyChecker<'db> {
 
     fn check_record_pat_fields<T>(&mut self, mut record_like: T, pat: PatId)
     where
-        T: RecordLike,
+        T: RecordLike<'db>,
     {
         let Partial::Present(Pat::Record(_, fields)) = pat.data(self.db.as_hir_db(), self.body())
         else {
@@ -364,7 +368,7 @@ impl<'db> TyChecker<'db> {
                     let diag = BodyDiag::DuplicatedRestPat(
                         field_pat.pat.lazy_span(rec_checker.tc.body()).into(),
                     );
-                    FuncBodyDiagAccumulator::push(rec_checker.tc.db, diag.into());
+                    rec_checker.tc.push_diag(diag);
                     continue;
                 }
 
@@ -376,7 +380,7 @@ impl<'db> TyChecker<'db> {
             let expected = match rec_checker.feed_label(label, field_pat_span.into()) {
                 Ok(ty) => ty,
                 Err(diag) => {
-                    FuncBodyDiagAccumulator::push(rec_checker.tc.db, diag);
+                    rec_checker.tc.push_diag(diag);
                     TyId::invalid(rec_checker.tc.db, InvalidCause::Other)
                 }
             };
@@ -385,7 +389,7 @@ impl<'db> TyChecker<'db> {
         }
 
         if let Err(diag) = rec_checker.finalize(pat_span.fields().into(), contains_rest) {
-            FuncBodyDiagAccumulator::push(self.db, diag);
+            self.push_diag(diag);
         }
     }
 
@@ -393,15 +397,12 @@ impl<'db> TyChecker<'db> {
         &mut self,
         pat_tup: &[PatId],
         expected_len: Option<usize>,
-    ) -> (Vec<TyId>, std::ops::Range<usize>) {
+    ) -> (Vec<TyId<'db>>, std::ops::Range<usize>) {
         let mut rest_start = None;
         for (i, &pat) in pat_tup.iter().enumerate() {
             if pat.is_rest(self.db.as_hir_db(), self.body()) && rest_start.replace(i).is_some() {
                 let span = pat.lazy_span(self.body());
-                FuncBodyDiagAccumulator::push(
-                    self.db,
-                    BodyDiag::DuplicatedRestPat(span.into()).into(),
-                );
+                self.push_diag(BodyDiag::DuplicatedRestPat(span.into()));
                 return (
                     self.fresh_tys_n(expected_len.unwrap_or(0)),
                     Range::default(),

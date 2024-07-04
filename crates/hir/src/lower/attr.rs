@@ -1,10 +1,10 @@
-use crate::hir_def::{attr::*, IdentId, StringId};
 use parser::ast;
 
 use super::FileLowerCtxt;
+use crate::hir_def::{attr::*, IdentId, StringId};
 
-impl AttrListId {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::AttrList) -> Self {
+impl<'db> AttrListId<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::AttrList) -> Self {
         let attrs = ast
             .into_iter()
             .map(|attr| Attr::lower_ast(ctxt, attr))
@@ -12,14 +12,14 @@ impl AttrListId {
         Self::new(ctxt.db(), attrs)
     }
 
-    pub(super) fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'_>, ast: Option<ast::AttrList>) -> Self {
+    pub(super) fn lower_ast_opt(ctxt: &mut FileLowerCtxt<'db>, ast: Option<ast::AttrList>) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
             .unwrap_or_else(|| Self::new(ctxt.db(), vec![]))
     }
 }
 
-impl Attr {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::Attr) -> Self {
+impl<'db> Attr<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Attr) -> Self {
         match ast.kind() {
             ast::AttrKind::Normal(attr) => NormalAttr::lower_ast(ctxt, attr).into(),
             ast::AttrKind::DocComment(attr) => DocCommentAttr::lower_ast(ctxt, attr).into(),
@@ -27,8 +27,8 @@ impl Attr {
     }
 }
 
-impl NormalAttr {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::NormalAttr) -> Self {
+impl<'db> NormalAttr<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::NormalAttr) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let args = ast
             .args()
@@ -43,8 +43,8 @@ impl NormalAttr {
     }
 }
 
-impl DocCommentAttr {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::DocCommentAttr) -> Self {
+impl<'db> DocCommentAttr<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::DocCommentAttr) -> Self {
         let text = ast
             .doc()
             .map(|doc| doc.text()[3..].to_string())
@@ -55,8 +55,8 @@ impl DocCommentAttr {
     }
 }
 
-impl AttrArg {
-    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'_>, ast: ast::AttrArg) -> Self {
+impl<'db> AttrArg<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::AttrArg) -> Self {
         let key = IdentId::lower_token_partial(ctxt, ast.key());
         let value = IdentId::lower_token_partial(ctxt, ast.value());
         Self { key, value }

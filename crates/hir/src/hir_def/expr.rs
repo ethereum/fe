@@ -3,9 +3,9 @@ use cranelift_entity::entity_impl;
 use super::{Body, GenericArgListId, IdentId, IntegerId, LitKind, Partial, PatId, PathId, StmtId};
 use crate::{span::expr::LazyExprSpan, HirDb};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Expr {
-    Lit(LitKind),
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub enum Expr<'db> {
+    Lit(LitKind<'db>),
     Block(Vec<StmtId>),
     /// The first `ExprId` is the lhs, the second is the rhs.
     ///
@@ -13,15 +13,20 @@ pub enum Expr {
     Bin(ExprId, ExprId, Partial<BinOp>),
     Un(ExprId, Partial<UnOp>),
     /// The first `ExprId` is the callee, the second is the arguments.
-    Call(ExprId, GenericArgListId, Vec<CallArg>),
+    Call(ExprId, GenericArgListId<'db>, Vec<CallArg<'db>>),
     /// The first `ExprId` is the method receiver, the second is the method
     /// name, the third is the arguments.
-    MethodCall(ExprId, Partial<IdentId>, GenericArgListId, Vec<CallArg>),
-    Path(Partial<PathId>),
+    MethodCall(
+        ExprId,
+        Partial<IdentId<'db>>,
+        GenericArgListId<'db>,
+        Vec<CallArg<'db>>,
+    ),
+    Path(Partial<PathId<'db>>),
     /// The record construction expression.
     /// The fist `PathId` is the record type, the second is the record fields.
-    RecordInit(Partial<PathId>, Vec<Field>),
-    Field(ExprId, Partial<FieldIndex>),
+    RecordInit(Partial<PathId<'db>>, Vec<Field<'db>>),
+    Field(ExprId, Partial<FieldIndex<'db>>),
     Tuple(Vec<ExprId>),
     /// The first `ExprId` is the indexed expression, the second is the index.
     Index(ExprId, ExprId),
@@ -29,7 +34,7 @@ pub enum Expr {
 
     /// The size of the rep should be the body instead of expression, because it
     /// should be resolved as a constant expression.
-    ArrayRep(ExprId, Partial<Body>),
+    ArrayRep(ExprId, Partial<Body<'db>>),
 
     /// The first `ExprId` is the condition, the second is the then branch, the
     /// third is the else branch.
@@ -46,7 +51,7 @@ pub enum Expr {
     AugAssign(ExprId, ExprId, ArithBinOp),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Update)]
 pub struct ExprId(u32);
 entity_impl!(ExprId);
 
@@ -55,28 +60,28 @@ impl ExprId {
         LazyExprSpan::new(body, self)
     }
 
-    pub fn data(self, db: &dyn HirDb, body: Body) -> &Partial<Expr> {
+    pub fn data<'db>(self, db: &'db dyn HirDb, body: Body<'db>) -> &'db Partial<Expr<'db>> {
         &body.exprs(db)[self]
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FieldIndex {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub enum FieldIndex<'db> {
     /// The field is indexed by its name.
     /// `field.foo`.
-    Ident(IdentId),
+    Ident(IdentId<'db>),
     /// The field is indexed by its integer.
     /// `field.0`.
-    Index(IntegerId),
+    Index(IntegerId<'db>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct MatchArm {
     pub pat: PatId,
     pub body: ExprId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::Update)]
 pub enum BinOp {
     Arith(ArithBinOp),
     Comp(CompBinOp),
@@ -145,18 +150,18 @@ pub enum UnOp {
     BitNot,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct CallArg {
-    pub label: Option<IdentId>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub struct CallArg<'db> {
+    pub label: Option<IdentId<'db>>,
     pub expr: ExprId,
 }
 
-impl CallArg {
+impl<'db> CallArg<'db> {
     /// Returns the label of the argument if
     /// 1. the argument has an explicit label. or
     /// 2. If 1. is not true, then the argument is labeled when the expression
     ///    is a path expression and the path is an identifier.
-    pub fn label_eagerly(&self, db: &dyn HirDb, body: Body) -> Option<IdentId> {
+    pub fn label_eagerly(&self, db: &'db dyn HirDb, body: Body<'db>) -> Option<IdentId<'db>> {
         if let Some(label) = self.label {
             return Some(label);
         };
@@ -173,18 +178,18 @@ impl CallArg {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Field {
-    pub label: Option<IdentId>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub struct Field<'db> {
+    pub label: Option<IdentId<'db>>,
     pub expr: ExprId,
 }
 
-impl Field {
+impl<'db> Field<'db> {
     /// Returns the label of the field if
     /// 1. the filed has an explicit label. or
     /// 2. If 1. is not true, then the field is labeled when the expression is a
     ///    path expression and the path is an identifier.
-    pub fn label_eagerly(&self, db: &dyn HirDb, body: Body) -> Option<IdentId> {
+    pub fn label_eagerly(&self, db: &'db dyn HirDb, body: Body<'db>) -> Option<IdentId<'db>> {
         if let Some(label) = self.label {
             return Some(label);
         };

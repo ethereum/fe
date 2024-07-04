@@ -4,19 +4,17 @@ expression: diags
 input_file: crates/uitest/fixtures/ty/def/trait_impl_conflict_const.fe
 ---
 error[5-0001]: conflict trait implementation
-  ┌─ trait_impl_conflict_const.fe:4:33
+  ┌─ trait_impl_conflict_const.fe:3:19
   │
 3 │ impl Trait<1> for i32 {}
-  │                   --- conflict with this trait implementation
+  │                   ^^^ conflict trait implementation
 4 │ impl<const N: u32> Trait<N> for i32 {}
-  │                                 ^^^ conflict trait implementation
+  │                                 --- conflict with this trait implementation
 
 error[5-0001]: conflict trait implementation
-  ┌─ trait_impl_conflict_const.fe:9:20
+  ┌─ trait_impl_conflict_const.fe:8:33
   │
 8 │ impl<const N: u32> Trait<N> for Foo<N> {}
-  │                                 ------ conflict with this trait implementation
+  │                                 ^^^^^^ conflict trait implementation
 9 │ impl Trait<10> for Foo<10> {}
-  │                    ^^^^^^^ conflict trait implementation
-
-
+  │                    ------- conflict with this trait implementation

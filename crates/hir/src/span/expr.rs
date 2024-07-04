@@ -11,53 +11,53 @@ use crate::{
 };
 
 define_lazy_span_node!(LazyExprSpan, ast::Expr,);
-impl LazyExprSpan {
-    pub fn new(body: Body, expr: ExprId) -> Self {
+impl<'db> LazyExprSpan<'db> {
+    pub fn new(body: Body<'db>, expr: ExprId) -> Self {
         let root = ExprRoot { expr, body };
         Self(SpanTransitionChain::new(root))
     }
 
-    pub fn into_lit_expr(self) -> LazyLitExprSpan {
+    pub fn into_lit_expr(self) -> LazyLitExprSpan<'db> {
         LazyLitExprSpan(self.0)
     }
 
-    pub fn into_bin_expr(self) -> LazyBinExprSpan {
+    pub fn into_bin_expr(self) -> LazyBinExprSpan<'db> {
         LazyBinExprSpan(self.0)
     }
 
-    pub fn into_un_expr(self) -> LazyUnExprSpan {
+    pub fn into_un_expr(self) -> LazyUnExprSpan<'db> {
         LazyUnExprSpan(self.0)
     }
 
-    pub fn into_call_expr(self) -> LazyCallExprSpan {
+    pub fn into_call_expr(self) -> LazyCallExprSpan<'db> {
         LazyCallExprSpan(self.0)
     }
 
-    pub fn into_method_call_expr(self) -> LazyMethodCallExprSpan {
+    pub fn into_method_call_expr(self) -> LazyMethodCallExprSpan<'db> {
         LazyMethodCallExprSpan(self.0)
     }
 
-    pub fn into_path_expr(self) -> LazyPathExprSpan {
+    pub fn into_path_expr(self) -> LazyPathExprSpan<'db> {
         LazyPathExprSpan(self.0)
     }
 
-    pub fn into_record_init_expr(self) -> LazyRecordInitExprSpan {
+    pub fn into_record_init_expr(self) -> LazyRecordInitExprSpan<'db> {
         LazyRecordInitExprSpan(self.0)
     }
 
-    pub fn into_field_expr(self) -> LazyFieldExprSpan {
+    pub fn into_field_expr(self) -> LazyFieldExprSpan<'db> {
         LazyFieldExprSpan(self.0)
     }
 
-    pub fn into_match_expr(self) -> LazyMatchExprSpan {
+    pub fn into_match_expr(self) -> LazyMatchExprSpan<'db> {
         LazyMatchExprSpan(self.0)
     }
 
-    pub fn into_aug_assign_expr(self) -> LazyAugAssignExprSpan {
+    pub fn into_aug_assign_expr(self) -> LazyAugAssignExprSpan<'db> {
         LazyAugAssignExprSpan(self.0)
     }
 
-    pub fn into_assign_expr(self) -> LazyAssignExprSpan {
+    pub fn into_assign_expr(self) -> LazyAssignExprSpan<'db> {
         LazyAssignExprSpan(self.0)
     }
 }
@@ -202,12 +202,12 @@ define_lazy_span_node!(
 define_lazy_span_node!(LazyMatchArmSpan);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct ExprRoot {
+pub(crate) struct ExprRoot<'db> {
     expr: ExprId,
-    pub(crate) body: Body,
+    pub(crate) body: Body<'db>,
 }
 
-impl ChainInitiator for ExprRoot {
+impl<'db> ChainInitiator for ExprRoot<'db> {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.expr_map.node_to_source(self.expr);
@@ -234,7 +234,8 @@ mod tests {
             }
         }"#;
 
-        let body: Body = db.expect_item::<Body>(text);
+        let input = db.standalone_file(text);
+        let body: Body = db.expect_item::<Body>(input);
         let bin_expr = match body.exprs(db.as_hir_db()).values().nth(2).unwrap().unwrap() {
             Expr::AugAssign(lhs, rhs, bin_op) => (*lhs, *rhs, *bin_op),
             _ => unreachable!(),

@@ -1,13 +1,10 @@
-use std::collections::BTreeSet;
-
 use either::Either;
 use hir::hir_def::{
-    kw, scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamListId,
-    GenericParamOwner, IdentId, IngotId, ItemKind, KindBound as HirKindBound, Partial, PathId,
-    TupleTypeId, TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
-    WhereClauseId,
+    scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamListId,
+    GenericParamOwner, IdentId, ItemKind, KindBound as HirKindBound, Partial, PathId, TupleTypeId,
+    TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind, WhereClauseId,
 };
-use salsa::function::Configuration;
+use salsa::{function::FunctionIngredient, id::LookupId, ingredient::Ingredient};
 
 use super::{
     adt_def::{lower_adt, AdtRefId},
@@ -22,35 +19,30 @@ use crate::{
 };
 
 /// Lowers the given HirTy to `TyId`.
-#[salsa::tracked(recovery_fn=recover_lower_hir_ty_cycle)]
-pub fn lower_hir_ty(db: &dyn HirAnalysisDb, ty: HirTyId, scope: ScopeId) -> TyId {
+#[salsa::tracked]
+pub fn lower_hir_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+) -> TyId<'db> {
     TyBuilder::new(db, scope).lower_ty(ty)
-}
-
-fn recover_lower_hir_ty_cycle(
-    db: &dyn HirAnalysisDb,
-    _cycle: &salsa::Cycle,
-    _ty: HirTyId,
-    _scope: ScopeId,
-) -> TyId {
-    TyId::invalid(db, InvalidCause::RecursiveConstParamTy)
 }
 
 /// Collects the generic parameters of the given generic parameter owner.
 #[salsa::tracked]
-pub(crate) fn collect_generic_params(
-    db: &dyn HirAnalysisDb,
-    owner: GenericParamOwnerId,
-) -> GenericParamTypeSet {
+pub(crate) fn collect_generic_params<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: GenericParamOwnerId<'db>,
+) -> GenericParamTypeSet<'db> {
     GenericParamCollector::new(db, owner.data(db)).finalize()
 }
 
 /// Lowers the given type alias to [`TyAlias`].
 #[salsa::tracked(return_ref, recovery_fn = recover_lower_type_alias_cycle)]
-pub(crate) fn lower_type_alias(
-    db: &dyn HirAnalysisDb,
-    alias: HirTypeAlias,
-) -> Result<TyAlias, AliasCycle> {
+pub(crate) fn lower_type_alias<'db>(
+    db: &'db dyn HirAnalysisDb,
+    alias: HirTypeAlias<'db>,
+) -> Result<TyAlias<'db>, AliasCycle<'db>> {
     let param_set = collect_generic_params(db, GenericParamOwnerId::new(db, alias.into()));
 
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
@@ -74,12 +66,41 @@ pub(crate) fn lower_type_alias(
     })
 }
 
+fn recover_lower_type_alias_cycle<'db>(
+    db: &'db dyn HirAnalysisDb,
+    cycle: &salsa::Cycle,
+    _alias: HirTypeAlias<'db>,
+) -> Result<TyAlias<'db>, AliasCycle<'db>> {
+    let (jar, _): (&crate::Jar, _) = db.jar();
+    // Obtain ingredient index for the `[lower_type_alias]` to filter out
+    // participants that belong to other tracked functions.
+    let function_ingredient =
+        &<_ as salsa::storage::HasIngredientsFor<lower_type_alias>>::ingredient(jar).function;
+    let ingredient_index = <FunctionIngredient<lower_type_alias> as Ingredient<
+        dyn HirAnalysisDb,
+    >>::ingredient_index(function_ingredient);
+
+    let alias_cycle = cycle
+        .participant_keys()
+        .filter_map(|key| {
+            if ingredient_index == key.ingredient_index() {
+                let id = key.key_index();
+                Some(HirTypeAlias::lookup_id(id, db))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Err(AliasCycle(alias_cycle))
+}
+
 #[doc(hidden)]
 #[salsa::tracked(return_ref)]
-pub(crate) fn evaluate_params_precursor(
-    db: &dyn HirAnalysisDb,
-    set: GenericParamTypeSet,
-) -> Vec<TyId> {
+pub(crate) fn evaluate_params_precursor<'db>(
+    db: &'db dyn HirAnalysisDb,
+    set: GenericParamTypeSet<'db>,
+) -> Vec<TyId<'db>> {
     set.params_precursor(db)
         .iter()
         .enumerate()
@@ -87,41 +108,15 @@ pub(crate) fn evaluate_params_precursor(
         .collect()
 }
 
-fn recover_lower_type_alias_cycle(
-    db: &dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    _alias: HirTypeAlias,
-) -> Result<TyAlias, AliasCycle> {
-    use once_cell::sync::Lazy;
-    use regex::Regex;
-
-    // Filter out the cycle participants that are not type aliases.
-    // This is inefficient workaround because it's not possible to obtain the
-    // ingredient index of the tracked function. Please refer to https://github.com/salsa-rs/salsa/pull/461 for more details.
-    static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"lower_type_alias\(?(\d)\)").unwrap());
-    let alias_cycle = cycle
-        .all_participants(db)
-        .into_iter()
-        .filter_map(|participant| {
-            let caps = RE.captures(&participant)?;
-            let id = caps.get(1)?;
-            let id = salsa::Id::from_u32(id.as_str().parse().ok()?);
-            Some(lower_type_alias::key_from_id(id))
-        })
-        .collect();
-
-    Err(AliasCycle(alias_cycle))
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct AliasCycle(BTreeSet<HirTypeAlias>);
+pub(crate) struct AliasCycle<'db>(Vec<HirTypeAlias<'db>>);
 
-impl AliasCycle {
-    pub(super) fn representative(&self) -> HirTypeAlias {
-        *self.0.iter().next().unwrap()
+impl<'db> AliasCycle<'db> {
+    pub(super) fn representative(&self) -> HirTypeAlias<'db> {
+        *self.0.first().unwrap()
     }
 
-    pub(super) fn participants(&self) -> impl Iterator<Item = HirTypeAlias> + '_ {
+    pub(super) fn participants(&self) -> impl Iterator<Item = HirTypeAlias<'db>> + '_ {
         self.0.iter().skip(1).copied()
     }
 }
@@ -133,33 +128,33 @@ impl AliasCycle {
 /// NOTE: `TyAlias` can't become an alias to partial applied types, i.e., the
 /// right hand side of the alias declaration must be a fully applied type.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct TyAlias {
-    alias: HirTypeAlias,
-    alias_to: Binder<TyId>,
-    param_set: GenericParamTypeSet,
+pub(crate) struct TyAlias<'db> {
+    alias: HirTypeAlias<'db>,
+    alias_to: Binder<TyId<'db>>,
+    param_set: GenericParamTypeSet<'db>,
 }
 
-impl TyAlias {
-    fn params<'db>(&self, db: &'db dyn HirAnalysisDb) -> &'db [TyId] {
+impl<'db> TyAlias<'db> {
+    fn params(&self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set.params(db)
     }
 }
 
 struct TyBuilder<'db> {
     db: &'db dyn HirAnalysisDb,
-    scope: ScopeId,
+    scope: ScopeId<'db>,
 }
 
 impl<'db> TyBuilder<'db> {
-    pub(super) fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId) -> Self {
+    pub(super) fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> Self {
         Self { db, scope }
     }
 
-    pub(super) fn lower_ty(&mut self, ty: HirTyId) -> TyId {
+    pub(super) fn lower_ty(&mut self, ty: HirTyId<'db>) -> TyId<'db> {
         match ty.data(self.db.as_hir_db()) {
             HirTyKind::Ptr(pointee) => self.lower_ptr(*pointee),
 
-            HirTyKind::Path(path, args) => self.lower_path(*path, *args),
+            HirTyKind::Path(path, args) => self.lower_path(*path, *args, false),
 
             HirTyKind::SelfType(args) => self.lower_self_ty(*args),
 
@@ -178,11 +173,16 @@ impl<'db> TyBuilder<'db> {
         }
     }
 
-    pub(super) fn lower_path(&mut self, path: Partial<PathId>, args: GenericArgListId) -> TyId {
+    pub(super) fn lower_path(
+        &mut self,
+        path: Partial<PathId<'db>>,
+        args: GenericArgListId<'db>,
+        is_const_param_ty: bool,
+    ) -> TyId<'db> {
         let path_ty = path
             .to_opt()
             .map(|path| match self.resolve_path(path) {
-                Either::Left(res) => self.lower_resolved_path(res),
+                Either::Left(res) => self.lower_resolved_path(res, is_const_param_ty),
                 Either::Right(ty) => Either::Left(ty),
             })
             .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
@@ -209,7 +209,24 @@ impl<'db> TyBuilder<'db> {
         }
     }
 
-    pub(super) fn lower_self_ty(&mut self, args: GenericArgListId) -> TyId {
+    pub(super) fn lower_const_ty_ty(&mut self, ty: HirTyId<'db>) -> TyId<'db> {
+        let hir_db = self.db.as_hir_db();
+        let HirTyKind::Path(path, args) = ty.data(hir_db) else {
+            return TyId::invalid(self.db, InvalidCause::InvalidConstParamTy);
+        };
+        if !args.is_empty(hir_db) {
+            return TyId::invalid(self.db, InvalidCause::InvalidConstParamTy);
+        }
+        let ty = self.lower_path(*path, *args, true);
+
+        if ty.has_invalid(self.db) || ty.is_integral(self.db) || ty.is_bool(self.db) {
+            ty
+        } else {
+            TyId::invalid(self.db, InvalidCause::InvalidConstParamTy)
+        }
+    }
+
+    pub(super) fn lower_self_ty(&mut self, args: GenericArgListId<'db>) -> TyId<'db> {
         let res = self.resolve_path(PathId::self_ty(self.db.as_hir_db()));
         let (scope, res) = match res {
             Either::Left(res @ NameResKind::Scope(scope)) => (scope, res),
@@ -234,7 +251,7 @@ impl<'db> TyBuilder<'db> {
         let ty = match scope {
             ScopeId::Item(item) => match item {
                 ItemKind::Enum(_) | ItemKind::Struct(_) | ItemKind::Contract(_) => {
-                    self.lower_resolved_path(res).unwrap_left()
+                    self.lower_resolved_path(res, false).unwrap_left()
                 }
 
                 ItemKind::Trait(trait_) => {
@@ -267,14 +284,14 @@ impl<'db> TyBuilder<'db> {
             .fold(ty, |acc, arg| TyId::app(self.db, acc, arg))
     }
 
-    fn lower_ptr(&mut self, pointee: Partial<HirTyId>) -> TyId {
+    fn lower_ptr(&mut self, pointee: Partial<HirTyId<'db>>) -> TyId<'db> {
         let pointee = self.lower_opt_hir_ty(pointee);
 
         let ptr = TyId::ptr(self.db);
         TyId::app(self.db, ptr, pointee)
     }
 
-    fn lower_tuple(&mut self, tuple_id: TupleTypeId) -> TyId {
+    fn lower_tuple(&mut self, tuple_id: TupleTypeId<'db>) -> TyId<'db> {
         let elems = tuple_id.data(self.db.as_hir_db());
         let len = elems.len();
         let tuple = TyId::tuple(self.db, len);
@@ -288,7 +305,11 @@ impl<'db> TyBuilder<'db> {
         })
     }
 
-    fn lower_resolved_path(&mut self, kind: NameResKind) -> Either<TyId, &'db TyAlias> {
+    fn lower_resolved_path(
+        &mut self,
+        kind: NameResKind<'db>,
+        is_const_param_ty: bool,
+    ) -> Either<TyId<'db>, &'db TyAlias<'db>> {
         let scope = match kind {
             NameResKind::Scope(scope) => scope,
             NameResKind::Prim(prim_ty) => {
@@ -299,6 +320,11 @@ impl<'db> TyBuilder<'db> {
         let item = match scope {
             ScopeId::Item(item) => item,
             ScopeId::GenericParam(item, idx) => {
+                // FIXME: Ugly hack to avoid cycle in parameter evaluation cycle. We need to
+                // consider nicer way.
+                if is_const_param_ty {
+                    return Either::Left(TyId::invalid(self.db, InvalidCause::InvalidConstParamTy));
+                }
                 let owner = GenericParamOwner::from_item_opt(item).unwrap();
                 let owner_id = GenericParamOwnerId::new(self.db, owner);
 
@@ -340,7 +366,7 @@ impl<'db> TyBuilder<'db> {
 
     /// If the path is resolved to a type, return the resolution. Otherwise,
     /// returns the `TyId::Invalid` with proper `InvalidCause`.
-    fn resolve_path(&mut self, path: PathId) -> Either<NameResKind, TyId> {
+    fn resolve_path(&mut self, path: PathId<'db>) -> Either<NameResKind<'db>, TyId<'db>> {
         match resolve_path_early(self.db, path, self.scope) {
             EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::TYPE) {
                 Ok(res) => Either::Left(res.kind),
@@ -355,7 +381,7 @@ impl<'db> TyBuilder<'db> {
         }
     }
 
-    fn lower_opt_hir_ty(&self, hir_ty: Partial<HirTyId>) -> TyId {
+    fn lower_opt_hir_ty(&self, hir_ty: Partial<HirTyId<'db>>) -> TyId<'db> {
         hir_ty
             .to_opt()
             .map(|hir_ty| lower_hir_ty(self.db, hir_ty, self.scope))
@@ -363,7 +389,11 @@ impl<'db> TyBuilder<'db> {
     }
 }
 
-pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope: ScopeId) -> TyId {
+pub(super) fn lower_generic_arg<'db>(
+    db: &'db dyn HirAnalysisDb,
+    arg: &GenericArg<'db>,
+    scope: ScopeId<'db>,
+) -> TyId<'db> {
     match arg {
         GenericArg::Type(ty_arg) => ty_arg
             .ty
@@ -378,11 +408,11 @@ pub(super) fn lower_generic_arg(db: &dyn HirAnalysisDb, arg: &GenericArg, scope:
     }
 }
 
-pub(crate) fn lower_generic_arg_list(
-    db: &dyn HirAnalysisDb,
-    args: GenericArgListId,
-    scope: ScopeId,
-) -> Vec<TyId> {
+pub(crate) fn lower_generic_arg_list<'db>(
+    db: &'db dyn HirAnalysisDb,
+    args: GenericArgListId<'db>,
+    scope: ScopeId<'db>,
+) -> Vec<TyId<'db>> {
     args.data(db.as_hir_db())
         .iter()
         .map(|arg| lower_generic_arg(db, arg, scope))
@@ -390,24 +420,24 @@ pub(crate) fn lower_generic_arg_list(
 }
 
 #[salsa::interned]
-pub struct GenericParamTypeSet {
+pub struct GenericParamTypeSet<'db> {
     #[return_ref]
-    pub(crate) params_precursor: Vec<TyParamPrecursor>,
-    pub(crate) scope: ScopeId,
+    pub(crate) params_precursor: Vec<TyParamPrecursor<'db>>,
+    pub(crate) scope: ScopeId<'db>,
     offset_to_explicit: usize,
 }
 
-impl GenericParamTypeSet {
-    pub(crate) fn params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+impl<'db> GenericParamTypeSet<'db> {
+    pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
         evaluate_params_precursor(db, self)
     }
 
-    pub(crate) fn explicit_params(self, db: &dyn HirAnalysisDb) -> &[TyId] {
+    pub(crate) fn explicit_params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
         let offset = self.offset_to_explicit(db);
         &self.params(db)[offset..]
     }
 
-    pub(crate) fn empty(db: &dyn HirAnalysisDb, scope: ScopeId) -> Self {
+    pub(crate) fn empty(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> Self {
         Self::new(db, Vec::new(), scope, 0)
     }
 
@@ -415,7 +445,7 @@ impl GenericParamTypeSet {
         self.params_precursor(db).len()
     }
 
-    pub(super) fn trait_self(&self, db: &dyn HirAnalysisDb) -> Option<TyId> {
+    pub(super) fn trait_self(&self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
         let params = self.params_precursor(db);
         let cand = params.first()?;
 
@@ -432,9 +462,9 @@ impl GenericParamTypeSet {
 
     pub(super) fn param_by_original_idx(
         &self,
-        db: &dyn HirAnalysisDb,
+        db: &'db dyn HirAnalysisDb,
         original_idx: usize,
-    ) -> Option<TyId> {
+    ) -> Option<TyId<'db>> {
         let idx = self.offset_to_explicit(db) + original_idx;
         self.params_precursor(db)
             .get(idx)
@@ -444,16 +474,16 @@ impl GenericParamTypeSet {
 
 struct GenericParamCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    owner: GenericParamOwner,
-    params: Vec<TyParamPrecursor>,
+    owner: GenericParamOwner<'db>,
+    params: Vec<TyParamPrecursor<'db>>,
     offset_to_original: usize,
 }
 
 impl<'db> GenericParamCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwner) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwner<'db>) -> Self {
         let params = match owner {
             GenericParamOwner::Trait(_) => {
-                vec![TyParamPrecursor::trait_self(None)]
+                vec![TyParamPrecursor::trait_self(db, None)]
             }
 
             GenericParamOwner::Func(func) if func.is_associated_func(db.as_hir_db()) => {
@@ -530,7 +560,7 @@ impl<'db> GenericParamCollector<'db> {
         }
     }
 
-    fn finalize(mut self) -> GenericParamTypeSet {
+    fn finalize(mut self) -> GenericParamTypeSet<'db> {
         self.collect_generic_params();
         self.collect_kind_in_where_clause();
 
@@ -596,7 +626,7 @@ impl<'db> GenericParamCollector<'db> {
         }
     }
 
-    fn trait_self_ty_mut(&mut self) -> Option<&mut TyParamPrecursor> {
+    fn trait_self_ty_mut(&mut self) -> Option<&mut TyParamPrecursor<'db>> {
         let cand = self.params.get_mut(0)?;
         cand.is_trait_self().then_some(cand)
     }
@@ -610,16 +640,21 @@ enum ParamLoc {
 
 #[doc(hidden)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TyParamPrecursor {
-    name: Partial<IdentId>,
+pub struct TyParamPrecursor<'db> {
+    name: Partial<IdentId<'db>>,
     original_idx: Option<usize>,
     kind: Option<Kind>,
-    const_ty_ty: Option<HirTyId>,
+    const_ty_ty: Option<HirTyId<'db>>,
     is_const_ty: bool,
 }
 
-impl TyParamPrecursor {
-    fn evaluate(&self, db: &dyn HirAnalysisDb, scope: ScopeId, lowered_idx: usize) -> TyId {
+impl<'db> TyParamPrecursor<'db> {
+    fn evaluate(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        lowered_idx: usize,
+    ) -> TyId<'db> {
         let Partial::Present(name) = self.name else {
             return TyId::invalid(db, InvalidCause::Other);
         };
@@ -627,7 +662,7 @@ impl TyParamPrecursor {
         let kind = self.kind.clone().unwrap_or(Kind::Star);
 
         if self.original_idx.is_none() {
-            let param = TyParam::trait_self(kind);
+            let param = TyParam::trait_self(db, kind);
             return TyId::new(db, TyData::TyParam(param));
         }
 
@@ -639,12 +674,8 @@ impl TyParamPrecursor {
 
         let const_ty_ty = match self.const_ty_ty {
             Some(ty) => {
-                let ty = lower_hir_ty(db, ty, scope);
-                if !(ty.has_invalid(db) || ty.is_integral(db) || ty.is_bool(db)) {
-                    TyId::invalid(db, InvalidCause::InvalidConstParamTy { ty })
-                } else {
-                    ty
-                }
+                let mut ty_builder = TyBuilder::new(db, scope);
+                ty_builder.lower_const_ty_ty(ty)
             }
 
             None => TyId::invalid(db, InvalidCause::Other),
@@ -655,7 +686,7 @@ impl TyParamPrecursor {
         TyId::new(db, TyData::ConstTy(const_ty))
     }
 
-    fn ty_param(name: Partial<IdentId>, idx: usize, kind: Option<Kind>) -> Self {
+    fn ty_param(name: Partial<IdentId<'db>>, idx: usize, kind: Option<Kind>) -> Self {
         Self {
             name,
             original_idx: idx.into(),
@@ -665,7 +696,7 @@ impl TyParamPrecursor {
         }
     }
 
-    fn const_ty_param(name: Partial<IdentId>, idx: usize, ty: Option<HirTyId>) -> Self {
+    fn const_ty_param(name: Partial<IdentId<'db>>, idx: usize, ty: Option<HirTyId<'db>>) -> Self {
         Self {
             name,
             original_idx: idx.into(),
@@ -675,8 +706,8 @@ impl TyParamPrecursor {
         }
     }
 
-    fn trait_self(kind: Option<Kind>) -> Self {
-        let name = Partial::Present(kw::SELF_TY);
+    fn trait_self(db: &'db dyn HirAnalysisDb, kind: Option<Kind>) -> Self {
+        let name = Partial::Present(IdentId::make_self_ty(db.as_hir_db()));
         Self {
             name,
             original_idx: None,
@@ -712,30 +743,26 @@ pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
 }
 
 #[salsa::interned]
-pub(crate) struct GenericParamOwnerId {
-    pub(super) data: GenericParamOwner,
+pub(crate) struct GenericParamOwnerId<'db> {
+    pub(super) data: GenericParamOwner<'db>,
 }
 
-impl GenericParamOwnerId {
-    pub(super) fn scope(self, db: &dyn HirAnalysisDb) -> ScopeId {
+impl<'db> GenericParamOwnerId<'db> {
+    pub(super) fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
         self.data(db).scope()
     }
 
-    pub(super) fn ingot(self, db: &dyn HirAnalysisDb) -> IngotId {
-        self.data(db).top_mod(db.as_hir_db()).ingot(db.as_hir_db())
-    }
-
-    pub(super) fn where_clause(self, db: &dyn HirAnalysisDb) -> Option<WhereClauseId> {
+    pub(super) fn where_clause(self, db: &'db dyn HirAnalysisDb) -> Option<WhereClauseId<'db>> {
         self.data(db)
             .where_clause_owner()
             .map(|owner| owner.where_clause(db.as_hir_db()))
     }
 
-    pub(super) fn params(self, db: &dyn HirAnalysisDb) -> GenericParamListId {
+    pub(super) fn params(self, db: &'db dyn HirAnalysisDb) -> GenericParamListId<'db> {
         self.data(db).params(db.as_hir_db())
     }
 
-    pub(super) fn from_item_opt(db: &dyn HirAnalysisDb, item: ItemKind) -> Option<Self> {
+    pub(super) fn from_item_opt(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Option<Self> {
         let owner = GenericParamOwner::from_item_opt(item)?;
         Self::new(db, owner).into()
     }

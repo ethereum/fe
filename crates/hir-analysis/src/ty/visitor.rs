@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use common::indexmap::IndexSet;
 
 use super::{
     adt_def::AdtDef,
@@ -20,48 +20,48 @@ pub trait TyVisitable<'db> {
 pub trait TyVisitor<'db> {
     fn db(&self) -> &'db dyn HirAnalysisDb;
 
-    fn visit_ty(&mut self, ty: TyId) {
+    fn visit_ty(&mut self, ty: TyId<'db>) {
         walk_ty(self, ty)
     }
 
     #[allow(unused_variables)]
-    fn visit_var(&mut self, var: &TyVar) {}
+    fn visit_var(&mut self, var: &TyVar<'db>) {}
 
     #[allow(unused_variables)]
-    fn visit_param(&mut self, ty_param: &TyParam) {}
+    fn visit_param(&mut self, ty_param: &TyParam<'db>) {}
 
     #[allow(unused_variables)]
-    fn visit_const_param(&mut self, ty_param: &TyParam, const_ty_ty: TyId) {}
+    fn visit_const_param(&mut self, ty_param: &TyParam<'db>, const_ty_ty: TyId<'db>) {}
 
-    fn visit_app(&mut self, abs: TyId, arg: TyId) {
+    fn visit_app(&mut self, abs: TyId<'db>, arg: TyId<'db>) {
         self.visit_ty(abs);
         self.visit_ty(arg);
     }
 
     #[allow(unused_variables)]
-    fn visit_ty_base(&mut self, ty_base: &TyBase) {
+    fn visit_ty_base(&mut self, ty_base: &TyBase<'db>) {
         walk_ty_base(self, ty_base);
     }
 
     #[allow(unused_variables)]
-    fn visit_invalid(&mut self, cause: &InvalidCause) {}
+    fn visit_invalid(&mut self, cause: &InvalidCause<'db>) {}
 
     #[allow(unused_variables)]
     fn visit_prim(&mut self, prim: &PrimTy) {}
 
     #[allow(unused_variables)]
-    fn visit_adt(&mut self, adt: AdtDef) {}
+    fn visit_adt(&mut self, adt: AdtDef<'db>) {}
 
     #[allow(unused_variables)]
-    fn visit_func(&mut self, func: FuncDef) {}
+    fn visit_func(&mut self, func: FuncDef<'db>) {}
 
     #[allow(unused_variables)]
-    fn visit_const_ty(&mut self, const_ty: &ConstTyId) {
+    fn visit_const_ty(&mut self, const_ty: &ConstTyId<'db>) {
         walk_const_ty(self, const_ty)
     }
 }
 
-pub fn walk_ty<'db, V>(visitor: &mut V, ty: TyId)
+pub fn walk_ty<'db, V>(visitor: &mut V, ty: TyId<'db>)
 where
     V: TyVisitor<'db> + ?Sized,
 {
@@ -82,7 +82,7 @@ where
     }
 }
 
-pub fn walk_ty_base<'db, V>(visitor: &mut V, ty_con: &TyBase)
+pub fn walk_ty_base<'db, V>(visitor: &mut V, ty_con: &TyBase<'db>)
 where
     V: TyVisitor<'db> + ?Sized,
 {
@@ -93,7 +93,7 @@ where
     }
 }
 
-pub fn walk_const_ty<'db, V>(visitor: &mut V, const_ty: &ConstTyId)
+pub fn walk_const_ty<'db, V>(visitor: &mut V, const_ty: &ConstTyId<'db>)
 where
     V: TyVisitor<'db> + ?Sized,
 {
@@ -106,7 +106,7 @@ where
     }
 }
 
-impl<'db> TyVisitable<'db> for TyId {
+impl<'db> TyVisitable<'db> for TyId<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
         V: TyVisitor<'db>,
@@ -139,7 +139,7 @@ where
     }
 }
 
-impl<'db, T> TyVisitable<'db> for BTreeSet<T>
+impl<'db, T> TyVisitable<'db> for IndexSet<T>
 where
     T: TyVisitable<'db>,
 {
@@ -151,7 +151,7 @@ where
     }
 }
 
-impl<'db> TyVisitable<'db> for TraitInstId {
+impl<'db> TyVisitable<'db> for TraitInstId<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
         V: TyVisitor<'db>,
@@ -161,7 +161,7 @@ impl<'db> TyVisitable<'db> for TraitInstId {
     }
 }
 
-impl<'db> TyVisitable<'db> for Implementor {
+impl<'db> TyVisitable<'db> for Implementor<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
         V: TyVisitor<'db>,
@@ -171,7 +171,7 @@ impl<'db> TyVisitable<'db> for Implementor {
     }
 }
 
-impl<'db> TyVisitable<'db> for PredicateListId {
+impl<'db> TyVisitable<'db> for PredicateListId<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
         V: TyVisitor<'db>,
@@ -180,7 +180,7 @@ impl<'db> TyVisitable<'db> for PredicateListId {
     }
 }
 
-impl<'db> TyVisitable<'db> for ExprProp {
+impl<'db> TyVisitable<'db> for ExprProp<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
         V: TyVisitor<'db>,
