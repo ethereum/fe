@@ -25,7 +25,7 @@ use super::{
     streams::{ChangeKind, FileChange},
 };
 
-use crate::lsp_actor::*;
+// use crate::lsp_actor::*;
 
 use crate::backend::workspace::IngotFileContext;
 

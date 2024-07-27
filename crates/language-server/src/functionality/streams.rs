@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use crate::functionality::handlers::FilesNeedDiagnostics;
-use crate::lsp_actor::{ActOnNotification, ActOnRequest};
+// use crate::lsp_actor::{ActOnNotification, ActOnRequest};
 use crate::lsp_streams::RouterStreams;
 // use crate::lsp_kameo::RouterActors;
 use async_lsp::lsp_types::request::Initialize;
@@ -107,8 +107,8 @@ pub async fn setup_streams(
     // });
 
     // backend.attach_stream(initialize_stream, (), ());
-    router.act_on_request::<Initialize>(&actor);
-    router.act_on_notification::<async_lsp::lsp_types::notification::DidChangeWatchedFiles>(&actor);
+    // router.act_on_request::<Initialize>(&actor);
+    // router.act_on_notification::<async_lsp::lsp_types::notification::DidChangeWatchedFiles>(&actor);
 
     let hover_stream = router.request_stream::<request::HoverRequest>().fuse();
     // .for_each(|(params, response_tx)| {

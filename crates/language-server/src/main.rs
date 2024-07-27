@@ -1,19 +1,19 @@
 mod actor;
-mod attach_stream_to_actor;
 mod backend;
 mod functionality;
-mod lsp_actor;
-mod lsp_actor_service;
+// mod lsp_actor;
+// mod attach_stream_to_actor;
+// mod lsp_actor_service;
 mod lsp_streaming_layer;
 mod lsp_streams;
 mod server;
-mod streaming_router;
+// mod streaming_router;
 mod util;
 
 use async_lsp::panic::CatchUnwindLayer;
 use async_lsp::server::LifecycleLayer;
 use futures::stream::StreamExt;
-use lsp_actor_service::LspActorService;
+// use lsp_actor_service::LspActorService;
 use serde_json::Value;
 use std::{ops::ControlFlow, sync::Arc, time::Duration};
 use tokio::sync::{Mutex, RwLock};
@@ -36,16 +36,16 @@ use async_lsp::{
 };
 use backend::{db::Jar, Backend};
 use functionality::{handlers, streams::setup_streams};
-use lsp_actor::{ActOnNotification, ActOnRequest};
+// use lsp_actor::{ActOnNotification, ActOnRequest};
 use lsp_streams::RouterStreams;
 use tower::{layer::layer_fn, util::BoxService, Service, ServiceBuilder};
 struct TickEvent;
 
-impl<M> CanHandle<M> for LspActorService {
-    fn can_handle(&self, msg: &M) -> bool {
-        true
-    }
-}
+// impl<M> CanHandle<M> for LspActorService {
+//     fn can_handle(&self, msg: &M) -> bool {
+//         true
+//     }
+// }
 
 #[tokio::main]
 async fn main() {
@@ -59,11 +59,12 @@ async fn main() {
         let actor_ref = Actor::spawn_local(move || {
             let backend = Backend::new(client_cloned);
             let (mut actor, actor_ref) = Actor::new(backend);
-            actor.register_request_handler(handlers::initialize);
+            // actor.register(Initialize)
+            // actor.register_request_handler(handlers::initialize);
 
             (actor, actor_ref)
         });
-        let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone());
+        // let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone());
 
         let mut streaming_router = Router::new(());
         streaming_router.request::<Initialize, _>(|_, _| async {
@@ -77,7 +78,7 @@ async fn main() {
 
         let services: Vec<BoxLspService<serde_json::Value, ResponseError>> = vec![
             BoxLspService::new(streaming_router),
-            BoxLspService::new(actor_service),
+            // BoxLspService::new(actor_service),
         ];
 
         // let picker = FirstComeFirstServe::<BoxLspService<Value, ResponseError>>::default();
