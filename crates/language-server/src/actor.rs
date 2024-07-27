@@ -115,7 +115,7 @@ where
 }
 
 type BoxAsyncFunc<S, C, R> =
-    Box<dyn for<'a> Fn(&'a mut S, C) -> BoxFuture<'a, Result<R, ActorError>> + Send + Sync>;
+    Box<dyn for<'a> Fn(&'a mut S, C) -> LocalBoxFuture<'a, Result<R, ActorError>> + Send + Sync>;
 
 struct AsyncFuncHandler<S, C, R>(BoxAsyncFunc<S, C, R>);
 
@@ -130,11 +130,41 @@ impl<S: 'static, C: 'static, R: 'static> AsyncFuncHandler<S, C, R> {
         }))
     }
 }
+trait MessageHandler<S>: Send + Sync {
+    fn handle<'a>(
+        &'a self,
+        state: &'a mut S,
+        message: BoxedAny,
+    ) -> LocalBoxFuture<'a, Result<BoxedAny, ActorError>>;
+}
+impl<S, C, R> MessageHandler<S> for AsyncFuncHandler<S, C, R>
+where
+    S: 'static,
+    C: 'static + Send,
+    R: 'static + Send,
+{
+    fn handle<'a>(
+        &'a self,
+        state: &'a mut S,
+        message: BoxedAny,
+    ) -> LocalBoxFuture<'a, Result<BoxedAny, ActorError>> {
+        Box::pin(async move {
+            let params = message.downcast::<C>().map_err(|_| {
+                ActorError::CustomError(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "Invalid message type",
+                )))
+            })?;
+            let result = (self.0)(state, *params).await?;
+            Ok(Box::new(result) as BoxedAny)
+        })
+    }
+}
 
 pub struct Actor<S: 'static> {
     state: StateRef<S>,
     receiver: mpsc::UnboundedReceiver<Message>,
-    handlers: HashMap<MessageKey, Box<dyn Any + Send + Sync>>,
+    handlers: HashMap<MessageKey, Box<dyn MessageHandler<S>>>,
     handler_types: Arc<HandlerTypes>,
     dispatchers: Arc<RwLock<HashMap<MessageKey, Box<dyn Dispatcher>>>>,
 }
@@ -224,35 +254,17 @@ impl<S: 'static> Actor<S> {
             match message {
                 Message::Notification(key, params) => {
                     if let Some(handler) = self.handlers.get(&key) {
-                        if let Some(handler) =
-                            handler.downcast_ref::<AsyncFuncHandler<S, BoxedAny, ()>>()
-                        {
-                            let mut state = self.state.borrow_mut();
-                            let _ = handler.0(&mut *state, params).await;
-                        } else {
-                            println!("Error: Handler type mismatch for notification: {:?}", key);
-                        }
+                        let mut state = self.state.borrow_mut();
+                        let _ = handler.handle(&mut *state, params).await;
                     } else {
                         println!("Error: No handler found for notification: {:?}", key);
                     }
                 }
                 Message::Request(key, params, responder) => {
                     if let Some(handler) = self.handlers.get(&key) {
-                        if let Some(handler) =
-                            handler.downcast_ref::<AsyncFuncHandler<S, BoxedAny, BoxedAny>>()
-                        {
-                            let mut state = self.state.borrow_mut();
-                            let result = handler.0(&mut *state, params).await;
-                            let _ = responder.send(result);
-                        } else {
-                            let _ = responder.send(Err(ActorError::CustomError(Box::new(
-                                std::io::Error::new(
-                                    std::io::ErrorKind::Other,
-                                    "Handler type mismatch",
-                                ),
-                            ))));
-                            println!("Error: Handler type mismatch for request: {:?}", key);
-                        }
+                        let mut state = self.state.borrow_mut();
+                        let result = handler.handle(&mut *state, params).await;
+                        let _ = responder.send(result);
                     } else {
                         let _ = responder.send(Err(ActorError::HandlerNotFound));
                         println!("Error: No handler found for request: {:?}", key);
@@ -450,10 +462,6 @@ mod tests {
             (actor, actor_ref)
         });
 
-        println!("Actor spawned, waiting for it to start...");
-
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
         // Test increment
         match actor_ref.tell(MessageKey::new("increment"), IncrementMessage(5)) {
             Ok(_) => println!("Successfully sent increment 5"),
@@ -463,11 +471,6 @@ mod tests {
             Ok(_) => println!("Successfully sent increment 3"),
             Err(e) => println!("Error sending increment 3: {:?}", e),
         }
-
-        println!("Waiting for increments to be processed...");
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-
-        // Allow some time for processing
 
         // Test get_counter
         println!("Asking for counter value...");
