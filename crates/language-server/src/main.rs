@@ -1,6 +1,7 @@
 mod actor;
 mod backend;
 mod functionality;
+mod json_actor;
 // mod lsp_actor;
 // mod attach_stream_to_actor;
 // mod lsp_actor_service;
