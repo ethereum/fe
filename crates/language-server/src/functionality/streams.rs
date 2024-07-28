@@ -20,7 +20,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use tracing::info;
 
-use crate::actor::ActorRef;
+use crate::actor::{ActorRef, Dispatcher};
 
 pub struct FileChange {
     pub uri: url::Url,
@@ -33,10 +33,10 @@ pub enum ChangeKind {
     Delete,
 }
 
-pub async fn setup_streams(
+pub async fn setup_streams<D: Dispatcher>(
     // backend: &mut Backend,
-    router: &mut Router<ActorRef>,
-    actor: ActorRef,
+    router: &mut Router<ActorRef<D>>,
+    actor: ActorRef<D>,
 ) {
     info!("setting up streams");
 

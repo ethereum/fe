@@ -2,7 +2,6 @@ use std::any::{Any, TypeId};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::future::Future;
-use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, RwLock};
@@ -40,7 +39,7 @@ impl std::fmt::Display for ActorError {
 
 impl std::error::Error for ActorError {}
 
-type BoxedAny = Box<dyn Any + Send>;
+pub(crate) type BoxedAny = Box<dyn Any + Send>;
 type StateRef<S> = Rc<RefCell<S>>;
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
@@ -175,25 +174,25 @@ where
     }
 }
 
-pub struct Actor<S: 'static> {
+pub struct Actor<S: 'static, D: Dispatcher> {
     state: StateRef<S>,
     receiver: mpsc::UnboundedReceiver<Message>,
     handlers: HashMap<MessageKey, Box<dyn MessageHandler<S>>>,
-    dispatcher: Arc<RwLock<Box<dyn Dispatcher>>>,
-    actor_ref: ActorRef,
+    dispatcher: Arc<RwLock<D>>,
+    actor_ref: ActorRef<D>,
 }
 
-pub struct ActorRef {
+pub struct ActorRef<D: Dispatcher> {
     sender: mpsc::UnboundedSender<Message>,
-    dispatcher: Arc<RwLock<Box<dyn Dispatcher>>>,
+    dispatcher: Arc<RwLock<D>>,
 }
 
-pub struct HandlerRegistration<'a, S: 'static> {
-    actor: &'a mut Actor<S>,
+pub struct HandlerRegistration<'a, S: 'static, D: Dispatcher> {
+    actor: &'a mut Actor<S, D>,
     key: MessageKey,
 }
 
-impl<'a, S: 'static> HandlerRegistration<'a, S> {
+impl<'a, S: 'static, D: Dispatcher> HandlerRegistration<'a, S, D> {
     pub fn handle<C, R, E, F>(self, handler: F)
     where
         C: 'static + Send,
@@ -205,15 +204,20 @@ impl<'a, S: 'static> HandlerRegistration<'a, S> {
     }
 }
 
-impl<S: 'static> Actor<S> {
-    pub fn new(state: S) -> (Self, ActorRef) {
+impl<S: 'static> Actor<S, IdentityDispatcher> {
+    pub fn new(state: S) -> (Self, ActorRef<IdentityDispatcher>) {
+        Actor::new_with_dispatcher(state, IdentityDispatcher)
+    }
+}
+
+impl<S: 'static, D: Dispatcher> Actor<S, D> {
+    pub fn new_with_dispatcher(state: S, dispatcher: D) -> (Self, ActorRef<D>) {
         let (sender, receiver) = mpsc::unbounded();
-        let dispatcher: Arc<RwLock<Box<dyn Dispatcher>>> =
-            Arc::new(RwLock::new(Box::new(IdentityDispatcher)));
+        let dispatcher = Arc::new(RwLock::new(dispatcher));
 
         let actor_ref = ActorRef {
             sender: sender.clone(),
-            dispatcher: dispatcher.clone(),
+            dispatcher: Arc::clone(&dispatcher),
         };
 
         let actor_ref_clone = actor_ref.clone();
@@ -222,23 +226,16 @@ impl<S: 'static> Actor<S> {
                 state: Rc::new(RefCell::new(state)),
                 receiver,
                 handlers: HashMap::new(),
-                dispatcher: Arc::clone(&dispatcher),
+                dispatcher,
                 actor_ref,
             },
             actor_ref_clone,
         )
     }
 
-    pub fn with_dispatcher<D: Dispatcher + 'static>(self, dispatcher: D) -> Self {
-        let mut dispatcher_guard = self.dispatcher.write().unwrap();
-        *dispatcher_guard = Box::new(dispatcher);
-        drop(dispatcher_guard);
-        self
-    }
-
-    pub fn spawn_local<F>(init: F) -> ActorRef
+    pub fn spawn_local<F>(init: F) -> ActorRef<D>
     where
-        F: FnOnce() -> (Self, ActorRef),
+        F: FnOnce() -> (Self, ActorRef<D>),
         F: Send + 'static,
     {
         let runtime = Builder::new_current_thread().enable_all().build().unwrap();
@@ -288,7 +285,7 @@ impl<S: 'static> Actor<S> {
         println!("Actor finished running");
     }
 
-    pub fn register(&mut self, key: MessageKey) -> HandlerRegistration<S> {
+    pub fn register(&mut self, key: MessageKey) -> HandlerRegistration<S, D> {
         HandlerRegistration { actor: self, key }
     }
 
@@ -304,7 +301,7 @@ impl<S: 'static> Actor<S> {
     }
 }
 
-impl ActorRef {
+impl<D: Dispatcher> ActorRef<D> {
     pub async fn ask<M: Send + 'static, R: Send + 'static>(
         &self,
         message: M,
@@ -349,7 +346,7 @@ impl ActorRef {
     }
 }
 
-impl Clone for ActorRef {
+impl<D: Dispatcher> Clone for ActorRef<D> {
     fn clone(&self) -> Self {
         Self {
             sender: self.sender.clone(),
@@ -433,15 +430,16 @@ mod tests {
 
     #[test]
     fn test_with_dispatcher() {
-        let (mut actor, actor_ref1) = Actor::new(TestState {
-            counter: 0,
-            messages: Vec::new(),
-        });
+        let dispatcher = TestDispatcher;
+        let (mut actor, actor_ref1) = Actor::new_with_dispatcher(
+            TestState {
+                counter: 0,
+                messages: Vec::new(),
+            },
+            dispatcher,
+        );
 
         let actor_ref2 = actor_ref1.clone();
-
-        let dispatcher = TestDispatcher;
-        actor = actor.with_dispatcher(dispatcher);
 
         // Check if both actor_ref1 and actor_ref2 point to the same dispatcher
         assert!(
@@ -470,9 +468,7 @@ mod tests {
                 counter: 0,
                 messages: Vec::new(),
             };
-            let (mut actor, actor_ref) = Actor::new(initial_state);
-
-            actor = actor.with_dispatcher(TestDispatcher);
+            let (mut actor, actor_ref) = Actor::new_with_dispatcher(initial_state, TestDispatcher);
 
             actor
                 .register(MessageKey::new("increment"))
