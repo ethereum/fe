@@ -1,5 +1,5 @@
 #![allow(unused)]
-use hir::hir_def::{scope_graph::ScopeId, IdentId, Partial, PathId};
+use hir::hir_def::{scope_graph::ScopeId, IdentId, Partial, PathId, PathSegmentId};
 
 use super::{
     name_resolver::{
@@ -108,7 +108,7 @@ impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
     /// Resolves the given `segments` in the given `scope`.
     pub(super) fn resolve_segments(
         &mut self,
-        segments: &[Partial<IdentId<'db>>],
+        segments: &[PathSegmentId<'db>],
         scope: ScopeId<'db>,
     ) -> PathResolutionResult<'db, EarlyResolvedPathWithTrajectory<'db>> {
         let mut i_path = IntermediatePath::new(self.db, segments, scope);
@@ -155,16 +155,17 @@ impl<'db, 'a, 'b, 'c> EarlyPathResolver<'db, 'a, 'b, 'c> {
 }
 
 struct IntermediatePath<'db, 'a> {
-    path: &'a [Partial<IdentId<'db>>],
+    path: &'a [PathSegmentId<'db>],
     idx: usize,
     current_res: NameRes<'db>,
     trajectory: Vec<NameRes<'db>>,
 }
 
+// xxx generic args?
 impl<'db, 'a> IntermediatePath<'db, 'a> {
     fn new(
         db: &'db dyn HirAnalysisDb,
-        path: &'a [Partial<IdentId<'db>>],
+        path: &'a [PathSegmentId<'db>],
         scope: ScopeId<'db>,
     ) -> Self {
         let domain = NameDomain::from_scope(db, scope);
@@ -181,17 +182,21 @@ impl<'db, 'a> IntermediatePath<'db, 'a> {
     }
 
     fn starts_with(&self, db: &dyn HirAnalysisDb, ident: IdentId) -> bool {
-        let Some(Partial::Present(first_seg)) = self.path.first() else {
+        let Some(first_seg) = self
+            .path
+            .first()
+            .and_then(|seg| seg.ident(db.as_hir_db()).to_opt())
+        else {
             return false;
         };
 
-        *first_seg == ident
+        first_seg == ident
     }
 
     /// Make a `NameQuery` to resolve the current segment.
     fn make_query(&self, db: &'db dyn HirAnalysisDb) -> PathResolutionResult<'db, NameQuery<'db>> {
         debug_assert!(self.state(db) != IntermediatePathState::Partial);
-        let Partial::Present(name) = self.path[self.idx] else {
+        let Partial::Present(name) = self.path[self.idx].ident(db.as_hir_db()) else {
             return Err(PathResolutionError::new(
                 NameResolutionError::Invalid,
                 self.idx,

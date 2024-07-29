@@ -405,7 +405,7 @@ pub(crate) fn is_rshift<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.peek_two() == (Some(SyntaxKind::Gt), Some(SyntaxKind::Gt))
 }
 
-fn is_lt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+pub(crate) fn is_lt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.peek_two() == (Some(SyntaxKind::Lt), Some(SyntaxKind::Eq))
 }
 
@@ -486,6 +486,7 @@ fn is_call_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
         parser.set_newline_as_trivia(false);
 
         let mut is_call = true;
+        // xxx check is_lshift, etc
         if parser.current_kind() == Some(SyntaxKind::Lt) {
             is_call &= parser
                 .parse_ok(GenericArgListScope::default())
@@ -514,14 +515,16 @@ fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
             return false;
         }
 
-        if parser.current_kind() == Some(SyntaxKind::Lt)
-            && !parser
-                .parse_ok(GenericArgListScope::default())
-                .is_ok_and(identity)
-        {
-            return false;
+        if parser.current_kind() == Some(SyntaxKind::Lt) {
+            if is_lt_eq(parser)
+                || is_lshift(parser)
+                || !parser
+                    .parse_ok(GenericArgListScope::default())
+                    .is_ok_and(identity)
+            {
+                return false;
+            }
         }
-
         if parser.current_kind() != Some(SyntaxKind::LParen) {
             false
         } else {

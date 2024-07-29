@@ -38,6 +38,7 @@ pub struct Jar(
     hir_def::IntegerId<'_>,
     hir_def::StringId<'_>,
     hir_def::PathId<'_>,
+    hir_def::PathSegmentId<'_>,
     hir_def::FuncParamListId<'_>,
     hir_def::AttrListId<'_>,
     hir_def::WhereClauseId<'_>,

@@ -9,6 +9,10 @@ pub struct GenericArgListId<'db> {
 }
 
 impl<'db> GenericArgListId<'db> {
+    pub fn none(db: &'db dyn HirDb) -> Self {
+        Self::new(db, vec![], false)
+    }
+
     pub fn len(self, db: &dyn HirDb) -> usize {
         self.data(db).len()
     }
@@ -167,7 +171,7 @@ pub struct TraitRefId<'db> {
     /// The path to the trait.
     pub path: Partial<PathId<'db>>,
     /// The type arguments of the trait.
-    pub generic_args: Option<GenericArgListId<'db>>,
+    pub generic_args: Option<GenericArgListId<'db>>, // xxx remove
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

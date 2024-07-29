@@ -1,12 +1,13 @@
 use parser::ast;
 
-use super::{define_lazy_span_node, LazySpanAtom};
+use super::{define_lazy_span_node, params::LazyGenericArgListSpan, LazySpanAtom};
 
 define_lazy_span_node!(
     LazyPathSpan,
     ast::Path,
     @idx {
         (segment, LazyPathSegmentSpan),
+        (generic_args, LazyGenericArgListSpan),
     }
 );
 
