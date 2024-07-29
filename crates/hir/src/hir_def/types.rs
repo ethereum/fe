@@ -23,7 +23,7 @@ impl<'db> TypeId<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TypeKind<'db> {
     Ptr(Partial<TypeId<'db>>),
-    Path(Partial<PathId<'db>>, GenericArgListId<'db>),
+    Path(Partial<PathId<'db>>),
     SelfType(GenericArgListId<'db>),
     Tuple(TupleTypeId<'db>),
     /// The first `TypeId` is the element type, the second `Body` is the length.

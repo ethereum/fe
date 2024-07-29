@@ -16,9 +16,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::{env::LocalBinding, TyChecker};
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag, is_scope_visible_from, resolve_path_early, resolve_query,
-        resolve_segments_early, EarlyNameQueryId, EarlyResolvedPath, NameDomain, NameRes,
-        NameResBucket, NameResKind, QueryDirective,
+        diagnostics::NameResDiag, is_scope_visible_from, resolve_path_early,
+        resolve_path_tail_in_scope, resolve_query, EarlyNameQueryId, EarlyResolvedPath, NameDomain,
+        NameRes, NameResBucket, NameResKind, QueryDirective,
     },
     ty::{
         adt_def::{lower_adt, AdtDef, AdtField, AdtRef, AdtRefId},
@@ -137,10 +137,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
     fn resolve_path(&mut self) -> ResolvedPathInBody<'db> {
         let hir_db = self.tc.db.as_hir_db();
 
-        if self.path.is_ident(hir_db) {
-            let Some(ident) = self.path.last_segment(hir_db).to_opt() else {
-                return ResolvedPathInBody::Invalid;
-            };
+        if let Some(ident) = self.path.as_ident(hir_db) {
             self.resolve_ident(ident)
         } else {
             resolve_path_early(self.tc.db, self.path, self.tc.env.scope()).map_or_else(
@@ -150,6 +147,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
+    // xxx only used for single segment path
     fn resolve_ident(&mut self, ident: IdentId<'db>) -> ResolvedPathInBody<'db> {
         let hir_db = self.tc.db.as_hir_db();
 
@@ -174,7 +172,8 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                     ResolvedPathInBody::Variant(..) => resolved,
                     ResolvedPathInBody::Ty(ref ty) if ty.is_record(self.tc.db) => resolved,
                     _ => {
-                        if let Some(ident) = self.path.last_segment(hir_db).to_opt() {
+                        if let Some(ident) = self.path.ident(hir_db).to_opt() {
+                            // xxx generic args?
                             ResolvedPathInBody::NewBinding(ident)
                         } else {
                             resolved
@@ -185,6 +184,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
+    // xxx only used for single-segment path in `ResolutionMode::ExprValue`
     fn resolve_ident_expr(&mut self, ident: IdentId<'db>) -> ResolvedPathInBody<'db> {
         let mut current_idx = self.tc.env.current_block_idx();
         loop {
@@ -231,17 +231,14 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             EarlyResolvedPath::Full(bucket) => self.resolve_bucket(bucket),
 
             // Try to resolve the partially resolved path as an enum variant.
-            EarlyResolvedPath::Partial {
-                res,
-                unresolved_from,
-            } => self.resolve_partial(res, unresolved_from),
+            EarlyResolvedPath::Partial { path, res } => self.resolve_partial(res, path),
         }
     }
 
     fn resolve_partial(
         &mut self,
         res: NameRes<'db>,
-        unresolved_from: usize,
+        resolved: PathId<'db>,
     ) -> ResolvedPathInBody<'db> {
         let db = self.tc.db;
         let hir_db = db.as_hir_db();
@@ -257,36 +254,35 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             }
             ResolvedPathInBody::Const(ty) => ty,
             ResolvedPathInBody::Trait(trait_) => {
-                return self.resolve_trait_partial(trait_, unresolved_from);
+                // xxx return self.resolve_trait_partial(trait_, unresolved_from);
+                todo!()
             }
 
             ResolvedPathInBody::Variant(_)
             | ResolvedPathInBody::Binding(_, _)
             | ResolvedPathInBody::NewBinding(..) => return ResolvedPathInBody::Invalid,
 
-            resolved @ (ResolvedPathInBody::Diag(_) | ResolvedPathInBody::Invalid) => {
-                return resolved
-            }
+            res @ (ResolvedPathInBody::Diag(_) | ResolvedPathInBody::Invalid) => return res,
         };
 
         // Check the possibility of resolving the partial path as an enum variant.
         if_chain! {
-            if unresolved_from + 1 == self.path.len(hir_db);
+            if self.path.parent(hir_db) == Some(resolved);
             if let Some(adt_ref) = receiver_ty.adt_ref(db);
             if let AdtRef::Enum(enum_) = adt_ref.data(db);
-            let segments = &self.path.segments(hir_db)[unresolved_from..];
             let scope = enum_.scope();
-            if let Some(early) = resolve_segments_early(self.tc.db, segments, scope);
+            if let Some(early) = resolve_path_tail_in_scope(self.tc.db, self.path, scope);
             if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_path_late(early);
             then {
                 return resolved;
             }
         }
 
-        if unresolved_from == self.path.len(hir_db) - 1 {
-            let Some(name) = self.path.last_segment(hir_db).to_opt() else {
+        if self.path.parent(hir_db) == Some(resolved) {
+            let Some(name) = self.path.ident(hir_db).to_opt() else {
                 return ResolvedPathInBody::Invalid;
             };
+            // xxx generic args
             if let Some(resolved) = self.select_method_candidate(receiver_ty, name) {
                 return resolved;
             }
@@ -310,10 +306,11 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             return ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()));
         }
 
-        let Some(name) = self.path.last_segment(hir_db).to_opt() else {
+        let Some(name) = self.path.ident(hir_db).to_opt() else {
             return ResolvedPathInBody::Invalid;
         };
 
+        // xxx generic args
         let Some(trait_method) = trait_.methods(self.tc.db).get(&name) else {
             let span = self.span.segment(unresolved_from).into();
             let diag = BodyDiag::method_not_found(self.tc.db, span, name, Either::Right(trait_));
@@ -434,23 +431,24 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             NameResKind::Scope(ScopeId::Variant(parent, idx)) => {
                 let enum_: Enum = parent.try_into().unwrap();
                 let variant_def = &enum_.variants(hir_db).data(hir_db)[idx];
-                if_chain! {
-                    if self.mode == ResolutionMode::ExprValue;
-                    if matches!(variant_def.kind, HirVariantKind::Tuple(_));
-                    then {
-                        let adt_ref = AdtRefId::new(db, enum_.into());
-                        let receiver_ty = self.tc.table.instantiate_to_term(TyId::adt(db, lower_adt(db, adt_ref)));
-                        let name = variant_def.name.to_opt().unwrap();
-                        self.select_method_candidate(receiver_ty, name).unwrap()
-                    } else {
-                        ResolvedPathInBody::Variant(ResolvedVariant::new(
-                            db,
-                            &mut self.tc.table,
-                            enum_,
-                            idx,
-                            self.path,
-                        ))
-                    }
+                if self.mode == ResolutionMode::ExprValue
+                    && matches!(variant_def.kind, HirVariantKind::Tuple(_))
+                {
+                    let adt_ref = AdtRefId::new(db, enum_.into());
+                    let receiver_ty = self
+                        .tc
+                        .table
+                        .instantiate_to_term(TyId::adt(db, lower_adt(db, adt_ref)));
+                    let name = variant_def.name.to_opt().unwrap();
+                    self.select_method_candidate(receiver_ty, name).unwrap()
+                } else {
+                    ResolvedPathInBody::Variant(ResolvedVariant::new(
+                        db,
+                        &mut self.tc.table,
+                        enum_,
+                        idx,
+                        self.path,
+                    ))
                 }
             }
 

@@ -13,7 +13,7 @@ pub enum Expr<'db> {
     Bin(ExprId, ExprId, Partial<BinOp>),
     Un(ExprId, Partial<UnOp>),
     /// The first `ExprId` is the callee, the second is the arguments.
-    Call(ExprId, GenericArgListId<'db>, Vec<CallArg<'db>>),
+    Call(ExprId, Vec<CallArg<'db>>),
     /// The first `ExprId` is the method receiver, the second is the method
     /// name, the third is the arguments.
     MethodCall(
@@ -110,7 +110,7 @@ pub enum ArithBinOp {
     BitAnd,
     /// `|`
     BitOr,
-    /// `^`  
+    /// `^`
     BitXor,
 }
 
@@ -170,11 +170,7 @@ impl<'db> CallArg<'db> {
             return None;
         };
 
-        if path.is_ident(db) {
-            path.last_segment(db).to_opt()
-        } else {
-            None
-        }
+        path.as_ident(db)
     }
 }
 
@@ -198,10 +194,6 @@ impl<'db> Field<'db> {
             return None;
         };
 
-        if path.is_ident(db) {
-            path.last_segment(db).to_opt()
-        } else {
-            None
-        }
+        path.as_ident(db)
     }
 }

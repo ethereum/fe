@@ -1,7 +1,7 @@
 use async_lsp::ResponseError;
 use fxhash::FxHashMap;
 use hir::{
-    hir_def::{scope_graph::ScopeId, IdentId, ItemKind, Partial, PathId, TopLevelMod},
+    hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod},
     span::DynLazySpan,
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
     LowerHirDb, SpannedHirDb,
@@ -25,7 +25,7 @@ struct GotoEnclosingPathSegment<'db> {
 }
 
 impl<'db> GotoEnclosingPathSegment<'db> {
-    fn segments(self, db: &'db dyn LanguageServerDb) -> &'db [Partial<IdentId<'db>>] {
+    fn segments(self, db: &'db dyn LanguageServerDb) -> &'db [PathSegmentId<'db>] {
         &self.path.segments(db.as_hir_db())[0..self.idx + 1]
     }
     fn is_intermediate(self, db: &dyn LanguageServerDb) -> bool {
@@ -161,10 +161,9 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
                     .collect::<Vec<_>>()
             }
         }
-        EarlyResolvedPath::Partial {
-            res,
-            unresolved_from: _,
-        } => res.scope().iter().cloned().collect::<Vec<_>>(),
+        EarlyResolvedPath::Partial { path: _, res } => {
+            res.scope().iter().cloned().collect::<Vec<_>>()
+        }
     };
 
     Some(scopes)

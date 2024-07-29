@@ -19,24 +19,24 @@ Root@0..72
         Eq@15..16 "="
         WhiteSpace@16..17 " "
         PathType@17..29
-          Path@17..23
-            PathSegment@17..23
+          Path@17..29
+            PathSegment@17..29
               Ident@17..23 "Result"
-          GenericArgList@23..29
-            Lt@23..24 "<"
-            TypeGenericArg@24..25
-              PathType@24..25
-                Path@24..25
-                  PathSegment@24..25
-                    Ident@24..25 "T"
-            Comma@25..26 ","
-            WhiteSpace@26..27 " "
-            TypeGenericArg@27..28
-              PathType@27..28
-                Path@27..28
-                  PathSegment@27..28
-                    Ident@27..28 "E"
-            Gt@28..29 ">"
+              GenericArgList@23..29
+                Lt@23..24 "<"
+                TypeGenericArg@24..25
+                  PathType@24..25
+                    Path@24..25
+                      PathSegment@24..25
+                        Ident@24..25 "T"
+                Comma@25..26 ","
+                WhiteSpace@26..27 " "
+                TypeGenericArg@27..28
+                  PathType@27..28
+                    Path@27..28
+                      PathSegment@27..28
+                        Ident@27..28 "E"
+                Gt@28..29 ">"
     Newline@29..31 "\n\n"
     Item@31..70
       TypeAlias@31..70
@@ -68,23 +68,23 @@ Root@0..72
         Eq@56..57 "="
         WhiteSpace@57..58 " "
         PathType@58..70
-          Path@58..64
-            PathSegment@58..64
+          Path@58..70
+            PathSegment@58..70
               Ident@58..64 "Result"
-          GenericArgList@64..70
-            Lt@64..65 "<"
-            TypeGenericArg@65..66
-              PathType@65..66
-                Path@65..66
-                  PathSegment@65..66
-                    Ident@65..66 "T"
-            Comma@66..67 ","
-            WhiteSpace@67..68 " "
-            TypeGenericArg@68..69
-              PathType@68..69
-                Path@68..69
-                  PathSegment@68..69
-                    Ident@68..69 "U"
-            Gt@69..70 ">"
+              GenericArgList@64..70
+                Lt@64..65 "<"
+                TypeGenericArg@65..66
+                  PathType@65..66
+                    Path@65..66
+                      PathSegment@65..66
+                        Ident@65..66 "T"
+                Comma@66..67 ","
+                WhiteSpace@67..68 " "
+                TypeGenericArg@68..69
+                  PathType@68..69
+                    Path@68..69
+                      PathSegment@68..69
+                        Ident@68..69 "U"
+                Gt@69..70 ">"
   Newline@70..72 "\n\n"
 

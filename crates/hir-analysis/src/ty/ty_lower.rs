@@ -13,7 +13,10 @@ use super::{
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
 use crate::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    name_resolution::{
+        resolve_path2, resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind,
+        ResolveToBucket,
+    },
     ty::binder::Binder,
     HirAnalysisDb,
 };
@@ -154,7 +157,7 @@ impl<'db> TyBuilder<'db> {
         match ty.data(self.db.as_hir_db()) {
             HirTyKind::Ptr(pointee) => self.lower_ptr(*pointee),
 
-            HirTyKind::Path(path, args) => self.lower_path(*path, *args, false),
+            HirTyKind::Path(path) => self.lower_path(*path, false),
 
             HirTyKind::SelfType(args) => self.lower_self_ty(*args),
 
@@ -176,18 +179,22 @@ impl<'db> TyBuilder<'db> {
     pub(super) fn lower_path(
         &mut self,
         path: Partial<PathId<'db>>,
-        args: GenericArgListId<'db>,
         is_const_param_ty: bool,
     ) -> TyId<'db> {
+        let path = path.to_opt();
         let path_ty = path
-            .to_opt()
             .map(|path| match self.resolve_path(path) {
                 Either::Left(res) => self.lower_resolved_path(res, is_const_param_ty),
                 Either::Right(ty) => Either::Left(ty),
             })
             .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
 
-        let arg_tys = lower_generic_arg_list(self.db, args, self.scope);
+        let arg_tys = path
+            .map(|path| {
+                lower_generic_arg_list(self.db, path.generic_args(self.db.as_hir_db()), self.scope)
+            })
+            .unwrap_or_default();
+
         match path_ty {
             Either::Left(ty) => arg_tys
                 .into_iter()
@@ -203,7 +210,6 @@ impl<'db> TyBuilder<'db> {
                         },
                     );
                 }
-
                 alias.alias_to.instantiate(self.db, &arg_tys)
             }
         }
@@ -211,13 +217,18 @@ impl<'db> TyBuilder<'db> {
 
     pub(super) fn lower_const_ty_ty(&mut self, ty: HirTyId<'db>) -> TyId<'db> {
         let hir_db = self.db.as_hir_db();
-        let HirTyKind::Path(path, args) = ty.data(hir_db) else {
+        let HirTyKind::Path(path) = ty.data(hir_db) else {
             return TyId::invalid(self.db, InvalidCause::InvalidConstParamTy);
         };
-        if !args.is_empty(hir_db) {
+
+        if !path
+            .to_opt()
+            .map(|p| p.generic_args(hir_db).is_empty(hir_db))
+            .unwrap_or(true)
+        {
             return TyId::invalid(self.db, InvalidCause::InvalidConstParamTy);
         }
-        let ty = self.lower_path(*path, *args, true);
+        let ty = self.lower_path(*path, true);
 
         if ty.has_invalid(self.db) || ty.is_integral(self.db) || ty.is_bool(self.db) {
             ty
@@ -367,18 +378,24 @@ impl<'db> TyBuilder<'db> {
     /// If the path is resolved to a type, return the resolution. Otherwise,
     /// returns the `TyId::Invalid` with proper `InvalidCause`.
     fn resolve_path(&mut self, path: PathId<'db>) -> Either<NameResKind<'db>, TyId<'db>> {
-        match resolve_path_early(self.db, path, self.scope) {
-            Some(EarlyResolvedPath::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
+        match resolve_path2(self.db, path, self.scope, &mut ResolveToBucket {}) {
+            Ok((bucket, parent_res)) => match bucket.pick(NameDomain::TYPE) {
                 Ok(res) => Either::Left(res.kind),
 
-                // This error is already handled by the name resolution.
-                Err(_) => Either::Right(TyId::invalid(self.db, InvalidCause::Other)),
+                Err(_) => {
+                    let cause = if parent_res
+                        .map(|res| res.is_type() || res.is_trait())
+                        .unwrap_or(false)
+                    {
+                        InvalidCause::AssocTy
+                    } else {
+                        // This error is already handled by the name resolution.
+                        InvalidCause::Other
+                    };
+                    Either::Right(TyId::invalid(self.db, cause))
+                }
             },
-
-            Some(EarlyResolvedPath::Partial { .. }) => {
-                Either::Right(TyId::invalid(self.db, InvalidCause::AssocTy))
-            }
-            None => Either::Right(TyId::invalid(self.db, InvalidCause::Other)),
+            Err(_) => todo!(),
         }
     }
 
@@ -588,9 +605,11 @@ impl<'db> GenericParamCollector<'db> {
             return ParamLoc::NonParam;
         };
 
+        let hir_db = self.db.as_hir_db();
+
         let path = match ty.data(self.db.as_hir_db()) {
-            HirTyKind::Path(Partial::Present(path), args) => {
-                if args.is_empty(self.db.as_hir_db()) {
+            HirTyKind::Path(Partial::Present(path)) => {
+                if path.generic_args(hir_db).is_empty(hir_db) {
                     *path
                 } else {
                     return ParamLoc::NonParam;
@@ -598,9 +617,7 @@ impl<'db> GenericParamCollector<'db> {
             }
 
             HirTyKind::SelfType(args) => {
-                return if matches!(self.owner.into(), ItemKind::Trait(_))
-                    && args.is_empty(self.db.as_hir_db())
-                {
+                return if matches!(self.owner.into(), ItemKind::Trait(_)) && args.is_empty(hir_db) {
                     ParamLoc::TraitSelf
                 } else {
                     ParamLoc::NonParam

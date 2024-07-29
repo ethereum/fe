@@ -26,3 +26,5 @@ common = { path = "../common2", package = "fe-common2" }
 [dev-dependencies]
 codespan-reporting = "0.11"
 dir-test = "0.3"
+# xxx move cs diagnostics utils
+driver = { path = "../driver2", package = "fe-driver2" }

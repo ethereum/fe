@@ -1004,16 +1004,11 @@ pub fn walk_expr<'db, V>(
             visit_node_in_body!(visitor, ctxt, expr_id, expr);
         }
 
-        Expr::Call(callee_id, generic_args, call_args) => {
+        Expr::Call(callee_id, call_args) => {
             visit_node_in_body!(visitor, ctxt, callee_id, expr);
             ctxt.with_new_ctxt(
                 |span| span.into_call_expr(),
                 |ctxt| {
-                    ctxt.with_new_ctxt(
-                        |span| span.generic_args_moved(),
-                        |ctxt| visitor.visit_generic_arg_list(ctxt, *generic_args),
-                    );
-
                     ctxt.with_new_ctxt(
                         |span| span.args_moved(),
                         |ctxt| {
@@ -1704,16 +1699,38 @@ pub fn walk_path<'db, V>(
 ) where
     V: Visitor<'db> + ?Sized,
 {
-    for (idx, segment) in path.segments(ctxt.db).iter().enumerate() {
-        if let Some(ident) = segment.to_opt() {
-            ctxt.with_new_ctxt(
-                |span| span.segment_moved(idx).into_atom(),
-                |ctxt| {
-                    visitor.visit_ident(ctxt, ident);
-                },
-            )
-        }
+    walk_path_impl(visitor, ctxt, path);
+}
+
+fn walk_path_impl<'db, V>(
+    visitor: &mut V,
+    ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>,
+    path: PathId<'db>,
+) -> usize
+where
+    V: Visitor<'db> + ?Sized,
+{
+    let idx = if let Some(parent) = path.parent(ctxt.db()) {
+        1 + walk_path_impl(visitor, ctxt, parent)
+    } else {
+        0
+    };
+    if let Some(ident) = path.ident(ctxt.db).to_opt() {
+        ctxt.with_new_ctxt(
+            |span| span.segment_moved(idx).into_atom(),
+            |ctxt| {
+                visitor.visit_ident(ctxt, ident);
+            },
+        );
     }
+    let generic_args = path.generic_args(ctxt.db);
+    ctxt.with_new_ctxt(
+        |span| span.segment(idx).generic_args_moved(),
+        |ctxt| {
+            visitor.visit_generic_arg_list(ctxt, generic_args);
+        },
+    );
+    idx
 }
 
 pub fn walk_use_path<'db, V>(
@@ -1754,7 +1771,7 @@ pub fn walk_ty<'db, V>(
             }
         }
 
-        TypeKind::Path(path, generic_args) => ctxt.with_new_ctxt(
+        TypeKind::Path(path) => ctxt.with_new_ctxt(
             |span| span.into_path_type(),
             |ctxt| {
                 if let Some(path) = path.to_opt() {
@@ -1763,12 +1780,6 @@ pub fn walk_ty<'db, V>(
                         |ctxt| visitor.visit_path(ctxt, path),
                     );
                 }
-                ctxt.with_new_ctxt(
-                    |span| span.generic_args_moved(),
-                    |ctxt| {
-                        visitor.visit_generic_arg_list(ctxt, *generic_args);
-                    },
-                );
             },
         ),
 
@@ -1881,15 +1892,6 @@ pub fn walk_trait_ref<'db, V>(
             |span| span.path_moved(),
             |ctxt| {
                 visitor.visit_path(ctxt, path);
-            },
-        )
-    }
-
-    if let Some(args) = trait_ref.generic_args(ctxt.db()) {
-        ctxt.with_new_ctxt(
-            |span| span.generic_args_moved(),
-            |ctxt| {
-                visitor.visit_generic_arg_list(ctxt, args);
             },
         )
     }

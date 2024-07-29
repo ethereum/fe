@@ -11,8 +11,8 @@ use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
     hir_def::{
-        scope_graph::ScopeId, Expr, ExprId, GenericArgListId, IdentId, IngotId, ItemKind, Partial,
-        Pat, PatId, PathId, TopLevelMod, TraitRefId, TypeId,
+        scope_graph::ScopeId, Expr, ExprId, GenericArgListId, IngotId, ItemKind, Pat, PatId,
+        PathId, TopLevelMod, TraitRefId, TypeId,
     },
     visitor::prelude::*,
 };
@@ -21,14 +21,13 @@ pub use name_resolver::{
     EarlyNameQueryId, NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind,
     NameResolutionError, QueryDirective,
 };
-pub use path_resolver::EarlyResolvedPath;
+use path_resolver::{resolve_path, Resolver};
+pub use path_resolver::{resolve_path_tail_in_scope, EarlyResolvedPath, ResolveToBucket};
 use rustc_hash::FxHashSet;
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
-use self::{
-    diagnostics::NameResDiag, import_resolver::DefaultImporter, path_resolver::EarlyPathResolver,
-};
+use self::{diagnostics::NameResDiag, import_resolver::DefaultImporter};
 use crate::HirAnalysisDb;
 
 #[salsa::tracked(return_ref)]
@@ -49,28 +48,16 @@ pub fn resolve_path_early<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
 ) -> Option<EarlyResolvedPath<'db>> {
-    resolve_segments_early(db, path.segments(db.as_hir_db()), scope)
+    resolve_path(db, path, scope).ok().map(|r| r.resolved)
 }
 
-/// Resolves the given path segments in the given scope.
-/// It's not necessary to report any error even if the `EarlyResolvedPath`
-/// contains some errors; it's always reported from [`PathAnalysisPass`].
-pub fn resolve_segments_early<'db>(
+pub fn resolve_path2<'db, T: Resolver<'db>>(
     db: &'db dyn HirAnalysisDb,
-    segments: &[Partial<IdentId<'db>>],
+    path: PathId<'db>,
     scope: ScopeId<'db>,
-) -> Option<EarlyResolvedPath<'db>> {
-    // We use the cache store that is returned from `resolve_path_early` to get
-    // cached results immediately.
-    let mut resolver = EarlyPathResolver::new(db);
-    match resolver.resolve_segments(segments, scope) {
-        Ok(res) => Some(res.resolved),
-        Err(_) => {
-            // It's ok to ignore the errors here and returns an empty bucket because the
-            // precise errors are reported from `PathAnalysisPass`.
-            None
-        }
-    }
+    resolver: &mut T,
+) -> T::Output {
+    resolver.resolve_path(db, path, scope)
 }
 
 /// Performs import resolution analysis. This pass only checks correctness of
@@ -197,7 +184,7 @@ struct EarlyPathVisitor<'db, 'a> {
     /// diagnostics.
     already_conflicted: FxHashSet<ScopeId<'db>>,
 }
-
+// xxx generic args?
 impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     fn new(db: &'db dyn HirAnalysisDb, importer: &'a DefaultImporter) -> Self {
         let resolver = name_resolver::NameResolver::new(db, importer);
@@ -219,8 +206,9 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         bucket: &'db NameResBucket<'db>,
     ) {
         let path_kind = self.path_ctxt.last().unwrap();
-        let last_seg_idx = path.len(self.db.as_hir_db()) - 1;
-        let last_seg_ident = *path.segments(self.db.as_hir_db())[last_seg_idx].unwrap();
+        let hir_db = self.db.as_hir_db();
+        let last_seg_idx = path.len(hir_db) - 1;
+        let last_seg_ident = path.ident(hir_db).to_opt().unwrap();
         let span = span.segment(last_seg_idx).into();
 
         if bucket.is_empty() {
@@ -464,18 +452,18 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
 
-        let mut resolver = EarlyPathResolver::new(self.db);
-        let resolved_path = match resolver.resolve_path(path, scope) {
+        let resolved_path = match resolve_path(self.db, path, scope) {
             Ok(bucket) => bucket,
 
             Err(err) => {
+                let hir_db = self.db.as_hir_db();
                 let failed_at = err.failed_at;
-                let span = ctxt.span().unwrap().segment(failed_at);
-                let ident = path.segments(self.db.as_hir_db())[failed_at];
+                let span = ctxt.span().unwrap().segment(failed_at.len(hir_db) - 1);
+                let ident = failed_at.ident(hir_db);
 
                 let diag = match err.kind {
                     NameResolutionError::NotFound => {
-                        if path.len(self.db.as_hir_db()) == 1
+                        if path.len(hir_db) == 1
                             && matches!(
                                 self.path_ctxt.last().unwrap(),
                                 ExpectedPathKind::Expr | ExpectedPathKind::Pat
@@ -519,9 +507,11 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
         };
 
         if let Some((idx, res)) = resolved_path.find_invisible_segment(self.db) {
+            let hir_db = self.db.as_hir_db();
             let span = ctxt.span().unwrap().segment(idx);
-            let ident = path.segments(self.db.as_hir_db())[idx].unwrap();
-            let diag = NameResDiag::invisible(span.into(), *ident, res.derived_from(self.db));
+            let ident = path.segment(hir_db, idx).unwrap().ident(hir_db);
+            let diag =
+                NameResDiag::invisible(span.into(), *ident.unwrap(), res.derived_from(self.db));
             self.diags.push(diag);
             return;
         }

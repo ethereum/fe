@@ -25,7 +25,7 @@ note:
   ┌─ test_file.fe:9:10
   │
 9 │ where T: TraitWithGenerics<U>,
-  │          ^^^^^^^^^^^^^^^^^ test_file::TraitWithGenerics
+  │          ^^^^^^^^^^^^^^^^^^^^ test_file::TraitWithGenerics
 
 note: 
   ┌─ test_file.fe:9:28
@@ -56,5 +56,3 @@ note:
    │
 13 │     y: U,
    │        ^ test_file::MyS::U
-
-

@@ -1,6 +1,14 @@
+use std::convert::identity;
+
 use crate::{ParseError, SyntaxKind};
 
-use super::{define_scope, token_stream::TokenStream, Parser};
+use super::{
+    define_scope,
+    expr::{is_lshift, is_lt_eq},
+    param::GenericArgListScope,
+    token_stream::TokenStream,
+    Parser,
+};
 
 define_scope! {
     #[doc(hidden)]
@@ -29,6 +37,21 @@ impl super::Parse for PathSegmentScope {
         match parser.current_kind() {
             Some(kind) if is_path_segment(kind) => {
                 parser.bump();
+
+                if parser.current_kind() == Some(SyntaxKind::Lt) {
+                    if !(is_lt_eq(parser) || is_lshift(parser))
+                        && parser.dry_run(|parser| {
+                            // xxx parses_without_error? something else??
+                            parser
+                                .parse_ok(GenericArgListScope::default())
+                                .is_ok_and(identity)
+                        })
+                    {
+                        parser
+                            .parse(GenericArgListScope::default())
+                            .expect("dry_run suggests this will succeed");
+                    }
+                }
                 Ok(())
             }
             _ => Err(ParseError::expected(

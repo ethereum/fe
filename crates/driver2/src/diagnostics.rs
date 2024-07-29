@@ -7,19 +7,22 @@ use common::{
     InputDb, InputFile,
 };
 use cs::{diagnostic as cs_diag, files as cs_files};
-use hir::diagnostics::DiagnosticVoucher;
+use hir::{diagnostics::DiagnosticVoucher, SpannedHirDb};
 
-use crate::{DriverDataBase, DriverDb};
+use crate::DriverDb;
 
 pub trait ToCsDiag {
-    fn to_cs(&self, db: &dyn DriverDb) -> cs_diag::Diagnostic<InputFile>;
+    fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile>;
 }
+
+pub trait SpannedInputDb: SpannedHirDb + InputDb {}
+impl<T> SpannedInputDb for T where T: SpannedHirDb + InputDb {}
 
 impl<T> ToCsDiag for T
 where
     T: for<'db> DiagnosticVoucher<'db>,
 {
-    fn to_cs(&self, db: &dyn DriverDb) -> cs_diag::Diagnostic<InputFile> {
+    fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile> {
         let complete = self.to_complete(db.as_spanned_hir_db());
 
         let severity = convert_severity(complete.severity);
@@ -67,17 +70,19 @@ pub fn file_line_starts(db: &dyn DriverDb, file: InputFile) -> Vec<usize> {
     cs::files::line_starts(file.text(db.as_input_db())).collect()
 }
 
-impl<'db> cs_files::Files<'db> for DriverDataBase {
+pub struct CsDbWrapper<'a>(pub &'a dyn DriverDb);
+
+impl<'db> cs_files::Files<'db> for CsDbWrapper<'db> {
     type FileId = InputFile;
     type Name = &'db Utf8Path;
     type Source = &'db str;
 
     fn name(&'db self, file_id: Self::FileId) -> Result<Self::Name, cs_files::Error> {
-        Ok(file_id.path(self.as_input_db()).as_path())
+        Ok(file_id.path(self.0.as_input_db()).as_path())
     }
 
     fn source(&'db self, file_id: Self::FileId) -> Result<Self::Source, cs_files::Error> {
-        Ok(file_id.text(self.as_input_db()))
+        Ok(file_id.text(self.0.as_input_db()))
     }
 
     fn line_index(
@@ -85,7 +90,7 @@ impl<'db> cs_files::Files<'db> for DriverDataBase {
         file_id: Self::FileId,
         byte_index: usize,
     ) -> Result<usize, cs_files::Error> {
-        let starts = file_line_starts(self, file_id);
+        let starts = file_line_starts(self.0, file_id);
         Ok(starts
             .binary_search(&byte_index)
             .unwrap_or_else(|next_line| next_line - 1))
@@ -96,7 +101,7 @@ impl<'db> cs_files::Files<'db> for DriverDataBase {
         file_id: Self::FileId,
         line_index: usize,
     ) -> Result<Range<usize>, cs_files::Error> {
-        let line_starts = file_line_starts(self, file_id);
+        let line_starts = file_line_starts(self.0, file_id);
 
         let start = *line_starts
             .get(line_index)
@@ -106,7 +111,7 @@ impl<'db> cs_files::Files<'db> for DriverDataBase {
             })?;
 
         let end = if line_index == line_starts.len() - 1 {
-            file_id.text(self.as_input_db()).len()
+            file_id.text(self.0.as_input_db()).len()
         } else {
             *line_starts
                 .get(line_index + 1)
