@@ -14,6 +14,7 @@ mod util;
 use async_lsp::panic::CatchUnwindLayer;
 use async_lsp::server::LifecycleLayer;
 use futures::stream::StreamExt;
+use lsp_actor::LspDispatcher;
 // use lsp_actor_service::LspActorService;
 use serde_json::Value;
 use std::{ops::ControlFlow, sync::Arc, time::Duration};
@@ -57,15 +58,14 @@ async fn main() {
         // actor.register_request_handler(handlers::initialize);
 
         let client_cloned = client.clone();
-        // let actor_ref = Actor::spawn_local(move || {
-        //     let backend = Backend::new(client_cloned);
-        //     let (mut actor, actor_ref) = Actor::new(backend);
-        //     // actor.register(Initialize)
-        //     // actor.register_request_handler(handlers::initialize);
+        let (actor_ref, dispatcher) = Actor::spawn_local(move || {
+            let backend = Backend::new(client_cloned);
+            let (mut actor, actor_ref) = Actor::new(backend);
+            let mut dispatcher = LspDispatcher::new();
 
-        //     (actor, actor_ref, dispatcher)
-        // });
-        // let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone());
+            (actor, actor_ref, dispatcher)
+        });
+        let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone(), dispatcher);
 
         let mut streaming_router = Router::new(());
         streaming_router.request::<Initialize, _>(|_, _| async {
@@ -79,7 +79,7 @@ async fn main() {
 
         let services: Vec<BoxLspService<serde_json::Value, ResponseError>> = vec![
             BoxLspService::new(streaming_router),
-            // BoxLspService::new(actor_service),
+            BoxLspService::new(actor_service),
         ];
 
         // let picker = FirstComeFirstServe::<BoxLspService<Value, ResponseError>>::default();

@@ -43,11 +43,11 @@ pub(crate) type BoxedAny = Box<dyn Any + Send>;
 type StateRef<S> = Rc<RefCell<S>>;
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
-pub struct MessageKey(Arc<str>);
+pub struct MessageKey(pub String);
 
 impl MessageKey {
     pub fn new(key: &str) -> Self {
-        MessageKey(Arc::from(key))
+        MessageKey(key.to_string())
     }
 }
 
@@ -143,7 +143,7 @@ where
     }
 }
 
-pub trait Dispatcher: Send + Sync + Clone + 'static {
+pub trait Dispatcher: Send + Sync + 'static {
     fn generate_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError>;
     fn wrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError>;
     fn unwrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError>;
@@ -281,8 +281,8 @@ impl ActorRef {
 }
 
 pub struct HandlerRegistration<'a, S: 'static, D: Dispatcher> {
-    actor: &'a mut Actor<S>,
-    dispatcher: &'a mut D,
+    pub actor: &'a mut Actor<S>,
+    pub dispatcher: &'a mut D,
 }
 
 impl<'a, S: 'static, D: Dispatcher> HandlerRegistration<'a, S, D> {
