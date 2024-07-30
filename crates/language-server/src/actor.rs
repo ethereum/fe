@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 use futures::channel::mpsc;
 use futures::future::LocalBoxFuture;
@@ -51,12 +51,6 @@ impl MessageKey {
     }
 }
 
-pub enum DispatcherEnvelope {
-    Notification(BoxedAny),
-    Request(BoxedAny),
-}
-
-#[derive(Debug)]
 pub enum Message {
     Notification(MessageKey, BoxedAny),
     Request(
@@ -64,32 +58,6 @@ pub enum Message {
         BoxedAny,
         futures::channel::oneshot::Sender<Result<BoxedAny, ActorError>>,
     ),
-}
-
-pub trait Dispatcher: Send + Sync + 'static {
-    fn create_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError>;
-    fn wrap(&self, message: BoxedAny) -> Result<DispatcherEnvelope, ActorError>;
-    fn unwrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError>;
-}
-
-pub struct IdentityDispatcher;
-
-impl Dispatcher for IdentityDispatcher {
-    fn create_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError> {
-        println!(
-            "Identity dispatcher is creating key for message: {:?}",
-            std::any::type_name_of_val(message)
-        );
-        Ok(MessageKey::new(std::any::type_name_of_val(message)))
-    }
-
-    fn wrap(&self, message: BoxedAny) -> Result<DispatcherEnvelope, ActorError> {
-        Ok(DispatcherEnvelope::Request(message))
-    }
-
-    fn unwrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError> {
-        Ok(message)
-    }
 }
 
 pub trait AsyncFunc<'a, S, C, R, E>: Fn(&'a mut S, C) -> Self::Fut + Send + Sync
@@ -163,6 +131,7 @@ where
     ) -> LocalBoxFuture<'a, Result<BoxedAny, ActorError>> {
         Box::pin(async move {
             let params = message.downcast::<C>().map_err(|_| {
+                println!("Downcast error in handle");
                 ActorError::CustomError(Box::new(std::io::Error::new(
                     std::io::ErrorKind::InvalidInput,
                     "Invalid message type",
@@ -174,122 +143,37 @@ where
     }
 }
 
-pub struct Actor<S: 'static, D: Dispatcher> {
+pub trait Dispatcher: Send + Sync + Clone + 'static {
+    fn generate_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError>;
+    fn wrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError>;
+    fn unwrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError>;
+    fn register_wrapper(
+        &mut self,
+        key: MessageKey,
+        wrapper: Box<dyn Fn(BoxedAny) -> BoxedAny + Send + Sync>,
+    );
+}
+
+pub struct Actor<S: 'static> {
     state: StateRef<S>,
-    receiver: mpsc::UnboundedReceiver<Message>,
     handlers: HashMap<MessageKey, Box<dyn MessageHandler<S>>>,
-    dispatcher: Arc<RwLock<D>>,
-    actor_ref: ActorRef<D>,
+    receiver: mpsc::UnboundedReceiver<Message>,
 }
 
-pub struct ActorRef<D: Dispatcher> {
-    sender: mpsc::UnboundedSender<Message>,
-    dispatcher: Arc<RwLock<D>>,
-}
-
-pub struct HandlerRegistration<'a, S: 'static, D: Dispatcher> {
-    actor: &'a mut Actor<S, D>,
-    key: MessageKey,
-}
-
-impl<'a, S: 'static, D: Dispatcher> HandlerRegistration<'a, S, D> {
-    pub fn handle<C, R, E, F>(self, handler: F)
-    where
-        C: 'static + Send,
-        R: 'static + Send,
-        E: std::error::Error + Send + Sync + 'static,
-        F: for<'b> AsyncFunc<'b, S, C, R, E> + 'static,
-    {
-        self.actor.register_handler(self.key, handler);
-    }
-}
-
-impl<S: 'static> Actor<S, IdentityDispatcher> {
-    pub fn new(state: S) -> (Self, ActorRef<IdentityDispatcher>) {
-        Actor::new_with_dispatcher(state, IdentityDispatcher)
-    }
-}
-
-impl<S: 'static, D: Dispatcher> Actor<S, D> {
-    pub fn new_with_dispatcher(state: S, dispatcher: D) -> (Self, ActorRef<D>) {
+impl<S: 'static> Actor<S> {
+    pub fn new(state: S) -> (Self, ActorRef) {
         let (sender, receiver) = mpsc::unbounded();
-        let dispatcher = Arc::new(RwLock::new(dispatcher));
-
-        let actor_ref = ActorRef {
-            sender: sender.clone(),
-            dispatcher: Arc::clone(&dispatcher),
-        };
-
-        let actor_ref_clone = actor_ref.clone();
         (
             Self {
                 state: Rc::new(RefCell::new(state)),
-                receiver,
                 handlers: HashMap::new(),
-                dispatcher,
-                actor_ref,
+                receiver,
             },
-            actor_ref_clone,
+            ActorRef { sender },
         )
     }
 
-    pub fn spawn_local<F>(init: F) -> ActorRef<D>
-    where
-        F: FnOnce() -> (Self, ActorRef<D>),
-        F: Send + 'static,
-    {
-        let runtime = Builder::new_current_thread().enable_all().build().unwrap();
-        let (tx, rx) = channel();
-
-        std::thread::spawn(move || {
-            let local = tokio::task::LocalSet::new();
-            local.block_on(&runtime, async move {
-                println!("Spawning actor");
-                let (mut actor, actor_ref) = init();
-                tx.send(actor_ref.clone()).unwrap();
-                println!("Starting actor run loop");
-                actor.run().await;
-                println!("Actor run loop finished");
-            });
-        });
-        rx.recv().unwrap()
-    }
-
-    pub async fn run(&mut self) {
-        println!("Actor run method started");
-        while let Some(message) = self.receiver.next().await {
-            println!("Received message: {:?}", message);
-            match message {
-                Message::Notification(key, params) => {
-                    if let Some(handler) = self.handlers.get(&key) {
-                        // if handler.message_type_id() == params.type_id() {
-                        let mut state = self.state.borrow_mut();
-                        let _ = handler.handle(&mut *state, params).await;
-                    } else {
-                        println!("Error: No handler found for notification: {:?}", key);
-                    }
-                }
-                Message::Request(key, params, responder) => {
-                    if let Some(handler) = self.handlers.get(&key) {
-                        // if handler.message_type_id() == params.type_id() {
-                        let mut state = self.state.borrow_mut();
-                        let result = handler.handle(&mut *state, params).await;
-                        let _ = responder.send(result);
-                    } else {
-                        let _ = responder.send(Err(ActorError::HandlerNotFound));
-                        println!("Error: No handler found for request: {:?}", key);
-                    }
-                }
-            }
-        }
-        println!("Actor finished running");
-    }
-
-    pub fn register(&mut self, key: MessageKey) -> HandlerRegistration<S, D> {
-        HandlerRegistration { actor: self, key }
-    }
-
-    fn register_handler<C, R, E, F>(&mut self, key: MessageKey, handler: F)
+    pub fn register_handler<C, R, E, F>(&mut self, key: MessageKey, handler: F)
     where
         C: 'static + Send,
         R: 'static + Send,
@@ -299,68 +183,134 @@ impl<S: 'static, D: Dispatcher> Actor<S, D> {
         let handler = AsyncFuncHandler::new(handler);
         self.handlers.insert(key, Box::new(handler));
     }
+
+    pub fn spawn_local<F, D>(init: F) -> (ActorRef, D)
+    where
+        F: FnOnce() -> (Self, ActorRef, D),
+        F: Send + 'static,
+        D: Dispatcher,
+    {
+        let runtime = Builder::new_current_thread().enable_all().build().unwrap();
+        let (tx, rx) = channel();
+
+        std::thread::spawn(move || {
+            let local = tokio::task::LocalSet::new();
+            local.block_on(&runtime, async move {
+                println!("Spawning actor");
+                let (mut actor, actor_ref, dispatcher) = init();
+                tx.send((actor_ref.clone(), dispatcher)).unwrap();
+                println!("Starting actor run loop");
+                actor.run().await;
+                println!("Actor run loop finished");
+            });
+        });
+        rx.recv().unwrap()
+    }
+
+    pub async fn run(&mut self) {
+        println!("Actor run loop started");
+        while let Some(message) = self.receiver.next().await {
+            match message {
+                Message::Notification(key, payload) => {
+                    if let Some(handler) = self.handlers.get(&key) {
+                        let mut state = self.state.borrow_mut();
+                        if let Err(e) = handler.handle(&mut *state, payload).await {
+                            println!("Handler error: {:?}", e);
+                        }
+                    } else {
+                        println!("No handler found for key: {:?}", key);
+                    }
+                }
+                Message::Request(key, payload, response_tx) => {
+                    if let Some(handler) = self.handlers.get(&key) {
+                        let mut state = self.state.borrow_mut();
+                        let result = handler.handle(&mut *state, payload).await;
+                        let _ = response_tx.send(result);
+                    } else {
+                        println!("No handler found for key: {:?}", key);
+                        let _ = response_tx.send(Err(ActorError::HandlerNotFound));
+                    }
+                }
+            }
+        }
+        println!("Actor run loop finished");
+    }
 }
 
-impl<D: Dispatcher> ActorRef<D> {
-    pub async fn ask<M: Send + 'static, R: Send + 'static>(
+#[derive(Clone)]
+pub struct ActorRef {
+    sender: mpsc::UnboundedSender<Message>,
+}
+
+impl ActorRef {
+    pub async fn ask<M: Send + 'static, R: Send + 'static, D: Dispatcher>(
         &self,
+        dispatcher: &D,
         message: M,
     ) -> Result<R, ActorError> {
-        let dispatcher = self.dispatcher.read().unwrap();
-        let key = dispatcher.create_key(&message)?;
-        println!("ask: Dispatched with key: {:?}", key);
+        let key = dispatcher.generate_key(&message)?;
         let wrapped = dispatcher.wrap(Box::new(message))?;
 
-        match wrapped {
-            DispatcherEnvelope::Request(params) => {
-                let (sender, receiver) = futures::channel::oneshot::channel();
-                self.sender
-                    .unbounded_send(Message::Request(key, params, sender))
-                    .map_err(|_| ActorError::SendError)?;
+        let (response_tx, response_rx) = futures::channel::oneshot::channel();
 
-                let result = receiver.await.map_err(|_| ActorError::SendError)??;
-                let unwrapped = dispatcher.unwrap(result)?;
-                unwrapped.downcast().map(|boxed| *boxed).map_err(|_| {
-                    ActorError::CustomError(Box::new(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "Failed to downcast result",
-                    )))
-                })
-            }
-            DispatcherEnvelope::Notification(_) => Err(ActorError::DispatchError),
-        }
+        self.sender
+            .unbounded_send(Message::Request(key, wrapped, response_tx))
+            .map_err(|_| ActorError::SendError)?;
+
+        let result = response_rx.await.map_err(|_| ActorError::SendError)??;
+        let unwrapped = dispatcher.unwrap(result)?;
+        unwrapped.downcast().map(|boxed| *boxed).map_err(|_| {
+            ActorError::CustomError(Box::new(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to downcast result",
+            )))
+        })
     }
 
-    pub fn tell<M: Send + 'static>(&self, message: M) -> Result<(), ActorError> {
-        let dispatcher = self.dispatcher.read().unwrap();
-        let key = dispatcher.create_key(&message)?;
-        println!("tell: Dispatched with key: {:?}", key);
+    pub fn tell<M: Send + 'static, D: Dispatcher>(
+        &self,
+        dispatcher: &D,
+        message: M,
+    ) -> Result<(), ActorError> {
+        let key = dispatcher.generate_key(&message)?;
         let wrapped = dispatcher.wrap(Box::new(message))?;
-
-        match wrapped {
-            DispatcherEnvelope::Notification(params) | DispatcherEnvelope::Request(params) => self
-                .sender
-                .unbounded_send(Message::Notification(key, params))
-                .map_err(|_| ActorError::SendError),
-        }
+        self.sender
+            .unbounded_send(Message::Notification(key, wrapped))
+            .map_err(|_| ActorError::SendError)
     }
 }
 
-impl<D: Dispatcher> Clone for ActorRef<D> {
-    fn clone(&self) -> Self {
-        Self {
-            sender: self.sender.clone(),
-            dispatcher: self.dispatcher.clone(),
-        }
+pub struct HandlerRegistration<'a, S: 'static, D: Dispatcher> {
+    actor: &'a mut Actor<S>,
+    dispatcher: &'a mut D,
+}
+
+impl<'a, S: 'static, D: Dispatcher> HandlerRegistration<'a, S, D> {
+    pub fn register<C, R, E, F>(
+        &mut self,
+        key: MessageKey,
+        wrapper: impl Fn(C) -> BoxedAny + Send + Sync + 'static,
+        handler: F,
+    ) where
+        C: 'static + Send,
+        R: 'static + Send,
+        E: std::error::Error + Send + Sync + 'static,
+        F: for<'b> AsyncFunc<'b, S, C, R, E> + 'static,
+    {
+        self.dispatcher.register_wrapper(
+            key.clone(),
+            Box::new(move |msg| wrapper(*msg.downcast::<C>().expect("Type mismatch in wrapper"))),
+        );
+        self.actor.register_handler(key, handler);
     }
 }
 
+// Tests
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    // State and message definitions
     #[derive(Clone)]
     struct TestState {
         counter: i32,
@@ -372,12 +322,11 @@ mod tests {
     struct GetCounterMessage;
     struct GetMessagesMessage;
 
-    // Custom dispatcher
-    #[derive(Debug)]
+    #[derive(Clone)]
     struct TestDispatcher;
 
     impl Dispatcher for TestDispatcher {
-        fn create_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError> {
+        fn generate_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError> {
             if message.is::<IncrementMessage>() {
                 Ok(MessageKey::new("increment"))
             } else if message.is::<AppendMessage>() {
@@ -391,16 +340,25 @@ mod tests {
             }
         }
 
-        fn wrap(&self, message: BoxedAny) -> Result<DispatcherEnvelope, ActorError> {
-            Ok(DispatcherEnvelope::Request(message))
+        fn wrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError> {
+            println!("Wrapping message of type: {:?}", message.type_id());
+            Ok(message)
         }
 
         fn unwrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError> {
+            println!("Unwrapping message of type: {:?}", message.type_id());
             Ok(message)
+        }
+
+        fn register_wrapper(
+            &mut self,
+            _key: MessageKey,
+            _wrapper: Box<dyn Fn(BoxedAny) -> BoxedAny + Send + Sync>,
+        ) {
+            // In this simple implementation, we don't need to do anything
         }
     }
 
-    // Handler functions
     async fn increment_handler(
         state: &mut TestState,
         msg: IncrementMessage,
@@ -427,91 +385,79 @@ mod tests {
     ) -> Result<Vec<String>, ActorError> {
         Ok(state.messages.clone())
     }
-
-    #[test]
-    fn test_with_dispatcher() {
-        let dispatcher = TestDispatcher;
-        let (mut actor, actor_ref1) = Actor::new_with_dispatcher(
-            TestState {
-                counter: 0,
-                messages: Vec::new(),
-            },
-            dispatcher,
-        );
-
-        let actor_ref2 = actor_ref1.clone();
-
-        // Check if both actor_ref1 and actor_ref2 point to the same dispatcher
-        assert!(
-            Arc::ptr_eq(&actor_ref1.dispatcher, &actor_ref2.dispatcher),
-            "ActorRef clones do not point to the same dispatcher"
-        );
-
-        // Check if the actor and actor_refs point to the same dispatcher
-        assert!(
-            Arc::ptr_eq(&actor.dispatcher, &actor_ref1.dispatcher),
-            "Actor and ActorRef do not point to the same dispatcher"
-        );
-
-        // Verify that the dispatcher has been updated
-        // let dispatcher = actor.dispatcher.read().unwrap();
-        // assert!(
-        //     dispatcher.downcast_ref::<TestDispatcher>().is_some(),
-        //     "Dispatcher was not updated to TestDispatcher"
-        // );
-    }
-
     #[tokio::test]
     async fn test_actor_with_custom_dispatcher() {
-        let actor_ref = Actor::spawn_local(|| {
-            let initial_state = TestState {
+        let (actor_ref, dispatcher) = Actor::spawn_local(|| {
+            let mut dispatcher = TestDispatcher;
+            let (mut actor, actor_ref) = Actor::new(TestState {
                 counter: 0,
                 messages: Vec::new(),
+            });
+
+            let mut registration = HandlerRegistration {
+                actor: &mut actor,
+                dispatcher: &mut dispatcher,
             };
-            let (mut actor, actor_ref) = Actor::new_with_dispatcher(initial_state, TestDispatcher);
 
-            actor
-                .register(MessageKey::new("increment"))
-                .handle(increment_handler);
-            actor
-                .register(MessageKey::new("append"))
-                .handle(append_handler);
-            actor
-                .register(MessageKey::new("get_counter"))
-                .handle(get_counter_handler);
-            actor
-                .register(MessageKey::new("get_messages"))
-                .handle(get_messages_handler);
+            registration.register(
+                MessageKey::new("increment"),
+                |msg: IncrementMessage| Box::new(msg) as BoxedAny,
+                increment_handler,
+            );
 
-            (actor, actor_ref)
+            registration.register(
+                MessageKey::new("append"),
+                |msg: AppendMessage| Box::new(msg) as BoxedAny,
+                append_handler,
+            );
+
+            registration.register(
+                MessageKey::new("get_counter"),
+                |msg: GetCounterMessage| Box::new(msg) as BoxedAny,
+                get_counter_handler,
+            );
+
+            registration.register(
+                MessageKey::new("get_messages"),
+                |msg: GetMessagesMessage| Box::new(msg) as BoxedAny,
+                get_messages_handler,
+            );
+
+            (actor, actor_ref, dispatcher)
         });
 
         // Test increment
         actor_ref
-            .tell(IncrementMessage(5))
+            .tell(&dispatcher, IncrementMessage(5))
             .expect("Failed to send increment 5");
         actor_ref
-            .tell(IncrementMessage(3))
+            .tell(&dispatcher, IncrementMessage(3))
             .expect("Failed to send increment 3");
 
         // Test append
         actor_ref
-            .tell(AppendMessage("Hello".to_string()))
+            .tell(&dispatcher, AppendMessage("Hello".to_string()))
             .expect("Failed to send append Hello");
         actor_ref
-            .tell(AppendMessage("World".to_string()))
+            .tell(&dispatcher, AppendMessage("World".to_string()))
             .expect("Failed to send append World");
+
+        // Allow some time for processing
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
         // Test get_counter
         let counter: i32 = actor_ref
-            .ask(GetCounterMessage)
+            .ask(&dispatcher, GetCounterMessage)
             .await
-            .expect("Failed to get counter");
+            .unwrap_or_else(|e| {
+                println!("Error getting counter: {:?}", e);
+                panic!("Failed to get counter: {:?}", e);
+            });
         assert_eq!(counter, 8);
 
         // Test get_messages
         let messages: Vec<String> = actor_ref
-            .ask(GetMessagesMessage)
+            .ask(&dispatcher, GetMessagesMessage)
             .await
             .expect("Failed to get messages");
         assert_eq!(messages, vec!["Hello".to_string(), "World".to_string()]);

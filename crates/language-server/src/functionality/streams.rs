@@ -33,10 +33,10 @@ pub enum ChangeKind {
     Delete,
 }
 
-pub async fn setup_streams<D: Dispatcher>(
+pub async fn setup_streams(
     // backend: &mut Backend,
-    router: &mut Router<ActorRef<D>>,
-    actor: ActorRef<D>,
+    router: &mut Router<ActorRef>,
+    actor: ActorRef,
 ) {
     info!("setting up streams");
 

@@ -4,7 +4,7 @@ mod functionality;
 mod json_actor;
 mod lsp_actor;
 // mod attach_stream_to_actor;
-// mod lsp_actor_service;
+mod lsp_actor_service;
 mod lsp_streaming_layer;
 mod lsp_streams;
 mod server;
@@ -57,14 +57,14 @@ async fn main() {
         // actor.register_request_handler(handlers::initialize);
 
         let client_cloned = client.clone();
-        let actor_ref = Actor::spawn_local(move || {
-            let backend = Backend::new(client_cloned);
-            let (mut actor, actor_ref) = Actor::new(backend);
-            // actor.register(Initialize)
-            // actor.register_request_handler(handlers::initialize);
+        // let actor_ref = Actor::spawn_local(move || {
+        //     let backend = Backend::new(client_cloned);
+        //     let (mut actor, actor_ref) = Actor::new(backend);
+        //     // actor.register(Initialize)
+        //     // actor.register_request_handler(handlers::initialize);
 
-            (actor, actor_ref)
-        });
+        //     (actor, actor_ref, dispatcher)
+        // });
         // let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone());
 
         let mut streaming_router = Router::new(());
