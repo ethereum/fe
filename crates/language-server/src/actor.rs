@@ -4,20 +4,20 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
-use std::sync::Arc;
 
 use futures::channel::mpsc;
 use futures::future::LocalBoxFuture;
 use futures::FutureExt;
 use futures::StreamExt;
 use tokio::runtime::Builder;
+use tracing::info;
 
 #[derive(Debug)]
 pub enum ActorError {
     HandlerNotFound,
-    DispatcherNotFound,
-    StateAccessError,
-    ExecutionError(Box<dyn std::error::Error + Send + Sync>),
+    // DispatcherNotFound,
+    // StateAccessError,
+    // ExecutionError(Box<dyn std::error::Error + Send + Sync>),
     CustomError(Box<dyn std::error::Error + Send + Sync>),
     SendError,
     DispatchError,
@@ -27,9 +27,9 @@ impl std::fmt::Display for ActorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ActorError::HandlerNotFound => write!(f, "Handler not found"),
-            ActorError::DispatcherNotFound => write!(f, "Dispatcher not found"),
-            ActorError::StateAccessError => write!(f, "Failed to access actor state"),
-            ActorError::ExecutionError(e) => write!(f, "Execution error: {}", e),
+            // ActorError::DispatcherNotFound => write!(f, "Dispatcher not found"),
+            // ActorError::StateAccessError => write!(f, "Failed to access actor state"),
+            // ActorError::ExecutionError(e) => write!(f, "Execution error: {}", e),
             ActorError::CustomError(e) => write!(f, "Custom error: {}", e),
             ActorError::SendError => write!(f, "Failed to send message"),
             ActorError::DispatchError => write!(f, "Failed to dispatch message"),
@@ -144,7 +144,7 @@ where
 }
 
 pub trait Dispatcher: Send + Sync + 'static {
-    fn generate_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError>;
+    fn message_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError>;
     fn wrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError>;
     fn unwrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError>;
     fn register_wrapper(
@@ -248,7 +248,7 @@ impl ActorRef {
         dispatcher: &D,
         message: M,
     ) -> Result<R, ActorError> {
-        let key = dispatcher.generate_key(&message)?;
+        let key = dispatcher.message_key(&message)?;
         let wrapped = dispatcher.wrap(Box::new(message))?;
 
         let (response_tx, response_rx) = futures::channel::oneshot::channel();
@@ -258,7 +258,15 @@ impl ActorRef {
             .map_err(|_| ActorError::SendError)?;
 
         let result = response_rx.await.map_err(|_| ActorError::SendError)??;
+        info!("Result type: {:?}", std::any::TypeId::of::<R>());
+        info!("Actual type: {:?}", result.type_id());
+        info!(
+            "in our ask handler we unwrapped the result as: {:?}",
+            &result
+        );
         let unwrapped = dispatcher.unwrap(result)?;
+        info!("Unwrapped type: {:?}", unwrapped.type_id());
+        info!("And unwrapped it to {:?}", &unwrapped);
         unwrapped.downcast().map(|boxed| *boxed).map_err(|_| {
             ActorError::CustomError(Box::new(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -272,7 +280,7 @@ impl ActorRef {
         dispatcher: &D,
         message: M,
     ) -> Result<(), ActorError> {
-        let key = dispatcher.generate_key(&message)?;
+        let key = dispatcher.message_key(&message)?;
         let wrapped = dispatcher.wrap(Box::new(message))?;
         self.sender
             .unbounded_send(Message::Notification(key, wrapped))
@@ -326,7 +334,7 @@ mod tests {
     struct TestDispatcher;
 
     impl Dispatcher for TestDispatcher {
-        fn generate_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError> {
+        fn message_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError> {
             if message.is::<IncrementMessage>() {
                 Ok(MessageKey::new("increment"))
             } else if message.is::<AppendMessage>() {

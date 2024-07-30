@@ -1,9 +1,10 @@
 use async_lsp::{
     lsp_types::{notification::Notification, request::Request},
-    AnyNotification, AnyRequest,
+    AnyNotification, AnyRequest, ResponseError,
 };
 use serde::de::DeserializeOwned;
 use std::{any::Any, collections::HashMap};
+use tracing::info;
 
 use crate::actor::{
     Actor, ActorError, AsyncFunc, BoxedAny, Dispatcher, HandlerRegistration, MessageKey,
@@ -41,7 +42,7 @@ impl LspDispatcher {
 }
 
 impl Dispatcher for LspDispatcher {
-    fn generate_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError> {
+    fn message_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError> {
         if let Some(request) = message.downcast_ref::<AnyRequest>() {
             Ok(MessageKey::new(&request.method))
         } else if let Some(notification) = message.downcast_ref::<AnyNotification>() {
@@ -62,6 +63,7 @@ impl Dispatcher for LspDispatcher {
     }
 
     fn unwrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError> {
+        info!("Unwrapping message: {:?}", message);
         Ok(message)
     }
 
@@ -81,18 +83,18 @@ impl Dispatcher for LspDispatcher {
 pub trait LspActor<S: 'static> {
     fn handle_request<R: Request>(
         &mut self,
-        handler: impl for<'a> AsyncFunc<'a, S, R::Params, R::Result, ActorError> + 'static,
+        handler: impl for<'a> AsyncFunc<'a, S, R::Params, R::Result, ResponseError> + 'static,
     );
     fn handle_notification<N: Notification>(
         &mut self,
-        handler: impl for<'a> AsyncFunc<'a, S, N::Params, (), ActorError> + 'static,
+        handler: impl for<'a> AsyncFunc<'a, S, N::Params, (), ResponseError> + 'static,
     );
 }
 
 impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
     fn handle_request<R: Request>(
         &mut self,
-        handler: impl for<'b> AsyncFunc<'b, S, R::Params, R::Result, ActorError> + 'static,
+        handler: impl for<'b> AsyncFunc<'b, S, R::Params, R::Result, ResponseError> + 'static,
     ) {
         let param_handler = Box::new(move |params: BoxedAny| -> BoxedAny {
             let params = params.downcast::<serde_json::Value>().unwrap();
@@ -109,7 +111,7 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
 
     fn handle_notification<N: Notification>(
         &mut self,
-        handler: impl for<'b> AsyncFunc<'b, S, N::Params, (), ActorError> + 'static,
+        handler: impl for<'b> AsyncFunc<'b, S, N::Params, (), ResponseError> + 'static,
     ) {
         let param_handler = Box::new(move |params: BoxedAny| -> BoxedAny {
             let params = params.downcast::<serde_json::Value>().unwrap();
@@ -170,7 +172,7 @@ mod tests {
             async fn handle_initialize(
                 state: &mut TestState,
                 _: InitializeParams,
-            ) -> Result<InitializeResult, ActorError> {
+            ) -> Result<InitializeResult, ResponseError> {
                 println!("Handling initialize request");
                 state.initialized = true;
                 Ok(InitializeResult::default())
@@ -178,7 +180,7 @@ mod tests {
 
             registration.handle_request::<Initialize>(handle_initialize);
 
-            async fn handle_initialized(state: &mut TestState, _: ()) -> Result<(), ActorError> {
+            async fn handle_initialized(state: &mut TestState, _: ()) -> Result<(), ResponseError> {
                 println!("Handling initialized notification");
                 assert!(state.initialized, "State should be initialized");
                 Ok(())
@@ -196,8 +198,11 @@ mod tests {
             params: serde_json::to_value(init_params).unwrap(),
         };
 
+        let init_request2 = init_request.clone();
         let init_result: InitializeResult = actor_ref.ask(&dispatcher, init_request).await.unwrap();
         assert_eq!(init_result, InitializeResult::default());
+        let init_result: Result<InitializeResult, _> =
+            actor_ref.ask(&dispatcher, init_request2.clone()).await;
 
         // Test initialized notification
         let init_notification = AnyNotification {

@@ -4,6 +4,9 @@ use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll};
 
+use serde_json::Value;
+use tracing::info;
+
 use async_lsp::can_handle::CanHandle;
 use async_lsp::{AnyEvent, AnyNotification, AnyRequest, Error, LspService, ResponseError};
 use tower::Service;
@@ -39,14 +42,16 @@ impl Service<AnyRequest> for LspActorService {
         let dispatcher = self.dispatcher.clone();
         Box::pin(async move {
             let dispatcher = dispatcher.as_ref();
-            let ask = actor_ref.ask(dispatcher, req);
-            ask.await.map_err(|e| match e {
+            let ask = actor_ref.ask::<_, Self::Response, _>(dispatcher, req);
+            let lsp_result: Result<Self::Response, _> = ask.await.map_err(|e| match e {
                 ActorError::HandlerNotFound => ResponseError::new(
                     async_lsp::ErrorCode::METHOD_NOT_FOUND,
                     "Method not found".to_string(),
                 ),
                 _ => ResponseError::new(async_lsp::ErrorCode::INTERNAL_ERROR, format!("{:?}", e)),
-            })
+            });
+            info!("got LSP result: {:?}", lsp_result);
+            lsp_result
         })
     }
 }
