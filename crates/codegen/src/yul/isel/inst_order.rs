@@ -464,13 +464,13 @@ impl<'a> InstSerializer<'a> {
     ///
     /// The scoring function `F` is defined as follows:
     /// 1. The initial score of each candidate('cand_bb`) is number of
-    /// predecessors of the candidate.
+    ///    predecessors of the candidate.
     ///
     /// 2. Find the `top_cand` of each `cand_bb`. `top_cand` can be found by
-    /// [`Self::try_find_top_cand`] method, see the method for details.
+    ///    [`Self::try_find_top_cand`] method, see the method for details.
     ///
     /// 3. If `top_cand` is found, then add the `cand_bb` score to the
-    /// `top_cand` score, then set 0 to the `cand_bb` score.
+    ///    `top_cand` score, then set 0 to the `cand_bb` score.
     ///
     /// After the scoring, the candidates with the highest score will be
     /// selected.
@@ -516,10 +516,10 @@ impl<'a> InstSerializer<'a> {
     /// A `top_cand` can be found by the following rules:
     ///
     /// 1. Find the block which is contained in DF of `cand_bb` and in
-    /// `cands_with_score`.
+    ///    `cands_with_score`.
     ///
     /// 2. If a block is found in 1., and the score of the block is positive,
-    /// then the block is `top_cand`.
+    ///    then the block is `top_cand`.
     ///
     /// 2'. If a block is found in 1., and the score of the block is 0, then the
     /// `top_cand` of the block is `top_cand` of `cand_bb`.

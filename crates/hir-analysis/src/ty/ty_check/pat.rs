@@ -69,7 +69,7 @@ impl<'db> TyChecker<'db> {
             (base, args) if base.is_tuple(self.db) => Some(args.len()),
             _ => None,
         };
-        let (actual, rest_range) = self.unpack_rest_pat(pat_tup, expected_len);
+        let (actual, rest_range) = self.unpack_tuple_pat(pat_tup, expected_len);
         let actual = TyId::tuple_with_elems(self.db, &actual);
 
         let unified = self.unify_ty(pat, actual, expected);
@@ -243,7 +243,7 @@ impl<'db> TyChecker<'db> {
         let pat_ty = variant.ty(self.db);
         let expected_len = expected_elems.len(self.db.as_hir_db());
 
-        let (actual_elems, rest_range) = self.unpack_rest_pat(elems, Some(expected_len));
+        let (actual_elems, rest_range) = self.unpack_tuple_pat(elems, Some(expected_len));
         if actual_elems.len() != expected_len {
             let diag = BodyDiag::MismatchedFieldCount {
                 primary: pat.lazy_span(self.body()).into(),
@@ -403,7 +403,27 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn unpack_rest_pat(
+    /// Unpacks a tuple pattern, identifying the location of any rest
+    /// patterns and generating the appropriate types for each element in
+    /// the tuple.
+    ///
+    /// # Parameters
+    /// - `pat_tup`: A slice of pattern representing the elements of the tuple
+    ///   pattern.
+    /// - `expected_len`: An optional expected length for the tuple.
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// - A vector of type for each element in the tuple.
+    /// - A range indicating the position of the rest pattern within the tuple,
+    ///   if present.
+    ///
+    /// # Notes
+    /// - If there are multiple rest patterns, a diagnostic message is
+    ///   generated.
+    /// - If the minimum length of the tuple pattern exceeds the expected
+    ///   length, a default range is returned.
+    fn unpack_tuple_pat(
         &mut self,
         pat_tup: &[PatId],
         expected_len: Option<usize>,
