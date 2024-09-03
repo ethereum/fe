@@ -1,4 +1,5 @@
 pub mod diagnostics;
+pub mod fs;
 
 use std::path;
 

@@ -60,7 +60,7 @@ impl InputIngot {
     }
 
     /// Set the list of files which the ingot contains.
-    /// All files must bee set before the ingot is used.
+    /// All files must be set before the ingot is used.
     pub fn set_files(self, db: &mut dyn InputDb, files: IndexSet<InputFile>) {
         self.__set_files_impl(db).to(files);
     }

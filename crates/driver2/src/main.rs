@@ -71,63 +71,49 @@ pub fn main() {
 //     String::from_utf8(s).unwrap()
 // }
 
-fn load_ingot(
-    path: &Path,
-    db: &mut dyn InputDb,
-    ingot_kind: IngotKind,
-    dependencies: &mut IndexSet<IngotDependency>,
-) -> InputIngot {
-    let manifest_path = path.join("fe.toml");
-    let manifest_content =
-        std::fs::read_to_string(&manifest_path).expect("Unable to read manifest file");
-    let manifest: Manifest = toml::from_str(&manifest_content).expect("Invalid TOML format");
-
-    let project_name = &manifest.package.name;
-    let project_version = &manifest.package.version;
-
-    let version = Version::parse(project_version).expect("Invalid version format");
-
-    let ingot = InputIngot::new(
-        db,
-        path.to_str().unwrap(),
-        ingot_kind,
-        version,
-        IndexSet::default(),
-    );
-
-    if let Some(deps) = &manifest.dependencies {
-        for dep in deps {
-            let dep_path = path.join(dep);
-            let dep_ingot = load_ingot(&dep_path, db, IngotKind::External, dependencies);
-            dependencies.insert(IngotDependency::new(dep, dep_ingot));
+fn run_check(args: &CheckArgs) {
+    let std_path = match &args.std_path {
+        Some(path) => PathBuf::from(path.to_owned()),
+        None => {
+            let home_dir = dirs::home_dir().expect("Failed to get user home directory");
+            home_dir.join(".fe/std")
+        }
+    };
+    if !std_path.exists() {
+        println!("The standard library is not installed. Do you want to perform the write? (y/n)");
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input).unwrap();
+        let input = input.trim().to_lowercase();
+        if input == "y" || input == "yes" {
+            write_std_files(&std_path);
+        } else {
+            eprintln!(
+                "Cannot perform the write without the standard library being installed on disk"
+            );
+            std::process::exit(2);
         }
     }
 
-    let src_path = path.join("src");
-    set_src_files(&src_path, db, ingot);
+    let path = Path::new(&args.path);
+    if !path.exists() {
+        eprintln!("Path '{}' does not exist", path.display());
+        std::process::exit(2);
+    }
 
-    ingot
-}
+    let mut db = DriverDataBase::default();
 
-fn set_src_files(path: &Path, db: &mut dyn InputDb, ingot: InputIngot) {
-    let input_files: IndexSet<_> = WalkDir::new(path)
-        .into_iter()
-        // .expect("read_dir call failed")
-        .filter_map(|entry| entry.ok())
-        .filter(|entry| entry.path().is_file())
-        .map(|entry| {
-            let file_path = entry.path().to_str().unwrap().to_owned();
-            let content = std::fs::read_to_string(&file_path).unwrap();
-            InputFile::new(db, ingot, file_path.into(), content)
-        })
-        .collect();
+    let std_ingot = load_ingot(&std_path, &mut db, IngotKind::Std, &mut IndexSet::default());
 
-    let root_file = input_files
-        .iter()
-        .find(|file| file.path(db).ends_with("lib.fe"))
-        .expect("Root file 'lib.fe' not found")
-        .clone();
-
-    ingot.set_root_file(db, root_file);
-    ingot.set_files(db, input_files);
+    if path.is_file() {
+        let source = fs::read_to_string(path).unwrap();
+        check_single_file(path, source, std_ingot, &mut db, args.dump_scope_graph);
+    } else if path.is_dir() {
+        check_ingot(path, std_ingot, &mut db, args.dump_scope_graph);
+    } else {
+        eprintln!(
+            "Path '{}' is neither a file nor a directory",
+            path.display()
+        );
+        std::process::exit(2);
+    }
 }
