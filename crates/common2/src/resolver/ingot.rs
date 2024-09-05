@@ -1,5 +1,3 @@
-use std::marker::PhantomData;
-
 use camino::Utf8PathBuf;
 use indexmap::IndexSet;
 use semver::Version;
@@ -11,8 +9,8 @@ use super::{fs::LazyDirResolver, git::GitResolver, Resolver};
 
 #[derive(Deserialize)]
 pub struct IngotDesc<FD> {
-    name: SmolStr,
-    version: String,
+    // name: SmolStr,
+    version: Option<String>,
     #[serde(flatten)]
     files_desc: FD,
 }
@@ -31,7 +29,7 @@ impl Config {
 }
 
 trait IngotFiles {
-    fn config(&self) -> Config;
+    fn config(&self) -> Filestate<Config>;
     fn src(&self) -> IndexSet<(Utf8PathBuf, Vec<u8>)>;
     fn root_path(&self) -> Utf8PathBuf;
 }
@@ -40,17 +38,28 @@ pub struct Ingot<F>
 where
     F: IngotFiles,
 {
-    desc_name: SmolStr,
+    // desc_name: SmolStr,
     desc_version: Version,
     files: F,
 }
 
-pub struct IngotResolver<FR> {
-    files_resolver: FR,
+impl<F> Ingot<F>
+where
+    F: IngotFiles,
+{
+    pub fn src_files(&self) -> IngotDesc<Utf8PathBuf> {
+        self.files.root_path()
+    }
 }
 
-pub type FsIngotResolver = IngotResolver<LazyDirResolver>;
-pub type GitIngotResolver = IngotResolver<GitResolver>;
+pub struct IngotResolver<FR> {
+    files_resolver: FR,
+    diagnostics: (),
+}
+
+pub type IngotFsResolver = IngotResolver<LazyDirResolver>;
+// my_dep = { version = "1.0.0", path = "path/to/dep" }
+pub type IngotGitResolver = IngotResolver<GitResolver>;
 
 impl<FR> Resolver for IngotResolver<FR>
 where

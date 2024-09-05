@@ -71,49 +71,49 @@ pub fn main() {
 //     String::from_utf8(s).unwrap()
 // }
 
-fn run_check(args: &CheckArgs) {
-    let std_path = match &args.std_path {
-        Some(path) => PathBuf::from(path.to_owned()),
-        None => {
-            let home_dir = dirs::home_dir().expect("Failed to get user home directory");
-            home_dir.join(".fe/std")
-        }
-    };
-    if !std_path.exists() {
-        println!("The standard library is not installed. Do you want to perform the write? (y/n)");
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).unwrap();
-        let input = input.trim().to_lowercase();
-        if input == "y" || input == "yes" {
-            write_std_files(&std_path);
-        } else {
-            eprintln!(
-                "Cannot perform the write without the standard library being installed on disk"
-            );
-            std::process::exit(2);
-        }
-    }
+// fn run_check(args: &CheckArgs) {
+//     let std_path = match &args.std_path {
+//         Some(path) => PathBuf::from(path.to_owned()),
+//         None => {
+//             let home_dir = dirs::home_dir().expect("Failed to get user home directory");
+//             home_dir.join(".fe/std")
+//         }
+//     };
+//     if !std_path.exists() {
+//         println!("The standard library is not installed. Do you want to perform the write? (y/n)");
+//         let mut input = String::new();
+//         std::io::stdin().read_line(&mut input).unwrap();
+//         let input = input.trim().to_lowercase();
+//         if input == "y" || input == "yes" {
+//             write_std_files(&std_path);
+//         } else {
+//             eprintln!(
+//                 "Cannot perform the write without the standard library being installed on disk"
+//             );
+//             std::process::exit(2);
+//         }
+//     }
 
-    let path = Path::new(&args.path);
-    if !path.exists() {
-        eprintln!("Path '{}' does not exist", path.display());
-        std::process::exit(2);
-    }
+//     let path = Path::new(&args.path);
+//     if !path.exists() {
+//         eprintln!("Path '{}' does not exist", path.display());
+//         std::process::exit(2);
+//     }
 
-    let mut db = DriverDataBase::default();
+//     let mut db = DriverDataBase::default();
 
-    let std_ingot = load_ingot(&std_path, &mut db, IngotKind::Std, &mut IndexSet::default());
+//     let std_ingot = load_ingot(&std_path, &mut db, IngotKind::Std, &mut IndexSet::default());
 
-    if path.is_file() {
-        let source = fs::read_to_string(path).unwrap();
-        check_single_file(path, source, std_ingot, &mut db, args.dump_scope_graph);
-    } else if path.is_dir() {
-        check_ingot(path, std_ingot, &mut db, args.dump_scope_graph);
-    } else {
-        eprintln!(
-            "Path '{}' is neither a file nor a directory",
-            path.display()
-        );
-        std::process::exit(2);
-    }
-}
+//     if path.is_file() {
+//         let source = fs::read_to_string(path).unwrap();
+//         check_single_file(path, source, std_ingot, &mut db, args.dump_scope_graph);
+//     } else if path.is_dir() {
+//         check_ingot(path, std_ingot, &mut db, args.dump_scope_graph);
+//     } else {
+//         eprintln!(
+//             "Path '{}' is neither a file nor a directory",
+//             path.display()
+//         );
+//         std::process::exit(2);
+//     }
+// }

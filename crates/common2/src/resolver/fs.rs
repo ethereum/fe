@@ -8,11 +8,13 @@ pub struct DirPath {
     pub path: String,
 }
 
-pub struct DirReader {
+// pub struct DirReader {
+//     path: Utf8PathBuf,
+// }
+
+pub struct LazyDirResolver {
     path: Utf8PathBuf,
 }
-
-pub struct LazyDirResolver;
 
 impl Resolver for LazyDirResolver {
     type ResourceDesc = DirPath;
