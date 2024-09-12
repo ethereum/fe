@@ -1,34 +1,38 @@
 use camino::Utf8PathBuf;
 use serde::Deserialize;
 
-use super::Resolver;
+use crate::Resolver;
 
 #[derive(Deserialize)]
-pub struct GitRepoDesc {
+pub struct GitDesc {
     remote: String,
     refspec: String,
     local_path: Option<String>,
-}
-
-pub struct GitRepo {
-    repo: git2::Repository,
 }
 
 pub struct GitResolver {
     pub default_clone_path: Utf8PathBuf,
 }
 
-// pub enum GitResolutionError {
-//     GitResolutionError(()),
-//     FsResolutionError(std::io::Error),
-// }
+pub struct GitResolutionError;
 
 impl Resolver for GitResolver {
-    type ResourceDesc = GitRepoDesc;
-    type Resource = GitRepo;
-    type ResolutionError = String;
+    type Config = ();
+    type ResourceDesc = GitDesc;
+    type Resource = Utf8PathBuf;
+    type ResolutionError = GitResolutionError;
 
-    fn resolve(&self, desc: &GitRepoDesc) -> Result<GitRepo, String> {
+    fn from_config(_: &Self::Config) -> Self {
+        todo!("")
+    }
+
+    fn resolve(&self, desc: &GitDesc) -> Result<Utf8PathBuf, GitResolutionError> {
+        // check to see if the dep is already in the dep directory
+        // check to see if the repo is already cached on the local fs
+        // if it is, then check to see if the repo is valid with respect to the CID or refspec
+        // if the repo is not cached, clone it
+        // copy to dep directory
+        // resolve the repo path
         todo!("")
     }
 }
