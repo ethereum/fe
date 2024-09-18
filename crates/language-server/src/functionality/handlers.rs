@@ -3,7 +3,7 @@ use crate::backend::Backend;
 use crate::backend::workspace::SyncableIngotFileContext;
 
 use async_lsp::{
-    lsp_types::{InitializeParams, InitializeResult},
+    lsp_types::{InitializeParams, InitializeResult, InitializedParams},
     ResponseError,
 };
 
@@ -36,9 +36,10 @@ pub async fn initialize(
 
     let root = message.root_uri.unwrap().to_file_path().ok().unwrap();
 
-    let _ = backend.workspace.set_workspace_root(&mut backend.db, &root);
-    let _ = backend.workspace.load_std_lib(&mut backend.db, &root);
-    let _ = backend.workspace.sync(&mut backend.db);
+    // disabled for now
+    // let _ = backend.workspace.set_workspace_root(&mut backend.db, &root);
+    // let _ = backend.workspace.load_std_lib(&mut backend.db, &root);
+    // let _ = backend.workspace.sync(&mut backend.db);
 
     let capabilities = server_capabilities();
     let initialize_result = InitializeResult {
@@ -49,6 +50,14 @@ pub async fn initialize(
         }),
     };
     Ok(initialize_result)
+}
+
+pub async fn initialized(
+    _backend: &mut Backend,
+    _message: InitializedParams,
+) -> Result<(), ResponseError> {
+    info!("language server initialized! recieved notification!");
+    Ok(())
 }
 
 // // #[async_trait::async_trait(?Send)]

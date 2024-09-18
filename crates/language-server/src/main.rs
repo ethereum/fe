@@ -8,8 +8,17 @@ mod server;
 // mod streaming_router;
 mod util;
 
+use std::ops::ControlFlow;
+
+use async_lsp::concurrency::ConcurrencyLayer;
+use async_lsp::lsp_types::notification::{self, Initialized};
+use async_lsp::lsp_types::{
+    request, HoverProviderCapability, InitializeResult, OneOf, ServerCapabilities,
+};
 use async_lsp::panic::CatchUnwindLayer;
 use async_lsp::server::LifecycleLayer;
+use async_lsp::tracing::TracingLayer;
+use async_lsp::LspService;
 use lsp_actor::{LspActor, LspDispatcher};
 // use lsp_actor_service::LspActorService;
 use tracing::Level;
@@ -49,30 +58,47 @@ async fn main() {
                 actor: &mut actor,
                 dispatcher: &mut dispatcher,
             }
-            .handle_request::<Initialize>(handlers::initialize);
+            .handle_request::<Initialize>(handlers::initialize)
+            .handle_notification::<Initialized>(handlers::initialized);
 
             (actor, actor_ref, dispatcher)
         });
-        let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone(), dispatcher);
+        // let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone(), dispatcher);
 
         let streaming_router = Router::new(());
 
+        let mut boring_service = Router::new(());
+
+        boring_service
+            .request::<request::Initialize, _>(|_, params| async move {
+                eprintln!("Initialize with {params:?}");
+                Ok(InitializeResult {
+                    capabilities: ServerCapabilities {
+                        hover_provider: Some(HoverProviderCapability::Simple(true)),
+                        definition_provider: Some(OneOf::Left(true)),
+                        ..ServerCapabilities::default()
+                    },
+                    server_info: None,
+                })
+            })
+            .notification::<notification::Initialized>(|_, _| ControlFlow::Continue(()));
         let services: Vec<BoxLspService<serde_json::Value, ResponseError>> = vec![
+            BoxLspService::new(boring_service),
             BoxLspService::new(streaming_router),
-            BoxLspService::new(actor_service),
+            // BoxLspService::new(actor_service),
         ];
 
         let router = LspSteer::new(services, FirstComeFirstServe);
         ServiceBuilder::new()
-            // .layer(TracingLayer::default())
+            .layer(TracingLayer::default())
             .layer(LifecycleLayer::default())
             .layer(CatchUnwindLayer::default())
-            // .layer(ConcurrencyLayer::default())
+            .layer(ConcurrencyLayer::default())
             .layer(ClientProcessMonitorLayer::new(client.clone()))
             .service(router)
     });
     tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
+        .with_max_level(Level::DEBUG)
         .with_ansi(false)
         .with_writer(std::io::stderr)
         .init();
