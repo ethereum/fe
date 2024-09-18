@@ -1,12 +1,12 @@
-use crate::db::SourceDb;
-use crate::files::{SourceFileId, Utf8PathBuf};
-use crate::Span;
+use crate::{
+    db::SourceDb,
+    files::{SourceFileId, Utf8PathBuf},
+    Span,
+};
 pub use codespan_reporting::diagnostic as cs;
-use codespan_reporting::files::Error as CsError;
-use codespan_reporting::term;
+use codespan_reporting::{files::Error as CsError, term};
 pub use cs::Severity;
-use std::ops::Range;
-use std::rc::Rc;
+use std::{ops::Range, rc::Rc};
 use term::termcolor::{BufferWriter, ColorChoice};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]

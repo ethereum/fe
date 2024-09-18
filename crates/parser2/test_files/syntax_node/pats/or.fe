@@ -1,0 +1,5 @@
+Foo::Bar | FOO::Baz
+
+Foo::Bar(1 | 2) | Foo::Baz(..)
+
+Foo::Bar(1 | 2) | Foo::Baz(Foo::Bar(1 | 2) | Bar::Baz("STRING"))

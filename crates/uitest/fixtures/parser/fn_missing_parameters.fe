@@ -1,0 +1,8 @@
+fn foo -> u8 {}
+
+fn bar {
+}
+
+fn baz -> u8 {}
+
+fn f<T> where T: U {}

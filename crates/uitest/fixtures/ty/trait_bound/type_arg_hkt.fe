@@ -1,0 +1,27 @@
+pub trait Wrapper
+where Self: * -> *
+{}
+
+enum Option<T> {
+    Some(T),
+    None,
+}
+impl Wrapper for Option {}
+impl Wrapper for Result<u256> {}
+
+enum Result<E, T> {
+    Ok(T),
+    Err(E),
+}
+
+
+pub struct I32Wrapper<W: * -> *>
+where W: Wrapper
+{
+    w: W<i32>
+}
+
+pub struct I32WrapperUser {
+    t: I32Wrapper<Option>,
+    u: I32Wrapper<Result<i32>>
+}

@@ -1,0 +1,47 @@
+pub struct Inner {
+    x: i32,
+    y: u32,
+}
+
+pub struct Outer {
+    inner: Inner,
+}
+
+pub struct Gen<T> {
+    t: T,
+}
+
+pub enum Option<T> {
+    Some(T),
+    None
+}
+
+impl Outer {
+    fn set_inner(self, x: i32, y: u32) {
+        self.inner = Inner { x, y }
+    } 
+}
+
+fn foo<T>(x: i32, mut y: u32, opt: Option<T>, opt2: Option<i32>) {
+    x = 1
+    
+    let mut g = Gen { t: false }
+    g.t = 1
+    
+    1 = 1
+    
+    use Option::*
+    match opt {
+        Some(mut t) => {
+            t = 1
+        }
+        None => {}
+    }
+    
+    match opt2 {
+        Some(x) => {
+            x = 1
+        }
+        None => {}
+    }
+} 

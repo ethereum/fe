@@ -1,0 +1,5 @@
+trait Fooable {
+    pub fn foo(mut self)
+    pub unsafe fn bar(self)
+    fn x(self)
+}

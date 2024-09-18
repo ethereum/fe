@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/def/const_generics_trait_bound.fe
+---
+error[6-0006]: trait bound for const type is not allowed
+  ┌─ const_generics_trait_bound.fe:4:7
+  │
+4 │ where U: Trait
+  │       ^ `const U: u32` is a const type
+
+error[6-0006]: trait bound for const type is not allowed
+  ┌─ const_generics_trait_bound.fe:8:7
+  │
+8 │ where U: Trait
+  │       ^ `const U: bool` is a const type
+
+

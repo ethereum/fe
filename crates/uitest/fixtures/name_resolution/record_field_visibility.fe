@@ -1,0 +1,18 @@
+pub mod my_mod {
+    pub struct Foo {
+        pub x: i32,
+        y: u32
+    }
+    
+    pub enum Bar {
+        Variant {x: i32, pub y: u32}
+    }
+}
+
+fn foo() {
+    use my_mod::{Foo, Bar}
+
+    let f = Foo {x: 1, y: 2}
+
+    let bar = Bar::Variant {x: 1, y: 2}
+}

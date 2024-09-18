@@ -1,0 +1,23 @@
+trait Trait1 {
+    fn f(self:Self)
+}
+
+trait Trait2<T> {}
+
+struct Memory<T> {
+    x: i32,
+}
+
+impl<T> Trait2<Memory<Memory<Memory<T>>>> for Memory<T> { }
+
+impl<T, U> Trait1 for Memory<Memory<Memory<U>>>
+where T: Trait1,
+      U: Trait2<T>
+{
+    fn f(self: Self) {}
+}
+
+fn g<T>(y: T) {
+    let x: Memory<Memory<Memory<T>>>
+    x.f()
+}

@@ -1,0 +1,54 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/def/not_fully_applied.fe
+---
+error[3-0000]: expected `*` kind in this context
+  ┌─ not_fully_applied.fe:7:8
+  │
+7 │     f: Gen<i32>,
+  │        ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_fully_applied.fe:12:13
+   │
+12 │     Variant(Gen<i32>, Gen<u32>),
+   │             ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_fully_applied.fe:12:23
+   │
+12 │     Variant(Gen<i32>, Gen<u32>),
+   │                       ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_fully_applied.fe:13:36
+   │
+13 │     Variant2{ x: Gen<i32, u32>, y: Gen<u32> }
+   │                                    ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_fully_applied.fe:17:8
+   │
+17 │     f: Gen<i32>,
+   │        ^^^^^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_fully_applied.fe:22:12
+   │
+22 │     fn foo(self) {}
+   │            ^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_fully_applied.fe:24:18
+   │
+24 │     fn bar(self: Self) {}
+   │                  ^^^^ expected `*` kind here
+
+error[3-0000]: expected `*` kind in this context
+   ┌─ not_fully_applied.fe:28:13
+   │
+28 │ fn foo(gen: Gen) {}
+   │             ^^^ expected `*` kind here
+
+

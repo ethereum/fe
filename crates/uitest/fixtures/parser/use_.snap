@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/use_.fe
+---
+error[1-0001]: can't specify path after `*`
+  ┌─ use_.fe:1:16
+  │
+1 │ use foo::bar::*::A
+  │                ^^ can't specify path after `*`
+
+error[1-0001]: can't use `*` with `{}`
+  ┌─ use_.fe:2:18
+  │
+2 │ use foo::bar::*::{A, B}
+  │                  ^ can't use `*` with `{}`
+
+error[1-0001]: can't use `as` with `*`
+  ┌─ use_.fe:3:17
+  │
+3 │ use foo::bar::* as B
+  │                 ^^ can't use `as` with `*`
+
+

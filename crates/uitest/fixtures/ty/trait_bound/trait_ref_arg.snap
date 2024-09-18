@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_bound/trait_ref_arg.fe
+---
+error[6-0003]: trait bound is not satisfied
+  ┌─ trait_ref_arg.fe:7:6
+  │
+7 │ impl Trait1<i32> for i32 {}
+  │      ^^^^^^^^^^^ `i32` doesn't implement `Trait2`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ trait_ref_arg.fe:10:10
+   │
+10 │ where U: Trait1<T>
+   │          ^^^^^^^^^ `T` doesn't implement `Trait2`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ trait_ref_arg.fe:16:24
+   │
+16 │ pub trait SubTrait<T>: Trait1<T>
+   │                        ^^^^^^^^^ `T` doesn't implement `Trait2`
+
+

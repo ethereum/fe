@@ -1,0 +1,35 @@
+---
+source: crates/language-server/src/goto.rs
+assertion_line: 170
+expression: result
+input_file: crates/language-server/test_files/single_ingot/src/lib.fe
+---
+use foo::Foo
+
+mod baz {
+    use super::Foo
+    
+    pub struct Bar {
+        x: Foo
+    }
+
+    fn bar() -> () {
+        let x: Foo
+    }
+}
+
+fn bar() -> () {
+    let y: Foo
+    let z: baz::Bar
+}
+---
+cursor position: 80, path: "lib::foo::Foo"
+cursor position: 29, path: "No resolution available"
+cursor position: 183, path: "lib::baz::Bar"
+cursor position: 180, path: "`NameResBucket` is empty"
+cursor position: 168, path: "lib::foo::Foo"
+cursor position: 21, path: "No resolution available"
+cursor position: 165, path: "`NameResBucket` is empty"
+cursor position: 127, path: "lib::foo::Foo"
+cursor position: 124, path: "`NameResBucket` is empty"
+cursor position: 60, path: "No resolution available"

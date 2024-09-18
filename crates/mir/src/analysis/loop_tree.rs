@@ -1,9 +1,7 @@
+use fxhash::FxHashMap;
 use id_arena::{Arena, Id};
 
-use fxhash::FxHashMap;
-
 use super::{cfg::ControlFlowGraph, domtree::DomTree};
-
 use crate::ir::BasicBlockId;
 
 #[derive(Debug, Default, Clone)]
@@ -239,7 +237,6 @@ enum BlockState {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::ir::{body_builder::BodyBuilder, FunctionBody, FunctionId, SourceInfo, TypeId};
 
     fn compute_loop(func: &FunctionBody) -> LoopTree {

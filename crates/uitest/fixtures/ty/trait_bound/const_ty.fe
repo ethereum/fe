@@ -1,0 +1,17 @@
+pub trait Trait<const N: u32> {}
+impl Trait<2> for i32 {}
+
+
+pub struct Wrapper<T: Trait<1>> 
+where T: Trait<1>
+{
+    t: T
+}
+
+fn foo_err(b: Wrapper<i32>) {}
+
+struct Foo<const N: u32> {}
+impl<const N: u32> Trait<N> for Foo<N> {}
+
+fn bar_ok(t: Wrapper<Foo<1>>) {}
+fn baz_err(t: Wrapper<Foo<2>>) {}

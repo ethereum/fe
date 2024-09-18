@@ -1,6 +1,5 @@
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
-use fe_analyzer::namespace::items::ModuleId;
-use fe_analyzer::TestDb;
+use fe_analyzer::{namespace::items::ModuleId, TestDb};
 
 fn criterion_benchmark(c: &mut Criterion) {
     let path = "demos/uniswap.fe";

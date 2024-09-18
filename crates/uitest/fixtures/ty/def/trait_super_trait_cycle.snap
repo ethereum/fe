@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_super_trait_cycle.fe
+---
+error[5-0002]: cyclic super traits are not allowed
+  ┌─ trait_super_trait_cycle.fe:1:16
+  │
+1 │ pub trait Foo: Bar {}
+  │                ^^^ super traits cycle is detected here
+
+error[5-0002]: cyclic super traits are not allowed
+  ┌─ trait_super_trait_cycle.fe:4:13
+  │
+4 │ where Self: Baz
+  │             ^^^ super traits cycle is detected here
+
+error[5-0002]: cyclic super traits are not allowed
+  ┌─ trait_super_trait_cycle.fe:7:16
+  │
+7 │ pub trait Baz: Foo {}
+  │                ^^^ super traits cycle is detected here
+
+

@@ -1,11 +1,14 @@
-use indexmap::map::Entry;
-use indexmap::IndexMap;
+use indexmap::{map::Entry, IndexMap};
 use smol_str::SmolStr;
 
-use crate::context::{Analysis, AnalyzerContext};
-use crate::namespace::items::{Function, FunctionId, ImplId, Item};
-use crate::namespace::scopes::ItemScope;
-use crate::AnalyzerDb;
+use crate::{
+    context::{Analysis, AnalyzerContext},
+    namespace::{
+        items::{Function, FunctionId, ImplId, Item},
+        scopes::ItemScope,
+    },
+    AnalyzerDb,
+};
 use std::rc::Rc;
 
 pub fn impl_all_functions(db: &dyn AnalyzerDb, impl_: ImplId) -> Rc<[FunctionId]> {

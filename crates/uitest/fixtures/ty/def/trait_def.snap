@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_def.fe
+---
+error[3-0005]: duplicate type bound is not allowed.
+  ┌─ trait_def.fe:4:10
+  │
+4 │       T: (* -> *) -> *
+  │          ^^^^^^^^^^^^^ `T` is already declared with `(* -> *)` kind, but found `((* -> *) -> *)` kind here
+
+

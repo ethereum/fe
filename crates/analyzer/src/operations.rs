@@ -1,6 +1,8 @@
-use crate::context::AnalyzerContext;
-use crate::errors::{BinaryOperationError, IndexingError};
-use crate::namespace::types::{Array, Integer, Map, TraitOrType, Type, TypeDowncast, TypeId};
+use crate::{
+    context::AnalyzerContext,
+    errors::{BinaryOperationError, IndexingError},
+    namespace::types::{Array, Integer, Map, TraitOrType, Type, TypeDowncast, TypeId},
+};
 
 use crate::traversal::types::{deref_type, try_coerce_type};
 use fe_parser::{ast as fe, node::Node};

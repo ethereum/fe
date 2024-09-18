@@ -3,9 +3,10 @@ use fe_common::{Span, Spanned};
 use indenter::indented;
 use serde::{Deserialize, Serialize};
 pub use smol_str::SmolStr;
-use std::fmt;
-use std::fmt::Formatter;
-use std::fmt::Write;
+use std::{
+    fmt,
+    fmt::{Formatter, Write},
+};
 use vec1::Vec1;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]

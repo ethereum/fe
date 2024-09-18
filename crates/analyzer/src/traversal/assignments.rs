@@ -1,13 +1,18 @@
-use crate::context::{AnalyzerContext, DiagnosticVoucher, NamedThing};
-use crate::errors::FatalError;
-use crate::namespace::scopes::BlockScope;
-use crate::namespace::types::{Type, TypeId};
-use crate::operations;
-use crate::traversal::expressions;
-use crate::traversal::utils::add_bin_operations_errors;
+use crate::{
+    context::{AnalyzerContext, DiagnosticVoucher, NamedThing},
+    errors::FatalError,
+    namespace::{
+        scopes::BlockScope,
+        types::{Type, TypeId},
+    },
+    operations,
+    traversal::{expressions, utils::add_bin_operations_errors},
+};
 use fe_common::diagnostics::Label;
-use fe_parser::ast as fe;
-use fe_parser::node::{Node, Span};
+use fe_parser::{
+    ast as fe,
+    node::{Node, Span},
+};
 use smol_str::SmolStr;
 
 /// Gather context information for assignments and check for type errors.

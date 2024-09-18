@@ -1,0 +1,14 @@
+pub pub struct Foo {}
+impl Foo {
+    pub pub unsafe unsafe fn f() {}
+    unsafe pub fn g() {}
+    unsafe unsafe pub unsafe pub pub unsafe fn h() {}
+}
+
+trait T {
+    fn f(self)
+}
+
+impl T for Foo {
+    pub unsafe fn f(self) {}
+}

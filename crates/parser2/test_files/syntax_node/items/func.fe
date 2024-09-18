@@ -1,0 +1,21 @@
+pub fn foo() {
+    let x = 1
+}
+
+fn bar(bar: i32, mut baz: u256) -> i32 {
+    1
+}
+
+fn baz(from sender: address, mut to recipient: address, _ val: u256, _ _: u256) -> i32 {
+    1
+}
+
+fn generics1<T: Trait, U>(t: T, u: Option<U>) -> T
+    where Result<T>: Trait,
+          Option<U>: Clone
+
+{
+    t
+}
+
+fn decl<T, U>(t: MyStruct<T, U>) -> Result<T, Err> {}

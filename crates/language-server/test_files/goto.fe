@@ -1,0 +1,12 @@
+struct Foo {}
+struct Bar {}
+
+fn main() {
+    let x: Foo
+    let y: Bar
+    let z: baz::Baz
+}
+
+mod baz {
+   pub struct Baz {}
+}

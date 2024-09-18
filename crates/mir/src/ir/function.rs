@@ -1,5 +1,4 @@
-use fe_analyzer::namespace::items as analyzer_items;
-use fe_analyzer::namespace::types as analyzer_types;
+use fe_analyzer::namespace::{items as analyzer_items, types as analyzer_types};
 use fe_common::impl_intern_key;
 use fxhash::FxHashMap;
 use id_arena::Arena;

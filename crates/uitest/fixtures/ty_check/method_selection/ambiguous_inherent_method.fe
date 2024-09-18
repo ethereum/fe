@@ -1,0 +1,36 @@
+struct Foo<T> {
+    x: i32,
+    y: T,
+}
+
+trait Default {
+    fn default() -> Self
+}
+
+impl<T> Default for Foo<T> 
+where T: Default
+{
+    fn default() -> Self {
+        Self {
+            x: 0,
+            y: T::default()
+        }
+    }
+}
+
+impl Foo<i32> {
+    fn foo(self) -> i32 {
+        self.x
+    }
+}
+
+impl Foo<u32> {
+    fn foo(self) -> u32 {
+        self.y
+    }
+}
+
+fn bar() {
+    let f = Foo::default()
+    f.foo()
+}

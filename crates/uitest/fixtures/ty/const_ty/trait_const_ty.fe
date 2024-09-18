@@ -1,0 +1,9 @@
+pub trait Trait<const N: u32> {}
+impl Trait<i32> for i32 {}
+impl<const N: u64> Trait<N> for i64 {}
+pub struct Foo<T, const N: u64> 
+    where T: Trait<N>
+{}
+
+pub trait Trait2<N> {}
+impl Trait2<1> for i32 {}

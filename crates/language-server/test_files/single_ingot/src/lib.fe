@@ -1,0 +1,18 @@
+use foo::Foo
+
+mod baz {
+    use super::Foo
+    
+    pub struct Bar {
+        x: Foo
+    }
+
+    fn bar() -> () {
+        let x: Foo
+    }
+}
+
+fn bar() -> () {
+    let y: Foo
+    let z: baz::Bar
+}

@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/type_.fe
+---
+error[1-0001]: expected identifier, `const` or `>`
+  ┌─ type_.fe:1:15
+  │
+1 │ type Result<T, = Result<T, E>
+  │               ^ expected identifier, `const` or `>`
+
+

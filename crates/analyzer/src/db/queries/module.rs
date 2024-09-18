@@ -1,21 +1,25 @@
-use crate::context::{Analysis, AnalyzerContext, Constant, NamedThing};
-use crate::display::Displayable;
-use crate::errors::{self, ConstEvalError, TypeError};
-use crate::namespace::items::{
-    Attribute, Contract, ContractId, Enum, Function, FunctionId, Impl, ImplId, Item,
-    ModuleConstant, ModuleConstantId, ModuleId, ModuleSource, Struct, StructId, Trait, TraitId,
-    TypeAlias, TypeDef,
+use crate::{
+    context::{Analysis, AnalyzerContext, Constant, NamedThing},
+    display::Displayable,
+    errors::{self, ConstEvalError, TypeError},
+    namespace::{
+        items::{
+            Attribute, Contract, ContractId, Enum, Function, FunctionId, Impl, ImplId, Item,
+            ModuleConstant, ModuleConstantId, ModuleId, ModuleSource, Struct, StructId, Trait,
+            TraitId, TypeAlias, TypeDef,
+        },
+        scopes::ItemScope,
+        types::{self, TypeId},
+    },
+    traversal::{const_expr, expressions, types::type_desc},
+    AnalyzerDb,
 };
-use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::{self, TypeId};
-use crate::traversal::{const_expr, expressions, types::type_desc};
-use crate::AnalyzerDb;
-use fe_common::diagnostics::Label;
-use fe_common::files::Utf8Path;
-use fe_common::Span;
+use fe_common::{diagnostics::Label, files::Utf8Path, Span};
 use fe_parser::{ast, node::Node};
-use indexmap::indexmap;
-use indexmap::map::{Entry, IndexMap};
+use indexmap::{
+    indexmap,
+    map::{Entry, IndexMap},
+};
 use smol_str::SmolStr;
 use std::rc::Rc;
 

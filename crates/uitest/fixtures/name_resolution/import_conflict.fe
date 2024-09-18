@@ -1,0 +1,10 @@
+use foo1::S
+use foo2::S
+
+pub mod foo1 {
+    pub struct S {}
+}
+
+pub mod foo2 {
+    pub struct S {}
+}
