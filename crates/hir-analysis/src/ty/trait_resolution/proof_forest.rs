@@ -466,8 +466,11 @@ impl ConsumerNode {
         let (pending_inst, canonicalized_pending_inst) = &c_node.query;
         let solution = canonicalized_pending_inst.extract_solution(&mut table, solution);
 
-        // Unifies pending inst and solution.
-        table.unify(*pending_inst, solution).unwrap();
+        // Try to unifies pending inst and solution.
+        if table.unify(*pending_inst, solution).is_err() {
+            return true;
+        }
+
         let tree_root = c_node.root;
 
         if c_node.remaining_goals.is_empty() {
