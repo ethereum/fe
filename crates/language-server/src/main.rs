@@ -10,34 +10,24 @@ mod util;
 
 use async_lsp::panic::CatchUnwindLayer;
 use async_lsp::server::LifecycleLayer;
-use futures::stream::StreamExt;
 use lsp_actor::{LspActor, LspDispatcher};
 // use lsp_actor_service::LspActorService;
-use serde_json::Value;
-use std::{ops::ControlFlow, sync::Arc, time::Duration};
-use tokio::sync::{Mutex, RwLock};
 use tracing::Level;
 use tracing::{error, info};
 
 use act_locally::actor::{Actor, HandlerRegistration};
 use async_lsp::{
-    can_handle::CanHandle,
     client_monitor::ClientProcessMonitorLayer,
-    lsp_types::{
-        notification::Initialized,
-        request::{HoverRequest, Initialize, Request},
-        Hover, InitializeParams, InitializeResult,
-    },
+    lsp_types::request::Initialize,
     router::Router,
-    steer::{self, FirstComeFirstServe, LspPicker, LspSteer},
+    steer::{FirstComeFirstServe, LspSteer},
     util::BoxLspService,
-    AnyEvent, AnyNotification, AnyRequest, ClientSocket, LspService, ResponseError,
+    ResponseError,
 };
 use backend::{db::Jar, Backend};
-use functionality::{handlers, streams::setup_streams};
+use functionality::handlers;
 // use lsp_actor::{ActOnNotification, ActOnRequest};
-use lsp_streams::RouterStreams;
-use tower::{layer::layer_fn, util::BoxService, Service, ServiceBuilder};
+use tower::ServiceBuilder;
 struct TickEvent;
 
 // impl<M> CanHandle<M> for LspActorService {
@@ -65,7 +55,7 @@ async fn main() {
         });
         let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone(), dispatcher);
 
-        let mut streaming_router = Router::new(());
+        let streaming_router = Router::new(());
 
         let services: Vec<BoxLspService<serde_json::Value, ResponseError>> = vec![
             BoxLspService::new(streaming_router),

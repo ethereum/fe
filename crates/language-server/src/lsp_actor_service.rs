@@ -1,13 +1,12 @@
 use std::future::Future;
 use std::ops::ControlFlow;
 use std::pin::Pin;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use act_locally::actor::ActorRef;
 use act_locally::dispatcher::Dispatcher;
 use act_locally::types::ActorError;
-use serde_json::Value;
 use tracing::info;
 
 use async_lsp::can_handle::CanHandle;

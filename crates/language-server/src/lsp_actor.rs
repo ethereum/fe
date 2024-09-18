@@ -2,14 +2,12 @@ use async_lsp::{
     lsp_types::{notification::Notification, request::Request},
     AnyNotification, AnyRequest, ResponseError,
 };
-use serde::de::DeserializeOwned;
-use std::{any::Any, collections::HashMap};
-use tracing::info;
+use std::collections::HashMap;
 
 use act_locally::{
-    actor::{Actor, HandlerRegistration},
+    actor::HandlerRegistration,
     dispatcher::Dispatcher,
-    handler::{AsyncFunc, AsyncMutatingFunc},
+    handler::AsyncMutatingFunc,
     message::{Message, MessageDowncast, MessageKey, Response, ResponseDowncast},
     types::ActorError,
 };

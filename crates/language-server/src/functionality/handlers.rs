@@ -3,34 +3,17 @@ use crate::backend::Backend;
 use crate::backend::workspace::SyncableIngotFileContext;
 
 use async_lsp::{
-    lsp_types::{
-        notification::Exit,
-        request::{HoverRequest, Initialize},
-        Hover, HoverParams, InitializeParams, InitializeResult,
-    },
-    ClientSocket, Error, LanguageClient, ResponseError,
+    lsp_types::{InitializeParams, InitializeResult},
+    ResponseError,
 };
-use common::InputDb;
-use futures::TryFutureExt;
-use fxhash::FxHashSet;
 
-use salsa::ParallelDatabase;
-
-use act_locally::message::ActorMessage;
-
-use super::{
-    // actor::Message,
-    capabilities::server_capabilities,
-    hover::hover_helper,
-    streams::{ChangeKind, FileChange},
-};
+use super::capabilities::server_capabilities;
 
 // use crate::lsp_actor::*;
 
 use crate::backend::workspace::IngotFileContext;
 
-use async_lsp::lsp_types::{notification::Notification, request::Request};
-use tracing::{error, info};
+use tracing::info;
 
 pub type FilesNeedDiagnostics = Vec<String>;
 // impl Backend {

@@ -1,10 +1,10 @@
+use async_lsp::lsp_types::Position;
 use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
     InputDb,
 };
 use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
-use async_lsp::lsp_types::Position;
 use tracing::error;
 use url::Url;
 
@@ -64,7 +64,8 @@ pub fn to_lsp_location_from_scope(
         .ok_or("Failed to resolve span")?;
     let uri = span.file.abs_path(db.as_input_db());
     let range = to_lsp_range_from_span(span, db.as_input_db())?;
-    let uri = async_lsp::lsp_types::Url::from_file_path(uri).map_err(|()| "Failed to convert path to URL")?;
+    let uri = async_lsp::lsp_types::Url::from_file_path(uri)
+        .map_err(|()| "Failed to convert path to URL")?;
     Ok(async_lsp::lsp_types::Location { uri, range })
 }
 
@@ -80,7 +81,8 @@ pub fn diag_to_lsp(
     diag: CompleteDiagnostic,
     db: &dyn InputDb,
 ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
-    let mut result = FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default();
+    let mut result =
+        FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default();
     diag.sub_diagnostics.into_iter().for_each(|sub| {
         let uri = sub.span.as_ref().unwrap().file.abs_path(db);
         let lsp_range = to_lsp_range_from_span(sub.span.unwrap(), db);

@@ -1,10 +1,3 @@
-use async_lsp::{lsp_types::{
-    DidChangeWatchedFilesParams, DidChangeWatchedFilesRegistrationOptions,
-    DidCloseTextDocumentParams, FileSystemWatcher, GlobPattern, InitializeParams, InitializeResult,
-    Registration,
-}, ClientSocket, Result};
-use tracing::{error, info};
-
 // use tower_lsp::{jsonrpc::Result, Client, LanguageServer};
 
 // pub(crate) struct Server {

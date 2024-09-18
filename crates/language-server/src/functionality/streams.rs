@@ -1,16 +1,10 @@
-use std::ops::ControlFlow;
-
-use crate::functionality::handlers::FilesNeedDiagnostics;
 // use crate::lsp_actor::{ActOnNotification, ActOnRequest};
 use crate::lsp_streams::RouterStreams;
 // use crate::lsp_kameo::RouterActors;
-use async_lsp::lsp_types::request::Initialize;
-use async_lsp::lsp_types::{notification, request, InitializeParams, InitializeResult};
+use async_lsp::lsp_types;
+use async_lsp::lsp_types::{notification, request};
 use async_lsp::router::Router;
-use async_lsp::{lsp_types, ClientSocket, ResponseError};
-use futures::future::join_all;
-use futures::stream::FuturesUnordered;
-use futures::{join, StreamExt};
+use futures::StreamExt;
 use futures_batch::ChunksTimeoutStreamExt;
 use futures_concurrency::prelude::*;
 // use kameo::actor::ActorRef;
@@ -20,7 +14,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use tracing::info;
 
-use act_locally::{actor::ActorRef, dispatcher::Dispatcher};
+use act_locally::actor::ActorRef;
 
 pub struct FileChange {
     pub uri: url::Url,
@@ -54,11 +48,11 @@ pub async fn setup_streams(
         .fuse();
     let (tx_needs_diagnostics, rx_needs_diagnostics) =
         tokio::sync::mpsc::unbounded_channel::<String>();
-    let mut diagnostics_stream = UnboundedReceiverStream::from(rx_needs_diagnostics)
+    let diagnostics_stream = UnboundedReceiverStream::from(rx_needs_diagnostics)
         .chunks_timeout(500, std::time::Duration::from_millis(30))
         .fuse();
 
-    let mut change_stream = (
+    let change_stream = (
         did_change_watched_files_stream
             .map(|params| futures::stream::iter(params.changes))
             .flatten()

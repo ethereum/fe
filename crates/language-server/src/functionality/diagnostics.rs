@@ -152,7 +152,9 @@ impl LanguageServerDatabase {
         &self,
         files: Vec<InputFile>,
     ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
-        let mut result = FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default();
+        let mut result =
+            FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default(
+            );
         files
             .iter()
             .flat_map(|file| {
