@@ -12,6 +12,7 @@ description = "An LSP language server for Fe lang"
 [dependencies]
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
 codespan-reporting = "0.11"
+act-locally = { path = "../../../act-locally", package = "act-locally" }
 hir = { path = "../hir", package = "fe-hir" }
 language-server-macros = { path = "../language-server-macros", package = "fe-language-server-macros" }
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }

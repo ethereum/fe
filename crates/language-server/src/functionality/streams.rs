@@ -20,7 +20,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use tracing::info;
 
-use crate::actor::{ActorRef, Dispatcher};
+use act_locally::{actor::ActorRef, dispatcher::Dispatcher};
 
 pub struct FileChange {
     pub uri: url::Url,

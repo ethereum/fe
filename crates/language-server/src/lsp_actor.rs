@@ -6,43 +6,79 @@ use serde::de::DeserializeOwned;
 use std::{any::Any, collections::HashMap};
 use tracing::info;
 
-use crate::actor::{
-    Actor, ActorError, AsyncFunc, BoxedAny, Dispatcher, HandlerRegistration, MessageKey,
+use act_locally::{
+    actor::{Actor, HandlerRegistration},
+    dispatcher::Dispatcher,
+    handler::{AsyncFunc, AsyncMutatingFunc},
+    message::{Message, MessageDowncast, MessageKey, Response, ResponseDowncast},
+    types::ActorError,
 };
 
 pub struct LspDispatcher {
-    wrappers: HashMap<String, Box<dyn Fn(BoxedAny) -> Result<BoxedAny, ActorError> + Send + Sync>>,
+    wrappers: HashMap<
+        String,
+        Box<dyn Fn(Box<dyn Message>) -> Result<Box<dyn Message>, ActorError> + Send + Sync>,
+    >,
+    unwrappers: HashMap<
+        String,
+        Box<dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync>,
+    >,
 }
 
 impl LspDispatcher {
     pub fn new() -> Self {
         Self {
             wrappers: HashMap::new(),
+            unwrappers: HashMap::new(),
         }
     }
 
-    pub fn dispatch_request(&self, request: &AnyRequest) -> Result<BoxedAny, ActorError> {
-        let handler = self
-            .wrappers
-            .get(&request.method)
-            .ok_or(ActorError::HandlerNotFound)?;
-        handler(Box::new(request.params.clone()))
-    }
+    // pub fn dispatch_request(&self, request: &AnyRequest) -> Result<Box<dyn Message>, ActorError> {
+    //     let handler = self
+    //         .wrappers
+    //         .get(&request.method)
+    //         .ok_or(ActorError::HandlerNotFound)?;
+    //     handler(Box::new(request.params.clone()))
+    // }
 
-    pub fn dispatch_notification(
-        &self,
-        notification: &AnyNotification,
-    ) -> Result<BoxedAny, ActorError> {
-        let handler = self
-            .wrappers
-            .get(&notification.method)
-            .ok_or(ActorError::HandlerNotFound)?;
-        handler(Box::new(notification.params.clone()))
+    // pub fn dispatch_notification(
+    //     &self,
+    //     notification: &AnyNotification,
+    // ) -> Result<Box<dyn Message>, ActorError> {
+    //     let handler = self
+    //         .wrappers
+    //         .get(&notification.method)
+    //         .ok_or(ActorError::HandlerNotFound)?;
+    //     handler(Box::new(notification.params.clone()))
+    // }
+
+    fn register_wrapper(
+        &mut self,
+        key: MessageKey,
+        wrapper: Box<dyn Fn(Box<dyn Message>) -> Box<dyn Message> + Send + Sync>,
+    ) {
+        let wrapper = Box::new(
+            move |params: Box<dyn Message>| -> Result<Box<dyn Message>, ActorError> {
+                Ok(wrapper(params))
+            },
+        );
+        let MessageKey(key) = key;
+        self.wrappers.insert(key, wrapper);
+    }
+    pub fn register_unwrapper(
+        &mut self,
+        key: MessageKey,
+        unwrapper: Box<
+            dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync,
+        >,
+    ) {
+        let MessageKey(key) = key;
+        self.unwrappers.insert(key, unwrapper);
     }
 }
 
 impl Dispatcher for LspDispatcher {
-    fn message_key(&self, message: &dyn Any) -> Result<MessageKey, ActorError> {
+    fn message_key(&self, message: &dyn Message) -> Result<MessageKey, ActorError> {
         if let Some(request) = message.downcast_ref::<AnyRequest>() {
             Ok(MessageKey::new(&request.method))
         } else if let Some(notification) = message.downcast_ref::<AnyNotification>() {
@@ -52,78 +88,96 @@ impl Dispatcher for LspDispatcher {
         }
     }
 
-    fn wrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError> {
-        if let Some(request) = message.downcast_ref::<AnyRequest>() {
-            self.dispatch_request(&request.clone())
-        } else if let Some(notification) = message.downcast_ref::<AnyNotification>() {
-            self.dispatch_notification(&notification.clone())
+    fn wrap(
+        &self,
+        message: Box<dyn Message>,
+        key: MessageKey,
+    ) -> Result<Box<dyn Message>, ActorError> {
+        let MessageKey(key) = key;
+        if let Some(wrapper) = self.wrappers.get(&key) {
+            if let Some(request) = message.downcast_ref::<AnyRequest>() {
+                wrapper(Box::new(request.params.clone()))
+            } else if let Some(notification) = message.downcast_ref::<AnyNotification>() {
+                wrapper(Box::new(notification.params.clone()))
+            } else {
+                wrapper(message)
+            }
         } else {
-            Err(ActorError::DispatchError)
+            Err(ActorError::HandlerNotFound)
         }
     }
 
-    fn unwrap(&self, message: BoxedAny) -> Result<BoxedAny, ActorError> {
-        info!("Unwrapping message: {:?}", message);
-        Ok(message)
-    }
-
-    fn register_wrapper(
-        &mut self,
+    fn unwrap(
+        &self,
+        message: Box<dyn Response>,
         key: MessageKey,
-        wrapper: Box<dyn Fn(BoxedAny) -> BoxedAny + Send + Sync>,
-    ) {
-        let wrapper = Box::new(move |params: BoxedAny| -> Result<BoxedAny, ActorError> {
-            Ok(wrapper(params))
-        });
+    ) -> Result<Box<dyn Response>, ActorError> {
         let MessageKey(key) = key;
-        self.wrappers.insert(key, wrapper);
+        if let Some(unwrapper) = self.unwrappers.get(&key) {
+            unwrapper(message)
+        } else {
+            Err(ActorError::HandlerNotFound)
+        }
     }
 }
 
 pub trait LspActor<S: 'static> {
     fn handle_request<R: Request>(
         &mut self,
-        handler: impl for<'a> AsyncFunc<'a, S, R::Params, R::Result, ResponseError> + 'static,
+        handler: impl for<'a> AsyncMutatingFunc<'a, S, R::Params, R::Result, ResponseError> + 'static,
     );
     fn handle_notification<N: Notification>(
         &mut self,
-        handler: impl for<'a> AsyncFunc<'a, S, N::Params, (), ResponseError> + 'static,
+        handler: impl for<'a> AsyncMutatingFunc<'a, S, N::Params, (), ResponseError> + 'static,
     );
 }
 
 impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
     fn handle_request<R: Request>(
         &mut self,
-        handler: impl for<'b> AsyncFunc<'b, S, R::Params, R::Result, ResponseError> + 'static,
+        handler: impl for<'b> AsyncMutatingFunc<'b, S, R::Params, R::Result, ResponseError> + 'static,
     ) {
-        let param_handler = Box::new(move |params: BoxedAny| -> BoxedAny {
+        let param_handler = Box::new(move |params: Box<dyn Message>| -> Box<dyn Message> {
             let params = params.downcast::<serde_json::Value>().unwrap();
             let typed_params: R::Params = serde_json::from_value(*params).unwrap();
-            Box::new(typed_params) as BoxedAny
+            Box::new(typed_params) as Box<dyn Message>
         });
 
         self.dispatcher
             .register_wrapper(MessageKey::new(R::METHOD), param_handler);
 
         self.actor
-            .register_handler(MessageKey::new(R::METHOD), handler);
+            .register_handler_async_mutating(MessageKey::new(R::METHOD), handler);
+
+        let result_unwrapper = Box::new(
+            move |result: Box<dyn Response>| -> Result<Box<dyn Response>, ActorError> {
+                let typed_result = result
+                    .downcast::<R::Result>()
+                    .map_err(|_| ActorError::DowncastError)?;
+                let json_value = serde_json::to_value(*typed_result)
+                    .map_err(|e| ActorError::CustomError(Box::new(e)))?;
+                Ok(Box::new(json_value) as Box<dyn Response>)
+            },
+        );
+        self.dispatcher
+            .register_unwrapper(MessageKey::new(R::METHOD), result_unwrapper);
     }
 
     fn handle_notification<N: Notification>(
         &mut self,
-        handler: impl for<'b> AsyncFunc<'b, S, N::Params, (), ResponseError> + 'static,
+        handler: impl for<'b> AsyncMutatingFunc<'b, S, N::Params, (), ResponseError> + 'static,
     ) {
-        let param_handler = Box::new(move |params: BoxedAny| -> BoxedAny {
+        let param_handler = Box::new(move |params: Box<dyn Message>| -> Box<dyn Message> {
             let params = params.downcast::<serde_json::Value>().unwrap();
             let typed_params: N::Params = serde_json::from_value(*params).unwrap();
-            Box::new(typed_params) as BoxedAny
+            Box::new(typed_params) as Box<dyn Message>
         });
 
         self.dispatcher
             .register_wrapper(MessageKey::new(N::METHOD), param_handler);
 
         self.actor
-            .register_handler(MessageKey::new(N::METHOD), handler);
+            .register_handler_async_mutating(MessageKey::new(N::METHOD), handler);
     }
 }
 

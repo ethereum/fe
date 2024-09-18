@@ -4,6 +4,9 @@ use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll};
 
+use act_locally::actor::ActorRef;
+use act_locally::dispatcher::Dispatcher;
+use act_locally::types::ActorError;
 use serde_json::Value;
 use tracing::info;
 
@@ -11,7 +14,6 @@ use async_lsp::can_handle::CanHandle;
 use async_lsp::{AnyEvent, AnyNotification, AnyRequest, Error, LspService, ResponseError};
 use tower::Service;
 
-use crate::actor::{ActorError, ActorRef};
 use crate::lsp_actor::LspDispatcher;
 
 pub struct LspActorService {
@@ -95,16 +97,13 @@ impl LspService for LspActorService {
 
 impl CanHandle<AnyRequest> for LspActorService {
     fn can_handle(&self, req: &AnyRequest) -> bool {
-        self.dispatcher.as_ref().dispatch_request(req).is_ok()
+        self.dispatcher.as_ref().message_key(req).is_ok()
     }
 }
 
 impl CanHandle<AnyNotification> for LspActorService {
     fn can_handle(&self, notif: &AnyNotification) -> bool {
-        self.dispatcher
-            .as_ref()
-            .dispatch_notification(notif)
-            .is_ok()
+        self.dispatcher.as_ref().message_key(notif).is_ok()
     }
 }
 

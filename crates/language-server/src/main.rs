@@ -1,9 +1,6 @@
-mod actor;
 mod backend;
 mod functionality;
-mod json_actor;
 mod lsp_actor;
-// mod attach_stream_to_actor;
 mod lsp_actor_service;
 mod lsp_streaming_layer;
 mod lsp_streams;
@@ -22,7 +19,7 @@ use tokio::sync::{Mutex, RwLock};
 use tracing::Level;
 use tracing::{error, info};
 
-use actor::{Actor, HandlerRegistration};
+use act_locally::actor::{Actor, HandlerRegistration};
 use async_lsp::{
     can_handle::CanHandle,
     client_monitor::ClientProcessMonitorLayer,
