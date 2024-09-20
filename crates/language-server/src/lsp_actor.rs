@@ -267,7 +267,8 @@ mod tests {
             registration.handle_notification::<Initialized>(handle_initialized);
 
             (actor, actor_ref, dispatcher)
-        });
+        })
+        .expect("Failed to spawn actor");
 
         // Test initialize request
         let init_params = InitializeParams::default();

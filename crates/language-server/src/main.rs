@@ -8,18 +8,20 @@ mod server;
 // mod streaming_router;
 mod util;
 
+use std::borrow::Borrow;
 use std::ops::ControlFlow;
 
 use async_lsp::concurrency::ConcurrencyLayer;
-use async_lsp::lsp_types::notification::{self, Initialized};
+use async_lsp::lsp_types::notification::{self, Initialized, LogMessage};
 use async_lsp::lsp_types::{
-    request, HoverProviderCapability, InitializeResult, OneOf, ServerCapabilities,
+    request, HoverProviderCapability, InitializeResult, LogMessageParams, OneOf, ServerCapabilities,
 };
 use async_lsp::panic::CatchUnwindLayer;
 use async_lsp::server::LifecycleLayer;
 use async_lsp::tracing::TracingLayer;
-use async_lsp::LspService;
+use async_lsp::{LanguageClient, LspService};
 use lsp_actor::{LspActor, LspDispatcher};
+use lsp_actor_service::LspActorService;
 // use lsp_actor_service::LspActorService;
 use tracing::Level;
 use tracing::{error, info};
@@ -47,10 +49,13 @@ struct TickEvent;
 
 #[tokio::main]
 async fn main() {
+    // let (mut actor_ref, mut dispatcher);
     let (server, _) = async_lsp::MainLoop::new_server(|client| {
-        let client_cloned = client.clone();
+        let client_worker_thread = client.clone();
+        // let client = client.clone();
         let (actor_ref, dispatcher) = Actor::spawn_local(move || {
-            let backend = Backend::new(client_cloned);
+            let backend = Backend::new(client_worker_thread);
+            // let backend = ();
             let (mut actor, actor_ref) = Actor::new(backend);
             let mut dispatcher = LspDispatcher::new();
 
@@ -60,33 +65,48 @@ async fn main() {
             }
             .handle_request::<Initialize>(handlers::initialize)
             .handle_notification::<Initialized>(handlers::initialized);
+            // ;
 
             (actor, actor_ref, dispatcher)
-        });
-        // let actor_service = lsp_actor_service::LspActorService::new(actor_ref.clone(), dispatcher);
+        })
+        .ok()
+        .unzip();
 
         let streaming_router = Router::new(());
 
-        let mut boring_service = Router::new(());
+        let mut backup_service = Router::new(());
 
-        boring_service
-            .request::<request::Initialize, _>(|_, params| async move {
-                eprintln!("Initialize with {params:?}");
+        let got_actor_ref = actor_ref.is_some();
+        let got_dispatcher = dispatcher.is_some();
+        backup_service
+            .request::<request::Initialize, _>(|_, _| async move {
                 Ok(InitializeResult {
-                    capabilities: ServerCapabilities {
-                        hover_provider: Some(HoverProviderCapability::Simple(true)),
-                        definition_provider: Some(OneOf::Left(true)),
-                        ..ServerCapabilities::default()
-                    },
+                    capabilities: ServerCapabilities::default(),
                     server_info: None,
                 })
             })
-            .notification::<notification::Initialized>(|_, _| ControlFlow::Continue(()));
-        let services: Vec<BoxLspService<serde_json::Value, ResponseError>> = vec![
-            BoxLspService::new(boring_service),
+            .notification::<notification::Initialized>(move |_, _| {
+                info!("Entering fallback mode: something is broken.");
+                if got_actor_ref && got_dispatcher {
+                    info!("Somehow managed to initialize the actor even though we're in fallback mode.")
+                } else {
+                    error!("Failed to initialize the actor!")
+                }
+
+                ControlFlow::Continue(())
+            });
+
+        let mut services = match actor_ref {
+            Some(actor_ref) => {
+                let actor_service = LspActorService::new(actor_ref.clone(), dispatcher.unwrap());
+                vec![BoxLspService::new(actor_service)]
+            }
+            None => Vec::new(),
+        };
+        services.extend([
             BoxLspService::new(streaming_router),
-            // BoxLspService::new(actor_service),
-        ];
+            BoxLspService::new(backup_service),
+        ]);
 
         let router = LspSteer::new(services, FirstComeFirstServe);
         ServiceBuilder::new()
