@@ -525,6 +525,11 @@ pub enum BodyDiag<'db> {
     TypeMismatch(DynLazySpan<'db>, String, String),
     InfiniteOccurrence(DynLazySpan<'db>),
 
+    DuplicatedBinding {
+        primary: DynLazySpan<'db>,
+        conflicat_with: DynLazySpan<'db>,
+        name: IdentId<'db>,
+    },
     DuplicatedRestPat(DynLazySpan<'db>),
 
     InvalidPathDomainInPat {
@@ -878,36 +883,37 @@ impl<'db> BodyDiag<'db> {
         match self {
             Self::TypeMismatch(..) => 0,
             Self::InfiniteOccurrence(..) => 1,
-            Self::DuplicatedRestPat(..) => 2,
-            Self::InvalidPathDomainInPat { .. } => 3,
-            Self::UnitVariantExpected { .. } => 4,
-            Self::TupleVariantExpected { .. } => 5,
-            Self::RecordExpected { .. } => 6,
-            Self::MismatchedFieldCount { .. } => 7,
-            Self::DuplicatedRecordFieldBind { .. } => 8,
-            Self::RecordFieldNotFound { .. } => 9,
-            Self::ExplicitLabelExpectedInRecord { .. } => 10,
-            Self::MissingRecordFields { .. } => 11,
-            Self::UndefinedVariable(..) => 12,
-            Self::ReturnedTypeMismatch { .. } => 13,
-            Self::TypeMustBeKnown(..) => 14,
-            Self::AccessedFieldNotFound { .. } => 15,
-            Self::OpsTraitNotImplemented { .. } => 16,
-            Self::NonAssignableExpr(..) => 17,
-            Self::ImmutableAssignment { .. } => 18,
-            Self::LoopControlOutsideOfLoop { .. } => 19,
-            Self::TraitNotImplemented { .. } => 20,
-            Self::NotCallable(..) => 21,
-            Self::CallGenericArgNumMismatch { .. } => 22,
-            Self::CallArgNumMismatch { .. } => 23,
-            Self::CallArgLabelMismatch { .. } => 24,
-            Self::AmbiguousInherentMethodCall { .. } => 25,
-            Self::AmbiguousTrait { .. } => 26,
-            Self::AmbiguousTraitInst { .. } => 27,
-            Self::InvisibleAmbiguousTrait { .. } => 28,
-            Self::MethodNotFound { .. } => 29,
-            Self::NotValue { .. } => 30,
-            Self::TypeAnnotationNeeded { .. } => 31,
+            Self::DuplicatedBinding { .. } => 2,
+            Self::DuplicatedRestPat(..) => 3,
+            Self::InvalidPathDomainInPat { .. } => 4,
+            Self::UnitVariantExpected { .. } => 5,
+            Self::TupleVariantExpected { .. } => 6,
+            Self::RecordExpected { .. } => 7,
+            Self::MismatchedFieldCount { .. } => 8,
+            Self::DuplicatedRecordFieldBind { .. } => 9,
+            Self::RecordFieldNotFound { .. } => 10,
+            Self::ExplicitLabelExpectedInRecord { .. } => 11,
+            Self::MissingRecordFields { .. } => 12,
+            Self::UndefinedVariable(..) => 13,
+            Self::ReturnedTypeMismatch { .. } => 14,
+            Self::TypeMustBeKnown(..) => 15,
+            Self::AccessedFieldNotFound { .. } => 16,
+            Self::OpsTraitNotImplemented { .. } => 17,
+            Self::NonAssignableExpr(..) => 18,
+            Self::ImmutableAssignment { .. } => 19,
+            Self::LoopControlOutsideOfLoop { .. } => 20,
+            Self::TraitNotImplemented { .. } => 21,
+            Self::NotCallable(..) => 22,
+            Self::CallGenericArgNumMismatch { .. } => 23,
+            Self::CallArgNumMismatch { .. } => 24,
+            Self::CallArgLabelMismatch { .. } => 25,
+            Self::AmbiguousInherentMethodCall { .. } => 26,
+            Self::AmbiguousTrait { .. } => 27,
+            Self::AmbiguousTraitInst { .. } => 28,
+            Self::InvisibleAmbiguousTrait { .. } => 29,
+            Self::MethodNotFound { .. } => 30,
+            Self::NotValue { .. } => 31,
+            Self::TypeAnnotationNeeded { .. } => 32,
         }
     }
 
@@ -915,6 +921,9 @@ impl<'db> BodyDiag<'db> {
         match self {
             Self::TypeMismatch(_, _, _) => "type mismatch".to_string(),
             Self::InfiniteOccurrence(_) => "infinite sized type found".to_string(),
+            Self::DuplicatedBinding { name, .. } => {
+                format!("duplicated bidning `{}` in the same pattern", name.data(db))
+            }
             Self::DuplicatedRestPat(_) => "duplicated `..` found".to_string(),
             Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
             Self::UnitVariantExpected { .. } => "expected unit variant".to_string(),
@@ -989,6 +998,26 @@ impl<'db> BodyDiag<'db> {
                 "infinite sized type found".to_string(),
                 span.resolve(db),
             )],
+
+            Self::DuplicatedBinding {
+                primary,
+                conflicat_with,
+                name,
+            } => {
+                let name = name.data(db.as_hir_db());
+                vec![
+                    SubDiagnostic::new(
+                        LabelStyle::Primary,
+                        format!("`{name}` is already defined in the same pattern",),
+                        primary.resolve(db),
+                    ),
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("`{name}` is defined here"),
+                        conflicat_with.resolve(db),
+                    ),
+                ]
+            }
 
             Self::DuplicatedRestPat(span) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
