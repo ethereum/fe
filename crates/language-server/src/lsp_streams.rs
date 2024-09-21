@@ -6,6 +6,7 @@
 use async_lsp::router::Router;
 use async_lsp::{lsp_types::*, ResponseError};
 use futures::Stream;
+use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::sync::{mpsc, oneshot};
@@ -47,7 +48,8 @@ pub trait RouterStreams {
     /// Creates a stream for handling a specific LSP request.
     fn request_stream<R>(&mut self) -> RequestStream<R::Params, R::Result>
     where
-        R: request::Request;
+        R: request::Request,
+        R::Result: Debug;
 
     /// Creates a stream for handling a specific LSP notification.
     fn notification_stream<N>(&mut self) -> NotificationStream<N::Params>
@@ -59,6 +61,7 @@ impl<State> RouterStreams for Router<State> {
     fn request_stream<R>(&mut self) -> RequestStream<R::Params, R::Result>
     where
         R: request::Request,
+        R::Result: Debug,
     {
         let (tx, rx) = mpsc::channel(100);
         self.request::<R, _>(move |_, params| {

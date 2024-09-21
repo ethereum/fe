@@ -13,11 +13,11 @@ use act_locally::{
 };
 
 pub struct LspDispatcher {
-    wrappers: HashMap<
+    pub(super) wrappers: HashMap<
         String,
         Box<dyn Fn(Box<dyn Message>) -> Result<Box<dyn Message>, ActorError> + Send + Sync>,
     >,
-    unwrappers: HashMap<
+    pub(super) unwrappers: HashMap<
         String,
         Box<dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync>,
     >,
@@ -266,7 +266,7 @@ mod tests {
             }
             registration.handle_notification::<Initialized>(handle_initialized);
 
-            (actor, actor_ref, dispatcher)
+            Ok((actor, actor_ref, dispatcher))
         })
         .expect("Failed to spawn actor");
 

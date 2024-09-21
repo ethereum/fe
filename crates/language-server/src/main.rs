@@ -13,8 +13,10 @@ use std::ops::ControlFlow;
 
 use async_lsp::concurrency::ConcurrencyLayer;
 use async_lsp::lsp_types::notification::{self, Initialized, LogMessage};
+use async_lsp::lsp_types::request::HoverRequest;
 use async_lsp::lsp_types::{
-    request, HoverProviderCapability, InitializeResult, LogMessageParams, OneOf, ServerCapabilities,
+    request, Hover, HoverProviderCapability, InitializeResult, LogMessageParams, OneOf,
+    ServerCapabilities,
 };
 use async_lsp::panic::CatchUnwindLayer;
 use async_lsp::server::LifecycleLayer;
@@ -49,13 +51,16 @@ struct TickEvent;
 
 #[tokio::main]
 async fn main() {
-    // let (mut actor_ref, mut dispatcher);
+    tracing_subscriber::fmt()
+        .with_max_level(Level::INFO)
+        .with_ansi(false)
+        .with_writer(std::io::stderr)
+        .init();
+
     let (server, _) = async_lsp::MainLoop::new_server(|client| {
         let client_worker_thread = client.clone();
-        // let client = client.clone();
         let (actor_ref, dispatcher) = Actor::spawn_local(move || {
             let backend = Backend::new(client_worker_thread);
-            // let backend = ();
             let (mut actor, actor_ref) = Actor::new(backend);
             let mut dispatcher = LspDispatcher::new();
 
@@ -64,10 +69,12 @@ async fn main() {
                 dispatcher: &mut dispatcher,
             }
             .handle_request::<Initialize>(handlers::initialize)
-            .handle_notification::<Initialized>(handlers::initialized);
-            // ;
+            .handle_notification::<Initialized>(handlers::initialized)
+            // .handle_request::<HoverRequest>(handlers::handle_hover_request)
+            // .handle_request::<Ho
+            ;
 
-            (actor, actor_ref, dispatcher)
+            Ok((actor, actor_ref, dispatcher))
         })
         .ok()
         .unzip();
@@ -81,7 +88,10 @@ async fn main() {
         backup_service
             .request::<request::Initialize, _>(|_, _| async move {
                 Ok(InitializeResult {
-                    capabilities: ServerCapabilities::default(),
+                    capabilities: ServerCapabilities {
+                        hover_provider: Some(HoverProviderCapability::Simple(true)),
+                        ..ServerCapabilities::default()
+                    },
                     server_info: None,
                 })
             })
@@ -117,12 +127,6 @@ async fn main() {
             .layer(ClientProcessMonitorLayer::new(client.clone()))
             .service(router)
     });
-    tracing_subscriber::fmt()
-        .with_max_level(Level::DEBUG)
-        .with_ansi(false)
-        .with_writer(std::io::stderr)
-        .init();
-
     #[cfg(unix)]
     let (stdin, stdout) = (
         async_lsp::stdio::PipeStdin::lock_tokio().unwrap(),

@@ -39,9 +39,10 @@ impl Service<AnyRequest> for LspActorService {
     }
 
     fn call(&mut self, req: AnyRequest) -> Self::Future {
+        info!("got LSP request: {:?}", req);
         let actor_ref = self.actor_ref.clone();
         let dispatcher = self.dispatcher.clone();
-        Box::pin(async move {
+        let result = Box::pin(async move {
             let dispatcher = dispatcher.as_ref();
             let ask = actor_ref.ask::<_, Self::Response, _>(dispatcher, req);
             let lsp_result: Result<Self::Response, _> = ask.await.map_err(|e| match e {
@@ -49,11 +50,15 @@ impl Service<AnyRequest> for LspActorService {
                     async_lsp::ErrorCode::METHOD_NOT_FOUND,
                     "Method not found".to_string(),
                 ),
-                _ => ResponseError::new(async_lsp::ErrorCode::INTERNAL_ERROR, format!("{:?}", e)),
+                _ => ResponseError::new(
+                    async_lsp::ErrorCode::INTERNAL_ERROR,
+                    format!("There was an internal error... {:?}", e),
+                ),
             });
             info!("got LSP result: {:?}", lsp_result);
             lsp_result
-        })
+        });
+        result
     }
 }
 
@@ -96,13 +101,13 @@ impl LspService for LspActorService {
 
 impl CanHandle<AnyRequest> for LspActorService {
     fn can_handle(&self, req: &AnyRequest) -> bool {
-        self.dispatcher.as_ref().message_key(req).is_ok()
+        self.dispatcher.wrappers.contains_key(&req.method)
     }
 }
 
 impl CanHandle<AnyNotification> for LspActorService {
     fn can_handle(&self, notif: &AnyNotification) -> bool {
-        self.dispatcher.as_ref().message_key(notif).is_ok()
+        self.dispatcher.wrappers.contains_key(&notif.method)
     }
 }
 
