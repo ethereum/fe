@@ -137,10 +137,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
     fn resolve_path(&mut self) -> ResolvedPathInBody<'db> {
         let hir_db = self.tc.db.as_hir_db();
 
-        if self.path.is_ident(hir_db) {
-            let Some(ident) = self.path.last_segment(hir_db).to_opt() else {
-                return ResolvedPathInBody::Invalid;
-            };
+        if let Some(ident) = self.path.as_ident(hir_db) {
             self.resolve_ident(ident)
         } else {
             let early_resolved_path =
@@ -170,7 +167,12 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                     ResolvedPathInBody::Variant(..) => resolved,
                     ResolvedPathInBody::Ty(ref ty) if ty.is_record(self.tc.db) => resolved,
                     _ => {
-                        if let Some(ident) = self.path.last_segment(hir_db).to_opt() {
+                        if let Some(ident) = self
+                            .path
+                            .last_segment(hir_db)
+                            .and_then(|seg| seg.ident(hir_db).to_opt())
+                        {
+                            // xxx generic args
                             ResolvedPathInBody::NewBinding(ident)
                         } else {
                             resolved
@@ -276,9 +278,14 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
 
         if unresolved_from == self.path.len(hir_db) - 1 {
-            let Some(name) = self.path.last_segment(hir_db).to_opt() else {
+            let Some(name) = self
+                .path
+                .last_segment(hir_db)
+                .and_then(|seg| seg.ident(hir_db).to_opt())
+            else {
                 return ResolvedPathInBody::Invalid;
             };
+            // xxx generic args
             if let Some(resolved) = self.select_method_candidate(receiver_ty, name) {
                 return resolved;
             }
@@ -302,10 +309,15 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             return ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()));
         }
 
-        let Some(name) = self.path.last_segment(hir_db).to_opt() else {
+        let Some(name) = self
+            .path
+            .last_segment(hir_db)
+            .and_then(|seg| seg.ident(hir_db).to_opt())
+        else {
             return ResolvedPathInBody::Invalid;
         };
 
+        // xxx generic args
         let Some(trait_method) = trait_.methods(self.tc.db).get(&name) else {
             let span = self.span.segment(unresolved_from).into();
             let diag = BodyDiag::method_not_found(self.tc.db, span, name, Either::Right(trait_));

@@ -404,7 +404,9 @@ impl<'db> LocalBinding<'db> {
                 else {
                     unreachable!();
                 };
-                *path.last_segment(hir_db).unwrap()
+                path.last_segment(hir_db)
+                    .and_then(|seg| seg.ident(hir_db).to_opt())
+                    .unwrap()
             }
 
             Self::Param { idx, .. } => {

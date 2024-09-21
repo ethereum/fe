@@ -1,6 +1,7 @@
 use either::Either;
 use hir::hir_def::{
-    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind,
+    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, PathSegmentId, UnOp,
+    VariantKind,
 };
 
 use super::{
@@ -251,7 +252,7 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_call(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
-        let Expr::Call(callee, generic_args, args) = expr_data else {
+        let Expr::Call(callee, args) = expr_data else {
             unreachable!()
         };
         let callee_ty = self.fresh_ty();
@@ -261,20 +262,21 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        let mut callable =
-            match Callable::new(self.db, callee_ty, callee.lazy_span(self.body()).into()) {
-                Ok(callable) => callable,
-                Err(diag) => {
-                    self.push_diag(diag);
-                    return ExprProp::invalid(self.db);
-                }
-            };
+        let callable = match Callable::new(self.db, callee_ty, callee.lazy_span(self.body()).into())
+        {
+            Ok(callable) => callable,
+            Err(diag) => {
+                self.push_diag(diag);
+                return ExprProp::invalid(self.db);
+            }
+        };
 
         let call_span = expr.lazy_span(self.body()).into_call_expr();
 
-        if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
-            return ExprProp::invalid(self.db);
-        }
+        // xxx
+        // if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
+        //     return ExprProp::invalid(self.db);
+        // }
 
         callable.check_args(self, args, call_span.args_moved(), None);
 
@@ -948,7 +950,10 @@ pub(crate) trait TraitOps {
     fn trait_path<'db>(&self, db: &'db dyn HirAnalysisDb) -> PathId<'db> {
         let hir_db = db.as_hir_db();
         let path = std_ops_path(db);
-        path.push(hir_db, self.trait_name(db))
+        path.push(
+            hir_db,
+            PathSegmentId::from_ident(hir_db, self.trait_name(db)),
+        )
     }
 
     fn trait_name<'db>(&self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
@@ -1067,7 +1072,7 @@ fn std_ops_path(db: &dyn HirAnalysisDb) -> PathId {
     let hir_db = db.as_hir_db();
     let path_data: Vec<_> = ["std", "ops"]
         .into_iter()
-        .map(|s| Partial::Present(IdentId::new(hir_db, s.to_string())))
+        .map(|s| PathSegmentId::from_ident(hir_db, IdentId::new(hir_db, s.to_string())))
         .collect();
 
     PathId::new(hir_db, path_data)

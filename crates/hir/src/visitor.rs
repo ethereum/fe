@@ -1004,16 +1004,11 @@ pub fn walk_expr<'db, V>(
             visit_node_in_body!(visitor, ctxt, expr_id, expr);
         }
 
-        Expr::Call(callee_id, generic_args, call_args) => {
+        Expr::Call(callee_id, call_args) => {
             visit_node_in_body!(visitor, ctxt, callee_id, expr);
             ctxt.with_new_ctxt(
                 |span| span.into_call_expr(),
                 |ctxt| {
-                    ctxt.with_new_ctxt(
-                        |span| span.generic_args_moved(),
-                        |ctxt| visitor.visit_generic_arg_list(ctxt, *generic_args),
-                    );
-
                     ctxt.with_new_ctxt(
                         |span| span.args_moved(),
                         |ctxt| {
@@ -1705,14 +1700,21 @@ pub fn walk_path<'db, V>(
     V: Visitor<'db> + ?Sized,
 {
     for (idx, segment) in path.segments(ctxt.db).iter().enumerate() {
-        if let Some(ident) = segment.to_opt() {
+        if let Some(ident) = segment.ident(ctxt.db).to_opt() {
             ctxt.with_new_ctxt(
                 |span| span.segment_moved(idx).into_atom(),
                 |ctxt| {
                     visitor.visit_ident(ctxt, ident);
                 },
-            )
+            );
         }
+        let generic_args = segment.generic_args(ctxt.db);
+        ctxt.with_new_ctxt(
+            |span| span.generic_args_moved(idx),
+            |ctxt| {
+                visitor.visit_generic_arg_list(ctxt, generic_args);
+            },
+        );
     }
 }
 

@@ -294,17 +294,17 @@ Root@0..652
                 Colon@341..342 ":"
                 WhiteSpace@342..343 " "
                 PathType@343..352
-                  Path@343..349
-                    PathSegment@343..349
+                  Path@343..352
+                    PathSegment@343..352
                       Ident@343..349 "Parser"
-                  GenericArgList@349..352
-                    Lt@349..350 "<"
-                    TypeGenericArg@350..351
-                      PathType@350..351
-                        Path@350..351
-                          PathSegment@350..351
-                            Ident@350..351 "S"
-                    Gt@351..352 ">"
+                      GenericArgList@349..352
+                        Lt@349..350 "<"
+                        TypeGenericArg@350..351
+                          PathType@350..351
+                            Path@350..351
+                              PathSegment@350..351
+                                Ident@350..351 "S"
+                        Gt@351..352 ">"
               RParen@352..353 ")"
           Newline@353..354 "\n"
           RBrace@354..355 "}"
@@ -319,17 +319,17 @@ Root@0..652
           Gt@363..364 ">"
         WhiteSpace@364..365 " "
         PathType@365..374
-          Path@365..371
-            PathSegment@365..371
+          Path@365..374
+            PathSegment@365..374
               Ident@365..371 "Parser"
-          GenericArgList@371..374
-            Lt@371..372 "<"
-            TypeGenericArg@372..373
-              PathType@372..373
-                Path@372..373
-                  PathSegment@372..373
-                    Ident@372..373 "S"
-            Gt@373..374 ">"
+              GenericArgList@371..374
+                Lt@371..372 "<"
+                TypeGenericArg@372..373
+                  PathType@372..373
+                    Path@372..373
+                      PathSegment@372..373
+                        Ident@372..373 "S"
+                Gt@373..374 ">"
         WhiteSpace@374..375 " "
         Newline@375..376 "\n"
         WhiteSpace@376..380 "    "
@@ -407,17 +407,17 @@ Root@0..652
                 Colon@472..473 ":"
                 WhiteSpace@473..474 " "
                 PathType@474..492
-                  Path@474..480
-                    PathSegment@474..480
+                  Path@474..492
+                    PathSegment@474..492
                       Ident@474..480 "Option"
-                  GenericArgList@480..492
-                    Lt@480..481 "<"
-                    TypeGenericArg@481..491
-                      PathType@481..491
-                        Path@481..491
-                          PathSegment@481..491
-                            Ident@481..491 "Checkpoint"
-                    Gt@491..492 ">"
+                      GenericArgList@480..492
+                        Lt@480..481 "<"
+                        TypeGenericArg@481..491
+                          PathType@481..491
+                            Path@481..491
+                              PathSegment@481..491
+                                Ident@481..491 "Checkpoint"
+                        Gt@491..492 ">"
               RParen@492..493 ")"
             WhiteSpace@493..494 " "
             Arrow@494..496 "->"
@@ -508,17 +508,17 @@ Root@0..652
           Plus@624..625 "+"
           WhiteSpace@625..626 " "
           TraitRef@626..632
-            Path@626..629
-              PathSegment@626..629
+            Path@626..632
+              PathSegment@626..632
                 Ident@626..629 "Add"
-            GenericArgList@629..632
-              Lt@629..630 "<"
-              TypeGenericArg@630..631
-                PathType@630..631
-                  Path@630..631
-                    PathSegment@630..631
-                      Ident@630..631 "T"
-              Gt@631..632 ">"
+                GenericArgList@629..632
+                  Lt@629..630 "<"
+                  TypeGenericArg@630..631
+                    PathType@630..631
+                      Path@630..631
+                        PathSegment@630..631
+                          Ident@630..631 "T"
+                  Gt@631..632 ">"
         WhiteSpace@632..633 " "
         Newline@633..634 "\n"
         WhereClause@634..649
@@ -534,17 +534,17 @@ Root@0..652
               WhiteSpace@642..643 " "
               TypeBound@643..649
                 TraitRef@643..649
-                  Path@643..646
-                    PathSegment@643..646
+                  Path@643..649
+                    PathSegment@643..649
                       Ident@643..646 "Add"
-                  GenericArgList@646..649
-                    Lt@646..647 "<"
-                    TypeGenericArg@647..648
-                      PathType@647..648
-                        Path@647..648
-                          PathSegment@647..648
-                            Ident@647..648 "T"
-                    Gt@648..649 ">"
+                      GenericArgList@646..649
+                        Lt@646..647 "<"
+                        TypeGenericArg@647..648
+                          PathType@647..648
+                            Path@647..648
+                              PathSegment@647..648
+                                Ident@647..648 "T"
+                        Gt@648..649 ">"
         Newline@649..650 "\n"
         TraitItemList@650..652
           LBrace@650..651 "{"

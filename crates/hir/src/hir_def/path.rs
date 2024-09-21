@@ -1,37 +1,40 @@
-use super::IdentId;
+use super::{GenericArgListId, IdentId};
 use crate::{hir_def::Partial, HirDb};
 
 #[salsa::interned]
 pub struct PathId<'db> {
     #[return_ref]
-    pub segments: Vec<Partial<IdentId<'db>>>,
+    pub segments: Vec<PathSegmentId<'db>>,
 }
 
 impl<'db> PathId<'db> {
-    pub fn last_segment(self, db: &'db dyn HirDb) -> Partial<IdentId> {
-        self.segments(db).last().copied().unwrap_or_default()
+    pub fn last_segment(self, db: &'db dyn HirDb) -> Option<PathSegmentId> {
+        self.segments(db).last().copied()
     }
 
     pub fn len(self, db: &dyn HirDb) -> usize {
         self.segments(db).len()
     }
 
-    pub fn is_ident(self, db: &dyn HirDb) -> bool {
-        self.len(db) == 1
+    pub fn as_ident(self, db: &'db dyn HirDb) -> Option<IdentId> {
+        if self.len(db) == 1 {
+            self.last_segment(db).unwrap().ident(db).to_opt()
+        } else {
+            None
+        }
     }
 
     pub fn self_ty(db: &'db dyn HirDb) -> Self {
-        let self_ty = Partial::Present(IdentId::make_self_ty(db));
-        Self::new(db, vec![self_ty])
+        Self::from_ident(db, IdentId::make_self_ty(db))
     }
 
     pub fn from_ident(db: &'db dyn HirDb, ident: IdentId<'db>) -> Self {
-        Self::new(db, vec![Partial::Present(ident)])
+        Self::new(db, vec![PathSegmentId::from_ident(db, ident)])
     }
 
-    pub fn push(self, db: &'db dyn HirDb, segment: IdentId<'db>) -> Self {
+    pub fn push(self, db: &'db dyn HirDb, segment: PathSegmentId<'db>) -> Self {
         let mut segments = self.segments(db).clone();
-        segments.push(Partial::Present(segment));
+        segments.push(segment);
         Self::new(db, segments)
     }
 
@@ -39,10 +42,24 @@ impl<'db> PathId<'db> {
         self.segments(db)
             .iter()
             .map(|seg| {
-                seg.to_opt()
+                seg.ident(db)
+                    .to_opt()
                     .map_or("_".to_string(), |id| id.data(db).clone())
+                // xxx print generic args
             })
             .collect::<Vec<_>>()
             .join("::")
+    }
+}
+
+#[salsa::interned]
+pub struct PathSegmentId<'db> {
+    pub ident: Partial<IdentId<'db>>,
+    pub generic_args: GenericArgListId<'db>,
+}
+
+impl<'db> PathSegmentId<'db> {
+    pub fn from_ident(db: &'db dyn HirDb, ident: IdentId<'db>) -> Self {
+        Self::new(db, Partial::Present(ident), GenericArgListId::none(db))
     }
 }

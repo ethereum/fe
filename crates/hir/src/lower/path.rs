@@ -1,7 +1,7 @@
-use parser::ast;
+use crate::hir_def::{GenericArgListId, IdentId, Partial, PathId, PathSegmentId};
+use parser::ast::{self, GenericArgsOwner};
 
 use super::FileLowerCtxt;
-use crate::hir_def::{IdentId, Partial, PathId};
 
 impl<'db> PathId<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Path) -> Self {
@@ -9,7 +9,7 @@ impl<'db> PathId<'db> {
         let db = ctxt.db();
 
         for seg in ast.into_iter() {
-            let segment = match seg.kind() {
+            let ident = match seg.kind() {
                 Some(ast::PathSegmentKind::Ingot(_)) => Some(IdentId::make_ingot(db)),
                 Some(ast::PathSegmentKind::Super(_)) => Some(IdentId::make_super(db)),
                 Some(ast::PathSegmentKind::SelfTy(_)) => Some(IdentId::make_self_ty(db)),
@@ -18,7 +18,9 @@ impl<'db> PathId<'db> {
                 None => None,
             }
             .into();
-            segments.push(segment);
+
+            let generic_args = GenericArgListId::lower_ast_opt(ctxt, seg.generic_args());
+            segments.push(PathSegmentId::new(ctxt.db(), ident, generic_args));
         }
 
         Self::new(db, segments)

@@ -125,7 +125,6 @@ ast_node! {
     pub struct CallExpr,
     SK::CallExpr,
 }
-impl GenericArgsOwner for CallExpr {}
 impl CallExpr {
     /// Returns the callee of the call expression.
     pub fn callee(&self) -> Option<Expr> {
@@ -724,20 +723,23 @@ mod tests {
     #[wasm_bindgen_test]
     fn call_expr() {
         let call_expr: CallExpr = parse_expr("foo<i32, T>(1, label: 2, 3 + 4)");
-
-        assert!(matches!(
-            call_expr.callee().unwrap().kind(),
-            ExprKind::Path(_)
-        ));
-        assert!(matches!(
-            call_expr
+        dbg!(&call_expr);
+        let ExprKind::Path(path) = call_expr.callee().unwrap().kind() else {
+            panic!();
+        };
+        // xxx lolol
+        assert_eq!(
+            path.path()
+                .unwrap()
+                .segments()
+                .next()
+                .unwrap()
                 .generic_args()
                 .unwrap()
                 .into_iter()
-                .collect::<Vec<_>>()
-                .len(),
+                .count(),
             2
-        ));
+        );
 
         for (i, arg) in call_expr.args().unwrap().into_iter().enumerate() {
             match i {
