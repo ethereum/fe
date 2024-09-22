@@ -25,41 +25,13 @@ use super::{
 };
 use crate::HirAnalysisDb;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NameQuery<'db> {
+#[salsa::interned]
+pub struct EarlyNameQueryId<'db> {
     /// The name to be resolved.
     name: IdentId<'db>,
     /// The scope where the name is resolved.
     scope: ScopeId<'db>,
     directive: QueryDirective,
-}
-
-impl<'db> NameQuery<'db> {
-    /// Create a new name query with the default query directive.
-    pub fn new(name: IdentId<'db>, scope: ScopeId<'db>) -> Self {
-        Self {
-            name,
-            scope,
-            directive: Default::default(),
-        }
-    }
-
-    /// Create a new name query with the given query directive.
-    pub fn with_directive(
-        name: IdentId<'db>,
-        scope: ScopeId<'db>,
-        directive: QueryDirective,
-    ) -> Self {
-        Self {
-            name,
-            scope,
-            directive,
-        }
-    }
-
-    pub fn name(&self) -> IdentId {
-        self.name
-    }
 }
 
 /// The query directive is used to control the name resolution behavior, such as
@@ -125,18 +97,22 @@ pub struct NameResBucket<'db> {
 impl<'db> NameResBucket<'db> {
     /// Returns the number of resolutions in the bucket.
     pub fn len(&self) -> usize {
-        self.iter().count()
+        self.iter_ok().count()
     }
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &NameRes<'db>> {
+    pub fn iter(&self) -> impl Iterator<Item = &NameResolutionResult<'db, NameRes<'db>>> {
+        self.bucket.values()
+    }
+
+    pub fn iter_ok(&self) -> impl Iterator<Item = &NameRes<'db>> {
         self.bucket.values().filter_map(|res| res.as_ref().ok())
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut NameRes<'db>> {
+    pub fn iter_ok_mut(&mut self) -> impl Iterator<Item = &mut NameRes<'db>> {
         self.bucket.values_mut().filter_map(|res| res.as_mut().ok())
     }
 
@@ -169,13 +145,13 @@ impl<'db> NameResBucket<'db> {
                 self.bucket.insert(domain, Err(err.clone()));
             }
         }
-        for res in bucket.iter() {
+        for res in bucket.iter_ok() {
             self.push(res);
         }
     }
 
     pub(super) fn set_derivation(&mut self, derivation: NameDerivation<'db>) {
-        for res in self.iter_mut() {
+        for res in self.iter_ok_mut() {
             res.derivation = derivation.clone();
         }
     }
@@ -230,7 +206,7 @@ impl<'db> NameResBucket<'db> {
     }
 
     fn set_lexed_derivation(&mut self) {
-        for res in self.iter_mut() {
+        for res in self.iter_ok_mut() {
             res.derivation.lexed()
         }
     }
@@ -500,43 +476,15 @@ impl<'db> Ord for NameDerivation<'db> {
 pub(crate) struct NameResolver<'db, 'a> {
     db: &'db dyn HirAnalysisDb,
     importer: &'a dyn Importer<'db>,
-    cache_store: ResolvedQueryCacheStore<'db>,
 }
 
 impl<'db, 'a> NameResolver<'db, 'a> {
     pub(super) fn new(db: &'db dyn HirAnalysisDb, importer: &'a dyn Importer<'db>) -> Self {
-        Self {
-            db,
-            importer,
-            cache_store: Default::default(),
-        }
+        Self { db, importer }
     }
 
-    pub(super) fn new_no_cache(
-        db: &'db dyn HirAnalysisDb,
-        importer: &'a dyn Importer<'db>,
-    ) -> Self {
-        let cache_store = ResolvedQueryCacheStore {
-            no_cache: true,
-            ..Default::default()
-        };
-        Self {
-            db,
-            importer,
-            cache_store,
-        }
-    }
-
-    pub(super) fn into_cache_store(self) -> ResolvedQueryCacheStore<'db> {
-        self.cache_store
-    }
-
-    pub(crate) fn resolve_query(&mut self, query: NameQuery<'db>) -> NameResBucket<'db> {
+    pub(crate) fn resolve_query(&mut self, query: EarlyNameQueryId<'db>) -> NameResBucket<'db> {
         let hir_db = self.db.as_hir_db();
-        // If the query is already resolved, return the cached result.
-        if let Some(resolved) = self.cache_store.get(query) {
-            return resolved.clone();
-        };
 
         let mut bucket = NameResBucket::default();
 
@@ -548,8 +496,8 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         // 1. Look for the name in the current scope.
         let mut found_scopes = FxHashSet::default();
-        for edge in query.scope.edges(hir_db) {
-            match edge.kind.propagate(self.db, &query) {
+        for edge in query.scope(self.db).edges(hir_db) {
+            match edge.kind.propagate(self.db, query) {
                 PropagationResult::Terminated => {
                     if found_scopes.insert(edge.dest) {
                         let res = NameRes::new_from_scope(
@@ -573,16 +521,16 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // 2. Look for the name in the named imports of the current scope.
         if let Some(imported) = self
             .importer
-            .named_imports(self.db, query.scope)
-            .and_then(|imports| imports.get(&query.name))
+            .named_imports(self.db, query.scope(self.db))
+            .and_then(|imports| imports.get(&query.name(self.db)))
         {
             bucket.merge(imported);
         }
 
         // 3. Look for the name in the glob imports.
-        if query.directive.allow_glob {
-            if let Some(imported) = self.importer.glob_imports(self.db, query.scope) {
-                for res in imported.name_res_for(query.name) {
+        if query.directive(self.db).allow_glob {
+            if let Some(imported) = self.importer.glob_imports(self.db, query.scope(self.db)) {
+                for res in imported.name_res_for(query.name(self.db)) {
                     bucket.push(res);
                 }
             }
@@ -590,28 +538,28 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         // 4. Look for the name in the lexical scope if it exists.
         if let Some(parent) = parent {
-            let mut query_for_parent = query;
-            query_for_parent.scope = parent;
-            query_for_parent.directive.disallow_external();
+            let directive = query.directive(self.db).disallow_external();
+            let query_for_parent =
+                EarlyNameQueryId::new(self.db, query.name(self.db), parent, directive);
 
             let mut resolved = self.resolve_query(query_for_parent);
             resolved.set_lexed_derivation();
             bucket.merge(&resolved);
         }
 
-        if !query.directive.allow_external {
-            return self.finalize_query_result(query, bucket);
+        if !query.directive(self.db).allow_external {
+            return bucket;
         }
 
         // 5. Look for the name in the external ingots.
         query
-            .scope
+            .scope(self.db)
             .top_mod(hir_db)
             .ingot(hir_db)
             .external_ingots(hir_db)
             .iter()
             .for_each(|(name, ingot)| {
-                if *name == query.name {
+                if *name == query.name(self.db) {
                     // We don't care about the result of `push` because we assume ingots are
                     // guaranteed to be unique.
                     bucket.push(&NameRes::new_from_scope(
@@ -626,12 +574,12 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         for &prim in PrimTy::all_types() {
             // We don't care about the result of `push` because we assume builtin types are
             // guaranteed to be unique.
-            if query.name == prim.name(self.db.as_hir_db()) {
+            if query.name(self.db) == prim.name(self.db.as_hir_db()) {
                 bucket.push(&NameRes::new_prim(prim));
             }
         }
 
-        self.finalize_query_result(query, bucket)
+        bucket
     }
 
     /// Collect all visible resolutions in the given `target` scope.
@@ -712,7 +660,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             for (&name, import) in named_imports {
                 let found_domain = found_domains.get(&name).copied().unwrap_or_default();
                 for res in import
-                    .iter()
+                    .iter_ok()
                     .filter(|res| res.is_visible(self.db, use_scope))
                 {
                     if (found_domain & res.domain != NameDomain::Invalid)
@@ -759,16 +707,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         res_collection
     }
-
-    /// Finalize the query result and cache it to the cache store.
-    fn finalize_query_result(
-        &mut self,
-        query: NameQuery<'db>,
-        bucket: NameResBucket<'db>,
-    ) -> NameResBucket<'db> {
-        self.cache_store.cache_result(query, bucket.clone());
-        bucket
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -812,32 +750,6 @@ impl<'db> fmt::Display for NameResolutionError<'db> {
 }
 
 impl<'db> std::error::Error for NameResolutionError<'db> {}
-
-#[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct ResolvedQueryCacheStore<'db> {
-    cache: FxHashMap<NameQuery<'db>, NameResBucket<'db>>,
-    no_cache: bool,
-}
-
-impl<'db> ResolvedQueryCacheStore<'db> {
-    pub(super) fn get(&self, query: NameQuery<'db>) -> Option<&NameResBucket<'db>> {
-        self.cache.get(&query)
-    }
-
-    pub(super) fn no_cache() -> Self {
-        Self {
-            cache: FxHashMap::default(),
-            no_cache: true,
-        }
-    }
-
-    fn cache_result(&mut self, query: NameQuery<'db>, result: NameResBucket<'db>) {
-        if self.no_cache {
-            return;
-        }
-        self.cache.insert(query, result);
-    }
-}
 
 bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -894,8 +806,12 @@ impl Default for NameDomain {
 }
 
 /// The propagator controls how the name query is propagated to the next scope.
-trait QueryPropagator {
-    fn propagate(self, db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult;
+trait QueryPropagator<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult;
     fn propagate_glob(self) -> PropagationResult;
 }
 
@@ -910,9 +826,13 @@ enum PropagationResult {
     UnPropagated,
 }
 
-impl QueryPropagator for LexEdge {
-    fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if query.directive.allow_lex {
+impl<'db> QueryPropagator<'db> for LexEdge {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if query.directive(db).allow_lex {
             PropagationResult::Continuation
         } else {
             PropagationResult::UnPropagated
@@ -924,9 +844,13 @@ impl QueryPropagator for LexEdge {
     }
 }
 
-impl<'db> QueryPropagator for ModEdge<'db> {
-    fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if self.0 == query.name {
+impl<'db> QueryPropagator<'db> for ModEdge<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if self.0 == query.name(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -938,9 +862,13 @@ impl<'db> QueryPropagator for ModEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for TypeEdge<'db> {
-    fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if self.0 == query.name {
+impl<'db> QueryPropagator<'db> for TypeEdge<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if self.0 == query.name(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -952,9 +880,13 @@ impl<'db> QueryPropagator for TypeEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for TraitEdge<'db> {
-    fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if self.0 == query.name {
+impl<'db> QueryPropagator<'db> for TraitEdge<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if self.0 == query.name(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -966,9 +898,13 @@ impl<'db> QueryPropagator for TraitEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for ValueEdge<'db> {
-    fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if self.0 == query.name {
+impl<'db> QueryPropagator<'db> for ValueEdge<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if self.0 == query.name(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -980,9 +916,13 @@ impl<'db> QueryPropagator for ValueEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for GenericParamEdge<'db> {
-    fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if self.0 == query.name {
+impl<'db> QueryPropagator<'db> for GenericParamEdge<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if self.0 == query.name(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -994,9 +934,13 @@ impl<'db> QueryPropagator for GenericParamEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for FieldEdge<'db> {
-    fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if self.0 == query.name {
+impl<'db> QueryPropagator<'db> for FieldEdge<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if self.0 == query.name(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1008,9 +952,13 @@ impl<'db> QueryPropagator for FieldEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for VariantEdge<'db> {
-    fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if self.0 == query.name {
+impl<'db> QueryPropagator<'db> for VariantEdge<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if self.0 == query.name(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1022,9 +970,13 @@ impl<'db> QueryPropagator for VariantEdge<'db> {
     }
 }
 
-impl QueryPropagator for SuperEdge {
-    fn propagate(self, db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if query.name.is_super(db.as_hir_db()) {
+impl<'db> QueryPropagator<'db> for SuperEdge {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if query.name(db).is_super(db.as_hir_db()) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1036,9 +988,13 @@ impl QueryPropagator for SuperEdge {
     }
 }
 
-impl QueryPropagator for IngotEdge {
-    fn propagate(self, db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if query.name.is_ingot(db.as_hir_db()) {
+impl<'db> QueryPropagator<'db> for IngotEdge {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if query.name(db).is_ingot(db.as_hir_db()) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1050,9 +1006,13 @@ impl QueryPropagator for IngotEdge {
     }
 }
 
-impl QueryPropagator for SelfTyEdge {
-    fn propagate(self, db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if query.name.is_self_ty(db.as_hir_db()) {
+impl<'db> QueryPropagator<'db> for SelfTyEdge {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if query.name(db).is_self_ty(db.as_hir_db()) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1064,9 +1024,13 @@ impl QueryPropagator for SelfTyEdge {
     }
 }
 
-impl QueryPropagator for SelfEdge {
-    fn propagate(self, db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
-        if query.name.is_self(db.as_hir_db()) {
+impl<'db> QueryPropagator<'db> for SelfEdge {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if query.name(db).is_self(db.as_hir_db()) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1078,8 +1042,12 @@ impl QueryPropagator for SelfEdge {
     }
 }
 
-impl QueryPropagator for AnonEdge {
-    fn propagate(self, _db: &dyn HirAnalysisDb, _query: &NameQuery) -> PropagationResult {
+impl<'db> QueryPropagator<'db> for AnonEdge {
+    fn propagate(
+        self,
+        _db: &'db dyn HirAnalysisDb,
+        _query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
         PropagationResult::UnPropagated
     }
 
@@ -1088,8 +1056,12 @@ impl QueryPropagator for AnonEdge {
     }
 }
 
-impl<'db> QueryPropagator for EdgeKind<'db> {
-    fn propagate(self, db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
+impl<'db> QueryPropagator<'db> for EdgeKind<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
         match self {
             EdgeKind::Lex(edge) => edge.propagate(db, query),
             EdgeKind::Mod(edge) => edge.propagate(db, query),

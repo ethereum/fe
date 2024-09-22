@@ -368,16 +368,17 @@ impl<'db> TyBuilder<'db> {
     /// returns the `TyId::Invalid` with proper `InvalidCause`.
     fn resolve_path(&mut self, path: PathId<'db>) -> Either<NameResKind<'db>, TyId<'db>> {
         match resolve_path_early(self.db, path, self.scope) {
-            EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::TYPE) {
+            Some(EarlyResolvedPath::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
                 Ok(res) => Either::Left(res.kind),
 
                 // This error is already handled by the name resolution.
                 Err(_) => Either::Right(TyId::invalid(self.db, InvalidCause::Other)),
             },
 
-            EarlyResolvedPath::Partial { .. } => {
+            Some(EarlyResolvedPath::Partial { .. }) => {
                 Either::Right(TyId::invalid(self.db, InvalidCause::AssocTy))
             }
+            None => Either::Right(TyId::invalid(self.db, InvalidCause::Other)),
         }
     }
 
@@ -610,7 +611,7 @@ impl<'db> GenericParamCollector<'db> {
         };
 
         match resolve_path_early(self.db, path, self.owner.scope()) {
-            EarlyResolvedPath::Full(bucket) => match bucket.pick(NameDomain::TYPE) {
+            Some(EarlyResolvedPath::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
                 Ok(res) => match res.kind {
                     NameResKind::Scope(ScopeId::GenericParam(scope, idx))
                         if self.owner.scope().item() == scope =>
@@ -622,7 +623,7 @@ impl<'db> GenericParamCollector<'db> {
                 Err(_) => ParamLoc::NonParam,
             },
 
-            EarlyResolvedPath::Partial { .. } => ParamLoc::NonParam,
+            Some(EarlyResolvedPath::Partial { .. }) | None => ParamLoc::NonParam,
         }
     }
 

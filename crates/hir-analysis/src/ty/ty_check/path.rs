@@ -17,8 +17,8 @@ use super::{env::LocalBinding, TyChecker};
 use crate::{
     name_resolution::{
         diagnostics::NameResDiag, is_scope_visible_from, resolve_path_early, resolve_query,
-        resolve_segments_early, EarlyResolvedPath, NameDomain, NameQuery, NameRes, NameResBucket,
-        NameResKind, QueryDirective,
+        resolve_segments_early, EarlyNameQueryId, EarlyResolvedPath, NameDomain, NameRes,
+        NameResBucket, NameResKind, QueryDirective,
     },
     ty::{
         adt_def::{lower_adt, AdtDef, AdtField, AdtRef, AdtRefId},
@@ -143,9 +143,10 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             };
             self.resolve_ident(ident)
         } else {
-            let early_resolved_path =
-                resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
-            self.resolve_path_late(early_resolved_path)
+            resolve_path_early(self.tc.db, self.path, self.tc.env.scope()).map_or_else(
+                || ResolvedPathInBody::Invalid,
+                |res| self.resolve_path_late(res),
+            )
         }
     }
 
@@ -156,15 +157,18 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             ResolutionMode::ExprValue => self.resolve_ident_expr(ident),
 
             ResolutionMode::RecordInit => {
-                let early_resolved_path =
-                    resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
-                self.resolve_path_late(early_resolved_path)
+                resolve_path_early(self.tc.db, self.path, self.tc.env.scope()).map_or_else(
+                    || ResolvedPathInBody::Invalid,
+                    |res| self.resolve_path_late(res),
+                )
             }
 
             ResolutionMode::Pat => {
-                let early_resolved_path =
-                    resolve_path_early(self.tc.db, self.path, self.tc.env.scope());
-                let resolved = self.resolve_path_late(early_resolved_path);
+                let resolved = resolve_path_early(self.tc.db, self.path, self.tc.env.scope())
+                    .map_or_else(
+                        || ResolvedPathInBody::Invalid,
+                        |res| self.resolve_path_late(res),
+                    );
 
                 match resolved {
                     ResolvedPathInBody::Variant(..) => resolved,
@@ -191,7 +195,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
             let scope = env.scope;
             let directive = QueryDirective::new().disallow_lex();
-            let query = NameQuery::with_directive(ident, scope, directive);
+            let query = EarlyNameQueryId::new(self.tc.db, ident, scope, directive);
             let bucket = resolve_query(self.tc.db, query);
 
             let resolved = self.resolve_bucket(bucket);
@@ -207,7 +211,12 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             }
         }
 
-        let query = NameQuery::new(ident, self.tc.body().scope());
+        let query = EarlyNameQueryId::new(
+            self.tc.db,
+            ident,
+            self.tc.body().scope(),
+            QueryDirective::default(),
+        );
         let bucket = resolve_query(self.tc.db, query);
 
         let resolved = self.resolve_bucket(bucket);
@@ -265,13 +274,12 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             if unresolved_from + 1 == self.path.len(hir_db);
             if let Some(adt_ref) = receiver_ty.adt_ref(db);
             if let AdtRef::Enum(enum_) = adt_ref.data(db);
+            let segments = &self.path.segments(hir_db)[unresolved_from..];
+            let scope = enum_.scope();
+            if let Some(early) = resolve_segments_early(self.tc.db, segments, scope);
+            if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_path_late(early);
             then {
-                let segments = &self.path.segments(hir_db)[unresolved_from..];
-                let scope = enum_.scope();
-                let early = resolve_segments_early(self.tc.db, segments, scope);
-                if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_path_late(early) {
-                    return resolved;
-                }
+                return resolved;
             }
         }
 
@@ -366,7 +374,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         ))
     }
 
-    fn resolve_bucket(&mut self, bucket: NameResBucket<'db>) -> ResolvedPathInBody<'db> {
+    fn resolve_bucket(&mut self, bucket: &NameResBucket<'db>) -> ResolvedPathInBody<'db> {
         match self.mode {
             ResolutionMode::ExprValue => {
                 match bucket.pick(NameDomain::VALUE) {
