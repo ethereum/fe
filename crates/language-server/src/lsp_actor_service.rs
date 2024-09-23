@@ -5,8 +5,8 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use act_locally::actor::ActorRef;
-use act_locally::dispatcher::Dispatcher;
 use act_locally::types::ActorError;
+use serde_json::Value;
 use tracing::info;
 
 use async_lsp::can_handle::CanHandle;
@@ -29,19 +29,23 @@ impl LspActorService {
     }
 }
 
+type BoxReqFuture<Error> = Pin<Box<dyn Future<Output = Result<Value, Error>> + Send>>;
 impl Service<AnyRequest> for LspActorService {
     type Response = serde_json::Value;
     type Error = ResponseError;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    // type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+    type Future = BoxReqFuture<Self::Error>;
 
     fn poll_ready(&mut self, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn call(&mut self, req: AnyRequest) -> Self::Future {
-        info!("got LSP request: {:?}", req);
+        let method = req.method.clone();
+        info!("got LSP request: {:?}", method);
         let actor_ref = self.actor_ref.clone();
         let dispatcher = self.dispatcher.clone();
+        let method_cloned = method.clone().to_owned();
         let result = Box::pin(async move {
             let dispatcher = dispatcher.as_ref();
             let ask = actor_ref.ask::<_, Self::Response, _>(dispatcher, req);
@@ -55,9 +59,10 @@ impl Service<AnyRequest> for LspActorService {
                     format!("There was an internal error... {:?}", e),
                 ),
             });
-            info!("got LSP result: {:?}", lsp_result);
+            info!("Prepared response for LSP request: {:?}", method_cloned);
             lsp_result
         });
+        info!("Finished handling LSP request for {method:?}, responding.");
         result
     }
 }

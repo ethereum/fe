@@ -69,7 +69,7 @@ async fn main() {
                 dispatcher: &mut dispatcher,
             }
             .handle_request::<Initialize>(handlers::initialize)
-            .handle_notification::<Initialized>(handlers::initialized)
+            // .handle_notification::<Initialized>(handlers::initialized)
             // .handle_request::<HoverRequest>(handlers::handle_hover_request)
             // .handle_request::<Ho
             ;
@@ -89,7 +89,7 @@ async fn main() {
             .request::<request::Initialize, _>(|_, _| async move {
                 Ok(InitializeResult {
                     capabilities: ServerCapabilities {
-                        hover_provider: Some(HoverProviderCapability::Simple(true)),
+                        // hover_provider: Some(HoverProviderCapability::Simple(true)),
                         ..ServerCapabilities::default()
                     },
                     server_info: None,
