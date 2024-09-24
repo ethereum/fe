@@ -5,8 +5,9 @@ use crate::backend::workspace::SyncableIngotFileContext;
 use async_lsp::{
     lsp_types::{
         notification::Exit, Hover, HoverParams, InitializeParams, InitializeResult,
-        InitializedParams,
-    }, LanguageClient, ResponseError,
+        InitializedParams, LogMessageParams,
+    },
+    LanguageClient, ResponseError,
 };
 use common::InputDb;
 use futures::TryFutureExt;
@@ -63,10 +64,15 @@ pub async fn initialize(
 }
 
 pub async fn initialized(
-    _backend: &mut Backend,
+    backend: &mut Backend,
     _message: InitializedParams,
 ) -> Result<(), ResponseError> {
     info!("language server initialized! recieved notification!");
+
+    let _ = backend.client.log_message(LogMessageParams {
+        typ: async_lsp::lsp_types::MessageType::INFO,
+        message: "language server initialized!".to_string(),
+    });
     Ok(())
 }
 

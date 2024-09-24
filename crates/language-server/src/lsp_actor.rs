@@ -31,25 +31,6 @@ impl LspDispatcher {
         }
     }
 
-    // pub fn dispatch_request(&self, request: &AnyRequest) -> Result<Box<dyn Message>, ActorError> {
-    //     let handler = self
-    //         .wrappers
-    //         .get(&request.method)
-    //         .ok_or(ActorError::HandlerNotFound)?;
-    //     handler(Box::new(request.params.clone()))
-    // }
-
-    // pub fn dispatch_notification(
-    //     &self,
-    //     notification: &AnyNotification,
-    // ) -> Result<Box<dyn Message>, ActorError> {
-    //     let handler = self
-    //         .wrappers
-    //         .get(&notification.method)
-    //         .ok_or(ActorError::HandlerNotFound)?;
-    //     handler(Box::new(notification.params.clone()))
-    // }
-
     fn register_wrapper(
         &mut self,
         key: MessageKey,
@@ -151,7 +132,7 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
         self.dispatcher
             .register_wrapper(MessageKey::new(R::METHOD), param_handler);
 
-        self.actor
+        self.actor_ref
             .register_handler_async_mutating(MessageKey::new(R::METHOD), handler);
 
         let result_unwrapper = Box::new(
@@ -196,7 +177,7 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
         self.dispatcher
             .register_wrapper(MessageKey::new(N::METHOD), param_handler);
 
-        self.actor
+        self.actor_ref
             .register_handler_async_mutating(MessageKey::new(N::METHOD), handler);
         self
     }
@@ -235,40 +216,36 @@ mod tests {
 
     #[tokio::test]
     async fn test_lsp_actor() {
-        // Setup logging for the test
-        // let _ = env_logger::builder().is_test(true).try_init();
-
-        let (actor_ref, dispatcher) = Actor::spawn_local(|| {
+        let actor_ref = Actor::spawn(|| {
             let initial_state = TestState { initialized: false };
-            let (mut actor, actor_ref) = Actor::new(initial_state);
-            let mut dispatcher = LspDispatcher::new();
-
-            let mut registration = HandlerRegistration {
-                actor: &mut actor,
-                dispatcher: &mut dispatcher,
-            };
-
-            async fn handle_initialize(
-                state: &mut TestState,
-                _: InitializeParams,
-            ) -> Result<InitializeResult, ResponseError> {
-                println!("Handling initialize request");
-                state.initialized = true;
-                Ok(InitializeResult::default())
-            }
-
-            registration.handle_request::<Initialize>(handle_initialize);
-
-            async fn handle_initialized(state: &mut TestState, _: ()) -> Result<(), ResponseError> {
-                println!("Handling initialized notification");
-                assert!(state.initialized, "State should be initialized");
-                Ok(())
-            }
-            registration.handle_notification::<Initialized>(handle_initialized);
-
-            Ok((actor, actor_ref, dispatcher))
+            Ok(initial_state)
         })
         .expect("Failed to spawn actor");
+
+        let mut dispatcher = LspDispatcher::new();
+
+        let mut registration = HandlerRegistration {
+            actor_ref: &actor_ref,
+            dispatcher: &mut dispatcher,
+        };
+
+        async fn handle_initialize(
+            state: &mut TestState,
+            _: InitializeParams,
+        ) -> Result<InitializeResult, ResponseError> {
+            println!("Handling initialize request");
+            state.initialized = true;
+            Ok(InitializeResult::default())
+        }
+
+        registration.handle_request::<Initialize>(handle_initialize);
+
+        async fn handle_initialized(state: &mut TestState, _: ()) -> Result<(), ResponseError> {
+            println!("Handling initialized notification");
+            assert!(state.initialized, "State should be initialized");
+            Ok(())
+        }
+        registration.handle_notification::<Initialized>(handle_initialized);
 
         // Test initialize request
         let init_params = InitializeParams::default();

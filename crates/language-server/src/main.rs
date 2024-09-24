@@ -11,6 +11,7 @@ mod util;
 use std::backtrace::Backtrace;
 use std::net::SocketAddr;
 
+use async_compat::CompatExt;
 use async_lsp::concurrency::ConcurrencyLayer;
 use async_lsp::panic::CatchUnwindLayer;
 use async_lsp::server::LifecycleLayer;
@@ -21,9 +22,10 @@ use futures::io::AsyncReadExt;
 use futures::StreamExt;
 use futures_net::TcpListener;
 use server::setup;
+use tracing::instrument::WithSubscriber;
 // use lsp_actor_service::LspActorService;
-use tracing::Level;
 use tracing::{error, info};
+use tracing::{Level, Subscriber};
 
 use async_lsp::client_monitor::ClientProcessMonitorLayer;
 use backend::db::Jar;
@@ -87,17 +89,19 @@ async fn main() {
 
 async fn start_stdio_server() {
     let (server, _) = async_lsp::MainLoop::new_server(|client| {
-        let router = setup(client.clone());
+        let tracing_layer = TracingLayer::default();
+        let lsp_service = setup(client.clone());
         ServiceBuilder::new()
-            .layer(TracingLayer::default())
             .layer(LifecycleLayer::default())
             .layer(CatchUnwindLayer::default())
             .layer(ConcurrencyLayer::default())
+            .layer(tracing_layer)
             .layer(ClientProcessMonitorLayer::new(client.clone()))
-            .service(router)
+            .service(lsp_service)
     });
 
-    let (stdin, stdout) = (async_std::io::stdin(), async_std::io::stdout());
+    let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
+    let (stdin, stdout) = (stdin.compat(), stdout.compat());
 
     match server.run_buffered(stdin, stdout).await {
         Ok(_) => info!("Server finished successfully"),
@@ -114,15 +118,15 @@ async fn start_tcp_server(port: u16) {
 
     info!("LSP server is listening on {}", addr);
 
-    while let Some(Ok(stream)) = incoming.next().await {
-        // info!("New client connected from {}", client_addr);
-        // Spawn a new task for each client connection
+    while let Some(Ok(stream)) = incoming.next().with_current_subscriber().await {
+        // info!("New client connected from {}",(client_addr);
         let client_address = stream.peer_addr().unwrap();
-        tokio::spawn(async move {
+        let tracing_layer = TracingLayer::default();
+        let task = async move {
             let (server, _) = async_lsp::MainLoop::new_server(|client| {
                 let router = setup(client.clone());
                 ServiceBuilder::new()
-                    .layer(TracingLayer::default())
+                    .layer(tracing_layer)
                     .layer(LifecycleLayer::default())
                     .layer(CatchUnwindLayer::default())
                     .layer(ConcurrencyLayer::default())
@@ -131,12 +135,12 @@ async fn start_tcp_server(port: u16) {
             });
 
             let (read, write) = stream.split();
-
             if let Err(e) = server.run_buffered(read, write).await {
                 error!("Server error for client {}: {:?}", client_address, e);
             } else {
                 info!("Client {} disconnected", client_address);
             }
-        });
+        };
+        tokio::spawn(task.with_current_subscriber());
     }
 }

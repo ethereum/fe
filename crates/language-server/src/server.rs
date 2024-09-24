@@ -23,31 +23,16 @@ use async_lsp::{
 // use lsp_actor::{ActOnNotification, ActOnRequest};
 
 pub(crate) fn setup(client: ClientSocket) -> BoxLspService<Value, ResponseError> {
+    info!("Setting up server");
     let client_worker_thread = client.clone();
-    let (actor_ref, dispatcher) = Actor::spawn_local(move || {
-        let backend = Backend::new(client_worker_thread);
-        let (mut actor, actor_ref) = Actor::new(backend);
-        let mut dispatcher = LspDispatcher::new();
-
-        HandlerRegistration {
-            actor: &mut actor,
-            dispatcher: &mut dispatcher,
-        }
-        .handle_request::<Initialize>(handlers::initialize)
-        .handle_notification::<Initialized>(handlers::initialized)
-        .handle_request::<HoverRequest>(handlers::handle_hover_request);
-
-        Ok((actor, actor_ref, dispatcher))
-    })
-    .ok()
-    .unzip();
+    let actor_ref = Actor::spawn(move || Ok(Backend::new(client_worker_thread)));
+    let mut dispatcher = LspDispatcher::new();
 
     let streaming_router = Router::new(());
 
     let mut backup_service = Router::new(());
 
-    let got_actor_ref = actor_ref.is_some();
-    let got_dispatcher = dispatcher.is_some();
+    let got_actor_ref = actor_ref.is_ok();
     backup_service
         .request::<request::Initialize, _>(|_, _| async move {
             Ok(InitializeResult {
@@ -60,7 +45,7 @@ pub(crate) fn setup(client: ClientSocket) -> BoxLspService<Value, ResponseError>
         })
         .notification::<notification::Initialized>(move |_, _| {
             info!("Entering fallback mode: something is broken.");
-            if got_actor_ref && got_dispatcher {
+            if got_actor_ref {
                 info!("Somehow managed to initialize the actor even though we're in fallback mode.")
             } else {
                 error!("Failed to initialize the actor!")
@@ -70,11 +55,19 @@ pub(crate) fn setup(client: ClientSocket) -> BoxLspService<Value, ResponseError>
         });
 
     let mut services = match actor_ref {
-        Some(actor_ref) => {
-            let actor_service = LspActorService::new(actor_ref.clone(), dispatcher.unwrap());
+        Ok(actor_ref) => {
+            HandlerRegistration {
+                actor_ref: &actor_ref,
+                dispatcher: &mut dispatcher,
+            }
+            .handle_request::<Initialize>(handlers::initialize)
+            .handle_notification::<Initialized>(handlers::initialized)
+            .handle_request::<HoverRequest>(handlers::handle_hover_request);
+
+            let actor_service = LspActorService::new(actor_ref.clone(), dispatcher);
             vec![BoxLspService::new(actor_service)]
         }
-        None => Vec::new(),
+        Err(_) => Vec::new(),
     };
     services.extend([
         BoxLspService::new(streaming_router),

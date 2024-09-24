@@ -1,14 +1,14 @@
+use crate::lsp_actor::LspDispatcher;
 // use crate::lsp_actor::{ActOnNotification, ActOnRequest};
 use crate::lsp_streams::RouterStreams;
+use act_locally::dispatcher::Dispatcher;
 // use crate::lsp_kameo::RouterActors;
 use async_lsp::lsp_types;
 use async_lsp::lsp_types::{notification, request};
 use async_lsp::router::Router;
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
 use futures_batch::ChunksTimeoutStreamExt;
 use futures_concurrency::prelude::*;
-// use kameo::actor::ActorRef;
-// use kameo::error::SendError;
 use lsp_types::FileChangeType;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -27,10 +27,15 @@ pub enum ChangeKind {
     Delete,
 }
 
-pub async fn setup_streams(
+pub fn setup_streams(
     // backend: &mut Backend,
-    router: &mut Router<ActorRef>,
-    actor: ActorRef,
+    router: &mut Router<()>,
+    // backend: ActorRef,
+    // dispatcher: LspDispatcher,
+) -> (
+    impl Stream<Item = Vec<String>> + Unpin,
+    impl Stream<Item = FileChange> + Unpin,
+    tokio::sync::mpsc::UnboundedSender<String>,
 ) {
     info!("setting up streams");
 
@@ -81,6 +86,7 @@ pub async fn setup_streams(
         .merge()
         .fuse();
 
+    (diagnostics_stream, change_stream, tx_needs_diagnostics)
     // We can't do this because there's no way of returning a local future from a closure
     // router.request::<request::Initialize, _>(|st: &mut Backend, params: InitializeParams| {
     //     async move {
@@ -91,7 +97,7 @@ pub async fn setup_streams(
     // });
     // router.request_to_actor::<request::Initialize>(backend.clone());
 
-    let initialize_stream = router.request_stream::<request::Initialize>().fuse();
+    // let initialize_stream = router.request_stream::<request::Initialize>().fuse();
     // .for_each(|(params, response_tx)| {
     //     let backend = backend.clone();
     //     async move {
@@ -104,7 +110,7 @@ pub async fn setup_streams(
     // router.act_on_request::<Initialize>(&actor);
     // router.act_on_notification::<async_lsp::lsp_types::notification::DidChangeWatchedFiles>(&actor);
 
-    let hover_stream = router.request_stream::<request::HoverRequest>().fuse();
+    // let hover_stream = router.request_stream::<request::HoverRequest>().fuse();
     // .for_each(|(params, response_tx)| {
     //     let backend = backend.clone();
     //     async move {
@@ -139,11 +145,11 @@ pub async fn setup_streams(
     //     tokio::select! {
     //         Some(change) = change_stream.next() => {
     //             let uri = change.uri.to_string();
-    //             backend.send(change);
+    //             // backend.tell(change);
     //             tx_needs_diagnostics.send(uri).unwrap();
     //         },
     //         Some(files_need_diagnostics) = diagnostics_stream.next() => {
-    //             backend.ask(files_need_diagnostics).send();
+    //             // backend.ask(files_need_diagnostics).send();
     //         },
     //     }
     //     tokio::task::yield_now().await;

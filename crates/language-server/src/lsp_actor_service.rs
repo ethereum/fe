@@ -16,13 +16,13 @@ use tower::Service;
 
 use crate::lsp_actor::LspDispatcher;
 
-pub struct LspActorService {
-    actor_ref: ActorRef,
+pub struct LspActorService<S> {
+    actor_ref: ActorRef<S>,
     dispatcher: Arc<LspDispatcher>,
 }
 
-impl LspActorService {
-    pub fn new(actor_ref: ActorRef, dispatcher: LspDispatcher) -> Self {
+impl<S> LspActorService<S> {
+    pub fn new(actor_ref: ActorRef<S>, dispatcher: LspDispatcher) -> Self {
         Self {
             actor_ref,
             dispatcher: Arc::new(dispatcher),
@@ -31,7 +31,7 @@ impl LspActorService {
 }
 
 type BoxReqFuture<Error> = Pin<Box<dyn Future<Output = Result<Value, Error>> + Send>>;
-impl Service<AnyRequest> for LspActorService {
+impl<S: 'static> Service<AnyRequest> for LspActorService<S> {
     type Response = serde_json::Value;
     type Error = ResponseError;
     // type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
@@ -68,7 +68,7 @@ impl Service<AnyRequest> for LspActorService {
     }
 }
 
-impl LspService for LspActorService {
+impl<S: 'static> LspService for LspActorService<S> {
     fn notify(&mut self, notif: AnyNotification) -> ControlFlow<async_lsp::Result<()>> {
         let method = notif.method.clone();
         let dispatcher = self.dispatcher.clone();
@@ -105,19 +105,19 @@ impl LspService for LspActorService {
     }
 }
 
-impl CanHandle<AnyRequest> for LspActorService {
+impl<S> CanHandle<AnyRequest> for LspActorService<S> {
     fn can_handle(&self, req: &AnyRequest) -> bool {
         self.dispatcher.wrappers.contains_key(&req.method)
     }
 }
 
-impl CanHandle<AnyNotification> for LspActorService {
+impl<S> CanHandle<AnyNotification> for LspActorService<S> {
     fn can_handle(&self, notif: &AnyNotification) -> bool {
         self.dispatcher.wrappers.contains_key(&notif.method)
     }
 }
 
-impl CanHandle<AnyEvent> for LspActorService {
+impl<S> CanHandle<AnyEvent> for LspActorService<S> {
     fn can_handle(&self, _: &AnyEvent) -> bool {
         false
     }

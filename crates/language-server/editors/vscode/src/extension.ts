@@ -36,7 +36,7 @@ export async function activate(
     "fe-language-server",
   );
 
-  let useTcp = false;
+  let useTcp = true;
 
   let connectionInfo = {
     port: 4242,
