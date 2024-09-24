@@ -6,7 +6,6 @@ mod lsp_actor_service;
 mod lsp_streaming_layer;
 mod lsp_streams;
 mod server;
-// mod streaming_router;
 mod util;
 
 use std::backtrace::Backtrace;
@@ -18,7 +17,7 @@ use async_lsp::server::LifecycleLayer;
 use async_lsp::tracing::TracingLayer;
 use clap::Parser;
 use cli_args::{CliArgs, Commands};
-use futures::io::{AsyncReadExt};
+use futures::io::AsyncReadExt;
 use futures::StreamExt;
 use futures_net::TcpListener;
 use server::setup;
@@ -30,7 +29,6 @@ use async_lsp::client_monitor::ClientProcessMonitorLayer;
 use backend::db::Jar;
 // use lsp_actor::{ActOnNotification, ActOnRequest};
 use tower::ServiceBuilder;
-
 
 #[tokio::main]
 async fn main() {
@@ -99,18 +97,7 @@ async fn start_stdio_server() {
             .service(router)
     });
 
-    #[cfg(unix)]
-    let (stdin, stdout) = (
-        async_lsp::stdio::PipeStdin::lock_tokio().unwrap(),
-        async_lsp::stdio::PipeStdout::lock_tokio().unwrap(),
-    );
-
-    // Fallback to spawn blocking read/write otherwise.
-    #[cfg(not(unix))]
-    let (stdin, stdout) = (
-        tokio_util::compat::TokioAsyncReadCompatExt::compat(tokio::io::stdin()),
-        tokio_util::compat::TokioAsyncWriteCompatExt::compat_write(tokio::io::stdout()),
-    );
+    let (stdin, stdout) = (async_std::io::stdin(), async_std::io::stdout());
 
     match server.run_buffered(stdin, stdout).await {
         Ok(_) => info!("Server finished successfully"),
@@ -125,7 +112,6 @@ async fn start_tcp_server(port: u16) {
         .expect("Failed to bind to address");
     let mut incoming = listener.incoming();
 
-    // let listener = stream.
     info!("LSP server is listening on {}", addr);
 
     while let Some(Ok(stream)) = incoming.next().await {
