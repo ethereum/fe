@@ -1,6 +1,6 @@
 use camino::Utf8PathBuf;
-use git::GitDesc;
-use local::LocalDesc;
+use git::{GitDesc, GitResolutionError};
+use local::{LocalDesc, LocalResolutionError};
 use serde::Deserialize;
 
 use crate::Resolver;
@@ -8,7 +8,7 @@ use crate::Resolver;
 mod git;
 mod local;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Hash, Debug)]
 #[serde(untagged)]
 pub enum AnyFilesDesc {
     Local(LocalDesc),
@@ -18,8 +18,8 @@ pub enum AnyFilesDesc {
 pub struct AnyFilesResolver;
 
 pub enum AnyFilesResolutionError {
-    Local(local::LocalResolutionError),
-    Git(git::GitResolutionError),
+    Local(LocalResolutionError),
+    Git(GitResolutionError),
 }
 
 impl Resolver for AnyFilesResolver {

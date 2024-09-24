@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use super::Resolver;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Hash, Debug)]
 pub struct LocalDesc {
     pub path: String,
 }
@@ -11,8 +11,8 @@ pub struct LocalDesc {
 pub struct LocalResolver;
 
 pub enum LocalResolutionError {
-    Invalid,
-    DoesNotExist,
+    InvalidPath,
+    PathDoesNotExist,
 }
 
 impl Resolver for LocalResolver {
@@ -21,19 +21,19 @@ impl Resolver for LocalResolver {
     type Resource = Utf8PathBuf;
     type ResolutionError = LocalResolutionError;
 
-    fn from_config(config: &Self::Config) -> Self {
+    fn from_config(_: &Self::Config) -> Self {
         todo!()
     }
 
     fn resolve(&self, desc: &LocalDesc) -> Result<Utf8PathBuf, LocalResolutionError> {
         if let Ok(path) = Utf8PathBuf::try_from(desc.path.clone()) {
             if !path.exists() {
-                Err(LocalResolutionError::DoesNotExist)
+                Err(LocalResolutionError::PathDoesNotExist)
             } else {
                 Ok(path)
             }
         } else {
-            Err(LocalResolutionError::Invalid)
+            Err(LocalResolutionError::InvalidPath)
         }
     }
 }
