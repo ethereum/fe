@@ -6,6 +6,7 @@ use std::task::{Context, Poll};
 
 use act_locally::actor::ActorRef;
 use act_locally::types::ActorError;
+use futures::TryFutureExt;
 use serde_json::Value;
 use tracing::info;
 
@@ -42,10 +43,10 @@ impl Service<AnyRequest> for LspActorService {
 
     fn call(&mut self, req: AnyRequest) -> Self::Future {
         let method = req.method.clone();
-        info!("got LSP request: {:?}", method);
+        info!("got LSP request: {method:?}");
         let actor_ref = self.actor_ref.clone();
         let dispatcher = self.dispatcher.clone();
-        let method_cloned = method.clone().to_owned();
+        let method_log = method.clone().to_owned();
         let result = Box::pin(async move {
             let dispatcher = dispatcher.as_ref();
             let ask = actor_ref.ask::<_, Self::Response, _>(dispatcher, req);
@@ -59,10 +60,10 @@ impl Service<AnyRequest> for LspActorService {
                     format!("There was an internal error... {:?}", e),
                 ),
             });
-            info!("Prepared response for LSP request: {:?}", method_cloned);
+            info!("Prepared LSP response for: {method_log:?}");
             lsp_result
         });
-        info!("Finished handling LSP request for {method:?}, responding.");
+        info!("Prepared future for LSP request: {method:?}");
         result
     }
 }

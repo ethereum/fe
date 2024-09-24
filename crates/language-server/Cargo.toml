@@ -27,7 +27,7 @@ fe-compiler-test-utils = { path = "../test-utils" }
 patricia_tree = "0.6.2"
 glob = "0.3.1"
 url = "2.4.1"
-tokio = { version = "1.35.1", features = ["full", "io-std", "tracing"] }
+tokio = { version = "1.35.1", features = ["full", "io-std", "tracing", "net"] }
 tokio-macros = "2.2.0"
 futures = "0.3.28"
 tokio-stream = { version = "0.1.14", features = ["sync"] }
@@ -43,6 +43,9 @@ async-trait = "0.1.81"
 trait-variant = "0.1.2"
 tower = "0.4.13"
 serde = "1.0.204"
+tracing-appender = "0.2.3"
+clap = { version = "4.5.18", features = ["derive"] }
+futures-net = "0.6.0"
 
 [dev-dependencies]
 env_logger = "0.11.5"

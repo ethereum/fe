@@ -59,6 +59,7 @@
     "typescript": "^5.0.4"
   },
   "dependencies": {
+    "net": "^1.0.2",
     "vscode-languageclient": "^8.1.0"
   }
 }

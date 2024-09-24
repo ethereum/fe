@@ -6,8 +6,7 @@ use async_lsp::{
     lsp_types::{
         notification::Exit, Hover, HoverParams, InitializeParams, InitializeResult,
         InitializedParams,
-    },
-    ErrorCode, LanguageClient, ResponseError,
+    }, LanguageClient, ResponseError,
 };
 use common::InputDb;
 use futures::TryFutureExt;
