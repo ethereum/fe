@@ -1,0 +1,10 @@
+// struct MemBuf {
+//     fn read() -> 
+//     fn write()
+// }
+
+// extern {
+//     alloc(size: usize) -> ???????
+// }
+
+

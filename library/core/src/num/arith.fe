@@ -1,0 +1,78 @@
+/// Addition (e.g. `x + y`)
+pub trait HAdd<Rhs, Out> {
+    fn add(self, rhs: Rhs) -> Out
+}
+
+/// Subtraction (e.g. `x - y`)
+pub trait HSub<Rhs, Out> {
+    fn sub(self, rhs: Rhs) -> Out
+}
+
+/// Multiplication (e.g. `x * y`)
+pub trait HMul<Rhs, Out> {
+    fn mul(self, rhs: Rhs) -> Out
+}
+
+/// Division (e.g. `x / y`)
+pub trait HDiv<Rhs, Out> {
+    fn div(self, rhs: Rhs) -> Out
+}
+
+/// Modulo (e.g. `x % y`)
+pub trait HMod<Rhs, Out> {
+    fn modulo(self, rhs: Rhs) -> Out
+}
+
+/// Power (e.g. `x ** y`)
+pub trait HPow<Rhs, Out> {
+    fn pow(self, rhs: Rhs) -> Out
+}
+
+/// Neg (e.g. `-x`)
+pub trait HNeg<Out> {
+    fn neg(self) -> Out 
+}
+
+pub trait Add: HAdd<Self, Self> { }
+
+pub trait Sub: HSub<Self, Self> { }
+
+pub trait Mul: HMul<Self, Self> { }
+
+pub trait Div: HDiv<Self, Self> { }
+
+pub trait Pow: HPow<Self, Self> { }
+
+pub trait Mod: HMod<Self, Self> { }
+
+pub trait Neg: HNeg<Self> { }
+
+struct BindAdd<N> { n: N }
+
+impl HAdd<Self, Self> for i8 { fn add(self, rhs: Self) -> Self { self + rhs } }
+impl HSub<Self, Self> for i8 { fn sub(self, rhs: Self) -> Self { self - rhs } }
+impl HMul<Self, Self> for i8 { fn mul(self, rhs: Self) -> Self { self * rhs } }
+impl HDiv<Self, Self> for i8 { fn div(self, rhs: Self) -> Self { self / rhs } }
+impl HPow<Self, Self> for i8 { fn pow(self, rhs: Self) -> Self { self ** rhs } }
+impl HNeg<Self> for i8 { fn neg(self) -> Self { -self } }
+
+impl Add for i8 { }
+impl Sub for i8 { }
+impl Mul for i8 { }
+impl Div for i8 { }
+impl Pow for i8 { }
+impl Neg for i8 { }
+
+impl HAdd<Self, Self> for u8 { fn add(self, rhs: Self) -> Self { self + rhs } }
+impl HSub<Self, Self> for u8 { fn sub(self, rhs: Self) -> Self { self - rhs } }
+impl HMul<Self, Self> for u8 { fn mul(self, rhs: Self) -> Self { self * rhs } }
+impl HDiv<Self, Self> for u8 { fn div(self, rhs: Self) -> Self { self / rhs } }
+impl HPow<Self, Self> for u8 { fn pow(self, rhs: Self) -> Self { self ** rhs } }
+impl HNeg<Self> for u8 { fn neg(self) -> Self { -self } }
+
+impl Add for u8 { }
+impl Sub for u8 { }
+impl Mul for u8 { }
+impl Div for u8 { }
+impl Pow for u8 { }
+impl Neg for u8 { }
