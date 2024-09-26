@@ -1069,6 +1069,10 @@ impl<'db, 'a> BodyLowerHelper<'db, 'a> {
                         self.builder.primitive_cast(arg, ty, source)
                     }
                 } else if ty.is_aggregate(self.db) {
+                    // This seems to be the place were we could capture the mapping of generic types to concrete types.
+                    // But how exactly is still unclear because we can not simply map TypeID to a fixed set of concrete types
+                    // because the TypeID of `Foo<T>` is the same no matter if we deal with `Foo<u256>` or `Foo<bool>`.
+
                     self.builder.aggregate_construct(ty, args, source)
                 } else {
                     unreachable!()

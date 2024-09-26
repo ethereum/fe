@@ -128,6 +128,10 @@ fn lower_contract(db: &dyn MirDb, contract: analyzer_items::ContractId) -> TypeK
 fn lower_struct(db: &dyn MirDb, id: analyzer_items::StructId) -> TypeKind {
     let name = id.name(db.upcast());
 
+    // If the field of the struct is generic, then we need to know the concrete types that were used to
+    // initialize it. Something something, `resolved_generics`
+    // I think `aggregate_construct` is the place were we can pass on the concrete args.
+
     // Lower struct fields.
     let fields = id
         .fields(db.upcast())
