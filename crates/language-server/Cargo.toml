@@ -48,6 +48,7 @@ clap = { version = "4.5.18", features = ["derive"] }
 futures-net = "0.6.0"
 async-std = "1.13.0"
 async-compat = "0.2.4"
+tracing-tree = "0.4.0"
 
 [dev-dependencies]
 env_logger = "0.11.5"

@@ -1,6 +1,7 @@
 mod backend;
 mod cli_args;
 mod functionality;
+mod logger;
 mod lsp_actor;
 mod lsp_actor_service;
 mod lsp_streaming_layer;
@@ -23,6 +24,7 @@ use futures::StreamExt;
 use futures_net::TcpListener;
 use server::setup;
 use tracing::instrument::WithSubscriber;
+use tracing::subscriber::set_default;
 // use lsp_actor_service::LspActorService;
 use tracing::{error, info};
 use tracing::{Level, Subscriber};
@@ -35,11 +37,11 @@ use tower::ServiceBuilder;
 #[tokio::main]
 async fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
-    tracing_subscriber::fmt()
+    let std_tracing = tracing_subscriber::fmt()
         .with_max_level(Level::INFO)
-        .with_ansi(false)
         .with_writer(std::io::stderr)
-        .init();
+        .finish();
+    let logging = set_default(std_tracing);
 
     // Set up a panic hook
     std::panic::set_hook(Box::new(|panic_info| {
@@ -85,6 +87,8 @@ async fn main() {
             start_stdio_server().await;
         }
     }
+
+    drop(logging);
 }
 
 async fn start_stdio_server() {
@@ -119,7 +123,6 @@ async fn start_tcp_server(port: u16) {
     info!("LSP server is listening on {}", addr);
 
     while let Some(Ok(stream)) = incoming.next().with_current_subscriber().await {
-        // info!("New client connected from {}",(client_addr);
         let client_address = stream.peer_addr().unwrap();
         let tracing_layer = TracingLayer::default();
         let task = async move {

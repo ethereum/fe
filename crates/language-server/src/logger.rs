@@ -1,35 +1,54 @@
-use std::io::Write;
+use async_lsp::{
+    lsp_types::{LogMessageParams, LogTraceParams, MessageType},
+    ClientSocket, LanguageClient,
+};
+use tracing::{
+    field::{Field, Visit},
+    info,
+    span::Id,
+    Event, Level, Metadata, Subscriber,
+};
+use tracing_subscriber::{
+    fmt::{
+        self,
+        format::{Full, PrettyVisitor, Writer},
+        FormatEvent, FormattedFields, MakeWriter,
+    },
+    layer::SubscriberExt,
+    registry::LookupSpan,
+    Layer,
+};
 
-use async_lsp::lsp_types::MessageType;
-use async_lsp::{ClientSocket, LanguageClient};
-use tokio::task::yield_now;
-// use tower_lsp::Client;
-use tracing_subscriber::fmt::writer::MakeWriterExt;
-use tracing_subscriber::fmt::MakeWriter;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::prelude::*;
+use std::{io::Write, sync::Arc};
 
-pub async fn handle_log_messages(
-    mut rx: tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>,
-    client: ClientSocket,
-) -> tokio::sync::mpsc::UnboundedReceiver<String> {
-    loop {
-        if let Some((message, message_type)) = rx.recv().await {
-            client.log_message(message_type, message).await;
-            yield_now().await;
+pub(crate) struct ClientSocketWriterMaker {
+    pub(crate) client_socket: Arc<ClientSocket>,
+}
+
+impl ClientSocketWriterMaker {
+    pub fn new(client_socket: ClientSocket) -> Self {
+        ClientSocketWriterMaker {
+            client_socket: Arc::new(client_socket),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct LoggerLayer {
-    log_sender: tokio::sync::mpsc::UnboundedSender<(String, MessageType)>,
+pub(crate) struct ClientSocketWriter {
+    client_socket: Arc<ClientSocket>,
+    typ: MessageType,
 }
 
-impl Write for LoggerLayer {
+impl std::io::Write for ClientSocketWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         let message = String::from_utf8_lossy(buf).to_string();
-        let _ = self.log_sender.send((message, MessageType::LOG));
+        let params = LogMessageParams {
+            typ: self.typ,
+            message,
+        };
+
+        let mut client_socket = self.client_socket.as_ref();
+        _ = client_socket.log_message(params);
+        // eprintln!("{}", params.message);
         Ok(buf.len())
     }
 
@@ -38,44 +57,28 @@ impl Write for LoggerLayer {
     }
 }
 
-impl MakeWriter<'_> for LoggerLayer {
-    type Writer = Self;
-    fn make_writer(&self) -> Self::Writer {
-        self.clone()
+impl<'a> MakeWriter<'a> for ClientSocketWriterMaker {
+    type Writer = ClientSocketWriter;
+
+    fn make_writer(&'a self) -> Self::Writer {
+        ClientSocketWriter {
+            client_socket: self.client_socket.clone(),
+            typ: MessageType::LOG,
+        }
     }
-}
 
-pub fn setup_logger(
-    level: tracing::Level,
-) -> Result<tokio::sync::mpsc::UnboundedReceiver<(String, MessageType)>, Box<dyn std::error::Error>>
-{
-    let (log_sender, log_receiver) =
-        tokio::sync::mpsc::unbounded_channel::<(String, MessageType)>();
-    let logger = LoggerLayer { log_sender };
-    let logger = logger
-        .with_filter(|metadata| {
-            metadata
-                .module_path()
-                .map_or(false, |path| path.starts_with("fe_language_server"))
-        })
-        .with_max_level(level);
+    fn make_writer_for(&'a self, meta: &Metadata<'_>) -> Self::Writer {
+        let typ = match *meta.level() {
+            Level::ERROR => MessageType::ERROR,
+            Level::WARN => MessageType::WARNING,
+            Level::INFO => MessageType::INFO,
+            Level::DEBUG => MessageType::LOG,
+            Level::TRACE => MessageType::LOG,
+        };
 
-    let pretty_logger = tracing_subscriber::fmt::layer()
-        .event_format(tracing_subscriber::fmt::format::format().pretty())
-        .with_ansi(false)
-        .with_writer(logger);
-
-    #[cfg(tokio_unstable)]
-    let console_layer = console_subscriber::spawn();
-
-    #[cfg(tokio_unstable)]
-    tracing_subscriber::registry()
-        .with(pretty_logger)
-        .with(console_layer)
-        .init();
-
-    #[cfg(not(tokio_unstable))]
-    tracing_subscriber::registry().with(pretty_logger).init();
-
-    Ok(log_receiver)
+        ClientSocketWriter {
+            client_socket: self.client_socket.clone(),
+            typ,
+        }
+    }
 }
