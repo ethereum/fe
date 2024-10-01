@@ -186,7 +186,7 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use act_locally::actor::Actor;
+    use act_locally::{actor::Actor, builder::ActorBuilder};
     use async_lsp::{
         lsp_types::{InitializeParams, InitializeResult},
         RequestId,
@@ -216,11 +216,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_lsp_actor() {
-        let actor_ref = Actor::spawn(|| {
-            let initial_state = TestState { initialized: false };
-            Ok(initial_state)
-        })
-        .expect("Failed to spawn actor");
+        let actor_ref = ActorBuilder::new()
+            .with_state_init(|| {
+                let initial_state = TestState { initialized: false };
+                Ok(initial_state)
+            })
+            .spawn()
+            .expect("Failed to spawn actor");
 
         let mut dispatcher = LspDispatcher::new();
 

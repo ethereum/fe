@@ -94,7 +94,7 @@ async fn main() {
 async fn start_stdio_server() {
     let (server, _) = async_lsp::MainLoop::new_server(|client| {
         let tracing_layer = TracingLayer::default();
-        let lsp_service = setup(client.clone());
+        let lsp_service = setup(client.clone(), format!("LSP actor"));
         ServiceBuilder::new()
             .layer(LifecycleLayer::default())
             .layer(CatchUnwindLayer::default())
@@ -127,7 +127,7 @@ async fn start_tcp_server(port: u16) {
         let tracing_layer = TracingLayer::default();
         let task = async move {
             let (server, _) = async_lsp::MainLoop::new_server(|client| {
-                let router = setup(client.clone());
+                let router = setup(client.clone(), format!("LSP actor for {client_address}"));
                 ServiceBuilder::new()
                     .layer(tracing_layer)
                     .layer(LifecycleLayer::default())

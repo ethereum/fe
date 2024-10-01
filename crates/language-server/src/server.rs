@@ -3,19 +3,15 @@ use std::ops::ControlFlow;
 use crate::logger::ClientSocketWriterMaker;
 use crate::lsp_actor::{LspActor, LspDispatcher};
 use crate::lsp_actor_service::LspActorService;
-use act_locally::action_dispatcher::ActionDispatcher;
-use act_locally::message::MessageKey;
+use act_locally::builder::ActorBuilder;
 use async_lsp::lsp_types::notification::{self, Initialized};
 use async_lsp::lsp_types::request::HoverRequest;
 use async_lsp::lsp_types::{request, InitializeResult, ServerCapabilities};
 use async_lsp::ClientSocket;
 use serde_json::Value;
 use tracing::subscriber::set_default;
-// use lsp_actor_service::LspActorService;
 use tracing::{error, info};
-use tracing_subscriber::fmt::layer;
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
 use tracing_tree::HierarchicalLayer;
 
 use crate::backend::Backend;
@@ -30,19 +26,21 @@ use async_lsp::{
 };
 // use lsp_actor::{ActOnNotification, ActOnRequest};
 
-pub(crate) fn setup(client: ClientSocket) -> BoxLspService<Value, ResponseError> {
+pub(crate) fn setup(client: ClientSocket, name: String) -> BoxLspService<Value, ResponseError> {
     info!("Setting up server");
     let client_worker_thread = client.clone();
     let client_logger = client.clone();
-    let actor_ref = Actor::spawn_with_tracing(
-        move || Ok(Backend::new(client_worker_thread)),
-        || {
+    let actor_ref = ActorBuilder::new()
+        .with_name(name)
+        .with_state_init(move || Ok(Backend::new(client_worker_thread)))
+        .with_subscriber_init(|| {
             // eprintln!("Setting up subscriber");
             let client_socket_writer = ClientSocketWriterMaker::new(client_logger);
             let subscriber = tracing_subscriber::registry()
                 .with(
                     HierarchicalLayer::new(2)
                         .with_thread_ids(true)
+                        .with_thread_names(true)
                         .with_indent_lines(true)
                         .with_bracketed_fields(true)
                         .with_ansi(false)
@@ -51,13 +49,14 @@ pub(crate) fn setup(client: ClientSocket) -> BoxLspService<Value, ResponseError>
                 .with(
                     HierarchicalLayer::new(2)
                         .with_thread_ids(true)
+                        .with_thread_names(true)
                         .with_indent_lines(true)
                         .with_bracketed_fields(true)
                         .with_writer(std::io::stderr),
                 );
             Some(set_default(subscriber))
-        },
-    );
+        })
+        .spawn();
     let mut dispatcher = LspDispatcher::new();
 
     let streaming_router = Router::new(());
