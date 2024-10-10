@@ -27,20 +27,28 @@ use tracing::instrument::WithSubscriber;
 use tracing::subscriber::set_default;
 // use lsp_actor_service::LspActorService;
 use tracing::{error, info};
-use tracing::{Level, Subscriber};
 
 use async_lsp::client_monitor::ClientProcessMonitorLayer;
 use backend::db::Jar;
 // use lsp_actor::{ActOnNotification, ActOnRequest};
 use tower::ServiceBuilder;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::registry;
+use tracing_tree::HierarchicalLayer;
 
 #[tokio::main]
 async fn main() {
     std::env::set_var("RUST_BACKTRACE", "1");
-    let std_tracing = tracing_subscriber::fmt()
-        .with_max_level(Level::INFO)
-        .with_writer(std::io::stderr)
-        .finish();
+    let std_tracing = registry()
+        .with(tracing_subscriber::filter::LevelFilter::INFO)
+        .with(
+            HierarchicalLayer::new(2)
+                .with_thread_ids(true)
+                // .with_thread_names(true)
+                // .with_indent_lines(true)
+                // .with_bracketed_fields(true)
+                .with_writer(std::io::stderr),
+        );
     let logging = set_default(std_tracing);
 
     // Set up a panic hook
@@ -115,9 +123,7 @@ async fn start_stdio_server() {
 
 async fn start_tcp_server(port: u16) {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    let mut listener = TcpListener::bind(&addr)
-        // .await
-        .expect("Failed to bind to address");
+    let mut listener = TcpListener::bind(&addr).expect("Failed to bind to address");
     let mut incoming = listener.incoming();
 
     info!("LSP server is listening on {}", addr);

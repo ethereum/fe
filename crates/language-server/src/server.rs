@@ -16,7 +16,7 @@ use tracing_tree::HierarchicalLayer;
 
 use crate::backend::Backend;
 use crate::functionality::handlers;
-use act_locally::actor::{Actor, HandlerRegistration};
+use act_locally::actor::HandlerRegistration;
 use async_lsp::{
     lsp_types::request::Initialize,
     router::Router,
@@ -24,7 +24,35 @@ use async_lsp::{
     util::BoxLspService,
     ResponseError,
 };
-// use lsp_actor::{ActOnNotification, ActOnRequest};
+
+// use tracing_subscriber::Layer;
+
+fn setup_logger(
+    client: ClientSocket,
+) -> impl FnOnce() -> Option<tracing::subscriber::DefaultGuard> {
+    move || {
+        let client_socket_writer = ClientSocketWriterMaker::new(client);
+        let subscriber = tracing_subscriber::registry()
+            .with(
+                HierarchicalLayer::new(2)
+                    .with_thread_ids(true)
+                    .with_thread_names(true)
+                    .with_indent_lines(true)
+                    .with_bracketed_fields(true)
+                    .with_ansi(false)
+                    .with_writer(client_socket_writer),
+            )
+            .with(
+                HierarchicalLayer::new(2)
+                    .with_thread_ids(true)
+                    .with_thread_names(true)
+                    .with_indent_lines(true)
+                    .with_bracketed_fields(true)
+                    .with_writer(std::io::stderr),
+            );
+        Some(set_default(subscriber))
+    }
+}
 
 pub(crate) fn setup(client: ClientSocket, name: String) -> BoxLspService<Value, ResponseError> {
     info!("Setting up server");
@@ -33,29 +61,7 @@ pub(crate) fn setup(client: ClientSocket, name: String) -> BoxLspService<Value, 
     let actor_ref = ActorBuilder::new()
         .with_name(name)
         .with_state_init(move || Ok(Backend::new(client_worker_thread)))
-        .with_subscriber_init(|| {
-            // eprintln!("Setting up subscriber");
-            let client_socket_writer = ClientSocketWriterMaker::new(client_logger);
-            let subscriber = tracing_subscriber::registry()
-                .with(
-                    HierarchicalLayer::new(2)
-                        .with_thread_ids(true)
-                        .with_thread_names(true)
-                        .with_indent_lines(true)
-                        .with_bracketed_fields(true)
-                        .with_ansi(false)
-                        .with_writer(client_socket_writer),
-                )
-                .with(
-                    HierarchicalLayer::new(2)
-                        .with_thread_ids(true)
-                        .with_thread_names(true)
-                        .with_indent_lines(true)
-                        .with_bracketed_fields(true)
-                        .with_writer(std::io::stderr),
-                );
-            Some(set_default(subscriber))
-        })
+        .with_subscriber_init(setup_logger(client_logger))
         .spawn();
     let mut dispatcher = LspDispatcher::new();
 

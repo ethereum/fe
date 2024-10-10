@@ -33,7 +33,7 @@ impl LspDispatcher {
 
     fn register_wrapper(
         &mut self,
-        key: MessageKey,
+        key: MessageKey<String>,
         wrapper: Box<
             dyn Fn(Box<dyn Message>) -> Result<Box<dyn Message>, ActorError> + Send + Sync,
         >,
@@ -43,7 +43,7 @@ impl LspDispatcher {
     }
     pub fn register_unwrapper(
         &mut self,
-        key: MessageKey,
+        key: MessageKey<String>,
         unwrapper: Box<
             dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync,
         >,
@@ -53,12 +53,12 @@ impl LspDispatcher {
     }
 }
 
-impl Dispatcher for LspDispatcher {
-    fn message_key(&self, message: &dyn Message) -> Result<MessageKey, ActorError> {
+impl Dispatcher<String> for LspDispatcher {
+    fn message_key(&self, message: &dyn Message) -> Result<MessageKey<String>, ActorError> {
         if let Some(request) = message.downcast_ref::<AnyRequest>() {
-            Ok(MessageKey::new(&request.method))
+            Ok(MessageKey(request.method.clone()))
         } else if let Some(notification) = message.downcast_ref::<AnyNotification>() {
-            Ok(MessageKey::new(&notification.method))
+            Ok(MessageKey(notification.method.clone()))
         } else {
             Err(ActorError::DispatchError)
         }
@@ -67,7 +67,7 @@ impl Dispatcher for LspDispatcher {
     fn wrap(
         &self,
         message: Box<dyn Message>,
-        key: MessageKey,
+        key: MessageKey<String>,
     ) -> Result<Box<dyn Message>, ActorError> {
         let MessageKey(key) = key;
         if let Some(wrapper) = self.wrappers.get(&key) {
@@ -86,7 +86,7 @@ impl Dispatcher for LspDispatcher {
     fn unwrap(
         &self,
         message: Box<dyn Response>,
-        key: MessageKey,
+        key: MessageKey<String>,
     ) -> Result<Box<dyn Response>, ActorError> {
         let MessageKey(key) = key;
         if let Some(unwrapper) = self.unwrappers.get(&key) {
@@ -109,7 +109,7 @@ pub trait LspActor<S: 'static> {
     ) -> &mut Self;
 }
 
-impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
+impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher, String> {
     fn handle_request<R: Request>(
         &mut self,
         handler: impl for<'b> AsyncMutatingFunc<'b, S, R::Params, R::Result, ResponseError> + 'static,
@@ -130,10 +130,10 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
         );
 
         self.dispatcher
-            .register_wrapper(MessageKey::new(R::METHOD), param_handler);
+            .register_wrapper(MessageKey::new(R::METHOD.into()), param_handler);
 
         self.actor_ref
-            .register_handler_async_mutating(MessageKey::new(R::METHOD), handler);
+            .register_handler_async_mutating(MessageKey::new(R::METHOD.into()), handler);
 
         let result_unwrapper = Box::new(
             move |result: Box<dyn Response>| -> Result<Box<dyn Response>, ActorError> {
@@ -151,7 +151,7 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
             },
         );
         self.dispatcher
-            .register_unwrapper(MessageKey::new(R::METHOD), result_unwrapper);
+            .register_unwrapper(MessageKey::new(R::METHOD.into()), result_unwrapper);
 
         self
     }
@@ -175,10 +175,10 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher> {
         );
 
         self.dispatcher
-            .register_wrapper(MessageKey::new(N::METHOD), param_handler);
+            .register_wrapper(MessageKey::new(N::METHOD.into()), param_handler);
 
         self.actor_ref
-            .register_handler_async_mutating(MessageKey::new(N::METHOD), handler);
+            .register_handler_async_mutating(MessageKey::new(N::METHOD.into()), handler);
         self
     }
 }

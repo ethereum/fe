@@ -17,12 +17,12 @@ use tower::Service;
 use crate::lsp_actor::LspDispatcher;
 
 pub struct LspActorService<S> {
-    actor_ref: ActorRef<S>,
+    actor_ref: ActorRef<S, String>,
     dispatcher: Arc<LspDispatcher>,
 }
 
 impl<S> LspActorService<S> {
-    pub fn new(actor_ref: ActorRef<S>, dispatcher: LspDispatcher) -> Self {
+    pub fn new(actor_ref: ActorRef<S, String>, dispatcher: LspDispatcher) -> Self {
         Self {
             actor_ref,
             dispatcher: Arc::new(dispatcher),
