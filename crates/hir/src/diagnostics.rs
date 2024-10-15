@@ -24,6 +24,7 @@ pub trait DiagnosticVoucher<'db>: Send {
     fn error_code(&self) -> GlobalErrorCode;
     /// Makes a [`CompleteDiagnostic`].
     fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic;
+    // fn clone_box(&self) -> Box<&'db dyn DiagnosticVoucher>;
 }
 
 impl<'db> DiagnosticVoucher<'db> for CompleteDiagnostic {
@@ -34,6 +35,10 @@ impl<'db> DiagnosticVoucher<'db> for CompleteDiagnostic {
     fn to_complete(&self, _db: &dyn SpannedHirDb) -> CompleteDiagnostic {
         self.clone()
     }
+
+    // fn clone_box(&self) -> Box<&'db dyn DiagnosticVoucher> {
+    //     Box::new(&self.clone())
+    // }
 }
 
 impl<'db> DiagnosticVoucher<'db> for Box<dyn DiagnosticVoucher<'db> + 'db> {
@@ -44,4 +49,8 @@ impl<'db> DiagnosticVoucher<'db> for Box<dyn DiagnosticVoucher<'db> + 'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic {
         self.as_ref().to_complete(db)
     }
+
+    // fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
+    //     self.as_ref().clone_box()
+    // }
 }

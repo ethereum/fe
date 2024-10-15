@@ -80,18 +80,12 @@ impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
 }
 
 impl LanguageServerDatabase {
-    pub fn analyze_top_mod(&self, top_mod: TopLevelMod) -> Vec<Box<dyn DiagnosticVoucher>> {
+    pub fn analyze_top_mod<'a>(
+        &'a self,
+        top_mod: TopLevelMod<'a>,
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'a>> {
         let mut pass_manager = initialize_analysis_pass(self);
         pass_manager.run_on_module(top_mod)
-    }
-
-    pub fn finalize_diags(&self, diags: &[Box<dyn DiagnosticVoucher>]) -> Vec<CompleteDiagnostic> {
-        let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
-        diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
-            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
-            ord => ord,
-        });
-        diags
     }
 
     pub fn get_lsp_diagnostics(
@@ -101,20 +95,23 @@ impl LanguageServerDatabase {
         let mut result =
             FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default(
             );
-        files
-            .iter()
-            .flat_map(|file| {
-                let top_mod = map_file_to_mod(self, *file);
-                let diagnostics = self.analyze_top_mod(top_mod);
-                self.finalize_diags(&diagnostics)
-                    .into_iter()
-                    .flat_map(|diag| diag_to_lsp(diag, self.as_input_db()).clone())
-            })
-            .for_each(|(uri, more_diags)| {
-                let _ = result.entry(uri.clone()).or_insert_with(Vec::new);
-                let diags = result.entry(uri).or_insert_with(Vec::new);
-                diags.extend(more_diags);
+        for file in files.iter() {
+            let top_mod = map_file_to_mod(self, *file);
+            let diagnostics = self.analyze_top_mod(top_mod);
+            let mut finalized_diags: Vec<CompleteDiagnostic> =
+                diagnostics.iter().map(|d| d.to_complete(self)).collect();
+            finalized_diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+                std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+                ord => ord,
             });
+            for diag in finalized_diags {
+                let lsp_diags = diag_to_lsp(diag, self.as_input_db()).clone();
+                for (uri, more_diags) in lsp_diags {
+                    let diags = result.entry(uri.clone()).or_insert_with(Vec::new);
+                    diags.extend(more_diags);
+                }
+            }
+        }
         result
     }
 }

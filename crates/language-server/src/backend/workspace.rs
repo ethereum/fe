@@ -1,11 +1,8 @@
-use std::{
-    borrow::Cow,
-    collections::BTreeSet,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 use common::{
+    indexmap::IndexSet,
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
@@ -22,6 +19,7 @@ use rust_embed::RustEmbed;
 struct StdLib;
 
 const FE_CONFIG_SUFFIX: &str = "fe.toml";
+
 fn ingot_directory_key(path: String) -> String {
     path.strip_suffix(FE_CONFIG_SUFFIX)
         .unwrap_or(&path)
@@ -41,7 +39,11 @@ pub trait IngotFileContext {
         db: &mut LanguageServerDatabase,
         path: &str,
     ) -> Option<InputIngot>;
-    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod>;
+    fn top_mod_from_file_path<'a>(
+        &self,
+        db: &'a dyn LowerHirDb,
+        path: &str,
+    ) -> Option<TopLevelMod<'a>>;
     fn remove_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
@@ -88,7 +90,7 @@ impl LocalIngotContext {
             config_path,
             IngotKind::Local,
             Version::new(0, 0, 0),
-            BTreeSet::new(),
+            IndexSet::new(),
         );
         Some(Self {
             ingot,
@@ -132,9 +134,13 @@ impl IngotFileContext for LocalIngotContext {
         Some(self.ingot)
     }
 
-    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
+    fn top_mod_from_file_path<'a>(
+        &self,
+        db: &'a dyn LowerHirDb,
+        path: &str,
+    ) -> Option<TopLevelMod<'a>> {
         let file = self.get_input_for_file_path(path)?;
-        Some(map_file_to_mod(db.as_lower_hir_db(), file))
+        Some(map_file_to_mod(db, file))
     }
 
     fn remove_input_for_file_path(
@@ -150,7 +156,7 @@ impl IngotFileContext for LocalIngotContext {
                 .files
                 .values()
                 .copied()
-                .collect::<BTreeSet<InputFile>>();
+                .collect::<IndexSet<InputFile>>();
             ingot.set_files(db, new_ingot_files);
             Ok(())
         } else {
@@ -187,7 +193,9 @@ impl IngotFileContext for StandaloneIngotContext {
             },
             |file| Some(*file),
         );
-        ingot.set_files(db, [input_file.unwrap()].into());
+        let mut files = IndexSet::new();
+        files.insert(input_file.unwrap());
+        ingot.set_files(db, files);
         ingot.set_root_file(db, input_file.unwrap());
         self.files.insert(path, input_file.unwrap());
         input_file
@@ -199,7 +207,7 @@ impl IngotFileContext for StandaloneIngotContext {
 
     fn touch_ingot_for_file_path(
         &mut self,
-        _db: &mut LanguageServerDatabase,
+        db: &mut LanguageServerDatabase,
         path: &str,
     ) -> Option<InputIngot> {
         get_containing_ingot_mut(&mut self.ingots, path)
@@ -208,11 +216,11 @@ impl IngotFileContext for StandaloneIngotContext {
             .map_or_else(
                 || {
                     let ingot = InputIngot::new(
-                        _db,
+                        db,
                         path,
                         IngotKind::StandAlone,
                         Version::new(0, 0, 0),
-                        BTreeSet::new(),
+                        IndexSet::new(),
                     );
                     self.ingots.insert(path, ingot);
                     Some(ingot)
@@ -226,9 +234,13 @@ impl IngotFileContext for StandaloneIngotContext {
         get_containing_ingot(&self.ingots, path).copied()
     }
 
-    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
+    fn top_mod_from_file_path<'a>(
+        &self,
+        db: &'a dyn LowerHirDb,
+        path: &str,
+    ) -> Option<TopLevelMod<'a>> {
         let file = self.get_input_for_file_path(path)?;
-        Some(map_file_to_mod(db.as_lower_hir_db(), file))
+        Some(map_file_to_mod(db, file))
     }
 
     fn remove_input_for_file_path(
@@ -278,24 +290,28 @@ impl Workspace {
         db: &mut LanguageServerDatabase,
         root_path: &Path,
     ) -> Result<()> {
-        let root_path = root_path.to_str().unwrap();
-        self.touch_ingot_for_file_path(db, &format!("{}/std/fe.toml", root_path))
+        let root_path_str = root_path.to_str().unwrap();
+        self.touch_ingot_for_file_path(db, &format!("{}/std/{}", root_path_str, FE_CONFIG_SUFFIX))
             .unwrap();
 
         info!("Loading std lib...");
 
-        StdLib::iter().for_each(|path: Cow<'static, str>| {
-            let path = path.as_ref();
-            let std_path = format!("{}/std/{}", root_path, path);
-            info!("adding std file... {:?} --- {:?}", std_path, path);
-            if let Some(file) = StdLib::get(path) {
+        // Collect paths to avoid borrowing `db` mutably during the closure
+        let paths: Vec<_> = StdLib::iter().collect();
+
+        for path in paths {
+            let path_str = path.as_ref();
+            let std_path = format!("{}/std/{}", root_path_str, path_str);
+            info!("adding std file... {:?} --- {:?}", std_path, path_str);
+            if let Some(file) = StdLib::get(path_str) {
                 let contents = String::from_utf8(file.data.as_ref().to_vec());
                 if let Ok(contents) = contents {
-                    let input = self.touch_input_for_file_path(db, &std_path);
-                    input.unwrap().set_text(db).to(contents);
-                };
-            };
-        });
+                    if let Some(input) = self.touch_input_for_file_path(db, &std_path) {
+                        input.set_text(db).to(contents);
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -314,41 +330,40 @@ impl Workspace {
         db: &LanguageServerDatabase,
         config_path: &str,
     ) -> Option<&mut LocalIngotContext> {
-        let key = &ingot_directory_key(config_path.into());
-        if self.ingot_contexts.contains_key(key) {
-            return self.ingot_contexts.get_mut(key);
+        let key = ingot_directory_key(config_path.into());
+        if self.ingot_contexts.contains_key(&key) {
+            return self.ingot_contexts.get_mut(&key);
         }
         let ingot_context = LocalIngotContext::new(db, config_path)?;
-        self.ingot_contexts.insert(key, ingot_context);
-        return self.ingot_contexts.get_mut(key);
+        self.ingot_contexts.insert(key.clone(), ingot_context);
+        self.ingot_contexts.get_mut(&key)
     }
 
     fn sync_local_ingots(&mut self, db: &mut LanguageServerDatabase, path: &str) {
-        let config_paths = &glob::glob(&format!("{path}/**/{FE_CONFIG_SUFFIX}"))
+        let config_paths = glob::glob(&format!("{path}/**/{FE_CONFIG_SUFFIX}"))
             .unwrap()
-            .map(|p| p.unwrap().to_str().unwrap().to_string())
+            .filter_map(Result::ok)
+            .map(|p| p.to_str().unwrap().to_string())
             .collect::<Vec<String>>();
 
-        let paths = &config_paths
+        let paths = config_paths
             .iter()
-            .map(std::string::ToString::to_string)
-            .map(ingot_directory_key)
+            .map(|s| ingot_directory_key(s.clone()))
             .collect::<Vec<String>>();
 
-        for path in paths {
+        for path in &paths {
             self.ingot_context_from_config_path(db, path);
         }
 
         let existing_keys: Vec<String> = self.ingot_contexts.keys().collect();
 
         let keys_to_remove: Vec<String> = existing_keys
-            .iter()
+            .into_iter()
             .filter(|key| !paths.contains(key))
-            .map(std::convert::Into::into)
             .collect();
 
         for key in keys_to_remove {
-            self.ingot_contexts.remove(ingot_directory_key(key));
+            self.ingot_contexts.remove(&key);
         }
     }
 
@@ -357,9 +372,10 @@ impl Workspace {
         info!("Syncing ingot at {}", config_path);
 
         let ingot_root = config_path.strip_suffix(FE_CONFIG_SUFFIX).unwrap();
-        let actual_paths = &glob::glob(&format!("{ingot_root}/src/**/*.fe"))
+        let actual_paths = glob::glob(&format!("{ingot_root}/src/**/*.fe"))
             .unwrap()
-            .map(|p| p.unwrap().to_str().unwrap().to_string())
+            .filter_map(Result::ok)
+            .map(|p| p.to_str().unwrap().to_string())
             .collect::<Vec<String>>();
 
         info!("Found {} files in ingot", actual_paths.len());
@@ -369,18 +385,20 @@ impl Workspace {
             .ingot_context_from_config_path(db, config_path)
             .unwrap();
 
-        let previous_ingot_context_file_keys = &ingot_context.files.keys().collect::<Vec<String>>();
-        for path in previous_ingot_context_file_keys {
+        let previous_ingot_context_file_keys: Vec<String> = ingot_context.files.keys().collect();
+        for path in &previous_ingot_context_file_keys {
             if !actual_paths.contains(path) {
                 let _ = ingot_context.remove_input_for_file_path(db, path);
             }
         }
 
         for path in actual_paths {
-            if !previous_ingot_context_file_keys.contains(path) {
-                let file = ingot_context.touch_input_for_file_path(db, path);
-                let contents = std::fs::read_to_string(path).unwrap();
-                file.unwrap().set_text(db).to(contents);
+            if !previous_ingot_context_file_keys.contains(&path) {
+                if let Some(file) = ingot_context.touch_input_for_file_path(db, &path) {
+                    if let Ok(contents) = std::fs::read_to_string(&path) {
+                        file.set_text(db).to(contents);
+                    }
+                }
             }
         }
 
@@ -388,7 +406,7 @@ impl Workspace {
             .files
             .values()
             .copied()
-            .collect::<BTreeSet<InputFile>>();
+            .collect::<IndexSet<InputFile>>();
 
         ingot_context.ingot.set_files(db, ingot_context_files);
 
@@ -439,7 +457,7 @@ impl IngotFileContext for Workspace {
     ) -> Option<InputIngot> {
         let ctx = get_containing_ingot_mut(&mut self.ingot_contexts, path);
         if let Some(ctx) = ctx {
-            Some(ctx.touch_ingot_for_file_path(db, path).unwrap())
+            ctx.touch_ingot_for_file_path(db, path)
         } else {
             self.standalone_ingot_context
                 .touch_ingot_for_file_path(db, path)
@@ -455,10 +473,14 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn top_mod_from_file_path(&self, db: &dyn LowerHirDb, path: &str) -> Option<TopLevelMod> {
+    fn top_mod_from_file_path<'a>(
+        &self,
+        db: &'a dyn LowerHirDb,
+        path: &str,
+    ) -> Option<TopLevelMod<'a>> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
-            Some(ctx.top_mod_from_file_path(db, path).unwrap())
+            ctx.top_mod_from_file_path(db, path)
         } else {
             self.standalone_ingot_context
                 .top_mod_from_file_path(db, path)
@@ -492,12 +514,12 @@ impl SyncableIngotFileContext for Workspace {
             path.clone().unwrap()
         };
 
-        let path = path.to_str().unwrap();
+        let path_str = path.to_str().unwrap();
 
-        info!("Syncing workspace at {:?}", path);
-        self.sync_local_ingots(db, path);
+        info!("Syncing workspace at {:?}", path_str);
+        self.sync_local_ingots(db, path_str);
 
-        let ingot_paths = glob::glob(&format!("{path}/**/{FE_CONFIG_SUFFIX}"))
+        let ingot_paths = glob::glob(&format!("{path_str}/**/{FE_CONFIG_SUFFIX}"))
             .ok()
             .unwrap()
             .filter_map(Result::ok)
@@ -515,7 +537,6 @@ impl SyncableIngotFileContext for Workspace {
 
 #[cfg(test)]
 mod tests {
-
     use crate::backend::workspace::{
         get_containing_ingot_mut, IngotFileContext, Workspace, FE_CONFIG_SUFFIX,
     };
@@ -528,7 +549,7 @@ mod tests {
         let mut db = crate::backend::db::LanguageServerDatabase::default();
         let file_path = "tests/data/ingot1/src/main.fe";
 
-        let ctx = &mut StandaloneIngotContext::new();
+        let mut ctx = StandaloneIngotContext::new();
         let file = ctx.touch_input_for_file_path(&mut db, file_path);
 
         assert!(file.is_some());
@@ -544,7 +565,7 @@ mod tests {
 
     #[test]
     fn test_workspace_standalone_ingot() {
-        let mut workspace = Workspace::default();
+        let mut workspace: Workspace = Workspace::default();
         let mut db = crate::backend::db::LanguageServerDatabase::default();
         let file_path = "tests/data/ingot1/src/main.fe";
         let file = workspace.touch_input_for_file_path(&mut db, file_path);
@@ -554,7 +575,7 @@ mod tests {
     #[test]
     fn test_get_containing_ingot() {
         let config_path = "tests/data/ingot1/fe.toml";
-        let mut workspace = Workspace::default();
+        let mut workspace: Workspace = Workspace::default();
 
         let _ingot_context_ingot = {
             let ingot_context = workspace.ingot_context_from_config_path(
@@ -588,7 +609,7 @@ mod tests {
     #[test]
     fn test_workspace_local_ingot() {
         let config_path = "tests/data/ingot1/fe.toml";
-        let mut workspace = Workspace::default();
+        let mut workspace: Workspace = Workspace::default();
         let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         let ingot_context_ingot = {
@@ -620,13 +641,14 @@ mod tests {
         let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let ingot_base_dir =
             std::path::Path::new(&cargo_manifest_dir).join("test_files/single_ingot/");
-        let _ingot_config_path = &ingot_base_dir.join("fe.toml");
+        // let ingot_config_path = &ingot_base_dir.join("fe.toml");
 
-        let mut workspace = Workspace::default();
+        let mut workspace: Workspace = Workspace::default();
         let mut db = crate::backend::db::LanguageServerDatabase::default();
 
-        let _ = workspace.set_workspace_root(&mut db, &ingot_base_dir);
-        // panic!("wtf? {:?}", ingot_base_dir);
+        workspace
+            .set_workspace_root(&mut db, &ingot_base_dir)
+            .unwrap();
 
         assert_eq!(workspace.ingot_contexts.len(), 1);
 
@@ -641,13 +663,13 @@ mod tests {
         let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let path = format!("{crate_dir}/test_files/nested_ingots");
         assert!(
-            glob::glob(&format!("{}/**/{}", path, super::FE_CONFIG_SUFFIX))
+            glob::glob(&format!("{}/**/{}", path, FE_CONFIG_SUFFIX))
                 .unwrap()
                 .count()
                 == 2
         );
 
-        let mut workspace = Workspace::default();
+        let mut workspace: Workspace = Workspace::default();
         let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         workspace.sync_local_ingots(&mut db, &path);
@@ -680,20 +702,20 @@ mod tests {
         let crate_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let path = format!("{crate_dir}/test_files/nested_ingots");
         assert!(
-            glob::glob(&format!("{}/**/{}", path, super::FE_CONFIG_SUFFIX))
+            glob::glob(&format!("{}/**/{}", path, FE_CONFIG_SUFFIX))
                 .unwrap()
                 .count()
                 == 2
         );
 
-        let mut workspace = Workspace::default();
+        let mut workspace: Workspace = Workspace::default();
         let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         workspace.sync_local_ingots(&mut db, &path);
 
         assert!(workspace.ingot_contexts.len() == 2);
 
-        let foo_config = format!("{}/ingots/foo/{}", path, super::FE_CONFIG_SUFFIX);
+        let foo_config = format!("{}/ingots/foo/{}", path, FE_CONFIG_SUFFIX);
         workspace.sync_ingot_files(&mut db, &foo_config);
 
         let foo_context = workspace
@@ -719,7 +741,7 @@ mod tests {
         let messy_workspace_path = format!("{crate_dir}/test_files/messy");
         let dangling_path = format!("{crate_dir}/test_files/messy/dangling.fe");
 
-        let mut workspace = Workspace::default();
+        let mut workspace: Workspace = Workspace::default();
         let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         workspace.sync_local_ingots(&mut db, &messy_workspace_path);

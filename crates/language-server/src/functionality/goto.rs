@@ -16,22 +16,25 @@ use common::diagnostics::Span;
 use hir::span::LazySpan;
 
 pub type Cursor = rowan::TextSize;
-struct GotoEnclosingPathSegment {
-    path: PathId,
+
+#[derive(Clone, Copy)]
+struct GotoEnclosingPathSegment<'db> {
+    path: PathId<'db>,
     idx: usize,
-    scope: ScopeId,
+    scope: ScopeId<'db>,
 }
-impl GotoEnclosingPathSegment {
-    fn segments<'db>(&self, db: &'db dyn LanguageServerDb) -> &'db [Partial<IdentId>] {
+
+impl<'db> GotoEnclosingPathSegment<'db> {
+    fn segments(self, db: &'db dyn LanguageServerDb) -> &'db [Partial<IdentId>] {
         &self.path.segments(db.as_hir_db())[0..self.idx + 1]
     }
-    fn is_intermediate(&self, db: &dyn LanguageServerDb) -> bool {
+    fn is_intermediate(self, db: &dyn LanguageServerDb) -> bool {
         self.idx < self.path.segments(db.as_hir_db()).len() - 1
     }
 }
 
 struct PathSegmentSpanCollector<'db> {
-    segment_map: FxHashMap<Span, GotoEnclosingPathSegment>,
+    segment_map: FxHashMap<Span, GotoEnclosingPathSegment<'db>>,
     db: &'db dyn LanguageServerDb,
 }
 
@@ -44,14 +47,14 @@ impl<'db> PathSegmentSpanCollector<'db> {
     }
 }
 
-impl<'db> Visitor for PathSegmentSpanCollector<'db> {
-    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'_, LazyPathSpan>, path: PathId) {
+impl<'db, 'ast: 'db> Visitor<'ast> for PathSegmentSpanCollector<'db> {
+    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan>, path: PathId<'ast>) {
         let Some(path_span) = ctxt.span() else {
             return;
         };
 
         let scope = ctxt.scope();
-        for i in 0..path.segments(self.db.as_hir_db()).iter().len() {
+        for i in 0..path.segments(self.db.as_hir_db()).len() {
             let Some(segment_span) = path_span.segment(i).resolve(self.db.as_spanned_hir_db())
             else {
                 continue;
@@ -69,14 +72,14 @@ impl<'db> Visitor for PathSegmentSpanCollector<'db> {
     }
 }
 
-fn smallest_enclosing_segment(
+fn smallest_enclosing_segment<'db>(
     cursor: Cursor,
-    ident_map: &FxHashMap<Span, GotoEnclosingPathSegment>,
-) -> Option<&GotoEnclosingPathSegment> {
+    ident_map: &FxHashMap<Span, GotoEnclosingPathSegment<'db>>,
+) -> Option<GotoEnclosingPathSegment<'db>> {
     let mut smallest_enclosing_segment = None;
     let mut smallest_range_size = None;
 
-    for (span, enclosing_segment) in ident_map {
+    for (span, &enclosing_segment) in ident_map {
         if span.range.contains(cursor) {
             let range_size = span.range.end() - span.range.start();
             if smallest_range_size.is_none() || range_size < smallest_range_size.unwrap() {
@@ -89,11 +92,11 @@ fn smallest_enclosing_segment(
     smallest_enclosing_segment
 }
 
-pub fn find_enclosing_item(
-    db: &dyn SpannedHirDb,
-    top_mod: TopLevelMod,
+pub fn find_enclosing_item<'db>(
+    db: &'db dyn SpannedHirDb,
+    top_mod: TopLevelMod<'db>,
     cursor: Cursor,
-) -> Option<ItemKind> {
+) -> Option<ItemKind<'db>> {
     let items = top_mod
         .scope_graph(db.as_hir_db())
         .items_dfs(db.as_hir_db());
@@ -119,11 +122,11 @@ pub fn find_enclosing_item(
     smallest_enclosing_item
 }
 
-pub fn get_goto_target_scopes_for_cursor(
-    db: &dyn LanguageServerDb,
-    top_mod: TopLevelMod,
+pub fn get_goto_target_scopes_for_cursor<'db>(
+    db: &'db dyn LanguageServerDb,
+    top_mod: TopLevelMod<'db>,
     cursor: Cursor,
-) -> Option<Vec<ScopeId>> {
+) -> Option<Vec<ScopeId<'db>>> {
     let item: ItemKind = find_enclosing_item(db.as_spanned_hir_db(), top_mod, cursor)?;
 
     let mut visitor_ctxt = VisitorCtxt::with_item(db.as_hir_db(), item);
@@ -144,7 +147,7 @@ pub fn get_goto_target_scopes_for_cursor(
     let scopes = match resolved_segments {
         EarlyResolvedPath::Full(bucket) => {
             if is_intermediate_segment {
-                match bucket.pick(NameDomain::Type) {
+                match bucket.pick(NameDomain::TYPE) {
                     Ok(res) => res.scope().iter().cloned().collect::<Vec<_>>(),
                     _ => bucket.iter().filter_map(NameRes::scope).collect::<Vec<_>>(),
                 }
@@ -238,7 +241,7 @@ mod tests {
     }
 
     fn extract_multiple_cursor_positions_from_spans(
-        db: &mut LanguageServerDatabase,
+        db: &LanguageServerDatabase,
         top_mod: TopLevelMod,
     ) -> Vec<rowan::TextSize> {
         let mut visitor_ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
@@ -258,7 +261,7 @@ mod tests {
     }
 
     fn make_goto_cursors_snapshot(
-        db: &mut LanguageServerDatabase,
+        db: &LanguageServerDatabase,
         fixture: &Fixture<&str>,
         top_mod: TopLevelMod,
     ) -> String {
@@ -310,29 +313,33 @@ mod tests {
         let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let ingot_base_dir = Path::new(&cargo_manifest_dir).join("test_files/single_ingot");
 
-        let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default();
+        let mut db = LanguageServerDatabase::default();
+        let mut workspace = Workspace::default();
 
-        let _ = workspace.set_workspace_root(db, &ingot_base_dir);
+        let _ = workspace.set_workspace_root(&mut db, &ingot_base_dir);
 
         let fe_source_path = ingot_base_dir.join(fixture.path());
         let fe_source_path = fe_source_path.to_str().unwrap();
-        let input = workspace.touch_input_for_file_path(db, fixture.path());
-        assert_eq!(input.unwrap().ingot(db).kind(db), IngotKind::Local);
+        let input = workspace.touch_input_for_file_path(&mut db, fixture.path());
+        assert_eq!(input.unwrap().ingot(&db).kind(&db), IngotKind::Local);
 
         input
             .unwrap()
-            .set_text(db)
+            .set_text(&mut db)
             .to((*fixture.content()).to_string());
-        let top_mod = workspace
-            .top_mod_from_file_path(db.as_lower_hir_db(), fe_source_path)
-            .unwrap();
 
-        let ingot = workspace.touch_ingot_for_file_path(db, fixture.path());
-        assert_eq!(ingot.unwrap().kind(db), IngotKind::Local);
+        // Introduce a new scope to limit the lifetime of `top_mod`
+        {
+            let top_mod = workspace
+                .top_mod_from_file_path(db.as_lower_hir_db(), fe_source_path)
+                .unwrap();
 
-        let snapshot = make_goto_cursors_snapshot(db, &fixture, top_mod);
-        snap_test!(snapshot, fixture.path());
+            let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
+            snap_test!(snapshot, fixture.path());
+        }
+
+        let ingot = workspace.touch_ingot_for_file_path(&mut db, fixture.path());
+        assert_eq!(ingot.unwrap().kind(&db), IngotKind::Local);
     }
 
     #[dir_test(
@@ -385,7 +392,7 @@ mod tests {
 
             if let Some(GotoEnclosingPathSegment { path, scope, .. }) = enclosing_path_segment {
                 let resolved_enclosing_path =
-                    hir_analysis::name_resolution::resolve_path_early(db, *path, *scope);
+                    hir_analysis::name_resolution::resolve_path_early(db, path, scope);
 
                 let res = match resolved_enclosing_path {
                     EarlyResolvedPath::Full(bucket) => bucket

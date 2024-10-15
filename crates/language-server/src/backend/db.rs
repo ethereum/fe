@@ -25,28 +25,13 @@ impl<DB> LanguageServerDb for DB where
     hir_analysis::Jar,
     Jar
 )]
+#[derive(Default)]
 pub struct LanguageServerDatabase {
     storage: salsa::Storage<Self>,
 }
 
-// impl LanguageServerDatabase {
-//     pub fn as_language_server_db(&self) -> &dyn LanguageServerDb {
-//         <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
-//     }
-// }
-
 impl salsa::Database for LanguageServerDatabase {
     fn salsa_event(&self, _: salsa::Event) {}
-}
-
-impl Default for LanguageServerDatabase {
-    fn default() -> Self {
-        let db = Self {
-            storage: Default::default(),
-        };
-        db.prefill();
-        db
-    }
 }
 
 impl ParallelDatabase for LanguageServerDatabase {

@@ -10,11 +10,11 @@ description = "An LSP language server for Fe lang"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
+salsa = { git = "https://github.com/salsa-rs/salsa", rev = "a1bf3a6" }
 codespan-reporting = "0.11"
-act-locally = { path = "../../../act-locally", package = "act-locally" }
+# act-locally = { path = "../../../act-locally", package = "act-locally" }
+act-locally = { git = "https://github.com/micahscopes/act-locally" }
 hir = { path = "../hir", package = "fe-hir" }
-language-server-macros = { path = "../language-server-macros", package = "fe-language-server-macros" }
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
 camino = "1.1.4"
 common = { path = "../common2", package = "fe-common2" }
@@ -38,7 +38,8 @@ rust-embed = "8.3.0"
 futures-batch = "0.6.1"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
-async-lsp = { path = "../../../async-lsp", features = ["tokio"] }
+# async-lsp = { path = "../../../async-lsp", features = ["tokio"] }
+async-lsp = { git = "https://github.com/micahscopes/async-lsp", branch = "steer" }
 async-trait = "0.1.81"
 trait-variant = "0.1.2"
 tower = "0.4.13"

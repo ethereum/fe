@@ -1,6 +1,5 @@
 [workspace]
 members = ["crates/*"]
-exclude = ["crates/language-server"]
 resolver = "2"
 
 [profile.dev.package.solc]
