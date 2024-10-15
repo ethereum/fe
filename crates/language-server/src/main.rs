@@ -4,7 +4,6 @@ mod functionality;
 mod logger;
 mod lsp_actor;
 mod lsp_actor_service;
-mod lsp_streaming_layer;
 mod lsp_streams;
 mod server;
 mod util;

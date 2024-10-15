@@ -160,7 +160,6 @@ pub async fn handle_file_change(
     backend: &mut Backend,
     message: FileChange,
 ) -> Result<(), ResponseError> {
-    // info!("handling file change: {:?}", message);
     let path = message
         .uri
         .to_file_path()
@@ -205,13 +204,6 @@ pub async fn handle_files_need_diagnostics(
     message: FilesNeedDiagnostics,
 ) -> Result<(), ResponseError> {
     let FilesNeedDiagnostics(need_diagnostics) = message;
-    // info!(
-    //     "handling files need diagnostics: {:?}",
-    //     need_diagnostics
-    //         .iter()
-    //         .map(|NeedsDiagnostics(file)| file.path())
-    //         .collect::<Vec<_>>()
-    // );
     let client = backend.client.clone();
     let ingot_files_need_diagnostics: FxHashSet<_> = need_diagnostics
         .into_iter()

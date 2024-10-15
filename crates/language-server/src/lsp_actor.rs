@@ -32,7 +32,6 @@ impl LspDispatcher {
             unwrappers: HashMap::new(),
         }
     }
-
     fn register_wrapper(
         &mut self,
         key: MessageKey<LspActorKey>,
@@ -150,9 +149,6 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher, L
                 let lsp_result = *result
                     .downcast::<R::Result>()
                     .map_err(|_| ActorError::DowncastError)?;
-
-                // println!("Unwrapped result: {:?}", &lsp_result);
-                // let lsp_result = typed_result.map_err(|e| ActorError::CustomError(Box::new(e)))?;
 
                 let json_value = serde_json::to_value(lsp_result)
                     .map_err(|e| ActorError::CustomError(Box::new(e)))?;

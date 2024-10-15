@@ -19,46 +19,46 @@ use crate::lsp_actor::LspDispatcher;
 
 #[derive(Debug, Clone, Hash)]
 pub enum LspActorKey {
-    LspMethod(String),
-    Custom(TypeId),
+    ByMethod(String),
+    ByTypeId(TypeId),
 }
 
 impl LspActorKey {
     pub fn of<T: 'static>() -> Self {
-        Self::Custom(TypeId::of::<T>())
+        Self::ByTypeId(TypeId::of::<T>())
     }
 }
 
 impl std::fmt::Display for LspActorKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LspActorKey::LspMethod(method) => write!(f, "Method({})", method),
-            LspActorKey::Custom(type_id) => write!(f, "Custom({:?})", type_id),
+            LspActorKey::ByMethod(method) => write!(f, "Method({})", method),
+            LspActorKey::ByTypeId(type_id) => write!(f, "Custom({:?})", type_id),
         }
     }
 }
 
 impl From<String> for LspActorKey {
     fn from(method: String) -> Self {
-        LspActorKey::LspMethod(method)
+        LspActorKey::ByMethod(method)
     }
 }
 
 impl From<&String> for LspActorKey {
     fn from(method: &String) -> Self {
-        LspActorKey::LspMethod(method.clone())
+        LspActorKey::ByMethod(method.clone())
     }
 }
 
 impl From<&str> for LspActorKey {
     fn from(method: &str) -> Self {
-        LspActorKey::LspMethod(method.to_string())
+        LspActorKey::ByMethod(method.to_string())
     }
 }
 
 impl From<TypeId> for LspActorKey {
     fn from(type_id: TypeId) -> Self {
-        LspActorKey::Custom(type_id)
+        LspActorKey::ByTypeId(type_id)
     }
 }
 
@@ -71,8 +71,8 @@ impl From<LspActorKey> for MessageKey<LspActorKey> {
 impl PartialEq for LspActorKey {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (LspActorKey::LspMethod(a), LspActorKey::LspMethod(b)) => a == b,
-            (LspActorKey::Custom(a), LspActorKey::Custom(b)) => a == b,
+            (LspActorKey::ByMethod(a), LspActorKey::ByMethod(b)) => a == b,
+            (LspActorKey::ByTypeId(a), LspActorKey::ByTypeId(b)) => a == b,
             _ => false,
         }
     }
@@ -186,7 +186,9 @@ impl<S> CanHandle<AnyNotification> for LspActorService<S> {
 }
 
 impl<S> CanHandle<AnyEvent> for LspActorService<S> {
-    fn can_handle(&self, _: &AnyEvent) -> bool {
-        false
+    fn can_handle(&self, event: &AnyEvent) -> bool {
+        self.dispatcher
+            .wrappers
+            .contains_key(&LspActorKey::from(event.inner_type_id()))
     }
 }

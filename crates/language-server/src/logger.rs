@@ -2,10 +2,36 @@ use async_lsp::{
     lsp_types::{LogMessageParams, MessageType},
     ClientSocket, LanguageClient,
 };
-use tracing::{Level, Metadata};
-use tracing_subscriber::fmt::MakeWriter;
+use tracing::{subscriber::set_default, Level, Metadata};
+use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt};
+use tracing_tree::HierarchicalLayer;
 
 use std::sync::Arc;
+
+pub fn setup(client: ClientSocket) -> impl FnOnce() -> Option<tracing::subscriber::DefaultGuard> {
+    move || {
+        let client_socket_writer = ClientSocketWriterMaker::new(client);
+        let subscriber = tracing_subscriber::registry()
+            .with(
+                HierarchicalLayer::new(2)
+                    .with_thread_ids(true)
+                    .with_thread_names(true)
+                    .with_indent_lines(true)
+                    .with_bracketed_fields(true)
+                    .with_ansi(false)
+                    .with_writer(client_socket_writer),
+            )
+            .with(
+                HierarchicalLayer::new(2)
+                    .with_thread_ids(true)
+                    .with_thread_names(true)
+                    .with_indent_lines(true)
+                    .with_bracketed_fields(true)
+                    .with_writer(std::io::stderr),
+            );
+        Some(set_default(subscriber))
+    }
+}
 
 pub(crate) struct ClientSocketWriterMaker {
     pub(crate) client_socket: Arc<ClientSocket>,
@@ -34,7 +60,6 @@ impl std::io::Write for ClientSocketWriter {
 
         let mut client_socket = self.client_socket.as_ref();
         _ = client_socket.log_message(params);
-        // eprintln!("{}", params.message);
         Ok(buf.len())
     }
 
