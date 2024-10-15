@@ -57,6 +57,7 @@ impl<E> Stream for EventStream<E> {
 }
 
 /// An extension trait for `RouterBuilder` to add stream-based handlers.
+#[allow(dead_code)]
 pub trait RouterStreams {
     /// Creates a stream for handling a specific LSP request.
     fn request_stream<R>(&mut self) -> RequestStream<R::Params, R::Result>

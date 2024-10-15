@@ -14,7 +14,7 @@ use async_lsp::lsp_types::{request, InitializeResult, ServerCapabilities};
 use async_lsp::ClientSocket;
 use serde_json::Value;
 use tracing::subscriber::set_default;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_tree::HierarchicalLayer;
 

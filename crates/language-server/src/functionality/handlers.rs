@@ -14,7 +14,7 @@ use salsa::ParallelDatabase;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
 
-use crate::backend::workspace::{IngotFileContext, SyncableIngotFileContext};
+use crate::backend::workspace::IngotFileContext;
 
 use tracing::{error, info, instrument::WithSubscriber};
 
@@ -215,9 +215,7 @@ pub async fn handle_files_need_diagnostics(
     let client = backend.client.clone();
     let ingot_files_need_diagnostics: FxHashSet<_> = need_diagnostics
         .into_iter()
-        .filter_map(|NeedsDiagnostics(file)| {
-            backend.workspace.get_ingot_for_file_path(&file.path())
-        })
+        .filter_map(|NeedsDiagnostics(file)| backend.workspace.get_ingot_for_file_path(file.path()))
         .flat_map(|ingot| ingot.files(backend.db.as_input_db()))
         .cloned()
         .collect();

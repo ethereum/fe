@@ -2,7 +2,7 @@ use async_lsp::{
     lsp_types::{notification::Notification, request::Request},
     AnyEvent, AnyNotification, AnyRequest, ResponseError,
 };
-use std::{any::Any, collections::HashMap, fmt::Debug};
+use std::collections::HashMap;
 
 use act_locally::{
     actor::HandlerRegistration,
@@ -11,8 +11,6 @@ use act_locally::{
     message::{Message, MessageDowncast, MessageKey, Response, ResponseDowncast},
     types::ActorError,
 };
-
-use tracing::{info, warn};
 
 use crate::lsp_actor_service::LspActorKey;
 

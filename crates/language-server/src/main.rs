@@ -102,7 +102,7 @@ async fn main() {
 async fn start_stdio_server() {
     let (server, _) = async_lsp::MainLoop::new_server(|client| {
         let tracing_layer = TracingLayer::default();
-        let lsp_service = setup(client.clone(), format!("LSP actor"));
+        let lsp_service = setup(client.clone(), "LSP actor".to_string());
         ServiceBuilder::new()
             .layer(LifecycleLayer::default())
             .layer(CatchUnwindLayer::default())

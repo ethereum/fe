@@ -1,25 +1,11 @@
 use async_lsp::{
-    lsp_types::{LogMessageParams, LogTraceParams, MessageType},
+    lsp_types::{LogMessageParams, MessageType},
     ClientSocket, LanguageClient,
 };
-use tracing::{
-    field::{Field, Visit},
-    info,
-    span::Id,
-    Event, Level, Metadata, Subscriber,
-};
-use tracing_subscriber::{
-    fmt::{
-        self,
-        format::{Full, PrettyVisitor, Writer},
-        FormatEvent, FormattedFields, MakeWriter,
-    },
-    layer::SubscriberExt,
-    registry::LookupSpan,
-    Layer,
-};
+use tracing::{Level, Metadata};
+use tracing_subscriber::fmt::MakeWriter;
 
-use std::{io::Write, sync::Arc};
+use std::sync::Arc;
 
 pub(crate) struct ClientSocketWriterMaker {
     pub(crate) client_socket: Arc<ClientSocket>,

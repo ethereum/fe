@@ -1,20 +1,11 @@
 use crate::backend::Backend;
-use crate::functionality::handlers::{
-    handle_file_change, handle_files_need_diagnostics, ChangeKind, FileChange,
-    FilesNeedDiagnostics, NeedsDiagnostics,
-};
+use crate::functionality::handlers::{FilesNeedDiagnostics, NeedsDiagnostics};
 use crate::lsp_actor_service::LspActorKey;
 use crate::lsp_streams::RouterStreams;
-use act_locally::dispatcher::GenericDispatcher;
-use act_locally::types::ActorError;
-use async_lsp::lsp_types::notification;
 use async_lsp::router::Router;
-use async_lsp::{lsp_types, ClientSocket, LspService};
+use async_lsp::ClientSocket;
 use futures::StreamExt;
 use futures_batch::ChunksTimeoutStreamExt;
-use futures_concurrency::prelude::*;
-use lsp_types::FileChangeType;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::instrument::WithSubscriber;
 
 use tracing::info;
@@ -24,7 +15,7 @@ use act_locally::actor::ActorRef;
 pub fn setup_streams(
     client: ClientSocket,
     router: &mut Router<()>,
-    backend: ActorRef<Backend, LspActorKey>,
+    _backend: ActorRef<Backend, LspActorKey>,
 ) {
     info!("setting up streams");
 

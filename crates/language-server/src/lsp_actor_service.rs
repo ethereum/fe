@@ -62,9 +62,9 @@ impl From<TypeId> for LspActorKey {
     }
 }
 
-impl Into<MessageKey<LspActorKey>> for LspActorKey {
-    fn into(self) -> MessageKey<LspActorKey> {
-        MessageKey(self)
+impl From<LspActorKey> for MessageKey<LspActorKey> {
+    fn from(val: LspActorKey) -> Self {
+        MessageKey(val)
     }
 }
 
