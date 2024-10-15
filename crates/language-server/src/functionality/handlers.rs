@@ -1,4 +1,4 @@
-use crate::{backend::Backend, server::Lol};
+use crate::backend::Backend;
 
 use async_lsp::lsp_types::FileChangeType;
 use async_lsp::{
@@ -84,7 +84,6 @@ pub async fn initialize(
             version: Some(String::from(env!("CARGO_PKG_VERSION"))),
         }),
     };
-    let _ = backend.client.emit(Lol); // just for kicks
     Ok(initialize_result)
 }
 

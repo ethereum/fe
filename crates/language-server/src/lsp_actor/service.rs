@@ -23,7 +23,7 @@ pub struct LspActorService<S> {
 }
 
 impl<S> LspActorService<S> {
-    pub fn new(actor_ref: ActorRef<S, LspActorKey>) -> Self {
+    pub fn with(actor_ref: ActorRef<S, LspActorKey>) -> Self {
         let dispatcher = LspDispatcher::new();
         Self {
             actor_ref,

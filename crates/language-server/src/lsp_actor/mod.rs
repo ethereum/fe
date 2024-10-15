@@ -172,7 +172,7 @@ mod tests {
             Ok(InitializeResult::default())
         }
 
-        let mut service = LspActorService::new(actor_ref.clone());
+        let mut service = LspActorService::with(actor_ref.clone());
         let dispatcher = service.dispatcher.clone();
         let dispatcher = dispatcher.as_ref();
         let actor_ref = service.actor_ref.clone();

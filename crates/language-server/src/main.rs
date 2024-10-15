@@ -7,7 +7,6 @@ mod lsp_streams;
 mod server;
 mod util;
 
-use std::backtrace::Backtrace;
 use std::net::SocketAddr;
 
 use async_compat::CompatExt;
@@ -20,15 +19,14 @@ use cli::{CliArgs, Commands};
 use futures::io::AsyncReadExt;
 use futures::StreamExt;
 use futures_net::TcpListener;
+use logging::setup_panic_hook;
 use server::setup;
 use tracing::instrument::WithSubscriber;
 use tracing::subscriber::set_default;
-// use lsp_actor_service::LspActorService;
 use tracing::{error, info};
 
 use async_lsp::client_monitor::ClientProcessMonitorLayer;
 use backend::db::Jar;
-// use lsp_actor::{ActOnNotification, ActOnRequest};
 use tower::ServiceBuilder;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry;
@@ -42,43 +40,10 @@ async fn main() {
         .with(
             HierarchicalLayer::new(2)
                 .with_thread_ids(true)
-                // .with_thread_names(true)
-                // .with_indent_lines(true)
-                // .with_bracketed_fields(true)
                 .with_writer(std::io::stderr),
         );
     let logging = set_default(std_tracing);
-
-    // Set up a panic hook
-    std::panic::set_hook(Box::new(|panic_info| {
-        // Extract the panic message
-        let payload = panic_info.payload();
-        let message = if let Some(s) = payload.downcast_ref::<&str>() {
-            *s
-        } else if let Some(s) = payload.downcast_ref::<String>() {
-            &s[..]
-        } else {
-            "Unknown panic message"
-        };
-
-        // Get the location of the panic if available
-        let location = if let Some(location) = panic_info.location() {
-            format!(" at {}:{}", location.file(), location.line())
-        } else {
-            String::from("Unknown location")
-        };
-
-        // Capture the backtrace
-        let backtrace = Backtrace::capture();
-
-        // Log the panic information and backtrace
-        tracing::error!(
-            "Panic occurred{}: {}\nBacktrace:\n{:?}",
-            location,
-            message,
-            backtrace
-        );
-    }));
+    setup_panic_hook();
 
     // Parse CLI arguments
     let args = CliArgs::parse();

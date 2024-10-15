@@ -6,9 +6,9 @@ use tracing::{subscriber::set_default, Level, Metadata};
 use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt};
 use tracing_tree::HierarchicalLayer;
 
-use std::sync::Arc;
+use std::{backtrace::Backtrace, sync::Arc};
 
-pub fn setup(client: ClientSocket) -> impl FnOnce() -> Option<tracing::subscriber::DefaultGuard> {
+pub fn init_fn(client: ClientSocket) -> impl FnOnce() -> Option<tracing::subscriber::DefaultGuard> {
     move || {
         let client_socket_writer = ClientSocketWriterMaker::new(client);
         let subscriber = tracing_subscriber::registry()
@@ -31,6 +31,39 @@ pub fn setup(client: ClientSocket) -> impl FnOnce() -> Option<tracing::subscribe
             );
         Some(set_default(subscriber))
     }
+}
+
+pub(crate) fn setup_panic_hook() {
+    // Set up a panic hook
+    std::panic::set_hook(Box::new(|panic_info| {
+        // Extract the panic message
+        let payload = panic_info.payload();
+        let message = if let Some(s) = payload.downcast_ref::<&str>() {
+            *s
+        } else if let Some(s) = payload.downcast_ref::<String>() {
+            &s[..]
+        } else {
+            "Unknown panic message"
+        };
+
+        // Get the location of the panic if available
+        let location = if let Some(location) = panic_info.location() {
+            format!(" at {}:{}", location.file(), location.line())
+        } else {
+            String::from("Unknown location")
+        };
+
+        // Capture the backtrace
+        let backtrace = Backtrace::capture();
+
+        // Log the panic information and backtrace
+        tracing::error!(
+            "Panic occurred{}: {}\nBacktrace:\n{:?}",
+            location,
+            message,
+            backtrace
+        );
+    }));
 }
 
 pub(crate) struct ClientSocketWriterMaker {
