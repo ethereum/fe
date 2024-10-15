@@ -1,7 +1,8 @@
-use crate::backend::Backend;
+use crate::{backend::Backend, server::Lol};
 
 use crate::backend::workspace::SyncableIngotFileContext;
 
+use async_lsp::lsp_types::FileChangeType;
 use async_lsp::{
     lsp_types::{
         notification::Exit, Hover, HoverParams, InitializeParams, InitializeResult,
@@ -17,17 +18,46 @@ use salsa::ParallelDatabase;
 use super::{
     capabilities::server_capabilities,
     hover::hover_helper,
-    streams::{ChangeKind, FileChange},
+    // streams::{ChangeKind, FileChange},
 };
 
 // use crate::lsp_actor::*;
 
 use crate::backend::workspace::IngotFileContext;
 
-use tracing::{error, info};
+use tracing::{error, info, instrument::WithSubscriber};
 
-pub type FilesNeedDiagnostics = Vec<String>;
-// impl Backend {
+#[derive(Debug)]
+pub struct FilesNeedDiagnostics(pub Vec<NeedsDiagnostics>);
+
+#[derive(Debug)]
+pub struct NeedsDiagnostics(pub url::Url);
+
+impl std::fmt::Display for FilesNeedDiagnostics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FilesNeedDiagnostics({:?})", self.0)
+    }
+}
+
+impl std::fmt::Display for NeedsDiagnostics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "FileNeedsDiagnostics({})", self.0)
+    }
+}
+
+#[derive(Debug)]
+pub struct FileChange {
+    pub uri: url::Url,
+    pub kind: ChangeKind,
+}
+
+#[derive(Debug)]
+pub enum ChangeKind {
+    Open(String),
+    Create,
+    Edit(Option<String>),
+    Delete,
+}
 
 impl Backend {
     fn update_input_file_text(&mut self, path: &str, contents: String) {
@@ -45,12 +75,15 @@ pub async fn initialize(
 ) -> Result<InitializeResult, ResponseError> {
     info!("initializing language server!");
 
-    let root = message.root_uri.unwrap().to_file_path().ok().unwrap();
+    let root = message
+        .workspace_folders
+        .and_then(|folders| folders.first().cloned())
+        .and_then(|folder| folder.uri.to_file_path().ok())
+        .unwrap_or_else(|| std::env::current_dir().unwrap());
 
-    // disabled for now
     let _ = backend.workspace.set_workspace_root(&mut backend.db, &root);
     let _ = backend.workspace.load_std_lib(&mut backend.db, &root);
-    let _ = backend.workspace.sync(&mut backend.db);
+    // let _ = backend.workspace.sync(&mut backend.db);
 
     let capabilities = server_capabilities();
     let initialize_result = InitializeResult {
@@ -60,6 +93,7 @@ pub async fn initialize(
             version: Some(String::from(env!("CARGO_PKG_VERSION"))),
         }),
     };
+    let _ = backend.client.emit(Lol); // just for kicks
     Ok(initialize_result)
 }
 
@@ -76,8 +110,51 @@ pub async fn initialized(
     Ok(())
 }
 
-pub async fn handle_exit(_backend: &mut Backend, _message: Exit) -> Result<(), ResponseError> {
+pub async fn handle_exit(_backend: &mut Backend, _message: ()) -> Result<(), ResponseError> {
     info!("shutting down language server");
+    Ok(())
+}
+
+pub async fn handle_did_change_watched_files(
+    backend: &mut Backend,
+    message: async_lsp::lsp_types::DidChangeWatchedFilesParams,
+) -> Result<(), ResponseError> {
+    for event in message.changes {
+        let kind = match event.typ {
+            FileChangeType::CHANGED => ChangeKind::Edit(None),
+            FileChangeType::CREATED => ChangeKind::Create,
+            FileChangeType::DELETED => ChangeKind::Delete,
+            _ => unreachable!(),
+        };
+        let _ = backend.client.emit(FileChange {
+            uri: event.uri,
+            kind,
+        });
+    }
+    Ok(())
+}
+
+pub async fn handle_did_open_text_document(
+    backend: &mut Backend,
+    message: async_lsp::lsp_types::DidOpenTextDocumentParams,
+) -> Result<(), ResponseError> {
+    info!("file opened: {:?}", message.text_document.uri);
+    let _ = backend.client.emit(FileChange {
+        uri: message.text_document.uri,
+        kind: ChangeKind::Open(message.text_document.text),
+    });
+    Ok(())
+}
+
+pub async fn handle_did_change_text_document(
+    backend: &mut Backend,
+    message: async_lsp::lsp_types::DidChangeTextDocumentParams,
+) -> Result<(), ResponseError> {
+    info!("file changed: {:?}", message.text_document.uri);
+    let _ = backend.client.emit(FileChange {
+        uri: message.text_document.uri,
+        kind: ChangeKind::Edit(Some(message.content_changes[0].text.clone())),
+    });
     Ok(())
 }
 
@@ -85,6 +162,7 @@ pub async fn handle_file_change(
     backend: &mut Backend,
     message: FileChange,
 ) -> Result<(), ResponseError> {
+    // info!("handling file change: {:?}", message);
     let path = message
         .uri
         .to_file_path()
@@ -119,6 +197,8 @@ pub async fn handle_file_change(
                 .unwrap();
         }
     }
+
+    let _ = backend.client.emit(NeedsDiagnostics(message.uri));
     Ok(())
 }
 
@@ -126,15 +206,23 @@ pub async fn handle_files_need_diagnostics(
     backend: &mut Backend,
     message: FilesNeedDiagnostics,
 ) -> Result<(), ResponseError> {
+    let FilesNeedDiagnostics(need_diagnostics) = message;
+    info!("handling files need diagnostics: {:?}", need_diagnostics);
     let client = backend.client.clone();
-    let ingot_files_need_diagnostics: FxHashSet<_> = message
+    let ingot_files_need_diagnostics: FxHashSet<_> = need_diagnostics
         .into_iter()
-        .filter_map(|file| backend.workspace.get_ingot_for_file_path(&file))
+        .filter_map(|NeedsDiagnostics(file)| {
+            backend.workspace.get_ingot_for_file_path(&file.path())
+        })
         .flat_map(|ingot| ingot.files(backend.db.as_input_db()))
         .cloned()
         .collect();
 
     let db = backend.db.snapshot();
+    info!(
+        "computing diagnostics for files: {:?}",
+        ingot_files_need_diagnostics
+    );
     let compute_and_send_diagnostics = backend
         .workers
         .spawn_blocking(move || {
@@ -153,7 +241,9 @@ pub async fn handle_files_need_diagnostics(
             .await;
             Ok(())
         });
-    tokio::spawn(compute_and_send_diagnostics);
+    backend
+        .workers
+        .spawn(compute_and_send_diagnostics.with_current_subscriber());
     Ok(())
 }
 
@@ -168,6 +258,7 @@ pub async fn handle_hover_request(
             .uri
             .path(),
     );
+    info!("handling hover request in file: {:?}", file);
 
     let response = file.and_then(|file| {
         hover_helper(&backend.db, file, message).unwrap_or_else(|e| {
@@ -176,5 +267,6 @@ pub async fn handle_hover_request(
         })
     });
 
+    info!("sending hover response: {:?}", response);
     Ok(response)
 }

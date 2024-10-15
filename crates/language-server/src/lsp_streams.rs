@@ -43,6 +43,19 @@ impl<Params> Stream for NotificationStream<Params> {
     }
 }
 
+/// A stream of LSP event messages.
+pub struct EventStream<E> {
+    receiver: mpsc::Receiver<E>,
+}
+
+impl<E> Stream for EventStream<E> {
+    type Item = E;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.receiver.poll_recv(cx)
+    }
+}
+
 /// An extension trait for `RouterBuilder` to add stream-based handlers.
 pub trait RouterStreams {
     /// Creates a stream for handling a specific LSP request.
@@ -55,6 +68,11 @@ pub trait RouterStreams {
     fn notification_stream<N>(&mut self) -> NotificationStream<N::Params>
     where
         N: notification::Notification;
+
+    /// Creates a stream for handling a specific LSP event.
+    fn event_stream<E>(&mut self) -> EventStream<E>
+    where
+        E: Send + Sync + 'static;
 }
 
 impl<State> RouterStreams for Router<State> {
@@ -88,5 +106,22 @@ impl<State> RouterStreams for Router<State> {
             std::ops::ControlFlow::Continue(())
         });
         NotificationStream { receiver: rx }
+    }
+
+    fn event_stream<E>(&mut self) -> EventStream<E>
+    where
+        E: Send + Sync + 'static,
+    {
+        let (tx, rx) = mpsc::channel(100);
+        self.event::<E>(move |_, event| {
+            let tx = tx.clone();
+            tokio::spawn(async move {
+                if let Err(e) = tx.send(event).await {
+                    tracing::error!("Failed to send event to stream: {}", e);
+                }
+            });
+            std::ops::ControlFlow::Continue(())
+        });
+        EventStream { receiver: rx }
     }
 }

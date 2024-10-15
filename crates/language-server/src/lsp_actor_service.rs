@@ -5,24 +5,88 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use act_locally::actor::ActorRef;
+use act_locally::message::MessageKey;
 use act_locally::types::ActorError;
-use futures::TryFutureExt;
 use serde_json::Value;
 use tracing::info;
 
 use async_lsp::can_handle::CanHandle;
 use async_lsp::{AnyEvent, AnyNotification, AnyRequest, Error, LspService, ResponseError};
+use std::any::TypeId;
 use tower::Service;
 
 use crate::lsp_actor::LspDispatcher;
 
+#[derive(Debug, Clone, Hash)]
+pub enum LspActorKey {
+    LspMethod(String),
+    Custom(TypeId),
+}
+
+impl LspActorKey {
+    pub fn of<T: 'static>() -> Self {
+        Self::Custom(TypeId::of::<T>())
+    }
+}
+
+impl std::fmt::Display for LspActorKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LspActorKey::LspMethod(method) => write!(f, "Method({})", method),
+            LspActorKey::Custom(type_id) => write!(f, "Custom({:?})", type_id),
+        }
+    }
+}
+
+impl From<String> for LspActorKey {
+    fn from(method: String) -> Self {
+        LspActorKey::LspMethod(method)
+    }
+}
+
+impl From<&String> for LspActorKey {
+    fn from(method: &String) -> Self {
+        LspActorKey::LspMethod(method.clone())
+    }
+}
+
+impl From<&str> for LspActorKey {
+    fn from(method: &str) -> Self {
+        LspActorKey::LspMethod(method.to_string())
+    }
+}
+
+impl From<TypeId> for LspActorKey {
+    fn from(type_id: TypeId) -> Self {
+        LspActorKey::Custom(type_id)
+    }
+}
+
+impl Into<MessageKey<LspActorKey>> for LspActorKey {
+    fn into(self) -> MessageKey<LspActorKey> {
+        MessageKey(self)
+    }
+}
+
+impl PartialEq for LspActorKey {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (LspActorKey::LspMethod(a), LspActorKey::LspMethod(b)) => a == b,
+            (LspActorKey::Custom(a), LspActorKey::Custom(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for LspActorKey {}
+
 pub struct LspActorService<S> {
-    actor_ref: ActorRef<S, String>,
+    actor_ref: ActorRef<S, LspActorKey>,
     dispatcher: Arc<LspDispatcher>,
 }
 
 impl<S> LspActorService<S> {
-    pub fn new(actor_ref: ActorRef<S, String>, dispatcher: LspDispatcher) -> Self {
+    pub fn new(actor_ref: ActorRef<S, LspActorKey>, dispatcher: LspDispatcher) -> Self {
         Self {
             actor_ref,
             dispatcher: Arc::new(dispatcher),
@@ -107,13 +171,17 @@ impl<S: 'static> LspService for LspActorService<S> {
 
 impl<S> CanHandle<AnyRequest> for LspActorService<S> {
     fn can_handle(&self, req: &AnyRequest) -> bool {
-        self.dispatcher.wrappers.contains_key(&req.method)
+        self.dispatcher
+            .wrappers
+            .contains_key(&LspActorKey::from(&req.method))
     }
 }
 
 impl<S> CanHandle<AnyNotification> for LspActorService<S> {
     fn can_handle(&self, notif: &AnyNotification) -> bool {
-        self.dispatcher.wrappers.contains_key(&notif.method)
+        self.dispatcher
+            .wrappers
+            .contains_key(&LspActorKey::from(&notif.method))
     }
 }
 

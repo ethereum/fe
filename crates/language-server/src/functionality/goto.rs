@@ -163,48 +163,48 @@ pub fn get_goto_target_scopes_for_cursor(
 
 use crate::backend::workspace::IngotFileContext;
 
-impl Backend {
-    pub(super) fn handle_goto_definition(
-        &self,
-        params: async_lsp::lsp_types::GotoDefinitionParams,
-    ) -> Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ResponseError> {
-        // Convert the position to an offset in the file
-        let params = params.text_document_position_params;
-        let file_text = std::fs::read_to_string(params.text_document.uri.path()).ok();
-        let cursor: Cursor = to_offset_from_position(params.position, file_text.unwrap().as_str());
+// impl Backend {
+pub async fn handle_goto_definition(
+    backend: &mut Backend,
+    params: async_lsp::lsp_types::GotoDefinitionParams,
+) -> Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ResponseError> {
+    // Convert the position to an offset in the file
+    let params = params.text_document_position_params;
+    let file_text = std::fs::read_to_string(params.text_document.uri.path()).ok();
+    let cursor: Cursor = to_offset_from_position(params.position, file_text.unwrap().as_str());
 
-        // Get the module and the goto info
-        let file_path = params.text_document.uri.path();
-        let top_mod = self
-            .workspace
-            .top_mod_from_file_path(self.db.as_lower_hir_db(), file_path)
-            .unwrap();
+    // Get the module and the goto info
+    let file_path = params.text_document.uri.path();
+    let top_mod = backend
+        .workspace
+        .top_mod_from_file_path(backend.db.as_lower_hir_db(), file_path)
+        .unwrap();
 
-        let scopes =
-            get_goto_target_scopes_for_cursor(&self.db, top_mod, cursor).unwrap_or_default();
+    let scopes =
+        get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
 
-        let locations = scopes
-            .iter()
-            .map(|scope| to_lsp_location_from_scope(*scope, self.db.as_spanned_hir_db()))
-            .collect::<Vec<_>>();
+    let locations = scopes
+        .iter()
+        .map(|scope| to_lsp_location_from_scope(*scope, backend.db.as_spanned_hir_db()))
+        .collect::<Vec<_>>();
 
-        let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
-            Ok(Some(async_lsp::lsp_types::GotoDefinitionResponse::Array(
-                locations
-                    .into_iter()
-                    .filter_map(std::result::Result::ok)
-                    .collect(),
-            )));
-        let response = match result {
-            Ok(response) => response,
-            Err(e) => {
-                eprintln!("Error handling goto definition: {:?}", e);
-                None
-            }
-        };
-        Ok(response)
-    }
+    let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
+        Ok(Some(async_lsp::lsp_types::GotoDefinitionResponse::Array(
+            locations
+                .into_iter()
+                .filter_map(std::result::Result::ok)
+                .collect(),
+        )));
+    let response = match result {
+        Ok(response) => response,
+        Err(e) => {
+            eprintln!("Error handling goto definition: {:?}", e);
+            None
+        }
+    };
+    Ok(response)
 }
+// }
 #[cfg(test)]
 mod tests {
     use crate::backend::{

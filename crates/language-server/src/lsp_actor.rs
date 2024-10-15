@@ -1,8 +1,8 @@
 use async_lsp::{
     lsp_types::{notification::Notification, request::Request},
-    AnyNotification, AnyRequest, ResponseError,
+    AnyEvent, AnyNotification, AnyRequest, ResponseError,
 };
-use std::collections::HashMap;
+use std::{any::Any, collections::HashMap, fmt::Debug};
 
 use act_locally::{
     actor::HandlerRegistration,
@@ -12,13 +12,17 @@ use act_locally::{
     types::ActorError,
 };
 
+use tracing::{info, warn};
+
+use crate::lsp_actor_service::LspActorKey;
+
 pub struct LspDispatcher {
     pub(super) wrappers: HashMap<
-        String,
+        LspActorKey,
         Box<dyn Fn(Box<dyn Message>) -> Result<Box<dyn Message>, ActorError> + Send + Sync>,
     >,
     pub(super) unwrappers: HashMap<
-        String,
+        LspActorKey,
         Box<dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync>,
     >,
 }
@@ -33,7 +37,7 @@ impl LspDispatcher {
 
     fn register_wrapper(
         &mut self,
-        key: MessageKey<String>,
+        key: MessageKey<LspActorKey>,
         wrapper: Box<
             dyn Fn(Box<dyn Message>) -> Result<Box<dyn Message>, ActorError> + Send + Sync,
         >,
@@ -43,7 +47,7 @@ impl LspDispatcher {
     }
     pub fn register_unwrapper(
         &mut self,
-        key: MessageKey<String>,
+        key: MessageKey<LspActorKey>,
         unwrapper: Box<
             dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync,
         >,
@@ -53,12 +57,14 @@ impl LspDispatcher {
     }
 }
 
-impl Dispatcher<String> for LspDispatcher {
-    fn message_key(&self, message: &dyn Message) -> Result<MessageKey<String>, ActorError> {
+impl Dispatcher<LspActorKey> for LspDispatcher {
+    fn message_key(&self, message: &dyn Message) -> Result<MessageKey<LspActorKey>, ActorError> {
         if let Some(request) = message.downcast_ref::<AnyRequest>() {
-            Ok(MessageKey(request.method.clone()))
+            Ok(LspActorKey::from(&request.method).into())
         } else if let Some(notification) = message.downcast_ref::<AnyNotification>() {
-            Ok(MessageKey(notification.method.clone()))
+            Ok(LspActorKey::from(&notification.method).into())
+        } else if let Some(event) = message.downcast_ref::<AnyEvent>() {
+            Ok(LspActorKey::from(event.inner_type_id()).into())
         } else {
             Err(ActorError::DispatchError)
         }
@@ -67,7 +73,7 @@ impl Dispatcher<String> for LspDispatcher {
     fn wrap(
         &self,
         message: Box<dyn Message>,
-        key: MessageKey<String>,
+        key: MessageKey<LspActorKey>,
     ) -> Result<Box<dyn Message>, ActorError> {
         let MessageKey(key) = key;
         if let Some(wrapper) = self.wrappers.get(&key) {
@@ -75,6 +81,8 @@ impl Dispatcher<String> for LspDispatcher {
                 wrapper(Box::new(request.params.clone()))
             } else if let Some(notification) = message.downcast_ref::<AnyNotification>() {
                 wrapper(Box::new(notification.params.clone()))
+            } else if message.is::<AnyEvent>() {
+                wrapper(message)
             } else {
                 wrapper(message)
             }
@@ -86,7 +94,7 @@ impl Dispatcher<String> for LspDispatcher {
     fn unwrap(
         &self,
         message: Box<dyn Response>,
-        key: MessageKey<String>,
+        key: MessageKey<LspActorKey>,
     ) -> Result<Box<dyn Response>, ActorError> {
         let MessageKey(key) = key;
         if let Some(unwrapper) = self.unwrappers.get(&key) {
@@ -107,9 +115,13 @@ pub trait LspActor<S: 'static> {
         &mut self,
         handler: impl for<'a> AsyncMutatingFunc<'a, S, N::Params, (), ResponseError> + 'static,
     ) -> &mut Self;
+    fn handle_event<E: Send + Sync + 'static>(
+        &mut self,
+        handler: impl for<'a> AsyncMutatingFunc<'a, S, E, (), ResponseError> + 'static,
+    ) -> &mut Self;
 }
 
-impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher, String> {
+impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher, LspActorKey> {
     fn handle_request<R: Request>(
         &mut self,
         handler: impl for<'b> AsyncMutatingFunc<'b, S, R::Params, R::Result, ResponseError> + 'static,
@@ -181,12 +193,34 @@ impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher, S
             .register_handler_async_mutating(MessageKey::new(N::METHOD.into()), handler);
         self
     }
+
+    fn handle_event<E: Send + Sync + 'static>(
+        &mut self,
+        handler: impl for<'b> AsyncMutatingFunc<'b, S, E, (), ResponseError> + 'static,
+    ) -> &mut Self {
+        let wrapper = Box::new(
+            move |message: Box<dyn Message>| -> Result<Box<dyn Message>, ActorError> {
+                let event = message
+                    .downcast::<AnyEvent>()
+                    .expect("Failed to downcast message to AnyEvent");
+                let inner = event.downcast::<E>().expect("Failed to downcast event");
+                Ok(Box::new(inner))
+            },
+        );
+
+        self.dispatcher
+            .register_wrapper(LspActorKey::of::<E>().into(), wrapper);
+
+        self.actor_ref
+            .register_handler_async_mutating(LspActorKey::of::<E>().into(), handler);
+        self
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use act_locally::{actor::Actor, builder::ActorBuilder};
+    use act_locally::builder::ActorBuilder;
     use async_lsp::{
         lsp_types::{InitializeParams, InitializeResult},
         RequestId,
@@ -257,7 +291,6 @@ mod tests {
             params: serde_json::to_value(init_params).unwrap(),
         };
 
-        let init_request2 = init_request.clone();
         println!("Sending initialize request");
         let init_result: Value = match actor_ref.ask(&dispatcher, init_request).await {
             Ok(res) => res,
@@ -272,10 +305,7 @@ mod tests {
         assert_eq!(init_result_deserialized, InitializeResult::default());
 
         // Test initialized notification
-        let init_notification = AnyNotification {
-            method: Initialized::METHOD.to_string(),
-            params: json!(null),
-        };
+        let init_notification = AnyNotification::stub(Initialized::METHOD.to_string(), json!(null));
 
         println!("Sending initialized notification");
         if let Err(e) = actor_ref.tell(&dispatcher, init_notification) {

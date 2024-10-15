@@ -1,92 +1,68 @@
-use crate::lsp_actor::LspDispatcher;
 use crate::backend::Backend;
+use crate::functionality::handlers::{
+    handle_file_change, handle_files_need_diagnostics, ChangeKind, FileChange,
+    FilesNeedDiagnostics, NeedsDiagnostics,
+};
+use crate::lsp_actor_service::LspActorKey;
 use crate::lsp_streams::RouterStreams;
-use act_locally::dispatcher::Dispatcher;
-use async_lsp::lsp_types;
-use async_lsp::lsp_types::{notification, request};
+use act_locally::dispatcher::GenericDispatcher;
+use act_locally::types::ActorError;
+use async_lsp::lsp_types::notification;
 use async_lsp::router::Router;
-use futures::{Stream, StreamExt};
+use async_lsp::{lsp_types, ClientSocket, LspService};
+use futures::StreamExt;
 use futures_batch::ChunksTimeoutStreamExt;
 use futures_concurrency::prelude::*;
 use lsp_types::FileChangeType;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+use tracing::instrument::WithSubscriber;
 
 use tracing::info;
 
 use act_locally::actor::ActorRef;
 
-pub struct FileChange {
-    pub uri: url::Url,
-    pub kind: ChangeKind,
-}
-pub enum ChangeKind {
-    Open(String),
-    Create,
-    Edit(Option<String>),
-    Delete,
-}
-
-pub fn setup_streams(router: &mut Router<()>, backend: ActorRef<Backend, String>) {
+pub fn setup_streams(
+    client: ClientSocket,
+    router: &mut Router<()>,
+    backend: ActorRef<Backend, LspActorKey>,
+) {
     info!("setting up streams");
 
-    let did_change_watched_files_stream = router
-        .notification_stream::<notification::DidChangeWatchedFiles>()
-        .fuse();
+    // backend.register_handler_async_mutating(
+    //     LspActorKey::of::<FilesNeedDiagnostics>().into(),
+    //     handle_files_need_diagnostics,
+    // );
 
-    let did_open_stream = router
-        .notification_stream::<notification::DidOpenTextDocument>()
-        .fuse();
-    let did_change_stream = router
-        .notification_stream::<notification::DidChangeTextDocument>()
-        .fuse();
-    let (tx_needs_diagnostics, rx_needs_diagnostics) =
-        tokio::sync::mpsc::unbounded_channel::<String>();
-    let mut diagnostics_stream = UnboundedReceiverStream::from(rx_needs_diagnostics)
+    // backend.register_handler_async_mutating(
+    //     LspActorKey::of::<FileChange>().into(),
+    //     handle_file_change,
+    // );
+
+    // let (tx_needs_diagnostics, rx_needs_diagnostics) =
+    //     tokio::sync::mpsc::unbounded_channel::<FileNeedsDiagnostics>();
+
+    let mut diagnostics_stream = router
+        .event_stream::<NeedsDiagnostics>()
         .chunks_timeout(500, std::time::Duration::from_millis(30))
+        .map(FilesNeedDiagnostics)
         .fuse();
 
-    let mut change_stream = (
-        did_change_watched_files_stream
-            .map(|params| futures::stream::iter(params.changes))
-            .flatten()
-            .fuse()
-            .map(|event| {
-                let kind = match event.typ {
-                    FileChangeType::CHANGED => ChangeKind::Edit(None),
-                    FileChangeType::CREATED => ChangeKind::Create,
-                    FileChangeType::DELETED => ChangeKind::Delete,
-                    _ => unreachable!(),
-                };
-                FileChange {
-                    uri: event.uri,
-                    kind,
+    tokio::spawn(
+        async move {
+            loop {
+                tokio::select! {
+                    // Some(change) = change_stream.next() => {
+                    //     let uri = change.uri.path().to_string();
+                    //     let _ = &client.emit(change);
+                    //     let _ = tx_needs_diagnostics.send(uri);
+                    // },
+                    Some(files_need_diagnostics) = diagnostics_stream.next() => {
+                        let _ = &client.emit(files_need_diagnostics);
+                    },
                 }
-            }),
-        did_open_stream.fuse().map(|params| FileChange {
-            uri: params.text_document.uri,
-            kind: ChangeKind::Open(params.text_document.text),
-        }),
-        did_change_stream.fuse().map(|params| FileChange {
-            uri: params.text_document.uri,
-            kind: ChangeKind::Edit(Some(params.content_changes[0].text.clone())),
-        }),
-    )
-        .merge()
-        .fuse();
-
-    // tokio::spawn(async move {
-    //     loop {
-    //         tokio::select! {
-    //             Some(change) = change_stream.next() => {
-    //                 let uri = change.uri.to_string();
-    //                 backend.tell(change).await;
-    //                 tx_needs_diagnostics.send(uri);
-    //             },
-    //             Some(files_need_diagnostics) = diagnostics_stream.next() => {
-    //                 backend.ask(files_need_diagnostics).await;
-    //             },
-    //         }
-    //         tokio::task::yield_now().await;
-    //     }
-    // });
+                tokio::task::yield_now().await;
+            }
+        }
+        .with_current_subscriber(),
+    );
 }
