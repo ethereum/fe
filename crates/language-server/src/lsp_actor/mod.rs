@@ -1,3 +1,6 @@
+pub(crate) mod registration;
+pub(crate) mod service;
+
 use async_lsp::{
     lsp_types::{notification::Notification, request::Request},
     AnyEvent, AnyNotification, AnyRequest, ResponseError,
@@ -5,14 +8,13 @@ use async_lsp::{
 use std::collections::HashMap;
 
 use act_locally::{
-    actor::HandlerRegistration,
     dispatcher::Dispatcher,
     handler::AsyncMutatingFunc,
-    message::{Message, MessageDowncast, MessageKey, Response, ResponseDowncast},
+    message::{Message, MessageDowncast, MessageKey, Response},
     types::ActorError,
 };
 
-use crate::lsp_actor_service::LspActorKey;
+use crate::lsp_actor::service::LspActorKey;
 
 pub struct LspDispatcher {
     pub(super) wrappers: HashMap<
@@ -118,101 +120,9 @@ pub trait LspActor<S: 'static> {
     ) -> &mut Self;
 }
 
-impl<'a, S: 'static> LspActor<S> for HandlerRegistration<'a, S, LspDispatcher, LspActorKey> {
-    fn handle_request<R: Request>(
-        &mut self,
-        handler: impl for<'b> AsyncMutatingFunc<'b, S, R::Params, R::Result, ResponseError> + 'static,
-    ) -> &mut Self {
-        let param_handler = Box::new(
-            move |params: Box<dyn Message>| -> Result<Box<dyn Message>, ActorError> {
-                let params = params.downcast::<serde_json::Value>().map_err(|_| {
-                    println!("Failed to downcast params to serde_json::Value");
-                    ActorError::DowncastError
-                })?;
-                let typed_params: R::Params = serde_json::from_value(*params).map_err(|e| {
-                    println!("Deserialization error: {:?}", e);
-                    ActorError::CustomError(Box::new(e))
-                })?;
-
-                Ok(Box::new(typed_params) as Box<dyn Message>)
-            },
-        );
-
-        self.dispatcher
-            .register_wrapper(MessageKey::new(R::METHOD.into()), param_handler);
-
-        self.actor_ref
-            .register_handler_async_mutating(MessageKey::new(R::METHOD.into()), handler);
-
-        let result_unwrapper = Box::new(
-            move |result: Box<dyn Response>| -> Result<Box<dyn Response>, ActorError> {
-                let lsp_result = *result
-                    .downcast::<R::Result>()
-                    .map_err(|_| ActorError::DowncastError)?;
-
-                let json_value = serde_json::to_value(lsp_result)
-                    .map_err(|e| ActorError::CustomError(Box::new(e)))?;
-                // println!("Unwrapped json result: {:?}", &json_value);
-                Ok(Box::new(json_value) as Box<dyn Response>)
-            },
-        );
-        self.dispatcher
-            .register_unwrapper(MessageKey::new(R::METHOD.into()), result_unwrapper);
-
-        self
-    }
-
-    fn handle_notification<N: Notification>(
-        &mut self,
-        handler: impl for<'b> AsyncMutatingFunc<'b, S, N::Params, (), ResponseError> + 'static,
-    ) -> &mut Self {
-        let param_handler = Box::new(
-            move |params: Box<dyn Message>| -> Result<Box<dyn Message>, ActorError> {
-                let params = params.downcast::<serde_json::Value>().map_err(|_| {
-                    println!("Failed to downcast params to serde_json::Value");
-                    ActorError::DowncastError
-                })?;
-                let typed_params: N::Params = serde_json::from_value(*params).map_err(|e| {
-                    println!("Deserialization error: {:?}", e);
-                    ActorError::CustomError(Box::new(e))
-                })?;
-                Ok(Box::new(typed_params) as Box<dyn Message>)
-            },
-        );
-
-        self.dispatcher
-            .register_wrapper(MessageKey::new(N::METHOD.into()), param_handler);
-
-        self.actor_ref
-            .register_handler_async_mutating(MessageKey::new(N::METHOD.into()), handler);
-        self
-    }
-
-    fn handle_event<E: Send + Sync + 'static>(
-        &mut self,
-        handler: impl for<'b> AsyncMutatingFunc<'b, S, E, (), ResponseError> + 'static,
-    ) -> &mut Self {
-        let wrapper = Box::new(
-            move |message: Box<dyn Message>| -> Result<Box<dyn Message>, ActorError> {
-                let event = message
-                    .downcast::<AnyEvent>()
-                    .expect("Failed to downcast message to AnyEvent");
-                let inner = event.downcast::<E>().expect("Failed to downcast event");
-                Ok(Box::new(inner))
-            },
-        );
-
-        self.dispatcher
-            .register_wrapper(LspActorKey::of::<E>().into(), wrapper);
-
-        self.actor_ref
-            .register_handler_async_mutating(LspActorKey::of::<E>().into(), handler);
-        self
-    }
-}
-
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use act_locally::builder::ActorBuilder;
     use async_lsp::{
@@ -220,6 +130,7 @@ mod tests {
         RequestId,
     };
     use serde_json::{json, Value};
+    use service::LspActorService;
 
     #[derive(Debug)]
     enum Initialize {}
@@ -252,13 +163,6 @@ mod tests {
             .spawn()
             .expect("Failed to spawn actor");
 
-        let mut dispatcher = LspDispatcher::new();
-
-        let mut registration = HandlerRegistration {
-            actor_ref: &actor_ref,
-            dispatcher: &mut dispatcher,
-        };
-
         async fn handle_initialize(
             state: &mut TestState,
             _: InitializeParams,
@@ -268,14 +172,19 @@ mod tests {
             Ok(InitializeResult::default())
         }
 
-        registration.handle_request::<Initialize>(handle_initialize);
+        let mut service = LspActorService::new(actor_ref.clone());
+        let dispatcher = service.dispatcher.clone();
+        let dispatcher = dispatcher.as_ref();
+        let actor_ref = service.actor_ref.clone();
+
+        service.handle_request::<Initialize>(handle_initialize);
 
         async fn handle_initialized(state: &mut TestState, _: ()) -> Result<(), ResponseError> {
             println!("Handling initialized notification");
             assert!(state.initialized, "State should be initialized");
             Ok(())
         }
-        registration.handle_notification::<Initialized>(handle_initialized);
+        service.handle_notification::<Initialized>(handle_initialized);
 
         // Test initialize request
         let init_params = InitializeParams::default();
@@ -286,7 +195,8 @@ mod tests {
         );
 
         println!("Sending initialize request");
-        let init_result: Value = match actor_ref.ask(&dispatcher, init_request).await {
+
+        let init_result: Value = match actor_ref.ask(dispatcher, init_request).await {
             Ok(res) => res,
             Err(e) => {
                 panic!("Failed to get InitializeResult: {:?}", e);
@@ -302,7 +212,7 @@ mod tests {
         let init_notification = AnyNotification::stub(Initialized::METHOD.to_string(), json!(null));
 
         println!("Sending initialized notification");
-        if let Err(e) = actor_ref.tell(&dispatcher, init_notification) {
+        if let Err(e) = actor_ref.tell(dispatcher, init_notification) {
             panic!("Failed to send Initialized notification: {:?}", e);
         }
 

@@ -17,76 +17,14 @@ use tower::Service;
 
 use crate::lsp_actor::LspDispatcher;
 
-#[derive(Debug, Clone, Hash)]
-pub enum LspActorKey {
-    ByMethod(String),
-    ByTypeId(TypeId),
-}
-
-impl LspActorKey {
-    pub fn of<T: 'static>() -> Self {
-        Self::ByTypeId(TypeId::of::<T>())
-    }
-}
-
-impl std::fmt::Display for LspActorKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LspActorKey::ByMethod(method) => write!(f, "Method({})", method),
-            LspActorKey::ByTypeId(type_id) => write!(f, "Custom({:?})", type_id),
-        }
-    }
-}
-
-impl From<String> for LspActorKey {
-    fn from(method: String) -> Self {
-        LspActorKey::ByMethod(method)
-    }
-}
-
-impl From<&String> for LspActorKey {
-    fn from(method: &String) -> Self {
-        LspActorKey::ByMethod(method.clone())
-    }
-}
-
-impl From<&str> for LspActorKey {
-    fn from(method: &str) -> Self {
-        LspActorKey::ByMethod(method.to_string())
-    }
-}
-
-impl From<TypeId> for LspActorKey {
-    fn from(type_id: TypeId) -> Self {
-        LspActorKey::ByTypeId(type_id)
-    }
-}
-
-impl From<LspActorKey> for MessageKey<LspActorKey> {
-    fn from(val: LspActorKey) -> Self {
-        MessageKey(val)
-    }
-}
-
-impl PartialEq for LspActorKey {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (LspActorKey::ByMethod(a), LspActorKey::ByMethod(b)) => a == b,
-            (LspActorKey::ByTypeId(a), LspActorKey::ByTypeId(b)) => a == b,
-            _ => false,
-        }
-    }
-}
-
-impl Eq for LspActorKey {}
-
 pub struct LspActorService<S> {
-    actor_ref: ActorRef<S, LspActorKey>,
-    dispatcher: Arc<LspDispatcher>,
+    pub(super) actor_ref: ActorRef<S, LspActorKey>,
+    pub(super) dispatcher: Arc<LspDispatcher>,
 }
 
 impl<S> LspActorService<S> {
-    pub fn new(actor_ref: ActorRef<S, LspActorKey>, dispatcher: LspDispatcher) -> Self {
+    pub fn new(actor_ref: ActorRef<S, LspActorKey>) -> Self {
+        let dispatcher = LspDispatcher::new();
         Self {
             actor_ref,
             dispatcher: Arc::new(dispatcher),
@@ -192,3 +130,66 @@ impl<S> CanHandle<AnyEvent> for LspActorService<S> {
             .contains_key(&LspActorKey::from(event.inner_type_id()))
     }
 }
+
+#[derive(Debug, Clone, Hash)]
+pub enum LspActorKey {
+    ByMethod(String),
+    ByTypeId(TypeId),
+}
+
+impl LspActorKey {
+    pub fn of<T: 'static>() -> Self {
+        Self::ByTypeId(TypeId::of::<T>())
+    }
+}
+
+impl std::fmt::Display for LspActorKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LspActorKey::ByMethod(method) => write!(f, "Method({})", method),
+            LspActorKey::ByTypeId(type_id) => write!(f, "Custom({:?})", type_id),
+        }
+    }
+}
+
+impl From<String> for LspActorKey {
+    fn from(method: String) -> Self {
+        LspActorKey::ByMethod(method)
+    }
+}
+
+impl From<&String> for LspActorKey {
+    fn from(method: &String) -> Self {
+        LspActorKey::ByMethod(method.clone())
+    }
+}
+
+impl From<&str> for LspActorKey {
+    fn from(method: &str) -> Self {
+        LspActorKey::ByMethod(method.to_string())
+    }
+}
+
+impl From<TypeId> for LspActorKey {
+    fn from(type_id: TypeId) -> Self {
+        LspActorKey::ByTypeId(type_id)
+    }
+}
+
+impl From<LspActorKey> for MessageKey<LspActorKey> {
+    fn from(val: LspActorKey) -> Self {
+        MessageKey(val)
+    }
+}
+
+impl PartialEq for LspActorKey {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (LspActorKey::ByMethod(a), LspActorKey::ByMethod(b)) => a == b,
+            (LspActorKey::ByTypeId(a), LspActorKey::ByTypeId(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for LspActorKey {}
