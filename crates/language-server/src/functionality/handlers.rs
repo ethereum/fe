@@ -1,12 +1,9 @@
 use crate::{backend::Backend, server::Lol};
 
-use crate::backend::workspace::SyncableIngotFileContext;
-
 use async_lsp::lsp_types::FileChangeType;
 use async_lsp::{
     lsp_types::{
-        notification::Exit, Hover, HoverParams, InitializeParams, InitializeResult,
-        InitializedParams, LogMessageParams,
+        Hover, HoverParams, InitializeParams, InitializeResult, InitializedParams, LogMessageParams,
     },
     LanguageClient, ResponseError,
 };
@@ -15,15 +12,9 @@ use futures::TryFutureExt;
 use fxhash::FxHashSet;
 use salsa::ParallelDatabase;
 
-use super::{
-    capabilities::server_capabilities,
-    hover::hover_helper,
-    // streams::{ChangeKind, FileChange},
-};
+use super::{capabilities::server_capabilities, hover::hover_helper};
 
-// use crate::lsp_actor::*;
-
-use crate::backend::workspace::IngotFileContext;
+use crate::backend::workspace::{IngotFileContext, SyncableIngotFileContext};
 
 use tracing::{error, info, instrument::WithSubscriber};
 
@@ -83,7 +74,7 @@ pub async fn initialize(
 
     let _ = backend.workspace.set_workspace_root(&mut backend.db, &root);
     let _ = backend.workspace.load_std_lib(&mut backend.db, &root);
-    // let _ = backend.workspace.sync(&mut backend.db);
+    // let _ = backend.workspace.sync();
 
     let capabilities = server_capabilities();
     let initialize_result = InitializeResult {
@@ -102,6 +93,13 @@ pub async fn initialized(
     _message: InitializedParams,
 ) -> Result<(), ResponseError> {
     info!("language server initialized! recieved notification!");
+
+    backend.workspace.all_files().for_each(|file| {
+        let path = file.path(backend.db.as_input_db());
+        let _ = backend
+            .client
+            .emit(NeedsDiagnostics(url::Url::from_file_path(path).unwrap()));
+    });
 
     let _ = backend.client.log_message(LogMessageParams {
         typ: async_lsp::lsp_types::MessageType::INFO,
@@ -207,7 +205,13 @@ pub async fn handle_files_need_diagnostics(
     message: FilesNeedDiagnostics,
 ) -> Result<(), ResponseError> {
     let FilesNeedDiagnostics(need_diagnostics) = message;
-    info!("handling files need diagnostics: {:?}", need_diagnostics);
+    // info!(
+    //     "handling files need diagnostics: {:?}",
+    //     need_diagnostics
+    //         .iter()
+    //         .map(|NeedsDiagnostics(file)| file.path())
+    //         .collect::<Vec<_>>()
+    // );
     let client = backend.client.clone();
     let ingot_files_need_diagnostics: FxHashSet<_> = need_diagnostics
         .into_iter()
@@ -219,24 +223,38 @@ pub async fn handle_files_need_diagnostics(
         .collect();
 
     let db = backend.db.snapshot();
-    info!(
-        "computing diagnostics for files: {:?}",
-        ingot_files_need_diagnostics
-    );
+    let uris: Vec<url::Url> = ingot_files_need_diagnostics
+        .iter()
+        .map(|input_file| {
+            let path_str = input_file.path(backend.db.as_input_db());
+            url::Url::from_file_path(path_str).unwrap()
+        })
+        .collect();
+
+    info!("computing diagnostics for files: {:?}", uris);
     let compute_and_send_diagnostics = backend
         .workers
         .spawn_blocking(move || {
-            db.get_lsp_diagnostics(ingot_files_need_diagnostics.into_iter().collect())
+            // Get diagnostics per file
+            let diagnostics_map =
+                db.get_lsp_diagnostics(ingot_files_need_diagnostics.iter().cloned().collect());
+            // Return the diagnostics map and the pre-collected URIs
+            diagnostics_map
         })
-        .and_then(|diagnostics| async move {
-            futures::future::join_all(diagnostics.into_iter().map(|(path, diagnostic)| {
+        .and_then(move |diagnostics_map| async move {
+            // For each URI, get its diagnostics or empty
+            futures::future::join_all(uris.into_iter().map(|uri| {
+                let diagnostic = diagnostics_map.get(&uri).cloned().unwrap_or_default();
                 let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
-                    uri: path,
+                    uri: uri.clone(),
                     diagnostics: diagnostic,
                     version: None,
                 };
                 let mut client = client.clone();
-                async move { client.publish_diagnostics(diagnostics_params) }
+                async move {
+                    // info!("sending diagnostics for file: {diagnostics_params:?}");
+                    client.publish_diagnostics(diagnostics_params)
+                }
             }))
             .await;
             Ok(())

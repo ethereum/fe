@@ -259,6 +259,20 @@ impl Workspace {
         }
     }
 
+    pub fn all_files(&self) -> impl Iterator<Item = &InputFile> {
+        // Iterate over all files in the ingot contexts
+        let ingot_files = self
+            .ingot_contexts
+            .values()
+            .flat_map(|ctx| ctx.files.values());
+
+        // Get the files from the standalone ingot context
+        let standalone_files = self.standalone_ingot_context.files.values();
+
+        // Chain the iterators to create a single iterator over all files
+        ingot_files.chain(standalone_files)
+    }
+
     pub fn load_std_lib(
         &mut self,
         db: &mut LanguageServerDatabase,

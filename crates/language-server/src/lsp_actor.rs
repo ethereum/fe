@@ -285,11 +285,11 @@ mod tests {
 
         // Test initialize request
         let init_params = InitializeParams::default();
-        let init_request = AnyRequest {
-            id: RequestId::Number(1),
-            method: Initialize::METHOD.to_string(),
-            params: serde_json::to_value(init_params).unwrap(),
-        };
+        let init_request = AnyRequest::stub(
+            RequestId::Number(1),
+            Initialize::METHOD.to_string(),
+            serde_json::to_value(init_params).unwrap(),
+        );
 
         println!("Sending initialize request");
         let init_result: Value = match actor_ref.ask(&dispatcher, init_request).await {
