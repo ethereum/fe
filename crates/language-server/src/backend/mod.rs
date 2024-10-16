@@ -19,7 +19,7 @@ impl Backend {
         let workspace = Workspace::default();
 
         let workers = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(4)
+            .worker_threads(1)
             .enable_all()
             .build()
             .unwrap();

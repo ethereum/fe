@@ -5,16 +5,52 @@ use async_lsp::{
     lsp_types::{notification::Notification, request::Request},
     AnyEvent, AnyNotification, AnyRequest, ResponseError,
 };
+use service::LspActorKey;
 use std::collections::HashMap;
 
 use act_locally::{
     dispatcher::Dispatcher,
-    handler::AsyncMutatingFunc,
+    handler::{AsyncFunc, AsyncMutatingFunc},
     message::{Message, MessageDowncast, MessageKey, Response},
     types::ActorError,
 };
 
-use crate::lsp_actor::service::LspActorKey;
+#[allow(dead_code)]
+pub trait LspActor<S: 'static> {
+    fn handle_request<R: Request>(
+        &mut self,
+        handler: impl for<'a> AsyncFunc<'a, S, R::Params, R::Result, ResponseError>
+            + Send
+            + Sync
+            + 'static,
+    ) -> &mut Self;
+    fn handle_notification<N: Notification>(
+        &mut self,
+        handler: impl for<'a> AsyncFunc<'a, S, N::Params, (), ResponseError> + Send + Sync + 'static,
+    ) -> &mut Self;
+    fn handle_event<E: Send + Sync + 'static>(
+        &mut self,
+        handler: impl for<'a> AsyncFunc<'a, S, E, (), ResponseError> + Send + Sync + 'static,
+    ) -> &mut Self;
+    fn handle_request_mut<R: Request>(
+        &mut self,
+        handler: impl for<'a> AsyncMutatingFunc<'a, S, R::Params, R::Result, ResponseError>
+            + Send
+            + Sync
+            + 'static,
+    ) -> &mut Self;
+    fn handle_notification_mut<N: Notification>(
+        &mut self,
+        handler: impl for<'a> AsyncMutatingFunc<'a, S, N::Params, (), ResponseError>
+            + Send
+            + Sync
+            + 'static,
+    ) -> &mut Self;
+    fn handle_event_mut<E: Send + Sync + 'static>(
+        &mut self,
+        handler: impl for<'a> AsyncMutatingFunc<'a, S, E, (), ResponseError> + Send + Sync + 'static,
+    ) -> &mut Self;
+}
 
 pub struct LspDispatcher {
     pub(super) wrappers: HashMap<
@@ -105,21 +141,6 @@ impl Dispatcher<LspActorKey> for LspDispatcher {
     }
 }
 
-pub trait LspActor<S: 'static> {
-    fn handle_request<R: Request>(
-        &mut self,
-        handler: impl for<'a> AsyncMutatingFunc<'a, S, R::Params, R::Result, ResponseError> + 'static,
-    ) -> &mut Self;
-    fn handle_notification<N: Notification>(
-        &mut self,
-        handler: impl for<'a> AsyncMutatingFunc<'a, S, N::Params, (), ResponseError> + 'static,
-    ) -> &mut Self;
-    fn handle_event<E: Send + Sync + 'static>(
-        &mut self,
-        handler: impl for<'a> AsyncMutatingFunc<'a, S, E, (), ResponseError> + 'static,
-    ) -> &mut Self;
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -177,14 +198,14 @@ mod tests {
         let dispatcher = dispatcher.as_ref();
         let actor_ref = service.actor_ref.clone();
 
-        service.handle_request::<Initialize>(handle_initialize);
+        service.handle_request_mut::<Initialize>(handle_initialize);
 
         async fn handle_initialized(state: &mut TestState, _: ()) -> Result<(), ResponseError> {
             println!("Handling initialized notification");
             assert!(state.initialized, "State should be initialized");
             Ok(())
         }
-        service.handle_notification::<Initialized>(handle_initialized);
+        service.handle_notification_mut::<Initialized>(handle_initialized);
 
         // Test initialize request
         let init_params = InitializeParams::default();

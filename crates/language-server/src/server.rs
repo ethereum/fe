@@ -39,15 +39,17 @@ pub(crate) fn setup(client: ClientSocket, name: String) -> BoxLspService<Value, 
     let mut lsp_actor_service = LspActorService::with(backend_actor);
 
     lsp_actor_service
-        .handle_request::<Initialize>(handlers::initialize)
+        // mutating handlers
+        .handle_request_mut::<Initialize>(handlers::initialize)
+        .handle_request_mut::<GotoDefinition>(goto::handle_goto_definition)
+        .handle_event_mut::<FileChange>(handlers::handle_file_change)
+        .handle_event_mut::<FilesNeedDiagnostics>(handlers::handle_files_need_diagnostics)
+        // non-mutating handlers
         .handle_notification::<Initialized>(handlers::initialized)
-        .handle_request::<GotoDefinition>(goto::handle_goto_definition)
         .handle_request::<HoverRequest>(handlers::handle_hover_request)
         .handle_notification::<DidOpenTextDocument>(handlers::handle_did_open_text_document)
         .handle_notification::<DidChangeTextDocument>(handlers::handle_did_change_text_document)
         .handle_notification::<DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)
-        .handle_event::<FileChange>(handlers::handle_file_change)
-        .handle_event::<FilesNeedDiagnostics>(handlers::handle_files_need_diagnostics)
         .handle_notification::<notification::Exit>(handlers::handle_exit);
 
     let mut streaming_router = Router::new(());

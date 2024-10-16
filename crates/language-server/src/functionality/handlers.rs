@@ -88,7 +88,7 @@ pub async fn initialize(
 }
 
 pub async fn initialized(
-    backend: &mut Backend,
+    backend: &Backend,
     _message: InitializedParams,
 ) -> Result<(), ResponseError> {
     info!("language server initialized! recieved notification!");
@@ -100,20 +100,20 @@ pub async fn initialized(
             .emit(NeedsDiagnostics(url::Url::from_file_path(path).unwrap()));
     });
 
-    let _ = backend.client.log_message(LogMessageParams {
+    let _ = backend.client.clone().log_message(LogMessageParams {
         typ: async_lsp::lsp_types::MessageType::INFO,
         message: "language server initialized!".to_string(),
     });
     Ok(())
 }
 
-pub async fn handle_exit(_backend: &mut Backend, _message: ()) -> Result<(), ResponseError> {
+pub async fn handle_exit(_backend: &Backend, _message: ()) -> Result<(), ResponseError> {
     info!("shutting down language server");
     Ok(())
 }
 
 pub async fn handle_did_change_watched_files(
-    backend: &mut Backend,
+    backend: &Backend,
     message: async_lsp::lsp_types::DidChangeWatchedFilesParams,
 ) -> Result<(), ResponseError> {
     for event in message.changes {
@@ -123,7 +123,7 @@ pub async fn handle_did_change_watched_files(
             FileChangeType::DELETED => ChangeKind::Delete,
             _ => unreachable!(),
         };
-        let _ = backend.client.emit(FileChange {
+        let _ = backend.client.clone().emit(FileChange {
             uri: event.uri,
             kind,
         });
@@ -132,11 +132,11 @@ pub async fn handle_did_change_watched_files(
 }
 
 pub async fn handle_did_open_text_document(
-    backend: &mut Backend,
+    backend: &Backend,
     message: async_lsp::lsp_types::DidOpenTextDocumentParams,
 ) -> Result<(), ResponseError> {
     info!("file opened: {:?}", message.text_document.uri);
-    let _ = backend.client.emit(FileChange {
+    let _ = backend.client.clone().emit(FileChange {
         uri: message.text_document.uri,
         kind: ChangeKind::Open(message.text_document.text),
     });
@@ -144,11 +144,11 @@ pub async fn handle_did_open_text_document(
 }
 
 pub async fn handle_did_change_text_document(
-    backend: &mut Backend,
+    backend: &Backend,
     message: async_lsp::lsp_types::DidChangeTextDocumentParams,
 ) -> Result<(), ResponseError> {
     info!("file changed: {:?}", message.text_document.uri);
-    let _ = backend.client.emit(FileChange {
+    let _ = backend.client.clone().emit(FileChange {
         uri: message.text_document.uri,
         kind: ChangeKind::Edit(Some(message.content_changes[0].text.clone())),
     });
@@ -211,7 +211,6 @@ pub async fn handle_files_need_diagnostics(
         .cloned()
         .collect();
 
-    let db = backend.db.snapshot();
     let uris: Vec<url::Url> = ingot_files_need_diagnostics
         .iter()
         .map(|input_file| {
@@ -221,6 +220,8 @@ pub async fn handle_files_need_diagnostics(
         .collect();
 
     info!("computing diagnostics for files: {:?}", uris);
+
+    let db = backend.db.snapshot();
     let compute_and_send_diagnostics = backend
         .workers
         .spawn_blocking(move || {
@@ -232,20 +233,17 @@ pub async fn handle_files_need_diagnostics(
         })
         .and_then(move |diagnostics_map| async move {
             // For each URI, get its diagnostics or empty
-            futures::future::join_all(uris.into_iter().map(|uri| {
+            let mut client = client.clone();
+            for uri in uris {
                 let diagnostic = diagnostics_map.get(&uri).cloned().unwrap_or_default();
                 let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
                     uri: uri.clone(),
                     diagnostics: diagnostic,
                     version: None,
                 };
-                let mut client = client.clone();
-                async move {
-                    // info!("sending diagnostics for file: {diagnostics_params:?}");
-                    client.publish_diagnostics(diagnostics_params)
-                }
-            }))
-            .await;
+                client.publish_diagnostics(diagnostics_params).unwrap();
+            }
+
             Ok(())
         });
     backend
@@ -255,7 +253,7 @@ pub async fn handle_files_need_diagnostics(
 }
 
 pub async fn handle_hover_request(
-    backend: &mut Backend,
+    backend: &Backend,
     message: HoverParams,
 ) -> Result<Option<Hover>, ResponseError> {
     let file = backend.workspace.get_input_for_file_path(
