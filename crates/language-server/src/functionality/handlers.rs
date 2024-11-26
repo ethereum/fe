@@ -199,7 +199,7 @@ pub async fn handle_file_change(
 }
 
 pub async fn handle_files_need_diagnostics(
-    backend: &mut Backend,
+    backend: &Backend,
     message: FilesNeedDiagnostics,
 ) -> Result<(), ResponseError> {
     let FilesNeedDiagnostics(need_diagnostics) = message;

@@ -43,7 +43,7 @@ pub(crate) fn setup(client: ClientSocket, name: String) -> BoxLspService<Value, 
         .handle_request_mut::<Initialize>(handlers::initialize)
         .handle_request_mut::<GotoDefinition>(goto::handle_goto_definition)
         .handle_event_mut::<FileChange>(handlers::handle_file_change)
-        .handle_event_mut::<FilesNeedDiagnostics>(handlers::handle_files_need_diagnostics)
+        .handle_event::<FilesNeedDiagnostics>(handlers::handle_files_need_diagnostics)
         // non-mutating handlers
         .handle_notification::<Initialized>(handlers::initialized)
         .handle_request::<HoverRequest>(handlers::handle_hover_request)
