@@ -13,7 +13,7 @@ description = "An LSP language server for Fe lang"
 salsa = { git = "https://github.com/salsa-rs/salsa", rev = "a1bf3a6" }
 codespan-reporting = "0.11"
 # act-locally = { path = "../../../act-locally", package = "act-locally" }
-act-locally = { git = "https://github.com/micahscopes/act-locally" }
+act-locally = "0.1.1"
 hir = { path = "../hir", package = "fe-hir" }
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
 camino = "1.1.4"
