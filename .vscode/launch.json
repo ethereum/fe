@@ -15,7 +15,8 @@
       "request": "launch",
       "type": "extensionHost",
       "env": {
-        "RUST_BACKTRACE": "full"
+        "RUST_BACKTRACE": "full",
+        "NODE_ENV": "development"
       }
     }
   ]

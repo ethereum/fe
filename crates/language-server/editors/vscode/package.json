@@ -6,8 +6,19 @@
   "engines": {
     "vscode": "^1.78.0"
   },
+  "license": "MIT",
+  "author": "Fe Language Team",
+  "publisher": "fe-language-team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/your-repo-name.git"
+  },
   "categories": [
     "Other"
+  ],
+  "files": [
+    "./out/",
+    "./server/binaries/**"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
@@ -35,10 +46,22 @@
         "scopeName": "source.fe",
         "path": "./fe.tmLanguage.json"
       }
-    ]
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Fe Language Server Configuration",
+      "properties": {
+        "fe-analyzer.binaryPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the fe-language-server binary. Leave empty to use the default bundled binary."
+        }
+      }
+    }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "copy-builds": "arch=$(basename $(dirname $(dirname $(find ../../../../target/*/release/ -name 'fe-language-server' -type f)))) && rsync -av $(find ../../../../target/*/release/ -name 'fe-language-server' -type f) ./server/$arch/",
+    "vscode:prepublish": "npm run copy-builds && npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
