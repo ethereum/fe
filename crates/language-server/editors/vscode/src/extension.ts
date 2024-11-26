@@ -138,9 +138,6 @@ export async function activate(
 }
 
 export function deactivate(): Thenable<void> | undefined {
-  if (serverProcess) {
-    serverProcess.kill();
-  }
   if (!client) {
     return undefined;
   }

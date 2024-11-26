@@ -23,4 +23,8 @@ pub struct TcpArgs {
     /// Port to listen on (default: 4242)
     #[arg(short, long, default_value_t = 4242)]
     pub port: u16,
+
+    /// Timeout in seconds to shut down the server if no peers are connected (default: 10)
+    #[arg(short, long, default_value_t = 10)]
+    pub timeout: u64,
 }

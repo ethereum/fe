@@ -8,6 +8,7 @@ mod server;
 mod util;
 
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use async_compat::CompatExt;
 use async_lsp::concurrency::ConcurrencyLayer;
@@ -27,6 +28,8 @@ use tracing::{error, info};
 
 use async_lsp::client_monitor::ClientProcessMonitorLayer;
 use backend::db::Jar;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use tower::ServiceBuilder;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry;
@@ -51,7 +54,7 @@ async fn main() {
     match args.command {
         Some(Commands::Tcp(tcp_args)) => {
             // Start server with TCP listener
-            start_tcp_server(tcp_args.port).await;
+            start_tcp_server(tcp_args.port, Duration::from_secs(tcp_args.timeout)).await;
         }
         None => {
             // Start server with stdio
@@ -84,16 +87,18 @@ async fn start_stdio_server() {
     }
 }
 
-async fn start_tcp_server(port: u16) {
+async fn start_tcp_server(port: u16, timeout: Duration) {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let mut listener = TcpListener::bind(&addr).expect("Failed to bind to address");
     let mut incoming = listener.incoming();
+    let connections_count = Arc::new(AtomicUsize::new(0));
 
     info!("LSP server is listening on {}", addr);
 
     while let Some(Ok(stream)) = incoming.next().with_current_subscriber().await {
         let client_address = stream.peer_addr().unwrap();
         let tracing_layer = TracingLayer::default();
+        let connections_count = Arc::clone(&connections_count);
         let task = async move {
             let (server, _) = async_lsp::MainLoop::new_server(|client| {
                 let router = setup(client.clone(), format!("LSP actor for {client_address}"));
@@ -105,6 +110,11 @@ async fn start_tcp_server(port: u16) {
                     .layer(ClientProcessMonitorLayer::new(client.clone()))
                     .service(router)
             });
+            let current_connections = connections_count.fetch_add(1, Ordering::SeqCst) + 1;
+            info!(
+                "New client connected. Total clients: {}",
+                current_connections
+            );
 
             let (read, write) = stream.split();
             if let Err(e) = server.run_buffered(read, write).await {
@@ -112,7 +122,33 @@ async fn start_tcp_server(port: u16) {
             } else {
                 info!("Client {} disconnected", client_address);
             }
+            let current_connections = connections_count.fetch_sub(1, Ordering::SeqCst) - 1;
+            info!(
+                "Client disconnected. Total clients: {}",
+                current_connections
+            );
         };
         tokio::spawn(task.with_current_subscriber());
     }
+
+    let timeout_task = {
+        let connections_count = Arc::clone(&connections_count);
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(1)).await;
+                if connections_count.load(Ordering::Relaxed) == 0 {
+                    tokio::time::sleep(timeout).await;
+                    if connections_count.load(Ordering::Relaxed) == 0 {
+                        info!(
+                            "No clients connected for {:?}. Shutting down server.",
+                            timeout
+                        );
+                        std::process::exit(0);
+                    }
+                }
+            }
+        })
+    };
+
+    timeout_task.await.unwrap();
 }
