@@ -5,16 +5,17 @@ use camino::Utf8Path;
 use codespan_reporting as cs;
 use cs::files as cs_files;
 
-use common::{diagnostics::CompleteDiagnostic, InputDb, InputFile};
+use common::{diagnostics::CompleteDiagnostic, InputDb, InputFile, InputIngot};
 
 use fxhash::FxHashMap;
 use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
-    lower::map_file_to_mod, ParsingPass,
+    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, lower::map_file_to_mod,
+    ParsingPass,
 };
 use hir_analysis::name_resolution::{
     DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass,
 };
+use url::Url;
 
 use crate::{
     backend::db::{LanguageServerDatabase, LanguageServerDb},
@@ -80,26 +81,32 @@ impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
 }
 
 impl LanguageServerDatabase {
-    pub fn analyze_top_mod<'a>(
-        &'a self,
-        top_mod: TopLevelMod<'a>,
-    ) -> Vec<Box<dyn DiagnosticVoucher + 'a>> {
-        let mut pass_manager = initialize_analysis_pass(self);
-        pass_manager.run_on_module(top_mod)
-    }
-
-    pub fn get_lsp_diagnostics(
+    pub fn diagnostics_for_ingot(
         &self,
-        files: Vec<InputFile>,
+        ingot: InputIngot,
     ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
         let mut result =
             FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default(
             );
-        for file in files.iter() {
+        let mut pass_manager = initialize_analysis_pass(self);
+        let ingot_files = ingot.files(self).iter();
+
+        for file in ingot_files {
+            // initialize an empty diagnostic list for this file
+            // (to clear any previous diagnostics)
+            result
+                .entry(
+                    Url::from_file_path(file.path(self))
+                        .expect("Failed to convert file path to URL"),
+                )
+                .or_default();
+
             let top_mod = map_file_to_mod(self, *file);
-            let diagnostics = self.analyze_top_mod(top_mod);
-            let mut finalized_diags: Vec<CompleteDiagnostic> =
-                diagnostics.iter().map(|d| d.to_complete(self)).collect();
+            let diagnostics = pass_manager.run_on_module(top_mod);
+            let mut finalized_diags: Vec<CompleteDiagnostic> = diagnostics
+                .iter()
+                .map(|d| d.to_complete(self).clone())
+                .collect();
             finalized_diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
                 std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
                 ord => ord,
@@ -112,6 +119,7 @@ impl LanguageServerDatabase {
                 }
             }
         }
+
         result
     }
 }
@@ -122,5 +130,8 @@ fn initialize_analysis_pass(db: &LanguageServerDatabase) -> AnalysisPassManager<
     pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
+    // pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
+    // pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));
+
     pass_manager
 }

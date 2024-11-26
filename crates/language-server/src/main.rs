@@ -58,6 +58,7 @@ async fn main() {
         }
         None => {
             // Start server with stdio
+            // TODO: vscode drops stdio connection immediately, need to figure this out
             start_stdio_server().await;
         }
     }
@@ -91,7 +92,7 @@ async fn start_tcp_server(port: u16, timeout: Duration) {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let mut listener = TcpListener::bind(&addr).expect("Failed to bind to address");
     let mut incoming = listener.incoming();
-    let connections_count = Arc::new(AtomicUsize::new(0));
+    let connections_count = Arc::new(AtomicUsize::new(0)); // we will timeout if no clients are connected
 
     info!("LSP server is listening on {}", addr);
 

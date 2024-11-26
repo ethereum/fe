@@ -8,15 +8,16 @@ use async_lsp::{
     LanguageClient, ResponseError,
 };
 use common::InputDb;
-use futures::TryFutureExt;
 use fxhash::FxHashSet;
 use salsa::ParallelDatabase;
+use tracing::dispatcher::with_default;
+use tracing::Dispatch;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
 
 use crate::backend::workspace::IngotFileContext;
 
-use tracing::{error, info, instrument::WithSubscriber};
+use tracing::{error, info};
 
 #[derive(Debug)]
 pub struct FilesNeedDiagnostics(pub Vec<NeedsDiagnostics>);
@@ -204,51 +205,40 @@ pub async fn handle_files_need_diagnostics(
 ) -> Result<(), ResponseError> {
     let FilesNeedDiagnostics(need_diagnostics) = message;
     let client = backend.client.clone();
-    let ingot_files_need_diagnostics: FxHashSet<_> = need_diagnostics
-        .into_iter()
-        .filter_map(|NeedsDiagnostics(file)| backend.workspace.get_ingot_for_file_path(file.path()))
-        .flat_map(|ingot| ingot.files(backend.db.as_input_db()))
-        .cloned()
-        .collect();
 
-    let uris: Vec<url::Url> = ingot_files_need_diagnostics
+    let ingots_need_diagnostics: FxHashSet<_> = need_diagnostics
         .iter()
-        .map(|input_file| {
-            let path_str = input_file.path(backend.db.as_input_db());
-            url::Url::from_file_path(path_str).unwrap()
-        })
+        .filter_map(|NeedsDiagnostics(file)| backend.workspace.get_ingot_for_file_path(file.path()))
         .collect();
 
-    info!("computing diagnostics for files: {:?}", uris);
+    for ingot in ingots_need_diagnostics {
+        let current_subscriber = Dispatch::clone(&tracing::dispatcher::get_default(|d| d.clone()));
+        let client = client.clone();
+        let db = backend.db.snapshot();
+        let diagnostic_task = move || {
+            with_default(&current_subscriber, || {
+                // Get diagnostics per file
+                let diagnostics_map = db.diagnostics_for_ingot(ingot);
 
-    let db = backend.db.snapshot();
-    let compute_and_send_diagnostics = backend
-        .workers
-        .spawn_blocking(move || {
-            // Get diagnostics per file
-            let diagnostics_map =
-                db.get_lsp_diagnostics(ingot_files_need_diagnostics.iter().cloned().collect());
-            // Return the diagnostics map and the pre-collected URIs
-            diagnostics_map
-        })
-        .and_then(move |diagnostics_map| async move {
-            // For each URI, get its diagnostics or empty
-            let mut client = client.clone();
-            for uri in uris {
-                let diagnostic = diagnostics_map.get(&uri).cloned().unwrap_or_default();
-                let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
-                    uri: uri.clone(),
-                    diagnostics: diagnostic,
-                    version: None,
-                };
-                client.publish_diagnostics(diagnostics_params).unwrap();
-            }
-
-            Ok(())
-        });
-    backend
-        .workers
-        .spawn(compute_and_send_diagnostics.with_current_subscriber());
+                info!(
+                    "Computed diagnostics: {:?}",
+                    diagnostics_map.keys().collect::<Vec<_>>()
+                );
+                let mut client = client.clone();
+                for uri in diagnostics_map.keys() {
+                    let diagnostic = diagnostics_map.get(&uri).cloned().unwrap_or_default();
+                    let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
+                        uri: uri.clone(),
+                        diagnostics: diagnostic,
+                        version: None,
+                    };
+                    info!("Publishing diagnostics for URI: {:?}", uri);
+                    client.publish_diagnostics(diagnostics_params).unwrap();
+                }
+            });
+        };
+        backend.workers.spawn_blocking(diagnostic_task);
+    }
     Ok(())
 }
 
