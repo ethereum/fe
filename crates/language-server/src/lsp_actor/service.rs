@@ -131,7 +131,7 @@ impl<S> CanHandle<AnyEvent> for LspActorService<S> {
     }
 }
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone)]
 pub enum LspActorKey {
     ByMethod(String),
     ByTypeId(TypeId),
@@ -188,6 +188,21 @@ impl PartialEq for LspActorKey {
             (LspActorKey::ByMethod(a), LspActorKey::ByMethod(b)) => a == b,
             (LspActorKey::ByTypeId(a), LspActorKey::ByTypeId(b)) => a == b,
             _ => false,
+        }
+    }
+}
+
+impl std::hash::Hash for LspActorKey {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            LspActorKey::ByMethod(method) => {
+                0u8.hash(state);
+                method.hash(state);
+            }
+            LspActorKey::ByTypeId(type_id) => {
+                1u8.hash(state);
+                type_id.hash(state);
+            }
         }
     }
 }

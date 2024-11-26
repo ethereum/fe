@@ -15,7 +15,7 @@ use super::{
     LspActor,
 };
 
-impl<'a, S: 'static> LspActor<S> for LspActorService<S> {
+impl<S: 'static> LspActor<S> for LspActorService<S> {
     fn handle_request<R: Request>(
         &mut self,
         handler: impl for<'b> AsyncFunc<'b, S, R::Params, R::Result, ResponseError>

@@ -15,6 +15,12 @@ use act_locally::{
     types::ActorError,
 };
 
+type WrapperFunc =
+    Box<dyn Fn(Box<dyn Message>) -> Result<Box<dyn Message>, ActorError> + Send + Sync>;
+
+type UnwrapperFunc =
+    Box<dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync>;
+
 #[allow(dead_code)]
 pub trait LspActor<S: 'static> {
     fn handle_request<R: Request>(
@@ -53,14 +59,8 @@ pub trait LspActor<S: 'static> {
 }
 
 pub struct LspDispatcher {
-    pub(super) wrappers: HashMap<
-        LspActorKey,
-        Box<dyn Fn(Box<dyn Message>) -> Result<Box<dyn Message>, ActorError> + Send + Sync>,
-    >,
-    pub(super) unwrappers: HashMap<
-        LspActorKey,
-        Box<dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync>,
-    >,
+    pub(super) wrappers: HashMap<LspActorKey, WrapperFunc>,
+    pub(super) unwrappers: HashMap<LspActorKey, UnwrapperFunc>,
 }
 
 impl LspDispatcher {
@@ -70,23 +70,11 @@ impl LspDispatcher {
             unwrappers: HashMap::new(),
         }
     }
-    fn register_wrapper(
-        &mut self,
-        key: MessageKey<LspActorKey>,
-        wrapper: Box<
-            dyn Fn(Box<dyn Message>) -> Result<Box<dyn Message>, ActorError> + Send + Sync,
-        >,
-    ) {
+    fn register_wrapper(&mut self, key: MessageKey<LspActorKey>, wrapper: WrapperFunc) {
         let MessageKey(key) = key;
         self.wrappers.insert(key, wrapper);
     }
-    pub fn register_unwrapper(
-        &mut self,
-        key: MessageKey<LspActorKey>,
-        unwrapper: Box<
-            dyn Fn(Box<dyn Response>) -> Result<Box<dyn Response>, ActorError> + Send + Sync,
-        >,
-    ) {
+    pub fn register_unwrapper(&mut self, key: MessageKey<LspActorKey>, unwrapper: UnwrapperFunc) {
         let MessageKey(key) = key;
         self.unwrappers.insert(key, unwrapper);
     }
@@ -116,8 +104,8 @@ impl Dispatcher<LspActorKey> for LspDispatcher {
                 wrapper(Box::new(request.params.clone()))
             } else if let Some(notification) = message.downcast_ref::<AnyNotification>() {
                 wrapper(Box::new(notification.params.clone()))
-            } else if message.is::<AnyEvent>() {
-                wrapper(message)
+            // } else if message.is::<AnyEvent>() {
+            //     wrapper(message)
             } else {
                 wrapper(message)
             }

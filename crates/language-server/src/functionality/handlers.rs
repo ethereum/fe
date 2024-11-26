@@ -226,7 +226,7 @@ pub async fn handle_files_need_diagnostics(
                 );
                 let mut client = client.clone();
                 for uri in diagnostics_map.keys() {
-                    let diagnostic = diagnostics_map.get(&uri).cloned().unwrap_or_default();
+                    let diagnostic = diagnostics_map.get(uri).cloned().unwrap_or_default();
                     let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
                         uri: uri.clone(),
                         diagnostics: diagnostic,
