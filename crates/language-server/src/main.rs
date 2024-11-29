@@ -1,5 +1,6 @@
 mod backend;
 mod cli;
+mod fallback;
 mod functionality;
 mod logging;
 mod lsp_actor;

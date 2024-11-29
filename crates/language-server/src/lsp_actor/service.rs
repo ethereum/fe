@@ -10,7 +10,7 @@ use act_locally::types::ActorError;
 use serde_json::Value;
 use tracing::info;
 
-use async_lsp::can_handle::CanHandle;
+// use async_lsp::can_handle::CanHandle;
 use async_lsp::{AnyEvent, AnyNotification, AnyRequest, Error, LspService, ResponseError};
 use std::any::TypeId;
 use tower::Service;
@@ -105,6 +105,10 @@ impl<S: 'static> LspService for LspActorService<S> {
             )))),
         }
     }
+}
+
+pub(crate) trait CanHandle<T> {
+    fn can_handle(&self, item: &T) -> bool;
 }
 
 impl<S> CanHandle<AnyRequest> for LspActorService<S> {

@@ -1,3 +1,4 @@
+use crate::fallback::WithFallbackService;
 use crate::functionality::handlers::{FileChange, FilesNeedDiagnostics, NeedsDiagnostics};
 use crate::logging;
 use crate::lsp_actor::service::LspActorService;
@@ -11,7 +12,7 @@ use async_lsp::lsp_types::request::{GotoDefinition, HoverRequest};
 use async_lsp::ClientSocket;
 use async_std::stream::StreamExt;
 use futures_batch::ChunksTimeoutStreamExt;
-use serde_json::Value;
+// use serde_json::Value;
 use tracing::info;
 use tracing::instrument::WithSubscriber;
 
@@ -20,12 +21,17 @@ use crate::functionality::{goto, handlers};
 use async_lsp::router::Router;
 use async_lsp::{
     lsp_types::request::Initialize,
-    steer::{FirstComeFirstServe, LspSteer},
-    util::BoxLspService,
-    ResponseError,
+    // steer::{FirstComeFirstServe, LspSteer},
+    // util::BoxLspService,
+    // ResponseError,
 };
 
-pub(crate) fn setup(client: ClientSocket, name: String) -> BoxLspService<Value, ResponseError> {
+pub(crate) fn setup(
+    client: ClientSocket,
+    name: String,
+    // ) -> LspActorService<Backend> {
+) -> WithFallbackService<LspActorService<Backend>, Router<()>> {
+    // BoxLspService<Value, ResponseError> {
     info!("Setting up server");
     let client_for_actor = client.clone();
     let client_for_logging = client.clone();
@@ -55,13 +61,8 @@ pub(crate) fn setup(client: ClientSocket, name: String) -> BoxLspService<Value, 
     let mut streaming_router = Router::new(());
     setup_streams(client.clone(), &mut streaming_router);
 
-    let services = vec![
-        BoxLspService::new(lsp_actor_service),
-        BoxLspService::new(streaming_router),
-    ];
-
-    let router = LspSteer::new(services, FirstComeFirstServe);
-    BoxLspService::new(router)
+    // lsp_actor_service
+    WithFallbackService::new(lsp_actor_service, streaming_router)
 }
 
 pub fn setup_streams(client: ClientSocket, router: &mut Router<()>) {
