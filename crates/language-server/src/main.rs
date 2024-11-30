@@ -16,11 +16,11 @@ use async_lsp::concurrency::ConcurrencyLayer;
 use async_lsp::panic::CatchUnwindLayer;
 use async_lsp::server::LifecycleLayer;
 use async_lsp::tracing::TracingLayer;
+use async_std::net::TcpListener;
 use clap::Parser;
 use cli::{CliArgs, Commands};
 use futures::io::AsyncReadExt;
 use futures::StreamExt;
-use futures_net::TcpListener;
 use logging::setup_panic_hook;
 use server::setup;
 use tracing::instrument::WithSubscriber;
@@ -91,7 +91,9 @@ async fn start_stdio_server() {
 
 async fn start_tcp_server(port: u16, timeout: Duration) {
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    let mut listener = TcpListener::bind(&addr).expect("Failed to bind to address");
+    let listener = TcpListener::bind(&addr)
+        .await
+        .expect("Failed to bind to address");
     let mut incoming = listener.incoming();
     let connections_count = Arc::new(AtomicUsize::new(0)); // we will timeout if no clients are connected
 

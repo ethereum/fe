@@ -27,7 +27,6 @@ url = "2.4.1"
 tokio = { version = "1.35.1", features = ["full", "io-std", "tracing", "net"] }
 tokio-macros = "2.2.0"
 futures = "0.3.28"
-tokio-stream = { version = "0.1.14", features = ["sync"] }
 rust-embed = "8.3.0"
 futures-batch = "0.6.1"
 tracing = "0.1.40"
@@ -36,16 +35,10 @@ async-lsp = { git = "https://github.com/micahscopes/async-lsp", branch = "pub-in
 tower = "0.4.13"
 serde = "1.0.204"
 clap = { version = "4.5.18", features = ["derive"] }
-futures-net = "0.6.0"
 async-std = "1.13.0"
 async-compat = "0.2.4"
 tracing-tree = "0.4.0"
 
 [dev-dependencies]
 fe-compiler-test-utils = { path = "../test-utils" }
-env_logger = "0.11.5"
 dir-test = "0.1"
-console-subscriber = "0.2.0"
-
-# [profile.test]
-# rustflags = ["-Awarnings"]
