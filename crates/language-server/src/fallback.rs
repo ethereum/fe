@@ -39,14 +39,11 @@ where
     }
 
     fn call(&mut self, req: AnyRequest) -> Self::Future {
-        self.primary.call(req)
-        // if self.primary.can_handle(&req) {
-        //     info!("primary can handle {}", req.method);
-        //     self.primary.call(req)
-        // } else {
-        //     info!("handling via fallback {}", req.method);
-        //     self.fallback.call(req)
-        // }
+        if self.primary.can_handle(&req) {
+            self.primary.call(req)
+        } else {
+            self.fallback.call(req)
+        }
     }
 }
 
@@ -81,31 +78,3 @@ where
         }
     }
 }
-
-// pub struct WithFallbackLayer<B> {
-//     fallback: B,
-// }
-
-// impl<B> WithFallbackLayer<B> {
-//     pub fn new(fallback: B) -> Self {
-//         Self { fallback }
-//     }
-// }
-
-// impl<A, B> tower::Layer<A> for WithFallbackLayer<B>
-// where
-//     A: Service<AnyRequest, Response = Value, Error = ResponseError>
-//         + CanHandle<AnyRequest>
-//         + CanHandle<AnyNotification>
-//         + CanHandle<AnyEvent>,
-//     B: Service<AnyRequest, Response = Value, Error = ResponseError>,
-// {
-//     type Service = WithFallbackService<A, B>;
-
-//     fn layer(&self, primary: A) -> Self::Service {
-//         WithFallbackService::new(
-//             primary,
-//             std::mem::replace(&mut self.fallback, unsafe { std::mem::uninitialized() }),
-//         )
-//     }
-// }
