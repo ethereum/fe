@@ -110,6 +110,7 @@ impl ModuleTree<'_> {
 /// top level modules. This function only depends on an ingot structure and
 /// external ingot dependency, and not depends on file contents.
 #[salsa::tracked(return_ref)]
+#[allow(elided_named_lifetimes)]
 pub(crate) fn module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> ModuleTree<'_> {
     ModuleTreeBuilder::new(db, ingot).build()
 }
