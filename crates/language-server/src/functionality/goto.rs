@@ -25,7 +25,7 @@ struct GotoEnclosingPathSegment<'db> {
 }
 
 impl<'db> GotoEnclosingPathSegment<'db> {
-    fn segments(self, db: &'db dyn LanguageServerDb) -> &'db [Partial<IdentId>] {
+    fn segments(self, db: &'db dyn LanguageServerDb) -> &'db [Partial<IdentId<'db>>] {
         &self.path.segments(db.as_hir_db())[0..self.idx + 1]
     }
     fn is_intermediate(self, db: &dyn LanguageServerDb) -> bool {

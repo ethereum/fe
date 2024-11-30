@@ -138,8 +138,11 @@ mod tests {
         lsp_types::{InitializeParams, InitializeResult},
         RequestId,
     };
-    use serde_json::{json, Value};
+    use async_lsp::{AnyNotification, AnyRequest, LspService, ResponseError};
+    use serde_json::json;
     use service::LspActorService;
+    use std::ops::ControlFlow;
+    use tower::Service;
 
     #[derive(Debug)]
     enum Initialize {}
@@ -182,9 +185,6 @@ mod tests {
         }
 
         let mut service = LspActorService::with(actor_ref.clone());
-        let dispatcher = service.dispatcher.clone();
-        let dispatcher = dispatcher.as_ref();
-        let actor_ref = service.actor_ref.clone();
 
         service.handle_request_mut::<Initialize>(handle_initialize);
 
@@ -205,12 +205,7 @@ mod tests {
 
         println!("Sending initialize request");
 
-        let init_result: Value = match actor_ref.ask(dispatcher, init_request).await {
-            Ok(res) => res,
-            Err(e) => {
-                panic!("Failed to get InitializeResult: {:?}", e);
-            }
-        };
+        let init_result = service.call(init_request).await.unwrap();
 
         let init_result_deserialized: InitializeResult =
             serde_json::from_value(init_result).unwrap();
@@ -221,7 +216,7 @@ mod tests {
         let init_notification = AnyNotification::stub(Initialized::METHOD.to_string(), json!(null));
 
         println!("Sending initialized notification");
-        if let Err(e) = actor_ref.tell(dispatcher, init_notification) {
+        if let ControlFlow::Break(Err(e)) = service.notify(init_notification) {
             panic!("Failed to send Initialized notification: {:?}", e);
         }
 
