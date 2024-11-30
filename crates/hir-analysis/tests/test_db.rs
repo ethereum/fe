@@ -73,7 +73,7 @@ impl HirAnalysisTestDb {
         &'db self,
         prop_formatter: &mut HirPropertyFormatter<'db>,
         input_file: InputFile,
-    ) -> TopLevelMod {
+    ) -> TopLevelMod<'db> {
         let top_mod = lower::map_file_to_mod(self, input_file);
         let path = input_file.path(self);
         let text = input_file.text(self);
@@ -148,7 +148,7 @@ impl<'db> HirPropertyFormatter<'db> {
     }
 }
 
-impl<'db> Default for HirPropertyFormatter<'db> {
+impl Default for HirPropertyFormatter<'_> {
     fn default() -> Self {
         Self {
             properties: Default::default(),

@@ -26,7 +26,7 @@ pub trait DiagnosticVoucher<'db>: Send {
     fn to_complete(&self, db: &'db dyn SpannedHirDb) -> CompleteDiagnostic;
 }
 
-impl<'db> DiagnosticVoucher<'db> for CompleteDiagnostic {
+impl DiagnosticVoucher<'_> for CompleteDiagnostic {
     fn error_code(&self) -> GlobalErrorCode {
         self.error_code.clone()
     }

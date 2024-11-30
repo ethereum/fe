@@ -1028,7 +1028,7 @@ fn resolved_imports_for_scope<'db>(
     &super::resolve_imports(db, ingot).1
 }
 
-impl<'db> NameRes<'db> {
+impl NameRes<'_> {
     /// Returns true if the bucket contains an resolution that is not in the
     /// same ingot as the current resolution of the `i_use`.
     fn is_external(&self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {

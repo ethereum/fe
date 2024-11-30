@@ -60,7 +60,7 @@ pub struct ModuleTree<'db> {
     pub ingot: IngotId<'db>,
 }
 
-impl<'db> ModuleTree<'db> {
+impl ModuleTree<'_> {
     /// Returns the tree node data of the given id.
     pub fn node_data(&self, id: ModuleTreeNodeId) -> &ModuleTreeNode {
         &self.module_tree[id]
@@ -110,6 +110,7 @@ impl<'db> ModuleTree<'db> {
 /// top level modules. This function only depends on an ingot structure and
 /// external ingot dependency, and not depends on file contents.
 #[salsa::tracked(return_ref)]
+#[allow(elided_named_lifetimes)]
 pub(crate) fn module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> ModuleTree<'_> {
     ModuleTreeBuilder::new(db, ingot).build()
 }

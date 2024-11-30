@@ -117,6 +117,7 @@ impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
 // The reason why this function is not a public API is that we want to prohibit users of `HirDb` to
 // access `InputIngot` directly.
 #[salsa::tracked(return_ref)]
+#[allow(elided_named_lifetimes)]
 pub(crate) fn external_ingots_impl(
     db: &dyn HirDb,
     ingot: InputIngot,

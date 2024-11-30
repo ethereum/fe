@@ -8,7 +8,7 @@ pub struct GenericArgListId<'db> {
     pub is_given: bool,
 }
 
-impl<'db> GenericArgListId<'db> {
+impl GenericArgListId<'_> {
     pub fn len(self, db: &dyn HirDb) -> usize {
         self.data(db).len()
     }
@@ -24,7 +24,7 @@ pub struct GenericParamListId<'db> {
     pub data: Vec<GenericParam<'db>>,
 }
 
-impl<'db> GenericParamListId<'db> {
+impl GenericParamListId<'_> {
     pub fn len(&self, db: &dyn HirDb) -> usize {
         self.data(db).len()
     }

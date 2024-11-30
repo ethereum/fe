@@ -26,7 +26,7 @@ pub struct ScopeGraph<'db> {
 
 impl<'db> ScopeGraph<'db> {
     /// Represents all item scopes in a top-level module in depth-first order.
-    pub fn items_dfs<'a>(&'a self, db: &'a dyn HirDb) -> impl Iterator<Item = ItemKind> + 'a {
+    pub fn items_dfs<'a>(&'a self, db: &'a dyn HirDb) -> impl Iterator<Item = ItemKind<'a>> + 'a {
         ScopeGraphItemIterDfs {
             db,
             graph: self,
@@ -131,11 +131,11 @@ impl<'db> ScopeId<'db> {
     }
 
     /// Returns the scope graph containing this scope.
-    pub fn scope_graph(self, db: &'db dyn HirDb) -> &ScopeGraph<'db> {
+    pub fn scope_graph(self, db: &'db dyn HirDb) -> &'db ScopeGraph<'db> {
         self.top_mod(db).scope_graph(db)
     }
 
-    pub fn edges(self, db: &'db dyn HirDb) -> &IndexSet<ScopeEdge<'db>> {
+    pub fn edges(self, db: &'db dyn HirDb) -> &'db IndexSet<ScopeEdge<'db>> {
         self.scope_graph(db).edges(self)
     }
 
@@ -177,7 +177,7 @@ impl<'db> ScopeId<'db> {
     }
 
     /// Returns the `Scope` data for this scope.
-    pub fn data(self, db: &'db dyn HirDb) -> &Scope {
+    pub fn data(self, db: &'db dyn HirDb) -> &'db Scope<'db> {
         self.top_mod(db).scope_graph(db).scope_data(&self)
     }
 
@@ -220,12 +220,12 @@ impl<'db> ScopeId<'db> {
     }
 
     /// Returns the direct child items of the given `scope`.
-    pub fn child_items(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn child_items(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind<'db>> + 'db {
         self.scope_graph(db).child_items(self)
     }
 
     /// Returns the direct child scopes of the given `scope`
-    pub fn children(self, db: &'db dyn HirDb) -> impl Iterator<Item = ScopeId> + '_ {
+    pub fn children(self, db: &'db dyn HirDb) -> impl Iterator<Item = ScopeId<'db>> + 'db {
         self.scope_graph(db).children(self)
     }
 
@@ -252,7 +252,7 @@ impl<'db> ScopeId<'db> {
     }
 
     /// Returns the item that contains this scope.
-    pub fn parent_item(self, db: &'db dyn HirDb) -> Option<ItemKind> {
+    pub fn parent_item(self, db: &'db dyn HirDb) -> Option<ItemKind<'db>> {
         let mut parent = self.parent(db)?;
         loop {
             match parent {
@@ -264,7 +264,7 @@ impl<'db> ScopeId<'db> {
         }
     }
 
-    pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId> {
+    pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
         match self.data(db).id {
             ScopeId::Item(item) => item.name(db),
 
@@ -407,7 +407,7 @@ struct ScopeGraphItemIterDfs<'db, 'a> {
     stack: Vec<ScopeId<'db>>,
 }
 
-impl<'db, 'a> std::iter::Iterator for ScopeGraphItemIterDfs<'db, 'a> {
+impl<'db> std::iter::Iterator for ScopeGraphItemIterDfs<'db, '_> {
     type Item = ItemKind<'db>;
 
     fn next(&mut self) -> Option<ItemKind<'db>> {

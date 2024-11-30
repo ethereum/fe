@@ -39,7 +39,7 @@ impl<'a> ItemScope<'a> {
     }
 }
 
-impl<'a> AnalyzerContext for ItemScope<'a> {
+impl AnalyzerContext for ItemScope<'_> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.db
     }
@@ -235,7 +235,7 @@ impl<'a> FunctionScope<'a> {
     }
 }
 
-impl<'a> AnalyzerContext for FunctionScope<'a> {
+impl AnalyzerContext for FunctionScope<'_> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.db
     }

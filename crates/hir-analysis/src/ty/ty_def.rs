@@ -127,7 +127,7 @@ impl<'db> TyId<'db> {
         !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
-    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> &str {
+    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> &'db str {
         pretty_print_ty(db, self)
     }
 
@@ -477,7 +477,7 @@ impl<'db> TyId<'db> {
     }
 
     /// Returns the property of the type that can be applied to the `self`.
-    pub fn applicable_ty(self, db: &'db dyn HirAnalysisDb) -> Option<ApplicableTyProp> {
+    pub fn applicable_ty(self, db: &'db dyn HirAnalysisDb) -> Option<ApplicableTyProp<'db>> {
         let applicable_kind = match self.kind(db) {
             Kind::Star => return None,
             Kind::Abs(arg, _) => *arg.clone(),
@@ -683,12 +683,12 @@ pub struct TyVar<'db> {
     pub(super) key: InferenceKey<'db>,
 }
 
-impl<'db> std::cmp::PartialOrd for TyVar<'db> {
+impl std::cmp::PartialOrd for TyVar<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
-impl<'db> std::cmp::Ord for TyVar<'db> {
+impl std::cmp::Ord for TyVar<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         if self == other {
             return std::cmp::Ordering::Equal;
@@ -725,7 +725,7 @@ impl PartialOrd for TyVarSort {
     }
 }
 
-impl<'db> TyVar<'db> {
+impl TyVar<'_> {
     pub(super) fn pretty_print(&self) -> String {
         match self.sort {
             TyVarSort::General => ("_").to_string(),
@@ -846,7 +846,7 @@ impl<'db> TyBase<'db> {
     }
 }
 
-impl<'db> From<HirPrimTy> for TyBase<'db> {
+impl From<HirPrimTy> for TyBase<'_> {
     fn from(hir_prim: HirPrimTy) -> Self {
         match hir_prim {
             HirPrimTy::Bool => Self::Prim(PrimTy::Bool),
@@ -929,7 +929,7 @@ pub(super) trait HasKind {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind;
 }
 
-impl<'db> HasKind for TyData<'db> {
+impl HasKind for TyData<'_> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         match self {
             TyData::TyVar(ty_var) => ty_var.kind(db),
@@ -951,13 +951,13 @@ impl<'db> HasKind for TyData<'db> {
     }
 }
 
-impl<'db> HasKind for TyVar<'db> {
+impl HasKind for TyVar<'_> {
     fn kind(&self, _db: &dyn HirAnalysisDb) -> Kind {
         self.kind.clone()
     }
 }
 
-impl<'db> HasKind for TyBase<'db> {
+impl HasKind for TyBase<'_> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         match self {
             TyBase::Prim(prim) => prim.kind(db),
@@ -979,7 +979,7 @@ impl HasKind for PrimTy {
     }
 }
 
-impl<'db> HasKind for AdtDef<'db> {
+impl HasKind for AdtDef<'_> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         let mut kind = Kind::Star;
         for param in self.params(db).iter().rev() {
@@ -990,7 +990,7 @@ impl<'db> HasKind for AdtDef<'db> {
     }
 }
 
-impl<'db> HasKind for FuncDef<'db> {
+impl HasKind for FuncDef<'_> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         let mut kind = Kind::Star;
         for param in self.params(db).iter().rev() {

@@ -167,7 +167,7 @@ impl<'a> ModuleIter<'a> {
     }
 }
 
-impl<'a> Iterator for ModuleIter<'a> {
+impl Iterator for ModuleIter<'_> {
     type Item = ModuleId;
     fn next(&mut self) -> Option<ModuleId> {
         if let Some(modid) = self.emit.pop_front() {

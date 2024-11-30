@@ -83,11 +83,11 @@ impl<'db> FuncDef<'db> {
         self.hir_def(db).scope()
     }
 
-    pub fn params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    pub fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.params_set(db).params(db)
     }
 
-    pub fn explicit_params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    pub fn explicit_params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.params_set(db).explicit_params(db)
     }
 

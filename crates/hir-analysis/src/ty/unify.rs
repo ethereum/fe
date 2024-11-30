@@ -390,7 +390,7 @@ impl<'db> UnifyKey for InferenceKey<'db> {
     }
 }
 
-impl<'db> UnifyValue for InferenceValue<'db> {
+impl UnifyValue for InferenceValue<'_> {
     type Error = UnificationError;
 
     fn unify_values(v1: &Self, v2: &Self) -> Result<Self, Self::Error> {
@@ -494,7 +494,7 @@ where
     var_stack: Vec<InferenceKey<'db>>,
 }
 
-impl<'a, 'db, U> TyFolder<'db> for TyVarResolver<'a, 'db, U>
+impl<'db, U> TyFolder<'db> for TyVarResolver<'_, 'db, U>
 where
     U: UnificationStore<'db>,
 {

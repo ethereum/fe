@@ -575,7 +575,7 @@ fn expr_num(
         .and_then(|id| id.deref(context.db()).as_int(context.db()))
         .unwrap_or(Integer::U256);
     validate_numeric_literal_fits_type(context, num, exp.span, int_typ);
-    return ExpressionAttributes::new(TypeId::int(context.db(), int_typ));
+    ExpressionAttributes::new(TypeId::int(context.db(), int_typ))
 }
 
 fn expr_subscript(
@@ -825,7 +825,7 @@ fn expr_unary_operation(
         );
     };
 
-    return match op.kind {
+    match op.kind {
         fe::UnaryOperator::USub => {
             let expected_int_type = expected_type
                 .and_then(|id| id.as_int(context.db()))
@@ -866,7 +866,7 @@ fn expr_unary_operation(
 
             Ok(ExpressionAttributes::new(operand_ty))
         }
-    };
+    }
 }
 
 fn expr_call(
@@ -1716,13 +1716,13 @@ fn expr_call_method(
                 vec!["Hint: rename one of the methods to disambiguate".into()],
             );
             let return_type = first.signature(context.db()).return_type.clone()?;
-            return Ok((
+            Ok((
                 ExpressionAttributes::new(return_type),
                 CallType::ValueMethod {
                     typ: obj_type,
                     method: first.function(context.db()).unwrap(),
                 },
-            ));
+            ))
         }
     }
 }

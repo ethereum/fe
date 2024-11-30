@@ -185,7 +185,7 @@ pub(crate) enum ResolvedOriginKind {
     None,
 }
 
-impl<'db> ChainInitiator for ChainRoot<'db> {
+impl ChainInitiator for ChainRoot<'_> {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
         match self {
             Self::ItemKind(kind) => match kind {
@@ -223,7 +223,7 @@ impl<'db> ChainInitiator for ChainRoot<'db> {
     }
 }
 
-impl<'db> LazySpan for SpanTransitionChain<'db> {
+impl LazySpan for SpanTransitionChain<'_> {
     fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span> {
         let mut resolved = self.root.init(db);
 
@@ -255,7 +255,7 @@ pub(crate) trait ChainInitiator {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin;
 }
 
-impl<'db> ChainInitiator for TopLevelMod<'db> {
+impl ChainInitiator for TopLevelMod<'_> {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
         let file = self.file(db.as_hir_db());
         let ast = top_mod_ast(db.as_hir_db(), *self);

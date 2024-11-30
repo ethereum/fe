@@ -82,7 +82,7 @@ pub(crate) enum WellFormedness<'db> {
     },
 }
 
-impl<'db> WellFormedness<'db> {
+impl WellFormedness<'_> {
     fn is_wf(self) -> bool {
         matches!(self, WellFormedness::WellFormed)
     }
@@ -131,7 +131,7 @@ pub enum GoalSatisfiability<'db> {
     UnSat(Option<Solution<TraitInstId<'db>>>),
 }
 
-impl<'db> GoalSatisfiability<'db> {
+impl GoalSatisfiability<'_> {
     pub fn is_satisfied(&self) -> bool {
         matches!(
             self,

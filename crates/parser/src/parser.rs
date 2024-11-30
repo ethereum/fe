@@ -363,7 +363,7 @@ impl<'a, 'b> BTParser<'a, 'b> {
     }
 }
 
-impl<'a, 'b> std::ops::Deref for BTParser<'a, 'b> {
+impl<'a> std::ops::Deref for BTParser<'a, '_> {
     type Target = Parser<'a>;
 
     fn deref(&self) -> &Self::Target {
@@ -371,7 +371,7 @@ impl<'a, 'b> std::ops::Deref for BTParser<'a, 'b> {
     }
 }
 
-impl<'a, 'b> std::ops::DerefMut for BTParser<'a, 'b> {
+impl std::ops::DerefMut for BTParser<'_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.parser
     }

@@ -38,7 +38,7 @@ pub struct TupleTypeId<'db> {
 }
 
 impl<'db> TupleTypeId<'db> {
-    pub fn to_ty(self, db: &'db dyn HirDb) -> TypeId {
+    pub fn to_ty(self, db: &'db dyn HirDb) -> TypeId<'db> {
         TypeId::new(db, TypeKind::Tuple(self))
     }
 
