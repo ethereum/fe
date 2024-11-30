@@ -46,7 +46,7 @@ struct PathVisitor<'db, 'a> {
     prop_formatter: &'a mut HirPropertyFormatter<'db>,
 }
 
-impl<'db, 'a> Visitor<'db> for PathVisitor<'db, 'a> {
+impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
     fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'db, LazyItemSpan<'db>>, item: ItemKind<'db>) {
         if matches!(item, ItemKind::Use(_)) {
             return;

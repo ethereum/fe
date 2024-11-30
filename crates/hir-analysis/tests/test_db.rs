@@ -148,7 +148,7 @@ impl<'db> HirPropertyFormatter<'db> {
     }
 }
 
-impl<'db> Default for HirPropertyFormatter<'db> {
+impl Default for HirPropertyFormatter<'_> {
     fn default() -> Self {
         Self {
             properties: Default::default(),

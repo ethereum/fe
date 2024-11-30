@@ -175,7 +175,7 @@ pub enum EvaluatedConstTy<'db> {
     Invalid,
 }
 
-impl<'db> EvaluatedConstTy<'db> {
+impl EvaluatedConstTy<'_> {
     pub fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         match self {
             EvaluatedConstTy::LitInt(val) => {

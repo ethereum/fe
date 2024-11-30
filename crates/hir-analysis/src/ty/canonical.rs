@@ -257,7 +257,7 @@ where
     }
 }
 
-impl<'a, 'db, S> TyFolder<'db> for SolutionExtractor<'a, 'db, S>
+impl<'db, S> TyFolder<'db> for SolutionExtractor<'_, 'db, S>
 where
     S: UnificationStore<'db>,
 {

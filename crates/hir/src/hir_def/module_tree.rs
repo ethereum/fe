@@ -60,7 +60,7 @@ pub struct ModuleTree<'db> {
     pub ingot: IngotId<'db>,
 }
 
-impl<'db> ModuleTree<'db> {
+impl ModuleTree<'_> {
     /// Returns the tree node data of the given id.
     pub fn node_data(&self, id: ModuleTreeNodeId) -> &ModuleTreeNode {
         &self.module_tree[id]

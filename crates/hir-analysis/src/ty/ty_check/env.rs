@@ -440,7 +440,7 @@ struct Prober<'db, 'a> {
     table: &'a mut UnificationTable<'db>,
 }
 
-impl<'db, 'a> TyFolder<'db> for Prober<'db, 'a> {
+impl<'db> TyFolder<'db> for Prober<'db, '_> {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.table.db()
     }

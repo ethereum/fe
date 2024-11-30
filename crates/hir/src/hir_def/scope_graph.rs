@@ -407,7 +407,7 @@ struct ScopeGraphItemIterDfs<'db, 'a> {
     stack: Vec<ScopeId<'db>>,
 }
 
-impl<'db, 'a> std::iter::Iterator for ScopeGraphItemIterDfs<'db, 'a> {
+impl<'db> std::iter::Iterator for ScopeGraphItemIterDfs<'db, '_> {
     type Item = ItemKind<'db>;
 
     fn next(&mut self) -> Option<ItemKind<'db>> {

@@ -46,7 +46,7 @@ pub struct Token<'s> {
     text: &'s str,
 }
 
-impl<'s> LexicalToken for Token<'s> {
+impl LexicalToken for Token<'_> {
     fn syntax_kind(&self) -> SyntaxKind {
         self.syntax_kind
     }

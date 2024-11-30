@@ -93,7 +93,7 @@ pub(crate) struct PatRoot<'db> {
     pub(crate) body: Body<'db>,
 }
 
-impl<'db> ChainInitiator for PatRoot<'db> {
+impl ChainInitiator for PatRoot<'_> {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.pat_map.node_to_source(self.pat);

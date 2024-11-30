@@ -207,7 +207,7 @@ pub(crate) struct ExprRoot<'db> {
     pub(crate) body: Body<'db>,
 }
 
-impl<'db> ChainInitiator for ExprRoot<'db> {
+impl ChainInitiator for ExprRoot<'_> {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.expr_map.node_to_source(self.expr);

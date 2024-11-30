@@ -1103,7 +1103,7 @@ pub struct VariantDef<'db> {
     pub kind: VariantKind<'db>,
 }
 
-impl<'db> VariantDef<'db> {
+impl VariantDef<'_> {
     /// Returns the human readable string of the expected variant initializer.
     /// ## Example
     /// When enum `E` is an variant defined as below:
@@ -1189,7 +1189,7 @@ pub(crate) enum TrackedItemVariant<'db> {
     NamelessBody,
     Joined(Box<Self>, Box<Self>),
 }
-impl<'db> TrackedItemVariant<'db> {
+impl TrackedItemVariant<'_> {
     pub(crate) fn join(self, rhs: Self) -> Self {
         Self::Joined(self.into(), rhs.into())
     }

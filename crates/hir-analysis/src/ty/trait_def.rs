@@ -315,7 +315,7 @@ impl<'db> TraitDef<'db> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, salsa::Update)]
 pub struct TraitMethod<'db>(pub FuncDef<'db>);
 
-impl<'db> TraitMethod<'db> {
+impl TraitMethod<'_> {
     pub fn has_default_impl(self, db: &dyn HirAnalysisDb) -> bool {
         self.0
             .hir_func_def(db)

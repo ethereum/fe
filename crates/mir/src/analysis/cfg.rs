@@ -123,7 +123,7 @@ impl<'a> CfgPostOrder<'a> {
     }
 }
 
-impl<'a> Iterator for CfgPostOrder<'a> {
+impl Iterator for CfgPostOrder<'_> {
     type Item = BasicBlockId;
 
     fn next(&mut self) -> Option<BasicBlockId> {

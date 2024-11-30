@@ -110,7 +110,7 @@ struct InstantiateFolder<'db, 'a> {
     args: &'a [TyId<'db>],
 }
 
-impl<'db, 'a> TyFolder<'db> for InstantiateFolder<'db, 'a> {
+impl<'db> TyFolder<'db> for InstantiateFolder<'db, '_> {
     fn db(&self) -> &'db dyn HirAnalysisDb {
         self.db
     }

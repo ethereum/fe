@@ -248,7 +248,7 @@ enum Typeable<'db> {
     Pat(PatId),
 }
 
-impl<'db> Typeable<'db> {
+impl Typeable<'_> {
     fn lazy_span(self, body: Body) -> DynLazySpan {
         match self {
             Self::Expr(expr, ..) => expr.lazy_span(body).into(),
