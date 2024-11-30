@@ -518,10 +518,6 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
     }
-
-    // fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
-    //     Box::new(self.clone())
-    // }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1578,10 +1574,6 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
     }
-
-    // fn clone_box(&self) -> Box<dyn DiagnosticVoucher<'db> + '_> {
-    //     Box::new(self.clone())
-    // }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1680,10 +1672,6 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
     }
-
-    // fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
-    //     Box::new(self.clone())
-    // }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1898,10 +1886,6 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
     }
-
-    // fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
-    //     Box::new(self.clone())
-    // }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -2378,8 +2362,4 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
 
         CompleteDiagnostic::new(severity, message, sub_diags, vec![], error_code)
     }
-
-    // fn clone_box(&self) -> Box<dyn DiagnosticVoucher> {
-    //     Box::new(self.clone())
-    // }
 }

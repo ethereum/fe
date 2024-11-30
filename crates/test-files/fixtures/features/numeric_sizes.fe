@@ -27,8 +27,8 @@ const U128_MAX: u128 = 340282366920938463463374607431768211455
 
 const I256_MIN: i256 = -57896044618658097711785492504343953926634992332820282019728792003956564819968
 const I256_MAX: i256 = 57896044618658097711785492504343953926634992332820282019728792003956564819967
-const u256_MIN: u256 = 0
-const u256_MAX: u256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935
+const U256_MIN: u256 = 0
+const U256_MAX: u256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935
 
 
 contract Foo {
@@ -38,7 +38,7 @@ contract Foo {
         assert u32::min() == U32_MIN
         assert u64::min() == U64_MIN
         assert u128::min() == U128_MIN
-        assert u256::min() == u256_MIN
+        assert u256::min() == U256_MIN
         // TODO: Investigate why these can't be compared against their const values
         assert i8::min() == get_i8_const_min()
         assert i16::min() == get_i16_const_min()
@@ -52,7 +52,7 @@ contract Foo {
         assert u32::max() == U32_MAX
         assert u64::max() == U64_MAX
         assert u128::max() == U128_MAX
-        assert u256::max() == u256_MAX
+        assert u256::max() == U256_MAX
 
         assert i8::max() == I8_MAX
         assert i16::max() == I16_MAX
@@ -106,7 +106,7 @@ contract Foo {
     }
 
     pub fn get_u256_const_min() -> u256 {
-        return u256_MIN
+        return U256_MIN
     }
 
     pub fn get_i8_min() -> i8 {
@@ -202,7 +202,7 @@ contract Foo {
     }
 
     pub fn get_u256_const_max() -> u256 {
-        return u256_MAX
+        return U256_MAX
     }
 
     pub fn get_i8_max() -> i8 {
