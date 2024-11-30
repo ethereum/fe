@@ -73,7 +73,7 @@ impl HirAnalysisTestDb {
         &'db self,
         prop_formatter: &mut HirPropertyFormatter<'db>,
         input_file: InputFile,
-    ) -> TopLevelMod {
+    ) -> TopLevelMod<'db> {
         let top_mod = lower::map_file_to_mod(self, input_file);
         let path = input_file.path(self);
         let text = input_file.text(self);

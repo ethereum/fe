@@ -45,7 +45,7 @@ impl<'db> IngotId<'db> {
         module_tree_impl(db, self.inner(db))
     }
 
-    pub fn all_modules(self, db: &'db dyn HirDb) -> &[TopLevelMod] {
+    pub fn all_modules(self, db: &'db dyn HirDb) -> &'db [TopLevelMod<'db>] {
         all_top_modules_in_ingot(db, self)
     }
 
@@ -61,15 +61,15 @@ impl<'db> IngotId<'db> {
         self.inner(db).kind(db.as_input_db())
     }
 
-    pub fn all_enums(self, db: &'db dyn HirDb) -> &[Enum] {
+    pub fn all_enums(self, db: &'db dyn HirDb) -> &'db [Enum<'db>] {
         all_enums_in_ingot(db, self)
     }
 
-    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> &[ImplTrait] {
+    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> &'db [ImplTrait<'db>] {
         all_impl_traits_in_ingot(db, self)
     }
 
-    pub fn all_impls(self, db: &'db dyn HirDb) -> &Vec<Impl> {
+    pub fn all_impls(self, db: &'db dyn HirDb) -> &'db Vec<Impl<'db>> {
         all_impls_in_ingot(db, self)
     }
 

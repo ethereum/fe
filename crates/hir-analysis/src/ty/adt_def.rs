@@ -39,11 +39,11 @@ impl<'db> AdtDef<'db> {
         self.adt_ref(db).name(db)
     }
 
-    pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
     }
 
-    pub(crate) fn original_params(self, db: &'db dyn HirAnalysisDb) -> &[TyId] {
+    pub(crate) fn original_params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).explicit_params(db)
     }
 
@@ -202,7 +202,7 @@ impl<'db> AdtRefId<'db> {
     pub(crate) fn generic_owner_id(
         self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<GenericParamOwnerId> {
+    ) -> Option<GenericParamOwnerId<'db>> {
         match self.data(db) {
             AdtRef::Enum(e) => Some(GenericParamOwnerId::new(db, e.into())),
             AdtRef::Struct(s) => Some(GenericParamOwnerId::new(db, s.into())),

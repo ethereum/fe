@@ -989,7 +989,7 @@ enum DefKind<'db> {
 }
 
 impl<'db> DefKind<'db> {
-    fn original_params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    fn original_params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         match self {
             Self::Adt(def) => def.original_params(db),
             Self::Trait(def) => def.original_params(db),
@@ -1009,7 +1009,10 @@ impl<'db> DefKind<'db> {
         }
     }
 
-    fn collect_super_trait_cycle(self, db: &'db dyn HirAnalysisDb) -> Option<&SuperTraitCycle> {
+    fn collect_super_trait_cycle(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Option<&'db SuperTraitCycle<'db>> {
         if let Self::Trait(def) = self {
             collect_super_traits(db, def).as_ref().err()
         } else {

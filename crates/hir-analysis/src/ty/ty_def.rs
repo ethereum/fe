@@ -127,7 +127,7 @@ impl<'db> TyId<'db> {
         !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
-    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> &str {
+    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> &'db str {
         pretty_print_ty(db, self)
     }
 
@@ -477,7 +477,7 @@ impl<'db> TyId<'db> {
     }
 
     /// Returns the property of the type that can be applied to the `self`.
-    pub fn applicable_ty(self, db: &'db dyn HirAnalysisDb) -> Option<ApplicableTyProp> {
+    pub fn applicable_ty(self, db: &'db dyn HirAnalysisDb) -> Option<ApplicableTyProp<'db>> {
         let applicable_kind = match self.kind(db) {
             Kind::Star => return None,
             Kind::Abs(arg, _) => *arg.clone(),
