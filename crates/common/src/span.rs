@@ -1,8 +1,10 @@
 use crate::files::SourceFileId;
 use serde::{Deserialize, Serialize};
-use std::cmp;
-use std::fmt::{Debug, Formatter};
-use std::ops::{Add, AddAssign, Range};
+use std::{
+    cmp,
+    fmt::{Debug, Formatter},
+    ops::{Add, AddAssign, Range},
+};
 
 /// An exclusive span of byte offsets in a source file.
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Hash, Eq)]

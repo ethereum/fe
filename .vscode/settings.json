@@ -1,0 +1,6 @@
+{
+  "editor.tabSize": 4,
+  "rust-analyzer.linkedProjects": [
+    "./crates/language-server/Cargo.toml"
+  ],
+}

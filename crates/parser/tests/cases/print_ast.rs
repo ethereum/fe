@@ -1,6 +1,4 @@
-use fe_common::db::TestDb;
-use fe_common::diagnostics::print_diagnostics;
-use fe_common::SourceFileId;
+use fe_common::{db::TestDb, diagnostics::print_diagnostics, SourceFileId};
 use fe_parser::parse_file;
 use fe_test_files::fixture;
 use insta::assert_snapshot;

@@ -1,0 +1,18 @@
+pub fn add(x: i32, y: i32) -> i32 {
+    x + y
+}
+
+pub fn use_add() -> i32 {
+    add(1, 2)
+    add(y: 1, x: 2)
+    add(x: 1, z: 2)
+    add(x: false, y: 2)
+}
+
+pub fn make_tuple<T, U>(_ t: T, _ u: U) -> (T, U) {
+    (t, u)
+}
+
+pub fn use_make_tuple() -> (i32, u32) {
+    make_tuple<i32, u32>(false, 1)
+}

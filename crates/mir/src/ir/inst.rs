@@ -667,7 +667,7 @@ pub enum BranchInfo<'a> {
     Switch(ValueId, &'a SwitchTable, Option<BasicBlockId>),
 }
 
-impl<'a> BranchInfo<'a> {
+impl BranchInfo<'_> {
     pub fn is_not_a_branch(&self) -> bool {
         matches!(self, BranchInfo::NotBranch)
     }
@@ -695,7 +695,7 @@ pub enum IterBase<'a, T> {
     Chain(Box<IterBase<'a, T>>, Box<IterBase<'a, T>>),
 }
 
-impl<'a, T> IterBase<'a, T> {
+impl<T> IterBase<'_, T> {
     fn one(value: T) -> Self {
         Self::One(Some(value))
     }
@@ -705,7 +705,7 @@ impl<'a, T> IterBase<'a, T> {
     }
 }
 
-impl<'a, T> Iterator for IterBase<'a, T>
+impl<T> Iterator for IterBase<'_, T>
 where
     T: Copy,
 {

@@ -12,7 +12,7 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     /// Create a new lexer with the given source code string.
-    pub fn new(file_id: SourceFileId, src: &'a str) -> Lexer {
+    pub fn new(file_id: SourceFileId, src: &'a str) -> Lexer<'a> {
         Lexer {
             file_id,
             inner: TokenKind::lexer(src),

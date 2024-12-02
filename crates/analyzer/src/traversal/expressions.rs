@@ -1,33 +1,35 @@
-use super::borrowck;
-use crate::builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod};
-use crate::context::{AnalyzerContext, CallType, Constant, ExpressionAttributes, NamedThing};
-use crate::display::Displayable;
-use crate::errors::{self, FatalError, IndexingError, TypeCoercionError};
-use crate::namespace::items::{
-    EnumVariantId, EnumVariantKind, FunctionId, FunctionSigId, ImplId, Item, StructId, TypeDef,
-};
-use crate::namespace::scopes::{check_visibility, BlockScopeType};
-use crate::namespace::types::{
-    self, Array, Base, FeString, Integer, TraitOrType, Tuple, Type, TypeDowncast, TypeId,
-};
-use crate::operations;
-use crate::traversal::call_args::{validate_arg_count, validate_named_args};
-use crate::traversal::const_expr::eval_expr;
-use crate::traversal::types::{
-    apply_generic_type_args, deref_type, try_cast_type, try_coerce_type,
-};
-use crate::traversal::utils::add_bin_operations_errors;
+use std::{ops::RangeInclusive, str::FromStr};
 
-use fe_common::diagnostics::Label;
-use fe_common::{numeric, Span};
-use fe_parser::ast as fe;
-use fe_parser::ast::GenericArg;
-use fe_parser::node::Node;
+use fe_common::{diagnostics::Label, numeric, Span};
+use fe_parser::{ast as fe, ast::GenericArg, node::Node};
 use num_bigint::BigInt;
 use num_traits::{ToPrimitive, Zero};
 use smol_str::SmolStr;
-use std::ops::RangeInclusive;
-use std::str::FromStr;
+
+use super::borrowck;
+use crate::{
+    builtins::{ContractTypeMethod, GlobalFunction, Intrinsic, ValueMethod},
+    context::{AnalyzerContext, CallType, Constant, ExpressionAttributes, NamedThing},
+    display::Displayable,
+    errors::{self, FatalError, IndexingError, TypeCoercionError},
+    namespace::{
+        items::{
+            EnumVariantId, EnumVariantKind, FunctionId, FunctionSigId, ImplId, Item, StructId,
+            TypeDef,
+        },
+        scopes::{check_visibility, BlockScopeType},
+        types::{
+            self, Array, Base, FeString, Integer, TraitOrType, Tuple, Type, TypeDowncast, TypeId,
+        },
+    },
+    operations,
+    traversal::{
+        call_args::{validate_arg_count, validate_named_args},
+        const_expr::eval_expr,
+        types::{apply_generic_type_args, deref_type, try_cast_type, try_coerce_type},
+        utils::add_bin_operations_errors,
+    },
+};
 
 // TODO: don't fail fatally if expected type is provided
 
@@ -573,7 +575,7 @@ fn expr_num(
         .and_then(|id| id.deref(context.db()).as_int(context.db()))
         .unwrap_or(Integer::U256);
     validate_numeric_literal_fits_type(context, num, exp.span, int_typ);
-    return ExpressionAttributes::new(TypeId::int(context.db(), int_typ));
+    ExpressionAttributes::new(TypeId::int(context.db(), int_typ))
 }
 
 fn expr_subscript(
@@ -823,7 +825,7 @@ fn expr_unary_operation(
         );
     };
 
-    return match op.kind {
+    match op.kind {
         fe::UnaryOperator::USub => {
             let expected_int_type = expected_type
                 .and_then(|id| id.as_int(context.db()))
@@ -864,7 +866,7 @@ fn expr_unary_operation(
 
             Ok(ExpressionAttributes::new(operand_ty))
         }
-    };
+    }
 }
 
 fn expr_call(
@@ -1002,8 +1004,8 @@ fn expr_call_path<T: std::fmt::Display>(
             validate_has_no_conflicting_trait_in_scope(context, &named_thing, path, func)?;
             expr_call_named_thing(context, named_thing, func, generic_args, args)
         }
-        // If we we can't resolve a call to a path e.g. `foo::Bar::do_thing()` there is a chance that `do_thing`
-        // still exists as as a trait associated function for `foo::Bar`.
+        // If we we can't resolve a call to a path e.g. `foo::Bar::do_thing()` there is a chance
+        // that `do_thing` still exists as as a trait associated function for `foo::Bar`.
         None => expr_call_trait_associated_function(context, path, func, generic_args, args),
     }
 }
@@ -1100,7 +1102,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
                         .into(),
                 ],
             );
-            // We arbitrarily carry on with the first candidate since the error doesn't need to be fatal
+            // We arbitrarily carry on with the first candidate since the error doesn't need
+            // to be fatal
             let (fun, _) = in_scope_candidates[0];
             return expr_call_pure(context, fun, func.span, generic_args, args);
         } else if in_scope_candidates.is_empty() && !candidates.is_empty() {
@@ -1115,7 +1118,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
                 }).collect(),
                 vec!["Hint: Bring one of these candidates in scope via `use module_name::trait_name`".into()],
             );
-            // We arbitrarily carry on with an applicable candidate since the error doesn't need to be fatal
+            // We arbitrarily carry on with an applicable candidate since the error doesn't
+            // need to be fatal
             let (fun, _) = candidates[0];
             return expr_call_pure(context, fun, func.span, generic_args, args);
         } else if in_scope_candidates.len() == 1 {
@@ -1124,8 +1128,8 @@ fn expr_call_trait_associated_function<T: std::fmt::Display>(
         }
     }
 
-    // At this point, we will have an error so we run `resolve_path` to register any errors that we
-    // did not report yet
+    // At this point, we will have an error so we run `resolve_path` to register any
+    // errors that we did not report yet
     context.resolve_path(path, func.span)?;
 
     Err(FatalError::new(context.error(
@@ -1712,13 +1716,13 @@ fn expr_call_method(
                 vec!["Hint: rename one of the methods to disambiguate".into()],
             );
             let return_type = first.signature(context.db()).return_type.clone()?;
-            return Ok((
+            Ok((
                 ExpressionAttributes::new(return_type),
                 CallType::ValueMethod {
                     typ: obj_type,
                     method: first.function(context.db()).unwrap(),
                 },
-            ));
+            ))
         }
     }
 }

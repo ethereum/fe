@@ -1,0 +1,9 @@
+struct Foo {
+    a: i32,
+    b: u32,
+}
+
+fn foo() {
+    let x = Foo
+}
+

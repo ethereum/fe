@@ -1,0 +1,21 @@
+pub trait Foo {
+    fn foo(self: i32)
+}
+
+impl<T> Foo for Option<T> {
+    fn foo(self: i32) {}
+}
+
+pub enum Option<T> {
+    Some(T),
+    None,
+
+}
+
+impl Option {
+    fn method1(self: i32) {}
+}
+
+impl<T> Option<T> {
+    fn method2(self: i32) {}
+}

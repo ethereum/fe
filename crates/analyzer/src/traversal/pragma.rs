@@ -1,7 +1,6 @@
 use crate::errors;
 use fe_common::diagnostics::{Diagnostic, Label};
-use fe_parser::ast;
-use fe_parser::node::Node;
+use fe_parser::{ast, node::Node};
 use semver::{Version, VersionReq};
 
 pub fn check_pragma_version(stmt: &Node<ast::Pragma>) -> Option<Diagnostic> {

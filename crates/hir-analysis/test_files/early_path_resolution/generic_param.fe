@@ -1,0 +1,15 @@
+trait InnerTrait { }
+
+trait TraitWithGenerics<U> 
+where U: InnerTrait
+{
+}
+
+pub struct MyS<T, U> 
+where T: TraitWithGenerics<U>,
+      U: InnerTrait
+{
+    x: T,
+    y: U,
+
+}

@@ -1,0 +1,10 @@
+// Value domain.
+pub fn Foo() {}
+pub const Foo: i32 = 1
+
+// Type domain.
+pub enum Foo {}
+pub struct Foo {}
+mod Foo {}
+enum Foo {}
+type Foo = i32

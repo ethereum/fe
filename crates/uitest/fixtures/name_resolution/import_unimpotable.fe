@@ -1,0 +1,11 @@
+use S::{t, T}
+use E::T
+
+
+struct S<T> {
+    t: T
+}
+
+enum E<T> {
+    Bar(T)
+}

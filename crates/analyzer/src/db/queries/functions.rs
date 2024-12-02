@@ -1,21 +1,26 @@
-use crate::context::{AnalyzerContext, CallType, FunctionBody};
-use crate::db::{Analysis, AnalyzerDb};
-use crate::display::Displayable;
-use crate::errors::TypeError;
-use crate::namespace::items::{
-    DepGraph, DepGraphWrapper, DepLocality, FunctionId, FunctionSigId, Item, TypeDef,
+use crate::{
+    context::{AnalyzerContext, CallType, FunctionBody},
+    db::{Analysis, AnalyzerDb},
+    display::Displayable,
+    errors::TypeError,
+    namespace::{
+        items::{DepGraph, DepGraphWrapper, DepLocality, FunctionId, FunctionSigId, Item, TypeDef},
+        scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope},
+        types::{self, CtxDecl, Generic, SelfDecl, Type, TypeId},
+    },
+    traversal::{
+        functions::traverse_statements,
+        types::{type_desc, type_desc_to_trait},
+    },
 };
-use crate::namespace::scopes::{BlockScope, BlockScopeType, FunctionScope, ItemScope};
-use crate::namespace::types::{self, CtxDecl, Generic, SelfDecl, Type, TypeId};
-use crate::traversal::functions::traverse_statements;
-use crate::traversal::types::{type_desc, type_desc_to_trait};
 use fe_common::diagnostics::Label;
-use fe_parser::ast::{self, GenericParameter};
-use fe_parser::node::Node;
+use fe_parser::{
+    ast::{self, GenericParameter},
+    node::Node,
+};
 use if_chain::if_chain;
 use smol_str::SmolStr;
-use std::collections::HashMap;
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 /// Gather context information for a function definition and check for type
 /// errors. Does not inspect the function body.

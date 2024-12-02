@@ -1,0 +1,31 @@
+trait Trait {
+    fn f(self) -> i32
+}
+
+struct S<T> {
+    t: T
+}
+
+struct S2<T> {
+    s: S<T>
+}
+
+impl Trait for S<i32> {
+    fn f(self) -> i32 {
+        self.t
+    }
+}
+
+impl<T> Trait for S2<T>
+where S<T>: Trait {
+    fn f(self) -> i32 {
+        self.s.f()
+    }
+}
+
+fn bar() {
+    let t: i32 = 1
+    let s = S { t }
+    let s2 = S2 { s }
+    let _ = s2.f()
+}

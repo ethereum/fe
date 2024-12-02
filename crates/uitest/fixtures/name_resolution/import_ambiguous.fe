@@ -1,0 +1,16 @@
+use foo::*
+pub use S
+
+mod foo {
+    pub use inner1::*
+    pub use inner2::*
+    pub use S
+
+
+    pub mod inner1 {
+        pub struct S {}
+    }
+    mod inner2 {
+        pub struct S {}
+    }
+}

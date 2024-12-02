@@ -1,12 +1,15 @@
-use indexmap::map::Entry;
-use indexmap::IndexMap;
+use indexmap::{map::Entry, IndexMap};
 use smol_str::SmolStr;
 
-use crate::context::{Analysis, AnalyzerContext};
-use crate::namespace::items::{FunctionSig, FunctionSigId, Item, TraitId};
-use crate::namespace::scopes::ItemScope;
-use crate::namespace::types::TypeId;
-use crate::AnalyzerDb;
+use crate::{
+    context::{Analysis, AnalyzerContext},
+    namespace::{
+        items::{FunctionSig, FunctionSigId, Item, TraitId},
+        scopes::ItemScope,
+        types::TypeId,
+    },
+    AnalyzerDb,
+};
 use std::rc::Rc;
 
 pub fn trait_all_functions(db: &dyn AnalyzerDb, trait_: TraitId) -> Rc<[FunctionSigId]> {

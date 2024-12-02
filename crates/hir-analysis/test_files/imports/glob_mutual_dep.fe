@@ -1,0 +1,13 @@
+use foo::*
+
+pub mod foo {
+    pub use super::bar::*
+    
+    pub struct Foo {}
+}
+
+pub mod bar {
+    pub use super::foo::*
+    
+    pub struct Bar {}
+}

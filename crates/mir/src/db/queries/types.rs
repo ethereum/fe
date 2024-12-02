@@ -465,7 +465,7 @@ fn expect_projection_index(value: &Value) -> usize {
 }
 
 fn round_up(value: usize, slot_size: usize) -> usize {
-    ((value + slot_size - 1) / slot_size) * slot_size
+    value.div_ceil(slot_size) * slot_size
 }
 
 #[cfg(test)]

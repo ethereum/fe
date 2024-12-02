@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_bound/sat_by_super.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ sat_by_super.fe:11:8
+   │
+11 │     u: Foo<i32>
+   │        ^^^^^^^^ `i32` doesn't implement `SuperTrait`
+
+

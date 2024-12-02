@@ -1,12 +1,15 @@
-use crate::context::AnalyzerContext;
-use crate::display::Displayable;
-use crate::errors::{self, FatalError, TypeCoercionError};
-use crate::namespace::scopes::BlockScope;
-use crate::namespace::types::{Type, TypeId};
-use crate::traversal::{const_expr, expressions, types};
+use crate::{
+    context::AnalyzerContext,
+    display::Displayable,
+    errors::{self, FatalError, TypeCoercionError},
+    namespace::{
+        scopes::BlockScope,
+        types::{Type, TypeId},
+    },
+    traversal::{const_expr, expressions, types},
+};
 use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
-use fe_parser::ast as fe;
-use fe_parser::node::Node;
+use fe_parser::{ast as fe, node::Node};
 
 /// Gather context information for var declarations and check for type errors.
 pub fn var_decl(scope: &mut BlockScope, stmt: &Node<fe::FuncStmt>) -> Result<(), FatalError> {

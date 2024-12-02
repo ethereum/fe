@@ -1,0 +1,5 @@
+impl X<T, u))> for Y<T where T: X {}
+
+impl X<T, u for Y<T where T: X {}
+
+impl X @ for Y {}

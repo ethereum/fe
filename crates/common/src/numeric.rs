@@ -62,7 +62,8 @@ impl<'a> Literal<'a> {
     }
 }
 
-// Converts any positive or negative `BigInt` into a hex str using 2s complement representation for negative values.
+// Converts any positive or negative `BigInt` into a hex str using 2s complement
+// representation for negative values.
 pub fn to_hex_str(val: &BigInt) -> String {
     format!(
         "0x{}",

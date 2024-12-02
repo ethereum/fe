@@ -1,0 +1,6 @@
+use foo::S
+
+mod foo {
+    pub struct S {}
+    pub fn S() {}
+}

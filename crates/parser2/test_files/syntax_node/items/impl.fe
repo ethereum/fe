@@ -1,0 +1,17 @@
+impl<T: Add> Foo::Bar<T> {
+    pub fn add(self, rhs: Self) -> Self {
+        Self {
+            val: self.val + rhs.val
+        }
+    }
+}
+
+impl<T> Foo<T> 
+where Foo<T>: Clone
+{
+    fn add<U: Add<T>>(self, rhs: U) 
+        where T: Copy
+    {
+        (rhs - self.t)
+    }
+}
