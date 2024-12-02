@@ -10,28 +10,35 @@ description = "An LSP language server for Fe lang"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-salsa = { git = "https://github.com/salsa-rs/salsa", version = "0.18" }
+salsa = { git = "https://github.com/salsa-rs/salsa", rev = "a1bf3a6" }
 codespan-reporting = "0.11"
+act-locally = "0.1.1"
 hir = { path = "../hir", package = "fe-hir" }
-macros = { path = "../macros", package = "fe-macros" }
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
 camino = "1.1.4"
-clap = { version = "4.3", features = ["derive"] }
-fe-analyzer = { path = "../analyzer", version = "^0.26.0" }
-driver = { path = "../driver2", package = "fe-driver2" }
 common = { path = "../common2", package = "fe-common2" }
 anyhow = "1.0.71"
-crossbeam-channel = "0.5.8"
-lsp-server = "0.7.0"
-lsp-types = "0.94.0"
-serde = "1.0.162"
 serde_json = "1.0.96"
-indexmap = "1.6.2"
 rowan = "0.15.10"
 fxhash = "0.2.1"
-dir-test = "0.3"
-fe-compiler-test-utils = { path = "../test-utils" }
-log = "0.4"
 patricia_tree = "0.6.2"
 glob = "0.3.1"
 url = "2.4.1"
+tokio = { version = "1.35.1", features = ["full", "io-std", "tracing", "net"] }
+tokio-macros = "2.2.0"
+futures = "0.3.28"
+rust-embed = "8.3.0"
+futures-batch = "0.6.1"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
+async-lsp = { git = "https://github.com/micahscopes/async-lsp", branch = "pub-inner-type-id" }
+tower = "0.4.13"
+serde = "1.0.204"
+clap = { version = "4.5.18", features = ["derive"] }
+async-std = "1.13.0"
+async-compat = "0.2.4"
+tracing-tree = "0.4.0"
+
+[dev-dependencies]
+fe-compiler-test-utils = { path = "../test-utils" }
+dir-test = "0.1"

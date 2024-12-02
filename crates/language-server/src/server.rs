@@ -1,157 +1,85 @@
-use super::state::ServerState;
-use anyhow::Result;
-use lsp_server::{Connection, Notification};
-use lsp_types::{HoverProviderCapability, InitializeParams, ServerCapabilities};
+use crate::fallback::WithFallbackService;
+use crate::functionality::handlers::{FileChange, FilesNeedDiagnostics, NeedsDiagnostics};
+use crate::logging;
+use crate::lsp_actor::service::LspActorService;
+use crate::lsp_actor::LspActor;
+use crate::lsp_streams::RouterStreams;
+use act_locally::builder::ActorBuilder;
+use async_lsp::lsp_types::notification::{
+    self, DidChangeTextDocument, DidChangeWatchedFiles, DidOpenTextDocument, Initialized,
+};
+use async_lsp::lsp_types::request::{GotoDefinition, HoverRequest};
+use async_lsp::ClientSocket;
+use async_std::stream::StreamExt;
+use futures_batch::ChunksTimeoutStreamExt;
+// use serde_json::Value;
+use tracing::info;
+use tracing::instrument::WithSubscriber;
 
-#[cfg(target_arch = "wasm32")]
-use crate::util::DummyFilePathConversion;
+use crate::backend::Backend;
+use crate::functionality::{goto, handlers};
+use async_lsp::router::Router;
+use async_lsp::{
+    lsp_types::request::Initialize,
+    // steer::{FirstComeFirstServe, LspSteer},
+    // util::BoxLspService,
+    // ResponseError,
+};
 
-fn server_capabilities() -> ServerCapabilities {
-    ServerCapabilities {
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
-        // full sync mode for now
-        text_document_sync: Some(lsp_types::TextDocumentSyncCapability::Kind(
-            lsp_types::TextDocumentSyncKind::FULL,
-        )),
-        // goto definition
-        definition_provider: Some(lsp_types::OneOf::Left(true)),
-        // support for workspace add/remove changes
-        workspace: Some(lsp_types::WorkspaceServerCapabilities {
-            workspace_folders: Some(lsp_types::WorkspaceFoldersServerCapabilities {
-                supported: Some(true),
-                change_notifications: Some(lsp_types::OneOf::Left(true)),
-            }),
-            file_operations: Some(lsp_types::WorkspaceFileOperationsServerCapabilities {
-                did_create: Some(lsp_types::FileOperationRegistrationOptions {
-                    filters: vec![lsp_types::FileOperationFilter {
-                        scheme: Some(String::from("file")),
-                        pattern: lsp_types::FileOperationPattern {
-                            glob: String::from("**/*"),
-                            options: None,
-                            // options: Some(lsp_types::FileOperationPatternOptions {
-                            //     ignore_case: Some(true),
-                            // }),
-                            matches: None,
-                        },
-                    }],
-                }),
-                did_rename: Some(lsp_types::FileOperationRegistrationOptions {
-                    filters: vec![lsp_types::FileOperationFilter {
-                        scheme: Some(String::from("file")),
-                        pattern: lsp_types::FileOperationPattern {
-                            glob: String::from("**/*"),
-                            options: None,
-                            // options: Some(lsp_types::FileOperationPatternOptions {
-                            //     ignore_case: Some(true),
-                            // }),
-                            matches: None,
-                        },
-                    }],
-                }),
-                did_delete: Some(lsp_types::FileOperationRegistrationOptions {
-                    filters: vec![lsp_types::FileOperationFilter {
-                        scheme: Some(String::from("file")),
-                        pattern: lsp_types::FileOperationPattern {
-                            glob: String::from("**/*"),
-                            options: None,
-                            // options: Some(lsp_types::FileOperationPatternOptions {
-                            //     ignore_case: Some(true),
-                            // }),
-                            matches: None,
-                        },
-                    }],
-                }),
-                will_create: None,
-                will_rename: None,
-                will_delete: None,
-                // TODO: implement file operation refactors and workspace cache updates
-                // will_create: Some(lsp_types::FileOperationRegistrationOptions {
-                //     filters: vec![lsp_types::FileOperationFilter {
-                //         scheme: Some(String::from("file")),
-                //         pattern: lsp_types::FileOperationPattern {
-                //             glob: String::from("**/*"),
-                //             options: None,
-                //             matches: None,
-                //         },
-                //     }],
-                // }),
-                // will_rename: Some(lsp_types::FileOperationRegistrationOptions {
-                //     filters: vec![lsp_types::FileOperationFilter {
-                //         scheme: Some(String::from("file")),
-                //         pattern: lsp_types::FileOperationPattern {
-                //             glob: String::from("**/*"),
-                //             options: None,
-                //             matches: None,
-                //         },
-                //     }],
-                // }),
-                // will_delete: Some(lsp_types::FileOperationRegistrationOptions {
-                //     filters: vec![lsp_types::FileOperationFilter {
-                //         scheme: Some(String::from("file")),
-                //         pattern: lsp_types::FileOperationPattern {
-                //             glob: String::from("**/*"),
-                //             options: None,
-                //             matches: None,
-                //         },
-                //     }],
-                // }),
-            }),
-        }),
-        // ..Default::default()
-        ..Default::default()
-    }
+pub(crate) fn setup(
+    client: ClientSocket,
+    name: String,
+    // ) -> LspActorService<Backend> {
+) -> WithFallbackService<LspActorService<Backend>, Router<()>> {
+    // BoxLspService<Value, ResponseError> {
+    info!("Setting up server");
+    let client_for_actor = client.clone();
+    let client_for_logging = client.clone();
+    let backend_actor = ActorBuilder::new()
+        .with_name(name)
+        .with_state_init(move || Ok(Backend::new(client_for_actor)))
+        .with_subscriber_init(logging::init_fn(client_for_logging))
+        .spawn()
+        .expect("Failed to spawn backend actor");
+
+    let mut lsp_actor_service = LspActorService::with(backend_actor);
+
+    lsp_actor_service
+        // mutating handlers
+        .handle_request_mut::<Initialize>(handlers::initialize)
+        .handle_request_mut::<GotoDefinition>(goto::handle_goto_definition)
+        .handle_event_mut::<FileChange>(handlers::handle_file_change)
+        .handle_event::<FilesNeedDiagnostics>(handlers::handle_files_need_diagnostics)
+        // non-mutating handlers
+        .handle_notification::<Initialized>(handlers::initialized)
+        .handle_request::<HoverRequest>(handlers::handle_hover_request)
+        .handle_notification::<DidOpenTextDocument>(handlers::handle_did_open_text_document)
+        .handle_notification::<DidChangeTextDocument>(handlers::handle_did_change_text_document)
+        .handle_notification::<DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)
+        .handle_notification::<notification::Exit>(handlers::handle_exit);
+
+    let mut streaming_router = Router::new(());
+    setup_streams(client.clone(), &mut streaming_router);
+
+    // lsp_actor_service
+    WithFallbackService::new(lsp_actor_service, streaming_router)
 }
 
-pub fn run_server() -> Result<()> {
-    let (connection, io_threads) = Connection::stdio();
+pub fn setup_streams(client: ClientSocket, router: &mut Router<()>) {
+    info!("setting up streams");
 
-    let (request_id, _initialize_params) = connection.initialize_start()?;
-    let initialize_params: InitializeParams = serde_json::from_value(_initialize_params)?;
-    // let debug_params = initialize_params.clone();
-    // todo: actually use initialization params
+    let mut diagnostics_stream = router
+        .event_stream::<NeedsDiagnostics>()
+        .chunks_timeout(500, std::time::Duration::from_millis(30))
+        .map(FilesNeedDiagnostics)
+        .fuse();
 
-    let capabilities = server_capabilities();
-
-    let initialize_result = lsp_types::InitializeResult {
-        capabilities,
-        server_info: Some(lsp_types::ServerInfo {
-            name: String::from("fe-language-server"),
-            version: Some(String::from(env!("CARGO_PKG_VERSION"))),
-        }),
-    };
-
-    let initialize_result = serde_json::to_value(initialize_result).unwrap();
-
-    connection.initialize_finish(request_id, initialize_result)?;
-    // send a "hello" message to the client
-    connection
-        .sender
-        .send(lsp_server::Message::Notification(Notification {
-            method: String::from("window/showMessage"),
-            params: serde_json::to_value(lsp_types::ShowMessageParams {
-                typ: lsp_types::MessageType::INFO,
-                message: String::from("hello from the Fe language server"),
-            })
-            .unwrap(),
-        }))?;
-
-    let mut state = ServerState::new(connection.sender);
-    let _ = state.init_logger(log::Level::Info);
-    state.workspace.set_workspace_root(
-        &mut state.db,
-        initialize_params
-            .root_uri
-            .unwrap()
-            .to_file_path()
-            .ok()
-            .unwrap(),
-    )?;
-    // info!("TESTING");
-    // info!("initialized with params: {:?}", debug_params);
-
-    let result = state.run(connection.receiver);
-
-    io_threads.join().unwrap();
-
-    result
+    tokio::spawn(
+        async move {
+            while let Some(files_need_diagnostics) = diagnostics_stream.next().await {
+                let _ = client.emit(files_need_diagnostics);
+            }
+        }
+        .with_current_subscriber(),
+    );
 }

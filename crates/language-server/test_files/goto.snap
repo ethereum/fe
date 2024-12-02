@@ -1,25 +1,23 @@
 ---
 source: crates/language-server/src/goto.rs
-assertion_line: 153
-expression: result
+assertion_line: 283
+expression: snapshot
 input_file: crates/language-server/test_files/goto.fe
 ---
-struct Foo {}
-struct Bar {}
-
-fn main() {
-    let x: Foo
-    let y: Bar
-    let z: baz::Baz
-}
-
-mod baz {
-   pub struct Baz {}
-}
+0: struct Foo {}
+1: struct Bar {}
+2: 
+3: fn main() {
+4:     let x: Foo
+5:     let y: Bar
+6:     let z: baz::Baz
+7: }
+8: 
+9: mod baz {
+10:    pub struct Baz {}
+11: }
 ---
-cursor position: 64, path: 
-cursor position: 82, path: goto::baz::Baz
-cursor position: 79, path: 
-cursor position: 52, path: goto::Foo
-cursor position: 49, path: 
-cursor position: 67, path: goto::Bar
+cursor position (4, 11), path: goto::Foo
+cursor position (5, 11), path: goto::Bar
+cursor position (6, 11), path: goto::baz
+cursor position (6, 16), path: goto::baz::Baz

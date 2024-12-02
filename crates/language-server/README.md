@@ -58,22 +58,35 @@ One straightforward way to interact with the language server during development 
   - [x] Integration of workspace data structures with existing language server data structures; slight refactor of existing architecture
   - [x] Initial workspace sync prototype and tests
 - [x] Initial support for subdiagnostics
-- Workspace sync API brainstorming and study
+- [x] Workspace sync API brainstorming and study
+### October-December 2023
+- [x] Improve the internal synchronization API for the "workspace" data structure to support an explicit update step
+- [x] Integrated the "workspace" data structure with LSP events and a rudimentary filesystem watcher
+### January-March 2024
+- Initial prototype supporting concurrency/task management with `tower-lsp`
+### July-November 2024
+- Big architecture overhaul, switched from `tower-lsp` to `async-lsp`
+    - much better control over concurrency and event processing order, working around issues described [here](https://github.com/ebkalderon/tower-lsp/issues/284)
+    - custom actor implementation supporting lock-free language server state
+    - handlers with thread-local futures
+- Optional stream-based event handling support
+- Multithreaded tracing and logging improvements
+- Debounced, multithreaded diagnostics
+- TCP support; support for multiple clients
+- Organize and prepare server architecture for a variety of LSP features
+- Implement a task queue system for long-running tasks
+- Enhance hover feature to return useful information and documentation
+- Initial work on VSCode extension release pipeline
+
 ### To-do and tentative roadmap
-- [x] Documentation of progress and roadmapping work
-- [x] Improve the internal synchronization API for the "workspace" data structure to support an explicit update step 
-- [x] Integrate the "workspace" data structure with LSP events and a rudimentary filesystem watcher
 
 #### Server improvements
-- [ ] Organize and prepare server architecture for a variety of LSP features
-- [ ] Implement a task queue system for long-running tasks
 - [ ] Implement progress feedback notifications
 - [ ] Implement configurable options for the language server
   - Diagnostics configuration
   - Inlay configuration
 
 #### LSP Features
-- [ ] Enhance hover feature to return useful information and documentation.
 - [ ] Expand go-to feature to support variables, functions, implementations and other references
 - [ ] Support go-to definitions for Fe standard library
 - [ ] Improve diagnostics implementation and expand tests
@@ -84,10 +97,15 @@ One straightforward way to interact with the language server during development 
 - [ ] File system navigation
 - [ ] Show syntax tree, HIR, etc.
 - [ ] Syntactic and semantic highlighting
-      
-#### Integration with VSCode
+
+#### Integration with VSCode and Zed
+- [x] Configurable LSP binary
+- [ ] VSCode extension release pipeline
+  - [x] build setup
+  - [ ] release pipeline github actions
 - [ ] Implement configuration and options shortcuts in the VSCode extension
 - [ ] Investigate support for running tests/proofs from the VSCode extension
+- [ ] Zed integration
 
 #### Testing and Documentation
 - [ ] Better test coverage

@@ -1,35 +1,41 @@
 ---
-source: crates/language-server/src/goto.rs
-assertion_line: 170
-expression: result
+source: crates/language-server/src/functionality/goto.rs
+assertion_line: 337
+expression: snapshot
 input_file: crates/language-server/test_files/single_ingot/src/lib.fe
 ---
-use foo::Foo
-
-mod baz {
-    use super::Foo
-    
-    pub struct Bar {
-        x: Foo
-    }
-
-    fn bar() -> () {
-        let x: Foo
-    }
-}
-
-fn bar() -> () {
-    let y: Foo
-    let z: baz::Bar
-}
+0: use ingot::foo::Why
+1: 
+2: mod who {
+3:   use super::Why
+4:   pub mod what {
+5:     pub fn how() {}
+6:     pub mod how {
+7:       use ingot::Why
+8:       pub struct When {
+9:         x: Why
+10:       }
+11:     }
+12:   }
+13:   pub struct Bar {
+14:     x: Why
+15:   }
+16: }
+17: 
+18: fn bar() -> () {
+19:     let y: Why
+20:     let z = who::what::how
+21:     let z: who::what::how::When
+22: }
 ---
-cursor position: 80, path: "lib::foo::Foo"
-cursor position: 29, path: "No resolution available"
-cursor position: 183, path: "lib::baz::Bar"
-cursor position: 180, path: "`NameResBucket` is empty"
-cursor position: 168, path: "lib::foo::Foo"
-cursor position: 21, path: "No resolution available"
-cursor position: 165, path: "`NameResBucket` is empty"
-cursor position: 127, path: "lib::foo::Foo"
-cursor position: 124, path: "`NameResBucket` is empty"
-cursor position: 60, path: "No resolution available"
+cursor position (9, 11), path: lib::foo::Why
+cursor position (14, 7), path: lib::foo::Why
+cursor position (19, 11), path: lib::foo::Why
+cursor position (20, 12), path: lib::who
+cursor position (20, 17), path: lib::who::what
+cursor position (20, 23), path: lib::who::what::how
+lib::who::what::how
+cursor position (21, 11), path: lib::who
+cursor position (21, 16), path: lib::who::what
+cursor position (21, 22), path: lib::who::what::how
+cursor position (21, 27), path: lib::who::what::how::When
