@@ -355,7 +355,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Visitor<'db> for EarlyPathVisitor<'db, 'a> {
+impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
     fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'db, LazyItemSpan<'db>>, item: ItemKind<'db>) {
         // We don't need to check use statements for conflicts because they are
         // already checked in import resolution.

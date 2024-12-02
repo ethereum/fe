@@ -428,11 +428,11 @@ pub struct GenericParamTypeSet<'db> {
 }
 
 impl<'db> GenericParamTypeSet<'db> {
-    pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         evaluate_params_precursor(db, self)
     }
 
-    pub(crate) fn explicit_params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    pub(crate) fn explicit_params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         let offset = self.offset_to_explicit(db);
         &self.params(db)[offset..]
     }

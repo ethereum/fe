@@ -36,7 +36,7 @@ pub(crate) struct StmtRoot<'db> {
     pub(crate) body: Body<'db>,
 }
 
-impl<'db> ChainInitiator for StmtRoot<'db> {
+impl ChainInitiator for StmtRoot<'_> {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.stmt_map.node_to_source(self.stmt);

@@ -8,7 +8,7 @@ pub struct PathId<'db> {
 }
 
 impl<'db> PathId<'db> {
-    pub fn last_segment(self, db: &'db dyn HirDb) -> Partial<IdentId> {
+    pub fn last_segment(self, db: &'db dyn HirDb) -> Partial<IdentId<'db>> {
         self.segments(db).last().copied().unwrap_or_default()
     }
 

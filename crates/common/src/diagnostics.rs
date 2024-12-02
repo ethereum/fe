@@ -118,7 +118,7 @@ pub fn diagnostics_string(db: &dyn SourceDb, diagnostics: &[Diagnostic]) -> Stri
 
 struct SourceDbWrapper<'a>(pub &'a dyn SourceDb);
 
-impl<'a> codespan_reporting::files::Files<'_> for SourceDbWrapper<'a> {
+impl codespan_reporting::files::Files<'_> for SourceDbWrapper<'_> {
     type FileId = SourceFileId;
     type Name = Rc<Utf8PathBuf>;
     type Source = Rc<str>;

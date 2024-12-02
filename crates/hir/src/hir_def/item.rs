@@ -66,7 +66,7 @@ impl<'db> ItemKind<'db> {
         ScopeId::from_item(self)
     }
 
-    pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId> {
+    pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
         use ItemKind::*;
         match self {
             TopMod(top_mod) => Some(top_mod.name(db)),
@@ -133,12 +133,12 @@ impl<'db> ItemKind<'db> {
         }
     }
 
-    pub fn ingot(self, db: &'db dyn HirDb) -> IngotId {
+    pub fn ingot(self, db: &'db dyn HirDb) -> IngotId<'db> {
         let top_mod = self.top_mod(db);
         top_mod.ingot(db)
     }
 
-    pub fn top_mod(self, db: &'db dyn HirDb) -> TopLevelMod {
+    pub fn top_mod(self, db: &'db dyn HirDb) -> TopLevelMod<'db> {
         match self {
             ItemKind::TopMod(top_mod) => top_mod,
             ItemKind::Mod(mod_) => mod_.top_mod(db),
@@ -211,7 +211,7 @@ impl<'db> GenericParamOwner<'db> {
         ItemKind::from(self).top_mod(db)
     }
 
-    pub fn params(self, db: &'db dyn HirDb) -> GenericParamListId {
+    pub fn params(self, db: &'db dyn HirDb) -> GenericParamListId<'db> {
         match self {
             GenericParamOwner::Func(func) => func.generic_params(db),
             GenericParamOwner::Struct(struct_) => struct_.generic_params(db),
@@ -351,12 +351,15 @@ impl<'db> TopLevelMod<'db> {
         ScopeId::from_item(self.into())
     }
 
-    pub fn scope_graph(self, db: &'db dyn HirDb) -> &ScopeGraph<'db> {
+    pub fn scope_graph(self, db: &'db dyn HirDb) -> &'db ScopeGraph<'db> {
         lower::scope_graph_impl(db, self)
     }
 
     /// Returns the child top level modules of `self`.
-    pub fn child_top_mods(self, db: &'db dyn HirDb) -> impl Iterator<Item = TopLevelMod<'db>> + '_ {
+    pub fn child_top_mods(
+        self,
+        db: &'db dyn HirDb,
+    ) -> impl Iterator<Item = TopLevelMod<'db>> + 'db {
         let module_tree = self.ingot(db).module_tree(db);
         module_tree.children(self)
     }
@@ -367,14 +370,14 @@ impl<'db> TopLevelMod<'db> {
     pub fn children_non_nested(
         self,
         db: &'db dyn HirDb,
-    ) -> impl Iterator<Item = ItemKind<'db>> + '_ {
+    ) -> impl Iterator<Item = ItemKind<'db>> + 'db {
         let s_graph = self.scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
 
     /// Returns all the children of this module, including nested items.
-    pub fn children_nested(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind<'db>> + '_ {
+    pub fn children_nested(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind<'db>> + 'db {
         let s_graph = self.scope_graph(db);
         s_graph.items_dfs(db)
     }
@@ -392,53 +395,53 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all items in the top level module including ones in nested
     /// modules.
-    pub fn all_items(self, db: &'db dyn HirDb) -> &Vec<ItemKind> {
+    pub fn all_items(self, db: &'db dyn HirDb) -> &'db Vec<ItemKind<'db>> {
         all_items_in_top_mod(db, self)
     }
 
     /// Returns all structs in the top level module including ones in nested
     /// modules.
-    pub fn all_structs(self, db: &'db dyn HirDb) -> &Vec<Struct> {
+    pub fn all_structs(self, db: &'db dyn HirDb) -> &'db Vec<Struct<'db>> {
         all_structs_in_top_mod(db, self)
     }
 
     /// Returns all enums in the top level module including ones in nested
     /// modules.
-    pub fn all_enums(self, db: &'db dyn HirDb) -> &Vec<Enum> {
+    pub fn all_enums(self, db: &'db dyn HirDb) -> &'db Vec<Enum<'db>> {
         all_enums_in_top_mod(db, self)
     }
 
     /// Returns all contracts in the top level module including ones in nested
     /// modules.
-    pub fn all_contracts(self, db: &'db dyn HirDb) -> &Vec<Contract> {
+    pub fn all_contracts(self, db: &'db dyn HirDb) -> &'db Vec<Contract<'db>> {
         all_contracts_in_top_mod(db, self)
     }
 
     /// Returns all type aliases in the top level module including ones in
     /// nested modules.
-    pub fn all_type_aliases(self, db: &'db dyn HirDb) -> &Vec<TypeAlias> {
+    pub fn all_type_aliases(self, db: &'db dyn HirDb) -> &'db Vec<TypeAlias<'db>> {
         all_type_aliases_in_top_mod(db, self)
     }
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    pub fn all_traits(self, db: &'db dyn HirDb) -> &Vec<Trait> {
+    pub fn all_traits(self, db: &'db dyn HirDb) -> &'db Vec<Trait<'db>> {
         all_traits_in_top_mod(db, self)
     }
 
-    pub fn all_funcs(self, db: &'db dyn HirDb) -> &Vec<Func> {
+    pub fn all_funcs(self, db: &'db dyn HirDb) -> &'db Vec<Func<'db>> {
         all_funcs_in_top_mod(db, self)
     }
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> &Vec<ImplTrait> {
+    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> &'db Vec<ImplTrait<'db>> {
         all_impl_trait_in_top_mod(db, self)
     }
 
     /// Returns all impls in the top level module including ones in nested
     /// modules.
-    pub fn all_impls(self, db: &'db dyn HirDb) -> &Vec<Impl> {
+    pub fn all_impls(self, db: &'db dyn HirDb) -> &'db Vec<Impl<'db>> {
         all_impl_in_top_mod(db, self)
     }
 }
@@ -616,7 +619,10 @@ impl<'db> Mod<'db> {
         ScopeId::from_item(self.into())
     }
 
-    pub fn children_non_nested(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn children_non_nested(
+        self,
+        db: &'db dyn HirDb,
+    ) -> impl Iterator<Item = ItemKind<'db>> + 'db {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
@@ -822,13 +828,13 @@ impl<'db> Impl<'db> {
     pub fn children_non_nested(
         self,
         db: &'db dyn HirDb,
-    ) -> impl Iterator<Item = ItemKind<'db>> + '_ {
+    ) -> impl Iterator<Item = ItemKind<'db>> + 'db {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
     }
 
-    pub fn funcs(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func<'db>> + '_ {
+    pub fn funcs(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func<'db>> + 'db {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope).filter_map(|item| match item {
@@ -865,7 +871,10 @@ impl<'db> Trait<'db> {
         LazyTraitSpan::new(self)
     }
 
-    pub fn children_non_nested(self, db: &'db dyn HirDb) -> impl Iterator<Item = ItemKind> + '_ {
+    pub fn children_non_nested(
+        self,
+        db: &'db dyn HirDb,
+    ) -> impl Iterator<Item = ItemKind<'db>> + 'db {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
@@ -875,7 +884,7 @@ impl<'db> Trait<'db> {
         ScopeId::from_item(self.into())
     }
 
-    pub fn methods(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func> + '_ {
+    pub fn methods(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func<'db>> + 'db {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope).filter_map(|item| match item {
@@ -908,7 +917,7 @@ impl<'db> ImplTrait<'db> {
     pub fn children_non_nested(
         self,
         db: &'db dyn HirDb,
-    ) -> impl Iterator<Item = ItemKind<'db>> + '_ {
+    ) -> impl Iterator<Item = ItemKind<'db>> + 'db {
         let s_graph = self.top_mod(db).scope_graph(db);
         let scope = ScopeId::from_item(self.into());
         s_graph.child_items(scope)
@@ -918,7 +927,7 @@ impl<'db> ImplTrait<'db> {
         ScopeId::from_item(self.into())
     }
 
-    pub fn methods(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func<'db>> + '_ {
+    pub fn methods(self, db: &'db dyn HirDb) -> impl Iterator<Item = Func<'db>> + 'db {
         self.children_non_nested(db).filter_map(|item| match item {
             ItemKind::Func(func) => Some(func),
             _ => None,
@@ -1103,7 +1112,7 @@ pub struct VariantDef<'db> {
     pub kind: VariantKind<'db>,
 }
 
-impl<'db> VariantDef<'db> {
+impl VariantDef<'_> {
     /// Returns the human readable string of the expected variant initializer.
     /// ## Example
     /// When enum `E` is an variant defined as below:
@@ -1189,7 +1198,7 @@ pub(crate) enum TrackedItemVariant<'db> {
     NamelessBody,
     Joined(Box<Self>, Box<Self>),
 }
-impl<'db> TrackedItemVariant<'db> {
+impl TrackedItemVariant<'_> {
     pub(crate) fn join(self, rhs: Self) -> Self {
         Self::Joined(self.into(), rhs.into())
     }

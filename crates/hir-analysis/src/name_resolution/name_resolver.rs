@@ -452,20 +452,20 @@ pub enum NameDerivation<'db> {
     Prim,
 }
 
-impl<'db> NameDerivation<'db> {
+impl NameDerivation<'_> {
     fn lexed(&mut self) {
         let inner = mem::replace(self, NameDerivation::Def);
         *self = NameDerivation::Lex(Box::new(inner));
     }
 }
 
-impl<'db> PartialOrd for NameDerivation<'db> {
+impl PartialOrd for NameDerivation<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'db> Ord for NameDerivation<'db> {
+impl Ord for NameDerivation<'_> {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
             (NameDerivation::Def, NameDerivation::Def) => cmp::Ordering::Equal,
@@ -795,7 +795,7 @@ pub enum NameResolutionError<'db> {
 
 pub type NameResolutionResult<'db, T> = Result<T, NameResolutionError<'db>>;
 
-impl<'db> fmt::Display for NameResolutionError<'db> {
+impl fmt::Display for NameResolutionError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             NameResolutionError::NotFound => write!(f, "name not found"),
@@ -811,7 +811,7 @@ impl<'db> fmt::Display for NameResolutionError<'db> {
     }
 }
 
-impl<'db> std::error::Error for NameResolutionError<'db> {}
+impl std::error::Error for NameResolutionError<'_> {}
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct ResolvedQueryCacheStore<'db> {
@@ -924,7 +924,7 @@ impl QueryPropagator for LexEdge {
     }
 }
 
-impl<'db> QueryPropagator for ModEdge<'db> {
+impl QueryPropagator for ModEdge<'_> {
     fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
@@ -938,7 +938,7 @@ impl<'db> QueryPropagator for ModEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for TypeEdge<'db> {
+impl QueryPropagator for TypeEdge<'_> {
     fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
@@ -952,7 +952,7 @@ impl<'db> QueryPropagator for TypeEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for TraitEdge<'db> {
+impl QueryPropagator for TraitEdge<'_> {
     fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
@@ -966,7 +966,7 @@ impl<'db> QueryPropagator for TraitEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for ValueEdge<'db> {
+impl QueryPropagator for ValueEdge<'_> {
     fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
@@ -980,7 +980,7 @@ impl<'db> QueryPropagator for ValueEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for GenericParamEdge<'db> {
+impl QueryPropagator for GenericParamEdge<'_> {
     fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
@@ -994,7 +994,7 @@ impl<'db> QueryPropagator for GenericParamEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for FieldEdge<'db> {
+impl QueryPropagator for FieldEdge<'_> {
     fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
@@ -1008,7 +1008,7 @@ impl<'db> QueryPropagator for FieldEdge<'db> {
     }
 }
 
-impl<'db> QueryPropagator for VariantEdge<'db> {
+impl QueryPropagator for VariantEdge<'_> {
     fn propagate(self, _db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
         if self.0 == query.name {
             PropagationResult::Terminated
@@ -1088,7 +1088,7 @@ impl QueryPropagator for AnonEdge {
     }
 }
 
-impl<'db> QueryPropagator for EdgeKind<'db> {
+impl QueryPropagator for EdgeKind<'_> {
     fn propagate(self, db: &dyn HirAnalysisDb, query: &NameQuery) -> PropagationResult {
         match self {
             EdgeKind::Lex(edge) => edge.propagate(db, query),

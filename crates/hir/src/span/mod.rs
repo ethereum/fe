@@ -76,7 +76,7 @@ impl<'db> DynLazySpan<'db> {
         self.0.as_ref().map(|chain| chain.top_mod(db))
     }
 }
-impl<'db> LazySpan for DynLazySpan<'db> {
+impl LazySpan for DynLazySpan<'_> {
     fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span> {
         if let Some(chain) = &self.0 {
             chain.resolve(db)

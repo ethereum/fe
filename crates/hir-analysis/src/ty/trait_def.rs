@@ -191,7 +191,7 @@ impl<'db> Implementor<'db> {
         self.trait_(db).def(db)
     }
 
-    pub(crate) fn original_params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    pub(crate) fn original_params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.params(db)
     }
 
@@ -209,7 +209,7 @@ impl<'db> Implementor<'db> {
     pub(super) fn methods(
         self,
         db: &'db dyn HirAnalysisDb,
-    ) -> &IndexMap<IdentId<'db>, FuncDef<'db>> {
+    ) -> &'db IndexMap<IdentId<'db>, FuncDef<'db>> {
         collect_implementor_methods(db, self)
     }
 }
@@ -299,7 +299,7 @@ pub struct TraitDef<'db> {
 }
 
 impl<'db> TraitDef<'db> {
-    pub fn params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    pub fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
     }
 
@@ -307,7 +307,7 @@ impl<'db> TraitDef<'db> {
         self.param_set(db).trait_self(db).unwrap()
     }
 
-    pub fn original_params(self, db: &'db dyn HirAnalysisDb) -> &[TyId<'db>] {
+    pub fn original_params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).explicit_params(db)
     }
 }
@@ -315,7 +315,7 @@ impl<'db> TraitDef<'db> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, salsa::Update)]
 pub struct TraitMethod<'db>(pub FuncDef<'db>);
 
-impl<'db> TraitMethod<'db> {
+impl TraitMethod<'_> {
     pub fn has_default_impl(self, db: &dyn HirAnalysisDb) -> bool {
         self.0
             .hir_func_def(db)
@@ -327,17 +327,20 @@ impl<'db> TraitMethod<'db> {
 
 impl<'db> TraitDef<'db> {
     /// Returns the type kind that implementor type must have.
-    pub(crate) fn expected_implementor_kind(self, db: &'db dyn HirAnalysisDb) -> &Kind {
+    pub(crate) fn expected_implementor_kind(self, db: &'db dyn HirAnalysisDb) -> &'db Kind {
         self.self_param(db).kind(db)
     }
 
     /// Returns `ingot` in which this trait is defined.
-    pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId {
+    pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
         let hir_db = db.as_hir_db();
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
-    pub(super) fn super_traits(self, db: &'db dyn HirAnalysisDb) -> &IndexSet<Binder<TraitInstId>> {
+    pub(super) fn super_traits(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> &'db IndexSet<Binder<TraitInstId<'db>>> {
         use std::sync::OnceLock;
         static EMPTY: OnceLock<IndexSet<Binder<TraitInstId>>> = OnceLock::new();
 

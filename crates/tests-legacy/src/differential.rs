@@ -21,7 +21,7 @@ struct CaptureResult<'a> {
     input: &'a [ethabi::Token],
 }
 
-impl<'a> CaptureResult<'a> {
+impl CaptureResult<'_> {
     pub fn assert_fe_max_percentage_more_gas(&self, max_percentage: i64) -> &Self {
         let fe_percentage: i64 = (self.fe_used_gas as i64 - self.solidity_used_gas as i64) * 100
             / self.solidity_used_gas as i64;

@@ -481,7 +481,7 @@ fn _deploy_contract(
         bytecode = constructor.encode_input(bytecode, init_params).unwrap()
     }
 
-    if let evm::Capture::Exit(exit) = executor.create(
+    let exit = executor.create(
         address(DEFAULT_CALLER),
         evm_runtime::CreateScheme::Legacy {
             caller: address(DEFAULT_CALLER),
@@ -489,15 +489,16 @@ fn _deploy_contract(
         U256::zero(),
         bytecode,
         None,
-    ) {
-        return ContractHarness::new(
+    );
+
+    match exit {
+        evm::Capture::Exit(exit) => ContractHarness::new(
             exit.1
                 .unwrap_or_else(|| panic!("Unable to retrieve contract address: {:?}", exit.0)),
             abi,
-        );
+        ),
+        _ => panic!("Failed to create contract"),
     }
-
-    panic!("Failed to create contract")
 }
 
 #[derive(Debug)]
@@ -728,7 +729,7 @@ fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (Exi
         .expect("failed to compile Yul");
     let bytecode = hex::decode(contract_bytecode.bytecode).expect("failed to decode bytecode");
 
-    if let evm::Capture::Exit((reason, _, output)) = executor.create(
+    let evm::Capture::Exit((reason, _, output)) = executor.create(
         address(DEFAULT_CALLER),
         evm_runtime::CreateScheme::Legacy {
             caller: address(DEFAULT_CALLER),
@@ -736,11 +737,9 @@ fn execute_runtime_functions(executor: &mut Executor, runtime: &Runtime) -> (Exi
         U256::zero(),
         bytecode,
         None,
-    ) {
-        (reason, output)
-    } else {
-        panic!("EVM trap during test")
-    }
+    );
+
+    (reason, output)
 }
 
 #[allow(dead_code)]

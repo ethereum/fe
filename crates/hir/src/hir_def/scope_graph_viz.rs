@@ -170,7 +170,7 @@ impl<'db, 'a> dot2::Labeller<'a> for ScopeGraphFormatter<'db> {
     }
 }
 
-impl<'db, 'a> dot2::GraphWalk<'a> for ScopeGraphFormatter<'db> {
+impl<'a> dot2::GraphWalk<'a> for ScopeGraphFormatter<'_> {
     type Node = NodeId;
     type Edge = EdgeId;
     type Subgraph = ();
@@ -203,7 +203,7 @@ struct Edge<'db> {
     source: NodeId,
 }
 
-impl<'db> Edge<'db> {
+impl Edge<'_> {
     fn color(&self) -> &'static str {
         match self.kind {
             EdgeKind::Lex(_) => "#F94144",

@@ -248,7 +248,7 @@ enum Typeable<'db> {
     Pat(PatId),
 }
 
-impl<'db> Typeable<'db> {
+impl Typeable<'_> {
     fn lazy_span(self, body: Body) -> DynLazySpan {
         match self {
             Self::Expr(expr, ..) => expr.lazy_span(body).into(),
@@ -286,6 +286,58 @@ struct TyCheckerFinalizer<'db> {
     diags: Vec<FuncBodyDiag<'db>>,
 }
 
+impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
+    fn visit_pat(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyPatSpan<'db>>,
+        pat: PatId,
+        _: &Pat<'db>,
+    ) {
+        let ty = self.body.pat_ty(self.db, pat);
+        let span = ctxt.span().unwrap();
+        self.check_unknown(ty, span.clone().into());
+
+        walk_pat(self, ctxt, pat)
+    }
+
+    fn visit_expr(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
+        expr: ExprId,
+        expr_data: &Expr<'db>,
+    ) {
+        // Skip the check if the expr is block.
+        if !matches!(expr_data, Expr::Block(..)) {
+            let prop = self.body.expr_prop(self.db, expr);
+            let span = ctxt.span().unwrap();
+            self.check_unknown(prop.ty, span.clone().into());
+            if prop.binding.is_none() {
+                self.check_wf(prop.ty, span.into());
+            }
+        }
+
+        // We need this additional check for method call because the callable type is
+        // not tied to the expression type.
+        if let Expr::MethodCall(..) = expr_data {
+            if let Some(callable) = self.body.callable_expr(expr) {
+                let callable_ty = callable.ty(self.db);
+                let span = ctxt.span().unwrap().into_method_call_expr().method_name();
+                self.check_unknown(callable_ty, span.clone().into());
+                self.check_wf(callable_ty, span.into())
+            }
+        }
+
+        walk_expr(self, ctxt, expr);
+    }
+
+    fn visit_item(
+        &mut self,
+        _: &mut VisitorCtxt<'db, hir::visitor::prelude::LazyItemSpan<'db>>,
+        _: hir::hir_def::ItemKind<'db>,
+    ) {
+    }
+}
+
 impl<'db> TyCheckerFinalizer<'db> {
     fn new(mut checker: TyChecker<'db>) -> Self {
         let assumptions = checker.env.assumptions();
@@ -306,58 +358,6 @@ impl<'db> TyCheckerFinalizer<'db> {
     }
 
     fn check_unknown_types(&mut self) {
-        impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
-            fn visit_pat(
-                &mut self,
-                ctxt: &mut VisitorCtxt<'db, LazyPatSpan<'db>>,
-                pat: PatId,
-                _: &Pat<'db>,
-            ) {
-                let ty = self.body.pat_ty(self.db, pat);
-                let span = ctxt.span().unwrap();
-                self.check_unknown(ty, span.clone().into());
-
-                walk_pat(self, ctxt, pat)
-            }
-
-            fn visit_expr(
-                &mut self,
-                ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
-                expr: ExprId,
-                expr_data: &Expr<'db>,
-            ) {
-                // Skip the check if the expr is block.
-                if !matches!(expr_data, Expr::Block(..)) {
-                    let prop = self.body.expr_prop(self.db, expr);
-                    let span = ctxt.span().unwrap();
-                    self.check_unknown(prop.ty, span.clone().into());
-                    if prop.binding.is_none() {
-                        self.check_wf(prop.ty, span.into());
-                    }
-                }
-
-                // We need this additional check for method call because the callable type is
-                // not tied to the expression type.
-                if let Expr::MethodCall(..) = expr_data {
-                    if let Some(callable) = self.body.callable_expr(expr) {
-                        let callable_ty = callable.ty(self.db);
-                        let span = ctxt.span().unwrap().into_method_call_expr().method_name();
-                        self.check_unknown(callable_ty, span.clone().into());
-                        self.check_wf(callable_ty, span.into())
-                    }
-                }
-
-                walk_expr(self, ctxt, expr);
-            }
-
-            fn visit_item(
-                &mut self,
-                _: &mut VisitorCtxt<'db, hir::visitor::prelude::LazyItemSpan<'db>>,
-                _: hir::hir_def::ItemKind<'db>,
-            ) {
-            }
-        }
-
         if let Some(body) = self.body.body {
             let mut ctxt = VisitorCtxt::with_body(self.db.as_hir_db(), body);
             self.visit_body(&mut ctxt, body);
