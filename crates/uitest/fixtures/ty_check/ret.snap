@@ -9,7 +9,7 @@ error[8-0000]: type mismatch
 15 │         false
    │         ^^^^^ expected `{integer}`, but `bool` is given
 
-error[8-0013]: returned type mismatch
+error[8-0014]: returned type mismatch
   ┌─ ret.fe:2:5
   │
 1 │ fn foo1() {
@@ -17,7 +17,7 @@ error[8-0013]: returned type mismatch
 2 │     return false
   │     ^^^^^^^^^^^^ expected `()`, but `bool` is returned
 
-error[8-0013]: returned type mismatch
+error[8-0014]: returned type mismatch
   ┌─ ret.fe:6:5
   │
 5 │ fn foo2() -> i32 {

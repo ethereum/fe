@@ -3,7 +3,7 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: crates/uitest/fixtures/ty_check/method_selection/require_explicit_import.fe
 ---
-error[8-0028]: trait is not in the scope
+error[8-0029]: trait is not in the scope
   ┌─ require_explicit_import.fe:2:7
   │
 2 │     x.foo()
