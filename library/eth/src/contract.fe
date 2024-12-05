@@ -1,0 +1,18 @@
+trait Contract {
+    fn init(buf: CallBuffer) -> Self 
+    fn recv(self, buf: CallBuffer) -> MemBuffer
+}
+
+struct Foo {
+    f1: u8,
+    f2: bool,
+    f3: Data<String>
+}
+
+impl Contract for Foo {
+    fn init(buf: CallBuffer) -> Self {
+        let f1 = buf.read<u8>()
+        let f2 = buf.read<bool>()
+        Self { f1, f2,  }
+    }
+}

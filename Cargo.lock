@@ -1388,10 +1388,13 @@ version = "0.26.0"
 dependencies = [
  "camino",
  "fe-parser2",
+ "git2",
  "indexmap 2.2.6",
  "salsa 0.18.0",
  "semver 1.0.23",
+ "serde",
  "smol_str",
+ "toml 0.8.15",
 ]
 
 [[package]]
@@ -1478,10 +1481,14 @@ dependencies = [
  "camino",
  "clap 4.5.21",
  "codespan-reporting",
+ "dirs",
  "fe-common2",
  "fe-hir",
  "fe-hir-analysis",
+ "include_dir",
  "salsa 0.18.0",
+ "semver 1.0.23",
+ "walkdir",
 ]
 
 [[package]]
@@ -1625,6 +1632,19 @@ dependencies = [
  "unwrap-infallible",
  "wasm-bindgen",
  "wasm-bindgen-test",
+]
+
+[[package]]
+name = "fe-resolver"
+version = "0.26.0"
+dependencies = [
+ "camino",
+ "git2",
+ "indexmap 2.2.6",
+ "semver 1.0.23",
+ "serde",
+ "smol_str",
+ "toml 0.8.15",
 ]
 
 [[package]]
@@ -4102,6 +4122,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "toml"
+version = "0.8.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac2caab0bf757388c6c0ae23b3293fdb463fee59434529014f85e3263b995c28"
+dependencies = [
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "toml_edit 0.22.16",
+]
+
+[[package]]
 name = "toml_datetime"
 version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4120,7 +4152,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -4131,7 +4163,20 @@ checksum = "6a8534fd7f78b5405e860340ad6575217ce99f38d4d5c8f2442cb5ecb50090e1"
 dependencies = [
  "indexmap 2.2.6",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.22.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "278f3d518e152219c994ce877758516bca5e118eaed6996192a774fb9fbf0788"
+dependencies = [
+ "indexmap 2.2.6",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow 0.6.18",
 ]
 
 [[package]]
@@ -4683,6 +4728,15 @@ name = "winnow"
 version = "0.5.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "winnow"
+version = "0.6.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68a9bda4691f099d435ad181000724da8e5899daa10713c2d432552b9ccd3a6f"
 dependencies = [
  "memchr",
 ]
