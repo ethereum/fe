@@ -704,8 +704,18 @@ impl ModuleId {
         db: &dyn AnalyzerDb,
         name: &str,
     ) -> Result<Option<NamedThing>, IncompleteItem> {
-        if let Some(thing) = self.internal_items(db).get(name) {
-            Ok(Some(NamedThing::Item(*thing)))
+        if let Some(thing) = db.module_named_item(*self, name.into()) {
+            Ok(Some(NamedThing::Item(thing)))
+        } else if let Some(item) = self.global_items(db).get(name) {
+            Ok(Some(NamedThing::Item(*item)))
+        } else if let Some(item) = db.module_used_item_map(*self).value.get(name) {
+            Ok(Some(NamedThing::Item(item.1)))
+        } else if let Some(item) = self
+            .submodules(db)
+            .iter()
+            .find(|module| module.name(db) == name)
+        {
+            Ok(Some(NamedThing::Item(Item::Module(*item))))
         } else if self.is_incomplete(db) {
             Err(IncompleteItem::new())
         } else {
@@ -731,6 +741,7 @@ impl ModuleId {
             Ok(None)
         }
     }
+
     pub fn submodules(&self, db: &dyn AnalyzerDb) -> Rc<[ModuleId]> {
         db.module_submodules(*self)
     }

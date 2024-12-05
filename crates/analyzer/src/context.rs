@@ -295,14 +295,42 @@ impl NamedThing {
             }
         }
 
-        match self {
-            Self::Item(item) => item
-                .items(db)
-                .get(segment)
-                .map(|resolved| NamedThing::Item(*resolved)),
-
-            _ => None,
+        if let Self::Item(Item::Type(TypeDef::Struct(struct_))) = self {
+            if let Some(fun) = struct_
+                .all_functions(db)
+                .iter()
+                .find(|fun| fun.name(db) == *segment)
+            {
+                return Some(NamedThing::Item(Item::Function(*fun)));
+            }
         }
+
+        if let Self::Item(Item::Module(module)) = self {
+            if let Some(item) = module.resolve_name(db, &segment).unwrap() {
+                return Some(item);
+            }
+        }
+
+        if let Self::Item(Item::Ingot(ingot)) = self {
+            if let Some(module) = ingot
+                .all_modules(db)
+                .iter()
+                .find(|module| module.name(db) == *segment)
+            {
+                return Some(NamedThing::Item(Item::Module(*module)));
+            }
+
+            if let Some(item) = ingot
+                .root_module(db)
+                .unwrap()
+                .resolve_name(db, &segment)
+                .unwrap()
+            {
+                return Some(item);
+            }
+        }
+
+        None
     }
 }
 

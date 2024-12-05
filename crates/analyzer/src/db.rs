@@ -83,6 +83,8 @@ pub trait AnalyzerDb: SourceDb + Upcast<dyn SourceDb> + UpcastMut<dyn SourceDb> 
     fn module_parse(&self, module: ModuleId) -> Analysis<Rc<ast::Module>>;
     #[salsa::invoke(queries::module::module_is_incomplete)]
     fn module_is_incomplete(&self, module: ModuleId) -> bool;
+    #[salsa::invoke(queries::module::module_named_item)]
+    fn module_named_item(&self, module: ModuleId, name: SmolStr) -> Option<Item>;
     #[salsa::invoke(queries::module::module_all_items)]
     fn module_all_items(&self, module: ModuleId) -> Rc<[Item]>;
     #[salsa::invoke(queries::module::module_all_impls)]
