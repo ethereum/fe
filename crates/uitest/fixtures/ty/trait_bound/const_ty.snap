@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_bound/const_ty.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ const_ty.fe:11:15
+   │
+11 │ fn foo_err(b: Wrapper<i32>) {}
+   │               ^^^^^^^^^^^^ `i32` doesn't implement `Trait<1>`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ const_ty.fe:17:15
+   │
+17 │ fn baz_err(t: Wrapper<Foo<2>>) {}
+   │               ^^^^^^^^^^^^^^^ `Foo<2>` doesn't implement `Trait<1>`
+
+

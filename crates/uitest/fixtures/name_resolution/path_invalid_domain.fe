@@ -1,0 +1,24 @@
+pub const MyC: i32 = 1
+
+pub enum MyE {
+    Var
+}
+
+pub trait MyT {}
+pub trait MyTWithGenerics<T> {}
+
+use MyE::Var
+
+pub enum MyE2<T, U>
+where T: MyE,
+      U: MyTWithGenerics<MyT>
+{
+    Variant(MyC),
+    Variant2(Var)
+}
+
+fn foo<T>(t: T) {}
+
+pub struct S {
+    s: foo::T
+}

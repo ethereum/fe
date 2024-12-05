@@ -1,8 +1,7 @@
 use crate::db::SourceDb;
 pub use camino::{Utf8Component, Utf8Path, Utf8PathBuf};
 pub use fe_library::include_dir;
-use std::ops::Range;
-use std::rc::Rc;
+use std::{ops::Range, rc::Rc};
 
 // NOTE: all file paths are stored as utf8 strings.
 //  Non-utf8 paths (for user code) should be reported

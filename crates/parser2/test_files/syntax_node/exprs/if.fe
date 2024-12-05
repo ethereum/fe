@@ -1,0 +1,33 @@
+if b {} else {}
+
+if b {} else {
+    let x = 1
+    x
+}
+
+if b {
+    let x = 1
+    x
+} else {}
+
+if b {
+    let x = 1
+    x
+}
+
+if b {
+    let x = 1
+    x
+} else {
+    let y = 1
+    y
+}
+
+if match x {
+    Scope::Parent => true
+    Scope::Child => false
+} {
+    return 
+} else {
+    1
+}

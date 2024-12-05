@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/crates/language-server/editors/vscode",
+        "${workspaceFolder}/crates/",
+        "--disable-extensions"
+      ],
+      "name": "Launch Fe VSCode Extension",
+      "outFiles": [
+        "${workspaceFolder}/crates/language-server/editors/vscode/out/**/*.js"
+      ],
+      "preLaunchTask": "compile-vscode-extension",
+      "request": "launch",
+      "type": "extensionHost",
+      "env": {
+        "RUST_BACKTRACE": "full",
+        "NODE_ENV": "development"
+      }
+    }
+  ]
+}

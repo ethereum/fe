@@ -1,0 +1,41 @@
+trait Clamp<Out> {
+  fn clamp_into(self) -> Out
+}
+
+trait Add {
+    fn add(self, _ rhs: Self) -> Self
+}
+
+impl Add for i32 {
+    fn add(self, _ rhs: Self) -> Self {
+        self + rhs
+    }
+}
+
+extern {
+    fn clamp_i64_i32(_ x: i64) -> i32
+}
+
+impl Clamp<i32> for i64 {
+    fn clamp_into(self) -> i32 {
+        clamp_i64_i32(self)
+    }
+}
+
+trait ClampedAdd<Rhs> {
+    fn clamped_add(self, _ rhs: Rhs) -> Self
+}
+
+impl<T, RHS> ClampedAdd<RHS> for T 
+where RHS: Clamp<T>,
+      T: Add
+{
+    fn clamped_add(self, _ rhs: RHS) -> Self {
+        let rhs = rhs.clamp_into()
+        self.add(rhs)
+    }
+}
+
+fn foo(x: i32, y: i64) -> i32 {
+    x.clamped_add(y)
+}

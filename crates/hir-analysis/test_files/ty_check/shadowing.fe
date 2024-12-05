@@ -1,0 +1,22 @@
+fn foo() -> i32 {
+    let x = 1 
+    
+    {
+        let x = false
+        if x {
+            let x = "Hello"
+            x
+        } else {
+            let x = "Hi"
+            x
+        }
+    }
+
+    x
+}
+
+
+fn bar() -> i32 {
+    let bar = 1
+    bar
+}

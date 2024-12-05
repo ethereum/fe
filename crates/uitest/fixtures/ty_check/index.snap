@@ -1,0 +1,21 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/index.fe
+---
+error[8-0000]: type mismatch
+  ┌─ index.fe:4:7
+  │
+4 │     x[false]
+  │       ^^^^^ expected `u256`, but `bool` is given
+
+error[8-0016]: `std::ops::Index` trait is not implemented
+  ┌─ index.fe:6:5
+  │
+6 │     f[1]
+  │     ^^^^
+  │     │
+  │     `[]` cant be applied to `Foo`
+  │     Try implementing `std::ops::Index` for `Foo`
+
+

@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/trait_.fe
+---
+error[1-0001]: expected identifier, `const` or `>`
+  ┌─ trait_.fe:3:13
+  │
+3 │ trait Bar<Y, {}
+  │             ^ expected identifier, `const` or `>`
+
+error[1-0001]: expected `{`, `where` or `:`
+  ┌─ trait_.fe:5:15
+  │
+5 │ trait Bar<T, >
+  │               ^ expected `{`, `where` or `:`
+
+error[1-0001]: unexpected syntax while parsing generic parameter list
+  ┌─ trait_.fe:9:11
+  │
+9 │ trait Bar<<Y, K: Sub>  
+  │           ^ unexpected
+
+

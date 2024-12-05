@@ -1,0 +1,10 @@
+use foo::Bar as FooBar
+
+struct Foo {
+    x: FooBar,
+    y: foo::Bar
+}
+
+mod foo {
+    pub struct Bar {}
+}

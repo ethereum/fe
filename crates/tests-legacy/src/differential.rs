@@ -1,9 +1,11 @@
-//! Tests that check for differences between Solidity and Fe implementations of similar contracts
+//! Tests that check for differences between Solidity and Fe implementations of
+//! similar contracts
 #![cfg(all(feature = "solc-backend", not(target_arch = "wasm32")))]
 use proptest::prelude::*;
 
-use fe_compiler_test_utils::*;
-use fe_compiler_test_utils::{self as test_utils};
+use fe_compiler_test_utils::{
+    *, {self as test_utils},
+};
 
 struct DualHarness {
     fe_harness: ContractHarness,
@@ -19,7 +21,7 @@ struct CaptureResult<'a> {
     input: &'a [ethabi::Token],
 }
 
-impl<'a> CaptureResult<'a> {
+impl CaptureResult<'_> {
     pub fn assert_fe_max_percentage_more_gas(&self, max_percentage: i64) -> &Self {
         let fe_percentage: i64 = (self.fe_used_gas as i64 - self.solidity_used_gas as i64) * 100
             / self.solidity_used_gas as i64;

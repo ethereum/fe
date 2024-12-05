@@ -1,13 +1,15 @@
-use super::expressions::{expr, expr_type};
-use super::types::try_coerce_type;
-use crate::context::{AnalyzerContext, DiagnosticVoucher};
-use crate::display::Displayable;
-use crate::errors::{self, FatalError, TypeCoercionError, TypeError};
-use crate::namespace::types::{FunctionParam, Generic, Type, TypeId};
-use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally};
-use fe_common::{Span, Spanned};
-use fe_parser::ast as fe;
-use fe_parser::node::Node;
+use super::{
+    expressions::{expr, expr_type},
+    types::try_coerce_type,
+};
+use crate::{
+    context::{AnalyzerContext, DiagnosticVoucher},
+    display::Displayable,
+    errors::{self, FatalError, TypeCoercionError, TypeError},
+    namespace::types::{FunctionParam, Generic, Type, TypeId},
+};
+use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally, Span, Spanned};
+use fe_parser::{ast as fe, node::Node};
 use smol_str::SmolStr;
 
 pub trait LabeledParameter {

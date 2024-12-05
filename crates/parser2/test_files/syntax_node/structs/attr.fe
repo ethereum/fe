@@ -1,0 +1,11 @@
+/// DocComment1
+#attr
+// normal comment
+/// DocComment2
+pub struct StructAttr {
+    /// This is `x`
+    x: foo::Bar,
+    /// This is `y`
+    #cfg(target: evm)
+    y: i32
+}

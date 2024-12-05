@@ -1,9 +1,13 @@
 use super::call_args::LabeledParameter;
-use crate::context::{AnalyzerContext, NamedThing};
-use crate::namespace::types::{Type, TypeId};
+use crate::{
+    context::{AnalyzerContext, NamedThing},
+    namespace::types::{Type, TypeId},
+};
 use fe_common::diagnostics::Label;
-use fe_parser::ast;
-use fe_parser::node::{Node, Span};
+use fe_parser::{
+    ast,
+    node::{Node, Span},
+};
 use smallvec::{smallvec, SmallVec};
 
 // NOTE: This is a temporary solution to the only borrowing bug that's possible

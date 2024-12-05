@@ -1,0 +1,23 @@
+pub trait Foo {
+    fn foo<T, U>(self, t: T, u: U) {}
+}
+
+pub trait Bar {}
+pub trait Baz {}
+
+impl Foo for i32 {
+    fn foo<T: Bar + Baz, U: Bar>(self, t: T, u: U) {}
+}
+
+
+pub trait Foo2<T: Bar> {
+    fn foo<U>(self, t: T, u: U)
+}
+
+impl<T: Bar> Foo2<T> for i32 {
+    fn foo<U>(self, t: T, u: U)
+    where
+        T: Bar + Baz,
+        U: Bar
+    {}
+}

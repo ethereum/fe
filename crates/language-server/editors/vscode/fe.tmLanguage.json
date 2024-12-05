@@ -1,0 +1,378 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Fe",
+    "scopeName": "source.fe",
+    "comment": "Included patterns are listed in descending order of matching precedence. In general, each element of the grammar is given one or two names: if necessary, a 'meta' name that describes the element in terms of this grammar file, and a non-'meta', conventional TextMate grammar name, which informs tools such as VS Code on how to color the element. If the conventional TextMate name describes the matched token perfectly, the meta name is obviated.",
+    "patterns": [
+        { "include": "#line-comment" },
+        { "include": "#block-comment" },
+        { "include": "#has-abilities" },
+        { "include": "#type-address" },
+        { "include": "#keyword" },
+        { "include": "#type" },
+        { "include": "#function" },
+        { "include": "#value" },
+        { "include": "#identifier" },
+        { "include": "#punctuation" }
+    ],
+    "repository": {
+        "line-comment": {
+            "comment": "Single-line comments such as `// ...` and `/// ...`.",
+            "patterns": [
+                {
+                    "name": "meta.comment.line.documentation.fe comment.block.documentation.fe",
+                    "comment": "A single-line comment of the form `/// ...`. fe considers this to be a documentation comment. TextMate's naming conventions don't include single-line documentation comments, so this is named 'comment.block.documentation' instead.",
+                    "begin": "(///)",
+                    "beginCaptures": { "1": { "name": "meta.punctuation.slash-slash-slash.fe" } },
+                    "end": "(\u000a)$",
+                    "endCaptures": { "1": { "name": "meta.punctuation.line-feed.fe" } },
+                    "patterns": [{ "include": "#comment-ambiguous-character" }]
+                },
+                {
+                    "name": "comment.line.fe",
+                    "comment": "A single-line comment of the form `// ...`.",
+                    "begin": "(//)",
+                    "beginCaptures": { "1": { "name": "meta.punctuation.slash-slash.fe" } },
+                    "end": "(\u000a)$",
+                    "endCaptures": { "1": { "name": "meta.punctuation.line-feed.fe" } },
+                    "patterns": [{ "include": "#comment-ambiguous-character" }]
+                }
+            ]
+        },
+        "block-comment": {
+            "comment": "Block comments such as `/* ... */` and `/** ... */`. These need special handling because they can be nested, creating a stack of block of comments that are closed by `*/` in LIFO order.",
+            "patterns": [
+                {
+                    "name": "comment.block.documentation.fe",
+                    "comment": "A block comment of the form `/** ... */`. fe considers this to be a documentation comment.",
+                    "begin": "/\\*\\*(?!/)",
+                    "end": "\\*/",
+                    "patterns": [
+                        { "include": "#comment-ambiguous-character" },
+                        { "include": "#block-comment" }
+                    ]
+                },
+                {
+                    "name": "comment.block.fe",
+                    "comment": "A block comment of the form `/* ... */`.",
+                    "begin": "/\\*",
+                    "end": "\\*/",
+                    "patterns": [
+                        { "include": "#comment-ambiguous-character" },
+                        { "include": "#block-comment" }
+                    ]
+                }
+            ]
+        },
+        "comment-ambiguous-character": {
+            "comment": "Characters that may be considered confusing when used in comments.",
+            "patterns": [
+                {
+                    "name": "meta.comment.ambiguous-character.isolated-carriage-return.fe invalid.illegal.fe",
+                    "match": "[\r][^\n]"
+                },
+                {
+                    "name": "meta.comment.ambiguous-character.whitespace.fe invalid.illegal.fe",
+                    "comment": "Unicode code points that represent esoteric white space characters. Most of these come from the 'White_Space' property list from https://www.unicode.org/Public/UCD/latest/ucd/PropList.txt.",
+                    "match": "(?:\u000b|\u000c|\u0085|\u00a0|\u1680|\u180e|[\u2000-\u200d]|\u2028|\u2029|\u202f|\u205f|\u2060|\u3000|\ufeff)"
+                },
+                {
+                    "name": "meta.comment.ambiguous-character.asterisk-lookalike.fe invalid.illegal.fe",
+                    "comment": "Unicode code points that represent characters that appear similar to an asterisk '*', which fe uses to delimit comments.",
+                    "match": "(?:\u066d|\u204e|\u2217|\u26b9|\u2731)"
+                },
+                {
+                    "name": "meta.comment.ambiguous-character.slash-lookalike.fe invalid.illegal.fe",
+                    "comment": "Unicode code points that represent characters that appear similar to a forward slash '/', which fe uses to delimit comments.",
+                    "match": "(?:\u01c0|\u0338|\u2044|\u2215|\u2e4a)"
+                }
+            ]
+        },
+        "has-abilities": {
+            "comment": "`copy` is an operator in fe, as well as a struct ability. To disambiguate, preferentially match abilities that appear after the `has` keyword.",
+            "begin": "\\b(has)\\b",
+            "beginCaptures": { "1": { "name": "keyword.other.fe" } },
+            "end": "(?:(\\{)|(;))",
+            "endCaptures": {
+                "1": { "name": "meta.punctuation.left-brace.fe" },
+                "2": { "name": "meta.punctuation.semicolon.fe" }
+            },
+            "patterns": [
+                { "include": "#line-comment" },
+                { "include": "#block-comment" },
+                { "include": "#ability" }
+            ]
+        },
+        "type-address": {
+            "name": "meta.type-address.fe",
+            "comment": "`address` is both a keyword (`address 0x1 { ... }`) and a type (`a: &address`). Make a simple attempt to disambiguate, by matching the most common usages of the type. This is a best-effort and is easily foiled with block comments such as `a: /**/ address`.",
+            "match": "(\\:)\\s*(&)?(address)\\b",
+            "captures": {
+                "1": { "name": "meta.punctuation.colon.fe" },
+                "2": { "name": "meta.punctuation.ampersand.fe" },
+                "3": { "name": "meta.type.builtin.address.fe entity.name.type.fe" }
+            }
+        },
+        "keyword": {
+            "comment": "Keywords such as 'if' or 'let', operator keywords such as 'fe' or 'copy', contextual keywords such as 'invariant' or 'phantom', or builtin functions such as 'borrow_global_mut'.",
+            "patterns": [
+                {
+                    "name": "keyword.control.fe",
+                    "match": "\\b(?:abort|break|continue|else|if|loop|return|while)\\b"
+                },
+                {
+                    "name": "keyword.operator.fe",
+                    "match": "\\b(?:copy|fe)\\b"
+                },
+                {
+                    "name": "keyword.other.fe",
+                    "match": "\\b(?:acquires|as|friend|has|invariant|Self|spec|use)\\b"
+                },
+                {
+                    "name": "keyword.other.fe.specification",
+                    "match": "\\b(?:aborts_if|aborts_with|apply|assume|axiom|choose|decreases|emits|ensures|except|forall|global|include|internal|local|min|modifies|pragma|requires|schema|succeeds_if|to|update|with|where)\\b"
+                },
+                {
+                    "name": "storage.type.fe",
+                    "match": "\\b(?:address|const|fun|let|module|post|script|struct|phantom)\\b"
+                },
+                {
+                    "name": "storage.modifier.fe",
+                    "match": "\\b(?:mut|native|public)\\b"
+                },
+                {
+                    "name": "support.function.fe",
+                    "match": "\\b(?:assert|borrow_global|borrow_global_mut|exists|freeze|fe_from|fe_to|old)\\b"
+                }
+            ]
+        },
+        "type": {
+            "comment": "A type name, such as `u128` or `&mut 0x2::M::S<u8>`.",
+            "patterns": [
+                {
+                    "name": "meta.type.builtin.number.fe entity.name.type.fe",
+                    "match": "\\bu(?:8|64|128)\\b"
+                },
+                {
+                    "name": "meta.type.builtin.bool.fe entity.name.type.fe",
+                    "match": "\\bbool\\b"
+                },
+                {
+                    "name": "meta.type.builtin.address.fe entity.name.type.fe",
+                    "match": "\\baddress\\b"
+                },
+                {
+                    "name": "meta.type.builtin.signer.fe entity.name.type.fe",
+                    "match": "\\bsigner\\b"
+                },
+                {
+                    "name": "meta.type.builtin.vector.fe",
+                    "begin": "(vector)(<)",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.type.fe" },
+                        "2": { "name": "meta.punctuation.left-angle-bracket.fe" }
+                    },
+                    "end": "(>)",
+                    "endCaptures": {
+                        "1": { "name": "meta.punctuation.right-angle-bracket.fe" }
+                    },
+                    "patterns": [
+                        { "include": "#line-comment" },
+                        { "include": "#block-comment" },
+                        { "include": "#type" },
+                        { "include": "#identifier" }
+                    ]
+                }
+            ]
+        },
+        "function": {
+            "comment": "We assume an identifier that does not begin with a capital letter, eventually followed by an open parenthesis `(`, is a function (no distinction is made here between function call expressions and function declarations). This means that parameterized attributes such as `#[expected_failure(abort_code = 1)]` are classified as functions, but that doesn't seem so bad.",
+            "patterns": [
+                {
+                    "comment": "A function followed by a type list, for example `spec_none<Element>()`.",
+                    "begin": "([_a-z][_a-zA-Z0-9]*)(<)",
+                    "beginCaptures": {
+                        "1": { "name": "meta.function.fe entity.name.function.fe" },
+                        "2": { "name": "meta.punctuation.less.fe" }
+                    },
+                    "end": "(>)(\\()",
+                    "endCaptures": {
+                        "1": { "name": "meta.punctuation.greater.fe" },
+                        "2": { "name": "meta.punctuation.left-parenthesis.fe" }
+                    },
+                    "patterns": [
+                        { "include": "#line-comment" },
+                        { "include": "#block-comment" },
+                        { "include": "#type" },
+                        { "include": "#ability" },
+                        { "include": "#identifier" }
+                    ]
+                },
+                {
+                    "comment": "A function immediately followed by an open parenthesis, for example `len(vec)`.",
+                    "match": "([_a-z][_a-zA-Z0-9]*)(\\()",
+                    "captures": {
+                        "1": { "name": "meta.function.fe entity.name.function.fe" },
+                        "2": { "name": "meta.punctuation.left-parenthesis.fe" }
+                    }
+                }
+            ]
+        },
+        "value": {
+            "name": "meta.value.fe",
+            "patterns": [
+                {
+                    "comment": "An address value with a hexadecimal constant, for example `@0x1bEeF`.",
+                    "name": "meta.value.address.hexadecimal.fe variable.other.fe",
+                    "match": "@0x[a-fA-F0-9]+(u(8|64|128))?"
+                },
+                {
+                    "comment": "An address value with a non-hexadecimal numeric constant, for example `@42u8`.",
+                    "name": "meta.value.address.decimal.fe variable.other.fe",
+                    "match": "@[0-9]+(u(8|64|128))?"
+                },
+                {
+                    "comment": "An address value with an identifier, for example `@addr`.",
+                    "name": "meta.value.address.identifier.fe variable.other.fe",
+                    "match": "@[_a-zA-Z][_a-zA-Z0-9]*"
+                },
+                {
+                    "comment": "A boolean constant: `true` or `false`.",
+                    "name": "meta.value.boolean.fe constant.language.boolean.fe",
+                    "match": "\\b(true|false)\\b"
+                },
+                {
+                    "comment": "A hexadecimal constant number, for example `0x11Eeu64`.",
+                    "name": "meta.value.number.hexadecimal.fe constant.numeric.fe",
+                    "match": "\\b0x[a-fA-F0-9]+(u(8|64|128))?\\b"
+                },
+                {
+                    "comment": "A non-hexadecimal constant number, for example `42u128`.",
+                    "name": "meta.value.number.decimal.fe constant.numeric.fe",
+                    "match": "\\b[0-9]+(u(8|64|128))?\\b"
+                },
+                {
+                    "comment": "A byte string, for example b\"hel\tlo\".",
+                    "name": "meta.value.bytestring.fe string.quoted.double.fe",
+                    "begin": "(b\")",
+                    "beginCaptures": { "1": { "name": "meta.value.bytestring.prefix.fe" } },
+                    "end": "(\")",
+                    "endCaptures": { "1": { "name": "meta.value.bytestring.suffix.fe" } },
+                    "patterns": [{
+                        "comment": "An escaped character within a string.",
+                        "name": "constant.character.escape.fe",
+                        "match": "\\\\."
+                    }]
+                },
+                {
+                    "comment": "A hexadecimal string, for example x\"01dF\".",
+                    "name": "meta.value.hexadecimal-string.fe string.quoted.double.fe",
+                    "begin": "(x\")",
+                    "beginCaptures": { "1": { "name": "meta.value.hexadecimal-string.prefix.fe" } },
+                    "end": "(\")",
+                    "endCaptures": { "1": { "name": "meta.value.hexadecimal-string.suffix.fe" } },
+                    "patterns": [{
+                        "comment": "Invalid hexadecimal character within a string.",
+                        "name": "meta.value.hexadecimal-string.invalid.fe invalid.illegal.fe",
+                        "match": "[^a-fA-F0-9]"
+                    }]
+                }
+            ]
+        },
+        "identifier": {
+            "patterns": [
+                {
+                    "name": "meta.identifier.all-capitals.fe constant.other.fe",
+                    "comment": "We assume any identifier composed of two or more capital letters is a constant.",
+                    "match": "\\b[A-Z][_A-Z0-9]+\\b"
+                },
+                {
+                    "name": "meta.identifier.camel-case-type-list.fe",
+                    "comment": "We assume any identifier beginning with a capital letter is a type. This pattern matches such a type followed by angle brackets `<...>`.",
+                    "begin": "\\b([A-Z][_a-zA-Z0-9]*)(<)",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.type.fe" },
+                        "2": { "name": "meta.punctuation.less.fe" }
+                    },
+                    "end": "(>)",
+                    "endCaptures": { "1": { "name": "meta.punctuation.greater.fe" } },
+                    "patterns": [
+                        { "include": "#type" },
+                        { "include": "#ability" },
+                        { "include": "#identifier" }
+                    ]
+                },
+                {
+                    "name": "meta.identifier.camel-case.fe entity.name.type.fe",
+                    "comment": "We assume any identifier beginning with a capital letter is a type.",
+                    "match": "\\b[A-Z][_a-zA-Z0-9]*\\b"
+                },
+                {
+                    "name": "meta.identifier.type-list.fe",
+                    "comment": "This pattern matches an identifier followed by angle brackets `<...>`.",
+                    "begin": "\\b([_a-zA-Z][_a-zA-Z0-9]*)(<)",
+                    "beginCaptures": {
+                        "1": { "name": "variable.other.fe" },
+                        "2": { "name": "meta.punctuation.less.fe" }
+                    },
+                    "end": "(>)",
+                    "endCaptures": { "1": { "name": "meta.punctuation.greater.fe" } },
+                    "patterns": [
+                        { "include": "#type" },
+                        { "include": "#ability" },
+                        { "include": "#identifier" }
+                    ]
+                },
+                {
+                    "name": "meta.identifier.fe variable.other.fe",
+                    "match": "\\b[_a-zA-Z][_a-zA-Z0-9]*\\b"
+                }
+            ]
+        },
+        "ability": {
+            "name": "meta.ability.fe entity.name.type.fe",
+            "comment": "This pattern matches any of the built-in type abilities.",
+            "match": "\\b(copy|drop|key|store)\\b"
+        },
+        "punctuation": {
+            "comment": "Patterns used to capture punctuators such as `{` or `::` as individual tokens.",
+            "patterns": [
+                { "name": "meta.punctuation.exclaim-equal.fe", "match": "!=" },
+                { "name": "meta.punctuation.exclaim.fe", "match": "!" },
+                { "name": "meta.punctuation.percent.fe", "match": "%" },
+                { "name": "meta.punctuation.ampersand-ampersand.fe", "match": "&&" },
+                { "name": "meta.punctuation.ampersand.fe", "match": "&" },
+                { "name": "meta.punctuation.left-parenthesis.fe", "match": "\\(" },
+                { "name": "meta.punctuation.right-parenthesis.fe", "match": "\\)" },
+                { "name": "meta.punctuation.hash-left-bracket.fe", "match": "#\\[" },
+                { "name": "meta.punctuation.left-bracket.fe", "match": "\\[" },
+                { "name": "meta.punctuation.right-bracket.fe", "match": "\\]" },
+                { "name": "meta.punctuation.asterisk.fe", "match": "\\*" },
+                { "name": "meta.punctuation.plus.fe", "match": "\\+" },
+                { "name": "meta.punctuation.comma.fe", "match": "," },
+                { "name": "meta.punctuation.minus.fe", "match": "-" },
+                { "name": "meta.punctuation.period-period.fe", "match": "\\.\\." },
+                { "name": "meta.punctuation.period.fe", "match": "\\." },
+                { "name": "meta.punctuation.slash.fe", "match": "/" },
+                { "name": "meta.punctuation.colon-colon.fe", "match": "::" },
+                { "name": "meta.punctuation.colon.fe", "match": ":" },
+                { "name": "meta.punctuation.semicolon.fe", "match": ";" },
+                { "name": "meta.punctuation.less-equal-equal-greater.fe", "match": "<==>" },
+                { "name": "meta.punctuation.equal-equal-greater.fe", "match": "==>" },
+                { "name": "meta.punctuation.equal-equal.fe", "match": "==" },
+                { "name": "meta.punctuation.less-less.fe", "match": "<<" },
+                { "name": "meta.punctuation.less-equal.fe", "match": "<=" },
+                { "name": "meta.punctuation.greater-greater.fe", "match": ">>" },
+                { "name": "meta.punctuation.greater-equal.fe", "match": ">=" },
+                { "name": "meta.punctuation.equal.fe", "match": "=" },
+                { "name": "meta.punctuation.less.fe", "match": "<" },
+                { "name": "meta.punctuation.greater.fe", "match": ">" },
+                { "name": "meta.punctuation.caret.fe", "match": "\\^" },
+                { "name": "meta.punctuation.pipe-pipe.fe", "match": "\\|\\|" },
+                { "name": "meta.punctuation.pipe.fe", "match": "\\|" },
+                { "name": "meta.punctuation.left-brace.fe", "match": "\\{" },
+                { "name": "meta.punctuation.right-brace.fe", "match": "\\}" }
+            ]
+        }
+    }
+}

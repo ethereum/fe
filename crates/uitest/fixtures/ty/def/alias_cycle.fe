@@ -1,0 +1,5 @@
+type T1 = T1
+
+type T2 = T3
+type T3 = T4
+type T4 = T2

@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/path_shadow.fe
+---
+error[2-0007]: expected trait item here
+  ┌─ path_shadow.fe:3:14
+  │
+3 │     where U: T
+  │              ^ expected trait here, but found type `T`
+
+

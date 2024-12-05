@@ -71,7 +71,7 @@ docker-wasm-test:
 		--volume "$(shell pwd):/mnt" \
 		--workdir '/mnt' \
 		davesque/rust-wasm \
-		wasm-pack test --node -- --workspace
+		wasm-pack test --node -- --workspace --exclude fe-language-server
 
 .PHONY: coverage
 coverage:

@@ -1,0 +1,19 @@
+fn foo() -> i32 {
+    let x = if "a" {
+        true
+    } else {
+        false
+    }
+
+    let x = if true {
+        "FOO"
+    } else {
+        false
+    }
+
+    if true {
+        1
+    } else {
+        false
+    }
+}

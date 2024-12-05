@@ -1,0 +1,14 @@
+pub enum Foo {
+    Variant(i32, u32),
+    Variant2,
+}
+
+fn foo() {
+    let Foo::Variant(x, y, z)
+    let Foo::Variant(.., x, y, z)
+    let Foo::Variant(x, .., y, z)
+    let Foo::Variant(x, y, z, ..)
+    
+    let Foo::Variant
+    let Foo::Variant2(x, y)
+}

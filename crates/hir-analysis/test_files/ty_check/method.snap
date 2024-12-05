@@ -1,0 +1,372 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/method.fe
+---
+note: 
+  ┌─ test_file.fe:7:20
+  │  
+7 │   pub fn todo() -> ! {
+  │ ╭────────────────────^
+8 │ │     evm::abort()
+9 │ │ }
+  │ ╰─^ !
+
+note: 
+  ┌─ test_file.fe:8:5
+  │
+8 │     evm::abort()
+  │     ^^^^^^^^^^ fn abort
+
+note: 
+  ┌─ test_file.fe:8:5
+  │
+8 │     evm::abort()
+  │     ^^^^^^^^^^^^ !
+
+note: 
+   ┌─ test_file.fe:17:54
+   │  
+17 │       pub fn and<U>(self, rhs: Option<U>) -> Option<U> {
+   │ ╭──────────────────────────────────────────────────────^
+18 │ │         match self {
+19 │ │             Self::Some(t) => rhs
+20 │ │             Self::None => Self::None
+21 │ │         }
+22 │ │     }
+   │ ╰─────^ Option<U>
+
+note: 
+   ┌─ test_file.fe:18:9
+   │  
+18 │ ╭         match self {
+19 │ │             Self::Some(t) => rhs
+20 │ │             Self::None => Self::None
+21 │ │         }
+   │ ╰─────────^ Option<U>
+
+note: 
+   ┌─ test_file.fe:18:15
+   │
+18 │         match self {
+   │               ^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:19:13
+   │
+19 │             Self::Some(t) => rhs
+   │             ^^^^^^^^^^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:19:24
+   │
+19 │             Self::Some(t) => rhs
+   │                        ^ T
+
+note: 
+   ┌─ test_file.fe:19:30
+   │
+19 │             Self::Some(t) => rhs
+   │                              ^^^ Option<U>
+
+note: 
+   ┌─ test_file.fe:20:13
+   │
+20 │             Self::None => Self::None
+   │             ^^^^^^^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:20:27
+   │
+20 │             Self::None => Self::None
+   │                           ^^^^^^^^^^ Option<U>
+
+note: 
+   ┌─ test_file.fe:24:53
+   │  
+24 │       pub fn get_or_insert(mut self, inner t: T) -> T {
+   │ ╭─────────────────────────────────────────────────────^
+25 │ │         match self {
+26 │ │             Self::Some(t) => t
+27 │ │             Self::None => {
+   · │
+31 │ │         }
+32 │ │     }
+   │ ╰─────^ T
+
+note: 
+   ┌─ test_file.fe:25:9
+   │  
+25 │ ╭         match self {
+26 │ │             Self::Some(t) => t
+27 │ │             Self::None => {
+28 │ │                 self = Self::Some(t)
+29 │ │                 t
+30 │ │             }
+31 │ │         }
+   │ ╰─────────^ T
+
+note: 
+   ┌─ test_file.fe:25:15
+   │
+25 │         match self {
+   │               ^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:26:13
+   │
+26 │             Self::Some(t) => t
+   │             ^^^^^^^^^^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:26:24
+   │
+26 │             Self::Some(t) => t
+   │                        ^ T
+
+note: 
+   ┌─ test_file.fe:26:30
+   │
+26 │             Self::Some(t) => t
+   │                              ^ T
+
+note: 
+   ┌─ test_file.fe:27:13
+   │
+27 │             Self::None => {
+   │             ^^^^^^^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:27:27
+   │  
+27 │               Self::None => {
+   │ ╭───────────────────────────^
+28 │ │                 self = Self::Some(t)
+29 │ │                 t
+30 │ │             }
+   │ ╰─────────────^ T
+
+note: 
+   ┌─ test_file.fe:28:17
+   │
+28 │                 self = Self::Some(t)
+   │                 ^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:28:17
+   │
+28 │                 self = Self::Some(t)
+   │                 ^^^^^^^^^^^^^^^^^^^^ ()
+
+note: 
+   ┌─ test_file.fe:28:24
+   │
+28 │                 self = Self::Some(t)
+   │                        ^^^^^^^^^^ fn Some<T>
+
+note: 
+   ┌─ test_file.fe:28:24
+   │
+28 │                 self = Self::Some(t)
+   │                        ^^^^^^^^^^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:28:35
+   │
+28 │                 self = Self::Some(t)
+   │                                   ^ T
+
+note: 
+   ┌─ test_file.fe:29:17
+   │
+29 │                 t
+   │                 ^ T
+
+note: 
+   ┌─ test_file.fe:36:42
+   │  
+36 │       pub fn unwrap<T>(self: Self<T>) -> T {
+   │ ╭──────────────────────────────────────────^
+37 │ │         match self {
+38 │ │             Self::None => evm::abort()
+39 │ │             Self::Some(t) => t
+40 │ │         }
+41 │ │     }
+   │ ╰─────^ T
+
+note: 
+   ┌─ test_file.fe:37:9
+   │  
+37 │ ╭         match self {
+38 │ │             Self::None => evm::abort()
+39 │ │             Self::Some(t) => t
+40 │ │         }
+   │ ╰─────────^ T
+
+note: 
+   ┌─ test_file.fe:37:15
+   │
+37 │         match self {
+   │               ^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:38:13
+   │
+38 │             Self::None => evm::abort()
+   │             ^^^^^^^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:38:27
+   │
+38 │             Self::None => evm::abort()
+   │                           ^^^^^^^^^^ fn abort
+
+note: 
+   ┌─ test_file.fe:38:27
+   │
+38 │             Self::None => evm::abort()
+   │                           ^^^^^^^^^^^^ !
+
+note: 
+   ┌─ test_file.fe:39:13
+   │
+39 │             Self::Some(t) => t
+   │             ^^^^^^^^^^^^^ Option<T>
+
+note: 
+   ┌─ test_file.fe:39:24
+   │
+39 │             Self::Some(t) => t
+   │                        ^ T
+
+note: 
+   ┌─ test_file.fe:39:30
+   │
+39 │             Self::Some(t) => t
+   │                              ^ T
+
+note: 
+   ┌─ test_file.fe:44:20
+   │  
+44 │   fn get_t<T>() -> T {
+   │ ╭────────────────────^
+45 │ │     todo()
+46 │ │ }
+   │ ╰─^ T
+
+note: 
+   ┌─ test_file.fe:45:5
+   │
+45 │     todo()
+   │     ^^^^ fn todo
+
+note: 
+   ┌─ test_file.fe:45:5
+   │
+45 │     todo()
+   │     ^^^^^^ T
+
+note: 
+   ┌─ test_file.fe:48:26
+   │  
+48 │   fn foo() -> Option<bool> {
+   │ ╭──────────────────────────^
+49 │ │     let mut x: Option<i32> = Option::Some(1)
+50 │ │     let func_obj = get_t
+51 │ │     x.get_or_insert(inner: func_obj())
+52 │ │     
+53 │ │     x.and(rhs: Option::Some(false))
+54 │ │ }
+   │ ╰─^ Option<bool>
+
+note: 
+   ┌─ test_file.fe:49:9
+   │
+49 │     let mut x: Option<i32> = Option::Some(1)
+   │         ^^^^^ Option<i32>
+
+note: 
+   ┌─ test_file.fe:49:30
+   │
+49 │     let mut x: Option<i32> = Option::Some(1)
+   │                              ^^^^^^^^^^^^ fn Some<i32>
+
+note: 
+   ┌─ test_file.fe:49:30
+   │
+49 │     let mut x: Option<i32> = Option::Some(1)
+   │                              ^^^^^^^^^^^^^^^ Option<i32>
+
+note: 
+   ┌─ test_file.fe:49:43
+   │
+49 │     let mut x: Option<i32> = Option::Some(1)
+   │                                           ^ i32
+
+note: 
+   ┌─ test_file.fe:50:9
+   │
+50 │     let func_obj = get_t
+   │         ^^^^^^^^ fn get_t<i32>
+
+note: 
+   ┌─ test_file.fe:50:20
+   │
+50 │     let func_obj = get_t
+   │                    ^^^^^ fn get_t<i32>
+
+note: 
+   ┌─ test_file.fe:51:5
+   │
+51 │     x.get_or_insert(inner: func_obj())
+   │     ^ Option<i32>
+
+note: 
+   ┌─ test_file.fe:51:5
+   │
+51 │     x.get_or_insert(inner: func_obj())
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ i32
+
+note: 
+   ┌─ test_file.fe:51:28
+   │
+51 │     x.get_or_insert(inner: func_obj())
+   │                            ^^^^^^^^ fn get_t<i32>
+
+note: 
+   ┌─ test_file.fe:51:28
+   │
+51 │     x.get_or_insert(inner: func_obj())
+   │                            ^^^^^^^^^^ i32
+
+note: 
+   ┌─ test_file.fe:53:5
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │     ^ Option<i32>
+
+note: 
+   ┌─ test_file.fe:53:5
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Option<bool>
+
+note: 
+   ┌─ test_file.fe:53:16
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │                ^^^^^^^^^^^^ fn Some<bool>
+
+note: 
+   ┌─ test_file.fe:53:16
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │                ^^^^^^^^^^^^^^^^^^^ Option<bool>
+
+note: 
+   ┌─ test_file.fe:53:29
+   │
+53 │     x.and(rhs: Option::Some(false))
+   │                             ^^^^^ bool
+
+

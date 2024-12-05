@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use std::panic;
 
 const BUG_REPORT_URL: &str = "https://github.com/ethereum/fe/issues/new";
-type PanicCallback = dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static;
+type PanicCallback = dyn Fn(&panic::PanicHookInfo<'_>) + Sync + Send + 'static;
 static DEFAULT_PANIC_HOOK: Lazy<Box<PanicCallback>> = Lazy::new(|| {
     let hook = panic::take_hook();
     panic::set_hook(Box::new(report_ice));
@@ -12,7 +12,7 @@ static DEFAULT_PANIC_HOOK: Lazy<Box<PanicCallback>> = Lazy::new(|| {
 pub fn install_panic_hook() {
     Lazy::force(&DEFAULT_PANIC_HOOK);
 }
-fn report_ice(info: &panic::PanicInfo) {
+fn report_ice(info: &panic::PanicHookInfo) {
     (*DEFAULT_PANIC_HOOK)(info);
 
     eprintln!();

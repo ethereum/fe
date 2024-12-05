@@ -1,9 +1,13 @@
-use super::functions::parse_fn_def;
-use super::types::{parse_field, parse_opt_qualifier};
+use super::{
+    functions::parse_fn_def,
+    types::{parse_field, parse_opt_qualifier},
+};
 
-use crate::ast::{Contract, ContractStmt};
-use crate::node::{Node, Span};
-use crate::{ParseFailed, ParseResult, Parser, TokenKind};
+use crate::{
+    ast::{Contract, ContractStmt},
+    node::{Node, Span},
+    ParseFailed, ParseResult, Parser, TokenKind,
+};
 
 // Rule: all "statement" level parse functions consume their trailing
 // newline(s), either directly or via a function they call.

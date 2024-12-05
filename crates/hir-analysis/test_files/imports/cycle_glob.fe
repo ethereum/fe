@@ -1,0 +1,17 @@
+pub mod mod1 {
+    // `Foo`, `Bar`, and `BarImported` are visible in this scope.
+    pub use super::mod2::Bar as BarImported
+    pub use super::mod2::*
+
+    pub struct Foo {}
+    
+}
+
+pub mod mod2 {
+    // `Foo`, `Bar`, `BarImported`, and `BarPriv` are visible in this scope.
+    pub use super::mod1::*
+
+    pub struct Bar {}
+    
+    struct BarPriv {}
+}

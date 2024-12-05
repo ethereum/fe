@@ -1,0 +1,17 @@
+trait From<T> {
+    fn from(_ t: T) -> Self 
+}
+
+pub fn mk<T>(_ x: i32) -> T
+where T: From<i32>
+{
+    T::from(x)
+}
+
+fn foo<T>() -> T {
+    mk(1)
+}
+
+fn bar() -> bool {
+    mk(1)
+}

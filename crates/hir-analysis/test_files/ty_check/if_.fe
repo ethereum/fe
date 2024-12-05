@@ -1,0 +1,44 @@
+fn lit_if() -> i32 {
+    if true {
+        1
+    } else {
+        2
+    }
+}
+
+fn string_if() -> String<5> {
+    if true {
+        "1"
+    } else {
+        "Foo"
+    }
+}
+
+// If expression should be typed as `()` when else block doesn't exist.
+fn no_else() -> () {
+    let x = if true {
+        false
+    }
+}
+
+fn else_if(b1: bool, b2: bool) -> i32 {
+    if b1 {
+        1
+    } else if b2 {
+        2
+    } else {
+        3
+    }
+}
+
+fn nested(b1: bool, b2: bool) -> String<10> {
+    if b1 {
+        "Foo"
+    } else {
+        if b2 {
+            "Bar"
+        } else {
+            "Baz"
+        }
+    }
+}

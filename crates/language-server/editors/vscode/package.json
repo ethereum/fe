@@ -1,0 +1,88 @@
+{
+  "name": "fe-analyzer",
+  "displayName": "fe-analyzer",
+  "description": "Support for the Fe language.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.78.0"
+  },
+  "license": "MIT",
+  "author": "Fe Language Team",
+  "publisher": "fe-language-team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/your-repo-name.git"
+  },
+  "categories": [
+    "Other"
+  ],
+  "files": [
+    "./out/",
+    "./server/binaries/**"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:fe"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "fe-analyzer.helloWorld",
+        "title": "Hello World"
+      }
+    ],
+    "languages": [
+      {
+        "id": "fe",
+        "extensions": [
+          ".fe"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "fe",
+        "scopeName": "source.fe",
+        "path": "./fe.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Fe Language Server Configuration",
+      "properties": {
+        "fe-analyzer.binaryPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the fe-language-server binary. Leave empty to use the default bundled binary."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "copy-builds": "arch=$(basename $(dirname $(dirname $(find ../../../../target/*/release/ -name 'fe-language-server' -type f)))) && rsync -av $(find ../../../../target/*/release/ -name 'fe-language-server' -type f) ./server/$arch/",
+    "vscode:prepublish": "npm run copy-builds && npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.78.0",
+    "@typescript-eslint/eslint-plugin": "^5.59.1",
+    "@typescript-eslint/parser": "^5.59.1",
+    "@vscode/test-electron": "^2.3.0",
+    "eslint": "^8.39.0",
+    "glob": "^8.1.0",
+    "mocha": "^10.2.0",
+    "typescript": "^5.0.4"
+  },
+  "dependencies": {
+    "net": "^1.0.2",
+    "vscode-languageclient": "^8.1.0"
+  }
+}

@@ -1,0 +1,187 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: node
+input_file: crates/parser2/test_files/syntax_node/pats/path_tuple.fe
+---
+Root@0..203
+  PathTuplePat@0..7
+    Path@0..5
+      PathSegment@0..5
+        Ident@0..5 "Empty"
+    TuplePatElemList@5..7
+      LParen@5..6 "("
+      RParen@6..7 ")"
+  Newline@7..9 "\n\n"
+  PathTuplePat@9..24
+    Path@9..22
+      PathSegment@9..15
+        Ident@9..15 "MyEnum"
+      Colon2@15..17 "::"
+      PathSegment@17..22
+        Ident@17..22 "Empty"
+    TuplePatElemList@22..24
+      LParen@22..23 "("
+      RParen@23..24 ")"
+  Newline@24..26 "\n\n"
+  PathTuplePat@26..67
+    Path@26..37
+      PathSegment@26..32
+        Ident@26..32 "MyEnum"
+      Colon2@32..34 "::"
+      PathSegment@34..37
+        Ident@34..37 "Foo"
+    TuplePatElemList@37..67
+      LParen@37..38 "("
+      PathPat@38..44
+        Path@38..44
+          PathSegment@38..39
+            Ident@38..39 "X"
+          Colon2@39..41 "::"
+          PathSegment@41..44
+            Ident@41..44 "Foo"
+      Comma@44..45 ","
+      WhiteSpace@45..46 " "
+      PathTuplePat@46..58
+        Path@46..52
+          PathSegment@46..47
+            Ident@46..47 "Z"
+          Colon2@47..49 "::"
+          PathSegment@49..52
+            Ident@49..52 "Bar"
+        TuplePatElemList@52..58
+          LParen@52..53 "("
+          LitPat@53..54
+            Lit@53..54
+              Int@53..54 "1"
+          Comma@54..55 ","
+          WhiteSpace@55..56 " "
+          LitPat@56..57
+            Lit@56..57
+              Int@56..57 "2"
+          RParen@57..58 ")"
+      Comma@58..59 ","
+      WhiteSpace@59..61 "  "
+      WildCardPat@61..62
+        Underscore@61..62 "_"
+      Comma@62..63 ","
+      WhiteSpace@63..64 " "
+      RestPat@64..66
+        Dot2@64..66 ".."
+      RParen@66..67 ")"
+  Newline@67..69 "\n\n"
+  PathTuplePat@69..133
+    Path@69..81
+      PathSegment@69..75
+        Ident@69..75 "MyEnum"
+      Colon2@75..77 "::"
+      PathSegment@77..81
+        Ident@77..81 "Foo2"
+    TuplePatElemList@81..133
+      LParen@81..82 "("
+      Newline@82..83 "\n"
+      WhiteSpace@83..87 "    "
+      PathPat@87..93
+        Path@87..93
+          PathSegment@87..88
+            Ident@87..88 "X"
+          Colon2@88..90 "::"
+          PathSegment@90..93
+            Ident@90..93 "Foo"
+      Comma@93..94 ","
+      WhiteSpace@94..95 " "
+      Newline@95..96 "\n"
+      WhiteSpace@96..100 "    "
+      PathTuplePat@100..112
+        Path@100..106
+          PathSegment@100..101
+            Ident@100..101 "Z"
+          Colon2@101..103 "::"
+          PathSegment@103..106
+            Ident@103..106 "Bar"
+        TuplePatElemList@106..112
+          LParen@106..107 "("
+          LitPat@107..108
+            Lit@107..108
+              Int@107..108 "1"
+          Comma@108..109 ","
+          WhiteSpace@109..110 " "
+          LitPat@110..111
+            Lit@110..111
+              Int@110..111 "2"
+          RParen@111..112 ")"
+      Comma@112..113 ","
+      WhiteSpace@113..114 " "
+      Newline@114..115 "\n"
+      WhiteSpace@115..120 "     "
+      WildCardPat@120..121
+        Underscore@120..121 "_"
+      Comma@121..122 ","
+      WhiteSpace@122..123 " "
+      Newline@123..124 "\n"
+      WhiteSpace@124..129 "     "
+      RestPat@129..131
+        Dot2@129..131 ".."
+      Newline@131..132 "\n"
+      RParen@132..133 ")"
+  Newline@133..135 "\n\n"
+  PathTuplePat@135..150
+    Path@135..147
+      PathSegment@135..141
+        Ident@135..141 "MyEnum"
+      Colon2@141..143 "::"
+      PathSegment@143..147
+        Ident@143..147 "Bind"
+    TuplePatElemList@147..150
+      LParen@147..148 "("
+      PathPat@148..149
+        Path@148..149
+          PathSegment@148..149
+            Ident@148..149 "x"
+      RParen@149..150 ")"
+  Newline@150..152 "\n\n"
+  PathTuplePat@152..203
+    Path@152..167
+      PathSegment@152..158
+        Ident@152..158 "MyEnum"
+      Colon2@158..160 "::"
+      PathSegment@160..167
+        Ident@160..167 "OrTuple"
+    TuplePatElemList@167..203
+      LParen@167..168 "("
+      OrPat@168..202
+        PathPat@168..176
+          Path@168..176
+            PathSegment@168..171
+              Ident@168..171 "Int"
+            Colon2@171..173 "::"
+            PathSegment@173..176
+              Ident@173..176 "I32"
+        WhiteSpace@176..177 " "
+        Pipe@177..178 "|"
+        WhiteSpace@178..179 " "
+        OrPat@179..202
+          PathPat@179..187
+            Path@179..187
+              PathSegment@179..182
+                Ident@179..182 "Int"
+              Colon2@182..184 "::"
+              PathSegment@184..187
+                Ident@184..187 "I64"
+          WhiteSpace@187..188 " "
+          Pipe@188..189 "|"
+          WhiteSpace@189..190 " "
+          PathTuplePat@190..202
+            Path@190..198
+              PathSegment@190..193
+                Ident@190..193 "Int"
+              Colon2@193..195 "::"
+              PathSegment@195..198
+                Ident@195..198 "Any"
+            TuplePatElemList@198..202
+              LParen@198..199 "("
+              LitPat@199..201
+                Lit@199..201
+                  Int@199..201 "10"
+              RParen@201..202 ")"
+      RParen@202..203 ")"
+
