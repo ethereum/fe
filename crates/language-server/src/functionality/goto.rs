@@ -142,17 +142,23 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
         db.as_hir_analysis_db(),
         segments,
         cursor_segment.scope,
-    );
+    )?;
 
     let scopes = match resolved_segments {
         EarlyResolvedPath::Full(bucket) => {
             if is_intermediate_segment {
                 match bucket.pick(NameDomain::TYPE) {
                     Ok(res) => res.scope().iter().cloned().collect::<Vec<_>>(),
-                    _ => bucket.iter().filter_map(NameRes::scope).collect::<Vec<_>>(),
+                    _ => bucket
+                        .iter_ok()
+                        .filter_map(NameRes::scope)
+                        .collect::<Vec<_>>(),
                 }
             } else {
-                bucket.iter().filter_map(NameRes::scope).collect::<Vec<_>>()
+                bucket
+                    .iter_ok()
+                    .filter_map(NameRes::scope)
+                    .collect::<Vec<_>>()
             }
         }
         EarlyResolvedPath::Partial {
@@ -392,11 +398,11 @@ mod tests {
 
             if let Some(GotoEnclosingPathSegment { path, scope, .. }) = enclosing_path_segment {
                 let resolved_enclosing_path =
-                    hir_analysis::name_resolution::resolve_path_early(db, path, scope);
+                    hir_analysis::name_resolution::resolve_path_early(db, path, scope).unwrap();
 
                 let res = match resolved_enclosing_path {
                     EarlyResolvedPath::Full(bucket) => bucket
-                        .iter()
+                        .iter_ok()
                         .map(|x| x.pretty_path(db).unwrap())
                         .collect::<Vec<_>>()
                         .join("\n"),
