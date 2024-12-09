@@ -1,6 +1,7 @@
 use either::Either;
 use hir::hir_def::{
-    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, IdentId, Partial, PathId, UnOp, VariantKind,
+    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, GenericArgListId, IdentId, Partial, PathId, UnOp,
+    VariantKind,
 };
 
 use super::{
@@ -251,7 +252,7 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_call(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
-        let Expr::Call(callee, generic_args, args) = expr_data else {
+        let Expr::Call(callee, args) = expr_data else {
             unreachable!()
         };
         let callee_ty = self.fresh_ty();
@@ -272,9 +273,23 @@ impl<'db> TyChecker<'db> {
 
         let call_span = expr.lazy_span(self.body()).into_call_expr();
 
-        if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
-            return ExprProp::invalid(self.db);
-        }
+        if let Partial::Present(Expr::Path(Partial::Present(path))) =
+            callee.data(self.db.as_hir_db(), self.body())
+        {
+            let idx = path.len(self.db.as_hir_db()) - 1;
+
+            if !callable.unify_generic_args(
+                self,
+                path.generic_args(self.db.as_hir_db()),
+                expr.lazy_span(self.body())
+                    .into_path_expr()
+                    .path()
+                    .segment(idx)
+                    .generic_args(),
+            ) {
+                return ExprProp::invalid(self.db);
+            }
+        };
 
         callable.check_args(self, args, call_span.args_moved(), None);
 
@@ -948,7 +963,11 @@ pub(crate) trait TraitOps {
     fn trait_path<'db>(&self, db: &'db dyn HirAnalysisDb) -> PathId<'db> {
         let hir_db = db.as_hir_db();
         let path = std_ops_path(db);
-        path.push(hir_db, self.trait_name(db))
+        path.push(
+            hir_db,
+            Partial::Present(self.trait_name(db)),
+            GenericArgListId::none(hir_db),
+        )
     }
 
     fn trait_name<'db>(&self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
@@ -1064,11 +1083,8 @@ impl TraitOps for AugAssignOp {
 }
 
 fn std_ops_path(db: &dyn HirAnalysisDb) -> PathId {
-    let hir_db = db.as_hir_db();
-    let path_data: Vec<_> = ["std", "ops"]
-        .into_iter()
-        .map(|s| Partial::Present(IdentId::new(hir_db, s.to_string())))
-        .collect();
-
-    PathId::new(hir_db, path_data)
+    let db = db.as_hir_db();
+    let std_ = IdentId::new(db, "std".into());
+    let ops_ = IdentId::new(db, "ops".into());
+    PathId::from_ident(db, std_).push_ident(db, ops_)
 }

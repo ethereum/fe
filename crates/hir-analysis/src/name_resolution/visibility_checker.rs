@@ -2,8 +2,7 @@ use hir::hir_def::{scope_graph::ScopeId, ItemKind, Use};
 
 use crate::HirAnalysisDb;
 
-/// Return `true` if the given `scope` is visible from the `scope`.
-/// name is defined.
+/// Return `true` if the given `scope` is visible from `from_scope`.
 pub(crate) fn is_scope_visible_from(
     db: &dyn HirAnalysisDb,
     scope: ScopeId,

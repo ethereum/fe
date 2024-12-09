@@ -59,7 +59,6 @@ define_lazy_span_node!
     ast::PathType,
     @node {
         (path, path, LazyPathSpan),
-        (generic_args, generic_args, LazyGenericArgListSpan),
     }
 );
 

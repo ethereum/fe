@@ -47,9 +47,7 @@ impl<'db> RecordPatField<'db> {
         }
 
         match self.pat.data(db, body) {
-            Partial::Present(Pat::Path(Partial::Present(path), _)) if path.is_ident(db) => {
-                path.last_segment(db).to_opt()
-            }
+            Partial::Present(Pat::Path(Partial::Present(path), _)) => path.as_ident(db),
             _ => None,
         }
     }

@@ -39,30 +39,30 @@ Root@0..40
       RParen@15..16 ")"
   Newline@16..18 "\n\n"
   CallExpr@18..39
-    PathExpr@18..21
-      Path@18..21
-        PathSegment@18..21
+    PathExpr@18..33
+      Path@18..33
+        PathSegment@18..33
           Ident@18..21 "foo"
-    GenericArgList@21..33
-      Lt@21..22 "<"
-      TypeGenericArg@22..25
-        PathType@22..25
-          Path@22..25
-            PathSegment@22..25
-              Ident@22..25 "i32"
-      Comma@25..26 ","
-      WhiteSpace@26..27 " "
-      TypeGenericArg@27..28
-        PathType@27..28
-          Path@27..28
-            PathSegment@27..28
-              Ident@27..28 "T"
-      WhiteSpace@28..29 " "
-      Error@29..30
-        Ident@29..30 "E"
-      Comma@30..31 ","
-      WhiteSpace@31..32 " "
-      Gt@32..33 ">"
+          GenericArgList@21..33
+            Lt@21..22 "<"
+            TypeGenericArg@22..25
+              PathType@22..25
+                Path@22..25
+                  PathSegment@22..25
+                    Ident@22..25 "i32"
+            Comma@25..26 ","
+            WhiteSpace@26..27 " "
+            TypeGenericArg@27..28
+              PathType@27..28
+                Path@27..28
+                  PathSegment@27..28
+                    Ident@27..28 "T"
+            WhiteSpace@28..29 " "
+            Error@29..30
+              Ident@29..30 "E"
+            Comma@30..31 ","
+            WhiteSpace@31..32 " "
+            Gt@32..33 ">"
     CallArgList@33..39
       LParen@33..34 "("
       CallArg@34..35

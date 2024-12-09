@@ -4,7 +4,9 @@ use std::path::Path;
 use dir_test::{dir_test, Fixture};
 use fe_compiler_test_utils::snap_test;
 use fe_hir_analysis::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain},
+    name_resolution::{
+        resolve_path2, resolve_path_early, EarlyResolvedPath, NameDomain, ResolveToBucket,
+    },
     HirAnalysisDb,
 };
 use hir::{
@@ -78,8 +80,7 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
-        let resolved_path = resolve_path_early(self.db.as_hir_analysis_db(), path, scope);
-        match resolved_path {
+        match resolve_path_early(self.db, path, scope).unwrap() {
             EarlyResolvedPath::Full(bucket) => {
                 let domain = self.domain_stack.last().copied().unwrap();
                 let res = bucket.pick(domain).as_ref().unwrap();
@@ -92,14 +93,12 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
 
-            EarlyResolvedPath::Partial {
-                res,
-                unresolved_from,
-            } => {
+            EarlyResolvedPath::Partial { path, res } => {
                 let prop = res.pretty_path(self.db.as_hir_analysis_db()).unwrap();
-                let span = ctxt.span().unwrap().segment(unresolved_from - 1).into();
+                let span = ctxt.span().unwrap().segment(path.len(self.db) - 1).into();
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
         }
+        walk_path(self, ctxt, path);
     }
 }
