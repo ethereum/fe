@@ -18,7 +18,7 @@ use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
     dir: "$CARGO_MANIFEST_DIR/test_files/early_path_resolution",
     glob: "*.fe"
 )]
-fn test_standalone(fixture: Fixture<&str>) {
+fn early_path_resolution_standalone(fixture: Fixture<&str>) {
     let mut db = HirAnalysisTestDb::default();
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
@@ -78,8 +78,7 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
-        let resolved_path = resolve_path_early(self.db.as_hir_analysis_db(), path, scope);
-        match resolved_path {
+        match resolve_path_early(self.db, path, scope).unwrap() {
             EarlyResolvedPath::Full(bucket) => {
                 let domain = self.domain_stack.last().copied().unwrap();
                 let res = bucket.pick(domain).as_ref().unwrap();
@@ -92,14 +91,12 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
 
-            EarlyResolvedPath::Partial {
-                res,
-                unresolved_from,
-            } => {
+            EarlyResolvedPath::Partial { path, res } => {
                 let prop = res.pretty_path(self.db.as_hir_analysis_db()).unwrap();
-                let span = ctxt.span().unwrap().segment(unresolved_from - 1).into();
+                let span = ctxt.span().unwrap().segment(path.len(self.db) - 1).into();
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
         }
+        walk_path(self, ctxt, path);
     }
 }

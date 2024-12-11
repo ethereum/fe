@@ -4,21 +4,19 @@ expression: res
 input_file: crates/hir-analysis/test_files/imports/cycle_glob.fe
 ---
 note: 
-  ┌─ test_file.fe:3:5
+  ┌─ cycle_glob.fe:3:5
   │
 3 │     pub use super::mod2::Bar as BarImported
-  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ test_file::mod2::Bar
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cycle_glob::mod2::Bar
 
 note: 
-  ┌─ test_file.fe:4:5
+  ┌─ cycle_glob.fe:4:5
   │
 4 │     pub use super::mod2::*
-  │     ^^^^^^^^^^^^^^^^^^^^^^ test_file::mod1::Foo as Foo | test_file::mod2::Bar as Bar | test_file::mod2::Bar as BarImported
+  │     ^^^^^^^^^^^^^^^^^^^^^^ cycle_glob::mod1::Foo as Foo | cycle_glob::mod2::Bar as Bar | cycle_glob::mod2::Bar as BarImported
 
 note: 
-   ┌─ test_file.fe:12:5
+   ┌─ cycle_glob.fe:12:5
    │
 12 │     pub use super::mod1::*
-   │     ^^^^^^^^^^^^^^^^^^^^^^ test_file::mod1::Foo as Foo | test_file::mod2::Bar as Bar | test_file::mod2::Bar as BarImported
-
-
+   │     ^^^^^^^^^^^^^^^^^^^^^^ cycle_glob::mod1::Foo as Foo | cycle_glob::mod2::Bar as Bar | cycle_glob::mod2::Bar as BarImported

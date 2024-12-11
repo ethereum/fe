@@ -3,7 +3,7 @@ source: crates/parser2/tests/syntax_node.rs
 expression: node
 input_file: crates/parser2/test_files/syntax_node/exprs/call.fe
 ---
-Root@0..270
+Root@0..290
   CallExpr@0..5
     PathExpr@0..3
       Path@0..3
@@ -138,28 +138,28 @@ Root@0..270
       RParen@85..86 ")"
   Newline@86..88 "\n\n"
   CallExpr@88..134
-    PathExpr@88..91
-      Path@88..91
-        PathSegment@88..91
+    PathExpr@88..109
+      Path@88..109
+        PathSegment@88..109
           Ident@88..91 "foo"
-    GenericArgList@91..109
-      Lt@91..92 "<"
-      TypeGenericArg@92..95
-        PathType@92..95
-          Path@92..95
-            PathSegment@92..95
-              Ident@92..95 "i32"
-      Comma@95..96 ","
-      WhiteSpace@96..97 " "
-      TypeGenericArg@97..108
-        PathType@97..108
-          Path@97..108
-            PathSegment@97..100
-              Ident@97..100 "foo"
-            Colon2@100..102 "::"
-            PathSegment@102..108
-              Ident@102..108 "MyType"
-      Gt@108..109 ">"
+          GenericArgList@91..109
+            Lt@91..92 "<"
+            TypeGenericArg@92..95
+              PathType@92..95
+                Path@92..95
+                  PathSegment@92..95
+                    Ident@92..95 "i32"
+            Comma@95..96 ","
+            WhiteSpace@96..97 " "
+            TypeGenericArg@97..108
+              PathType@97..108
+                Path@97..108
+                  PathSegment@97..100
+                    Ident@97..100 "foo"
+                  Colon2@100..102 "::"
+                  PathSegment@102..108
+                    Ident@102..108 "MyType"
+            Gt@108..109 ">"
     CallArgList@109..134
       LParen@109..110 "("
       CallArg@110..117
@@ -181,43 +181,43 @@ Root@0..270
       RParen@133..134 ")"
   Newline@134..135 "\n"
   CallExpr@135..169
-    PathExpr@135..138
-      Path@135..138
-        PathSegment@135..138
+    PathExpr@135..157
+      Path@135..157
+        PathSegment@135..157
           Ident@135..138 "foo"
-    GenericArgList@138..157
-      Lt@138..139 "<"
-      TypeGenericArg@139..147
-        ArrayType@139..147
-          LBracket@139..140 "["
-          PathType@140..143
-            Path@140..143
-              PathSegment@140..143
-                Ident@140..143 "u32"
-          SemiColon@143..144 ";"
-          WhiteSpace@144..145 " "
-          LitExpr@145..146
-            Lit@145..146
-              Int@145..146 "1"
-          RBracket@146..147 "]"
-      Comma@147..148 ","
-      WhiteSpace@148..149 " "
-      ConstGenericArg@149..156
-        BlockExpr@149..156
-          LBrace@149..150 "{"
-          ExprStmt@150..155
-            BinExpr@150..155
-              LitExpr@150..151
-                Lit@150..151
-                  Int@150..151 "3"
-              WhiteSpace@151..152 " "
-              Plus@152..153 "+"
-              WhiteSpace@153..154 " "
-              LitExpr@154..155
-                Lit@154..155
-                  Int@154..155 "4"
-          RBrace@155..156 "}"
-      Gt@156..157 ">"
+          GenericArgList@138..157
+            Lt@138..139 "<"
+            TypeGenericArg@139..147
+              ArrayType@139..147
+                LBracket@139..140 "["
+                PathType@140..143
+                  Path@140..143
+                    PathSegment@140..143
+                      Ident@140..143 "u32"
+                SemiColon@143..144 ";"
+                WhiteSpace@144..145 " "
+                LitExpr@145..146
+                  Lit@145..146
+                    Int@145..146 "1"
+                RBracket@146..147 "]"
+            Comma@147..148 ","
+            WhiteSpace@148..149 " "
+            ConstGenericArg@149..156
+              BlockExpr@149..156
+                LBrace@149..150 "{"
+                ExprStmt@150..155
+                  BinExpr@150..155
+                    LitExpr@150..151
+                      Lit@150..151
+                        Int@150..151 "3"
+                    WhiteSpace@151..152 " "
+                    Plus@152..153 "+"
+                    WhiteSpace@153..154 " "
+                    LitExpr@154..155
+                      Lit@154..155
+                        Int@154..155 "4"
+                RBrace@155..156 "}"
+            Gt@156..157 ">"
     CallArgList@157..169
       LParen@157..158 "("
       CallArg@158..162
@@ -238,43 +238,76 @@ Root@0..270
             Int@167..168 "2"
       RParen@168..169 ")"
   Newline@169..171 "\n\n"
-  Comment@171..245 "// Ths should be pars ..."
-  Newline@245..246 "\n"
-  ParenExpr@246..270
-    LParen@246..247 "("
-    CallExpr@247..269
-      PathExpr@247..250
-        Path@247..250
-          PathSegment@247..250
-            Ident@247..250 "foo"
-      WhiteSpace@250..251 " "
-      GenericArgList@251..265
-        Lt@251..252 "<"
-        WhiteSpace@252..253 " "
-        TypeGenericArg@253..256
-          PathType@253..256
-            Path@253..256
-              PathSegment@253..256
-                Ident@253..256 "i32"
-        Comma@256..257 ","
-        WhiteSpace@257..258 " "
-        TypeGenericArg@258..263
-          TupleType@258..263
-            LParen@258..259 "("
-            PathType@259..262
-              Path@259..262
-                PathSegment@259..262
-                  Ident@259..262 "u32"
-            RParen@262..263 ")"
-        WhiteSpace@263..264 " "
-        Gt@264..265 ">"
-      WhiteSpace@265..266 " "
-      CallArgList@266..269
-        LParen@266..267 "("
-        CallArg@267..268
-          LitExpr@267..268
-            Lit@267..268
-              Int@267..268 "1"
-        RParen@268..269 ")"
-    RParen@269..270 ")"
+  CallExpr@171..188
+    PathExpr@171..185
+      Path@171..185
+        PathSegment@171..174
+          Ident@171..174 "foo"
+        Colon2@174..176 "::"
+        PathSegment@176..185
+          Ident@176..179 "bar"
+          GenericArgList@179..185
+            Lt@179..180 "<"
+            TypeGenericArg@180..181
+              PathType@180..181
+                Path@180..181
+                  PathSegment@180..181
+                    Ident@180..181 "T"
+            Comma@181..182 ","
+            WhiteSpace@182..183 " "
+            TypeGenericArg@183..184
+              PathType@183..184
+                Path@183..184
+                  PathSegment@183..184
+                    Ident@183..184 "U"
+            Gt@184..185 ">"
+    CallArgList@185..188
+      LParen@185..186 "("
+      CallArg@186..187
+        PathExpr@186..187
+          Path@186..187
+            PathSegment@186..187
+              Ident@186..187 "x"
+      RParen@187..188 ")"
+  Newline@188..190 "\n\n"
+  Comment@190..264 "// Ths should be pars ..."
+  Newline@264..265 "\n"
+  ParenExpr@265..289
+    LParen@265..266 "("
+    CallExpr@266..288
+      PathExpr@266..284
+        Path@266..284
+          PathSegment@266..284
+            Ident@266..269 "foo"
+            WhiteSpace@269..270 " "
+            GenericArgList@270..284
+              Lt@270..271 "<"
+              WhiteSpace@271..272 " "
+              TypeGenericArg@272..275
+                PathType@272..275
+                  Path@272..275
+                    PathSegment@272..275
+                      Ident@272..275 "i32"
+              Comma@275..276 ","
+              WhiteSpace@276..277 " "
+              TypeGenericArg@277..282
+                TupleType@277..282
+                  LParen@277..278 "("
+                  PathType@278..281
+                    Path@278..281
+                      PathSegment@278..281
+                        Ident@278..281 "u32"
+                  RParen@281..282 ")"
+              WhiteSpace@282..283 " "
+              Gt@283..284 ">"
+      WhiteSpace@284..285 " "
+      CallArgList@285..288
+        LParen@285..286 "("
+        CallArg@286..287
+          LitExpr@286..287
+            Lit@286..287
+              Int@286..287 "1"
+        RParen@287..288 ")"
+    RParen@288..289 ")"
+  Newline@289..290 "\n"
 

@@ -210,20 +210,20 @@ Root@0..493
           WhiteSpace@253..254 " "
           WherePredicate@254..272
             PathType@254..265
-              Path@254..262
+              Path@254..265
                 PathSegment@254..257
                   Ident@254..257 "Foo"
                 Colon2@257..259 "::"
-                PathSegment@259..262
+                PathSegment@259..265
                   Ident@259..262 "Bar"
-              GenericArgList@262..265
-                Lt@262..263 "<"
-                TypeGenericArg@263..264
-                  PathType@263..264
-                    Path@263..264
-                      PathSegment@263..264
-                        Ident@263..264 "T"
-                Gt@264..265 ">"
+                  GenericArgList@262..265
+                    Lt@262..263 "<"
+                    TypeGenericArg@263..264
+                      PathType@263..264
+                        Path@263..264
+                          PathSegment@263..264
+                            Ident@263..264 "T"
+                    Gt@264..265 ">"
             TypeBoundList@265..272
               Colon@265..266 ":"
               WhiteSpace@266..267 " "
@@ -402,17 +402,17 @@ Root@0..493
             TupleType@426..432
               LParen@426..427 "("
               PathType@427..431
-                Path@427..428
-                  PathSegment@427..428
+                Path@427..431
+                  PathSegment@427..431
                     Ident@427..428 "U"
-                GenericArgList@428..431
-                  Lt@428..429 "<"
-                  TypeGenericArg@429..430
-                    PathType@429..430
-                      Path@429..430
-                        PathSegment@429..430
-                          Ident@429..430 "T"
-                  Gt@430..431 ">"
+                    GenericArgList@428..431
+                      Lt@428..429 "<"
+                      TypeGenericArg@429..430
+                        PathType@429..430
+                          Path@429..430
+                            PathSegment@429..430
+                              Ident@429..430 "T"
+                      Gt@430..431 ">"
               RParen@431..432 ")"
           Newline@432..433 "\n"
           RBrace@433..434 "}"
