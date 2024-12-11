@@ -21,9 +21,9 @@ pub use name_resolver::{
     EarlyNameQueryId, NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind,
     NameResolutionError, QueryDirective,
 };
-use path_resolver::ResolveEarly;
 pub use path_resolver::{
-    resolve_path_tail_in_scope, EarlyResolvedPath, ResolveToTypeDomain, Resolver,
+    resolve_path_tail_in_scope, EarlyResolvedPath, Observer, ResolveEarly, ResolveToTypeDomain,
+    Resolver,
 };
 use rustc_hash::FxHashSet;
 pub use traits_in_scope::available_traits_in_scope;

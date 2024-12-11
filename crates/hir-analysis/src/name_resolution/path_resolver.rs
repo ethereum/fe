@@ -87,7 +87,7 @@ pub trait Observer<'db> {
     fn did_resolve(&mut self, path: PathId<'db>, scope: ScopeId<'db>, res: &NameRes<'db>);
 }
 pub struct ResolveEarly<T> {
-    observer: T,
+    pub observer: T,
 }
 impl<T> ResolveEarly<T> {
     pub fn into_inner(self) -> T {
