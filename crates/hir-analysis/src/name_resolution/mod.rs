@@ -21,8 +21,10 @@ pub use name_resolver::{
     EarlyNameQueryId, NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind,
     NameResolutionError, QueryDirective,
 };
-use path_resolver::{resolve_path, Resolver};
-pub use path_resolver::{resolve_path_tail_in_scope, EarlyResolvedPath, ResolveToBucket};
+use path_resolver::ResolveEarly;
+pub use path_resolver::{
+    resolve_path_tail_in_scope, EarlyResolvedPath, ResolveToTypeDomain, Resolver,
+};
 use rustc_hash::FxHashSet;
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
@@ -47,17 +49,17 @@ pub fn resolve_path_early<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-) -> Option<EarlyResolvedPath<'db>> {
-    resolve_path(db, path, scope).ok().map(|r| r.resolved)
+) -> Option<EarlyResolvedPath<'db, &'db NameResBucket<'db>>> {
+    ResolveEarly::new().resolve_path(db, path, scope).ok()
 }
 
-pub fn resolve_path2<'db, T: Resolver<'db>>(
+// xxx use or remove
+pub fn resolve_path_early_to_type_domain<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-    resolver: &mut T,
-) -> T::Output {
-    resolver.resolve_path(db, path, scope)
+) -> Option<EarlyResolvedPath<'db, NameRes<'db>>> {
+    ResolveToTypeDomain {}.resolve_path(db, path, scope)
 }
 
 /// Performs import resolution analysis. This pass only checks correctness of
@@ -207,9 +209,8 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     ) {
         let path_kind = self.path_ctxt.last().unwrap();
         let hir_db = self.db.as_hir_db();
-        let last_seg_idx = path.len(hir_db) - 1;
         let last_seg_ident = path.ident(hir_db).to_opt().unwrap();
-        let span = span.segment(last_seg_idx).into();
+        let span = span.segment(path.segment_index(hir_db)).into();
 
         if bucket.is_empty() {
             let Err(err) = bucket.pick(path_kind.domain()) else {
@@ -223,9 +224,9 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
                         ExpectedPathKind::Expr | ExpectedPathKind::Pat
                     ) || path.len(self.db.as_hir_db()) != 1
                     {
-                        self.diags
-                            .push(NameResDiag::not_found(span, last_seg_ident));
-                    }
+                        self.diags.push(NameResDiag::NotFound(span, last_seg_ident));
+                        // xxx check
+                    };
                 }
                 NameResolutionError::Ambiguous(cands) => {
                     self.diags.push(NameResDiag::ambiguous(
@@ -451,9 +452,9 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
-
-        let resolved_path = match resolve_path(self.db, path, scope) {
-            Ok(bucket) => bucket,
+        let mut resolver = ResolveEarly::with_trajectory();
+        let res = match resolver.resolve_path(self.db, path, scope) {
+            Ok(res) => res,
 
             Err(err) => {
                 let hir_db = self.db.as_hir_db();
@@ -471,7 +472,7 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
                         {
                             return;
                         } else {
-                            NameResDiag::not_found(span.into(), *ident.unwrap())
+                            NameResDiag::NotFound(span.into(), *ident.unwrap()) // xxx check
                         }
                     }
 
@@ -506,17 +507,18 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
             }
         };
 
-        if let Some((idx, res)) = resolved_path.find_invisible_segment(self.db) {
+        let trajectory = resolver.into_inner();
+        if let Some((inv_path, res)) = trajectory.find_invisible_segment(self.db) {
             let hir_db = self.db.as_hir_db();
-            let span = ctxt.span().unwrap().segment(idx);
-            let ident = path.segment(hir_db, idx).unwrap().ident(hir_db);
+            let span = ctxt.span().unwrap().segment(inv_path.segment_index(hir_db));
+            let ident = path.ident(hir_db);
             let diag =
                 NameResDiag::invisible(span.into(), *ident.unwrap(), res.derived_from(self.db));
             self.diags.push(diag);
             return;
         }
 
-        let EarlyResolvedPath::Full(bucket) = resolved_path.resolved else {
+        let EarlyResolvedPath::Full(bucket) = res else {
             return;
         };
         self.verify_path(path, scope, ctxt.span().unwrap(), bucket);

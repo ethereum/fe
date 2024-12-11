@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/shadowing.fe
 ---
 note: 
-   ┌─ test_file.fe:1:17
+   ┌─ shadowing.fe:1:17
    │  
  1 │   fn foo() -> i32 {
    │ ╭─────────────────^
@@ -17,19 +17,19 @@ note:
    │ ╰─^ i32
 
 note: 
-  ┌─ test_file.fe:2:9
+  ┌─ shadowing.fe:2:9
   │
 2 │     let x = 1 
   │         ^ i32
 
 note: 
-  ┌─ test_file.fe:2:13
+  ┌─ shadowing.fe:2:13
   │
 2 │     let x = 1 
   │             ^ i32
 
 note: 
-   ┌─ test_file.fe:4:5
+   ┌─ shadowing.fe:4:5
    │  
  4 │ ╭     {
  5 │ │         let x = false
@@ -41,19 +41,19 @@ note:
    │ ╰─────^ String<5>
 
 note: 
-  ┌─ test_file.fe:5:13
+  ┌─ shadowing.fe:5:13
   │
 5 │         let x = false
   │             ^ bool
 
 note: 
-  ┌─ test_file.fe:5:17
+  ┌─ shadowing.fe:5:17
   │
 5 │         let x = false
   │                 ^^^^^ bool
 
 note: 
-   ┌─ test_file.fe:6:9
+   ┌─ shadowing.fe:6:9
    │  
  6 │ ╭         if x {
  7 │ │             let x = "Hello"
@@ -65,13 +65,13 @@ note:
    │ ╰─────────^ String<5>
 
 note: 
-  ┌─ test_file.fe:6:12
+  ┌─ shadowing.fe:6:12
   │
 6 │         if x {
   │            ^ bool
 
 note: 
-  ┌─ test_file.fe:6:14
+  ┌─ shadowing.fe:6:14
   │  
 6 │           if x {
   │ ╭──────────────^
@@ -81,25 +81,25 @@ note:
   │ ╰─────────^ String<5>
 
 note: 
-  ┌─ test_file.fe:7:17
+  ┌─ shadowing.fe:7:17
   │
 7 │             let x = "Hello"
   │                 ^ String<5>
 
 note: 
-  ┌─ test_file.fe:7:21
+  ┌─ shadowing.fe:7:21
   │
 7 │             let x = "Hello"
   │                     ^^^^^^^ String<5>
 
 note: 
-  ┌─ test_file.fe:8:13
+  ┌─ shadowing.fe:8:13
   │
 8 │             x
   │             ^ String<5>
 
 note: 
-   ┌─ test_file.fe:9:16
+   ┌─ shadowing.fe:9:16
    │  
  9 │           } else {
    │ ╭────────────────^
@@ -109,31 +109,31 @@ note:
    │ ╰─────────^ String<5>
 
 note: 
-   ┌─ test_file.fe:10:17
+   ┌─ shadowing.fe:10:17
    │
 10 │             let x = "Hi"
    │                 ^ String<5>
 
 note: 
-   ┌─ test_file.fe:10:21
+   ┌─ shadowing.fe:10:21
    │
 10 │             let x = "Hi"
    │                     ^^^^ String<5>
 
 note: 
-   ┌─ test_file.fe:11:13
+   ┌─ shadowing.fe:11:13
    │
 11 │             x
    │             ^ String<5>
 
 note: 
-   ┌─ test_file.fe:15:5
+   ┌─ shadowing.fe:15:5
    │
 15 │     x
    │     ^ i32
 
 note: 
-   ┌─ test_file.fe:19:17
+   ┌─ shadowing.fe:19:17
    │  
 19 │   fn bar() -> i32 {
    │ ╭─────────────────^
@@ -143,21 +143,19 @@ note:
    │ ╰─^ i32
 
 note: 
-   ┌─ test_file.fe:20:9
+   ┌─ shadowing.fe:20:9
    │
 20 │     let bar = 1
    │         ^^^ i32
 
 note: 
-   ┌─ test_file.fe:20:15
+   ┌─ shadowing.fe:20:15
    │
 20 │     let bar = 1
    │               ^ i32
 
 note: 
-   ┌─ test_file.fe:21:5
+   ┌─ shadowing.fe:21:5
    │
 21 │     bar
    │     ^^^ i32
-
-

@@ -545,7 +545,7 @@ mod tests {
     use super::StandaloneIngotContext;
 
     #[test]
-    fn test_standalone_context() {
+    fn workspace_standalone_context() {
         let mut db = crate::backend::db::LanguageServerDatabase::default();
         let file_path = "tests/data/ingot1/src/main.fe";
 

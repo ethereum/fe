@@ -419,8 +419,6 @@ impl<S: TokenStream> Parser<S> {
         let mut unexpected = None;
         let mut match_scope_index = None;
         while let Some(kind) = self.current_kind() {
-            dbg!(kind);
-            dbg!(&self.parents);
             if let Some((scope_index, _)) = self
                 .parents
                 .iter()

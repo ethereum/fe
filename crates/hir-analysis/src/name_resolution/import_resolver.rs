@@ -535,7 +535,7 @@ impl<'db> ImportResolver<'db> {
 
         match err {
             NameResolutionError::NotFound => {
-                self.accumulated_errors.push(NameResDiag::not_found(
+                self.accumulated_errors.push(NameResDiag::NotFound(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                 ));

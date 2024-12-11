@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/lit_str.fe
 ---
 note: 
-  ┌─ test_file.fe:1:32
+  ┌─ lit_str.fe:1:32
   │  
 1 │   pub fn lit_str1() -> String<1> {
   │ ╭────────────────────────────────^
@@ -13,13 +13,13 @@ note:
   │ ╰─^ String<1>
 
 note: 
-  ┌─ test_file.fe:2:5
+  ┌─ lit_str.fe:2:5
   │
 2 │     "a"
   │     ^^^ String<1>
 
 note: 
-  ┌─ test_file.fe:5:33
+  ┌─ lit_str.fe:5:33
   │  
 5 │   pub fn lit_str2() -> String<10> {
   │ ╭─────────────────────────────────^
@@ -28,7 +28,7 @@ note:
   │ ╰─^ String<10>
 
 note: 
-  ┌─ test_file.fe:6:5
+  ┌─ lit_str.fe:6:5
   │
 6 │     "abc"
   │     ^^^^^ String<10>

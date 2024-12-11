@@ -52,7 +52,7 @@ impl HirAnalysisTestDb {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
         let ingot = InputIngot::new(self, file_name, kind, version, IndexSet::default());
-        let root = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
+        let root = InputFile::new(self, ingot, file_name.into(), text.to_string());
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into_iter().collect());
         root

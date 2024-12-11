@@ -150,7 +150,6 @@ impl<'db, 'env> PathResolver<'db, 'env> {
     // xxx only used for single segment path
     fn resolve_ident(&mut self, ident: IdentId<'db>) -> ResolvedPathInBody<'db> {
         let hir_db = self.tc.db.as_hir_db();
-
         match self.mode {
             ResolutionMode::ExprValue => self.resolve_ident_expr(ident),
 
@@ -226,7 +225,10 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         }
     }
 
-    fn resolve_path_late(&mut self, early: EarlyResolvedPath<'db>) -> ResolvedPathInBody<'db> {
+    fn resolve_path_late(
+        &mut self,
+        early: EarlyResolvedPath<'db, &'db NameResBucket<'db>>,
+    ) -> ResolvedPathInBody<'db> {
         match early {
             EarlyResolvedPath::Full(bucket) => self.resolve_bucket(bucket),
 
@@ -254,8 +256,25 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             }
             ResolvedPathInBody::Const(ty) => ty,
             ResolvedPathInBody::Trait(trait_) => {
-                // xxx return self.resolve_trait_partial(trait_, unresolved_from);
-                todo!()
+                if Some(resolved) != self.path.parent(hir_db) {
+                    let diag = TyLowerDiag::AssocTy(self.span.clone().into());
+                    return ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()));
+                }
+
+                let Some(name) = self.path.ident(hir_db).to_opt() else {
+                    return ResolvedPathInBody::Invalid;
+                };
+
+                // xxx generic args
+                let Some(trait_method) = trait_.methods(self.tc.db).get(&name) else {
+                    let span = self.span.segment(resolved.segment_index(hir_db) + 1).into();
+                    let diag =
+                        BodyDiag::method_not_found(self.tc.db, span, name, Either::Right(trait_));
+                    return ResolvedPathInBody::Diag(diag.into());
+                };
+
+                let ty = TyId::func(self.tc.db, trait_method.0);
+                return ResolvedPathInBody::Func(self.tc.table.instantiate_to_term(ty));
             }
 
             ResolvedPathInBody::Variant(_)
@@ -271,8 +290,8 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             if let Some(adt_ref) = receiver_ty.adt_ref(db);
             if let AdtRef::Enum(enum_) = adt_ref.data(db);
             let scope = enum_.scope();
-            if let Some(early) = resolve_path_tail_in_scope(self.tc.db, self.path, scope);
-            if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_path_late(early);
+            if let Some(bucket) = resolve_path_tail_in_scope(self.tc.db, self.path, scope);
+            if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_bucket(bucket);
             then {
                 return resolved;
             }
@@ -292,33 +311,6 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         // report an error.
         let diag = TyLowerDiag::AssocTy(self.span.clone().into());
         ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()))
-    }
-
-    fn resolve_trait_partial(
-        &mut self,
-        trait_: TraitDef<'db>,
-        unresolved_from: usize,
-    ) -> ResolvedPathInBody<'db> {
-        let hir_db = self.tc.db.as_hir_db();
-
-        if unresolved_from + 1 != self.path.len(hir_db) {
-            let diag = TyLowerDiag::AssocTy(self.span.clone().into());
-            return ResolvedPathInBody::Diag(FuncBodyDiag::Ty(diag.into()));
-        }
-
-        let Some(name) = self.path.ident(hir_db).to_opt() else {
-            return ResolvedPathInBody::Invalid;
-        };
-
-        // xxx generic args
-        let Some(trait_method) = trait_.methods(self.tc.db).get(&name) else {
-            let span = self.span.segment(unresolved_from).into();
-            let diag = BodyDiag::method_not_found(self.tc.db, span, name, Either::Right(trait_));
-            return ResolvedPathInBody::Diag(diag.into());
-        };
-
-        let ty = TyId::func(self.tc.db, trait_method.0);
-        ResolvedPathInBody::Func(self.tc.table.instantiate_to_term(ty))
     }
 
     fn select_method_candidate(

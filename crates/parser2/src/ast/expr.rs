@@ -723,7 +723,6 @@ mod tests {
     #[wasm_bindgen_test]
     fn call_expr() {
         let call_expr: CallExpr = parse_expr("foo<i32, T>(1, label: 2, 3 + 4)");
-        dbg!(&call_expr);
         let ExprKind::Path(path) = call_expr.callee().unwrap().kind() else {
             panic!();
         };

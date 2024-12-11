@@ -1,5 +1,4 @@
 use hir::hir_def::{scope_graph::ScopeId, IdentId, Partial, PathId};
-use smallvec::SmallVec;
 
 use super::{
     name_resolver::{NameRes, NameResBucket, NameResolutionError},
@@ -15,8 +14,8 @@ use crate::{name_resolution::QueryDirective, HirAnalysisDb};
 ///    to a type, and the rest of the path depends on the type to resolve.
 ///    Type/Trait context is needed to resolve the rest of the path.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EarlyResolvedPath<'db> {
-    Full(&'db NameResBucket<'db>),
+pub enum EarlyResolvedPath<'db, T> {
+    Full(T),
 
     // xxx update comment
     /// The path is partially resolved; this means that the `resolved` is a type
@@ -27,33 +26,6 @@ pub enum EarlyResolvedPath<'db> {
         path: PathId<'db>,
         res: NameRes<'db>,
     },
-}
-
-#[derive(Debug)]
-pub(super) struct EarlyResolvedPathWithTrajectory<'db> {
-    pub(super) resolved: EarlyResolvedPath<'db>,
-    /// The trajectory of the resolution, which starts with the original scope
-    /// of the resolution, then goes through the resolution of each segment.
-    /// This trajectory doesn't include the final resolution of the path, which
-    /// is stored in `resolved`. e.g., for the query `std::foo::Bar` from
-    /// `crate::baz`, the trajectory is `crate::baz -> std -> foo`.
-    pub(super) trajectory: Vec<NameRes<'db>>,
-}
-
-impl<'db> EarlyResolvedPathWithTrajectory<'db> {
-    pub(super) fn find_invisible_segment(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Option<(usize, &NameRes<'db>)> {
-        let original_scope = self.trajectory.first().unwrap().scope().unwrap();
-        for (i, res) in self.trajectory[1..].iter().enumerate() {
-            if !res.is_visible(db, original_scope) {
-                return Some((i, res));
-            }
-        }
-
-        None
-    }
 }
 
 pub type PathResolutionResult<'db, T> = Result<T, PathResolutionError<'db>>;
@@ -70,88 +42,20 @@ impl<'db> PathResolutionError<'db> {
     }
 }
 
-pub(super) fn resolve_path<'db>(
-    db: &'db dyn HirAnalysisDb,
-    path: PathId<'db>,
-    scope: ScopeId<'db>,
-) -> PathResolutionResult<'db, EarlyResolvedPathWithTrajectory<'db>> {
-    let mut trajectory = vec![NameRes::new_from_scope(
-        scope,
-        NameDomain::from_scope(db, scope),
-        super::NameDerivation::Def,
-    )];
-    let resolved = resolve_path_rec(db, path, scope, &mut trajectory)?;
-
-    Ok(EarlyResolvedPathWithTrajectory {
-        resolved,
-        trajectory,
-    })
-}
-
-fn resolve_path_rec<'db>(
-    db: &'db dyn HirAnalysisDb,
-    path: PathId<'db>,
-    mut scope: ScopeId<'db>,
-    trajectory: &mut Vec<NameRes<'db>>,
-) -> PathResolutionResult<'db, EarlyResolvedPath<'db>> {
-    let hir_db = db.as_hir_db();
-    let parent = path.parent(hir_db);
-    if let Some(parent) = parent {
-        match resolve_path_rec(db, parent, scope, trajectory)? {
-            part @ EarlyResolvedPath::Partial { .. } => return Ok(part),
-            EarlyResolvedPath::Full(bucket) => {
-                let res = bucket
-                    .pick(NameDomain::TYPE)
-                    .clone()
-                    .map_err(|err| match err {
-                        NameResolutionError::NotFound => {
-                            if let Some(res) = bucket.iter_ok().next() {
-                                PathResolutionError::new(
-                                    NameResolutionError::InvalidPathSegment(res.clone()),
-                                    path,
-                                )
-                            } else {
-                                PathResolutionError::new(NameResolutionError::NotFound, path)
-                            }
-                        }
-                        err => PathResolutionError::new(err.clone(), path),
-                    })?;
-
-                let should_partial = parent.parent(hir_db).is_some()
-                    && (res.is_type()
-                        || res.is_trait()
-                        || parent.root_ident(hir_db) == Some(IdentId::make_self_ty(hir_db)));
-                if should_partial {
-                    trajectory.push(res.clone());
-                    return Ok(EarlyResolvedPath::Partial { path: parent, res });
-                }
-                scope = res.scope().ok_or_else(|| {
-                    PathResolutionError::new(
-                        NameResolutionError::InvalidPathSegment(res.clone()),
-                        path,
-                    )
-                })?;
-                trajectory.push(res);
-            }
-        }
-    }
-    let query = make_query(db, path, parent.is_none(), scope)?;
-    Ok(EarlyResolvedPath::Full(resolve_query(db, query)))
-}
-
+// xxx check is_root behavior
+// xxx resolve_ident_in_scope
 pub fn resolve_path_tail_in_scope<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-) -> Option<EarlyResolvedPath<'db>> {
-    let query = make_query(db, path, false, scope).ok()?;
-    Some(EarlyResolvedPath::Full(resolve_query(db, query)))
+) -> Option<&'db NameResBucket<'db>> {
+    let query = make_query(db, path, scope).ok()?;
+    Some(resolve_query(db, query))
 }
 
 fn make_query<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
-    is_root: bool,
     scope: ScopeId<'db>,
 ) -> PathResolutionResult<'db, EarlyNameQueryId<'db>> {
     let Partial::Present(name) = path.ident(db.as_hir_db()) else {
@@ -159,7 +63,8 @@ fn make_query<'db>(
     };
 
     let mut directive = QueryDirective::new();
-    if !is_root {
+
+    if path.segment_index(db.as_hir_db()) != 0 {
         directive = directive.disallow_external();
         directive = directive.disallow_lex();
     }
@@ -178,9 +83,122 @@ pub trait Resolver<'db> {
     ) -> Self::Output;
 }
 
-pub struct ResolveEarly {}
-impl<'db> Resolver<'db> for ResolveEarly {
-    type Output = PathResolutionResult<'db, EarlyResolvedPath<'db>>;
+pub trait Observer<'db> {
+    fn did_resolve(&mut self, path: PathId<'db>, scope: ScopeId<'db>, res: &NameRes<'db>);
+}
+pub struct ResolveEarly<T> {
+    observer: T,
+}
+impl<T> ResolveEarly<T> {
+    pub fn into_inner(self) -> T {
+        self.observer
+    }
+}
+impl ResolveEarly<()> {
+    pub fn new() -> Self {
+        Self { observer: () }
+    }
+}
+
+impl ResolveEarly<Trajectory<'_>> {
+    pub fn with_trajectory() -> Self {
+        Self {
+            observer: Trajectory::default(),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct Trajectory<'db> {
+    root_scope: Option<ScopeId<'db>>,
+    resolutions: Vec<(PathId<'db>, NameRes<'db>)>,
+}
+impl<'db> Trajectory<'db> {
+    pub(super) fn find_invisible_segment(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Option<(PathId<'db>, &NameRes<'db>)> {
+        for (path, res) in &self.resolutions {
+            if !res.is_visible(db, self.root_scope.unwrap()) {
+                return Some((*path, res));
+            }
+        }
+        None
+    }
+}
+impl<'db> Observer<'db> for Trajectory<'db> {
+    fn did_resolve(&mut self, path: PathId<'db>, scope: ScopeId<'db>, res: &NameRes<'db>) {
+        if self.root_scope.is_none() {
+            self.root_scope = Some(scope);
+        }
+        self.resolutions.push((path, res.clone()));
+    }
+}
+
+impl<'db> Observer<'db> for () {
+    fn did_resolve(&mut self, _path: PathId, _scope: ScopeId, _res: &NameRes) {}
+}
+
+impl<'db, T: Observer<'db>> Resolver<'db> for ResolveEarly<T> {
+    type Output = PathResolutionResult<'db, EarlyResolvedPath<'db, &'db NameResBucket<'db>>>;
+
+    fn resolve_path(
+        &mut self,
+        db: &'db dyn HirAnalysisDb,
+        path: PathId<'db>,
+        mut scope: ScopeId<'db>,
+    ) -> Self::Output {
+        let hir_db = db.as_hir_db();
+        let parent = path.parent(hir_db);
+
+        if let Some(parent) = parent {
+            match self.resolve_path(db, parent, scope)? {
+                part @ EarlyResolvedPath::Partial { .. } => return Ok(part),
+                EarlyResolvedPath::Full(bucket) => {
+                    let res = bucket
+                        .pick(NameDomain::TYPE)
+                        .clone()
+                        .map_err(|err| match err {
+                            NameResolutionError::NotFound => {
+                                if let Some(res) = bucket.iter_ok().next() {
+                                    PathResolutionError::new(
+                                        NameResolutionError::InvalidPathSegment(res.clone()),
+                                        path,
+                                    )
+                                } else {
+                                    PathResolutionError::new(NameResolutionError::NotFound, path)
+                                }
+                            }
+                            err => PathResolutionError::new(err.clone(), path),
+                        })?;
+
+                    let should_partial = res.is_type()
+                        || res.is_trait()
+                        || parent.root_ident(hir_db) == Some(IdentId::make_self_ty(hir_db));
+
+                    if should_partial {
+                        return Ok(EarlyResolvedPath::Partial { path: parent, res });
+                    }
+                    self.observer.did_resolve(path, scope, &res);
+
+                    scope = res.scope().ok_or_else(|| {
+                        PathResolutionError::new(
+                            NameResolutionError::InvalidPathSegment(res.clone()), // xxx used to be notfound?
+                            path,
+                        )
+                    })?;
+                }
+            }
+        }
+        let query = make_query(db, path, scope)?;
+        Ok(EarlyResolvedPath::Full(resolve_query(db, query)))
+    }
+}
+
+#[derive(Default)]
+pub struct ResolveToTypeDomain {}
+impl<'db> Resolver<'db> for ResolveToTypeDomain {
+    type Output = Option<EarlyResolvedPath<'db, NameRes<'db>>>;
 
     fn resolve_path(
         &mut self,
@@ -188,96 +206,14 @@ impl<'db> Resolver<'db> for ResolveEarly {
         path: PathId<'db>,
         scope: ScopeId<'db>,
     ) -> Self::Output {
-        todo!()
-    }
-}
-
-pub struct ResolveToBucket {}
-impl<'db> Resolver<'db> for ResolveToBucket {
-    type Output = PathResolutionResult<'db, (&'db NameResBucket<'db>, Option<&'db NameRes<'db>>)>;
-
-    fn resolve_path(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        path: PathId<'db>,
-        mut scope: ScopeId<'db>,
-    ) -> Self::Output {
-        let hir_db = db.as_hir_db();
-        let parent = path.parent(hir_db);
-        let parent_res = parent
-            .map(|parent| {
-                let res = ResolveToTypeDomain::default().resolve_path(db, parent, scope)?;
-                scope = res.scope().ok_or_else(|| {
-                    PathResolutionError::new(
-                        NameResolutionError::InvalidPathSegment(res.clone()),
-                        parent,
-                    )
-                })?;
-                Ok(res)
-            })
-            .transpose()?;
-
-        let query = make_query(db, path, parent.is_none(), scope)?;
-        let bucket = resolve_query(db, query);
-
-        Ok((bucket, parent_res))
-    }
-}
-
-#[derive(Default)]
-pub struct ResolveToTypeDomain<'db> {
-    trajectory: SmallVec<[&'db NameRes<'db>; 4]>,
-}
-impl<'db> ResolveToTypeDomain<'db> {
-    fn trajectory(self) -> SmallVec<[&'db NameRes<'db>; 4]> {
-        self.trajectory
-    }
-}
-
-impl<'db> Resolver<'db> for ResolveToTypeDomain<'db> {
-    type Output = PathResolutionResult<'db, &'db NameRes<'db>>;
-
-    fn resolve_path(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        path: PathId<'db>,
-        mut scope: ScopeId<'db>,
-    ) -> Self::Output {
-        let hir_db = db.as_hir_db();
-        let parent = path.parent(hir_db);
-        if let Some(parent) = parent {
-            let res = self.resolve_path(db, path, scope)?;
-            scope = as_scope(parent, res)?;
+        match ResolveEarly::new().resolve_path(db, path, scope).ok()? {
+            EarlyResolvedPath::Full(bucket) => {
+                let res = bucket.pick(NameDomain::TYPE).clone().ok()?;
+                Some(EarlyResolvedPath::Full(res))
+            }
+            EarlyResolvedPath::Partial { path, res } => {
+                Some(EarlyResolvedPath::Partial { path, res })
+            }
         }
-
-        let query = make_query(db, path, parent.is_none(), scope)?;
-        let bucket = resolve_query(db, query);
-        let res = bucket
-            .pick(NameDomain::TYPE)
-            .as_ref()
-            .map_err(|err| match err {
-                NameResolutionError::NotFound => {
-                    if let Some(res) = bucket.iter_ok().next() {
-                        PathResolutionError::new(
-                            NameResolutionError::InvalidPathSegment(res.clone()),
-                            path,
-                        )
-                    } else {
-                        PathResolutionError::new(NameResolutionError::NotFound, path)
-                    }
-                }
-                err => PathResolutionError::new(err.clone(), path),
-            })?;
-        self.trajectory.push(res);
-        Ok(res)
     }
-}
-
-fn as_scope<'db>(
-    path: PathId<'db>,
-    res: &'db NameRes<'db>,
-) -> PathResolutionResult<'db, ScopeId<'db>> {
-    res.scope().ok_or_else(|| {
-        PathResolutionError::new(NameResolutionError::InvalidPathSegment(res.clone()), path)
-    })
 }

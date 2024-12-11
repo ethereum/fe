@@ -4,15 +4,13 @@ expression: res
 input_file: crates/hir-analysis/test_files/early_path_resolution/alias_res.fe
 ---
 note: 
-  ┌─ test_file.fe:4:8
+  ┌─ alias_res.fe:4:8
   │
 4 │     x: FooBar,
-  │        ^^^^^^ test_file::foo::Bar
+  │        ^^^^^^ alias_res::foo::Bar
 
 note: 
-  ┌─ test_file.fe:5:13
+  ┌─ alias_res.fe:5:13
   │
 5 │     y: foo::Bar
-  │             ^^^ test_file::foo::Bar
-
-
+  │             ^^^ alias_res::foo::Bar

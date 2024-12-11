@@ -156,7 +156,7 @@ impl<'db> NameResBucket<'db> {
         }
     }
 
-    /// Push the `res` into the set.
+    /// Push the `res` into the set. // xxx cow?
     fn push(&mut self, res: &NameRes<'db>) {
         for domain in res.domain.iter() {
             match self.bucket.entry(domain) {

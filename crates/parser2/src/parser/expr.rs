@@ -62,23 +62,6 @@ fn parse_expr_with_min_bp<S: TokenStream>(
                         }
                     }
 
-                    // `expr<generic_param_args>()`.
-                    SyntaxKind::Lt if !is_lt_eq(parser) && !is_lshift(parser) => {
-                        if parser.dry_run(|parser| {
-                            parser.set_newline_as_trivia(false);
-                            parser
-                                .parse_ok(GenericArgListScope::default())
-                                .unwrap_or(false)
-                                && parser.current_kind() == Some(SyntaxKind::LParen)
-                                && parser
-                                    .parse_ok(CallArgListScope::default())
-                                    .unwrap_or(false)
-                        }) {
-                            parser.parse_cp(CallExprScope::default(), Some(checkpoint))?;
-                            continue;
-                        }
-                    }
-
                     // `expr.method<T, i32>()`
                     SyntaxKind::Dot => {
                         if is_method_call(parser) {
@@ -152,7 +135,7 @@ fn postfix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<u8> {
 
     parser.set_newline_as_trivia(false);
     let power = match parser.current_kind() {
-        Some(LBracket | LParen | Lt) => Some(147),
+        Some(LBracket | LParen) => Some(147),
         _ => None,
     };
 

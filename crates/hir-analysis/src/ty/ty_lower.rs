@@ -13,10 +13,7 @@ use super::{
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
 use crate::{
-    name_resolution::{
-        resolve_path2, resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind,
-        ResolveToBucket,
-    },
+    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
     ty::binder::Binder,
     HirAnalysisDb,
 };
@@ -378,24 +375,17 @@ impl<'db> TyBuilder<'db> {
     /// If the path is resolved to a type, return the resolution. Otherwise,
     /// returns the `TyId::Invalid` with proper `InvalidCause`.
     fn resolve_path(&mut self, path: PathId<'db>) -> Either<NameResKind<'db>, TyId<'db>> {
-        match resolve_path2(self.db, path, self.scope, &mut ResolveToBucket {}) {
-            Ok((bucket, parent_res)) => match bucket.pick(NameDomain::TYPE) {
+        match resolve_path_early(self.db, path, self.scope) {
+            Some(EarlyResolvedPath::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
                 Ok(res) => Either::Left(res.kind),
 
-                Err(_) => {
-                    let cause = if parent_res
-                        .map(|res| res.is_type() || res.is_trait())
-                        .unwrap_or(false)
-                    {
-                        InvalidCause::AssocTy
-                    } else {
-                        // This error is already handled by the name resolution.
-                        InvalidCause::Other
-                    };
-                    Either::Right(TyId::invalid(self.db, cause))
-                }
+                // This error is already handled by the name resolution.
+                Err(_) => Either::Right(TyId::invalid(self.db, InvalidCause::Other)),
             },
-            Err(_) => todo!(),
+
+            None | Some(EarlyResolvedPath::Partial { .. }) => {
+                Either::Right(TyId::invalid(self.db, InvalidCause::AssocTy))
+            }
         }
     }
 

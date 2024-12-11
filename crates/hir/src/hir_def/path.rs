@@ -30,8 +30,12 @@ impl<'db> PathId<'db> {
         }
     }
 
+    pub fn segment_index(self, db: &dyn HirDb) -> usize {
+        self.len(db) - 1
+    }
+
     pub fn segment(self, db: &'db dyn HirDb, idx: usize) -> Option<PathId<'db>> {
-        if idx == self.len(db) - 1 {
+        if idx == self.segment_index(db) {
             Some(self)
         } else {
             self.parent(db).and_then(|p| p.segment(db, idx))

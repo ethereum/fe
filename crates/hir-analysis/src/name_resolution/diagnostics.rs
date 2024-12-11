@@ -72,10 +72,6 @@ impl<'db> NameResDiag<'db> {
         Self::Conflict(name, conflict_with)
     }
 
-    pub(super) fn not_found(span: DynLazySpan<'db>, ident: IdentId<'db>) -> Self {
-        Self::NotFound(span, ident)
-    }
-
     pub(super) fn ambiguous(
         db: &'db dyn HirAnalysisDb,
         span: DynLazySpan<'db>,
