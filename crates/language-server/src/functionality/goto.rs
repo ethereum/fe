@@ -1,95 +1,61 @@
 use async_lsp::ResponseError;
-use fxhash::FxHashMap;
 use hir::{
     hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod},
     span::DynLazySpan,
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
     LowerHirDb, SpannedHirDb,
 };
-use hir_analysis::name_resolution::{EarlyResolvedPath, NameDomain, NameRes};
+use hir_analysis::name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameRes};
 
 use crate::{
     backend::{db::LanguageServerDb, Backend},
     util::{to_lsp_location_from_scope, to_offset_from_position},
 };
-use common::diagnostics::Span;
 use hir::span::LazySpan;
 
 pub type Cursor = rowan::TextSize;
 
-#[derive(Clone, Copy)]
-struct GotoEnclosingPathSegment<'db> {
-    path: PathId<'db>,
-    idx: usize,
-    scope: ScopeId<'db>,
+#[derive(Default)]
+struct PathSpanCollector<'db> {
+    paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
 }
 
-impl<'db> GotoEnclosingPathSegment<'db> {
-    fn segments(self, db: &'db dyn LanguageServerDb) -> &'db [PathSegmentId<'db>] {
-        &self.path.segments(db.as_hir_db())[0..self.idx + 1]
-    }
-    fn is_intermediate(self, db: &dyn LanguageServerDb) -> bool {
-        self.idx < self.path.segments(db.as_hir_db()).len() - 1
-    }
-}
-
-struct PathSegmentSpanCollector<'db> {
-    segment_map: FxHashMap<Span, GotoEnclosingPathSegment<'db>>,
-    db: &'db dyn LanguageServerDb,
-}
-
-impl<'db> PathSegmentSpanCollector<'db> {
-    fn new(db: &'db dyn LanguageServerDb) -> Self {
-        Self {
-            segment_map: FxHashMap::default(),
-            db,
-        }
-    }
-}
-
-impl<'db, 'ast: 'db> Visitor<'ast> for PathSegmentSpanCollector<'db> {
-    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan>, path: PathId<'ast>) {
-        let Some(path_span) = ctxt.span() else {
+impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
+    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>, path: PathId<'db>) {
+        let Some(span) = ctxt.span() else {
             return;
         };
 
         let scope = ctxt.scope();
-        for i in 0..path.segments(self.db.as_hir_db()).len() {
-            let Some(segment_span) = path_span.segment(i).resolve(self.db.as_spanned_hir_db())
-            else {
-                continue;
-            };
-
-            self.segment_map.insert(
-                segment_span,
-                GotoEnclosingPathSegment {
-                    path,
-                    idx: i,
-                    scope,
-                },
-            );
-        }
+        self.paths.push((path, scope, span));
     }
 }
 
-fn smallest_enclosing_segment<'db>(
+fn find_path_surrounding_cursor<'db>(
+    db: &'db dyn LanguageServerDb,
     cursor: Cursor,
-    ident_map: &FxHashMap<Span, GotoEnclosingPathSegment<'db>>,
-) -> Option<GotoEnclosingPathSegment<'db>> {
-    let mut smallest_enclosing_segment = None;
-    let mut smallest_range_size = None;
-
-    for (span, &enclosing_segment) in ident_map {
+    full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
+) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
+    let hir_db = db.as_hir_db();
+    for (path, scope, lazy_span) in full_paths {
+        let span = lazy_span.resolve(db.as_spanned_hir_db()).unwrap();
         if span.range.contains(cursor) {
-            let range_size = span.range.end() - span.range.start();
-            if smallest_range_size.is_none() || range_size < smallest_range_size.unwrap() {
-                smallest_enclosing_segment = Some(enclosing_segment);
-                smallest_range_size = Some(range_size);
+            for idx in 0..=path.segment_index(hir_db) {
+                let seg_span = lazy_span
+                    .segment(idx)
+                    .resolve(db.as_spanned_hir_db())
+                    .unwrap();
+                if seg_span.range.contains(cursor) {
+                    return Some((
+                        path.segment(hir_db, idx).unwrap(),
+                        idx != path.segment_index(hir_db),
+                        scope,
+                    ));
+                }
             }
         }
     }
-
-    smallest_enclosing_segment
+    return None;
 }
 
 pub fn find_enclosing_item<'db>(
@@ -130,30 +96,22 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     let item: ItemKind = find_enclosing_item(db.as_spanned_hir_db(), top_mod, cursor)?;
 
     let mut visitor_ctxt = VisitorCtxt::with_item(db.as_hir_db(), item);
-    let mut path_segment_collector = PathSegmentSpanCollector::new(db);
+    let mut path_segment_collector = PathSpanCollector::default();
     path_segment_collector.visit_item(&mut visitor_ctxt, item);
 
-    let cursor_segment = smallest_enclosing_segment(cursor, &path_segment_collector.segment_map)?;
+    let (path, is_intermediate, scope) =
+        find_path_surrounding_cursor(db, cursor, path_segment_collector.paths)?;
 
-    let segments = cursor_segment.segments(db);
-    let is_intermediate_segment = cursor_segment.is_intermediate(db);
-    // let is_partial = cursor_segment.idx < cursor_segment.path.segments(db.as_jar_db()).len();
-    let resolved_segments = hir_analysis::name_resolution::resolve_segments_early(
-        db.as_hir_analysis_db(),
-        segments,
-        cursor_segment.scope,
-    )?;
+    let resolved = resolve_path_early(db.as_hir_analysis_db(), path, scope)?;
 
-    let scopes = match resolved_segments {
+    let scopes = match resolved {
         EarlyResolvedPath::Full(bucket) => {
-            if is_intermediate_segment {
-                match bucket.pick(NameDomain::TYPE) {
-                    Ok(res) => res.scope().iter().cloned().collect::<Vec<_>>(),
-                    _ => bucket
-                        .iter_ok()
-                        .filter_map(NameRes::scope)
-                        .collect::<Vec<_>>(),
-                }
+            if is_intermediate {
+                bucket
+                    .pick(NameDomain::TYPE)
+                    .iter()
+                    .flat_map(|res| res.scope())
+                    .collect::<Vec<_>>()
             } else {
                 bucket
                     .iter_ok()
@@ -171,7 +129,6 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
 
 use crate::backend::workspace::IngotFileContext;
 
-// impl Backend {
 pub async fn handle_goto_definition(
     backend: &mut Backend,
     params: async_lsp::lsp_types::GotoDefinitionParams,
@@ -224,6 +181,7 @@ mod tests {
     use common::input::IngotKind;
     use dir_test::{dir_test, Fixture};
     use fe_compiler_test_utils::snap_test;
+    use fxhash::FxHashMap;
     use hir::{HirDb, LowerHirDb};
     use std::{collections::BTreeMap, path::Path};
 
@@ -249,19 +207,26 @@ mod tests {
         db: &LanguageServerDatabase,
         top_mod: TopLevelMod,
     ) -> Vec<rowan::TextSize> {
-        let mut visitor_ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
-        // let mut path_collector = PathSpanCollector::new(db);
-        let mut path_collector = PathSegmentSpanCollector::new(db);
+        let hir_db = db.as_hir_db();
+        let mut visitor_ctxt = VisitorCtxt::with_top_mod(hir_db, top_mod);
+        let mut path_collector = PathSpanCollector::default();
         path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
 
-        let segment_map = path_collector.segment_map;
-
         let mut cursors = Vec::new();
-        for (span, _) in segment_map {
-            let cursor = span.range.start();
-            cursors.push(cursor);
+        for (path, _, lazy_span) in path_collector.paths {
+            for idx in 0..=path.segment_index(hir_db) {
+                let seg_span = lazy_span
+                    .segment(idx)
+                    .resolve(db.as_spanned_hir_db())
+                    .unwrap();
+                cursors.push(seg_span.range.start());
+            }
         }
 
+        cursors.sort();
+        cursors.dedup();
+
+        eprintln!("Found cursors: {:?}", cursors);
         cursors
     }
 
@@ -370,7 +335,7 @@ mod tests {
         dir: "$CARGO_MANIFEST_DIR/test_files",
         glob: "smallest_enclosing*.fe"
     )]
-    fn test_smallest_enclosing_path(fixture: Fixture<&str>) {
+    fn test_find_path_surrounding_cursor(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
 
@@ -389,13 +354,12 @@ mod tests {
 
         for cursor in &cursors {
             let mut visitor_ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
-            let mut path_collector = PathSegmentSpanCollector::new(db);
+            let mut path_collector = PathSpanCollector::default();
             path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
 
-            let path_map = path_collector.segment_map;
-            let enclosing_path_segment = smallest_enclosing_segment(*cursor, &path_map);
+            let full_paths = path_collector.paths;
 
-            if let Some(GotoEnclosingPathSegment { path, scope, .. }) = enclosing_path_segment {
+            if let Some((path, _, scope)) = find_path_surrounding_cursor(db, *cursor, full_paths) {
                 let resolved_enclosing_path =
                     hir_analysis::name_resolution::resolve_path_early(db, path, scope).unwrap();
 
@@ -405,10 +369,7 @@ mod tests {
                         .map(|x| x.pretty_path(db).unwrap())
                         .collect::<Vec<_>>()
                         .join("\n"),
-                    EarlyResolvedPath::Partial {
-                        res,
-                        unresolved_from: _,
-                    } => res.pretty_path(db).unwrap(),
+                    EarlyResolvedPath::Partial { res, path: _ } => res.pretty_path(db).unwrap(),
                 };
                 cursor_path_map.insert(*cursor, res);
             }
