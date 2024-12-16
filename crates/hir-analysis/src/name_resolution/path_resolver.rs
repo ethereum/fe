@@ -151,8 +151,8 @@ impl<'db, T: Observer<'db>> Resolver<'db> for ResolveEarly<T> {
         let hir_db = db.as_hir_db();
         let parent = path.parent(hir_db);
 
-        if let Some(parent) = parent {
-            match self.resolve_path(db, parent, scope)? {
+        if let Some(path) = parent {
+            match self.resolve_path(db, path, scope)? {
                 part @ EarlyResolvedPath::Partial { .. } => return Ok(part),
                 EarlyResolvedPath::Full(bucket) => {
                     let res = bucket
@@ -174,10 +174,10 @@ impl<'db, T: Observer<'db>> Resolver<'db> for ResolveEarly<T> {
 
                     let should_partial = res.is_type()
                         || res.is_trait()
-                        || parent.root_ident(hir_db) == Some(IdentId::make_self_ty(hir_db));
+                        || path.root_ident(hir_db) == Some(IdentId::make_self_ty(hir_db));
 
                     if should_partial {
-                        return Ok(EarlyResolvedPath::Partial { path: parent, res });
+                        return Ok(EarlyResolvedPath::Partial { path, res });
                     }
                     self.observer.did_resolve(path, scope, &res);
 
