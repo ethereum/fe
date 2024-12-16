@@ -5,15 +5,23 @@ use std::fs;
 
 use crate::Resolver;
 
-#[derive(Deserialize, Hash, Debug, Clone)]
-pub struct GitDesc {
+#[derive(Deserialize, Hash, Debug, Clone, PartialEq, Eq)]
+pub struct GitDescription {
     remote: String,
     refspec: String,
     local_path: Option<String>,
 }
 
 pub struct GitResolver {
-    pub default_clone_path: Utf8PathBuf,
+    default_clone_path: Utf8PathBuf,
+}
+
+impl Default for GitResolver {
+    fn default() -> Self {
+        GitResolver {
+            default_clone_path: Utf8PathBuf::from(""),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -46,16 +54,11 @@ impl std::fmt::Display for GitResolutionError {
 }
 
 impl Resolver for GitResolver {
-    type Config = ();
-    type ResourceDesc = GitDesc;
+    type Description = GitDescription;
     type Resource = Utf8PathBuf;
     type ResolutionError = GitResolutionError;
 
-    fn from_config(_: &Self::Config) -> Self {
-        todo!()
-    }
-
-    fn resolve(&self, desc: &GitDesc) -> Result<Utf8PathBuf, GitResolutionError> {
+    fn resolve(&self, desc: &GitDescription) -> Result<Utf8PathBuf, GitResolutionError> {
         let clone_path = if let Some(ref local_path) = desc.local_path {
             Utf8PathBuf::from(local_path)
         } else {

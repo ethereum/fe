@@ -2,7 +2,6 @@ pub mod config;
 pub mod diagnostics;
 pub mod indexmap;
 pub mod input;
-pub mod resolver;
 
 pub use input::{InputFile, InputIngot};
 

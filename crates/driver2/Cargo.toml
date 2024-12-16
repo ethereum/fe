@@ -16,6 +16,7 @@ codespan-reporting = "0.11"
 hir = { path = "../hir", package = "fe-hir" }
 common = { path = "../common2", package = "fe-common2" }
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
+resolver = { path = "../resolver", package = "fe-resolver" }
 camino = "1.1.4"
 clap = { version = "4.3", features = ["derive"] }
 semver = "1.0.23"

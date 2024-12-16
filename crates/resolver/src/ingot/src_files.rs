@@ -1,50 +1,31 @@
-use super::IngotDesc;
 use crate::Resolver;
 use camino::Utf8PathBuf;
 use indexmap::IndexMap;
 use std::fs;
-use std::hash::Hash;
 use std::io;
 
 #[derive(Debug)]
 pub enum SrcFilesResolutionError {
-    FileNotFound,
-    DirectoryNotFound,
+    SrcFolderMissing,
+    MainFileMissing,
     FileReadError(io::Error),
 }
 
-pub struct SrcFilesResolver<FR> {
-    files_resolver: FR,
-}
+pub struct SrcFilesResolver;
 
-impl<FR> Resolver for SrcFilesResolver<FR>
-where
-    FR: Resolver,
-    FR::ResourceDesc: Hash,
-    FR::Resource: AsRef<Utf8PathBuf>,
-{
-    type Config = ();
-    type ResourceDesc = IngotDesc<FR::ResourceDesc>;
+impl Resolver for SrcFilesResolver {
+    type Description = Utf8PathBuf;
     type Resource = IndexMap<Utf8PathBuf, Vec<u8>>;
     type ResolutionError = SrcFilesResolutionError;
 
-    fn from_config(_config: &Self::Config) -> Self {
-        todo!()
-    }
-
     fn resolve(
         &self,
-        desc: &IngotDesc<FR::ResourceDesc>,
+        desc: &Utf8PathBuf,
     ) -> Result<IndexMap<Utf8PathBuf, Vec<u8>>, SrcFilesResolutionError> {
-        let src_dir = self
-            .files_resolver
-            .resolve(&desc.files_desc)
-            .map_err(|_| SrcFilesResolutionError::FileNotFound)?
-            .as_ref()
-            .join("src");
+        let src_dir = desc.join("src");
 
         if !src_dir.exists() || !src_dir.is_dir() {
-            return Err(SrcFilesResolutionError::DirectoryNotFound);
+            return Err(SrcFilesResolutionError::SrcFolderMissing);
         }
 
         let mut file_map = IndexMap::new();

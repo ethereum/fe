@@ -105,6 +105,9 @@ pub enum IngotKind {
 
     /// Standard library ingot.
     Std,
+
+    /// Core library ingot.
+    Core,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
