@@ -325,7 +325,10 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         let candidate = match select_method_candidate(
             db,
             (canonical_r_ty.value, self.span.clone().into()),
-            (name, self.span.segment(self.path.len(hir_db) - 1).into()),
+            (
+                name,
+                self.span.segment(self.path.segment_index(hir_db)).into(),
+            ),
             self.tc.env.scope(),
             self.tc.env.assumptions(),
         ) {

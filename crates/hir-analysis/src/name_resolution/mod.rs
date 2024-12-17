@@ -458,7 +458,10 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
             Err(err) => {
                 let hir_db = self.db.as_hir_db();
                 let failed_at = err.failed_at;
-                let span = ctxt.span().unwrap().segment(failed_at.len(hir_db) - 1);
+                let span = ctxt
+                    .span()
+                    .unwrap()
+                    .segment(failed_at.segment_index(hir_db));
                 let ident = failed_at.ident(hir_db);
 
                 let diag = match err.kind {
