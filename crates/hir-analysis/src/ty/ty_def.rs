@@ -175,15 +175,14 @@ impl<'db> TyId<'db> {
         Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::Bool)))
     }
 
-    pub(super) fn array(db: &'db dyn HirAnalysisDb) -> Self {
+    pub(super) fn array(db: &'db dyn HirAnalysisDb, elem: TyId<'db>) -> Self {
         let base = TyBase::Prim(PrimTy::Array);
-        Self::new(db, TyData::TyBase(base))
+        let array = Self::new(db, TyData::TyBase(base));
+        Self::app(db, array, elem)
     }
 
-    pub(super) fn array_with_elem(db: &'db dyn HirAnalysisDb, elem: TyId<'db>, len: usize) -> Self {
-        let base = TyBase::Prim(PrimTy::Array);
-        let base = Self::new(db, TyData::TyBase(base));
-        let array = TyId::app(db, base, elem);
+    pub(super) fn array_with_len(db: &'db dyn HirAnalysisDb, elem: TyId<'db>, len: usize) -> Self {
+        let array = Self::array(db, elem);
 
         let len = EvaluatedConstTy::LitInt(IntegerId::new(db.as_hir_db(), len.into()));
         let len = ConstTyData::Evaluated(len, array.applicable_ty(db).unwrap().const_ty.unwrap());
