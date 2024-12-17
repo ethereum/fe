@@ -181,8 +181,8 @@ impl<'db> TyBuilder<'db> {
         let path = path.to_opt();
         let path_ty = path
             .map(|path| match self.resolve_path(path) {
-                Either::Left(res) => self.lower_resolved_path(res, is_const_param_ty),
-                Either::Right(ty) => Either::Left(ty),
+                Ok(res) => self.lower_resolved_path(res, is_const_param_ty),
+                Err(ty) => Either::Left(ty),
             })
             .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
 
@@ -237,8 +237,8 @@ impl<'db> TyBuilder<'db> {
     pub(super) fn lower_self_ty(&mut self, args: GenericArgListId<'db>) -> TyId<'db> {
         let res = self.resolve_path(PathId::self_ty(self.db.as_hir_db()));
         let (scope, res) = match res {
-            Either::Left(res @ NameResKind::Scope(scope)) => (scope, res),
-            Either::Left(NameResKind::Prim(prim)) => {
+            Ok(res @ NameResKind::Scope(scope)) => (scope, res),
+            Ok(NameResKind::Prim(prim)) => {
                 let ty = TyId::from_hir_prim_ty(self.db, prim);
                 return args
                     .data(self.db.as_hir_db())
@@ -247,7 +247,7 @@ impl<'db> TyBuilder<'db> {
                     .fold(ty, |acc, arg| TyId::app(self.db, acc, arg));
             }
 
-            Either::Right(ty) => {
+            Err(ty) => {
                 return args
                     .data(self.db.as_hir_db())
                     .iter()
@@ -374,17 +374,17 @@ impl<'db> TyBuilder<'db> {
 
     /// If the path is resolved to a type, return the resolution. Otherwise,
     /// returns the `TyId::Invalid` with proper `InvalidCause`.
-    fn resolve_path(&mut self, path: PathId<'db>) -> Either<NameResKind<'db>, TyId<'db>> {
+    fn resolve_path(&mut self, path: PathId<'db>) -> Result<NameResKind<'db>, TyId<'db>> {
         match resolve_path_early(self.db, path, self.scope) {
             Some(EarlyResolvedPath::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
-                Ok(res) => Either::Left(res.kind),
+                Ok(res) => Ok(res.kind),
 
                 // This error is already handled by the name resolution.
-                Err(_) => Either::Right(TyId::invalid(self.db, InvalidCause::Other)),
+                Err(_) => Err(TyId::invalid(self.db, InvalidCause::Other)),
             },
 
             None | Some(EarlyResolvedPath::Partial { .. }) => {
-                Either::Right(TyId::invalid(self.db, InvalidCause::AssocTy))
+                Err(TyId::invalid(self.db, InvalidCause::AssocTy))
             }
         }
     }
