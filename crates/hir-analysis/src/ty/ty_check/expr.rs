@@ -709,7 +709,7 @@ impl<'db> TyChecker<'db> {
             expected_elem_ty = self.check_expr(*elem, expected_elem_ty).ty;
         }
 
-        let ty = TyId::array_with_elem(self.db, expected_elem_ty, elems.len());
+        let ty = TyId::array_with_len(self.db, expected_elem_ty, elems.len());
         ExprProp::new(ty, true)
     }
 
@@ -730,7 +730,7 @@ impl<'db> TyChecker<'db> {
 
         expected_elem_ty = self.check_expr(*elem, expected_elem_ty).ty;
 
-        let array = TyId::app(self.db, TyId::array(self.db), expected_elem_ty);
+        let array = TyId::array(self.db, expected_elem_ty);
         let ty = if let Some(len_body) = len.to_opt() {
             let len_ty = ConstTyId::from_body(self.db, len_body);
             let len_ty = TyId::const_ty(self.db, len_ty);

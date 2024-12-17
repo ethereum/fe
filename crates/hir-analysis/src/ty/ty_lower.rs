@@ -164,9 +164,8 @@ impl<'db> TyBuilder<'db> {
                 let elem_ty = self.lower_opt_hir_ty(*hir_elem_ty);
                 let len_ty = ConstTyId::from_opt_body(self.db, *len);
                 let len_ty = TyId::const_ty(self.db, len_ty);
-                let array = TyId::array(self.db);
-                let array_1 = TyId::app(self.db, array, elem_ty);
-                TyId::app(self.db, array_1, len_ty)
+                let array = TyId::array(self.db, elem_ty);
+                TyId::app(self.db, array, len_ty)
             }
 
             HirTyKind::Never => TyId::never(self.db),
