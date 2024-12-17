@@ -1,0 +1,4 @@
+pub enum Option<Value> {
+    Some(Value),
+    None
+}

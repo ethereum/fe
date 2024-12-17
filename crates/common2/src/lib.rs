@@ -1,3 +1,4 @@
+pub mod config;
 pub mod diagnostics;
 pub mod indexmap;
 pub mod input;

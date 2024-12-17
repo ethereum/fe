@@ -1,0 +1,9 @@
+use ingot::ctrl::{applicative::Applicative, function::Fn}
+use ingot::data::tuple::Tuple
+
+pub trait Functor: Applicative
+where Self: * -> *
+{
+    fn fmap<Source, Target, Morph>(self: Self<Source>, morph: Morph) -> Self<Target>
+    where Morph: Fn<1, (Source), Target>, (Source): Tuple<1>
+}

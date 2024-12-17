@@ -2,19 +2,23 @@ pub mod diagnostics;
 
 use std::path;
 
+use camino::Utf8PathBuf;
 use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
 };
 use common::{
     diagnostics::CompleteDiagnostic,
-    indexmap::IndexSet,
-    input::{IngotKind, Version},
+    indexmap::{IndexMap, IndexSet},
+    input::{IngotDependency, IngotKind, Version},
     InputDb, InputFile, InputIngot,
 };
 use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
-    lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
+    analysis_pass::AnalysisPassManager,
+    diagnostics::DiagnosticVoucher,
+    hir_def::TopLevelMod,
+    lower::{map_file_to_mod, module_tree},
+    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
@@ -23,6 +27,12 @@ use hir_analysis::{
         ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
     HirAnalysisDb,
+};
+use resolver::{
+    ingot::{
+        config::ConfigResolver, dependencies::DependenciesResolver, src_files::SrcFilesResolver,
+    },
+    Resolver,
 };
 
 use crate::diagnostics::ToCsDiag;
@@ -69,6 +79,64 @@ impl DriverDataBase {
     {
         let mut pass_manager = pm_builder(self);
         DiagnosticsCollection(pass_manager.run_on_module(top_mod))
+    }
+
+    pub fn run_on_ingot<'db>(&'db mut self, ingot: InputIngot) -> DiagnosticsCollection<'db> {
+        self.run_on_ingot_with_pass_manager(ingot, initialize_analysis_pass)
+    }
+
+    pub fn run_on_ingot_with_pass_manager<'db, F>(
+        &'db mut self,
+        ingot: InputIngot,
+        pm_builder: F,
+    ) -> DiagnosticsCollection<'db>
+    where
+        F: FnOnce(&'db DriverDataBase) -> AnalysisPassManager<'db>,
+    {
+        let tree = module_tree(self, ingot);
+        let mut pass_manager = pm_builder(self);
+        DiagnosticsCollection(pass_manager.run_on_module_tree(tree))
+    }
+
+    pub fn ingot(&mut self, ingot_path: &path::Path) -> InputIngot {
+        let config_resolver = ConfigResolver;
+        let dep_resolver = DependenciesResolver { config_resolver };
+        let src_files_resolver = SrcFilesResolver;
+
+        let dep_graph = dep_resolver.resolve(ingot_path).unwrap();
+
+        let input_ingots = IndexMap::new();
+
+        for path in dep_graph.reverse_toposort() {
+            let ingot_kind = if path == ingot_path {
+                IngotKind::Local
+            } else {
+                IngotKind::External
+            };
+            let external_ingots =
+                dep_graph
+                    .dependencies(&dep)
+                    .iter()
+                    .map(|(name, _, path)| IngotDependency {
+                        name,
+                        ingot: input_ingots[path],
+                    });
+            input_ingot[ingot_path] =
+                InputIngot::new(self, path, ingot_kind, version, external_ingots);
+        }
+
+        for (ingot_path, input_ingot) in input_ingots {
+            let files = src_files_resolver.resolve(&ingot_path);
+            let input_files = files
+                .into_iter()
+                .map(|(path, content)| InputFile::new(self, input_ingot, file_path, content))
+                .collect();
+            input_ingot.set_files(db, input_files);
+            // match lib.fe and main.fe
+            // input_ingot.set_root_file(db, input_files[0]);
+        }
+
+        input_ingots[ingot_path]
     }
 
     pub fn standalone(&mut self, file_path: &path::Path, source: &str) -> InputFile {
