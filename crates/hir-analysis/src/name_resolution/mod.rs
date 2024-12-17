@@ -6,7 +6,6 @@ mod path_resolver;
 pub(crate) mod traits_in_scope;
 mod visibility_checker;
 
-use either::Either;
 use hir::{
     analysis_pass::ModuleAnalysisPass,
     diagnostics::DiagnosticVoucher,
@@ -244,7 +243,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
 
         match path_kind.pick(bucket) {
             // The path exists and belongs to the expected kind.
-            Either::Left(res) => {
+            Ok(res) => {
                 if !res.is_visible(self.db, scope) {
                     self.diags.push(NameResDiag::invisible(
                         span,
@@ -255,7 +254,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
             }
 
             // The path exists but doesn't belong to the expected kind.
-            Either::Right(res) => match path_kind {
+            Err(res) => match path_kind {
                 ExpectedPathKind::Type => {
                     self.diags
                         .push(NameResDiag::ExpectedType(span, last_seg_ident, res));
@@ -547,32 +546,30 @@ impl ExpectedPathKind {
         }
     }
 
-    fn pick<'db>(self, bucket: &NameResBucket<'db>) -> Either<NameRes<'db>, NameRes<'db>> {
+    fn pick<'db>(self, bucket: &NameResBucket<'db>) -> Result<NameRes<'db>, NameRes<'db>> {
         debug_assert!(!bucket.is_empty());
 
         let res = match bucket.pick(self.domain()).as_ref().ok() {
             Some(res) => res.clone(),
             None => {
-                return Either::Right(
-                    bucket
-                        .iter()
-                        .find_map(|res| {
-                            if let Ok(res) = res {
-                                Some(res.clone())
-                            } else {
-                                None
-                            }
-                        })
-                        .unwrap(),
-                );
+                return Err(bucket
+                    .iter()
+                    .find_map(|res| {
+                        if let Ok(res) = res {
+                            Some(res.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .unwrap());
             }
         };
 
         match self {
-            Self::Type if !res.is_type() => Either::Right(res),
-            Self::Trait if !res.is_trait() => Either::Right(res),
-            Self::Value if !res.is_value() => Either::Right(res),
-            _ => Either::Left(res),
+            Self::Type if !res.is_type() => Err(res),
+            Self::Trait if !res.is_trait() => Err(res),
+            Self::Value if !res.is_value() => Err(res),
+            _ => Ok(res),
         }
     }
 }

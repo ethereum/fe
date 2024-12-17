@@ -5,7 +5,6 @@ use std::{
 };
 
 use bitflags::bitflags;
-use either::Either;
 use hir::{
     hir_def::{
         prim_ty::PrimTy,
@@ -244,15 +243,15 @@ pub struct NameRes<'db> {
 impl<'db> NameRes<'db> {
     /// Returns `true` if the name is visible from the given `scope`.
     pub fn is_visible(&self, db: &'db dyn HirAnalysisDb, from: ScopeId<'db>) -> bool {
-        let scope_or_use = match self.derivation {
+        match self.derivation {
             NameDerivation::Def | NameDerivation::Prim | NameDerivation::External => {
                 match self.kind {
-                    NameResKind::Scope(scope) => Either::Left(scope),
-                    NameResKind::Prim(_) => return true,
+                    NameResKind::Scope(scope) => is_scope_visible_from(db, scope, from),
+                    NameResKind::Prim(_) => true,
                 }
             }
             NameDerivation::NamedImported(use_) | NameDerivation::GlobImported(use_) => {
-                Either::Right(use_)
+                is_use_visible(db, from, use_)
             }
             NameDerivation::Lex(ref inner) => {
                 let mut inner = inner;
@@ -266,11 +265,6 @@ impl<'db> NameRes<'db> {
                 }
                 .is_visible(db, from);
             }
-        };
-
-        match scope_or_use {
-            Either::Left(target_scope) => is_scope_visible_from(db, target_scope, from),
-            Either::Right(use_) => is_use_visible(db, from, use_),
         }
     }
 
