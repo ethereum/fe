@@ -276,7 +276,7 @@ impl<'db> TyChecker<'db> {
         if let Partial::Present(Expr::Path(Partial::Present(path))) =
             callee.data(self.db.as_hir_db(), self.body())
         {
-            let idx = path.len(self.db.as_hir_db()) - 1;
+            let idx = path.segment_index(self.db.as_hir_db());
 
             if !callable.unify_generic_args(
                 self,

@@ -86,14 +86,18 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
                 let span = ctxt
                     .span()
                     .unwrap()
-                    .segment(path.len(self.db.as_hir_db()) - 1)
+                    .segment(path.segment_index(self.db.as_hir_db()))
                     .into();
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
 
             EarlyResolvedPath::Partial { path, res } => {
                 let prop = res.pretty_path(self.db.as_hir_analysis_db()).unwrap();
-                let span = ctxt.span().unwrap().segment(path.len(self.db) - 1).into();
+                let span = ctxt
+                    .span()
+                    .unwrap()
+                    .segment(path.segment_index(self.db))
+                    .into();
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
         }
