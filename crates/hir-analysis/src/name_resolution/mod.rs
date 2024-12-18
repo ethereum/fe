@@ -524,6 +524,7 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
             return;
         };
         self.verify_path(path, scope, ctxt.span().unwrap(), bucket);
+        walk_path(self, ctxt, path);
     }
 }
 
