@@ -13,6 +13,9 @@ define_lazy_span_node!(
 define_lazy_span_node!(
     LazyPathSegmentSpan,
     ast::PathSegment,
+    @token {
+        (ident, ident),
+    }
     @node {
         (generic_args, generic_args, LazyGenericArgListSpan),
     }

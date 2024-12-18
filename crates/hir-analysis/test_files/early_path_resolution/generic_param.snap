@@ -25,7 +25,7 @@ note:
   ┌─ generic_param.fe:9:10
   │
 9 │ where T: TraitWithGenerics<U>,
-  │          ^^^^^^^^^^^^^^^^^^^^ generic_param::TraitWithGenerics
+  │          ^^^^^^^^^^^^^^^^^ generic_param::TraitWithGenerics
 
 note: 
   ┌─ generic_param.fe:9:28
