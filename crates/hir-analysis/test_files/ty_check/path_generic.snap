@@ -1,0 +1,70 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/path_generic.fe
+---
+note: 
+   ┌─ path_generic.fe:10:22
+   │  
+10 │       fn method() -> T {
+   │ ╭──────────────────────^
+11 │ │         T::default()
+12 │ │     }
+   │ ╰─────^ T
+
+note: 
+   ┌─ path_generic.fe:11:9
+   │
+11 │         T::default()
+   │         ^^^^^^^^^^ fn default<T>
+
+note: 
+   ┌─ path_generic.fe:11:9
+   │
+11 │         T::default()
+   │         ^^^^^^^^^^^^ T
+
+note: 
+   ┌─ path_generic.fe:16:26
+   │  
+16 │       fn default() -> Self {
+   │ ╭──────────────────────────^
+17 │ │         0
+18 │ │     }
+   │ ╰─────^ i32
+
+note: 
+   ┌─ path_generic.fe:17:9
+   │
+17 │         0
+   │         ^ i32
+
+note: 
+   ┌─ path_generic.fe:21:10
+   │  
+21 │   fn foo() {
+   │ ╭──────────^
+22 │ │     // Deciding the `Foo` type is not possible without a type argument for `Foo`.
+23 │ │     // let x = Foo::method()
+24 │ │ 
+25 │ │     let x = Foo<i32>::method()
+26 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ path_generic.fe:25:9
+   │
+25 │     let x = Foo<i32>::method()
+   │         ^ i32
+
+note: 
+   ┌─ path_generic.fe:25:13
+   │
+25 │     let x = Foo<i32>::method()
+   │             ^^^^^^^^^^^^^^^^ fn method<i32>
+
+note: 
+   ┌─ path_generic.fe:25:13
+   │
+25 │     let x = Foo<i32>::method()
+   │             ^^^^^^^^^^^^^^^^^^ i32

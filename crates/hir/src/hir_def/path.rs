@@ -59,6 +59,12 @@ impl<'db> PathId<'db> {
         }
     }
 
+    pub fn is_bare_ident(self, db: &'db dyn HirDb) -> bool {
+        self.parent(db).is_none()
+            && self.ident(db).is_present()
+            && self.generic_args(db).is_empty(db)
+    }
+
     pub fn push(
         self,
         db: &'db dyn HirDb,
