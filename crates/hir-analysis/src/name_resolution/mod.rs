@@ -209,7 +209,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
         let path_kind = self.path_ctxt.last().unwrap();
         let hir_db = self.db.as_hir_db();
         let last_seg_ident = path.ident(hir_db).to_opt().unwrap();
-        let span = span.segment(path.segment_index(hir_db)).into();
+        let span = span.segment(path.segment_index(hir_db)).ident().into();
 
         if bucket.is_empty() {
             let Err(err) = bucket.pick(path_kind.domain()) else {
@@ -461,7 +461,8 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
                 let span = ctxt
                     .span()
                     .unwrap()
-                    .segment(failed_at.segment_index(hir_db));
+                    .segment(failed_at.segment_index(hir_db))
+                    .ident();
                 let ident = failed_at.ident(hir_db);
 
                 let diag = match err.kind {
@@ -512,7 +513,11 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
         let trajectory = resolver.into_inner();
         if let Some((inv_path, res)) = trajectory.find_invisible_segment(self.db) {
             let hir_db = self.db.as_hir_db();
-            let span = ctxt.span().unwrap().segment(inv_path.segment_index(hir_db));
+            let span = ctxt
+                .span()
+                .unwrap()
+                .segment(inv_path.segment_index(hir_db))
+                .ident();
             let ident = path.ident(hir_db);
             let diag =
                 NameResDiag::invisible(span.into(), *ident.unwrap(), res.derived_from(self.db));

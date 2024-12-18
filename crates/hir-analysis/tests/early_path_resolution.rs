@@ -87,6 +87,7 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
                     .span()
                     .unwrap()
                     .segment(path.segment_index(self.db.as_hir_db()))
+                    .ident()
                     .into();
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
@@ -97,6 +98,7 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
                     .span()
                     .unwrap()
                     .segment(path.segment_index(self.db))
+                    .ident()
                     .into();
                 self.prop_formatter.push_prop(self.top_mod, span, prop);
             }
