@@ -5,7 +5,7 @@ use common::{
 };
 use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
-use tracing::error;
+use tracing::{error, warn};
 use url::Url;
 
 pub fn calculate_line_offsets(text: &str) -> Vec<usize> {
@@ -83,14 +83,26 @@ pub fn diag_to_lsp(
 ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
     let mut result =
         FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default();
+
     diag.sub_diagnostics.into_iter().for_each(|sub| {
-        let uri = sub.span.as_ref().unwrap().file.abs_path(db);
-        let lsp_range = to_lsp_range_from_span(sub.span.unwrap(), db);
+        let span = match sub.span {
+            Some(span) => span,
+            None => {
+                warn!("Diagnostic span is missing");
+                return;
+            }
+        };
 
-        // todo: generalize this to handle other kinds of URLs besides file URLs
-        let uri = Url::from_file_path(uri).unwrap();
+        let uri = span.file.abs_path(db);
+        let uri = match Url::from_file_path(uri) {
+            Ok(uri) => uri,
+            Err(()) => {
+                error!("Failed to convert path to URL");
+                return;
+            }
+        };
 
-        match lsp_range {
+        match to_lsp_range_from_span(span, db) {
             Ok(range) => {
                 let diags = result.entry(uri).or_insert_with(Vec::new);
                 diags.push(async_lsp::lsp_types::Diagnostic {
@@ -102,14 +114,15 @@ pub fn diag_to_lsp(
                     related_information: None,
                     tags: None,
                     code_description: None,
-                    data: None, // for code actions
+                    data: None,
                 });
             }
-            Err(_) => {
-                error!("Failed to convert span to range");
+            Err(e) => {
+                error!("Error getting diagnostic: {} (ignoring diagnostic)", e);
             }
         }
     });
+
     result
 }
 
