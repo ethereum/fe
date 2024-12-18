@@ -13,7 +13,10 @@ use super::{
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
 use crate::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    name_resolution::{
+        resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind, ResolveToTypeDomain,
+        Resolver,
+    },
     ty::binder::Binder,
     HirAnalysisDb,
 };
@@ -177,19 +180,17 @@ impl<'db> TyBuilder<'db> {
         path: Partial<PathId<'db>>,
         is_const_param_ty: bool,
     ) -> TyId<'db> {
-        let path = path.to_opt();
-        let path_ty = path
-            .map(|path| match self.resolve_path(path) {
-                Ok(res) => self.lower_resolved_path(res, is_const_param_ty),
-                Err(ty) => Either::Left(ty),
-            })
-            .unwrap_or_else(|| Either::Left(TyId::invalid(self.db, InvalidCause::Other)));
+        let Some(path) = path.to_opt() else {
+            return TyId::invalid(self.db, InvalidCause::Other);
+        };
 
-        let arg_tys = path
-            .map(|path| {
-                lower_generic_arg_list(self.db, path.generic_args(self.db.as_hir_db()), self.scope)
-            })
-            .unwrap_or_default();
+        let path_ty = match self.resolve_path(path) {
+            Ok(res) => self.lower_resolved_path(res, is_const_param_ty),
+            Err(ty) => Either::Left(ty),
+        };
+
+        let arg_tys =
+            lower_generic_arg_list(self.db, path.generic_args(self.db.as_hir_db()), self.scope);
 
         match path_ty {
             Either::Left(ty) => arg_tys
@@ -374,17 +375,17 @@ impl<'db> TyBuilder<'db> {
     /// If the path is resolved to a type, return the resolution. Otherwise,
     /// returns the `TyId::Invalid` with proper `InvalidCause`.
     fn resolve_path(&mut self, path: PathId<'db>) -> Result<NameResKind<'db>, TyId<'db>> {
-        match resolve_path_early(self.db, path, self.scope) {
-            Some(EarlyResolvedPath::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
-                Ok(res) => Ok(res.kind),
-
-                // This error is already handled by the name resolution.
-                Err(_) => Err(TyId::invalid(self.db, InvalidCause::Other)),
-            },
-
-            None | Some(EarlyResolvedPath::Partial { .. }) => {
+        match ResolveToTypeDomain::default().resolve_path(self.db, path, self.scope) {
+            Some(EarlyResolvedPath::Full(res)) => Ok(res.kind),
+            Some(EarlyResolvedPath::Partial { .. }) => {
+                // The path's parent resolved to a type or trait,
+                // so the path attempts to refer to a type nested inside a type,
+                // which is not yet allowed in fe.
                 Err(TyId::invalid(self.db, InvalidCause::AssocTy))
             }
+
+            // This error is already handled by the name resolution.
+            None => Err(TyId::invalid(self.db, InvalidCause::Other)),
         }
     }
 

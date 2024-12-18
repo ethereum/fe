@@ -149,7 +149,6 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
     // xxx only used for single segment path
     fn resolve_ident(&mut self, ident: IdentId<'db>) -> ResolvedPathInBody<'db> {
-        let hir_db = self.tc.db.as_hir_db();
         match self.mode {
             ResolutionMode::ExprValue => self.resolve_ident_expr(ident),
 
@@ -170,14 +169,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 match resolved {
                     ResolvedPathInBody::Variant(..) => resolved,
                     ResolvedPathInBody::Ty(ref ty) if ty.is_record(self.tc.db) => resolved,
-                    _ => {
-                        if let Some(ident) = self.path.ident(hir_db).to_opt() {
-                            // xxx generic args?
-                            ResolvedPathInBody::NewBinding(ident)
-                        } else {
-                            resolved
-                        }
-                    }
+                    _ => ResolvedPathInBody::NewBinding(ident),
                 }
             }
         }
