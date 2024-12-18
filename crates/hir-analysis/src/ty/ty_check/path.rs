@@ -29,7 +29,9 @@ use crate::{
         trait_lower::lower_trait,
         ty_check::method_selection::{select_method_candidate, Candidate},
         ty_def::{InvalidCause, TyData, TyId},
-        ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
+        ty_lower::{
+            collect_generic_params, lower_generic_arg_list, lower_hir_ty, GenericParamOwnerId,
+        },
         unify::UnificationTable,
     },
     HirAnalysisDb,
@@ -137,25 +139,25 @@ impl<'db, 'env> PathResolver<'db, 'env> {
     fn resolve_path(&mut self) -> ResolvedPathInBody<'db> {
         let hir_db = self.tc.db.as_hir_db();
 
-        if let Some(ident) = self.path.as_ident(hir_db) {
-            self.resolve_ident(ident)
+        if self.path.is_bare_ident(hir_db) {
+            self.resolve_ident(self.path)
         } else {
             resolve_path_early(self.tc.db, self.path, self.tc.env.scope()).map_or_else(
                 || ResolvedPathInBody::Invalid,
-                |res| self.resolve_path_late(res),
+                |res| self.resolve_path_late(self.path, res),
             )
         }
     }
 
-    // xxx only used for single segment path
-    fn resolve_ident(&mut self, ident: IdentId<'db>) -> ResolvedPathInBody<'db> {
+    // xxx only used for single segment path with no generic args
+    fn resolve_ident(&mut self, path: PathId<'db>) -> ResolvedPathInBody<'db> {
         match self.mode {
-            ResolutionMode::ExprValue => self.resolve_ident_expr(ident),
+            ResolutionMode::ExprValue => self.resolve_ident_expr(path),
 
             ResolutionMode::RecordInit => {
                 resolve_path_early(self.tc.db, self.path, self.tc.env.scope()).map_or_else(
                     || ResolvedPathInBody::Invalid,
-                    |res| self.resolve_path_late(res),
+                    |res| self.resolve_path_late(path, res),
                 )
             }
 
@@ -163,21 +165,24 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 let resolved = resolve_path_early(self.tc.db, self.path, self.tc.env.scope())
                     .map_or_else(
                         || ResolvedPathInBody::Invalid,
-                        |res| self.resolve_path_late(res),
+                        |res| self.resolve_path_late(path, res),
                     );
 
                 match resolved {
                     ResolvedPathInBody::Variant(..) => resolved,
                     ResolvedPathInBody::Ty(ref ty) if ty.is_record(self.tc.db) => resolved,
-                    _ => ResolvedPathInBody::NewBinding(ident),
+                    _ => {
+                        ResolvedPathInBody::NewBinding(*path.ident(self.tc.db.as_hir_db()).unwrap())
+                    }
                 }
             }
         }
     }
 
     // xxx only used for single-segment path in `ResolutionMode::ExprValue`
-    fn resolve_ident_expr(&mut self, ident: IdentId<'db>) -> ResolvedPathInBody<'db> {
+    fn resolve_ident_expr(&mut self, path: PathId<'db>) -> ResolvedPathInBody<'db> {
         let mut current_idx = self.tc.env.current_block_idx();
+        let ident = *path.ident(self.tc.db.as_hir_db()).unwrap();
         loop {
             let env = self.tc.env.get_block(current_idx);
             if let Some(binding) = env.lookup_var(ident) {
@@ -189,7 +194,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             let query = EarlyNameQueryId::new(self.tc.db, ident, scope, directive);
             let bucket = resolve_query(self.tc.db, query);
 
-            let resolved = self.resolve_bucket(bucket);
+            let resolved = self.resolve_bucket(path, bucket);
             match resolved {
                 ResolvedPathInBody::Invalid => {
                     if current_idx == 0 {
@@ -210,7 +215,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         );
         let bucket = resolve_query(self.tc.db, query);
 
-        let resolved = self.resolve_bucket(bucket);
+        let resolved = self.resolve_bucket(path, bucket);
         match resolved {
             ResolvedPathInBody::Invalid => ResolvedPathInBody::NewBinding(ident),
             resolved => resolved,
@@ -219,10 +224,11 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
     fn resolve_path_late(
         &mut self,
+        path: PathId<'db>,
         early: EarlyResolvedPath<'db, &'db NameResBucket<'db>>,
     ) -> ResolvedPathInBody<'db> {
         match early {
-            EarlyResolvedPath::Full(bucket) => self.resolve_bucket(bucket),
+            EarlyResolvedPath::Full(bucket) => self.resolve_bucket(path, bucket),
 
             // Try to resolve the partially resolved path as an enum variant.
             EarlyResolvedPath::Partial { path, res } => self.resolve_partial(res, path),
@@ -237,7 +243,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         let db = self.tc.db;
         let hir_db = db.as_hir_db();
 
-        let receiver_ty = match self.resolve_name_res(&res) {
+        let receiver_ty = match self.resolve_name_res(resolved, &res) {
             ResolvedPathInBody::Ty(ty) => ty,
 
             ResolvedPathInBody::Func(..) => {
@@ -283,7 +289,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
             if let AdtRef::Enum(enum_) = adt_ref.data(db);
             let scope = enum_.scope();
             if let Some(bucket) = resolve_path_tail_in_scope(self.tc.db, self.path, scope);
-            if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_bucket(bucket);
+            if let resolved @ ResolvedPathInBody::Variant(..) = self.resolve_bucket(self.path, bucket);
             then {
                 return resolved;
             }
@@ -358,14 +364,18 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         ))
     }
 
-    fn resolve_bucket(&mut self, bucket: &NameResBucket<'db>) -> ResolvedPathInBody<'db> {
+    fn resolve_bucket(
+        &mut self,
+        path: PathId<'db>,
+        bucket: &NameResBucket<'db>,
+    ) -> ResolvedPathInBody<'db> {
         match self.mode {
             ResolutionMode::ExprValue => {
                 match bucket.pick(NameDomain::VALUE) {
-                    Ok(res) => self.resolve_name_res(res),
+                    Ok(res) => self.resolve_name_res(path, res),
                     Err(_) => {
                         if let Ok(res) = bucket.pick(NameDomain::TYPE) {
-                            self.resolve_name_res(res)
+                            self.resolve_name_res(path, res)
                         } else {
                             // This error is already reported in the name resolution phase.
                             ResolvedPathInBody::Invalid
@@ -376,7 +386,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
             ResolutionMode::RecordInit | ResolutionMode::Pat => {
                 if let Ok(res) = bucket.pick(NameDomain::VALUE) {
-                    let res = self.resolve_name_res(res);
+                    let res = self.resolve_name_res(path, res);
                     if !matches!(
                         res,
                         ResolvedPathInBody::Diag(_) | ResolvedPathInBody::Invalid
@@ -386,32 +396,42 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 }
 
                 match bucket.pick(NameDomain::TYPE) {
-                    Ok(res) => self.resolve_name_res(res),
+                    Ok(res) => self.resolve_name_res(path, res),
                     Err(_) => ResolvedPathInBody::Invalid,
                 }
             }
         }
     }
 
-    fn resolve_name_res(&mut self, res: &NameRes<'db>) -> ResolvedPathInBody<'db> {
+    fn resolve_name_res(
+        &mut self,
+        path: PathId<'db>,
+        res: &NameRes<'db>,
+    ) -> ResolvedPathInBody<'db> {
         let db = self.tc.db;
         let hir_db = db.as_hir_db();
+
+        let arg_tys = &lower_generic_arg_list(db, path.generic_args(hir_db), self.tc.env.scope());
+
         match res.kind {
             NameResKind::Scope(ScopeId::Item(ItemKind::Struct(struct_))) => {
                 let adt = lower_adt(db, AdtRefId::from_struct(db, struct_));
                 let ty = TyId::adt(db, adt);
+                let ty = TyId::foldl(db, ty, arg_tys);
                 ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Enum(enum_))) => {
                 let adt = lower_adt(db, AdtRefId::from_enum(db, enum_));
                 let ty = TyId::adt(db, adt);
+                let ty = TyId::foldl(db, ty, arg_tys);
                 ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
             }
 
             NameResKind::Scope(ScopeId::Item(ItemKind::Contract(contract_))) => {
                 let adt = lower_adt(db, AdtRefId::from_contract(db, contract_));
                 let ty = TyId::adt(db, adt);
+                let ty = TyId::foldl(db, ty, arg_tys);
                 ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
             }
 
@@ -422,10 +442,9 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                     && matches!(variant_def.kind, HirVariantKind::Tuple(_))
                 {
                     let adt_ref = AdtRefId::new(db, enum_.into());
-                    let receiver_ty = self
-                        .tc
-                        .table
-                        .instantiate_to_term(TyId::adt(db, lower_adt(db, adt_ref)));
+                    let ty = TyId::adt(db, lower_adt(db, adt_ref));
+                    let ty = TyId::foldl(db, ty, arg_tys);
+                    let receiver_ty = self.tc.table.instantiate_to_term(ty);
                     let name = variant_def.name.to_opt().unwrap();
                     self.select_method_candidate(receiver_ty, name).unwrap()
                 } else {
@@ -466,6 +485,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
                 match impl_trait.ty(hir_db).to_opt() {
                     Some(hir_ty) => {
                         let ty = lower_hir_ty(db, hir_ty, self.tc.env.scope());
+                        let ty = TyId::foldl(db, ty, arg_tys);
                         let ty = self.tc.table.instantiate_to_term(ty);
                         ResolvedPathInBody::Ty(ty)
                     }
@@ -496,6 +516,7 @@ impl<'db, 'env> PathResolver<'db, 'env> {
 
             NameResKind::Prim(prim) => {
                 let ty = TyId::from_hir_prim_ty(db, prim);
+                let ty = TyId::foldl(db, ty, arg_tys);
                 ResolvedPathInBody::Ty(self.tc.table.instantiate_to_term(ty))
             }
 

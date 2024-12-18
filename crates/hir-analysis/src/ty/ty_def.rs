@@ -402,6 +402,17 @@ impl<'db> TyId<'db> {
         Self::new(db, TyData::TyApp(lhs, rhs))
     }
 
+    /// Folds over a series of type applications from left to right.
+    ///
+    /// For example, given base type B and arg types [A1, A2, A3],
+    /// foldl would produce ((B A1) A2) A3).
+    pub fn foldl(db: &'db dyn HirAnalysisDb, mut base: Self, args: &[Self]) -> Self {
+        for &arg in args {
+            base = Self::app(db, base, arg);
+        }
+        base
+    }
+
     /// Returns `true` if the type is a pointer or a pointer application.
     pub(super) fn is_ptr(self, db: &dyn HirAnalysisDb) -> bool {
         match self.data(db) {
