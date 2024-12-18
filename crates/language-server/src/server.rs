@@ -6,33 +6,25 @@ use crate::lsp_actor::LspActor;
 use crate::lsp_streams::RouterStreams;
 use act_locally::builder::ActorBuilder;
 use async_lsp::lsp_types::notification::{
-    self, DidChangeTextDocument, DidChangeWatchedFiles, DidOpenTextDocument, DidSaveTextDocument,
-    Initialized,
+    self, DidChangeTextDocument, DidChangeWatchedFiles, DidOpenTextDocument, Initialized,
 };
 use async_lsp::lsp_types::request::{GotoDefinition, HoverRequest};
 use async_lsp::ClientSocket;
 use async_std::stream::StreamExt;
 use futures_batch::ChunksTimeoutStreamExt;
 // use serde_json::Value;
-use tracing::info;
 use tracing::instrument::WithSubscriber;
+use tracing::{info, warn};
 
 use crate::backend::Backend;
 use crate::functionality::{goto, handlers};
+use async_lsp::lsp_types::request::Initialize;
 use async_lsp::router::Router;
-use async_lsp::{
-    lsp_types::request::Initialize,
-    // steer::{FirstComeFirstServe, LspSteer},
-    // util::BoxLspService,
-    // ResponseError,
-};
 
 pub(crate) fn setup(
     client: ClientSocket,
     name: String,
-    // ) -> LspActorService<Backend> {
 ) -> WithFallbackService<LspActorService<Backend>, Router<()>> {
-    // BoxLspService<Value, ResponseError> {
     info!("Setting up server");
     let client_for_actor = client.clone();
     let client_for_logging = client.clone();
@@ -57,17 +49,16 @@ pub(crate) fn setup(
         .handle_notification::<DidOpenTextDocument>(handlers::handle_did_open_text_document)
         .handle_notification::<DidChangeTextDocument>(handlers::handle_did_change_text_document)
         .handle_notification::<DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)
-        .handle_notification::<DidSaveTextDocument>(handlers::handle_did_save_text_document)
         .handle_notification::<notification::Exit>(handlers::handle_exit);
 
     let mut streaming_router = Router::new(());
     setup_streams(client.clone(), &mut streaming_router);
+    setup_unhandled(&mut streaming_router);
 
-    // lsp_actor_service
     WithFallbackService::new(lsp_actor_service, streaming_router)
 }
 
-pub fn setup_streams(client: ClientSocket, router: &mut Router<()>) {
+fn setup_streams(client: ClientSocket, router: &mut Router<()>) {
     info!("setting up streams");
 
     let mut diagnostics_stream = router
@@ -84,4 +75,16 @@ pub fn setup_streams(client: ClientSocket, router: &mut Router<()>) {
         }
         .with_current_subscriber(),
     );
+}
+
+fn setup_unhandled(router: &mut Router<()>) {
+    router
+        .unhandled_notification(|_, params| {
+            warn!("Unhandled notification: {:?}", params);
+            std::ops::ControlFlow::Continue(())
+        })
+        .unhandled_event(|_, params| {
+            warn!("Unhandled event: {:?}", params);
+            std::ops::ControlFlow::Continue(())
+        });
 }

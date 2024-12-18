@@ -132,14 +132,6 @@ pub async fn handle_did_change_watched_files(
     Ok(())
 }
 
-pub async fn handle_did_save_text_document(
-    _: &Backend,
-    message: async_lsp::lsp_types::DidSaveTextDocumentParams,
-) -> Result<(), ResponseError> {
-    info!("file saved: {:?}", message.text_document.uri);
-    Ok(())
-}
-
 pub async fn handle_did_open_text_document(
     backend: &Backend,
     message: async_lsp::lsp_types::DidOpenTextDocumentParams,
