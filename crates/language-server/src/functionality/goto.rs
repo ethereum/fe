@@ -55,7 +55,7 @@ fn find_path_surrounding_cursor<'db>(
             }
         }
     }
-    return None;
+    None
 }
 
 pub fn find_enclosing_item<'db>(

@@ -83,7 +83,7 @@ impl HirAnalysisTestDb {
             for diag in diags {
                 let cs_db = DbWithJar::<driver::Jar>::as_jar_db(self);
                 let cs_diag = &diag.to_cs(self);
-                term::emit(&mut buffer, &config, &CsDbWrapper(cs_db), &cs_diag).unwrap();
+                term::emit(&mut buffer, &config, &CsDbWrapper(cs_db), cs_diag).unwrap();
             }
             eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 

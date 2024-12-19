@@ -49,7 +49,7 @@ pub fn resolve_path_early<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
 ) -> Option<EarlyResolvedPath<'db, &'db NameResBucket<'db>>> {
-    ResolveEarly::new().resolve_path(db, path, scope).ok()
+    ResolveEarly::default().resolve_path(db, path, scope).ok()
 }
 
 // xxx use or remove
