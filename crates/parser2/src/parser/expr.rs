@@ -484,16 +484,16 @@ fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
             return false;
         }
 
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            if is_lt_eq(parser)
+        if parser.current_kind() == Some(SyntaxKind::Lt)
+            && (is_lt_eq(parser)
                 || is_lshift(parser)
                 || !parser
                     .parse_ok(GenericArgListScope::default())
-                    .is_ok_and(identity)
-            {
-                return false;
-            }
+                    .is_ok_and(identity))
+        {
+            return false;
         }
+
         if parser.current_kind() != Some(SyntaxKind::LParen) {
             false
         } else {

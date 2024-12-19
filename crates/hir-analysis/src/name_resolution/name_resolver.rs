@@ -259,11 +259,11 @@ impl<'db> NameRes<'db> {
                     inner = parent;
                 }
 
-                return Self {
+                Self {
                     derivation: inner.as_ref().clone(),
                     ..self.clone()
                 }
-                .is_visible(db, from);
+                .is_visible(db, from)
             }
         }
     }
@@ -422,20 +422,20 @@ pub enum NameDerivation<'db> {
     Prim,
 }
 
-impl<'db> NameDerivation<'db> {
+impl NameDerivation<'_> {
     fn lexed(&mut self) {
         let inner = mem::replace(self, NameDerivation::Def);
         *self = NameDerivation::Lex(Box::new(inner));
     }
 }
 
-impl<'db> PartialOrd for NameDerivation<'db> {
+impl PartialOrd for NameDerivation<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<'db> Ord for NameDerivation<'db> {
+impl Ord for NameDerivation<'_> {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
             (NameDerivation::Def, NameDerivation::Def) => cmp::Ordering::Equal,
@@ -727,7 +727,7 @@ pub enum NameResolutionError<'db> {
 
 pub type NameResolutionResult<'db, T> = Result<T, NameResolutionError<'db>>;
 
-impl<'db> fmt::Display for NameResolutionError<'db> {
+impl fmt::Display for NameResolutionError<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             NameResolutionError::NotFound => write!(f, "name not found"),
@@ -743,7 +743,7 @@ impl<'db> fmt::Display for NameResolutionError<'db> {
     }
 }
 
-impl<'db> std::error::Error for NameResolutionError<'db> {}
+impl std::error::Error for NameResolutionError<'_> {}
 
 bitflags! {
     #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

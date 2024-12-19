@@ -94,8 +94,9 @@ impl<T> ResolveEarly<T> {
         self.observer
     }
 }
-impl ResolveEarly<()> {
-    pub fn new() -> Self {
+
+impl Default for ResolveEarly<()> {
+    fn default() -> Self {
         Self { observer: () }
     }
 }
@@ -135,7 +136,7 @@ impl<'db> Observer<'db> for Trajectory<'db> {
     }
 }
 
-impl<'db> Observer<'db> for () {
+impl Observer<'_> for () {
     fn did_resolve(&mut self, _path: PathId, _scope: ScopeId, _res: &NameRes) {}
 }
 
@@ -206,7 +207,7 @@ impl<'db> Resolver<'db> for ResolveToTypeDomain {
         path: PathId<'db>,
         scope: ScopeId<'db>,
     ) -> Self::Output {
-        match ResolveEarly::new().resolve_path(db, path, scope).ok()? {
+        match ResolveEarly::default().resolve_path(db, path, scope).ok()? {
             EarlyResolvedPath::Full(bucket) => {
                 let res = bucket.pick(NameDomain::TYPE).clone().ok()?;
                 Some(EarlyResolvedPath::Full(res))
