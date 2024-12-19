@@ -62,14 +62,6 @@ fn parse_expr_with_min_bp<S: TokenStream>(
                         }
                     }
 
-                    // `expr<generic_param_args>()`.
-                    SyntaxKind::Lt => {
-                        if is_call_expr(parser) {
-                            parser.parse_cp(CallExprScope::default(), Some(checkpoint))?;
-                            continue;
-                        }
-                    }
-
                     // `expr.method<T, i32>()`
                     SyntaxKind::Dot => {
                         if is_method_call(parser) {
@@ -143,7 +135,7 @@ fn postfix_binding_power<S: TokenStream>(parser: &mut Parser<S>) -> Option<u8> {
 
     parser.set_newline_as_trivia(false);
     let power = match parser.current_kind() {
-        Some(LBracket | LParen | Lt) => Some(147),
+        Some(LBracket | LParen) => Some(147),
         _ => None,
     };
 
@@ -405,7 +397,7 @@ pub(crate) fn is_rshift<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.peek_two() == (Some(SyntaxKind::Gt), Some(SyntaxKind::Gt))
 }
 
-fn is_lt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
+pub(crate) fn is_lt_eq<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     parser.peek_two() == (Some(SyntaxKind::Lt), Some(SyntaxKind::Eq))
 }
 
@@ -481,28 +473,6 @@ fn bump_aug_assign_op<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     }
 }
 
-fn is_call_expr<S: TokenStream>(parser: &mut Parser<S>) -> bool {
-    parser.dry_run(|parser| {
-        parser.set_newline_as_trivia(false);
-
-        let mut is_call = true;
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            is_call &= parser
-                .parse_ok(GenericArgListScope::default())
-                .is_ok_and(identity)
-        }
-
-        if parser.current_kind() != Some(SyntaxKind::LParen) {
-            false
-        } else {
-            is_call
-                && parser
-                    .parse_ok(CallArgListScope::default())
-                    .is_ok_and(identity)
-        }
-    })
-}
-
 fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
     let is_trivia = parser.set_newline_as_trivia(true);
     let res = parser.dry_run(|parser| {
@@ -515,9 +485,11 @@ fn is_method_call<S: TokenStream>(parser: &mut Parser<S>) -> bool {
         }
 
         if parser.current_kind() == Some(SyntaxKind::Lt)
-            && !parser
-                .parse_ok(GenericArgListScope::default())
-                .is_ok_and(identity)
+            && (is_lt_eq(parser)
+                || is_lshift(parser)
+                || !parser
+                    .parse_ok(GenericArgListScope::default())
+                    .is_ok_and(identity))
         {
             return false;
         }

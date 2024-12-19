@@ -55,19 +55,19 @@ Root@0..56
         ImplKw@39..43 "impl"
         WhiteSpace@43..44 " "
         PathType@44..52
-          Path@44..47
-            PathSegment@44..47
+          Path@44..52
+            PathSegment@44..52
               Ident@44..47 "Foo"
-          GenericArgList@47..52
-            Lt@47..48 "<"
-            TypeGenericArg@48..49
-              PathType@48..49
-                Path@48..49
-                  PathSegment@48..49
-                    Ident@48..49 "T"
-            Comma@49..50 ","
-            WhiteSpace@50..51 " "
-            Gt@51..52 ">"
+              GenericArgList@47..52
+                Lt@47..48 "<"
+                TypeGenericArg@48..49
+                  PathType@48..49
+                    Path@48..49
+                      PathSegment@48..49
+                        Ident@48..49 "T"
+                Comma@49..50 ","
+                WhiteSpace@50..51 " "
+                Gt@51..52 ">"
         Newline@52..53 "\n"
         ImplItemList@53..56
           LBrace@53..54 "{"

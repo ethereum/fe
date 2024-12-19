@@ -1,15 +1,15 @@
-use parser::ast;
+use crate::hir_def::{GenericArgListId, IdentId, Partial, PathId};
+use parser::ast::{self, GenericArgsOwner};
 
 use super::FileLowerCtxt;
-use crate::hir_def::{IdentId, Partial, PathId};
 
 impl<'db> PathId<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Path) -> Self {
-        let mut segments = Vec::new();
         let db = ctxt.db();
 
+        let mut path: Option<Self> = None;
         for seg in ast.into_iter() {
-            let segment = match seg.kind() {
+            let ident = match seg.kind() {
                 Some(ast::PathSegmentKind::Ingot(_)) => Some(IdentId::make_ingot(db)),
                 Some(ast::PathSegmentKind::Super(_)) => Some(IdentId::make_super(db)),
                 Some(ast::PathSegmentKind::SelfTy(_)) => Some(IdentId::make_self_ty(db)),
@@ -18,10 +18,15 @@ impl<'db> PathId<'db> {
                 None => None,
             }
             .into();
-            segments.push(segment);
+
+            let generic_args = GenericArgListId::lower_ast_opt(ctxt, seg.generic_args());
+
+            path = path
+                .map(|p| p.push(db, ident, generic_args))
+                .or_else(|| Some(Self::new(db, ident, generic_args, None)))
         }
 
-        Self::new(db, segments)
+        path.expect("ast::Path must contain at least 1 segment")
     }
 
     pub(super) fn lower_ast_partial(

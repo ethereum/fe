@@ -5,3 +5,4 @@ tarpaulin-report.html
 /output
 /docs/tmp_snippets
 .vscode
+.DS_Store

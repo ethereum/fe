@@ -1,0 +1,26 @@
+trait Default {
+    fn default() -> Self
+}
+
+struct Foo<T> {
+    t: T
+}
+
+impl<T: Default> Foo<T> {
+    fn method() -> T {
+        T::default()
+    }
+}
+
+impl Default for i32 {
+    fn default() -> Self {
+        0
+    }
+}
+
+fn foo() {
+    // Deciding the `Foo` type is not possible without a type argument for `Foo`.
+    // let x = Foo::method()
+
+    let x = Foo<i32>::method()
+}

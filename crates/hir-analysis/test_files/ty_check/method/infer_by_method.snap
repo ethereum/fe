@@ -4,13 +4,13 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/method/infer_by_method.fe
 ---
 note: 
-  ┌─ test_file.fe:7:18
+  ┌─ infer_by_method.fe:7:18
   │
 7 │     fn foo(self) {}
   │                  ^^ ()
 
 note: 
-   ┌─ test_file.fe:10:10
+   ┌─ infer_by_method.fe:10:10
    │  
 10 │   fn foo() {
    │ ╭──────────^
@@ -20,27 +20,25 @@ note:
    │ ╰─^ ()
 
 note: 
-   ┌─ test_file.fe:11:9
+   ┌─ infer_by_method.fe:11:9
    │
 11 │     let x = Option::None
    │         ^ Option<i32>
 
 note: 
-   ┌─ test_file.fe:11:13
+   ┌─ infer_by_method.fe:11:13
    │
 11 │     let x = Option::None
    │             ^^^^^^^^^^^^ Option<i32>
 
 note: 
-   ┌─ test_file.fe:12:5
+   ┌─ infer_by_method.fe:12:5
    │
 12 │     x.foo()
    │     ^ Option<i32>
 
 note: 
-   ┌─ test_file.fe:12:5
+   ┌─ infer_by_method.fe:12:5
    │
 12 │     x.foo()
    │     ^^^^^^^ ()
-
-

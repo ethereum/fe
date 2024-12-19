@@ -4,15 +4,13 @@ expression: res
 input_file: crates/hir-analysis/test_files/imports/use_depends_glob.fe
 ---
 note: 
-  ┌─ test_file.fe:1:1
+  ┌─ use_depends_glob.fe:1:1
   │
 1 │ use bar::Bar
-  │ ^^^^^^^^^^^^ test_file::foo::bar::Bar
+  │ ^^^^^^^^^^^^ use_depends_glob::foo::bar::Bar
 
 note: 
-  ┌─ test_file.fe:2:1
+  ┌─ use_depends_glob.fe:2:1
   │
 2 │ use foo::*
-  │ ^^^^^^^^^^ test_file::foo::bar as bar
-
-
+  │ ^^^^^^^^^^ use_depends_glob::foo::bar as bar
