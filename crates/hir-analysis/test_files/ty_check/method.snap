@@ -31,7 +31,7 @@ note:
    │ ╭──────────────────────────────────────────────────────^
 18 │ │         match self {
 19 │ │             Self::Some(t) => rhs
-20 │ │             Self::None => Self::None
+20 │ │             Self::None => Option::None
 21 │ │         }
 22 │ │     }
    │ ╰─────^ Option<U>
@@ -41,7 +41,7 @@ note:
    │  
 18 │ ╭         match self {
 19 │ │             Self::Some(t) => rhs
-20 │ │             Self::None => Self::None
+20 │ │             Self::None => Option::None
 21 │ │         }
    │ ╰─────────^ Option<U>
 
@@ -72,14 +72,14 @@ note:
 note: 
    ┌─ method.fe:20:13
    │
-20 │             Self::None => Self::None
+20 │             Self::None => Option::None
    │             ^^^^^^^^^^ Option<T>
 
 note: 
    ┌─ method.fe:20:27
    │
-20 │             Self::None => Self::None
-   │                           ^^^^^^^^^^ Option<U>
+20 │             Self::None => Option::None
+   │                           ^^^^^^^^^^^^ Option<U>
 
 note: 
    ┌─ method.fe:24:53
@@ -274,7 +274,7 @@ note:
 49 │ │     let mut x: Option<i32> = Option::Some(1)
 50 │ │     let func_obj = get_t
 51 │ │     x.get_or_insert(inner: func_obj())
-52 │ │     
+52 │ │ 
 53 │ │     x.and(rhs: Option::Some(false))
 54 │ │ }
    │ ╰─^ Option<bool>

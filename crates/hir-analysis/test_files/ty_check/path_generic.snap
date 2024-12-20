@@ -40,31 +40,110 @@ note:
    │         ^ i32
 
 note: 
-   ┌─ path_generic.fe:21:10
+   ┌─ path_generic.fe:28:10
    │  
-21 │   fn foo() {
+28 │   fn foo() {
    │ ╭──────────^
-22 │ │     // Deciding the `Foo` type is not possible without a type argument for `Foo`.
-23 │ │     // let x = Foo::method()
-24 │ │ 
-25 │ │     let x = Foo<i32>::method()
-26 │ │ }
+29 │ │     // Deciding the `Foo` type is not possible without a type argument for `Foo`.
+30 │ │     // let x = Foo::method()
+31 │ │ 
+   · │
+37 │ │     let e3 = E<u64>::D { x: 10 }
+38 │ │ }
    │ ╰─^ ()
 
 note: 
-   ┌─ path_generic.fe:25:9
+   ┌─ path_generic.fe:32:9
    │
-25 │     let x = Foo<i32>::method()
+32 │     let x = Foo<i32>::method()
    │         ^ i32
 
 note: 
-   ┌─ path_generic.fe:25:13
+   ┌─ path_generic.fe:32:13
    │
-25 │     let x = Foo<i32>::method()
+32 │     let x = Foo<i32>::method()
    │             ^^^^^^^^^^^^^^^^ fn method<i32>
 
 note: 
-   ┌─ path_generic.fe:25:13
+   ┌─ path_generic.fe:32:13
    │
-25 │     let x = Foo<i32>::method()
+32 │     let x = Foo<i32>::method()
    │             ^^^^^^^^^^^^^^^^^^ i32
+
+note: 
+   ┌─ path_generic.fe:34:9
+   │
+34 │     let e0 = E::B(x)
+   │         ^^ E<i32>
+
+note: 
+   ┌─ path_generic.fe:34:14
+   │
+34 │     let e0 = E::B(x)
+   │              ^^^^ fn B<i32>
+
+note: 
+   ┌─ path_generic.fe:34:14
+   │
+34 │     let e0 = E::B(x)
+   │              ^^^^^^^ E<i32>
+
+note: 
+   ┌─ path_generic.fe:34:19
+   │
+34 │     let e0 = E::B(x)
+   │                   ^ i32
+
+note: 
+   ┌─ path_generic.fe:35:9
+   │
+35 │     let e1 = E<u64>::C(10)
+   │         ^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:35:14
+   │
+35 │     let e1 = E<u64>::C(10)
+   │              ^^^^^^^^^ fn C<u64>
+
+note: 
+   ┌─ path_generic.fe:35:14
+   │
+35 │     let e1 = E<u64>::C(10)
+   │              ^^^^^^^^^^^^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:35:24
+   │
+35 │     let e1 = E<u64>::C(10)
+   │                        ^^ i32
+
+note: 
+   ┌─ path_generic.fe:36:9
+   │
+36 │     let e2 = E<u64>::A
+   │         ^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:36:14
+   │
+36 │     let e2 = E<u64>::A
+   │              ^^^^^^^^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:37:9
+   │
+37 │     let e3 = E<u64>::D { x: 10 }
+   │         ^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:37:14
+   │
+37 │     let e3 = E<u64>::D { x: 10 }
+   │              ^^^^^^^^^^^^^^^^^^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:37:29
+   │
+37 │     let e3 = E<u64>::D { x: 10 }
+   │                             ^^ i32

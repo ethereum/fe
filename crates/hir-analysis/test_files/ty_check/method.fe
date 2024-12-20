@@ -17,7 +17,7 @@ impl<T> Option<T> {
     pub fn and<U>(self, rhs: Option<U>) -> Option<U> {
         match self {
             Self::Some(t) => rhs
-            Self::None => Self::None
+            Self::None => Option::None
         }
     }
 
@@ -49,6 +49,6 @@ fn foo() -> Option<bool> {
     let mut x: Option<i32> = Option::Some(1)
     let func_obj = get_t
     x.get_or_insert(inner: func_obj())
-    
+
     x.and(rhs: Option::Some(false))
 }
