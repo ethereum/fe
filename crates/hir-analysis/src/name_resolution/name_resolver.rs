@@ -427,6 +427,14 @@ impl NameDerivation<'_> {
         let inner = mem::replace(self, NameDerivation::Def);
         *self = NameDerivation::Lex(Box::new(inner));
     }
+
+    pub fn use_stmt(&self) -> Option<Use<'_>> {
+        match self {
+            NameDerivation::NamedImported(u) | NameDerivation::GlobImported(u) => Some(*u),
+            NameDerivation::Lex(deriv) => deriv.use_stmt(),
+            _ => None,
+        }
+    }
 }
 
 impl PartialOrd for NameDerivation<'_> {

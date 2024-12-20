@@ -420,7 +420,7 @@ impl<'db> TyChecker<'db> {
 
             ResolvedPathInBody::Variant(variant) => {
                 let ty = if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
-                    variant.ty(self.db)
+                    variant.ty
                 } else {
                     let diag = BodyDiag::unit_variant_expected(
                         self.db,
@@ -489,7 +489,7 @@ impl<'db> TyChecker<'db> {
 
             ResolvedPathInBody::Variant(variant) => {
                 if variant.is_record(self.db) {
-                    let ty = variant.ty(self.db);
+                    let ty = variant.ty;
                     self.check_record_init_fields(variant, expr);
                     ExprProp::new(ty, true)
                 } else {
