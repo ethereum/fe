@@ -78,12 +78,8 @@ impl<'db> Callable<'db> {
     }
 
     pub fn ty(&self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
-        let mut ty = TyId::func(db, self.func_def);
-        for &arg in self.generic_args.iter() {
-            ty = TyId::app(db, ty, arg);
-        }
-
-        ty
+        let ty = TyId::func(db, self.func_def);
+        TyId::foldl(db, ty, &self.generic_args)
     }
 
     pub(super) fn unify_generic_args(
