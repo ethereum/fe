@@ -328,8 +328,17 @@ impl<'db, 'env> PathResolver<'db, 'env> {
         let trait_cand = match candidate {
             Candidate::InherentMethod(func_def) => {
                 let mut method_ty = TyId::func(db, func_def);
+
                 for &arg in receiver_ty.generic_args(db) {
-                    method_ty = TyId::app(db, method_ty, arg);
+                    // If the method is defined in "specialized" impl block
+                    // of a generic type (eg `impl Option<i32>`), then
+                    // calling `TyId::app(db, method_ty, ..)` will result in
+                    // `TyId::invalid`.
+                    if method_ty.applicable_ty(db).is_some() {
+                        method_ty = TyId::app(db, method_ty, arg);
+                    } else {
+                        break;
+                    }
                 }
 
                 return Some(ResolvedPathInBody::Func(
