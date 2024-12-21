@@ -1,0 +1,149 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/path_generic.fe
+---
+note: 
+   ┌─ path_generic.fe:10:22
+   │  
+10 │       fn method() -> T {
+   │ ╭──────────────────────^
+11 │ │         T::default()
+12 │ │     }
+   │ ╰─────^ T
+
+note: 
+   ┌─ path_generic.fe:11:9
+   │
+11 │         T::default()
+   │         ^^^^^^^^^^ fn default<T>
+
+note: 
+   ┌─ path_generic.fe:11:9
+   │
+11 │         T::default()
+   │         ^^^^^^^^^^^^ T
+
+note: 
+   ┌─ path_generic.fe:16:26
+   │  
+16 │       fn default() -> Self {
+   │ ╭──────────────────────────^
+17 │ │         0
+18 │ │     }
+   │ ╰─────^ i32
+
+note: 
+   ┌─ path_generic.fe:17:9
+   │
+17 │         0
+   │         ^ i32
+
+note: 
+   ┌─ path_generic.fe:28:10
+   │  
+28 │   fn foo() {
+   │ ╭──────────^
+29 │ │     // Deciding the `Foo` type is not possible without a type argument for `Foo`.
+30 │ │     // let x = Foo::method()
+31 │ │ 
+   · │
+37 │ │     let e3 = E<u64>::D { x: 10 }
+38 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ path_generic.fe:32:9
+   │
+32 │     let x = Foo<i32>::method()
+   │         ^ i32
+
+note: 
+   ┌─ path_generic.fe:32:13
+   │
+32 │     let x = Foo<i32>::method()
+   │             ^^^^^^^^^^^^^^^^ fn method<i32>
+
+note: 
+   ┌─ path_generic.fe:32:13
+   │
+32 │     let x = Foo<i32>::method()
+   │             ^^^^^^^^^^^^^^^^^^ i32
+
+note: 
+   ┌─ path_generic.fe:34:9
+   │
+34 │     let e0 = E::B(x)
+   │         ^^ E<i32>
+
+note: 
+   ┌─ path_generic.fe:34:14
+   │
+34 │     let e0 = E::B(x)
+   │              ^^^^ fn B<i32>
+
+note: 
+   ┌─ path_generic.fe:34:14
+   │
+34 │     let e0 = E::B(x)
+   │              ^^^^^^^ E<i32>
+
+note: 
+   ┌─ path_generic.fe:34:19
+   │
+34 │     let e0 = E::B(x)
+   │                   ^ i32
+
+note: 
+   ┌─ path_generic.fe:35:9
+   │
+35 │     let e1 = E<u64>::C(10)
+   │         ^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:35:14
+   │
+35 │     let e1 = E<u64>::C(10)
+   │              ^^^^^^^^^ fn C<u64>
+
+note: 
+   ┌─ path_generic.fe:35:14
+   │
+35 │     let e1 = E<u64>::C(10)
+   │              ^^^^^^^^^^^^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:35:24
+   │
+35 │     let e1 = E<u64>::C(10)
+   │                        ^^ i32
+
+note: 
+   ┌─ path_generic.fe:36:9
+   │
+36 │     let e2 = E<u64>::A
+   │         ^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:36:14
+   │
+36 │     let e2 = E<u64>::A
+   │              ^^^^^^^^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:37:9
+   │
+37 │     let e3 = E<u64>::D { x: 10 }
+   │         ^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:37:14
+   │
+37 │     let e3 = E<u64>::D { x: 10 }
+   │              ^^^^^^^^^^^^^^^^^^^ E<u64>
+
+note: 
+   ┌─ path_generic.fe:37:29
+   │
+37 │     let e3 = E<u64>::D { x: 10 }
+   │                             ^^ i32

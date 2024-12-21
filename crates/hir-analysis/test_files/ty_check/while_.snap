@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/while_.fe
 ---
 note: 
-  ┌─ test_file.fe:1:39
+  ┌─ while_.fe:1:39
   │  
 1 │   pub fn factorial(mut num: u32) -> u32 {
   │ ╭───────────────────────────────────────^
@@ -17,37 +17,37 @@ note:
   │ ╰─^ u32
 
 note: 
-  ┌─ test_file.fe:2:9
+  ┌─ while_.fe:2:9
   │
 2 │     let mut res = 1
   │         ^^^^^^^ u32
 
 note: 
-  ┌─ test_file.fe:2:19
+  ┌─ while_.fe:2:19
   │
 2 │     let mut res = 1
   │                   ^ u32
 
 note: 
-  ┌─ test_file.fe:3:11
+  ┌─ while_.fe:3:11
   │
 3 │     while num > 0 {
   │           ^^^ u32
 
 note: 
-  ┌─ test_file.fe:3:11
+  ┌─ while_.fe:3:11
   │
 3 │     while num > 0 {
   │           ^^^^^^^ bool
 
 note: 
-  ┌─ test_file.fe:3:17
+  ┌─ while_.fe:3:17
   │
 3 │     while num > 0 {
   │                 ^ u32
 
 note: 
-  ┌─ test_file.fe:3:19
+  ┌─ while_.fe:3:19
   │  
 3 │       while num > 0 {
   │ ╭───────────────────^
@@ -57,49 +57,49 @@ note:
   │ ╰─────^ ()
 
 note: 
-  ┌─ test_file.fe:4:9
+  ┌─ while_.fe:4:9
   │
 4 │         res *= num
   │         ^^^ u32
 
 note: 
-  ┌─ test_file.fe:4:9
+  ┌─ while_.fe:4:9
   │
 4 │         res *= num
   │         ^^^^^^^^^^ ()
 
 note: 
-  ┌─ test_file.fe:4:16
+  ┌─ while_.fe:4:16
   │
 4 │         res *= num
   │                ^^^ u32
 
 note: 
-  ┌─ test_file.fe:5:9
+  ┌─ while_.fe:5:9
   │
 5 │         num -= 1
   │         ^^^ u32
 
 note: 
-  ┌─ test_file.fe:5:9
+  ┌─ while_.fe:5:9
   │
 5 │         num -= 1
   │         ^^^^^^^^ ()
 
 note: 
-  ┌─ test_file.fe:5:16
+  ┌─ while_.fe:5:16
   │
 5 │         num -= 1
   │                ^ u32
 
 note: 
-  ┌─ test_file.fe:8:5
+  ┌─ while_.fe:8:5
   │
 8 │     res
   │     ^^^ u32
 
 note: 
-   ┌─ test_file.fe:11:40
+   ┌─ while_.fe:11:40
    │  
 11 │   pub fn factorial2(mut num: u32) -> u32 {
    │ ╭────────────────────────────────────────^
@@ -112,25 +112,25 @@ note:
    │ ╰─^ u32
 
 note: 
-   ┌─ test_file.fe:12:9
+   ┌─ while_.fe:12:9
    │
 12 │     let mut res = 1
    │         ^^^^^^^ u32
 
 note: 
-   ┌─ test_file.fe:12:19
+   ┌─ while_.fe:12:19
    │
 12 │     let mut res = 1
    │                   ^ u32
 
 note: 
-   ┌─ test_file.fe:13:11
+   ┌─ while_.fe:13:11
    │
 13 │     while true {
    │           ^^^^ bool
 
 note: 
-   ┌─ test_file.fe:13:16
+   ┌─ while_.fe:13:16
    │  
 13 │       while true {
    │ ╭────────────────^
@@ -143,7 +143,7 @@ note:
    │ ╰─────^ ()
 
 note: 
-   ┌─ test_file.fe:14:9
+   ┌─ while_.fe:14:9
    │  
 14 │ ╭         if num > 1 {
 15 │ │             res *= num
@@ -154,25 +154,25 @@ note:
    │ ╰─────────^ ()
 
 note: 
-   ┌─ test_file.fe:14:12
+   ┌─ while_.fe:14:12
    │
 14 │         if num > 1 {
    │            ^^^ u32
 
 note: 
-   ┌─ test_file.fe:14:12
+   ┌─ while_.fe:14:12
    │
 14 │         if num > 1 {
    │            ^^^^^^^ bool
 
 note: 
-   ┌─ test_file.fe:14:18
+   ┌─ while_.fe:14:18
    │
 14 │         if num > 1 {
    │                  ^ u32
 
 note: 
-   ┌─ test_file.fe:14:20
+   ┌─ while_.fe:14:20
    │  
 14 │           if num > 1 {
    │ ╭────────────────────^
@@ -182,43 +182,43 @@ note:
    │ ╰─────────^ ()
 
 note: 
-   ┌─ test_file.fe:15:13
+   ┌─ while_.fe:15:13
    │
 15 │             res *= num
    │             ^^^ u32
 
 note: 
-   ┌─ test_file.fe:15:13
+   ┌─ while_.fe:15:13
    │
 15 │             res *= num
    │             ^^^^^^^^^^ ()
 
 note: 
-   ┌─ test_file.fe:15:20
+   ┌─ while_.fe:15:20
    │
 15 │             res *= num
    │                    ^^^ u32
 
 note: 
-   ┌─ test_file.fe:16:13
+   ┌─ while_.fe:16:13
    │
 16 │             num -= 1
    │             ^^^ u32
 
 note: 
-   ┌─ test_file.fe:16:13
+   ┌─ while_.fe:16:13
    │
 16 │             num -= 1
    │             ^^^^^^^^ ()
 
 note: 
-   ┌─ test_file.fe:16:20
+   ┌─ while_.fe:16:20
    │
 16 │             num -= 1
    │                    ^ u32
 
 note: 
-   ┌─ test_file.fe:17:16
+   ┌─ while_.fe:17:16
    │  
 17 │           } else {
    │ ╭────────────────^
@@ -227,19 +227,19 @@ note:
    │ ╰─────────^ ()
 
 note: 
-   ┌─ test_file.fe:18:20
+   ┌─ while_.fe:18:20
    │
 18 │             return res
    │                    ^^^ u32
 
 note: 
-   ┌─ test_file.fe:22:12
+   ┌─ while_.fe:22:12
    │
 22 │     return res
    │            ^^^ u32
 
 note: 
-   ┌─ test_file.fe:26:40
+   ┌─ while_.fe:26:40
    │  
 26 │   pub fn factorial3(mut num: u32) -> u32 {
    │ ╭────────────────────────────────────────^
@@ -252,25 +252,25 @@ note:
    │ ╰─^ u32
 
 note: 
-   ┌─ test_file.fe:27:9
+   ┌─ while_.fe:27:9
    │
 27 │     let mut res = 1
    │         ^^^^^^^ u32
 
 note: 
-   ┌─ test_file.fe:27:19
+   ┌─ while_.fe:27:19
    │
 27 │     let mut res = 1
    │                   ^ u32
 
 note: 
-   ┌─ test_file.fe:28:11
+   ┌─ while_.fe:28:11
    │
 28 │     while true {
    │           ^^^^ bool
 
 note: 
-   ┌─ test_file.fe:28:16
+   ┌─ while_.fe:28:16
    │  
 28 │       while true {
    │ ╭────────────────^
@@ -283,13 +283,13 @@ note:
    │ ╰─────^ ()
 
 note: 
-   ┌─ test_file.fe:29:9
+   ┌─ while_.fe:29:9
    │
 29 │         num = if num > 1 {
    │         ^^^ u32
 
 note: 
-   ┌─ test_file.fe:29:9
+   ┌─ while_.fe:29:9
    │  
 29 │ ╭         num = if num > 1 {
 30 │ │             res *= num
@@ -300,7 +300,7 @@ note:
    │ ╰─────────^ ()
 
 note: 
-   ┌─ test_file.fe:29:15
+   ┌─ while_.fe:29:15
    │  
 29 │           num = if num > 1 {
    │ ╭───────────────^
@@ -312,25 +312,25 @@ note:
    │ ╰─────────^ u32
 
 note: 
-   ┌─ test_file.fe:29:18
+   ┌─ while_.fe:29:18
    │
 29 │         num = if num > 1 {
    │                  ^^^ u32
 
 note: 
-   ┌─ test_file.fe:29:18
+   ┌─ while_.fe:29:18
    │
 29 │         num = if num > 1 {
    │                  ^^^^^^^ bool
 
 note: 
-   ┌─ test_file.fe:29:24
+   ┌─ while_.fe:29:24
    │
 29 │         num = if num > 1 {
    │                        ^ u32
 
 note: 
-   ┌─ test_file.fe:29:26
+   ┌─ while_.fe:29:26
    │  
 29 │           num = if num > 1 {
    │ ╭──────────────────────────^
@@ -340,43 +340,43 @@ note:
    │ ╰─────────^ u32
 
 note: 
-   ┌─ test_file.fe:30:13
+   ┌─ while_.fe:30:13
    │
 30 │             res *= num
    │             ^^^ u32
 
 note: 
-   ┌─ test_file.fe:30:13
+   ┌─ while_.fe:30:13
    │
 30 │             res *= num
    │             ^^^^^^^^^^ ()
 
 note: 
-   ┌─ test_file.fe:30:20
+   ┌─ while_.fe:30:20
    │
 30 │             res *= num
    │                    ^^^ u32
 
 note: 
-   ┌─ test_file.fe:31:13
+   ┌─ while_.fe:31:13
    │
 31 │             num - 1
    │             ^^^ u32
 
 note: 
-   ┌─ test_file.fe:31:13
+   ┌─ while_.fe:31:13
    │
 31 │             num - 1
    │             ^^^^^^^ u32
 
 note: 
-   ┌─ test_file.fe:31:19
+   ┌─ while_.fe:31:19
    │
 31 │             num - 1
    │                   ^ u32
 
 note: 
-   ┌─ test_file.fe:32:16
+   ┌─ while_.fe:32:16
    │  
 32 │           } else {
    │ ╭────────────────^
@@ -385,9 +385,7 @@ note:
    │ ╰─────────^ u32
 
 note: 
-   ┌─ test_file.fe:37:5
+   ┌─ while_.fe:37:5
    │
 37 │     res
    │     ^^^ u32
-
-

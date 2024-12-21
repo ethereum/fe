@@ -4,9 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/imports/multiple_domains.fe
 ---
 note: 
-  ┌─ test_file.fe:1:1
+  ┌─ multiple_domains.fe:1:1
   │
 1 │ use foo::S
-  │ ^^^^^^^^^^ test_file::foo::S | test_file::foo::S
-
-
+  │ ^^^^^^^^^^ multiple_domains::foo::S | multiple_domains::foo::S

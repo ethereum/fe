@@ -8,7 +8,7 @@ use test_db::HirAnalysisTestDb;
     dir: "$CARGO_MANIFEST_DIR/test_files/def_analysis",
     glob: "*.fe"
 )]
-fn test_standalone(fixture: Fixture<&str>) {
+fn def_analysis_standalone(fixture: Fixture<&str>) {
     let mut db = HirAnalysisTestDb::default();
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();

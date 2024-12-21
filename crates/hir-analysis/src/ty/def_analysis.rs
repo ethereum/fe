@@ -38,7 +38,10 @@ use super::{
     visitor::{walk_ty, TyVisitor},
 };
 use crate::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    name_resolution::{
+        resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind, ResolveToTypeDomain,
+        Resolver,
+    },
     ty::{
         adt_def::AdtDef,
         binder::Binder,
@@ -319,24 +322,22 @@ impl<'db> DefAnalyzer<'db> {
                 let scope = self.scope();
                 let parent_scope = scope.parent_item(self.db.as_hir_db()).unwrap().scope();
                 let path = PathId::from_ident(self.db.as_hir_db(), name);
-                if let EarlyResolvedPath::Full(bucket) =
-                    resolve_path_early(self.db, path, parent_scope)
-                {
-                    if let Ok(res) = bucket.pick(NameDomain::TYPE) {
-                        if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) =
-                            res.kind
-                        {
-                            self.diags.push(
-                                TyLowerDiag::generic_param_conflict(
-                                    span.param(i).into(),
-                                    conflict_with.name_span(self.db.as_hir_db()).unwrap(),
-                                    name,
-                                )
-                                .into(),
-                            );
 
-                            is_conflict = true;
-                        }
+                if let Some(EarlyResolvedPath::Full(res)) =
+                    ResolveToTypeDomain::default().resolve_path(self.db, path, parent_scope)
+                {
+                    if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) = res.kind
+                    {
+                        self.diags.push(
+                            TyLowerDiag::generic_param_conflict(
+                                span.param(i).into(),
+                                conflict_with.name_span(self.db.as_hir_db()).unwrap(),
+                                name,
+                            )
+                            .into(),
+                        );
+
+                        is_conflict = true;
                     }
                 }
             }
@@ -580,22 +581,20 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             let scope = self.scope();
             let parent_scope = scope.parent_item(self.db.as_hir_db()).unwrap().scope();
             let path = PathId::from_ident(self.db.as_hir_db(), name);
-            if let EarlyResolvedPath::Full(bucket) = resolve_path_early(self.db, path, parent_scope)
+            if let Some(EarlyResolvedPath::Full(res)) =
+                ResolveToTypeDomain::default().resolve_path(self.db, path, parent_scope)
             {
-                if let Ok(res) = bucket.pick(NameDomain::TYPE) {
-                    if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) = res.kind
-                    {
-                        self.diags.push(
-                            TyLowerDiag::generic_param_conflict(
-                                ctxt.span().unwrap().into(),
-                                conflict_with.name_span(self.db.as_hir_db()).unwrap(),
-                                name,
-                            )
-                            .into(),
-                        );
+                if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) = res.kind {
+                    self.diags.push(
+                        TyLowerDiag::generic_param_conflict(
+                            ctxt.span().unwrap().into(),
+                            conflict_with.name_span(self.db.as_hir_db()).unwrap(),
+                            name,
+                        )
+                        .into(),
+                    );
 
-                        return;
-                    }
+                    return;
                 }
             }
         }
@@ -1275,7 +1274,7 @@ fn find_const_ty_param<'db>(
     scope: ScopeId<'db>,
 ) -> Option<ConstTyId<'db>> {
     let path = PathId::from_ident(db.as_hir_db(), ident);
-    let EarlyResolvedPath::Full(bucket) = resolve_path_early(db, path, scope) else {
+    let Some(EarlyResolvedPath::Full(bucket)) = resolve_path_early(db, path, scope) else {
         return None;
     };
 

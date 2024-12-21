@@ -168,10 +168,7 @@ impl<'db> MethodCollector<'db> {
                 let arg_tys = variant.iter_types(self.db).collect();
                 let mut ret_ty = TyId::adt(self.db, adt);
                 let adt_param_set = adt.param_set(self.db);
-
-                for &generic_param in adt.param_set(self.db).params(self.db) {
-                    ret_ty = TyId::app(self.db, ret_ty, generic_param);
-                }
+                ret_ty = TyId::foldl(self.db, ret_ty, adt.param_set(self.db).params(self.db));
 
                 let param_set = GenericParamTypeSet::new(
                     self.db,

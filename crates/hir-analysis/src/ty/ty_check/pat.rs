@@ -136,7 +136,7 @@ impl<'db> TyChecker<'db> {
 
             ResolvedPathInBody::Variant(variant) => {
                 if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
-                    variant.ty(self.db)
+                    variant.ty
                 } else {
                     let diag = BodyDiag::unit_variant_expected(
                         self.db,
@@ -230,7 +230,7 @@ impl<'db> TyChecker<'db> {
                 }
             };
 
-        let pat_ty = variant.ty(self.db);
+        let pat_ty = variant.ty;
         let expected_len = expected_elems.len(self.db.as_hir_db());
 
         let (actual_elems, rest_range) = self.unpack_rest_pat(elems, Some(expected_len));
@@ -262,7 +262,7 @@ impl<'db> TyChecker<'db> {
             let elem_ty = match hir_ty.to_opt() {
                 Some(ty) => {
                     let ty = lower_hir_ty(self.db, ty, variant.adt_def(self.db).scope(self.db));
-                    Binder::bind(ty).instantiate(self.db, variant.args())
+                    Binder::bind(ty).instantiate(self.db, variant.args(self.db))
                 }
                 _ => TyId::invalid(self.db, InvalidCause::Other),
             };
@@ -308,7 +308,7 @@ impl<'db> TyChecker<'db> {
             }
 
             ResolvedPathInBody::Variant(variant) if variant.is_record(self.db) => {
-                let ty = variant.ty(self.db);
+                let ty = variant.ty;
                 self.check_record_pat_fields(variant, pat);
                 ty
             }

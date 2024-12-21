@@ -4,15 +4,13 @@ expression: res
 input_file: crates/hir-analysis/test_files/imports/glob_shadow.fe
 ---
 note: 
-  ┌─ test_file.fe:1:1
+  ┌─ glob_shadow.fe:1:1
   │
 1 │ use foo::*
-  │ ^^^^^^^^^^ test_file::foo::MyEnum as MyEnum | test_file::foo::MyEnum::Variant2 as Variant2 | test_file::foo::Variant as Variant
+  │ ^^^^^^^^^^ glob_shadow::foo::MyEnum as MyEnum | glob_shadow::foo::MyEnum::Variant2 as Variant2 | glob_shadow::foo::Variant as Variant
 
 note: 
-  ┌─ test_file.fe:4:5
+  ┌─ glob_shadow.fe:4:5
   │
 4 │     pub use MyEnum::*
-  │     ^^^^^^^^^^^^^^^^^ test_file::foo::MyEnum::Variant as Variant | test_file::foo::MyEnum::Variant2 as Variant2
-
-
+  │     ^^^^^^^^^^^^^^^^^ glob_shadow::foo::MyEnum::Variant as Variant | glob_shadow::foo::MyEnum::Variant2 as Variant2

@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/index.fe
 ---
 note: 
-  ┌─ test_file.fe:1:21
+  ┌─ index.fe:1:21
   │  
 1 │   pub fn foo() -> u32 {
   │ ╭─────────────────────^
@@ -14,39 +14,37 @@ note:
   │ ╰─^ u32
 
 note: 
-  ┌─ test_file.fe:2:9
+  ┌─ index.fe:2:9
   │
 2 │     let x = [10; 3]
   │         ^ [u32; 3]
 
 note: 
-  ┌─ test_file.fe:2:13
+  ┌─ index.fe:2:13
   │
 2 │     let x = [10; 3]
   │             ^^^^^^^ [u32; 3]
 
 note: 
-  ┌─ test_file.fe:2:14
+  ┌─ index.fe:2:14
   │
 2 │     let x = [10; 3]
   │              ^^ u32
 
 note: 
-  ┌─ test_file.fe:3:5
+  ┌─ index.fe:3:5
   │
 3 │     x[1]
   │     ^ [u32; 3]
 
 note: 
-  ┌─ test_file.fe:3:5
+  ┌─ index.fe:3:5
   │
 3 │     x[1]
   │     ^^^^ u32
 
 note: 
-  ┌─ test_file.fe:3:7
+  ┌─ index.fe:3:7
   │
 3 │     x[1]
   │       ^ u256
-
-

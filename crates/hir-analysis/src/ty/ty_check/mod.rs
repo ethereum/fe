@@ -265,11 +265,7 @@ impl<'db> TraitMethod<'db> {
         inst: TraitInstId<'db>,
     ) -> TyId<'db> {
         let db = table.db();
-        let mut ty = TyId::func(db, self.0);
-
-        for &arg in inst.args(db) {
-            ty = TyId::app(db, ty, arg);
-        }
+        let ty = TyId::foldl(db, TyId::func(db, self.0), inst.args(db));
 
         let inst_self = table.instantiate_to_term(inst.self_ty(db));
         table.unify(inst_self, receiver_ty).unwrap();

@@ -4,57 +4,55 @@ expression: res
 input_file: crates/hir-analysis/test_files/early_path_resolution/generic_param.fe
 ---
 note: 
-  ┌─ test_file.fe:4:7
+  ┌─ generic_param.fe:4:7
   │
 4 │ where U: InnerTrait
-  │       ^ test_file::TraitWithGenerics::U
+  │       ^ generic_param::TraitWithGenerics::U
 
 note: 
-  ┌─ test_file.fe:4:10
+  ┌─ generic_param.fe:4:10
   │
 4 │ where U: InnerTrait
-  │          ^^^^^^^^^^ test_file::InnerTrait
+  │          ^^^^^^^^^^ generic_param::InnerTrait
 
 note: 
-  ┌─ test_file.fe:9:7
+  ┌─ generic_param.fe:9:7
   │
 9 │ where T: TraitWithGenerics<U>,
-  │       ^ test_file::MyS::T
+  │       ^ generic_param::MyS::T
 
 note: 
-  ┌─ test_file.fe:9:10
+  ┌─ generic_param.fe:9:10
   │
 9 │ where T: TraitWithGenerics<U>,
-  │          ^^^^^^^^^^^^^^^^^ test_file::TraitWithGenerics
+  │          ^^^^^^^^^^^^^^^^^ generic_param::TraitWithGenerics
 
 note: 
-  ┌─ test_file.fe:9:28
+  ┌─ generic_param.fe:9:28
   │
 9 │ where T: TraitWithGenerics<U>,
-  │                            ^ test_file::MyS::U
+  │                            ^ generic_param::MyS::U
 
 note: 
-   ┌─ test_file.fe:10:7
+   ┌─ generic_param.fe:10:7
    │
 10 │       U: InnerTrait
-   │       ^ test_file::MyS::U
+   │       ^ generic_param::MyS::U
 
 note: 
-   ┌─ test_file.fe:10:10
+   ┌─ generic_param.fe:10:10
    │
 10 │       U: InnerTrait
-   │          ^^^^^^^^^^ test_file::InnerTrait
+   │          ^^^^^^^^^^ generic_param::InnerTrait
 
 note: 
-   ┌─ test_file.fe:12:8
+   ┌─ generic_param.fe:12:8
    │
 12 │     x: T,
-   │        ^ test_file::MyS::T
+   │        ^ generic_param::MyS::T
 
 note: 
-   ┌─ test_file.fe:13:8
+   ┌─ generic_param.fe:13:8
    │
 13 │     y: U,
-   │        ^ test_file::MyS::U
-
-
+   │        ^ generic_param::MyS::U

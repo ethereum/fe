@@ -708,7 +708,7 @@ impl SyntaxKind {
             SyntaxKind::KindBoundMono => "kind bound",
             SyntaxKind::WhereClause => "`where` clause",
             SyntaxKind::WherePredicate => "`where` predicate",
-            SyntaxKind::Root => todo!(),
+            SyntaxKind::Root => "module",
             SyntaxKind::Error => todo!(),
         }
     }

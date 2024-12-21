@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/binary.fe
 ---
 note: 
-  ┌─ test_file.fe:1:24
+  ┌─ binary.fe:1:24
   │  
 1 │   fn foo(x: u32, y: u32) {
   │ ╭────────────────────────^
@@ -16,129 +16,127 @@ note:
   │ ╰─^ ()
 
 note: 
-  ┌─ test_file.fe:2:5
+  ┌─ binary.fe:2:5
   │
 2 │     x + x
   │     ^ u32
 
 note: 
-  ┌─ test_file.fe:2:5
+  ┌─ binary.fe:2:5
   │
 2 │     x + x
   │     ^^^^^ u32
 
 note: 
-  ┌─ test_file.fe:2:9
+  ┌─ binary.fe:2:9
   │
 2 │     x + x
   │         ^ u32
 
 note: 
-  ┌─ test_file.fe:3:5
+  ┌─ binary.fe:3:5
   │
 3 │     true && false
   │     ^^^^ bool
 
 note: 
-  ┌─ test_file.fe:3:5
+  ┌─ binary.fe:3:5
   │
 3 │     true && false
   │     ^^^^^^^^^^^^^ bool
 
 note: 
-  ┌─ test_file.fe:3:13
+  ┌─ binary.fe:3:13
   │
 3 │     true && false
   │             ^^^^^ bool
 
 note: 
-  ┌─ test_file.fe:4:5
+  ┌─ binary.fe:4:5
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │     ^^^^^^^^^^^^^^^^^^^ bool
 
 note: 
-  ┌─ test_file.fe:4:5
+  ┌─ binary.fe:4:5
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
 
 note: 
-  ┌─ test_file.fe:4:6
+  ┌─ binary.fe:4:6
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │      ^ u32
 
 note: 
-  ┌─ test_file.fe:4:6
+  ┌─ binary.fe:4:6
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │      ^^^^^ bool
 
 note: 
-  ┌─ test_file.fe:4:10
+  ┌─ binary.fe:4:10
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │          ^ u32
 
 note: 
-  ┌─ test_file.fe:4:17
+  ┌─ binary.fe:4:17
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │                 ^ u32
 
 note: 
-  ┌─ test_file.fe:4:17
+  ┌─ binary.fe:4:17
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │                 ^^^^^^ bool
 
 note: 
-  ┌─ test_file.fe:4:21
+  ┌─ binary.fe:4:21
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │                     ^^ u32
 
 note: 
-  ┌─ test_file.fe:4:29
+  ┌─ binary.fe:4:29
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │                             ^ u32
 
 note: 
-  ┌─ test_file.fe:4:29
+  ┌─ binary.fe:4:29
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │                             ^^^^^^ bool
 
 note: 
-  ┌─ test_file.fe:4:34
+  ┌─ binary.fe:4:34
   │
 4 │     (x < 1) && (y > 10) || (x == y)
   │                                  ^ u32
 
 note: 
-  ┌─ test_file.fe:5:9
+  ┌─ binary.fe:5:9
   │
 5 │     let z = 1 + x
   │         ^ u32
 
 note: 
-  ┌─ test_file.fe:5:13
+  ┌─ binary.fe:5:13
   │
 5 │     let z = 1 + x
   │             ^ u32
 
 note: 
-  ┌─ test_file.fe:5:13
+  ┌─ binary.fe:5:13
   │
 5 │     let z = 1 + x
   │             ^^^^^ u32
 
 note: 
-  ┌─ test_file.fe:5:17
+  ┌─ binary.fe:5:17
   │
 5 │     let z = 1 + x
   │                 ^ u32
-
-

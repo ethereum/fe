@@ -15,8 +15,7 @@ impl<'db> TypeId<'db> {
 
             ast::TypeKind::Path(ty) => {
                 let path = PathId::lower_ast_partial(ctxt, ty.path());
-                let generic_args = GenericArgListId::lower_ast_opt(ctxt, ty.generic_args());
-                TypeKind::Path(path, generic_args)
+                TypeKind::Path(path)
             }
 
             ast::TypeKind::SelfType(ty) => {
@@ -62,10 +61,7 @@ impl<'db> TupleTypeId<'db> {
 impl<'db> TraitRefId<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitRef) -> Self {
         let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast)).into();
-        let generic_args = ast
-            .generic_args()
-            .map(|args| GenericArgListId::lower_ast(ctxt, args));
-        Self::new(ctxt.db(), path, generic_args)
+        Self::new(ctxt.db(), path)
     }
 
     pub(super) fn lower_ast_partial(
