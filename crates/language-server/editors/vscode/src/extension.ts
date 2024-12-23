@@ -66,7 +66,7 @@ export async function activate(
   const customServerPath = config.get<string>("binaryPath", "");
   const serverPath = customServerPath || getServerPath();
 
-  let useTcp = true;
+  let useTcp = false;
 
   let connectionInfo = {
     port: 4242,
