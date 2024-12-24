@@ -1,0 +1,13 @@
+[package]
+name = "fe_language_zed"
+version = "0.0.1"
+edition = "2021"
+publish = false
+license = "Apache-2.0"
+
+[lib]
+path = "src/fe.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+zed_extension_api = "0.1.0"

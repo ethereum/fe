@@ -1,0 +1,15 @@
+id = "fe_language_zed"
+name = "Fe Language"
+version = "0.0.1"
+schema_version = 1
+authors = ["fe <you@example.com>"]
+description = "Fe Language support."
+repository = "https://github.com/ethereum/fe"
+
+[language_servers.fe-lsp]
+name = "Fe LSP server"
+languages = ["Fe"]
+
+[grammars.fe]
+repository = "https://github.com/fe-lang/tree-sitter-fe.git"
+commit = "e181d7975715e08191c85f9980029749f6089b52"
