@@ -7,6 +7,7 @@ use async_lsp::{
 };
 use service::LspActorKey;
 use std::collections::HashMap;
+use tracing::debug;
 
 use act_locally::{
     dispatcher::Dispatcher,
@@ -121,7 +122,7 @@ impl Dispatcher<LspActorKey> for LspDispatcher {
     ) -> Result<Box<dyn Response>, ActorError> {
         let MessageKey(key) = key;
         if let Some(unwrapper) = self.unwrappers.get(&key) {
-            println!("Found an unwrapper for key {}!", &key);
+            debug!("Found an unwrapper for key {}!", &key);
             unwrapper(message)
         } else {
             Err(ActorError::HandlerNotFound)
