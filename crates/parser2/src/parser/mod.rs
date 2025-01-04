@@ -236,7 +236,7 @@ impl<S: TokenStream> Parser<S> {
         let checkpoint = self.enter(scope.clone(), None);
         let ok = scope.parse(self).is_ok();
         self.leave(checkpoint);
-        ok && !self.dry_run_states.last().unwrap().err // xxx
+        ok && !self.dry_run_states.last().unwrap().err
     }
 
     pub fn or_recover<F>(&mut self, f: F) -> Result<(), Recovery<ErrProof>>

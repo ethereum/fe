@@ -18,8 +18,8 @@ impl<'db> PathId<'db> {
         )
     }
 
-    pub fn self_ty(db: &'db dyn HirDb) -> Self {
-        Self::from_ident(db, IdentId::make_self_ty(db))
+    pub fn self_ty(db: &'db dyn HirDb, args: GenericArgListId<'db>) -> Self {
+        Self::new(db, Partial::Present(IdentId::make_self_ty(db)), args, None)
     }
 
     pub fn len(self, db: &dyn HirDb) -> usize {
@@ -50,7 +50,6 @@ impl<'db> PathId<'db> {
         }
     }
 
-    // xxx check uses, remove?
     pub fn as_ident(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
         if self.parent(db).is_none() && self.generic_args(db).is_empty(db) {
             self.ident(db).to_opt()
@@ -59,10 +58,18 @@ impl<'db> PathId<'db> {
         }
     }
 
-    pub fn is_bare_ident(self, db: &'db dyn HirDb) -> bool {
+    pub fn is_bare_ident(self, db: &dyn HirDb) -> bool {
         self.parent(db).is_none()
             && self.ident(db).is_present()
             && self.generic_args(db).is_empty(db)
+    }
+
+    pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
+        if self.parent(db).is_none() && self.ident(db).is_present() {
+            self.ident(db).unwrap().is_self_ty(db)
+        } else {
+            false
+        }
     }
 
     pub fn push(

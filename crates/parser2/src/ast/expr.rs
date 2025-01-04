@@ -726,7 +726,7 @@ mod tests {
         let ExprKind::Path(path) = call_expr.callee().unwrap().kind() else {
             panic!();
         };
-        // xxx lolol
+
         assert_eq!(
             path.path()
                 .unwrap()

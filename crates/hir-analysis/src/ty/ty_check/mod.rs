@@ -11,11 +11,12 @@ pub use env::ExprProp;
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
 use hir::{
-    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, TypeId as HirTyId},
+    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, TypeId as HirTyId},
     span::{expr::LazyExprSpan, pat::LazyPatSpan, DynLazySpan},
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
 pub(super) use path::RecordLike;
+
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
@@ -28,6 +29,7 @@ use super::{
     unify::{InferenceKey, UnificationError, UnificationTable},
 };
 use crate::{
+    name_resolution::{resolve_path, PathRes, PathResError},
     ty::ty_def::{inference_keys, TyFlags},
     HirAnalysisDb,
 };
@@ -197,6 +199,17 @@ impl<'db> TyChecker<'db> {
 
                 TyId::invalid(self.db, InvalidCause::Other)
             }
+        }
+    }
+
+    fn resolve_path(
+        &mut self,
+        path: PathId<'db>,
+        resolve_tail_as_value: bool,
+    ) -> Result<PathRes<'db>, PathResError<'db>> {
+        match resolve_path(self.db, path, self.env.scope(), resolve_tail_as_value) {
+            Ok(r) => Ok(r.map_over_ty(|ty| self.table.instantiate_to_term(ty))),
+            Err(err) => Err(err),
         }
     }
 }

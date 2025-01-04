@@ -5,7 +5,7 @@ use hir::{
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
     LowerHirDb, SpannedHirDb,
 };
-use hir_analysis::name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameRes};
+use hir_analysis::name_resolution::{resolve_path, PathResErrorKind};
 
 use crate::{
     backend::{db::LanguageServerDb, Backend},
@@ -99,29 +99,21 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     let mut path_segment_collector = PathSpanCollector::default();
     path_segment_collector.visit_item(&mut visitor_ctxt, item);
 
-    let (path, is_intermediate, scope) =
+    let (path, _is_intermediate, scope) =
         find_path_surrounding_cursor(db, cursor, path_segment_collector.paths)?;
 
-    let resolved = resolve_path_early(db.as_hir_analysis_db(), path, scope)?;
+    let hdb = db.as_hir_analysis_db();
 
+    let resolved = resolve_path(hdb, path, scope, false);
     let scopes = match resolved {
-        EarlyResolvedPath::Full(bucket) => {
-            if is_intermediate {
-                bucket
-                    .pick(NameDomain::TYPE)
-                    .iter()
-                    .flat_map(|res| res.scope())
-                    .collect::<Vec<_>>()
-            } else {
-                bucket
-                    .iter_ok()
-                    .filter_map(NameRes::scope)
-                    .collect::<Vec<_>>()
+        Ok(r) => r.as_scope(hdb).into_iter().collect::<Vec<_>>(),
+        Err(err) => match err.kind {
+            PathResErrorKind::NotFound(bucket) => {
+                bucket.iter_ok().flat_map(|r| r.scope()).collect()
             }
-        }
-        EarlyResolvedPath::Partial { path: _, res } => {
-            res.scope().iter().cloned().collect::<Vec<_>>()
-        }
+            PathResErrorKind::Ambiguous(vec) => vec.into_iter().flat_map(|r| r.scope()).collect(),
+            _ => vec![],
+        },
     };
 
     Some(scopes)
@@ -360,16 +352,18 @@ mod tests {
             let full_paths = path_collector.paths;
 
             if let Some((path, _, scope)) = find_path_surrounding_cursor(db, *cursor, full_paths) {
-                let resolved_enclosing_path =
-                    hir_analysis::name_resolution::resolve_path_early(db, path, scope).unwrap();
+                let resolved_enclosing_path = resolve_path(db, path, scope, false);
 
                 let res = match resolved_enclosing_path {
-                    EarlyResolvedPath::Full(bucket) => bucket
-                        .iter_ok()
-                        .map(|x| x.pretty_path(db).unwrap())
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                    EarlyResolvedPath::Partial { res, path: _ } => res.pretty_path(db).unwrap(),
+                    Ok(res) => res.pretty_path(db).unwrap(),
+                    Err(err) => match err.kind {
+                        PathResErrorKind::Ambiguous(vec) => vec
+                            .iter()
+                            .map(|r| r.pretty_path(db).unwrap())
+                            .collect::<Vec<_>>()
+                            .join("\n"),
+                        _ => "".into(),
+                    },
                 };
                 cursor_path_map.insert(*cursor, res);
             }

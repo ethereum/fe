@@ -12,7 +12,7 @@ use crate::{
 #[salsa::interned]
 pub struct ConstTyId<'db> {
     #[return_ref]
-    pub(super) data: ConstTyData<'db>,
+    pub(crate) data: ConstTyData<'db>,
 }
 
 #[salsa::tracked]

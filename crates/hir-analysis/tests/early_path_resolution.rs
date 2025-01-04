@@ -3,10 +3,7 @@ use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
 use fe_compiler_test_utils::snap_test;
-use fe_hir_analysis::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain},
-    HirAnalysisDb,
-};
+use fe_hir_analysis::name_resolution::{resolve_path, NameDomain};
 use hir::{
     hir_def::{Expr, ExprId, ItemKind, Pat, PatId, PathId, TopLevelMod, TypeId},
     visitor::prelude::*,
@@ -78,31 +75,18 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
-        match resolve_path_early(self.db, path, scope).unwrap() {
-            EarlyResolvedPath::Full(bucket) => {
-                let domain = self.domain_stack.last().copied().unwrap();
-                let res = bucket.pick(domain).as_ref().unwrap();
-                let prop = res.pretty_path(self.db.as_hir_analysis_db()).unwrap();
-                let span = ctxt
-                    .span()
-                    .unwrap()
-                    .segment(path.segment_index(self.db.as_hir_db()))
-                    .ident()
-                    .into();
-                self.prop_formatter.push_prop(self.top_mod, span, prop);
-            }
+        let prop = match resolve_path(self.db, path, scope, false) {
+            Ok(res) => res.pretty_path(self.db).unwrap(),
+            Err(err) => err.print(),
+        };
+        let span = ctxt
+            .span()
+            .unwrap()
+            .segment(path.segment_index(self.db.as_hir_db()))
+            .ident()
+            .into();
+        self.prop_formatter.push_prop(self.top_mod, span, prop);
 
-            EarlyResolvedPath::Partial { path, res } => {
-                let prop = res.pretty_path(self.db.as_hir_analysis_db()).unwrap();
-                let span = ctxt
-                    .span()
-                    .unwrap()
-                    .segment(path.segment_index(self.db))
-                    .ident()
-                    .into();
-                self.prop_formatter.push_prop(self.top_mod, span, prop);
-            }
-        }
         walk_path(self, ctxt, path);
     }
 }

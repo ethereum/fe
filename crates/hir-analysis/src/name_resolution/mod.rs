@@ -20,9 +20,10 @@ pub use name_resolver::{
     EarlyNameQueryId, NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind,
     NameResolutionError, QueryDirective,
 };
+use path_resolver::resolve_path_with_observer;
 pub use path_resolver::{
-    resolve_path_tail_in_scope, EarlyResolvedPath, Observer, ResolveEarly, ResolveToTypeDomain,
-    Resolver,
+    resolve_ident_to_bucket, resolve_name_res, resolve_path, PathRes, PathResError,
+    PathResErrorKind, ResolvedVariant,
 };
 use rustc_hash::FxHashSet;
 pub use traits_in_scope::available_traits_in_scope;
@@ -39,26 +40,6 @@ pub fn resolve_query<'db>(
     let importer = DefaultImporter;
     let mut name_resolver = name_resolver::NameResolver::new(db, &importer);
     name_resolver.resolve_query(query)
-}
-
-// Resolves the given path in the given scope.
-/// It's not necessary to report any error even if the `EarlyResolvedPath`
-/// contains some errors; it's always reported from [`PathAnalysisPass`].
-pub fn resolve_path_early<'db>(
-    db: &'db dyn HirAnalysisDb,
-    path: PathId<'db>,
-    scope: ScopeId<'db>,
-) -> Option<EarlyResolvedPath<'db, &'db NameResBucket<'db>>> {
-    ResolveEarly::default().resolve_path(db, path, scope).ok()
-}
-
-// xxx use or remove
-pub fn resolve_path_early_to_type_domain<'db>(
-    db: &'db dyn HirAnalysisDb,
-    path: PathId<'db>,
-    scope: ScopeId<'db>,
-) -> Option<EarlyResolvedPath<'db, NameRes<'db>>> {
-    ResolveToTypeDomain {}.resolve_path(db, path, scope)
 }
 
 /// Performs import resolution analysis. This pass only checks correctness of
@@ -185,7 +166,7 @@ struct EarlyPathVisitor<'db, 'a> {
     /// diagnostics.
     already_conflicted: FxHashSet<ScopeId<'db>>,
 }
-// xxx generic args?
+
 impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     fn new(db: &'db dyn HirAnalysisDb, importer: &'a DefaultImporter) -> Self {
         let resolver = name_resolver::NameResolver::new(db, importer);
@@ -196,82 +177,6 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
             item_stack: Vec::new(),
             path_ctxt: Vec::new(),
             already_conflicted: FxHashSet::default(),
-        }
-    }
-
-    fn verify_path(
-        &mut self,
-        path: PathId<'db>,
-        scope: ScopeId,
-        span: LazyPathSpan<'db>,
-        bucket: &'db NameResBucket<'db>,
-    ) {
-        let path_kind = self.path_ctxt.last().unwrap();
-        let hir_db = self.db.as_hir_db();
-        let last_seg_ident = path.ident(hir_db).to_opt().unwrap();
-        let span = span.segment(path.segment_index(hir_db)).ident().into();
-
-        if bucket.is_empty() {
-            let Err(err) = bucket.pick(path_kind.domain()) else {
-                unreachable!()
-            };
-
-            match err {
-                NameResolutionError::NotFound => {
-                    if !matches!(
-                        self.path_ctxt.last().unwrap(),
-                        ExpectedPathKind::Expr | ExpectedPathKind::Pat
-                    ) || path.len(self.db.as_hir_db()) != 1
-                    {
-                        self.diags.push(NameResDiag::NotFound(span, last_seg_ident));
-                        // xxx check
-                    };
-                }
-                NameResolutionError::Ambiguous(cands) => {
-                    self.diags.push(NameResDiag::ambiguous(
-                        self.db,
-                        span,
-                        last_seg_ident,
-                        cands.clone(),
-                    ));
-                }
-                _ => {}
-            };
-
-            return;
-        }
-
-        match path_kind.pick(bucket) {
-            // The path exists and belongs to the expected kind.
-            Ok(res) => {
-                if !res.is_visible(self.db, scope) {
-                    self.diags.push(NameResDiag::invisible(
-                        span,
-                        last_seg_ident,
-                        res.derived_from(self.db),
-                    ));
-                }
-            }
-
-            // The path exists but doesn't belong to the expected kind.
-            Err(res) => match path_kind {
-                ExpectedPathKind::Type => {
-                    self.diags
-                        .push(NameResDiag::ExpectedType(span, last_seg_ident, res));
-                }
-
-                ExpectedPathKind::Trait => {
-                    self.diags
-                        .push(NameResDiag::ExpectedTrait(span, last_seg_ident, res));
-                }
-
-                ExpectedPathKind::Value => {
-                    self.diags
-                        .push(NameResDiag::ExpectedValue(span, last_seg_ident, res));
-                }
-
-                _ => {}
-            },
         }
     }
 
@@ -299,7 +204,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
                     })
                     .collect();
 
-                let diag = diagnostics::NameResDiag::conflict(
+                let diag = diagnostics::NameResDiag::Conflict(
                     scope.name(self.db.as_hir_db()).unwrap(),
                     conflicted_span,
                 );
@@ -451,8 +356,28 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
-        let mut resolver = ResolveEarly::with_trajectory();
-        let res = match resolver.resolve_path(self.db, path, scope) {
+
+        let mut invisible = None;
+
+        let mut check_visibility = |path: PathId<'db>, reso: &PathRes<'db>| {
+            if invisible.is_some() {
+                return;
+            }
+            if !reso.is_visible_from(self.db, scope) {
+                invisible = Some((path, reso.name_span(self.db)));
+            }
+        };
+
+        let expected_path_kind = *self.path_ctxt.last().unwrap();
+        let resolve_tail_as_value = expected_path_kind.domain().contains(NameDomain::VALUE);
+
+        let res = match resolve_path_with_observer(
+            self.db,
+            path,
+            scope,
+            resolve_tail_as_value,
+            &mut check_visibility,
+        ) {
             Ok(res) => res,
 
             Err(err) => {
@@ -463,10 +388,14 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
                     .unwrap()
                     .segment(failed_at.segment_index(hir_db))
                     .ident();
-                let ident = failed_at.ident(hir_db);
+
+                let Some(ident) = failed_at.ident(hir_db).to_opt() else {
+                    return;
+                };
 
                 let diag = match err.kind {
-                    NameResolutionError::NotFound => {
+                    PathResErrorKind::ParseError => unreachable!(),
+                    PathResErrorKind::NotFound(bucket) => {
                         if path.len(hir_db) == 1
                             && matches!(
                                 self.path_ctxt.last().unwrap(),
@@ -474,35 +403,60 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
                             )
                         {
                             return;
+                        } else if let Some(nr) = bucket.iter_ok().next() {
+                            if path != err.failed_at {
+                                NameResDiag::InvalidPathSegment(
+                                    span.into(),
+                                    ident,
+                                    nr.kind.name_span(self.db),
+                                )
+                            } else {
+                                match expected_path_kind {
+                                    ExpectedPathKind::Record | ExpectedPathKind::Type => {
+                                        NameResDiag::ExpectedType(
+                                            span.into(),
+                                            ident,
+                                            nr.kind_name(),
+                                        )
+                                    }
+                                    ExpectedPathKind::Trait => NameResDiag::ExpectedTrait(
+                                        span.into(),
+                                        ident,
+                                        nr.kind_name(),
+                                    ),
+                                    ExpectedPathKind::Value => NameResDiag::ExpectedValue(
+                                        span.into(),
+                                        ident,
+                                        nr.kind_name(),
+                                    ),
+                                    _ => NameResDiag::NotFound(span.into(), ident),
+                                }
+                            }
                         } else {
-                            NameResDiag::NotFound(span.into(), *ident.unwrap()) // xxx check
+                            NameResDiag::NotFound(span.into(), ident)
                         }
                     }
 
-                    NameResolutionError::Invalid => {
-                        return;
+                    PathResErrorKind::Ambiguous(cands) => {
+                        NameResDiag::ambiguous(self.db, span.into(), ident, cands)
                     }
 
-                    NameResolutionError::Invisible(_) => {
-                        unreachable!("`EarlyPathResolver doesn't check visibility");
+                    PathResErrorKind::AssocTy(_) => todo!(),
+                    PathResErrorKind::TraitMethodNotFound(_) => todo!(),
+                    PathResErrorKind::TooManyGenericArgs { expected, given } => {
+                        NameResDiag::TooManyGenericArgs {
+                            span: span.into(),
+                            expected,
+                            given,
+                        }
                     }
 
-                    NameResolutionError::Ambiguous(cands) => {
-                        NameResDiag::ambiguous(self.db, span.into(), *ident.unwrap(), cands)
+                    PathResErrorKind::InvalidPathSegment(res) => {
+                        // res.name_span(db)
+                        NameResDiag::InvalidPathSegment(span.into(), ident, res.name_span(self.db))
                     }
 
-                    NameResolutionError::InvalidPathSegment(res) => {
-                        NameResDiag::invalid_use_path_segment(
-                            self.db,
-                            span.into(),
-                            *ident.unwrap(),
-                            res,
-                        )
-                    }
-
-                    NameResolutionError::Conflict(name, spans) => {
-                        NameResDiag::Conflict(name, spans)
-                    }
+                    PathResErrorKind::Conflict(spans) => NameResDiag::Conflict(ident, spans),
                 };
 
                 self.diags.push(diag);
@@ -510,30 +464,53 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
             }
         };
 
-        let trajectory = resolver.into_inner();
-        if let Some((inv_path, res)) = trajectory.find_invisible_segment(self.db) {
+        if let Some((path, deriv_span)) = invisible {
             let hir_db = self.db.as_hir_db();
             let span = ctxt
                 .span()
                 .unwrap()
-                .segment(inv_path.segment_index(hir_db))
+                .segment(path.segment_index(hir_db))
                 .ident();
+
             let ident = path.ident(hir_db);
-            let diag =
-                NameResDiag::invisible(span.into(), *ident.unwrap(), res.derived_from(self.db));
+            let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag);
-            return;
         }
 
-        let EarlyResolvedPath::Full(bucket) = res else {
-            return;
-        };
-        self.verify_path(path, scope, ctxt.span().unwrap(), bucket);
+        let is_type = matches!(res, PathRes::Ty(_));
+        let is_trait = matches!(res, PathRes::Trait(_));
+
+        let span = ctxt
+            .span()
+            .unwrap()
+            .segment(path.segment_index(self.db.as_hir_db()))
+            .into();
+
+        let ident = path.ident(self.db.as_hir_db()).to_opt().unwrap();
+
+        match expected_path_kind {
+            ExpectedPathKind::Type if !is_type => {
+                self.diags
+                    .push(NameResDiag::ExpectedType(span, ident, res.kind_name()))
+            }
+
+            ExpectedPathKind::Trait if !is_trait => {
+                self.diags
+                    .push(NameResDiag::ExpectedTrait(span, ident, res.kind_name()))
+            }
+
+            ExpectedPathKind::Value if is_type || is_trait => self
+                .diags
+                .push(NameResDiag::ExpectedValue(span, ident, res.kind_name())),
+
+            _ => {}
+        }
+
         walk_path(self, ctxt, path);
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 enum ExpectedPathKind {
     Type,
     Trait,
@@ -552,33 +529,6 @@ impl ExpectedPathKind {
             ExpectedPathKind::Pat | ExpectedPathKind::Record | ExpectedPathKind::Expr => {
                 NameDomain::VALUE | NameDomain::TYPE
             }
-        }
-    }
-
-    fn pick<'db>(self, bucket: &NameResBucket<'db>) -> Result<NameRes<'db>, NameRes<'db>> {
-        debug_assert!(!bucket.is_empty());
-
-        let res = match bucket.pick(self.domain()).as_ref().ok() {
-            Some(res) => res.clone(),
-            None => {
-                return Err(bucket
-                    .iter()
-                    .find_map(|res| {
-                        if let Ok(res) = res {
-                            Some(res.clone())
-                        } else {
-                            None
-                        }
-                    })
-                    .unwrap());
-            }
-        };
-
-        match self {
-            Self::Type if !res.is_type() => Err(res),
-            Self::Trait if !res.is_trait() => Err(res),
-            Self::Value if !res.is_value() => Err(res),
-            _ => Ok(res),
         }
     }
 }

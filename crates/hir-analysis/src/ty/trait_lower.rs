@@ -1,9 +1,7 @@
 //! This module implements the trait and impl trait lowering process.
 
 use common::indexmap::IndexMap;
-use hir::hir_def::{
-    scope_graph::ScopeId, IdentId, ImplTrait, IngotId, ItemKind, Partial, PathId, Trait, TraitRefId,
-};
+use hir::hir_def::{scope_graph::ScopeId, IdentId, ImplTrait, IngotId, Partial, Trait, TraitRefId};
 use rustc_hash::FxHashMap;
 
 use super::{
@@ -16,7 +14,7 @@ use super::{
     },
 };
 use crate::{
-    name_resolution::{resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind},
+    name_resolution::{resolve_path, PathRes},
     ty::{func_def::lower_func, ty_def::TyData, ty_lower::lower_hir_ty},
     HirAnalysisDb,
 };
@@ -106,23 +104,9 @@ pub(crate) fn lower_trait_ref<'db>(
         return Err(TraitRefLowerError::Other);
     };
 
-    let trait_def = match resolve_path_early(db, path, scope) {
-        Some(EarlyResolvedPath::Full(bucket)) => match bucket.pick(NameDomain::TYPE) {
-            Ok(res) => {
-                let NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) = res.kind else {
-                    return Err(TraitRefLowerError::Other);
-                };
-                lower_trait(db, trait_)
-            }
-
-            Err(_) => return Err(TraitRefLowerError::Other),
-        },
-
-        Some(EarlyResolvedPath::Partial { .. }) => {
-            return Err(TraitRefLowerError::AssocTy(path));
-        }
-
-        None => return Err(TraitRefLowerError::Other),
+    let trait_def = match resolve_path(db, path, scope, false) {
+        Ok(PathRes::Trait(t)) => t,
+        _ => return Err(TraitRefLowerError::Other),
     };
 
     // The first parameter of the trait is the self type, so we need to skip it.
@@ -200,10 +184,6 @@ pub(crate) fn collect_implementor_methods<'db>(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TraitRefLowerError<'db> {
-    /// The trait reference contains an associated type, which is not supported
-    /// yet.
-    AssocTy(PathId<'db>),
-
     /// The number of arguments doesn't match the number of parameters.
     ArgNumMismatch { expected: usize, given: usize },
 

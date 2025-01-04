@@ -1,67 +1,130 @@
-use hir::hir_def::{scope_graph::ScopeId, IdentId, Partial, PathId};
+use hir::{
+    hir_def::{
+        scope_graph::ScopeId, Enum, ItemKind, Partial, PathId, TypeId, VariantDef, VariantKind,
+    },
+    span::DynLazySpan,
+};
 
 use super::{
+    is_scope_visible_from,
     name_resolver::{NameRes, NameResBucket, NameResolutionError},
-    resolve_query, EarlyNameQueryId, NameDomain,
+    resolve_query,
+    visibility_checker::is_ty_visible_from,
+    EarlyNameQueryId, NameDomain,
 };
-use crate::{name_resolution::QueryDirective, HirAnalysisDb};
-
-/// The result of early path resolution.
-/// There are two kinds of early resolution results:
-/// 1. Fully resolved path, which is a path that is fully resolved to concrete
-///    items.
-/// 2. Partially resolved path. This happens when the path is partially resolved
-///    to a type, and the rest of the path depends on the type to resolve.
-///    Type/Trait context is needed to resolve the rest of the path.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EarlyResolvedPath<'db, T> {
-    Full(T),
-
-    // xxx update comment
-    /// The path is partially resolved; this means that the `resolved` is a type
-    /// and the following segments depend on type to resolve.
-    /// These unresolved parts are resolved in the later type inference and
-    /// trait solving phases.
-    Partial {
-        path: PathId<'db>,
-        res: NameRes<'db>,
+use crate::{
+    name_resolution::{NameResKind, QueryDirective},
+    ty::{
+        adt_def::{lower_adt, AdtRef, AdtRefId},
+        func_def::lower_func,
+        trait_def::TraitDef,
+        trait_lower::lower_trait,
+        ty_def::{InvalidCause, TyId},
+        ty_lower::{
+            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias,
+            GenericParamOwnerId,
+        },
     },
+    HirAnalysisDb,
+};
+
+pub type PathResolutionResult<'db, T> = Result<T, PathResError<'db>>;
+
+#[derive(Debug)]
+pub struct PathResError<'db> {
+    pub kind: PathResErrorKind<'db>,
+    pub failed_at: PathId<'db>,
 }
 
-pub type PathResolutionResult<'db, T> = Result<T, PathResolutionError<'db>>;
+#[derive(Debug)]
+pub enum PathResErrorKind<'db> {
+    /// The name is not found.
+    NotFound(NameResBucket<'db>),
 
-#[derive(Debug, derive_more::Display, Clone, PartialEq, Eq, Hash, derive_more::Error)]
-#[display(fmt = "failed_at: xxx, kind: {kind}")]
-pub struct PathResolutionError<'db> {
-    pub(crate) kind: NameResolutionError<'db>,
-    pub(crate) failed_at: PathId<'db>,
+    /// The name is invalid in parsing. Basically, no need to report it because
+    /// the error is already emitted from parsing phase.
+    ParseError,
+
+    /// The name is found, but it's ambiguous.
+    Ambiguous(Vec<NameRes<'db>>),
+
+    /// The name is found, but it can't be used in the middle of a use path.
+    InvalidPathSegment(PathRes<'db>),
+
+    /// The definition conflicts with other definitions.
+    Conflict(Vec<DynLazySpan<'db>>),
+
+    TooManyGenericArgs {
+        expected: usize,
+        given: usize,
+    },
+
+    TraitMethodNotFound(TraitDef<'db>),
+
+    AssocTy(TyId<'db>), // TyId is parent type.
 }
-impl<'db> PathResolutionError<'db> {
-    fn new(kind: NameResolutionError<'db>, failed_at: PathId<'db>) -> Self {
+
+impl<'db> PathResError<'db> {
+    pub fn new(kind: PathResErrorKind<'db>, failed_at: PathId<'db>) -> Self {
         Self { kind, failed_at }
+    }
+
+    pub fn not_found(path: PathId<'db>, bucket: NameResBucket<'db>) -> Self {
+        Self::new(PathResErrorKind::NotFound(bucket), path)
+    }
+
+    pub fn parse_err(path: PathId<'db>) -> Self {
+        Self::new(PathResErrorKind::ParseError, path)
+    }
+
+    pub fn from_name_res_error(err: NameResolutionError<'db>, path: PathId<'db>) -> Self {
+        let kind = match err {
+            NameResolutionError::NotFound => PathResErrorKind::NotFound(NameResBucket::default()),
+            NameResolutionError::Invalid => PathResErrorKind::ParseError,
+            NameResolutionError::Ambiguous(vec) => PathResErrorKind::Ambiguous(vec),
+            NameResolutionError::Conflict(_ident, vec) => PathResErrorKind::Conflict(vec),
+            NameResolutionError::Invisible(_) => unreachable!(),
+            NameResolutionError::InvalidPathSegment(_) => unreachable!(),
+        };
+        Self::new(kind, path)
+    }
+
+    pub fn print(&self) -> String {
+        match &self.kind {
+            PathResErrorKind::NotFound(_) => "Not found".to_string(),
+            PathResErrorKind::ParseError => "Parse error".to_string(),
+            PathResErrorKind::Ambiguous(v) => format!("Ambiguous; {} options.", v.len()),
+            PathResErrorKind::InvalidPathSegment(_) => "Invalid path segment".to_string(),
+            PathResErrorKind::Conflict(..) => "Conflicting definitions".to_string(),
+            PathResErrorKind::TooManyGenericArgs {
+                expected,
+                given: actual,
+            } => {
+                format!("Incorrect number of generic args; expected {expected}, given {actual}.")
+            }
+            PathResErrorKind::TraitMethodNotFound(_) => "Trait method not found".to_string(),
+            PathResErrorKind::AssocTy(_) => "Types cannot be nested inside other types".to_string(),
+        }
     }
 }
 
-// xxx check is_root behavior
-// xxx resolve_ident_in_scope
-pub fn resolve_path_tail_in_scope<'db>(
+/// Panics if `path` has more than one segment.
+pub fn resolve_ident_to_bucket<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-) -> Option<&'db NameResBucket<'db>> {
-    let query = make_query(db, path, scope).ok()?;
-    Some(resolve_query(db, query))
+) -> &'db NameResBucket<'db> {
+    assert!(path.parent(db.as_hir_db()).is_none());
+    let query = make_query(db, path, scope);
+    resolve_query(db, query)
 }
 
+/// Panics if path.ident is `Absent`
 fn make_query<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-) -> PathResolutionResult<'db, EarlyNameQueryId<'db>> {
-    let Partial::Present(name) = path.ident(db.as_hir_db()) else {
-        return Err(PathResolutionError::new(NameResolutionError::Invalid, path));
-    };
-
+) -> EarlyNameQueryId<'db> {
     let mut directive = QueryDirective::new();
 
     if path.segment_index(db.as_hir_db()) != 0 {
@@ -69,152 +132,387 @@ fn make_query<'db>(
         directive = directive.disallow_lex();
     }
 
-    Ok(EarlyNameQueryId::new(db, name, scope, directive))
+    let name = *path.ident(db.as_hir_db()).unwrap();
+    EarlyNameQueryId::new(db, name, scope, directive)
 }
 
-pub trait Resolver<'db> {
-    type Output;
-
-    fn resolve_path(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        path: PathId<'db>,
-        scope: ScopeId<'db>,
-    ) -> Self::Output;
+#[derive(Debug, Clone)]
+pub enum PathRes<'db> {
+    Ty(TyId<'db>),
+    Func(TyId<'db>),
+    FuncParam(ItemKind<'db>, usize),
+    Trait(TraitDef<'db>),
+    EnumVariant(ResolvedVariant<'db>),
+    Const(TyId<'db>),
+    Mod(ScopeId<'db>),
+    TypeMemberTbd(TyId<'db>),
 }
 
-pub trait Observer<'db> {
-    fn did_resolve(&mut self, path: PathId<'db>, scope: ScopeId<'db>, res: &NameRes<'db>);
-}
-pub struct ResolveEarly<T> {
-    pub observer: T,
-}
-impl<T> ResolveEarly<T> {
-    pub fn into_inner(self) -> T {
-        self.observer
-    }
-}
-
-impl Default for ResolveEarly<()> {
-    fn default() -> Self {
-        Self { observer: () }
-    }
-}
-
-impl ResolveEarly<Trajectory<'_>> {
-    pub fn with_trajectory() -> Self {
-        Self {
-            observer: Trajectory::default(),
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct Trajectory<'db> {
-    root_scope: Option<ScopeId<'db>>,
-    resolutions: Vec<(PathId<'db>, NameRes<'db>)>,
-}
-impl<'db> Trajectory<'db> {
-    pub(super) fn find_invisible_segment(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Option<(PathId<'db>, &NameRes<'db>)> {
-        for (path, res) in &self.resolutions {
-            if !res.is_visible(db, self.root_scope.unwrap()) {
-                return Some((*path, res));
+impl<'db> PathRes<'db> {
+    pub fn map_over_ty<F>(self, mut f: F) -> Self
+    where
+        F: FnMut(TyId<'db>) -> TyId<'db>,
+    {
+        match self {
+            PathRes::Ty(ty) => PathRes::Ty(f(ty)),
+            PathRes::Func(ty) => PathRes::Func(f(ty)),
+            PathRes::Const(ty) => PathRes::Const(f(ty)),
+            PathRes::EnumVariant(v) => {
+                PathRes::EnumVariant(ResolvedVariant::new(f(v.ty), v.idx, v.path))
             }
+            PathRes::TypeMemberTbd(parent_ty) => PathRes::TypeMemberTbd(f(parent_ty)),
+            r @ (PathRes::Trait(_) | PathRes::Mod(_) | PathRes::FuncParam(..)) => r,
         }
-        None
     }
-}
-impl<'db> Observer<'db> for Trajectory<'db> {
-    fn did_resolve(&mut self, path: PathId<'db>, scope: ScopeId<'db>, res: &NameRes<'db>) {
-        if self.root_scope.is_none() {
-            self.root_scope = Some(scope);
+
+    pub fn as_scope(&self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
+        match self {
+            PathRes::Ty(ty)
+            | PathRes::Func(ty)
+            | PathRes::Const(ty)
+            | PathRes::TypeMemberTbd(ty) => ty.as_scope(db),
+            PathRes::Trait(trait_) => Some(trait_.trait_(db).scope()),
+            PathRes::EnumVariant(variant) => Some(variant.enum_(db).scope()),
+            PathRes::FuncParam(item, idx) => Some(ScopeId::FuncParam(*item, *idx)),
+            PathRes::Mod(scope) => Some(*scope),
         }
-        self.resolutions.push((path, res.clone()));
     }
-}
 
-impl Observer<'_> for () {
-    fn did_resolve(&mut self, _path: PathId, _scope: ScopeId, _res: &NameRes) {}
-}
+    pub fn is_visible_from(&self, db: &'db dyn HirAnalysisDb, from_scope: ScopeId<'db>) -> bool {
+        match self {
+            PathRes::Ty(ty)
+            | PathRes::Func(ty)
+            | PathRes::Const(ty)
+            | PathRes::TypeMemberTbd(ty) => is_ty_visible_from(db, *ty, from_scope),
+            r => is_scope_visible_from(db, r.as_scope(db).unwrap(), from_scope),
+        }
+    }
 
-impl<'db, T: Observer<'db>> Resolver<'db> for ResolveEarly<T> {
-    type Output = PathResolutionResult<'db, EarlyResolvedPath<'db, &'db NameResBucket<'db>>>;
+    pub fn name_span(&self, db: &'db dyn HirAnalysisDb) -> Option<DynLazySpan<'db>> {
+        self.as_scope(db)?.name_span(db.as_hir_db())
+    }
 
-    fn resolve_path(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        path: PathId<'db>,
-        mut scope: ScopeId<'db>,
-    ) -> Self::Output {
+    pub fn pretty_path(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
         let hir_db = db.as_hir_db();
-        let parent = path.parent(hir_db);
 
-        if let Some(path) = parent {
-            match self.resolve_path(db, path, scope)? {
-                part @ EarlyResolvedPath::Partial { .. } => return Ok(part),
-                EarlyResolvedPath::Full(bucket) => {
-                    let res = bucket
-                        .pick(NameDomain::TYPE)
-                        .clone()
-                        .map_err(|err| match err {
-                            NameResolutionError::NotFound => {
-                                if let Some(res) = bucket.iter_ok().next() {
-                                    PathResolutionError::new(
-                                        NameResolutionError::InvalidPathSegment(res.clone()),
-                                        path,
-                                    )
-                                } else {
-                                    PathResolutionError::new(NameResolutionError::NotFound, path)
-                                }
-                            }
-                            err => PathResolutionError::new(err.clone(), path),
-                        })?;
+        let ty_path = |ty: TyId<'db>| {
+            if let Some(scope) = ty.as_scope(db) {
+                scope.pretty_path(hir_db)
+            } else {
+                Some(ty.pretty_print(db).to_string())
+            }
+        };
 
-                    let should_partial = res.is_type()
-                        || res.is_trait()
-                        || path.root_ident(hir_db) == Some(IdentId::make_self_ty(hir_db));
+        match self {
+            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => ty_path(*ty),
 
-                    if should_partial {
-                        return Ok(EarlyResolvedPath::Partial { path, res });
+            PathRes::EnumVariant(v) => {
+                let variant_idx = v.idx;
+                Some(format!(
+                    "{}::{}",
+                    ty_path(v.ty).unwrap_or_else(|| "<missing>".into()),
+                    v.enum_(db).variants(db.as_hir_db()).data(db.as_hir_db())[variant_idx]
+                        .name
+                        .to_opt()?
+                        .data(db.as_hir_db())
+                ))
+            }
+            r @ (PathRes::Trait(..) | PathRes::Mod(..) | PathRes::FuncParam(..)) => {
+                r.as_scope(db).unwrap().pretty_path(db.as_hir_db())
+            }
+            PathRes::TypeMemberTbd(parent_ty) => Some(format!(
+                "<TBD member of {}>",
+                ty_path(*parent_ty).unwrap_or_else(|| "<missing>".into())
+            )),
+        }
+    }
+
+    pub fn kind_name(&self) -> &'static str {
+        match self {
+            PathRes::Ty(_) => "type",
+            PathRes::Func(_) => "function",
+            PathRes::FuncParam(..) => "function parameter",
+            PathRes::Trait(_) => "trait",
+            PathRes::EnumVariant(_) => "enum variant",
+            PathRes::Const(_) => "constant",
+            PathRes::Mod(_) => "module",
+            PathRes::TypeMemberTbd(_) => "method",
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct ResolvedVariant<'db> {
+    pub ty: TyId<'db>,
+    pub idx: usize,
+    pub path: PathId<'db>,
+}
+
+impl<'db> ResolvedVariant<'db> {
+    pub fn variant_def(&self, db: &'db dyn HirAnalysisDb) -> &'db VariantDef<'db> {
+        &self.enum_(db).variants(db.as_hir_db()).data(db.as_hir_db())[self.idx]
+    }
+
+    pub fn variant_kind(&self, db: &'db dyn HirAnalysisDb) -> VariantKind<'db> {
+        self.variant_def(db).kind
+    }
+
+    pub fn enum_(&self, db: &'db dyn HirAnalysisDb) -> Enum<'db> {
+        let AdtRef::Enum(enum_) = self.ty.adt_ref(db).unwrap().data(db) else {
+            unreachable!()
+        };
+        enum_
+    }
+
+    pub fn new(ty: TyId<'db>, idx: usize, path: PathId<'db>) -> Self {
+        Self { ty, idx, path }
+    }
+}
+
+pub fn resolve_path<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    resolve_tail_as_value: bool,
+) -> PathResolutionResult<'db, PathRes<'db>> {
+    resolve_path_impl(db, path, scope, resolve_tail_as_value, true, &mut |_, _| {})
+}
+
+pub fn resolve_path_with_observer<'db, F>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    resolve_tail_as_value: bool,
+    observer: &mut F,
+) -> PathResolutionResult<'db, PathRes<'db>>
+where
+    F: FnMut(PathId<'db>, &PathRes<'db>),
+{
+    resolve_path_impl(db, path, scope, resolve_tail_as_value, true, observer)
+}
+
+fn resolve_path_impl<'db, F>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    resolve_tail_as_value: bool,
+    is_tail: bool,
+    observer: &mut F,
+) -> PathResolutionResult<'db, PathRes<'db>>
+where
+    F: FnMut(PathId<'db>, &PathRes<'db>),
+{
+    let hir_db = db.as_hir_db();
+
+    let parent_res = path
+        .parent(hir_db)
+        .map(|path| resolve_path_impl(db, path, scope, resolve_tail_as_value, false, observer))
+        .transpose()?;
+
+    if !path.ident(hir_db).is_present() {
+        return Err(PathResError::parse_err(path));
+    }
+
+    let parent_scope = parent_res
+        .as_ref()
+        .and_then(|r| r.as_scope(db))
+        .unwrap_or(scope);
+
+    match parent_res {
+        Some(PathRes::Ty(ty)) => {
+            // Try to resolve as an enum variant
+            if let Some(enum_) = ty.as_enum(db) {
+                // We need to use the concrete enum scope instead of
+                // parent_scope to resolve the variants in all cases,
+                // eg when parent is `Self`. I'm not really sure why this is.
+                let query = make_query(db, path, enum_.scope());
+                let bucket = resolve_query(db, query);
+
+                if let Ok(res) = bucket.pick(NameDomain::VALUE) {
+                    if let Some((_, idx)) = res.enum_variant() {
+                        let reso = PathRes::EnumVariant(ResolvedVariant::new(ty, idx, path));
+                        observer(path, &reso);
+                        return Ok(reso);
                     }
-                    self.observer.did_resolve(path, scope, &res);
-
-                    scope = res.scope().ok_or_else(|| {
-                        PathResolutionError::new(
-                            NameResolutionError::InvalidPathSegment(res.clone()), // xxx used to be notfound?
-                            path,
-                        )
-                    })?;
                 }
             }
+            if is_tail {
+                let r = PathRes::TypeMemberTbd(ty);
+                observer(path, &r);
+                return Ok(r);
+            } else {
+                todo!() // assoc type error
+            }
         }
-        let query = make_query(db, path, scope)?;
-        Ok(EarlyResolvedPath::Full(resolve_query(db, query)))
+
+        Some(PathRes::Func(_) | PathRes::EnumVariant(..)) => {
+            return Err(PathResError::new(
+                PathResErrorKind::InvalidPathSegment(parent_res.unwrap()),
+                path,
+            ));
+        }
+        Some(PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..)) => unreachable!(),
+        Some(PathRes::Const(_) | PathRes::Mod(_) | PathRes::Trait(_)) | None => {}
+    };
+
+    let query = make_query(db, path, parent_scope);
+    let bucket = resolve_query(db, query);
+
+    let res = if is_tail && resolve_tail_as_value {
+        match bucket.pick(NameDomain::VALUE) {
+            Ok(res) => res.clone(),
+            Err(_) => pick_type_domain_from_bucket(bucket, path)?,
+        }
+    } else {
+        pick_type_domain_from_bucket(bucket, path)?
+    };
+    let reso = resolve_name_res(db, &res, parent_res, path, scope)?;
+
+    observer(path, &reso);
+    Ok(reso)
+}
+
+pub fn resolve_name_res<'db>(
+    db: &'db dyn HirAnalysisDb,
+    nameres: &NameRes<'db>,
+    parent_ty: Option<PathRes<'db>>,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+) -> PathResolutionResult<'db, PathRes<'db>> {
+    let hir_db = db.as_hir_db();
+
+    let args = &lower_generic_arg_list(db, path.generic_args(hir_db), scope);
+    let res = match nameres.kind {
+        NameResKind::Prim(prim) => {
+            let ty = TyId::from_hir_prim_ty(db, prim);
+            PathRes::Ty(TyId::foldl(db, ty, args))
+        }
+        NameResKind::Scope(scope_id) => match scope_id {
+            ScopeId::Item(item) => match item {
+                ItemKind::Struct(_) | ItemKind::Contract(_) | ItemKind::Enum(_) => {
+                    let adt_ref = AdtRefId::try_from_item(db, item).unwrap();
+                    PathRes::Ty(ty_from_adtref(db, adt_ref, args)?)
+                }
+
+                ItemKind::TopMod(_) | ItemKind::Mod(_) => PathRes::Mod(scope_id),
+
+                ItemKind::Func(func) => {
+                    let func_def = lower_func(db, func).unwrap();
+                    let ty = TyId::func(db, func_def);
+                    PathRes::Func(TyId::foldl(db, ty, args))
+                }
+                ItemKind::Const(const_) => {
+                    // TODO err if any args
+                    let ty = if let Some(ty) = const_.ty(hir_db).to_opt() {
+                        lower_hir_ty(db, ty, scope)
+                    } else {
+                        TyId::invalid(db, InvalidCause::Other)
+                    };
+                    PathRes::Const(ty)
+                }
+
+                ItemKind::TypeAlias(type_alias) => {
+                    let Ok(alias) = lower_type_alias(db, type_alias) else {
+                        // Type alias cycle error reported in `def_analysis.rs`
+                        return Ok(PathRes::Ty(TyId::invalid(db, InvalidCause::Other)));
+                    };
+
+                    if args.len() < alias.params(db).len() {
+                        PathRes::Ty(TyId::invalid(
+                            db,
+                            InvalidCause::UnboundTypeAliasParam {
+                                alias: type_alias,
+                                n_given_args: args.len(),
+                            },
+                        ))
+                    } else {
+                        PathRes::Ty(alias.alias_to.instantiate(db, args))
+                    }
+                }
+
+                ItemKind::Impl(impl_) => {
+                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(hir_db), scope, args)?)
+                }
+                ItemKind::ImplTrait(impl_) => {
+                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(hir_db), scope, args)?)
+                }
+
+                ItemKind::Trait(t) => {
+                    if path.is_self_ty(hir_db) {
+                        let params =
+                            collect_generic_params(db, GenericParamOwnerId::new(db, t.into()));
+                        let ty = params.trait_self(db).unwrap();
+                        let ty = TyId::foldl(db, ty, args);
+                        PathRes::Ty(ty)
+                    } else {
+                        PathRes::Trait(lower_trait(db, t))
+                    }
+                }
+
+                ItemKind::Use(_) | ItemKind::Body(_) => unreachable!(),
+            },
+            ScopeId::GenericParam(parent, idx) => {
+                let owner = GenericParamOwnerId::from_item_opt(db, parent).unwrap();
+                let param_set = collect_generic_params(db, owner);
+                let ty = param_set.param_by_original_idx(db, idx).unwrap();
+                let ty = TyId::foldl(db, ty, args);
+                PathRes::Ty(ty)
+            }
+
+            ScopeId::Variant(enum_, idx) => {
+                let enum_ty = if let Some(PathRes::Ty(ty)) = parent_ty {
+                    ty
+                } else {
+                    // The variant was imported via `use`.
+                    debug_assert!(path.parent(hir_db).is_none());
+                    let enum_: Enum = enum_.try_into().unwrap();
+                    ty_from_adtref(db, AdtRefId::from_enum(db, enum_), &[])?
+                };
+                // TODO report error if args isn't empty
+                PathRes::EnumVariant(ResolvedVariant::new(enum_ty, idx, path))
+            }
+            ScopeId::FuncParam(item, idx) => PathRes::FuncParam(item, idx),
+            ScopeId::Field(..) => unreachable!(),
+            ScopeId::Block(..) => unreachable!(),
+        },
+    };
+    Ok(res)
+}
+
+fn impl_typeid_to_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    hir_ty: Partial<TypeId<'db>>,
+    scope: ScopeId<'db>,
+    args: &[TyId<'db>],
+) -> PathResolutionResult<'db, TyId<'db>> {
+    if let Some(hir_ty) = hir_ty.to_opt() {
+        let ty = lower_hir_ty(db, hir_ty, scope); // root scope!
+        Ok(TyId::foldl(db, ty, args))
+    } else {
+        Err(PathResError::parse_err(path))
     }
 }
 
-#[derive(Default)]
-pub struct ResolveToTypeDomain {}
-impl<'db> Resolver<'db> for ResolveToTypeDomain {
-    type Output = Option<EarlyResolvedPath<'db, NameRes<'db>>>;
+fn ty_from_adtref<'db>(
+    db: &'db dyn HirAnalysisDb,
+    adt_ref: AdtRefId<'db>,
+    args: &[TyId<'db>],
+) -> PathResolutionResult<'db, TyId<'db>> {
+    let adt = lower_adt(db, adt_ref);
+    let ty = TyId::adt(db, adt);
+    Ok(TyId::foldl(db, ty, args))
+}
 
-    fn resolve_path(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        path: PathId<'db>,
-        scope: ScopeId<'db>,
-    ) -> Self::Output {
-        match ResolveEarly::default().resolve_path(db, path, scope).ok()? {
-            EarlyResolvedPath::Full(bucket) => {
-                let res = bucket.pick(NameDomain::TYPE).clone().ok()?;
-                Some(EarlyResolvedPath::Full(res))
-            }
-            EarlyResolvedPath::Partial { path, res } => {
-                Some(EarlyResolvedPath::Partial { path, res })
-            }
-        }
-    }
+fn pick_type_domain_from_bucket<'db>(
+    bucket: &NameResBucket<'db>,
+    path: PathId<'db>,
+) -> PathResolutionResult<'db, NameRes<'db>> {
+    bucket
+        .pick(NameDomain::TYPE)
+        .clone()
+        .map_err(|err| match err {
+            NameResolutionError::NotFound => PathResError::not_found(path, bucket.clone()),
+            err => PathResError::from_name_res_error(err, path),
+        })
 }

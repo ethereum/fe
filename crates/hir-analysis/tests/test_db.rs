@@ -73,7 +73,7 @@ impl HirAnalysisTestDb {
             let mut buffer = writer.buffer();
             let config = term::Config::default();
 
-            // xxx copied from driver
+            // copied from driver
             let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
             diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
                 std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),

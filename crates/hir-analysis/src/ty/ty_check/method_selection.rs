@@ -99,7 +99,7 @@ pub(super) fn select_method_candidate<'db>(
 
         Err(MethodSelectionError::InvisibleInherentMethod(func)) => {
             let diag =
-                NameResDiag::invisible(method_name.1, method_name.0, func.name_span(db).into());
+                NameResDiag::Invisible(method_name.1, method_name.0, func.name_span(db).into());
             Err(diag.into())
         }
 

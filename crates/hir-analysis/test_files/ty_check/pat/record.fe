@@ -1,5 +1,5 @@
 pub struct S<T> {
-    x: i32, 
+    x: i32,
     y: T,
 }
 

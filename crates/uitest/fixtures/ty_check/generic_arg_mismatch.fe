@@ -1,0 +1,12 @@
+
+enum Opt<T> {
+    Some(T),
+    None,
+}
+
+type O2 = Opt<i32, bool>
+
+fn main() {
+    let o = Opt<i32, ()>::None
+
+}

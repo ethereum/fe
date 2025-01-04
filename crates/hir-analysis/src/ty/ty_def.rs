@@ -7,10 +7,12 @@ use common::{indexmap::IndexSet, input::IngotKind};
 use hir::{
     hir_def::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
-        Body, IdentId, IngotId, IntegerId, TypeAlias as HirTypeAlias,
+        scope_graph::ScopeId,
+        Body, Enum, IdentId, IngotId, IntegerId, TypeAlias as HirTypeAlias,
     },
     span::DynLazySpan,
 };
+use if_chain::if_chain;
 use rustc_hash::FxHashSet;
 
 use super::{
@@ -19,10 +21,14 @@ use super::{
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     func_def::FuncDef,
     trait_resolution::{PredicateListId, WellFormedness},
+    ty_lower::{collect_generic_params, GenericParamOwnerId},
     unify::InferenceKey,
     visitor::{TyVisitable, TyVisitor},
 };
-use crate::{ty::trait_resolution::check_ty_wf, HirAnalysisDb};
+use crate::{
+    ty::{adt_def::AdtRef, trait_resolution::check_ty_wf},
+    HirAnalysisDb,
+};
 
 #[salsa::interned]
 pub struct TyId<'db> {
@@ -203,61 +209,97 @@ impl<'db> TyId<'db> {
         Self::new(db, TyData::ConstTy(const_ty))
     }
 
-    pub(super) fn adt(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Self {
+    pub(crate) fn adt(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Self {
         Self::new(db, TyData::TyBase(TyBase::Adt(adt)))
     }
 
-    pub(super) fn func(db: &'db dyn HirAnalysisDb, func: FuncDef<'db>) -> Self {
+    pub(crate) fn func(db: &'db dyn HirAnalysisDb, func: FuncDef<'db>) -> Self {
         Self::new(db, TyData::TyBase(TyBase::Func(func)))
     }
 
-    pub(super) fn is_func(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_func(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::TyBase(TyBase::Func(_)))
     }
 
-    pub(super) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self)
     }
 
-    pub(super) fn is_ty_var(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_ty_var(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::TyVar(_))
     }
 
-    pub(super) fn is_const_ty(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_const_ty(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::ConstTy(_))
     }
 
-    pub(super) fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(
             self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
         )
     }
 
-    pub(super) fn is_array(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_array(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(
             self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Array))
         )
     }
 
-    pub(super) fn is_string(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_string(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(
             self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::String))
         )
     }
 
-    pub(super) fn is_param(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_param(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(self.base_ty(db).data(db), TyData::TyParam(_))
     }
 
     /// Returns `true` if the base type is a user defined `struct` type.
-    pub(super) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
+    pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
         let base_ty = self.base_ty(db);
         match base_ty.data(db) {
             TyData::TyBase(TyBase::Adt(adt)) => adt.is_struct(db),
             _ => false,
+        }
+    }
+
+    pub fn is_prim(self, db: &dyn HirAnalysisDb) -> bool {
+        matches!(self.base_ty(db).data(db), TyData::TyBase(TyBase::Prim(_)))
+    }
+
+    /// Returns `true` if the base type is a user defined `enum` type.
+    pub(crate) fn as_enum(self, db: &'db dyn HirAnalysisDb) -> Option<Enum<'db>> {
+        let base_ty = self.base_ty(db);
+        if_chain! {
+            if let Some(adt_ref) = base_ty.adt_ref(db);
+            if let AdtRef::Enum(enum_) = adt_ref.data(db);
+            then {
+                Some(enum_)
+            } else {
+                None
+            }
+        }
+    }
+
+    pub(crate) fn as_scope(self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
+        match self.base_ty(db).data(db) {
+            TyData::TyParam(param) => Some(param.scope(db)),
+            TyData::TyBase(TyBase::Adt(adt)) => Some(adt.scope(db)),
+            TyData::TyBase(TyBase::Func(func)) => Some(func.scope(db)),
+            TyData::TyBase(TyBase::Prim(..)) => None,
+            TyData::ConstTy(const_ty) => match const_ty.data(db) {
+                ConstTyData::TyVar(..) => None,
+                ConstTyData::TyParam(ty_param, _) => Some(ty_param.scope(db)),
+                ConstTyData::Evaluated(..) => None,
+                ConstTyData::UnEvaluated(body) => Some(body.scope()),
+            },
+
+            TyData::Never | TyData::Invalid(_) | TyData::TyVar(_) => None,
+            TyData::TyApp(..) => unreachable!(),
         }
     }
 
@@ -290,6 +332,15 @@ impl<'db> TyId<'db> {
                     InvalidCause::KindMismatch { expected, given } => {
                         TyLowerDiag::invalid_type_arg_kind(db, span, expected.clone(), *given)
                             .into()
+                    }
+
+                    InvalidCause::TooManyGenericArgs { expected, given } => {
+                        TyLowerDiag::TooManyGenericArgs {
+                            span,
+                            expected: *expected,
+                            given: *given,
+                        }
+                        .into()
                     }
 
                     InvalidCause::InvalidConstParamTy => {
@@ -385,7 +436,7 @@ impl<'db> TyId<'db> {
     }
 
     /// Perform type level application.
-    pub(super) fn app(db: &'db dyn HirAnalysisDb, lhs: Self, rhs: Self) -> TyId<'db> {
+    pub(crate) fn app(db: &'db dyn HirAnalysisDb, lhs: Self, rhs: Self) -> TyId<'db> {
         let Some(applicable_ty) = lhs.applicable_ty(db) else {
             return Self::invalid(db, InvalidCause::kind_mismatch(None, rhs));
         };
@@ -407,8 +458,18 @@ impl<'db> TyId<'db> {
     /// For example, given base type B and arg types [A1, A2, A3],
     /// foldl would produce ((B A1) A2) A3).
     pub fn foldl(db: &'db dyn HirAnalysisDb, mut base: Self, args: &[Self]) -> Self {
-        for &arg in args {
-            base = Self::app(db, base, arg);
+        for (i, arg) in args.iter().enumerate() {
+            if base.applicable_ty(db).is_some() {
+                base = Self::app(db, base, *arg);
+            } else {
+                return Self::invalid(
+                    db,
+                    InvalidCause::TooManyGenericArgs {
+                        expected: i,
+                        given: args.len(),
+                    },
+                );
+            }
         }
         base
     }
@@ -429,11 +490,11 @@ impl<'db> TyId<'db> {
         self.is_ptr(db)
     }
 
-    pub(super) fn invalid(db: &'db dyn HirAnalysisDb, cause: InvalidCause<'db>) -> Self {
+    pub fn invalid(db: &'db dyn HirAnalysisDb, cause: InvalidCause<'db>) -> Self {
         Self::new(db, TyData::Invalid(cause))
     }
 
-    pub(super) fn from_hir_prim_ty(db: &'db dyn HirAnalysisDb, hir_prim: HirPrimTy) -> Self {
+    pub(crate) fn from_hir_prim_ty(db: &'db dyn HirAnalysisDb, hir_prim: HirPrimTy) -> Self {
         Self::new(db, TyData::TyBase(hir_prim.into()))
     }
 
@@ -589,6 +650,11 @@ pub enum InvalidCause<'db> {
     KindMismatch {
         expected: Option<Kind>,
         given: TyId<'db>,
+    },
+
+    TooManyGenericArgs {
+        expected: usize,
+        given: usize,
     },
 
     InvalidConstParamTy,
@@ -761,6 +827,7 @@ pub struct TyParam<'db> {
     pub idx: usize,
     pub kind: Kind,
     pub is_trait_self: bool,
+    pub owner: ScopeId<'db>,
 }
 
 impl<'db> TyParam<'db> {
@@ -768,21 +835,45 @@ impl<'db> TyParam<'db> {
         self.name.data(db.as_hir_db()).to_string()
     }
 
-    pub(super) fn normal_param(name: IdentId<'db>, idx: usize, kind: Kind) -> Self {
+    pub(super) fn normal_param(
+        name: IdentId<'db>,
+        idx: usize,
+        kind: Kind,
+        scope: ScopeId<'db>,
+    ) -> Self {
         Self {
             name,
             idx,
             kind,
             is_trait_self: false,
+            owner: scope,
         }
     }
 
-    pub(super) fn trait_self(db: &'db dyn HirAnalysisDb, kind: Kind) -> Self {
+    pub(super) fn trait_self(db: &'db dyn HirAnalysisDb, kind: Kind, scope: ScopeId<'db>) -> Self {
         Self {
             name: IdentId::make_self_ty(db.as_hir_db()),
             idx: 0,
             kind,
             is_trait_self: true,
+            owner: scope,
+        }
+    }
+
+    pub fn original_idx(&self, db: &'db dyn HirAnalysisDb) -> usize {
+        let owner = GenericParamOwnerId::from_item_opt(db, self.owner.item()).unwrap();
+        let param_set = collect_generic_params(db, owner);
+        let offset = param_set.offset_to_explicit_params_position(db);
+
+        // TyParam.idx includes implicit params, subtract offset to get original idx
+        self.idx - offset
+    }
+
+    pub fn scope(&self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
+        if self.is_trait_self {
+            self.owner
+        } else {
+            ScopeId::GenericParam(self.owner.item(), self.original_idx(db))
         }
     }
 }

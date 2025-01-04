@@ -28,17 +28,23 @@ pub enum NameResDiag<'db> {
     /// The name is found, but it can't be used as a middle segment of a path.
     InvalidPathSegment(DynLazySpan<'db>, IdentId<'db>, Option<DynLazySpan<'db>>),
 
+    TooManyGenericArgs {
+        span: DynLazySpan<'db>,
+        expected: usize,
+        given: usize,
+    },
+
     /// The name is found but belongs to a different name domain other than the
     /// Type.
-    ExpectedType(DynLazySpan<'db>, IdentId<'db>, NameRes<'db>),
+    ExpectedType(DynLazySpan<'db>, IdentId<'db>, &'static str),
 
     /// The name is found but belongs to a different name domain other than the
     /// trait.
-    ExpectedTrait(DynLazySpan<'db>, IdentId<'db>, NameRes<'db>),
+    ExpectedTrait(DynLazySpan<'db>, IdentId<'db>, &'static str),
 
     /// The name is found but belongs to a different name domain other than the
     /// value.
-    ExpectedValue(DynLazySpan<'db>, IdentId<'db>, NameRes<'db>),
+    ExpectedValue(DynLazySpan<'db>, IdentId<'db>, &'static str),
 }
 
 impl<'db> NameResDiag<'db> {
@@ -57,19 +63,8 @@ impl<'db> NameResDiag<'db> {
             Self::ExpectedType(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::ExpectedTrait(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
             Self::ExpectedValue(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
+            Self::TooManyGenericArgs { span, .. } => span.top_mod(db.as_hir_db()).unwrap(),
         }
-    }
-
-    pub(crate) fn invisible(
-        span: DynLazySpan<'db>,
-        name: IdentId<'db>,
-        invisible_span: Option<DynLazySpan<'db>>,
-    ) -> Self {
-        Self::Invisible(span, name, invisible_span)
-    }
-
-    pub(super) fn conflict(name: IdentId<'db>, conflict_with: Vec<DynLazySpan<'db>>) -> Self {
-        Self::Conflict(name, conflict_with)
     }
 
     pub(super) fn ambiguous(
@@ -85,16 +80,6 @@ impl<'db> NameResDiag<'db> {
         Self::Ambiguous(span, ident, cands)
     }
 
-    pub(super) fn invalid_use_path_segment(
-        db: &'db dyn HirAnalysisDb,
-        span: DynLazySpan<'db>,
-        ident: IdentId<'db>,
-        found: NameRes<'db>,
-    ) -> Self {
-        let found = found.kind.name_span(db);
-        Self::InvalidPathSegment(span, ident, found)
-    }
-
     fn local_code(&self) -> u16 {
         match self {
             Self::Conflict(..) => 1,
@@ -105,6 +90,7 @@ impl<'db> NameResDiag<'db> {
             Self::ExpectedType(..) => 6,
             Self::ExpectedTrait(..) => 7,
             Self::ExpectedValue(..) => 8,
+            Self::TooManyGenericArgs { .. } => 9,
         }
     }
 
@@ -131,6 +117,11 @@ impl<'db> NameResDiag<'db> {
             Self::ExpectedType(_, _, _) => "expected type item here".to_string(),
             Self::ExpectedTrait(_, _, _) => "expected trait item here".to_string(),
             Self::ExpectedValue(_, _, _) => "expected value here".to_string(),
+            Self::TooManyGenericArgs {
+                span: _,
+                expected,
+                given,
+            } => format!("too many generic args; expected {expected}, given {given}"),
         }
     }
 
@@ -182,7 +173,7 @@ impl<'db> NameResDiag<'db> {
                 if let Some(span) = span {
                     diags.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("`{ident} is defined here"),
+                        format!("`{ident}` is defined here"),
                         span.resolve(db),
                     ))
                 }
@@ -223,7 +214,7 @@ impl<'db> NameResDiag<'db> {
                 if let Some(span) = res_span {
                     diag.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("`{}` is defined here", name),
+                        format!("`{name}` is defined here"),
                         span.resolve(db),
                     ));
                 }
@@ -231,39 +222,42 @@ impl<'db> NameResDiag<'db> {
                 diag
             }
 
-            Self::ExpectedType(prim_span, name, res) => {
-                let res_kind_name = res.kind_name();
+            Self::ExpectedType(prim_span, name, given_kind) => {
                 let name = name.data(db.as_hir_db());
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("expected type here, but found {} `{}`", res_kind_name, name),
+                    format!("expected type here, but found {given_kind} `{name}`"),
                     prim_span.resolve(db),
                 )]
             }
 
-            Self::ExpectedTrait(prim_span, name, res) => {
-                let res_kind_name = res.kind_name();
+            Self::ExpectedTrait(prim_span, name, given_kind) => {
                 let name = name.data(db.as_hir_db());
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!(
-                        "expected trait here, but found {} `{}`",
-                        res_kind_name, name
-                    ),
+                    format!("expected trait here, but found {given_kind} `{name}`",),
                     prim_span.resolve(db),
                 )]
             }
 
-            Self::ExpectedValue(prim_span, name, res) => {
-                let res_kind_name = res.kind_name();
+            Self::ExpectedValue(prim_span, name, given_kind) => {
                 let name = name.data(db.as_hir_db());
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!(
-                        "expected value here, but found {} `{}`",
-                        res_kind_name, name
-                    ),
+                    format!("expected value here, but found {given_kind} `{name}`",),
                     prim_span.resolve(db),
+                )]
+            }
+
+            Self::TooManyGenericArgs {
+                span,
+                expected,
+                given,
+            } => {
+                vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("Too many generic args; expected {expected}, given {given}",),
+                    span.resolve(db),
                 )]
             }
         }

@@ -38,10 +38,7 @@ use super::{
     visitor::{walk_ty, TyVisitor},
 };
 use crate::{
-    name_resolution::{
-        resolve_path_early, EarlyResolvedPath, NameDomain, NameResKind, ResolveToTypeDomain,
-        Resolver,
-    },
+    name_resolution::{resolve_path, PathRes},
     ty::{
         adt_def::AdtDef,
         binder::Binder,
@@ -323,22 +320,19 @@ impl<'db> DefAnalyzer<'db> {
                 let parent_scope = scope.parent_item(self.db.as_hir_db()).unwrap().scope();
                 let path = PathId::from_ident(self.db.as_hir_db(), name);
 
-                if let Some(EarlyResolvedPath::Full(res)) =
-                    ResolveToTypeDomain::default().resolve_path(self.db, path, parent_scope)
-                {
-                    if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) = res.kind
-                    {
+                match resolve_path(self.db, path, parent_scope, false) {
+                    Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                         self.diags.push(
                             TyLowerDiag::generic_param_conflict(
                                 span.param(i).into(),
-                                conflict_with.name_span(self.db.as_hir_db()).unwrap(),
+                                r.name_span(self.db).unwrap(),
                                 name,
                             )
                             .into(),
                         );
-
                         is_conflict = true;
                     }
+                    _ => {}
                 }
             }
         }
@@ -581,21 +575,19 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             let scope = self.scope();
             let parent_scope = scope.parent_item(self.db.as_hir_db()).unwrap().scope();
             let path = PathId::from_ident(self.db.as_hir_db(), name);
-            if let Some(EarlyResolvedPath::Full(res)) =
-                ResolveToTypeDomain::default().resolve_path(self.db, path, parent_scope)
-            {
-                if let NameResKind::Scope(conflict_with @ ScopeId::GenericParam(..)) = res.kind {
+            match resolve_path(self.db, path, parent_scope, false) {
+                Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                     self.diags.push(
                         TyLowerDiag::generic_param_conflict(
                             ctxt.span().unwrap().into(),
-                            conflict_with.name_span(self.db.as_hir_db()).unwrap(),
+                            r.name_span(self.db).unwrap(),
                             name,
                         )
                         .into(),
                     );
-
                     return;
                 }
+                _ => {}
             }
         }
 
@@ -946,10 +938,6 @@ fn analyze_trait_ref<'db>(
             return Some(TraitConstraintDiag::kind_mismatch(db, span, &expected, given).into());
         }
 
-        Err(TraitRefLowerError::AssocTy(_)) => {
-            return Some(TyLowerDiag::assoc_ty(span).into());
-        }
-
         Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => match (expected, given) {
             (Some(expected), Some(given)) => {
                 return Some(TyLowerDiag::const_ty_mismatch(db, span, expected, given).into())
@@ -1274,23 +1262,9 @@ fn find_const_ty_param<'db>(
     scope: ScopeId<'db>,
 ) -> Option<ConstTyId<'db>> {
     let path = PathId::from_ident(db.as_hir_db(), ident);
-    let Some(EarlyResolvedPath::Full(bucket)) = resolve_path_early(db, path, scope) else {
+    let Ok(PathRes::Ty(ty)) = resolve_path(db, path, scope, true) else {
         return None;
     };
-
-    let res = bucket.pick(NameDomain::VALUE).as_ref().ok()?;
-    let NameResKind::Scope(scope) = res.kind else {
-        return None;
-    };
-
-    let (item, idx) = match scope {
-        ScopeId::GenericParam(item, idx) => (item, idx),
-        _ => return None,
-    };
-
-    let owner = GenericParamOwnerId::from_item_opt(db, item).unwrap();
-    let param_set = collect_generic_params(db, owner);
-    let ty = param_set.param_by_original_idx(db, idx)?;
     match ty.data(db) {
         TyData::ConstTy(const_ty) => Some(*const_ty),
         _ => None,

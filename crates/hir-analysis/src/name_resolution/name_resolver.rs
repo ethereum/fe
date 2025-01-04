@@ -132,6 +132,17 @@ impl<'db> NameResBucket<'db> {
         &Err(NameResolutionError::NotFound)
     }
 
+    pub fn pick_any(&self, from: &[NameDomain]) -> &NameResolutionResult<'db, NameRes<'db>> {
+        let mut res = &Err(NameResolutionError::NotFound);
+        for domain in from {
+            res = self.pick(*domain);
+            if res.is_ok() {
+                return res;
+            }
+        }
+        res
+    }
+
     pub fn filter_by_domain(&mut self, domain: NameDomain) {
         for domain in domain.iter() {
             self.bucket.retain(|d, _| *d == domain);
@@ -155,7 +166,7 @@ impl<'db> NameResBucket<'db> {
         }
     }
 
-    /// Push the `res` into the set. // xxx cow?
+    /// Push the `res` into the set.
     fn push(&mut self, res: &NameRes<'db>) {
         for domain in res.domain.iter() {
             match self.bucket.entry(domain) {
@@ -279,6 +290,13 @@ impl<'db> NameRes<'db> {
     pub fn trait_(&self) -> Option<Trait<'db>> {
         match self.kind {
             NameResKind::Scope(ScopeId::Item(ItemKind::Trait(trait_))) => Some(trait_),
+            _ => None,
+        }
+    }
+
+    pub fn enum_variant(&self) -> Option<(ItemKind<'db>, usize)> {
+        match self.kind {
+            NameResKind::Scope(ScopeId::Variant(item, idx)) => Some((item, idx)),
             _ => None,
         }
     }

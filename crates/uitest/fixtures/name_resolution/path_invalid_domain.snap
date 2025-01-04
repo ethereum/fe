@@ -34,6 +34,4 @@ error[2-0007]: expected trait item here
    ┌─ path_invalid_domain.fe:13:10
    │
 13 │ where T: MyE,
-   │          ^^^ expected trait here, but found enum `MyE`
-
-
+   │          ^^^ expected trait here, but found type `MyE`

@@ -173,7 +173,6 @@ pub struct TraitRefId<'db> {
 }
 
 impl<'db> TraitRefId<'db> {
-    // xxx remove?
     /// Returns the generic arg list of the last segment of the trait ref path
     pub fn generic_args(self, db: &'db dyn HirDb) -> Option<GenericArgListId<'db>> {
         self.path(db).to_opt().map(|path| path.generic_args(db))

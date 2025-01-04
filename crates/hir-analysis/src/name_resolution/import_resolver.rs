@@ -557,16 +557,15 @@ impl<'db> ImportResolver<'db> {
 
             NameResolutionError::InvalidPathSegment(res) => {
                 self.accumulated_errors
-                    .push(NameResDiag::invalid_use_path_segment(
-                        self.db,
+                    .push(NameResDiag::InvalidPathSegment(
                         i_use.current_segment_span(),
                         i_use.current_segment_ident(self.db).unwrap(),
-                        res,
+                        res.kind.name_span(self.db),
                     ))
             }
 
             NameResolutionError::Invisible(invisible_span) => {
-                self.accumulated_errors.push(NameResDiag::invisible(
+                self.accumulated_errors.push(NameResDiag::Invisible(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                     invisible_span,
