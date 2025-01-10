@@ -107,7 +107,7 @@ where
 
         // Check if the keys in both maps are the same w.r.t the key order.
         let is_key_same = old_map.len() == new_map.len()
-            || old_map
+            && old_map
                 .keys()
                 .zip(new_map.keys())
                 .all(|(old, new)| old == new);
