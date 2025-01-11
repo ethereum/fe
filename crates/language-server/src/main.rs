@@ -28,7 +28,6 @@ use tracing::subscriber::set_default;
 use tracing::{error, info};
 
 use async_lsp::client_monitor::ClientProcessMonitorLayer;
-use backend::db::Jar;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tower::ServiceBuilder;
@@ -38,7 +37,7 @@ use tracing_tree::HierarchicalLayer;
 
 #[tokio::main]
 async fn main() {
-    std::env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("RUST_BACKTRACE", "full");
     let std_tracing = registry()
         .with(tracing_subscriber::filter::LevelFilter::INFO)
         .with(

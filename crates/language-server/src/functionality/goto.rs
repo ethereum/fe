@@ -12,7 +12,7 @@ use crate::{
     util::{to_lsp_location_from_scope, to_offset_from_position},
 };
 use hir::span::LazySpan;
-
+use salsa::Setter;
 pub type Cursor = rowan::TextSize;
 
 #[derive(Default)]

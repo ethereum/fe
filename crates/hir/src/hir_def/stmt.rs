@@ -3,7 +3,7 @@ use cranelift_entity::entity_impl;
 use super::{Body, ExprId, Partial, PatId, TypeId};
 use crate::{span::stmt::LazyStmtSpan, HirDb};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::DebugWithDb, salsa::Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum Stmt<'db> {
     /// The `let` statement. The first `PatId` is the pattern for binding, the
     /// second `Option<TypeId>` is the type annotation, and the third

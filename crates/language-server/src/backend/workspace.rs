@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use super::db::LanguageServerDatabase;
 use anyhow::Result;
 use common::{
     indexmap::IndexSet,
@@ -8,9 +9,8 @@ use common::{
 };
 use hir::{hir_def::TopLevelMod, lower::map_file_to_mod, LowerHirDb};
 use patricia_tree::StringPatriciaMap;
+use salsa::Setter;
 use tracing::info;
-
-use super::db::LanguageServerDatabase;
 
 use rust_embed::RustEmbed;
 

@@ -380,7 +380,7 @@ impl<'db> FieldDefListId<'db> {
         let fields = ast
             .into_iter()
             .map(|field| FieldDef::lower_ast(ctxt, field))
-            .collect();
+            .collect::<Vec<_>>();
         Self::new(ctxt.db(), fields)
     }
 
@@ -409,7 +409,7 @@ impl<'db> VariantDefListId<'db> {
         let variants = ast
             .into_iter()
             .map(|variant| VariantDef::lower_ast(ctxt, variant))
-            .collect();
+            .collect::<Vec<_>>();
         Self::new(ctxt.db(), variants)
     }
 

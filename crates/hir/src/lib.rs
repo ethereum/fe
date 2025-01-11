@@ -16,73 +16,6 @@ pub mod lower;
 pub mod span;
 pub mod visitor;
 
-#[salsa::jar(db = HirDb)]
-pub struct Jar(
-    hir_def::IngotId<'_>,
-    // Tracked Hir items.
-    hir_def::TopLevelMod<'_>,
-    hir_def::Mod<'_>,
-    hir_def::Func<'_>,
-    hir_def::Struct<'_>,
-    hir_def::Contract<'_>,
-    hir_def::Enum<'_>,
-    hir_def::TypeAlias<'_>,
-    hir_def::Impl<'_>,
-    hir_def::Trait<'_>,
-    hir_def::ImplTrait<'_>,
-    hir_def::Const<'_>,
-    hir_def::Use<'_>,
-    // Interned structs.
-    hir_def::Body<'_>,
-    hir_def::IdentId<'_>,
-    hir_def::IntegerId<'_>,
-    hir_def::StringId<'_>,
-    hir_def::PathId<'_>,
-    hir_def::FuncParamListId<'_>,
-    hir_def::AttrListId<'_>,
-    hir_def::WhereClauseId<'_>,
-    hir_def::GenericArgListId<'_>,
-    hir_def::GenericParamListId<'_>,
-    hir_def::FieldDefListId<'_>,
-    hir_def::VariantDefListId<'_>,
-    hir_def::ImplItemListId<'_>,
-    hir_def::TypeId<'_>,
-    hir_def::TupleTypeId<'_>,
-    hir_def::TraitRefId<'_>,
-    hir_def::UsePathId<'_>,
-    hir_def::TrackedItemId<'_>,
-    /// Utility methods for analysis.
-    hir_def::all_top_modules_in_ingot,
-    hir_def::all_enums_in_ingot,
-    hir_def::all_impls_in_ingot,
-    hir_def::all_impl_traits_in_ingot,
-    hir_def::all_items_in_top_mod,
-    hir_def::all_structs_in_top_mod,
-    hir_def::all_enums_in_top_mod,
-    hir_def::all_traits_in_top_mod,
-    hir_def::all_funcs_in_top_mod,
-    hir_def::all_contracts_in_top_mod,
-    hir_def::all_type_aliases_in_top_mod,
-    hir_def::all_impl_in_top_mod,
-    hir_def::all_impl_trait_in_top_mod,
-    /// Accumulated diagnostics.
-    ParseErrorAccumulator,
-    /// Private tracked functions. These are not part of the public API, and
-    /// thus, can't be accessed from outside of the crate without implementing
-    /// [`LowerHirDb`] marker trait.
-    module_tree_impl,
-    scope_graph_impl,
-    map_file_to_mod_impl,
-    parse_file_impl,
-    external_ingots_impl,
-);
-
-#[salsa::jar(db = SpannedHirDb)]
-pub struct SpannedJar();
-
-#[salsa::jar(db = LowerHirDb)]
-pub struct LowerJar();
-
 #[derive(Clone, Copy)]
 pub struct ParsingPass<'db> {
     db: &'db dyn HirDb,
@@ -105,8 +38,8 @@ impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
     ) -> Vec<Box<dyn diagnostics::DiagnosticVoucher<'db> + 'db>> {
         parse_file_impl::accumulated::<ParseErrorAccumulator>(self.db, top_mod)
             .into_iter()
-            .map(|d| Box::new(d) as _)
-            .collect()
+            .map(|d| Box::new(d.0) as _)
+            .collect::<Vec<_>>()
     }
 }
 
@@ -134,24 +67,20 @@ pub(crate) fn external_ingots_impl(
     res
 }
 
-pub trait HirDb: salsa::DbWithJar<Jar> + InputDb {
-    fn as_hir_db(&self) -> &dyn HirDb {
-        <Self as salsa::DbWithJar<Jar>>::as_jar_db::<'_>(self)
-    }
+#[salsa::db]
+pub trait HirDb: salsa::Database + InputDb {
+    fn as_hir_db(&self) -> &dyn HirDb;
 }
-impl<DB> HirDb for DB where DB: salsa::DbWithJar<Jar> + InputDb {}
 
 /// `LowerHirDb` is a marker trait for lowering AST to HIR items.
 /// All code that requires [`LowerHirDb`] is considered have a possibility to
 /// invalidate the cache in salsa when a revision is updated. Therefore,
 /// implementations relying on `LowerHirDb` are prohibited in all
 /// Analysis phases.
-pub trait LowerHirDb: salsa::DbWithJar<LowerJar> + HirDb {
-    fn as_lower_hir_db(&self) -> &dyn LowerHirDb {
-        <Self as salsa::DbWithJar<LowerJar>>::as_jar_db::<'_>(self)
-    }
+#[salsa::db]
+pub trait LowerHirDb: salsa::Database + HirDb {
+    fn as_lower_hir_db(&self) -> &dyn LowerHirDb;
 }
-impl<DB> LowerHirDb for DB where DB: salsa::DbWithJar<LowerJar> + HirDb {}
 
 /// `SpannedHirDb` is a marker trait for extracting span-dependent information
 /// from HIR Items.
@@ -164,19 +93,18 @@ impl<DB> LowerHirDb for DB where DB: salsa::DbWithJar<LowerJar> + HirDb {}
 /// generate [CompleteDiagnostic](common::diagnostics::CompleteDiagnostic) from
 /// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
 /// See also `[LazySpan]`[`crate::span::LazySpan`] for more details.
-pub trait SpannedHirDb: salsa::DbWithJar<SpannedJar> + HirDb {
-    fn as_spanned_hir_db(&self) -> &dyn SpannedHirDb {
-        <Self as salsa::DbWithJar<SpannedJar>>::as_jar_db::<'_>(self)
-    }
+#[salsa::db]
+pub trait SpannedHirDb: salsa::Database + HirDb {
+    fn as_spanned_hir_db(&self) -> &dyn SpannedHirDb;
 }
-impl<DB> SpannedHirDb for DB where DB: salsa::DbWithJar<SpannedJar> + HirDb {}
 
 #[cfg(test)]
 mod test_db {
     use common::{
+        impl_db_traits,
         indexmap::IndexSet,
         input::{IngotKind, Version},
-        InputFile, InputIngot,
+        InputDb, InputFile, InputIngot,
     };
 
     use super::HirDb;
@@ -184,26 +112,15 @@ mod test_db {
         hir_def::{scope_graph::ScopeGraph, ItemKind, TopLevelMod},
         lower::{map_file_to_mod, scope_graph},
         span::LazySpan,
+        LowerHirDb, SpannedHirDb,
     };
 
-    #[derive(Default)]
-    #[salsa::db(common::Jar, crate::Jar, crate::LowerJar, crate::SpannedJar)]
+    #[derive(Clone, Default)]
+    #[salsa::db]
     pub(crate) struct TestDb {
         storage: salsa::Storage<Self>,
     }
-
-    impl salsa::Database for TestDb {
-        fn salsa_event(&self, _: salsa::Event) {}
-    }
-    /// Implements `ParallelDatabase` to check the all tracked
-    /// structs/functions are `Send`.
-    impl salsa::ParallelDatabase for TestDb {
-        fn snapshot(&self) -> salsa::Snapshot<Self> {
-            salsa::Snapshot::new(TestDb {
-                storage: salsa::Storage::default(),
-            })
-        }
-    }
+    impl_db_traits!(TestDb, InputDb, HirDb, LowerHirDb, SpannedHirDb);
 
     impl TestDb {
         pub fn parse_source(&self, file: InputFile) -> &ScopeGraph {

@@ -29,7 +29,7 @@ use num_bigint::BigUint;
 pub use params::*;
 pub use pat::*;
 pub use path::*;
-use salsa::update::Update;
+use salsa::Update;
 pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;

@@ -69,12 +69,12 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
 }
 
 #[salsa::interned]
-pub(crate) struct TraitScope<'db> {
+pub struct TraitScope<'db> {
     inner: TraitScopeKind<'db>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum TraitScopeKind<'db> {
+pub enum TraitScopeKind<'db> {
     TopLevelMod(TopLevelMod<'db>),
     Module(Mod<'db>),
     Block(Body<'db>, ExprId),

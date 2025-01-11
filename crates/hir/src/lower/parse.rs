@@ -6,6 +6,7 @@ use common::{
     InputFile,
 };
 use parser::GreenNode;
+use salsa::Accumulator;
 
 use crate::{diagnostics::DiagnosticVoucher, hir_def::TopLevelMod, HirDb, SpannedHirDb};
 
@@ -23,9 +24,16 @@ pub(crate) fn parse_file_impl<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>
 
 #[doc(hidden)]
 #[salsa::accumulator]
-pub struct ParseErrorAccumulator(ParserError);
+pub struct ParseErrorAccumulator(pub ParserError);
+
+impl ParseErrorAccumulator {
+    fn push(db: &dyn HirDb, err: ParserError) {
+        Self(err).accumulate(db);
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+
 pub struct ParserError {
     file: InputFile,
     error: parser::ParseError,

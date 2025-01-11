@@ -8,7 +8,7 @@ impl<'db> GenericArgListId<'db> {
         let args = ast
             .into_iter()
             .map(|arg| GenericArg::lower_ast(ctxt, arg))
-            .collect();
+            .collect::<Vec<_>>();
         Self::new(ctxt.db(), args, true)
     }
 
@@ -26,7 +26,7 @@ impl<'db> GenericParamListId<'db> {
         let params = ast
             .into_iter()
             .map(|param| GenericParam::lower_ast(ctxt, param))
-            .collect();
+            .collect::<Vec<_>>();
         Self::new(ctxt.db(), params)
     }
 
@@ -44,7 +44,7 @@ impl<'db> FuncParamListId<'db> {
         let params = ast
             .into_iter()
             .map(|param| FuncParam::lower_ast(ctxt, param))
-            .collect();
+            .collect::<Vec<_>>();
         Self::new(ctxt.db(), params)
     }
 }
@@ -54,7 +54,7 @@ impl<'db> WhereClauseId<'db> {
         let predicates = ast
             .into_iter()
             .map(|pred| WherePredicate::lower_ast(ctxt, pred))
-            .collect();
+            .collect::<Vec<_>>();
         Self::new(ctxt.db(), predicates)
     }
 

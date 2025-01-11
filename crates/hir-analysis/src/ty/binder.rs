@@ -18,9 +18,9 @@ use crate::HirAnalysisDb;
 pub struct Binder<T> {
     value: T,
 }
-unsafe impl<T> salsa::update::Update for Binder<T>
+unsafe impl<T> salsa::Update for Binder<T>
 where
-    T: salsa::update::Update,
+    T: salsa::Update,
 {
     unsafe fn maybe_update(old_pointer: *mut Self, new_value: Self) -> bool {
         let old_value = unsafe { &mut *old_pointer };

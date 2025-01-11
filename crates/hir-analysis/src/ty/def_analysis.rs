@@ -14,7 +14,7 @@ use hir::{
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::id::LookupId;
+// xxx use salsa::id::LookupId;
 
 use super::{
     adt_def::{lower_adt, AdtRef, AdtRefId},
@@ -854,32 +854,33 @@ pub(crate) fn check_recursive_adt<'db>(
 }
 
 fn check_recursive_adt_impl<'db>(
-    db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    adt: AdtRefId<'db>,
+    _db: &'db dyn HirAnalysisDb,
+    _cycle: &salsa::Cycle,
+    _adt: AdtRefId<'db>,
 ) -> Option<TyDiagCollection<'db>> {
-    let participants: FxHashSet<_> = cycle
-        .participant_keys()
-        .map(|key| {
-            let id = key.key_index();
-            AdtRefId::lookup_id(id, db)
-        })
-        .collect();
+    // xxx cycle recovery
+    // let participants: FxHashSet<_> = cycle
+    //     .participant_keys()
+    //     .map(|key| {
+    //         let id = key.key_index();
+    //         AdtRefId::lookup_id(id, db)
+    //     })
+    //     .collect();
 
-    let adt_def = lower_adt(db, adt);
-    for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
-        for (ty_idx, ty) in field.iter_types(db).enumerate() {
-            for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
-                if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-                    let diag = TyLowerDiag::recursive_type(
-                        adt.name_span(db),
-                        adt_def.variant_ty_span(db, field_idx, ty_idx),
-                    );
-                    return Some(diag.into());
-                }
-            }
-        }
-    }
+    // let adt_def = lower_adt(db, adt);
+    // for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
+    //     for (ty_idx, ty) in field.iter_types(db).enumerate() {
+    //         for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
+    //             if participants.contains(&field_adt_ref) && participants.contains(&adt) {
+    //                 let diag = TyLowerDiag::recursive_type(
+    //                     adt.name_span(db),
+    //                     adt_def.variant_ty_span(db, field_idx, ty_idx),
+    //                 );
+    //                 return Some(diag.into());
+    //             }
+    //         }
+    //     }
+    // }
 
     None
 }

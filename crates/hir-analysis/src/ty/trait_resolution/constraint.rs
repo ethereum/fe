@@ -2,7 +2,7 @@ use common::indexmap::IndexSet;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
 };
-use salsa::id::LookupId;
+// xxx use salsa::id::LookupId;
 
 use crate::{
     ty::{
@@ -190,18 +190,20 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
 }
 
 pub(crate) fn recover_collect_super_traits<'db>(
-    db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
+    _db: &'db dyn HirAnalysisDb,
+    _cycle: &salsa::Cycle,
     _trait_: TraitDef<'db>,
 ) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
-    let mut trait_cycle = IndexSet::new();
-    for key in cycle.participant_keys() {
-        let id = key.key_index();
-        let inst = TraitDef::lookup_id(id, db);
-        trait_cycle.insert(inst);
-    }
+    todo!() // xxx cycle recovery
 
-    Err(SuperTraitCycle(trait_cycle))
+    // let mut trait_cycle = IndexSet::new();
+    // for key in cycle.participant_keys() {
+    //     let id = key.key_index();
+    //     let inst = TraitDef::lookup_id(id, db);
+    //     trait_cycle.insert(inst);
+    // }
+
+    // Err(SuperTraitCycle(trait_cycle))
 }
 
 struct SuperTraitCollector<'db> {
@@ -294,7 +296,7 @@ impl<'db> ConstraintCollector<'db> {
             ));
         }
 
-        PredicateListId::new(self.db, self.predicates.into_iter().collect())
+        PredicateListId::new(self.db, self.predicates.into_iter().collect::<Vec<_>>())
     }
 
     fn push_predicate(&mut self, pred: TraitInstId<'db>) {

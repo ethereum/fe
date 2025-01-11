@@ -10,42 +10,45 @@ use codespan_reporting::{
 };
 use common::{
     diagnostics::Span,
+    impl_db_traits,
     indexmap::{IndexMap, IndexSet},
     input::{IngotKind, Version},
-    InputFile, InputIngot,
+    InputDb, InputFile, InputIngot,
 };
-use driver::{diagnostics::ToCsDiag, CsDbWrapper};
+use driver::{diagnostics::ToCsDiag, CsDbWrapper, DriverDb};
 use fe_hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
         ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
+    HirAnalysisDb,
 };
 use hir::{
     analysis_pass::AnalysisPassManager,
     hir_def::TopLevelMod,
     lower,
     span::{DynLazySpan, LazySpan},
-    ParsingPass, SpannedHirDb,
+    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
-use salsa::DbWithJar;
 
 type CodeSpanFileId = usize;
 
-#[derive(Default)]
-#[salsa::db(
-    common::Jar,
-    hir::Jar,
-    hir::SpannedJar,
-    hir::LowerJar,
-    fe_hir_analysis::Jar,
-    driver::Jar
-)]
+#[derive(Default, Clone)]
+#[salsa::db]
 pub struct HirAnalysisTestDb {
     storage: salsa::Storage<Self>,
 }
+impl_db_traits!(
+    HirAnalysisTestDb,
+    InputDb,
+    HirDb,
+    LowerHirDb,
+    SpannedHirDb,
+    HirAnalysisDb,
+    DriverDb,
+);
 
 impl HirAnalysisTestDb {
     pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> InputFile {
@@ -81,9 +84,14 @@ impl HirAnalysisTestDb {
             });
 
             for diag in diags {
-                let cs_db = DbWithJar::<driver::Jar>::as_jar_db(self);
                 let cs_diag = &diag.to_cs(self);
-                term::emit(&mut buffer, &config, &CsDbWrapper(cs_db), cs_diag).unwrap();
+                term::emit(
+                    &mut buffer,
+                    &config,
+                    &CsDbWrapper(self.as_driver_db()),
+                    cs_diag,
+                )
+                .unwrap();
             }
             eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 
@@ -178,10 +186,6 @@ impl Default for HirPropertyFormatter<'_> {
             code_span_files: SimpleFiles::new(),
         }
     }
-}
-
-impl salsa::Database for HirAnalysisTestDb {
-    fn salsa_event(&self, _: salsa::Event) {}
 }
 
 fn initialize_analysis_pass(db: &HirAnalysisTestDb) -> AnalysisPassManager<'_> {

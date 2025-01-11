@@ -64,7 +64,7 @@ impl<'db> UsePathId<'db> {
         let segments = ast
             .into_iter()
             .map(|ast| UsePathSegment::lower_ast_partial(ctxt, ast))
-            .collect();
+            .collect::<Vec<_>>();
         Some(Self::new(ctxt.db(), segments)).into()
     }
 
@@ -78,7 +78,7 @@ impl<'db> UsePathId<'db> {
             let segs = ast_segs
                 .into_iter()
                 .map(|seg| UsePathSegment::lower_ast_partial(ctxt, seg))
-                .collect();
+                .collect::<Vec<_>>();
             Partial::Present(Self::new(ctxt.db(), segs))
         }
     }

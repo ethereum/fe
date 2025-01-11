@@ -3,7 +3,7 @@ use hir::hir_def::{
     GenericParamOwner, IdentId, ItemKind, KindBound as HirKindBound, Partial, PathId, TupleTypeId,
     TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind, WhereClauseId,
 };
-use salsa::{function::FunctionIngredient, id::LookupId, ingredient::Ingredient};
+// xxx use salsa::{function::FunctionIngredient, id::LookupId, ingredient::Ingredient};
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
@@ -64,32 +64,34 @@ pub(crate) fn lower_type_alias<'db>(
 }
 
 fn recover_lower_type_alias_cycle<'db>(
-    db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
+    _db: &'db dyn HirAnalysisDb,
+    _cycle: &salsa::Cycle,
     _alias: HirTypeAlias<'db>,
 ) -> Result<TyAlias<'db>, AliasCycle<'db>> {
-    let (jar, _): (&crate::Jar, _) = db.jar();
-    // Obtain ingredient index for the `[lower_type_alias]` to filter out
-    // participants that belong to other tracked functions.
-    let function_ingredient =
-        &<_ as salsa::storage::HasIngredientsFor<lower_type_alias>>::ingredient(jar).function;
-    let ingredient_index = <FunctionIngredient<lower_type_alias> as Ingredient<
-        dyn HirAnalysisDb,
-    >>::ingredient_index(function_ingredient);
+    todo!()
+    // xxx new salsa cycle recovery
+    // let (jar, _): (&crate::Jar, _) = db.jar();
+    // // Obtain ingredient index for the `[lower_type_alias]` to filter out
+    // // participants that belong to other tracked functions.
+    // let function_ingredient =
+    //     &<_ as salsa::storage::HasIngredientsFor<lower_type_alias>>::ingredient(jar).function;
+    // let ingredient_index = <FunctionIngredient<lower_type_alias> as Ingredient<
+    //     dyn HirAnalysisDb,
+    // >>::ingredient_index(function_ingredient);
 
-    let alias_cycle = cycle
-        .participant_keys()
-        .filter_map(|key| {
-            if ingredient_index == key.ingredient_index() {
-                let id = key.key_index();
-                Some(HirTypeAlias::lookup_id(id, db))
-            } else {
-                None
-            }
-        })
-        .collect();
+    // let alias_cycle = cycle
+    //     .participant_keys()
+    //     .filter_map(|key| {
+    //         if ingredient_index == key.ingredient_index() {
+    //             let id = key.key_index();
+    //             Some(HirTypeAlias::lookup_id(id, db))
+    //         } else {
+    //             None
+    //         }
+    //     })
+    //     .collect();
 
-    Err(AliasCycle(alias_cycle))
+    // Err(AliasCycle(alias_cycle))
 }
 
 #[doc(hidden)]
