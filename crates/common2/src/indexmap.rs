@@ -3,7 +3,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use salsa::update::Update;
+use salsa::Update;
 
 #[derive(Debug, Clone)]
 pub struct IndexMap<K, V, S = RandomState>(indexmap::IndexMap<K, V, S>);

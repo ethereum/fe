@@ -1179,7 +1179,7 @@ impl<'db> TrackedItemId<'db> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) enum TrackedItemVariant<'db> {
+pub enum TrackedItemVariant<'db> {
     TopLevelMod(IdentId<'db>),
     Mod(Partial<IdentId<'db>>),
     Func(Partial<IdentId<'db>>),

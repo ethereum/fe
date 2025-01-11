@@ -166,6 +166,6 @@ impl<'db> PredicateListId<'db> {
             }
         }
 
-        Self::new(db, super_traits.into_iter().collect())
+        Self::new(db, super_traits.into_iter().collect::<Vec<_>>())
     }
 }

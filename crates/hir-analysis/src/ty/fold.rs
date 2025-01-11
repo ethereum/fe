@@ -122,7 +122,7 @@ impl<'db> TyFoldable<'db> for TraitInstId<'db> {
             .args(db)
             .iter()
             .map(|ty| ty.fold_with(folder))
-            .collect();
+            .collect::<Vec<_>>();
 
         TraitInstId::new(db, def, args)
     }
@@ -139,7 +139,7 @@ impl<'db> TyFoldable<'db> for Implementor<'db> {
             .params(db)
             .iter()
             .map(|ty| ty.fold_with(folder))
-            .collect();
+            .collect::<Vec<_>>();
         let hir_impl_trait = self.hir_impl_trait(db);
 
         Implementor::new(db, trait_inst, params, hir_impl_trait)
@@ -155,7 +155,7 @@ impl<'db> TyFoldable<'db> for PredicateListId<'db> {
             .list(folder.db())
             .iter()
             .map(|pred| pred.fold_with(folder))
-            .collect();
+            .collect::<Vec<_>>();
 
         Self::new(folder.db(), predicates)
     }

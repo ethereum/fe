@@ -8,6 +8,7 @@ use codespan_reporting::term::{
 };
 use common::{
     diagnostics::CompleteDiagnostic,
+    impl_db_traits,
     indexmap::IndexSet,
     input::{IngotKind, Version},
     InputDb, InputFile, InputIngot,
@@ -28,31 +29,27 @@ use hir_analysis::{
 
 use crate::diagnostics::ToCsDiag;
 
-#[salsa::jar(db = DriverDb)]
-pub struct Jar(diagnostics::file_line_starts);
-
+#[salsa::db]
 pub trait DriverDb:
-    salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
+    salsa::Database + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
 {
+    fn as_driver_db(&self) -> &dyn DriverDb;
 }
 
-impl<DB> DriverDb for DB where
-    DB: salsa::DbWithJar<Jar> + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
-{
-}
-
-#[derive(Default)]
-#[salsa::db(
-    common::Jar,
-    hir::Jar,
-    hir::LowerJar,
-    hir::SpannedJar,
-    hir_analysis::Jar,
-    Jar
-)]
+#[derive(Default, Clone)]
+#[salsa::db]
 pub struct DriverDataBase {
     storage: salsa::Storage<Self>,
 }
+impl_db_traits!(
+    DriverDataBase,
+    InputDb,
+    HirDb,
+    LowerHirDb,
+    SpannedHirDb,
+    HirAnalysisDb,
+    DriverDb
+);
 
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
@@ -96,10 +93,6 @@ impl DriverDataBase {
     pub fn top_mod(&self, input: InputFile) -> TopLevelMod {
         map_file_to_mod(self, input)
     }
-}
-
-impl salsa::Database for DriverDataBase {
-    fn salsa_event(&self, _: salsa::Event) {}
 }
 
 pub struct DiagnosticsCollection<'db>(Vec<Box<dyn DiagnosticVoucher<'db> + 'db>>);

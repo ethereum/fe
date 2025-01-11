@@ -9,7 +9,7 @@ use async_lsp::{
 };
 use common::InputDb;
 use fxhash::FxHashSet;
-use salsa::ParallelDatabase;
+use salsa::Setter;
 use tracing::dispatcher::with_default;
 use tracing::Dispatch;
 
@@ -204,7 +204,7 @@ pub async fn handle_files_need_diagnostics(
     message: FilesNeedDiagnostics,
 ) -> Result<(), ResponseError> {
     let FilesNeedDiagnostics(need_diagnostics) = message;
-    let client = backend.client.clone();
+    let mut client = backend.client.clone();
 
     let ingots_need_diagnostics: FxHashSet<_> = need_diagnostics
         .iter()
@@ -212,32 +212,23 @@ pub async fn handle_files_need_diagnostics(
         .collect();
 
     for ingot in ingots_need_diagnostics {
-        let current_subscriber = Dispatch::clone(&tracing::dispatcher::get_default(|d| d.clone()));
-        let client = client.clone();
-        let db = backend.db.snapshot();
-        let diagnostic_task = move || {
-            with_default(&current_subscriber, || {
-                // Get diagnostics per file
-                let diagnostics_map = db.diagnostics_for_ingot(ingot);
+        // Get diagnostics per file
+        let diagnostics_map = backend.db.diagnostics_for_ingot(ingot);
 
-                info!(
-                    "Computed diagnostics: {:?}",
-                    diagnostics_map.keys().collect::<Vec<_>>()
-                );
-                let mut client = client.clone();
-                for uri in diagnostics_map.keys() {
-                    let diagnostic = diagnostics_map.get(uri).cloned().unwrap_or_default();
-                    let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
-                        uri: uri.clone(),
-                        diagnostics: diagnostic,
-                        version: None,
-                    };
-                    info!("Publishing diagnostics for URI: {:?}", uri);
-                    client.publish_diagnostics(diagnostics_params).unwrap();
-                }
-            });
-        };
-        backend.workers.spawn_blocking(diagnostic_task);
+        info!(
+            "Computed diagnostics: {:?}",
+            diagnostics_map.keys().collect::<Vec<_>>()
+        );
+        for uri in diagnostics_map.keys() {
+            let diagnostic = diagnostics_map.get(uri).cloned().unwrap_or_default();
+            let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
+                uri: uri.clone(),
+                diagnostics: diagnostic,
+                version: None,
+            };
+            info!("Publishing diagnostics for URI: {:?}", uri);
+            client.publish_diagnostics(diagnostics_params).unwrap();
+        }
     }
     Ok(())
 }

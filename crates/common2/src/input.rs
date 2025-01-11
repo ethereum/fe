@@ -1,4 +1,5 @@
 use camino::Utf8PathBuf;
+use salsa::Setter;
 use smol_str::SmolStr;
 
 use crate::{indexmap::IndexSet, InputDb};

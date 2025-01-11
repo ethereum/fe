@@ -8,7 +8,7 @@ repository = "https://github.com/ethereum/fe"
 description = "Provides HIR semantic analysis for Fe lang"
 
 [dependencies]
-salsa = { git = "https://github.com/salsa-rs/salsa", rev = "a1bf3a6" }
+salsa = { git = "https://github.com/salsa-rs/salsa", rev = "7ca9695" }
 smallvec = "1.10"
 rustc-hash = "1.1.0"
 either = "1.8"

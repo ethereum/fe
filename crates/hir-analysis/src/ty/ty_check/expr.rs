@@ -1049,7 +1049,7 @@ fn resolve_ident_expr<'db>(
         let query = EarlyNameQueryId::new(db, ident, scope, directive);
         let bucket = resolve_query(db, query);
 
-        let resolved = resolve_bucket(bucket, scope);
+        let resolved = resolve_bucket(&bucket, scope);
         match resolved {
             ResolvedPathInBody::Invalid => {
                 if current_idx == 0 {
@@ -1064,7 +1064,7 @@ fn resolve_ident_expr<'db>(
 
     let query = EarlyNameQueryId::new(db, ident, env.body().scope(), QueryDirective::default());
     let bucket = resolve_query(db, query);
-    match resolve_bucket(bucket, env.scope()) {
+    match resolve_bucket(&bucket, env.scope()) {
         ResolvedPathInBody::Invalid => ResolvedPathInBody::NewBinding(ident),
         r => r,
     }
@@ -1202,7 +1202,7 @@ impl TraitOps for AugAssignOp {
 
 fn std_ops_path(db: &dyn HirAnalysisDb) -> PathId {
     let db = db.as_hir_db();
-    let std_ = IdentId::new(db, "std".into());
-    let ops_ = IdentId::new(db, "ops".into());
+    let std_ = IdentId::new(db, "std".to_string());
+    let ops_ = IdentId::new(db, "ops".to_string());
     PathId::from_ident(db, std_).push_ident(db, ops_)
 }
