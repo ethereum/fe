@@ -120,7 +120,7 @@ impl<'db> FuncParam<'db> {
     }
 
     pub fn is_self_param(&self, db: &dyn HirDb) -> bool {
-        self.name.to_opt().map_or(false, |name| name.is_self(db))
+        self.name.to_opt().is_some_and(|name| name.is_self(db))
     }
 }
 
@@ -145,7 +145,7 @@ impl<'db> FuncParamName<'db> {
     }
 
     pub fn is_self(&self, db: &dyn HirDb) -> bool {
-        self.ident().map_or(false, |id| id.is_self(db))
+        self.ident().is_some_and(|id| id.is_self(db))
     }
 
     pub fn pretty_print(&self, db: &dyn HirDb) -> String {

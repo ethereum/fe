@@ -12,7 +12,7 @@ impl<'db> UsePathId<'db> {
         self.data(db)
             .last()
             .and_then(|seg| seg.to_opt())
-            .map_or(false, |seg| seg.is_glob())
+            .is_some_and(|seg| seg.is_glob())
     }
 
     pub fn last_ident(&self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {

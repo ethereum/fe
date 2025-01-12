@@ -674,7 +674,7 @@ impl<'db> Func<'db> {
             .name
             .to_opt()
             .and_then(|name| name.ident())
-            .map_or(false, |ident| ident.is_self(db))
+            .is_some_and(|ident| ident.is_self(db))
     }
 
     /// Returns `true` if the function is method or associated functions.
@@ -1020,9 +1020,7 @@ impl<'db> Use<'db> {
     }
 
     pub fn is_glob(&self, db: &dyn HirDb) -> bool {
-        self.path(db)
-            .to_opt()
-            .map_or(false, |path| path.is_glob(db))
+        self.path(db).to_opt().is_some_and(|path| path.is_glob(db))
     }
 
     pub fn is_unnamed(&self, db: &dyn HirDb) -> bool {

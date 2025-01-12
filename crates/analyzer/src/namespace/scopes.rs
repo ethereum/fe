@@ -551,7 +551,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
     }
 
     fn inherits_type(&self, typ: BlockScopeType) -> bool {
-        self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
+        self.typ == typ || self.parent.is_some_and(|scope| scope.inherits_type(typ))
     }
 
     fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError> {

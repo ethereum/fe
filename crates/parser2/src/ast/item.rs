@@ -307,7 +307,7 @@ impl Use {
     }
 
     pub fn has_sub_tree(&self) -> bool {
-        self.use_tree().map_or(false, |it| it.has_subtree())
+        self.use_tree().is_some_and(|it| it.has_subtree())
     }
 }
 
