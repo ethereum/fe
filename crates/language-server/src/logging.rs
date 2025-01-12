@@ -8,29 +8,24 @@ use tracing_tree::HierarchicalLayer;
 
 use std::{backtrace::Backtrace, sync::Arc};
 
+pub fn setup_default_subscriber(client: ClientSocket) -> Option<tracing::subscriber::DefaultGuard> {
+    let client_socket_writer = ClientSocketWriterMaker::new(client);
+    let subscriber = tracing_subscriber::registry()
+        .with(tracing_subscriber::filter::LevelFilter::INFO)
+        .with(
+            HierarchicalLayer::new(2)
+                .with_thread_ids(true)
+                .with_thread_names(true)
+                .with_indent_lines(true)
+                .with_bracketed_fields(true)
+                .with_ansi(false)
+                .with_writer(client_socket_writer),
+        );
+    Some(set_default(subscriber))
+}
+
 pub fn init_fn(client: ClientSocket) -> impl FnOnce() -> Option<tracing::subscriber::DefaultGuard> {
-    move || {
-        let client_socket_writer = ClientSocketWriterMaker::new(client);
-        let subscriber = tracing_subscriber::registry()
-            .with(
-                HierarchicalLayer::new(2)
-                    .with_thread_ids(true)
-                    .with_thread_names(true)
-                    .with_indent_lines(true)
-                    .with_bracketed_fields(true)
-                    .with_ansi(false)
-                    .with_writer(client_socket_writer),
-            )
-            .with(
-                HierarchicalLayer::new(2)
-                    .with_thread_ids(true)
-                    .with_thread_names(true)
-                    .with_indent_lines(true)
-                    .with_bracketed_fields(true)
-                    .with_writer(std::io::stderr),
-            );
-        Some(set_default(subscriber))
-    }
+    move || setup_default_subscriber(client)
 }
 
 pub(crate) fn setup_panic_hook() {
