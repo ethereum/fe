@@ -14,7 +14,7 @@ fn foo() {
     let Foo {x, z}
     let Foo {x, Bar::Unit}
     let Foo {x}
-    
+
     let Bar::Variant {x, x}
     let Bar::Variant {x, .., y, ..}
     let Bar::Variant {x, z}

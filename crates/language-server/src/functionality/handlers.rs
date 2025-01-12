@@ -156,6 +156,14 @@ pub async fn handle_did_change_text_document(
     Ok(())
 }
 
+pub async fn handle_did_save_text_document(
+    _backend: &Backend,
+    message: async_lsp::lsp_types::DidSaveTextDocumentParams,
+) -> Result<(), ResponseError> {
+    info!("file saved: {:?}", message.text_document.uri);
+    Ok(())
+}
+
 pub async fn handle_file_change(
     backend: &mut Backend,
     message: FileChange,
