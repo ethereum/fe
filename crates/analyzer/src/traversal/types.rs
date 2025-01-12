@@ -264,10 +264,9 @@ fn coerce(
                     && elts
                         .iter()
                         .zip(ftup.items.iter().zip(itup.items.iter()))
-                        .map(|(elt, (from, into))| {
+                        .all(|(elt, (from, into))| {
                             try_coerce_type(context, Some(elt), *from, *into, should_copy).is_ok()
                         })
-                        .all(|x| x)
                 {
                     // Update the type of the rhs tuple, because its elements
                     // have been coerced into the lhs element types.

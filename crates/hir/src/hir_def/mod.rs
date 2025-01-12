@@ -105,7 +105,7 @@ impl<'db> StringId<'db> {
     }
 
     pub fn len_bytes(&self, db: &dyn HirDb) -> usize {
-        self.data(db).as_bytes().len()
+        self.data(db).len()
     }
 }
 

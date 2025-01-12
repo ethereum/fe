@@ -143,7 +143,7 @@ impl<'db> FuncParam<'db> {
         let name = ast.name().map(|ast| FuncParamName::lower_ast(ctxt, ast));
 
         let self_ty_fallback =
-            name.map_or(false, |name| name.is_self(ctxt.db())) && ast.ty().is_none();
+            name.is_some_and(|name| name.is_self(ctxt.db())) && ast.ty().is_none();
 
         let ty = if self_ty_fallback {
             Partial::Present(TypeId::fallback_self_ty(ctxt.db()))
