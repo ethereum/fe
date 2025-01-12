@@ -2,7 +2,7 @@ use common::indexmap::IndexSet;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
 };
-// xxx use salsa::id::LookupId;
+use salsa::plumbing::FromId;
 
 use crate::{
     ty::{
@@ -191,19 +191,17 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
 
 pub(crate) fn recover_collect_super_traits<'db>(
     _db: &'db dyn HirAnalysisDb,
-    _cycle: &salsa::Cycle,
+    cycle: &salsa::Cycle,
     _trait_: TraitDef<'db>,
 ) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
-    todo!() // xxx cycle recovery
+    let mut trait_cycle = IndexSet::new();
+    for key in cycle.participant_keys() {
+        let id = key.key_index();
+        let inst = TraitDef::from_id(id);
+        trait_cycle.insert(inst);
+    }
 
-    // let mut trait_cycle = IndexSet::new();
-    // for key in cycle.participant_keys() {
-    //     let id = key.key_index();
-    //     let inst = TraitDef::lookup_id(id, db);
-    //     trait_cycle.insert(inst);
-    // }
-
-    // Err(SuperTraitCycle(trait_cycle))
+    Err(SuperTraitCycle(trait_cycle))
 }
 
 struct SuperTraitCollector<'db> {
