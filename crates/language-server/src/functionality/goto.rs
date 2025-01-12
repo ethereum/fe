@@ -12,7 +12,6 @@ use crate::{
     util::{to_lsp_location_from_scope, to_offset_from_position},
 };
 use hir::span::LazySpan;
-use salsa::Setter;
 pub type Cursor = rowan::TextSize;
 
 #[derive(Default)]
@@ -175,6 +174,7 @@ mod tests {
     use fe_compiler_test_utils::snap_test;
     use fxhash::FxHashMap;
     use hir::{HirDb, LowerHirDb};
+    use salsa::Setter;
     use std::{collections::BTreeMap, path::Path};
 
     // given a cursor position and a string, convert to cursor line and column

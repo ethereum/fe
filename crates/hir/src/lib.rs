@@ -2,11 +2,7 @@ use analysis_pass::ModuleAnalysisPass;
 use common::{InputDb, InputIngot};
 use hir_def::{module_tree_impl, IdentId, IngotId, TopLevelMod};
 pub use lower::parse::ParserError;
-use lower::{
-    map_file_to_mod_impl,
-    parse::{parse_file_impl, ParseErrorAccumulator},
-    scope_graph_impl,
-};
+use lower::parse::{parse_file_impl, ParseErrorAccumulator};
 use parser::GreenNode;
 
 pub mod analysis_pass;
