@@ -24,7 +24,6 @@ use futures::StreamExt;
 use logging::setup_panic_hook;
 use server::setup;
 use tracing::instrument::WithSubscriber;
-use tracing::subscriber::set_default;
 use tracing::{error, info};
 
 use async_lsp::client_monitor::ClientProcessMonitorLayer;
@@ -32,21 +31,10 @@ use backend::db::Jar;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tower::ServiceBuilder;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::registry;
-use tracing_tree::HierarchicalLayer;
 
 #[tokio::main]
 async fn main() {
-    std::env::set_var("RUST_BACKTRACE", "1");
-    let std_tracing = registry()
-        .with(tracing_subscriber::filter::LevelFilter::INFO)
-        .with(
-            HierarchicalLayer::new(2)
-                .with_thread_ids(true)
-                .with_writer(std::io::stderr),
-        );
-    let logging = set_default(std_tracing);
+    std::env::set_var("RUST_BACKTRACE", "full");
     setup_panic_hook();
 
     // Parse CLI arguments
@@ -59,16 +47,13 @@ async fn main() {
         }
         None => {
             // Start server with stdio
-            // TODO: vscode drops stdio connection immediately, need to figure this out
             start_stdio_server().await;
         }
     }
-
-    drop(logging);
 }
 
 async fn start_stdio_server() {
-    let (server, _) = async_lsp::MainLoop::new_server(|client| {
+    let (server, client) = async_lsp::MainLoop::new_server(|client| {
         let tracing_layer = TracingLayer::default();
         let lsp_service = setup(client.clone(), "LSP actor".to_string());
         ServiceBuilder::new()
@@ -83,10 +68,12 @@ async fn start_stdio_server() {
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
     let (stdin, stdout) = (stdin.compat(), stdout.compat());
 
+    let logging = logging::setup_default_subscriber(client);
     match server.run_buffered(stdin, stdout).await {
         Ok(_) => info!("Server finished successfully"),
         Err(e) => error!("Server error: {:?}", e),
     }
+    drop(logging);
 }
 
 async fn start_tcp_server(port: u16, timeout: Duration) {
@@ -104,7 +91,7 @@ async fn start_tcp_server(port: u16, timeout: Duration) {
         let tracing_layer = TracingLayer::default();
         let connections_count = Arc::clone(&connections_count);
         let task = async move {
-            let (server, _) = async_lsp::MainLoop::new_server(|client| {
+            let (server, client) = async_lsp::MainLoop::new_server(|client| {
                 let router = setup(client.clone(), format!("LSP actor for {client_address}"));
                 ServiceBuilder::new()
                     .layer(tracing_layer)
@@ -114,6 +101,7 @@ async fn start_tcp_server(port: u16, timeout: Duration) {
                     .layer(ClientProcessMonitorLayer::new(client.clone()))
                     .service(router)
             });
+            let logging = logging::setup_default_subscriber(client);
             let current_connections = connections_count.fetch_add(1, Ordering::SeqCst) + 1;
             info!(
                 "New client connected. Total clients: {}",
@@ -131,6 +119,7 @@ async fn start_tcp_server(port: u16, timeout: Duration) {
                 "Client disconnected. Total clients: {}",
                 current_connections
             );
+            drop(logging);
         };
         tokio::spawn(task.with_current_subscriber());
     }
