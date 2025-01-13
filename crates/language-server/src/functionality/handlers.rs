@@ -10,8 +10,6 @@ use async_lsp::{
 use common::InputDb;
 use fxhash::FxHashSet;
 use salsa::Setter;
-use tracing::dispatcher::with_default;
-use tracing::Dispatch;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
 

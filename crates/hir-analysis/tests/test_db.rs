@@ -50,6 +50,8 @@ impl_db_traits!(
     DriverDb,
 );
 
+// https://github.com/rust-lang/rust/issues/46379
+#[allow(dead_code)]
 impl HirAnalysisTestDb {
     pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> InputFile {
         let kind = IngotKind::StandAlone;
@@ -120,9 +122,9 @@ pub struct HirPropertyFormatter<'db> {
     code_span_files: SimpleFiles<String, String>,
 }
 
+// https://github.com/rust-lang/rust/issues/46379
+#[allow(dead_code)]
 impl<'db> HirPropertyFormatter<'db> {
-    // https://github.com/rust-lang/rust/issues/46379
-    #[allow(dead_code)]
     pub fn push_prop(&mut self, top_mod: TopLevelMod<'db>, span: DynLazySpan<'db>, prop: String) {
         self.properties
             .entry(top_mod)
@@ -130,8 +132,6 @@ impl<'db> HirPropertyFormatter<'db> {
             .push((prop, span));
     }
 
-    // https://github.com/rust-lang/rust/issues/46379
-    #[allow(dead_code)]
     pub fn finish(&mut self, db: &'db dyn SpannedHirDb) -> String {
         let writer = BufferWriter::stderr(ColorChoice::Never);
         let mut buffer = writer.buffer();
