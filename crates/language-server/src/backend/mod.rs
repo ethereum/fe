@@ -10,6 +10,7 @@ pub struct Backend {
     pub(super) client: ClientSocket,
     pub(super) db: LanguageServerDatabase,
     pub(super) workspace: Workspace,
+    #[allow(dead_code)] // TODO: salsa3-compatible parallelism
     pub(super) workers: tokio::runtime::Runtime,
 }
 
