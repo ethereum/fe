@@ -71,6 +71,7 @@ impl<'db> ScopeGraphBuilder<'db> {
     pub(super) fn leave_item_scope(&mut self, item: ItemKind<'db>) {
         use ItemKind::*;
 
+        self.id_stack.pop();
         let item_node = self.scope_stack.pop().unwrap();
         self.initialize_item_scope(item_node, item);
 
