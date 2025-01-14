@@ -1,7 +1,7 @@
 use hir::{
     hir_def::{
         prim_ty::PrimTy, scope_graph::ScopeId, Body, BodyKind, Expr, ExprId, Func, IdentId,
-        IntegerId, Partial, Pat, PatId, Stmt, StmtId,
+        IngotId, IntegerId, Partial, Pat, PatId, Stmt, StmtId,
     },
     span::DynLazySpan,
 };
@@ -92,6 +92,11 @@ impl<'db> TyCheckEnv<'db> {
         Ok(env)
     }
 
+    pub(super) fn ingot(&self) -> IngotId<'db> {
+        let hir_db = self.db.as_hir_db();
+        self.body().top_mod(hir_db).ingot(hir_db)
+    }
+
     pub(super) fn typed_expr(&self, expr: ExprId) -> Option<ExprProp<'db>> {
         self.expr_ty.get(&expr).copied()
     }
@@ -105,6 +110,11 @@ impl<'db> TyCheckEnv<'db> {
             panic!("callable is already registered for the given expr")
         }
     }
+
+    pub(super) fn lookup_callable(&mut self, expr: ExprId) -> Option<&Callable<'db>> {
+        self.callables.get(&expr)
+    }
+
     pub(super) fn binding_name(&self, binding: LocalBinding<'db>) -> IdentId<'db> {
         binding.binding_name(self)
     }
@@ -256,8 +266,7 @@ impl<'db> TyCheckEnv<'db> {
     ) {
         let assumptions = self.assumptions();
         let mut changed = true;
-        let hir_db = self.db.as_hir_db();
-        let ingot = self.body().top_mod(hir_db).ingot(hir_db);
+        let ingot = self.ingot();
         // Try to perform confirmation until all pending confirmations reaches to
         // the fixed point.
         while changed {

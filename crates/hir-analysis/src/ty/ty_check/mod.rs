@@ -16,21 +16,24 @@ use hir::{
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
 pub(super) use path::RecordLike;
-
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiag, TyDiagCollection, TyLowerDiag},
     fold::{TyFoldable, TyFolder},
     trait_def::{TraitInstId, TraitMethod},
-    trait_resolution::PredicateListId,
+    trait_resolution::{constraint::ty_constraints, PredicateListId},
     ty_def::{InvalidCause, Kind, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
     unify::{InferenceKey, UnificationError, UnificationTable},
 };
 use crate::{
     name_resolution::{resolve_path, PathRes, PathResError},
-    ty::ty_def::{inference_keys, TyFlags},
+    ty::{
+        canonical::Canonicalized,
+        trait_resolution::{is_goal_satisfiable, GoalSatisfiability},
+        ty_def::{inference_keys, TyFlags},
+    },
     HirAnalysisDb,
 };
 
@@ -198,6 +201,39 @@ impl<'db> TyChecker<'db> {
                 self.push_diag(BodyDiag::InfiniteOccurrence(span));
 
                 TyId::invalid(self.db, InvalidCause::Other)
+            }
+        }
+    }
+
+    fn refine_ty_var(&mut self, ty: TyId<'db>) {
+        let ty = self.table.fold_ty(ty);
+        if !ty.has_var(self.db) {
+            return;
+        }
+
+        for &arg in ty.decompose_ty_app(self.db).1 {
+            self.refine_ty_var(arg);
+        }
+
+        let snapshot = self.table.snapshot();
+
+        let ty = self.table.fold_ty(ty);
+        let constraints = ty_constraints(self.db, ty);
+        let assumptions = self.env.assumptions();
+        let ingot = self.env.ingot();
+        for &goal in constraints.list(self.db) {
+            let canonical_goal = Canonicalized::new(self.db, goal);
+            if let GoalSatisfiability::Satisfied(solution) =
+                is_goal_satisfiable(self.db, ingot, canonical_goal.value, assumptions)
+            {
+                let solution = canonical_goal.extract_solution(&mut self.table, *solution);
+                if self.table.unify(goal, solution).is_err() {
+                    self.table.rollback_to(snapshot);
+                    return;
+                }
+            } else {
+                self.table.rollback_to(snapshot);
+                return;
             }
         }
     }

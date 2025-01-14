@@ -66,6 +66,16 @@ impl<'db> TyChecker<'db> {
         let typeable = Typeable::Expr(expr, actual);
         let ty = self.unify_ty(typeable, actual.ty, expected);
         actual.swap_ty(ty);
+
+        // Performs refinement only if the expression is callable, since constraints only apply to a callable.
+        if let Some(callable_ty) = self
+            .env
+            .lookup_callable(expr)
+            .map(|callable| callable.ty(self.db))
+        {
+            self.refine_ty_var(callable_ty);
+        }
+
         actual
     }
 
