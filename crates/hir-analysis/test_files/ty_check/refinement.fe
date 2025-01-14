@@ -24,7 +24,7 @@ impl Fn<i32, bool> for MyFn {
     }
 }
 
-impl Functor for Result<()> {
+impl<E> Functor for Result<E> {
     fn map<T, U, F: Fn<T, U>>(self: Self<T>, _ f: F) -> Self<U> {
         match self {
             Result::Ok(t) => Result::Ok(f.call(t))
@@ -35,5 +35,20 @@ impl Functor for Result<()> {
 
 fn f() {
     let r1 = Result<(), i32>::Ok(10)
-    let r2 = r1.map(MyFn{}) // TODO: type of r2 should be inferred
+    let r2 = r1.map(MyFn{})
+}
+
+
+trait MyTrait {}
+impl MyTrait for i32 {}
+
+fn g<T>() -> T 
+    where T: MyTrait
+{
+    todo() 
+    
+}
+
+fn h() {
+    let _ = g()
 }

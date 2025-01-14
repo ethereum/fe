@@ -51,6 +51,12 @@ impl Clone for bool {
     }
 }
 
+impl Clone for i32 {
+    fn clone(self) -> i32 {
+        self
+    }
+}
+
 fn foo() -> i32 {
     let s = S::new(false)
     extract(s)
