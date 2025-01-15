@@ -102,7 +102,7 @@ impl LanguageServerDatabase {
                 )
                 .or_default();
 
-            let top_mod = map_file_to_mod(self, *file);
+            let top_mod = map_file_to_mod(self, ingot, *file);
             let diagnostics = pass_manager.run_on_module(top_mod);
             let mut finalized_diags: Vec<CompleteDiagnostic> = diagnostics
                 .iter()
@@ -113,7 +113,7 @@ impl LanguageServerDatabase {
                 ord => ord,
             });
             for diag in finalized_diags {
-                let lsp_diags = diag_to_lsp(diag, self.as_input_db()).clone();
+                let lsp_diags = diag_to_lsp(self.as_input_db(), ingot, diag).clone();
                 for (uri, more_diags) in lsp_diags {
                     let diags = result.entry(uri.clone()).or_insert_with(Vec::new);
                     diags.extend(more_diags);

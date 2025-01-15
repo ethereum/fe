@@ -624,8 +624,8 @@ mod tests {
             }
         "#;
 
-        let file = db.standalone_file(text);
-        let scope_graph = db.parse_source(file);
+        let (ingot, file) = db.standalone_file(text);
+        let scope_graph = db.parse_source(ingot, file);
         assert_eq!(scope_graph.items_dfs(&db).count(), 8);
 
         for (i, item) in scope_graph.items_dfs(&db).enumerate() {
@@ -653,8 +653,8 @@ mod tests {
             }
         "#;
 
-        let file = db.standalone_file(text);
-        let scope_graph = db.parse_source(file);
+        let (ingot, file) = db.standalone_file(text);
+        let scope_graph = db.parse_source(ingot, file);
         let root = scope_graph.top_mod.scope();
         let enum_ = scope_graph.children(root).next().unwrap();
         assert!(matches!(enum_.item(), ItemKind::Enum(_)));

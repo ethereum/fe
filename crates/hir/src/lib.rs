@@ -119,28 +119,28 @@ mod test_db {
     impl_db_traits!(TestDb, InputDb, HirDb, LowerHirDb, SpannedHirDb);
 
     impl TestDb {
-        pub fn parse_source(&self, file: InputFile) -> &ScopeGraph {
-            let top_mod = map_file_to_mod(self, file);
+        pub fn parse_source(&self, ingot: InputIngot, file: InputFile) -> &ScopeGraph {
+            let top_mod = map_file_to_mod(self, ingot, file);
             scope_graph(self, top_mod)
         }
 
         /// Parses the given source text and returns the first inner item in the
         /// file.
-        pub fn expect_item<'db, T>(&'db self, input: InputFile) -> T
+        pub fn expect_item<'db, T>(&'db self, ingot: InputIngot, input: InputFile) -> T
         where
             ItemKind<'db>: TryInto<T, Error = &'static str>,
         {
-            let tree = self.parse_source(input);
+            let tree = self.parse_source(ingot, input);
             tree.items_dfs(self)
                 .find_map(|it| it.try_into().ok())
                 .unwrap()
         }
 
-        pub fn expect_items<'db, T>(&'db self, input: InputFile) -> Vec<T>
+        pub fn expect_items<'db, T>(&'db self, ingot: InputIngot, input: InputFile) -> Vec<T>
         where
             ItemKind<'db>: TryInto<T, Error = &'static str>,
         {
-            let tree = self.parse_source(input);
+            let tree = self.parse_source(ingot, input);
             tree.items_dfs(self)
                 .filter_map(|it| it.try_into().ok())
                 .collect()
@@ -153,15 +153,15 @@ mod test_db {
             &text[range.start().into()..range.end().into()]
         }
 
-        pub fn standalone_file(&mut self, text: &str) -> InputFile {
+        pub fn standalone_file(&mut self, text: &str) -> (InputIngot, InputFile) {
             let path = "hir_test";
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);
             let ingot = InputIngot::new(self, path, kind, version, IndexSet::default());
-            let file = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
+            let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
             ingot.set_root_file(self, file);
             ingot.set_files(self, [file].into_iter().collect());
-            file
+            (ingot, file)
         }
     }
 }

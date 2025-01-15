@@ -69,7 +69,7 @@ impl DriverDataBase {
         DiagnosticsCollection(pass_manager.run_on_module(top_mod))
     }
 
-    pub fn standalone(&mut self, file_path: &path::Path, source: &str) -> InputFile {
+    pub fn standalone(&mut self, file_path: &path::Path, source: &str) -> (InputIngot, InputFile) {
         let kind = IngotKind::StandAlone;
 
         // We set the ingot version to 0.0.0 for stand-alone file.
@@ -84,14 +84,14 @@ impl DriverDataBase {
         );
 
         let file_name = root_file.file_name().unwrap().to_str().unwrap();
-        let input_file = InputFile::new(self, ingot, file_name.into(), source.to_string());
+        let input_file = InputFile::new(self, file_name.into(), source.to_string());
         ingot.set_root_file(self, input_file);
         ingot.set_files(self, [input_file].into_iter().collect());
-        input_file
+        (ingot, input_file)
     }
 
-    pub fn top_mod(&self, input: InputFile) -> TopLevelMod {
-        map_file_to_mod(self, input)
+    pub fn top_mod(&self, ingot: InputIngot, input: InputFile) -> TopLevelMod {
+        map_file_to_mod(self, ingot, input)
     }
 }
 

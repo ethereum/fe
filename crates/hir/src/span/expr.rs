@@ -233,8 +233,8 @@ mod tests {
             }
         }"#;
 
-        let input = db.standalone_file(text);
-        let body: Body = db.expect_item::<Body>(input);
+        let (ingot, file) = db.standalone_file(text);
+        let body: Body = db.expect_item::<Body>(ingot, file);
         let bin_expr = match body.exprs(db.as_hir_db()).values().nth(2).unwrap().unwrap() {
             Expr::AugAssign(lhs, rhs, bin_op) => (*lhs, *rhs, *bin_op),
             _ => unreachable!(),

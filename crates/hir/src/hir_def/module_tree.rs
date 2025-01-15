@@ -266,13 +266,13 @@ mod tests {
             Version::new(0, 0, 1),
             Default::default(),
         );
-        let local_root = InputFile::new(&db, local_ingot, "src/lib.fe".into(), "".into());
-        let mod1 = InputFile::new(&db, local_ingot, "src/mod1.fe".into(), "".into());
-        let mod2 = InputFile::new(&db, local_ingot, "src/mod2.fe".into(), "".into());
-        let foo = InputFile::new(&db, local_ingot, "src/mod1/foo.fe".into(), "".into());
-        let bar = InputFile::new(&db, local_ingot, "src/mod2/bar.fe".into(), "".into());
-        let baz = InputFile::new(&db, local_ingot, "src/mod2/baz.fe".into(), "".into());
-        let floating = InputFile::new(&db, local_ingot, "src/mod3/floating.fe".into(), "".into());
+        let local_root = InputFile::new(&db, "src/lib.fe".into(), "".into());
+        let mod1 = InputFile::new(&db, "src/mod1.fe".into(), "".into());
+        let mod2 = InputFile::new(&db, "src/mod2.fe".into(), "".into());
+        let foo = InputFile::new(&db, "src/mod1/foo.fe".into(), "".into());
+        let bar = InputFile::new(&db, "src/mod2/bar.fe".into(), "".into());
+        let baz = InputFile::new(&db, "src/mod2/baz.fe".into(), "".into());
+        let floating = InputFile::new(&db, "src/mod3/floating.fe".into(), "".into());
         local_ingot.set_root_file(&mut db, local_root);
         local_ingot.set_files(
             &mut db,
@@ -281,12 +281,12 @@ mod tests {
                 .collect(),
         );
 
-        let local_root_mod = lower::map_file_to_mod(&db, local_root);
-        let mod1_mod = lower::map_file_to_mod(&db, mod1);
-        let mod2_mod = lower::map_file_to_mod(&db, mod2);
-        let foo_mod = lower::map_file_to_mod(&db, foo);
-        let bar_mod = lower::map_file_to_mod(&db, bar);
-        let baz_mod = lower::map_file_to_mod(&db, baz);
+        let local_root_mod = lower::map_file_to_mod(&db, local_ingot, local_root);
+        let mod1_mod = lower::map_file_to_mod(&db, local_ingot, mod1);
+        let mod2_mod = lower::map_file_to_mod(&db, local_ingot, mod2);
+        let foo_mod = lower::map_file_to_mod(&db, local_ingot, foo);
+        let bar_mod = lower::map_file_to_mod(&db, local_ingot, bar);
+        let baz_mod = lower::map_file_to_mod(&db, local_ingot, baz);
 
         let local_tree = lower::module_tree(&db, local_ingot);
         let root_node = local_tree.root_data();

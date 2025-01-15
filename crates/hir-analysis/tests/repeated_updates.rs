@@ -22,17 +22,17 @@ fn test_updated() {
            fn foo() {}"#,
     ];
 
-    let input = db.new_stand_alone(file_name, versions[0]);
+    let (ingot, file) = db.new_stand_alone(file_name, versions[0]);
 
     for version in versions {
         {
-            let top_mod = map_file_to_mod(db.as_lower_hir_db(), input);
+            let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
             let mut pass_manager = initialize_pass_manager(&db);
             let _ = pass_manager.run_on_module(top_mod);
         }
 
         {
-            input.set_text(&mut db).to(version.into());
+            file.set_text(&mut db).to(version.into());
         }
     }
 }

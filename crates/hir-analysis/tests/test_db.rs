@@ -53,19 +53,23 @@ impl_db_traits!(
 // https://github.com/rust-lang/rust/issues/46379
 #[allow(dead_code)]
 impl HirAnalysisTestDb {
-    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> InputFile {
+    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> (InputIngot, InputFile) {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
         let ingot = InputIngot::new(self, file_name, kind, version, IndexSet::default());
-        let root = InputFile::new(self, ingot, file_name.into(), text.to_string());
+        let root = InputFile::new(self, file_name.into(), text.to_string());
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into_iter().collect());
-        root
+        (ingot, root)
     }
 
-    pub fn top_mod(&self, input: InputFile) -> (TopLevelMod, HirPropertyFormatter) {
+    pub fn top_mod(
+        &self,
+        ingot: InputIngot,
+        input: InputFile,
+    ) -> (TopLevelMod, HirPropertyFormatter) {
         let mut prop_formatter = HirPropertyFormatter::default();
-        let top_mod = self.register_file(&mut prop_formatter, input);
+        let top_mod = self.register_file(&mut prop_formatter, ingot, input);
         (top_mod, prop_formatter)
     }
 
@@ -104,9 +108,10 @@ impl HirAnalysisTestDb {
     fn register_file<'db>(
         &'db self,
         prop_formatter: &mut HirPropertyFormatter<'db>,
+        ingot: InputIngot,
         input_file: InputFile,
     ) -> TopLevelMod<'db> {
-        let top_mod = lower::map_file_to_mod(self, input_file);
+        let top_mod = lower::map_file_to_mod(self, ingot, input_file);
         let path = input_file.path(self);
         let text = input_file.text(self);
         prop_formatter.register_top_mod(path.as_str(), text, top_mod);

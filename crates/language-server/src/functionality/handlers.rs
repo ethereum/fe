@@ -15,7 +15,7 @@ use super::{capabilities::server_capabilities, hover::hover_helper};
 
 use crate::backend::workspace::IngotFileContext;
 
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[derive(Debug)]
 pub struct FilesNeedDiagnostics(pub Vec<NeedsDiagnostics>);
@@ -51,11 +51,11 @@ pub enum ChangeKind {
 
 impl Backend {
     fn update_input_file_text(&mut self, path: &str, contents: String) {
-        let input = self
+        let (_ingot, file) = self
             .workspace
             .touch_input_for_file_path(&mut self.db, path)
             .unwrap();
-        input.set_text(&mut self.db).to(contents);
+        file.set_text(&mut self.db).to(contents);
     }
 }
 
@@ -243,22 +243,22 @@ pub async fn handle_hover_request(
     backend: &Backend,
     message: HoverParams,
 ) -> Result<Option<Hover>, ResponseError> {
-    let file = backend.workspace.get_input_for_file_path(
-        message
-            .text_document_position_params
-            .text_document
-            .uri
-            .path(),
-    );
+    let path = message
+        .text_document_position_params
+        .text_document
+        .uri
+        .path();
+
+    let Some((ingot, file)) = backend.workspace.get_input_for_file_path(path) else {
+        warn!("handle_hover_request failed to get file for path: `{path}`");
+        return Ok(None);
+    };
+
     info!("handling hover request in file: {:?}", file);
-
-    let response = file.and_then(|file| {
-        hover_helper(&backend.db, file, message).unwrap_or_else(|e| {
-            error!("Error handling hover: {:?}", e);
-            None
-        })
+    let response = hover_helper(&backend.db, ingot, file, message).unwrap_or_else(|e| {
+        error!("Error handling hover: {:?}", e);
+        None
     });
-
     info!("sending hover response: {:?}", response);
     Ok(response)
 }

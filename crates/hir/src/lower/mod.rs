@@ -33,8 +33,8 @@ mod use_tree;
 /// This function just maps the file to a top-level module, and doesn't perform
 /// any parsing or lowering.
 /// To perform the actual lowering, use [`scope_graph`] instead.
-pub fn map_file_to_mod(db: &dyn LowerHirDb, file: InputFile) -> TopLevelMod {
-    let ingot = module_tree_impl(db.as_hir_db(), file.ingot(db.as_input_db())).ingot;
+pub fn map_file_to_mod(db: &dyn LowerHirDb, ingot: InputIngot, file: InputFile) -> TopLevelMod {
+    let ingot = module_tree_impl(db.as_hir_db(), ingot).ingot;
     map_file_to_mod_impl(db.as_hir_db(), ingot, file)
 }
 

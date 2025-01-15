@@ -1,9 +1,10 @@
 use async_lsp::ResponseError;
 use hir::{
     hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod},
+    lower::map_file_to_mod,
     span::DynLazySpan,
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
-    LowerHirDb, SpannedHirDb,
+    SpannedHirDb,
 };
 use hir_analysis::name_resolution::{resolve_path, PathResErrorKind};
 
@@ -131,17 +132,20 @@ pub async fn handle_goto_definition(
 
     // Get the module and the goto info
     let file_path = params.text_document.uri.path();
-    let top_mod = backend
+    let (ingot, file) = backend
         .workspace
-        .top_mod_from_file_path(backend.db.as_lower_hir_db(), file_path)
+        .get_input_for_file_path(file_path)
         .unwrap();
+    let top_mod = map_file_to_mod(&backend.db, ingot, file);
 
     let scopes =
         get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
 
     let locations = scopes
         .iter()
-        .map(|scope| to_lsp_location_from_scope(*scope, backend.db.as_spanned_hir_db()))
+        .map(|scope| {
+            to_lsp_location_from_scope(backend.db.as_spanned_hir_db(), ingot, file, *scope)
+        })
         .collect::<Vec<_>>();
 
     let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
@@ -282,19 +286,17 @@ mod tests {
 
         let fe_source_path = ingot_base_dir.join(fixture.path());
         let fe_source_path = fe_source_path.to_str().unwrap();
-        let input = workspace.touch_input_for_file_path(&mut db, fixture.path());
-        assert_eq!(input.unwrap().ingot(&db).kind(&db), IngotKind::Local);
+        let (ingot, file) = workspace
+            .touch_input_for_file_path(&mut db, fixture.path())
+            .unwrap();
+        assert_eq!(ingot.kind(&db), IngotKind::Local);
 
-        input
-            .unwrap()
-            .set_text(&mut db)
-            .to((*fixture.content()).to_string());
+        file.set_text(&mut db).to((*fixture.content()).to_string());
 
         // Introduce a new scope to limit the lifetime of `top_mod`
         {
-            let top_mod = workspace
-                .top_mod_from_file_path(db.as_lower_hir_db(), fe_source_path)
-                .unwrap();
+            let (ingot, file) = workspace.get_input_for_file_path(fe_source_path).unwrap();
+            let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
 
             let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
             snap_test!(snapshot, fixture.path());
@@ -311,13 +313,11 @@ mod tests {
     fn test_goto_cursor_target(fixture: Fixture<&str>) {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
-        let input = workspace
+        let (ingot, file) = workspace
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
-        input.set_text(db).to((*fixture.content()).to_string());
-        let top_mod = workspace
-            .top_mod_from_file_path(db.as_lower_hir_db(), fixture.path())
-            .unwrap();
+        file.set_text(db).to((*fixture.content()).to_string());
+        let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
 
         let snapshot = make_goto_cursors_snapshot(db, &fixture, top_mod);
         snap_test!(snapshot, fixture.path());
@@ -331,14 +331,11 @@ mod tests {
         let db = &mut LanguageServerDatabase::default();
         let workspace = &mut Workspace::default();
 
-        workspace
+        let (ingot, file) = workspace
             .touch_input_for_file_path(db, fixture.path())
-            .unwrap()
-            .set_text(db)
-            .to((*fixture.content()).to_string());
-        let top_mod = workspace
-            .top_mod_from_file_path(db.as_lower_hir_db(), fixture.path())
             .unwrap();
+        file.set_text(db).to((*fixture.content()).to_string());
+        let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
 

@@ -13,8 +13,8 @@ fn run_parser(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
 
-    let input_file = db.standalone(path, fixture.content());
-    let top_mod = db.top_mod(input_file);
+    let (ingot, file) = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(ingot, file);
 
     let diags = db.run_on_file_with_pass_manager(top_mod, init_parser_pass);
     let diags = diags.format_diags(&db);
@@ -45,8 +45,8 @@ mod wasm {
         let mut db = DriverDataBase::default();
         let path = Path::new(fixture.path());
 
-        let input_file = db.standalone(path, fixture.content());
-        let top_mod = db.top_mod(input_file);
+        let (ingot, file) = db.standalone(path, fixture.content());
+        let top_mod = db.top_mod(ingot, file);
         db.run_on_top_mod(top_mod);
     }
 }
