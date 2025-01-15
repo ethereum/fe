@@ -392,6 +392,7 @@ impl<'db> FieldDefListId<'db> {
 
 impl<'db> FieldDef<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::RecordFieldDef) -> Self {
+        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let vis = if ast.pub_kw().is_some() {
@@ -400,7 +401,12 @@ impl<'db> FieldDef<'db> {
             Visibility::Private
         };
 
-        Self { name, ty, vis }
+        Self {
+            attributes,
+            name,
+            ty,
+            vis,
+        }
     }
 }
 
@@ -421,12 +427,18 @@ impl<'db> VariantDefListId<'db> {
 
 impl<'db> VariantDef<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::VariantDef) -> Self {
+        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let kind = match ast.kind() {
             ast::VariantKind::Unit => VariantKind::Unit,
             ast::VariantKind::Tuple(t) => VariantKind::Tuple(TupleTypeId::lower_ast(ctxt, t)),
             ast::VariantKind::Record(r) => VariantKind::Record(FieldDefListId::lower_ast(ctxt, r)),
         };
-        Self { name, kind }
+
+        Self {
+            attributes,
+            name,
+            kind,
+        }
     }
 }

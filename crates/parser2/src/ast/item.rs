@@ -1,7 +1,7 @@
+use rowan::ast::{support, AstNode};
+
 use super::{ast_node, TraitRef, TupleType};
 use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
-
-use rowan::ast::{support, AstNode};
 
 ast_node! {
     /// The top-level node of the AST tree.
@@ -334,6 +334,7 @@ ast_node! {
     pub struct RecordFieldDef,
     SK::RecordFieldDef,
 }
+impl super::AttrListOwner for RecordFieldDef {}
 impl RecordFieldDef {
     /// Returns the pub keyword if exists.
     pub fn pub_kw(&self) -> Option<SyntaxToken> {
@@ -362,6 +363,7 @@ ast_node! {
     pub struct VariantDef,
     SK::VariantDef,
 }
+impl super::AttrListOwner for VariantDef {}
 impl VariantDef {
     /// Returns the name of the variant.
     /// `Foo` in `Foo(i32, u32)`
@@ -458,15 +460,14 @@ pub enum ItemKind {
 
 #[cfg(test)]
 mod tests {
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    use super::*;
     use crate::{
         ast::{prelude::*, ExprKind, TypeKind},
         lexer::Lexer,
         parser::{ItemListScope, Parser},
     };
-
-    use super::*;
-
-    use wasm_bindgen_test::wasm_bindgen_test;
 
     fn parse_item<T>(source: &str) -> T
     where

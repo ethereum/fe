@@ -2,10 +2,9 @@ use std::{cell::Cell, convert::Infallible, rc::Rc};
 
 use unwrap_infallible::UnwrapInfallible;
 
-use crate::{parser::func::FuncScope, ExpectedKind, SyntaxKind};
-
 use super::{
-    attr, define_scope,
+    attr::{self, parse_attr_list},
+    define_scope,
     expr::parse_expr,
     func::FuncDefScope,
     param::{parse_generic_params_opt, parse_where_clause_opt, TraitRefScope},
@@ -16,6 +15,7 @@ use super::{
     use_tree::UseTreeScope,
     ErrProof, Parser, Recovery,
 };
+use crate::{parser::func::FuncScope, ExpectedKind, SyntaxKind};
 
 define_scope! {
     #[doc(hidden)]
@@ -318,6 +318,7 @@ define_scope! { VariantDefScope, VariantDef }
 impl super::Parse for VariantDefScope {
     type Error = Recovery<ErrProof>;
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parse_attr_list(parser)?;
         parser.bump_or_recover(SyntaxKind::Ident, "expected ident for the variant name")?;
 
         if parser.current_kind() == Some(SyntaxKind::LParen) {
@@ -471,8 +472,9 @@ impl super::Parse for ConstScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parser.bump_expected(SyntaxKind::ConstKw);
+        parse_attr_list(parser)?;
 
+        parser.bump_expected(SyntaxKind::ConstKw);
         parser.set_newline_as_trivia(false);
         parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Colon, SyntaxKind::Eq]);
 

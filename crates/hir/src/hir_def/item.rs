@@ -1093,6 +1093,7 @@ impl<'db> FieldDefListId<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldDef<'db> {
+    pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
     pub ty: Partial<TypeId<'db>>,
     pub vis: Visibility,
@@ -1106,6 +1107,7 @@ pub struct VariantDefListId<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariantDef<'db> {
+    pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
     pub kind: VariantKind<'db>,
 }

@@ -13,7 +13,10 @@ enum RecordVariants {
 enum Option<T>
     where T: Clone
 {
+    /// Some value of type `T`
     Some(T),
+    
+    /// No value.
     None,
 }
 
