@@ -1,0 +1,9 @@
+struct Map<T, U> {}
+
+mod foo {
+    pub type Foo<U> = super::Map<i32, U>
+}
+
+fn main() {
+    let mut set: foo::Foo<()>
+}

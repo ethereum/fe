@@ -36,22 +36,22 @@ Root@0..54
         Eq@36..37 "="
         WhiteSpace@37..38 " "
         PathType@38..54
-          Path@38..44
-            PathSegment@38..44
+          Path@38..54
+            PathSegment@38..54
               Ident@38..44 "Result"
-          GenericArgList@44..54
-            Lt@44..45 "<"
-            TypeGenericArg@45..46
-              PathType@45..46
-                Path@45..46
-                  PathSegment@45..46
-                    Ident@45..46 "T"
-            Comma@46..47 ","
-            WhiteSpace@47..48 " "
-            TypeGenericArg@48..53
-              PathType@48..53
-                Path@48..53
-                  PathSegment@48..53
-                    Ident@48..53 "Error"
-            Gt@53..54 ">"
+              GenericArgList@44..54
+                Lt@44..45 "<"
+                TypeGenericArg@45..46
+                  PathType@45..46
+                    Path@45..46
+                      PathSegment@45..46
+                        Ident@45..46 "T"
+                Comma@46..47 ","
+                WhiteSpace@47..48 " "
+                TypeGenericArg@48..53
+                  PathType@48..53
+                    Path@48..53
+                      PathSegment@48..53
+                        Ident@48..53 "Error"
+                Gt@53..54 ">"
 

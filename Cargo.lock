@@ -1515,6 +1515,7 @@ dependencies = [
  "ena",
  "fe-common2",
  "fe-compiler-test-utils",
+ "fe-driver2",
  "fe-hir",
  "if_chain",
  "itertools",

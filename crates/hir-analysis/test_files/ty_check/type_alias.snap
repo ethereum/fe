@@ -1,0 +1,19 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/type_alias.fe
+---
+note: 
+  ┌─ type_alias.fe:7:11
+  │  
+7 │   fn main() {
+  │ ╭───────────^
+8 │ │     let mut set: foo::Foo<()>
+9 │ │ }
+  │ ╰─^ ()
+
+note: 
+  ┌─ type_alias.fe:8:9
+  │
+8 │     let mut set: foo::Foo<()>
+  │         ^^^^^^^ Map<i32, ()>

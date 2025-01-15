@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/let_binding.fe
 ---
 note: 
-  ┌─ test_file.fe:1:14
+  ┌─ let_binding.fe:1:14
   │  
 1 │   pub fn foo() {
   │ ╭──────────────^
@@ -14,27 +14,25 @@ note:
   │ ╰─^ ()
 
 note: 
-  ┌─ test_file.fe:2:9
+  ┌─ let_binding.fe:2:9
   │
 2 │     let x: i32 = 1
   │         ^ i32
 
 note: 
-  ┌─ test_file.fe:2:18
+  ┌─ let_binding.fe:2:18
   │
 2 │     let x: i32 = 1
   │                  ^ i32
 
 note: 
-  ┌─ test_file.fe:3:9
+  ┌─ let_binding.fe:3:9
   │
 3 │     let s = "Foo"
   │         ^ String<3>
 
 note: 
-  ┌─ test_file.fe:3:13
+  ┌─ let_binding.fe:3:13
   │
 3 │     let s = "Foo"
   │             ^^^^^ String<3>
-
-

@@ -60,6 +60,12 @@ impl<'db> TyDiagCollection<'db> {
 pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     InvalidTypeArgKind(DynLazySpan<'db>, String),
+    TooManyGenericArgs {
+        span: DynLazySpan<'db>,
+        expected: usize,
+        given: usize,
+    },
+
     RecursiveType {
         primary_span: DynLazySpan<'db>,
         field_span: DynLazySpan<'db>,
@@ -267,6 +273,7 @@ impl<'db> TyLowerDiag<'db> {
             Self::NormalTypeExpected { .. } => 13,
             Self::AssocTy(_) => 14,
             Self::InvalidConstTyExpr(_) => 15,
+            Self::TooManyGenericArgs { .. } => 16,
         }
     }
 
@@ -274,6 +281,11 @@ impl<'db> TyLowerDiag<'db> {
         match self {
             Self::ExpectedStarKind(_) => "expected `*` kind in this context".to_string(),
             Self::InvalidTypeArgKind(_, _) => "invalid type argument kind".to_string(),
+            Self::TooManyGenericArgs {
+                span: _,
+                expected,
+                given,
+            } => format!("too many generic args; expected {expected}, given {given}"),
             Self::RecursiveType { .. } => "recursive type is not allowed".to_string(),
 
             Self::UnboundTypeAliasParam { .. } => {
@@ -325,6 +337,16 @@ impl<'db> TyLowerDiag<'db> {
             Self::InvalidTypeArgKind(span, msg) => vec![SubDiagnostic::new(
                 LabelStyle::Primary,
                 msg.clone(),
+                span.resolve(db),
+            )],
+
+            Self::TooManyGenericArgs {
+                span,
+                expected,
+                given,
+            } => vec![SubDiagnostic::new(
+                LabelStyle::Primary,
+                format!("too many generic args; expected {expected}, given {given}"),
                 span.resolve(db),
             )],
 
@@ -1429,7 +1451,7 @@ impl<'db> BodyDiag<'db> {
                 for candidate in candidates.iter() {
                     diags.push(SubDiagnostic::new(
                         LabelStyle::Secondary,
-                        format!("{method_name} is defined here"),
+                        format!("`{method_name}` is defined here"),
                         candidate.resolve(db),
                     ));
                 }

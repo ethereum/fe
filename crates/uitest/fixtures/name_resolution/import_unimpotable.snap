@@ -10,7 +10,7 @@ error[2-0003]: `T` is not visible
   │        ^ `T` is not visible
   ·
 9 │ enum E<T> {
-  │        - `T is defined here
+  │        - `T` is defined here
 
 error[2-0005]: `S` can't be used as a middle segment of a path
   ┌─ import_unimpotable.fe:1:5
@@ -29,5 +29,3 @@ error[2-0005]: `S` can't be used as a middle segment of a path
   ·
 5 │ struct S<T> {
   │        - `S` is defined here
-
-

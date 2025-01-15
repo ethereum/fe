@@ -207,7 +207,7 @@ impl super::Parse for PathExprScope {
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.or_recover(|p| {
-            p.parse(path::PathScope::default()).map_err(|_| {
+            p.parse(path::PathScope::new(true)).map_err(|_| {
                 crate::ParseError::Msg(
                     "expected an expression".into(),
                     TextRange::empty(p.end_of_prev_token),

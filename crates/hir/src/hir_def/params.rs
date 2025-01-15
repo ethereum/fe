@@ -8,7 +8,11 @@ pub struct GenericArgListId<'db> {
     pub is_given: bool,
 }
 
-impl GenericArgListId<'_> {
+impl<'db> GenericArgListId<'db> {
+    pub fn none(db: &'db dyn HirDb) -> Self {
+        Self::new(db, vec![], false)
+    }
+
     pub fn len(self, db: &dyn HirDb) -> usize {
         self.data(db).len()
     }
@@ -166,8 +170,13 @@ pub enum TypeBound<'db> {
 pub struct TraitRefId<'db> {
     /// The path to the trait.
     pub path: Partial<PathId<'db>>,
-    /// The type arguments of the trait.
-    pub generic_args: Option<GenericArgListId<'db>>,
+}
+
+impl<'db> TraitRefId<'db> {
+    /// Returns the generic arg list of the last segment of the trait ref path
+    pub fn generic_args(self, db: &'db dyn HirDb) -> Option<GenericArgListId<'db>> {
+        self.path(db).to_opt().map(|path| path.generic_args(db))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

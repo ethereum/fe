@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/ret.fe
 ---
 note: 
-   ┌─ test_file.fe:7:35
+   ┌─ ret.fe:7:35
    │  
  7 │   fn foo(b1: bool, b2: bool) -> i32 {
    │ ╭───────────────────────────────────^
@@ -17,13 +17,13 @@ note:
    │ ╰─^ i32
 
 note: 
-   ┌─ test_file.fe:10:9
+   ┌─ ret.fe:10:9
    │
 10 │     let tag = if b1 {
    │         ^^^ Tag
 
 note: 
-   ┌─ test_file.fe:10:15
+   ┌─ ret.fe:10:15
    │  
 10 │       let tag = if b1 {
    │ ╭───────────────^
@@ -36,13 +36,13 @@ note:
    │ ╰─────^ Tag
 
 note: 
-   ┌─ test_file.fe:10:18
+   ┌─ ret.fe:10:18
    │
 10 │     let tag = if b1 {
    │                  ^^ bool
 
 note: 
-   ┌─ test_file.fe:10:21
+   ┌─ ret.fe:10:21
    │  
 10 │       let tag = if b1 {
    │ ╭─────────────────────^
@@ -51,13 +51,13 @@ note:
    │ ╰─────^ !
 
 note: 
-   ┌─ test_file.fe:11:16
+   ┌─ ret.fe:11:16
    │
 11 │         return 0
    │                ^ i32
 
 note: 
-   ┌─ test_file.fe:12:12
+   ┌─ ret.fe:12:12
    │  
 12 │       } else if b2 {
    │ ╭────────────^
@@ -68,13 +68,13 @@ note:
    │ ╰─────^ Tag
 
 note: 
-   ┌─ test_file.fe:12:15
+   ┌─ ret.fe:12:15
    │
 12 │     } else if b2 {
    │               ^^ bool
 
 note: 
-   ┌─ test_file.fe:12:18
+   ┌─ ret.fe:12:18
    │  
 12 │       } else if b2 {
    │ ╭──────────────────^
@@ -83,13 +83,13 @@ note:
    │ ╰─────^ Tag
 
 note: 
-   ┌─ test_file.fe:13:9
+   ┌─ ret.fe:13:9
    │
 13 │         Tag1
    │         ^^^^ Tag
 
 note: 
-   ┌─ test_file.fe:14:12
+   ┌─ ret.fe:14:12
    │  
 14 │       } else {
    │ ╭────────────^
@@ -98,19 +98,19 @@ note:
    │ ╰─────^ Tag
 
 note: 
-   ┌─ test_file.fe:15:9
+   ┌─ ret.fe:15:9
    │
 15 │         Tag3
    │         ^^^^ Tag
 
 note: 
-   ┌─ test_file.fe:18:9
+   ┌─ ret.fe:18:9
    │
 18 │     let b = match tag {
    │         ^ bool
 
 note: 
-   ┌─ test_file.fe:18:13
+   ┌─ ret.fe:18:13
    │  
 18 │       let b = match tag {
    │ ╭─────────────^
@@ -123,19 +123,19 @@ note:
    │ ╰─────^ bool
 
 note: 
-   ┌─ test_file.fe:18:19
+   ┌─ ret.fe:18:19
    │
 18 │     let b = match tag {
    │                   ^^^ Tag
 
 note: 
-   ┌─ test_file.fe:19:9
+   ┌─ ret.fe:19:9
    │
 19 │         Tag1 => {
    │         ^^^^ Tag
 
 note: 
-   ┌─ test_file.fe:19:17
+   ┌─ ret.fe:19:17
    │  
 19 │           Tag1 => {
    │ ╭─────────────────^
@@ -144,19 +144,19 @@ note:
    │ ╰─────────^ bool
 
 note: 
-   ┌─ test_file.fe:20:13
+   ┌─ ret.fe:20:13
    │
 20 │             true
    │             ^^^^ bool
 
 note: 
-   ┌─ test_file.fe:23:9
+   ┌─ ret.fe:23:9
    │
 23 │         Tag2 => {
    │         ^^^^ Tag
 
 note: 
-   ┌─ test_file.fe:23:17
+   ┌─ ret.fe:23:17
    │  
 23 │           Tag2 => {
    │ ╭─────────────────^
@@ -165,19 +165,19 @@ note:
    │ ╰─────────^ bool
 
 note: 
-   ┌─ test_file.fe:24:20
+   ┌─ ret.fe:24:20
    │
 24 │             return 3
    │                    ^ i32
 
 note: 
-   ┌─ test_file.fe:27:9
+   ┌─ ret.fe:27:9
    │
 27 │         Tag3 => {
    │         ^^^^ Tag
 
 note: 
-   ┌─ test_file.fe:27:17
+   ┌─ ret.fe:27:17
    │  
 27 │           Tag3 => {
    │ ╭─────────────────^
@@ -186,13 +186,13 @@ note:
    │ ╰─────────^ bool
 
 note: 
-   ┌─ test_file.fe:28:13
+   ┌─ ret.fe:28:13
    │
 28 │             false
    │             ^^^^^ bool
 
 note: 
-   ┌─ test_file.fe:32:5
+   ┌─ ret.fe:32:5
    │  
 32 │ ╭     if b {
 33 │ │         1
@@ -202,13 +202,13 @@ note:
    │ ╰─────^ i32
 
 note: 
-   ┌─ test_file.fe:32:8
+   ┌─ ret.fe:32:8
    │
 32 │     if b {
    │        ^ bool
 
 note: 
-   ┌─ test_file.fe:32:10
+   ┌─ ret.fe:32:10
    │  
 32 │       if b {
    │ ╭──────────^
@@ -217,13 +217,13 @@ note:
    │ ╰─────^ i32
 
 note: 
-   ┌─ test_file.fe:33:9
+   ┌─ ret.fe:33:9
    │
 33 │         1
    │         ^ i32
 
 note: 
-   ┌─ test_file.fe:34:12
+   ┌─ ret.fe:34:12
    │  
 34 │       } else {
    │ ╭────────────^
@@ -232,9 +232,7 @@ note:
    │ ╰─────^ i32
 
 note: 
-   ┌─ test_file.fe:35:9
+   ┌─ ret.fe:35:9
    │
 35 │         2
    │         ^ i32
-
-

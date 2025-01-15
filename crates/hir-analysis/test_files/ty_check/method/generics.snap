@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/method/generics.fe
 ---
 note: 
-   ┌─ test_file.fe:10:39
+   ┌─ generics.fe:10:39
    │  
 10 │       fn add(self, _ rhs: Self) -> Self {
    │ ╭───────────────────────────────────────^
@@ -13,25 +13,25 @@ note:
    │ ╰─────^ i32
 
 note: 
-   ┌─ test_file.fe:11:9
+   ┌─ generics.fe:11:9
    │
 11 │         self + rhs
    │         ^^^^ i32
 
 note: 
-   ┌─ test_file.fe:11:9
+   ┌─ generics.fe:11:9
    │
 11 │         self + rhs
    │         ^^^^^^^^^^ i32
 
 note: 
-   ┌─ test_file.fe:11:16
+   ┌─ generics.fe:11:16
    │
 11 │         self + rhs
    │                ^^^ i32
 
 note: 
-   ┌─ test_file.fe:20:32
+   ┌─ generics.fe:20:32
    │  
 20 │       fn clamp_into(self) -> i32 {
    │ ╭────────────────────────────────^
@@ -40,25 +40,25 @@ note:
    │ ╰─────^ i32
 
 note: 
-   ┌─ test_file.fe:21:9
+   ┌─ generics.fe:21:9
    │
 21 │         clamp_i64_i32(self)
    │         ^^^^^^^^^^^^^ fn clamp_i64_i32
 
 note: 
-   ┌─ test_file.fe:21:9
+   ┌─ generics.fe:21:9
    │
 21 │         clamp_i64_i32(self)
    │         ^^^^^^^^^^^^^^^^^^^ i32
 
 note: 
-   ┌─ test_file.fe:21:23
+   ┌─ generics.fe:21:23
    │
 21 │         clamp_i64_i32(self)
    │                       ^^^^ i64
 
 note: 
-   ┌─ test_file.fe:33:46
+   ┌─ generics.fe:33:46
    │  
 33 │       fn clamped_add(self, _ rhs: RHS) -> Self {
    │ ╭──────────────────────────────────────────────^
@@ -68,43 +68,43 @@ note:
    │ ╰─────^ T
 
 note: 
-   ┌─ test_file.fe:34:13
+   ┌─ generics.fe:34:13
    │
 34 │         let rhs = rhs.clamp_into()
    │             ^^^ T
 
 note: 
-   ┌─ test_file.fe:34:19
+   ┌─ generics.fe:34:19
    │
 34 │         let rhs = rhs.clamp_into()
    │                   ^^^ RHS
 
 note: 
-   ┌─ test_file.fe:34:19
+   ┌─ generics.fe:34:19
    │
 34 │         let rhs = rhs.clamp_into()
    │                   ^^^^^^^^^^^^^^^^ T
 
 note: 
-   ┌─ test_file.fe:35:9
+   ┌─ generics.fe:35:9
    │
 35 │         self.add(rhs)
    │         ^^^^ T
 
 note: 
-   ┌─ test_file.fe:35:9
+   ┌─ generics.fe:35:9
    │
 35 │         self.add(rhs)
    │         ^^^^^^^^^^^^^ T
 
 note: 
-   ┌─ test_file.fe:35:18
+   ┌─ generics.fe:35:18
    │
 35 │         self.add(rhs)
    │                  ^^^ T
 
 note: 
-   ┌─ test_file.fe:39:31
+   ┌─ generics.fe:39:31
    │  
 39 │   fn foo(x: i32, y: i64) -> i32 {
    │ ╭───────────────────────────────^
@@ -113,21 +113,19 @@ note:
    │ ╰─^ i32
 
 note: 
-   ┌─ test_file.fe:40:5
+   ┌─ generics.fe:40:5
    │
 40 │     x.clamped_add(y)
    │     ^ i32
 
 note: 
-   ┌─ test_file.fe:40:5
+   ┌─ generics.fe:40:5
    │
 40 │     x.clamped_add(y)
    │     ^^^^^^^^^^^^^^^^ i32
 
 note: 
-   ┌─ test_file.fe:40:19
+   ┌─ generics.fe:40:19
    │
 40 │     x.clamped_add(y)
    │                   ^ i64
-
-

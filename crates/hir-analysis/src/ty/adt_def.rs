@@ -199,6 +199,15 @@ impl<'db> AdtRefId<'db> {
         Self::new(db, AdtRef::Contract(contract))
     }
 
+    pub fn try_from_item(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Option<Self> {
+        match item {
+            ItemKind::Enum(e) => Some(Self::from_enum(db, e)),
+            ItemKind::Struct(s) => Some(Self::from_struct(db, s)),
+            ItemKind::Contract(c) => Some(Self::from_contract(db, c)),
+            _ => None,
+        }
+    }
+
     pub(crate) fn generic_owner_id(
         self,
         db: &'db dyn HirAnalysisDb,

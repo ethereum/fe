@@ -12,7 +12,7 @@ use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
     dir: "$CARGO_MANIFEST_DIR/test_files/imports",
     glob: "*.fe"
 )]
-fn test_standalone(fixture: Fixture<&str>) {
+fn import_standalone(fixture: Fixture<&str>) {
     let mut db = HirAnalysisTestDb::default();
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
@@ -40,7 +40,7 @@ fn format_imports<'db>(
     let mut use_res_map: FxHashMap<Use, Vec<String>> = FxHashMap::default();
 
     for name_resolved in imports.named_resolved.values().flat_map(|r| r.values()) {
-        for res in name_resolved.iter() {
+        for res in name_resolved.iter_ok() {
             match res.derivation {
                 NameDerivation::NamedImported(use_) => use_res_map
                     .entry(use_)

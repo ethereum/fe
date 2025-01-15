@@ -1,7 +1,7 @@
 ---
 source: crates/uitest/tests/ty.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty/kind_mismatch.fe
+input_file: crates/uitest/fixtures/ty/def/kind_mismatch.fe
 ---
 error[2-0001]: `baz` conflicts with other definitions
    ┌─ kind_mismatch.fe:9:5
@@ -23,16 +23,14 @@ error[3-0001]: invalid type argument kind
 8 │     bar: Foo<Foo, i32>,
   │          ^^^^^^^^^^^^^ expected `*` kind, but `Foo` has `(* -> (* -> *))` kind
 
-error[3-0001]: invalid type argument kind
+error[3-0016]: too many generic args; expected 2, given 3
   ┌─ kind_mismatch.fe:9:10
   │
 9 │     baz: Foo<i32, u32, u256>,
-  │          ^^^^^^^^^^^^^^^^^^^ too many generic arguments
+  │          ^^^^^^^^^^^^^^^^^^^ too many generic args; expected 2, given 3
 
-error[3-0001]: invalid type argument kind
+error[3-0016]: too many generic args; expected 2, given 3
    ┌─ kind_mismatch.fe:10:10
    │
 10 │     baz: Foo<i32, Foo<i32, u32, u256>>,
-   │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ too many generic arguments
-
-
+   │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ too many generic args; expected 2, given 3

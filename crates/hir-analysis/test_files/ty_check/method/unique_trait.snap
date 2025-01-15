@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/method/unique_trait.fe
 ---
 note: 
-  ┌─ test_file.fe:2:23
+  ┌─ unique_trait.fe:2:23
   │  
 2 │   fn foo(x: i32) -> i32 {
   │ ╭───────────────────────^
@@ -13,19 +13,19 @@ note:
   │ ╰─^ i32
 
 note: 
-  ┌─ test_file.fe:3:5
+  ┌─ unique_trait.fe:3:5
   │
 3 │     x.foo()
   │     ^ i32
 
 note: 
-  ┌─ test_file.fe:3:5
+  ┌─ unique_trait.fe:3:5
   │
 3 │     x.foo()
   │     ^^^^^^^ i32
 
 note: 
-   ┌─ test_file.fe:12:29
+   ┌─ unique_trait.fe:12:29
    │  
 12 │           fn foo(self) -> i32 {
    │ ╭─────────────────────────────^
@@ -34,9 +34,7 @@ note:
    │ ╰─────────^ i32
 
 note: 
-   ┌─ test_file.fe:13:13
+   ┌─ unique_trait.fe:13:13
    │
 13 │             self
    │             ^^^^ i32
-
-

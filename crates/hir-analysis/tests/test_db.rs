@@ -14,6 +14,7 @@ use common::{
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
+use driver::{diagnostics::ToCsDiag, CsDbWrapper};
 use fe_hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
@@ -29,6 +30,7 @@ use hir::{
     ParsingPass, SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
+use salsa::DbWithJar;
 
 type CodeSpanFileId = usize;
 
@@ -38,7 +40,8 @@ type CodeSpanFileId = usize;
     hir::Jar,
     hir::SpannedJar,
     hir::LowerJar,
-    fe_hir_analysis::Jar
+    fe_hir_analysis::Jar,
+    driver::Jar
 )]
 pub struct HirAnalysisTestDb {
     storage: salsa::Storage<Self>,
@@ -49,7 +52,7 @@ impl HirAnalysisTestDb {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
         let ingot = InputIngot::new(self, file_name, kind, version, IndexSet::default());
-        let root = InputFile::new(self, ingot, "test_file.fe".into(), text.to_string());
+        let root = InputFile::new(self, ingot, file_name.into(), text.to_string());
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into_iter().collect());
         root
@@ -64,8 +67,27 @@ impl HirAnalysisTestDb {
     pub fn assert_no_diags(&self, top_mod: TopLevelMod) {
         let mut manager = initialize_analysis_pass(self);
         let diags = manager.run_on_module(top_mod);
+
         if !diags.is_empty() {
-            panic!("this module contains errors")
+            let writer = BufferWriter::stderr(ColorChoice::Auto);
+            let mut buffer = writer.buffer();
+            let config = term::Config::default();
+
+            // copied from driver
+            let mut diags: Vec<_> = diags.iter().map(|d| d.to_complete(self)).collect();
+            diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+                std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+                ord => ord,
+            });
+
+            for diag in diags {
+                let cs_db = DbWithJar::<driver::Jar>::as_jar_db(self);
+                let cs_diag = &diag.to_cs(self);
+                term::emit(&mut buffer, &config, &CsDbWrapper(cs_db), cs_diag).unwrap();
+            }
+            eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
+
+            panic!("this module contains errors");
         }
     }
 

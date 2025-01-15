@@ -175,16 +175,19 @@ mod tests {
         for (i, segment) in path_ty.path().unwrap().segments().enumerate() {
             match i {
                 0 => assert_eq!(segment.ident().unwrap().text(), "Foo"),
-                1 => assert_eq!(segment.ident().unwrap().text(), "Bar"),
-                _ => panic!(),
-            }
-        }
-
-        let generic_args = path_ty.generic_args().unwrap();
-        for (i, arg) in generic_args.iter().enumerate() {
-            match i {
-                0 => assert!(matches!(arg.kind(), crate::ast::GenericArgKind::Type(_))),
-                1 => assert!(matches!(arg.kind(), crate::ast::GenericArgKind::Const(_))),
+                1 => {
+                    assert_eq!(segment.ident().unwrap().text(), "Bar");
+                    let generic_args = segment.generic_args().unwrap();
+                    for (i, arg) in generic_args.iter().enumerate() {
+                        match i {
+                            0 => assert!(matches!(arg.kind(), crate::ast::GenericArgKind::Type(_))),
+                            1 => {
+                                assert!(matches!(arg.kind(), crate::ast::GenericArgKind::Const(_)))
+                            }
+                            _ => panic!(),
+                        }
+                    }
+                }
                 _ => panic!(),
             }
         }

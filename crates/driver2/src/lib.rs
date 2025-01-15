@@ -12,6 +12,7 @@ use common::{
     input::{IngotKind, Version},
     InputDb, InputFile, InputIngot,
 };
+pub use diagnostics::CsDbWrapper;
 use hir::{
     analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, hir_def::TopLevelMod,
     lower::map_file_to_mod, HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
@@ -109,7 +110,7 @@ impl<'db> DiagnosticsCollection<'db> {
         let config = term::Config::default();
 
         for diag in self.finalize(db) {
-            term::emit(&mut buffer, &config, db, &diag.to_cs(db)).unwrap();
+            term::emit(&mut buffer, &config, &CsDbWrapper(db), &diag.to_cs(db)).unwrap();
         }
 
         eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
@@ -122,7 +123,7 @@ impl<'db> DiagnosticsCollection<'db> {
         let config = term::Config::default();
 
         for diag in self.finalize(db) {
-            term::emit(&mut buffer, &config, db, &diag.to_cs(db)).unwrap();
+            term::emit(&mut buffer, &config, &CsDbWrapper(db), &diag.to_cs(db)).unwrap();
         }
 
         std::str::from_utf8(buffer.as_slice()).unwrap().to_string()

@@ -1,6 +1,6 @@
 use rowan::ast::{support, AstNode};
 
-use super::{ast_node, AstChildren};
+use super::{ast_node, AstChildren, GenericArgsOwner};
 use crate::{syntax_node::SyntaxToken, SyntaxKind as SK};
 
 ast_node! {
@@ -22,6 +22,7 @@ ast_node! {
     pub struct PathSegment,
     SK::PathSegment
 }
+impl GenericArgsOwner for PathSegment {}
 impl PathSegment {
     pub fn kind(&self) -> Option<PathSegmentKind> {
         match self.syntax().first_child_or_token() {

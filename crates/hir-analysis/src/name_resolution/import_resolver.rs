@@ -14,9 +14,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use super::{
     diagnostics::NameResDiag,
     name_resolver::{
-        NameDerivation, NameDomain, NameQuery, NameRes, NameResBucket, NameResKind,
-        NameResolutionError, NameResolutionResult, NameResolver, QueryDirective,
+        NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind, NameResolutionError,
+        NameResolutionResult, NameResolver, QueryDirective,
     },
+    EarlyNameQueryId,
 };
 use crate::{name_resolution::visibility_checker::is_use_visible, HirAnalysisDb};
 
@@ -345,7 +346,7 @@ impl<'db> ImportResolver<'db> {
             }
         };
 
-        let mut resolver = NameResolver::new_no_cache(self.db, &self.resolved_imports);
+        let mut resolver = NameResolver::new(self.db, &self.resolved_imports);
         let mut bucket = resolver.resolve_query(query);
         // Filter out invisible resolutions.
         let mut invisible_span = None;
@@ -394,7 +395,7 @@ impl<'db> ImportResolver<'db> {
         // insert the use into the `suspicious_imports` set to verify the ambiguity
         // after the algorithm reaches the fixed point.
         if i_use.is_first_segment() {
-            for res in bucket.iter() {
+            for res in bucket.iter_ok() {
                 if res.is_builtin()
                     || res.is_external(self.db, self.ingot)
                     || res.is_derived_from_glob()
@@ -534,7 +535,7 @@ impl<'db> ImportResolver<'db> {
 
         match err {
             NameResolutionError::NotFound => {
-                self.accumulated_errors.push(NameResDiag::not_found(
+                self.accumulated_errors.push(NameResDiag::NotFound(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                 ));
@@ -556,16 +557,15 @@ impl<'db> ImportResolver<'db> {
 
             NameResolutionError::InvalidPathSegment(res) => {
                 self.accumulated_errors
-                    .push(NameResDiag::invalid_use_path_segment(
-                        self.db,
+                    .push(NameResDiag::InvalidPathSegment(
                         i_use.current_segment_span(),
                         i_use.current_segment_ident(self.db).unwrap(),
-                        res,
+                        res.kind.name_span(self.db),
                     ))
             }
 
             NameResolutionError::Invisible(invisible_span) => {
-                self.accumulated_errors.push(NameResDiag::invisible(
+                self.accumulated_errors.push(NameResDiag::Invisible(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                     invisible_span,
@@ -584,7 +584,7 @@ impl<'db> ImportResolver<'db> {
     fn make_query(
         &self,
         i_use: &IntermediateUse<'db>,
-    ) -> NameResolutionResult<'db, NameQuery<'db>> {
+    ) -> NameResolutionResult<'db, EarlyNameQueryId<'db>> {
         let Some(seg_name) = i_use.current_segment_ident(self.db) else {
             return Err(NameResolutionError::Invalid);
         };
@@ -607,7 +607,8 @@ impl<'db> ImportResolver<'db> {
             QueryDirective::new()
         };
 
-        Ok(NameQuery::with_directive(
+        Ok(EarlyNameQueryId::new(
+            self.db,
             seg_name,
             current_scope,
             directive,
@@ -815,7 +816,7 @@ impl<'db> IntermediateUse<'db> {
         let next_res = match bucket.pick(NameDomain::TYPE) {
             Ok(res) => res.clone(),
             Err(_) => {
-                let res = bucket.iter().next().unwrap();
+                let res = bucket.iter_ok().next().unwrap();
                 return Err(NameResolutionError::InvalidPathSegment(res.clone()));
             }
         };

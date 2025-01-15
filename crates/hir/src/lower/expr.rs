@@ -53,8 +53,6 @@ impl<'db> Expr<'db> {
 
             ast::ExprKind::Call(call) => {
                 let callee = Self::push_to_body_opt(ctxt, call.callee());
-                let generic_args =
-                    GenericArgListId::lower_ast_opt(ctxt.f_ctxt, call.generic_args());
                 let args = call
                     .args()
                     .map(|args| {
@@ -63,7 +61,7 @@ impl<'db> Expr<'db> {
                             .collect()
                     })
                     .unwrap_or_default();
-                Self::Call(callee, generic_args, args)
+                Self::Call(callee, args)
             }
 
             ast::ExprKind::MethodCall(method_call) => {

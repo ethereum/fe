@@ -281,7 +281,7 @@ impl super::Parse for TraitRefScope {
 }
 
 define_scope! {
-    pub(crate) GenericArgListScope,
+    pub(crate) GenericArgListScope { is_expr: bool },
     GenericArgList,
     (Gt, Comma)
 }
@@ -289,13 +289,44 @@ impl super::Parse for GenericArgListScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parse_list(
-            parser,
-            false,
-            SyntaxKind::GenericArgList,
-            (SyntaxKind::Lt, SyntaxKind::Gt),
-            |parser| parser.parse(GenericArgScope::default()),
-        )
+        parser.bump_expected(SyntaxKind::Lt);
+
+        let err_kind = Some(ExpectedKind::ClosingBracket {
+            bracket: SyntaxKind::Gt,
+            parent: SyntaxKind::GenericArgList,
+        });
+        let mut has_seen_comma = false;
+        loop {
+            if parser.bump_if(SyntaxKind::Gt) {
+                return Ok(());
+            }
+
+            parser.parse(GenericArgScope::default())?;
+
+            // If we're parsing an expr, recover less aggressively.
+            if self.is_expr
+                && !matches!(
+                    parser.current_kind(),
+                    Some(SyntaxKind::Gt | SyntaxKind::Comma)
+                )
+                && !has_seen_comma
+            {
+                let p = parser.add_error(ParseError::expected(
+                    &[SyntaxKind::Gt, SyntaxKind::Comma],
+                    err_kind,
+                    parser.current_pos,
+                ));
+                return Err(Recovery(None, p));
+            }
+            parser.expect(&[SyntaxKind::Gt, SyntaxKind::Comma], err_kind)?;
+            if !parser.bump_if(SyntaxKind::Comma) {
+                break;
+            }
+            has_seen_comma = true;
+        }
+        parser.bump_expected(SyntaxKind::Gt);
+
+        Ok(())
     }
 }
 

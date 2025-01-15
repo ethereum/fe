@@ -4,7 +4,7 @@ expression: res
 input_file: crates/hir-analysis/test_files/ty_check/lit_int.fe
 ---
 note: 
-  ┌─ test_file.fe:1:21
+  ┌─ lit_int.fe:1:21
   │  
 1 │   fn lit_i32() -> i32 {
   │ ╭─────────────────────^
@@ -13,13 +13,13 @@ note:
   │ ╰─^ i32
 
 note: 
-  ┌─ test_file.fe:2:5
+  ┌─ lit_int.fe:2:5
   │
 2 │     1
   │     ^ i32
 
 note: 
-  ┌─ test_file.fe:5:21
+  ┌─ lit_int.fe:5:21
   │  
 5 │   fn lit_i64() -> i64 {
   │ ╭─────────────────────^
@@ -28,9 +28,7 @@ note:
   │ ╰─^ i64
 
 note: 
-  ┌─ test_file.fe:6:5
+  ┌─ lit_int.fe:6:5
   │
 6 │     1
   │     ^ i64
-
-

@@ -17,7 +17,7 @@ impl<'db> GenericArgListId<'db> {
         ast: Option<ast::GenericArgList>,
     ) -> Self {
         ast.map(|ast| Self::lower_ast(ctxt, ast))
-            .unwrap_or_else(|| Self::new(ctxt.db(), Vec::new(), false))
+            .unwrap_or_else(|| Self::none(ctxt.db()))
     }
 }
 

@@ -228,6 +228,17 @@ impl<S: TokenStream> Parser<S> {
         res.map(|_| ok)
     }
 
+    pub fn parses_without_error<T, E>(&mut self, mut scope: T) -> bool
+    where
+        T: Parse<Error = E> + 'static,
+        E: Recoverable,
+    {
+        let checkpoint = self.enter(scope.clone(), None);
+        let ok = scope.parse(self).is_ok();
+        self.leave(checkpoint);
+        ok && !self.dry_run_states.last().unwrap().err
+    }
+
     pub fn or_recover<F>(&mut self, f: F) -> Result<(), Recovery<ErrProof>>
     where
         F: FnOnce(&mut Self) -> Result<(), ParseError>,
@@ -277,6 +288,8 @@ impl<S: TokenStream> Parser<S> {
             self.builder
                 .start_node_at(checkpoint, scope.scope.syntax_kind().into());
             self.builder.finish_node();
+        } else {
+            self.dry_run_states.last_mut().unwrap().err |= scope.is_err;
         }
         scope.is_err
     }
@@ -316,6 +329,7 @@ impl<S: TokenStream> Parser<S> {
             end_of_prev_token: self.end_of_prev_token,
             err_num: self.errors.len(),
             next_trivias: self.next_trivias.clone(),
+            err: false,
         });
 
         let r = f(self);
@@ -438,6 +452,8 @@ impl<S: TokenStream> Parser<S> {
                     ),
                     TextRange::new(start_pos, self.current_pos),
                 ));
+            } else {
+                self.dry_run_states.last_mut().unwrap().err = true;
             }
         }
 
@@ -676,6 +692,7 @@ struct DryRunState<S: TokenStream> {
     err_num: usize,
     /// The stored trivias when the dry run started.
     next_trivias: VecDeque<S::Token>,
+    err: bool,
 }
 
 struct ScopeEntry {
