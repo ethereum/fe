@@ -350,12 +350,23 @@ impl<'db> Const<'db> {
         let id = ctxt.joined_id(TrackedItemVariant::Const(name));
         ctxt.enter_item_scope(id, false);
 
+        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let body = ast.value().map(|ast| Body::lower_ast(ctxt, ast)).into();
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let origin = HirOrigin::raw(&ast);
 
-        let const_ = Self::new(ctxt.db(), id, name, ty, body, vis, ctxt.top_mod(), origin);
+        let const_ = Self::new(
+            ctxt.db(),
+            id,
+            name,
+            attributes,
+            ty,
+            body,
+            vis,
+            ctxt.top_mod(),
+            origin,
+        );
         ctxt.leave_item_scope(const_)
     }
 }
