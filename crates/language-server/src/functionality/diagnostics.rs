@@ -1,12 +1,9 @@
 use std::ops::Range;
 
 use camino::Utf8Path;
-
 use codespan_reporting as cs;
-use cs::files as cs_files;
-
 use common::{diagnostics::CompleteDiagnostic, InputDb, InputFile, InputIngot};
-
+use cs::files as cs_files;
 use fxhash::FxHashMap;
 use hir::{
     analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, lower::map_file_to_mod,

@@ -1,11 +1,11 @@
-use async_lsp::lsp_types::Position;
+use async_lsp::lsp_types::{DiagnosticSeverity, NumberOrString, Position};
 use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
     InputDb, InputFile, InputIngot,
 };
 use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
-use tracing::{error, warn};
+use tracing::error;
 use url::Url;
 
 pub fn calculate_line_offsets(text: &str) -> Vec<usize> {
@@ -71,11 +71,16 @@ pub fn to_lsp_location_from_scope(
     Ok(async_lsp::lsp_types::Location { uri, range })
 }
 
-pub fn severity_to_lsp(severity: Severity) -> async_lsp::lsp_types::DiagnosticSeverity {
+pub fn severity_to_lsp(is_primary: bool, severity: Severity) -> DiagnosticSeverity {
+    // We set the severity to `HINT` for a secondary diags.
+    if !is_primary {
+        return DiagnosticSeverity::HINT;
+    };
+
     match severity {
-        Severity::Error => async_lsp::lsp_types::DiagnosticSeverity::ERROR,
-        Severity::Warning => async_lsp::lsp_types::DiagnosticSeverity::WARNING,
-        Severity::Note => async_lsp::lsp_types::DiagnosticSeverity::HINT,
+        Severity::Error => DiagnosticSeverity::ERROR,
+        Severity::Warning => DiagnosticSeverity::WARNING,
+        Severity::Note => DiagnosticSeverity::INFORMATION,
     }
 }
 
@@ -84,19 +89,18 @@ pub fn diag_to_lsp(
     ingot: InputIngot,
     diag: CompleteDiagnostic,
 ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
-    let mut result =
-        FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default();
+    let mut result = FxHashMap::default();
 
     // TODO: this assumes that all sub_diagnostics point at files in the same ingot,
     // which might not be the case
 
     diag.sub_diagnostics.into_iter().for_each(|sub| {
-        let span = match sub.span {
-            Some(span) => span,
-            None => {
-                warn!("Diagnostic span is missing");
-                return;
+        let is_primary = sub.is_primary();
+        let Some(span) = sub.span else {
+            if is_primary {
+                error!("Diagnostic primary span is missing")
             }
+            return;
         };
 
         let uri = span.file.abs_path(db, ingot);
@@ -108,25 +112,34 @@ pub fn diag_to_lsp(
             }
         };
 
-        match to_lsp_range_from_span(span, db) {
-            Ok(range) => {
-                let diags = result.entry(uri).or_insert_with(Vec::new);
-                diags.push(async_lsp::lsp_types::Diagnostic {
-                    range,
-                    severity: Some(severity_to_lsp(diag.severity)),
-                    code: None,
-                    source: None,
-                    message: sub.message,
-                    related_information: None,
-                    tags: None,
-                    code_description: None,
-                    data: None,
-                });
-            }
+        let range = match to_lsp_range_from_span(span, db) {
+            Ok(range) => range,
             Err(e) => {
                 error!("Error getting diagnostic: {} (ignoring diagnostic)", e);
+                return;
             }
-        }
+        };
+
+        let code = is_primary.then(|| NumberOrString::String(diag.error_code.to_string()));
+        let message = if is_primary {
+            diag.message.to_string() + "\n" + &sub.message
+        } else {
+            sub.message
+        };
+
+        let diags = result.entry(uri).or_insert_with(Vec::new);
+        diags.push(async_lsp::lsp_types::Diagnostic {
+            range,
+            // We set the severity to `HINT` for secondary diags.
+            severity: Some(severity_to_lsp(is_primary, diag.severity)),
+            code,
+            source: None,
+            message,
+            related_information: None,
+            tags: None,
+            code_description: None,
+            data: None,
+        });
     });
 
     result
