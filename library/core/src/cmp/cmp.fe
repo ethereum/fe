@@ -1,0 +1,30 @@
+// /// Equal (e.g. `x == y`)
+// pub trait Eq<Rhs, Out> {
+//     fn eq(self, rhs: Rhs) -> Out
+// }
+
+// /// Not equal (e.g. `x != y`)
+// pub trait NotEq<Rhs, Out> {
+//     fn not_eq(self, rhs: Rhs) -> Out
+// }
+
+// /// Less than (e.g. `x < y`)
+// pub trait Lt<Rhs, Out> {
+//     fn lt(self, rhs: Rhs) -> Out
+// }
+
+// /// Less than or equal (e.g. `x <= y`)
+// pub trait LtEq<Rhs, Out> {
+//     fn lt_eq(self, rhs: Rhs) -> Out
+// }
+
+// /// Greater than (e.g. `x > y`)
+// pub trait Gt<Rhs, Out> {
+//     fn gt(self, rhs: Rhs) -> Out
+// }
+
+// /// Greater than or equal (e.g. `x >= y`)
+// pub trait GtEq<Rhs, Out> {
+//     fn gt_eq(self, rhs: Rhs) -> Out
+// }
+

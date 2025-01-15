@@ -1,0 +1,5 @@
+[package]
+name = "std-evm"
+version = "1.0.0"
+library = "std"
+platform = "evm"

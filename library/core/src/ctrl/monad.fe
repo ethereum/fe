@@ -1,0 +1,121 @@
+use ingot::num::arith::HAdd
+use ingot::ctrl::{functor::Functor, function::Fn}
+use ingot::data::tuple::Tuple
+
+pub trait Monad: Functor 
+where Self: * -> *
+{
+    fn bind<Source, Target, Morph>(self: Self<Source>, _ morph: Morph) -> Self<Target>
+    where Morph: Fn<1, (Source), Self<Target>>, (Source): Tuple<1>
+}
+
+
+// impl HAdd<u8, Option<u8>> for Option<u8> {
+//    fn add(self, rhs: u8) -> Option<u8> {
+//        self.bind<u8, u8, BindAdd<u8>>(morph: BindAdd { n: rhs })
+//    }
+// }
+
+// fn test_monadd() {
+//     let a: Option<u8> = Option::Some(42)
+//     let b = 26
+//     let c = a.add(rhs: b)
+// }
+
+// type MyFn = ()
+
+// impl<T> Fn<1, (bool), Option<u8>> for MyFn {
+//     fn exec(self, args: (bool)) -> Option<u8> {
+//         Option::Some(0)
+//     }
+// }
+
+// impl Tuple<1> for (bool) { }
+
+// #test
+// fn my_test() {
+//     let f: MyFn = ()
+//     let a = Option::Some(true).bind<bool, u8, MyFn>(f)
+// }
+
+// fn map<T, U,F>(t: T, f: F) -> U
+// where F: Fn(T) -> U {...}
+
+// type MyFn = ()
+
+// impl<T, U> Fn<T, U> for Foo {
+//     fn exec(&self, t: T) -> U {
+//         t.element(0)
+//         t.len()
+//     }
+// }
+
+// impl Fn<(u8, u8>, Option<u8>> for MyFn {
+//     fn exec(t: (bool, bool)) -> Option<u8> {
+//         let (a, b) = t
+//         f(a, b)
+//     }
+// }
+
+// sub x y = x - y
+// f = sub 1   // f 2 == 1 - 2
+// g = `sub` 1 // g 2 == 2 - 1
+
+
+// enum Result<T, E> {
+//     Ok(T)
+//     Err(E)
+// }
+// impl<E> Functor for Result<*, E> { // or Result<_, E> maybe?
+//     fn map<A, B, F: Fn<A, B>>(self: Self<A>, _ f: F) -> Self<B> {
+//         match self {
+//             Result::Ok(a) => {
+//                 return Result::Ok(f(a))
+//             }
+//             Result::Err(e) => {
+//                 return Result::Err(e)
+//             }
+//         }
+//     }
+// }
+
+
+// enum Res<E, T> { // Result<T, E>
+//     Err(E)
+//     Ok(T)
+// }
+// impl Functor for Res<MyError> {
+//     fn map<A, B, F: Fn<A, B>>(self: Self<A>, _ f: F) -> Self<B> {
+//         match self {
+//             Result::Ok(a) => {
+//                 return Result::Ok(f(a))
+//             }
+//             Result::Err(e) => {
+//                 return Result::Err(e)
+//             }
+//         }
+//     }
+// }
+
+
+
+// fn main() {
+//     let r = foo()
+//     r.map(|t| ...)
+// }
+
+
+// enum Result1<E, T>
+
+// Result<_, E>
+
+// Flip (Result)
+
+
+
+// ((+) `foldl` 0) [1..5]
+// ((`foldl` 0) [1..5]) (+)
+
+// flip :: (a -> b -> c) -> b -> a -> c
+// f :: a -> b -> c -> d -> e
+// flip f :: b -> a -> c -> d -> e
