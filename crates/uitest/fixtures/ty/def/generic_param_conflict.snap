@@ -10,7 +10,7 @@ error[3-0007]: generic parameter is already defined in the parent item
   │      - conflict with this generic parameter
 7 │ {
 8 │     fn foo<E>(self: Self<E>) {}
-  │            ^ generic parameter `E` is already defined in the parent item
+  │            ^ `E` is already defined
 
 error[3-0007]: generic parameter is already defined in the parent item
    ┌─ generic_param_conflict.fe:11:16
@@ -18,6 +18,4 @@ error[3-0007]: generic parameter is already defined in the parent item
 10 │     fn bar<T>(self: Self<T>) {
    │            - conflict with this generic parameter
 11 │         fn baz<T>(t: T) {}
-   │                ^ generic parameter `T` is already defined in the parent item
-
-
+   │                ^ `T` is already defined
