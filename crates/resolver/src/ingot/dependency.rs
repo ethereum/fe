@@ -75,7 +75,7 @@ impl Resolver for DependencyResolver {
                 Ok(target_config) => {
                     let version = target_config.version().unwrap();
                     let sub_dependencies = target_config.dependency_descriptions(
-                        &description.source_path,
+                        &target_path,
                         &description.target_path_description,
                     );
 

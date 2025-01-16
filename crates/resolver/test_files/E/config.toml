@@ -1,0 +1,6 @@
+name = "E"
+version = "0.1.0"
+
+[dependencies]
+F = { path = "../F" }
+G = { path = "../G" }

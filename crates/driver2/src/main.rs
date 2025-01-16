@@ -56,6 +56,7 @@ pub fn main() {
 
     let mut dependency_graph_resolver = DependencyGraphResolver::new();
     let dependency_graph = dependency_graph_resolver.resolve(&local_path).unwrap();
+    dbg!(dependency_graph_resolver.take_diagnostics());
 
     let core_ingot = db.core_ingot(&core_path);
     let (local_ingot, external_ingots) = db.local_ingot(&dependency_graph);
@@ -64,17 +65,17 @@ pub fn main() {
     std::fs::write("graph.dot", format!("{}", dependency_graph.dot()))
         .expect("Unable to write file");
 
-    // let mut source_files_resolver = SourceFilesResolver::new();
-    // for (path, ingot) in external_ingots
-    //     .iter()
-    //     .chain([(&local_path, &local_ingot), (&core_path, &core_ingot)])
-    // {
-    //     let files = source_files_resolver
-    //         .resolve(path)
-    //         .expect(&path.to_string());
-    //     db.set_ingot_files(*ingot, files);
-    // }
-    //
+    let mut source_files_resolver = SourceFilesResolver::new();
+    for (path, ingot) in external_ingots
+        .iter()
+        .chain([(&local_path, &local_ingot), (&core_path, &core_ingot)])
+    {
+        let files = source_files_resolver
+            .resolve(path)
+            .expect(&path.to_string());
+        db.set_ingot_files(*ingot, files);
+    }
+
     // let diags = db.run_on_ingot(local_ingot);
     // let diags = diags.format_diags(&db);
     // if !diags.is_empty() {

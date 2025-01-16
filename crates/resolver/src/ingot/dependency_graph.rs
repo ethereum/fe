@@ -1,7 +1,6 @@
 use std::{mem::take, str::FromStr};
 
 use camino::Utf8PathBuf;
-use common::home_dir::HomeDir;
 use indexmap::IndexMap;
 use petgraph::{
     dot::{Config, Dot},
@@ -111,6 +110,7 @@ pub enum DependencyGraphResolutionError {
     LocalConfigResolutionError(ConfigResolutionError),
 }
 
+#[derive(Debug)]
 pub enum DependencyGraphResolutionDiagnostic {
     DependencyResolutonError(DependencyDescription, DependencyResolutionError),
     ConfigResolutionDiagnostic(ConfigResolutionDiagnostic),
@@ -145,7 +145,8 @@ impl Resolver for DependencyGraphResolver {
                 match self.dependency_resolver.resolve(&dependency_description) {
                     Ok(dependency) => {
                         if !graph.contains(&dependency.target_path) {
-                            unresolved_dependencies.append(&mut dependency.sub_dependencies.clone())
+                            unresolved_dependencies
+                                .append(&mut dependency.sub_dependencies.clone());
                         }
 
                         graph.add_dependency(dependency);

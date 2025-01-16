@@ -1,5 +1,5 @@
-name = "D"
+name = "F"
 version = "0.1.0"
 
 [dependencies]
-E = { path = "../E" }
+G = { path = "../G" }

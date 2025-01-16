@@ -1643,6 +1643,7 @@ dependencies = [
  "camino",
  "fe-common2",
  "git2",
+ "glob",
  "indexmap 2.2.6",
  "petgraph 0.5.1",
  "semver 1.0.23",

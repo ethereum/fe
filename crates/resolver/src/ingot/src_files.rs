@@ -1,9 +1,10 @@
+use core::panic;
+use std::str::FromStr;
+
 use crate::Resolver;
 use camino::Utf8PathBuf;
-use common::indexmap::IndexMap;
 use common::indexmap::IndexSet;
-use core::panic;
-use std::io;
+use glob::glob;
 
 pub struct SourceFiles {
     pub root: Utf8PathBuf,
@@ -19,6 +20,7 @@ pub enum SourceFilesResolutionError {
 #[derive(Debug)]
 pub enum SourceFilesResolutionDiagnostic {
     RootFileMissing,
+    GlobError,
 }
 
 pub struct SourceFilesResolver;
@@ -39,15 +41,24 @@ impl Resolver for SourceFilesResolver {
         &mut self,
         ingot_path: &Utf8PathBuf,
     ) -> Result<SourceFiles, SourceFilesResolutionError> {
-        todo!()
-        // for entry in glob("/src/**/*.fe").expect("Failed to read glob pattern") {
-        //     match entry {
-        //         Ok(path) => println!("{:?}", path.display()),
-        //         Err(e) => println!("{:?}", e),
-        //     }
-        // }
-        //
-        // Ok(SourceFiles { files })
+        let source_path = ingot_path.join("src");
+        let root = source_path.join("lib.fe");
+        let files = source_path.join("**/*.fe");
+
+        let files = glob(&files.to_string())
+            .expect("Failed to read glob pattern")
+            .into_iter()
+            .filter_map(|entry| match entry {
+                Ok(path) => Some(Utf8PathBuf::from_str(path.to_str().unwrap()).unwrap()),
+                Err(error) => None, // add diagnostic
+            })
+            .collect();
+
+        if !root.exists() {
+            // add diagn
+        }
+
+        Ok(SourceFiles { root, files })
     }
 
     fn take_diagnostics(&mut self) -> Vec<Self::Diagnostic> {

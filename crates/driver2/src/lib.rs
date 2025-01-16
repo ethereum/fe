@@ -138,24 +138,24 @@ impl DriverDataBase {
     }
 
     pub fn set_ingot_files(&mut self, ingot: InputIngot, files: SourceFiles) {
-        let input_files = files
-            .all_files()
-            .into_iter()
-            .map(|file| {
-                let input_file = InputFile::new(
-                    self,
-                    ingot,
-                    file.path,
-                    String::from_utf8(file.content).unwrap(),
-                );
-                if file.is_root {
-                    ingot.set_root_file(self, input_file);
-                }
-                input_file
-            })
-            .collect();
-
-        ingot.set_files(self, input_files);
+        // let input_files = files
+        //     .all_files()
+        //     .into_iter()
+        //     .map(|file| {
+        //         let input_file = InputFile::new(
+        //             self,
+        //             ingot,
+        //             file.path,
+        //             String::from_utf8(file.content).unwrap(),
+        //         );
+        //         if file.is_root {
+        //             ingot.set_root_file(self, input_file);
+        //         }
+        //         input_file
+        //     })
+        //     .collect();
+        //
+        // ingot.set_files(self, input_files);
     }
 
     pub fn standalone(&mut self, file_path: &path::Path, source: &str) -> InputFile {
