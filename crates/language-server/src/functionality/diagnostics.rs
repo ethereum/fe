@@ -11,7 +11,10 @@ use hir::{
 };
 use hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
-    ty::{BodyAnalysisPass, FuncAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass},
+    ty::{
+        AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
+        ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
+    },
 };
 use url::Url;
 
@@ -128,7 +131,10 @@ fn initialize_analysis_pass(db: &LanguageServerDatabase) -> AnalysisPassManager<
     pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ImplAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(BodyAnalysisPass::new(db)));
