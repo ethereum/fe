@@ -12,7 +12,7 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct UserConfig {
     // could also include things like ingot registries and settings for the language server.
-    pub core: CoreIngotDescription,
+    // pub core: CoreIngotDescription,
 }
 
 pub struct UserConfigResolver;
@@ -59,30 +59,3 @@ impl Resolver for UserConfigResolver {
         todo!()
     }
 }
-
-#[derive(Debug, Deserialize)]
-pub enum CoreIngotDescription {
-    Local(PathDescription),
-    Remote(GitDescription),
-}
-
-pub enum CoreIngotResolutionError {
-    CoreIngotPathDoesNotExist,
-    RemoteResolutionError(GitResolutionError),
-}
-
-/*
-pub struct CoreIngotResolver {
-    // ...
-}
-
-impl Resolver for CoreIngotResolver {
-    type Description = CoreIngotDescription;
-    type Resource = Utf8PathBuf;
-    type Error = CoreIngotResolutionError;
-
-    fn resolve(&self, description: &CoreIngotDescription) -> Result<Ingot, IngotResolutionError> {
-        // ...
-    }
-}
-*/

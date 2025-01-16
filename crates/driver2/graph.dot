@@ -1,0 +1,8 @@
+digraph {
+    0 [ label = "\"/home/grantwuerker/workshop/fe/crates/resolver/test_files/A\"" ]
+    1 [ label = "\"/home/grantwuerker/workshop/fe/crates/resolver/test_files/C\"" ]
+    2 [ label = "\"/home/grantwuerker/workshop/fe/crates/resolver/test_files/B\"" ]
+    0 -> 1 [ ]
+    0 -> 2 [ ]
+    0 -> 1 [ ]
+}

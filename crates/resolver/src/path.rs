@@ -42,12 +42,16 @@ impl FullPathDescription {
                     .iter()
                     .fold(local_path.clone(), |acc, path_description| {
                         acc.join(Utf8PathBuf::from(path_description.path.to_owned()))
+                            .canonicalize_utf8()
+                            .unwrap()
                     })
             }
             PathHead::Remote(git_description) => self.sub_paths.iter().fold(
                 git_description.relative_path(),
                 |acc, path_description| {
                     acc.join(Utf8PathBuf::from(path_description.path.to_owned()))
+                        .canonicalize_utf8()
+                        .unwrap()
                 },
             ),
         }

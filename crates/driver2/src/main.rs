@@ -1,10 +1,12 @@
+use core::panic;
+use std::str::FromStr;
+
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
 use common::home_dir::HomeDir;
 use fe_driver2::DriverDataBase;
 use resolver::{
     ingot::{dependency_graph::DependencyGraphResolver, src_files::SourceFilesResolver},
-    user_config::{CoreIngotDescription, UserConfigResolver},
     Resolver,
 };
 mod check;
@@ -37,31 +39,46 @@ pub fn main() {
 
     let Commands::Check(args) = &cli.command;
 
-    let home_dir = HomeDir::load();
-    let mut user_config_resolver = UserConfigResolver;
-    let user_config = user_config_resolver.resolve(&home_dir).unwrap();
+    // let home_dir = HomeDir::load();
+    // let mut user_config_resolver = UserConfigResolver;
+    // let user_config = user_config_resolver.resolve(&home_dir).unwrap();
+    //
+    // let core_path: Utf8PathBuf = match user_config.core {
+    //     CoreIngotDescription::Local(path_description) => todo!(),
+    //     CoreIngotDescription::Remote(git_description) => todo!(),
+    // };
 
-    let core_path: Utf8PathBuf = match user_config.core {
-        CoreIngotDescription::Local(path_description) => todo!(),
-        CoreIngotDescription::Remote(git_description) => todo!(),
-    };
-
-    let local_path = Utf8PathBuf::from(args.path);
-    let dependency_graph_resolver = DependencyGraphResolver::new();
-    let dependency_graph = dependency_graph_resolver.resolve(&local_path).unwrap();
+    let core_path = Utf8PathBuf::from_str("/home/grantwuerker/.fe/library/core").unwrap();
 
     let mut db = DriverDataBase::default();
 
+    let local_path = Utf8PathBuf::from_str(&args.path).unwrap();
+
+    let mut dependency_graph_resolver = DependencyGraphResolver::new();
+    let dependency_graph = dependency_graph_resolver.resolve(&local_path).unwrap();
+
     let core_ingot = db.core_ingot(&core_path);
-    let (local_ingot, external_ingots) = db.local_ingot(core_ingot, &dependency_graph);
-    //
-    // let source_files_resolver = SourceFilesResolver::new();
+    let (local_ingot, external_ingots) = db.local_ingot(&dependency_graph);
+
+    // panic!("{:#?}", dependency_graph);
+    std::fs::write("graph.dot", format!("{}", dependency_graph.dot()))
+        .expect("Unable to write file");
+
+    // let mut source_files_resolver = SourceFilesResolver::new();
     // for (path, ingot) in external_ingots
     //     .iter()
-    //     .chain([(&local_path, local_ingot), (&core_path, core_ingot)])
+    //     .chain([(&local_path, &local_ingot), (&core_path, &core_ingot)])
     // {
-    //     let files = source_files_resolver.resolve(path).unwrap();
+    //     let files = source_files_resolver
+    //         .resolve(path)
+    //         .expect(&path.to_string());
     //     db.set_ingot_files(*ingot, files);
+    // }
+    //
+    // let diags = db.run_on_ingot(local_ingot);
+    // let diags = diags.format_diags(&db);
+    // if !diags.is_empty() {
+    //     panic!("{diags}")
     // }
 }
 

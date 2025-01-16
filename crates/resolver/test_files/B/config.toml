@@ -3,3 +3,4 @@ version = "0.1.0"
 
 [dependencies]
 C = { path = "../C" }
+D = { path = "../D" }

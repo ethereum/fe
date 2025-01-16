@@ -1,6 +1,5 @@
 use camino::Utf8PathBuf;
-use common::indexmap::IndexMap;
-use semver::Version;
+use common::{indexmap::IndexMap, input::Version};
 use serde::Deserialize;
 use smol_str::SmolStr;
 use std::{collections::HashMap, fs, mem::take};
@@ -22,8 +21,8 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn version(&self) -> Result<Version, semver::Error> {
-        todo!()
+    pub fn version(&self) -> Option<Version> {
+        Some(Version::new(0, 0, 0))
     }
 
     pub fn dependency_descriptions(
@@ -73,14 +72,12 @@ pub enum ConfigResolutionDiagnostic {
 
 pub struct ConfigResolver {
     diagnostics: Vec<ConfigResolutionDiagnostic>,
-    cache: IndexMap<Utf8PathBuf, Config>,
 }
 
 impl ConfigResolver {
     pub fn new() -> Self {
         Self {
             diagnostics: vec![],
-            cache: IndexMap::new(),
         }
     }
 }
@@ -92,7 +89,7 @@ impl Resolver for ConfigResolver {
     type Diagnostic = ConfigResolutionDiagnostic;
 
     fn resolve(&mut self, description: &Utf8PathBuf) -> Result<Config, ConfigResolutionError> {
-        let config_path = description.join("fe.toml");
+        let config_path = description.join("config.toml");
 
         let file_content =
             fs::read_to_string(&config_path).map_err(ConfigResolutionError::FileReadError)?;
@@ -126,6 +123,7 @@ where
 }
 
 #[derive(Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(untagged)]
 pub enum IngotAndAnyFilesDescription {
     Path(IngotAndFilesDescription<PathDescription>),
     Remote(IngotAndFilesDescription<GitDescription>),

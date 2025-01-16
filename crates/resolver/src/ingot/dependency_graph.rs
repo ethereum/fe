@@ -4,15 +4,12 @@ use camino::Utf8PathBuf;
 use common::home_dir::HomeDir;
 use indexmap::IndexMap;
 use petgraph::{
+    dot::{Config, Dot},
     graph::{DiGraph, NodeIndex},
     Direction,
 };
 
-use crate::{
-    path::FullPathDescription,
-    user_config::{CoreIngotResolutionError, UserConfigResolver},
-    Resolver,
-};
+use crate::{path::FullPathDescription, Resolver};
 
 use super::{
     config::{ConfigResolutionDiagnostic, ConfigResolutionError, ConfigResolver},
@@ -21,6 +18,7 @@ use super::{
     },
 };
 
+#[derive(Debug)]
 pub struct DependencyGraph {
     pub local_path: Utf8PathBuf,
     graph: DiGraph<Utf8PathBuf, Dependency>,
@@ -30,13 +28,14 @@ pub struct DependencyGraph {
 
 impl DependencyGraph {
     pub fn new(local_path: &Utf8PathBuf) -> Self {
+        let local_path = local_path.canonicalize_utf8().unwrap();
         let mut graph = DiGraph::new();
         let local_node: NodeIndex = graph.add_node(local_path.clone());
         let mut nodes = IndexMap::new();
         nodes.insert(local_path.clone(), local_node);
 
         Self {
-            local_path: local_path.clone(),
+            local_path,
             graph,
             nodes,
             local_dependencies: vec![],
@@ -71,19 +70,26 @@ impl DependencyGraph {
         self.graph.add_edge(source_node, target_node, depedency);
     }
 
+    pub fn dot(&self) -> String {
+        format!(
+            "{:?}",
+            Dot::with_config(&self.graph, &[Config::EdgeNoLabel])
+        )
+    }
+
     fn node_index(&mut self, path: &Utf8PathBuf) -> NodeIndex {
-        if !self.contains(path) {
-            let node = self.graph.add_node(path.to_owned());
-            self.nodes.insert(path.to_owned(), node);
+        let path = path.canonicalize_utf8().unwrap();
+        if !self.contains(&path) {
+            let node = self.graph.add_node(path.clone());
+            self.nodes.insert(path, node);
             node
         } else {
-            self.nodes[path]
+            self.nodes[&path]
         }
     }
 }
 
 pub struct DependencyGraphResolver {
-    user_config_resolver: UserConfigResolver,
     config_resolver: ConfigResolver,
     dependency_resolver: DependencyResolver,
     diagnostics: Vec<DependencyGraphResolutionDiagnostic>,
@@ -92,7 +98,6 @@ pub struct DependencyGraphResolver {
 impl DependencyGraphResolver {
     pub fn new() -> Self {
         Self {
-            user_config_resolver: UserConfigResolver::new(),
             config_resolver: ConfigResolver::new(),
             dependency_resolver: DependencyResolver::new(),
             diagnostics: vec![],
@@ -107,7 +112,6 @@ pub enum DependencyGraphResolutionError {
 }
 
 pub enum DependencyGraphResolutionDiagnostic {
-    CoreIngotResolutionError(CoreIngotResolutionError),
     DependencyResolutonError(DependencyDescription, DependencyResolutionError),
     ConfigResolutionDiagnostic(ConfigResolutionDiagnostic),
 }
@@ -120,10 +124,8 @@ impl Resolver for DependencyGraphResolver {
 
     fn resolve(
         &mut self,
-        description: &Utf8PathBuf,
+        local_path: &Utf8PathBuf,
     ) -> Result<DependencyGraph, DependencyGraphResolutionError> {
-        let local_path = description;
-
         if !local_path.exists() {
             Err(DependencyGraphResolutionError::LocalPathDoesNotExist)
         } else {
@@ -135,7 +137,7 @@ impl Resolver for DependencyGraphResolver {
                 .map_err(DependencyGraphResolutionError::LocalConfigResolutionError)?;
             let local_path_description = FullPathDescription::new_local(local_path);
             graph.local_dependencies =
-                local_config.dependency_descriptions(description, &local_path_description);
+                local_config.dependency_descriptions(local_path, &local_path_description);
 
             let mut unresolved_dependencies = graph.local_dependencies.clone();
 
