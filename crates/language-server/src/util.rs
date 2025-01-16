@@ -1,12 +1,13 @@
-use async_lsp::lsp_types::{DiagnosticSeverity, NumberOrString, Position};
+use async_lsp::lsp_types::{
+    DiagnosticRelatedInformation, DiagnosticSeverity, NumberOrString, Position,
+};
 use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
-    InputDb, InputFile, InputIngot,
+    InputDb, InputIngot,
 };
 use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
 use tracing::error;
-use url::Url;
 
 pub fn calculate_line_offsets(text: &str) -> Vec<usize> {
     text.lines()
@@ -55,7 +56,6 @@ pub fn to_lsp_range_from_span(
 pub fn to_lsp_location_from_scope(
     db: &dyn SpannedHirDb,
     ingot: InputIngot,
-    file: InputFile,
     scope: ScopeId,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
     let lazy_span = scope
@@ -64,11 +64,7 @@ pub fn to_lsp_location_from_scope(
     let span = lazy_span
         .resolve(db.as_spanned_hir_db())
         .ok_or("Failed to resolve span")?;
-    let uri = file.abs_path(db.as_input_db(), ingot);
-    let range = to_lsp_range_from_span(span, db.as_input_db())?;
-    let uri = async_lsp::lsp_types::Url::from_file_path(uri)
-        .map_err(|()| "Failed to convert path to URL")?;
-    Ok(async_lsp::lsp_types::Location { uri, range })
+    to_lsp_location_from_span(db.as_input_db(), ingot, span)
 }
 
 pub fn severity_to_lsp(is_primary: bool, severity: Severity) -> DiagnosticSeverity {
@@ -90,52 +86,55 @@ pub fn diag_to_lsp(
     diag: CompleteDiagnostic,
 ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
     let mut result = FxHashMap::default();
+    let Ok(primary_location) = to_lsp_location_from_span(db, ingot, diag.primary_span()) else {
+        return result;
+    };
 
     // TODO: this assumes that all sub_diagnostics point at files in the same ingot,
     // which might not be the case
 
     diag.sub_diagnostics.into_iter().for_each(|sub| {
         let is_primary = sub.is_primary();
-        let Some(span) = sub.span else {
-            if is_primary {
-                error!("Diagnostic primary span is missing")
-            }
-            return;
-        };
 
-        let uri = span.file.abs_path(db, ingot);
-        let uri = match Url::from_file_path(uri) {
-            Ok(uri) => uri,
-            Err(()) => {
-                error!("Failed to convert path to URL");
-                return;
-            }
-        };
-
-        let range = match to_lsp_range_from_span(span, db) {
-            Ok(range) => range,
-            Err(e) => {
-                error!("Error getting diagnostic: {} (ignoring diagnostic)", e);
-                return;
-            }
-        };
-
-        let code = is_primary.then(|| NumberOrString::String(diag.error_code.to_string()));
-        let message = if is_primary {
-            diag.message.to_string() + "\n" + &sub.message
+        let (location, code, message, related_information) = if is_primary {
+            (
+                primary_location.clone(),
+                Some(NumberOrString::String(diag.error_code.to_string())),
+                diag.message.to_string() + "\n" + &sub.message,
+                None,
+            )
         } else {
-            sub.message
+            let Some(span) = sub.span else {
+                return;
+            };
+
+            let location = match to_lsp_location_from_span(db, ingot, span) {
+                Ok(location) => location,
+                Err(e) => {
+                    error!(e);
+                    return;
+                }
+            };
+
+            (
+                location,
+                None,
+                sub.message,
+                Some(vec![DiagnosticRelatedInformation {
+                    location: primary_location.clone(),
+                    message: "original diagnostic".to_string(),
+                }]),
+            )
         };
 
-        let diags = result.entry(uri).or_insert_with(Vec::new);
+        let diags = result.entry(location.uri).or_insert_with(Vec::new);
         diags.push(async_lsp::lsp_types::Diagnostic {
-            range,
-            // We set the severity to `HINT` for secondary diags.
+            range: location.range,
             severity: Some(severity_to_lsp(is_primary, diag.severity)),
             code,
             source: None,
             message,
-            related_information: None,
+            related_information,
             tags: None,
             code_description: None,
             data: None,
@@ -143,6 +142,18 @@ pub fn diag_to_lsp(
     });
 
     result
+}
+
+fn to_lsp_location_from_span(
+    db: &dyn InputDb,
+    ingot: InputIngot,
+    span: Span,
+) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
+    let uri = span.file.abs_path(db.as_input_db(), ingot);
+    let range = to_lsp_range_from_span(span, db.as_input_db())?;
+    let uri = async_lsp::lsp_types::Url::from_file_path(uri)
+        .map_err(|()| "Failed to convert path to URL")?;
+    Ok(async_lsp::lsp_types::Location { uri, range })
 }
 
 #[cfg(target_arch = "wasm32")]
