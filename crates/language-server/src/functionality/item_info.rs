@@ -1,39 +1,22 @@
 use hir::{
-    hir_def::{Attr, ItemKind},
+    hir_def::{scope_graph::ScopeId, Attr, ItemKind},
     span::LazySpan,
     HirDb, SpannedHirDb,
 };
 
-pub fn get_item_docstring(item: ItemKind, hir_db: &dyn HirDb) -> Option<String> {
-    let docstring = match item {
-        ItemKind::Func(func) => func.attributes(hir_db).data(hir_db),
-        ItemKind::Mod(mod_) => mod_.attributes(hir_db).data(hir_db),
-        ItemKind::Struct(struct_) => struct_.attributes(hir_db).data(hir_db),
-        ItemKind::Enum(enum_) => enum_.attributes(hir_db).data(hir_db),
-        ItemKind::TypeAlias(type_alias) => type_alias.attributes(hir_db).data(hir_db),
-        ItemKind::Trait(trait_) => trait_.attributes(hir_db).data(hir_db),
-        ItemKind::Impl(impl_) => impl_.attributes(hir_db).data(hir_db),
-        // ItemKind::Body(body) => body.attributes(hir_db).data(hir_db).clone(),
-        // ItemKind::Const(const_) => const_.attributes(hir_db).data(hir_db).clone(),
-        // ItemKind::Use(use_) => use_.attributes(hir_db).data(hir_db).clone(),
-        ItemKind::Contract(contract) => contract.attributes(hir_db).data(hir_db),
-        _ => return None,
-    }
-    .iter()
-    .filter_map(|attr| {
-        if let Attr::DocComment(doc) = attr {
-            Some(doc.text.data(hir_db).clone())
-        } else {
-            None
-        }
-    })
-    .collect::<Vec<_>>();
-
-    if docstring.is_empty() {
-        None
-    } else {
-        Some(docstring.join("\n"))
-    }
+pub fn get_docstring(scope: ScopeId, hir_db: &dyn HirDb) -> Option<String> {
+    scope
+        .attrs(hir_db)?
+        .data(hir_db)
+        .iter()
+        .filter_map(|attr| {
+            if let Attr::DocComment(doc) = attr {
+                Some(doc.text.data(hir_db).clone())
+            } else {
+                None
+            }
+        })
+        .reduce(|a, b| a + "\n" + &b)
 }
 
 pub fn get_item_path_markdown(item: ItemKind, hir_db: &dyn HirDb) -> Option<String> {

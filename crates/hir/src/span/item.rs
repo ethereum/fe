@@ -230,13 +230,7 @@ impl<'db> LazyConstSpan<'db> {
     }
 }
 
-define_lazy_span_node!(
-    LazyUseSpan,
-    ast::Use,
-    @node {
-        (attributes, attr_list, LazyAttrListSpan),
-    }
-);
+define_lazy_span_node!(LazyUseSpan, ast::Use);
 impl<'db> LazyUseSpan<'db> {
     pub fn new(u: Use<'db>) -> Self {
         Self(crate::span::transition::SpanTransitionChain::new(u))
@@ -326,6 +320,7 @@ define_lazy_span_node!(
         (name, name),
     }
     @node {
+        (attributes, attr_list, LazyAttrListSpan),
         (ty, ty, LazyTySpan),
     }
 );
@@ -346,6 +341,7 @@ define_lazy_span_node!(
     }
     @node {
         (fields, fields, LazyFieldDefListSpan),
+        (attributes, attr_list, LazyAttrListSpan),
         (tuple_type, tuple_type, LazyTupleTypeSpan),
     }
 );

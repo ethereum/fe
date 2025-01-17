@@ -12,7 +12,7 @@ use hir::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
-        GenericParam, GenericParamOwner, IdentId, ItemKind, Trait, Use,
+        Enum, GenericParam, GenericParamOwner, IdentId, ItemKind, Mod, TopLevelMod, Trait, Use,
     },
     span::DynLazySpan,
 };
@@ -306,17 +306,20 @@ impl<'db> NameRes<'db> {
         self.trait_().is_some()
     }
 
-    pub fn is_enum(&self) -> bool {
+    pub fn is_enum(&self, db: &dyn HirAnalysisDb) -> bool {
         match self.kind {
             NameResKind::Prim(_) => false,
-            NameResKind::Scope(scope) => scope.is_enum(),
+            NameResKind::Scope(scope) => scope.resolve_to::<Enum>(db.as_hir_db()).is_some(),
         }
     }
 
-    pub fn is_mod(&self) -> bool {
+    pub fn is_mod(&self, db: &dyn HirAnalysisDb) -> bool {
         match self.kind {
             NameResKind::Prim(_) => false,
-            NameResKind::Scope(scope) => scope.is_mod(),
+            NameResKind::Scope(scope) => {
+                scope.resolve_to::<TopLevelMod>(db.as_hir_db()).is_some()
+                    || scope.resolve_to::<Mod>(db.as_hir_db()).is_some()
+            }
         }
     }
 

@@ -821,7 +821,7 @@ impl<'db> IntermediateUse<'db> {
             }
         };
 
-        if next_res.is_mod() || next_res.is_enum() {
+        if next_res.is_mod(db) || next_res.is_enum(db) {
             Ok(Self {
                 use_: self.use_,
                 current_res: next_res.into(),

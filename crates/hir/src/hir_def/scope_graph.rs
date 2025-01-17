@@ -4,8 +4,9 @@ use common::indexmap::IndexSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
-    scope_graph_viz::ScopeGraphFormatter, Body, Enum, ExprId, Func, FuncParamName, IdentId,
-    IngotId, ItemKind, TopLevelMod, Use, VariantKind, Visibility,
+    scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, ExprId,
+    FieldDef, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl, ImplTrait, IngotId,
+    ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind, Visibility,
 };
 use crate::{
     hir_def::{BodyKind, GenericParamOwner},
@@ -130,6 +131,31 @@ impl<'db> ScopeId<'db> {
         }
     }
 
+    /// Resolves the `ScopeId` to `T`.
+    /// Returns `None` if the resolution is not defined for this scope.
+    pub fn resolve_to<T>(self, db: &'db dyn HirDb) -> Option<T>
+    where
+        T: FromScope<'db>,
+    {
+        T::from_scope(self, db)
+    }
+
+    /// Returns attributes being applied to the scope.
+    pub fn attrs(self, db: &'db dyn HirDb) -> Option<AttrListId<'db>> {
+        match self {
+            ScopeId::Item(item) => item.attrs(db),
+            ScopeId::Field(..) => {
+                let def: &FieldDef = self.resolve_to(db).unwrap();
+                Some(def.attributes)
+            }
+            ScopeId::Variant(..) => {
+                let def: &VariantDef = self.resolve_to(db).unwrap();
+                Some(def.attributes)
+            }
+            _ => None,
+        }
+    }
+
     /// Returns the scope graph containing this scope.
     pub fn scope_graph(self, db: &'db dyn HirDb) -> &'db ScopeGraph<'db> {
         self.top_mod(db).scope_graph(db)
@@ -157,7 +183,7 @@ impl<'db> ScopeId<'db> {
         }
     }
 
-    /// Returns true if `self` is a transitive reflexive child of `of`.
+    /// Returns `true` if `self` is a transitive reflexive child of `of`.
     pub fn is_transitive_child_of(self, db: &dyn HirDb, of: ScopeId) -> bool {
         let mut current = Some(self);
 
@@ -238,19 +264,6 @@ impl<'db> ScopeId<'db> {
         }
     }
 
-    pub fn is_enum(self) -> bool {
-        matches!(self, ScopeId::Item(ItemKind::Enum(_)))
-    }
-
-    pub fn is_mod(self) -> bool {
-        matches!(self, ScopeId::Item(ItemKind::Mod(_) | ItemKind::TopMod(_)))
-    }
-
-    /// Returns `true` if the scope is a trait definition.
-    pub fn is_trait(self) -> bool {
-        matches!(self, ScopeId::Item(ItemKind::Trait(_)))
-    }
-
     /// Returns the item that contains this scope.
     pub fn parent_item(self, db: &'db dyn HirDb) -> Option<ItemKind<'db>> {
         let mut parent = self.parent(db)?;
@@ -268,27 +281,12 @@ impl<'db> ScopeId<'db> {
         match self.data(db).id {
             ScopeId::Item(item) => item.name(db),
 
-            ScopeId::Variant(parent, idx) => {
-                let enum_: Enum = parent.try_into().unwrap();
-                enum_.variants(db).data(db)[idx].name.to_opt()
-            }
+            ScopeId::Variant(..) => self.resolve_to::<&VariantDef>(db).unwrap().name.to_opt(),
 
-            ScopeId::Field(FieldParent::Item(parent), idx) => match parent {
-                ItemKind::Struct(s) => s.fields(db).data(db)[idx].name.to_opt(),
-                ItemKind::Contract(c) => c.fields(db).data(db)[idx].name.to_opt(),
-                _ => unreachable!(),
-            },
-            ScopeId::Field(FieldParent::Variant(parent, vidx), fidx) => {
-                let enum_: Enum = parent.try_into().unwrap();
-                match enum_.variants(db).data(db)[vidx].kind {
-                    VariantKind::Record(fields) => fields.data(db)[fidx].name.to_opt(),
-                    _ => unreachable!(),
-                }
-            }
+            ScopeId::Field(..) => self.resolve_to::<&FieldDef>(db).unwrap().name.to_opt(),
 
-            ScopeId::FuncParam(parent, idx) => {
-                let func: Func = parent.try_into().unwrap();
-                let param = &func.params(db).to_opt()?.data(db)[idx];
+            ScopeId::FuncParam(..) => {
+                let param: &FuncParam = self.resolve_to(db).unwrap();
                 if let Some(FuncParamName::Ident(ident)) = param.label {
                     Some(ident)
                 } else {
@@ -296,11 +294,9 @@ impl<'db> ScopeId<'db> {
                 }
             }
 
-            ScopeId::GenericParam(parent, idx) => {
-                let parent = GenericParamOwner::from_item_opt(parent).unwrap();
-
-                let params = &parent.params(db).data(db)[idx];
-                params.name().to_opt()
+            ScopeId::GenericParam(..) => {
+                let param: &GenericParam = self.resolve_to(db).unwrap();
+                param.name().to_opt()
             }
 
             ScopeId::Block(..) => None,
@@ -366,6 +362,7 @@ impl<'db> ScopeId<'db> {
             ScopeId::Block(_, _) => "block",
         }
     }
+
     pub fn pretty_path(self, db: &dyn HirDb) -> Option<String> {
         let name = match self {
             ScopeId::Block(body, expr) => format!("{{block{}}}", body.iter_block(db)[&expr]),
@@ -593,6 +590,103 @@ pub struct SelfEdge();
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct AnonEdge();
+
+pub trait FromScope<'db>: Sized {
+    fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self>;
+}
+
+impl<'db> FromScope<'db> for ItemKind<'db> {
+    fn from_scope(scope: ScopeId<'db>, _db: &'db dyn HirDb) -> Option<Self> {
+        match scope {
+            ScopeId::Item(item) => Some(item),
+            _ => None,
+        }
+    }
+}
+
+macro_rules! item_from_scope {
+    ($($item_ty: ty,)*) => {
+        $(
+        impl<'db> FromScope<'db> for $item_ty {
+            fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self> {
+                scope.resolve_to::<ItemKind>(db).and_then(|item| item.try_into().ok())
+            }
+        }
+        )*
+    };
+}
+
+item_from_scope! {
+    TopLevelMod<'db>,
+    Mod<'db>,
+    Func<'db>,
+    Contract<'db>,
+    Enum<'db>,
+    TypeAlias<'db>,
+    Impl<'db>,
+    Trait<'db>,
+    ImplTrait<'db>,
+    Const<'db>,
+    Use<'db>,
+    Body<'db>,
+}
+
+impl<'db> FromScope<'db> for &'db FieldDef<'db> {
+    fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self> {
+        let ScopeId::Field(parent, idx) = scope else {
+            return None;
+        };
+
+        match parent {
+            FieldParent::Item(item) => match item {
+                ItemKind::Struct(s) => Some(&s.fields(db).data(db)[idx]),
+                ItemKind::Contract(c) => Some(&c.fields(db).data(db)[idx]),
+                _ => unreachable!(),
+            },
+
+            FieldParent::Variant(parent, vidx) => {
+                let enum_: Enum = parent.try_into().unwrap();
+                match enum_.variants(db).data(db)[vidx].kind {
+                    VariantKind::Record(fields) => Some(&fields.data(db)[idx]),
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+}
+
+impl<'db> FromScope<'db> for &'db VariantDef<'db> {
+    fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self> {
+        let ScopeId::Variant(parent, idx) = scope else {
+            return None;
+        };
+        let enum_: Enum = parent.try_into().unwrap();
+
+        Some(&enum_.variants(db).data(db)[idx])
+    }
+}
+
+impl<'db> FromScope<'db> for &'db FuncParam<'db> {
+    fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self> {
+        let ScopeId::FuncParam(parent, idx) = scope else {
+            return None;
+        };
+
+        let func: Func = parent.try_into().unwrap();
+        func.params(db).to_opt().map(|params| &params.data(db)[idx])
+    }
+}
+
+impl<'db> FromScope<'db> for &'db GenericParam<'db> {
+    fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self> {
+        let ScopeId::GenericParam(parent, idx) = scope else {
+            return None;
+        };
+
+        let parent = GenericParamOwner::from_item_opt(parent).unwrap();
+        Some(&parent.params(db).data(db)[idx])
+    }
+}
 
 #[cfg(test)]
 mod tests {

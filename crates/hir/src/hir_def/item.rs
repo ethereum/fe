@@ -82,6 +82,24 @@ impl<'db> ItemKind<'db> {
         }
     }
 
+    /// Returns attributes being applied to this item.
+    pub fn attrs(self, db: &'db dyn HirDb) -> Option<AttrListId<'db>> {
+        match self {
+            Self::Mod(mod_) => mod_.attributes(db),
+            Self::Func(func) => func.attributes(db),
+            Self::Struct(struct_) => struct_.attributes(db),
+            Self::Contract(contract) => contract.attributes(db),
+            Self::Enum(enum_) => enum_.attributes(db),
+            Self::TypeAlias(alias) => alias.attributes(db),
+            Self::Impl(impl_) => impl_.attributes(db),
+            Self::Trait(trait_) => trait_.attributes(db),
+            Self::ImplTrait(impl_trait) => impl_trait.attributes(db),
+            Self::Const(const_) => const_.attributes(db),
+            _ => return None,
+        }
+        .into()
+    }
+
     pub fn kind_name(self) -> &'static str {
         use ItemKind::*;
         match self {
@@ -941,6 +959,7 @@ pub struct Const<'db> {
     id: TrackedItemId<'db>,
 
     pub name: Partial<IdentId<'db>>,
+    pub attributes: AttrListId<'db>,
     pub ty: Partial<TypeId<'db>>,
     pub body: Partial<Body<'db>>,
     pub vis: Visibility,
@@ -1093,6 +1112,7 @@ impl<'db> FieldDefListId<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FieldDef<'db> {
+    pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
     pub ty: Partial<TypeId<'db>>,
     pub vis: Visibility,
@@ -1106,6 +1126,7 @@ pub struct VariantDefListId<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct VariantDef<'db> {
+    pub attributes: AttrListId<'db>,
     pub name: Partial<IdentId<'db>>,
     pub kind: VariantKind<'db>,
 }

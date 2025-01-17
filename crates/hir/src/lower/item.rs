@@ -350,12 +350,23 @@ impl<'db> Const<'db> {
         let id = ctxt.joined_id(TrackedItemVariant::Const(name));
         ctxt.enter_item_scope(id, false);
 
+        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let body = ast.value().map(|ast| Body::lower_ast(ctxt, ast)).into();
         let vis = ItemModifier::lower_ast(ast.modifier()).to_visibility();
         let origin = HirOrigin::raw(&ast);
 
-        let const_ = Self::new(ctxt.db(), id, name, ty, body, vis, ctxt.top_mod(), origin);
+        let const_ = Self::new(
+            ctxt.db(),
+            id,
+            name,
+            attributes,
+            ty,
+            body,
+            vis,
+            ctxt.top_mod(),
+            origin,
+        );
         ctxt.leave_item_scope(const_)
     }
 }
@@ -392,6 +403,7 @@ impl<'db> FieldDefListId<'db> {
 
 impl<'db> FieldDef<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::RecordFieldDef) -> Self {
+        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
         let vis = if ast.pub_kw().is_some() {
@@ -400,7 +412,12 @@ impl<'db> FieldDef<'db> {
             Visibility::Private
         };
 
-        Self { name, ty, vis }
+        Self {
+            attributes,
+            name,
+            ty,
+            vis,
+        }
     }
 }
 
@@ -421,12 +438,18 @@ impl<'db> VariantDefListId<'db> {
 
 impl<'db> VariantDef<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::VariantDef) -> Self {
+        let attributes = AttrListId::lower_ast_opt(ctxt, ast.attr_list());
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let kind = match ast.kind() {
             ast::VariantKind::Unit => VariantKind::Unit,
             ast::VariantKind::Tuple(t) => VariantKind::Tuple(TupleTypeId::lower_ast(ctxt, t)),
             ast::VariantKind::Record(r) => VariantKind::Record(FieldDefListId::lower_ast(ctxt, r)),
         };
-        Self { name, kind }
+
+        Self {
+            attributes,
+            name,
+            kind,
+        }
     }
 }
