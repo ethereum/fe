@@ -430,10 +430,7 @@ impl<'db> TyLowerDiag<'db> {
                 vec![
                     SubDiagnostic::new(
                         LabelStyle::Primary,
-                        format!(
-                            "generic parameter `{}` is already defined in the parent item",
-                            name.data(db.as_hir_db())
-                        ),
+                        format!("`{}` is already defined", name.data(db.as_hir_db())),
                         primary.resolve(db),
                     ),
                     SubDiagnostic::new(

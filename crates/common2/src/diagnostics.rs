@@ -33,10 +33,7 @@ impl CompleteDiagnostic {
     pub fn primary_span(&self) -> Span {
         self.sub_diagnostics
             .iter()
-            .find_map(|sub| match sub.style {
-                LabelStyle::Primary => Some(sub.span.clone().unwrap()),
-                _ => None,
-            })
+            .find_map(|sub| sub.is_primary().then(|| sub.span.clone().unwrap()))
             .unwrap()
     }
 }
@@ -73,6 +70,10 @@ impl SubDiagnostic {
             message,
             span,
         }
+    }
+
+    pub fn is_primary(&self) -> bool {
+        matches!(self.style, LabelStyle::Primary)
     }
 }
 
