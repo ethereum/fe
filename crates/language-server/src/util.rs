@@ -1,7 +1,7 @@
 use async_lsp::lsp_types::Position;
 use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
-    InputDb,
+    InputDb, InputFile, InputIngot,
 };
 use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
@@ -53,8 +53,10 @@ pub fn to_lsp_range_from_span(
 }
 
 pub fn to_lsp_location_from_scope(
-    scope: ScopeId,
     db: &dyn SpannedHirDb,
+    ingot: InputIngot,
+    file: InputFile,
+    scope: ScopeId,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
     let lazy_span = scope
         .name_span(db.as_hir_db())
@@ -62,7 +64,7 @@ pub fn to_lsp_location_from_scope(
     let span = lazy_span
         .resolve(db.as_spanned_hir_db())
         .ok_or("Failed to resolve span")?;
-    let uri = span.file.abs_path(db.as_input_db());
+    let uri = file.abs_path(db.as_input_db(), ingot);
     let range = to_lsp_range_from_span(span, db.as_input_db())?;
     let uri = async_lsp::lsp_types::Url::from_file_path(uri)
         .map_err(|()| "Failed to convert path to URL")?;
@@ -78,11 +80,15 @@ pub fn severity_to_lsp(severity: Severity) -> async_lsp::lsp_types::DiagnosticSe
 }
 
 pub fn diag_to_lsp(
-    diag: CompleteDiagnostic,
     db: &dyn InputDb,
+    ingot: InputIngot,
+    diag: CompleteDiagnostic,
 ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
     let mut result =
         FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default();
+
+    // TODO: this assumes that all sub_diagnostics point at files in the same ingot,
+    // which might not be the case
 
     diag.sub_diagnostics.into_iter().for_each(|sub| {
         let span = match sub.span {
@@ -93,7 +99,7 @@ pub fn diag_to_lsp(
             }
         };
 
-        let uri = span.file.abs_path(db);
+        let uri = span.file.abs_path(db, ingot);
         let uri = match Url::from_file_path(uri) {
             Ok(uri) => uri,
             Err(()) => {

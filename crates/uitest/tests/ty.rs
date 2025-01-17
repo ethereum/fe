@@ -12,8 +12,8 @@ fn run_ty_def(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
 
-    let input_file = db.standalone(path, fixture.content());
-    let top_mod = db.top_mod(input_file);
+    let (ingot, file) = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(ingot, file);
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);
@@ -28,8 +28,8 @@ fn run_const_ty(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
 
-    let input_file = db.standalone(path, fixture.content());
-    let top_mod = db.top_mod(input_file);
+    let (ingot, file) = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(ingot, file);
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);
@@ -44,8 +44,8 @@ fn run_trait_bound(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
 
-    let input_file = db.standalone(path, fixture.content());
-    let top_mod = db.top_mod(input_file);
+    let (ingot, file) = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(ingot, file);
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);
@@ -60,8 +60,8 @@ fn run_trait_impl(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path());
 
-    let input_file = db.standalone(path, fixture.content());
-    let top_mod = db.top_mod(input_file);
+    let (ingot, file) = db.standalone(path, fixture.content());
+    let top_mod = db.top_mod(ingot, file);
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);
@@ -90,8 +90,8 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let path = Path::new(fixture.path());
 
-            let input_file = db.standalone(path, fixture.content());
-            let top_mod = db.top_mod(input_file);
+            let (ingot, file) = db.standalone(path, fixture.content());
+            let top_mod = db.top_mod(ingot, file);
             db.run_on_top_mod(top_mod);
         }
     }
@@ -111,8 +111,8 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let path = Path::new(fixture.path());
 
-            let input_file = db.standalone(path, fixture.content());
-            let top_mod = db.top_mod(input_file);
+            let (ingot, file) = db.standalone(path, fixture.content());
+            let top_mod = db.top_mod(ingot, file);
             db.run_on_top_mod(top_mod);
         }
     }
@@ -132,8 +132,8 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let path = Path::new(fixture.path());
 
-            let input_file = db.standalone(path, fixture.content());
-            let top_mod = db.top_mod(input_file);
+            let (ingot, file) = db.standalone(path, fixture.content());
+            let top_mod = db.top_mod(ingot, file);
             db.run_on_top_mod(top_mod);
         }
     }
@@ -153,8 +153,8 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let path = Path::new(fixture.path());
 
-            let input_file = db.standalone(path, fixture.content());
-            let top_mod = db.top_mod(input_file);
+            let (ingot, file) = db.standalone(path, fixture.content());
+            let top_mod = db.top_mod(ingot, file);
             db.run_on_top_mod(top_mod);
         }
     }

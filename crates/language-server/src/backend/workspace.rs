@@ -1,16 +1,16 @@
 use std::path::{Path, PathBuf};
 
+use super::db::LanguageServerDatabase;
 use anyhow::Result;
 use common::{
     indexmap::IndexSet,
     input::{IngotKind, Version},
     InputFile, InputIngot,
 };
-use hir::{hir_def::TopLevelMod, lower::map_file_to_mod, LowerHirDb};
-use patricia_tree::StringPatriciaMap;
-use tracing::info;
 
-use super::db::LanguageServerDatabase;
+use patricia_tree::StringPatriciaMap;
+use salsa::Setter;
+use tracing::info;
 
 use rust_embed::RustEmbed;
 
@@ -27,23 +27,22 @@ fn ingot_directory_key(path: String) -> String {
 }
 
 pub trait IngotFileContext {
-    fn get_input_for_file_path(&self, path: &str) -> Option<InputFile>;
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)>;
+
     fn touch_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<InputFile>;
+    ) -> Option<(InputIngot, InputFile)>;
+
     fn get_ingot_for_file_path(&self, path: &str) -> Option<InputIngot>;
+
     fn touch_ingot_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
     ) -> Option<InputIngot>;
-    fn top_mod_from_file_path<'a>(
-        &self,
-        db: &'a dyn LowerHirDb,
-        path: &str,
-    ) -> Option<TopLevelMod<'a>>;
+
     fn remove_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
@@ -104,22 +103,22 @@ impl IngotFileContext for LocalIngotContext {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<InputFile> {
+    ) -> Option<(InputIngot, InputFile)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
-        let input = self.files.get(path).map_or_else(
-            || {
-                let file = InputFile::new(db, ingot, path.into(), String::new());
-                Some(file)
-            },
-            |file| Some(*file),
-        );
-        self.files.insert(path, input.unwrap());
+        let input = self
+            .files
+            .get(path)
+            .copied()
+            .unwrap_or_else(|| InputFile::new(db, path.into(), String::new()));
+        self.files.insert(path, input);
         ingot.set_files(db, self.files.values().copied().collect());
-        input
+        Some((ingot, input))
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<InputFile> {
-        self.files.get(path).copied()
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
+        let ingot = self.get_ingot_for_file_path(path)?;
+        let file = self.files.get(path).copied()?;
+        Some((ingot, file))
     }
 
     fn touch_ingot_for_file_path(
@@ -132,15 +131,6 @@ impl IngotFileContext for LocalIngotContext {
 
     fn get_ingot_for_file_path(&self, _path: &str) -> Option<InputIngot> {
         Some(self.ingot)
-    }
-
-    fn top_mod_from_file_path<'a>(
-        &self,
-        db: &'a dyn LowerHirDb,
-        path: &str,
-    ) -> Option<TopLevelMod<'a>> {
-        let file = self.get_input_for_file_path(path)?;
-        Some(map_file_to_mod(db, file))
     }
 
     fn remove_input_for_file_path(
@@ -184,25 +174,25 @@ impl IngotFileContext for StandaloneIngotContext {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<InputFile> {
+    ) -> Option<(InputIngot, InputFile)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
-        let input_file = self.files.get(path).map_or_else(
-            || {
-                let file = InputFile::new(db, ingot, path.into(), String::new());
-                Some(file)
-            },
-            |file| Some(*file),
-        );
+        let input_file = self
+            .files
+            .get(path)
+            .copied()
+            .unwrap_or_else(|| InputFile::new(db, path.into(), String::new()));
         let mut files = IndexSet::new();
-        files.insert(input_file.unwrap());
+        files.insert(input_file);
         ingot.set_files(db, files);
-        ingot.set_root_file(db, input_file.unwrap());
-        self.files.insert(path, input_file.unwrap());
-        input_file
+        ingot.set_root_file(db, input_file);
+        self.files.insert(path, input_file);
+        Some((ingot, input_file))
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<InputFile> {
-        self.files.get(path).copied()
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
+        let ingot = self.get_ingot_for_file_path(path)?;
+        let file = self.files.get(path).copied()?;
+        Some((ingot, file))
     }
 
     fn touch_ingot_for_file_path(
@@ -232,15 +222,6 @@ impl IngotFileContext for StandaloneIngotContext {
     fn get_ingot_for_file_path(&self, path: &str) -> Option<InputIngot> {
         // this shouldn't mutate, it should only get the ingot or return `None`
         get_containing_ingot(&self.ingots, path).copied()
-    }
-
-    fn top_mod_from_file_path<'a>(
-        &self,
-        db: &'a dyn LowerHirDb,
-        path: &str,
-    ) -> Option<TopLevelMod<'a>> {
-        let file = self.get_input_for_file_path(path)?;
-        Some(map_file_to_mod(db, file))
     }
 
     fn remove_input_for_file_path(
@@ -306,8 +287,8 @@ impl Workspace {
             if let Some(file) = StdLib::get(path_str) {
                 let contents = String::from_utf8(file.data.as_ref().to_vec());
                 if let Ok(contents) = contents {
-                    if let Some(input) = self.touch_input_for_file_path(db, &std_path) {
-                        input.set_text(db).to(contents);
+                    if let Some((_ingot, file)) = self.touch_input_for_file_path(db, &std_path) {
+                        file.set_text(db).to(contents);
                     }
                 }
             }
@@ -394,7 +375,7 @@ impl Workspace {
 
         for path in actual_paths {
             if !previous_ingot_context_file_keys.contains(&path) {
-                if let Some(file) = ingot_context.touch_input_for_file_path(db, &path) {
+                if let Some((_ingot, file)) = ingot_context.touch_input_for_file_path(db, &path) {
                     if let Ok(contents) = std::fs::read_to_string(&path) {
                         file.set_text(db).to(contents);
                     }
@@ -431,7 +412,7 @@ impl IngotFileContext for Workspace {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<InputFile> {
+    ) -> Option<(InputIngot, InputFile)> {
         let ctx = get_containing_ingot_mut(&mut self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             ctx.touch_input_for_file_path(db, path)
@@ -441,7 +422,7 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<InputFile> {
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             ctx.get_input_for_file_path(path)
@@ -470,20 +451,6 @@ impl IngotFileContext for Workspace {
             ctx.get_ingot_for_file_path(path)
         } else {
             self.standalone_ingot_context.get_ingot_for_file_path(path)
-        }
-    }
-
-    fn top_mod_from_file_path<'a>(
-        &self,
-        db: &'a dyn LowerHirDb,
-        path: &str,
-    ) -> Option<TopLevelMod<'a>> {
-        let ctx = get_containing_ingot(&self.ingot_contexts, path);
-        if let Some(ctx) = ctx {
-            ctx.top_mod_from_file_path(db, path)
-        } else {
-            self.standalone_ingot_context
-                .top_mod_from_file_path(db, path)
         }
     }
 
@@ -537,6 +504,8 @@ impl SyncableIngotFileContext for Workspace {
 
 #[cfg(test)]
 mod tests {
+    use hir::lower::map_file_to_mod;
+
     use crate::backend::workspace::{
         get_containing_ingot_mut, IngotFileContext, Workspace, FE_CONFIG_SUFFIX,
     };
@@ -560,7 +529,6 @@ mod tests {
             ingot.unwrap().kind(&db),
             common::input::IngotKind::StandAlone
         );
-        assert_eq!(ingot.unwrap(), file.unwrap().ingot(&db));
     }
 
     #[test]
@@ -620,20 +588,16 @@ mod tests {
         };
 
         let file_path = "tests/data/ingot1/src/main.fe";
-        let file = workspace.touch_input_for_file_path(&mut db, file_path);
-        assert!(file.is_some());
-
-        let ingot = workspace.touch_ingot_for_file_path(&mut db, file_path);
-        assert!(ingot.is_some());
-
-        assert_eq!(file.map(|f| f.ingot(&db)).unwrap(), ingot.unwrap());
+        let (ingot, _file) = workspace
+            .touch_input_for_file_path(&mut db, file_path)
+            .unwrap();
 
         assert_eq!(
             ingot_context_ingot.unwrap().kind(&db),
             common::input::IngotKind::Local
         );
-        assert_eq!(ingot.unwrap().kind(&db), common::input::IngotKind::Local);
-        assert_eq!(ingot_context_ingot.unwrap(), ingot.unwrap());
+        assert_eq!(ingot.kind(&db), common::input::IngotKind::Local);
+        assert_eq!(ingot_context_ingot.unwrap(), ingot);
     }
 
     #[test]
@@ -653,9 +617,10 @@ mod tests {
         assert_eq!(workspace.ingot_contexts.len(), 1);
 
         let fe_source_path = ingot_base_dir.join("src/main.fe");
-        let input = workspace.touch_input_for_file_path(&mut db, fe_source_path.to_str().unwrap());
-        assert!(input.is_some());
-        assert!(input.unwrap().ingot(&db).kind(&db) == common::input::IngotKind::Local);
+        let (ingot, _file) = workspace
+            .touch_input_for_file_path(&mut db, fe_source_path.to_str().unwrap())
+            .unwrap();
+        assert!(ingot.kind(&db) == common::input::IngotKind::Local);
     }
 
     #[test]
@@ -693,7 +658,8 @@ mod tests {
             // file.sync(&mut db, None);
 
             // this would panic if a file has been added to multiple ingots
-            let _top_mod = workspace.top_mod_from_file_path(&db, src_path.as_str());
+            let (ingot, file) = workspace.get_input_for_file_path(&src_path).unwrap();
+            let _top_mod = map_file_to_mod(&db, ingot, file);
         }
     }
 
@@ -727,7 +693,7 @@ mod tests {
         let foo_files = foo_context.files.keys().collect::<Vec<String>>();
         for file in foo_files {
             let contents = std::fs::read_to_string(&file).unwrap();
-            let file = foo_context
+            let (_ingot, file) = foo_context
                 .touch_input_for_file_path(&mut db, &file)
                 .unwrap();
 
@@ -745,14 +711,11 @@ mod tests {
         let mut db = crate::backend::db::LanguageServerDatabase::default();
 
         workspace.sync_local_ingots(&mut db, &messy_workspace_path);
-        let dangling_file = workspace
+        let (d_ingot, _file) = workspace
             .touch_input_for_file_path(&mut db, &dangling_path)
             .unwrap();
 
-        assert_eq!(
-            dangling_file.ingot(&db).kind(&db),
-            common::input::IngotKind::StandAlone
-        );
+        assert_eq!(d_ingot.kind(&db), common::input::IngotKind::StandAlone);
 
         // TODO: make it easier to go both ways between an ingot root path and its config path
         let ingot_paths = workspace
@@ -766,13 +729,10 @@ mod tests {
         }
 
         let non_dangling_file_path = format!("{crate_dir}/test_files/messy/foo/bar/src/main.fe");
-        let non_dangling_input = workspace
+        let (n_ingot, _file) = workspace
             .touch_input_for_file_path(&mut db, &non_dangling_file_path)
             .unwrap();
 
-        assert_eq!(
-            non_dangling_input.ingot(&db).kind(&db),
-            common::input::IngotKind::Local
-        );
+        assert_eq!(n_ingot.kind(&db), common::input::IngotKind::Local);
     }
 }

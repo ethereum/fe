@@ -8,7 +8,7 @@ repository = "https://github.com/ethereum/fe"
 description = "Provides HIR definition and lowering for Fe lang"
 
 [dependencies]
-salsa = { git = "https://github.com/salsa-rs/salsa", rev = "a1bf3a6" }
+salsa.workspace = true
 derive_more = "0.99"
 cranelift-entity = "0.91"
 num-bigint = "0.4"

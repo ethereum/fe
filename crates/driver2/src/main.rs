@@ -24,8 +24,8 @@ pub fn main() {
     let source = std::fs::read_to_string(&args.file_path).unwrap();
 
     let mut db = DriverDataBase::default();
-    let input_file = db.standalone(path, &source);
-    let top_mod = db.top_mod(input_file);
+    let (ingot, file) = db.standalone(path, &source);
+    let top_mod = db.top_mod(ingot, file);
     let diags = db.run_on_top_mod(top_mod);
     diags.emit(&db);
 

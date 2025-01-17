@@ -5,6 +5,9 @@ resolver = "2"
 [profile.dev.package.solc]
 opt-level = 3
 
+[workspace.dependencies]
+salsa = { git = "https://github.com/salsa-rs/salsa", rev = "e4d65a656fc68d0fb759b292ceae2aff2c785c5d" }
+
 [profile.dev]
 # Set to 0 to make the build faster and debugging more difficult.
 debug = 1

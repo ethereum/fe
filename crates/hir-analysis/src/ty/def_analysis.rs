@@ -14,7 +14,7 @@ use hir::{
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::id::LookupId;
+use salsa::plumbing::FromId;
 
 use super::{
     adt_def::{lower_adt, AdtRef, AdtRefId},
@@ -862,7 +862,7 @@ fn check_recursive_adt_impl<'db>(
         .participant_keys()
         .map(|key| {
             let id = key.key_index();
-            AdtRefId::lookup_id(id, db)
+            AdtRefId::from_id(id)
         })
         .collect();
 

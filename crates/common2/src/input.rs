@@ -1,4 +1,5 @@
 use camino::Utf8PathBuf;
+use salsa::Setter;
 use smol_str::SmolStr;
 
 use crate::{indexmap::IndexSet, InputDb};
@@ -74,9 +75,6 @@ impl InputIngot {
 
 #[salsa::input]
 pub struct InputFile {
-    /// A ingot id which the file belongs to.
-    pub ingot: InputIngot,
-
     /// A path to the file from the ingot root directory.
     #[return_ref]
     pub path: Utf8PathBuf,
@@ -86,8 +84,8 @@ pub struct InputFile {
 }
 
 impl InputFile {
-    pub fn abs_path(&self, db: &dyn InputDb) -> Utf8PathBuf {
-        self.ingot(db).path(db).join(self.path(db))
+    pub fn abs_path(&self, db: &dyn InputDb, ingot: InputIngot) -> Utf8PathBuf {
+        ingot.path(db).join(self.path(db))
     }
 }
 

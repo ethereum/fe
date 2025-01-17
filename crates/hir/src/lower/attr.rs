@@ -8,7 +8,7 @@ impl<'db> AttrListId<'db> {
         let attrs = ast
             .into_iter()
             .map(|attr| Attr::lower_ast(ctxt, attr))
-            .collect();
+            .collect::<Vec<_>>();
         Self::new(ctxt.db(), attrs)
     }
 

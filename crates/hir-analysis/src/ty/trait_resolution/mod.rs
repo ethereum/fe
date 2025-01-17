@@ -1,6 +1,5 @@
 use common::indexmap::IndexSet;
 use hir::hir_def::IngotId;
-pub(crate) use proof_forest::ty_depth_impl;
 
 use super::{
     canonical::{Canonical, Canonicalized, Solution},
@@ -166,6 +165,6 @@ impl<'db> PredicateListId<'db> {
             }
         }
 
-        Self::new(db, super_traits.into_iter().collect())
+        Self::new(db, super_traits.into_iter().collect::<Vec<_>>())
     }
 }

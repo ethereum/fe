@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 
-use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
         scope_graph::{FieldParent, ScopeId},
@@ -8,7 +7,7 @@ use hir::{
     },
     span::DynLazySpan,
 };
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use super::{env::LocalBinding, TyChecker};
 use crate::{
@@ -139,14 +138,16 @@ where
     ) -> Result<(), FuncBodyDiag<'db>> {
         if !self.invalid_field_given && !allow_missing_field {
             let expected_labels = self.data.record_labels(self.tc.db);
-            let found = self.already_given.keys().copied().collect::<FxHashSet<_>>();
-            let missing_fields: IndexSet<IdentId> =
-                expected_labels.difference(&found).copied().collect();
+            let missing_fields: Vec<IdentId> = expected_labels
+                .iter()
+                .filter(|f| !self.already_given.contains_key(f))
+                .cloned()
+                .collect();
 
             if !missing_fields.is_empty() {
                 let diag = BodyDiag::MissingRecordFields {
                     primary: initializer_span,
-                    missing_fields: missing_fields.into_iter().collect(),
+                    missing_fields,
                     hint: self.data.initializer_hint(self.tc.db),
                 };
 
@@ -179,7 +180,7 @@ pub(crate) trait RecordLike<'db> {
         name: IdentId<'db>,
     ) -> Option<ScopeId<'db>>;
 
-    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> FxHashSet<IdentId<'db>>;
+    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>>;
 
     fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String>;
 
@@ -239,16 +240,16 @@ impl<'db> RecordLike<'db> for TyId<'db> {
         Some(ScopeId::Field(parent, field_idx))
     }
 
-    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> FxHashSet<IdentId<'db>> {
+    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
         let hir_db = db.as_hir_db();
         let Some(adt_ref) = self.adt_ref(db) else {
-            return FxHashSet::default();
+            return Vec::default();
         };
         let fields = match adt_ref.data(db) {
             AdtRef::Struct(s) => s.fields(hir_db),
             AdtRef::Contract(c) => c.fields(hir_db),
 
-            _ => return FxHashSet::default(),
+            _ => return Vec::default(),
         };
 
         fields
@@ -323,12 +324,12 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
         Some(ScopeId::Field(parent, field_idx))
     }
 
-    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> FxHashSet<IdentId<'db>> {
+    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
         let hir_db = db.as_hir_db();
 
         let fields = match self.variant_kind(db) {
             hir::hir_def::VariantKind::Record(fields) => fields,
-            _ => return FxHashSet::default(),
+            _ => return Vec::default(),
         };
 
         fields

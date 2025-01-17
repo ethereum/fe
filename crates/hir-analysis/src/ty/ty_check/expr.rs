@@ -1202,7 +1202,7 @@ impl TraitOps for AugAssignOp {
 
 fn std_ops_path(db: &dyn HirAnalysisDb) -> PathId {
     let db = db.as_hir_db();
-    let std_ = IdentId::new(db, "std".into());
-    let ops_ = IdentId::new(db, "ops".into());
+    let std_ = IdentId::new(db, "std".to_string());
+    let ops_ = IdentId::new(db, "ops".to_string());
     PathId::from_ident(db, std_).push_ident(db, ops_)
 }

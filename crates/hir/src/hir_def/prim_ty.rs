@@ -15,7 +15,7 @@ impl PrimTy {
             PrimTy::Bool => IdentId::make_bool(db),
             PrimTy::Int(ty) => ty.name(db),
             PrimTy::Uint(ty) => ty.name(db),
-            PrimTy::String => IdentId::new(db, "String".into()),
+            PrimTy::String => IdentId::new(db, "String".to_string()),
         }
     }
 

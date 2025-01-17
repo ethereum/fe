@@ -2291,9 +2291,9 @@ mod tests {
                 42
             }"#;
 
-        let input = db.standalone_file(text);
+        let (ingot, file) = db.standalone_file(text);
 
-        let func = db.expect_item::<Func>(input);
+        let func = db.expect_item::<Func>(ingot, file);
         let top_mod = func.top_mod(&db);
 
         let mut visitor = MyVisitor {

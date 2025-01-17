@@ -8,7 +8,7 @@ use std::hash::Hash;
 use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
 use parser::ast::{self, prelude::*};
 use rustc_hash::FxHashMap;
-use salsa::update::Update;
+use salsa::Update;
 
 use super::{
     scope_graph::ScopeId, Expr, ExprId, Partial, Pat, PatId, Stmt, StmtId, TopLevelMod,

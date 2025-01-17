@@ -9,15 +9,13 @@ use async_lsp::{
 };
 use common::InputDb;
 use fxhash::FxHashSet;
-use salsa::ParallelDatabase;
-use tracing::dispatcher::with_default;
-use tracing::Dispatch;
+use salsa::Setter;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
 
 use crate::backend::workspace::IngotFileContext;
 
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 #[derive(Debug)]
 pub struct FilesNeedDiagnostics(pub Vec<NeedsDiagnostics>);
@@ -53,11 +51,11 @@ pub enum ChangeKind {
 
 impl Backend {
     fn update_input_file_text(&mut self, path: &str, contents: String) {
-        let input = self
+        let (_ingot, file) = self
             .workspace
             .touch_input_for_file_path(&mut self.db, path)
             .unwrap();
-        input.set_text(&mut self.db).to(contents);
+        file.set_text(&mut self.db).to(contents);
     }
 }
 
@@ -156,6 +154,14 @@ pub async fn handle_did_change_text_document(
     Ok(())
 }
 
+pub async fn handle_did_save_text_document(
+    _backend: &Backend,
+    message: async_lsp::lsp_types::DidSaveTextDocumentParams,
+) -> Result<(), ResponseError> {
+    info!("file saved: {:?}", message.text_document.uri);
+    Ok(())
+}
+
 pub async fn handle_file_change(
     backend: &mut Backend,
     message: FileChange,
@@ -204,7 +210,7 @@ pub async fn handle_files_need_diagnostics(
     message: FilesNeedDiagnostics,
 ) -> Result<(), ResponseError> {
     let FilesNeedDiagnostics(need_diagnostics) = message;
-    let client = backend.client.clone();
+    let mut client = backend.client.clone();
 
     let ingots_need_diagnostics: FxHashSet<_> = need_diagnostics
         .iter()
@@ -212,32 +218,23 @@ pub async fn handle_files_need_diagnostics(
         .collect();
 
     for ingot in ingots_need_diagnostics {
-        let current_subscriber = Dispatch::clone(&tracing::dispatcher::get_default(|d| d.clone()));
-        let client = client.clone();
-        let db = backend.db.snapshot();
-        let diagnostic_task = move || {
-            with_default(&current_subscriber, || {
-                // Get diagnostics per file
-                let diagnostics_map = db.diagnostics_for_ingot(ingot);
+        // Get diagnostics per file
+        let diagnostics_map = backend.db.diagnostics_for_ingot(ingot);
 
-                info!(
-                    "Computed diagnostics: {:?}",
-                    diagnostics_map.keys().collect::<Vec<_>>()
-                );
-                let mut client = client.clone();
-                for uri in diagnostics_map.keys() {
-                    let diagnostic = diagnostics_map.get(uri).cloned().unwrap_or_default();
-                    let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
-                        uri: uri.clone(),
-                        diagnostics: diagnostic,
-                        version: None,
-                    };
-                    info!("Publishing diagnostics for URI: {:?}", uri);
-                    client.publish_diagnostics(diagnostics_params).unwrap();
-                }
-            });
-        };
-        backend.workers.spawn_blocking(diagnostic_task);
+        info!(
+            "Computed diagnostics: {:?}",
+            diagnostics_map.keys().collect::<Vec<_>>()
+        );
+        for uri in diagnostics_map.keys() {
+            let diagnostic = diagnostics_map.get(uri).cloned().unwrap_or_default();
+            let diagnostics_params = async_lsp::lsp_types::PublishDiagnosticsParams {
+                uri: uri.clone(),
+                diagnostics: diagnostic,
+                version: None,
+            };
+            info!("Publishing diagnostics for URI: {:?}", uri);
+            client.publish_diagnostics(diagnostics_params).unwrap();
+        }
     }
     Ok(())
 }
@@ -246,22 +243,22 @@ pub async fn handle_hover_request(
     backend: &Backend,
     message: HoverParams,
 ) -> Result<Option<Hover>, ResponseError> {
-    let file = backend.workspace.get_input_for_file_path(
-        message
-            .text_document_position_params
-            .text_document
-            .uri
-            .path(),
-    );
+    let path = message
+        .text_document_position_params
+        .text_document
+        .uri
+        .path();
+
+    let Some((ingot, file)) = backend.workspace.get_input_for_file_path(path) else {
+        warn!("handle_hover_request failed to get file for path: `{path}`");
+        return Ok(None);
+    };
+
     info!("handling hover request in file: {:?}", file);
-
-    let response = file.and_then(|file| {
-        hover_helper(&backend.db, file, message).unwrap_or_else(|e| {
-            error!("Error handling hover: {:?}", e);
-            None
-        })
+    let response = hover_helper(&backend.db, ingot, file, message).unwrap_or_else(|e| {
+        error!("Error handling hover: {:?}", e);
+        None
     });
-
     info!("sending hover response: {:?}", response);
     Ok(response)
 }

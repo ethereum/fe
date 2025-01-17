@@ -6,7 +6,8 @@ use crate::lsp_actor::LspActor;
 use crate::lsp_streams::RouterStreams;
 use act_locally::builder::ActorBuilder;
 use async_lsp::lsp_types::notification::{
-    self, DidChangeTextDocument, DidChangeWatchedFiles, DidOpenTextDocument, Initialized,
+    self, DidChangeTextDocument, DidChangeWatchedFiles, DidOpenTextDocument, DidSaveTextDocument,
+    Initialized,
 };
 use async_lsp::lsp_types::request::{GotoDefinition, HoverRequest};
 use async_lsp::ClientSocket;
@@ -49,6 +50,7 @@ pub(crate) fn setup(
         .handle_notification::<DidOpenTextDocument>(handlers::handle_did_open_text_document)
         .handle_notification::<DidChangeTextDocument>(handlers::handle_did_change_text_document)
         .handle_notification::<DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)
+        .handle_notification::<DidSaveTextDocument>(handlers::handle_did_save_text_document)
         .handle_notification::<notification::Exit>(handlers::handle_exit);
 
     let mut streaming_router = Router::new(());

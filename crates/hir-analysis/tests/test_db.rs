@@ -10,57 +10,66 @@ use codespan_reporting::{
 };
 use common::{
     diagnostics::Span,
+    impl_db_traits,
     indexmap::{IndexMap, IndexSet},
     input::{IngotKind, Version},
-    InputFile, InputIngot,
+    InputDb, InputFile, InputIngot,
 };
-use driver::{diagnostics::ToCsDiag, CsDbWrapper};
+use driver::{diagnostics::ToCsDiag, CsDbWrapper, DriverDb};
 use fe_hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
         ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
+    HirAnalysisDb,
 };
 use hir::{
     analysis_pass::AnalysisPassManager,
     hir_def::TopLevelMod,
     lower,
     span::{DynLazySpan, LazySpan},
-    ParsingPass, SpannedHirDb,
+    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
-use salsa::DbWithJar;
 
 type CodeSpanFileId = usize;
 
-#[derive(Default)]
-#[salsa::db(
-    common::Jar,
-    hir::Jar,
-    hir::SpannedJar,
-    hir::LowerJar,
-    fe_hir_analysis::Jar,
-    driver::Jar
-)]
+#[derive(Default, Clone)]
+#[salsa::db]
 pub struct HirAnalysisTestDb {
     storage: salsa::Storage<Self>,
 }
+impl_db_traits!(
+    HirAnalysisTestDb,
+    InputDb,
+    HirDb,
+    LowerHirDb,
+    SpannedHirDb,
+    HirAnalysisDb,
+    DriverDb,
+);
 
+// https://github.com/rust-lang/rust/issues/46379
+#[allow(dead_code)]
 impl HirAnalysisTestDb {
-    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> InputFile {
+    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> (InputIngot, InputFile) {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
         let ingot = InputIngot::new(self, file_name, kind, version, IndexSet::default());
-        let root = InputFile::new(self, ingot, file_name.into(), text.to_string());
+        let root = InputFile::new(self, file_name.into(), text.to_string());
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into_iter().collect());
-        root
+        (ingot, root)
     }
 
-    pub fn top_mod(&self, input: InputFile) -> (TopLevelMod, HirPropertyFormatter) {
+    pub fn top_mod(
+        &self,
+        ingot: InputIngot,
+        input: InputFile,
+    ) -> (TopLevelMod, HirPropertyFormatter) {
         let mut prop_formatter = HirPropertyFormatter::default();
-        let top_mod = self.register_file(&mut prop_formatter, input);
+        let top_mod = self.register_file(&mut prop_formatter, ingot, input);
         (top_mod, prop_formatter)
     }
 
@@ -81,9 +90,14 @@ impl HirAnalysisTestDb {
             });
 
             for diag in diags {
-                let cs_db = DbWithJar::<driver::Jar>::as_jar_db(self);
                 let cs_diag = &diag.to_cs(self);
-                term::emit(&mut buffer, &config, &CsDbWrapper(cs_db), cs_diag).unwrap();
+                term::emit(
+                    &mut buffer,
+                    &config,
+                    &CsDbWrapper(self.as_driver_db()),
+                    cs_diag,
+                )
+                .unwrap();
             }
             eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 
@@ -94,9 +108,10 @@ impl HirAnalysisTestDb {
     fn register_file<'db>(
         &'db self,
         prop_formatter: &mut HirPropertyFormatter<'db>,
+        ingot: InputIngot,
         input_file: InputFile,
     ) -> TopLevelMod<'db> {
-        let top_mod = lower::map_file_to_mod(self, input_file);
+        let top_mod = lower::map_file_to_mod(self, ingot, input_file);
         let path = input_file.path(self);
         let text = input_file.text(self);
         prop_formatter.register_top_mod(path.as_str(), text, top_mod);
@@ -112,9 +127,9 @@ pub struct HirPropertyFormatter<'db> {
     code_span_files: SimpleFiles<String, String>,
 }
 
+// https://github.com/rust-lang/rust/issues/46379
+#[allow(dead_code)]
 impl<'db> HirPropertyFormatter<'db> {
-    // https://github.com/rust-lang/rust/issues/46379
-    #[allow(dead_code)]
     pub fn push_prop(&mut self, top_mod: TopLevelMod<'db>, span: DynLazySpan<'db>, prop: String) {
         self.properties
             .entry(top_mod)
@@ -122,8 +137,6 @@ impl<'db> HirPropertyFormatter<'db> {
             .push((prop, span));
     }
 
-    // https://github.com/rust-lang/rust/issues/46379
-    #[allow(dead_code)]
     pub fn finish(&mut self, db: &'db dyn SpannedHirDb) -> String {
         let writer = BufferWriter::stderr(ColorChoice::Never);
         let mut buffer = writer.buffer();
@@ -178,10 +191,6 @@ impl Default for HirPropertyFormatter<'_> {
             code_span_files: SimpleFiles::new(),
         }
     }
-}
-
-impl salsa::Database for HirAnalysisTestDb {
-    fn salsa_event(&self, _: salsa::Event) {}
 }
 
 fn initialize_analysis_pass(db: &HirAnalysisTestDb) -> AnalysisPassManager<'_> {
