@@ -1,0 +1,9 @@
+pub trait Trait {}
+
+pub struct Foo<const U: u32> 
+where U: Trait
+{}
+
+pub fn foo<const U: bool>()
+where U: Trait
+{}

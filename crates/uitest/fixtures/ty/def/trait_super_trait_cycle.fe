@@ -1,0 +1,7 @@
+pub trait Foo: Bar {}
+
+pub trait Bar
+where Self: Baz
+{}
+
+pub trait Baz: Foo {}

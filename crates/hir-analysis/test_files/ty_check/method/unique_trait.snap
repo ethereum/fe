@@ -1,0 +1,40 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/method/unique_trait.fe
+---
+note: 
+  ┌─ unique_trait.fe:2:23
+  │  
+2 │   fn foo(x: i32) -> i32 {
+  │ ╭───────────────────────^
+3 │ │     x.foo()
+4 │ │ }
+  │ ╰─^ i32
+
+note: 
+  ┌─ unique_trait.fe:3:5
+  │
+3 │     x.foo()
+  │     ^ i32
+
+note: 
+  ┌─ unique_trait.fe:3:5
+  │
+3 │     x.foo()
+  │     ^^^^^^^ i32
+
+note: 
+   ┌─ unique_trait.fe:12:29
+   │  
+12 │           fn foo(self) -> i32 {
+   │ ╭─────────────────────────────^
+13 │ │             self
+14 │ │         }
+   │ ╰─────────^ i32
+
+note: 
+   ┌─ unique_trait.fe:13:13
+   │
+13 │             self
+   │             ^^^^ i32

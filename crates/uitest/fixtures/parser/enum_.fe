@@ -1,0 +1,6 @@
+pub enum MyEnum<T> {
+    X(u32, T
+    A
+    Y(T, u32) A
+    Z
+}

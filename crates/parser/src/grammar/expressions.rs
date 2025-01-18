@@ -1,6 +1,8 @@
-use crate::ast::{self, CallArg, Expr, GenericArg, Path};
-use crate::node::Node;
-use crate::{Label, ParseFailed, ParseResult, Parser, Token, TokenKind};
+use crate::{
+    ast::{self, CallArg, Expr, GenericArg, Path},
+    node::Node,
+    Label, ParseFailed, ParseResult, Parser, Token, TokenKind,
+};
 
 use super::types::parse_generic_args;
 

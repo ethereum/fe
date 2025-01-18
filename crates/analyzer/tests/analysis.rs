@@ -1,15 +1,21 @@
-use fe_analyzer::display::Displayable;
-use fe_analyzer::namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef};
-use fe_analyzer::{AnalyzerDb, TestDb};
-use fe_common::diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity};
-use fe_common::files::{FileKind, Utf8Path};
-use fe_common::utils::files::BuildFiles;
+use fe_analyzer::{
+    display::Displayable,
+    namespace::items::{self, IngotId, IngotMode, Item, ModuleId, TypeDef},
+    AnalyzerDb, TestDb,
+};
+use fe_common::{
+    diagnostics::{diagnostics_string, print_diagnostics, Diagnostic, Label, Severity},
+    files::{FileKind, Utf8Path},
+    utils::files::BuildFiles,
+};
 use fe_parser::node::{NodeId, Span};
 use indexmap::IndexMap;
 use insta::assert_snapshot;
 use smallvec::SmallVec;
-use std::collections::{HashMap, VecDeque};
-use std::fmt::Display;
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt::Display,
+};
 use wasm_bindgen_test::wasm_bindgen_test;
 
 #[test]
@@ -161,7 +167,7 @@ impl<'a> ModuleIter<'a> {
     }
 }
 
-impl<'a> Iterator for ModuleIter<'a> {
+impl Iterator for ModuleIter<'_> {
     type Item = ModuleId;
     fn next(&mut self) -> Option<ModuleId> {
         if let Some(modid) = self.emit.pop_front() {

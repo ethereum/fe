@@ -11,11 +11,13 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  RUSTFLAGS: "-D warnings"
+  RUST_BACKTRACE: full
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
     steps:
       - uses: actions/checkout@v3
       - name: Install system dependencies
@@ -102,7 +104,7 @@ jobs:
         # wasm-pack needs a Cargo.toml with a 'package' field.
         # (see https://github.com/rustwasm/wasm-pack/issues/642)
         # This will still run all tests in the workspace.
-        run: wasm-pack test --node crates/fe --workspace
+        run: wasm-pack test --node crates/fe --workspace --exclude fe-language-server
 
   release:
     # Only run this when we push a tag

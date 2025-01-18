@@ -1,10 +1,12 @@
-use fe_common::db::TestDb;
-use fe_common::diagnostics::print_diagnostics;
-use fe_common::utils::ron::to_ron_string_pretty;
-use fe_common::SourceFileId;
-use fe_parser::grammar::{expressions, functions, module, types};
-use fe_parser::node::Node;
-use fe_parser::{ast, ParseResult, Parser};
+use fe_common::{
+    db::TestDb, diagnostics::print_diagnostics, utils::ron::to_ron_string_pretty, SourceFileId,
+};
+use fe_parser::{
+    ast,
+    grammar::{expressions, functions, module, types},
+    node::Node,
+    ParseResult, Parser,
+};
 use insta::assert_snapshot;
 use serde::Serialize;
 use wasm_bindgen_test::wasm_bindgen_test;

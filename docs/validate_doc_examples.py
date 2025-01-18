@@ -17,17 +17,17 @@ CODE_SNIPPET_END_MARKER = '```'
 
 class CodeSnippet(NamedTuple):
     path: pathlib.Path
-    index: int
+    idx: int
     content: str
 
     def append_content(self, line: str) -> 'CodeSnippet':
-        return CodeSnippet(path=self.path, index=self.index, content=self.content + line)
+        return CodeSnippet(path=self.path, idx=self.idx, content=self.content + line)
 
     def get_snippet_hash(self) -> str:
         return hashlib.sha1(self.content.encode('utf-8')).hexdigest()
 
     def unique_name(self) -> str:
-        return f"{self.path.name}_{self.index}.fe"
+        return f"{self.path.name}_{self.idx}.fe"
 
 def get_all_doc_files() -> Iterable[pathlib.Path]:
     for path in BOOK_SRC_DIR.rglob('*.md'):
@@ -43,7 +43,7 @@ def get_all_snippets_in_file(path: pathlib.Path) -> Iterable[CodeSnippet]:
         snippet_index = 0
         for line in lines:
             if 'ignore' not in line and line.strip().startswith(CODE_SNIPPET_START_MARKER):
-                snippet = CodeSnippet(path=path, index=snippet_index, content='')
+                snippet = CodeSnippet(path=path, idx=snippet_index, content='')
                 snippet_index += 1
             elif line.strip().startswith(CODE_SNIPPET_END_MARKER):
                 if snippet != None:

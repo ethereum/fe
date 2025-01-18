@@ -1,21 +1,26 @@
 #![allow(unstable_name_collisions)] // expect_none, which ain't gonna be stabilized
 
-use crate::context::{
-    AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
+use crate::{
+    context::{
+        AnalyzerContext, CallType, Constant, ExpressionAttributes, FunctionBody, NamedThing,
+    },
+    errors::{AlreadyDefined, FatalError, IncompleteItem, TypeError},
+    namespace::{
+        items::{FunctionId, Item, ModuleId, TypeDef},
+        types::{Type, TypeId},
+    },
+    pattern_analysis::PatternMatrix,
+    AnalyzerDb,
 };
-use crate::errors::{AlreadyDefined, FatalError, IncompleteItem, TypeError};
-use crate::namespace::items::{FunctionId, ModuleId};
-use crate::namespace::items::{Item, TypeDef};
-use crate::namespace::types::{Type, TypeId};
-use crate::pattern_analysis::PatternMatrix;
-use crate::AnalyzerDb;
-use fe_common::diagnostics::Diagnostic;
-use fe_common::Span;
-use fe_parser::{ast, node::NodeId, Label};
-use fe_parser::{ast::Expr, node::Node};
+use fe_common::{diagnostics::Diagnostic, Span};
+use fe_parser::{
+    ast,
+    ast::Expr,
+    node::{Node, NodeId},
+    Label,
+};
 use indexmap::IndexMap;
-use std::cell::RefCell;
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap};
 
 pub struct ItemScope<'a> {
     db: &'a dyn AnalyzerDb,
@@ -34,7 +39,7 @@ impl<'a> ItemScope<'a> {
     }
 }
 
-impl<'a> AnalyzerContext for ItemScope<'a> {
+impl AnalyzerContext for ItemScope<'_> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.db
     }
@@ -230,7 +235,7 @@ impl<'a> FunctionScope<'a> {
     }
 }
 
-impl<'a> AnalyzerContext for FunctionScope<'a> {
+impl AnalyzerContext for FunctionScope<'_> {
     fn db(&self) -> &dyn AnalyzerDb {
         self.db
     }
@@ -546,7 +551,7 @@ impl AnalyzerContext for BlockScope<'_, '_> {
     }
 
     fn inherits_type(&self, typ: BlockScopeType) -> bool {
-        self.typ == typ || self.parent.map_or(false, |scope| scope.inherits_type(typ))
+        self.typ == typ || self.parent.is_some_and(|scope| scope.inherits_type(typ))
     }
 
     fn resolve_path(&self, path: &ast::Path, span: Span) -> Result<NamedThing, FatalError> {

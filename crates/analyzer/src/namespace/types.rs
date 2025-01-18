@@ -1,20 +1,18 @@
-use crate::context::AnalyzerContext;
-use crate::display::DisplayWithDb;
-use crate::display::Displayable;
-use crate::errors::TypeError;
-use crate::namespace::items::{
-    ContractId, EnumId, FunctionId, FunctionSigId, ImplId, Item, StructId, TraitId,
+use crate::{
+    context::AnalyzerContext,
+    display::{DisplayWithDb, Displayable},
+    errors::TypeError,
+    namespace::items::{
+        ContractId, EnumId, FunctionId, FunctionSigId, ImplId, Item, StructId, TraitId,
+    },
+    AnalyzerDb,
 };
-use crate::AnalyzerDb;
 
-use fe_common::impl_intern_key;
-use fe_common::Span;
+use fe_common::{impl_intern_key, Span};
 use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 use smol_str::SmolStr;
-use std::fmt;
-use std::rc::Rc;
-use std::str::FromStr;
+use std::{fmt, rc::Rc, str::FromStr};
 use strum::{AsRefStr, EnumIter, EnumString};
 
 pub fn u256_min() -> BigInt {
@@ -189,9 +187,10 @@ impl TypeId {
         db.impl_for(*self, trait_)
     }
 
-    /// Looks up all possible candidates of the given function name that are implemented via traits.
-    /// Groups results in two lists, the first contains all theoretical possible candidates and
-    /// the second contains only those that are actually callable because the trait is in scope.
+    /// Looks up all possible candidates of the given function name that are
+    /// implemented via traits. Groups results in two lists, the first
+    /// contains all theoretical possible candidates and the second contains
+    /// only those that are actually callable because the trait is in scope.
     pub fn trait_function_candidates(
         &self,
         context: &mut dyn AnalyzerContext,
@@ -222,8 +221,8 @@ impl TypeId {
         (candidates, in_scope_candidates)
     }
 
-    /// Signature for the function with the given name defined directly on the type.
-    /// Does not consider trait impls.
+    /// Signature for the function with the given name defined directly on the
+    /// type. Does not consider trait impls.
     pub fn function_sig(&self, db: &dyn AnalyzerDb, name: &str) -> Option<FunctionSigId> {
         match self.typ(db) {
             Type::SPtr(inner) => inner.function_sig(db, name),

@@ -3,6 +3,7 @@ use std::fmt::Write;
 use fe_common::Span;
 use fe_parser::{ast::MatchArm, node::Node, Label};
 
+use super::pattern_analysis::{PatternMatrix, SimplifiedPattern};
 use crate::{
     context::AnalyzerContext,
     display::Displayable,
@@ -10,8 +11,6 @@ use crate::{
     namespace::{scopes::BlockScope, types::TypeId},
     AnalyzerDb,
 };
-
-use super::pattern_analysis::{PatternMatrix, SimplifiedPattern};
 
 pub(super) fn check_match_exhaustiveness(
     scope: &mut BlockScope,

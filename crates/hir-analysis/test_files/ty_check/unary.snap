@@ -1,0 +1,89 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/unary.fe
+---
+note: 
+  ┌─ unary.fe:1:20
+  │  
+1 │   pub fn foo(x: i32) {
+  │ ╭────────────────────^
+2 │ │     let i1: i32 = +1
+3 │ │     let i2 = -i1
+4 │ │     let i3 = ~i2
+5 │ │ 
+6 │ │     let b = !false
+7 │ │ }
+  │ ╰─^ ()
+
+note: 
+  ┌─ unary.fe:2:9
+  │
+2 │     let i1: i32 = +1
+  │         ^^ i32
+
+note: 
+  ┌─ unary.fe:2:19
+  │
+2 │     let i1: i32 = +1
+  │                   ^^ i32
+
+note: 
+  ┌─ unary.fe:2:20
+  │
+2 │     let i1: i32 = +1
+  │                    ^ i32
+
+note: 
+  ┌─ unary.fe:3:9
+  │
+3 │     let i2 = -i1
+  │         ^^ i32
+
+note: 
+  ┌─ unary.fe:3:14
+  │
+3 │     let i2 = -i1
+  │              ^^^ i32
+
+note: 
+  ┌─ unary.fe:3:15
+  │
+3 │     let i2 = -i1
+  │               ^^ i32
+
+note: 
+  ┌─ unary.fe:4:9
+  │
+4 │     let i3 = ~i2
+  │         ^^ i32
+
+note: 
+  ┌─ unary.fe:4:14
+  │
+4 │     let i3 = ~i2
+  │              ^^^ i32
+
+note: 
+  ┌─ unary.fe:4:15
+  │
+4 │     let i3 = ~i2
+  │               ^^ i32
+
+note: 
+  ┌─ unary.fe:6:9
+  │
+6 │     let b = !false
+  │         ^ bool
+
+note: 
+  ┌─ unary.fe:6:13
+  │
+6 │     let b = !false
+  │             ^^^^^^ bool
+
+note: 
+  ┌─ unary.fe:6:14
+  │
+6 │     let b = !false
+  │              ^^^^^ bool

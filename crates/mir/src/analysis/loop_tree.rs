@@ -1,9 +1,7 @@
+use fxhash::FxHashMap;
 use id_arena::{Arena, Id};
 
-use fxhash::FxHashMap;
-
 use super::{cfg::ControlFlowGraph, domtree::DomTree};
-
 use crate::ir::BasicBlockId;
 
 #[derive(Debug, Default, Clone)]
@@ -193,7 +191,7 @@ impl<'a, 'b> BlocksInLoopPostOrder<'a, 'b> {
     }
 }
 
-impl<'a, 'b> Iterator for BlocksInLoopPostOrder<'a, 'b> {
+impl Iterator for BlocksInLoopPostOrder<'_, '_> {
     type Item = BasicBlockId;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -239,7 +237,6 @@ enum BlockState {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::ir::{body_builder::BodyBuilder, FunctionBody, FunctionId, SourceInfo, TypeId};
 
     fn compute_loop(func: &FunctionBody) -> LoopTree {

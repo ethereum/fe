@@ -1,0 +1,30 @@
+pub struct Gen<T, U> {
+    t: T,
+    u: U,
+}
+
+pub struct MyS {
+    f: Gen<i32>,
+    u: (i32, i32),
+}
+
+pub enum MyE {
+    Variant(Gen<i32>, Gen<u32>),
+    Variant2{ x: Gen<i32, u32>, y: Gen<u32> },
+}
+
+pub contract MyC {
+    f: Gen<i32>,
+}
+
+
+impl Gen<T> {
+    fn foo(self) {}
+
+    fn bar(self: Self) {}
+}
+
+
+fn foo(gen: Gen) {}
+
+fn foo(gen: Gen<i32>) -> Gen {}

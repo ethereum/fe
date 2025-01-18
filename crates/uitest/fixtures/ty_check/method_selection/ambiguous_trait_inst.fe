@@ -1,0 +1,24 @@
+pub struct Foo<T> {
+    t: T
+}
+
+trait Trait<T> {
+    fn foo(self) -> T
+}
+
+impl Trait<i32> for Foo<u32> {
+    fn foo(self) -> i32 {
+        0
+    }
+}
+
+impl Trait<u32> for Foo<u32> {
+    fn foo(self) -> u32 {
+        self.t
+    }
+}
+
+fn run(x: u32) {
+    let f = Foo { t: x }
+    let y = f.foo()
+}

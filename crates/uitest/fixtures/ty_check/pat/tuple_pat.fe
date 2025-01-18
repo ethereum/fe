@@ -1,0 +1,6 @@
+fn foo() {
+    let (x, y, z): (i32, u32)
+    let (.., x, y, z): (i32, u32)
+    let (x, y, .., z): (i32, u32)
+    let (x, y, z, ..): (i32, u32)
+}

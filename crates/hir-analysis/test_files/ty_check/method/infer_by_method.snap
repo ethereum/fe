@@ -1,0 +1,106 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/method/infer_by_method.fe
+---
+note: 
+  ┌─ infer_by_method.fe:7:18
+  │
+7 │     fn foo(self) {}
+  │                  ^^ ()
+
+note: 
+   ┌─ infer_by_method.fe:11:28
+   │  
+11 │       fn bool_true() -> Self {
+   │ ╭────────────────────────────^
+12 │ │         Self::Some(())
+13 │ │     }
+   │ ╰─────^ Option<()>
+
+note: 
+   ┌─ infer_by_method.fe:12:9
+   │
+12 │         Self::Some(())
+   │         ^^^^^^^^^^ fn Some<()>
+
+note: 
+   ┌─ infer_by_method.fe:12:9
+   │
+12 │         Self::Some(())
+   │         ^^^^^^^^^^^^^^ Option<()>
+
+note: 
+   ┌─ infer_by_method.fe:12:20
+   │
+12 │         Self::Some(())
+   │                    ^^ ()
+
+note: 
+   ┌─ infer_by_method.fe:14:29
+   │  
+14 │       fn bool_false() -> Self {
+   │ ╭─────────────────────────────^
+15 │ │         Self::None
+16 │ │     }
+   │ ╰─────^ Option<()>
+
+note: 
+   ┌─ infer_by_method.fe:15:9
+   │
+15 │         Self::None
+   │         ^^^^^^^^^^ Option<()>
+
+note: 
+   ┌─ infer_by_method.fe:19:10
+   │  
+19 │   fn foo() {
+   │ ╭──────────^
+20 │ │     let x = Option::None
+21 │ │     x.foo()
+22 │ │ 
+23 │ │     let b = Option::bool_true()
+24 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ infer_by_method.fe:20:9
+   │
+20 │     let x = Option::None
+   │         ^ Option<i32>
+
+note: 
+   ┌─ infer_by_method.fe:20:13
+   │
+20 │     let x = Option::None
+   │             ^^^^^^^^^^^^ Option<i32>
+
+note: 
+   ┌─ infer_by_method.fe:21:5
+   │
+21 │     x.foo()
+   │     ^ Option<i32>
+
+note: 
+   ┌─ infer_by_method.fe:21:5
+   │
+21 │     x.foo()
+   │     ^^^^^^^ ()
+
+note: 
+   ┌─ infer_by_method.fe:23:9
+   │
+23 │     let b = Option::bool_true()
+   │         ^ Option<()>
+
+note: 
+   ┌─ infer_by_method.fe:23:13
+   │
+23 │     let b = Option::bool_true()
+   │             ^^^^^^^^^^^^^^^^^ fn bool_true
+
+note: 
+   ┌─ infer_by_method.fe:23:13
+   │
+23 │     let b = Option::bool_true()
+   │             ^^^^^^^^^^^^^^^^^^^ Option<()>

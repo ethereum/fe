@@ -1,11 +1,14 @@
-use crate::ast::{
-    self, Enum, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc, Variant, VariantKind,
+use crate::{
+    ast::{
+        self, Enum, Field, GenericArg, Impl, Path, Trait, TypeAlias, TypeDesc, Variant, VariantKind,
+    },
+    grammar::{
+        expressions::parse_expr,
+        functions::{parse_fn_def, parse_fn_sig},
+    },
+    node::{Node, Span},
+    ParseFailed, ParseResult, Parser, Token, TokenKind,
 };
-use crate::grammar::expressions::parse_expr;
-use crate::grammar::functions::{parse_fn_def, parse_fn_sig};
-use crate::node::{Node, Span};
-use crate::Token;
-use crate::{ParseFailed, ParseResult, Parser, TokenKind};
 use fe_common::diagnostics::Label;
 use if_chain::if_chain;
 use smol_str::SmolStr;
@@ -34,7 +37,8 @@ pub fn parse_struct_def(
         let attributes = if let Some(attr) = par.optional(TokenKind::Hash) {
             let attr_name = par.expect_with_notes(TokenKind::Name, "failed to parse attribute definition", |_|
                 vec!["Note: an attribute name must start with a letter or underscore, and contain letters, numbers, or underscores".into()])?;
-            // This hints to a future where we would support multiple attributes per field. For now we don't need it.
+            // This hints to a future where we would support multiple attributes per field.
+            // For now we don't need it.
             vec![Node::new(attr_name.text.into(), attr.span + attr_name.span)]
         } else {
             vec![]

@@ -1,0 +1,33 @@
+fn foo() {
+    struct Foo {}
+
+    {
+        struct Foo {}
+        let f: Foo 
+    }
+    
+    let f: Foo
+}
+
+fn bar() {
+    struct Bar {}
+
+    let x: i32 = {
+        {
+            struct Bar {}
+
+            impl Bar {
+                fn len() -> u256 {
+                    1
+                }
+            }
+            let bar: Bar = Bar {}
+        }
+        
+        struct Bar {}
+        let bar: Bar = Bar {}
+        1
+    }
+    
+    let bar: Bar = Bar {}
+}

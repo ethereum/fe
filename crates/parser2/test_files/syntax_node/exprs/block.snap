@@ -1,0 +1,66 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: node
+input_file: crates/parser2/test_files/syntax_node/exprs/block.fe
+---
+Root@0..75
+  BlockExpr@0..75
+    LBrace@0..1 "{"
+    Newline@1..2 "\n"
+    WhiteSpace@2..6 "    "
+    Item@6..20
+      Use@6..20
+        UseKw@6..9 "use"
+        WhiteSpace@9..10 " "
+        UseTree@10..20
+          UsePath@10..20
+            UsePathSegment@10..15
+              SuperKw@10..15 "super"
+            Colon2@15..17 "::"
+            UsePathSegment@17..20
+              Ident@17..20 "Foo"
+    Newline@20..21 "\n"
+    WhiteSpace@21..25 "    "
+    Item@25..38
+      Struct@25..38
+        StructKw@25..31 "struct"
+        WhiteSpace@31..32 " "
+        Ident@32..35 "Foo"
+        WhiteSpace@35..36 " "
+        RecordFieldDefList@36..38
+          LBrace@36..37 "{"
+          RBrace@37..38 "}"
+    Newline@38..39 "\n"
+    WhiteSpace@39..43 "    "
+    Item@43..54
+      Func@43..54
+        FnKw@43..45 "fn"
+        WhiteSpace@45..46 " "
+        Ident@46..49 "foo"
+        FuncParamList@49..51
+          LParen@49..50 "("
+          RParen@50..51 ")"
+        WhiteSpace@51..52 " "
+        BlockExpr@52..54
+          LBrace@52..53 "{"
+          RBrace@53..54 "}"
+    Newline@54..55 "\n"
+    WhiteSpace@55..59 "    "
+    Newline@59..60 "\n"
+    WhiteSpace@60..64 "    "
+    LetStmt@64..73
+      LetKw@64..67 "let"
+      WhiteSpace@67..68 " "
+      PathPat@68..69
+        Path@68..69
+          PathSegment@68..69
+            Ident@68..69 "x"
+      WhiteSpace@69..70 " "
+      Eq@70..71 "="
+      WhiteSpace@71..72 " "
+      LitExpr@72..73
+        Lit@72..73
+          Int@72..73 "1"
+    Newline@73..74 "\n"
+    RBrace@74..75 "}"
+

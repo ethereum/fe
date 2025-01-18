@@ -1,0 +1,39 @@
+struct Foo {
+    x: i32,
+    y: String<10>
+}
+
+fn foo() { 
+    let x = 1
+    let y = "FOO"
+
+    let f = Foo {x, y}
+    
+    let f2 = Foo {x: 1, y: "FOO"}
+
+    let f3 = Foo {y: "FOO", x: 1}
+}
+
+struct Bar<T, U> {
+    t: T,
+    u: U
+}
+
+fn foo2<Z>(b: bool, z: Z) {
+    let t = false
+    let u = "Bar"
+    let f = Bar {t, u}
+    
+    let f2 = Bar {t: z, u: f}
+}
+
+struct Wrapper<T, U>
+where T: * -> * -> *
+{
+    t: T<i32, U>
+}
+
+fn foo3() {
+    let bar = Bar { t: 1, u: false }
+    let x = Wrapper { t: bar }
+}

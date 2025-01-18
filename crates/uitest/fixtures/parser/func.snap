@@ -1,0 +1,54 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/func.fe
+---
+error[1-0001]: unexpected syntax while parsing function definition
+  ┌─ func.fe:1:17
+  │
+1 │ fn foo<T: Trait>>(x: i32, _ mut y: u32, z: u32) ->  T, u where T: Trait2
+  │                 ^ unexpected
+
+error[1-0001]: unexpected syntax while parsing function parameter
+  ┌─ func.fe:1:29
+  │
+1 │ fn foo<T: Trait>>(x: i32, _ mut y: u32, z: u32) ->  T, u where T: Trait2
+  │                             ^^^ unexpected
+
+error[1-0001]: unexpected syntax while parsing function definition
+  ┌─ func.fe:1:54
+  │
+1 │ fn foo<T: Trait>>(x: i32, _ mut y: u32, z: u32) ->  T, u where T: Trait2
+  │                                                      ^^^ unexpected
+
+error[1-0001]: unexpected syntax while parsing generic parameter list
+  ┌─ func.fe:6:8
+  │
+6 │ fn foo<<<T: Trait>(x: i32)
+  │        ^^ unexpected
+
+error[1-0001]: expected trait name
+   ┌─ func.fe:12:10
+   │
+12 │ fn bar<T: @>()
+   │          ^ expected trait name
+
+error[1-0001]: unexpected syntax while parsing trait name
+   ┌─ func.fe:12:11
+   │
+12 │ fn bar<T: @>()
+   │           ^ unexpected
+
+error[1-0001]: expected trait name
+   ┌─ func.fe:13:13
+   │
+13 │     where T: 75 {}
+   │             ^ expected trait name
+
+error[1-0001]: unexpected syntax while parsing trait name
+   ┌─ func.fe:13:14
+   │
+13 │     where T: 75 {}
+   │              ^^ unexpected
+
+

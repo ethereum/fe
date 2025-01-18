@@ -1,0 +1,48 @@
+pub struct Inner {
+    x: i32,
+    y: u32,
+}
+
+pub struct Outer {
+    inner: Inner,
+}
+
+pub enum Option<T> {
+    Some(T),
+    None
+}
+
+pub struct Gen<T> {
+    t: T
+}
+
+impl Outer {
+    fn set_inner(mut self, x: i32, y: u32) {
+        self.inner = Inner { x, y }
+    } 
+}
+
+pub fn foo(opt: Option<i32>) {
+    let mut x = 1
+    let y = 2
+
+    let z = x = 2
+
+    let mut arr = [false; 10]
+    arr[1] = true
+    
+    let mut tuple = (true, false, Inner { x, y })
+    tuple.2.x = 1
+
+    let mut outer = Outer { inner: Inner { x, y } }
+    outer.inner.x = 2
+    
+    match opt {
+        Option::Some(mut x) => {
+            x = 2
+        }
+        Option::None => {}
+    }
+    
+    Gen { t: false }.t = true
+}

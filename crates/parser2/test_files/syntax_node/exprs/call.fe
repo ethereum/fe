@@ -1,0 +1,14 @@
+foo()
+foo::Bar()
+foo(x: 1, z: 3)
+foo(x: 1, z: 3)
+foo(x: 1, 2, z: 3)
+foo(1, y: 2, z: 3)
+
+foo<i32, foo::MyType>(val1: 2, val2: "String")
+foo<[u32; 1], {3 + 4}>(x: 1, y: 2)
+
+foo::bar<T, U>(x)
+
+// Ths should be parsed as `(foo<i32, (u32)>(1))`, not a tuple expression.
+(foo < i32, (u32) > (1))

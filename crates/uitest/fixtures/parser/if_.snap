@@ -1,0 +1,30 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/if_.fe
+---
+error[1-0001]: unexpected syntax while parsing `if` expression
+  ┌─ if_.fe:3:6
+  │
+3 │ if x y {
+  │      ^ unexpected
+
+error[1-0001]: unexpected syntax while parsing `if` expression
+  ┌─ if_.fe:8:8
+  │
+8 │ } else x {}
+  │        ^ unexpected
+
+error[1-0001]: unexpected syntax while parsing `if` expression
+   ┌─ if_.fe:10:15
+   │
+10 │ if x { } else x if x { } else { }
+   │               ^ unexpected
+
+error[1-0001]: expected expression
+   ┌─ if_.fe:14:1
+   │
+14 │ else {
+   │ ^ expected expression
+
+

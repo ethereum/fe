@@ -1,0 +1,210 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/for_.fe
+---
+note: 
+   ┌─ for_.fe:6:18
+   │  
+ 6 │   fn foo() -> i256 {
+   │ ╭──────────────────^
+ 7 │ │     let arr = [1, 2, 3, 4, 5]
+ 8 │ │     let mut res = 0
+ 9 │ │     for i in arr {
+   · │
+13 │ │     res
+14 │ │ }
+   │ ╰─^ i256
+
+note: 
+  ┌─ for_.fe:7:9
+  │
+7 │     let arr = [1, 2, 3, 4, 5]
+  │         ^^^ [i256; 5]
+
+note: 
+  ┌─ for_.fe:7:15
+  │
+7 │     let arr = [1, 2, 3, 4, 5]
+  │               ^^^^^^^^^^^^^^^ [i256; 5]
+
+note: 
+  ┌─ for_.fe:7:16
+  │
+7 │     let arr = [1, 2, 3, 4, 5]
+  │                ^ i256
+
+note: 
+  ┌─ for_.fe:7:19
+  │
+7 │     let arr = [1, 2, 3, 4, 5]
+  │                   ^ i256
+
+note: 
+  ┌─ for_.fe:7:22
+  │
+7 │     let arr = [1, 2, 3, 4, 5]
+  │                      ^ i256
+
+note: 
+  ┌─ for_.fe:7:25
+  │
+7 │     let arr = [1, 2, 3, 4, 5]
+  │                         ^ i256
+
+note: 
+  ┌─ for_.fe:7:28
+  │
+7 │     let arr = [1, 2, 3, 4, 5]
+  │                            ^ i256
+
+note: 
+  ┌─ for_.fe:8:9
+  │
+8 │     let mut res = 0
+  │         ^^^^^^^ i256
+
+note: 
+  ┌─ for_.fe:8:19
+  │
+8 │     let mut res = 0
+  │                   ^ i256
+
+note: 
+  ┌─ for_.fe:9:9
+  │
+9 │     for i in arr {
+  │         ^ i256
+
+note: 
+  ┌─ for_.fe:9:14
+  │
+9 │     for i in arr {
+  │              ^^^ [i256; 5]
+
+note: 
+   ┌─ for_.fe:9:18
+   │  
+ 9 │       for i in arr {
+   │ ╭──────────────────^
+10 │ │         res += i
+11 │ │     }
+   │ ╰─────^ ()
+
+note: 
+   ┌─ for_.fe:10:9
+   │
+10 │         res += i
+   │         ^^^ i256
+
+note: 
+   ┌─ for_.fe:10:9
+   │
+10 │         res += i
+   │         ^^^^^^^^ ()
+
+note: 
+   ┌─ for_.fe:10:16
+   │
+10 │         res += i
+   │                ^ i256
+
+note: 
+   ┌─ for_.fe:13:5
+   │
+13 │     res
+   │     ^^^ i256
+
+note: 
+   ┌─ for_.fe:16:35
+   │  
+16 │   fn bar(foo_arr: [Foo; 10]) -> i32 {
+   │ ╭───────────────────────────────────^
+17 │ │     let mut res = 0
+18 │ │     for Foo {x, y} in foo_arr {
+19 │ │         res += x + y
+   · │
+22 │ │     res
+23 │ │ }
+   │ ╰─^ i32
+
+note: 
+   ┌─ for_.fe:17:9
+   │
+17 │     let mut res = 0
+   │         ^^^^^^^ i32
+
+note: 
+   ┌─ for_.fe:17:19
+   │
+17 │     let mut res = 0
+   │                   ^ i32
+
+note: 
+   ┌─ for_.fe:18:9
+   │
+18 │     for Foo {x, y} in foo_arr {
+   │         ^^^^^^^^^^ Foo
+
+note: 
+   ┌─ for_.fe:18:14
+   │
+18 │     for Foo {x, y} in foo_arr {
+   │              ^ i32
+
+note: 
+   ┌─ for_.fe:18:17
+   │
+18 │     for Foo {x, y} in foo_arr {
+   │                 ^ i32
+
+note: 
+   ┌─ for_.fe:18:23
+   │
+18 │     for Foo {x, y} in foo_arr {
+   │                       ^^^^^^^ [Foo; 10]
+
+note: 
+   ┌─ for_.fe:18:31
+   │  
+18 │       for Foo {x, y} in foo_arr {
+   │ ╭───────────────────────────────^
+19 │ │         res += x + y
+20 │ │     }
+   │ ╰─────^ ()
+
+note: 
+   ┌─ for_.fe:19:9
+   │
+19 │         res += x + y
+   │         ^^^ i32
+
+note: 
+   ┌─ for_.fe:19:9
+   │
+19 │         res += x + y
+   │         ^^^^^^^^^^^^ ()
+
+note: 
+   ┌─ for_.fe:19:16
+   │
+19 │         res += x + y
+   │                ^ i32
+
+note: 
+   ┌─ for_.fe:19:16
+   │
+19 │         res += x + y
+   │                ^^^^^ i32
+
+note: 
+   ┌─ for_.fe:19:20
+   │
+19 │         res += x + y
+   │                    ^ i32
+
+note: 
+   ┌─ for_.fe:22:5
+   │
+22 │     res
+   │     ^^^ i32

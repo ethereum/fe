@@ -1,0 +1,7 @@
+fn foo(x: u8, y: u64) -> u8
+
+fn bar<T>() asdf
+
+fn baz(x: u8) -> u8 {
+    return 10
+}

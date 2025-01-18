@@ -1,0 +1,250 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/record_init.fe
+---
+note: 
+   ┌─ record_init.fe:6:10
+   │  
+ 6 │   fn foo() { 
+   │ ╭──────────^
+ 7 │ │     let x = 1
+ 8 │ │     let y = "FOO"
+ 9 │ │ 
+   · │
+14 │ │     let f3 = Foo {y: "FOO", x: 1}
+15 │ │ }
+   │ ╰─^ ()
+
+note: 
+  ┌─ record_init.fe:7:9
+  │
+7 │     let x = 1
+  │         ^ i32
+
+note: 
+  ┌─ record_init.fe:7:13
+  │
+7 │     let x = 1
+  │             ^ i32
+
+note: 
+  ┌─ record_init.fe:8:9
+  │
+8 │     let y = "FOO"
+  │         ^ String<10>
+
+note: 
+  ┌─ record_init.fe:8:13
+  │
+8 │     let y = "FOO"
+  │             ^^^^^ String<10>
+
+note: 
+   ┌─ record_init.fe:10:9
+   │
+10 │     let f = Foo {x, y}
+   │         ^ Foo
+
+note: 
+   ┌─ record_init.fe:10:13
+   │
+10 │     let f = Foo {x, y}
+   │             ^^^^^^^^^^ Foo
+
+note: 
+   ┌─ record_init.fe:10:18
+   │
+10 │     let f = Foo {x, y}
+   │                  ^ i32
+
+note: 
+   ┌─ record_init.fe:10:21
+   │
+10 │     let f = Foo {x, y}
+   │                     ^ String<10>
+
+note: 
+   ┌─ record_init.fe:12:9
+   │
+12 │     let f2 = Foo {x: 1, y: "FOO"}
+   │         ^^ Foo
+
+note: 
+   ┌─ record_init.fe:12:14
+   │
+12 │     let f2 = Foo {x: 1, y: "FOO"}
+   │              ^^^^^^^^^^^^^^^^^^^^ Foo
+
+note: 
+   ┌─ record_init.fe:12:22
+   │
+12 │     let f2 = Foo {x: 1, y: "FOO"}
+   │                      ^ i32
+
+note: 
+   ┌─ record_init.fe:12:28
+   │
+12 │     let f2 = Foo {x: 1, y: "FOO"}
+   │                            ^^^^^ String<10>
+
+note: 
+   ┌─ record_init.fe:14:9
+   │
+14 │     let f3 = Foo {y: "FOO", x: 1}
+   │         ^^ Foo
+
+note: 
+   ┌─ record_init.fe:14:14
+   │
+14 │     let f3 = Foo {y: "FOO", x: 1}
+   │              ^^^^^^^^^^^^^^^^^^^^ Foo
+
+note: 
+   ┌─ record_init.fe:14:22
+   │
+14 │     let f3 = Foo {y: "FOO", x: 1}
+   │                      ^^^^^ String<10>
+
+note: 
+   ┌─ record_init.fe:14:32
+   │
+14 │     let f3 = Foo {y: "FOO", x: 1}
+   │                                ^ i32
+
+note: 
+   ┌─ record_init.fe:22:27
+   │  
+22 │   fn foo2<Z>(b: bool, z: Z) {
+   │ ╭───────────────────────────^
+23 │ │     let t = false
+24 │ │     let u = "Bar"
+25 │ │     let f = Bar {t, u}
+26 │ │     
+27 │ │     let f2 = Bar {t: z, u: f}
+28 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ record_init.fe:23:9
+   │
+23 │     let t = false
+   │         ^ bool
+
+note: 
+   ┌─ record_init.fe:23:13
+   │
+23 │     let t = false
+   │             ^^^^^ bool
+
+note: 
+   ┌─ record_init.fe:24:9
+   │
+24 │     let u = "Bar"
+   │         ^ String<3>
+
+note: 
+   ┌─ record_init.fe:24:13
+   │
+24 │     let u = "Bar"
+   │             ^^^^^ String<3>
+
+note: 
+   ┌─ record_init.fe:25:9
+   │
+25 │     let f = Bar {t, u}
+   │         ^ Bar<bool, String<3>>
+
+note: 
+   ┌─ record_init.fe:25:13
+   │
+25 │     let f = Bar {t, u}
+   │             ^^^^^^^^^^ Bar<bool, String<3>>
+
+note: 
+   ┌─ record_init.fe:25:18
+   │
+25 │     let f = Bar {t, u}
+   │                  ^ bool
+
+note: 
+   ┌─ record_init.fe:25:21
+   │
+25 │     let f = Bar {t, u}
+   │                     ^ String<3>
+
+note: 
+   ┌─ record_init.fe:27:9
+   │
+27 │     let f2 = Bar {t: z, u: f}
+   │         ^^ Bar<Z, Bar<bool, String<3>>>
+
+note: 
+   ┌─ record_init.fe:27:14
+   │
+27 │     let f2 = Bar {t: z, u: f}
+   │              ^^^^^^^^^^^^^^^^ Bar<Z, Bar<bool, String<3>>>
+
+note: 
+   ┌─ record_init.fe:27:22
+   │
+27 │     let f2 = Bar {t: z, u: f}
+   │                      ^ Z
+
+note: 
+   ┌─ record_init.fe:27:28
+   │
+27 │     let f2 = Bar {t: z, u: f}
+   │                            ^ Bar<bool, String<3>>
+
+note: 
+   ┌─ record_init.fe:36:11
+   │  
+36 │   fn foo3() {
+   │ ╭───────────^
+37 │ │     let bar = Bar { t: 1, u: false }
+38 │ │     let x = Wrapper { t: bar }
+39 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ record_init.fe:37:9
+   │
+37 │     let bar = Bar { t: 1, u: false }
+   │         ^^^ Bar<i32, bool>
+
+note: 
+   ┌─ record_init.fe:37:15
+   │
+37 │     let bar = Bar { t: 1, u: false }
+   │               ^^^^^^^^^^^^^^^^^^^^^^ Bar<i32, bool>
+
+note: 
+   ┌─ record_init.fe:37:24
+   │
+37 │     let bar = Bar { t: 1, u: false }
+   │                        ^ i32
+
+note: 
+   ┌─ record_init.fe:37:30
+   │
+37 │     let bar = Bar { t: 1, u: false }
+   │                              ^^^^^ bool
+
+note: 
+   ┌─ record_init.fe:38:9
+   │
+38 │     let x = Wrapper { t: bar }
+   │         ^ Wrapper<Bar, bool>
+
+note: 
+   ┌─ record_init.fe:38:13
+   │
+38 │     let x = Wrapper { t: bar }
+   │             ^^^^^^^^^^^^^^^^^^ Wrapper<Bar, bool>
+
+note: 
+   ┌─ record_init.fe:38:26
+   │
+38 │     let x = Wrapper { t: bar }
+   │                          ^^^ Bar<i32, bool>

@@ -1,0 +1,48 @@
+---
+source: crates/parser2/tests/error_recovery.rs
+expression: node
+input_file: crates/parser2/test_files/error_recovery/exprs/index.fe
+---
+Root@0..20
+  IndexExpr@0..6
+    PathExpr@0..1
+      Path@0..1
+        PathSegment@0..1
+          Ident@0..1 "x"
+    LBracket@1..2 "["
+    LitExpr@2..3
+      Lit@2..3
+        Int@2..3 "1"
+    WhiteSpace@3..4 " "
+    Error@4..5
+      Ident@4..5 "a"
+    RBracket@5..6 "]"
+  Newline@6..7 "\n"
+  IndexExpr@7..14
+    PathExpr@7..8
+      Path@7..8
+        PathSegment@7..8
+          Ident@7..8 "x"
+    LBracket@8..9 "["
+    BinExpr@9..14
+      LitExpr@9..10
+        Lit@9..10
+          Int@9..10 "2"
+      WhiteSpace@10..11 " "
+      Plus@11..12 "+"
+      WhiteSpace@12..13 " "
+      LitExpr@13..14
+        Lit@13..14
+          Int@13..14 "3"
+  Newline@14..15 "\n"
+  IndexExpr@15..20
+    PathExpr@15..16
+      Path@15..16
+        PathSegment@15..16
+          Ident@15..16 "x"
+    LBracket@16..17 "["
+    LitExpr@17..19
+      Lit@17..19
+        Int@17..19 "41"
+    RBracket@19..20 "]"
+

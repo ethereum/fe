@@ -1,9 +1,13 @@
 pub use fe_common::diagnostics::Label;
-use fe_common::diagnostics::{Diagnostic, Severity};
-use fe_common::files::SourceFileId;
+use fe_common::{
+    diagnostics::{Diagnostic, Severity},
+    files::SourceFileId,
+};
 
-use crate::lexer::{Lexer, Token, TokenKind};
-use crate::node::Span;
+use crate::{
+    lexer::{Lexer, Token, TokenKind},
+    node::Span,
+};
 use std::{error, fmt};
 
 #[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
@@ -359,7 +363,7 @@ impl<'a, 'b> BTParser<'a, 'b> {
     }
 }
 
-impl<'a, 'b> std::ops::Deref for BTParser<'a, 'b> {
+impl<'a> std::ops::Deref for BTParser<'a, '_> {
     type Target = Parser<'a>;
 
     fn deref(&self) -> &Self::Target {
@@ -367,7 +371,7 @@ impl<'a, 'b> std::ops::Deref for BTParser<'a, 'b> {
     }
 }
 
-impl<'a, 'b> std::ops::DerefMut for BTParser<'a, 'b> {
+impl std::ops::DerefMut for BTParser<'_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.parser
     }

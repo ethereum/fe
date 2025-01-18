@@ -1,0 +1,54 @@
+---
+source: crates/parser2/tests/error_recovery.rs
+expression: node
+input_file: crates/parser2/test_files/error_recovery/stmts/while_.fe
+---
+Root@0..56
+  WhileStmt@0..10
+    WhileKw@0..5 "while"
+    WhiteSpace@5..6 " "
+    Error@6..7
+      InvalidToken@6..7 "@"
+    WhiteSpace@7..8 " "
+    BlockExpr@8..10
+      LBrace@8..9 "{"
+      RBrace@9..10 "}"
+  Newline@10..12 "\n\n"
+  WhileStmt@12..36
+    WhileKw@12..17 "while"
+    WhiteSpace@17..18 " "
+    LitExpr@18..22
+      Lit@18..22
+        TrueKw@18..22 "true"
+    WhiteSpace@22..23 " "
+    BlockExpr@23..36
+      LBrace@23..24 "{"
+      Newline@24..25 "\n"
+      WhiteSpace@25..29 "    "
+      ExprStmt@29..34
+        BinExpr@29..34
+          PathExpr@29..30
+            Path@29..30
+              PathSegment@29..30
+                Ident@29..30 "x"
+          WhiteSpace@30..31 " "
+          Plus@31..32 "+"
+          WhiteSpace@32..33 " "
+          LitExpr@33..34
+            Lit@33..34
+              Int@33..34 "1"
+      Newline@34..35 "\n"
+      RBrace@35..36 "}"
+  ExprStmt@36..56
+    Error@36..56
+      RBrace@36..37 "}"
+      Newline@37..38 "\n"
+      WhiteSpace@38..42 "    "
+      Newline@42..43 "\n"
+      WhileKw@43..48 "while"
+      WhiteSpace@48..49 " "
+      TrueKw@49..53 "true"
+      WhiteSpace@53..54 " "
+      LBrace@54..55 "{"
+      RBrace@55..56 "}"
+

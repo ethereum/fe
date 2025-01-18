@@ -1,0 +1,248 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/call.fe
+---
+note: 
+  ┌─ call.fe:1:35
+  │  
+1 │   pub fn add(x: i32, y: i32) -> i32 {
+  │ ╭───────────────────────────────────^
+2 │ │     x + y
+3 │ │ }
+  │ ╰─^ i32
+
+note: 
+  ┌─ call.fe:2:5
+  │
+2 │     x + y
+  │     ^ i32
+
+note: 
+  ┌─ call.fe:2:5
+  │
+2 │     x + y
+  │     ^^^^^ i32
+
+note: 
+  ┌─ call.fe:2:9
+  │
+2 │     x + y
+  │         ^ i32
+
+note: 
+  ┌─ call.fe:5:25
+  │  
+5 │   pub fn use_add() -> i32 {
+  │ ╭─────────────────────────^
+6 │ │     add(x: 1, y: 2)
+7 │ │ }
+  │ ╰─^ i32
+
+note: 
+  ┌─ call.fe:6:5
+  │
+6 │     add(x: 1, y: 2)
+  │     ^^^ fn add
+
+note: 
+  ┌─ call.fe:6:5
+  │
+6 │     add(x: 1, y: 2)
+  │     ^^^^^^^^^^^^^^^ i32
+
+note: 
+  ┌─ call.fe:6:12
+  │
+6 │     add(x: 1, y: 2)
+  │            ^ i32
+
+note: 
+  ┌─ call.fe:6:18
+  │
+6 │     add(x: 1, y: 2)
+  │                  ^ i32
+
+note: 
+   ┌─ call.fe:9:55
+   │  
+ 9 │   pub fn make_pair<T, U>(first: T, second: U) -> (T, U) {
+   │ ╭───────────────────────────────────────────────────────^
+10 │ │     (first, second)
+11 │ │ }
+   │ ╰─^ (T, U)
+
+note: 
+   ┌─ call.fe:10:5
+   │
+10 │     (first, second)
+   │     ^^^^^^^^^^^^^^^ (T, U)
+
+note: 
+   ┌─ call.fe:10:6
+   │
+10 │     (first, second)
+   │      ^^^^^ T
+
+note: 
+   ┌─ call.fe:10:13
+   │
+10 │     (first, second)
+   │             ^^^^^^ U
+
+note: 
+   ┌─ call.fe:13:39
+   │  
+13 │   pub fn use_make_pair() -> (i32, bool) {
+   │ ╭───────────────────────────────────────^
+14 │ │     make_pair(first: 1, second: false)
+15 │ │ }
+   │ ╰─^ (i32, bool)
+
+note: 
+   ┌─ call.fe:14:5
+   │
+14 │     make_pair(first: 1, second: false)
+   │     ^^^^^^^^^ fn make_pair<i32, bool>
+
+note: 
+   ┌─ call.fe:14:5
+   │
+14 │     make_pair(first: 1, second: false)
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (i32, bool)
+
+note: 
+   ┌─ call.fe:14:22
+   │
+14 │     make_pair(first: 1, second: false)
+   │                      ^ i32
+
+note: 
+   ┌─ call.fe:14:33
+   │
+14 │     make_pair(first: 1, second: false)
+   │                                 ^^^^^ bool
+
+note: 
+   ┌─ call.fe:17:62
+   │  
+17 │   pub fn make_pair_i32_U<U>(first: i32, second: U) -> (i32, U) {
+   │ ╭──────────────────────────────────────────────────────────────^
+18 │ │     make_pair(first, second)
+19 │ │ }
+   │ ╰─^ (i32, U)
+
+note: 
+   ┌─ call.fe:18:5
+   │
+18 │     make_pair(first, second)
+   │     ^^^^^^^^^ fn make_pair<i32, U>
+
+note: 
+   ┌─ call.fe:18:5
+   │
+18 │     make_pair(first, second)
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^ (i32, U)
+
+note: 
+   ┌─ call.fe:18:15
+   │
+18 │     make_pair(first, second)
+   │               ^^^^^ i32
+
+note: 
+   ┌─ call.fe:18:22
+   │
+18 │     make_pair(first, second)
+   │                      ^^^^^^ U
+
+note: 
+   ┌─ call.fe:21:66
+   │  
+21 │   pub fn make_pair_explicit(first: i32, second: u32) -> (i32, u32) {
+   │ ╭──────────────────────────────────────────────────────────────────^
+22 │ │     make_pair<i32, u32>(first, second)
+23 │ │ }
+   │ ╰─^ (i32, u32)
+
+note: 
+   ┌─ call.fe:22:5
+   │
+22 │     make_pair<i32, u32>(first, second)
+   │     ^^^^^^^^^^^^^^^^^^^ fn make_pair<i32, u32>
+
+note: 
+   ┌─ call.fe:22:5
+   │
+22 │     make_pair<i32, u32>(first, second)
+   │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ (i32, u32)
+
+note: 
+   ┌─ call.fe:22:25
+   │
+22 │     make_pair<i32, u32>(first, second)
+   │                         ^^^^^ i32
+
+note: 
+   ┌─ call.fe:22:32
+   │
+22 │     make_pair<i32, u32>(first, second)
+   │                                ^^^^^^ u32
+
+note: 
+   ┌─ call.fe:25:49
+   │
+25 │ pub fn hkt_func<T: * -> * -> *>(t: T<i32, u32>) { }
+   │                                                 ^^^ ()
+
+note: 
+   ┌─ call.fe:32:23
+   │  
+32 │   pub fn use_hkt_func() {
+   │ ╭───────────────────────^
+33 │ │     let foo = Foo { t: 1, u: 2 }
+34 │ │     hkt_func(t: foo)
+35 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ call.fe:33:9
+   │
+33 │     let foo = Foo { t: 1, u: 2 }
+   │         ^^^ Foo<i32, u32>
+
+note: 
+   ┌─ call.fe:33:15
+   │
+33 │     let foo = Foo { t: 1, u: 2 }
+   │               ^^^^^^^^^^^^^^^^^^ Foo<i32, u32>
+
+note: 
+   ┌─ call.fe:33:24
+   │
+33 │     let foo = Foo { t: 1, u: 2 }
+   │                        ^ i32
+
+note: 
+   ┌─ call.fe:33:30
+   │
+33 │     let foo = Foo { t: 1, u: 2 }
+   │                              ^ u32
+
+note: 
+   ┌─ call.fe:34:5
+   │
+34 │     hkt_func(t: foo)
+   │     ^^^^^^^^ fn hkt_func<Foo>
+
+note: 
+   ┌─ call.fe:34:5
+   │
+34 │     hkt_func(t: foo)
+   │     ^^^^^^^^^^^^^^^^ ()
+
+note: 
+   ┌─ call.fe:34:17
+   │
+34 │     hkt_func(t: foo)
+   │                 ^^^ Foo<i32, u32>

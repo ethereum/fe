@@ -1,0 +1,8 @@
+pub struct Foo {
+    x: i32,
+}
+
+fn foo(f: Foo) {
+    f -= f
+    f.x *= 1
+}

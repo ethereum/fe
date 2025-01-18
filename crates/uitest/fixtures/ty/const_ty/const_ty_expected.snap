@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/const_ty/const_ty_expected.fe
+---
+error[3-0012]: expected const type
+  ┌─ const_ty_expected.fe:4:11
+  │
+4 │ fn foo(x: Foo<u32>) {}
+  │           ^^^^^^^^ expected const type of `u256` here
+
+

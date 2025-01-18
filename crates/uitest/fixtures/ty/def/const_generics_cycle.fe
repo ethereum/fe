@@ -1,0 +1,2 @@
+pub struct Foo<T, const U: T> {}
+pub struct Bar<T, const U: Bar> {}

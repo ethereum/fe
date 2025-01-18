@@ -1,25 +1,30 @@
-use crate::builtins::ValueMethod;
-use crate::context::{
-    Adjustment, AdjustmentKind, AnalyzerContext, CallType, Constant, ExpressionAttributes,
-    NamedThing,
+use crate::{
+    builtins::ValueMethod,
+    context::{
+        Adjustment, AdjustmentKind, AnalyzerContext, CallType, Constant, ExpressionAttributes,
+        NamedThing,
+    },
+    display::Displayable,
+    errors::{TypeCoercionError, TypeError},
+    namespace::{
+        items::{Item, TraitId},
+        types::{
+            Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, TraitOrType, Tuple,
+            Type, TypeId,
+        },
+    },
+    traversal::call_args::validate_arg_count,
 };
-use crate::display::Displayable;
-use crate::errors::{TypeCoercionError, TypeError};
-use crate::namespace::items::{Item, TraitId};
-use crate::namespace::types::{
-    Base, FeString, GenericArg, GenericParamKind, GenericType, Integer, TraitOrType, Tuple, Type,
-    TypeId,
+use fe_common::{diagnostics::Label, utils::humanize::pluralize_conditionally, Spanned};
+use fe_parser::{
+    ast,
+    node::{Node, Span},
 };
-use crate::traversal::call_args::validate_arg_count;
-use fe_common::diagnostics::Label;
-use fe_common::utils::humanize::pluralize_conditionally;
-use fe_common::Spanned;
-use fe_parser::ast;
-use fe_parser::node::{Node, Span};
 use std::cmp::Ordering;
 
-/// Try to perform an explicit type cast, eg `u256(my_address)` or `address(my_contract)`.
-/// Returns nothing. Emits an error if the cast fails; explicit cast failures are not fatal.
+/// Try to perform an explicit type cast, eg `u256(my_address)` or
+/// `address(my_contract)`. Returns nothing. Emits an error if the cast fails;
+/// explicit cast failures are not fatal.
 pub fn try_cast_type(
     context: &mut dyn AnalyzerContext,
     from: TypeId,
@@ -259,10 +264,9 @@ fn coerce(
                     && elts
                         .iter()
                         .zip(ftup.items.iter().zip(itup.items.iter()))
-                        .map(|(elt, (from, into))| {
+                        .all(|(elt, (from, into))| {
                             try_coerce_type(context, Some(elt), *from, *into, should_copy).is_ok()
                         })
-                        .all(|x| x)
                 {
                     // Update the type of the rhs tuple, because its elements
                     // have been coerced into the lhs element types.
@@ -570,7 +574,6 @@ pub fn type_desc(
             if let Some(val) = self_type {
                 Ok(Type::SelfType(val).id(context.db()))
             } else {
-                dbg!("Reporting error");
                 Err(TypeError::new(context.error(
                     "`Self` can not be used here",
                     desc.span,

@@ -1,0 +1,12 @@
+use foo::*
+
+mod foo {
+    pub use MyEnum::*
+    
+    pub struct Variant {}
+
+    pub enum MyEnum {
+        Variant,
+        Variant2,
+    }
+}

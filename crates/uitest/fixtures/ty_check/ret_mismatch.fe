@@ -1,0 +1,7 @@
+pub fn lit1() -> bool {
+    1
+}
+
+pub fn lit2() -> i32 {
+    false
+}

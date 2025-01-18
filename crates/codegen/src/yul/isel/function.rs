@@ -26,10 +26,10 @@ use yultsur::{
 
 use crate::{
     db::CodegenDb,
-    yul::isel::inst_order::StructuralInst,
-    yul::slot_size::{function_hash_type, yul_primitive_type, SLOT_SIZE},
     yul::{
+        isel::inst_order::StructuralInst,
         runtime::{self, RuntimeProvider},
+        slot_size::{function_hash_type, yul_primitive_type, SLOT_SIZE},
         YulVariable,
     },
 };

@@ -1,12 +1,12 @@
-use crate::db::SourceDb;
-use crate::files::{SourceFileId, Utf8PathBuf};
-use crate::Span;
+use crate::{
+    db::SourceDb,
+    files::{SourceFileId, Utf8PathBuf},
+    Span,
+};
 pub use codespan_reporting::diagnostic as cs;
-use codespan_reporting::files::Error as CsError;
-use codespan_reporting::term;
+use codespan_reporting::{files::Error as CsError, term};
 pub use cs::Severity;
-use std::ops::Range;
-use std::rc::Rc;
+use std::{ops::Range, rc::Rc};
 use term::termcolor::{BufferWriter, ColorChoice};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -118,7 +118,7 @@ pub fn diagnostics_string(db: &dyn SourceDb, diagnostics: &[Diagnostic]) -> Stri
 
 struct SourceDbWrapper<'a>(pub &'a dyn SourceDb);
 
-impl<'a> codespan_reporting::files::Files<'_> for SourceDbWrapper<'a> {
+impl codespan_reporting::files::Files<'_> for SourceDbWrapper<'_> {
     type FileId = SourceFileId;
     type Name = Rc<Utf8PathBuf>;
     type Source = Rc<str>;

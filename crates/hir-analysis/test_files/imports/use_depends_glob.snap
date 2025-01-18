@@ -1,0 +1,16 @@
+---
+source: crates/hir-analysis/tests/import.rs
+expression: res
+input_file: crates/hir-analysis/test_files/imports/use_depends_glob.fe
+---
+note: 
+  ┌─ use_depends_glob.fe:1:1
+  │
+1 │ use bar::Bar
+  │ ^^^^^^^^^^^^ use_depends_glob::foo::bar::Bar
+
+note: 
+  ┌─ use_depends_glob.fe:2:1
+  │
+2 │ use foo::*
+  │ ^^^^^^^^^^ use_depends_glob::foo::bar as bar

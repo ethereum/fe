@@ -1,0 +1,26 @@
+pub enum ErrorCode<E> {
+    ParseError(i32),
+    TypeError(i32),
+    Other(E)
+}
+
+
+impl<E> ErrorCode<E> {
+    fn as_code(self) -> i32 {
+        use ErrorCode::*
+
+        match self {
+            ParseError(x) => {
+                x
+            }
+
+            TypeError(x) => {
+                x
+            }
+
+            Other(x) => {
+                x
+            }
+        }
+    }
+}

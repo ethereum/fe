@@ -1,10 +1,11 @@
-#![cfg(feature = "solc-backend")]
 use std::path::Path;
 
 use clap::Args;
 use colored::Colorize;
-use fe_common::diagnostics::print_diagnostics;
-use fe_common::utils::files::{get_project_root, BuildFiles};
+use fe_common::{
+    diagnostics::print_diagnostics,
+    utils::files::{get_project_root, BuildFiles},
+};
 use fe_driver::CompiledTest;
 use fe_test_runner::TestSink;
 
