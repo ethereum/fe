@@ -674,17 +674,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "855423f2158bcc73798b3b9a666ec4204597a72370dc91dbdb8e7f9519de8cc3"
 
 [[package]]
-name = "driver2"
-version = "0.26.0"
-dependencies = [
- "dir-test 0.3.0",
- "fe-compiler-test-utils",
- "fe-driver2",
- "fe-hir",
- "wasm-bindgen-test",
-]
-
-[[package]]
 name = "either"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -750,11 +739,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 
 [[package]]
-name = "fe-common2"
+name = "fe-common"
 version = "0.26.0"
 dependencies = [
  "camino",
- "fe-parser2",
+ "fe-parser",
  "indexmap",
  "paste",
  "salsa",
@@ -770,13 +759,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "fe-driver2"
+name = "fe-driver"
 version = "0.26.0"
 dependencies = [
  "camino",
  "clap",
  "codespan-reporting",
- "fe-common2",
+ "fe-common",
  "fe-hir",
  "fe-hir-analysis",
  "salsa",
@@ -790,8 +779,8 @@ dependencies = [
  "cranelift-entity",
  "derive_more",
  "dot2",
- "fe-common2",
- "fe-parser2",
+ "fe-common",
+ "fe-parser",
  "num-bigint",
  "num-traits",
  "paste",
@@ -811,9 +800,9 @@ dependencies = [
  "dir-test 0.3.0",
  "either",
  "ena",
- "fe-common2",
+ "fe-common",
  "fe-compiler-test-utils",
- "fe-driver2",
+ "fe-driver",
  "fe-hir",
  "if_chain",
  "itertools",
@@ -836,7 +825,7 @@ dependencies = [
  "clap",
  "codespan-reporting",
  "dir-test 0.1.1",
- "fe-common2",
+ "fe-common",
  "fe-compiler-test-utils",
  "fe-hir",
  "fe-hir-analysis",
@@ -860,7 +849,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fe-parser2"
+name = "fe-parser"
 version = "0.26.0"
 dependencies = [
  "derive_more",
@@ -873,6 +862,17 @@ dependencies = [
  "smallvec",
  "unwrap-infallible",
  "wasm-bindgen",
+ "wasm-bindgen-test",
+]
+
+[[package]]
+name = "fe-uitest"
+version = "0.26.0"
+dependencies = [
+ "dir-test 0.3.0",
+ "fe-compiler-test-utils",
+ "fe-driver",
+ "fe-hir",
  "wasm-bindgen-test",
 ]
 

@@ -1,8 +1,0 @@
----
-source: crates/parser2/tests/syntax_node.rs
-expression: snapshot
----
-Root@0..1
-  WildCardPat@0..1
-    Underscore@0..1 "_"
-

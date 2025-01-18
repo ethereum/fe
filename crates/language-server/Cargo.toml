@@ -15,7 +15,7 @@ act-locally = "0.1.1"
 hir = { path = "../hir", package = "fe-hir" }
 hir-analysis = { path = "../hir-analysis", package = "fe-hir-analysis" }
 camino = "1.1.4"
-common = { path = "../common2", package = "fe-common2" }
+common = { path = "../common", package = "fe-common" }
 anyhow = "1.0.71"
 serde_json = "1.0.96"
 rowan = "0.15.10"

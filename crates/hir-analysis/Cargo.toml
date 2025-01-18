@@ -20,10 +20,10 @@ if_chain = "1.0"
 bitflags = "2.5"
 cranelift-entity = "0.91"
 hir = { path = "../hir", package = "fe-hir" }
-common = { path = "../common2", package = "fe-common2" }
+common = { path = "../common", package = "fe-common" }
 
 [dev-dependencies]
 codespan-reporting = "0.11"
 dir-test = "0.3"
 # TODO move cs diagnostics utils
-driver = { path = "../driver2", package = "fe-driver2" }
+driver = { path = "../driver", package = "fe-driver" }

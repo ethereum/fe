@@ -18,5 +18,5 @@ smallvec = "1.10.0"
 paste = "1.0"
 dot2 = "1.0"
 
-common = { path = "../common2", package = "fe-common2" }
-parser = { path = "../parser2", package = "fe-parser2" }
+common = { path = "../common", package = "fe-common" }
+parser = { path = "../parser", package = "fe-parser" }

@@ -1,0 +1,13 @@
+---
+source: crates/parser/tests/syntax_node.rs
+expression: node
+input_file: crates/parser/test_files/syntax_node/pats/lit.fe
+---
+Root@0..12
+  LitPat@0..3
+    Lit@0..3
+      Int@0..3 "0x1"
+  Newline@3..4 "\n"
+  LitPat@4..12
+    Lit@4..12
+      String@4..12 "\"String\""

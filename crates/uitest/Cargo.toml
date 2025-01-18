@@ -1,14 +1,13 @@
 [package]
-name = "driver2"
+name = "fe-uitest"
 version = "0.26.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
-description = "Provides Fe driver"
 publish = false
 
 [dependencies]
-driver = { path = "../driver2", package = "fe-driver2" }
+driver = { path = "../driver", package = "fe-driver" }
 hir = { path = "../hir", package = "fe-hir" }
 fe-compiler-test-utils = { path = "../test-utils" }
 dir-test = "0.3"
