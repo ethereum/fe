@@ -1,9 +1,0 @@
-const FOO: u256 = 0x101
-
-struct Error {
-    code: u256
-}
-
-fn exit() {
-    revert Error(code: FOO)
-}

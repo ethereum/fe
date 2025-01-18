@@ -1,1 +1,0 @@
-const FOO: String<3> = "foo"

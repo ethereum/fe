@@ -72,7 +72,7 @@ pub async fn initialize(
         .unwrap_or_else(|| std::env::current_dir().unwrap());
 
     let _ = backend.workspace.set_workspace_root(&mut backend.db, &root);
-    let _ = backend.workspace.load_std_lib(&mut backend.db, &root);
+    // let _ = backend.workspace.load_std_lib(&mut backend.db, &root);
     // let _ = backend.workspace.sync();
 
     let capabilities = server_capabilities();

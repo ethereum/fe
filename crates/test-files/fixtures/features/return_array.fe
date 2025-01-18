@@ -1,7 +1,0 @@
-contract Foo {
-    pub fn bar(x: u256) -> Array<u256, 5> {
-        let mut my_array: Array<u256, 5> = [0; 5]
-        my_array[3] = x
-        return my_array
-    }
-}

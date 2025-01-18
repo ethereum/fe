@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn my_address(ctx: Context) -> address {
-        return ctx.self_address()
-    }
-}

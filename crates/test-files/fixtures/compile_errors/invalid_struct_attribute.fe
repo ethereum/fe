@@ -1,4 +1,0 @@
-struct Bar {
-    #invalid
-    id: u256
-}

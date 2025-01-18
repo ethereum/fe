@@ -1,3 +1,0 @@
-contract Foo {
-    pub fn bar(foo: u8, foo: u8) {}
-}

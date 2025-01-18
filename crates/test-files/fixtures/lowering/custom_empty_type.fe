@@ -1,7 +1,0 @@
-struct MyEmptyType {}
-
-contract Foo {
-    pub fn bar() -> MyEmptyType {
-        return MyEmptyType()
-    }
-}

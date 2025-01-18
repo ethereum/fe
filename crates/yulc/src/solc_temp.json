@@ -1,8 +1,0 @@
-{
-  "language": "Yul",
-  "sources": { "input.yul": { "content": "{src}" } },
-  "settings": {
-    "optimizer": { "enabled": {optimizer_enabled} },
-    "outputSelection": { "*": { "*": ["*"], "": [ "*" ] } }
-  }
-}

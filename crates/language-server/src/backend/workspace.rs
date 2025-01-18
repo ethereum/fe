@@ -12,11 +12,9 @@ use patricia_tree::StringPatriciaMap;
 use salsa::Setter;
 use tracing::info;
 
-use rust_embed::RustEmbed;
-
-#[derive(RustEmbed)]
-#[folder = "../library/std"]
-struct StdLib;
+// #[derive(RustEmbed)]
+// #[folder = "../library/std"]
+// struct StdLib;
 
 const FE_CONFIG_SUFFIX: &str = "fe.toml";
 
@@ -266,35 +264,35 @@ impl Workspace {
         ingot_files.chain(standalone_files)
     }
 
-    pub fn load_std_lib(
-        &mut self,
-        db: &mut LanguageServerDatabase,
-        root_path: &Path,
-    ) -> Result<()> {
-        let root_path_str = root_path.to_str().unwrap();
-        self.touch_ingot_for_file_path(db, &format!("{}/std/{}", root_path_str, FE_CONFIG_SUFFIX))
-            .unwrap();
+    // pub fn load_std_lib(
+    //     &mut self,
+    //     db: &mut LanguageServerDatabase,
+    //     root_path: &Path,
+    // ) -> Result<()> {
+    //     let root_path_str = root_path.to_str().unwrap();
+    //     self.touch_ingot_for_file_path(db, &format!("{}/std/{}", root_path_str, FE_CONFIG_SUFFIX))
+    //         .unwrap();
 
-        info!("Loading std lib...");
+    //     info!("Loading std lib...");
 
-        // Collect paths to avoid borrowing `db` mutably during the closure
-        let paths: Vec<_> = StdLib::iter().collect();
+    //     // Collect paths to avoid borrowing `db` mutably during the closure
+    //     let paths: Vec<_> = StdLib::iter().collect();
 
-        for path in paths {
-            let path_str = path.as_ref();
-            let std_path = format!("{}/std/{}", root_path_str, path_str);
-            info!("adding std file... {:?} --- {:?}", std_path, path_str);
-            if let Some(file) = StdLib::get(path_str) {
-                let contents = String::from_utf8(file.data.as_ref().to_vec());
-                if let Ok(contents) = contents {
-                    if let Some((_ingot, file)) = self.touch_input_for_file_path(db, &std_path) {
-                        file.set_text(db).to(contents);
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
+    //     for path in paths {
+    //         let path_str = path.as_ref();
+    //         let std_path = format!("{}/std/{}", root_path_str, path_str);
+    //         info!("adding std file... {:?} --- {:?}", std_path, path_str);
+    //         if let Some(file) = StdLib::get(path_str) {
+    //             let contents = String::from_utf8(file.data.as_ref().to_vec());
+    //             if let Ok(contents) = contents {
+    //                 if let Some((_ingot, file)) = self.touch_input_for_file_path(db, &std_path) {
+    //                     file.set_text(db).to(contents);
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     Ok(())
+    // }
 
     pub fn set_workspace_root(
         &mut self,

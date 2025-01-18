@@ -1,5 +1,0 @@
-name = "basic_ingot"
-version = "1.0"
-
-[dependencies]
-basic_ingot_dep = "../basic_ingot_dep"

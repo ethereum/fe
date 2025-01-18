@@ -1,6 +1,0 @@
----
-source: crates/tests-legacy/src/features.rs
-expression: "format!(\"{}\", factory_harness.gas_reporter)"
----
-create2_foo([]) used 40474 gas
-

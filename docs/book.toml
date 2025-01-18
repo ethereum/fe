@@ -1,5 +1,4 @@
 [book]
-authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 language = "en"
 multilingual = false
 src = "src"

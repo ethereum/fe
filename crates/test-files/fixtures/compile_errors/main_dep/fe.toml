@@ -1,5 +1,0 @@
-name = "version_mismatch"
-version = "1.0"
-
-[dependencies]
-my_main = "../my_main"
