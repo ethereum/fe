@@ -1,6 +1,0 @@
-contract Foo {
-    pub fn bar(mut ctx: Context) -> address {
-        let foo: Foo = Foo.create2(ctx, 2, 0)
-        return address(foo)
-    }
-}

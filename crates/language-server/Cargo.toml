@@ -2,7 +2,6 @@
 name = "fe-language-server"
 version = "0.26.0"
 edition = "2021"
-authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 description = "An LSP language server for Fe lang"

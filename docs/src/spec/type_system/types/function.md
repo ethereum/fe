@@ -1,2 +1,0 @@
-# Function Types
-TBW

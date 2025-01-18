@@ -1,9 +1,0 @@
-struct Bar {
-    pub fn call_me() {}
-}
-
-contract Foo {
-    fn bar(self) {
-        Bar.call_me()
-    }
-}

@@ -1,7 +1,0 @@
-contract Foo {
-    pub fn __init__() {}
-
-    fn bar(self) {
-        self.__init__()
-    }
-}

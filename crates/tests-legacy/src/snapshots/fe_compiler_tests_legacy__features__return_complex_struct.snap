@@ -1,9 +1,0 @@
----
-source: crates/tests-legacy/src/features.rs
-expression: "format!(\"{}\", harness.gas_reporter)"
----
-static_complex([]) used 948 gas
-string_complex([]) used 1724 gas
-bytes_complex([]) used 1080 gas
-nested_dynamic_complex([]) used 5805 gas
-

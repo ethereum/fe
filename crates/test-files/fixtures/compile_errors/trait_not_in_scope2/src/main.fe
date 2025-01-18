@@ -1,6 +1,0 @@
-
-contract Example {
-  pub fn run_test(self) {
-    u256::do()
-  }
-}

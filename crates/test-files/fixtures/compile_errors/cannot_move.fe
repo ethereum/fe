@@ -1,7 +1,0 @@
-contract Foo {
-    data: Array<u256, 10>
-
-    pub fn foo(self) -> Array<u256, 10> {
-        return self.data
-    }
-}

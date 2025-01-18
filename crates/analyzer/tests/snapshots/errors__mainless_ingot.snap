@@ -1,5 +1,0 @@
----
-source: crates/analyzer/tests/errors.rs
-expression: error_string_ingot(&path)
----
-Unable to determine mode of mainless_ingot. Consider adding src/main.fe or src/lib.fe file to the project.

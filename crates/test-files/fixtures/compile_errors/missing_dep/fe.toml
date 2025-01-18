@@ -1,5 +1,0 @@
-name = "missing_dep"
-version = "26.0"
-
-[dependencies]
-doesnt_exist = "../doesnt_exist"

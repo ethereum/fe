@@ -1,7 +1,0 @@
-contract Foo {
-    val: u256
-
-    pub fn foo(self) {
-        self.bar
-    }
-}

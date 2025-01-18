@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn bar(input: u256) -> u256 {
-        if input > 5 {
-            return 1
-        } else {
-            return 0
-        }
-    }
-}

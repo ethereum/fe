@@ -1,7 +1,0 @@
-contract Foo {
-    pub fn baz() {
-        bar(doesnt_exist: 1, me_neither: 2)
-    }
-
-    pub fn bar(val1: u256, val2: u256) {}
-}

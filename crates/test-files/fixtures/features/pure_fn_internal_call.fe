@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn bar(self, x: u256, y: u256) -> u256 {
-        return pure_bar(x, y)
-    }
-
-    fn pure_bar(x: u256, y: u256) -> u256 {
-        return x + y
-    }
-}

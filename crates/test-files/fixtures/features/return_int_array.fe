@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn i8_array(bar: Array<i8, 4>) -> Array<i8, 4> {
-        return bar
-    }
-
-    pub fn i32_array(bar: Array<i32, 4>) -> Array<i32, 4> {
-        return bar
-    }
-}

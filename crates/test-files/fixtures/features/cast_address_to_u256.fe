@@ -1,6 +1,0 @@
-contract Foo {
-    pub fn bar(a: address) -> address {
-        let x: u256 = u256(a)
-        return address(x)
-    }
-}

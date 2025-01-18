@@ -1,8 +1,0 @@
-contract Foo {
-    my_sto_tuple: (bool, bool, address, u8)
-
-    pub fn bar(self, my_tuple: (u256, bool)) {
-        let (my_u256, my_bool): (u256, bool) = my_tuple
-        let (a, b, c, d): (bool, bool, address, u8) = self.my_sto_tuple.to_mem()
-    }
-}

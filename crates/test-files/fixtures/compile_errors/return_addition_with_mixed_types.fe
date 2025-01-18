@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn bar(x: u256, y: i32) -> u256 {
-        return x + y
-    }
-}
