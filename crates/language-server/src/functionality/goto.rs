@@ -12,7 +12,7 @@ use crate::{
     backend::{db::LanguageServerDb, Backend},
     util::{to_lsp_location_from_scope, to_offset_from_position},
 };
-pub type Cursor = rowan::TextSize;
+pub type Cursor = parser::TextSize;
 
 #[derive(Default)]
 struct PathSpanCollector<'db> {
@@ -199,7 +199,7 @@ mod tests {
     fn extract_multiple_cursor_positions_from_spans(
         db: &LanguageServerDatabase,
         top_mod: TopLevelMod,
-    ) -> Vec<rowan::TextSize> {
+    ) -> Vec<parser::TextSize> {
         let hir_db = db.as_hir_db();
         let mut visitor_ctxt = VisitorCtxt::with_top_mod(hir_db, top_mod);
         let mut path_collector = PathSpanCollector::default();

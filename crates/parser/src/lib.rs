@@ -4,7 +4,7 @@ pub mod parser;
 pub mod syntax_kind;
 pub mod syntax_node;
 
-use rowan::TextSize;
+pub use rowan::TextSize;
 use smallvec::SmallVec;
 pub use syntax_kind::SyntaxKind;
 pub use syntax_node::{FeLang, GreenNode, NodeOrToken, SyntaxNode, SyntaxToken, TextRange};
