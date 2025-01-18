@@ -7,23 +7,24 @@ repository = "https://github.com/ethereum/fe"
 description = "Provides HIR semantic analysis for Fe lang"
 
 [dependencies]
-salsa.workspace = true
-smallvec = "1.10"
-rustc-hash = "1.1.0"
-either = "1.8"
-derive_more = "0.99"
-itertools = "0.10"
+bitflags = "2.8"
+cranelift-entity = "0.115"
+derive_more.workspace = true
+either = "1.13"
 ena = { version = "0.14", features = ["persistent"] }
-fe-compiler-test-utils = { path = "../test-utils" }
-num-bigint = "0.4"
 if_chain = "1.0"
-bitflags = "2.5"
-cranelift-entity = "0.91"
-hir = { path = "../hir", package = "fe-hir" }
-common = { path = "../common", package = "fe-common" }
+itertools = "0.14"
+num-bigint.workspace = true
+rustc-hash.workspace = true
+salsa.workspace = true
+smallvec.workspace = true
+
+common.workspace = true
+test-utils.workspace = true
+hir.workspace = true
 
 [dev-dependencies]
-codespan-reporting = "0.11"
-dir-test = "0.3"
+codespan-reporting.workspace = true
+dir-test.workspace = true
 # TODO move cs diagnostics utils
-driver = { path = "../driver", package = "fe-driver" }
+driver.workspace = true

@@ -5,8 +5,8 @@ use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
     InputDb, InputIngot,
 };
-use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
+use rustc_hash::FxHashMap;
 use tracing::error;
 
 pub fn calculate_line_offsets(text: &str) -> Vec<usize> {

@@ -1,6 +1,6 @@
 use dir_test::{dir_test, Fixture};
 
-use fe_compiler_test_utils::snap_test;
+use test_utils::snap_test;
 
 mod test_runner;
 use test_runner::*;

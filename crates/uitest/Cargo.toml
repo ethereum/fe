@@ -7,8 +7,9 @@ repository = "https://github.com/ethereum/fe"
 publish = false
 
 [dependencies]
-driver = { path = "../driver", package = "fe-driver" }
-hir = { path = "../hir", package = "fe-hir" }
-fe-compiler-test-utils = { path = "../test-utils" }
-dir-test = "0.3"
-wasm-bindgen-test = "0.3"
+dir-test.workspace = true
+wasm-bindgen-test.workspace = true
+
+driver.workspace = true
+test-utils.workspace = true
+hir.workspace = true

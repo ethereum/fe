@@ -2,9 +2,9 @@ mod test_db;
 use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
-use fe_compiler_test_utils::snap_test;
 use fe_hir_analysis::ty::ty_check::check_func_body;
 use test_db::HirAnalysisTestDb;
+use test_utils::snap_test;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/ty_check",

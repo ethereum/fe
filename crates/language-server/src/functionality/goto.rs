@@ -168,9 +168,9 @@ mod tests {
 
     use common::input::IngotKind;
     use dir_test::{dir_test, Fixture};
-    use fe_compiler_test_utils::snap_test;
     use hir::{HirDb, LowerHirDb};
     use salsa::Setter;
+    use test_utils::snap_test;
 
     use super::*;
     use crate::backend::{
