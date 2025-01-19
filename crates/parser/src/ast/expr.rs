@@ -665,11 +665,12 @@ mod tests {
     use super::*;
     use crate::{ast::*, lexer::Lexer, parser::Parser};
 
+    use derive_more::TryIntoError;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     fn parse_expr<T>(source: &str) -> T
     where
-        T: TryFrom<ExprKind, Error = &'static str>,
+        T: TryFrom<ExprKind, Error = TryIntoError<ExprKind>>,
     {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);

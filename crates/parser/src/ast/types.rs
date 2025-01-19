@@ -139,6 +139,7 @@ pub enum TypeKind {
 
 #[cfg(test)]
 mod tests {
+    use derive_more::TryIntoError;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
@@ -146,7 +147,7 @@ mod tests {
 
     fn parse_type<T>(source: &str) -> T
     where
-        T: TryFrom<TypeKind, Error = &'static str>,
+        T: TryFrom<TypeKind, Error = TryIntoError<TypeKind>> + std::fmt::Debug,
     {
         let lexer = Lexer::new(source);
         let mut parser = parser::Parser::new(lexer);

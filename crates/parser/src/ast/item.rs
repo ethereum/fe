@@ -460,6 +460,7 @@ pub enum ItemKind {
 
 #[cfg(test)]
 mod tests {
+    use derive_more::TryIntoError;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
@@ -471,7 +472,7 @@ mod tests {
 
     fn parse_item<T>(source: &str) -> T
     where
-        T: TryFrom<ItemKind, Error = &'static str>,
+        T: TryFrom<ItemKind, Error = TryIntoError<ItemKind>>,
     {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);

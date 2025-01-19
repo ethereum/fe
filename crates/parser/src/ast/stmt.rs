@@ -155,6 +155,7 @@ pub enum StmtKind {
 
 #[cfg(test)]
 mod tests {
+    use derive_more::TryIntoError;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
@@ -166,7 +167,7 @@ mod tests {
 
     fn parse_stmt<T>(source: &str) -> T
     where
-        T: TryFrom<StmtKind, Error = &'static str>,
+        T: TryFrom<StmtKind, Error = TryIntoError<StmtKind>>,
     {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);

@@ -175,6 +175,7 @@ pub enum PatKind {
 
 #[cfg(test)]
 mod tests {
+    use derive_more::TryIntoError;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
@@ -182,7 +183,7 @@ mod tests {
 
     fn parse_pat<T>(source: &str) -> T
     where
-        T: TryFrom<PatKind, Error = &'static str>,
+        T: TryFrom<PatKind, Error = TryIntoError<PatKind>>,
     {
         let lexer = Lexer::new(source);
         let mut parser = Parser::new(lexer);
