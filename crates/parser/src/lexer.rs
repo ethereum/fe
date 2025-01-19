@@ -25,7 +25,8 @@ impl<'s> TokenStream for Lexer<'s> {
             return Some(token);
         }
 
-        let syntax_kind = self.inner.next()?;
+        let syntax_kind = self.inner.next()?.unwrap_or(SyntaxKind::InvalidToken);
+
         Some(Token {
             syntax_kind,
             text: self.inner.slice(),

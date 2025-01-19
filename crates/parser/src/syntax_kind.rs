@@ -7,9 +7,9 @@ use logos::Logos;
 #[repr(u16)]
 pub enum SyntaxKind {
     // Atom kinds. These are leaf nodes.
-    #[error]
     InvalidToken = 0,
-    #[regex(r"[\n|\r\n|\r]+")]
+
+    #[regex(r"(\n|\r\n|\r)+")]
     Newline,
     #[regex(r"[ ]+")]
     WhiteSpace,
@@ -68,7 +68,7 @@ pub enum SyntaxKind {
     #[token("=>")]
     FatArrow,
     /// `_`
-    #[token("_")]
+    #[token("_", priority = 3)]
     Underscore,
     /// `#`
     #[token("#")]
