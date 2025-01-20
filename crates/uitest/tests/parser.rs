@@ -1,5 +1,4 @@
-use std::path::Path;
-
+use camino::Utf8Path;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use hir::{analysis_pass::AnalysisPassManager, ParsingPass};
@@ -11,7 +10,7 @@ use test_utils::snap_test;
 )]
 fn run_parser(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
-    let path = Path::new(fixture.path());
+    let path = Utf8Path::new(fixture.path());
 
     let (ingot, file) = db.standalone(path, fixture.content());
     let top_mod = db.top_mod(ingot, file);
@@ -43,7 +42,7 @@ mod wasm {
     )]
     fn run_parser(fixture: Fixture<&str>) {
         let mut db = DriverDataBase::default();
-        let path = Path::new(fixture.path());
+        let path = Utf8Path::new(fixture.path());
 
         let (ingot, file) = db.standalone(path, fixture.content());
         let top_mod = db.top_mod(ingot, file);

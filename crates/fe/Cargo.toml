@@ -1,0 +1,8 @@
+[package]
+name = "fe"
+version = "0.26.0"
+edition = "2021"
+
+[dependencies]
+clap.workspace = true
+driver.workspace = true

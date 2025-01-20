@@ -7,6 +7,7 @@ repository = "https://github.com/ethereum/fe"
 publish = false
 
 [dependencies]
+camino.workspace = true
 dir-test.workspace = true
 wasm-bindgen-test.workspace = true
 

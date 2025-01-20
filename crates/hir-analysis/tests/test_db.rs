@@ -15,7 +15,10 @@ use common::{
     input::{IngotKind, Version},
     InputDb, InputFile, InputIngot,
 };
-use driver::{diagnostics::ToCsDiag, CsDbWrapper, DriverDb};
+use driver::{
+    diagnostics::{CsDbWrapper, ToCsDiag},
+    DriverDb,
+};
 use fe_hir_analysis::{
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
