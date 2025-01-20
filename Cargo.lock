@@ -742,6 +742,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
+name = "fe"
+version = "0.26.0"
+dependencies = [
+ "clap",
+ "fe-driver",
+]
+
+[[package]]
 name = "fe-common"
 version = "0.26.0"
 dependencies = [
@@ -872,6 +880,7 @@ dependencies = [
 name = "fe-uitest"
 version = "0.26.0"
 dependencies = [
+ "camino",
  "dir-test",
  "fe-driver",
  "fe-hir",
