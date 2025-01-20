@@ -282,6 +282,8 @@ pub enum SyntaxKind {
     LitExpr,
     /// `if x { 1 } else { 2 }`
     IfExpr,
+    /// `unsafe foo(x)`
+    UnsafeExpr,
     /// `match x { pat => { .. } }`
     MatchExpr,
     /// `(1 + 2)`
@@ -634,6 +636,7 @@ impl SyntaxKind {
             SyntaxKind::ArrayRepExpr => "array expression",
             SyntaxKind::LitExpr => "literal expression",
             SyntaxKind::IfExpr => "`if` expression",
+            SyntaxKind::UnsafeExpr => "`unsafe` expression",
             SyntaxKind::MatchExpr => "`match` expression",
             SyntaxKind::ParenExpr => "parenthesized expression",
             SyntaxKind::AssignExpr => "assignment expression",

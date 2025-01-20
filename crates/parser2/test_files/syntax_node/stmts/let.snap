@@ -3,7 +3,7 @@ source: crates/parser2/tests/syntax_node.rs
 expression: node
 input_file: crates/parser2/test_files/syntax_node/stmts/let.fe
 ---
-Root@0..231
+Root@0..253
   LetStmt@0..5
     LetKw@0..3 "let"
     WhiteSpace@3..4 " "
@@ -298,4 +298,26 @@ Root@0..231
               Int@228..229 "0"
         Newline@229..230 "\n"
         RBrace@230..231 "}"
+  Newline@231..233 "\n\n"
+  LetStmt@233..253
+    LetKw@233..236 "let"
+    WhiteSpace@236..237 " "
+    PathPat@237..238
+      Path@237..238
+        PathSegment@237..238
+          Ident@237..238 "x"
+    WhiteSpace@238..239 " "
+    Eq@239..240 "="
+    WhiteSpace@240..241 " "
+    UnsafeExpr@241..253
+      UnsafeKw@241..247 "unsafe"
+      WhiteSpace@247..248 " "
+      CallExpr@248..253
+        PathExpr@248..251
+          Path@248..251
+            PathSegment@248..251
+              Ident@248..251 "bar"
+        CallArgList@251..253
+          LParen@251..252 "("
+          RParen@252..253 ")"
 

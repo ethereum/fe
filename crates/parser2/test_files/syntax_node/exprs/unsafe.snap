@@ -1,0 +1,112 @@
+---
+source: crates/parser2/tests/syntax_node.rs
+expression: node
+input_file: crates/parser2/test_files/syntax_node/exprs/unsafe.fe
+---
+Root@0..125
+  UnsafeExpr@0..16
+    UnsafeKw@0..6 "unsafe"
+    WhiteSpace@6..7 " "
+    BlockExpr@7..16
+      LBrace@7..8 "{"
+      WhiteSpace@8..9 " "
+      ExprStmt@9..14
+        CallExpr@9..14
+          PathExpr@9..12
+            Path@9..12
+              PathSegment@9..12
+                Ident@9..12 "foo"
+          CallArgList@12..14
+            LParen@12..13 "("
+            RParen@13..14 ")"
+      WhiteSpace@14..15 " "
+      RBrace@15..16 "}"
+  Newline@16..18 "\n\n"
+  UnsafeExpr@18..96
+    UnsafeKw@18..24 "unsafe"
+    WhiteSpace@24..25 " "
+    BlockExpr@25..96
+      LBrace@25..26 "{"
+      Newline@26..27 "\n"
+      WhiteSpace@27..31 "    "
+      LetStmt@31..41
+        LetKw@31..34 "let"
+        WhiteSpace@34..35 " "
+        PathPat@35..36
+          Path@35..36
+            PathSegment@35..36
+              Ident@35..36 "a"
+        WhiteSpace@36..37 " "
+        Eq@37..38 "="
+        WhiteSpace@38..39 " "
+        LitExpr@39..41
+          Lit@39..41
+            Int@39..41 "42"
+      Newline@41..42 "\n"
+      WhiteSpace@42..46 "    "
+      ExprStmt@46..83
+        CallExpr@46..83
+          PathExpr@46..62
+            Path@46..62
+              PathSegment@46..49
+                Ident@46..49 "std"
+              Colon2@49..51 "::"
+              PathSegment@51..54
+                Ident@51..54 "evm"
+              Colon2@54..56 "::"
+              PathSegment@56..62
+                Ident@56..62 "mstore"
+          CallArgList@62..83
+            LParen@62..63 "("
+            CallArg@63..72
+              Ident@63..69 "offset"
+              Colon@69..70 ":"
+              WhiteSpace@70..71 " "
+              LitExpr@71..72
+                Lit@71..72
+                  Int@71..72 "0"
+            Comma@72..73 ","
+            WhiteSpace@73..74 " "
+            CallArg@74..82
+              Ident@74..79 "value"
+              Colon@79..80 ":"
+              WhiteSpace@80..81 " "
+              PathExpr@81..82
+                Path@81..82
+                  PathSegment@81..82
+                    Ident@81..82 "a"
+            RParen@82..83 ")"
+      Newline@83..84 "\n"
+      WhiteSpace@84..88 "    "
+      ReturnStmt@88..94
+        ReturnKw@88..94 "return"
+      Newline@94..95 "\n"
+      RBrace@95..96 "}"
+  Newline@96..98 "\n\n"
+  UnsafeExpr@98..110
+    UnsafeKw@98..104 "unsafe"
+    WhiteSpace@104..105 " "
+    BinExpr@105..110
+      LitExpr@105..106
+        Lit@105..106
+          Int@105..106 "1"
+      WhiteSpace@106..107 " "
+      Plus@107..108 "+"
+      WhiteSpace@108..109 " "
+      LitExpr@109..110
+        Lit@109..110
+          Int@109..110 "1"
+  Newline@110..112 "\n\n"
+  UnsafeExpr@112..124
+    UnsafeKw@112..118 "unsafe"
+    WhiteSpace@118..119 " "
+    CallExpr@119..124
+      PathExpr@119..122
+        Path@119..122
+          PathSegment@119..122
+            Ident@119..122 "bar"
+      CallArgList@122..124
+        LParen@122..123 "("
+        RParen@123..124 ")"
+  Newline@124..125 "\n"
+

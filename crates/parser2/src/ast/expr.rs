@@ -22,6 +22,7 @@ ast_node! {
     | SK::LitExpr
     | SK::IfExpr
     | SK::MatchExpr
+    | SK::UnsafeExpr
     | SK::ParenExpr
     | SK::AssignExpr
     | SK::AugAssignExpr,
@@ -50,6 +51,7 @@ impl Expr {
             SK::LitExpr => ExprKind::Lit(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::IfExpr => ExprKind::If(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::MatchExpr => ExprKind::Match(AstNode::cast(self.syntax().clone()).unwrap()),
+            SK::UnsafeExpr => ExprKind::Unsafe(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ParenExpr => ExprKind::Paren(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::AssignExpr => ExprKind::Assign(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::AugAssignExpr => ExprKind::AugAssign(AstNode::cast(self.syntax().clone()).unwrap()),
@@ -326,6 +328,21 @@ impl MatchExpr {
 }
 
 ast_node! {
+    /// `unsafe expr`
+    pub struct UnsafeExpr,
+    SK::UnsafeExpr
+}
+impl UnsafeExpr {
+    pub fn unsafe_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::UnsafeKw)
+    }
+
+    pub fn inner_expr(&self) -> Option<Expr> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
     /// `(expr)`
     pub struct ParenExpr,
     SK::ParenExpr
@@ -397,6 +414,7 @@ pub enum ExprKind {
     ArrayRep(ArrayRepExpr),
     If(IfExpr),
     Match(MatchExpr),
+    Unsafe(UnsafeExpr),
     Paren(ParenExpr),
     Assign(AssignExpr),
     AugAssign(AugAssignExpr),
