@@ -13,7 +13,7 @@ camino.workspace = true
 indexmap = "2.7"
 paste.workspace = true
 salsa.workspace = true
-semver = "1.0.24"
+semver.workspace = true
 smol_str = "0.3.2"
 
 parser.workspace = true

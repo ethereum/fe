@@ -101,8 +101,8 @@ pub enum IngotKind {
     /// An external ingot which is depended on by the current ingot.
     External,
 
-    /// Standard library ingot.
-    Std,
+    /// Core library ingot.
+    Core,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

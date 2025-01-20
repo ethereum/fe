@@ -73,8 +73,8 @@ impl<'db> IngotId<'db> {
         all_impls_in_ingot(db, self)
     }
 
-    pub fn is_std(self, db: &'db dyn HirDb) -> bool {
-        matches!(self.kind(db), IngotKind::Std)
+    pub fn is_core(self, db: &'db dyn HirDb) -> bool {
+        matches!(self.kind(db), IngotKind::Core)
     }
 }
 
