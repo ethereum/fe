@@ -943,7 +943,7 @@ impl<'db> BodyDiag<'db> {
             Self::DuplicatedBinding { name, .. } => {
                 format!("duplicate binding `{}` in pattern", name.data(db))
             }
-            Self::DuplicatedRestPat(_) => "duplicate `..` found".to_string(),
+            Self::DuplicatedRestPat(_) => "duplicate `..` in pattern".to_string(),
             Self::InvalidPathDomainInPat { .. } => "invalid item is given here".to_string(),
             Self::UnitVariantExpected { .. } => "expected unit variant".to_string(),
             Self::TupleVariantExpected { .. } => "expected tuple variant".to_string(),
@@ -952,7 +952,7 @@ impl<'db> BodyDiag<'db> {
             Self::DuplicatedRecordFieldBind { .. } => "duplicated record field binding".to_string(),
             Self::RecordFieldNotFound { .. } => "specified field not found".to_string(),
             Self::ExplicitLabelExpectedInRecord { .. } => "explicit label is required".to_string(),
-            Self::MissingRecordFields { .. } => "all fields are not given".to_string(),
+            Self::MissingRecordFields { .. } => "missing fields in record pattern".to_string(),
             Self::UndefinedVariable(..) => "undefined variable".to_string(),
             Self::ReturnedTypeMismatch { .. } => "returned type mismatch".to_string(),
             Self::TypeMustBeKnown(..) => "type must be known here".to_string(),
@@ -978,14 +978,14 @@ impl<'db> BodyDiag<'db> {
                 format!("`{}` needs to be implemented for {ty}", trait_name.data(db))
             }
 
-            Self::NotCallable(..) => "not callable type is given in call expression".to_string(),
+            Self::NotCallable(_, ty) => format!("expected function, found `{ty}`"),
 
             Self::CallGenericArgNumMismatch { .. } => {
                 "given generic argument number mismatch".to_string()
             }
 
-            Self::CallArgNumMismatch { .. } => "given argument number mismatch".to_string(),
-            Self::CallArgLabelMismatch { .. } => "given argument label mismatch".to_string(),
+            Self::CallArgNumMismatch { .. } => "argument number mismatch".to_string(),
+            Self::CallArgLabelMismatch { .. } => "argument label mismatch".to_string(),
 
             Self::AmbiguousInherentMethodCall { .. } => "ambiguous method call".to_string(),
 
@@ -1164,7 +1164,7 @@ impl<'db> BodyDiag<'db> {
                 vec![
                     SubDiagnostic::new(
                         LabelStyle::Primary,
-                        format!("duplicated field binding `{}`", name),
+                        format!("duplicate field binding `{}`", name),
                         primary.resolve(db),
                     ),
                     SubDiagnostic::new(
@@ -1314,7 +1314,7 @@ impl<'db> BodyDiag<'db> {
                 vec![
                     SubDiagnostic::new(
                         LabelStyle::Primary,
-                        format!("`{}` cant be applied to `{}`", op, ty),
+                        format!("`{}` can't be applied to `{}`", op, ty),
                         span.resolve(db),
                     ),
                     SubDiagnostic::new(
@@ -1381,7 +1381,7 @@ impl<'db> BodyDiag<'db> {
             Self::NotCallable(primary, ty) => {
                 vec![SubDiagnostic::new(
                     LabelStyle::Primary,
-                    format!("`{ty}` is not callable"),
+                    format!("call expression requires function; `{ty}` is not callable"),
                     primary.resolve(db),
                 )]
             }

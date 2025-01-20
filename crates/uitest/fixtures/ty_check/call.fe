@@ -16,3 +16,8 @@ pub fn make_tuple<T, U>(_ t: T, _ u: U) -> (T, U) {
 pub fn use_make_tuple() -> (i32, u32) {
     make_tuple<i32, u32>(false, 1)
 }
+
+fn f() {
+    let x: u32 = 1
+    x(100)
+}

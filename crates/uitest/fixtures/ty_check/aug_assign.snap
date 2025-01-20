@@ -1,7 +1,7 @@
 ---
 source: crates/uitest/tests/ty_check.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty_check/aug_assign.fe
+input_file: fixtures/ty_check/aug_assign.fe
 ---
 error[8-0016]: `std::ops::SubAssign` trait is not implemented
   ┌─ aug_assign.fe:6:5
@@ -9,7 +9,7 @@ error[8-0016]: `std::ops::SubAssign` trait is not implemented
 6 │     f -= f
   │     ^^^^^^
   │     │
-  │     `-=` cant be applied to `Foo`
+  │     `-=` can't be applied to `Foo`
   │     Try implementing `std::ops::SubAssign` for `Foo`
 
 error[8-0018]: left-hand side of assignment is immutable
@@ -20,5 +20,3 @@ error[8-0018]: left-hand side of assignment is immutable
 6 │     f -= f
 7 │     f.x *= 1
   │     ^^^ immutable assignment
-
-
