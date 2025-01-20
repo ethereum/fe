@@ -1,0 +1,19 @@
+[package]
+name = "fe-common"
+version = "0.26.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Provides HIR definition and lowering for Fe lang."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+camino.workspace = true
+indexmap = "2.7"
+paste.workspace = true
+salsa.workspace = true
+semver = "1.0.24"
+smol_str = "0.3.2"
+
+parser.workspace = true

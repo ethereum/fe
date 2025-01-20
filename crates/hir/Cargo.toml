@@ -7,16 +7,16 @@ repository = "https://github.com/ethereum/fe"
 description = "Provides HIR definition and lowering for Fe lang"
 
 [dependencies]
-salsa.workspace = true
-derive_more = "0.99"
-cranelift-entity = "0.91"
-num-bigint = "0.4"
-num-traits = "0.2.15"
-camino = "1.1.4"
-rustc-hash = "1.1.0"
-smallvec = "1.10.0"
-paste = "1.0"
+camino.workspace = true
+cranelift-entity = "0.115"
+derive_more.workspace = true
 dot2 = "1.0"
+num-bigint.workspace = true
+num-traits = "0.2.19"
+paste.workspace = true
+rustc-hash.workspace = true
+salsa.workspace = true
+smallvec.workspace = true
 
-common = { path = "../common2", package = "fe-common2" }
-parser = { path = "../parser2", package = "fe-parser2" }
+common.workspace = true
+parser.workspace = true

@@ -8,7 +8,7 @@ use async_lsp::{
     LanguageClient, ResponseError,
 };
 use common::InputDb;
-use fxhash::FxHashSet;
+use rustc_hash::FxHashSet;
 use salsa::Setter;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};

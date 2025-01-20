@@ -1,0 +1,298 @@
+---
+source: crates/parser/tests/syntax_node.rs
+expression: node
+input_file: crates/parser/test_files/syntax_node/items/use.fe
+---
+Root@0..308
+  ItemList@0..307
+    Item@0..12
+      Use@0..12
+        UseKw@0..3 "use"
+        WhiteSpace@3..4 " "
+        UseTree@4..12
+          UsePath@4..12
+            UsePathSegment@4..7
+              Ident@4..7 "Foo"
+            Colon2@7..9 "::"
+            UsePathSegment@9..12
+              Ident@9..12 "Bar"
+    Newline@12..13 "\n"
+    Item@13..29
+      Use@13..29
+        ItemModifier@13..16
+          PubKw@13..16 "pub"
+        WhiteSpace@16..17 " "
+        UseKw@17..20 "use"
+        WhiteSpace@20..21 " "
+        UseTree@21..29
+          UsePath@21..29
+            UsePathSegment@21..24
+              Ident@21..24 "Foo"
+            Colon2@24..26 "::"
+            UsePathSegment@26..29
+              Ident@26..29 "Bar"
+    Newline@29..30 "\n"
+    Item@30..40
+      Use@30..40
+        UseKw@30..33 "use"
+        WhiteSpace@33..34 " "
+        UseTree@34..40
+          UsePath@34..40
+            UsePathSegment@34..37
+              Ident@34..37 "Foo"
+            Colon2@37..39 "::"
+            UsePathSegment@39..40
+              Star@39..40 "*"
+    Newline@40..41 "\n"
+    Item@41..61
+      Use@41..61
+        UseKw@41..44 "use"
+        WhiteSpace@44..45 " "
+        UseTree@45..61
+          UsePath@45..53
+            UsePathSegment@45..48
+              Ident@45..48 "Foo"
+            Colon2@48..50 "::"
+            UsePathSegment@50..53
+              Ident@50..53 "Bar"
+          WhiteSpace@53..54 " "
+          UseTreeRename@54..61
+            AsKw@54..56 "as"
+            WhiteSpace@56..57 " "
+            Ident@57..61 "Bar1"
+    Newline@61..62 "\n"
+    Item@62..81
+      Use@62..81
+        UseKw@62..65 "use"
+        WhiteSpace@65..66 " "
+        UseTree@66..81
+          UsePath@66..76
+            UsePathSegment@66..69
+              Ident@66..69 "Foo"
+            Colon2@69..71 "::"
+            UsePathSegment@71..76
+              Ident@71..76 "Trait"
+          WhiteSpace@76..77 " "
+          UseTreeRename@77..81
+            AsKw@77..79 "as"
+            WhiteSpace@79..80 " "
+            Underscore@80..81 "_"
+    Newline@81..83 "\n\n"
+    Item@83..102
+      Use@83..102
+        UseKw@83..86 "use"
+        WhiteSpace@86..87 " "
+        UseTree@87..102
+          UsePath@87..90
+            UsePathSegment@87..90
+              Ident@87..90 "Foo"
+          Colon2@90..92 "::"
+          UseTreeList@92..102
+            LBrace@92..93 "{"
+            UseTree@93..96
+              UsePath@93..96
+                UsePathSegment@93..96
+                  Ident@93..96 "Foo"
+            Comma@96..97 ","
+            WhiteSpace@97..98 " "
+            UseTree@98..101
+              UsePath@98..101
+                UsePathSegment@98..101
+                  Ident@98..101 "Bar"
+            RBrace@101..102 "}"
+    Newline@102..103 "\n"
+    Item@103..123
+      Use@103..123
+        UseKw@103..106 "use"
+        WhiteSpace@106..107 " "
+        UseTree@107..123
+          UsePath@107..110
+            UsePathSegment@107..110
+              Ident@107..110 "Foo"
+          Colon2@110..112 "::"
+          UseTreeList@112..123
+            LBrace@112..113 "{"
+            UseTree@113..117
+              UsePath@113..117
+                UsePathSegment@113..117
+                  SelfKw@113..117 "self"
+            Comma@117..118 ","
+            WhiteSpace@118..119 " "
+            UseTree@119..122
+              UsePath@119..122
+                UsePathSegment@119..122
+                  Ident@119..122 "Bar"
+            RBrace@122..123 "}"
+    Newline@123..124 "\n"
+    Item@124..152
+      Use@124..152
+        UseKw@124..127 "use"
+        WhiteSpace@127..128 " "
+        UseTree@128..152
+          UsePath@128..131
+            UsePathSegment@128..131
+              Ident@128..131 "Foo"
+          Colon2@131..133 "::"
+          UseTreeList@133..152
+            LBrace@133..134 "{"
+            UseTree@134..138
+              UsePath@134..138
+                UsePathSegment@134..138
+                  SelfKw@134..138 "self"
+            Comma@138..139 ","
+            WhiteSpace@139..140 " "
+            UseTree@140..151
+              UsePath@140..143
+                UsePathSegment@140..143
+                  Ident@140..143 "Bar"
+              WhiteSpace@143..144 " "
+              UseTreeRename@144..151
+                AsKw@144..146 "as"
+                WhiteSpace@146..147 " "
+                Ident@147..151 "Bar1"
+            RBrace@151..152 "}"
+    Newline@152..153 "\n"
+    Item@153..202
+      Use@153..202
+        UseKw@153..156 "use"
+        WhiteSpace@156..157 " "
+        UseTree@157..202
+          UsePath@157..160
+            UsePathSegment@157..160
+              Ident@157..160 "Foo"
+          Colon2@160..162 "::"
+          UseTreeList@162..202
+            LBrace@162..163 "{"
+            UseTree@163..176
+              UsePath@163..167
+                UsePathSegment@163..167
+                  SelfKw@163..167 "self"
+              WhiteSpace@167..168 " "
+              UseTreeRename@168..176
+                AsKw@168..170 "as"
+                WhiteSpace@170..171 " "
+                Ident@171..176 "self_"
+            Comma@176..177 ","
+            WhiteSpace@177..178 " "
+            UseTree@178..198
+              UsePath@178..181
+                UsePathSegment@178..181
+                  Ident@178..181 "Bar"
+              Colon2@181..183 "::"
+              UseTreeList@183..198
+                LBrace@183..184 "{"
+                UseTree@184..192
+                  UsePath@184..187
+                    UsePathSegment@184..187
+                      Ident@184..187 "Bar"
+                  WhiteSpace@187..188 " "
+                  UseTreeRename@188..192
+                    AsKw@188..190 "as"
+                    WhiteSpace@190..191 " "
+                    Underscore@191..192 "_"
+                Comma@192..193 ","
+                WhiteSpace@193..194 " "
+                UseTree@194..197
+                  UsePath@194..197
+                    UsePathSegment@194..197
+                      Ident@194..197 "Baz"
+                RBrace@197..198 "}"
+            Comma@198..199 ","
+            WhiteSpace@199..200 " "
+            UseTree@200..201
+              UsePath@200..201
+                UsePathSegment@200..201
+                  Star@200..201 "*"
+            RBrace@201..202 "}"
+    Newline@202..204 "\n\n"
+    Item@204..272
+      Use@204..272
+        UseKw@204..207 "use"
+        WhiteSpace@207..208 " "
+        UseTree@208..272
+          UseTreeList@208..272
+            LBrace@208..209 "{"
+            UseTree@209..225
+              UsePath@209..217
+                UsePathSegment@209..212
+                  Ident@209..212 "Foo"
+                Colon2@212..214 "::"
+                UsePathSegment@214..217
+                  Ident@214..217 "Bar"
+              WhiteSpace@217..218 " "
+              UseTreeRename@218..225
+                AsKw@218..220 "as"
+                WhiteSpace@220..221 " "
+                Ident@221..225 "Bar1"
+            Comma@225..226 ","
+            WhiteSpace@226..227 " "
+            UseTree@227..243
+              UsePath@227..235
+                UsePathSegment@227..230
+                  Ident@227..230 "Bar"
+                Colon2@230..232 "::"
+                UsePathSegment@232..235
+                  Ident@232..235 "Bar"
+              WhiteSpace@235..236 " "
+              UseTreeRename@236..243
+                AsKw@236..238 "as"
+                WhiteSpace@238..239 " "
+                Ident@239..243 "Bar2"
+            Comma@243..244 ","
+            WhiteSpace@244..245 " "
+            UseTree@245..261
+              UsePath@245..253
+                UsePathSegment@245..248
+                  Ident@245..248 "Baz"
+                Colon2@248..250 "::"
+                UsePathSegment@250..253
+                  Ident@250..253 "Bar"
+              WhiteSpace@253..254 " "
+              UseTreeRename@254..261
+                AsKw@254..256 "as"
+                WhiteSpace@256..257 " "
+                Ident@257..261 "Bar3"
+            Comma@261..262 ","
+            WhiteSpace@262..263 " "
+            UseTree@263..271
+              UsePath@263..271
+                UsePathSegment@263..268
+                  Ident@263..268 "Trait"
+                Colon2@268..270 "::"
+                UsePathSegment@270..271
+                  Ident@270..271 "T"
+            RBrace@271..272 "}"
+    Newline@272..273 "\n"
+    Item@273..278
+      Use@273..278
+        UseKw@273..276 "use"
+        WhiteSpace@276..277 " "
+        UseTree@277..278
+          UsePath@277..278
+            UsePathSegment@277..278
+              Star@277..278 "*"
+    Newline@278..280 "\n\n"
+    Item@280..292
+      Use@280..292
+        UseKw@280..283 "use"
+        WhiteSpace@283..284 " "
+        UseTree@284..292
+          UsePath@284..292
+            UsePathSegment@284..289
+              SuperKw@284..289 "super"
+            Colon2@289..291 "::"
+            UsePathSegment@291..292
+              Star@291..292 "*"
+    Newline@292..293 "\n"
+    Item@293..307
+      Use@293..307
+        UseKw@293..296 "use"
+        WhiteSpace@296..297 " "
+        UseTree@297..307
+          UsePath@297..307
+            UsePathSegment@297..302
+              IngotKw@297..302 "ingot"
+            Colon2@302..304 "::"
+            UsePathSegment@304..307
+              Ident@304..307 "Foo"
+  Newline@307..308 "\n"

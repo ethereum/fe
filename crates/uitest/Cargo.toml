@@ -1,15 +1,15 @@
 [package]
-name = "driver2"
+name = "fe-uitest"
 version = "0.26.0"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
-description = "Provides Fe driver"
 publish = false
 
 [dependencies]
-driver = { path = "../driver2", package = "fe-driver2" }
-hir = { path = "../hir", package = "fe-hir" }
-fe-compiler-test-utils = { path = "../test-utils" }
-dir-test = "0.3"
-wasm-bindgen-test = "0.3"
+dir-test.workspace = true
+wasm-bindgen-test.workspace = true
+
+driver.workspace = true
+test-utils.workspace = true
+hir.workspace = true

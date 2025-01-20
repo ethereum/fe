@@ -12,7 +12,7 @@ use crate::{
     backend::{db::LanguageServerDb, Backend},
     util::{to_lsp_location_from_scope, to_offset_from_position},
 };
-pub type Cursor = rowan::TextSize;
+pub type Cursor = parser::TextSize;
 
 #[derive(Default)]
 struct PathSpanCollector<'db> {
@@ -168,10 +168,9 @@ mod tests {
 
     use common::input::IngotKind;
     use dir_test::{dir_test, Fixture};
-    use fe_compiler_test_utils::snap_test;
-    use fxhash::FxHashMap;
     use hir::{HirDb, LowerHirDb};
     use salsa::Setter;
+    use test_utils::snap_test;
 
     use super::*;
     use crate::backend::{
@@ -200,7 +199,7 @@ mod tests {
     fn extract_multiple_cursor_positions_from_spans(
         db: &LanguageServerDatabase,
         top_mod: TopLevelMod,
-    ) -> Vec<rowan::TextSize> {
+    ) -> Vec<parser::TextSize> {
         let hir_db = db.as_hir_db();
         let mut visitor_ctxt = VisitorCtxt::with_top_mod(hir_db, top_mod);
         let mut path_collector = PathSpanCollector::default();
@@ -337,7 +336,7 @@ mod tests {
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
 
-        let mut cursor_path_map: FxHashMap<Cursor, String> = FxHashMap::default();
+        let mut cursor_paths: Vec<(Cursor, String)> = vec![];
 
         for cursor in &cursors {
             let mut visitor_ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
@@ -360,14 +359,14 @@ mod tests {
                         _ => "".into(),
                     },
                 };
-                cursor_path_map.insert(*cursor, res);
+                cursor_paths.push((*cursor, res));
             }
         }
 
         let result = format!(
             "{}\n---\n{}",
             fixture.content(),
-            cursor_path_map
+            cursor_paths
                 .iter()
                 .map(|(cursor, path)| { format!("cursor position: {cursor:?}, path: {path}") })
                 .collect::<Vec<_>>()

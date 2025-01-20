@@ -1,0 +1,31 @@
+---
+source: crates/parser/tests/syntax_node.rs
+expression: node
+input_file: crates/parser/test_files/syntax_node/exprs/tuple.fe
+---
+Root@0..26
+  TupleExpr@0..2
+    LParen@0..1 "("
+    RParen@1..2 ")"
+  Newline@2..3 "\n"
+  TupleExpr@3..26
+    LParen@3..4 "("
+    Newline@4..5 "\n"
+    WhiteSpace@5..9 "    "
+    LitExpr@9..10
+      Lit@9..10
+        Int@9..10 "1"
+    Comma@10..11 ","
+    Newline@11..12 "\n"
+    WhiteSpace@12..16 "    "
+    LitExpr@16..17
+      Lit@16..17
+        Int@16..17 "2"
+    Comma@17..18 ","
+    Newline@18..19 "\n"
+    WhiteSpace@19..23 "    "
+    LitExpr@23..24
+      Lit@23..24
+        Int@23..24 "3"
+    Newline@24..25 "\n"
+    RParen@25..26 ")"

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
-use fe_compiler_test_utils::snap_test;
+use test_utils::snap_test;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/fixtures/name_resolution",

@@ -102,6 +102,7 @@ mod test_db {
         input::{IngotKind, Version},
         InputDb, InputFile, InputIngot,
     };
+    use derive_more::TryIntoError;
 
     use super::HirDb;
     use crate::{
@@ -128,7 +129,7 @@ mod test_db {
         /// file.
         pub fn expect_item<'db, T>(&'db self, ingot: InputIngot, input: InputFile) -> T
         where
-            ItemKind<'db>: TryInto<T, Error = &'static str>,
+            ItemKind<'db>: TryInto<T, Error = TryIntoError<ItemKind<'db>>>,
         {
             let tree = self.parse_source(ingot, input);
             tree.items_dfs(self)
@@ -138,7 +139,7 @@ mod test_db {
 
         pub fn expect_items<'db, T>(&'db self, ingot: InputIngot, input: InputFile) -> Vec<T>
         where
-            ItemKind<'db>: TryInto<T, Error = &'static str>,
+            ItemKind<'db>: TryInto<T, Error = TryIntoError<ItemKind<'db>>>,
         {
             let tree = self.parse_source(ingot, input);
             tree.items_dfs(self)

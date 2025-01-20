@@ -5,8 +5,8 @@ use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
     InputDb, InputIngot,
 };
-use fxhash::FxHashMap;
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
+use rustc_hash::FxHashMap;
 use tracing::error;
 
 pub fn calculate_line_offsets(text: &str) -> Vec<usize> {
@@ -19,12 +19,12 @@ pub fn calculate_line_offsets(text: &str) -> Vec<usize> {
         .collect()
 }
 
-pub fn to_offset_from_position(position: Position, text: &str) -> rowan::TextSize {
+pub fn to_offset_from_position(position: Position, text: &str) -> parser::TextSize {
     let line_offsets: Vec<usize> = calculate_line_offsets(text);
     let line_offset = line_offsets[position.line as usize];
     let character_offset = position.character as usize;
 
-    rowan::TextSize::from((line_offset + character_offset) as u32)
+    parser::TextSize::from((line_offset + character_offset) as u32)
 }
 
 pub fn to_lsp_range_from_span(

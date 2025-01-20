@@ -2,7 +2,6 @@ mod test_db;
 use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
-use fe_compiler_test_utils::snap_test;
 use fe_hir_analysis::name_resolution::{resolve_path, NameDomain};
 use hir::{
     hir_def::{Expr, ExprId, ItemKind, Pat, PatId, PathId, TopLevelMod, TypeId},
@@ -10,6 +9,7 @@ use hir::{
     HirDb, SpannedHirDb,
 };
 use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
+use test_utils::snap_test;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/early_path_resolution",
