@@ -314,6 +314,26 @@ impl<'db> TyId<'db> {
         }
     }
 
+    /// Returns the span of the name of the type, at its definition site
+    pub fn name_span(self, db: &'db dyn HirAnalysisDb) -> Option<DynLazySpan<'db>> {
+        match self.base_ty(db).data(db) {
+            TyData::TyVar(_) => None,
+            TyData::TyParam(param) => param.scope(db).name_span(db.as_hir_db()),
+
+            TyData::TyBase(TyBase::Adt(adt)) => Some(adt.name_span(db)),
+            TyData::TyBase(TyBase::Func(func)) => Some(func.name_span(db)),
+            TyData::TyBase(TyBase::Prim(_)) => None,
+
+            TyData::ConstTy(ty) => match ty.data(db) {
+                ConstTyData::TyParam(param, _) => param.scope(db).name_span(db.as_hir_db()),
+                _ => None,
+            },
+
+            TyData::Never | TyData::Invalid(_) => None,
+            TyData::TyApp(..) => unreachable!(),
+        }
+    }
+
     /// Emit diagnostics for the type if the type contains invalid types.
     pub(super) fn emit_diag(
         self,
