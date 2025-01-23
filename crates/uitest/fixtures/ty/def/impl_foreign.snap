@@ -1,24 +1,22 @@
 ---
 source: crates/uitest/tests/ty.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty/def/impl_foreign.fe
+input_file: fixtures/ty/def/impl_foreign.fe
 ---
-error[6-0011]: inherent impl is not allowed
+error[6-0011]: invalid inherent implementation
   ┌─ impl_foreign.fe:1:6
   │
 1 │ impl i32 {}
   │      ^^^ inherent impl is not allowed for foreign type `i32`
 
-error[6-0011]: inherent impl is not allowed
+error[6-0011]: invalid inherent implementation
   ┌─ impl_foreign.fe:3:9
   │
 3 │ impl<T> T {}
   │         ^ inherent impl is not allowed for non nominal type
 
-error[6-0011]: inherent impl is not allowed
+error[6-0011]: invalid inherent implementation
   ┌─ impl_foreign.fe:5:17
   │
 5 │ impl<T: * -> *> T<i32> {
   │                 ^^^^^^ inherent impl is not allowed for non nominal type
-
-

@@ -1,43 +1,11 @@
-use analysis_pass::ModuleAnalysisPass;
-use common::InputDb;
-use hir_def::TopLevelMod;
-pub use lower::parse::ParserError;
-use lower::parse::{parse_file_impl, ParseErrorAccumulator};
-use parser::GreenNode;
+use common::{InputDb, InputIngot};
+use hir_def::{module_tree_impl, IdentId, IngotId};
+pub use lower::parse::{ParseErrorAccumulator, ParserError};
 
-pub mod analysis_pass;
-pub mod diagnostics;
 pub mod hir_def;
 pub mod lower;
 pub mod span;
 pub mod visitor;
-
-#[derive(Clone, Copy)]
-pub struct ParsingPass<'db> {
-    db: &'db dyn HirDb,
-}
-
-impl<'db> ParsingPass<'db> {
-    pub fn new(db: &'db dyn HirDb) -> Self {
-        Self { db }
-    }
-
-    pub fn green_node(self, top_mod: TopLevelMod) -> GreenNode {
-        parse_file_impl(self.db, top_mod)
-    }
-}
-
-impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
-    fn run_on_module(
-        &mut self,
-        top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn diagnostics::DiagnosticVoucher<'db> + 'db>> {
-        parse_file_impl::accumulated::<ParseErrorAccumulator>(self.db, top_mod)
-            .into_iter()
-            .map(|d| Box::new(d.0) as _)
-            .collect::<Vec<_>>()
-    }
-}
 
 #[salsa::db]
 pub trait HirDb: salsa::Database + InputDb {

@@ -1,30 +1,28 @@
 ---
 source: crates/uitest/tests/ty.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty/def/invalid_self_ty.fe
+input_file: fixtures/ty/def/invalid_self_ty.fe
 ---
-error[6-0010]: invalid type for `self` argument
+error[6-0010]: invalid type for `self` parameter
   ┌─ invalid_self_ty.fe:2:18
   │
 2 │     fn foo(self: i32)
   │                  ^^^ type of `self` must starts with `Self`, but the given type is `i32`
 
-error[6-0010]: invalid type for `self` argument
+error[6-0010]: invalid type for `self` parameter
   ┌─ invalid_self_ty.fe:6:18
   │
 6 │     fn foo(self: i32) {}
-  │                  ^^^ type of `self` must starts with `Self` or `Option<T>`, but the given type is `i32`
+  │                  ^^^ type of `self` must start with `Self` or `Option<T>`, but the given type is `i32`
 
-error[6-0010]: invalid type for `self` argument
+error[6-0010]: invalid type for `self` parameter
    ┌─ invalid_self_ty.fe:16:22
    │
 16 │     fn method1(self: i32) {}
-   │                      ^^^ type of `self` must starts with `Self` or `Option`, but the given type is `i32`
+   │                      ^^^ type of `self` must start with `Self` or `Option`, but the given type is `i32`
 
-error[6-0010]: invalid type for `self` argument
+error[6-0010]: invalid type for `self` parameter
    ┌─ invalid_self_ty.fe:20:22
    │
 20 │     fn method2(self: i32) {}
-   │                      ^^^ type of `self` must starts with `Self` or `Option<T>`, but the given type is `i32`
-
-
+   │                      ^^^ type of `self` must start with `Self` or `Option<T>`, but the given type is `i32`

@@ -224,7 +224,8 @@ impl ChainInitiator for ChainRoot<'_> {
 }
 
 impl LazySpan for SpanTransitionChain<'_> {
-    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span> {
+    fn resolve<D: SpannedHirDb + ?Sized>(&self, db: &D) -> Option<Span> {
+        let db = db.as_spanned_hir_db();
         let mut resolved = self.root.init(db);
 
         for LazyTransitionFn { f, arg } in &self.chain {
@@ -407,7 +408,7 @@ macro_rules! define_lazy_span_node {
 
 
         impl<'db> crate::span::LazySpan for $name<'db> {
-            fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<common::diagnostics::Span> {
+            fn resolve<D: crate::SpannedHirDb + ?Sized>(&self, db: &D) -> Option<common::diagnostics::Span> {
                 self.0.resolve(db)
             }
         }

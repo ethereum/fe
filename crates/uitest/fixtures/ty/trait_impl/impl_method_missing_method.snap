@@ -1,12 +1,10 @@
 ---
 source: crates/uitest/tests/ty.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty/trait_impl/impl_method_missing_method.fe
+input_file: fixtures/ty/trait_impl/impl_method_missing_method.fe
 ---
 error[6-0002]: not all trait methods are implemented
    ┌─ impl_method_missing_method.fe:10:14
    │
 10 │ impl Foo for i32 {}
-   │              ^^^ all required trait items must be implemented, missing: `foo, bar`
-
-
+   │              ^^^ missing implementations: foo, bar

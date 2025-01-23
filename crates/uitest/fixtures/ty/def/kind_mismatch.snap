@@ -1,16 +1,8 @@
 ---
 source: crates/uitest/tests/ty.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty/def/kind_mismatch.fe
+input_file: fixtures/ty/def/kind_mismatch.fe
 ---
-error[2-0001]: `baz` conflicts with other definitions
-   ┌─ kind_mismatch.fe:9:5
-   │
- 9 │     baz: Foo<i32, u32, u256>,
-   │     ^^^ `baz` is defined here
-10 │     baz: Foo<i32, Foo<i32, u32, u256>>,
-   │     --- `baz` is redefined here
-
 error[3-0001]: invalid type argument kind
   ┌─ kind_mismatch.fe:7:10
   │
@@ -27,10 +19,10 @@ error[3-0016]: too many generic args; expected 2, given 3
   ┌─ kind_mismatch.fe:9:10
   │
 9 │     baz: Foo<i32, u32, u256>,
-  │          ^^^^^^^^^^^^^^^^^^^ too many generic args; expected 2, given 3
+  │          ^^^^^^^^^^^^^^^^^^^ expected 2 arguments, but 3 were given
 
 error[3-0016]: too many generic args; expected 2, given 3
    ┌─ kind_mismatch.fe:10:10
    │
-10 │     baz: Foo<i32, Foo<i32, u32, u256>>,
-   │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ too many generic args; expected 2, given 3
+10 │     boz: Foo<i32, Foo<i32, u32, u256>>, // TODO: wrong span is highlighted
+   │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 arguments, but 3 were given

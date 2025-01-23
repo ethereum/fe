@@ -1,7 +1,7 @@
 ---
 source: crates/uitest/tests/name_resolution.rs
 expression: diags
-input_file: crates/uitest/fixtures/name_resolution/conflict_generics.fe
+input_file: fixtures/name_resolution/conflict_generics.fe
 ---
 error[2-0001]: `T` conflicts with other definitions
   ┌─ conflict_generics.fe:1:16
@@ -15,10 +15,8 @@ error[2-0004]: `T` is ambiguous
   ┌─ conflict_generics.fe:2:8
   │
 1 │ pub struct MyS<T, U, T> {
-  │                -     - candidate `#1`
+  │                -     - candidate 2
   │                │      
-  │                candidate `#0`
+  │                candidate 1
 2 │     x: T,
   │        ^ `T` is ambiguous
-
-

@@ -905,6 +905,7 @@ dependencies = [
  "dir-test",
  "fe-driver",
  "fe-hir",
+ "fe-hir-analysis",
  "fe-test-utils",
  "wasm-bindgen-test",
 ]

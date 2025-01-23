@@ -399,7 +399,7 @@ impl<'db> TyId<'db> {
                         n_given_args: n_given_arg,
                     } => TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into(),
 
-                    InvalidCause::AssocTy => TyLowerDiag::assoc_ty(span).into(),
+                    InvalidCause::AssocTy => TyLowerDiag::AssocTy(span).into(),
 
                     InvalidCause::InvalidConstTyExpr { body } => {
                         TyLowerDiag::InvalidConstTyExpr(body.lazy_span().into()).into()

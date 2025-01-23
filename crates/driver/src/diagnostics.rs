@@ -7,7 +7,7 @@ use common::{
     InputDb, InputFile,
 };
 use cs::{diagnostic as cs_diag, files as cs_files};
-use hir::{diagnostics::DiagnosticVoucher, SpannedHirDb};
+use hir_analysis::diagnostics::{DiagnosticVoucher, SpannedHirAnalysisDb};
 
 use crate::DriverDb;
 
@@ -15,15 +15,15 @@ pub trait ToCsDiag {
     fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile>;
 }
 
-pub trait SpannedInputDb: SpannedHirDb + InputDb {}
-impl<T> SpannedInputDb for T where T: SpannedHirDb + InputDb {}
+pub trait SpannedInputDb: SpannedHirAnalysisDb + InputDb {}
+impl<T> SpannedInputDb for T where T: SpannedHirAnalysisDb + InputDb {}
 
 impl<T> ToCsDiag for T
 where
     T: for<'db> DiagnosticVoucher<'db>,
 {
     fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile> {
-        let complete = self.to_complete(db.as_spanned_hir_db());
+        let complete = self.to_complete(db.as_spanned_hir_analysis_db());
 
         let severity = convert_severity(complete.severity);
         let code = Some(complete.error_code.to_string());
