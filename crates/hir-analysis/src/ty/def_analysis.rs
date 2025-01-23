@@ -290,12 +290,11 @@ impl<'db> DefAnalyzer<'db> {
     fn verify_term_type_kind(&mut self, ty: HirTyId<'db>, span: DynLazySpan<'db>) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
         if !ty.has_star_kind(self.db) {
-            self.diags
-                .push(TyLowerDiag::expected_star_kind_ty(span).into());
+            self.diags.push(TyLowerDiag::ExpectedStarKind(span).into());
             false
         } else if ty.is_const_ty(self.db) {
             self.diags
-                .push(TyLowerDiag::normal_type_expected(self.db, span, ty).into());
+                .push(TyLowerDiag::NormalTypeExpected { span, given: ty }.into());
             false
         } else {
             true
@@ -323,11 +322,11 @@ impl<'db> DefAnalyzer<'db> {
                 match resolve_path(self.db, path, parent_scope, false) {
                     Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                         self.diags.push(
-                            TyLowerDiag::generic_param_conflict(
-                                span.param(i).into(),
-                                r.name_span(self.db).unwrap(),
+                            TyLowerDiag::GenericParamAlreadyDefinedInParent {
+                                span: span.param(i).into(),
+                                conflict_with: r.name_span(self.db).unwrap(),
                                 name,
-                            )
+                            }
                             .into(),
                         );
                         is_conflict = true;
@@ -529,12 +528,11 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
                 && field_ty != const_ty_ty
             {
                 self.diags.push(
-                    TyLowerDiag::const_ty_mismatch(
-                        self.db,
-                        ctxt.span().unwrap().ty().into(),
-                        const_ty_ty,
-                        field_ty,
-                    )
+                    TyLowerDiag::ConstTyMismatch {
+                        span: ctxt.span().unwrap().ty().into(),
+                        expected: const_ty_ty,
+                        given: field_ty,
+                    }
                     .into(),
                 );
                 return;
@@ -578,11 +576,11 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             match resolve_path(self.db, path, parent_scope, false) {
                 Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                     self.diags.push(
-                        TyLowerDiag::generic_param_conflict(
-                            ctxt.span().unwrap().into(),
-                            r.name_span(self.db).unwrap(),
+                        TyLowerDiag::GenericParamAlreadyDefinedInParent {
+                            span: ctxt.span().unwrap().into(),
+                            conflict_with: r.name_span(self.db).unwrap(),
                             name,
-                        )
+                        }
                         .into(),
                     );
                     return;
@@ -627,13 +625,12 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         let former_kind = ty.kind(self.db);
         if !former_kind.does_match(&kind) {
             self.diags.push(
-                TyLowerDiag::inconsistent_kind_bound(
-                    self.db,
-                    ctxt.span().unwrap().into(),
+                TyLowerDiag::InconsistentKindBound {
+                    span: ctxt.span().unwrap().into(),
                     ty,
-                    former_kind,
-                    &kind,
-                )
+                    old: former_kind.clone(),
+                    new: kind,
+                }
                 .into(),
             );
         }
@@ -791,11 +788,11 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
             match already_seen.entry(name) {
                 Entry::Occupied(entry) => {
-                    let diag = TyLowerDiag::duplicated_arg_name(
-                        ctxt.span().unwrap().param(i).name().into(),
-                        ctxt.span().unwrap().param(*entry.get()).name().into(),
+                    let diag = TyLowerDiag::DuplicatedArgName {
+                        primary: ctxt.span().unwrap().param(i).name().into(),
+                        conflict_with: ctxt.span().unwrap().param(*entry.get()).name().into(),
                         name,
-                    )
+                    }
                     .into();
                     self.diags.push(diag);
                 }
@@ -871,10 +868,10 @@ fn check_recursive_adt_impl<'db>(
         for (ty_idx, ty) in field.iter_types(db).enumerate() {
             for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
                 if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-                    let diag = TyLowerDiag::recursive_type(
-                        adt.name_span(db),
-                        adt_def.variant_ty_span(db, field_idx, ty_idx),
-                    );
+                    let diag = TyLowerDiag::RecursiveType {
+                        primary_span: adt.name_span(db),
+                        field_span: adt_def.variant_ty_span(db, field_idx, ty_idx),
+                    };
                     return Some(diag.into());
                 }
             }
@@ -940,15 +937,22 @@ fn analyze_trait_ref<'db>(
 
         Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => match (expected, given) {
             (Some(expected), Some(given)) => {
-                return Some(TyLowerDiag::const_ty_mismatch(db, span, expected, given).into())
+                return Some(
+                    TyLowerDiag::ConstTyMismatch {
+                        span,
+                        expected,
+                        given,
+                    }
+                    .into(),
+                )
             }
 
             (Some(expected), None) => {
-                return Some(TyLowerDiag::const_ty_expected(db, span, expected).into())
+                return Some(TyLowerDiag::ConstTyExpected { span, expected }.into())
             }
 
             (None, Some(given)) => {
-                return Some(TyLowerDiag::normal_type_expected(db, span, given).into())
+                return Some(TyLowerDiag::NormalTypeExpected { span, given }.into())
             }
 
             (None, None) => unreachable!(),

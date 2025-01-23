@@ -56,7 +56,11 @@ impl<'db> TyDiagCollection<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
-    InvalidTypeArgKind(DynLazySpan<'db>, String),
+    InvalidTypeArgKind {
+        span: DynLazySpan<'db>,
+        expected: Option<Kind>,
+        given: TyId<'db>,
+    },
     TooManyGenericArgs {
         span: DynLazySpan<'db>,
         expected: usize,
@@ -70,20 +74,25 @@ pub enum TyLowerDiag<'db> {
 
     UnboundTypeAliasParam {
         span: DynLazySpan<'db>,
-        type_alias: HirTypeAlias<'db>,
-        n_given_arg: usize,
+        alias: HirTypeAlias<'db>,
+        n_given_args: usize,
     },
     TypeAliasCycle {
         primary: DynLazySpan<'db>,
         cycle: Vec<HirTypeAlias<'db>>,
     },
 
-    InconsistentKindBound(DynLazySpan<'db>, String),
+    InconsistentKindBound {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        old: Kind,
+        new: Kind,
+    },
 
     KindBoundNotAllowed(DynLazySpan<'db>),
 
     GenericParamAlreadyDefinedInParent {
-        primary: DynLazySpan<'db>,
+        span: DynLazySpan<'db>,
         conflict_with: DynLazySpan<'db>,
         name: IdentId<'db>,
     },
@@ -94,26 +103,23 @@ pub enum TyLowerDiag<'db> {
         name: IdentId<'db>,
     },
 
-    InvalidConstParamTy {
-        primary: DynLazySpan<'db>,
-    },
-
+    InvalidConstParamTy(DynLazySpan<'db>),
     RecursiveConstParamTy(DynLazySpan<'db>),
 
     ConstTyMismatch {
-        primary: DynLazySpan<'db>,
-        expected: String,
-        actual: String,
+        span: DynLazySpan<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
     },
 
     ConstTyExpected {
-        primary: DynLazySpan<'db>,
-        expected: String,
+        span: DynLazySpan<'db>,
+        expected: TyId<'db>,
     },
 
     NormalTypeExpected {
-        primary: DynLazySpan<'db>,
-        given: String,
+        span: DynLazySpan<'db>,
+        given: TyId<'db>,
     },
 
     AssocTy(DynLazySpan<'db>),
@@ -121,141 +127,15 @@ pub enum TyLowerDiag<'db> {
     InvalidConstTyExpr(DynLazySpan<'db>),
 }
 
-impl<'db> TyLowerDiag<'db> {
-    pub fn expected_star_kind_ty(span: DynLazySpan<'db>) -> Self {
-        Self::ExpectedStarKind(span)
-    }
-
-    pub fn invalid_type_arg_kind(
-        db: &'db dyn HirAnalysisDb,
-        span: DynLazySpan<'db>,
-        expected: Option<Kind>,
-        arg: TyId<'db>,
-    ) -> Self {
-        let msg = if let Some(expected) = expected {
-            let arg_kind = arg.kind(db);
-            debug_assert!(!expected.does_match(arg_kind));
-
-            format!(
-                "expected `{}` kind, but `{}` has `{}` kind",
-                expected,
-                arg.pretty_print(db),
-                arg_kind
-            )
-        } else {
-            "too many generic arguments".to_string()
-        };
-
-        Self::InvalidTypeArgKind(span, msg)
-    }
-
-    pub(super) fn recursive_type(
-        primary_span: DynLazySpan<'db>,
-        field_span: DynLazySpan<'db>,
-    ) -> Self {
-        Self::RecursiveType {
-            primary_span,
-            field_span,
-        }
-    }
-
-    pub(super) fn unbound_type_alias_param(
-        span: DynLazySpan<'db>,
-        type_alias: HirTypeAlias<'db>,
-        n_given_arg: usize,
-    ) -> Self {
-        Self::UnboundTypeAliasParam {
-            span,
-            type_alias,
-            n_given_arg,
-        }
-    }
-
-    pub(super) fn invalid_const_param_ty(primary: DynLazySpan<'db>) -> Self {
-        Self::InvalidConstParamTy { primary }
-    }
-
-    pub(super) fn inconsistent_kind_bound(
-        db: &'db dyn HirAnalysisDb,
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-        former_bound: &Kind,
-        new_kind: &Kind,
-    ) -> Self {
-        let msg = format!(
-            "`{}` is already declared with `{}` kind, but found `{}` kind here",
-            ty.pretty_print(db),
-            former_bound,
-            new_kind
-        );
-        Self::InconsistentKindBound(span, msg)
-    }
-
-    pub(super) fn generic_param_conflict(
-        primary: DynLazySpan<'db>,
-        conflict_with: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    ) -> Self {
-        Self::GenericParamAlreadyDefinedInParent {
-            primary,
-            conflict_with,
-            name,
-        }
-    }
-
-    pub(super) fn const_ty_mismatch(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        expected: TyId<'db>,
-        actual: TyId<'db>,
-    ) -> Self {
-        let expected = expected.pretty_print(db).to_string();
-        let actual = actual.pretty_print(db).to_string();
-        Self::ConstTyMismatch {
-            primary,
-            expected,
-            actual,
-        }
-    }
-
-    pub(super) fn const_ty_expected(
-        db: &dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        expected: TyId<'db>,
-    ) -> Self {
-        let expected = expected.pretty_print(db).to_string();
-        Self::ConstTyExpected { primary, expected }
-    }
-
-    pub(super) fn normal_type_expected(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        given: TyId<'db>,
-    ) -> Self {
-        let given = given.pretty_print(db).to_string();
-        Self::NormalTypeExpected { primary, given }
-    }
-
-    pub(super) fn duplicated_arg_name(
-        primary: DynLazySpan<'db>,
-        conflict_with: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    ) -> Self {
-        Self::DuplicatedArgName {
-            primary,
-            conflict_with,
-            name,
-        }
-    }
-
+impl TyLowerDiag<'_> {
     pub(crate) fn local_code(&self) -> u16 {
         match self {
             Self::ExpectedStarKind(_) => 0,
-            Self::InvalidTypeArgKind(_, _) => 1,
+            Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
             Self::UnboundTypeAliasParam { .. } => 3,
             Self::TypeAliasCycle { .. } => 4,
-            Self::InconsistentKindBound(_, _) => 5,
+            Self::InconsistentKindBound { .. } => 5,
             Self::KindBoundNotAllowed(_) => 6,
             Self::GenericParamAlreadyDefinedInParent { .. } => 7,
             Self::DuplicatedArgName { .. } => 8,

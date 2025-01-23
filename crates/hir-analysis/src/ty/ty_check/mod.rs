@@ -127,7 +127,7 @@ impl<'db> TyChecker<'db> {
         if star_kind_required && ty.is_star_kind(self.db) {
             ty
         } else {
-            let diag: TyDiagCollection = TyLowerDiag::expected_star_kind_ty(span).into();
+            let diag: TyDiagCollection = TyLowerDiag::ExpectedStarKind(span).into();
             self.push_diag(diag);
             TyId::invalid(self.db, InvalidCause::Other)
         }

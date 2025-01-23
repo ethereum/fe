@@ -307,6 +307,7 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
 
 impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let ha_db = db.as_hir_analysis_db();
         let error_code = GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code());
         match self {
             Self::ExpectedStarKind(span) => {
@@ -324,17 +325,37 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 }
             }
 
-            Self::InvalidTypeArgKind(span, msg) => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "invalid type argument kind".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: msg.to_string(),
-                    span: span.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            Self::InvalidTypeArgKind {
+                span,
+                given,
+                expected,
+            } => {
+                let msg = if let Some(expected) = expected {
+                    let arg_kind = given.kind(ha_db);
+                    debug_assert!(!expected.does_match(arg_kind));
+
+                    format!(
+                        "expected `{}` kind, but `{}` has `{}` kind",
+                        expected,
+                        given.pretty_print(ha_db),
+                        arg_kind
+                    )
+                } else {
+                    "too many generic arguments".to_string()
+                };
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "invalid type argument kind".to_string(),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: msg.to_string(),
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::TooManyGenericArgs {
                 span,
@@ -375,8 +396,8 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
             },
             Self::UnboundTypeAliasParam {
                 span,
-                type_alias,
-                n_given_arg: _,
+                alias,
+                n_given_args: _,
             } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "all type parameters of type alias must be given".to_string(),
@@ -385,16 +406,14 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                         style: LabelStyle::Primary,
                         message: format!(
                             "expected at least {} arguments here",
-                            type_alias
-                                .generic_params(db.as_hir_db())
-                                .len(db.as_hir_db())
+                            alias.generic_params(db.as_hir_db()).len(db.as_hir_db())
                         ),
                         span: span.resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "type alias defined here".to_string(),
-                        span: type_alias.lazy_span().resolve(db),
+                        span: alias.lazy_span().resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -421,17 +440,27 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::InconsistentKindBound(span, msg) => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "duplicate type bound is not allowed.".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: msg.to_string(),
-                    span: span.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            Self::InconsistentKindBound { span, ty, old, new } => {
+                let msg = format!(
+                    "`{}` is already declared with `{}` kind, but found `{}` kind here",
+                    ty.pretty_print(ha_db),
+                    old,
+                    new
+                );
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    // xxx improve message
+                    message: "duplicate type bound is not allowed.".to_string(),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: msg.to_string(),
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::KindBoundNotAllowed(span) => CompleteDiagnostic {
                 severity: Severity::Error,
@@ -446,7 +475,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
             },
 
             Self::GenericParamAlreadyDefinedInParent {
-                primary,
+                span,
                 conflict_with,
                 name,
             } => CompleteDiagnostic {
@@ -456,7 +485,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!("`{}` is already defined", name.data(db.as_hir_db())),
-                        span: primary.resolve(db),
+                        span: span.resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
@@ -495,14 +524,14 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::InvalidConstParamTy { primary } => CompleteDiagnostic {
+            Self::InvalidConstParamTy(span) => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "invalid const parameter type".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "only integer or bool types are allowed as a const parameter type"
                         .to_string(),
-                    span: primary.resolve(db),
+                    span: span.resolve(db),
                 }],
                 notes: vec![],
                 error_code,
@@ -521,9 +550,9 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
             },
 
             Self::ConstTyMismatch {
-                primary,
+                span,
                 expected,
-                actual,
+                given,
             } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "given type doesn't match the expected const type".to_string(),
@@ -531,33 +560,40 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "expected `{}` type here, but `{}` is given",
-                        expected, actual
+                        expected.pretty_print(ha_db),
+                        given.pretty_print(ha_db)
                     ),
-                    span: primary.resolve(db),
+                    span: span.resolve(db),
                 }],
                 notes: vec![],
                 error_code,
             },
 
-            Self::ConstTyExpected { primary, expected } => CompleteDiagnostic {
+            Self::ConstTyExpected { span, expected } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "expected const type".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected const type of `{}` here", expected),
-                    span: primary.resolve(db),
+                    message: format!(
+                        "expected const type of `{}` here",
+                        expected.pretty_print(ha_db)
+                    ),
+                    span: span.resolve(db),
                 }],
                 notes: vec![],
                 error_code,
             },
 
-            Self::NormalTypeExpected { primary, given } => CompleteDiagnostic {
+            Self::NormalTypeExpected { span, given } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "expected a normal type".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected a normal type here, but `{}` is given", given),
-                    span: primary.resolve(db),
+                    message: format!(
+                        "expected a normal type here, but `{}` is given",
+                        given.pretty_print(ha_db)
+                    ),
+                    span: span.resolve(db),
                 }],
                 notes: vec![],
                 error_code,

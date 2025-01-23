@@ -352,30 +352,30 @@ impl<'db> TyId<'db> {
             }
 
             fn visit_invalid(&mut self, cause: &InvalidCause<'db>) {
-                let db = self.db;
-
                 let span = self.span.clone();
-                let diag = match cause {
-                    InvalidCause::NotFullyApplied => {
-                        TyLowerDiag::expected_star_kind_ty(span).into()
-                    }
+                let diag = match cause.clone() {
+                    InvalidCause::NotFullyApplied => TyLowerDiag::ExpectedStarKind(span).into(),
 
                     InvalidCause::KindMismatch { expected, given } => {
-                        TyLowerDiag::invalid_type_arg_kind(db, span, expected.clone(), *given)
-                            .into()
+                        TyLowerDiag::InvalidTypeArgKind {
+                            span,
+                            expected,
+                            given,
+                        }
+                        .into()
                     }
 
                     InvalidCause::TooManyGenericArgs { expected, given } => {
                         TyLowerDiag::TooManyGenericArgs {
                             span,
-                            expected: *expected,
-                            given: *given,
+                            expected,
+                            given,
                         }
                         .into()
                     }
 
                     InvalidCause::InvalidConstParamTy => {
-                        TyLowerDiag::invalid_const_param_ty(span).into()
+                        TyLowerDiag::InvalidConstParamTy(span).into()
                     }
 
                     InvalidCause::RecursiveConstParamTy => {
@@ -383,21 +383,31 @@ impl<'db> TyId<'db> {
                     }
 
                     InvalidCause::ConstTyMismatch { expected, given } => {
-                        TyLowerDiag::const_ty_mismatch(db, span, *expected, *given).into()
+                        TyLowerDiag::ConstTyMismatch {
+                            span,
+                            expected,
+                            given,
+                        }
+                        .into()
                     }
 
                     InvalidCause::ConstTyExpected { expected } => {
-                        TyLowerDiag::const_ty_expected(db, span, *expected).into()
+                        TyLowerDiag::ConstTyExpected { span, expected }.into()
                     }
 
                     InvalidCause::NormalTypeExpected { given } => {
-                        TyLowerDiag::normal_type_expected(db, span, *given).into()
+                        TyLowerDiag::NormalTypeExpected { span, given }.into()
                     }
 
                     InvalidCause::UnboundTypeAliasParam {
                         alias,
-                        n_given_args: n_given_arg,
-                    } => TyLowerDiag::unbound_type_alias_param(span, *alias, *n_given_arg).into(),
+                        n_given_args,
+                    } => TyLowerDiag::UnboundTypeAliasParam {
+                        span,
+                        alias,
+                        n_given_args,
+                    }
+                    .into(),
 
                     InvalidCause::AssocTy => TyLowerDiag::AssocTy(span).into(),
 
@@ -755,7 +765,7 @@ impl Kind {
         Kind::Abs(Box::new(lhs), Box::new(rhs))
     }
 
-    pub(super) fn does_match(&self, other: &Self) -> bool {
+    pub fn does_match(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Star, Self::Star) => true,
             (Self::Abs(lhs1, rhs1), Self::Abs(lhs2, rhs2)) => {
