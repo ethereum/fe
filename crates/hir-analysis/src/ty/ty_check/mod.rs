@@ -224,7 +224,7 @@ impl<'db> TyChecker<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypedBody<'db> {
-    body: Option<Body<'db>>,
+    pub body: Option<Body<'db>>,
     pat_ty: FxHashMap<PatId, TyId<'db>>,
     expr_ty: FxHashMap<ExprId, ExprProp<'db>>,
     callables: FxHashMap<ExprId, Callable<'db>>,
