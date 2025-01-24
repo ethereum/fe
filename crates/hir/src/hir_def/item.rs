@@ -8,8 +8,8 @@ use parser::ast;
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, IngotId, Partial, TupleTypeId,
-    TypeId, UseAlias, WhereClauseId,
+    AttrListId, Body, FuncParamListId, FuncParamName, GenericParamListId, IdentId, IngotId,
+    Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
 };
 use crate::{
     hir_def::TraitRefId,
@@ -616,6 +616,15 @@ impl<'db> Func<'db> {
             ItemKind::Trait(_) | ItemKind::Impl(_) | ItemKind::ImplTrait(_)
         )
     }
+
+    pub fn param_label(self, db: &'db dyn HirDb, idx: usize) -> Option<IdentId<'db>> {
+        self.params(db).to_opt()?.data(db).get(idx)?.label_eagerly()
+    }
+
+    pub fn param_label_or_name(self, db: &'db dyn HirDb, idx: usize) -> Option<FuncParamName<'db>> {
+        let param = self.params(db).to_opt()?.data(db).get(idx)?;
+        param.label.or(param.name.to_opt())
+    }
 }
 
 #[salsa::tracked]
@@ -1073,15 +1082,16 @@ pub enum VariantKind<'db> {
     Record(FieldDefListId<'db>),
 }
 
+// xxx dead code {
 #[salsa::interned]
 pub struct ImplItemListId<'db> {
     #[return_ref]
     pub items: Vec<Func<'db>>,
 }
-
 pub type TraitItemListId<'db> = ImplItemListId<'db>;
 pub type ImplTraitItemListId<'db> = ImplItemListId<'db>;
 pub type ExternItemListId<'db> = ImplItemListId<'db>;
+// } xxx dead code
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Visibility {

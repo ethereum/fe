@@ -351,7 +351,12 @@ impl<'db> DefAnalyzer<'db> {
 
             if param_base_ty != expected_base_ty {
                 self.diags.push(
-                    ImplDiag::invalid_self_ty(self.db, span.clone(), expected_ty, param_ty).into(),
+                    ImplDiag::InvalidSelfType {
+                        span: span.clone(),
+                        expected: expected_ty,
+                        given: param_ty,
+                    }
+                    .into(),
                 );
                 return false;
             }
@@ -360,7 +365,12 @@ impl<'db> DefAnalyzer<'db> {
             {
                 if expected_arg != param_arg {
                     self.diags.push(
-                        ImplDiag::invalid_self_ty(self.db, span, expected_ty, param_ty).into(),
+                        ImplDiag::InvalidSelfType {
+                            span,
+                            expected: expected_ty,
+                            given: param_ty,
+                        }
+                        .into(),
                     );
                     return false;
                 }
@@ -387,10 +397,10 @@ impl<'db> DefAnalyzer<'db> {
         ) {
             if cand != func {
                 self.diags.push(
-                    ImplDiag::conflict_method_impl(
-                        func.name_span(self.db),
-                        cand.name_span(self.db),
-                    )
+                    ImplDiag::ConflictMethodImpl {
+                        primary: func,
+                        conflict_with: cand,
+                    }
                     .into(),
                 );
                 return false;
@@ -481,19 +491,14 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
         if ty.is_const_ty(self.db) {
             let diag =
-                TraitConstraintDiag::const_ty_bound(self.db, ty, ctxt.span().unwrap().ty().into())
-                    .into();
+                TraitConstraintDiag::ConstTyBound(ctxt.span().unwrap().ty().into(), ty).into();
             self.diags.push(diag);
             return;
         }
 
         if !ty.has_invalid(self.db) && !ty.has_param(self.db) {
-            let diag = TraitConstraintDiag::concrete_type_bound(
-                self.db,
-                ctxt.span().unwrap().ty().into(),
-                ty,
-            )
-            .into();
+            let diag =
+                TraitConstraintDiag::ConcreteTypeBound(ctxt.span().unwrap().ty().into(), ty).into();
             self.diags.push(diag);
             return;
         }
@@ -670,8 +675,12 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             let expected_kind = trait_inst.def(self.db).expected_implementor_kind(self.db);
             if !expected_kind.does_match(ty.kind(self.db)) {
                 self.diags.push(
-                    TraitConstraintDiag::kind_mismatch(self.db, span.clone(), expected_kind, *ty)
-                        .into(),
+                    TraitConstraintDiag::TraitArgKindMismatch {
+                        span: span.clone(),
+                        expected: expected_kind.clone(),
+                        actual: *ty,
+                    }
+                    .into(),
                 );
             }
         }
@@ -928,11 +937,25 @@ fn analyze_trait_ref<'db>(
         Ok(trait_ref) => trait_ref,
 
         Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
-            return Some(TraitConstraintDiag::trait_arg_num_mismatch(span, expected, given).into());
+            return Some(
+                TraitConstraintDiag::TraitArgNumMismatch {
+                    span,
+                    expected,
+                    given,
+                }
+                .into(),
+            );
         }
 
         Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
-            return Some(TraitConstraintDiag::kind_mismatch(db, span, &expected, given).into());
+            return Some(
+                TraitConstraintDiag::TraitArgKindMismatch {
+                    span,
+                    expected,
+                    actual: given,
+                }
+                .into(),
+            );
         }
 
         Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => match (expected, given) {
@@ -1078,7 +1101,7 @@ fn analyze_impl_trait_specific_error<'db>(
     //    contains either the type or trait.
     let impl_trait_ingot = impl_trait.top_mod(hir_db).ingot(hir_db);
     if Some(impl_trait_ingot) != ty.ingot(db) && impl_trait_ingot != trait_inst.def(db).ingot(db) {
-        diags.push(TraitLowerDiag::external_trait_for_external_type(impl_trait).into());
+        diags.push(TraitLowerDiag::ExternalTraitForExternalType(impl_trait).into());
         return Err(diags);
     }
 
@@ -1109,10 +1132,10 @@ fn analyze_impl_trait_specific_error<'db>(
         for cand in impls {
             if does_impl_trait_conflict(db, *cand, implementor) {
                 diags.push(
-                    TraitLowerDiag::conflict_impl(
-                        cand.skip_binder().hir_impl_trait(db),
-                        implementor.skip_binder().hir_impl_trait(db),
-                    )
+                    TraitLowerDiag::ConflictTraitImpl {
+                        primary: cand.skip_binder().hir_impl_trait(db),
+                        conflict_with: implementor.skip_binder().hir_impl_trait(db),
+                    }
                     .into(),
                 );
 
@@ -1129,12 +1152,11 @@ fn analyze_impl_trait_specific_error<'db>(
         .expected_implementor_kind(db);
     if ty.kind(db) != expected_kind {
         diags.push(
-            TraitConstraintDiag::kind_mismatch(
-                db,
-                impl_trait.lazy_span().ty().into(),
-                expected_kind,
-                implementor.instantiate_identity().self_ty(db),
-            )
+            TraitConstraintDiag::TraitArgKindMismatch {
+                span: impl_trait.lazy_span().ty().into(),
+                expected: expected_kind.clone(),
+                actual: implementor.instantiate_identity().self_ty(db),
+            }
             .into(),
         );
         return Err(diags);
@@ -1152,12 +1174,11 @@ fn analyze_impl_trait_specific_error<'db>(
             GoalSatisfiability::NeedsConfirmation(_) => unreachable!(),
             GoalSatisfiability::UnSat(subgoal) => {
                 diags.push(
-                    TraitConstraintDiag::trait_bound_not_satisfied(
-                        db,
+                    TraitConstraintDiag::TraitBoundNotSat {
                         span,
-                        goal,
-                        subgoal.map(|subgoal| subgoal.value),
-                    )
+                        primary_goal: goal,
+                        unsat_subgoal: subgoal.map(|subgoal| subgoal.value),
+                    }
                     .into(),
                 );
             }
@@ -1217,15 +1238,16 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         for (name, impl_m) in impl_methods {
             let Some(trait_m) = trait_methods.get(name) else {
                 self.diags.push(
-                    ImplDiag::method_not_defined_in_trait(
-                        self.implementor
+                    ImplDiag::MethodNotDefinedInTrait {
+                        primary: self
+                            .implementor
                             .hir_impl_trait(self.db)
                             .lazy_span()
                             .trait_ref()
                             .into(),
-                        hir_trait,
-                        *name,
-                    )
+                        method_name: *name,
+                        trait_: hir_trait,
+                    }
                     .into(),
                 );
                 continue;
@@ -1244,14 +1266,15 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
 
         if !required_methods.is_empty() {
             self.diags.push(
-                ImplDiag::not_all_trait_items_implemented(
-                    self.implementor
+                ImplDiag::NotAllTraitItemsImplemented {
+                    primary: self
+                        .implementor
                         .hir_impl_trait(self.db)
                         .lazy_span()
                         .ty_moved()
                         .into(),
-                    required_methods.into_iter().collect(),
-                )
+                    not_implemented: required_methods.into_iter().collect(),
+                }
                 .into(),
             );
         }

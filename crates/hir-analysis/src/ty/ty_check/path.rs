@@ -8,6 +8,7 @@ use hir::{
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
+use smallvec2::SmallVec;
 
 use super::{env::LocalBinding, TyChecker};
 use crate::{
@@ -109,7 +110,10 @@ where
         };
 
         let Some(ty) = self.data.record_field_ty(self.tc.db, label) else {
-            let diag = BodyDiag::record_field_not_found(field_span, label);
+            let diag = BodyDiag::RecordFieldNotFound {
+                span: field_span,
+                label,
+            };
 
             self.invalid_field_given = true;
             return Err(diag.into());
@@ -138,7 +142,7 @@ where
     ) -> Result<(), FuncBodyDiag<'db>> {
         if !self.invalid_field_given && !allow_missing_field {
             let expected_labels = self.data.record_labels(self.tc.db);
-            let missing_fields: Vec<IdentId> = expected_labels
+            let missing_fields: SmallVec<_, 4> = expected_labels
                 .iter()
                 .filter(|f| !self.already_given.contains_key(f))
                 .cloned()

@@ -6,6 +6,7 @@ use hir::{
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
+use smallvec2::SmallVec;
 
 use super::{Callable, TypedBody};
 use crate::{
@@ -343,13 +344,16 @@ impl<'db> TyCheckEnv<'db> {
             let canonical_inst = Canonicalized::new(self.db, inst);
             match is_goal_satisfiable(self.db, ingot, canonical_inst.value, assumptions) {
                 GoalSatisfiability::NeedsConfirmation(ambiguous) => {
-                    let insts = ambiguous
+                    let cands = ambiguous
                         .iter()
                         .map(|solution| canonical_inst.extract_solution(prober.table, *solution))
-                        .collect();
+                        .collect::<SmallVec<_, 8>>();
 
                     if !inst.self_ty(self.db).has_var(self.db) {
-                        let diag = BodyDiag::ambiguous_trait_inst(self.db, span.clone(), insts);
+                        let diag = BodyDiag::AmbiguousTraitInst {
+                            primary: span.clone(),
+                            cands,
+                        };
                         sink.push(diag.into())
                     }
                 }

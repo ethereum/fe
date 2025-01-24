@@ -1,9 +1,6 @@
 use common::indexmap::IndexSet;
 use either::Either;
-use hir::{
-    hir_def::{scope_graph::ScopeId, IdentId, Trait},
-    span::DynLazySpan,
-};
+use hir::hir_def::{scope_graph::ScopeId, IdentId, Trait};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
@@ -21,7 +18,7 @@ use crate::{
         ty_def::TyId,
         unify::UnificationTable,
     },
-    HirAnalysisDb,
+    HirAnalysisDb, Spanned,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,20 +42,21 @@ impl<'db> TraitMethodCand<'db> {
 
 pub(super) fn select_method_candidate<'db>(
     db: &'db dyn HirAnalysisDb,
-    receiver: (Canonical<TyId<'db>>, DynLazySpan<'db>),
-    method_name: (IdentId<'db>, DynLazySpan<'db>),
+    receiver: Spanned<Canonical<TyId<'db>>>,
+    method_name: Spanned<'db, IdentId<'db>>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> Result<Candidate<'db>, FuncBodyDiag<'db>> {
-    if receiver.0.value.is_ty_var(db) {
-        return Err(BodyDiag::TypeMustBeKnown(method_name.1).into());
+    if receiver.data.value.is_ty_var(db) {
+        return Err(BodyDiag::TypeMustBeKnown(method_name.span).into());
     }
 
-    let candidates = assemble_method_candidates(db, receiver.0, method_name.0, scope, assumptions);
+    let candidates =
+        assemble_method_candidates(db, receiver.data, method_name.data, scope, assumptions);
 
     let selector = MethodSelector {
         db,
-        receiver: receiver.0,
+        receiver: receiver.data,
         scope,
         candidates,
         assumptions,
@@ -70,8 +68,8 @@ pub(super) fn select_method_candidate<'db>(
         Err(MethodSelectionError::AmbiguousInherentMethod(cands)) => {
             let cand_spans = cands.into_iter().map(|cand| cand.name_span(db)).collect();
             let diag = BodyDiag::AmbiguousInherentMethodCall {
-                primary: method_name.1,
-                method_name: method_name.0,
+                primary: method_name.span,
+                method_name: method_name.data,
                 cand_spans,
             };
 
@@ -82,8 +80,8 @@ pub(super) fn select_method_candidate<'db>(
             let traits = traits.into_iter().map(|def| def.trait_(db)).collect();
 
             let diag = BodyDiag::AmbiguousTrait {
-                primary: method_name.1,
-                method_name: method_name.0,
+                primary: method_name.span,
+                method_name: method_name.data,
                 traits,
             };
 
@@ -91,21 +89,27 @@ pub(super) fn select_method_candidate<'db>(
         }
 
         Err(MethodSelectionError::NotFound) => {
-            let base_ty = receiver.0.value.base_ty(db);
-            let diag =
-                BodyDiag::method_not_found(db, method_name.1, method_name.0, Either::Left(base_ty));
+            let base_ty = receiver.data.value.base_ty(db);
+            let diag = BodyDiag::MethodNotFound {
+                primary: method_name.span,
+                method_name: method_name.data,
+                receiver: Either::Left(base_ty),
+            };
             Err(diag.into())
         }
 
         Err(MethodSelectionError::InvisibleInherentMethod(func)) => {
-            let diag =
-                NameResDiag::Invisible(method_name.1, method_name.0, func.name_span(db).into());
+            let diag = NameResDiag::Invisible(
+                method_name.span,
+                method_name.data,
+                func.name_span(db).into(),
+            );
             Err(diag.into())
         }
 
         Err(MethodSelectionError::InvisibleTraitMethod(traits)) => {
             let diag = BodyDiag::InvisibleAmbiguousTrait {
-                primary: method_name.1,
+                primary: method_name.span,
                 traits,
             };
             Err(diag.into())

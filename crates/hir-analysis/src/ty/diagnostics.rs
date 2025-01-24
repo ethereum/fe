@@ -1,17 +1,17 @@
 use either::Either;
 use hir::{
     hir_def::{
-        FieldIndex, Func, FuncParamName, IdentId, ImplTrait, ItemKind, PathId, Trait,
-        TypeAlias as HirTypeAlias,
+        FieldIndex, Func, IdentId, ImplTrait, ItemKind, PathId, Trait, TypeAlias as HirTypeAlias,
     },
     span::DynLazySpan,
 };
-use itertools::Itertools;
+use smallvec2::SmallVec;
 
 use super::{
+    func_def::FuncDef,
     trait_def::{TraitDef, TraitInstId},
     ty_check::{RecordLike, TraitOps},
-    ty_def::{Kind, TyData, TyId, TyVarSort},
+    ty_def::{Kind, TyId},
 };
 use crate::{
     diagnostics::DiagnosticVoucher, name_resolution::diagnostics::NameResDiag, HirAnalysisDb,
@@ -79,7 +79,7 @@ pub enum TyLowerDiag<'db> {
     },
     TypeAliasCycle {
         primary: DynLazySpan<'db>,
-        cycle: Vec<HirTypeAlias<'db>>,
+        cycle: SmallVec<HirTypeAlias<'db>, 8>,
     },
 
     InconsistentKindBound {
@@ -153,7 +153,11 @@ impl TyLowerDiag<'_> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum BodyDiag<'db> {
-    TypeMismatch(DynLazySpan<'db>, String, String),
+    TypeMismatch {
+        span: DynLazySpan<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
+    },
     InfiniteOccurrence(DynLazySpan<'db>),
 
     DuplicatedBinding {
@@ -198,8 +202,9 @@ pub enum BodyDiag<'db> {
         name: IdentId<'db>,
     },
 
+    // TODO: capture type
     RecordFieldNotFound {
-        primary: DynLazySpan<'db>,
+        span: DynLazySpan<'db>,
         label: IdentId<'db>,
     },
 
@@ -210,7 +215,7 @@ pub enum BodyDiag<'db> {
 
     MissingRecordFields {
         primary: DynLazySpan<'db>,
-        missing_fields: Vec<IdentId<'db>>,
+        missing_fields: SmallVec<IdentId<'db>, 4>,
         hint: Option<String>,
     },
 
@@ -218,8 +223,8 @@ pub enum BodyDiag<'db> {
 
     ReturnedTypeMismatch {
         primary: DynLazySpan<'db>,
-        actual: String,
-        expected: String,
+        actual: TyId<'db>,
+        expected: TyId<'db>,
         func: Option<Func<'db>>,
     },
 
@@ -227,7 +232,7 @@ pub enum BodyDiag<'db> {
 
     AccessedFieldNotFound {
         primary: DynLazySpan<'db>,
-        given_ty: String,
+        given_ty: TyId<'db>,
         index: FieldIndex<'db>,
     },
 
@@ -256,7 +261,7 @@ pub enum BodyDiag<'db> {
         trait_name: IdentId<'db>,
     },
 
-    NotCallable(DynLazySpan<'db>, String),
+    NotCallable(DynLazySpan<'db>, TyId<'db>),
 
     CallGenericArgNumMismatch {
         primary: DynLazySpan<'db>,
@@ -293,7 +298,7 @@ pub enum BodyDiag<'db> {
 
     AmbiguousTraitInst {
         primary: DynLazySpan<'db>,
-        cands: Vec<String>,
+        cands: SmallVec<TraitInstId<'db>, 8>,
     },
 
     InvisibleAmbiguousTrait {
@@ -304,7 +309,7 @@ pub enum BodyDiag<'db> {
     MethodNotFound {
         primary: DynLazySpan<'db>,
         method_name: IdentId<'db>,
-        receiver: String,
+        receiver: Either<TyId<'db>, TraitDef<'db>>,
     },
 
     NotValue {
@@ -313,24 +318,12 @@ pub enum BodyDiag<'db> {
     },
 
     TypeAnnotationNeeded {
-        primary: DynLazySpan<'db>,
-        ty: Option<String>,
-        is_integral: bool,
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
     },
 }
 
 impl<'db> BodyDiag<'db> {
-    pub(super) fn type_mismatch(
-        db: &'db dyn HirAnalysisDb,
-        span: DynLazySpan<'db>,
-        expected: TyId<'db>,
-        actual: TyId<'db>,
-    ) -> Self {
-        let expected = expected.pretty_print(db).to_string();
-        let actual = actual.pretty_print(db).to_string();
-        Self::TypeMismatch(span, expected, actual)
-    }
-
     pub(super) fn unit_variant_expected<T>(
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
@@ -396,41 +389,6 @@ impl<'db> BodyDiag<'db> {
         }
     }
 
-    pub(super) fn record_field_not_found(primary: DynLazySpan<'db>, label: IdentId<'db>) -> Self {
-        Self::RecordFieldNotFound { primary, label }
-    }
-
-    pub(super) fn returned_type_mismatch(
-        db: &dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        actual: TyId<'db>,
-        expected: TyId<'db>,
-        func: Option<Func<'db>>,
-    ) -> Self {
-        let actual = actual.pretty_print(db).to_string();
-        let expected = expected.pretty_print(db).to_string();
-        Self::ReturnedTypeMismatch {
-            primary,
-            actual,
-            expected,
-            func,
-        }
-    }
-
-    pub(super) fn accessed_field_not_found(
-        db: &dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        given_ty: TyId<'db>,
-        index: FieldIndex<'db>,
-    ) -> Self {
-        let given_ty = given_ty.pretty_print(db).to_string();
-        Self::AccessedFieldNotFound {
-            primary,
-            given_ty,
-            index,
-        }
-    }
-
     pub(super) fn ops_trait_not_implemented<T>(
         db: &'db dyn HirAnalysisDb,
         span: DynLazySpan<'db>,
@@ -450,69 +408,10 @@ impl<'db> BodyDiag<'db> {
             trait_path,
         }
     }
-    pub(super) fn not_callable(
-        db: &'db dyn HirAnalysisDb,
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    ) -> Self {
-        let ty = ty.pretty_print(db).to_string();
-        Self::NotCallable(span, ty)
-    }
-
-    pub(super) fn method_not_found(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        method_name: IdentId<'db>,
-        receiver: Either<TyId<'db>, TraitDef<'db>>,
-    ) -> Self {
-        let receiver = match receiver {
-            Either::Left(ty) => ty.pretty_print(db),
-            Either::Right(trait_) => trait_
-                .trait_(db)
-                .name(db.as_hir_db())
-                .unwrap()
-                .data(db.as_hir_db()),
-        };
-
-        Self::MethodNotFound {
-            primary,
-            method_name,
-            receiver: receiver.to_string(),
-        }
-    }
-
-    pub(super) fn type_annotation_needed(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    ) -> Self {
-        let (ty, is_integral) = match ty.base_ty(db).data(db) {
-            TyData::TyVar(var) => (None, matches!(var.sort, TyVarSort::Integral)),
-            _ => (ty.pretty_print(db).to_string().into(), false),
-        };
-
-        Self::TypeAnnotationNeeded {
-            primary,
-            ty,
-            is_integral,
-        }
-    }
-
-    pub(super) fn ambiguous_trait_inst(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        cands: Vec<TraitInstId<'db>>,
-    ) -> Self {
-        let cands = cands
-            .into_iter()
-            .map(|cand| cand.pretty_print(db, false))
-            .collect_vec();
-        Self::AmbiguousTraitInst { primary, cands }
-    }
 
     pub(crate) fn local_code(&self) -> u16 {
         match self {
-            Self::TypeMismatch(..) => 0,
+            Self::TypeMismatch { .. } => 0,
             Self::InfiniteOccurrence(..) => 1,
             Self::DuplicatedRestPat(..) => 2,
             Self::InvalidPathDomainInPat { .. } => 3,
@@ -551,7 +450,7 @@ impl<'db> BodyDiag<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TraitLowerDiag<'db> {
-    ExternalTraitForExternalType(DynLazySpan<'db>),
+    ExternalTraitForExternalType(ImplTrait<'db>),
 
     ConflictTraitImpl {
         primary: ImplTrait<'db>,
@@ -561,18 +460,7 @@ pub enum TraitLowerDiag<'db> {
     CyclicSuperTraits(DynLazySpan<'db>),
 }
 
-impl<'db> TraitLowerDiag<'db> {
-    pub(super) fn external_trait_for_external_type(impl_trait: ImplTrait<'db>) -> Self {
-        Self::ExternalTraitForExternalType(impl_trait.lazy_span().trait_ref().into())
-    }
-
-    pub(super) fn conflict_impl(primary: ImplTrait<'db>, conflict_with: ImplTrait<'db>) -> Self {
-        Self::ConflictTraitImpl {
-            primary,
-            conflict_with,
-        }
-    }
-
+impl TraitLowerDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
             Self::ExternalTraitForExternalType(_) => 0,
@@ -595,90 +483,32 @@ pub enum TraitConstraintDiag<'db> {
         given: usize,
     },
 
-    TraitArgKindMismatch(DynLazySpan<'db>, String),
-
-    TraitBoundNotSat(DynLazySpan<'db>, String, Option<String>),
-
-    InfiniteBoundRecursion(DynLazySpan<'db>, String),
-
-    ConcreteTypeBound(DynLazySpan<'db>, String),
-
-    ConstTyBound(DynLazySpan<'db>, String),
-}
-
-impl<'db> TraitConstraintDiag<'db> {
-    pub(super) fn kind_mismatch(
-        db: &'db dyn HirAnalysisDb,
+    TraitArgKindMismatch {
         span: DynLazySpan<'db>,
-        expected: &Kind,
+        expected: Kind,
         actual: TyId<'db>,
-    ) -> Self {
-        let actual_kind = actual.kind(db);
-        let ty_display = actual.pretty_print(db);
-        let msg = format!(
-            "expected `{}` kind, but `{}` has `{}` kind",
-            expected, ty_display, actual_kind,
-        );
-        Self::TraitArgKindMismatch(span, msg)
-    }
+    },
 
-    pub(super) fn trait_arg_num_mismatch(
-        span: DynLazySpan<'db>,
-        expected: usize,
-        given: usize,
-    ) -> Self {
-        Self::TraitArgNumMismatch {
-            span,
-            expected,
-            given,
-        }
-    }
-
-    pub(super) fn trait_bound_not_satisfied(
-        db: &'db dyn HirAnalysisDb,
+    TraitBoundNotSat {
         span: DynLazySpan<'db>,
         primary_goal: TraitInstId<'db>,
         unsat_subgoal: Option<TraitInstId<'db>>,
-    ) -> Self {
-        let msg = format!(
-            "`{}` doesn't implement `{}`",
-            primary_goal.self_ty(db).pretty_print(db),
-            primary_goal.pretty_print(db, false)
-        );
+    },
 
-        let unsat_subgoal = unsat_subgoal.map(|unsat| {
-            format!(
-                "trait bound `{}` is not satisfied",
-                unsat.pretty_print(db, true)
-            )
-        });
-        Self::TraitBoundNotSat(span, msg, unsat_subgoal)
-    }
+    InfiniteBoundRecursion(DynLazySpan<'db>, String),
 
-    pub(super) fn const_ty_bound(
-        db: &'db dyn HirAnalysisDb,
-        ty: TyId<'db>,
-        span: DynLazySpan<'db>,
-    ) -> Self {
-        let msg = format!("`{}` is a const type", ty.pretty_print(db));
-        Self::ConstTyBound(span, msg)
-    }
+    ConcreteTypeBound(DynLazySpan<'db>, TyId<'db>),
 
-    pub(super) fn concrete_type_bound(
-        db: &'db dyn HirAnalysisDb,
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    ) -> Self {
-        let msg = format!("`{}` is a concrete type", ty.pretty_print(db));
-        Self::ConcreteTypeBound(span, msg)
-    }
+    ConstTyBound(DynLazySpan<'db>, TyId<'db>),
+}
 
+impl TraitConstraintDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
             Self::KindMismatch { .. } => 0,
             Self::TraitArgNumMismatch { .. } => 1,
-            Self::TraitArgKindMismatch(_, _) => 2,
-            Self::TraitBoundNotSat(..) => 3,
+            Self::TraitArgKindMismatch { .. } => 2,
+            Self::TraitBoundNotSat { .. } => 3,
             Self::InfiniteBoundRecursion(..) => 4,
             Self::ConcreteTypeBound(..) => 5,
             Self::ConstTyBound(..) => 6,
@@ -689,8 +519,8 @@ impl<'db> TraitConstraintDiag<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ImplDiag<'db> {
     ConflictMethodImpl {
-        primary: DynLazySpan<'db>,
-        conflict_with: DynLazySpan<'db>,
+        primary: FuncDef<'db>,
+        conflict_with: FuncDef<'db>,
     },
 
     MethodNotDefinedInTrait {
@@ -701,50 +531,55 @@ pub enum ImplDiag<'db> {
 
     NotAllTraitItemsImplemented {
         primary: DynLazySpan<'db>,
-        not_implemented: Vec<IdentId<'db>>,
+        not_implemented: SmallVec<IdentId<'db>, 8>,
     },
 
     MethodTypeParamNumMismatch {
-        primary: DynLazySpan<'db>,
-        expected: usize,
-        given: usize,
+        trait_m: FuncDef<'db>,
+        impl_m: FuncDef<'db>,
     },
 
     MethodTypeParamKindMismatch {
-        primary: DynLazySpan<'db>,
-        message: String,
+        trait_m: FuncDef<'db>,
+        impl_m: FuncDef<'db>,
+        param_idx: usize,
     },
 
     MethodArgNumMismatch {
-        primary: DynLazySpan<'db>,
-        expected: usize,
-        given: usize,
+        trait_m: FuncDef<'db>,
+        impl_m: FuncDef<'db>,
     },
 
     MethodArgLabelMismatch {
-        primary: DynLazySpan<'db>,
-        definition: DynLazySpan<'db>,
-        message: String,
+        trait_m: FuncDef<'db>,
+        impl_m: FuncDef<'db>,
+        param_idx: usize,
     },
 
     MethodArgTyMismatch {
-        primary: DynLazySpan<'db>,
-        message: String,
+        trait_m: FuncDef<'db>,
+        impl_m: FuncDef<'db>,
+        trait_m_ty: TyId<'db>,
+        impl_m_ty: TyId<'db>,
+        param_idx: usize,
     },
 
     MethodRetTyMismatch {
-        primary: DynLazySpan<'db>,
-        message: String,
+        trait_m: FuncDef<'db>,
+        impl_m: FuncDef<'db>,
+        trait_ty: TyId<'db>,
+        impl_ty: TyId<'db>,
     },
 
     MethodStricterBound {
-        primary: DynLazySpan<'db>,
-        message: String,
+        span: DynLazySpan<'db>,
+        stricter_bounds: SmallVec<TraitInstId<'db>, 8>,
     },
 
     InvalidSelfType {
-        primary: DynLazySpan<'db>,
-        message: String,
+        span: DynLazySpan<'db>,
+        expected: TyId<'db>,
+        given: TyId<'db>,
     },
 
     InherentImplIsNotAllowed {
@@ -754,163 +589,7 @@ pub enum ImplDiag<'db> {
     },
 }
 
-impl<'db> ImplDiag<'db> {
-    pub(super) fn conflict_method_impl(
-        primary: DynLazySpan<'db>,
-        conflict_with: DynLazySpan<'db>,
-    ) -> Self {
-        Self::ConflictMethodImpl {
-            primary,
-            conflict_with,
-        }
-    }
-
-    pub(super) fn method_not_defined_in_trait(
-        primary: DynLazySpan<'db>,
-        trait_: Trait<'db>,
-        method_name: IdentId<'db>,
-    ) -> Self {
-        Self::MethodNotDefinedInTrait {
-            primary,
-            trait_,
-            method_name,
-        }
-    }
-
-    pub(super) fn not_all_trait_items_implemented(
-        primary: DynLazySpan<'db>,
-        not_implemented: Vec<IdentId<'db>>,
-    ) -> Self {
-        Self::NotAllTraitItemsImplemented {
-            primary,
-            not_implemented,
-        }
-    }
-
-    pub(super) fn method_param_num_mismatch(
-        primary: DynLazySpan<'db>,
-        expected: usize,
-        given: usize,
-    ) -> Self {
-        Self::MethodTypeParamNumMismatch {
-            primary,
-            expected,
-            given,
-        }
-    }
-
-    pub(super) fn method_arg_num_mismatch(
-        primary: DynLazySpan<'db>,
-        expected: usize,
-        given: usize,
-    ) -> Self {
-        Self::MethodArgNumMismatch {
-            primary,
-            expected,
-            given,
-        }
-    }
-
-    pub fn method_arg_ty_mismatch(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        expected: TyId<'db>,
-        given: TyId<'db>,
-    ) -> Self {
-        let message = format!(
-            "expected `{}` type, but the given type is `{}`",
-            expected.pretty_print(db),
-            given.pretty_print(db),
-        );
-
-        Self::MethodArgTyMismatch { primary, message }
-    }
-
-    pub fn method_arg_label_mismatch(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        definition: DynLazySpan<'db>,
-        expected: FuncParamName<'db>,
-        given: FuncParamName<'db>,
-    ) -> Self {
-        let message = format!(
-            "expected `{}` label, but the given label is `{}`",
-            expected.pretty_print(db.as_hir_db()),
-            given.pretty_print(db.as_hir_db())
-        );
-
-        Self::MethodArgLabelMismatch {
-            primary,
-            definition,
-            message,
-        }
-    }
-
-    pub fn method_ret_type_mismatch(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        expected: TyId<'db>,
-        given: TyId<'db>,
-    ) -> Self {
-        let message = format!(
-            "expected `{}` type, but the given type is `{}`",
-            expected.pretty_print(db),
-            given.pretty_print(db),
-        );
-
-        Self::MethodRetTyMismatch { primary, message }
-    }
-
-    pub(super) fn method_param_kind_mismatch(
-        primary: DynLazySpan<'db>,
-        expected: &Kind,
-        given: &Kind,
-    ) -> Self {
-        let message = format!(
-            "expected `{}` kind, but the given type has `{}` kind",
-            expected, given,
-        );
-
-        Self::MethodTypeParamKindMismatch { primary, message }
-    }
-
-    pub(super) fn method_stricter_bound(
-        db: &'db dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        stricter_bounds: &[TraitInstId<'db>],
-    ) -> Self {
-        let message = format!(
-            "method has stricter bounds than the declared method in the trait: {}",
-            stricter_bounds
-                .iter()
-                .map(|pred| format!("`{}`", pred.pretty_print(db, true)))
-                .join(", ")
-        );
-        Self::MethodStricterBound { primary, message }
-    }
-
-    pub(super) fn invalid_self_ty(
-        db: &dyn HirAnalysisDb,
-        primary: DynLazySpan<'db>,
-        expected: TyId<'db>,
-        actual: TyId<'db>,
-    ) -> Self {
-        let message = if !expected.is_trait_self(db) {
-            format!(
-                "type of `self` must start with `Self` or `{}`, but the given type is `{}`",
-                expected.pretty_print(db),
-                actual.pretty_print(db),
-            )
-        } else {
-            format!(
-                "type of `self` must starts with `Self`, but the given type is `{}`",
-                actual.pretty_print(db),
-            )
-        };
-
-        Self::InvalidSelfType { primary, message }
-    }
-
+impl ImplDiag<'_> {
     pub fn local_code(&self) -> u16 {
         match self {
             Self::ConflictMethodImpl { .. } => 0,

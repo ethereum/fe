@@ -7,7 +7,7 @@ error[6-0010]: invalid type for `self` parameter
   ┌─ invalid_self_ty.fe:2:18
   │
 2 │     fn foo(self: i32)
-  │                  ^^^ type of `self` must starts with `Self`, but the given type is `i32`
+  │                  ^^^ type of `self` must start with `Self`, but the given type is `i32`
 
 error[6-0010]: invalid type for `self` parameter
   ┌─ invalid_self_ty.fe:6:18

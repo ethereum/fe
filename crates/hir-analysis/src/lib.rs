@@ -15,3 +15,9 @@ pub struct Spanned<'db, T> {
     pub data: T,
     pub span: DynLazySpan<'db>,
 }
+
+impl<'db, T> Spanned<'db, T> {
+    pub fn new(data: T, span: DynLazySpan<'db>) -> Self {
+        Self { data, span }
+    }
+}

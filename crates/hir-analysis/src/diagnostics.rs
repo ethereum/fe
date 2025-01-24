@@ -3,6 +3,17 @@
 //! implement [`DiagnosticVoucher`] which defines the conversion into
 //! [`CompleteDiagnostic`].
 
+use crate::{
+    name_resolution::diagnostics::NameResDiag,
+    ty::{
+        diagnostics::{
+            BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
+            TyDiagCollection, TyLowerDiag,
+        },
+        ty_def::{TyData, TyVarSort},
+    },
+    HirAnalysisDb,
+};
 use common::diagnostics::{
     CompleteDiagnostic, DiagnosticPass, GlobalErrorCode, LabelStyle, Severity, Span, SpanKind,
     SubDiagnostic,
@@ -13,15 +24,7 @@ use hir::{
     span::{DynLazySpan, LazySpan},
     ParserError,
 };
-
-use crate::{
-    name_resolution::diagnostics::NameResDiag,
-    ty::diagnostics::{
-        BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection,
-        TyLowerDiag,
-    },
-    HirAnalysisDb,
-};
+use itertools::Itertools;
 
 /// All diagnostics accumulated in salsa-db should implement
 /// [`DiagnosticVoucher`] which defines the conversion into
@@ -628,16 +631,25 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
 
 impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let adb = db.as_hir_analysis_db();
         let error_code = GlobalErrorCode::new(DiagnosticPass::TyCheck, self.local_code());
         let severity = Severity::Error;
 
         match self {
-            Self::TypeMismatch(span, expected, actual) => CompleteDiagnostic {
+            Self::TypeMismatch {
+                span,
+                expected,
+                given,
+            } => CompleteDiagnostic {
                 severity,
                 message: "type mismatch".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected `{expected}`, but `{actual}` is given"),
+                    message: format!(
+                        "expected `{}`, but `{}` is given",
+                        expected.pretty_print(adb),
+                        given.pretty_print(adb),
+                    ),
                     span: span.resolve(db),
                 }],
                 error_code,
@@ -854,13 +866,13 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 error_code,
             },
 
-            Self::RecordFieldNotFound { primary, label } => CompleteDiagnostic {
+            Self::RecordFieldNotFound { span, label } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "specified field not found".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!("field `{}` not found", label.data(db.as_hir_db())),
-                    span: primary.resolve(db),
+                    span: span.resolve(db),
                 }],
                 notes: vec![],
                 error_code,
@@ -942,9 +954,11 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 expected,
                 func,
             } => {
+                let actual = actual.pretty_print(adb);
+                let expected = expected.pretty_print(adb);
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected `{}`, but `{}` is returned", expected, actual),
+                    message: format!("expected `{expected}`, but `{actual}` is returned"),
                     span: primary.resolve(db),
                 }];
 
@@ -952,13 +966,13 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                     if func.ret_ty(db.as_hir_db()).is_some() {
                         sub_diagnostics.push(SubDiagnostic {
                             style: LabelStyle::Secondary,
-                            message: format!("this function expects `{}` to be returned", expected),
+                            message: format!("this function expects `{expected}` to be returned"),
                             span: func.lazy_span().ret_ty_moved().resolve(db),
                         });
                     } else {
                         sub_diagnostics.push(SubDiagnostic {
                             style: LabelStyle::Secondary,
-                            message: format!("try adding `-> {}`", actual),
+                            message: format!("try adding `-> {actual}`"),
                             span: func.lazy_span().name_moved().resolve(db),
                         });
                     }
@@ -993,12 +1007,12 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                     FieldIndex::Ident(ident) => format!(
                         "field `{}` is not found in `{}`",
                         ident.data(db.as_hir_db()),
-                        given_ty
+                        given_ty.pretty_print(adb)
                     ),
                     FieldIndex::Index(index) => format!(
                         "field `{}` is not found in `{}`",
                         index.data(db.as_hir_db()),
-                        given_ty
+                        given_ty.pretty_print(adb)
                     ),
                 };
 
@@ -1134,17 +1148,22 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 }
             }
 
-            Self::NotCallable(primary, ty) => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: format!("expected function, found `{ty}`"),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!("call expression requires function; `{ty}` is not callable"),
-                    span: primary.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            Self::NotCallable(primary, ty) => {
+                let ty = ty.pretty_print(adb);
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!("expected function, found `{ty}`"),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "call expression requires function; `{ty}` is not callable"
+                        ),
+                        span: primary.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::CallGenericArgNumMismatch {
                 primary,
@@ -1305,7 +1324,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 for cand in cands {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("candidate: {cand}"),
+                        message: format!("candidate: {}", cand.pretty_print(adb, false)),
                         span: primary.resolve(db), // xxx cand span??
                     });
                 }
@@ -1350,6 +1369,15 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 method_name,
                 receiver,
             } => {
+                let receiver = match receiver {
+                    Either::Left(ty) => ty.pretty_print(adb),
+                    Either::Right(trait_) => trait_
+                        .trait_(db)
+                        .name(db.as_hir_db())
+                        .unwrap()
+                        .data(db.as_hir_db()),
+                };
+
                 let method_name = method_name.data(db.as_hir_db());
                 CompleteDiagnostic {
                     severity: Severity::Error,
@@ -1382,24 +1410,19 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 error_code,
             },
 
-            Self::TypeAnnotationNeeded {
-                primary,
-                ty,
-                is_integral,
-            } => {
+            Self::TypeAnnotationNeeded { span: primary, ty } => {
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "type annotation is needed".to_string(),
                     span: primary.resolve(db),
                 }];
 
-                let sub_diag_msg = match ty {
-                    Some(ty) => format!("consider giving `: {ty}` here"),
-                    None if *is_integral => {
-                        "no default type is provided for an integer type. consider giving integer type"
-                            .to_string()
+                let sub_diag_msg = match ty.base_ty(adb).data(db) {
+                    TyData::TyVar(var) if var.sort == TyVarSort::Integral => {
+                        "no default type is provided for an integer type. consider giving integer type".to_string()
                     }
-                    None => "consider giving `: Type` here".to_string(),
+                    TyData::TyVar(_) => "consider giving `: Type` here".to_string(),
+                    _ => format!("consider giving `: {}` here", ty.pretty_print(adb)),
                 };
 
                 sub_diagnostics.push(SubDiagnostic {
@@ -1425,13 +1448,13 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
         let error_code =
             GlobalErrorCode::new(DiagnosticPass::ImplTraitDefinition, self.local_code());
         match self {
-            Self::ExternalTraitForExternalType(span) => CompleteDiagnostic {
+            Self::ExternalTraitForExternalType(impl_trait) => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "external trait cannot be implemented for external type".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "external trait cannot be implemented for external type".to_string(),
-                    span: span.resolve(db),
+                    span: impl_trait.lazy_span().resolve(db),
                 }],
                 notes: vec![],
                 error_code,
@@ -1476,6 +1499,7 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
 
 impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let adb = db.as_hir_analysis_db();
         let error_code = GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code());
         let severity = Severity::Error;
         match self {
@@ -1514,26 +1538,55 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
                 error_code,
             },
 
-            Self::TraitArgKindMismatch(span, msg) => CompleteDiagnostic {
-                severity,
-                message: "given trait argument kind mismatch".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: msg.to_string(),
-                    span: span.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            Self::TraitArgKindMismatch {
+                span,
+                expected,
+                actual,
+            } => {
+                let actual_kind = actual.kind(adb);
+                let ty_display = actual.pretty_print(adb);
 
-            Self::TraitBoundNotSat(span, msg, subgoal) => {
+                CompleteDiagnostic {
+                    severity,
+                    message: "given trait argument kind mismatch".to_string(),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "expected `{}` kind, but `{}` has `{}` kind",
+                            expected, ty_display, actual_kind,
+                        ),
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::TraitBoundNotSat {
+                span,
+                primary_goal,
+                unsat_subgoal,
+            } => {
+                let msg = format!(
+                    "`{}` doesn't implement `{}`",
+                    primary_goal.self_ty(adb).pretty_print(adb),
+                    primary_goal.pretty_print(adb, false)
+                );
+
+                let unsat_subgoal = unsat_subgoal.map(|unsat| {
+                    format!(
+                        "trait bound `{}` is not satisfied",
+                        unsat.pretty_print(adb, true)
+                    )
+                });
+
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: msg.to_string(),
                     span: span.resolve(db),
                 }];
 
-                if let Some(subgoal) = subgoal {
+                if let Some(subgoal) = unsat_subgoal {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: subgoal.to_string(),
@@ -1562,24 +1615,24 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
                 error_code,
             },
 
-            Self::ConcreteTypeBound(span, msg) => CompleteDiagnostic {
+            Self::ConcreteTypeBound(span, ty) => CompleteDiagnostic {
                 severity,
                 message: "trait bound for concrete type is not allowed".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: msg.to_string(),
+                    message: format!("`{}` is a concrete type", ty.pretty_print(adb)),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
                 error_code,
             },
 
-            Self::ConstTyBound(span, msg) => CompleteDiagnostic {
+            Self::ConstTyBound(span, ty) => CompleteDiagnostic {
                 severity,
                 message: "trait bound for const type is not allowed".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: msg.to_string(),
+                    message: format!("`{}` is a const type", ty.pretty_print(adb)),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
@@ -1591,6 +1644,7 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
 
 impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let adb = db.as_hir_analysis_db();
         let error_code = GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code());
         let severity = Severity::Error;
 
@@ -1605,12 +1659,12 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "".into(),
-                        span: primary.resolve(db),
+                        span: primary.name_span(adb).resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "".into(),
-                        span: conflict_with.resolve(db),
+                        span: conflict_with.name_span(adb).resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -1660,120 +1714,211 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                 }
             }
 
-            Self::MethodTypeParamNumMismatch {
-                primary,
-                expected,
-                given,
-            } => CompleteDiagnostic {
-                severity,
-                message: "method type parameter count mismatch".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!("expected {} type parameters, but {} given", expected, given),
-                    span: primary.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            Self::MethodTypeParamNumMismatch { trait_m, impl_m } => {
+                let impl_params = impl_m.explicit_params(adb);
+                let trait_params = trait_m.explicit_params(adb);
 
-            Self::MethodTypeParamKindMismatch { primary, message } => CompleteDiagnostic {
-                severity,
-                message: "method type parameter kind mismatch".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: message.clone(),
-                    span: primary.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+                CompleteDiagnostic {
+                    severity,
+                    message: "method type parameter count mismatch".to_string(),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "expected {} type parameters, but {} given",
+                            trait_params.len(),
+                            impl_params.len(),
+                        ),
+                        span: impl_m.name_span(adb).resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
-            Self::MethodArgNumMismatch {
-                primary,
-                expected,
-                given,
-            } => CompleteDiagnostic {
+            Self::MethodTypeParamKindMismatch {
+                trait_m,
+                impl_m,
+                param_idx,
+            } => {
+                let message = format!(
+                    "expected `{}` kind, but the given type has `{}` kind",
+                    trait_m.explicit_params(adb)[*param_idx].kind(adb),
+                    impl_m.explicit_params(adb)[*param_idx].kind(adb),
+                );
+
+                CompleteDiagnostic {
+                    severity,
+                    message: "method type parameter kind mismatch".to_string(),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message,
+                        span: impl_m
+                            .hir_func_def(adb)
+                            .unwrap()
+                            .lazy_span()
+                            .generic_params_moved()
+                            .param_moved(*param_idx)
+                            .resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::MethodArgNumMismatch { trait_m, impl_m } => CompleteDiagnostic {
                 severity,
                 message: "method argument count mismatch".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected {} arguments, but {} given", expected, given),
-                    span: primary.resolve(db),
+                    message: format!(
+                        "expected {} arguments, but {} given",
+                        trait_m.arg_tys(adb).len(),
+                        impl_m.arg_tys(adb).len(),
+                    ),
+                    span: impl_m.param_list_span(adb).resolve(db),
                 }],
                 notes: vec![],
                 error_code,
             },
 
             Self::MethodArgLabelMismatch {
-                primary,
-                definition,
-                message,
+                trait_m,
+                impl_m,
+                param_idx,
             } => CompleteDiagnostic {
                 severity,
                 message: "method argument label mismatch".to_string(),
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: message.clone(),
-                        span: primary.resolve(db),
+                        message: format!(
+                            "expected `{}` label, but the given label is `{}`",
+                            trait_m
+                                .param_label_or_name(adb, *param_idx)
+                                .unwrap()
+                                .pretty_print(db.as_hir_db()),
+                            impl_m
+                                .param_label_or_name(adb, *param_idx)
+                                .unwrap()
+                                .pretty_print(db.as_hir_db()),
+                        ),
+                        span: impl_m.param_span(adb, *param_idx).resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "argument label defined here".to_string(),
-                        span: definition.resolve(db),
+                        span: trait_m.param_span(adb, *param_idx).resolve(db),
                     },
                 ],
                 notes: vec![],
                 error_code,
             },
 
-            Self::MethodArgTyMismatch { primary, message } => CompleteDiagnostic {
+            Self::MethodArgTyMismatch {
+                trait_m: _,
+                impl_m,
+                trait_m_ty,
+                impl_m_ty,
+                param_idx,
+            } => CompleteDiagnostic {
                 severity,
                 message: "method argument type mismatch".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: message.clone(),
-                    span: primary.resolve(db),
+                    message: format!(
+                        "expected `{}` type, but the given type is `{}`",
+                        trait_m_ty.pretty_print(adb),
+                        impl_m_ty.pretty_print(adb)
+                    ),
+                    span: impl_m.param_span(adb, *param_idx).resolve(db),
                 }],
                 notes: vec![],
                 error_code,
             },
 
-            Self::MethodRetTyMismatch { primary, message } => CompleteDiagnostic {
+            Self::MethodRetTyMismatch {
+                trait_m: _,
+                impl_m,
+                trait_ty,
+                impl_ty,
+            } => CompleteDiagnostic {
                 severity,
                 message: "method return type mismatch".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: message.clone(),
-                    span: primary.resolve(db),
+                    message: format!(
+                        "expected `{}` type, but the given type is `{}`",
+                        trait_ty.pretty_print(adb),
+                        impl_ty.pretty_print(adb),
+                    ),
+                    span: impl_m
+                        .hir_func_def(adb)
+                        .unwrap()
+                        .lazy_span()
+                        .ret_ty()
+                        .resolve(db),
                 }],
                 notes: vec![],
                 error_code,
             },
 
-            Self::MethodStricterBound { primary, message } => CompleteDiagnostic {
-                severity,
-                message: "method has stricter bounds than trait".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: message.clone(),
-                    span: primary.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            Self::MethodStricterBound {
+                span,
+                stricter_bounds,
+            } => {
+                // xxx sort!
+                // unsatisfied_goals.sort_by_key(|goal| goal.self_ty(db).pretty_print(db));
 
-            Self::InvalidSelfType { primary, message } => CompleteDiagnostic {
-                severity,
-                message: "invalid type for `self` parameter".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: message.clone(),
-                    span: primary.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+                let message = format!(
+                    "method has stricter bounds than the declared method in the trait: {}",
+                    stricter_bounds
+                        .iter()
+                        .map(|pred| format!("`{}`", pred.pretty_print(adb, true)))
+                        .join(", ")
+                );
+                CompleteDiagnostic {
+                    severity,
+                    message: "method has stricter bounds than trait".to_string(),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: message.clone(),
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::InvalidSelfType {
+                span,
+                expected,
+                given,
+            } => {
+                let message = if expected.is_trait_self(adb) {
+                    format!(
+                        "type of `self` must start with `Self`, but the given type is `{}`",
+                        given.pretty_print(adb),
+                    )
+                } else {
+                    format!(
+                        "type of `self` must start with `Self` or `{}`, but the given type is `{}`",
+                        expected.pretty_print(adb),
+                        given.pretty_print(adb),
+                    )
+                };
+
+                CompleteDiagnostic {
+                    severity,
+                    message: "invalid type for `self` parameter".to_string(),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message,
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::InherentImplIsNotAllowed {
                 primary,

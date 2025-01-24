@@ -1,5 +1,4 @@
-use common::{InputDb, InputIngot};
-use hir_def::{module_tree_impl, IdentId, IngotId};
+use common::InputDb;
 pub use lower::parse::{ParseErrorAccumulator, ParserError};
 
 pub mod hir_def;

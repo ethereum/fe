@@ -61,7 +61,7 @@ impl<'db> Callable<'db> {
         }
 
         let TyData::TyBase(TyBase::Func(func_def)) = base.data(db) else {
-            return Err(BodyDiag::not_callable(db, span, ty).into());
+            return Err(BodyDiag::NotCallable(span, ty).into());
         };
 
         let params = ty.generic_args(db);
@@ -169,6 +169,7 @@ impl<'db> Callable<'db> {
             .enumerate()
         {
             if_chain! {
+                // xxx check this
                 if let Some(expected_label) = self.func_def.param_label(db, i);
                 if !expected_label.is_self(db.as_hir_db());
                 if Some(expected_label) != given.label;

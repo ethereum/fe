@@ -798,7 +798,7 @@ dependencies = [
  "paste",
  "rustc-hash 2.1.0",
  "salsa",
- "smallvec",
+ "smallvec 1.13.2",
 ]
 
 [[package]]
@@ -821,7 +821,8 @@ dependencies = [
  "num-bigint",
  "rustc-hash 2.1.0",
  "salsa",
- "smallvec",
+ "smallvec 1.13.2",
+ "smallvec 2.0.0-alpha.10",
 ]
 
 [[package]]
@@ -871,7 +872,7 @@ dependencies = [
  "logos",
  "rowan",
  "rustc-hash 2.1.0",
- "smallvec",
+ "smallvec 1.13.2",
  "unwrap-infallible",
  "wasm-bindgen",
  "wasm-bindgen-test",
@@ -1171,7 +1172,7 @@ dependencies = [
  "icu_normalizer_data",
  "icu_properties",
  "icu_provider",
- "smallvec",
+ "smallvec 1.13.2",
  "utf16_iter",
  "utf8_iter",
  "write16",
@@ -1240,7 +1241,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "686f825264d630750a544639377bae737628043f20d38bbc029e8f29ea968a7e"
 dependencies = [
  "idna_adapter",
- "smallvec",
+ "smallvec 1.13.2",
  "utf8_iter",
 ]
 
@@ -1565,7 +1566,7 @@ dependencies = [
  "cfg-if",
  "libc",
  "redox_syscall",
- "smallvec",
+ "smallvec 1.13.2",
  "windows-targets",
 ]
 
@@ -1796,7 +1797,7 @@ dependencies = [
  "rustc-hash 2.1.0",
  "salsa-macro-rules",
  "salsa-macros",
- "smallvec",
+ "smallvec 1.13.2",
  "tracing",
 ]
 
@@ -1945,6 +1946,12 @@ name = "smallvec"
 version = "1.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
+
+[[package]]
+name = "smallvec"
+version = "2.0.0-alpha.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51d44cfb396c3caf6fbfd0ab422af02631b69ddd96d2eff0b0f0724f9024051b"
 
 [[package]]
 name = "smol"
@@ -2218,7 +2225,7 @@ checksum = "e8189decb5ac0fa7bc8b96b7cb9b2701d60d48805aca84a238004d665fcc4008"
 dependencies = [
  "nu-ansi-term 0.46.0",
  "sharded-slab",
- "smallvec",
+ "smallvec 1.13.2",
  "thread_local",
  "tracing-core",
  "tracing-log",

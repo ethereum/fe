@@ -151,13 +151,12 @@ impl<'db> TyChecker<'db> {
         if self.table.unify(returned_ty, self.expected).is_err() {
             let func = self.env.func();
             let span = stmt.lazy_span(self.env.body());
-            let diag = BodyDiag::returned_type_mismatch(
-                self.db,
-                span.into(),
-                returned_ty,
-                self.expected,
-                func.map(|f| f.hir_func_def(self.db).unwrap()),
-            );
+            let diag = BodyDiag::ReturnedTypeMismatch {
+                primary: span.into(),
+                actual: returned_ty,
+                expected: self.expected,
+                func: func.map(|f| f.hir_func_def(self.db).unwrap()),
+            };
 
             self.push_diag(diag);
         }
