@@ -11,7 +11,7 @@ fn run_ty_check(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (ingot, file) = db.standalone(path, fixture.content());
+    let (ingot, file) = db.standalone_no_core(path, fixture.content());
     let top_mod = db.top_mod(ingot, file);
 
     let diags = db.run_on_top_mod(top_mod);
@@ -37,7 +37,7 @@ mod wasm {
         let mut db = DriverDataBase::default();
         let path = Utf8Path::new(fixture.path());
 
-        let (ingot, file) = db.standalone(path, fixture.content());
+        let (ingot, file) = db.standalone_no_core(path, fixture.content());
         let top_mod = db.top_mod(ingot, file);
         db.run_on_top_mod(top_mod);
     }
