@@ -1,0 +1,20 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/pat/duplicated_binding.fe
+---
+error[8-0032]: duplicate binding `x` in pattern
+  ┌─ duplicated_binding.fe:6:17
+  │
+6 │     let E::V(x, x) = f
+  │              -  ^ `x` is defined again here
+  │              │   
+  │              first definition of `x` in this pattern
+
+error[8-0032]: duplicate binding `x` in pattern
+  ┌─ duplicated_binding.fe:9:17
+  │
+9 │         E::V(x, x) => ()
+  │              -  ^ `x` is defined again here
+  │              │   
+  │              first definition of `x` in this pattern

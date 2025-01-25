@@ -140,11 +140,19 @@ impl<'db> TyChecker<'db> {
                     }
                 }
                 _ => {
+                    let name = *path.ident(self.db.as_hir_db()).unwrap();
                     let binding = LocalBinding::local(pat, *is_mut);
-                    self.env.register_pending_binding(
-                        *path.ident(self.db.as_hir_db()).unwrap(),
-                        binding,
-                    );
+                    if let Some(LocalBinding::Local {
+                        pat: conflict_with, ..
+                    }) = self.env.register_pending_binding(name, binding)
+                    {
+                        let diag = BodyDiag::DuplicatedBinding {
+                            primary: span.into(),
+                            conflicat_with: conflict_with.lazy_span(self.body()).into(),
+                            name,
+                        };
+                        self.push_diag(diag);
+                    }
                     self.fresh_ty()
                 }
             }

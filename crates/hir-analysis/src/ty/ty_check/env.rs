@@ -177,17 +177,38 @@ impl<'db> TyCheckEnv<'db> {
         self.pat_ty.insert(pat, ty);
     }
 
-    /// Register a pending binding which will be added when `flush_pending_vars`
-    /// is called.
+    /// Registers a new pending binding.
+    ///
+    /// This function adds a binding to the list of pending variables. If a
+    /// binding with the same name already exists, it returns the existing
+    /// binding. Otherwise, it returns `None`.
+    ///
+    /// To flush pending bindings to the designated scope, call
+    /// [`flush_pending_bindings`] in the scope.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The identifier of the variable.
+    /// * `binding` - The local binding to be registered.
+    ///
+    /// # Returns
+    ///
+    /// * `Some(LocalBinding)` if a binding with the same name already exists.
+    /// * `None` if the binding was successfully registered.
     pub(super) fn register_pending_binding(
         &mut self,
         name: IdentId<'db>,
         binding: LocalBinding<'db>,
-    ) {
-        self.pending_vars.insert(name, binding);
+    ) -> Option<LocalBinding<'db>> {
+        self.pending_vars.insert(name, binding)
     }
 
-    /// Flush pending bindings to the current scope environment.
+    /// Flushes all pending variable bindings into the current variable
+    /// environment.
+    ///
+    /// This function moves all pending bindings from the `pending_vars` map
+    /// into the latest `BlockEnv` in `var_env`. After this operation, the
+    /// `pending_vars` map will be empty.
     pub(super) fn flush_pending_bindings(&mut self) {
         let var_env = self.var_env.last_mut().unwrap();
         for (name, binding) in self.pending_vars.drain() {
@@ -199,6 +220,25 @@ impl<'db> TyCheckEnv<'db> {
         self.pending_confirmations.push((inst, span))
     }
 
+    /// Completes the type checking environment by finalizing pending trait
+    /// confirmations, folding types with the unification table, and collecting
+    /// diagnostics.
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - A mutable reference to the unification table used for type
+    ///   unification.
+    ///
+    /// # Returns
+    ///
+    /// * A tuple containing the `TypedBody` and a vector of `FuncBodyDiag`.
+    ///
+    /// The `TypedBody` includes the body of the function, pattern types,
+    /// expression types, and callables, all of which have been folded with
+    /// the unification table.
+    ///
+    /// The vector of `FuncBodyDiag` contains diagnostics related to function
+    /// bodies, such as ambiguous trait instances.
     pub(super) fn finish(
         mut self,
         table: &mut UnificationTable<'db>,
@@ -249,6 +289,22 @@ impl<'db> TyCheckEnv<'db> {
         &self.var_env[idx]
     }
 
+    /// Performs pending trait confirmations and collects diagnostics.
+    ///
+    /// This function attempts to satisfy all pending trait confirmations by
+    /// iteratively probing and unifying trait instances until a fixed point
+    /// is reached. If any trait instance remains ambiguous, a diagnostic is
+    /// generated and added to the diagnostics vector.
+    ///
+    /// # Arguments
+    ///
+    /// * `prober` - A mutable reference to the [`Prober`] used for type
+    ///   unification and probing.
+    ///
+    /// # Returns
+    ///
+    /// * A vector of `FuncBodyDiag` containing diagnostics related to ambiguous
+    ///   trait instances.
     fn perform_pending_confirmation(
         &self,
         prober: &mut Prober<'db, '_>,
