@@ -285,10 +285,6 @@ impl<'db> GenericParamTypeSet<'db> {
         Self::new(db, Vec::new(), scope, 0)
     }
 
-    pub(crate) fn len(self, db: &dyn HirAnalysisDb) -> usize {
-        self.params_precursor(db).len()
-    }
-
     pub(crate) fn trait_self(&self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
         let params = self.params_precursor(db);
         let cand = params.first()?;

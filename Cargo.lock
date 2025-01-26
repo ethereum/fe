@@ -806,6 +806,7 @@ name = "fe-hir-analysis"
 version = "0.26.0"
 dependencies = [
  "bitflags 2.8.0",
+ "camino",
  "codespan-reporting",
  "cranelift-entity",
  "derive_more",

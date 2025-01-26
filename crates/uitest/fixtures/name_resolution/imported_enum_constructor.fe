@@ -1,0 +1,14 @@
+use core::{Option, panic}
+
+fn f() -> u32 {
+    let x = Option::Some(10)
+    x.unwrap() // FIXME
+
+    let y: Option<u8> = Option::none() // FIXME
+    let z: Option<u8> = Option::default()
+
+    match x {
+        Option::Some(x) => x
+        Option::None => panic()
+    }
+}
