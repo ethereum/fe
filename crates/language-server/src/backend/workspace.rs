@@ -319,7 +319,7 @@ impl Workspace {
     }
 
     fn sync_local_ingots(&mut self, db: &mut LanguageServerDatabase, path: &str) {
-        let config_paths = glob::glob(&format!("{path}/**/{FE_CONFIG_SUFFIX}"))
+        let config_paths = glob::glob(&format!("{path}/**/fe.toml"))
             .unwrap()
             .filter_map(Result::ok)
             .map(|p| p.to_str().unwrap().to_string())

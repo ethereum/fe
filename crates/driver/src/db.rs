@@ -9,7 +9,7 @@ use codespan_reporting::term::{
 use common::{
     diagnostics::CompleteDiagnostic,
     impl_db_traits,
-    indexmap::IndexSet,
+    indexmap::{IndexMap, IndexSet},
     input::{IngotDependency, IngotKind, Version},
     InputDb, InputFile, InputIngot,
 };
@@ -29,6 +29,7 @@ use hir_analysis::{
     HirAnalysisDb,
 };
 use include_dir::{include_dir, Dir};
+use resolver::ingot::graph::Graph;
 
 use crate::diagnostics::ToCsDiag;
 
@@ -150,26 +151,62 @@ impl DriverDataBase {
 
     pub fn local_ingot(
         &mut self,
-        path: &Utf8Path,
-        version: &Version,
-        source_root: &Utf8Path,
-        source_files: Vec<(Utf8PathBuf, String)>,
+        dependency_graph: &Graph,
         core_ingot: InputIngot,
-    ) -> (InputIngot, IndexSet<InputFile>) {
-        let core_dependency = IngotDependency::new("core", core_ingot);
-        let mut external_ingots = IndexSet::default();
-        external_ingots.insert(core_dependency);
-        let input_ingot = InputIngot::new(
-            self,
-            path.as_str(),
-            IngotKind::Local,
-            version.clone(),
-            external_ingots,
-        );
+    ) -> (InputIngot, IndexMap<Utf8PathBuf, InputIngot>) {
+        let mut all_ingots = IndexMap::new();
 
-        let input_files = self.set_ingot_source_files(input_ingot, source_root, source_files);
-        (input_ingot, input_files)
+        for path in dependency_graph.reverse_toposort() {
+            let external_ingots = dependency_graph
+                .dependencies(&path)
+                .into_iter()
+                .map(|dependency| IngotDependency {
+                    name: dependency.0.to_string().into(),
+                    ingot: all_ingots[&dependency.1],
+                })
+                .chain(vec![IngotDependency {
+                    name: "core".into(),
+                    ingot: core_ingot,
+                }])
+                .collect();
+
+            all_ingots.insert(
+                path.clone(),
+                InputIngot::new(
+                    self,
+                    &path.to_string(),
+                    IngotKind::External,
+                    Version::new(0, 0, 0),
+                    external_ingots,
+                ),
+            );
+        }
+
+        let local_ingot = all_ingots
+            .shift_remove(&dependency_graph.local_paths[0])
+            .expect("local is missing from input ingots");
+        (local_ingot, all_ingots)
     }
+
+    // pub fn local_ingot(
+    //     &mut self,
+    //     path: &Utf8Path,
+    //     version: &Version,
+    // ) -> (InputIngot, IndexSet<InputFile>) {
+    //     let core_dependency = IngotDependency::new("core", core_ingot);
+    //     let mut external_ingots = IndexSet::default();
+    //     external_ingots.insert(core_dependency);
+    //     let input_ingot = InputIngot::new(
+    //         self,
+    //         path.as_str(),
+    //         IngotKind::Local,
+    //         version.clone(),
+    //         external_ingots,
+    //     );
+    //
+    //     let input_files = self.set_ingot_source_files(input_ingot, source_root, source_files);
+    //     (input_ingot, input_files)
+    // }
 
     pub fn core_ingot(
         &mut self,
@@ -215,7 +252,7 @@ impl DriverDataBase {
         (input_ingot, input_files)
     }
 
-    fn set_ingot_source_files(
+    pub fn set_ingot_source_files(
         &mut self,
         ingot: InputIngot,
         root: &Utf8Path,

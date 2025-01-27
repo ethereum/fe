@@ -1,0 +1,8 @@
+[ingot]
+name = "E"
+version = "1.0.0"
+
+[dependencies]
+G = { path = "../G" }
+# cycle
+C = { path = "../C" }

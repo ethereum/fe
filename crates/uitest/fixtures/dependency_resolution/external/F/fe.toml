@@ -1,0 +1,6 @@
+[ingot]
+name = "F"
+version = "1.0.0"
+
+[dependencies]
+G = { path = "../G" }

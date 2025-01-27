@@ -1,0 +1,6 @@
+[ingot]
+name = "B"
+version = "1.0.0"
+
+[dependencies]
+G = { path = "../../external/G" }

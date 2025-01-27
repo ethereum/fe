@@ -16,3 +16,5 @@ semver.workspace = true
 smol_str = "0.1"
 toml = "0.8"
 serde = { version = "1", features = ["derive"] }
+petgraph = "0.6"
+git2 = "0.8"
