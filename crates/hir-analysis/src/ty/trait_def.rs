@@ -281,7 +281,14 @@ impl<'db> TraitInstId<'db> {
         if let WellFormedness::IllFormed { goal, subgoal } =
             check_trait_inst_wf(db, ingot, self, assumptions)
         {
-            Some(TraitConstraintDiag::trait_bound_not_satisfied(db, span, goal, subgoal).into())
+            Some(
+                TraitConstraintDiag::TraitBoundNotSat {
+                    span,
+                    primary_goal: goal,
+                    unsat_subgoal: subgoal,
+                }
+                .into(),
+            )
         } else {
             None
         }

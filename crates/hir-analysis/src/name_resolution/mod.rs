@@ -7,8 +7,6 @@ pub(crate) mod traits_in_scope;
 mod visibility_checker;
 
 use hir::{
-    analysis_pass::ModuleAnalysisPass,
-    diagnostics::DiagnosticVoucher,
     hir_def::{
         scope_graph::ScopeId, Expr, ExprId, GenericArgListId, IngotId, ItemKind, Pat, PatId,
         PathId, TopLevelMod, TraitRefId, TypeId,
@@ -30,7 +28,7 @@ pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
 use self::{diagnostics::NameResDiag, import_resolver::DefaultImporter};
-use crate::HirAnalysisDb;
+use crate::{analysis_pass::ModuleAnalysisPass, diagnostics::DiagnosticVoucher, HirAnalysisDb};
 
 #[salsa::tracked(return_ref)]
 pub fn resolve_query<'db>(

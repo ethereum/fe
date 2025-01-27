@@ -1,6 +1,8 @@
-use crate::{
-    diagnostics::DiagnosticVoucher,
+use crate::diagnostics::DiagnosticVoucher;
+use hir::{
     hir_def::{ModuleTree, TopLevelMod},
+    lower::parse_file_impl,
+    HirDb, ParseErrorAccumulator,
 };
 
 /// All analysis passes that run analysis on the HIR top level module
@@ -48,5 +50,28 @@ impl<'db> AnalysisPassManager<'db> {
             }
         }
         diags
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct ParsingPass<'db> {
+    db: &'db dyn HirDb,
+}
+
+impl<'db> ParsingPass<'db> {
+    pub fn new(db: &'db dyn HirDb) -> Self {
+        Self { db }
+    }
+}
+
+impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod<'db>,
+    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+        parse_file_impl::accumulated::<ParseErrorAccumulator>(self.db, top_mod)
+            .into_iter()
+            .map(|d| Box::new(d.0) as _)
+            .collect::<Vec<_>>()
     }
 }

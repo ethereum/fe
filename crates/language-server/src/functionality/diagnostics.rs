@@ -4,11 +4,9 @@ use camino::Utf8Path;
 use codespan_reporting as cs;
 use common::{diagnostics::CompleteDiagnostic, InputDb, InputFile, InputIngot};
 use cs::files as cs_files;
-use hir::{
-    analysis_pass::AnalysisPassManager, diagnostics::DiagnosticVoucher, lower::map_file_to_mod,
-    ParsingPass,
-};
+use hir::lower::map_file_to_mod;
 use hir_analysis::{
+    analysis_pass::{AnalysisPassManager, ParsingPass},
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,

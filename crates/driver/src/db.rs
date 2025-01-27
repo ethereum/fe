@@ -14,13 +14,13 @@ use common::{
     InputDb, InputFile, InputIngot,
 };
 use hir::{
-    analysis_pass::AnalysisPassManager,
-    diagnostics::DiagnosticVoucher,
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
-    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
+    HirDb, LowerHirDb, SpannedHirDb,
 };
 use hir_analysis::{
+    analysis_pass::{AnalysisPassManager, ParsingPass},
+    diagnostics::{DiagnosticVoucher, SpannedHirAnalysisDb},
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
@@ -36,7 +36,7 @@ static LIBRARY: Dir = include_dir!("$CARGO_MANIFEST_DIR/../../library");
 
 #[salsa::db]
 pub trait DriverDb:
-    salsa::Database + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb
+    salsa::Database + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb + SpannedHirAnalysisDb
 {
     fn as_driver_db(&self) -> &dyn DriverDb;
 }
@@ -53,7 +53,8 @@ impl_db_traits!(
     LowerHirDb,
     SpannedHirDb,
     HirAnalysisDb,
-    DriverDb
+    SpannedHirAnalysisDb,
+    DriverDb,
 );
 
 impl DriverDataBase {

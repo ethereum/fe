@@ -127,7 +127,7 @@ impl<'db> TyChecker<'db> {
         if star_kind_required && ty.is_star_kind(self.db) {
             ty
         } else {
-            let diag: TyDiagCollection = TyLowerDiag::expected_star_kind_ty(span).into();
+            let diag: TyDiagCollection = TyLowerDiag::ExpectedStarKind(span).into();
             self.push_diag(diag);
             TyId::invalid(self.db, InvalidCause::Other)
         }
@@ -170,7 +170,11 @@ impl<'db> TyChecker<'db> {
         // FIXME: This is a temporary workaround, this should be removed when we
         // implement subtyping.
         if expected.is_never(self.db) && !actual.is_never(self.db) {
-            let diag = BodyDiag::type_mismatch(self.db, span, expected, actual);
+            let diag = BodyDiag::TypeMismatch {
+                span,
+                expected,
+                given: actual,
+            };
             self.push_diag(diag);
             return TyId::invalid(self.db, InvalidCause::Other);
         };
@@ -190,7 +194,11 @@ impl<'db> TyChecker<'db> {
             Err(UnificationError::TypeMismatch) => {
                 let actual = actual.fold_with(&mut self.table);
                 let expected = expected.fold_with(&mut self.table);
-                self.push_diag(BodyDiag::type_mismatch(self.db, span, expected, actual));
+                self.push_diag(BodyDiag::TypeMismatch {
+                    span,
+                    expected,
+                    given: actual,
+                });
                 TyId::invalid(self.db, InvalidCause::Other)
             }
 
@@ -387,7 +395,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         }
 
         if !skip_diag {
-            let diag = BodyDiag::type_annotation_needed(self.db, span, ty);
+            let diag = BodyDiag::TypeAnnotationNeeded { span, ty };
             self.diags.push(diag.into())
         }
     }

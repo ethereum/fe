@@ -39,6 +39,10 @@ impl<'db> AdtDef<'db> {
         self.adt_ref(db).name(db)
     }
 
+    pub fn name_span(self, db: &'db dyn HirAnalysisDb) -> DynLazySpan<'db> {
+        self.adt_ref(db).name_span(db)
+    }
+
     pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
     }

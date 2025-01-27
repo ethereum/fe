@@ -290,12 +290,11 @@ impl<'db> DefAnalyzer<'db> {
     fn verify_term_type_kind(&mut self, ty: HirTyId<'db>, span: DynLazySpan<'db>) -> bool {
         let ty = lower_hir_ty(self.db, ty, self.scope());
         if !ty.has_star_kind(self.db) {
-            self.diags
-                .push(TyLowerDiag::expected_star_kind_ty(span).into());
+            self.diags.push(TyLowerDiag::ExpectedStarKind(span).into());
             false
         } else if ty.is_const_ty(self.db) {
             self.diags
-                .push(TyLowerDiag::normal_type_expected(self.db, span, ty).into());
+                .push(TyLowerDiag::NormalTypeExpected { span, given: ty }.into());
             false
         } else {
             true
@@ -323,11 +322,11 @@ impl<'db> DefAnalyzer<'db> {
                 match resolve_path(self.db, path, parent_scope, false) {
                     Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                         self.diags.push(
-                            TyLowerDiag::generic_param_conflict(
-                                span.param(i).into(),
-                                r.name_span(self.db).unwrap(),
+                            TyLowerDiag::GenericParamAlreadyDefinedInParent {
+                                span: span.param(i).into(),
+                                conflict_with: r.name_span(self.db).unwrap(),
                                 name,
-                            )
+                            }
                             .into(),
                         );
                         is_conflict = true;
@@ -352,7 +351,12 @@ impl<'db> DefAnalyzer<'db> {
 
             if param_base_ty != expected_base_ty {
                 self.diags.push(
-                    ImplDiag::invalid_self_ty(self.db, span.clone(), expected_ty, param_ty).into(),
+                    ImplDiag::InvalidSelfType {
+                        span: span.clone(),
+                        expected: expected_ty,
+                        given: param_ty,
+                    }
+                    .into(),
                 );
                 return false;
             }
@@ -361,7 +365,12 @@ impl<'db> DefAnalyzer<'db> {
             {
                 if expected_arg != param_arg {
                     self.diags.push(
-                        ImplDiag::invalid_self_ty(self.db, span, expected_ty, param_ty).into(),
+                        ImplDiag::InvalidSelfType {
+                            span,
+                            expected: expected_ty,
+                            given: param_ty,
+                        }
+                        .into(),
                     );
                     return false;
                 }
@@ -388,10 +397,10 @@ impl<'db> DefAnalyzer<'db> {
         ) {
             if cand != func {
                 self.diags.push(
-                    ImplDiag::conflict_method_impl(
-                        func.name_span(self.db),
-                        cand.name_span(self.db),
-                    )
+                    ImplDiag::ConflictMethodImpl {
+                        primary: func,
+                        conflict_with: cand,
+                    }
                     .into(),
                 );
                 return false;
@@ -482,19 +491,14 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
         if ty.is_const_ty(self.db) {
             let diag =
-                TraitConstraintDiag::const_ty_bound(self.db, ty, ctxt.span().unwrap().ty().into())
-                    .into();
+                TraitConstraintDiag::ConstTyBound(ctxt.span().unwrap().ty().into(), ty).into();
             self.diags.push(diag);
             return;
         }
 
         if !ty.has_invalid(self.db) && !ty.has_param(self.db) {
-            let diag = TraitConstraintDiag::concrete_type_bound(
-                self.db,
-                ctxt.span().unwrap().ty().into(),
-                ty,
-            )
-            .into();
+            let diag =
+                TraitConstraintDiag::ConcreteTypeBound(ctxt.span().unwrap().ty().into(), ty).into();
             self.diags.push(diag);
             return;
         }
@@ -529,12 +533,11 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
                 && field_ty != const_ty_ty
             {
                 self.diags.push(
-                    TyLowerDiag::const_ty_mismatch(
-                        self.db,
-                        ctxt.span().unwrap().ty().into(),
-                        const_ty_ty,
-                        field_ty,
-                    )
+                    TyLowerDiag::ConstTyMismatch {
+                        span: ctxt.span().unwrap().ty().into(),
+                        expected: const_ty_ty,
+                        given: field_ty,
+                    }
                     .into(),
                 );
                 return;
@@ -578,11 +581,11 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             match resolve_path(self.db, path, parent_scope, false) {
                 Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                     self.diags.push(
-                        TyLowerDiag::generic_param_conflict(
-                            ctxt.span().unwrap().into(),
-                            r.name_span(self.db).unwrap(),
+                        TyLowerDiag::GenericParamAlreadyDefinedInParent {
+                            span: ctxt.span().unwrap().into(),
+                            conflict_with: r.name_span(self.db).unwrap(),
                             name,
-                        )
+                        }
                         .into(),
                     );
                     return;
@@ -627,13 +630,12 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         let former_kind = ty.kind(self.db);
         if !former_kind.does_match(&kind) {
             self.diags.push(
-                TyLowerDiag::inconsistent_kind_bound(
-                    self.db,
-                    ctxt.span().unwrap().into(),
+                TyLowerDiag::InconsistentKindBound {
+                    span: ctxt.span().unwrap().into(),
                     ty,
-                    former_kind,
-                    &kind,
-                )
+                    old: former_kind.clone(),
+                    new: kind,
+                }
                 .into(),
             );
         }
@@ -673,8 +675,12 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             let expected_kind = trait_inst.def(self.db).expected_implementor_kind(self.db);
             if !expected_kind.does_match(ty.kind(self.db)) {
                 self.diags.push(
-                    TraitConstraintDiag::kind_mismatch(self.db, span.clone(), expected_kind, *ty)
-                        .into(),
+                    TraitConstraintDiag::TraitArgKindMismatch {
+                        span: span.clone(),
+                        expected: expected_kind.clone(),
+                        actual: *ty,
+                    }
+                    .into(),
                 );
             }
         }
@@ -791,11 +797,11 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
             match already_seen.entry(name) {
                 Entry::Occupied(entry) => {
-                    let diag = TyLowerDiag::duplicated_arg_name(
-                        ctxt.span().unwrap().param(i).name().into(),
-                        ctxt.span().unwrap().param(*entry.get()).name().into(),
+                    let diag = TyLowerDiag::DuplicatedArgName {
+                        primary: ctxt.span().unwrap().param(i).name().into(),
+                        conflict_with: ctxt.span().unwrap().param(*entry.get()).name().into(),
                         name,
-                    )
+                    }
                     .into();
                     self.diags.push(diag);
                 }
@@ -871,10 +877,10 @@ fn check_recursive_adt_impl<'db>(
         for (ty_idx, ty) in field.iter_types(db).enumerate() {
             for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
                 if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-                    let diag = TyLowerDiag::recursive_type(
-                        adt.name_span(db),
-                        adt_def.variant_ty_span(db, field_idx, ty_idx),
-                    );
+                    let diag = TyLowerDiag::RecursiveType {
+                        primary_span: adt.name_span(db),
+                        field_span: adt_def.variant_ty_span(db, field_idx, ty_idx),
+                    };
                     return Some(diag.into());
                 }
             }
@@ -931,24 +937,45 @@ fn analyze_trait_ref<'db>(
         Ok(trait_ref) => trait_ref,
 
         Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
-            return Some(TraitConstraintDiag::trait_arg_num_mismatch(span, expected, given).into());
+            return Some(
+                TraitConstraintDiag::TraitArgNumMismatch {
+                    span,
+                    expected,
+                    given,
+                }
+                .into(),
+            );
         }
 
         Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
-            return Some(TraitConstraintDiag::kind_mismatch(db, span, &expected, given).into());
+            return Some(
+                TraitConstraintDiag::TraitArgKindMismatch {
+                    span,
+                    expected,
+                    actual: given,
+                }
+                .into(),
+            );
         }
 
         Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => match (expected, given) {
             (Some(expected), Some(given)) => {
-                return Some(TyLowerDiag::const_ty_mismatch(db, span, expected, given).into())
+                return Some(
+                    TyLowerDiag::ConstTyMismatch {
+                        span,
+                        expected,
+                        given,
+                    }
+                    .into(),
+                )
             }
 
             (Some(expected), None) => {
-                return Some(TyLowerDiag::const_ty_expected(db, span, expected).into())
+                return Some(TyLowerDiag::ConstTyExpected { span, expected }.into())
             }
 
             (None, Some(given)) => {
-                return Some(TyLowerDiag::normal_type_expected(db, span, given).into())
+                return Some(TyLowerDiag::NormalTypeExpected { span, given }.into())
             }
 
             (None, None) => unreachable!(),
@@ -1074,7 +1101,7 @@ fn analyze_impl_trait_specific_error<'db>(
     //    contains either the type or trait.
     let impl_trait_ingot = impl_trait.top_mod(hir_db).ingot(hir_db);
     if Some(impl_trait_ingot) != ty.ingot(db) && impl_trait_ingot != trait_inst.def(db).ingot(db) {
-        diags.push(TraitLowerDiag::external_trait_for_external_type(impl_trait).into());
+        diags.push(TraitLowerDiag::ExternalTraitForExternalType(impl_trait).into());
         return Err(diags);
     }
 
@@ -1105,10 +1132,10 @@ fn analyze_impl_trait_specific_error<'db>(
         for cand in impls {
             if does_impl_trait_conflict(db, *cand, implementor) {
                 diags.push(
-                    TraitLowerDiag::conflict_impl(
-                        cand.skip_binder().hir_impl_trait(db),
-                        implementor.skip_binder().hir_impl_trait(db),
-                    )
+                    TraitLowerDiag::ConflictTraitImpl {
+                        primary: cand.skip_binder().hir_impl_trait(db),
+                        conflict_with: implementor.skip_binder().hir_impl_trait(db),
+                    }
                     .into(),
                 );
 
@@ -1125,12 +1152,11 @@ fn analyze_impl_trait_specific_error<'db>(
         .expected_implementor_kind(db);
     if ty.kind(db) != expected_kind {
         diags.push(
-            TraitConstraintDiag::kind_mismatch(
-                db,
-                impl_trait.lazy_span().ty().into(),
-                expected_kind,
-                implementor.instantiate_identity().self_ty(db),
-            )
+            TraitConstraintDiag::TraitArgKindMismatch {
+                span: impl_trait.lazy_span().ty().into(),
+                expected: expected_kind.clone(),
+                actual: implementor.instantiate_identity().self_ty(db),
+            }
             .into(),
         );
         return Err(diags);
@@ -1148,12 +1174,11 @@ fn analyze_impl_trait_specific_error<'db>(
             GoalSatisfiability::NeedsConfirmation(_) => unreachable!(),
             GoalSatisfiability::UnSat(subgoal) => {
                 diags.push(
-                    TraitConstraintDiag::trait_bound_not_satisfied(
-                        db,
+                    TraitConstraintDiag::TraitBoundNotSat {
                         span,
-                        goal,
-                        subgoal.map(|subgoal| subgoal.value),
-                    )
+                        primary_goal: goal,
+                        unsat_subgoal: subgoal.map(|subgoal| subgoal.value),
+                    }
                     .into(),
                 );
             }
@@ -1213,15 +1238,16 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         for (name, impl_m) in impl_methods {
             let Some(trait_m) = trait_methods.get(name) else {
                 self.diags.push(
-                    ImplDiag::method_not_defined_in_trait(
-                        self.implementor
+                    ImplDiag::MethodNotDefinedInTrait {
+                        primary: self
+                            .implementor
                             .hir_impl_trait(self.db)
                             .lazy_span()
                             .trait_ref()
                             .into(),
-                        hir_trait,
-                        *name,
-                    )
+                        method_name: *name,
+                        trait_: hir_trait,
+                    }
                     .into(),
                 );
                 continue;
@@ -1240,14 +1266,15 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
 
         if !required_methods.is_empty() {
             self.diags.push(
-                ImplDiag::not_all_trait_items_implemented(
-                    self.implementor
+                ImplDiag::NotAllTraitItemsImplemented {
+                    primary: self
+                        .implementor
                         .hir_impl_trait(self.db)
                         .lazy_span()
                         .ty_moved()
                         .into(),
-                    required_methods.into_iter().collect(),
-                )
+                    not_implemented: required_methods.into_iter().collect(),
+                }
                 .into(),
             );
         }

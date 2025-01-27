@@ -1,4 +1,6 @@
 use hir::{span::DynLazySpan, HirDb};
+pub mod analysis_pass;
+pub mod diagnostics;
 
 #[salsa::db]
 pub trait HirAnalysisDb: salsa::Database + HirDb {
@@ -12,4 +14,10 @@ pub mod ty;
 pub struct Spanned<'db, T> {
     pub data: T,
     pub span: DynLazySpan<'db>,
+}
+
+impl<'db, T> Spanned<'db, T> {
+    pub fn new(data: T, span: DynLazySpan<'db>) -> Self {
+        Self { data, span }
+    }
 }

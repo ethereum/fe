@@ -29,7 +29,7 @@ use crate::{
         },
         ty_def::{InvalidCause, TyId},
     },
-    HirAnalysisDb,
+    HirAnalysisDb, Spanned,
 };
 
 impl<'db> TyChecker<'db> {
@@ -324,8 +324,8 @@ impl<'db> TyChecker<'db> {
         let canonical_r_ty = Canonicalized::new(self.db, receiver_prop.ty);
         let candidate = match select_method_candidate(
             self.db,
-            (canonical_r_ty.value, receiver.lazy_span(self.body()).into()),
-            (method_name, call_span.method_name().into()),
+            Spanned::new(canonical_r_ty.value, receiver.lazy_span(self.body()).into()),
+            Spanned::new(method_name, call_span.method_name().into()),
             self.env.scope(),
             assumptions,
         ) {
@@ -626,12 +626,11 @@ impl<'db> TyChecker<'db> {
             }
         };
 
-        let diag = BodyDiag::accessed_field_not_found(
-            self.db,
-            expr.lazy_span(self.body()).into(),
-            lhs_ty,
-            *field,
-        );
+        let diag = BodyDiag::AccessedFieldNotFound {
+            primary: expr.lazy_span(self.body()).into(),
+            given_ty: lhs_ty,
+            index: *field,
+        };
         self.push_diag(diag);
 
         ExprProp::invalid(self.db)
@@ -934,8 +933,8 @@ impl<'db> TyChecker<'db> {
         let canonical_r_ty = Canonicalized::new(db, receiver_ty);
         let candidate = match select_method_candidate(
             db,
-            (canonical_r_ty.value, span.clone().into()),
-            (name, span.segment(path.segment_index(hir_db)).into()),
+            Spanned::new(canonical_r_ty.value, span.clone().into()),
+            Spanned::new(name, span.segment(path.segment_index(hir_db)).into()),
             self.env.scope(),
             self.env.assumptions(),
         ) {

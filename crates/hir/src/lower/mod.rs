@@ -6,7 +6,7 @@ use parser::{
     SyntaxNode, SyntaxToken,
 };
 
-use self::{item::lower_module_items, parse::parse_file_impl, scope_builder::ScopeGraphBuilder};
+use self::{item::lower_module_items, scope_builder::ScopeGraphBuilder};
 use crate::{
     hir_def::{
         module_tree_impl, scope_graph::ScopeGraph, ExprId, IdentId, IngotId, IntegerId, ItemKind,
@@ -14,6 +14,7 @@ use crate::{
     },
     HirDb, LowerHirDb,
 };
+pub use parse::parse_file_impl;
 
 pub(crate) mod parse;
 

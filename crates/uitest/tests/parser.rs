@@ -1,7 +1,7 @@
 use camino::Utf8Path;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
-use hir::{analysis_pass::AnalysisPassManager, ParsingPass};
+use hir_analysis::analysis_pass::{AnalysisPassManager, ParsingPass};
 use test_utils::snap_test;
 
 #[dir_test(

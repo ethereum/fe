@@ -85,14 +85,7 @@ fn compare_generic_param_num<'db>(
     if impl_params.len() == trait_params.len() {
         true
     } else {
-        sink.push(
-            ImplDiag::method_param_num_mismatch(
-                impl_m.name_span(db),
-                trait_params.len(),
-                impl_params.len(),
-            )
-            .into(),
-        );
+        sink.push(ImplDiag::MethodTypeParamNumMismatch { trait_m, impl_m }.into());
         false
     }
 }
@@ -116,14 +109,14 @@ fn compare_generic_param_kind<'db>(
         let impl_m_kind = impl_m_param.kind(db);
 
         if !trait_m_kind.does_match(impl_m_kind) {
-            let span = impl_m
-                .hir_func_def(db)
-                .unwrap()
-                .lazy_span()
-                .generic_params_moved()
-                .param_moved(idx)
-                .into();
-            sink.push(ImplDiag::method_param_kind_mismatch(span, trait_m_kind, impl_m_kind).into());
+            sink.push(
+                ImplDiag::MethodTypeParamKindMismatch {
+                    trait_m,
+                    impl_m,
+                    param_idx: idx,
+                }
+                .into(),
+            );
             err = true;
         }
     }
@@ -147,14 +140,7 @@ fn compare_arity<'db>(
     if impl_m_arity == trait_m_arity {
         true
     } else {
-        sink.push(
-            ImplDiag::method_arg_num_mismatch(
-                impl_m.param_list_span(db),
-                trait_m_arity,
-                impl_m_arity,
-            )
-            .into(),
-        );
+        sink.push(ImplDiag::MethodArgNumMismatch { impl_m, trait_m }.into());
         false
     }
 }
@@ -199,12 +185,13 @@ fn compare_arg_label<'db>(
         };
 
         if expected_label != method_label {
-            let primary = hir_impl_m.lazy_span().params_moved().param(idx).into();
-            let sub = hir_trait_m.lazy_span().params_moved().param(idx).into();
-
             sink.push(
-                ImplDiag::method_arg_label_mismatch(db, primary, sub, expected_label, method_label)
-                    .into(),
+                ImplDiag::MethodArgLabelMismatch {
+                    trait_m,
+                    impl_m,
+                    param_idx: idx,
+                }
+                .into(),
             );
             err = true;
         }
@@ -234,8 +221,16 @@ fn compare_ty<'db>(
         }
         let impl_m_ty = impl_m_ty.instantiate_identity();
         if !impl_m_ty.has_invalid(db) && trait_m_ty != impl_m_ty {
-            let span = impl_m.param_span(db, idx);
-            sink.push(ImplDiag::method_arg_ty_mismatch(db, span, trait_m_ty, impl_m_ty).into());
+            sink.push(
+                ImplDiag::MethodArgTyMismatch {
+                    trait_m,
+                    impl_m,
+                    trait_m_ty,
+                    impl_m_ty,
+                    param_idx: idx,
+                }
+                .into(),
+            );
             err = true;
         }
     }
@@ -244,12 +239,12 @@ fn compare_ty<'db>(
     let trait_m_ret_ty = trait_m.ret_ty(db).instantiate(db, map_to_impl);
     if !impl_m_ret_ty.has_invalid(db) && trait_m_ret_ty != impl_m_ret_ty {
         sink.push(
-            ImplDiag::method_ret_type_mismatch(
-                db,
-                impl_m.hir_func_def(db).unwrap().lazy_span().ret_ty().into(),
-                trait_m_ret_ty,
-                impl_m_ret_ty,
-            )
+            ImplDiag::MethodRetTyMismatch {
+                trait_m,
+                impl_m,
+                trait_ty: trait_m_ret_ty,
+                impl_ty: trait_m_ret_ty,
+            }
             .into(),
         );
 
@@ -274,7 +269,7 @@ fn compare_constraints<'db>(
     let impl_m_constraints = collect_func_def_constraints(db, impl_m, false).instantiate_identity();
     let trait_m_constraints =
         collect_func_def_constraints(db, trait_m, false).instantiate(db, map_to_impl);
-    let mut unsatisfied_goals = vec![];
+    let mut unsatisfied_goals = smallvec2::smallvec![];
     for &goal in impl_m_constraints.list(db) {
         let canonical_goal = Canonical::new(db, goal);
         let ingot = trait_m.ingot(db);
@@ -290,9 +285,12 @@ fn compare_constraints<'db>(
     if unsatisfied_goals.is_empty() {
         true
     } else {
-        unsatisfied_goals.sort_by_key(|goal| goal.self_ty(db).pretty_print(db));
         sink.push(
-            ImplDiag::method_stricter_bound(db, impl_m.name_span(db), &unsatisfied_goals).into(),
+            ImplDiag::MethodStricterBound {
+                span: impl_m.name_span(db),
+                stricter_bounds: unsatisfied_goals,
+            }
+            .into(),
         );
         false
     }

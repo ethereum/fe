@@ -20,6 +20,8 @@ use driver::{
     DriverDb,
 };
 use fe_hir_analysis::{
+    analysis_pass::{AnalysisPassManager, ParsingPass},
+    diagnostics::SpannedHirAnalysisDb,
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
@@ -28,11 +30,10 @@ use fe_hir_analysis::{
     HirAnalysisDb,
 };
 use hir::{
-    analysis_pass::AnalysisPassManager,
     hir_def::TopLevelMod,
     lower,
     span::{DynLazySpan, LazySpan},
-    HirDb, LowerHirDb, ParsingPass, SpannedHirDb,
+    HirDb, LowerHirDb, SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
 
@@ -50,6 +51,7 @@ impl_db_traits!(
     LowerHirDb,
     SpannedHirDb,
     HirAnalysisDb,
+    SpannedHirAnalysisDb,
     DriverDb,
 );
 

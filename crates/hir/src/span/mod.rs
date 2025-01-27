@@ -77,9 +77,9 @@ impl<'db> DynLazySpan<'db> {
     }
 }
 impl LazySpan for DynLazySpan<'_> {
-    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span> {
+    fn resolve<D: SpannedHirDb + ?Sized>(&self, db: &D) -> Option<Span> {
         if let Some(chain) = &self.0 {
-            chain.resolve(db)
+            chain.resolve(db.as_spanned_hir_db())
         } else {
             None
         }
@@ -96,7 +96,7 @@ pub trait SpanDowncast<'db> {
 /// types which don't have a span information directly, but can be resolved into
 /// a span lazily.
 pub trait LazySpan {
-    fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<Span>;
+    fn resolve<D: SpannedHirDb + ?Sized>(&self, db: &D) -> Option<Span>;
 }
 
 pub fn toplevel_ast(db: &dyn SpannedHirDb, item: TopLevelMod) -> HirOrigin<ast::Root> {

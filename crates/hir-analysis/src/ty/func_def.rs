@@ -1,5 +1,5 @@
 use hir::{
-    hir_def::{scope_graph::ScopeId, Enum, Func, IdentId, IngotId, Partial},
+    hir_def::{scope_graph::ScopeId, Enum, Func, FuncParamName, IdentId, IngotId, Partial},
     span::DynLazySpan,
 };
 
@@ -117,7 +117,16 @@ impl<'db> FuncDef<'db> {
     }
 
     pub fn param_label(self, db: &'db dyn HirAnalysisDb, idx: usize) -> Option<IdentId<'db>> {
-        self.hir_def(db).param_label(db, idx)
+        self.hir_func_def(db)?.param_label(db.as_hir_db(), idx)
+    }
+
+    pub fn param_label_or_name(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        idx: usize,
+    ) -> Option<FuncParamName<'db>> {
+        self.hir_func_def(db)?
+            .param_label_or_name(db.as_hir_db(), idx)
     }
 }
 
@@ -173,18 +182,6 @@ impl<'db> HirFuncDefKind<'db> {
                 .tuple_type()
                 .into(),
         }
-    }
-
-    pub fn param_label(self, db: &'db dyn HirAnalysisDb, idx: usize) -> Option<IdentId<'db>> {
-        let Self::Func(func) = self else {
-            return None;
-        };
-
-        func.params(db.as_hir_db())
-            .to_opt()?
-            .data(db.as_hir_db())
-            .get(idx)?
-            .label_eagerly()
     }
 
     pub fn param_span(self, idx: usize) -> DynLazySpan<'db> {
