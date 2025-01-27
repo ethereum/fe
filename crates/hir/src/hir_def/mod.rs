@@ -34,43 +34,79 @@ pub use stmt::*;
 pub use types::*;
 pub use use_tree::*;
 
-use crate::{external_ingots_impl, HirDb};
+use crate::HirDb;
 
 #[salsa::tracked]
 pub struct IngotId<'db> {
     inner: InputIngot,
 }
+
+#[salsa::tracked]
 impl<'db> IngotId<'db> {
-    pub fn module_tree(self, db: &dyn HirDb) -> &ModuleTree {
+    /// Returns a module tree of the given ingot. The resulted tree only includes
+    /// top level modules. This function only depends on an ingot structure and
+    /// external ingot dependency, and not depends on file contents.
+    pub fn module_tree(self, db: &'db dyn HirDb) -> &'db ModuleTree<'db> {
         module_tree_impl(db, self.inner(db))
     }
 
-    pub fn all_modules(self, db: &'db dyn HirDb) -> &'db [TopLevelMod<'db>] {
-        all_top_modules_in_ingot(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_modules(self, db: &'db dyn HirDb) -> Vec<TopLevelMod<'db>> {
+        self.module_tree(db).all_modules().collect()
     }
 
-    pub fn root_mod(self, db: &dyn HirDb) -> TopLevelMod {
+    pub fn root_mod(self, db: &'db dyn HirDb) -> TopLevelMod<'db> {
         self.module_tree(db).root_data().top_mod
     }
 
-    pub fn external_ingots(self, db: &dyn HirDb) -> &[(IdentId, IngotId)] {
-        external_ingots_impl(db, self.inner(db))
+    /// Returns the root modules and names of external ingots that the given `ingot`
+    /// depends on.
+    /// From the outside of the crate, this functionality can be accessed via
+    /// [`TopLevelMod::external_ingots`](crate::TopLevelMod::external_ingots).
+    // The reason why this function is not a public API is that we want to prohibit users of `HirDb` to
+    // access `InputIngot` directly.
+    #[salsa::tracked(return_ref)]
+    pub fn external_ingots(self, db: &'db dyn HirDb) -> Vec<(IdentId<'db>, IngotId<'db>)> {
+        self.inner(db)
+            .external_ingots(db.as_input_db())
+            .iter()
+            .map(|dep| {
+                let name = IdentId::new(db, dep.name.to_string());
+                let ingot = module_tree_impl(db, dep.ingot)
+                    .root_data()
+                    .top_mod
+                    .ingot(db);
+                (name, ingot)
+            })
+            .collect()
     }
 
     pub fn kind(self, db: &dyn HirDb) -> IngotKind {
         self.inner(db).kind(db.as_input_db())
     }
 
-    pub fn all_enums(self, db: &'db dyn HirDb) -> &'db [Enum<'db>] {
-        all_enums_in_ingot(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_enums(self, db: &'db dyn HirDb) -> Vec<Enum<'db>> {
+        self.all_modules(db)
+            .iter()
+            .flat_map(|top_mod| top_mod.all_enums(db).iter().copied())
+            .collect()
     }
 
-    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> &'db [ImplTrait<'db>] {
-        all_impl_traits_in_ingot(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> Vec<ImplTrait<'db>> {
+        self.all_modules(db)
+            .iter()
+            .flat_map(|top_mod| top_mod.all_impl_traits(db).iter().copied())
+            .collect()
     }
 
-    pub fn all_impls(self, db: &'db dyn HirDb) -> &'db Vec<Impl<'db>> {
-        all_impls_in_ingot(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_impls(self, db: &'db dyn HirDb) -> Vec<Impl<'db>> {
+        self.all_modules(db)
+            .iter()
+            .flat_map(|top_mod| top_mod.all_impls(db).iter().copied())
+            .collect()
     }
 
     pub fn is_core(self, db: &'db dyn HirDb) -> bool {

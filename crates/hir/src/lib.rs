@@ -1,6 +1,6 @@
 use analysis_pass::ModuleAnalysisPass;
-use common::{InputDb, InputIngot};
-use hir_def::{module_tree_impl, IdentId, IngotId, TopLevelMod};
+use common::InputDb;
+use hir_def::TopLevelMod;
 pub use lower::parse::ParserError;
 use lower::parse::{parse_file_impl, ParseErrorAccumulator};
 use parser::GreenNode;
@@ -37,30 +37,6 @@ impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
             .map(|d| Box::new(d.0) as _)
             .collect::<Vec<_>>()
     }
-}
-
-/// Returns the root modules and names of external ingots that the given `ingot`
-/// depends on.
-/// From the outside of the crate, this functionality can be accessed via
-/// [`TopLevelMod::external_ingots`](crate::TopLevelMod::external_ingots).
-// The reason why this function is not a public API is that we want to prohibit users of `HirDb` to
-// access `InputIngot` directly.
-#[salsa::tracked(return_ref)]
-#[allow(elided_named_lifetimes)]
-pub(crate) fn external_ingots_impl(
-    db: &dyn HirDb,
-    ingot: InputIngot,
-) -> Vec<(IdentId<'_>, IngotId<'_>)> {
-    let mut res = Vec::new();
-    for dep in ingot.external_ingots(db.as_input_db()) {
-        let name = IdentId::new(db, dep.name.to_string());
-        let ingot = module_tree_impl(db, dep.ingot)
-            .root_data()
-            .top_mod
-            .ingot(db);
-        res.push((name, ingot))
-    }
-    res
 }
 
 #[salsa::db]
