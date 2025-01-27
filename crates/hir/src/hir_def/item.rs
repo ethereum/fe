@@ -360,6 +360,8 @@ pub struct TopLevelMod<'db> {
     pub ingot: IngotId<'db>,
     pub(crate) file: InputFile,
 }
+
+#[salsa::tracked]
 impl<'db> TopLevelMod<'db> {
     pub fn lazy_span(self) -> LazyTopModSpan<'db> {
         LazyTopModSpan::new(self)
@@ -413,205 +415,112 @@ impl<'db> TopLevelMod<'db> {
 
     /// Returns all items in the top level module including ones in nested
     /// modules.
-    pub fn all_items(self, db: &'db dyn HirDb) -> &'db Vec<ItemKind<'db>> {
-        all_items_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_items(self, db: &'db dyn HirDb) -> Vec<ItemKind<'db>> {
+        self.children_nested(db).collect()
     }
 
     /// Returns all structs in the top level module including ones in nested
     /// modules.
-    pub fn all_structs(self, db: &'db dyn HirDb) -> &'db Vec<Struct<'db>> {
-        all_structs_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_structs(self, db: &'db dyn HirDb) -> Vec<Struct<'db>> {
+        self.all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                ItemKind::Struct(struct_) => Some(*struct_),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Returns all enums in the top level module including ones in nested
     /// modules.
-    pub fn all_enums(self, db: &'db dyn HirDb) -> &'db Vec<Enum<'db>> {
-        all_enums_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_enums(self, db: &'db dyn HirDb) -> Vec<Enum<'db>> {
+        self.all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                ItemKind::Enum(enum_) => Some(*enum_),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Returns all contracts in the top level module including ones in nested
     /// modules.
-    pub fn all_contracts(self, db: &'db dyn HirDb) -> &'db Vec<Contract<'db>> {
-        all_contracts_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_contracts(self, db: &'db dyn HirDb) -> Vec<Contract<'db>> {
+        self.all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                ItemKind::Contract(contract) => Some(*contract),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Returns all type aliases in the top level module including ones in
     /// nested modules.
-    pub fn all_type_aliases(self, db: &'db dyn HirDb) -> &'db Vec<TypeAlias<'db>> {
-        all_type_aliases_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_type_aliases(self, db: &'db dyn HirDb) -> Vec<TypeAlias<'db>> {
+        self.all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                ItemKind::TypeAlias(alias) => Some(*alias),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    pub fn all_traits(self, db: &'db dyn HirDb) -> &'db Vec<Trait<'db>> {
-        all_traits_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_traits(self, db: &'db dyn HirDb) -> Vec<Trait<'db>> {
+        self.all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                ItemKind::Trait(trait_) => Some(*trait_),
+                _ => None,
+            })
+            .collect()
     }
 
-    pub fn all_funcs(self, db: &'db dyn HirDb) -> &'db Vec<Func<'db>> {
-        all_funcs_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_funcs(self, db: &'db dyn HirDb) -> Vec<Func<'db>> {
+        self.all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                ItemKind::Func(func_) => Some(*func_),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Returns all traits in the top level module including ones in nested
     /// modules.
-    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> &'db Vec<ImplTrait<'db>> {
-        all_impl_trait_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_impl_traits(self, db: &'db dyn HirDb) -> Vec<ImplTrait<'db>> {
+        self.all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                ItemKind::ImplTrait(impl_trait) => Some(*impl_trait),
+                _ => None,
+            })
+            .collect()
     }
 
     /// Returns all impls in the top level module including ones in nested
     /// modules.
-    pub fn all_impls(self, db: &'db dyn HirDb) -> &'db Vec<Impl<'db>> {
-        all_impl_in_top_mod(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn all_impls(self, db: &'db dyn HirDb) -> Vec<Impl<'db>> {
+        self.all_items(db)
+            .iter()
+            .filter_map(|item| match item {
+                ItemKind::Impl(impl_) => Some(*impl_),
+                _ => None,
+            })
+            .collect()
     }
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_top_modules_in_ingot<'db>(
-    db: &'db dyn HirDb,
-    ingot: IngotId<'db>,
-) -> Vec<TopLevelMod<'db>> {
-    let tree = ingot.module_tree(db);
-    tree.all_modules().collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_enums_in_ingot<'db>(db: &'db dyn HirDb, ingot: IngotId<'db>) -> Vec<Enum<'db>> {
-    ingot
-        .all_modules(db)
-        .iter()
-        .flat_map(|top_mod| top_mod.all_enums(db).iter().copied())
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_impl_traits_in_ingot<'db>(
-    db: &'db dyn HirDb,
-    ingot: IngotId<'db>,
-) -> Vec<ImplTrait<'db>> {
-    ingot
-        .all_modules(db)
-        .iter()
-        .flat_map(|top_mod| top_mod.all_impl_traits(db).iter().copied())
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_impls_in_ingot<'db>(db: &'db dyn HirDb, ingot: IngotId<'db>) -> Vec<Impl<'db>> {
-    ingot
-        .all_modules(db)
-        .iter()
-        .flat_map(|top_mod| top_mod.all_impls(db).iter().copied())
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_items_in_top_mod<'db>(
-    db: &'db dyn HirDb,
-    top_mod: TopLevelMod<'db>,
-) -> Vec<ItemKind<'db>> {
-    top_mod.children_nested(db).collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_structs_in_top_mod<'db>(
-    db: &'db dyn HirDb,
-    top_mod: TopLevelMod<'db>,
-) -> Vec<Struct<'db>> {
-    all_items_in_top_mod(db, top_mod)
-        .iter()
-        .filter_map(|item| match item {
-            ItemKind::Struct(struct_) => Some(*struct_),
-            _ => None,
-        })
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_enums_in_top_mod<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Vec<Enum<'db>> {
-    all_items_in_top_mod(db, top_mod)
-        .iter()
-        .filter_map(|item| match item {
-            ItemKind::Enum(enum_) => Some(*enum_),
-            _ => None,
-        })
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_type_aliases_in_top_mod<'db>(
-    db: &'db dyn HirDb,
-    top_mod: TopLevelMod<'db>,
-) -> Vec<TypeAlias<'db>> {
-    all_items_in_top_mod(db, top_mod)
-        .iter()
-        .filter_map(|item| match item {
-            ItemKind::TypeAlias(alias) => Some(*alias),
-            _ => None,
-        })
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_contracts_in_top_mod<'db>(
-    db: &'db dyn HirDb,
-    top_mod: TopLevelMod<'db>,
-) -> Vec<Contract<'db>> {
-    all_items_in_top_mod(db, top_mod)
-        .iter()
-        .filter_map(|item| match item {
-            ItemKind::Contract(contract) => Some(*contract),
-            _ => None,
-        })
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_traits_in_top_mod<'db>(
-    db: &'db dyn HirDb,
-    top_mod: TopLevelMod<'db>,
-) -> Vec<Trait<'db>> {
-    all_items_in_top_mod(db, top_mod)
-        .iter()
-        .filter_map(|item| match item {
-            ItemKind::Trait(trait_) => Some(*trait_),
-            _ => None,
-        })
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_funcs_in_top_mod<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Vec<Func<'db>> {
-    all_items_in_top_mod(db, top_mod)
-        .iter()
-        .filter_map(|item| match item {
-            ItemKind::Func(func_) => Some(*func_),
-            _ => None,
-        })
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_impl_in_top_mod<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Vec<Impl<'db>> {
-    all_items_in_top_mod(db, top_mod)
-        .iter()
-        .filter_map(|item| match item {
-            ItemKind::Impl(impl_) => Some(*impl_),
-            _ => None,
-        })
-        .collect()
-}
-
-#[salsa::tracked(return_ref)]
-pub fn all_impl_trait_in_top_mod<'db>(
-    db: &'db dyn HirDb,
-    top_mod: TopLevelMod<'db>,
-) -> Vec<ImplTrait<'db>> {
-    all_items_in_top_mod(db, top_mod)
-        .iter()
-        .filter_map(|item| match item {
-            ItemKind::ImplTrait(impl_trait) => Some(*impl_trait),
-            _ => None,
-        })
-        .collect()
 }
 
 #[salsa::tracked]

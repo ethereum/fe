@@ -36,10 +36,12 @@ pub struct TyId<'db> {
     pub data: TyData<'db>,
 }
 
+#[salsa::tracked]
 impl<'db> TyId<'db> {
     /// Returns the kind of the type.
-    pub fn kind(self, db: &'db dyn HirAnalysisDb) -> &'db Kind {
-        ty_kind(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn kind(self, db: &'db dyn HirAnalysisDb) -> Kind {
+        self.data(db).kind(db)
     }
 
     /// Returns the current arguments of the type.
@@ -133,8 +135,17 @@ impl<'db> TyId<'db> {
         !matches!(self.kind(db), Kind::Abs(_, _))
     }
 
-    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> &'db str {
-        pretty_print_ty(db, self)
+    #[salsa::tracked(return_ref)]
+    pub fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
+        match self.data(db) {
+            TyData::TyVar(var) => var.pretty_print(),
+            TyData::TyParam(param) => param.pretty_print(db),
+            TyData::TyApp(_, _) => pretty_print_ty_app(db, self),
+            TyData::TyBase(ty_con) => ty_con.pretty_print(db),
+            TyData::ConstTy(const_ty) => const_ty.pretty_print(db),
+            TyData::Never => "!".to_string(),
+            TyData::Invalid(..) => "<invalid>".to_string(),
+        }
     }
 
     pub fn is_inherent_impl_allowed(self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {
@@ -610,11 +621,6 @@ pub struct ApplicableTyProp<'db> {
     pub const_ty: Option<TyId<'db>>,
 }
 
-#[salsa::tracked(return_ref)]
-pub fn ty_kind<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> Kind {
-    ty.data(db).kind(db)
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyData<'db> {
     /// Type variable.
@@ -1084,7 +1090,7 @@ impl HasKind for AdtDef<'_> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         let mut kind = Kind::Star;
         for param in self.params(db).iter().rev() {
-            kind = Kind::abs(ty_kind(db, *param).clone(), kind);
+            kind = Kind::abs(param.kind(db).clone(), kind);
         }
 
         kind
@@ -1095,7 +1101,7 @@ impl HasKind for FuncDef<'_> {
     fn kind(&self, db: &dyn HirAnalysisDb) -> Kind {
         let mut kind = Kind::Star;
         for param in self.params(db).iter().rev() {
-            kind = Kind::abs(ty_kind(db, *param).clone(), kind);
+            kind = Kind::abs(param.kind(db).clone(), kind);
         }
 
         kind
@@ -1162,19 +1168,6 @@ where
 
     visitable.visit_with(&mut collector);
     collector.keys
-}
-
-#[salsa::tracked(return_ref)]
-pub(crate) fn pretty_print_ty<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
-    match ty.data(db) {
-        TyData::TyVar(var) => var.pretty_print(),
-        TyData::TyParam(param) => param.pretty_print(db),
-        TyData::TyApp(_, _) => pretty_print_ty_app(db, ty),
-        TyData::TyBase(ty_con) => ty_con.pretty_print(db),
-        TyData::ConstTy(const_ty) => const_ty.pretty_print(db),
-        TyData::Never => "!".to_string(),
-        TyData::Invalid(..) => "<invalid>".to_string(),
-    }
 }
 
 fn pretty_print_ty_app<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String {
