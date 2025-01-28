@@ -3,14 +3,4 @@ source: crates/uitest/tests/name_resolution.rs
 expression: diags
 input_file: fixtures/name_resolution/imported_enum_constructor.fe
 ---
-error[8-0029]: `unwrap` is not found
-  ┌─ imported_enum_constructor.fe:5:7
-  │
-5 │     x.unwrap() // FIXME
-  │       ^^^^^^ `unwrap` is not found in `Option`
 
-error[8-0029]: `none` is not found
-  ┌─ imported_enum_constructor.fe:7:33
-  │
-7 │     let y: Option<u8> = Option::none() // FIXME
-  │                                 ^^^^ `none` is not found in `Option`

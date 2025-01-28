@@ -156,7 +156,11 @@ impl<'db> CandidateAssembler<'db> {
     }
 
     fn assemble_inherent_method_candidates(&mut self) {
-        let ingot = self.scope.ingot(self.db.as_hir_db());
+        let ingot = self
+            .receiver_ty
+            .value
+            .ingot(self.db)
+            .unwrap_or_else(|| self.scope.ingot(self.db.as_hir_db()));
         for &method in probe_method(self.db, ingot, self.receiver_ty, self.method_name) {
             self.candidates.insert_inherent_method(method);
         }
