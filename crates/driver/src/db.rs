@@ -244,6 +244,10 @@ impl DriverDataBase {
 
 pub struct DiagnosticsCollection<'db>(Vec<Box<dyn DiagnosticVoucher<'db> + 'db>>);
 impl<'db> DiagnosticsCollection<'db> {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn emit(&self, db: &'db DriverDataBase) {
         let writer = BufferWriter::stderr(ColorChoice::Auto);
         let mut buffer = writer.buffer();

@@ -15,8 +15,9 @@ use super::{
 use crate::{
     name_resolution::{NameResKind, QueryDirective},
     ty::{
-        adt_def::{lower_adt, AdtRef, AdtRefId},
-        func_def::lower_func,
+        adt_def::{lower_adt, AdtRefId},
+        binder::Binder,
+        func_def::{lower_func, FuncDef, HirFuncDefKind},
         trait_def::TraitDef,
         trait_lower::lower_trait,
         ty_def::{InvalidCause, TyId},
@@ -249,6 +250,10 @@ pub struct ResolvedVariant<'db> {
 }
 
 impl<'db> ResolvedVariant<'db> {
+    pub fn new(ty: TyId<'db>, idx: usize, path: PathId<'db>) -> Self {
+        Self { ty, idx, path }
+    }
+
     pub fn variant_def(&self, db: &'db dyn HirAnalysisDb) -> &'db VariantDef<'db> {
         &self.enum_(db).variants(db.as_hir_db()).data(db.as_hir_db())[self.idx]
     }
@@ -258,14 +263,59 @@ impl<'db> ResolvedVariant<'db> {
     }
 
     pub fn enum_(&self, db: &'db dyn HirAnalysisDb) -> Enum<'db> {
-        let AdtRef::Enum(enum_) = self.ty.adt_ref(db).unwrap().data(db) else {
-            unreachable!()
-        };
-        enum_
+        self.ty.as_enum(db).unwrap()
     }
 
-    pub fn new(ty: TyId<'db>, idx: usize, path: PathId<'db>) -> Self {
-        Self { ty, idx, path }
+    pub fn iter_field_types(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> impl Iterator<Item = Binder<TyId<'db>>> {
+        self.ty
+            .adt_def(db)
+            .unwrap()
+            .fields(db)
+            .get(self.idx)
+            .unwrap()
+            .iter_types(db)
+    }
+
+    pub fn constructor_func_ty(&self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
+        let mut ty = TyId::func(db, self.to_funcdef(db)?);
+
+        for &arg in self.ty.generic_args(db) {
+            if ty.applicable_ty(db).is_some() {
+                ty = TyId::app(db, ty, arg);
+            }
+        }
+        Some(ty)
+    }
+
+    pub fn to_funcdef(&self, db: &'db dyn HirAnalysisDb) -> Option<FuncDef<'db>> {
+        if !matches!(self.variant_kind(db), VariantKind::Tuple(_)) {
+            return None;
+        }
+
+        let adt = self.ty.adt_def(db).unwrap();
+        let arg_tys = adt
+            .fields(db)
+            .get(self.idx)
+            .unwrap()
+            .iter_types(db)
+            .collect();
+
+        let adt_param_set = adt.param_set(db);
+
+        let mut ret_ty = TyId::adt(db, adt);
+        ret_ty = TyId::foldl(db, ret_ty, adt.param_set(db).params(db));
+
+        Some(FuncDef::new(
+            db,
+            HirFuncDefKind::VariantCtor(self.enum_(db), self.idx),
+            *self.variant_def(db).name.unwrap(),
+            *adt_param_set,
+            arg_tys,
+            Binder::bind(ret_ty),
+        ))
     }
 }
 

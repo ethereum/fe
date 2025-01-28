@@ -1,19 +1,15 @@
-use hir::hir_def::{Enum, IdentId, Impl, IngotId, VariantKind};
+use hir::hir_def::{IdentId, Impl, IngotId};
 use rustc_hash::FxHashMap;
 
 use super::{
-    adt_def::{lower_adt, AdtRefId},
     binder::Binder,
     canonical::Canonical,
-    func_def::{lower_func, FuncDef, HirFuncDefKind},
+    func_def::{lower_func, FuncDef},
     ty_def::{InvalidCause, TyBase, TyId},
     ty_lower::lower_hir_ty,
     unify::UnificationTable,
 };
-use crate::{
-    ty::{ty_def::TyData, ty_lower::GenericParamTypeSet},
-    HirAnalysisDb,
-};
+use crate::{ty::ty_def::TyData, HirAnalysisDb};
 
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_methods<'db>(
@@ -22,11 +18,7 @@ pub(crate) fn collect_methods<'db>(
 ) -> MethodTable<'db> {
     let mut collector = MethodCollector::new(db, ingot);
 
-    let enums = ingot.all_enums(db.as_hir_db());
-    collector.collect_variant_ctors(enums);
-
     let impls = ingot.all_impls(db.as_hir_db());
-
     collector.collect_impls(impls);
     collector.finalize()
 }
@@ -147,47 +139,6 @@ impl<'db> MethodCollector<'db> {
             db,
             ingot,
             method_table: MethodTable::new(),
-        }
-    }
-
-    fn collect_variant_ctors(&mut self, enums: &[Enum<'db>]) {
-        let hir_db = self.db.as_hir_db();
-        for &enum_ in enums {
-            let adt_ref = AdtRefId::new(self.db, enum_.into());
-            let adt = lower_adt(self.db, adt_ref);
-            for (i, variant) in enum_.variants(hir_db).data(hir_db).iter().enumerate() {
-                if !matches!(variant.kind, VariantKind::Tuple(_)) {
-                    continue;
-                };
-                let (Some(name), Some(variant)) =
-                    (variant.name.to_opt(), adt.fields(self.db).get(i))
-                else {
-                    continue;
-                };
-
-                let arg_tys = variant.iter_types(self.db).collect();
-                let mut ret_ty = TyId::adt(self.db, adt);
-                let adt_param_set = adt.param_set(self.db);
-                ret_ty = TyId::foldl(self.db, ret_ty, adt.param_set(self.db).params(self.db));
-
-                let param_set = GenericParamTypeSet::new(
-                    self.db,
-                    adt_param_set.params_precursor(self.db).to_vec(),
-                    adt_param_set.scope(self.db),
-                    adt_param_set.len(self.db),
-                );
-
-                let func = FuncDef::new(
-                    self.db,
-                    HirFuncDefKind::VariantCtor(enum_, i),
-                    name,
-                    param_set,
-                    arg_tys,
-                    Binder::bind(ret_ty),
-                );
-
-                self.insert(ret_ty, func)
-            }
         }
     }
 

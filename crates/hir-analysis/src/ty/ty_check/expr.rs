@@ -447,9 +447,10 @@ impl<'db> TyChecker<'db> {
                 PathRes::EnumVariant(variant) => {
                     let ty = match variant.variant_kind(self.db) {
                         VariantKind::Unit => variant.ty,
-                        VariantKind::Tuple(_) => self
-                            .select_method_candidate_for_path(variant.ty, *path, span.path())
-                            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other)),
+                        VariantKind::Tuple(_) => {
+                            let ty = variant.constructor_func_ty(self.db).unwrap();
+                            self.table.instantiate_to_term(ty)
+                        }
                         VariantKind::Record(_) => {
                             let diag = BodyDiag::unit_variant_expected(
                                 self.db,
