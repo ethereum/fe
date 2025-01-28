@@ -1,0 +1,12 @@
+use core::{Option, panic}
+
+fn f() -> usize {
+    let x = Option::Some(10)
+    let y = Option::default()
+
+    if y.is_some() {
+        y.unwrap()
+    } else {
+        x.unwrap_or_default()
+    }
+}

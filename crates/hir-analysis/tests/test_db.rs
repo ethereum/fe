@@ -182,7 +182,7 @@ impl<'db> HirPropertyFormatter<'db> {
         (span, diag)
     }
 
-    fn register_top_mod(&mut self, path: &str, text: &str, top_mod: TopLevelMod<'db>) {
+    pub fn register_top_mod(&mut self, path: &str, text: &str, top_mod: TopLevelMod<'db>) {
         let file_id = self.code_span_files.add(path.to_string(), text.to_string());
         self.top_mod_to_file.insert(top_mod, file_id);
     }

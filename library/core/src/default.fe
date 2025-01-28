@@ -1,0 +1,9 @@
+pub trait Default {
+    fn default() -> Self
+}
+
+impl Default for usize {
+    fn default() -> Self {
+        0
+    }
+}

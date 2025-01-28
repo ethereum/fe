@@ -1,2 +1,0 @@
-/// remove once useful code is added to core
-pub fn bar() { }

@@ -1,31 +1,7 @@
+pub use option::Option
+pub use default::Default
+
 extern {
     pub fn panic() -> !
-}
-
-pub enum Option<T> {
-    Some(T),
-    None,
-}
-
-impl<T> Option<T> {
-    pub fn none() -> Self {
-        Self::None
-    }
-
-    pub fn unwrap(self) -> T {
-        match self {
-            Self::Some(t) => t,
-            None => panic()
-        }
-    }
-}
-
-pub trait Default {
-    fn default() -> Self
-}
-
-impl<T> Default for Option<T> {
-    fn default() -> Self {
-        Self::None
-    }
+    pub fn todo() -> !
 }

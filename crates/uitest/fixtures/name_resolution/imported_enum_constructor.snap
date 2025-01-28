@@ -1,6 +1,0 @@
----
-source: crates/uitest/tests/name_resolution.rs
-expression: diags
-input_file: fixtures/name_resolution/imported_enum_constructor.fe
----
-
