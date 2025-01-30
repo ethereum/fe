@@ -258,6 +258,10 @@ impl<'db> ResolvedVariant<'db> {
         &self.enum_(db).variants(db.as_hir_db()).data(db.as_hir_db())[self.idx]
     }
 
+    pub fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool {
+        matches!(self.variant_kind(db), VariantKind::Record(_))
+    }
+
     pub fn variant_kind(&self, db: &'db dyn HirAnalysisDb) -> VariantKind<'db> {
         self.variant_def(db).kind
     }

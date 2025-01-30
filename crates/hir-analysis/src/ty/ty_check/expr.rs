@@ -423,7 +423,11 @@ impl<'db> TyChecker<'db> {
                         ExprProp::new(self.table.instantiate_to_term(const_ty_ty), true)
                     } else {
                         let diag = if ty.is_struct(self.db) {
-                            BodyDiag::unit_variant_expected(self.db, span.into(), ty)
+                            BodyDiag::unit_variant_expected(
+                                self.db,
+                                span.into(),
+                                RecordLike::Type(ty),
+                            )
                         } else {
                             BodyDiag::NotValue {
                                 primary: span.into(),
@@ -455,7 +459,7 @@ impl<'db> TyChecker<'db> {
                             let diag = BodyDiag::unit_variant_expected(
                                 self.db,
                                 expr.lazy_span(self.body()).into(),
-                                variant,
+                                RecordLike::Variant(variant),
                             );
                             self.push_diag(diag);
 
@@ -492,19 +496,23 @@ impl<'db> TyChecker<'db> {
         };
 
         match reso {
-            PathRes::Ty(ty) if ty.is_record(self.db) => {
+            PathRes::Ty(ty) if ty.is_struct(self.db) => {
                 let ty = self.table.instantiate_to_term(ty);
-                self.check_record_init_fields(ty, expr);
+                self.check_record_init_fields(RecordLike::Type(ty), expr);
                 ExprProp::new(ty, true)
             }
 
             PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => {
-                let diag = BodyDiag::record_expected(self.db, span.path().into(), Some(ty));
+                let diag = BodyDiag::record_expected(
+                    self.db,
+                    span.path().into(),
+                    Some(RecordLike::Type(ty)),
+                );
                 self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
             PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..) => {
-                let diag = BodyDiag::record_expected::<TyId>(self.db, span.path().into(), None);
+                let diag = BodyDiag::record_expected(self.db, span.path().into(), None);
                 self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
@@ -512,11 +520,10 @@ impl<'db> TyChecker<'db> {
             PathRes::EnumVariant(variant) => {
                 if variant.is_record(self.db) {
                     let ty = self.table.instantiate_to_term(variant.ty);
-                    self.check_record_init_fields(variant, expr);
+                    self.check_record_init_fields(RecordLike::Variant(variant), expr);
                     ExprProp::new(ty, true)
                 } else {
-                    let diag =
-                        BodyDiag::record_expected::<TyId<'db>>(self.db, span.path().into(), None);
+                    let diag = BodyDiag::record_expected(self.db, span.path().into(), None);
                     self.push_diag(diag);
 
                     ExprProp::invalid(self.db)
@@ -541,7 +548,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_record_init_fields<T: RecordLike<'db>>(&mut self, mut record_like: T, expr: ExprId) {
+    fn check_record_init_fields(&mut self, mut record_like: RecordLike<'db>, expr: ExprId) {
         let hir_db = self.db.as_hir_db();
 
         let Partial::Present(Expr::RecordInit(_, fields)) = expr.data(hir_db, self.body()) else {
@@ -596,8 +603,10 @@ impl<'db> TyChecker<'db> {
 
         match field {
             FieldIndex::Ident(label) => {
-                if let Some(field_ty) = lhs_ty.record_field_ty(self.db, *label) {
-                    if let Some(scope) = lhs_ty.record_field_scope(self.db, *label) {
+                if let Some(field_ty) = RecordLike::Type(lhs_ty).record_field_ty(self.db, *label) {
+                    if let Some(scope) =
+                        RecordLike::Type(lhs_ty).record_field_scope(self.db, *label)
+                    {
                         if !is_scope_visible_from(self.db, scope, self.env.scope()) {
                             // Check the visibility of the field.
                             let diag = NameResDiag::Invisible(

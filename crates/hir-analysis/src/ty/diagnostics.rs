@@ -324,14 +324,11 @@ pub enum BodyDiag<'db> {
 }
 
 impl<'db> BodyDiag<'db> {
-    pub(super) fn unit_variant_expected<T>(
+    pub(super) fn unit_variant_expected(
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
-        record_like: T,
-    ) -> Self
-    where
-        T: RecordLike<'db>,
-    {
+        record_like: RecordLike<'db>,
+    ) -> Self {
         let kind_name = record_like.kind_name(db);
         let hint = record_like.initializer_hint(db);
         Self::UnitVariantExpected {
@@ -341,14 +338,11 @@ impl<'db> BodyDiag<'db> {
         }
     }
 
-    pub(super) fn tuple_variant_expected<T>(
+    pub(super) fn tuple_variant_expected(
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
-        record_like: Option<T>,
-    ) -> Self
-    where
-        T: RecordLike<'db>,
-    {
+        record_like: Option<RecordLike>,
+    ) -> Self {
         let (kind_name, hint) = if let Some(record_like) = record_like {
             (
                 Some(record_like.kind_name(db)),
@@ -365,14 +359,11 @@ impl<'db> BodyDiag<'db> {
         }
     }
 
-    pub(super) fn record_expected<T>(
+    pub(super) fn record_expected(
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
-        record_like: Option<T>,
-    ) -> Self
-    where
-        T: RecordLike<'db>,
-    {
+        record_like: Option<RecordLike<'db>>,
+    ) -> Self {
         let (kind_name, hint) = if let Some(record_like) = record_like {
             (
                 Some(record_like.kind_name(db)),

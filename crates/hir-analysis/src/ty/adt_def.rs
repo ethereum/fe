@@ -51,10 +51,6 @@ impl<'db> AdtDef<'db> {
         self.param_set(db).explicit_params(db)
     }
 
-    pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.adt_ref(db).data(db), AdtRef::Struct(_))
-    }
-
     pub fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
         self.adt_ref(db).scope(db)
     }

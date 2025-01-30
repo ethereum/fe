@@ -98,10 +98,10 @@ impl<'db> SimplifiedPat<'db> {
                 match resolve_path(db, *path, scope, true) {
                     Ok(res) => match res {
                         PathRes::Ty(ty_id) if ty_id.is_struct(db) => {
-                            simplify_record_pattern(db, &ty_id, pat, typed_body)
+                            simplify_record_pattern(db, &ty_id.into(), pat, typed_body)
                         }
                         PathRes::EnumVariant(variant) => {
-                            simplify_record_pattern(db, &variant, pat, typed_body)
+                            simplify_record_pattern(db, &variant.into(), pat, typed_body)
                         }
                         _ => todo!(),
                     },
@@ -126,7 +126,7 @@ impl<'db> SimplifiedPat<'db> {
 
 fn simplify_record_pattern<'db>(
     db: &'db dyn HirAnalysisDb,
-    record: &dyn RecordLike<'db>,
+    record: &RecordLike<'db>,
     pat: PatId,
     typed_body: &'db TypedBody<'db>,
 ) -> SimplifiedPat<'db> {
