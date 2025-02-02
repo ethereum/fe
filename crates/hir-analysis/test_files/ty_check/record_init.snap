@@ -1,12 +1,12 @@
 ---
 source: crates/hir-analysis/tests/ty_check.rs
 expression: res
-input_file: crates/hir-analysis/test_files/ty_check/record_init.fe
+input_file: test_files/ty_check/record_init.fe
 ---
 note: 
    ┌─ record_init.fe:6:10
    │  
- 6 │   fn foo() { 
+ 6 │   fn foo() {
    │ ╭──────────^
  7 │ │     let x = 1
  8 │ │     let y = "FOO"
@@ -120,7 +120,7 @@ note:
 23 │ │     let t = false
 24 │ │     let u = "Bar"
 25 │ │     let f = Bar {t, u}
-26 │ │     
+26 │ │ 
 27 │ │     let f2 = Bar {t: z, u: f}
 28 │ │ }
    │ ╰─^ ()
@@ -248,3 +248,30 @@ note:
    │
 38 │     let x = Wrapper { t: bar }
    │                          ^^^ Bar<i32, bool>
+
+note: 
+   ┌─ record_init.fe:45:19
+   │  
+45 │   fn generic_path() {
+   │ ╭───────────────────^
+46 │ │     let g = G<u32>::V1 { val: 10 }
+47 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ record_init.fe:46:9
+   │
+46 │     let g = G<u32>::V1 { val: 10 }
+   │         ^ G<u32>
+
+note: 
+   ┌─ record_init.fe:46:13
+   │
+46 │     let g = G<u32>::V1 { val: 10 }
+   │             ^^^^^^^^^^^^^^^^^^^^^^ G<u32>
+
+note: 
+   ┌─ record_init.fe:46:31
+   │
+46 │     let g = G<u32>::V1 { val: 10 }
+   │                               ^^ u32

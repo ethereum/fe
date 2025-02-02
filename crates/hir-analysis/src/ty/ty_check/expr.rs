@@ -14,8 +14,8 @@ use super::{
 };
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag, is_scope_visible_from, resolve_name_res, resolve_path,
-        resolve_query, EarlyNameQueryId, NameDomain, NameResBucket, PathRes, QueryDirective,
+        diagnostics::NameResDiag, is_scope_visible_from, resolve_name_res, resolve_query,
+        EarlyNameQueryId, NameDomain, NameResBucket, PathRes, QueryDirective,
     },
     ty::{
         canonical::Canonicalized,
@@ -507,14 +507,13 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
 
-        let Ok(reso) = resolve_path(self.db, *path, self.env.scope(), true) else {
+        let Ok(reso) = self.resolve_path(*path, true) else {
             return ExprProp::invalid(self.db);
         };
 
         match reso {
             PathRes::Ty(ty) if ty.is_record(self.db) => {
-                let ty = self.table.instantiate_to_term(ty);
-                self.check_record_init_fields(ty, expr);
+                self.check_record_init_fields(&ty, expr);
                 ExprProp::new(ty, true)
             }
 
@@ -531,9 +530,8 @@ impl<'db> TyChecker<'db> {
 
             PathRes::EnumVariant(variant) => {
                 if variant.is_record(self.db) {
-                    let ty = self.table.instantiate_to_term(variant.ty);
-                    self.check_record_init_fields(variant, expr);
-                    ExprProp::new(ty, true)
+                    self.check_record_init_fields(&variant, expr);
+                    ExprProp::new(variant.ty, true)
                 } else {
                     let diag =
                         BodyDiag::record_expected::<TyId<'db>>(self.db, span.path().into(), None);
@@ -561,7 +559,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_record_init_fields<T: RecordLike<'db>>(&mut self, mut record_like: T, expr: ExprId) {
+    fn check_record_init_fields<T: RecordLike<'db>>(&mut self, record_like: &T, expr: ExprId) {
         let hir_db = self.db.as_hir_db();
 
         let Partial::Present(Expr::RecordInit(_, fields)) = expr.data(hir_db, self.body()) else {
@@ -569,7 +567,7 @@ impl<'db> TyChecker<'db> {
         };
         let span = expr.lazy_span(self.body()).into_record_init_expr();
 
-        let mut rec_checker = RecordInitChecker::new(self, &mut record_like);
+        let mut rec_checker = RecordInitChecker::new(self, record_like);
 
         for (i, field) in fields.iter().enumerate() {
             let label = field.label_eagerly(rec_checker.tc.db.as_hir_db(), rec_checker.tc.body());

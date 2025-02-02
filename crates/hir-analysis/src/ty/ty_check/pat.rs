@@ -381,7 +381,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_record_pat_fields<T>(&mut self, mut record_like: T, pat: PatId)
+    fn check_record_pat_fields<T>(&mut self, record_like: T, pat: PatId)
     where
         T: RecordLike<'db>,
     {
@@ -394,7 +394,7 @@ impl<'db> TyChecker<'db> {
         let mut contains_rest = false;
 
         let pat_span = pat.lazy_span(self.body()).into_record_pat();
-        let mut rec_checker = RecordInitChecker::new(self, &mut record_like);
+        let mut rec_checker = RecordInitChecker::new(self, &record_like);
 
         for (i, field_pat) in fields.iter().enumerate() {
             let field_pat_span = pat_span.fields().field(i);
