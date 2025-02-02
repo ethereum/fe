@@ -21,7 +21,7 @@ impl Adder {
 
 fn g() {
     let a = Adder{ x: 10 }
-    a.add(1)    // TODO: error should suggest Adder::add(..)
-    a.add(1, 2) // TODO: error should suggest Adder::add(1, 2)
+    a.add(1)
+    a.add(1, 2)
     ()
 }

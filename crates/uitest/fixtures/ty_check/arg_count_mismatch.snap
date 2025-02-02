@@ -3,12 +3,6 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: fixtures/ty_check/arg_count_mismatch.fe
 ---
-error[8-0000]: type mismatch
-   ┌─ arg_count_mismatch.fe:24:5
-   │
-24 │     a.add(1)    // TODO: error should suggest Adder::add(..)
-   │     ^ expected `usize`, but `Adder` is given
-
 error[8-0023]: argument number mismatch
   ┌─ arg_count_mismatch.fe:7:8
   │
@@ -27,11 +21,30 @@ error[8-0023]: argument number mismatch
 9 │     add(1, 2, 3)
   │        ^^^^^^^^^ expected 2 arguments, but 3 given
 
-error[8-0023]: argument number mismatch
-   ┌─ arg_count_mismatch.fe:25:10
+error[8-0033]: `add` is not a method
+   ┌─ arg_count_mismatch.fe:24:5
    │
 17 │     fn add(_ a: usize, _ b: usize) -> usize {
    │        --- function defined here
    ·
-25 │     a.add(1, 2) // TODO: error should suggest Adder::add(1, 2)
-   │          ^^^^^^ expected 2 arguments, but 3 given
+24 │     a.add(1)
+   │     ^^^^^^^^
+   │     │ │
+   │     │ `add` is an associated function, not a method
+   │     help: use associated function syntax instead: `Adder::add`
+   │
+   = note: to be used as a method, a function must have a `self` parameter
+
+error[8-0033]: `add` is not a method
+   ┌─ arg_count_mismatch.fe:25:5
+   │
+17 │     fn add(_ a: usize, _ b: usize) -> usize {
+   │        --- function defined here
+   ·
+25 │     a.add(1, 2)
+   │     ^^^^^^^^^^^
+   │     │ │
+   │     │ `add` is an associated function, not a method
+   │     help: use associated function syntax instead: `Adder::add`
+   │
+   = note: to be used as a method, a function must have a `self` parameter

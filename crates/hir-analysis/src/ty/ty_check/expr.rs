@@ -370,6 +370,17 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
+        if !callable.func_def.is_method(self.db) {
+            let diag = BodyDiag::NotAMethod {
+                span: call_span,
+                receiver_ty: receiver_prop.ty,
+                func_name: method_name,
+                func_ty,
+            };
+            self.push_diag(diag);
+            return ExprProp::invalid(self.db);
+        }
+
         callable.check_args(
             self,
             args,

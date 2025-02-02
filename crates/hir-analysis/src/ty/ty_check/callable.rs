@@ -23,7 +23,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Callable<'db> {
-    func_def: FuncDef<'db>,
+    pub func_def: FuncDef<'db>,
     generic_args: Vec<TyId<'db>>,
 }
 

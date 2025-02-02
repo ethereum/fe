@@ -3,7 +3,7 @@ use hir::{
     hir_def::{
         FieldIndex, Func, IdentId, ImplTrait, ItemKind, PathId, Trait, TypeAlias as HirTypeAlias,
     },
-    span::DynLazySpan,
+    span::{expr::LazyMethodCallExprSpan, DynLazySpan},
 };
 use smallvec2::SmallVec;
 
@@ -263,6 +263,13 @@ pub enum BodyDiag<'db> {
 
     NotCallable(DynLazySpan<'db>, TyId<'db>),
 
+    NotAMethod {
+        span: LazyMethodCallExprSpan<'db>,
+        receiver_ty: TyId<'db>,
+        func_name: IdentId<'db>,
+        func_ty: TyId<'db>,
+    },
+
     CallGenericArgNumMismatch {
         primary: DynLazySpan<'db>,
         def_span: DynLazySpan<'db>,
@@ -444,6 +451,7 @@ impl<'db> BodyDiag<'db> {
             Self::NotValue { .. } => 30,
             Self::TypeAnnotationNeeded { .. } => 31,
             Self::DuplicatedBinding { .. } => 32,
+            Self::NotAMethod { .. } => 33,
         }
     }
 }

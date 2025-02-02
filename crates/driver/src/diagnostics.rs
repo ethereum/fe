@@ -52,7 +52,7 @@ where
             code,
             message,
             labels,
-            notes: vec![],
+            notes: complete.notes,
         }
     }
 }
