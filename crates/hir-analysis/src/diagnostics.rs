@@ -10,6 +10,7 @@ use crate::{
             BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
             TyDiagCollection, TyLowerDiag,
         },
+        ty_check::RecordLike,
         ty_def::{TyData, TyVarSort},
     },
     HirAnalysisDb,
@@ -1369,22 +1370,52 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 method_name,
                 receiver,
             } => {
-                let receiver = match receiver {
-                    Either::Left(ty) => ty.pretty_print(adb),
-                    Either::Right(trait_) => trait_
-                        .trait_(db)
-                        .name(db.as_hir_db())
-                        .unwrap()
-                        .data(db.as_hir_db()),
+                let (recv_name, recv_ty) = match receiver {
+                    Either::Left(ty) => (ty.pretty_print(adb), Some(ty)),
+                    Either::Right(trait_) => {
+                        let name = trait_
+                            .trait_(db)
+                            .name(db.as_hir_db())
+                            .unwrap()
+                            .data(db.as_hir_db());
+                        (name, None)
+                    }
                 };
 
-                let method_name = method_name.data(db.as_hir_db());
+                let method_str = method_name.data(db.as_hir_db());
+
+                if let Some(ty) = recv_ty {
+                    if let Some(field_ty) = ty.record_field_ty(adb, *method_name) {
+                        return CompleteDiagnostic {
+                            severity: Severity::Error,
+                            message: format!(
+                                "{} `{}` field `{}` is not callable",
+                                ty.kind_name(adb),
+                                recv_name,
+                                method_str
+                            ),
+                            sub_diagnostics: vec![SubDiagnostic {
+                                style: LabelStyle::Primary,
+                                message: format!(
+                                    "field `{}` in `{}` has type `{}`",
+                                    method_str,
+                                    recv_name,
+                                    field_ty.pretty_print(adb)
+                                ),
+                                span: primary.resolve(db),
+                            }],
+                            notes: vec![],
+                            error_code,
+                        };
+                    }
+                }
+
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: format!("`{}` is not found", method_name),
+                    message: format!("`{}` is not found", method_str),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("`{}` is not found in `{}`", method_name, receiver),
+                        message: format!("`{}` is not found in `{}`", method_str, recv_name),
                         span: primary.resolve(db),
                     }],
                     notes: vec![],

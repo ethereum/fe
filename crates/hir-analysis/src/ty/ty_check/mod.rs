@@ -15,7 +15,7 @@ use hir::{
     span::{expr::LazyExprSpan, pat::LazyPatSpan, DynLazySpan},
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
-pub(super) use path::RecordLike;
+pub(crate) use path::RecordLike;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
