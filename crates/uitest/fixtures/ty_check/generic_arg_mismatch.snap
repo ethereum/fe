@@ -9,8 +9,8 @@ error[3-0016]: too many generic args; expected 1, given 2
 7 │ type O2 = Opt<i32, bool>
   │           ^^^^^^^^^^^^^^ expected 1 arguments, but 2 were given
 
-error[8-0029]: `None` is not found
-   ┌─ generic_arg_mismatch.fe:10:27
+error[3-0016]: too many generic args; expected 1, given 2
+   ┌─ generic_arg_mismatch.fe:10:13
    │
 10 │     let o = Opt<i32, ()>::None
-   │                           ^^^^ `None` is not found in `<invalid>`
+   │             ^^^^^^^^^^^^ expected 1 arguments, but 2 were given

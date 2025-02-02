@@ -467,9 +467,18 @@ impl<'db> TyChecker<'db> {
                 }
                 PathRes::Const(ty) => ExprProp::new(ty, true),
                 PathRes::TypeMemberTbd(parent_ty) => {
-                    let ty = self
-                        .select_method_candidate_for_path(parent_ty, *path, span.path())
-                        .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other));
+                    let ty = if parent_ty.has_invalid(self.db) {
+                        let span = span
+                            .path()
+                            .segment(path.segment_index(self.db.as_hir_db()) - 1);
+                        if let Some(diag) = parent_ty.emit_diag(self.db, span.into()) {
+                            self.diags.push(diag.into());
+                        }
+                        TyId::invalid(self.db, InvalidCause::Other)
+                    } else {
+                        self.select_method_candidate_for_path(parent_ty, *path, span.path())
+                            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+                    };
                     ExprProp::new(self.table.instantiate_to_term(ty), true)
                 }
                 PathRes::Mod(_) | PathRes::FuncParam(..) => todo!(),
