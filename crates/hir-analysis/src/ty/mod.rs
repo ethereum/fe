@@ -17,6 +17,7 @@ pub mod diagnostics;
 pub mod fold;
 pub mod func_def;
 pub mod method_table;
+pub mod pattern_matching;
 pub mod trait_def;
 pub mod trait_lower;
 pub mod trait_resolution;

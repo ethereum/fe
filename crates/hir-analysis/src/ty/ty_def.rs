@@ -8,7 +8,7 @@ use hir::{
     hir_def::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Body, Enum, IdentId, IngotId, IntegerId, TypeAlias as HirTypeAlias,
+        Body, Enum, IdentId, IngotId, IntegerId, Struct, TypeAlias as HirTypeAlias,
     },
     span::DynLazySpan,
 };
@@ -271,11 +271,15 @@ impl<'db> TyId<'db> {
 
     /// Returns `true` if the base type is a user defined `struct` type.
     pub(crate) fn is_struct(self, db: &dyn HirAnalysisDb) -> bool {
+        self.as_struct(db).is_some()
+    }
+
+    pub(crate) fn as_struct(self, db: &'db dyn HirAnalysisDb) -> Option<Struct<'db>> {
         let base_ty = self.base_ty(db);
-        match base_ty.data(db) {
-            TyData::TyBase(TyBase::Adt(adt)) => adt.is_struct(db),
-            _ => false,
-        }
+        let AdtRef::Struct(s) = base_ty.adt_ref(db)?.data(db) else {
+            return None;
+        };
+        Some(s)
     }
 
     pub fn is_prim(self, db: &dyn HirAnalysisDb) -> bool {
