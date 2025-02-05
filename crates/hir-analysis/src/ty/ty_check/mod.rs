@@ -8,7 +8,7 @@ mod stmt;
 
 pub use callable::Callable;
 pub use env::ExprProp;
-use env::TyCheckEnv;
+use env::{LocalBinding, TyCheckEnv};
 pub(super) use expr::TraitOps;
 use hir::{
     hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, TypeId as HirTyId},
@@ -16,7 +16,6 @@ use hir::{
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
 pub(super) use path::RecordLike;
-
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{
@@ -242,6 +241,15 @@ impl<'db> TypedBody<'db> {
             .unwrap_or_else(|| ExprProp::invalid(db))
     }
 
+    /// Returns a local variable binding information.
+    /// Returns `None` if
+    /// * Expression is not a local variable, or
+    /// * Binding is missing in a user code.
+    pub fn binding_for(&self, expr: ExprId) -> Option<LocalBinding<'db>> {
+        let expr_prop = self.expr_ty.get(&expr)?;
+        expr_prop.binding
+    }
+
     pub fn pat_ty(&self, db: &'db dyn HirAnalysisDb, pat: PatId) -> TyId<'db> {
         self.pat_ty
             .get(&pat)
@@ -249,6 +257,10 @@ impl<'db> TypedBody<'db> {
             .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
     }
 
+    /// Returns the callee information.
+    /// Returns `None` if
+    /// * the given `expr` is not a call or method call,  or
+    /// * the given `expr` isn't typed properly.
     pub fn callable_expr(&self, expr: ExprId) -> Option<&Callable<'db>> {
         self.callables.get(&expr)
     }
