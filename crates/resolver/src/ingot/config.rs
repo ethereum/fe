@@ -7,6 +7,8 @@ use toml::{self, Table};
 
 use crate::Resolver;
 
+const FE_CONFIG_SUFFIX: &str = "fe.toml";
+
 #[derive(Default, Debug, Clone)]
 pub struct Config {
     pub name: Option<SmolStr>,
@@ -40,7 +42,7 @@ impl Resolver for ConfigResolver {
     type Diagnostic = Diagnostic;
 
     fn resolve(&mut self, ingot_path: &Utf8PathBuf) -> Result<Config, Error> {
-        let config_path = ingot_path.join("config.toml");
+        let config_path = ingot_path.join(FE_CONFIG_SUFFIX);
 
         if config_path.exists() {
             let file_content = fs::read_to_string(&config_path).map_err(Error::FileReadError)?;
@@ -110,7 +112,7 @@ impl fmt::Display for Error {
         match self {
             Self::ConfigFileDoesNotExist => write!(
                 f,
-                "a `config.toml` file does not exist in the ingot directory"
+                "a `{FE_CONFIG_SUFFIX}` file does not exist in the ingot directory"
             ),
             Self::FileReadError(error) => write!(f, "file read error: {error}"),
             Self::TomlParseError(error) => write!(f, "toml parse error: {error}"),
