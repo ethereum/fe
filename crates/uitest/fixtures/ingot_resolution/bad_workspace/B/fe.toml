@@ -1,0 +1,9 @@
+[ingot]
+name = "B"
+version = "1.0.0"
+
+[dependencies]
+# cycle
+A = { path = "A" }
+C = { path = "C" }
+

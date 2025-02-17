@@ -1,6 +1,0 @@
----
-source: crates/uitest/tests/dependency_resolution.rs
-expression: graph.dot()
----
-digraph {
-}
