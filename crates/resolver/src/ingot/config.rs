@@ -1,5 +1,5 @@
 use camino::Utf8PathBuf;
-use common::input::Version;
+use common::{indexmap::IndexMap, input::Version};
 use serde::Deserialize;
 use smol_str::SmolStr;
 use std::{fmt, fs, mem};
@@ -13,6 +13,7 @@ const FE_CONFIG_SUFFIX: &str = "fe.toml";
 pub struct Config {
     pub name: Option<SmolStr>,
     pub version: Option<Version>,
+    pub dependencies: Option<IndexMap<SmolStr, DependencyDescription>>,
 }
 
 #[derive(Debug)]
@@ -42,16 +43,21 @@ impl Resolver for ConfigResolver {
     type Diagnostic = Diagnostic;
 
     fn resolve(&mut self, ingot_path: &Utf8PathBuf) -> Result<Config, Error> {
-        let config_path = ingot_path.join(FE_CONFIG_SUFFIX);
+        let config_path = if ingot_path.ends_with(FE_CONFIG_SUFFIX) {
+            ingot_path.clone()
+        } else {
+            ingot_path.join(FE_CONFIG_SUFFIX)
+        };
 
         if config_path.exists() {
             let file_content = fs::read_to_string(&config_path).map_err(Error::FileReadError)?;
 
-            let raw_config = toml::from_str::<IngotConfig>(&file_content)
-                .map_err(Error::TomlParseError)?
-                .ingot;
+            let raw_config =
+                toml::from_str::<RawConfig>(&file_content).map_err(Error::TomlParseError)?;
 
-            let version = match raw_config.version {
+            let ingot = raw_config.ingot.unwrap();
+
+            let version = match ingot.version {
                 Some(version) => match Version::parse(&version) {
                     Ok(version) => Some(version),
                     Err(error) => {
@@ -65,7 +71,7 @@ impl Resolver for ConfigResolver {
                 }
             };
 
-            let name = match raw_config.name {
+            let name = match ingot.name {
                 Some(name) => {
                     if is_valid_name(&name) {
                         Some(name)
@@ -80,11 +86,37 @@ impl Resolver for ConfigResolver {
                 }
             };
 
-            if raw_config.dependencies.is_some() {
-                eprintln!("ingot dependencies are not yet supported")
-            }
+            let dependencies = raw_config.dependencies.map(|dependencies| {
+                dependencies
+                    .iter()
+                    .map(|(name, description)| {
+                        (
+                            SmolStr::from(name),
+                            DependencyDescription {
+                                ingot: IngotDescription {
+                                    version: Version::new(0, 0, 0),
+                                },
+                                files: FilesDescription::Path(
+                                    description
+                                        .as_table()
+                                        .expect(&config_path.to_string())
+                                        .get("path")
+                                        .unwrap()
+                                        .as_str()
+                                        .unwrap()
+                                        .to_string(),
+                                ),
+                            },
+                        )
+                    })
+                    .collect()
+            });
 
-            Ok(Config { name, version })
+            Ok(Config {
+                name,
+                version,
+                dependencies,
+            })
         } else {
             Err(Error::ConfigFileDoesNotExist)
         }
@@ -93,18 +125,6 @@ impl Resolver for ConfigResolver {
     fn take_diagnostics(&mut self) -> Vec<Diagnostic> {
         mem::take(&mut self.diagnostics)
     }
-}
-
-#[derive(Deserialize, Debug, Clone)]
-struct IngotConfig {
-    pub ingot: RawConfig,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-struct RawConfig {
-    pub name: Option<SmolStr>,
-    pub version: Option<SmolStr>,
-    pub dependencies: Option<Table>,
 }
 
 impl fmt::Display for Error {
@@ -138,3 +158,56 @@ fn is_valid_name_char(c: char) -> bool {
 fn is_valid_name(s: &SmolStr) -> bool {
     s.chars().all(is_valid_name_char)
 }
+
+#[derive(Debug, Clone)]
+pub enum FilesDescription {
+    Path(String),
+}
+
+#[derive(Debug, Clone)]
+pub struct IngotDescription {
+    pub version: Version,
+}
+
+#[derive(Debug, Clone)]
+pub struct DependencyDescription {
+    pub ingot: IngotDescription,
+    pub files: FilesDescription,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct RawConfig {
+    pub ingot: Option<RawIngotConfig>,
+    pub dependencies: Option<Table>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct RawIngotConfig {
+    pub name: Option<SmolStr>,
+    pub version: Option<SmolStr>,
+}
+
+// #[derive(Deserialize, Debug, Clone)]
+// pub struct RawPathDescription {
+//     path: String,
+// }
+//
+// #[derive(Deserialize, Debug, Clone)]
+// #[serde(untagged)]
+// pub(crate) enum RawFilesDescription {
+//     Path(RawPathDescription),
+//     Remote(GitDescription),
+// }
+//
+// #[derive(Deserialize, Debug, Clone)]
+// pub(crate) struct RawIngotDescription {
+//     pub version: SmolStr,
+// }
+//
+// #[derive(Deserialize, Debug, Clone)]
+// pub(crate) struct RawDependencyDescription {
+//     #[serde(flatten)]
+//     pub ingot: RawIngotDescription,
+//     #[serde(flatten)]
+//     pub files: RawFilesDescription,
+// }

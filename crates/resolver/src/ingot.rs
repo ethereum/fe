@@ -2,11 +2,13 @@ use std::{fmt, fs};
 
 use camino::Utf8PathBuf;
 use config::{Config, ConfigResolver};
+use graph::{Graph, GraphResolver};
 use source_files::{SourceFiles, SourceFilesResolver};
 
 use crate::Resolver;
 
 pub mod config;
+pub mod graph;
 pub mod source_files;
 
 #[derive(Debug)]
@@ -18,6 +20,7 @@ pub enum Ingot {
     Folder {
         config: Option<Config>,
         source_files: Option<SourceFiles>,
+        dependency_graph: Option<Graph>,
     },
 }
 
@@ -51,6 +54,7 @@ impl Resolver for IngotResolver {
             if ingot_path.is_dir() {
                 let mut config_resolver = ConfigResolver::default();
                 let mut source_files_resolver = SourceFilesResolver::default();
+                let mut dep_graph_resolver = GraphResolver::default();
 
                 let config = match config_resolver.resolve(ingot_path) {
                     Ok(config) => Some(config),
@@ -81,9 +85,12 @@ impl Resolver for IngotResolver {
                         .push(Diagnostic::SourceFilesDiagnostics(source_files_diags));
                 }
 
+                let dependency_graph = Some(dep_graph_resolver.resolve(ingot_path).unwrap());
+
                 Ok(Ingot::Folder {
                     config,
                     source_files,
+                    dependency_graph,
                 })
             } else {
                 match fs::read_to_string(ingot_path) {

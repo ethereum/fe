@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/ingot_resolution.rs
+expression: graph.dot()
+---
+digraph {
+    0 [ label = "\"/home/grantwuerker/workshop/fe/crates/uitest/fixtures/ingot_resolution/workspace/A\"" ]
+    1 [ label = "\"/home/grantwuerker/workshop/fe/crates/uitest/fixtures/ingot_resolution/external/C\"" ]
+    2 [ label = "\"/home/grantwuerker/workshop/fe/crates/uitest/fixtures/ingot_resolution/external/E\"" ]
+    3 [ label = "\"/home/grantwuerker/workshop/fe/crates/uitest/fixtures/ingot_resolution/external/G\"" ]
+    4 [ label = "\"/home/grantwuerker/workshop/fe/crates/uitest/fixtures/ingot_resolution/external/D\"" ]
+    5 [ label = "\"/home/grantwuerker/workshop/fe/crates/uitest/fixtures/ingot_resolution/external/F\"" ]
+    0 -> 1 [ ]
+    0 -> 2 [ ]
+    0 -> 3 [ ]
+    2 -> 1 [ ]
+    2 -> 3 [ ]
+    1 -> 4 [ ]
+    1 -> 2 [ ]
+    1 -> 5 [ ]
+    5 -> 3 [ ]
+    4 -> 2 [ ]
+    4 -> 5 [ ]
+    4 -> 3 [ ]
+}
