@@ -130,6 +130,10 @@ impl<'db> DiagnosticsCollection<'db> {
         });
         diags
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {

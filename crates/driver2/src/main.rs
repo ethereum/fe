@@ -27,7 +27,11 @@ pub fn main() {
     let (ingot, file) = db.standalone(path, &source);
     let top_mod = db.top_mod(ingot, file);
     let diags = db.run_on_top_mod(top_mod);
-    diags.emit(&db);
+
+    if !diags.is_empty() {
+        diags.emit(&db);
+        std::process::exit(1);
+    }
 
     if args.dump_scope_graph {
         println!("{}", dump_scope_graph(&db, top_mod));
