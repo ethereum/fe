@@ -3,12 +3,12 @@ struct Foo {
     y: String<10>
 }
 
-fn foo() { 
+fn foo() {
     let x = 1
     let y = "FOO"
 
     let f = Foo {x, y}
-    
+
     let f2 = Foo {x: 1, y: "FOO"}
 
     let f3 = Foo {y: "FOO", x: 1}
@@ -23,7 +23,7 @@ fn foo2<Z>(b: bool, z: Z) {
     let t = false
     let u = "Bar"
     let f = Bar {t, u}
-    
+
     let f2 = Bar {t: z, u: f}
 }
 
@@ -36,4 +36,12 @@ where T: * -> * -> *
 fn foo3() {
     let bar = Bar { t: 1, u: false }
     let x = Wrapper { t: bar }
+}
+
+enum G<T> {
+    V1 { val: T }
+}
+
+fn generic_path() {
+    let g = G<u32>::V1 { val: 10 }
 }

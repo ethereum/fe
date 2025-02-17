@@ -597,11 +597,7 @@ impl<'db> Func<'db> {
             return false;
         };
 
-        first_param
-            .name
-            .to_opt()
-            .and_then(|name| name.ident())
-            .is_some_and(|ident| ident.is_self(db))
+        first_param.is_self_param(db)
     }
 
     /// Returns `true` if the function is method or associated functions.

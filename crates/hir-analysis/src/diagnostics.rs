@@ -10,6 +10,7 @@ use crate::{
             BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
             TyDiagCollection, TyLowerDiag,
         },
+        ty_check::RecordLike,
         ty_def::{TyData, TyVarSort},
     },
     HirAnalysisDb,
@@ -1255,6 +1256,45 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 }
             }
 
+            Self::NotAMethod {
+                span,
+                receiver_ty,
+                func_name,
+                func_ty,
+            } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!("`{}` is not a method", func_name.data(adb)),
+                sub_diagnostics: vec![
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "`{}` is an associated function, not a method",
+                            func_name.data(adb),
+                        ),
+                        span: span.method_name().resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!(
+                            "help: use associated function syntax instead: `{}::{}`",
+                            receiver_ty.pretty_print(adb),
+                            func_name.data(adb)
+                        ),
+                        span: span.resolve(db),
+                    },
+                    SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: "function defined here".to_string(),
+                        span: func_ty.name_span(adb).unwrap().resolve(db),
+                    },
+                ],
+                notes: vec![
+                    "note: to be used as a method, a function must have a `self` parameter"
+                        .to_string(),
+                ],
+                error_code,
+            },
+
             Self::AmbiguousInherentMethodCall {
                 primary,
                 method_name,
@@ -1369,22 +1409,51 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 method_name,
                 receiver,
             } => {
-                let receiver = match receiver {
-                    Either::Left(ty) => ty.pretty_print(adb),
-                    Either::Right(trait_) => trait_
-                        .trait_(db)
-                        .name(db.as_hir_db())
-                        .unwrap()
-                        .data(db.as_hir_db()),
+                let (recv_name, recv_ty, recv_kind) = match receiver {
+                    Either::Left(ty) => (ty.pretty_print(adb), Some(ty), ty.kind_name(adb)),
+                    Either::Right(trait_) => {
+                        let name = trait_
+                            .trait_(db)
+                            .name(db.as_hir_db())
+                            .unwrap()
+                            .data(db.as_hir_db());
+                        (name, None, "trait".to_string())
+                    }
                 };
 
-                let method_name = method_name.data(db.as_hir_db());
+                let method_str = method_name.data(db.as_hir_db());
+                let message = format!(
+                    "no method named `{}` found for {} `{}`",
+                    method_str, recv_kind, recv_name
+                );
+
+                if let Some(ty) = recv_ty {
+                    if let Some(field_ty) = ty.record_field_ty(adb, *method_name) {
+                        return CompleteDiagnostic {
+                            severity: Severity::Error,
+                            message,
+                            sub_diagnostics: vec![SubDiagnostic {
+                                style: LabelStyle::Primary,
+                                message: format!(
+                                    "field `{}` in `{}` has type `{}`",
+                                    method_str,
+                                    recv_name,
+                                    field_ty.pretty_print(adb)
+                                ),
+                                span: primary.resolve(db),
+                            }],
+                            notes: vec![],
+                            error_code,
+                        };
+                    }
+                }
+
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: format!("`{}` is not found", method_name),
+                    message,
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("`{}` is not found in `{}`", method_name, receiver),
+                        message: format!("method not found in `{}`", recv_name),
                         span: primary.resolve(db),
                     }],
                     notes: vec![],

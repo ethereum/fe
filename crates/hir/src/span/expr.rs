@@ -106,6 +106,7 @@ define_lazy_span_node!(
     LazyCallExprSpan,
     ast::CallExpr,
     @node {
+        (callee, callee, LazyExprSpan),
         (args, args, LazyCallArgListSpan),
     }
 );
@@ -117,6 +118,7 @@ define_lazy_span_node!(
         (method_name, method_name),
     }
     @node {
+        (receiver, receiver, LazyExprSpan),
         (generic_args, generic_args, LazyGenericArgListSpan),
         (args, args, LazyCallArgListSpan),
     }

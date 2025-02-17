@@ -1,0 +1,16 @@
+struct Foo {
+    x: u32,
+    y: u16,
+}
+
+impl Foo {
+    fn x(self) -> u32 {
+        self.x
+    }
+}
+
+fn f() {
+    let s = Foo { x: 10, y: 0 }
+    let x = s.x()
+    let y = s.y()
+}

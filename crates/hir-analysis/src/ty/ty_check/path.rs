@@ -47,7 +47,7 @@ pub(super) enum ResolvedPathInBody<'db> {
 
 pub(super) struct RecordInitChecker<'tc, 'db, 'a, T> {
     pub(super) tc: &'tc mut TyChecker<'db>,
-    data: &'a mut T,
+    data: &'a T,
     already_given: FxHashMap<IdentId<'db>, DynLazySpan<'db>>,
     invalid_field_given: bool,
 }
@@ -60,7 +60,7 @@ where
     ///
     /// ## Panics
     /// Panics if the given `data` is not a record.
-    pub(super) fn new(tc: &'tc mut TyChecker<'db>, data: &'a mut T) -> Self {
+    pub(super) fn new(tc: &'tc mut TyChecker<'db>, data: &'a T) -> Self {
         assert!(data.is_record(tc.db));
 
         Self {
