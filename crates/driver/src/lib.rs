@@ -105,8 +105,12 @@ pub fn run(opts: &Options) {
 
             let core_diags = db.run_on_ingot(core_ingot);
             let local_diags = db.run_on_ingot(local_ingot);
-            core_diags.emit(&db);
-            local_diags.emit(&db);
+
+            if !core_diags.is_empty() || !local_diags.is_empty() {
+                core_diags.emit(&db);
+                local_diags.emit(&db);
+                std::process::exit(1);
+            }
         }
         Command::New => eprintln!("`fe new` doesn't work at the moment"),
     }
