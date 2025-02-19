@@ -8,7 +8,7 @@ use hir::{
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
-use smallvec2::SmallVec;
+use smallvec::SmallVec;
 
 use super::{env::LocalBinding, TyChecker};
 use crate::{

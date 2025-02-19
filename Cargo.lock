@@ -900,7 +900,7 @@ dependencies = [
  "paste",
  "rustc-hash 2.1.0",
  "salsa",
- "smallvec 1.13.2",
+ "smallvec 2.0.0-alpha.10",
 ]
 
 [[package]]
@@ -924,7 +924,6 @@ dependencies = [
  "num-bigint",
  "rustc-hash 2.1.0",
  "salsa",
- "smallvec 1.13.2",
  "smallvec 2.0.0-alpha.10",
 ]
 
@@ -975,7 +974,7 @@ dependencies = [
  "logos",
  "rowan",
  "rustc-hash 2.1.0",
- "smallvec 1.13.2",
+ "smallvec 2.0.0-alpha.10",
  "unwrap-infallible",
  "wasm-bindgen",
  "wasm-bindgen-test",

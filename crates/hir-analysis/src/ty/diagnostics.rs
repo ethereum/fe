@@ -5,7 +5,7 @@ use hir::{
     },
     span::{expr::LazyMethodCallExprSpan, DynLazySpan},
 };
-use smallvec2::SmallVec;
+use smallvec::SmallVec;
 
 use super::{
     func_def::FuncDef,

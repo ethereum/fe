@@ -18,7 +18,6 @@ num-bigint.workspace = true
 rustc-hash.workspace = true
 salsa.workspace = true
 smallvec.workspace = true
-smallvec2 = { package = "smallvec", version = "2.0.0-alpha.10" }
 
 common.workspace = true
 test-utils.workspace = true
