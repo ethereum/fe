@@ -1,5 +1,5 @@
+use common::indexmap::IndexSet;
 use hir::hir_def::{scope_graph::ScopeId, Body, ExprId, ItemKind, Mod, TopLevelMod, Trait};
-use rustc_hash::FxHashSet;
 
 use crate::{name_resolution::resolve_imports, HirAnalysisDb};
 
@@ -7,7 +7,7 @@ use crate::{name_resolution::resolve_imports, HirAnalysisDb};
 pub fn available_traits_in_scope<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
-) -> &'db FxHashSet<Trait<'db>> {
+) -> &'db IndexSet<Trait<'db>> {
     let scope_kind = TraitScopeKind::from_scope(db, scope);
     let trait_scope = TraitScope::new(db, scope_kind);
     available_traits_in_scope_impl(db, trait_scope)
@@ -17,8 +17,8 @@ pub fn available_traits_in_scope<'db>(
 pub(crate) fn available_traits_in_scope_impl<'db>(
     db: &'db dyn HirAnalysisDb,
     t_scope: TraitScope<'db>,
-) -> FxHashSet<Trait<'db>> {
-    let mut traits = FxHashSet::default();
+) -> IndexSet<Trait<'db>> {
+    let mut traits = IndexSet::default();
     let scope = t_scope.inner(db).to_scope();
 
     let imports = &resolve_imports(db, scope.ingot(db.as_hir_db())).1;

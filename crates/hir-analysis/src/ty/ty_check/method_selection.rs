@@ -364,8 +364,8 @@ impl<'db> MethodSelector<'db> {
         is_scope_visible_from(self.db, def.scope(self.db), self.scope)
     }
 
-    fn available_traits(&self) -> FxHashSet<TraitDef<'db>> {
-        let mut traits = FxHashSet::default();
+    fn available_traits(&self) -> IndexSet<TraitDef<'db>> {
+        let mut traits = IndexSet::default();
 
         let mut insert_trait = |trait_def: TraitDef<'db>| {
             traits.insert(trait_def);
