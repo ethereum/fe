@@ -1261,7 +1261,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                 &mut self.diags,
             );
 
-            required_methods.shift_remove(name);
+            required_methods.remove(name);
         }
 
         if !required_methods.is_empty() {

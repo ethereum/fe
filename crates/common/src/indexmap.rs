@@ -1,20 +1,24 @@
 use std::{
-    hash::{BuildHasher, Hash, RandomState},
+    hash::Hash,
     ops::{Deref, DerefMut},
 };
 
+use rustc_hash::FxBuildHasher;
 use salsa::Update;
 
-#[derive(Debug, Clone)]
-pub struct IndexMap<K, V, S = RandomState>(indexmap::IndexMap<K, V, S>);
+type OrderMap<K, V> = ordermap::OrderMap<K, V, FxBuildHasher>;
+type OrderSet<V> = ordermap::OrderSet<V, FxBuildHasher>;
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct IndexMap<K, V>(OrderMap<K, V>);
 
 impl<K, V> IndexMap<K, V> {
     pub fn new() -> Self {
-        Self(indexmap::IndexMap::new())
+        Self(OrderMap::default())
     }
 
     pub fn with_capacity(n: usize) -> Self {
-        Self(indexmap::IndexMap::with_capacity(n))
+        Self(OrderMap::with_capacity_and_hasher(n, FxBuildHasher {}))
     }
 }
 
@@ -24,83 +28,56 @@ impl<K, V> Default for IndexMap<K, V> {
     }
 }
 
-impl<K, V, S> IntoIterator for IndexMap<K, V, S> {
-    type Item = <indexmap::IndexMap<K, V, S> as IntoIterator>::Item;
-    type IntoIter = <indexmap::IndexMap<K, V, S> as IntoIterator>::IntoIter;
+impl<K, V> IntoIterator for IndexMap<K, V> {
+    type Item = <OrderMap<K, V> as IntoIterator>::Item;
+    type IntoIter = <OrderMap<K, V> as IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a IndexMap<K, V, S> {
-    type Item = <&'a indexmap::IndexMap<K, V, S> as IntoIterator>::Item;
-    type IntoIter = <&'a indexmap::IndexMap<K, V, S> as IntoIterator>::IntoIter;
+impl<'a, K, V> IntoIterator for &'a IndexMap<K, V> {
+    type Item = <&'a OrderMap<K, V> as IntoIterator>::Item;
+    type IntoIter = <&'a OrderMap<K, V> as IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
         (&self.0).into_iter()
     }
 }
 
-impl<'a, K, V, S> IntoIterator for &'a mut IndexMap<K, V, S> {
-    type Item = <&'a mut indexmap::IndexMap<K, V, S> as IntoIterator>::Item;
-    type IntoIter = <&'a mut indexmap::IndexMap<K, V, S> as IntoIterator>::IntoIter;
+impl<'a, K, V> IntoIterator for &'a mut IndexMap<K, V> {
+    type Item = <&'a mut OrderMap<K, V> as IntoIterator>::Item;
+    type IntoIter = <&'a mut OrderMap<K, V> as IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
         (&mut self.0).into_iter()
     }
 }
 
-impl<K, V, S> PartialEq for IndexMap<K, V, S>
-where
-    K: Eq + Hash,
-    V: PartialEq,
-    S: BuildHasher,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
-
-impl<K, V, S> Eq for IndexMap<K, V, S>
-where
-    K: Eq + Hash,
-    V: Eq,
-    S: BuildHasher,
-{
-}
-
-impl<K, V, S> FromIterator<(K, V)> for IndexMap<K, V, S>
+impl<K, V> FromIterator<(K, V)> for IndexMap<K, V>
 where
     K: Hash + Eq,
-    S: BuildHasher + Default,
 {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
-        Self(indexmap::IndexMap::from_iter(iter))
+        Self(OrderMap::from_iter(iter))
     }
 }
 
-impl<K, V, S> Deref for IndexMap<K, V, S>
-where
-    S: BuildHasher,
-{
-    type Target = indexmap::IndexMap<K, V, S>;
+impl<K, V> Deref for IndexMap<K, V> {
+    type Target = OrderMap<K, V>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<K, V, S> DerefMut for IndexMap<K, V, S>
-where
-    S: BuildHasher,
-{
+impl<K, V> DerefMut for IndexMap<K, V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-unsafe impl<K, V, S> Update for IndexMap<K, V, S>
+unsafe impl<K, V> Update for IndexMap<K, V>
 where
     K: Update + Eq + Hash,
     V: Update,
-    S: BuildHasher,
 {
     unsafe fn maybe_update(old_pointer: *mut Self, new_map: Self) -> bool {
         let old_map = unsafe { &mut *old_pointer };
@@ -131,15 +108,15 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct IndexSet<V, S = RandomState>(indexmap::IndexSet<V, S>);
+pub struct IndexSet<V>(OrderSet<V>);
 
 impl<V> IndexSet<V> {
     pub fn new() -> Self {
-        Self(indexmap::IndexSet::new())
+        Self(OrderSet::default())
     }
 
     pub fn with_capacity(n: usize) -> Self {
-        Self(indexmap::IndexSet::with_capacity(n))
+        Self(OrderSet::with_capacity_and_hasher(n, FxBuildHasher {}))
     }
 }
 
@@ -149,72 +126,58 @@ impl<V> Default for IndexSet<V> {
     }
 }
 
-impl<V, S> IntoIterator for IndexSet<V, S> {
-    type Item = <indexmap::IndexSet<V, S> as IntoIterator>::Item;
-    type IntoIter = <indexmap::IndexSet<V, S> as IntoIterator>::IntoIter;
+impl<V> IntoIterator for IndexSet<V> {
+    type Item = <OrderSet<V> as IntoIterator>::Item;
+    type IntoIter = <OrderSet<V> as IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
 }
 
-impl<'a, V, S> IntoIterator for &'a IndexSet<V, S> {
-    type Item = <&'a indexmap::IndexSet<V, S> as IntoIterator>::Item;
-    type IntoIter = <&'a indexmap::IndexSet<V, S> as IntoIterator>::IntoIter;
+impl<'a, V> IntoIterator for &'a IndexSet<V> {
+    type Item = <&'a OrderSet<V> as IntoIterator>::Item;
+    type IntoIter = <&'a OrderSet<V> as IntoIterator>::IntoIter;
     fn into_iter(self) -> Self::IntoIter {
         (&self.0).into_iter()
     }
 }
 
-impl<V, S> PartialEq for IndexSet<V, S>
+impl<V> PartialEq for IndexSet<V>
 where
     V: Hash + Eq,
-    S: BuildHasher,
 {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
     }
 }
 
-impl<V, S> Eq for IndexSet<V, S>
-where
-    V: Eq + Hash,
-    S: BuildHasher,
-{
-}
+impl<V> Eq for IndexSet<V> where V: Eq + Hash {}
 
-impl<V, S> FromIterator<V> for IndexSet<V, S>
+impl<V> FromIterator<V> for IndexSet<V>
 where
     V: Hash + Eq,
-    S: BuildHasher + Default,
 {
     fn from_iter<T: IntoIterator<Item = V>>(iter: T) -> Self {
-        Self(indexmap::IndexSet::from_iter(iter))
+        Self(OrderSet::from_iter(iter))
     }
 }
 
-impl<V, S> Deref for IndexSet<V, S>
-where
-    S: BuildHasher,
-{
-    type Target = indexmap::IndexSet<V, S>;
+impl<V> Deref for IndexSet<V> {
+    type Target = OrderSet<V>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<V, S> DerefMut for IndexSet<V, S>
-where
-    S: BuildHasher,
-{
+impl<V> DerefMut for IndexSet<V> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-unsafe impl<V, S> Update for IndexSet<V, S>
+unsafe impl<V> Update for IndexSet<V>
 where
     V: Update + Eq + Hash,
-    S: BuildHasher,
 {
     unsafe fn maybe_update(old_pointer: *mut Self, new_set: Self) -> bool {
         let old_set = unsafe { &mut *old_pointer };
