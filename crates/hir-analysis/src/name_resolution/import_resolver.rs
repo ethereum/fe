@@ -4,6 +4,7 @@ use std::{
     mem,
 };
 
+use common::indexmap::IndexMap;
 use hir::{
     hir_def::{prim_ty::PrimTy, scope_graph::ScopeId, IdentId, IngotId, Use},
     span::DynLazySpan,
@@ -682,9 +683,9 @@ impl<'db> ImportResolver<'db> {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
 pub struct ResolvedImports<'db> {
-    pub named_resolved: FxHashMap<ScopeId<'db>, NamedImportSet<'db>>,
-    pub glob_resolved: FxHashMap<ScopeId<'db>, GlobImportSet<'db>>,
-    pub unnamed_resolved: FxHashMap<ScopeId<'db>, Vec<NameResBucket<'db>>>,
+    pub named_resolved: IndexMap<ScopeId<'db>, NamedImportSet<'db>>,
+    pub glob_resolved: IndexMap<ScopeId<'db>, GlobImportSet<'db>>,
+    pub unnamed_resolved: IndexMap<ScopeId<'db>, Vec<NameResBucket<'db>>>,
 }
 
 pub(super) trait Importer<'db> {
