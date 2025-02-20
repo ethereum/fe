@@ -1,6 +1,7 @@
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Enum, ItemKind, Partial, PathId, TypeId, VariantDef, VariantKind,
+        scope_graph::ScopeId, Enum, GenericParamOwner, ItemKind, Partial, PathId, TypeId,
+        VariantDef, VariantKind,
     },
     span::DynLazySpan,
 };
@@ -15,7 +16,7 @@ use super::{
 use crate::{
     name_resolution::{NameResKind, QueryDirective},
     ty::{
-        adt_def::{lower_adt, AdtRefId},
+        adt_def::{lower_adt, AdtRef},
         binder::Binder,
         func_def::{lower_func, FuncDef, HirFuncDefKind},
         trait_def::TraitDef,
@@ -23,7 +24,6 @@ use crate::{
         ty_def::{InvalidCause, TyId},
         ty_lower::{
             collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias,
-            GenericParamOwnerId,
         },
     },
     HirAnalysisDb,
@@ -440,7 +440,7 @@ pub fn resolve_name_res<'db>(
         NameResKind::Scope(scope_id) => match scope_id {
             ScopeId::Item(item) => match item {
                 ItemKind::Struct(_) | ItemKind::Contract(_) | ItemKind::Enum(_) => {
-                    let adt_ref = AdtRefId::try_from_item(db, item).unwrap();
+                    let adt_ref = AdtRef::try_from_item(item).unwrap();
                     PathRes::Ty(ty_from_adtref(db, adt_ref, args)?)
                 }
 
@@ -489,8 +489,7 @@ pub fn resolve_name_res<'db>(
 
                 ItemKind::Trait(t) => {
                     if path.is_self_ty(hir_db) {
-                        let params =
-                            collect_generic_params(db, GenericParamOwnerId::new(db, t.into()));
+                        let params = collect_generic_params(db, t.into());
                         let ty = params.trait_self(db).unwrap();
                         let ty = TyId::foldl(db, ty, args);
                         PathRes::Ty(ty)
@@ -502,7 +501,7 @@ pub fn resolve_name_res<'db>(
                 ItemKind::Use(_) | ItemKind::Body(_) => unreachable!(),
             },
             ScopeId::GenericParam(parent, idx) => {
-                let owner = GenericParamOwnerId::from_item_opt(db, parent).unwrap();
+                let owner = GenericParamOwner::from_item_opt(parent).unwrap();
                 let param_set = collect_generic_params(db, owner);
                 let ty = param_set.param_by_original_idx(db, idx).unwrap();
                 let ty = TyId::foldl(db, ty, args);
@@ -516,7 +515,7 @@ pub fn resolve_name_res<'db>(
                     // The variant was imported via `use`.
                     debug_assert!(path.parent(hir_db).is_none());
                     let enum_: Enum = enum_.try_into().unwrap();
-                    ty_from_adtref(db, AdtRefId::from_enum(db, enum_), &[])?
+                    ty_from_adtref(db, enum_.into(), &[])?
                 };
                 // TODO report error if args isn't empty
                 PathRes::EnumVariant(ResolvedVariant::new(enum_ty, idx, path))
@@ -546,7 +545,7 @@ fn impl_typeid_to_ty<'db>(
 
 fn ty_from_adtref<'db>(
     db: &'db dyn HirAnalysisDb,
-    adt_ref: AdtRefId<'db>,
+    adt_ref: AdtRef<'db>,
     args: &[TyId<'db>],
 ) -> PathResolutionResult<'db, TyId<'db>> {
     let adt = lower_adt(db, adt_ref);

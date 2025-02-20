@@ -107,7 +107,7 @@ impl<S: TokenStream> Parser<S> {
         self.scope_aux_recovery().pop();
     }
 
-    fn scope_aux_recovery(&mut self) -> &mut SmallVec<[SyntaxKind; 4]> {
+    fn scope_aux_recovery(&mut self) -> &mut SmallVec<SyntaxKind, 4> {
         &mut self.parents.last_mut().unwrap().aux_recovery_tokens
     }
 
@@ -699,7 +699,7 @@ struct ScopeEntry {
     scope: Box<dyn ParsingScope>,
     is_newline_trivia: bool,
     is_err: bool,
-    aux_recovery_tokens: SmallVec<[SyntaxKind; 4]>,
+    aux_recovery_tokens: SmallVec<SyntaxKind, 4>,
 }
 impl ScopeEntry {
     fn new(scope: Box<dyn ParsingScope>, is_newline_trivia: bool) -> Self {
@@ -772,7 +772,7 @@ macro_rules! define_scope {
         impl crate::parser::ParsingScope for $scope_name {
             fn recovery_tokens(&self) -> &[crate::SyntaxKind] {
                 lazy_static::lazy_static! {
-                    pub(super) static ref RECOVERY_TOKENS: smallvec::SmallVec<[SyntaxKind; 4]> = {
+                    pub(super) static ref RECOVERY_TOKENS: smallvec::SmallVec<SyntaxKind, 4> = {
                         #[allow(unused)]
                         use crate::SyntaxKind::*;
                         smallvec::SmallVec::from_slice(&[$($recoveries), *])

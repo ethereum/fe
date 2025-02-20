@@ -1,4 +1,5 @@
 use rustc_hash::FxHashMap;
+use salsa::Update;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
@@ -74,7 +75,7 @@ where
     where
         T: Copy,
         S: UnificationStore<'db>,
-        U: TyFoldable<'db> + Clone,
+        U: TyFoldable<'db> + Clone + Update,
     {
         let solution = solution.fold_with(table);
 
@@ -147,7 +148,7 @@ where
         solution: Solution<U>,
     ) -> U
     where
-        U: TyFoldable<'db>,
+        U: TyFoldable<'db> + Update,
         S: UnificationStore<'db>,
     {
         let map = self.subst.clone();
@@ -166,8 +167,11 @@ where
 ///
 /// To extract the internal value into the environment where the query was
 /// created, use [`Canonicalized::extract_solution`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Solution<T> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
+pub struct Solution<T>
+where
+    T: Update,
+{
     pub(super) value: T,
 }
 

@@ -26,7 +26,7 @@ pub fn parse_source_file(text: &str) -> (GreenNode, Vec<ParseError>) {
 /// An parse error which is accumulated in the [`parser::Parser`] while parsing.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ParseError {
-    Expected(SmallVec<[SyntaxKind; 2]>, ExpectedKind, TextSize),
+    Expected(SmallVec<SyntaxKind, 2>, ExpectedKind, TextSize),
     Unexpected(String, TextRange),
     Msg(String, TextRange),
 }

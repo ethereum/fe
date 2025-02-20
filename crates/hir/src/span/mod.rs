@@ -1,5 +1,6 @@
 use common::diagnostics::Span;
 use parser::ast::{self, prelude::*, AstPtr, SyntaxNodePtr};
+use salsa::Update;
 
 use crate::{
     hir_def::{
@@ -65,7 +66,7 @@ pub mod lazy_spans {
 /// types that implement [`LazySpan`] in this module. We want to avoid `dyn
 /// LazySpan` usage because it doesn't implement `Clone` and `Eq` which leads to
 /// a lot of difficulties in salsa integration
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub struct DynLazySpan<'db>(pub(super) Option<SpanTransitionChain<'db>>);
 impl<'db> DynLazySpan<'db> {
     pub fn invalid() -> Self {

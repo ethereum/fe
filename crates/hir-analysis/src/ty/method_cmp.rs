@@ -269,7 +269,7 @@ fn compare_constraints<'db>(
     let impl_m_constraints = collect_func_def_constraints(db, impl_m, false).instantiate_identity();
     let trait_m_constraints =
         collect_func_def_constraints(db, trait_m, false).instantiate(db, map_to_impl);
-    let mut unsatisfied_goals = smallvec2::smallvec![];
+    let mut unsatisfied_goals = vec![];
     for &goal in impl_m_constraints.list(db) {
         let canonical_goal = Canonical::new(db, goal);
         let ingot = trait_m.ingot(db);

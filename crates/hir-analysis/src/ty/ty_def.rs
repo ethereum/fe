@@ -8,12 +8,14 @@ use hir::{
     hir_def::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Body, Enum, IdentId, IngotId, IntegerId, TypeAlias as HirTypeAlias,
+        Body, Enum, GenericParamOwner, IdentId, IngotId, IntegerId, TypeAlias as HirTypeAlias,
     },
     span::DynLazySpan,
 };
 use if_chain::if_chain;
+use num_bigint::BigUint;
 use rustc_hash::FxHashSet;
+use salsa::Update;
 
 use super::{
     adt_def::AdtDef,
@@ -21,7 +23,7 @@ use super::{
     diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
     func_def::FuncDef,
     trait_resolution::{PredicateListId, WellFormedness},
-    ty_lower::{collect_generic_params, GenericParamOwnerId},
+    ty_lower::collect_generic_params,
     unify::InferenceKey,
     visitor::{TyVisitable, TyVisitor},
 };
@@ -201,7 +203,7 @@ impl<'db> TyId<'db> {
     pub(super) fn array_with_len(db: &'db dyn HirAnalysisDb, elem: TyId<'db>, len: usize) -> Self {
         let array = Self::array(db, elem);
 
-        let len = EvaluatedConstTy::LitInt(IntegerId::new(db.as_hir_db(), len.into()));
+        let len = EvaluatedConstTy::LitInt(IntegerId::new(db.as_hir_db(), BigUint::from(len)));
         let len = ConstTyData::Evaluated(len, array.applicable_ty(db).unwrap().const_ty.unwrap());
         let len = TyId::const_ty(db, ConstTyId::new(db, len));
 
@@ -287,7 +289,7 @@ impl<'db> TyId<'db> {
         let base_ty = self.base_ty(db);
         if_chain! {
             if let Some(adt_ref) = base_ty.adt_ref(db);
-            if let AdtRef::Enum(enum_) = adt_ref.data(db);
+            if let AdtRef::Enum(enum_) = adt_ref;
             then {
                 Some(enum_)
             } else {
@@ -904,7 +906,7 @@ impl<'db> TyParam<'db> {
     }
 
     pub fn original_idx(&self, db: &'db dyn HirAnalysisDb) -> usize {
-        let owner = GenericParamOwnerId::from_item_opt(db, self.owner.item()).unwrap();
+        let owner = GenericParamOwner::from_item_opt(self.owner.item()).unwrap();
         let param_set = collect_generic_params(db, owner);
         let offset = param_set.offset_to_explicit_params_position(db);
 
@@ -921,7 +923,7 @@ impl<'db> TyParam<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, Update)]
 pub enum TyBase<'db> {
     Prim(PrimTy),
     Adt(AdtDef<'db>),

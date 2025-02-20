@@ -1,9 +1,9 @@
 use hir::hir_def::{
-    scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamListId,
-    GenericParamOwner, IdentId, ItemKind, KindBound as HirKindBound, Partial, PathId, TupleTypeId,
-    TypeAlias as HirTypeAlias, TypeBound, TypeId as HirTyId, TypeKind as HirTyKind, WhereClauseId,
+    scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamOwner, IdentId,
+    ItemKind, KindBound as HirKindBound, Partial, PathId, TupleTypeId, TypeAlias as HirTypeAlias,
+    TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
 };
-use salsa::plumbing::FromId;
+use salsa::{plumbing::FromId, Update};
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
@@ -29,9 +29,9 @@ pub fn lower_hir_ty<'db>(
 #[salsa::tracked]
 pub(crate) fn collect_generic_params<'db>(
     db: &'db dyn HirAnalysisDb,
-    owner: GenericParamOwnerId<'db>,
+    owner: GenericParamOwner<'db>,
 ) -> GenericParamTypeSet<'db> {
-    GenericParamCollector::new(db, owner.data(db)).finalize()
+    GenericParamCollector::new(db, owner).finalize()
 }
 
 /// Lowers the given type alias to [`TyAlias`].
@@ -40,7 +40,7 @@ pub(crate) fn lower_type_alias<'db>(
     db: &'db dyn HirAnalysisDb,
     alias: HirTypeAlias<'db>,
 ) -> Result<TyAlias<'db>, AliasCycle<'db>> {
-    let param_set = collect_generic_params(db, GenericParamOwnerId::new(db, alias.into()));
+    let param_set = collect_generic_params(db, alias.into());
 
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
         return Ok(TyAlias {
@@ -97,7 +97,7 @@ pub(crate) fn evaluate_params_precursor<'db>(
         .collect()
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub(crate) struct AliasCycle<'db>(Vec<HirTypeAlias<'db>>);
 
 impl<'db> AliasCycle<'db> {
@@ -116,7 +116,7 @@ impl<'db> AliasCycle<'db> {
 ///
 /// NOTE: `TyAlias` can't become an alias to partial applied types, i.e., the
 /// right hand side of the alias declaration must be a fully applied type.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub(crate) struct TyAlias<'db> {
     alias: HirTypeAlias<'db>,
     pub alias_to: Binder<TyId<'db>>,
@@ -328,7 +328,7 @@ impl<'db> GenericParamCollector<'db> {
 
             GenericParamOwner::Func(func) if func.is_associated_func(db.as_hir_db()) => {
                 let parent = owner.parent(db.as_hir_db()).unwrap();
-                collect_generic_params(db, GenericParamOwnerId::new(db, parent))
+                collect_generic_params(db, parent)
                     .params_precursor(db)
                     .to_vec()
             }
@@ -576,31 +576,5 @@ pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
                 Kind::Abs(Box::new(Kind::Any), Box::new(Kind::Any))
             }
         },
-    }
-}
-
-#[salsa::interned]
-pub(crate) struct GenericParamOwnerId<'db> {
-    pub(crate) data: GenericParamOwner<'db>,
-}
-
-impl<'db> GenericParamOwnerId<'db> {
-    pub(crate) fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
-        self.data(db).scope()
-    }
-
-    pub(crate) fn where_clause(self, db: &'db dyn HirAnalysisDb) -> Option<WhereClauseId<'db>> {
-        self.data(db)
-            .where_clause_owner()
-            .map(|owner| owner.where_clause(db.as_hir_db()))
-    }
-
-    pub(crate) fn params(self, db: &'db dyn HirAnalysisDb) -> GenericParamListId<'db> {
-        self.data(db).params(db.as_hir_db())
-    }
-
-    pub(crate) fn from_item_opt(db: &'db dyn HirAnalysisDb, item: ItemKind<'db>) -> Option<Self> {
-        let owner = GenericParamOwner::from_item_opt(item)?;
-        Self::new(db, owner).into()
     }
 }

@@ -1,5 +1,6 @@
 use hir::hir_def::{IdentId, Impl, IngotId};
 use rustc_hash::FxHashMap;
+use salsa::Update;
 
 use super::{
     binder::Binder,
@@ -34,7 +35,7 @@ pub(crate) fn probe_method<'db>(
     table.probe(db, ty, name)
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct MethodTable<'db> {
     buckets: FxHashMap<TyBase<'db>, MethodBucket<'db>>,
 }
@@ -89,7 +90,7 @@ impl<'db> MethodTable<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
 struct MethodBucket<'db> {
     methods: FxHashMap<Binder<TyId<'db>>, FxHashMap<IdentId<'db>, FuncDef<'db>>>,
 }

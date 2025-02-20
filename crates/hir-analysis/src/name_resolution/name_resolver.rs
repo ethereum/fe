@@ -17,6 +17,7 @@ use hir::{
     span::DynLazySpan,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use salsa::Update;
 
 use super::{
     import_resolver::Importer,
@@ -88,7 +89,7 @@ impl Default for QueryDirective {
 /// The struct contains the lookup result of a name query.
 /// The results can contain more than one name resolutions which belong to
 /// different name domains.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
 pub struct NameResBucket<'db> {
     pub(super) bucket: FxHashMap<NameDomain, NameResolutionResult<'db, NameRes<'db>>>,
 }
@@ -240,7 +241,7 @@ impl<'db> From<NameRes<'db>> for NameResBucket<'db> {
 }
 
 /// The struct contains the lookup result of a name query.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub struct NameRes<'db> {
     /// The kind of the resolution.
     pub kind: NameResKind<'db>,
@@ -400,7 +401,7 @@ impl<'db> NameRes<'db> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, derive_more::From)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, derive_more::From, Update)]
 pub enum NameResKind<'db> {
     /// The name is resolved to a scope.
     Scope(ScopeId<'db>),
@@ -427,7 +428,7 @@ impl<'db> NameResKind<'db> {
 /// The name derivation indicates where a name resolution comes from.
 /// Name derivation is used to track the origin of a resolution, and to
 /// determine the shadowing rules.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub enum NameDerivation<'db> {
     /// Derived from a definition in the current scope.
     Def,
@@ -732,7 +733,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum NameResolutionError<'db> {
     /// The name is not found.
     NotFound,
@@ -775,7 +776,7 @@ impl fmt::Display for NameResolutionError<'_> {
 impl std::error::Error for NameResolutionError<'_> {}
 
 bitflags! {
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
     /// Each resolved name is associated with a domain that indicates which domain
     /// the name belongs to.
     /// The multiple same names can be introduced in a same scope as long as they

@@ -3,15 +3,14 @@
 use common::indexmap::IndexMap;
 use hir::hir_def::{scope_graph::ScopeId, IdentId, ImplTrait, IngotId, Partial, Trait, TraitRefId};
 use rustc_hash::FxHashMap;
+use salsa::Update;
 
 use super::{
     binder::Binder,
     func_def::FuncDef,
     trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId, TraitMethod},
     ty_def::{InvalidCause, Kind, TyId},
-    ty_lower::{
-        collect_generic_params, lower_generic_arg_list, GenericParamOwnerId, GenericParamTypeSet,
-    },
+    ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamTypeSet},
 };
 use crate::{
     name_resolution::{resolve_path, PathRes},
@@ -77,8 +76,9 @@ pub(crate) fn lower_impl_trait<'db>(
         return None;
     }
 
-    let param_owner = GenericParamOwnerId::new(db, impl_trait.into());
-    let params = collect_generic_params(db, param_owner).params(db).to_vec();
+    let params = collect_generic_params(db, impl_trait.into())
+        .params(db)
+        .to_vec();
 
     let implementor = Implementor::new(db, trait_, params, impl_trait);
 
@@ -182,7 +182,7 @@ pub(crate) fn collect_implementor_methods<'db>(
     methods
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub(crate) enum TraitRefLowerError<'db> {
     /// The number of arguments doesn't match the number of parameters.
     ArgNumMismatch { expected: usize, given: usize },
@@ -211,8 +211,7 @@ struct TraitBuilder<'db> {
 
 impl<'db> TraitBuilder<'db> {
     fn new(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
-        let params_owner_id = GenericParamOwnerId::new(db, trait_.into());
-        let param_set = collect_generic_params(db, params_owner_id);
+        let param_set = collect_generic_params(db, trait_.into());
 
         Self {
             db,
@@ -230,8 +229,7 @@ impl<'db> TraitBuilder<'db> {
     }
 
     fn collect_params(&mut self) {
-        let params_owner_id = GenericParamOwnerId::new(self.db, self.trait_.into());
-        self.param_set = collect_generic_params(self.db, params_owner_id);
+        self.param_set = collect_generic_params(self.db, self.trait_.into());
     }
 
     fn collect_methods(&mut self) {
