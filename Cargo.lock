@@ -863,8 +863,9 @@ version = "0.26.0"
 dependencies = [
  "camino",
  "fe-parser",
- "indexmap",
+ "ordermap",
  "paste",
+ "rustc-hash 2.1.0",
  "salsa",
  "semver",
  "smol_str 0.3.2",
@@ -1394,9 +1395,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.7.0"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62f822373a4fe84d4bb149bf54e584a7f4abec90e072ed49cda0edea5b95471f"
+checksum = "8c9c992b02b5b4c94ea26e32fe5bccb7aa7d9f390ab5c1221ff895bc7ea8b652"
 dependencies = [
  "equivalent",
  "hashbrown 0.15.2",
@@ -1672,6 +1673,15 @@ name = "oorandom"
 version = "11.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b410bbe7e14ab526a0e86877eb47c6996a2bd7746f027ba551028c925390e4e9"
+
+[[package]]
+name = "ordermap"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c55fdf45a2b1e929e3656d404395767e05c98b6ebd8157eb31e370077d545160"
+dependencies = [
+ "indexmap",
+]
 
 [[package]]
 name = "overload"
@@ -1972,7 +1982,7 @@ checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 [[package]]
 name = "salsa"
 version = "0.18.0"
-source = "git+https://github.com/salsa-rs/salsa?rev=d32b3c1995b632d894250a667adb79c846b3da02#d32b3c1995b632d894250a667adb79c846b3da02"
+source = "git+https://github.com/salsa-rs/salsa?rev=ca9fba4e83b38ad7c2002b394edd792fa75f924a#ca9fba4e83b38ad7c2002b394edd792fa75f924a"
 dependencies = [
  "append-only-vec",
  "arc-swap",
@@ -1993,12 +2003,12 @@ dependencies = [
 [[package]]
 name = "salsa-macro-rules"
 version = "0.1.0"
-source = "git+https://github.com/salsa-rs/salsa?rev=d32b3c1995b632d894250a667adb79c846b3da02#d32b3c1995b632d894250a667adb79c846b3da02"
+source = "git+https://github.com/salsa-rs/salsa?rev=ca9fba4e83b38ad7c2002b394edd792fa75f924a#ca9fba4e83b38ad7c2002b394edd792fa75f924a"
 
 [[package]]
 name = "salsa-macros"
 version = "0.18.0"
-source = "git+https://github.com/salsa-rs/salsa?rev=d32b3c1995b632d894250a667adb79c846b3da02#d32b3c1995b632d894250a667adb79c846b3da02"
+source = "git+https://github.com/salsa-rs/salsa?rev=ca9fba4e83b38ad7c2002b394edd792fa75f924a#ca9fba4e83b38ad7c2002b394edd792fa75f924a"
 dependencies = [
  "heck",
  "proc-macro2",

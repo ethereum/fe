@@ -5,6 +5,7 @@
 
 use std::hash::Hash;
 
+use common::indexmap::IndexMap;
 use cranelift_entity::{EntityRef, PrimaryMap, SecondaryMap};
 use parser::ast::{self, prelude::*};
 use rustc_hash::FxHashMap;
@@ -22,7 +23,7 @@ use crate::{
 
 #[salsa::tracked]
 pub struct Body<'db> {
-    #[id]
+    //    #[id]
     id: TrackedItemId<'db>,
 
     /// The expression that evaluates to the value of the body.
@@ -77,13 +78,13 @@ impl<'db> Body<'db> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum BodyKind {
     FuncBody,
     Anonymous,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, Clone)]
 pub struct NodeStore<K, V>(PrimaryMap<K, V>)
 where
     K: EntityRef;
@@ -170,21 +171,22 @@ where
 pub trait SourceAst: AstNode + Clone + Hash + PartialEq + Eq {}
 impl<T> SourceAst for T where T: AstNode + Clone + Hash + PartialEq + Eq {}
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct BodySourceMap {
     pub stmt_map: SourceNodeMap<ast::Stmt, StmtId>,
     pub expr_map: SourceNodeMap<ast::Expr, ExprId>,
     pub pat_map: SourceNodeMap<ast::Pat, PatId>,
 }
 
-#[derive(Clone, Debug)]
+#[allow(clippy::derived_hash_with_manual_eq)]
+#[derive(Clone, Debug, Hash)]
 pub struct SourceNodeMap<Ast, Node>
 where
     Ast: SourceAst,
     Node: EntityRef,
 {
     pub node_to_source: SecondaryMap<Node, HirOrigin<Ast>>,
-    pub source_to_node: FxHashMap<HirOrigin<Ast>, Node>,
+    pub source_to_node: IndexMap<HirOrigin<Ast>, Node>,
 }
 
 impl<Ast, Node> SourceNodeMap<Ast, Node>
@@ -226,7 +228,7 @@ where
 {
     fn default() -> Self {
         Self {
-            source_to_node: FxHashMap::default(),
+            source_to_node: IndexMap::default(),
             node_to_source: SecondaryMap::new(),
         }
     }
