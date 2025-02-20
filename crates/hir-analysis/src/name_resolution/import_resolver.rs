@@ -10,6 +10,7 @@ use hir::{
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
+use salsa::Update;
 
 use super::{
     diagnostics::NameResDiag,
@@ -679,7 +680,7 @@ impl<'db> ImportResolver<'db> {
     }
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
 pub struct ResolvedImports<'db> {
     pub named_resolved: FxHashMap<ScopeId<'db>, NamedImportSet<'db>>,
     pub glob_resolved: FxHashMap<ScopeId<'db>, GlobImportSet<'db>>,
@@ -727,7 +728,7 @@ impl<'db> Importer<'db> for DefaultImporter {
 
 pub type NamedImportSet<'db> = FxHashMap<IdentId<'db>, NameResBucket<'db>>;
 
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
 pub struct GlobImportSet<'db> {
     imported: FxHashMap<Use<'db>, FxHashMap<IdentId<'db>, Vec<NameRes<'db>>>>,
 }

@@ -1,5 +1,6 @@
 use common::indexmap::IndexSet;
 use hir::hir_def::IngotId;
+use salsa::Update;
 
 use super::{
     canonical::{Canonical, Canonicalized, Solution},
@@ -72,7 +73,7 @@ pub(crate) fn check_ty_wf<'db>(
     WellFormedness::WellFormed
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
 pub(crate) enum WellFormedness<'db> {
     WellFormed,
     IllFormed {
@@ -114,7 +115,7 @@ pub(crate) fn check_trait_inst_wf<'db>(
     WellFormedness::WellFormed
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub enum GoalSatisfiability<'db> {
     /// Goal is satisfied with the unique solution.
     Satisfied(Solution<TraitInstId<'db>>),

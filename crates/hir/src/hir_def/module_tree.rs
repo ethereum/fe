@@ -1,6 +1,7 @@
 use camino::Utf8Path;
 use common::{indexmap::IndexMap, InputFile, InputIngot};
-use cranelift_entity::{entity_impl, PrimaryMap};
+use cranelift_entity::{entity_impl, EntityRef, PrimaryMap};
+use salsa::Update;
 
 use super::{IdentId, IngotId, TopLevelMod};
 use crate::{lower::map_file_to_mod_impl, HirDb};
@@ -51,19 +52,47 @@ use crate::{lower::map_file_to_mod_impl, HirDb};
 /// **NOTE:** `mod3` is not included in the main tree because it doesn't have a corresponding file.
 /// As a result, `baz` is represented as a "floating" node.
 /// In this case, the tree is actually a forest. But we don't need to care about it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, salsa::Update)]
 pub struct ModuleTree<'db> {
     pub(crate) root: ModuleTreeNodeId,
-    pub(crate) module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
+    pub(crate) module_tree: PMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
     pub(crate) mod_map: IndexMap<TopLevelMod<'db>, ModuleTreeNodeId>,
 
     pub ingot: IngotId<'db>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PMap<K: EntityRef, V>(PrimaryMap<K, V>);
+
+unsafe impl<K, V> Update for PMap<K, V>
+where
+    K: EntityRef,
+    V: Update,
+{
+    unsafe fn maybe_update(old_pointer: *mut Self, new_vec: Self) -> bool {
+        let old_vec: &mut PMap<K, V> = unsafe { &mut *old_pointer };
+
+        if old_vec.0.len() != new_vec.0.len() {
+            return true;
+        }
+
+        let mut changed = false;
+        for (old_element, new_element) in old_vec
+            .0
+            .values_mut()
+            .zip(new_vec.0.into_iter().map(|(_, v)| v))
+        {
+            changed |= V::maybe_update(old_element, new_element);
+        }
+
+        changed
+    }
+}
+
 impl ModuleTree<'_> {
     /// Returns the tree node data of the given id.
     pub fn node_data(&self, id: ModuleTreeNodeId) -> &ModuleTreeNode {
-        &self.module_tree[id]
+        &self.module_tree.0[id]
     }
 
     /// Returns the tree node id of the given top level module.
@@ -73,7 +102,7 @@ impl ModuleTree<'_> {
 
     /// Returns the tree node data of the given top level module.
     pub fn tree_node_data(&self, top_mod: TopLevelMod) -> &ModuleTreeNode {
-        &self.module_tree[self.tree_node(top_mod)]
+        &self.module_tree.0[self.tree_node(top_mod)]
     }
 
     /// Returns the root of the tree, which corresponds to the ingot root file.
@@ -92,7 +121,7 @@ impl ModuleTree<'_> {
 
     pub fn parent(&self, top_mod: TopLevelMod) -> Option<TopLevelMod> {
         let node = self.tree_node_data(top_mod);
-        node.parent.map(|id| self.module_tree[id].top_mod)
+        node.parent.map(|id| self.module_tree.0[id].top_mod)
     }
 
     pub fn children(&self, top_mod: TopLevelMod) -> impl Iterator<Item = TopLevelMod> + '_ {
@@ -100,7 +129,7 @@ impl ModuleTree<'_> {
             .children
             .iter()
             .map(move |&id| {
-                let node = &self.module_tree[id];
+                let node = &self.module_tree.0[id];
                 node.top_mod
             })
     }
@@ -116,7 +145,7 @@ pub(crate) fn module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> ModuleTree<
 }
 
 /// A top level module that is one-to-one mapped to a file.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct ModuleTreeNode<'db> {
     pub top_mod: TopLevelMod<'db>,
     /// A parent of the top level module.
@@ -142,7 +171,7 @@ impl<'db> ModuleTreeNode<'db> {
 }
 
 /// An opaque identifier for a module tree node.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub struct ModuleTreeNodeId(u32);
 entity_impl!(ModuleTreeNodeId);
 
@@ -179,7 +208,7 @@ impl<'db> ModuleTreeBuilder<'db> {
         let root = self.mod_map[&root_mod];
         ModuleTree {
             root,
-            module_tree: self.module_tree,
+            module_tree: PMap(self.module_tree),
             mod_map: self.mod_map,
             ingot: self.ingot,
         }

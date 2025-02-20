@@ -22,7 +22,7 @@ dir-test = "0.4"
 rustc-hash = "2.1.0"
 num-bigint = "0.4"
 paste = "1.0.15"
-salsa = { git = "https://github.com/salsa-rs/salsa", rev = "ca9fba4e83b38ad7c2002b394edd792fa75f924a" }
+salsa = { git = "https://github.com/salsa-rs/salsa", rev = "325d9aca9eae52db8a3f15056bcfc11e5a39d084" }
 smallvec = { version = "2.0.0-alpha.10" }
 wasm-bindgen-test = "0.3"
 glob = "0.3.2"

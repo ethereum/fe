@@ -1,11 +1,8 @@
+use adt_def::AdtRef;
 use hir::hir_def::TopLevelMod;
 
-use self::{
-    adt_def::AdtRefId,
-    def_analysis::{
-        analyze_adt, analyze_func, analyze_impl, analyze_impl_trait, analyze_trait,
-        analyze_type_alias,
-    },
+use self::def_analysis::{
+    analyze_adt, analyze_func, analyze_impl, analyze_impl_trait, analyze_trait, analyze_type_alias,
 };
 use crate::{analysis_pass::ModuleAnalysisPass, diagnostics::DiagnosticVoucher, HirAnalysisDb};
 
@@ -48,18 +45,15 @@ impl<'db> ModuleAnalysisPass<'db> for AdtDefAnalysisPass<'db> {
         let adts = top_mod
             .all_structs(hir_db)
             .iter()
-            .map(|s| AdtRefId::from_struct(self.db, *s))
-            .chain(
-                top_mod
-                    .all_enums(hir_db)
-                    .iter()
-                    .map(|e| AdtRefId::from_enum(self.db, *e)),
-            )
+            .copied()
+            .map(AdtRef::from)
+            .chain(top_mod.all_enums(hir_db).iter().copied().map(AdtRef::from))
             .chain(
                 top_mod
                     .all_contracts(hir_db)
                     .iter()
-                    .map(|c| AdtRefId::from_contract(self.db, *c)),
+                    .copied()
+                    .map(AdtRef::from),
             );
 
         adts.flat_map(|adt| analyze_adt(self.db, adt).iter())
