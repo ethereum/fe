@@ -5,6 +5,7 @@ use common::{
 use parser::{
     ast::prelude::*, syntax_node::NodeOrToken, FeLang, SyntaxNode, SyntaxToken, TextRange,
 };
+use salsa::Update;
 
 use super::{
     body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
@@ -39,7 +40,7 @@ pub(crate) enum LazyArg {
     None,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Update)]
 pub(crate) struct SpanTransitionChain<'db> {
     pub(crate) root: ChainRoot<'db>,
     pub(super) chain: Vec<LazyTransitionFn>,
@@ -88,7 +89,7 @@ impl<'db> SpanTransitionChain<'db> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, derive_more::From)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, derive_more::From, Update)]
 pub(crate) enum ChainRoot<'db> {
     ItemKind(ItemKind<'db>),
     TopMod(TopLevelMod<'db>),
@@ -305,7 +306,7 @@ macro_rules! define_lazy_span_node {
             )?
         )?
     ) => {
-        #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+        #[derive(Clone, PartialEq, Eq, Hash, Debug, salsa::Update)]
         pub struct $name<'db>(pub(crate) crate::span::transition::SpanTransitionChain<'db>);
         $(
             $(

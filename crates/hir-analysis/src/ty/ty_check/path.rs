@@ -8,13 +8,12 @@ use hir::{
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
-use smallvec::SmallVec;
 
 use super::{env::LocalBinding, TyChecker};
 use crate::{
     name_resolution::{diagnostics::NameResDiag, is_scope_visible_from, PathRes, ResolvedVariant},
     ty::{
-        adt_def::{AdtDef, AdtField, AdtRef, AdtRefId},
+        adt_def::{AdtDef, AdtField, AdtRef},
         diagnostics::{BodyDiag, FuncBodyDiag},
         ty_def::{InvalidCause, TyData, TyId},
     },
@@ -22,7 +21,7 @@ use crate::{
 };
 
 impl<'db> TyId<'db> {
-    pub(crate) fn adt_ref(&self, db: &'db dyn HirAnalysisDb) -> Option<AdtRefId<'db>> {
+    pub(crate) fn adt_ref(&self, db: &'db dyn HirAnalysisDb) -> Option<AdtRef<'db>> {
         self.adt_def(db).map(|def| def.adt_ref(db))
     }
 
@@ -142,7 +141,7 @@ where
     ) -> Result<(), FuncBodyDiag<'db>> {
         if !self.invalid_field_given && !allow_missing_field {
             let expected_labels = self.data.record_labels(self.tc.db);
-            let missing_fields: SmallVec<_, 4> = expected_labels
+            let missing_fields: Vec<_> = expected_labels
                 .iter()
                 .filter(|f| !self.already_given.contains_key(f))
                 .cloned()
@@ -197,7 +196,7 @@ impl<'db> RecordLike<'db> for TyId<'db> {
             return false;
         };
 
-        matches!(adt_ref.data(db), AdtRef::Struct(..))
+        matches!(adt_ref, AdtRef::Struct(..))
     }
 
     fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
@@ -224,7 +223,7 @@ impl<'db> RecordLike<'db> for TyId<'db> {
         let hir_db = db.as_hir_db();
 
         let adt_def = self.adt_def(db)?;
-        match adt_def.adt_ref(db).data(db) {
+        match adt_def.adt_ref(db) {
             AdtRef::Struct(s) => (s.fields(hir_db), &adt_def.fields(db)[0]).into(),
             AdtRef::Contract(c) => (c.fields(hir_db), &adt_def.fields(db)[0]).into(),
 
@@ -240,7 +239,7 @@ impl<'db> RecordLike<'db> for TyId<'db> {
         let field_idx = self.record_field_idx(db, name)?;
         let adt_ref = self.adt_ref(db)?;
 
-        let parent = FieldParent::Item(adt_ref.as_item(db));
+        let parent = FieldParent::Item(adt_ref.as_item());
         Some(ScopeId::Field(parent, field_idx))
     }
 
@@ -249,7 +248,7 @@ impl<'db> RecordLike<'db> for TyId<'db> {
         let Some(adt_ref) = self.adt_ref(db) else {
             return Vec::default();
         };
-        let fields = match adt_ref.data(db) {
+        let fields = match adt_ref {
             AdtRef::Struct(s) => s.fields(hir_db),
             AdtRef::Contract(c) => c.fields(hir_db),
 
@@ -265,7 +264,7 @@ impl<'db> RecordLike<'db> for TyId<'db> {
 
     fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String {
         if let Some(adt_ref) = self.adt_ref(db) {
-            adt_ref.kind_name(db).to_string()
+            adt_ref.kind_name().to_string()
         } else if self.is_func(db) {
             "fn".to_string()
         } else {
@@ -277,7 +276,7 @@ impl<'db> RecordLike<'db> for TyId<'db> {
         let hir_db = db.as_hir_db();
 
         if self.adt_ref(db).is_some() {
-            let AdtRef::Struct(s) = self.adt_ref(db)?.data(db) else {
+            let AdtRef::Struct(s) = self.adt_ref(db)? else {
                 return None;
             };
 

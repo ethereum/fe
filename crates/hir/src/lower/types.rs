@@ -60,8 +60,8 @@ impl<'db> TupleTypeId<'db> {
 
 impl<'db> TraitRefId<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitRef) -> Self {
-        let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast)).into();
-        Self::new(ctxt.db(), path)
+        let path = ast.path().map(|ast| PathId::lower_ast(ctxt, ast));
+        Self::new(ctxt.db(), Partial::from(path))
     }
 
     pub(super) fn lower_ast_partial(

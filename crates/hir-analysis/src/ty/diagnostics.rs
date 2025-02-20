@@ -1,12 +1,3 @@
-use either::Either;
-use hir::{
-    hir_def::{
-        FieldIndex, Func, IdentId, ImplTrait, ItemKind, PathId, Trait, TypeAlias as HirTypeAlias,
-    },
-    span::{expr::LazyMethodCallExprSpan, DynLazySpan},
-};
-use smallvec::SmallVec;
-
 use super::{
     func_def::FuncDef,
     trait_def::{TraitDef, TraitInstId},
@@ -16,8 +7,16 @@ use super::{
 use crate::{
     diagnostics::DiagnosticVoucher, name_resolution::diagnostics::NameResDiag, HirAnalysisDb,
 };
+use either::Either;
+use hir::{
+    hir_def::{
+        FieldIndex, Func, IdentId, ImplTrait, ItemKind, PathId, Trait, TypeAlias as HirTypeAlias,
+    },
+    span::{expr::LazyMethodCallExprSpan, DynLazySpan},
+};
+use salsa::Update;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
 pub enum FuncBodyDiag<'db> {
     Ty(TyDiagCollection<'db>),
     Body(BodyDiag<'db>),
@@ -34,7 +33,7 @@ impl<'db> FuncBodyDiag<'db> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
 pub enum TyDiagCollection<'db> {
     Ty(TyLowerDiag<'db>),
     Satisfiability(TraitConstraintDiag<'db>),
@@ -53,7 +52,7 @@ impl<'db> TyDiagCollection<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     InvalidTypeArgKind {
@@ -79,7 +78,7 @@ pub enum TyLowerDiag<'db> {
     },
     TypeAliasCycle {
         primary: DynLazySpan<'db>,
-        cycle: SmallVec<HirTypeAlias<'db>, 8>,
+        cycle: Vec<HirTypeAlias<'db>>,
     },
 
     InconsistentKindBound {
@@ -151,7 +150,7 @@ impl TyLowerDiag<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum BodyDiag<'db> {
     TypeMismatch {
         span: DynLazySpan<'db>,
@@ -215,7 +214,7 @@ pub enum BodyDiag<'db> {
 
     MissingRecordFields {
         primary: DynLazySpan<'db>,
-        missing_fields: SmallVec<IdentId<'db>, 4>,
+        missing_fields: Vec<IdentId<'db>>,
         hint: Option<String>,
     },
 
@@ -305,7 +304,7 @@ pub enum BodyDiag<'db> {
 
     AmbiguousTraitInst {
         primary: DynLazySpan<'db>,
-        cands: SmallVec<TraitInstId<'db>, 8>,
+        cands: Vec<TraitInstId<'db>>,
     },
 
     InvisibleAmbiguousTrait {
@@ -456,7 +455,7 @@ impl<'db> BodyDiag<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TraitLowerDiag<'db> {
     ExternalTraitForExternalType(ImplTrait<'db>),
 
@@ -478,7 +477,7 @@ impl TraitLowerDiag<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TraitConstraintDiag<'db> {
     KindMismatch {
         primary: DynLazySpan<'db>,
@@ -524,7 +523,7 @@ impl TraitConstraintDiag<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum ImplDiag<'db> {
     ConflictMethodImpl {
         primary: FuncDef<'db>,
@@ -539,7 +538,7 @@ pub enum ImplDiag<'db> {
 
     NotAllTraitItemsImplemented {
         primary: DynLazySpan<'db>,
-        not_implemented: SmallVec<IdentId<'db>, 8>,
+        not_implemented: Vec<IdentId<'db>>,
     },
 
     MethodTypeParamNumMismatch {
@@ -581,7 +580,7 @@ pub enum ImplDiag<'db> {
 
     MethodStricterBound {
         span: DynLazySpan<'db>,
-        stricter_bounds: SmallVec<TraitInstId<'db>, 8>,
+        stricter_bounds: Vec<TraitInstId<'db>>,
     },
 
     InvalidSelfType {

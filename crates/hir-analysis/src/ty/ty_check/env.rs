@@ -5,8 +5,9 @@ use hir::{
     },
     span::DynLazySpan,
 };
+use num_bigint::BigUint;
 use rustc_hash::FxHashMap;
-use smallvec::SmallVec;
+use salsa::Update;
 
 use super::{Callable, TypedBody};
 use crate::{
@@ -347,7 +348,7 @@ impl<'db> TyCheckEnv<'db> {
                     let cands = ambiguous
                         .iter()
                         .map(|solution| canonical_inst.extract_solution(prober.table, *solution))
-                        .collect::<SmallVec<_, 8>>();
+                        .collect::<Vec<_>>();
 
                     if !inst.self_ty(self.db).has_var(self.db) {
                         let diag = BodyDiag::AmbiguousTraitInst {
@@ -390,7 +391,7 @@ impl<'db> BlockEnv<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub struct ExprProp<'db> {
     pub ty: TyId<'db>,
     pub is_mut: bool,
@@ -431,7 +432,7 @@ impl<'db> ExprProp<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub(crate) enum LocalBinding<'db> {
     Local {
         pat: PatId,
@@ -514,7 +515,8 @@ impl<'db> TyFolder<'db> for Prober<'db, '_> {
         // String type variable fallback.
         if let TyVarSort::String(len) = var.sort {
             let ty = TyId::new(self.db(), TyData::TyBase(PrimTy::String.into()));
-            let len = EvaluatedConstTy::LitInt(IntegerId::new(self.db().as_hir_db(), len.into()));
+            let len =
+                EvaluatedConstTy::LitInt(IntegerId::new(self.db().as_hir_db(), BigUint::from(len)));
             let len =
                 ConstTyData::Evaluated(len, ty.applicable_ty(self.db()).unwrap().const_ty.unwrap());
             let len = TyId::const_ty(self.db(), ConstTyId::new(self.db(), len));

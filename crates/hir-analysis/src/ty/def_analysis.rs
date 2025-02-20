@@ -14,10 +14,10 @@ use hir::{
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::plumbing::FromId;
+use salsa::plumbing::FromIdWithDb;
 
 use super::{
-    adt_def::{lower_adt, AdtRef, AdtRefId},
+    adt_def::{lower_adt, AdtRef},
     canonical::Canonical,
     const_ty::ConstTyId,
     diagnostics::{ImplDiag, TraitConstraintDiag, TraitLowerDiag, TyDiagCollection, TyLowerDiag},
@@ -34,7 +34,7 @@ use super::{
         PredicateListId,
     },
     ty_def::{InvalidCause, TyData, TyId},
-    ty_lower::{collect_generic_params, lower_kind, GenericParamOwnerId},
+    ty_lower::{collect_generic_params, lower_kind},
     visitor::{walk_ty, TyVisitor},
 };
 use crate::{
@@ -68,7 +68,7 @@ use crate::{
 #[salsa::tracked(return_ref)]
 pub fn analyze_adt<'db>(
     db: &'db dyn HirAnalysisDb,
-    adt_ref: AdtRefId<'db>,
+    adt_ref: AdtRef<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
     let mut diags = analyzer.analyze();
@@ -196,7 +196,7 @@ pub struct DefAnalyzer<'db> {
 }
 
 impl<'db> DefAnalyzer<'db> {
-    fn for_adt(db: &'db dyn HirAnalysisDb, adt: AdtRefId<'db>) -> Self {
+    fn for_adt(db: &'db dyn HirAnalysisDb, adt: AdtRef<'db>) -> Self {
         let def = lower_adt(db, adt);
         let assumptions = collect_adt_constraints(db, def).instantiate_identity();
         Self {
@@ -416,7 +416,7 @@ impl<'db> DefAnalyzer<'db> {
 
     fn analyze(mut self) -> Vec<TyDiagCollection<'db>> {
         match self.def {
-            DefKind::Adt(def) => match def.adt_ref(self.db).data(self.db) {
+            DefKind::Adt(def) => match def.adt_ref(self.db) {
                 AdtRef::Struct(struct_) => {
                     let mut ctxt = VisitorCtxt::with_struct(self.db.as_hir_db(), struct_);
                     self.visit_struct(&mut ctxt, struct_);
@@ -845,7 +845,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 #[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
 pub(crate) fn check_recursive_adt<'db>(
     db: &'db dyn HirAnalysisDb,
-    adt: AdtRefId<'db>,
+    adt: AdtRef<'db>,
 ) -> Option<TyDiagCollection<'db>> {
     let adt_def = lower_adt(db, adt);
     for field in adt_def.fields(db) {
@@ -855,20 +855,19 @@ pub(crate) fn check_recursive_adt<'db>(
             }
         }
     }
-
     None
 }
 
 fn check_recursive_adt_impl<'db>(
     db: &'db dyn HirAnalysisDb,
     cycle: &salsa::Cycle,
-    adt: AdtRefId<'db>,
+    adt: AdtRef<'db>,
 ) -> Option<TyDiagCollection<'db>> {
     let participants: FxHashSet<_> = cycle
         .participant_keys()
         .map(|key| {
             let id = key.key_index();
-            AdtRefId::from_id(id)
+            AdtRef::from_id(id, db)
         })
         .collect();
 
@@ -893,10 +892,10 @@ fn check_recursive_adt_impl<'db>(
 impl<'db> TyId<'db> {
     /// Collect all adts inside types which are not wrapped by indirect type
     /// wrapper like pointer or reference.
-    fn collect_direct_adts(self, db: &'db dyn HirAnalysisDb) -> FxHashSet<AdtRefId<'db>> {
+    fn collect_direct_adts(self, db: &'db dyn HirAnalysisDb) -> FxHashSet<AdtRef<'db>> {
         struct AdtCollector<'db> {
             db: &'db dyn HirAnalysisDb,
-            adts: FxHashSet<AdtRefId<'db>>,
+            adts: FxHashSet<AdtRef<'db>>,
         }
 
         impl<'db> TyVisitor<'db> for AdtCollector<'db> {
@@ -1008,9 +1007,7 @@ impl<'db> DefKind<'db> {
             Self::Adt(def) => def.original_params(db),
             Self::Trait(def) => def.original_params(db),
             Self::ImplTrait(def) => def.original_params(db),
-            Self::Impl(hir_impl) => {
-                collect_generic_params(db, GenericParamOwnerId::new(db, hir_impl.into())).params(db)
-            }
+            Self::Impl(hir_impl) => collect_generic_params(db, hir_impl.into()).params(db),
             Self::Func(def) => def.explicit_params(db),
         }
     }
@@ -1036,7 +1033,7 @@ impl<'db> DefKind<'db> {
 
     fn scope(self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
         match self {
-            Self::Adt(def) => def.adt_ref(db).scope(db),
+            Self::Adt(def) => def.adt_ref(db).scope(),
             Self::Trait(def) => def.trait_(db).scope(),
             Self::ImplTrait(def) => def.hir_impl_trait(db).scope(),
             Self::Impl(hir_impl) => hir_impl.scope(),

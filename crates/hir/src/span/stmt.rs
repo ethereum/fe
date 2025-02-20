@@ -1,4 +1,5 @@
 use parser::ast;
+use salsa::Update;
 
 use super::{
     body_source_map, define_lazy_span_node,
@@ -30,7 +31,7 @@ define_lazy_span_node!(
     }
 );
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Update)]
 pub(crate) struct StmtRoot<'db> {
     stmt: StmtId,
     pub(crate) body: Body<'db>,

@@ -213,7 +213,9 @@ impl<'db> From<WhereClauseOwner<'db>> for ItemKind<'db> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From, salsa::Supertype,
+)]
 pub enum GenericParamOwner<'db> {
     Func(Func<'db>),
     Struct(Struct<'db>),
@@ -294,6 +296,11 @@ impl<'db> GenericParamOwner<'db> {
     pub fn where_clause_owner(self) -> Option<WhereClauseOwner<'db>> {
         let item = ItemKind::from(self);
         WhereClauseOwner::from_item_opt(item)
+    }
+
+    pub fn where_clause(self, db: &'db dyn HirDb) -> Option<WhereClauseId<'db>> {
+        self.where_clause_owner()
+            .map(|owner| owner.where_clause(db))
     }
 }
 

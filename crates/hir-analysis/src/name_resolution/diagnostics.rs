@@ -2,11 +2,12 @@ use hir::{
     hir_def::{IdentId, TopLevelMod},
     span::DynLazySpan,
 };
+use salsa::Update;
 
 use super::NameRes;
 use crate::HirAnalysisDb;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum NameResDiag<'db> {
     /// The definition conflicts with other definitions.
     Conflict(IdentId<'db>, Vec<DynLazySpan<'db>>),

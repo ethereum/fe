@@ -7,7 +7,7 @@ use super::{binder::Binder, ty_def::TyId, ty_lower::GenericParamTypeSet};
 use crate::{
     ty::{
         ty_def::InvalidCause,
-        ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
+        ty_lower::{collect_generic_params, lower_hir_ty},
     },
     HirAnalysisDb,
 };
@@ -17,7 +17,7 @@ use crate::{
 #[salsa::tracked]
 pub fn lower_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Option<FuncDef<'db>> {
     let name = func.name(db.as_hir_db()).to_opt()?;
-    let params_set = collect_generic_params(db, GenericParamOwnerId::new(db, func.into()));
+    let params_set = collect_generic_params(db, func.into());
 
     let args = match func.params(db.as_hir_db()) {
         Partial::Present(args) => args
