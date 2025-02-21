@@ -1,4 +1,5 @@
 pub(crate) mod db;
+pub(crate) mod get_core;
 pub(crate) mod workspace;
 use async_lsp::ClientSocket;
 use db::LanguageServerDatabase;
