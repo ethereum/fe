@@ -10,7 +10,7 @@ use common::{
     diagnostics::CompleteDiagnostic,
     impl_db_traits,
     indexmap::IndexSet,
-    input::{IngotDependency, IngotKind, Version},
+    input::{input_for_file_path, FilePath, IngotDependency, IngotKind, Version},
     InputDb, InputFile, InputIngot,
 };
 use hir::{
@@ -29,6 +29,7 @@ use hir_analysis::{
     HirAnalysisDb,
 };
 use include_dir::{include_dir, Dir};
+use salsa::Setter;
 
 use crate::diagnostics::ToCsDiag;
 
@@ -116,7 +117,8 @@ impl DriverDataBase {
         );
 
         let file_name = root_file.file_name().unwrap();
-        let input_file = InputFile::new(self, file_name.into(), source.to_string());
+        let input_file = input_for_file_path(self.as_input_db(), FilePath::from(self, file_name));
+        input_file.set_text(self).to(source.to_string());
         ingot.set_root_file(self, input_file);
         ingot.set_files(self, [input_file].into_iter().collect());
         (ingot, input_file)
@@ -142,7 +144,8 @@ impl DriverDataBase {
         );
 
         let file_name = root_file.file_name().unwrap();
-        let input_file = InputFile::new(self, file_name.into(), source.to_string());
+        let input_file = InputFile::new(self, file_name.into());
+        input_file.set_text(self).to(source.to_string());
         ingot.set_root_file(self, input_file);
         ingot.set_files(self, [input_file].into_iter().collect());
         (ingot, input_file)
@@ -223,7 +226,11 @@ impl DriverDataBase {
     ) -> IndexSet<InputFile> {
         let input_files = files
             .into_iter()
-            .map(|(path, content)| InputFile::new(self, path, content))
+            .map(|(path, content)| {
+                let input_file = InputFile::new(self, path);
+                input_file.set_text(self).to(content);
+                input_file
+            })
             .collect::<IndexSet<_>>();
 
         let root_file = *input_files
