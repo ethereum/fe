@@ -10,7 +10,7 @@ description = "Provides HIR definition and lowering for Fe lang."
 
 [dependencies]
 camino.workspace = true
-indexmap = "2.7"
+indexmap = { workspace = true }
 paste.workspace = true
 salsa.workspace = true
 semver.workspace = true

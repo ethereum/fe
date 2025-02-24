@@ -14,5 +14,5 @@ camino.workspace = true
 glob.workspace = true
 semver.workspace = true
 smol_str = "0.1"
-toml = "0.8"
-serde = { version = "1", features = ["derive"] }
+toml = { workspace = true }
+serde = { workspace = true, features = ["derive"] }

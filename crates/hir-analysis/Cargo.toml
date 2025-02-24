@@ -7,18 +7,18 @@ repository = "https://github.com/ethereum/fe"
 description = "Provides HIR semantic analysis for Fe lang"
 
 [dependencies]
-bitflags = "2.8"
-cranelift-entity = "0.115"
+bitflags = { workspace = true }
+cranelift-entity = { workspace = true }
 derive_more.workspace = true
-either = "1.13"
-ena = { version = "0.14", features = ["persistent"] }
-if_chain = "1.0"
-itertools = "0.14"
+either = { workspace = true }
+ena = { workspace = true, features = ["persistent"] }
+if_chain = { workspace = true }
+itertools = { workspace = true }
 num-bigint.workspace = true
 rustc-hash.workspace = true
 salsa.workspace = true
 smallvec.workspace = true
-smallvec2 = { package = "smallvec", version = "2.0.0-alpha.10" }
+smallvec2 = { workspace = true }
 
 common.workspace = true
 test-utils.workspace = true
