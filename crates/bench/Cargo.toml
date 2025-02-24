@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dev-dependencies]
-criterion = "0.5"
-walkdir = "2.4"
+criterion = { workspace = true }
+walkdir = { workspace = true }
 
 [dependencies]
 hir-analysis.workspace = true

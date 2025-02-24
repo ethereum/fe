@@ -8,11 +8,11 @@ description = "Provides HIR definition and lowering for Fe lang"
 
 [dependencies]
 camino.workspace = true
-cranelift-entity = "0.115"
+cranelift-entity = { workspace = true }
 derive_more.workspace = true
-dot2 = "1.0"
+dot2 = { workspace = true }
 num-bigint.workspace = true
-num-traits = "0.2.19"
+num-traits = { workspace = true }
 paste.workspace = true
 rustc-hash.workspace = true
 salsa.workspace = true

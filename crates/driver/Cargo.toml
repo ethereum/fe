@@ -13,7 +13,7 @@ camino.workspace = true
 clap.workspace = true
 codespan-reporting.workspace = true
 salsa.workspace = true
-include_dir = "0.7"
+include_dir = { workspace = true }
 
 common.workspace = true
 hir.workspace = true
