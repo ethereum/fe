@@ -18,6 +18,7 @@ use hir::{
 pub(crate) use path::RecordLike;
 
 use rustc_hash::{FxHashMap, FxHashSet};
+use salsa::Update;
 
 use super::{
     diagnostics::{BodyDiag, FuncBodyDiag, TyDiagCollection, TyLowerDiag},
@@ -222,7 +223,7 @@ impl<'db> TyChecker<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct TypedBody<'db> {
     body: Option<Body<'db>>,
     pat_ty: FxHashMap<PatId, TyId<'db>>,

@@ -6,6 +6,7 @@ use hir::{
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
+use salsa::Update;
 
 use super::{
     binder::Binder,
@@ -108,7 +109,7 @@ pub(crate) fn impls_for_ty<'db>(
 
 /// Represents the trait environment of an ingot, which maintain all trait
 /// implementors which can be used in the ingot.
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Update)]
 pub(crate) struct TraitEnv<'db> {
     pub(super) impls: FxHashMap<TraitDef<'db>, Vec<Binder<Implementor<'db>>>>,
     hir_to_implementor: FxHashMap<ImplTrait<'db>, Binder<Implementor<'db>>>,

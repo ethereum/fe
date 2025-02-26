@@ -1,7 +1,9 @@
+use salsa::Update;
+
 use super::IdentId;
 use crate::HirDb;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub enum PrimTy {
     Bool,
     Int(IntTy),

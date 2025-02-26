@@ -2,18 +2,18 @@ use common::indexmap::IndexSet;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
 };
-use salsa::plumbing::FromId;
+use salsa::{plumbing::FromId, Update};
 
 use crate::{
     ty::{
-        adt_def::{lower_adt, AdtDef, AdtRefId},
+        adt_def::{lower_adt, AdtDef},
         binder::Binder,
         func_def::{FuncDef, HirFuncDefKind},
         trait_def::{Implementor, TraitDef, TraitInstId},
         trait_lower::{lower_impl_trait, lower_trait, lower_trait_ref},
         trait_resolution::PredicateListId,
         ty_def::{TyBase, TyData, TyId, TyVarSort},
-        ty_lower::{collect_generic_params, lower_hir_ty, GenericParamOwnerId},
+        ty_lower::{collect_generic_params, lower_hir_ty},
         unify::InferenceKey,
     },
     HirAnalysisDb,
@@ -83,7 +83,7 @@ pub(crate) fn collect_trait_constraints<'db>(
     trait_: TraitDef<'db>,
 ) -> Binder<PredicateListId<'db>> {
     let hir_trait = trait_.trait_(db);
-    let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_trait.into()));
+    let collector = ConstraintCollector::new(db, hir_trait.into());
 
     Binder::bind(collector.collect())
 }
@@ -107,8 +107,7 @@ pub(crate) fn collect_impl_block_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_: Impl<'db>,
 ) -> Binder<PredicateListId<'db>> {
-    let owner = GenericParamOwnerId::new(db, impl_.into());
-    Binder::bind(ConstraintCollector::new(db, owner).collect())
+    Binder::bind(ConstraintCollector::new(db, impl_.into()).collect())
 }
 
 /// Collect constraints that are specified by the given implementor(i.e., impl
@@ -119,7 +118,7 @@ pub(crate) fn collect_implementor_constraints<'db>(
     implementor: Implementor<'db>,
 ) -> Binder<PredicateListId<'db>> {
     let impl_trait = implementor.hir_impl_trait(db);
-    let collector = ConstraintCollector::new(db, GenericParamOwnerId::new(db, impl_trait.into()));
+    let collector = ConstraintCollector::new(db, impl_trait.into());
 
     Binder::bind(collector.collect())
 }
@@ -133,8 +132,7 @@ pub(crate) fn collect_func_def_constraints<'db>(
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
         HirFuncDefKind::VariantCtor(enum_, _) => {
-            let adt_ref = AdtRefId::new(db, enum_.into());
-            let adt = lower_adt(db, adt_ref);
+            let adt = lower_adt(db, enum_.into());
             if include_parent {
                 return collect_adt_constraints(db, adt);
             } else {
@@ -178,15 +176,13 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
         HirFuncDefKind::VariantCtor(enum_, _) => {
-            let adt_ref = AdtRefId::new(db, enum_.into());
+            let adt_ref = enum_.into();
             let adt = lower_adt(db, adt_ref);
             return collect_adt_constraints(db, adt);
         }
     };
 
-    Binder::bind(
-        ConstraintCollector::new(db, GenericParamOwnerId::new(db, hir_func.into())).collect(),
-    )
+    Binder::bind(ConstraintCollector::new(db, hir_func.into()).collect())
 }
 
 pub(crate) fn recover_collect_super_traits<'db>(
@@ -253,7 +249,7 @@ impl<'db> SuperTraitCollector<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Update)]
 pub(crate) struct SuperTraitCycle<'db>(IndexSet<TraitDef<'db>>);
 impl<'db> SuperTraitCycle<'db> {
     pub fn contains(&self, def: TraitDef<'db>) -> bool {
@@ -263,12 +259,12 @@ impl<'db> SuperTraitCycle<'db> {
 
 struct ConstraintCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    owner: GenericParamOwnerId<'db>,
+    owner: GenericParamOwner<'db>,
     predicates: IndexSet<TraitInstId<'db>>,
 }
 
 impl<'db> ConstraintCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwnerId<'db>) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, owner: GenericParamOwner<'db>) -> Self {
         Self {
             db,
             owner,
@@ -283,7 +279,7 @@ impl<'db> ConstraintCollector<'db> {
 
         // Collect super traits from the trait definition and add them to the predicate
         // list.
-        if let GenericParamOwner::Trait(trait_) = self.owner.data(self.db) {
+        if let GenericParamOwner::Trait(trait_) = self.owner {
             let trait_def = lower_trait(self.db, trait_);
             self.push_predicate(TraitInstId::new(
                 self.db,
@@ -302,7 +298,7 @@ impl<'db> ConstraintCollector<'db> {
     }
 
     fn collect_constraints_from_where_clause(&mut self) {
-        let Some(where_clause) = self.owner.where_clause(self.db) else {
+        let Some(where_clause) = self.owner.where_clause(self.db.as_hir_db()) else {
             return;
         };
 
@@ -311,7 +307,7 @@ impl<'db> ConstraintCollector<'db> {
                 continue;
             };
 
-            let ty = lower_hir_ty(self.db, hir_ty, self.owner.scope(self.db));
+            let ty = lower_hir_ty(self.db, hir_ty, self.owner.scope());
 
             // We don't need to collect super traits, please refer to
             // [`collect_super_traits`] function for details.
@@ -325,7 +321,7 @@ impl<'db> ConstraintCollector<'db> {
 
     fn collect_constraints_from_generic_params(&mut self) {
         let param_set = collect_generic_params(self.db, self.owner);
-        let param_list = self.owner.params(self.db);
+        let param_list = self.owner.params(self.db.as_hir_db());
 
         for (i, hir_param) in param_list.data(self.db.as_hir_db()).iter().enumerate() {
             let GenericParam::Type(hir_param) = hir_param else {
@@ -344,8 +340,7 @@ impl<'db> ConstraintCollector<'db> {
                 continue;
             };
 
-            let Ok(trait_inst) =
-                lower_trait_ref(self.db, bound_ty, *trait_ref, self.owner.scope(self.db))
+            let Ok(trait_inst) = lower_trait_ref(self.db, bound_ty, *trait_ref, self.owner.scope())
             else {
                 continue;
             };

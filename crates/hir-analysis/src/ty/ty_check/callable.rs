@@ -7,6 +7,7 @@ use hir::{
     },
 };
 use if_chain::if_chain;
+use salsa::Update;
 
 use super::{ExprProp, TyChecker};
 use crate::{
@@ -21,7 +22,7 @@ use crate::{
     HirAnalysisDb,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub struct Callable<'db> {
     pub func_def: FuncDef<'db>,
     generic_args: Vec<TyId<'db>>,
