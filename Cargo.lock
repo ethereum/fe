@@ -106,12 +106,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34ac096ce696dc2fcabef30516bb13c0a68a11d30131d3df6f04711467681b04"
 
 [[package]]
-name = "arc-swap"
-version = "1.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
-
-[[package]]
 name = "async-channel"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2008,9 +2002,8 @@ checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 [[package]]
 name = "salsa"
 version = "0.18.0"
-source = "git+https://github.com/salsa-rs/salsa?rev=325d9aca9eae52db8a3f15056bcfc11e5a39d084#325d9aca9eae52db8a3f15056bcfc11e5a39d084"
+source = "git+https://github.com/salsa-rs/salsa?rev=99be5d9917c3dd88e19735a82ef6bf39ba84bd7e#99be5d9917c3dd88e19735a82ef6bf39ba84bd7e"
 dependencies = [
- "arc-swap",
  "boxcar",
  "crossbeam-queue",
  "dashmap",
@@ -2029,12 +2022,12 @@ dependencies = [
 [[package]]
 name = "salsa-macro-rules"
 version = "0.1.0"
-source = "git+https://github.com/salsa-rs/salsa?rev=325d9aca9eae52db8a3f15056bcfc11e5a39d084#325d9aca9eae52db8a3f15056bcfc11e5a39d084"
+source = "git+https://github.com/salsa-rs/salsa?rev=99be5d9917c3dd88e19735a82ef6bf39ba84bd7e#99be5d9917c3dd88e19735a82ef6bf39ba84bd7e"
 
 [[package]]
 name = "salsa-macros"
 version = "0.18.0"
-source = "git+https://github.com/salsa-rs/salsa?rev=325d9aca9eae52db8a3f15056bcfc11e5a39d084#325d9aca9eae52db8a3f15056bcfc11e5a39d084"
+source = "git+https://github.com/salsa-rs/salsa?rev=99be5d9917c3dd88e19735a82ef6bf39ba84bd7e#99be5d9917c3dd88e19735a82ef6bf39ba84bd7e"
 dependencies = [
  "heck",
  "proc-macro2",
