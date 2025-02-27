@@ -46,6 +46,7 @@ mod test_db {
         InputDb, InputFile, InputIngot,
     };
     use derive_more::TryIntoError;
+    use salsa::Setter;
 
     use super::HirDb;
     use crate::{
@@ -102,7 +103,8 @@ mod test_db {
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);
             let ingot = InputIngot::new(self, path, kind, version, IndexSet::default());
-            let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
+            let file = InputFile::new(self, "test_file.fe".into());
+            file.set_text(self).to(text.into());
             ingot.set_root_file(self, file);
             ingot.set_files(self, [file].into_iter().collect());
             (ingot, file)
