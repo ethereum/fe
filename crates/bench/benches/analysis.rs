@@ -1,4 +1,5 @@
 use camino::{Utf8Path, Utf8PathBuf};
+use common::InputIngot;
 use criterion::{criterion_group, criterion_main, Criterion, SamplingMode};
 use driver::DriverDataBase;
 use walkdir::WalkDir;
@@ -11,8 +12,8 @@ fn diagnostics(c: &mut Criterion) {
 
     g.bench_function("analyze corelib", |b| {
         b.iter_with_large_drop(|| {
-            let mut db = DriverDataBase::default();
-            let (core, _) = db.static_core_ingot();
+            let db = DriverDataBase::default();
+            let core = InputIngot::core(&db);
             db.run_on_ingot(core);
             db
         });
@@ -31,7 +32,7 @@ fn diagnostics(c: &mut Criterion) {
     g.bench_function("uitest diagnostics", |b| {
         b.iter_with_large_drop(|| {
             let mut db = DriverDataBase::default();
-            let (core, _) = db.static_core_ingot();
+            let core = InputIngot::core(&db);
             for (path, content) in &files {
                 let (ingot, file) = db.standalone(path, content, core);
                 let top_mod = db.top_mod(ingot, file);

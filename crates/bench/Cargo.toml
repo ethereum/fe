@@ -11,6 +11,7 @@ walkdir = "2.4"
 hir-analysis.workspace = true
 driver.workspace = true
 parser.workspace = true
+common.workspace = true
 camino.workspace = true
 
 [[bench]]

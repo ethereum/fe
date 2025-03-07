@@ -4,7 +4,7 @@ use super::db::LanguageServerDatabase;
 use anyhow::Result;
 use common::{
     indexmap::IndexSet,
-    input::{IngotKind, Version},
+    input::{IngotDependency, IngotKind, Version},
     InputFile, InputIngot,
 };
 
@@ -82,12 +82,15 @@ pub fn get_containing_ingot<'a, T>(
 
 impl LocalIngotContext {
     pub fn new(db: &LanguageServerDatabase, config_path: &str) -> Option<Self> {
+        let external_ingots = [IngotDependency::new("core", InputIngot::core(db))]
+            .into_iter()
+            .collect();
         let ingot = InputIngot::new(
             db,
             config_path,
             IngotKind::Local,
             Version::new(0, 0, 0),
-            IndexSet::new(),
+            external_ingots,
         );
         Some(Self {
             ingot,
@@ -203,12 +206,15 @@ impl IngotFileContext for StandaloneIngotContext {
             .copied()
             .map_or_else(
                 || {
+                    let external_ingots = [IngotDependency::new("core", InputIngot::core(db))]
+                        .into_iter()
+                        .collect();
                     let ingot = InputIngot::new(
                         db,
                         path,
                         IngotKind::StandAlone,
                         Version::new(0, 0, 0),
-                        IndexSet::new(),
+                        external_ingots,
                     );
                     self.ingots.insert(path, ingot);
                     Some(ingot)

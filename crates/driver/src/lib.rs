@@ -2,6 +2,7 @@ pub mod db;
 pub mod diagnostics;
 pub mod files;
 use camino::Utf8PathBuf;
+use common::InputIngot;
 pub use db::{DriverDataBase, DriverDb};
 
 use clap::{Parser, Subcommand};
@@ -60,7 +61,7 @@ pub fn run(opts: &Options) {
                     }
                 }
             } else {
-                db.static_core_ingot().0
+                InputIngot::core(&db)
             };
 
             let local_ingot = match ingot_resolver.resolve(path) {
