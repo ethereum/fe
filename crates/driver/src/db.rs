@@ -230,9 +230,10 @@ impl DriverDataBase {
             .iter()
             .find(|input_file| {
                 let input_path = input_file.path(self);
-                let input_std = std::path::PathBuf::from(input_path);
-                let root_std = std::path::PathBuf::from(root);
-                if let (Ok(input_abs), Ok(root_abs)) = (input_std.canonicalize(), root_std.canonicalize()) {
+                if let (Ok(input_abs), Ok(root_abs)) = (
+                    std::path::PathBuf::from(input_path).canonicalize(),
+                    std::path::PathBuf::from(root).canonicalize(),
+                ) {
                     input_abs == root_abs
                 } else {
                     input_path == root
