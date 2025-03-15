@@ -228,7 +228,16 @@ impl DriverDataBase {
 
         let root_file = *input_files
             .iter()
-            .find(|input_file| input_file.path(self) == root)
+            .find(|input_file| {
+                let input_path = input_file.path(self);
+                let input_std = std::path::PathBuf::from(input_path);
+                let root_std = std::path::PathBuf::from(root);
+                if let (Ok(input_abs), Ok(root_abs)) = (input_std.canonicalize(), root_std.canonicalize()) {
+                    input_abs == root_abs
+                } else {
+                    input_path == root
+                }
+            })
             .expect("missing root source file");
 
         ingot.set_files(self, input_files.clone());
