@@ -1,0 +1,11 @@
+pub mod foo {
+    fn foo_foo(bar: i32, mut baz: u256) -> i32 {
+        1
+    }
+    
+    pub struct Foo {}
+}
+
+pub mod bar {
+    pub struct Bar {}
+}

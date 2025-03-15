@@ -1,5 +1,0 @@
-contract Bar {
-    pub fn test() {
-        block.foo()
-    }
-}

@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn decode_u256(a: u256) {}
-
-    pub fn decode_u128_bool(a: u128, b: bool) {}
-
-    pub fn decode_u256_bytes_tuple_array(a: u256, b: Array<u8, 100>, c: (address, u8), d: Array<i16, 26>) {}
-
-    pub fn decode_string_address_bytes_bool(a: String<80>, b: address, c: Array<u8, 1000>, d: bool) {}
-}

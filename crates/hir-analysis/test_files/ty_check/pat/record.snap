@@ -1,0 +1,125 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/pat/record.fe
+---
+note: 
+   ┌─ record.fe:14:14
+   │  
+14 │   pub fn foo() {
+   │ ╭──────────────^
+15 │ │     let S {x, y}: S<u32>
+16 │ │     let S {x, y: Unit::U}
+17 │ │     let S {y: Unit::U, x}
+   · │
+20 │ │     let E::Variant {y: Unit::U, x}
+21 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ record.fe:15:9
+   │
+15 │     let S {x, y}: S<u32>
+   │         ^^^^^^^^ S<u32>
+
+note: 
+   ┌─ record.fe:15:12
+   │
+15 │     let S {x, y}: S<u32>
+   │            ^ i32
+
+note: 
+   ┌─ record.fe:15:15
+   │
+15 │     let S {x, y}: S<u32>
+   │               ^ u32
+
+note: 
+   ┌─ record.fe:16:9
+   │
+16 │     let S {x, y: Unit::U}
+   │         ^^^^^^^^^^^^^^^^^ S<Unit>
+
+note: 
+   ┌─ record.fe:16:12
+   │
+16 │     let S {x, y: Unit::U}
+   │            ^ i32
+
+note: 
+   ┌─ record.fe:16:18
+   │
+16 │     let S {x, y: Unit::U}
+   │                  ^^^^^^^ Unit
+
+note: 
+   ┌─ record.fe:17:9
+   │
+17 │     let S {y: Unit::U, x}
+   │         ^^^^^^^^^^^^^^^^^ S<Unit>
+
+note: 
+   ┌─ record.fe:17:15
+   │
+17 │     let S {y: Unit::U, x}
+   │               ^^^^^^^ Unit
+
+note: 
+   ┌─ record.fe:17:24
+   │
+17 │     let S {y: Unit::U, x}
+   │                        ^ i32
+
+note: 
+   ┌─ record.fe:18:9
+   │
+18 │     let E::Variant {x, y}: E<u32>
+   │         ^^^^^^^^^^^^^^^^^ E<u32>
+
+note: 
+   ┌─ record.fe:18:21
+   │
+18 │     let E::Variant {x, y}: E<u32>
+   │                     ^ i32
+
+note: 
+   ┌─ record.fe:18:24
+   │
+18 │     let E::Variant {x, y}: E<u32>
+   │                        ^ u32
+
+note: 
+   ┌─ record.fe:19:9
+   │
+19 │     let E::Variant {x, y: Unit::U}
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ E<Unit>
+
+note: 
+   ┌─ record.fe:19:21
+   │
+19 │     let E::Variant {x, y: Unit::U}
+   │                     ^ i32
+
+note: 
+   ┌─ record.fe:19:27
+   │
+19 │     let E::Variant {x, y: Unit::U}
+   │                           ^^^^^^^ Unit
+
+note: 
+   ┌─ record.fe:20:9
+   │
+20 │     let E::Variant {y: Unit::U, x}
+   │         ^^^^^^^^^^^^^^^^^^^^^^^^^^ E<Unit>
+
+note: 
+   ┌─ record.fe:20:24
+   │
+20 │     let E::Variant {y: Unit::U, x}
+   │                        ^^^^^^^ Unit
+
+note: 
+   ┌─ record.fe:20:33
+   │
+20 │     let E::Variant {y: Unit::U, x}
+   │                                 ^ i32

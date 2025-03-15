@@ -1,5 +1,0 @@
-trait Dummy {}
-
-contract Foo {
-    pub fn bar<T: Dummy>(val: T) {}
-}

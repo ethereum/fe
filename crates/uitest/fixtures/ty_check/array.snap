@@ -1,0 +1,48 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/array.fe
+---
+error[3-0011]: given type doesn't match the expected const type
+  ┌─ array.fe:6:17
+  │
+6 │     let x = [1; false]
+  │                 ^^^^^ expected `u256` type here, but `bool` is given
+
+error[8-0000]: type mismatch
+  ┌─ array.fe:2:23
+  │
+2 │     let x: [i32; 3] = [1, 2]
+  │                       ^^^^^^ expected `[i32; 3]`, but `[i32; 2]` is given
+
+error[8-0000]: type mismatch
+  ┌─ array.fe:3:17
+  │
+3 │     let z = [1, false, 1]
+  │                 ^^^^^ expected `{integer}`, but `bool` is given
+
+error[8-0000]: type mismatch
+  ┌─ array.fe:5:27
+  │
+5 │     let mut x: [i32; 5] = [1; 10]
+  │                           ^^^^^^^ expected `[i32; 5]`, but `[i32; 10]` is given
+
+error[8-0031]: type annotation is needed
+  ┌─ array.fe:3:14
+  │
+3 │     let z = [1, false, 1]
+  │              ^
+  │              │
+  │              type annotation is needed
+  │              no default type is provided for an integer type. consider giving integer type
+
+error[8-0031]: type annotation is needed
+  ┌─ array.fe:6:14
+  │
+6 │     let x = [1; false]
+  │              ^
+  │              │
+  │              type annotation is needed
+  │              no default type is provided for an integer type. consider giving integer type
+
+

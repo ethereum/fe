@@ -1,4 +1,0 @@
-contract Foo {
-    bar: u8
-    bar: u8
-}

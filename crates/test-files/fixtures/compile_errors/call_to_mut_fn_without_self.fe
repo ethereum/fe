@@ -1,7 +1,0 @@
-contract Foo {
-    fn bar(self) {
-        baz()
-    }
-
-    fn baz(self) {}
-}

@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn foo() {
-        let my_array: Array<u256, 42> = [0; true]
-    }
-}

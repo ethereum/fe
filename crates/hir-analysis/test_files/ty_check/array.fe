@@ -1,0 +1,10 @@
+struct Foo {}
+
+fn foo() {
+    let i_array: [i32; 2] = [1, 2]
+    let b_array = [true, false]
+    
+    let array_rep = [true; 10]
+    let array_rep2 = [Foo {}; 5]
+    let array_rep3: [i32; 5] = [1; 5]
+}

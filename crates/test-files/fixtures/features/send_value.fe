@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn send_them_wei(mut ctx: Context, to: address, wei: u256) {
-        ctx.send_value(to, wei)
-    }
-}

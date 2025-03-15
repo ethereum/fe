@@ -1,0 +1,13 @@
+pub trait Trait {}
+
+pub struct MyS<T, U>
+    where T: Trait,
+          U: Trait,
+          Z: Trait,
+{
+    t: T,
+    u: U,
+    z: Z
+}
+
+impl<T: Trait, U: Trait> MyS<T, V> {}

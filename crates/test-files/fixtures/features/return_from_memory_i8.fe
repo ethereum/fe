@@ -1,7 +1,0 @@
-contract Foo {
-    pub fn bar(self, val: i8) -> i8 {
-        let in_memory: Array<i8, 2> = [val, val]
-        let result: i8 = in_memory[0] + in_memory[1]
-        return result
-    }
-}

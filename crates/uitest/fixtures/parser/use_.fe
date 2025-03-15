@@ -1,0 +1,3 @@
+use foo::bar::*::A
+use foo::bar::*::{A, B}
+use foo::bar::* as B

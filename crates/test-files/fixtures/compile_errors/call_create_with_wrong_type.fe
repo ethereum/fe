@@ -1,8 +1,0 @@
-contract Bar {}
-
-contract Foo {
-    pub fn foo(mut ctx: Context) {
-        Bar.create(ctx, true)
-        Bar.create(ctx)     // agroce //447
-    }
-}

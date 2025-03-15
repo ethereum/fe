@@ -1,0 +1,7 @@
+Record {}
+
+foo::Empty { }
+
+Record { a, b }
+Record { a: x, b: y }
+Record {x: (1, a), Foo {x, y} }

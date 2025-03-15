@@ -1,0 +1,22 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: fixtures/ty/trait_impl/impl_method_arg_mismatch.fe
+---
+error[6-0005]: method argument count mismatch
+   ┌─ impl_method_arg_mismatch.fe:10:17
+   │
+10 │     fn foo<T, U>(self, t: (T, U)) {}
+   │                 ^^^^^^^^^^^^^^^^^ expected 3 arguments, but 2 given
+
+error[6-0007]: method argument type mismatch
+  ┌─ impl_method_arg_mismatch.fe:6:30
+  │
+6 │     fn foo<T, U>(self, t: T, u: i32) {}
+  │                              ^^^^^^ expected `U` type, but the given type is `i32`
+
+error[6-0007]: method argument type mismatch
+   ┌─ impl_method_arg_mismatch.fe:26:15
+   │
+26 │     fn foo<T>(x: Self<T>) {}
+   │               ^^^^^^^^^^ expected `Option<i32>` type, but the given type is `Option<T>`

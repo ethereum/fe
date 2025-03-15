@@ -1,6 +1,0 @@
----
-source: crates/tests-legacy/src/features.rs
-expression: "format!(\"{}\", harness.gas_reporter)"
----
-send_them_wei([Address(0x2000000000000000000000000000000000000002), Uint(1)]) used 36395 gas
-

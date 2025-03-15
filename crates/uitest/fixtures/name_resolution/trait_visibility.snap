@@ -1,0 +1,13 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/trait_visibility.fe
+---
+error[2-0003]: `Foo` is not visible
+  ┌─ trait_visibility.fe:3:12
+  │
+3 │     inner::Foo::foo(x)
+  │            ^^^ `Foo` is not visible
+  ·
+7 │     trait Foo {
+  │           --- `Foo` is defined here

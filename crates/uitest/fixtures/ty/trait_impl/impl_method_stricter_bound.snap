@@ -1,0 +1,16 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: fixtures/ty/trait_impl/impl_method_stricter_bound.fe
+---
+error[6-0009]: method has stricter bounds than trait
+  ┌─ impl_method_stricter_bound.fe:9:8
+  │
+9 │     fn foo<T: Bar + Baz, U: Bar>(self, t: T, u: U) {}
+  │        ^^^ method has stricter bounds than the declared method in the trait: `T: Bar`, `T: Baz`, `U: Bar`
+
+error[6-0009]: method has stricter bounds than trait
+   ┌─ impl_method_stricter_bound.fe:18:8
+   │
+18 │     fn foo<U>(self, t: T, u: U)
+   │        ^^^ method has stricter bounds than the declared method in the trait: `T: Bar`, `T: Baz`, `U: Bar`

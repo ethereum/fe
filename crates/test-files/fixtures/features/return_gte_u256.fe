@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn bar(x: u256, y: u256) -> bool {
-        return x >= y
-    }
-}

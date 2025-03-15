@@ -1,8 +1,0 @@
-contract Foo {
-    tup: (u256, (u8, bool), (address, (u8, u8)))
-
-    pub fn bar(self, x: u256) -> u8 {
-        self.tup = (1, (0, true), (address(0), (10, 100)))
-        return self.tup.item2.item1.item0
-    }
-}

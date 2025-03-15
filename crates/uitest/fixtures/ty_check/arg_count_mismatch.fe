@@ -1,0 +1,27 @@
+
+fn add(_ x: usize, _ y: usize) -> usize {
+    x + y
+}
+
+fn f() {
+    add(1)
+    add(1, 2)
+    add(1, 2, 3)
+    ()
+}
+
+struct Adder {
+    x: u32
+}
+impl Adder {
+    fn add(_ a: usize, _ b: usize) -> usize {
+        a + b
+    }
+}
+
+fn g() {
+    let a = Adder{ x: 10 }
+    a.add(1)
+    a.add(1, 2)
+    ()
+}

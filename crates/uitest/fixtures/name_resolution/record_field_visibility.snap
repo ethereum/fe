@@ -1,0 +1,22 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/record_field_visibility.fe
+---
+error[2-0003]: `y` is not visible
+   ┌─ record_field_visibility.fe:15:24
+   │
+ 4 │         y: u32
+   │         - `y` is defined here
+   ·
+15 │     let f = Foo {x: 1, y: 2}
+   │                        ^^^^ `y` is not visible
+
+error[2-0003]: `x` is not visible
+   ┌─ record_field_visibility.fe:17:29
+   │
+ 8 │         Variant {x: i32, pub y: u32}
+   │                  - `x` is defined here
+   ·
+17 │     let bar = Bar::Variant {x: 1, y: 2}
+   │                             ^^^^ `x` is not visible

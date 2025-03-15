@@ -11,11 +11,13 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  RUSTFLAGS: "-D warnings"
+  RUST_BACKTRACE: full
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
     steps:
       - uses: actions/checkout@v3
       - name: Install system dependencies
@@ -36,26 +38,6 @@ jobs:
       - name: Lint with clippy
         run: cargo clippy --workspace --all-targets --all-features -- -D clippy::all
 
-  book:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2
-      - name: install mdbook & mdbook-linkcheck
-        run: |
-          cargo install mdbook
-          cargo install mdbook-linkcheck
-      - name: Validate links in book
-        run: |
-          mdbook build docs/
-      - name: Validate doc examples
-        run: ./docs/validate_doc_examples.py
-
   test:
     # Build & Test runs on all platforms
     runs-on: ${{ matrix.os }}
@@ -66,15 +48,6 @@ jobs:
           - os: macOS-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install Mac System dependencies
-        if: startsWith(matrix.os,'macOS')
-        run: |
-          brew install boost
-      - name: Install Linux dependencies
-        if: startsWith(matrix.os,'ubuntu')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libboost-all-dev
       - name: Install rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -82,13 +55,13 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2
       - name: Build
-        run: cargo test --workspace --all-features --no-run --locked
+        run: cargo test --workspace --all-features --no-run --locked --exclude fe-language-server --exclude fe-bench
       - name: Run tests
-        run: cargo test --workspace --all-features --verbose
+        run: cargo test --workspace --all-features --verbose --exclude fe-language-server --exclude fe-bench
 
   wasm-test:
-      runs-on: ubuntu-latest
-      steps:
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v3
       - name: Install rust
         uses: dtolnay/rust-toolchain@stable
@@ -102,7 +75,7 @@ jobs:
         # wasm-pack needs a Cargo.toml with a 'package' field.
         # (see https://github.com/rustwasm/wasm-pack/issues/642)
         # This will still run all tests in the workspace.
-        run: wasm-pack test --node crates/fe --workspace
+        run: wasm-pack test --node crates/driver --workspace --exclude fe-language-server --exclude fe-bench
 
   release:
     # Only run this when we push a tag
@@ -120,15 +93,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: Install Linux dependencies
-        if: startsWith(matrix.os,'ubuntu')
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libboost-all-dev
-      - name: Install Mac System dependencies
-        if: startsWith(matrix.os,'macOS')
-        run: |
-          brew install boost
       - name: Install rust
         uses: dtolnay/rust-toolchain@stable
         with:

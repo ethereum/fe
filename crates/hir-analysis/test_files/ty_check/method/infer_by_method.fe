@@ -1,0 +1,24 @@
+enum Option<T> {
+    Some(T),
+    None
+}
+
+impl Option<i32> {
+    fn foo(self) {}
+}
+
+impl Option<()> {
+    fn bool_true() -> Self {
+        Self::Some(())
+    }
+    fn bool_false() -> Self {
+        Self::None
+    }
+}
+
+fn foo() {
+    let x = Option::None
+    x.foo()
+
+    let b = Option::bool_true()
+}

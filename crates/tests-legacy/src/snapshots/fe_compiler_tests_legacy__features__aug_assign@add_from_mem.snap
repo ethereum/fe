@@ -1,6 +1,0 @@
----
-source: crates/tests-legacy/src/features.rs
-expression: "format!(\"{}\", harness.gas_reporter)"
----
-add_from_mem([Uint(2), Uint(5)]) used 806 gas
-

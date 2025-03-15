@@ -1,0 +1,24 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/trait_arg_mismatch.fe
+---
+error[6-0001]: given trait argument number mismatch
+   ┌─ trait_arg_mismatch.fe:11:6
+   │
+11 │ impl Foo for u32 {}
+   │      ^^^ expected 1 arguments here, but 0 given
+
+error[6-0002]: given trait argument kind mismatch
+  ┌─ trait_arg_mismatch.fe:8:6
+  │
+8 │ impl Foo<i32> for i32 {}
+  │      ^^^^^^^^ expected `(* -> *)` kind, but `i32` has `*` kind
+
+error[6-0002]: given trait argument kind mismatch
+  ┌─ trait_arg_mismatch.fe:9:6
+  │
+9 │ impl Foo<Option<i32>> for i32 {}
+  │      ^^^^^^^^^^^^^^^^ expected `(* -> *)` kind, but `Option<i32>` has `*` kind
+
+

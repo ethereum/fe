@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/method_bound/ret_bound.fe
+---
+error[6-0003]: trait bound is not satisfied
+   ┌─ ret_bound.fe:12:5
+   │
+12 │     mk(1)
+   │     ^^ `T` doesn't implement `From<i32>`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ ret_bound.fe:16:5
+   │
+16 │     mk(1)
+   │     ^^ `bool` doesn't implement `From<i32>`
+
+

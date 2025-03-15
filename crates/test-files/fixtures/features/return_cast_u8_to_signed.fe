@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn bar(val: u8) -> i8 {
-        return i8(val)
-    }
-}

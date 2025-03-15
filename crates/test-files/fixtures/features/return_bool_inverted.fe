@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn bar(some_condition: bool) -> bool {
-        return not some_condition
-    }
-}

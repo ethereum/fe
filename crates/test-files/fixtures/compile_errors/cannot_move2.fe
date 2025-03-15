@@ -1,7 +1,0 @@
-contract Foo {
-    pub fn foo() {
-        let x: Array<u256, 10> = [0; 10]
-        let y: Array<u256, 10> = [0; 10]
-        let c: Array<u256, 20> = x + y
-    }
-}

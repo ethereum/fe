@@ -1,0 +1,23 @@
+pub struct Foo {
+    x: i32,
+    y: u32,
+}
+
+pub enum Bar {
+    Unit,
+    Variant {x: i32, y: u32}
+}
+
+fn foo() {
+    let Foo {x, x}
+    let Foo {x, .., y, ..}
+    let Foo {x, z}
+    let Foo {x, Bar::Unit}
+    let Foo {x}
+
+    let Bar::Variant {x, x}
+    let Bar::Variant {x, .., y, ..}
+    let Bar::Variant {x, z}
+    let Bar::Variant {x, Bar::Unit}
+    let Bar::Variant {}
+}

@@ -1,5 +1,0 @@
-pub struct MyS {
-    fn x() -> u256 {
-        return 10
-    }
-}

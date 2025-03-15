@@ -1,0 +1,12 @@
+pub trait SubTrait: SuperTrait {}
+pub trait SuperTrait {}
+
+pub struct Foo<T: SuperTrait> {
+    t: T
+}
+
+
+pub struct Foo2<T: SubTrait> {
+    t: Foo<T>,
+    u: Foo<i32>
+}

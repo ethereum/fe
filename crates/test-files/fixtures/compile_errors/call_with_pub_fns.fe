@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn __call__() {}
-
-    fn bar() {}
-
-    pub fn baz() {}
-
-    pub fn bing() {}
-}

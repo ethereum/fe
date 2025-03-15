@@ -1,0 +1,10 @@
+pub trait Trait<const N: u32> {}
+
+impl Trait<1> for i32 {}
+impl<const N: u32> Trait<N> for i32 {}
+
+pub struct Foo<const N: u32> {}
+
+impl<const N: u32> Trait<N> for Foo<N> {}
+impl Trait<10> for Foo<10> {}
+

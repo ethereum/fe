@@ -1,0 +1,22 @@
+---
+source: crates/hir-analysis/tests/import.rs
+expression: res
+input_file: crates/hir-analysis/test_files/imports/glob_mutual_dep.fe
+---
+note: 
+  ┌─ glob_mutual_dep.fe:1:1
+  │
+1 │ use foo::*
+  │ ^^^^^^^^^^ glob_mutual_dep::bar::Bar as Bar | glob_mutual_dep::foo::Foo as Foo
+
+note: 
+  ┌─ glob_mutual_dep.fe:4:5
+  │
+4 │     pub use super::bar::*
+  │     ^^^^^^^^^^^^^^^^^^^^^ glob_mutual_dep::bar::Bar as Bar | glob_mutual_dep::foo::Foo as Foo
+
+note: 
+   ┌─ glob_mutual_dep.fe:10:5
+   │
+10 │     pub use super::foo::*
+   │     ^^^^^^^^^^^^^^^^^^^^^ glob_mutual_dep::bar::Bar as Bar | glob_mutual_dep::foo::Foo as Foo

@@ -1,0 +1,34 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/lit_int.fe
+---
+note: 
+  ┌─ lit_int.fe:1:21
+  │  
+1 │   fn lit_i32() -> i32 {
+  │ ╭─────────────────────^
+2 │ │     1
+3 │ │ }
+  │ ╰─^ i32
+
+note: 
+  ┌─ lit_int.fe:2:5
+  │
+2 │     1
+  │     ^ i32
+
+note: 
+  ┌─ lit_int.fe:5:21
+  │  
+5 │   fn lit_i64() -> i64 {
+  │ ╭─────────────────────^
+6 │ │     1
+7 │ │ }
+  │ ╰─^ i64
+
+note: 
+  ┌─ lit_int.fe:6:5
+  │
+6 │     1
+  │     ^ i64

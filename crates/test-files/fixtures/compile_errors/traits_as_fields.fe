@@ -1,9 +1,0 @@
-trait Foo {}
-
-struct Bar {
-    val: Foo
-}
-
-contract Nope {
-    val: Foo
-}

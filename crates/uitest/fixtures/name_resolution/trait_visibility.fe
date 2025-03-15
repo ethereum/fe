@@ -1,0 +1,16 @@
+fn foo(x: i32) -> i32 {
+    x.foo()
+    inner::Foo::foo(x)
+}
+
+mod inner {
+    trait Foo {
+        fn foo(self) -> Self
+    }
+
+    impl Foo for i32 {
+        fn foo(self) -> i32 {
+            self
+        }
+    }
+}

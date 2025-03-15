@@ -1,0 +1,96 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/pat/record.fe
+---
+error[8-0002]: duplicate `..` in pattern
+   ┌─ record.fe:13:24
+   │
+13 │     let Foo {x, .., y, ..}
+   │                        ^^ `..` can be used only once
+
+error[8-0002]: duplicate `..` in pattern
+   ┌─ record.fe:19:33
+   │
+19 │     let Bar::Variant {x, .., y, ..}
+   │                                 ^^ `..` can be used only once
+
+error[8-0008]: duplicated record field binding
+   ┌─ record.fe:12:17
+   │
+12 │     let Foo {x, x}
+   │              -  ^ duplicate field binding `x`
+   │              │   
+   │              first use of `x`
+
+error[8-0008]: duplicated record field binding
+   ┌─ record.fe:18:26
+   │
+18 │     let Bar::Variant {x, x}
+   │                       -  ^ duplicate field binding `x`
+   │                       │   
+   │                       first use of `x`
+
+error[8-0009]: specified field not found
+   ┌─ record.fe:14:17
+   │
+14 │     let Foo {x, z}
+   │                 ^ field `z` not found
+
+error[8-0009]: specified field not found
+   ┌─ record.fe:20:26
+   │
+20 │     let Bar::Variant {x, z}
+   │                          ^ field `z` not found
+
+error[8-0010]: explicit label is required
+   ┌─ record.fe:15:17
+   │
+15 │     let Foo {x, Bar::Unit}
+   │                 ^^^^^^^^^
+   │                 │
+   │                 explicit label is required
+   │                 Consider using `Foo { x, y }` instead
+
+error[8-0010]: explicit label is required
+   ┌─ record.fe:21:26
+   │
+21 │     let Bar::Variant {x, Bar::Unit}
+   │                          ^^^^^^^^^
+   │                          │
+   │                          explicit label is required
+   │                          Consider using `Bar::Variant { x, y }` instead
+
+error[8-0011]: missing fields in record pattern
+   ┌─ record.fe:16:13
+   │
+16 │     let Foo {x}
+   │             ^^^
+   │             │
+   │             missing `y`
+   │             Consider using `Foo { x, y }` instead
+
+error[8-0011]: missing fields in record pattern
+   ┌─ record.fe:22:22
+   │
+22 │     let Bar::Variant {}
+   │                      ^^
+   │                      │
+   │                      missing `x, y`
+   │                      Consider using `Bar::Variant { x, y }` instead
+
+error[8-0032]: duplicate binding `x` in pattern
+   ┌─ record.fe:12:17
+   │
+12 │     let Foo {x, x}
+   │              -  ^ `x` is defined again here
+   │              │   
+   │              first definition of `x` in this pattern
+
+error[8-0032]: duplicate binding `x` in pattern
+   ┌─ record.fe:18:26
+   │
+18 │     let Bar::Variant {x, x}
+   │                       -  ^ `x` is defined again here
+   │                       │   
+   │                       first definition of `x` in this pattern

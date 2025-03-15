@@ -1,0 +1,30 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty/def/duplicated_arg_name.fe
+---
+error[3-0008]: duplicated argument name in function definition is not allowed
+  ┌─ duplicated_arg_name.fe:1:22
+  │
+1 │ pub fn foo(x: i32, y x: u64) {}
+  │            -         ^ duplicated argument name `x`
+  │            │          
+  │            conflict with this argument name
+
+error[3-0008]: duplicated argument name in function definition is not allowed
+  ┌─ duplicated_arg_name.fe:4:24
+  │
+4 │     fn foo(x y: i32, z y: i32) {}
+  │              -         ^ duplicated argument name `y`
+  │              │          
+  │              conflict with this argument name
+
+error[3-0008]: duplicated argument name in function definition is not allowed
+  ┌─ duplicated_arg_name.fe:8:24
+  │
+8 │     fn foo(x y: i32, z y: i32) {}
+  │              -         ^ duplicated argument name `y`
+  │              │          
+  │              conflict with this argument name
+
+

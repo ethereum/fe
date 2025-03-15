@@ -1,0 +1,22 @@
+[package]
+name = "fe-hir"
+version = "0.26.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/ethereum/fe"
+description = "Provides HIR definition and lowering for Fe lang"
+
+[dependencies]
+camino.workspace = true
+cranelift-entity = "0.115"
+derive_more.workspace = true
+dot2 = "1.0"
+num-bigint.workspace = true
+num-traits = "0.2.19"
+paste.workspace = true
+rustc-hash.workspace = true
+salsa.workspace = true
+smallvec.workspace = true
+
+common.workspace = true
+parser.workspace = true

@@ -1,0 +1,25 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/while_.fe
+---
+error[1-0001]: expected expression
+  ┌─ while_.fe:2:6
+  │
+2 │ while @ {}
+  │      ^ expected expression
+
+error[1-0001]: unexpected syntax while parsing `while` statement
+  ┌─ while_.fe:2:7
+  │
+2 │ while @ {}
+  │       ^ unexpected
+
+error[1-0001]: unexpected syntax while parsing item
+  ┌─ while_.fe:8:1
+  │  
+8 │ ╭ while true {}
+9 │ │ }
+  │ ╰─^ unexpected
+
+

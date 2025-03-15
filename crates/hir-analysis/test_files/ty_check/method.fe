@@ -1,0 +1,54 @@
+mod evm {
+    extern {
+        pub fn abort() -> !
+    }
+}
+
+pub fn todo() -> ! {
+    evm::abort()
+}
+
+pub enum Option<T> {
+    None,
+    Some(T)
+}
+
+impl<T> Option<T> {
+    pub fn and<U>(self, rhs: Option<U>) -> Option<U> {
+        match self {
+            Self::Some(t) => rhs
+            Self::None => Option::None
+        }
+    }
+
+    pub fn get_or_insert(mut self, inner t: T) -> T {
+        match self {
+            Self::Some(t) => t
+            Self::None => {
+                self = Self::Some(t)
+                t
+            }
+        }
+    }
+}
+
+impl Option {
+    pub fn unwrap<T>(self: Self<T>) -> T {
+        match self {
+            Self::None => evm::abort()
+            Self::Some(t) => t
+        }
+    }
+}
+
+fn get_t<T>() -> T {
+    todo()
+}
+
+fn foo() -> Option<bool> {
+    let mut x: Option<i32> = Option::Some(1)
+    let func_obj = get_t
+    x.get_or_insert(inner: func_obj())
+
+    x.and(rhs: Option::Some(false))
+}

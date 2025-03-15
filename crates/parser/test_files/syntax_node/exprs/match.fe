@@ -1,0 +1,38 @@
+match e {}
+
+match e {
+    Enum::Add(x, y) => x + y
+    Enum::Sub(x, y) => x - y
+}
+
+match (S {x: 1, y: 2}) {
+    _ => 1
+}
+
+match e {
+    Enum::Add(x, y) => x + y
+    Enum::Sub(x, y) => x - y
+}
+
+match e {
+    Enum::Add(x, y) => { 
+        x + y 
+    }
+    Enum::Sub(x, y) => x - y
+    Enum::Mul(x, y) => { x * y }
+}
+
+match e { Enum::Var(s) => s }
+
+match {
+        let x = 1
+        Enum::Var(x)
+      } 
+{ 
+    Enum::Var(s) => s 
+}
+
+match (S {x: Foo::Bar(x), y: 2}) {
+    S {x: Boo::Bar(x), y} => true
+    _ => false
+}
