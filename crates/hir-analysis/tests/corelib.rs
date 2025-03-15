@@ -1,13 +1,14 @@
 mod test_db;
 
 use camino::Utf8Path;
+use common::InputIngot;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 
 #[test]
 fn analyze_corelib() {
-    let mut db = DriverDataBase::default();
-    let (core, _) = db.static_core_ingot();
+    let db = DriverDataBase::default();
+    let core = InputIngot::core(&db);
 
     let core_diags = db.run_on_ingot(core);
     if !(core_diags.is_empty()) {
@@ -24,7 +25,7 @@ fn corelib_standalone(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
     let file_name = path.file_name().unwrap();
-    let (core, _) = db.static_core_ingot();
+    let core = InputIngot::core(&db);
     let (ingot, _) = db.standalone(file_name.into(), fixture.content(), core);
 
     let local_diags = db.run_on_ingot(ingot);

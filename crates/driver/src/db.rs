@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use crate::diagnostics::CsDbWrapper;
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::term::{
@@ -28,11 +26,8 @@ use hir_analysis::{
     },
     HirAnalysisDb,
 };
-use include_dir::{include_dir, Dir};
 
 use crate::diagnostics::ToCsDiag;
-
-static LIBRARY: Dir = include_dir!("$CARGO_MANIFEST_DIR/../../library");
 
 #[salsa::db]
 pub trait DriverDb:
@@ -190,31 +185,6 @@ impl DriverDataBase {
         (input_ingot, input_files)
     }
 
-    pub fn static_core_ingot(&mut self) -> (InputIngot, IndexSet<InputFile>) {
-        let src = LIBRARY
-            .get_dir("core/src")
-            .expect("static core error. use cli `--core` arg to debug");
-
-        let mut files = vec![];
-        write_files_recursive(src, &mut files);
-
-        let input_ingot = InputIngot::new(
-            self,
-            "core",
-            IngotKind::Core,
-            Version::new(0, 0, 0),
-            IndexSet::default(),
-        );
-
-        let input_files = self.set_ingot_source_files(
-            input_ingot,
-            &Utf8PathBuf::from_str("core/src/lib.fe").unwrap(),
-            files,
-        );
-
-        (input_ingot, input_files)
-    }
-
     fn set_ingot_source_files(
         &mut self,
         ingot: InputIngot,
@@ -307,20 +277,4 @@ fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
     pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(BodyAnalysisPass::new(db)));
     pass_manager
-}
-
-fn write_files_recursive(dir: &Dir, files: &mut Vec<(Utf8PathBuf, String)>) {
-    for file in dir.files() {
-        files.push((
-            Utf8PathBuf::from_path_buf(file.path().to_path_buf())
-                .expect("static core error. use cli `--core` arg  to debug"),
-            std::str::from_utf8(file.contents())
-                .expect("static core error. use cli `--core` arg  to debug")
-                .to_string(),
-        ));
-    }
-
-    for subdir in dir.dirs() {
-        write_files_recursive(subdir, files);
-    }
 }

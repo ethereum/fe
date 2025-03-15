@@ -1,4 +1,5 @@
 use camino::Utf8Path;
+use common::InputIngot;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
@@ -11,7 +12,7 @@ fn run_name_resolution(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (core, _) = db.static_core_ingot();
+    let core = InputIngot::core(&db);
     let (ingot, file) = db.standalone(path, fixture.content(), core);
     let top_mod = db.top_mod(ingot, file);
 
@@ -38,7 +39,7 @@ mod wasm {
         let mut db = DriverDataBase::default();
         let path = Utf8Path::new(fixture.path());
 
-        let (core, _) = db.static_core_ingot();
+        let core = InputIngot::core(&db);
         let (ingot, file) = db.standalone(path, fixture.content(), core);
         let top_mod = db.top_mod(ingot, file);
         db.run_on_top_mod(top_mod);
