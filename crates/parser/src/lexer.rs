@@ -1,102 +1,58 @@
-mod token;
-use crate::node::Span;
-use fe_common::files::SourceFileId;
-use logos::Logos;
-pub use token::{Token, TokenKind};
+use crate::{
+    parser::token_stream::{LexicalToken, TokenStream},
+    SyntaxKind,
+};
 
-#[derive(Clone)]
-pub struct Lexer<'a> {
-    file_id: SourceFileId,
-    inner: logos::Lexer<'a, TokenKind>,
+pub struct Lexer<'s> {
+    peek: Option<Token<'s>>,
+    inner: logos::Lexer<'s, SyntaxKind>,
 }
 
-impl<'a> Lexer<'a> {
-    /// Create a new lexer with the given source code string.
-    pub fn new(file_id: SourceFileId, src: &'a str) -> Lexer {
-        Lexer {
-            file_id,
-            inner: TokenKind::lexer(src),
+impl<'s> Lexer<'s> {
+    pub fn new(text: &'s str) -> Self {
+        Self {
+            peek: None,
+            inner: logos::Lexer::new(text),
         }
     }
-
-    /// Return the full source code string that's being tokenized.
-    pub fn source(&self) -> &'a str {
-        self.inner.source()
-    }
 }
 
-impl<'a> Iterator for Lexer<'a> {
-    type Item = Token<'a>;
+impl<'s> TokenStream for Lexer<'s> {
+    type Token = Token<'s>;
 
-    fn next(&mut self) -> Option<Self::Item> {
-        let kind = self.inner.next()?;
-        let text = self.inner.slice();
-        let span = self.inner.span();
+    fn next(&mut self) -> Option<Self::Token> {
+        if let Some(token) = self.peek.take() {
+            return Some(token);
+        }
+
+        let syntax_kind = self.inner.next()?.unwrap_or(SyntaxKind::InvalidToken);
+
         Some(Token {
-            kind,
-            text,
-            span: Span {
-                file_id: self.file_id,
-                start: span.start,
-                end: span.end,
-            },
+            syntax_kind,
+            text: self.inner.slice(),
         })
     }
+
+    fn peek(&mut self) -> Option<&Self::Token> {
+        if self.peek.is_none() {
+            self.peek = self.next();
+        }
+        self.peek.as_ref()
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::lexer::{Lexer, TokenKind};
-    use fe_common::files::SourceFileId;
-    use TokenKind::*;
+#[derive(Clone)]
+pub struct Token<'s> {
+    syntax_kind: SyntaxKind,
+    text: &'s str,
+}
 
-    fn check(input: &str, expected: &[TokenKind]) {
-        let lex = Lexer::new(SourceFileId::dummy_file(), input);
-
-        let actual = lex.map(|t| t.kind).collect::<Vec<_>>();
-
-        assert!(
-            actual.iter().eq(expected.iter()),
-            "\nexpected: {expected:?}\n  actual: {actual:?}"
-        );
+impl LexicalToken for Token<'_> {
+    fn syntax_kind(&self) -> SyntaxKind {
+        self.syntax_kind
     }
 
-    #[test]
-    fn basic() {
-        check(
-            "contract Foo:\n  x: u32\n  fn f() -> u32: not x",
-            &[
-                Contract, Name, Colon, Newline, Name, Colon, Name, Newline, Fn, Name, ParenOpen,
-                ParenClose, Arrow, Name, Colon, Not, Name,
-            ],
-        );
-    }
-
-    #[test]
-    fn strings() {
-        let rawstr = r#""string \t with \n escapes \" \"""#;
-        let mut lex = Lexer::new(SourceFileId::dummy_file(), rawstr);
-        let lexedstr = lex.next().unwrap();
-        assert!(lexedstr.kind == Text);
-        assert!(lexedstr.text == rawstr);
-        assert!(lex.next().is_none());
-    }
-
-    #[test]
-    fn errors() {
-        check(
-            "contract Foo@ 5u8 \n  self.bar",
-            &[
-                Contract, Name, Error, Int, Name, Newline, SelfValue, Dot, Name,
-            ],
-        );
-    }
-
-    #[test]
-    fn tabs_and_comment() {
-        check(
-            "\n\t \tcontract\n\tFoo // hi mom!\n ",
-            &[Newline, Contract, Newline, Name, Newline],
-        );
+    fn text(&self) -> &str {
+        self.text
     }
 }

@@ -1,0 +1,66 @@
+---
+source: crates/parser/tests/syntax_node.rs
+expression: node
+input_file: crates/parser/test_files/syntax_node/items/contract.fe
+---
+Root@0..90
+  ItemList@0..90
+    Item@0..17
+      Contract@0..17
+        ContractKw@0..8 "contract"
+        WhiteSpace@8..9 " "
+        Ident@9..14 "Empty"
+        WhiteSpace@14..15 " "
+        RecordFieldDefList@15..17
+          LBrace@15..16 "{"
+          RBrace@16..17 "}"
+    Newline@17..19 "\n\n"
+    Item@19..90
+      Contract@19..90
+        ItemModifier@19..22
+          PubKw@19..22 "pub"
+        WhiteSpace@22..23 " "
+        ContractKw@23..31 "contract"
+        WhiteSpace@31..32 " "
+        Ident@32..33 "C"
+        WhiteSpace@33..34 " "
+        RecordFieldDefList@34..90
+          LBrace@34..35 "{"
+          Newline@35..36 "\n"
+          WhiteSpace@36..40 "    "
+          RecordFieldDef@40..46
+            Ident@40..41 "x"
+            Colon@41..42 ":"
+            WhiteSpace@42..43 " "
+            PathType@43..46
+              Path@43..46
+                PathSegment@43..46
+                  Ident@43..46 "i32"
+          Comma@46..47 ","
+          Newline@47..48 "\n"
+          WhiteSpace@48..52 "    "
+          RecordFieldDef@52..59
+            Ident@52..53 "y"
+            Colon@53..54 ":"
+            WhiteSpace@54..55 " "
+            PathType@55..59
+              Path@55..59
+                PathSegment@55..59
+                  Ident@55..59 "u256"
+          Comma@59..60 ","
+          Newline@60..61 "\n"
+          WhiteSpace@61..65 "    "
+          RecordFieldDef@65..87
+            Ident@65..66 "z"
+            Colon@66..67 ":"
+            WhiteSpace@67..68 " "
+            PathType@68..87
+              Path@68..87
+                PathSegment@68..76
+                  Ident@68..76 "MyStruct"
+                Colon2@76..78 "::"
+                PathSegment@78..87
+                  Ident@78..87 "Encodable"
+          Comma@87..88 ","
+          Newline@88..89 "\n"
+          RBrace@89..90 "}"

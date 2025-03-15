@@ -1,0 +1,7 @@
+pub mod mod1 {
+    pub use super::mod2::Foo as Bar // Error
+}
+
+pub mod mod2 {
+    pub use super::mod1::Bar as Foo // Error
+}

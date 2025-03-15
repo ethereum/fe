@@ -1,0 +1,22 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: fixtures/ty/def/impl_conflict.fe
+---
+error[6-0000]: conflicting method implementations
+   ┌─ impl_conflict.fe:7:8
+   │
+ 7 │     fn foo(self) {}
+   │        ^^^
+   ·
+11 │     fn foo(self) {}
+   │        ^^^
+
+error[6-0000]: conflicting method implementations
+   ┌─ impl_conflict.fe:7:8
+   │
+ 7 │     fn foo(self) {}
+   │        ^^^
+   ·
+15 │     fn foo<E>(self: Self<E>) {}
+   │        ^^^

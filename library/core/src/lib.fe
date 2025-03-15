@@ -1,0 +1,7 @@
+pub use option::Option
+pub use default::Default
+
+extern {
+    pub fn panic() -> !
+    pub fn todo() -> !
+}

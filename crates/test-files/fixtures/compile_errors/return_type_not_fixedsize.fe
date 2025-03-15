@@ -1,3 +1,0 @@
-contract C {
-    pub fn f() -> Map<address, bool> {}
-}

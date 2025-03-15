@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn __init__() -> u64 {
-        return 10
-    }
-}

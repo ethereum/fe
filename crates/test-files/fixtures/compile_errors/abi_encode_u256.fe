@@ -1,5 +1,0 @@
-contract Foo {
-    pub fn foo() {
-        42.abi_encode()
-    }
-}

@@ -1,7 +1,0 @@
-use bar::Bar
-
-#test
-fn test_main() {
-    let my_bar: Bar = Bar(inner: 42)
-    assert my_bar.inner == 42
-}

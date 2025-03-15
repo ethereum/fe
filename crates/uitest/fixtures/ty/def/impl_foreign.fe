@@ -1,0 +1,6 @@
+impl i32 {}
+
+impl<T> T {}
+
+impl<T: * -> *> T<i32> {
+}

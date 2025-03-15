@@ -1,0 +1,16 @@
+---
+source: crates/hir-analysis/tests/import.rs
+expression: res
+input_file: crates/hir-analysis/test_files/imports/glob_chain.fe
+---
+note: 
+  ┌─ glob_chain.fe:1:1
+  │
+1 │ use foo::*
+  │ ^^^^^^^^^^ glob_chain::foo::MyEnum as MyEnum | glob_chain::foo::MyEnum::Variant as Variant | glob_chain::foo::MyEnum::Variant2 as Variant2 | glob_chain::foo::Variant as Variant
+
+note: 
+  ┌─ glob_chain.fe:4:5
+  │
+4 │     pub use MyEnum::*
+  │     ^^^^^^^^^^^^^^^^^ glob_chain::foo::MyEnum::Variant as Variant | glob_chain::foo::MyEnum::Variant2 as Variant2

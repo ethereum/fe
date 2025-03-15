@@ -1,0 +1,49 @@
+use ingot::Default
+use ingot::panic
+
+pub enum Option<T> {
+    Some(T),
+    None
+}
+
+impl<T> Option<T> {
+    pub fn is_some(self) -> bool {
+        match self {
+            Self::Some(_) => true
+            None => false
+        }
+    }
+
+    pub fn is_none(self) -> bool {
+        !self.is_some()
+    }
+
+    pub fn unwrap(self) -> T {
+        match self {
+            Self::Some(t) => t
+            None => panic()
+        }
+    }
+
+    pub fn unwrap_or(self, default: T) -> T {
+        match self {
+            Self::Some(x) => x
+            Self::None => default
+        }
+    }
+}
+
+impl<T> Option<T> where T: Default {
+    pub fn unwrap_or_default(self) -> T {
+        match self {
+            Self::Some(x) => x
+            Self::None => T::default()
+        }
+    }
+}
+
+impl<T> Default for Option<T> {
+    fn default() -> Self {
+        Self::None
+    }
+}

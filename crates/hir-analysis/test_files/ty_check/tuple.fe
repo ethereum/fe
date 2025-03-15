@@ -1,0 +1,10 @@
+struct Foo {
+    x: i32,
+    y: u32,
+}
+
+fn foo() {
+    let f = Foo {x: 1, y: 2}
+    let tup_1 = (f, true, false)
+    let tup_2 = (("Foo", true), tup_1, "BAZ")
+}

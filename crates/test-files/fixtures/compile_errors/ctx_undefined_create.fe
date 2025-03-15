@@ -1,7 +1,0 @@
-contract Bar {}
-
-contract Foo {
-    pub fn baz() {
-        Bar.create(0)
-    }
-}

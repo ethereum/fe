@@ -1,26 +1,33 @@
-pub mod db;
 pub mod diagnostics;
-pub mod files;
-pub mod numeric;
-pub mod panic;
-mod span;
-pub mod utils;
+pub mod indexmap;
+pub mod input;
+pub use input::{InputFile, InputIngot};
 
-pub use files::{File, FileKind, SourceFileId};
-pub use span::{Span, Spanned};
-
-#[macro_export]
-#[cfg(target_arch = "wasm32")]
-macro_rules! assert_snapshot_wasm {
-    ($path:expr, $actual:expr) => {
-        let snap = include_str!($path);
-        let expected = snap.splitn(3, "---\n").last().unwrap();
-        pretty_assertions::assert_eq!($actual.trim(), expected.trim());
-    };
+#[salsa::db]
+pub trait InputDb: salsa::Database {
+    fn as_input_db(&self) -> &dyn InputDb;
 }
 
+#[doc(hidden)]
+pub use paste::paste;
+
 #[macro_export]
-#[cfg(not(target_arch = "wasm32"))]
-macro_rules! assert_snapshot_wasm {
-    ($path:expr, $actual:expr) => {};
+macro_rules! impl_db_traits {
+    ($db_type:ty, $($trait_name:ident),+ $(,)?) => {
+        #[salsa::db]
+        impl salsa::Database for $db_type {
+            fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+        }
+
+        $(
+            $crate::paste! {
+                #[salsa::db]
+                impl $trait_name for $db_type {
+                    fn [<as_ $trait_name:snake>](&self) -> &dyn $trait_name {
+                        self
+                    }
+                }
+            }
+        )+
+    };
 }

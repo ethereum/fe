@@ -1,3 +1,0 @@
-contract Foo {
-    pub fn bar(ctx: u256) {}
-}

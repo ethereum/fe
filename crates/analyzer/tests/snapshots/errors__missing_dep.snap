@@ -1,6 +1,0 @@
----
-source: crates/analyzer/tests/errors.rs
-expression: error_string_ingot(&path)
----
-Failed to load manifest content from compile_errors/doesnt_exist/fe.toml.
-could not load static file compile_errors/doesnt_exist/fe.toml

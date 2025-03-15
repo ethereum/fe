@@ -1,7 +1,0 @@
-struct Tx {
-  pub data: Array<u8, 320>
-}
-
-contract Foo {
-  pub fn bar(mut tx: Tx) {}
-}

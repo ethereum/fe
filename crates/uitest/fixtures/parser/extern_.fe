@@ -1,0 +1,7 @@
+extern {
+    pub unsafe fn Foo(x: *usize)
+    
+    struct Foo {
+
+    pub unsafe fn foo()
+}

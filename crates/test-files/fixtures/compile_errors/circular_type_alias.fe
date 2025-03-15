@@ -1,5 +1,0 @@
-type A = Map<address, B>
-
-type B = Map<address, C>
-
-type C = Map<address, A>

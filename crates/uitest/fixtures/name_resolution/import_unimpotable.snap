@@ -1,0 +1,31 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/import_unimpotable.fe
+---
+error[2-0003]: `T` is not visible
+  ┌─ import_unimpotable.fe:2:8
+  │
+2 │ use E::T
+  │        ^ `T` is not visible
+  ·
+9 │ enum E<T> {
+  │        - `T` is defined here
+
+error[2-0005]: `S` can't be used as a middle segment of a path
+  ┌─ import_unimpotable.fe:1:5
+  │
+1 │ use S::{t, T}
+  │     ^ `S` can't be used as a middle segment of a path
+  ·
+5 │ struct S<T> {
+  │        - `S` is defined here
+
+error[2-0005]: `S` can't be used as a middle segment of a path
+  ┌─ import_unimpotable.fe:1:5
+  │
+1 │ use S::{t, T}
+  │     ^ `S` can't be used as a middle segment of a path
+  ·
+5 │ struct S<T> {
+  │        - `S` is defined here

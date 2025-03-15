@@ -1,0 +1,24 @@
+---
+source: crates/uitest/src/lib.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/import_missing.fe
+---
+error[2-0002]: `Bar` is not found
+  ┌─ import_missing.fe:1:10
+  │
+1 │ use foo::Bar
+  │          ^^^ `Bar` is not found
+
+error[2-0002]: `Bar` is not found
+  ┌─ import_missing.fe:3:16
+  │
+3 │ use foo::{Foo, Bar}
+  │                ^^^ `Bar` is not found
+
+error[2-0002]: `bar` is not found
+  ┌─ import_missing.fe:5:10
+  │
+5 │ use foo::bar::Foo
+  │          ^^^ `bar` is not found
+
+

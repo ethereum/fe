@@ -1,6 +1,0 @@
-pub const ERROR_INSUFFICIENT_FUNDS_TO_SEND_VALUE: u256 = 0x100
-pub const ERROR_FAILED_SEND_VALUE: u256 = 0x101
-
-pub struct Error {
-    pub code: u256
-}

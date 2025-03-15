@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn bar(self) -> u256 {
-        return foo()
-    }
-
-    pub fn foo() -> u256 {
-        return 42
-    }
-}

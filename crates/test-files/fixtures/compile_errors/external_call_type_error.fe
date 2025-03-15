@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn bar(self, _ a: u256) {}
-}
-
-contract FooProxy {
-    pub fn baz() {
-        Foo(address(0)).bar("hello world")
-    }
-}

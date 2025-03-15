@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/let_binding.fe
+---
+error[8-0000]: type mismatch
+  ┌─ let_binding.fe:2:18
+  │
+2 │     let s: i32 = "foo"
+  │                  ^^^^^ expected `i32`, but `String<3>` is given
+
+

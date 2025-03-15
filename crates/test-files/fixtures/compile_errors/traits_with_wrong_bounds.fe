@@ -1,5 +1,0 @@
-trait Some {}
-
-struct Bar {
-    pub fn no_bounds<T>(val: T) {}
-}

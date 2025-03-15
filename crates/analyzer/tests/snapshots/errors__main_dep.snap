@@ -1,6 +1,0 @@
----
-source: crates/analyzer/tests/errors.rs
-expression: error_string_ingot(&path)
----
-Unable to resolve my_main at compile_errors/my_main due to the following errors.
-my_main is not a library

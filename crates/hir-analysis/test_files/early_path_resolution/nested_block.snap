@@ -1,0 +1,52 @@
+---
+source: crates/hir-analysis/tests/early_path_resolution.rs
+expression: res
+input_file: crates/hir-analysis/test_files/early_path_resolution/nested_block.fe
+---
+note: 
+  ┌─ nested_block.fe:6:16
+  │
+6 │         let f: Foo 
+  │                ^^^ nested_block::foo::{fn_body}::{block0}::{block1}::Foo
+
+note: 
+  ┌─ nested_block.fe:9:12
+  │
+9 │     let f: Foo
+  │            ^^^ nested_block::foo::{fn_body}::{block0}::Foo
+
+note: 
+   ┌─ nested_block.fe:15:12
+   │
+15 │     let x: i32 = {
+   │            ^^^ i32
+
+note: 
+   ┌─ nested_block.fe:19:18
+   │
+19 │             impl Bar {
+   │                  ^^^ nested_block::bar::{fn_body}::{block0}::{block1}::{block2}::Bar
+
+note: 
+   ┌─ nested_block.fe:20:29
+   │
+20 │                 fn len() -> u256 {
+   │                             ^^^^ u256
+
+note: 
+   ┌─ nested_block.fe:24:22
+   │
+24 │             let bar: Bar = Bar {}
+   │                      ^^^ nested_block::bar::{fn_body}::{block0}::{block1}::{block2}::Bar
+
+note: 
+   ┌─ nested_block.fe:28:18
+   │
+28 │         let bar: Bar = Bar {}
+   │                  ^^^ nested_block::bar::{fn_body}::{block0}::{block1}::Bar
+
+note: 
+   ┌─ nested_block.fe:32:14
+   │
+32 │     let bar: Bar = Bar {}
+   │              ^^^ nested_block::bar::{fn_body}::{block0}::Bar

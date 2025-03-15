@@ -1,0 +1,6 @@
+
+struct S
+
+struct T<U>
+
+struct Foo {}

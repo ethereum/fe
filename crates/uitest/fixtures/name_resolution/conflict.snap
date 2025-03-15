@@ -1,0 +1,28 @@
+---
+source: crates/uitest/src/lib.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/conflict.fe
+---
+error[2-0001]: `Foo` conflicts with other definitions
+  ┌─ conflict.fe:2:8
+  │
+2 │ pub fn Foo() {}
+  │        ^^^ `Foo` is defined here
+3 │ pub const Foo: i32 = 1
+  │           --- `Foo` is redefined here
+
+error[2-0001]: `Foo` conflicts with other definitions
+   ┌─ conflict.fe:6:10
+   │
+ 6 │ pub enum Foo {}
+   │          ^^^ `Foo` is defined here
+ 7 │ pub struct Foo {}
+   │            --- `Foo` is redefined here
+ 8 │ mod Foo {}
+   │     --- `Foo` is redefined here
+ 9 │ enum Foo {}
+   │      --- `Foo` is redefined here
+10 │ type Foo = i32
+   │      --- `Foo` is redefined here
+
+

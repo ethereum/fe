@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: crates/uitest/fixtures/name_resolution/import_ambiguous_builtin.fe
+---
+error[2-0004]: `i32` is ambiguous
+  ┌─ import_ambiguous_builtin.fe:3:5
+  │
+3 │ use i32::*
+  │     ^^^ `i32` is ambiguous
+
+

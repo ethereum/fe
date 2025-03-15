@@ -1,0 +1,13 @@
+pub enum Result<E, T> {
+    Ok(T),
+    Err(E),
+}
+
+impl<E> Result<E>
+{
+    fn foo<E>(self: Self<E>) {}
+
+    fn bar<T>(self: Self<T>) {
+        fn baz<T>(t: T) {}
+    }
+}

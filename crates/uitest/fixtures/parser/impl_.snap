@@ -1,0 +1,12 @@
+---
+source: crates/uitest/tests/parser.rs
+expression: diags
+input_file: crates/uitest/fixtures/parser/impl_.fe
+---
+error[1-0001]: expected type
+  ┌─ impl_.fe:1:12
+  │
+1 │ impl Foo<T, 
+  │            ^ expected type
+
+

@@ -1,0 +1,39 @@
+pub struct Foo<T> {
+    t: T
+}
+
+impl<T> Foo<T> {
+    fn new() -> Self {
+        todo()
+    }
+}
+
+trait Trait1 {
+    fn foo(self) -> u32
+}
+
+trait Trait2 {
+    fn foo(self) -> i32
+}
+
+
+impl Trait1 for Foo<u32> {
+    fn foo(self) -> u32 {
+        self.t
+    }
+}
+
+impl Trait2 for Foo<i32> {
+    fn foo(self) -> i32 {
+        self.t
+    }
+}
+
+extern {
+    fn todo() -> !
+}
+
+fn run() {
+    let f = Foo::new()
+    let y = f.foo()
+}

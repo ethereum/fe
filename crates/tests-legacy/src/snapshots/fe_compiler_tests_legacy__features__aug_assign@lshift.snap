@@ -1,6 +1,0 @@
----
-source: crates/tests-legacy/src/features.rs
-expression: "format!(\"{}\", harness.gas_reporter)"
----
-lshift([Uint(1), Uint(7)]) used 431 gas
-

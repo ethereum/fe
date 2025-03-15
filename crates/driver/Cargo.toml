@@ -1,26 +1,21 @@
 [package]
 name = "fe-driver"
 version = "0.26.0"
-authors = ["The Fe Developers <snakecharmers@ethereum.org>"]
 edition = "2021"
-license = "GPL-3.0-or-later"
+license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
+description = "Provides Fe driver"
 
-[features]
-# Includes the solidity compiler for Yul -> bytecode compilation.
-solc-backend = ["fe-yulc"]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = "1.0"
-fe-abi = {path = "../abi", version = "^0.26.0"}
-fe-analyzer = {path = "../analyzer", version = "^0.26.0"}
-fe-common = {path = "../common", version = "^0.26.0"}
-fe-mir = {path = "../mir", version = "^0.26.0"}
-fe-codegen = {path = "../codegen", version = "^0.26.0"}
-fe-parser = {path = "../parser", version = "^0.26.0"}
-fe-yulc = {path = "../yulc", version = "^0.26.0", features = ["solc-backend"], optional = true}
-fe-test-runner = {path = "../test-runner", version = "^0.26.0"}
-indexmap = "1.6.2"
-vfs = "0.5.1"
-smol_str = "0.1.21"
-toml = "0.5.8"
+camino.workspace = true
+clap.workspace = true
+codespan-reporting.workspace = true
+salsa.workspace = true
+include_dir = "0.7"
+
+common.workspace = true
+hir.workspace = true
+hir-analysis.workspace = true
+resolver.workspace = true

@@ -1,5 +1,0 @@
-contract foo {
-    pub fn bar(self) {
-        let s: String<1> = "Fe"
-    }
-}

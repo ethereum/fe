@@ -1,0 +1,28 @@
+---
+source: crates/uitest/tests/ty.rs
+expression: diags
+input_file: fixtures/ty/def/kind_mismatch.fe
+---
+error[3-0001]: invalid type argument kind
+  ┌─ kind_mismatch.fe:7:10
+  │
+7 │     foo: Foo<i32, Foo>,
+  │          ^^^^^^^^^^^^^ expected `*` kind, but `Foo` has `(* -> (* -> *))` kind
+
+error[3-0001]: invalid type argument kind
+  ┌─ kind_mismatch.fe:8:10
+  │
+8 │     bar: Foo<Foo, i32>,
+  │          ^^^^^^^^^^^^^ expected `*` kind, but `Foo` has `(* -> (* -> *))` kind
+
+error[3-0016]: too many generic args; expected 2, given 3
+  ┌─ kind_mismatch.fe:9:10
+  │
+9 │     baz: Foo<i32, u32, u256>,
+  │          ^^^^^^^^^^^^^^^^^^^ expected 2 arguments, but 3 were given
+
+error[3-0016]: too many generic args; expected 2, given 3
+   ┌─ kind_mismatch.fe:10:10
+   │
+10 │     boz: Foo<i32, Foo<i32, u32, u256>>, // TODO: wrong span is highlighted
+   │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 arguments, but 3 were given

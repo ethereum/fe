@@ -1,9 +1,0 @@
-contract Barn {
-    pub fn cow() {}
-}
-
-contract Foo {
-    pub fn bar(ctx: Context) {
-        let created_barn: Barn = Barn.create(address(26), 0)
-    }
-}

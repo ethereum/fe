@@ -1,0 +1,30 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/pat/tuple_pat.fe
+---
+error[8-0000]: type mismatch
+  ┌─ tuple_pat.fe:2:9
+  │
+2 │     let (x, y, z): (i32, u32)
+  │         ^^^^^^^^^ expected `(i32, u32)`, but `(_, _, _)` is given
+
+error[8-0000]: type mismatch
+  ┌─ tuple_pat.fe:3:9
+  │
+3 │     let (.., x, y, z): (i32, u32)
+  │         ^^^^^^^^^^^^^ expected `(i32, u32)`, but `(_, _, _)` is given
+
+error[8-0000]: type mismatch
+  ┌─ tuple_pat.fe:4:9
+  │
+4 │     let (x, y, .., z): (i32, u32)
+  │         ^^^^^^^^^^^^^ expected `(i32, u32)`, but `(_, _, _)` is given
+
+error[8-0000]: type mismatch
+  ┌─ tuple_pat.fe:5:9
+  │
+5 │     let (x, y, z, ..): (i32, u32)
+  │         ^^^^^^^^^^^^^ expected `(i32, u32)`, but `(_, _, _)` is given
+
+

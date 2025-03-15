@@ -1,0 +1,12 @@
+---
+source: crates/parser/tests/syntax_node.rs
+expression: snapshot
+---
+Root@0..11
+  PathPat@0..11
+    Path@0..11
+      PathSegment@0..6
+        Ident@0..6 "MyEnum"
+      Colon2@6..8 "::"
+      PathSegment@8..11
+        Ident@8..11 "Foo"

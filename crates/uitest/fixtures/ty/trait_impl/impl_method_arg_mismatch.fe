@@ -1,0 +1,27 @@
+pub trait Foo {
+    fn foo<T, U>(self, t: T, u: U)
+}
+
+impl Foo for i32 {
+    fn foo<T, U>(self, t: T, u: i32) {}
+}
+
+impl Foo for u32 {
+    fn foo<T, U>(self, t: (T, U)) {}
+}
+
+pub trait HktTrait
+where
+    Self: * -> *
+{
+    fn foo<T>(x: Self<i32>)
+}
+
+pub enum Option<T> {
+    Some(T),
+    None,
+}
+
+impl HktTrait for Option {
+    fn foo<T>(x: Self<T>) {}
+}

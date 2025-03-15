@@ -1,0 +1,21 @@
+pub struct S<T> {
+    x: i32,
+    y: T,
+}
+
+pub enum E<T> {
+    Variant{x: i32, y: T},
+}
+
+pub enum Unit {
+    U
+}
+
+pub fn foo() {
+    let S {x, y}: S<u32>
+    let S {x, y: Unit::U}
+    let S {y: Unit::U, x}
+    let E::Variant {x, y}: E<u32>
+    let E::Variant {x, y: Unit::U}
+    let E::Variant {y: Unit::U, x}
+}

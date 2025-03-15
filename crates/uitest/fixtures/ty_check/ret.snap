@@ -1,0 +1,28 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/ret.fe
+---
+error[8-0000]: type mismatch
+   ┌─ ret.fe:15:9
+   │
+15 │         false
+   │         ^^^^^ expected `{integer}`, but `bool` is given
+
+error[8-0013]: returned type mismatch
+  ┌─ ret.fe:2:5
+  │
+1 │ fn foo1() {
+  │    ---- try adding `-> bool`
+2 │     return false
+  │     ^^^^^^^^^^^^ expected `()`, but `bool` is returned
+
+error[8-0013]: returned type mismatch
+  ┌─ ret.fe:6:5
+  │
+5 │ fn foo2() -> i32 {
+  │              --- this function expects `i32` to be returned
+6 │     return false
+  │     ^^^^^^^^^^^^ expected `i32`, but `bool` is returned
+
+

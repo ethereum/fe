@@ -1,0 +1,238 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/ret.fe
+---
+note: 
+   ┌─ ret.fe:7:35
+   │  
+ 7 │   fn foo(b1: bool, b2: bool) -> i32 {
+   │ ╭───────────────────────────────────^
+ 8 │ │     use Tag::*
+ 9 │ │ 
+10 │ │     let tag = if b1 {
+   · │
+36 │ │     }
+37 │ │ }
+   │ ╰─^ i32
+
+note: 
+   ┌─ ret.fe:10:9
+   │
+10 │     let tag = if b1 {
+   │         ^^^ Tag
+
+note: 
+   ┌─ ret.fe:10:15
+   │  
+10 │       let tag = if b1 {
+   │ ╭───────────────^
+11 │ │         return 0
+12 │ │     } else if b2 {
+13 │ │         Tag1
+14 │ │     } else {
+15 │ │         Tag3
+16 │ │     }
+   │ ╰─────^ Tag
+
+note: 
+   ┌─ ret.fe:10:18
+   │
+10 │     let tag = if b1 {
+   │                  ^^ bool
+
+note: 
+   ┌─ ret.fe:10:21
+   │  
+10 │       let tag = if b1 {
+   │ ╭─────────────────────^
+11 │ │         return 0
+12 │ │     } else if b2 {
+   │ ╰─────^ !
+
+note: 
+   ┌─ ret.fe:11:16
+   │
+11 │         return 0
+   │                ^ i32
+
+note: 
+   ┌─ ret.fe:12:12
+   │  
+12 │       } else if b2 {
+   │ ╭────────────^
+13 │ │         Tag1
+14 │ │     } else {
+15 │ │         Tag3
+16 │ │     }
+   │ ╰─────^ Tag
+
+note: 
+   ┌─ ret.fe:12:15
+   │
+12 │     } else if b2 {
+   │               ^^ bool
+
+note: 
+   ┌─ ret.fe:12:18
+   │  
+12 │       } else if b2 {
+   │ ╭──────────────────^
+13 │ │         Tag1
+14 │ │     } else {
+   │ ╰─────^ Tag
+
+note: 
+   ┌─ ret.fe:13:9
+   │
+13 │         Tag1
+   │         ^^^^ Tag
+
+note: 
+   ┌─ ret.fe:14:12
+   │  
+14 │       } else {
+   │ ╭────────────^
+15 │ │         Tag3
+16 │ │     }
+   │ ╰─────^ Tag
+
+note: 
+   ┌─ ret.fe:15:9
+   │
+15 │         Tag3
+   │         ^^^^ Tag
+
+note: 
+   ┌─ ret.fe:18:9
+   │
+18 │     let b = match tag {
+   │         ^ bool
+
+note: 
+   ┌─ ret.fe:18:13
+   │  
+18 │       let b = match tag {
+   │ ╭─────────────^
+19 │ │         Tag1 => {
+20 │ │             true
+21 │ │         }
+   · │
+29 │ │         }
+30 │ │     }
+   │ ╰─────^ bool
+
+note: 
+   ┌─ ret.fe:18:19
+   │
+18 │     let b = match tag {
+   │                   ^^^ Tag
+
+note: 
+   ┌─ ret.fe:19:9
+   │
+19 │         Tag1 => {
+   │         ^^^^ Tag
+
+note: 
+   ┌─ ret.fe:19:17
+   │  
+19 │           Tag1 => {
+   │ ╭─────────────────^
+20 │ │             true
+21 │ │         }
+   │ ╰─────────^ bool
+
+note: 
+   ┌─ ret.fe:20:13
+   │
+20 │             true
+   │             ^^^^ bool
+
+note: 
+   ┌─ ret.fe:23:9
+   │
+23 │         Tag2 => {
+   │         ^^^^ Tag
+
+note: 
+   ┌─ ret.fe:23:17
+   │  
+23 │           Tag2 => {
+   │ ╭─────────────────^
+24 │ │             return 3
+25 │ │         }
+   │ ╰─────────^ bool
+
+note: 
+   ┌─ ret.fe:24:20
+   │
+24 │             return 3
+   │                    ^ i32
+
+note: 
+   ┌─ ret.fe:27:9
+   │
+27 │         Tag3 => {
+   │         ^^^^ Tag
+
+note: 
+   ┌─ ret.fe:27:17
+   │  
+27 │           Tag3 => {
+   │ ╭─────────────────^
+28 │ │             false
+29 │ │         }
+   │ ╰─────────^ bool
+
+note: 
+   ┌─ ret.fe:28:13
+   │
+28 │             false
+   │             ^^^^^ bool
+
+note: 
+   ┌─ ret.fe:32:5
+   │  
+32 │ ╭     if b {
+33 │ │         1
+34 │ │     } else {
+35 │ │         2
+36 │ │     }
+   │ ╰─────^ i32
+
+note: 
+   ┌─ ret.fe:32:8
+   │
+32 │     if b {
+   │        ^ bool
+
+note: 
+   ┌─ ret.fe:32:10
+   │  
+32 │       if b {
+   │ ╭──────────^
+33 │ │         1
+34 │ │     } else {
+   │ ╰─────^ i32
+
+note: 
+   ┌─ ret.fe:33:9
+   │
+33 │         1
+   │         ^ i32
+
+note: 
+   ┌─ ret.fe:34:12
+   │  
+34 │       } else {
+   │ ╭────────────^
+35 │ │         2
+36 │ │     }
+   │ ╰─────^ i32
+
+note: 
+   ┌─ ret.fe:35:9
+   │
+35 │         2
+   │         ^ i32

@@ -1,0 +1,111 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/tuple.fe
+---
+note: 
+   ┌─ tuple.fe:6:10
+   │  
+ 6 │   fn foo() {
+   │ ╭──────────^
+ 7 │ │     let f = Foo {x: 1, y: 2}
+ 8 │ │     let tup_1 = (f, true, false)
+ 9 │ │     let tup_2 = (("Foo", true), tup_1, "BAZ")
+10 │ │ }
+   │ ╰─^ ()
+
+note: 
+  ┌─ tuple.fe:7:9
+  │
+7 │     let f = Foo {x: 1, y: 2}
+  │         ^ Foo
+
+note: 
+  ┌─ tuple.fe:7:13
+  │
+7 │     let f = Foo {x: 1, y: 2}
+  │             ^^^^^^^^^^^^^^^^ Foo
+
+note: 
+  ┌─ tuple.fe:7:21
+  │
+7 │     let f = Foo {x: 1, y: 2}
+  │                     ^ i32
+
+note: 
+  ┌─ tuple.fe:7:27
+  │
+7 │     let f = Foo {x: 1, y: 2}
+  │                           ^ u32
+
+note: 
+  ┌─ tuple.fe:8:9
+  │
+8 │     let tup_1 = (f, true, false)
+  │         ^^^^^ (Foo, bool, bool)
+
+note: 
+  ┌─ tuple.fe:8:17
+  │
+8 │     let tup_1 = (f, true, false)
+  │                 ^^^^^^^^^^^^^^^^ (Foo, bool, bool)
+
+note: 
+  ┌─ tuple.fe:8:18
+  │
+8 │     let tup_1 = (f, true, false)
+  │                  ^ Foo
+
+note: 
+  ┌─ tuple.fe:8:21
+  │
+8 │     let tup_1 = (f, true, false)
+  │                     ^^^^ bool
+
+note: 
+  ┌─ tuple.fe:8:27
+  │
+8 │     let tup_1 = (f, true, false)
+  │                           ^^^^^ bool
+
+note: 
+  ┌─ tuple.fe:9:9
+  │
+9 │     let tup_2 = (("Foo", true), tup_1, "BAZ")
+  │         ^^^^^ ((String<3>, bool), (Foo, bool, bool), String<3>)
+
+note: 
+  ┌─ tuple.fe:9:17
+  │
+9 │     let tup_2 = (("Foo", true), tup_1, "BAZ")
+  │                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ((String<3>, bool), (Foo, bool, bool), String<3>)
+
+note: 
+  ┌─ tuple.fe:9:18
+  │
+9 │     let tup_2 = (("Foo", true), tup_1, "BAZ")
+  │                  ^^^^^^^^^^^^^ (String<3>, bool)
+
+note: 
+  ┌─ tuple.fe:9:19
+  │
+9 │     let tup_2 = (("Foo", true), tup_1, "BAZ")
+  │                   ^^^^^ String<3>
+
+note: 
+  ┌─ tuple.fe:9:26
+  │
+9 │     let tup_2 = (("Foo", true), tup_1, "BAZ")
+  │                          ^^^^ bool
+
+note: 
+  ┌─ tuple.fe:9:33
+  │
+9 │     let tup_2 = (("Foo", true), tup_1, "BAZ")
+  │                                 ^^^^^ (Foo, bool, bool)
+
+note: 
+  ┌─ tuple.fe:9:40
+  │
+9 │     let tup_2 = (("Foo", true), tup_1, "BAZ")
+  │                                        ^^^^^ String<3>

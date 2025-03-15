@@ -1,4 +1,0 @@
-pub struct Baz {
-    pub my_bool: bool
-    pub my_u256: u256
-}

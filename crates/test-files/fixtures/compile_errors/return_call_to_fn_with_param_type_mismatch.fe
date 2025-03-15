@@ -1,9 +1,0 @@
-contract Foo {
-    pub fn foo(_ val: bool) -> u256 {
-        return 42
-    }
-
-    pub fn bar() -> u256 {
-        return foo(100)
-    }
-}

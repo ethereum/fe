@@ -1,0 +1,142 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/binary.fe
+---
+note: 
+  ┌─ binary.fe:1:24
+  │  
+1 │   fn foo(x: u32, y: u32) {
+  │ ╭────────────────────────^
+2 │ │     x + x
+3 │ │     true && false
+4 │ │     (x < 1) && (y > 10) || (x == y)
+5 │ │     let z = 1 + x
+6 │ │ }
+  │ ╰─^ ()
+
+note: 
+  ┌─ binary.fe:2:5
+  │
+2 │     x + x
+  │     ^ u32
+
+note: 
+  ┌─ binary.fe:2:5
+  │
+2 │     x + x
+  │     ^^^^^ u32
+
+note: 
+  ┌─ binary.fe:2:9
+  │
+2 │     x + x
+  │         ^ u32
+
+note: 
+  ┌─ binary.fe:3:5
+  │
+3 │     true && false
+  │     ^^^^ bool
+
+note: 
+  ┌─ binary.fe:3:5
+  │
+3 │     true && false
+  │     ^^^^^^^^^^^^^ bool
+
+note: 
+  ┌─ binary.fe:3:13
+  │
+3 │     true && false
+  │             ^^^^^ bool
+
+note: 
+  ┌─ binary.fe:4:5
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │     ^^^^^^^^^^^^^^^^^^^ bool
+
+note: 
+  ┌─ binary.fe:4:5
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bool
+
+note: 
+  ┌─ binary.fe:4:6
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │      ^ u32
+
+note: 
+  ┌─ binary.fe:4:6
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │      ^^^^^ bool
+
+note: 
+  ┌─ binary.fe:4:10
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │          ^ u32
+
+note: 
+  ┌─ binary.fe:4:17
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │                 ^ u32
+
+note: 
+  ┌─ binary.fe:4:17
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │                 ^^^^^^ bool
+
+note: 
+  ┌─ binary.fe:4:21
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │                     ^^ u32
+
+note: 
+  ┌─ binary.fe:4:29
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │                             ^ u32
+
+note: 
+  ┌─ binary.fe:4:29
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │                             ^^^^^^ bool
+
+note: 
+  ┌─ binary.fe:4:34
+  │
+4 │     (x < 1) && (y > 10) || (x == y)
+  │                                  ^ u32
+
+note: 
+  ┌─ binary.fe:5:9
+  │
+5 │     let z = 1 + x
+  │         ^ u32
+
+note: 
+  ┌─ binary.fe:5:13
+  │
+5 │     let z = 1 + x
+  │             ^ u32
+
+note: 
+  ┌─ binary.fe:5:13
+  │
+5 │     let z = 1 + x
+  │             ^^^^^ u32
+
+note: 
+  ┌─ binary.fe:5:17
+  │
+5 │     let z = 1 + x
+  │                 ^ u32

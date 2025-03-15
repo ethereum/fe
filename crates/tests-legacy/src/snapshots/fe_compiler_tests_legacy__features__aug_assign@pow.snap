@@ -1,6 +1,0 @@
----
-source: crates/tests-legacy/src/features.rs
-expression: "format!(\"{}\", harness.gas_reporter)"
----
-pow([Uint(3), Uint(5)]) used 616 gas
-

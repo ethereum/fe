@@ -1,0 +1,162 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: crates/hir-analysis/test_files/ty_check/field_access.fe
+---
+note: 
+  ┌─ field_access.fe:1:31
+  │  
+1 │   fn foo1(x: (i32, u32)) -> i32 {
+  │ ╭───────────────────────────────^
+2 │ │     let x: (i32, u32)
+3 │ │     x.0
+4 │ │ }
+  │ ╰─^ i32
+
+note: 
+  ┌─ field_access.fe:2:9
+  │
+2 │     let x: (i32, u32)
+  │         ^ (i32, u32)
+
+note: 
+  ┌─ field_access.fe:3:5
+  │
+3 │     x.0
+  │     ^ (i32, u32)
+
+note: 
+  ┌─ field_access.fe:3:5
+  │
+3 │     x.0
+  │     ^^^ i32
+
+note: 
+   ┌─ field_access.fe:6:36
+   │  
+ 6 │   fn swap<T, U>(x: (T, U)) -> (U, T) {
+   │ ╭────────────────────────────────────^
+ 7 │ │     let elem0 = x.0
+ 8 │ │     let elem1 = x.1
+ 9 │ │     (elem1, elem0)
+10 │ │ }
+   │ ╰─^ (U, T)
+
+note: 
+  ┌─ field_access.fe:7:9
+  │
+7 │     let elem0 = x.0
+  │         ^^^^^ T
+
+note: 
+  ┌─ field_access.fe:7:17
+  │
+7 │     let elem0 = x.0
+  │                 ^ (T, U)
+
+note: 
+  ┌─ field_access.fe:7:17
+  │
+7 │     let elem0 = x.0
+  │                 ^^^ T
+
+note: 
+  ┌─ field_access.fe:8:9
+  │
+8 │     let elem1 = x.1
+  │         ^^^^^ U
+
+note: 
+  ┌─ field_access.fe:8:17
+  │
+8 │     let elem1 = x.1
+  │                 ^ (T, U)
+
+note: 
+  ┌─ field_access.fe:8:17
+  │
+8 │     let elem1 = x.1
+  │                 ^^^ U
+
+note: 
+  ┌─ field_access.fe:9:5
+  │
+9 │     (elem1, elem0)
+  │     ^^^^^^^^^^^^^^ (U, T)
+
+note: 
+  ┌─ field_access.fe:9:6
+  │
+9 │     (elem1, elem0)
+  │      ^^^^^ U
+
+note: 
+  ┌─ field_access.fe:9:13
+  │
+9 │     (elem1, elem0)
+  │             ^^^^^ T
+
+note: 
+   ┌─ field_access.fe:17:46
+   │  
+17 │   fn swap2<T>(bar: Bar<T, i32>) -> Bar<i32, T> {
+   │ ╭──────────────────────────────────────────────^
+18 │ │     let u = bar.t
+19 │ │     let t = bar.u
+20 │ │     Bar {t, u}
+21 │ │ }
+   │ ╰─^ Bar<i32, T>
+
+note: 
+   ┌─ field_access.fe:18:9
+   │
+18 │     let u = bar.t
+   │         ^ T
+
+note: 
+   ┌─ field_access.fe:18:13
+   │
+18 │     let u = bar.t
+   │             ^^^ Bar<T, i32>
+
+note: 
+   ┌─ field_access.fe:18:13
+   │
+18 │     let u = bar.t
+   │             ^^^^^ T
+
+note: 
+   ┌─ field_access.fe:19:9
+   │
+19 │     let t = bar.u
+   │         ^ i32
+
+note: 
+   ┌─ field_access.fe:19:13
+   │
+19 │     let t = bar.u
+   │             ^^^ Bar<T, i32>
+
+note: 
+   ┌─ field_access.fe:19:13
+   │
+19 │     let t = bar.u
+   │             ^^^^^ i32
+
+note: 
+   ┌─ field_access.fe:20:5
+   │
+20 │     Bar {t, u}
+   │     ^^^^^^^^^^ Bar<i32, T>
+
+note: 
+   ┌─ field_access.fe:20:10
+   │
+20 │     Bar {t, u}
+   │          ^ i32
+
+note: 
+   ┌─ field_access.fe:20:13
+   │
+20 │     Bar {t, u}
+   │             ^ T

@@ -1,0 +1,7 @@
+pub fn lit_str1() -> String<1> {
+    "a"
+}
+
+pub fn lit_str2() -> String<10> {
+    "abc"
+}

@@ -1,0 +1,18 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: crates/uitest/fixtures/ty_check/loop_control.fe
+---
+error[8-0019]: `continue` is not allowed outside of a loop
+  ┌─ loop_control.fe:2:5
+  │
+2 │     continue
+  │     ^^^^^^^^ `continue` is not allowed here
+
+error[8-0019]: `break` is not allowed outside of a loop
+  ┌─ loop_control.fe:3:5
+  │
+3 │     break
+  │     ^^^^^ `break` is not allowed here
+
+

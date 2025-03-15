@@ -1,8 +1,0 @@
-struct MyStruct {
-    foo: u8
-    foo: u8
-}
-
-contract Foo {
-    bar: u8
-}
