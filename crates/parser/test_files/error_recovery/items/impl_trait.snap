@@ -1,7 +1,7 @@
 ---
 source: crates/parser/tests/error_recovery.rs
 expression: node
-input_file: crates/parser/test_files/error_recovery/items/impl_trait.fe
+input_file: test_files/error_recovery/items/impl_trait.fe
 ---
 Root@0..90
   ItemList@0..90
@@ -63,7 +63,7 @@ Root@0..90
                     PathSegment@32..33
                       Ident@32..33 "X"
         WhiteSpace@33..34 " "
-        ImplTraitItemList@34..36
+        TraitItemList@34..36
           LBrace@34..35 "{"
           RBrace@35..36 "}"
     Newline@36..38 "\n\n"
@@ -121,7 +121,7 @@ Root@0..90
                     PathSegment@67..68
                       Ident@67..68 "X"
         WhiteSpace@68..69 " "
-        ImplTraitItemList@69..71
+        TraitItemList@69..71
           LBrace@69..70 "{"
           RBrace@70..71 "}"
     Newline@71..73 "\n\n"
@@ -144,6 +144,6 @@ Root@0..90
             PathSegment@86..87
               Ident@86..87 "F"
         WhiteSpace@87..88 " "
-        ImplTraitItemList@88..90
+        TraitItemList@88..90
           LBrace@88..89 "{"
           RBrace@89..90 "}"

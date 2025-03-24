@@ -290,7 +290,10 @@ impl<'db> Trait<'db> {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Func::lower_ast(ctxt, impl_item, false);
+                match impl_item.kind() {
+                    ast::TraitItemKind::Func(func) => Func::lower_ast(ctxt, func, false),
+                    ast::TraitItemKind::Type(_) => todo!(), // xxx
+                };
             }
         }
 
@@ -325,7 +328,10 @@ impl<'db> ImplTrait<'db> {
 
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
-                Func::lower_ast(ctxt, impl_item, false);
+                match impl_item.kind() {
+                    ast::TraitItemKind::Func(func) => Func::lower_ast(ctxt, func, false),
+                    ast::TraitItemKind::Type(_) => todo!(), // xxx
+                };
             }
         }
 

@@ -1202,18 +1202,6 @@ pub enum VariantKind<'db> {
     Record(FieldDefListId<'db>),
 }
 
-// xxx dead code {
-#[salsa::interned]
-#[derive(Debug)]
-pub struct ImplItemListId<'db> {
-    #[return_ref]
-    pub items: Vec<Func<'db>>,
-}
-pub type TraitItemListId<'db> = ImplItemListId<'db>;
-pub type ImplTraitItemListId<'db> = ImplItemListId<'db>;
-pub type ExternItemListId<'db> = ImplItemListId<'db>;
-// } xxx dead code
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Visibility {
     Public,
