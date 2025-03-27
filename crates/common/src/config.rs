@@ -55,7 +55,6 @@ impl Config {
             .get("dependencies")
             .and_then(|value| value.as_table())
         {
-            diagnostics.push(ConfigDiagnostic::DependenciesNotYetSupported);
             for (alias, value) in table {
                 match value {
                     Value::String(path) => {
@@ -64,15 +63,15 @@ impl Config {
                     Value::Table(table) => {
                         let path = table.get("path").and_then(|value| value.as_str());
                         if let Some(path) = path {
-                            let mut parameters = DependencyParameters::default();
+                            let mut arguments = DependencyArguments::default();
                             if let Some(name) = table.get("name").and_then(|value| value.as_str()) {
-                                parameters.name = Some(SmolStr::new(name));
+                                arguments.name = Some(SmolStr::new(name));
                             }
                             if let Some(version) =
                                 table.get("version").and_then(|value| value.as_str())
                             {
                                 if let Ok(version) = version.parse() {
-                                    parameters.version = Some(version);
+                                    arguments.version = Some(version);
                                 } else {
                                     diagnostics
                                         .push(ConfigDiagnostic::InvalidVersion(version.into()));
@@ -81,7 +80,7 @@ impl Config {
                             dependencies.push(Dependency::path_with_arguments(
                                 alias.into(),
                                 Utf8PathBuf::from(path),
-                                parameters,
+                                arguments,
                             ));
                         } else {
                             diagnostics.push(ConfigDiagnostic::MissingDependencyPath {
@@ -139,7 +138,7 @@ pub enum DependencyDescription {
     Path(Utf8PathBuf),
     PathWithParameters {
         path: Utf8PathBuf,
-        parameters: DependencyParameters,
+        parameters: DependencyArguments,
     },
 }
 
@@ -160,7 +159,7 @@ impl Dependency {
     pub fn path_with_arguments(
         alias: SmolStr,
         path: Utf8PathBuf,
-        parameters: DependencyParameters,
+        parameters: DependencyArguments,
     ) -> Self {
         Self {
             alias,
@@ -172,7 +171,7 @@ impl Dependency {
         match &self.description {
             DependencyDescription::Path(path) => BasedDependency {
                 alias: self.alias.clone(),
-                parameters: DependencyParameters::default(),
+                parameters: DependencyArguments::default(),
                 url: base_url.join_directory(path).unwrap(),
             },
             DependencyDescription::PathWithParameters {
@@ -180,7 +179,7 @@ impl Dependency {
                 parameters: _,
             } => BasedDependency {
                 alias: self.alias.clone(),
-                parameters: DependencyParameters::default(),
+                parameters: DependencyArguments::default(),
                 url: base_url.join_directory(path).unwrap(),
             },
         }
@@ -190,12 +189,12 @@ impl Dependency {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BasedDependency {
     pub alias: SmolStr,
-    pub parameters: DependencyParameters,
+    pub parameters: DependencyArguments,
     pub url: Url,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub struct DependencyParameters {
+pub struct DependencyArguments {
     pub name: Option<SmolStr>,
     pub version: Option<Version>,
 }
@@ -220,9 +219,6 @@ pub enum ConfigDiagnostic {
         found: SmolStr,
         expected: Option<SmolStr>,
     },
-    /// TODO: push diagnostics for fields that should not exist
-    // UnrecognizedField(SmolStr),
-    DependenciesNotYetSupported,
 }
 
 impl Display for ConfigDiagnostic {
@@ -261,7 +257,6 @@ impl Display for ConfigDiagnostic {
                     write!(f, "unexpected field {field}")
                 }
             }
-            Self::DependenciesNotYetSupported => write!(f, "dependencies are not yet supported"),
         }
     }
 }

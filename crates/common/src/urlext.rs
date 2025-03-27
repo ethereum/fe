@@ -70,6 +70,13 @@ impl UrlExt for Url {
     }
 }
 
+pub fn canonical_url(path: &Utf8PathBuf) -> Url {
+    Url::from_directory_path(path.canonicalize_utf8().unwrap().as_str())
+        .unwrap()
+        .directory()
+        .unwrap()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
