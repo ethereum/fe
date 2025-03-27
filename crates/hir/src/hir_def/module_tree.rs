@@ -219,22 +219,24 @@ impl<'db> ModuleTreeBuilder<'db> {
 
     fn set_modules(&mut self) {
         for (_url, file) in self.ingot.files(self.db).iter() {
-            let top_mod = map_file_to_mod_impl(self.db, file);
+            if file.kind(self.db) == Some(IngotFileKind::Source) {
+                let top_mod = map_file_to_mod_impl(self.db, file);
 
-            let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
-            let path = file.path(self.db).as_ref().expect("couldn't get path");
-            // .clone();
-            let path = Utf8Path::new(path);
-            self.path_map.insert(path, module_id);
-            self.mod_map.insert(top_mod, module_id);
+                let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
+                let path = file.path(self.db).as_ref().expect("couldn't get path");
+                // .clone();
+                let path = Utf8Path::new(path);
+                self.path_map.insert(path, module_id);
+                self.mod_map.insert(top_mod, module_id);
+            }
         }
     }
 
     fn build_tree(&mut self) {
-        let root = self
-            .ingot
-            .root_file(self.db)
-            .expect("ingot root file is missing");
+        let root = self.ingot.root_file(self.db).expect(&format!(
+            "ingot root file is missing for {}",
+            self.ingot.base(self.db)
+        ));
 
         for (_url, child) in self.ingot.files(self.db).iter() {
             // Ignore the root file because it has no parent.

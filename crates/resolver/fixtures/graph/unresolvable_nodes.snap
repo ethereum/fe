@@ -1,0 +1,16 @@
+---
+source: crates/resolver/tests/graph.rs
+expression: "format!(\"{:#?}\\n{:#?}\", graph, resolver.take_diagnostics())"
+input_file: fixtures/graph/unresolvable_nodes.toml
+---
+Graph {
+    Ty: "Directed",
+    node_count: 2,
+    edge_count: 1,
+    edges: (0, 1),
+    node weights: {
+        0: "a",
+        1: "b",
+    },
+}
+[]

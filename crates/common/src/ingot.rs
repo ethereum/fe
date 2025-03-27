@@ -1,10 +1,11 @@
+use core::panic;
+
 use camino::Utf8PathBuf;
 use radix_immutable::StringPrefixView;
-use serde::Serialize;
+use smol_str::SmolStr;
 use url::Url;
 
-use crate::config::IngotMetadata;
-// use crate::config::IngotManifest;
+use crate::config::{Config, Dependency, DependencyDescription, IngotMetadata};
 use crate::core::BUILTIN_CORE_BASE_URL;
 use crate::file::{File, Workspace};
 use crate::urlext::UrlExt;
@@ -60,10 +61,7 @@ impl IngotBaseUrl for Url {
 pub struct Ingot<'db> {
     pub base: Url,
     pub standalone_file: Option<File>,
-    pub index: Workspace,
-    pub version: Version,
     pub kind: IngotKind,
-    pub dependencies: Vec<(String, Url)>,
 }
 
 #[derive(Debug)]
@@ -71,7 +69,8 @@ pub enum IngotError {
     RootFileNotFound,
 }
 
-impl Ingot<'_> {
+#[salsa::tracked]
+impl<'db> Ingot<'db> {
     pub fn root_file(&self, db: &dyn InputDb) -> Result<File, IngotError> {
         if let Some(root_file) = self.standalone_file(db) {
             Ok(root_file)
@@ -80,7 +79,7 @@ impl Ingot<'_> {
                 .base(db)
                 .join("src/lib.fe")
                 .expect("failed to join path");
-            self.index(db)
+            db.workspace()
                 .get(db, &path)
                 .ok_or(IngotError::RootFileNotFound)
         }
@@ -89,7 +88,7 @@ impl Ingot<'_> {
     pub fn files(&self, db: &dyn InputDb) -> StringPrefixView<Url, File> {
         if let Some(standalone_file) = self.standalone_file(db) {
             // For standalone ingots, use the standalone file URL as the base
-            self.index(db).items_at_base(
+            db.workspace().items_at_base(
                 db,
                 standalone_file
                     .url(db)
@@ -97,28 +96,88 @@ impl Ingot<'_> {
             )
         } else {
             // For regular ingots, use the ingot base URL
-            self.index(db).items_at_base(db, self.base(db))
+            db.workspace().items_at_base(db, self.base(db))
         }
+    }
+
+    #[salsa::tracked]
+    pub fn config(self, db: &'db dyn InputDb) -> Option<Config> {
+        db.workspace()
+            .containing_ingot_config_file(db, self.base(db))
+            .map(|config_file| Config::from_string(config_file.text(db).clone()))
+    }
+
+    #[salsa::tracked]
+    pub fn version(self, db: &'db dyn InputDb) -> Option<Version> {
+        self.config(db).map(|config| config.ingot.version).flatten()
+    }
+
+    #[salsa::tracked]
+    pub fn dependencies(self, db: &'db dyn InputDb) -> Vec<(SmolStr, Url)> {
+        let base_url = self.base(db);
+        let mut deps = match self.config(db) {
+            Some(config) => config
+                .dependencies
+                .into_iter()
+                .map(|dependency| {
+                    let mut path = match dependency.description {
+                        DependencyDescription::Path(path) => path,
+                        DependencyDescription::PathWithArguments { path, arguments } => path,
+                    };
+                    if !path.ends_with("/") {
+                        path.push("");
+                    }
+                    let url = base_url.join(path.as_str()).unwrap().directory().unwrap();
+                    (dependency.alias, url)
+                })
+                .collect(),
+            None => vec![],
+        };
+
+        if self.kind(db) != IngotKind::Core {
+            deps.push((
+                "core".into(),
+                Url::parse(BUILTIN_CORE_BASE_URL).expect("couldn't parse core ingot URL"),
+            ))
+        }
+        deps
+
+        // // Only include core dependency if not already in a core ingot
+        // let core_dependency = if self.kind(db) != IngotKind::Core {
+        //     vec![Dependency {
+        //         alias: "core".into(),
+        //         description: DependencyDescription {
+        //             url: Url::parse(BUILTIN_CORE_BASE_URL).expect("couldn't parse core ingot URL"),
+        //             arguments: None,
+        //         },
+        //     }]
+        // } else {
+        //     vec![]
+        // };
+        //
+        // match self.config(db) {
+        //     Some(config) => config
+        //         .dependencies
+        //         .into_iter()
+        //         .chain(core_dependency)
+        //         .collect(),
+        //     None => core_dependency,
+        // }
     }
 }
 
 pub trait IngotIndex {
     fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url>;
-    fn containing_ingot_config(self, db: &dyn InputDb, location: Url) -> Option<File>;
+    fn containing_ingot_config_file(self, db: &dyn InputDb, location: Url) -> Option<File>;
     fn containing_ingot<'db>(self, db: &'db dyn InputDb, location: &Url) -> Option<Ingot<'db>>;
-    fn touch_ingot<'db>(
-        self,
-        db: &'db mut dyn InputDb,
-        base_url: &Url,
-        initial_config: IngotMetadata,
-    ) -> Option<Ingot<'db>>;
+    fn touch_ingot<'db>(self, db: &'db mut dyn InputDb, base_url: &Url) -> Option<Ingot<'db>>;
 }
 
 pub type Version = serde_semver::semver::Version;
 #[salsa::tracked]
 impl IngotIndex for Workspace {
     fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url> {
-        self.containing_ingot_config(db, location.clone())
+        self.containing_ingot_config_file(db, location.clone())
             .map(move |config| {
                 config
                     .url(db)
@@ -129,7 +188,7 @@ impl IngotIndex for Workspace {
     }
     /// Recursively search for a local ingot configuration file
     #[salsa::tracked]
-    fn containing_ingot_config(self, db: &dyn InputDb, file: Url) -> Option<File> {
+    fn containing_ingot_config_file(self, db: &dyn InputDb, file: Url) -> Option<File> {
         tracing::debug!(target: "ingot_config", "containing_ingot_config called with file: {}", file);
         let dir = match file.directory() {
             Some(d) => d,
@@ -156,7 +215,7 @@ impl IngotIndex for Workspace {
             tracing::debug!(target: "ingot_config", "Config file NOT found in index: {}. Checking parent.", config_url);
             if let Some(parent_dir_url) = dir.parent() {
                 tracing::debug!(target: "ingot_config", "Recursively calling containing_ingot_config for parent: {}", parent_dir_url);
-                self.containing_ingot_config(db, parent_dir_url)
+                self.containing_ingot_config_file(db, parent_dir_url)
             } else {
                 tracing::debug!(target: "ingot_config", "No parent directory for {}, stopping search.", dir);
                 None
@@ -168,31 +227,17 @@ impl IngotIndex for Workspace {
         containing_ingot_impl(db, self, location.clone())
     }
 
-    fn touch_ingot<'db>(
-        self,
-        db: &'db mut dyn InputDb,
-        base_url: &Url,
-        config: IngotMetadata,
-    ) -> Option<Ingot<'db>> {
+    fn touch_ingot<'db>(self, db: &'db mut dyn InputDb, base_url: &Url) -> Option<Ingot<'db>> {
         let base_dir = base_url
             .directory()
             .expect("Base URL should have a directory");
         let config_file = base_dir
             .join("fe.toml")
             .expect("Config file should be indexed");
-        // Wrap the config in a proper IngotConfig wrapper for serialization
-        let ingot_config = IngotConfig { ingot: config };
-        let config_toml = toml::to_string(&ingot_config).unwrap_or_default();
-        let config = self.touch(db, config_file, Some(config_toml));
+        let config = self.touch(db, config_file, None);
 
         config.containing_ingot(db)
     }
-}
-
-/// A wrapper struct to ensure the config is serialized with an [ingot] table
-#[derive(Serialize)]
-struct IngotConfig {
-    ingot: IngotMetadata,
 }
 
 #[salsa::tracked]
@@ -201,27 +246,18 @@ fn containing_ingot_impl<'db>(
     index: Workspace,
     location: Url,
 ) -> Option<Ingot<'db>> {
-    let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
     let is_core = location.scheme().contains("core");
-    let dependencies = if is_core {
-        vec![]
-    } else {
-        vec![("core".into(), core_url)]
-    };
 
     match index.containing_ingot_base(db, &location) {
         Some(ingot_url) => Some(Ingot::new(
             db,
             ingot_url,
             None,
-            index,
-            Version::new(1, 0, 0),
             if is_core {
                 IngotKind::Core
             } else {
                 IngotKind::Local
             },
-            dependencies,
         )),
         None => {
             // Make a standalone ingot if no base is found
@@ -235,10 +271,7 @@ fn containing_ingot_impl<'db>(
                 db,
                 base,
                 specific_root_file,
-                index,
-                Version::new(0, 0, 0),
                 IngotKind::StandAlone,
-                dependencies,
             ))
         }
     }
@@ -281,12 +314,12 @@ mod tests {
 
         // Test recursive search: lib.fe is in /foo/src/ but config is in /foo/
         // This tests that we correctly search up the directory tree
-        let found_config = index.containing_ingot_config(&db, url_lib);
+        let found_config = index.containing_ingot_config_file(&db, url_lib);
         assert!(found_config.is_some());
         assert_eq!(found_config.and_then(|c| c.url(&db)).unwrap(), url_config);
 
         // Test that standalone file without a config returns None
-        let no_config = index.containing_ingot_config(&db, url_standalone);
+        let no_config = index.containing_ingot_config_file(&db, url_standalone);
         assert!(no_config.is_none());
     }
 }
