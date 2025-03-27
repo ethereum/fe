@@ -9,10 +9,7 @@ use async_lsp::{
 };
 
 use common::InputDb;
-use resolver::{
-    ingot::{source_files::SourceFiles, Ingot as ResolvedIngot, IngotResolver},
-    Resolver,
-};
+use driver::init_ingot;
 use rustc_hash::FxHashSet;
 use url::Url;
 
@@ -65,9 +62,7 @@ async fn discover_and_load_ingots(
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
-    let mut ingot_resolver = IngotResolver::default();
-
-    // Resolve each ingot
+    // Initialize each ingot using the driver's init_ingot function
     for config_path in &config_paths {
         let ingot_dir = config_path.parent().unwrap();
         let ingot_url = Url::from_directory_path(ingot_dir).map_err(|_| {
@@ -77,33 +72,14 @@ async fn discover_and_load_ingots(
             )
         })?;
 
-        match ingot_resolver.resolve(&ingot_url) {
-            Ok(ResolvedIngot::Folder {
-                config,
-                source_files: Some(SourceFiles { files, .. }),
-            }) => {
-                // Touch the config file if it exists
-                if let Some(config) = config {
-                    backend
-                        .db
-                        .workspace()
-                        .touch(&mut backend.db, config.url, Some(config.content));
-                }
+        let diagnostics = init_ingot(&mut backend.db, &ingot_url);
 
-                // Touch all source files
-                for (file_url, content) in files {
-                    backend
-                        .db
-                        .workspace()
-                        .touch(&mut backend.db, file_url, Some(content));
-                }
-            }
-            Ok(_) => {
-                warn!("No source files found in ingot: {:?}", ingot_dir);
-            }
-            Err(e) => {
-                error!("Failed to resolve ingot at {:?}: {:?}", ingot_dir, e);
-            }
+        // Log any diagnostics
+        for diagnostic in diagnostics {
+            warn!(
+                "Ingot initialization diagnostic for {:?}: {}",
+                ingot_dir, diagnostic
+            );
         }
     }
 
@@ -116,36 +92,14 @@ async fn discover_and_load_ingots(
             )
         })?;
 
-        match ingot_resolver.resolve(&root_url) {
-            Ok(ResolvedIngot::Folder {
-                config,
-                source_files: Some(SourceFiles { files, .. }),
-            }) => {
-                if let Some(config) = config {
-                    backend
-                        .db
-                        .workspace()
-                        .touch(&mut backend.db, config.url, Some(config.content));
-                }
-                for (file_url, content) in files {
-                    backend
-                        .db
-                        .workspace()
-                        .touch(&mut backend.db, file_url, Some(content));
-                }
-            }
-            Ok(ResolvedIngot::SingleFile { url, content }) => {
-                backend
-                    .db
-                    .workspace()
-                    .touch(&mut backend.db, url, Some(content));
-            }
-            Ok(_) => {
-                info!("No Fe source files found in workspace root");
-            }
-            Err(e) => {
-                warn!("Workspace root is not a valid ingot: {:?}", e);
-            }
+        let diagnostics = init_ingot(&mut backend.db, &root_url);
+
+        // Log any diagnostics
+        for diagnostic in diagnostics {
+            warn!(
+                "Ingot initialization diagnostic for workspace root: {}",
+                diagnostic
+            );
         }
     }
 
@@ -371,7 +325,6 @@ async fn load_ingot_files(
 ) -> Result<(), ResponseError> {
     info!("Loading ingot files from: {:?}", ingot_dir);
 
-    let mut ingot_resolver = IngotResolver::default();
     let ingot_url = Url::from_directory_path(ingot_dir).map_err(|_| {
         ResponseError::new(
             ErrorCode::INTERNAL_ERROR,
@@ -379,26 +332,27 @@ async fn load_ingot_files(
         )
     })?;
 
-    match ingot_resolver.resolve(&ingot_url) {
-        Ok(ResolvedIngot::Folder {
-            config: _, // Already loaded by the file change handler
-            source_files: Some(SourceFiles { files, .. }),
-        }) => {
-            // Touch all source files
-            for (file_url, content) in files {
-                backend
-                    .db
-                    .workspace()
-                    .touch(&mut backend.db, file_url.clone(), Some(content));
-                let _ = backend.client.emit(NeedsDiagnostics(file_url));
-            }
-        }
-        Ok(_) => {
-            warn!("No source files found in ingot: {:?}", ingot_dir);
-        }
-        Err(e) => {
-            error!("Failed to resolve ingot at {:?}: {:?}", ingot_dir, e);
-        }
+    let diagnostics = init_ingot(&mut backend.db, &ingot_url);
+
+    // Log any diagnostics
+    for diagnostic in diagnostics {
+        warn!(
+            "Ingot initialization diagnostic for {:?}: {}",
+            ingot_dir, diagnostic
+        );
+    }
+
+    // Emit diagnostics for all files that were loaded
+    let all_files: Vec<_> = backend
+        .db
+        .workspace()
+        .all_files(&backend.db)
+        .iter()
+        .map(|(url, _file)| url)
+        .collect();
+
+    for url in all_files {
+        let _ = backend.client.emit(NeedsDiagnostics(url));
     }
 
     Ok(())

@@ -11,13 +11,13 @@ description = "Resolver lib for Fe."
 doctest = false
 
 [dependencies]
-common.workspace = true
-
 camino.workspace = true
-glob.workspace = true
-serde-semver.workspace = true
-toml = "0.8"
-serde = { version = "1", features = ["derive"] }
-smol_str.workspace = true
-tracing.workspace = true
 url.workspace = true
+glob.workspace = true
+petgraph.workspace = true
+tracing.workspace = true
+
+indexmap = "2.9"
+dir-test.workspace = true
+test-utils.workspace = true
+toml = "0.8"

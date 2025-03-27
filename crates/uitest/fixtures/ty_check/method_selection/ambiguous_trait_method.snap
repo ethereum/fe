@@ -1,7 +1,7 @@
 ---
-source: crates/uitest/tests/name_resolution.rs
+source: crates/uitest/tests/ty_check.rs
 expression: diags
-input_file: fixtures/name_resolution/ambiguous_trait_method.fe
+input_file: fixtures/ty_check/method_selection/ambiguous_trait_method.fe
 ---
 error[2-0016]: multiple trait candidates found
    ┌─ ambiguous_trait_method.fe:15:10
@@ -10,5 +10,5 @@ error[2-0016]: multiple trait candidates found
    │          ^^^
    │          │
    │          `foo` is ambiguous
-   │          candidate: `Trait2::foo`
    │          candidate: `Trait1::foo`
+   │          candidate: `Trait2::foo`

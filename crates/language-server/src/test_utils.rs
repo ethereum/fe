@@ -1,10 +1,5 @@
-use common::InputDb;
 #[cfg(test)]
-use driver::DriverDataBase;
-use resolver::{
-    ingot::{source_files::SourceFiles, Ingot as ResolvedIngot, IngotResolver},
-    Resolver,
-};
+use driver::{init_ingot, DriverDataBase};
 use std::path::Path;
 use url::Url;
 
@@ -12,25 +7,22 @@ use url::Url;
 /// This is similar to what happens during initialization or when a new fe.toml is created
 #[cfg(test)]
 pub fn load_ingot_from_directory(db: &mut DriverDataBase, ingot_dir: &Path) {
-    let mut ingot_resolver = IngotResolver::default();
     let ingot_url =
         Url::from_directory_path(ingot_dir).expect("Failed to create URL from directory path");
 
-    match ingot_resolver.resolve(&ingot_url) {
-        Ok(ResolvedIngot::Folder {
-            config,
-            source_files: Some(SourceFiles { files, .. }),
-        }) => {
-            // Touch the config file if it exists
-            if let Some(config) = config {
-                db.workspace().touch(db, config.url, Some(config.content));
-            }
+    let diagnostics = init_ingot(db, &ingot_url);
 
-            // Touch all source files
-            for (file_url, content) in files {
-                db.workspace().touch(db, file_url, Some(content));
+    // In tests, we might want to panic on serious errors
+    for diagnostic in &diagnostics {
+        match diagnostic {
+            driver::IngotInitDiagnostics::MissingFeToml { .. }
+            | driver::IngotInitDiagnostics::InvalidToml { .. } => {
+                panic!("Failed to resolve test ingot at {ingot_dir:?}: {diagnostic}");
+            }
+            _ => {
+                // Log other diagnostics but don't panic
+                eprintln!("Test ingot diagnostic for {ingot_dir:?}: {diagnostic}");
             }
         }
-        _ => panic!("Failed to resolve test ingot at {ingot_dir:?}"),
     }
 }

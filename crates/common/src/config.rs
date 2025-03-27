@@ -5,7 +5,7 @@ use smol_str::SmolStr;
 use toml::Value;
 use url::Url;
 
-use crate::{ingot::Version, urlext::UrlExt};
+use crate::{graph::EdgeWeight, ingot::Version, urlext::UrlExt};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Config {
@@ -55,8 +55,12 @@ impl Config {
             .get("dependencies")
             .and_then(|value| value.as_table())
         {
-            diagnostics.push(ConfigDiagnostic::DependenciesNotYetSupported);
             for (alias, value) in table {
+                // Validate dependency alias
+                if !is_valid_name(alias) {
+                    diagnostics.push(ConfigDiagnostic::InvalidDependencyAlias(alias.into()));
+                }
+
                 match value {
                     Value::String(path) => {
                         dependencies.push(Dependency::path(alias.into(), Utf8PathBuf::from(path)));
@@ -64,15 +68,20 @@ impl Config {
                     Value::Table(table) => {
                         let path = table.get("path").and_then(|value| value.as_str());
                         if let Some(path) = path {
-                            let mut parameters = DependencyParameters::default();
+                            let mut arguments = DependencyArguments::default();
                             if let Some(name) = table.get("name").and_then(|value| value.as_str()) {
-                                parameters.name = Some(SmolStr::new(name));
+                                if is_valid_name(name) {
+                                    arguments.name = Some(SmolStr::new(name));
+                                } else {
+                                    diagnostics
+                                        .push(ConfigDiagnostic::InvalidDependencyName(name.into()));
+                                }
                             }
                             if let Some(version) =
                                 table.get("version").and_then(|value| value.as_str())
                             {
                                 if let Ok(version) = version.parse() {
-                                    parameters.version = Some(version);
+                                    arguments.version = Some(version);
                                 } else {
                                     diagnostics
                                         .push(ConfigDiagnostic::InvalidVersion(version.into()));
@@ -81,7 +90,7 @@ impl Config {
                             dependencies.push(Dependency::path_with_arguments(
                                 alias.into(),
                                 Utf8PathBuf::from(path),
-                                parameters,
+                                arguments,
                             ));
                         } else {
                             diagnostics.push(ConfigDiagnostic::MissingDependencyPath {
@@ -106,10 +115,24 @@ impl Config {
         })
     }
 
-    pub fn based_dependencies(&self, base_url: &Url) -> Vec<BasedDependency> {
+    pub fn forward_edges(&self, base_url: &Url) -> Vec<(Url, EdgeWeight)> {
         self.dependencies
             .iter()
-            .map(|dependency| dependency.based(base_url))
+            .map(|dependency| {
+                let (url, alias, arguments) = match &dependency.description {
+                    DependencyDescription::Path(path) => (
+                        base_url.join_directory(path).unwrap(),
+                        dependency.alias.clone(),
+                        DependencyArguments::default(),
+                    ),
+                    DependencyDescription::PathWithParameters { path, parameters } => (
+                        base_url.join_directory(path).unwrap(),
+                        dependency.alias.clone(),
+                        parameters.clone(),
+                    ),
+                };
+                (url, EdgeWeight { alias, arguments })
+            })
             .collect()
     }
 
@@ -139,7 +162,7 @@ pub enum DependencyDescription {
     Path(Utf8PathBuf),
     PathWithParameters {
         path: Utf8PathBuf,
-        parameters: DependencyParameters,
+        parameters: DependencyArguments,
     },
 }
 
@@ -160,42 +183,17 @@ impl Dependency {
     pub fn path_with_arguments(
         alias: SmolStr,
         path: Utf8PathBuf,
-        parameters: DependencyParameters,
+        parameters: DependencyArguments,
     ) -> Self {
         Self {
             alias,
             description: DependencyDescription::PathWithParameters { path, parameters },
         }
     }
-
-    pub fn based(&self, base_url: &Url) -> BasedDependency {
-        match &self.description {
-            DependencyDescription::Path(path) => BasedDependency {
-                alias: self.alias.clone(),
-                parameters: DependencyParameters::default(),
-                url: base_url.join_directory(path).unwrap(),
-            },
-            DependencyDescription::PathWithParameters {
-                path,
-                parameters: _,
-            } => BasedDependency {
-                alias: self.alias.clone(),
-                parameters: DependencyParameters::default(),
-                url: base_url.join_directory(path).unwrap(),
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct BasedDependency {
-    pub alias: SmolStr,
-    pub parameters: DependencyParameters,
-    pub url: Url,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub struct DependencyParameters {
+pub struct DependencyArguments {
     pub name: Option<SmolStr>,
     pub version: Option<Version>,
 }
@@ -220,32 +218,29 @@ pub enum ConfigDiagnostic {
         found: SmolStr,
         expected: Option<SmolStr>,
     },
-    /// TODO: push diagnostics for fields that should not exist
-    // UnrecognizedField(SmolStr),
-    DependenciesNotYetSupported,
 }
 
 impl Display for ConfigDiagnostic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::MissingIngotMetadata => write!(f, "missing ingot metadata"),
-            Self::MissingName => write!(f, "missing ingot name"),
-            Self::MissingVersion => write!(f, "missing ingot version"),
-            Self::InvalidName(name) => write!(f, "invalid ingot name \"{name}\""),
-            Self::InvalidVersion(version) => write!(f, "invalid ingot version \"{version}\""),
+            Self::MissingIngotMetadata => write!(f, "Missing ingot metadata"),
+            Self::MissingName => write!(f, "Missing ingot name"),
+            Self::MissingVersion => write!(f, "Missing ingot version"),
+            Self::InvalidName(name) => write!(f, "Invalid ingot name \"{name}\""),
+            Self::InvalidVersion(version) => write!(f, "Invalid ingot version \"{version}\""),
             Self::InvalidDependencyAlias(alias) => {
-                write!(f, "invalid dependency alias \"{alias}\"")
+                write!(f, "Invalid dependency alias \"{alias}\"")
             }
             Self::InvalidDependencyName(name) => {
-                write!(f, "invalid dependency name \"{name}\"")
+                write!(f, "Invalid dependency name \"{name}\"")
             }
             Self::InvalidDependencyVersion(version) => {
-                write!(f, "invalid dependency version \"{version}\"")
+                write!(f, "Invalid dependency version \"{version}\"")
             }
-            Self::InvalidTomlSyntax(err) => write!(f, "invalid TOML syntax: {err}"),
+            Self::InvalidTomlSyntax(err) => write!(f, "Invalid TOML syntax: {err}"),
             Self::MissingDependencyPath { alias, description } => write!(
                 f,
-                "the dependency \"{alias}\" is missing a path argument \"{description}\""
+                "The dependency \"{alias}\" is missing a path argument \"{description}\""
             ),
             Self::UnexpectedTomlData {
                 field,
@@ -255,19 +250,18 @@ impl Display for ConfigDiagnostic {
                 if let Some(expected) = expected {
                     write!(
                         f,
-                        "expected a {expected} in field {field}, but found a {found}"
+                        "Expected a {expected} in field {field}, but found a {found}"
                     )
                 } else {
-                    write!(f, "unexpected field {field}")
+                    write!(f, "Unexpected field {field}")
                 }
             }
-            Self::DependenciesNotYetSupported => write!(f, "dependencies are not yet supported"),
         }
     }
 }
 
 fn is_valid_name_char(c: char) -> bool {
-    c.is_alphanumeric() || c == '-'
+    c.is_alphanumeric() || c == '_'
 }
 
 fn is_valid_name(s: &str) -> bool {

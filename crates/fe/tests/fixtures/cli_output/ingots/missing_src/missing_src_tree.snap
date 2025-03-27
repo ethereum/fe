@@ -1,0 +1,8 @@
+---
+source: crates/fe/tests/cli_output.rs
+expression: output
+---
+=== STDOUT ===
+➖ missingsrc v0.0.1
+
+=== EXIT CODE: 0 ===
