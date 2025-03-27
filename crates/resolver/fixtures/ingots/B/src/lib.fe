@@ -1,0 +1,4 @@
+use C::Foo
+use core::Option
+
+pub struct Bar { }
