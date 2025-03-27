@@ -1,0 +1,159 @@
+---
+source: crates/resolver/tests/ingot_graph.rs
+expression: "format!(\"{:#?}\\n{:#?}\", ingot_graph, resolver.take_diagnostics())"
+---
+Graph {
+    Ty: "Directed",
+    node_count: 8,
+    edge_count: 8,
+    edges: (0, 1), (1, 2), (2, 3), (3, 4), (2, 5), (1, 6), (0, 7), (7, 1),
+    node weights: {
+        0: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/home/grantwuerker/workshop/fe/crates/resolver/fixtures/ingots/A/",
+            query: None,
+            fragment: None,
+        },
+        1: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/home/grantwuerker/workshop/fe/crates/resolver/fixtures/ingots/C/",
+            query: None,
+            fragment: None,
+        },
+        2: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/home/grantwuerker/workshop/fe/crates/resolver/fixtures/ingots/E/",
+            query: None,
+            fragment: None,
+        },
+        3: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/home/grantwuerker/workshop/fe/crates/resolver/fixtures/ingots/G/",
+            query: None,
+            fragment: None,
+        },
+        4: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/home/grantwuerker/workshop/fe/crates/resolver/fixtures/ingots/H/",
+            query: None,
+            fragment: None,
+        },
+        5: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/home/grantwuerker/workshop/fe/crates/resolver/fixtures/ingots/F/",
+            query: None,
+            fragment: None,
+        },
+        6: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/home/grantwuerker/workshop/fe/crates/resolver/fixtures/ingots/D/",
+            query: None,
+            fragment: None,
+        },
+        7: Url {
+            scheme: "file",
+            cannot_be_a_base: false,
+            username: "",
+            password: None,
+            host: None,
+            port: None,
+            path: "/home/grantwuerker/workshop/fe/crates/resolver/fixtures/ingots/B/",
+            query: None,
+            fragment: None,
+        },
+    },
+    edge weights: {
+        0: (
+            "C",
+            IngotArguments {
+                name: None,
+                version: None,
+            },
+        ),
+        1: (
+            "E",
+            IngotArguments {
+                name: None,
+                version: None,
+            },
+        ),
+        2: (
+            "G",
+            IngotArguments {
+                name: None,
+                version: None,
+            },
+        ),
+        3: (
+            "H",
+            IngotArguments {
+                name: None,
+                version: None,
+            },
+        ),
+        4: (
+            "F",
+            IngotArguments {
+                name: None,
+                version: None,
+            },
+        ),
+        5: (
+            "D",
+            IngotArguments {
+                name: None,
+                version: None,
+            },
+        ),
+        6: (
+            "B",
+            IngotArguments {
+                name: None,
+                version: None,
+            },
+        ),
+        7: (
+            "C",
+            IngotArguments {
+                name: None,
+                version: None,
+            },
+        ),
+    },
+}
+[]
