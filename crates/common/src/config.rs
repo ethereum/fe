@@ -64,7 +64,7 @@ impl Config {
                     Value::Table(table) => {
                         let path = table.get("path").and_then(|value| value.as_str());
                         if let Some(path) = path {
-                            let mut parameters = DependencyParameters::default();
+                            let mut parameters = DependencyArguments::default();
                             if let Some(name) = table.get("name").and_then(|value| value.as_str()) {
                                 parameters.name = Some(SmolStr::new(name));
                             }
@@ -139,7 +139,7 @@ pub enum DependencyDescription {
     Path(Utf8PathBuf),
     PathWithParameters {
         path: Utf8PathBuf,
-        parameters: DependencyParameters,
+        parameters: DependencyArguments,
     },
 }
 
@@ -160,7 +160,7 @@ impl Dependency {
     pub fn path_with_arguments(
         alias: SmolStr,
         path: Utf8PathBuf,
-        parameters: DependencyParameters,
+        parameters: DependencyArguments,
     ) -> Self {
         Self {
             alias,
@@ -172,7 +172,7 @@ impl Dependency {
         match &self.description {
             DependencyDescription::Path(path) => BasedDependency {
                 alias: self.alias.clone(),
-                parameters: DependencyParameters::default(),
+                parameters: DependencyArguments::default(),
                 url: base_url.join_directory(path).unwrap(),
             },
             DependencyDescription::PathWithParameters {
@@ -180,7 +180,7 @@ impl Dependency {
                 parameters: _,
             } => BasedDependency {
                 alias: self.alias.clone(),
-                parameters: DependencyParameters::default(),
+                parameters: DependencyArguments::default(),
                 url: base_url.join_directory(path).unwrap(),
             },
         }
@@ -190,12 +190,12 @@ impl Dependency {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct BasedDependency {
     pub alias: SmolStr,
-    pub parameters: DependencyParameters,
+    pub parameters: DependencyArguments,
     pub url: Url,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
-pub struct DependencyParameters {
+pub struct DependencyArguments {
     pub name: Option<SmolStr>,
     pub version: Option<Version>,
 }
