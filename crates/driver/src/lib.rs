@@ -1,121 +1,141 @@
 pub mod db;
 pub mod diagnostics;
 pub mod files;
+pub mod resolution_handlers;
 use camino::Utf8PathBuf;
-use common::InputIngot;
+use common::{InputFile, InputIngot};
 pub use db::{DriverDataBase, DriverDb};
 
 use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;
-use resolver::{
-    ingot::{config::Config, source_files::SourceFiles, Ingot, IngotResolver},
-    Resolver,
-};
+use resolver::{files::FilesResolver, graph::GraphResolver, Resolver};
 
-pub fn run(opts: &Options) {
+pub fn run2(opts: &Options) {
+    // let mut db = DriverDataBase::default();
+    // let mut graph_resolver = GraphResolver::default();
+    // let config = files_resolver.resolve(&db, &Utf8PathBuf::default());
+    // let graph = graph_resolver.resolve(&db, ());
     match &opts.command {
         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
             let mut db = DriverDataBase::default();
-            let mut ingot_resolver = IngotResolver::default();
-
-            let core_ingot = if let Some(core_path) = core {
-                match ingot_resolver.resolve(core_path) {
-                    Ok(Ingot::Folder {
-                        config:
-                            Some(Config {
-                                version: Some(version),
-                                ..
-                            }),
-                        source_files:
-                            Some(SourceFiles {
-                                root: Some(root),
-                                files,
-                            }),
-                    }) => {
-                        let diagnostics = ingot_resolver.take_diagnostics();
-                        if !diagnostics.is_empty() {
-                            eprintln!("an error was encountered while resolving `{core_path}`");
-                            for diagnostic in diagnostics {
-                                eprintln!("{diagnostic}")
-                            }
-                            std::process::exit(2)
-                        }
-                        db.core_ingot(core_path, &version, &root, files).0
-                    }
-                    Ok(Ingot::SingleFile { .. }) => {
-                        eprintln!("standalone core ingot not supported");
-                        std::process::exit(2)
-                    }
-                    Ok(_) => {
-                        eprintln!("an error was encountered while resolving `{core_path}`");
-                        for diagnostic in ingot_resolver.take_diagnostics() {
-                            eprintln!("{diagnostic}")
-                        }
-                        std::process::exit(2)
-                    }
-                    Err(error) => {
-                        eprintln!("an error was encountered while resolving `{core_path}`");
-                        eprintln!("{error}");
-                        std::process::exit(2)
-                    }
-                }
-            } else {
-                InputIngot::core(&db)
-            };
-
-            let local_ingot = match ingot_resolver.resolve(path) {
-                Ok(Ingot::Folder {
-                    config:
-                        Some(Config {
-                            version: Some(version),
-                            ..
-                        }),
-                    source_files:
-                        Some(SourceFiles {
-                            root: Some(root),
-                            files,
-                        }),
-                }) => {
-                    let diagnostics = ingot_resolver.take_diagnostics();
-                    if !diagnostics.is_empty() {
-                        eprintln!("an error was encountered while resolving `{path}`");
-                        for diagnostic in diagnostics {
-                            eprintln!("{diagnostic}")
-                        }
-                        std::process::exit(2)
-                    }
-                    db.local_ingot(path, &version, &root, files, core_ingot).0
-                }
-                Ok(Ingot::SingleFile { path, content }) => {
-                    db.standalone(&path, &content, core_ingot).0
-                }
-                Ok(_) => {
-                    eprintln!("an error was encountered while resolving `{path}`");
-                    for diagnostic in ingot_resolver.take_diagnostics() {
-                        eprintln!("{diagnostic}")
-                    }
-                    std::process::exit(2)
-                }
-                Err(error) => {
-                    eprintln!("an error was encountered while resolving `{path}`");
-                    eprintln!("{error}");
-                    std::process::exit(2)
-                }
-            };
-
-            let core_diags = db.run_on_ingot(core_ingot);
-            let local_diags = db.run_on_ingot(local_ingot);
-
-            if !core_diags.is_empty() || !local_diags.is_empty() {
-                core_diags.emit(&db);
-                local_diags.emit(&db);
-                std::process::exit(1);
-            }
+            let mut files_resolver = FilesResolver::default();
+            let local_files = files_resolver.resolve(&db, path).unwrap();
+            // local ingot diagnostics
+            let core_files = core.as_ref().map(|core| files_resolver.resolve(&db, core));
+            // core ingot diagnostics
+            let root_ingot: Vec<()> = local_files.root_ingots();
+            let graph_resolver = GraphResolver::default();
+            let graph_id = graph_resolver.resolve(&db, root_ingot);
         }
         Command::New => eprintln!("`fe new` doesn't work at the moment"),
     }
 }
+
+// pub fn run(opts: &Options) {
+//     match &opts.command {
+//         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
+//         Command::Check { path, core } => {
+//             let mut db = DriverDataBase::default();
+//             let mut ingot_resolver = IngotResolver::default();
+//
+//             let core_ingot = if let Some(core_path) = core {
+//                 match ingot_resolver.resolve(core_path) {
+//                     Ok(Ingot::Folder {
+//                         config:
+//                             Some(Config {
+//                                 version: Some(version),
+//                                 ..
+//                             }),
+//                         source_files:
+//                             Some(SourceFiles {
+//                                 root: Some(root),
+//                                 files,
+//                             }),
+//                     }) => {
+//                         let diagnostics = ingot_resolver.take_diagnostics();
+//                         if !diagnostics.is_empty() {
+//                             eprintln!("an error was encountered while resolving `{core_path}`");
+//                             for diagnostic in diagnostics {
+//                                 eprintln!("{diagnostic}")
+//                             }
+//                             std::process::exit(2)
+//                         }
+//                         db.core_ingot(core_path, &version, &root, files).0
+//                     }
+//                     Ok(Ingot::SingleFile { .. }) => {
+//                         eprintln!("standalone core ingot not supported");
+//                         std::process::exit(2)
+//                     }
+//                     Ok(_) => {
+//                         eprintln!("an error was encountered while resolving `{core_path}`");
+//                         for diagnostic in ingot_resolver.take_diagnostics() {
+//                             eprintln!("{diagnostic}")
+//                         }
+//                         std::process::exit(2)
+//                     }
+//                     Err(error) => {
+//                         eprintln!("an error was encountered while resolving `{core_path}`");
+//                         eprintln!("{error}");
+//                         std::process::exit(2)
+//                     }
+//                 }
+//             } else {
+//                 InputIngot::core(&db)
+//             };
+//
+//             let local_ingot = match ingot_resolver.resolve(path) {
+//                 Ok(Ingot::Folder {
+//                     config:
+//                         Some(Config {
+//                             version: Some(version),
+//                             ..
+//                         }),
+//                     source_files:
+//                         Some(SourceFiles {
+//                             root: Some(root),
+//                             files,
+//                         }),
+//                 }) => {
+//                     let diagnostics = ingot_resolver.take_diagnostics();
+//                     if !diagnostics.is_empty() {
+//                         eprintln!("an error was encountered while resolving `{path}`");
+//                         for diagnostic in diagnostics {
+//                             eprintln!("{diagnostic}")
+//                         }
+//                         std::process::exit(2)
+//                     }
+//                     db.local_ingot(path, &version, &root, files, core_ingot).0
+//                 }
+//                 Ok(Ingot::SingleFile { path, content }) => {
+//                     db.standalone(&path, &content, core_ingot).0
+//                 }
+//                 Ok(_) => {
+//                     eprintln!("an error was encountered while resolving `{path}`");
+//                     for diagnostic in ingot_resolver.take_diagnostics() {
+//                         eprintln!("{diagnostic}")
+//                     }
+//                     std::process::exit(2)
+//                 }
+//                 Err(error) => {
+//                     eprintln!("an error was encountered while resolving `{path}`");
+//                     eprintln!("{error}");
+//                     std::process::exit(2)
+//                 }
+//             };
+//
+//             let core_diags = db.run_on_ingot(core_ingot);
+//             let local_diags = db.run_on_ingot(local_ingot);
+//
+//             if !core_diags.is_empty() || !local_diags.is_empty() {
+//                 core_diags.emit(&db);
+//                 local_diags.emit(&db);
+//                 std::process::exit(1);
+//             }
+//         }
+//         Command::New => eprintln!("`fe new` doesn't work at the moment"),
+//     }
+// }
 
 #[derive(Debug, Clone, Parser)]
 #[command(version, about, long_about = None)]

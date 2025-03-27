@@ -1,19 +1,15 @@
 use camino::Utf8PathBuf;
 
-use crate::Resolver;
+use crate::{ResolutionHandler, Resolver};
 
-struct IngotResolver;
+#[derive(Default)]
+pub struct FileResolver;
 
-enum Ingot {
-    Standalone { path: () },
-    Normal { config: (), src: () },
-}
-
-impl Resolver for IngotResolver {
+impl Resolver for FileResolver {
     type Description = Utf8PathBuf;
-    type Resource = Ingot;
-    type Diagnostic = ();
+    type Resource = String;
     type Error = ();
+    type Diagnostic = ();
 
     fn resolve<H>(
         &mut self,
@@ -21,7 +17,7 @@ impl Resolver for IngotResolver {
         description: &Self::Description,
     ) -> Result<H::Item, Self::Error>
     where
-        H: crate::ResolutionHandler<Self>,
+        H: ResolutionHandler<Self>,
     {
         todo!()
     }
