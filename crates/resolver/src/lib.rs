@@ -15,11 +15,13 @@ pub trait Resolver<HandlerResult> {
         handler: &H,
         description: &Self::Description,
     ) -> Result<HandlerResult, Self::Error>;
+
     fn take_diagnostics(&mut self) -> Vec<Self::Diagnostic>;
 }
 
 pub trait ResolutionHandler<Description, Resource, HandlerResult> {
     fn already_handled(&self, description: Description) -> bool;
+
     fn handle_resolution(&mut self, description: Description, resource: Resource) -> HandlerResult;
 }
 
@@ -38,15 +40,15 @@ fn example() {
 // defs
 
 #[derive(Default)]
-struct InputDb;
+pub struct InputDb;
 #[derive(Default)]
-struct FileResolver;
+pub struct FileResolver;
 #[derive(Default)]
-struct ConfigId;
+pub struct ConfigId;
 #[derive(Default)]
-struct GraphId;
+pub struct GraphId;
 #[derive(Default)]
-struct GraphResolver<NodeResolver, Node, NodeHandler>
+pub struct GraphResolver<NodeResolver, Node, NodeHandler>
 where
     NodeResolver: Resolver<Node>,
     NodeHandler: ResolutionHandler<NodeResolver::Description, NodeResolver::Resource, Node>,
@@ -56,7 +58,7 @@ where
     node_handler: NodeHandler,
     node_resolver: NodeResolver,
 }
-struct Graph<Node> {
+pub struct Graph<Node> {
     node: Node,
 }
 
