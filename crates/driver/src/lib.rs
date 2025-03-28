@@ -1,6 +1,7 @@
 pub mod db;
 pub mod diagnostics;
 pub mod files;
+pub mod resolution_handlers;
 use camino::Utf8PathBuf;
 use common::InputIngot;
 pub use db::{DriverDataBase, DriverDb};
@@ -9,8 +10,16 @@ use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;
 use resolver::{
     ingot::{config::Config, source_files::SourceFiles, Ingot, IngotResolver},
-    Resolver,
+    FileResolver, GraphResolver, Resolver,
 };
+
+pub fn run2(opts: &Options) {
+    let mut db = DriverDataBase::default();
+    let mut files_resolver = FileResolver::default();
+    let mut graph_resolver = GraphResolver::default();
+    let config = files_resolver.resolve(&db, &Utf8PathBuf::default());
+    let graph = graph_resolver.resolve(&db, ());
+}
 
 pub fn run(opts: &Options) {
     match &opts.command {

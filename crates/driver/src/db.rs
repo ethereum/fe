@@ -26,6 +26,7 @@ use hir_analysis::{
     },
     HirAnalysisDb,
 };
+use resolver::ResolutionHandler;
 
 use crate::diagnostics::ToCsDiag;
 
