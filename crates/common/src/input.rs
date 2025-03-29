@@ -1,15 +1,8 @@
-use core::panic;
-
 use camino::Utf8PathBuf;
-use rust_embed::Embed;
 use salsa::Setter;
 use smol_str::SmolStr;
 
-use crate::{indexmap::IndexSet, InputDb};
-
-#[derive(Embed)]
-#[folder = "../../library/core"]
-struct Core;
+use crate::{core_ingot, indexmap::IndexSet, InputDb};
 
 /// An ingot is a collection of files which are compiled together.
 /// Ingot can depend on other ingots.
@@ -62,41 +55,7 @@ impl InputIngot {
     }
 
     pub fn core(db: &dyn InputDb) -> InputIngot {
-        let mut files = IndexSet::new();
-        let mut root_file = None;
-        let ingot_path = Utf8PathBuf::from("core");
-
-        for file in Core::iter() {
-            if file.ends_with(".fe") {
-                let path = ingot_path.join(Utf8PathBuf::from(&file));
-                if let Some(content) = Core::get(&file) {
-                    let is_root = path == "core/src/lib.fe";
-                    let input_file = InputFile::new(
-                        db,
-                        path,
-                        String::from_utf8(content.data.into_owned()).unwrap(),
-                    );
-                    if is_root {
-                        root_file = Some(input_file);
-                    }
-                    files.insert(input_file);
-                }
-            }
-        }
-
-        if root_file.is_none() {
-            panic!("root file missing from core")
-        }
-
-        Self::__new_impl(
-            db,
-            ingot_path,
-            IngotKind::Core,
-            Version::new(0, 0, 0),
-            IndexSet::default(),
-            files,
-            root_file,
-        )
+        core_ingot::setup(db)
     }
 
     /// Set the root file of the ingot.
