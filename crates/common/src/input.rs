@@ -33,6 +33,7 @@ pub struct InputIngot {
     #[get(__get_root_file_impl)]
     root_file: Option<InputFile>,
 }
+
 impl InputIngot {
     pub fn new(
         db: &dyn InputDb,
@@ -55,7 +56,7 @@ impl InputIngot {
     }
 
     pub fn core(db: &dyn InputDb) -> InputIngot {
-        core_ingot::setup(db)
+        core_ingot::core(db)
     }
 
     /// Set the root file of the ingot.
@@ -77,10 +78,22 @@ impl InputIngot {
     }
 }
 
-#[salsa::input]
+#[salsa::interned]
+pub struct FilePath<'db> {
+    path: Utf8PathBuf,
+}
+
+impl<'db> FilePath<'db> {
+    pub fn from(db: &'db dyn InputDb, path: impl Into<Utf8PathBuf>) -> Self {
+        FilePath::new(db, path.into())
+    }
+}
+
+#[salsa::input(constructor = __new_impl)]
 pub struct InputFile {
     /// A path to the file from the ingot root directory.
     #[return_ref]
+    #[set(__set_path_impl)]
     pub path: Utf8PathBuf,
 
     #[return_ref]
@@ -91,6 +104,27 @@ impl InputFile {
     pub fn abs_path(&self, db: &dyn InputDb, ingot: InputIngot) -> Utf8PathBuf {
         ingot.path(db).join(self.path(db))
     }
+
+    pub fn new(db: &dyn InputDb, path: Utf8PathBuf, ingot: InputIngot) -> Self {
+        input_for_file_path(db, FilePath::from(db, path), ingot)
+    }
+}
+
+#[salsa::tracked]
+pub fn input_for_file_path<'db>(
+    db: &'db dyn InputDb,
+    path: FilePath<'db>,
+    ingot: InputIngot,
+) -> InputFile {
+    // Check if the ingot already has a file with the same path
+    for file in ingot.files(db).iter() {
+        if file.path(db).as_path() == path.path(db) {
+            return *file;
+        }
+    }
+
+    // If no existing file is found, create a new one
+    InputFile::__new_impl(db, path.path(db), String::new())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -137,3 +171,31 @@ impl Ord for IngotDependency {
 }
 
 pub type Version = semver::Version;
+
+#[cfg(test)]
+mod tests {
+    use crate::{impl_db_traits, input::*};
+
+    #[derive(Default, Clone)]
+    #[salsa::db]
+    pub struct TestDatabase {
+        storage: salsa::Storage<Self>,
+    }
+
+    impl_db_traits!(TestDatabase, InputDb);
+
+    #[test]
+    fn test_input_file_equals() {
+        let path = Utf8PathBuf::from("test.foo");
+
+        let mut db = TestDatabase::default();
+        let ingot = InputIngot::core(&db);
+
+        let file1 = InputFile::new(&db, path.clone(), ingot);
+        let file2 = InputFile::new(&db, path, ingot);
+        assert_eq!(file1, file2);
+
+        file2.set_text(&mut db).to("Hello, world!".into());
+        assert_eq!(file1.text(&db), file2.text(&db));
+    }
+}

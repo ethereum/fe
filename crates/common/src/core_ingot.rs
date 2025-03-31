@@ -11,7 +11,7 @@ use crate::{
 struct Core;
 
 #[salsa::tracked]
-pub fn setup(db: &dyn InputDb) -> InputIngot {
+pub fn core(db: &dyn InputDb) -> InputIngot {
     let mut files = IndexSet::new();
     let mut root_file = None;
     let ingot_path = Utf8PathBuf::from("core");
@@ -21,7 +21,7 @@ pub fn setup(db: &dyn InputDb) -> InputIngot {
             let path = ingot_path.join(Utf8PathBuf::from(&file));
             if let Some(content) = Core::get(&file) {
                 let is_root = path == "core/src/lib.fe";
-                let input_file = InputFile::new(
+                let input_file = InputFile::__new_impl(
                     db,
                     path,
                     String::from_utf8(content.data.into_owned()).unwrap(),
@@ -66,10 +66,10 @@ mod tests {
     fn is_core_deduplicated() {
         // this is a sanity check
         let mut db = TestDb::default();
-        let core_1 = setup(&db);
-        let core_2 = setup(&db);
+        let core_1 = core(&db);
+        let core_2 = core(&db);
 
-        let foo = InputFile::new(&db, "src/mod1/foo.fe".into(), "".into());
+        let foo = InputFile::new(&db, "src/mod1/foo.fe".into(), core_1);
 
         core_2.set_root_file(&mut db, foo);
 

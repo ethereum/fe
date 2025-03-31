@@ -295,13 +295,13 @@ mod tests {
             Version::new(0, 0, 1),
             Default::default(),
         );
-        let local_root = InputFile::new(&db, "src/lib.fe".into(), "".into());
-        let mod1 = InputFile::new(&db, "src/mod1.fe".into(), "".into());
-        let mod2 = InputFile::new(&db, "src/mod2.fe".into(), "".into());
-        let foo = InputFile::new(&db, "src/mod1/foo.fe".into(), "".into());
-        let bar = InputFile::new(&db, "src/mod2/bar.fe".into(), "".into());
-        let baz = InputFile::new(&db, "src/mod2/baz.fe".into(), "".into());
-        let floating = InputFile::new(&db, "src/mod3/floating.fe".into(), "".into());
+        let local_root = InputFile::new(&db, "src/lib.fe".into(), local_ingot);
+        let mod1 = InputFile::new(&db, "src/mod1.fe".into(), local_ingot);
+        let mod2 = InputFile::new(&db, "src/mod2.fe".into(), local_ingot);
+        let foo = InputFile::new(&db, "src/mod1/foo.fe".into(), local_ingot);
+        let bar = InputFile::new(&db, "src/mod2/bar.fe".into(), local_ingot);
+        let baz = InputFile::new(&db, "src/mod2/baz.fe".into(), local_ingot);
+        let floating = InputFile::new(&db, "src/mod3/floating.fe".into(), local_ingot);
         local_ingot.set_root_file(&mut db, local_root);
         local_ingot.set_files(
             &mut db,
