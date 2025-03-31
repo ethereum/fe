@@ -33,6 +33,7 @@ use crate::{
 };
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TyId<'db> {
     #[return_ref]
     pub data: TyData<'db>,

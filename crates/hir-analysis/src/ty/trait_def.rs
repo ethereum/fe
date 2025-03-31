@@ -174,6 +174,7 @@ impl<'db> TraitEnv<'db> {
 /// Represents an implementor of a trait, which can be thought of as a lowered
 /// `impl Trait`.
 #[salsa::interned]
+#[derive(Debug)]
 pub(crate) struct Implementor<'db> {
     /// The trait that this implementor implements.
     pub(crate) trait_: TraitInstId<'db>,
@@ -231,6 +232,7 @@ pub(super) fn does_impl_trait_conflict(
 /// Represents an instantiated trait, which can be thought of as a trait
 /// reference from a HIR perspective.
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TraitInstId<'db> {
     pub def: TraitDef<'db>,
     #[return_ref]
@@ -298,6 +300,7 @@ impl<'db> TraitInstId<'db> {
 
 /// Represents a trait definition.
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct TraitDef<'db> {
     pub trait_: Trait<'db>,
     #[return_ref]

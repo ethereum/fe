@@ -359,6 +359,7 @@ impl<'db> WhereClauseOwner<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct TopLevelMod<'db> {
     // No #[id] here, because `TopLevelMod` is always unique to a `InputFile` that is an argument
     // of `module_scope_graph`.
@@ -531,6 +532,7 @@ impl<'db> TopLevelMod<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Mod<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -564,6 +566,7 @@ impl<'db> Mod<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Func<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -631,6 +634,7 @@ impl<'db> Func<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Struct<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -671,6 +675,7 @@ impl<'db> Struct<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Contract<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -695,6 +700,7 @@ impl<'db> Contract<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Enum<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -721,6 +727,7 @@ impl<'db> Enum<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct TypeAlias<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -746,6 +753,7 @@ impl<'db> TypeAlias<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Impl<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -788,6 +796,7 @@ impl<'db> Impl<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Trait<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -834,6 +843,7 @@ impl<'db> Trait<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct ImplTrait<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -875,6 +885,7 @@ impl<'db> ImplTrait<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Const<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -900,6 +911,7 @@ impl<'db> Const<'db> {
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Use<'db> {
     #[id]
     id: TrackedItemId<'db>,
@@ -996,6 +1008,7 @@ impl ItemModifier {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct FieldDefListId<'db> {
     #[return_ref]
     pub data: Vec<FieldDef<'db>>,
@@ -1040,6 +1053,7 @@ pub struct FieldDef<'db> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct VariantDefListId<'db> {
     #[return_ref]
     pub data: Vec<VariantDef<'db>>,
@@ -1087,6 +1101,7 @@ pub enum VariantKind<'db> {
 
 // xxx dead code {
 #[salsa::interned]
+#[derive(Debug)]
 pub struct ImplItemListId<'db> {
     #[return_ref]
     pub items: Vec<Func<'db>>,
@@ -1109,6 +1124,7 @@ impl Visibility {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TrackedItemId<'db> {
     variant: TrackedItemVariant<'db>,
 }

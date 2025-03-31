@@ -26,6 +26,7 @@ use super::{
 use crate::HirAnalysisDb;
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct EarlyNameQueryId<'db> {
     /// The name to be resolved.
     name: IdentId<'db>,

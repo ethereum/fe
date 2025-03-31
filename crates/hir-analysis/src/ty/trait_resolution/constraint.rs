@@ -2,7 +2,7 @@ use common::indexmap::IndexSet;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
 };
-use salsa::{plumbing::FromId, Update};
+use salsa::Update;
 
 use crate::{
     ty::{
@@ -51,7 +51,7 @@ pub(crate) fn ty_constraints<'db>(
 
 /// Collect super traits of the given trait.
 /// The returned trait ref is bound by the given trait's generic parameters.
-#[salsa::tracked(return_ref, recovery_fn = recover_collect_super_traits)]
+#[salsa::tracked(return_ref)] // xxx recovery_fn = recover_collect_super_traits)]
 pub(crate) fn collect_super_traits<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef<'db>,
@@ -185,20 +185,21 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
     Binder::bind(ConstraintCollector::new(db, hir_func.into()).collect())
 }
 
-pub(crate) fn recover_collect_super_traits<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    _trait_: TraitDef<'db>,
-) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
-    let mut trait_cycle = IndexSet::new();
-    for key in cycle.participant_keys() {
-        let id = key.key_index();
-        let inst = TraitDef::from_id(id);
-        trait_cycle.insert(inst);
-    }
+// xxx
+// pub(crate) fn recover_collect_super_traits<'db>(
+//     _db: &'db dyn HirAnalysisDb,
+//     cycle: &salsa::Cycle,
+//     _trait_: TraitDef<'db>,
+// ) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
+//     let mut trait_cycle = IndexSet::new();
+//     for key in cycle.participant_keys() {
+//         let id = key.key_index();
+//         let inst = TraitDef::from_id(id);
+//         trait_cycle.insert(inst);
+//     }
 
-    Err(SuperTraitCycle(trait_cycle))
-}
+//     Err(SuperTraitCycle(trait_cycle))
+// }
 
 struct SuperTraitCollector<'db> {
     db: &'db dyn HirAnalysisDb,

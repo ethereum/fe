@@ -14,7 +14,6 @@ use hir::{
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::plumbing::FromIdWithDb;
 
 use super::{
     adt_def::{lower_adt, AdtRef},
@@ -842,7 +841,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     }
 }
 
-#[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
+#[salsa::tracked] // xxx (recovery_fn = check_recursive_adt_impl)]
 pub(crate) fn check_recursive_adt<'db>(
     db: &'db dyn HirAnalysisDb,
     adt: AdtRef<'db>,
@@ -858,36 +857,37 @@ pub(crate) fn check_recursive_adt<'db>(
     None
 }
 
-fn check_recursive_adt_impl<'db>(
-    db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    adt: AdtRef<'db>,
-) -> Option<TyDiagCollection<'db>> {
-    let participants: FxHashSet<_> = cycle
-        .participant_keys()
-        .map(|key| {
-            let id = key.key_index();
-            AdtRef::from_id(id, db)
-        })
-        .collect();
+// xxx
+// fn check_recursive_adt_impl<'db>(
+//     db: &'db dyn HirAnalysisDb,
+//     cycle: &salsa::Cycle,
+//     adt: AdtRef<'db>,
+// ) -> Option<TyDiagCollection<'db>> {
+//     let participants: FxHashSet<_> = cycle
+//         .participant_keys()
+//         .map(|key| {
+//             let id = key.key_index();
+//             AdtRef::from_id(id, db)
+//         })
+//         .collect();
 
-    let adt_def = lower_adt(db, adt);
-    for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
-        for (ty_idx, ty) in field.iter_types(db).enumerate() {
-            for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
-                if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-                    let diag = TyLowerDiag::RecursiveType {
-                        primary_span: adt.name_span(db),
-                        field_span: adt_def.variant_ty_span(db, field_idx, ty_idx),
-                    };
-                    return Some(diag.into());
-                }
-            }
-        }
-    }
+//     let adt_def = lower_adt(db, adt);
+//     for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
+//         for (ty_idx, ty) in field.iter_types(db).enumerate() {
+//             for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
+//                 if participants.contains(&field_adt_ref) && participants.contains(&adt) {
+//                     let diag = TyLowerDiag::RecursiveType {
+//                         primary_span: adt.name_span(db),
+//                         field_span: adt_def.variant_ty_span(db, field_idx, ty_idx),
+//                     };
+//                     return Some(diag.into());
+//                 }
+//             }
+//         }
+//     }
 
-    None
-}
+//     None
+// }
 
 impl<'db> TyId<'db> {
     /// Collect all adts inside types which are not wrapped by indirect type

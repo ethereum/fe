@@ -3,7 +3,7 @@ use hir::hir_def::{
     ItemKind, KindBound as HirKindBound, Partial, PathId, TupleTypeId, TypeAlias as HirTypeAlias,
     TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
 };
-use salsa::{plumbing::FromId, Update};
+use salsa::Update;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
@@ -35,7 +35,7 @@ pub(crate) fn collect_generic_params<'db>(
 }
 
 /// Lowers the given type alias to [`TyAlias`].
-#[salsa::tracked(return_ref, recovery_fn = recover_lower_type_alias_cycle)]
+#[salsa::tracked(return_ref)] // xxx recovery_fn = recover_lower_type_alias_cycle)]
 pub(crate) fn lower_type_alias<'db>(
     db: &'db dyn HirAnalysisDb,
     alias: HirTypeAlias<'db>,
@@ -63,26 +63,27 @@ pub(crate) fn lower_type_alias<'db>(
     })
 }
 
-fn recover_lower_type_alias_cycle<'db>(
-    db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    _alias: HirTypeAlias<'db>,
-) -> Result<TyAlias<'db>, AliasCycle<'db>> {
-    let alias_cycle = cycle
-        .participant_keys()
-        .filter_map(|key| {
-            // TODO Salsa 3.0: add method to lookup IngredientIndex for type
-            if db.ingredient_debug_name(key.ingredient_index()) == "lower_type_alias" {
-                let id = key.key_index();
-                Some(HirTypeAlias::from_id(id))
-            } else {
-                None
-            }
-        })
-        .collect();
+// xxx
+// fn recover_lower_type_alias_cycle<'db>(
+//     db: &'db dyn HirAnalysisDb,
+//     cycle: &salsa::Cycle,
+//     _alias: HirTypeAlias<'db>,
+// ) -> Result<TyAlias<'db>, AliasCycle<'db>> {
+//     let alias_cycle = cycle
+//         .participant_keys()
+//         .filter_map(|key| {
+//             // TODO Salsa 3.0: add method to lookup IngredientIndex for type
+//             if db.ingredient_debug_name(key.ingredient_index()) == "lower_type_alias" {
+//                 let id = key.key_index();
+//                 Some(HirTypeAlias::from_id(id))
+//             } else {
+//                 None
+//             }
+//         })
+//         .collect();
 
-    Err(AliasCycle(alias_cycle))
-}
+//     Err(AliasCycle(alias_cycle))
+// }
 
 #[doc(hidden)]
 #[salsa::tracked(return_ref)]
@@ -264,6 +265,7 @@ pub(crate) fn lower_generic_arg_list<'db>(
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct GenericParamTypeSet<'db> {
     #[return_ref]
     pub(crate) params_precursor: Vec<TyParamPrecursor<'db>>,

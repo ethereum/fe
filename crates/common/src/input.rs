@@ -14,6 +14,7 @@ struct Core;
 /// An ingot is a collection of files which are compiled together.
 /// Ingot can depend on other ingots.
 #[salsa::input(constructor = __new_impl)]
+#[derive(Debug)]
 pub struct InputIngot {
     /// An absolute path to the ingot root directory.
     /// The all files in the ingot should be located under this directory.
@@ -119,6 +120,7 @@ impl InputIngot {
 }
 
 #[salsa::input]
+#[derive(Debug)]
 pub struct InputFile {
     /// A path to the file from the ingot root directory.
     #[return_ref]
