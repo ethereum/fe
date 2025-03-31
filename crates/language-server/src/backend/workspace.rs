@@ -110,7 +110,7 @@ impl IngotFileContext for LocalIngotContext {
             .files
             .get(path)
             .copied()
-            .unwrap_or_else(|| InputFile::new(db, path.into(), String::new()));
+            .unwrap_or_else(|| InputFile::new(db, path.into(), ingot));
         self.files.insert(path, input);
         ingot.set_files(db, self.files.values().copied().collect());
         Some((ingot, input))
@@ -181,7 +181,7 @@ impl IngotFileContext for StandaloneIngotContext {
             .files
             .get(path)
             .copied()
-            .unwrap_or_else(|| InputFile::new(db, path.into(), String::new()));
+            .unwrap_or_else(|| InputFile::new(db, path.into(), ingot));
         let mut files = IndexSet::new();
         files.insert(input_file);
         ingot.set_files(db, files);

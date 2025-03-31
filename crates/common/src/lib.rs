@@ -1,3 +1,4 @@
+mod core_ingot;
 pub mod diagnostics;
 pub mod indexmap;
 pub mod input;
