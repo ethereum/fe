@@ -290,10 +290,12 @@ mod tests {
 
         let local_ingot = InputIngot::new(
             &db,
-            "/foo/fargo",
+            "/foo/fargo".into(),
             IngotKind::Local,
             Version::new(0, 0, 1),
             Default::default(),
+            Default::default(),
+            None,
         );
         let local_root = InputFile::new(&db, "src/lib.fe".into(), "".into());
         let mod1 = InputFile::new(&db, "src/mod1.fe".into(), "".into());

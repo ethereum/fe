@@ -104,10 +104,12 @@ impl DriverDataBase {
 
         let ingot = InputIngot::new(
             self,
-            file_path.parent().unwrap().as_str(),
+            file_path.parent().unwrap().into(),
             kind,
             version,
             external_ingots,
+            IndexSet::default(),
+            None,
         );
 
         let file_name = root_file.file_name().unwrap();
@@ -130,10 +132,12 @@ impl DriverDataBase {
 
         let ingot = InputIngot::new(
             self,
-            file_path.parent().unwrap().as_str(),
+            file_path.parent().unwrap().into(),
             kind,
             version,
             IndexSet::default(),
+            IndexSet::default(),
+            None,
         );
 
         let file_name = root_file.file_name().unwrap();
@@ -156,10 +160,12 @@ impl DriverDataBase {
         external_ingots.insert(core_dependency);
         let input_ingot = InputIngot::new(
             self,
-            path.as_str(),
+            path.into(),
             IngotKind::Local,
             version.clone(),
             external_ingots,
+            IndexSet::default(),
+            None,
         );
 
         let input_files = self.set_ingot_source_files(input_ingot, source_root, source_files);
@@ -175,10 +181,12 @@ impl DriverDataBase {
     ) -> (InputIngot, IndexSet<InputFile>) {
         let input_ingot = InputIngot::new(
             self,
-            path.as_str(),
+            path.into(),
             IngotKind::Core,
             version.clone(),
             IndexSet::default(),
+            IndexSet::default(),
+            None,
         );
 
         let input_files = self.set_ingot_source_files(input_ingot, source_root, source_files);

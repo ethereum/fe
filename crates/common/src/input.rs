@@ -13,7 +13,7 @@ struct Core;
 
 /// An ingot is a collection of files which are compiled together.
 /// Ingot can depend on other ingots.
-#[salsa::input(constructor = __new_impl)]
+#[salsa::input]
 pub struct InputIngot {
     /// An absolute path to the ingot root directory.
     /// The all files in the ingot should be located under this directory.
@@ -41,26 +41,6 @@ pub struct InputIngot {
     root_file: Option<InputFile>,
 }
 impl InputIngot {
-    pub fn new(
-        db: &dyn InputDb,
-        path: &str,
-        kind: IngotKind,
-        version: Version,
-        external_ingots: IndexSet<IngotDependency>,
-    ) -> InputIngot {
-        let path = Utf8PathBuf::from(path);
-        let root_file = None;
-        Self::__new_impl(
-            db,
-            path,
-            kind,
-            version,
-            external_ingots,
-            IndexSet::default(),
-            root_file,
-        )
-    }
-
     pub fn core(db: &dyn InputDb) -> InputIngot {
         let mut files = IndexSet::new();
         let mut root_file = None;
@@ -88,7 +68,7 @@ impl InputIngot {
             panic!("root file missing from core")
         }
 
-        Self::__new_impl(
+        Self::new(
             db,
             ingot_path,
             IngotKind::Core,

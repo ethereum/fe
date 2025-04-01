@@ -61,7 +61,15 @@ impl HirAnalysisTestDb {
     pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> (InputIngot, InputFile) {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
-        let ingot = InputIngot::new(self, file_name, kind, version, IndexSet::default());
+        let ingot = InputIngot::new(
+            self,
+            file_name.into(),
+            kind,
+            version,
+            IndexSet::default(),
+            IndexSet::default(),
+            None,
+        );
         let root = InputFile::new(self, file_name.into(), text.to_string());
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into_iter().collect());
