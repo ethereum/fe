@@ -4,6 +4,7 @@ use hir::hir_def::{
     TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
 };
 use salsa::Update;
+use smallvec::smallvec;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
@@ -35,55 +36,65 @@ pub(crate) fn collect_generic_params<'db>(
 }
 
 /// Lowers the given type alias to [`TyAlias`].
-#[salsa::tracked(return_ref)] // xxx recovery_fn = recover_lower_type_alias_cycle)]
+#[salsa::tracked(return_ref, cycle_fn=lower_type_alias_cycle_recover, cycle_initial=lower_type_alias_cycle_initial)]
 pub(crate) fn lower_type_alias<'db>(
     db: &'db dyn HirAnalysisDb,
     alias: HirTypeAlias<'db>,
-) -> Result<TyAlias<'db>, AliasCycle<'db>> {
+) -> TyAlias<'db> {
     let param_set = collect_generic_params(db, alias.into());
 
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
-        return Ok(TyAlias {
+        return TyAlias {
             alias,
             alias_to: Binder::bind(TyId::invalid(db, InvalidCause::Other)),
             param_set,
-        });
+        };
     };
 
     let alias_to = lower_hir_ty(db, hir_ty, alias.scope());
-    let alias_to = Binder::bind(if alias_to.has_invalid(db) {
+    let alias_to = if let TyData::Invalid(InvalidCause::AliasCycle(cycle)) = alias_to.data(db) {
+        if cycle.contains(&alias) {
+            alias_to
+        } else {
+            let mut cycle = cycle.clone();
+            cycle.push(alias);
+            TyId::invalid(db, InvalidCause::AliasCycle(cycle))
+        }
+    } else if alias_to.has_invalid(db) {
+        // Should be reported by TypeAliasAnalysisPass
         TyId::invalid(db, InvalidCause::Other)
     } else {
         alias_to
-    });
-    Ok(TyAlias {
+    };
+    TyAlias {
         alias,
-        alias_to,
+        alias_to: Binder::bind(alias_to),
         param_set,
-    })
+    }
 }
 
-// xxx
-// fn recover_lower_type_alias_cycle<'db>(
-//     db: &'db dyn HirAnalysisDb,
-//     cycle: &salsa::Cycle,
-//     _alias: HirTypeAlias<'db>,
-// ) -> Result<TyAlias<'db>, AliasCycle<'db>> {
-//     let alias_cycle = cycle
-//         .participant_keys()
-//         .filter_map(|key| {
-//             // TODO Salsa 3.0: add method to lookup IngredientIndex for type
-//             if db.ingredient_debug_name(key.ingredient_index()) == "lower_type_alias" {
-//                 let id = key.key_index();
-//                 Some(HirTypeAlias::from_id(id))
-//             } else {
-//                 None
-//             }
-//         })
-//         .collect();
+fn lower_type_alias_cycle_initial<'db>(
+    db: &'db dyn HirAnalysisDb,
+    alias: HirTypeAlias<'db>,
+) -> TyAlias<'db> {
+    TyAlias {
+        alias,
+        alias_to: Binder::bind(TyId::invalid(
+            db,
+            InvalidCause::AliasCycle(smallvec![alias]),
+        )),
+        param_set: GenericParamTypeSet::empty(db, alias.scope()),
+    }
+}
 
-//     Err(AliasCycle(alias_cycle))
-// }
+fn lower_type_alias_cycle_recover<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _value: &TyAlias<'db>,
+    _count: u32,
+    _alias: HirTypeAlias<'db>,
+) -> salsa::CycleRecoveryAction<TyAlias<'db>> {
+    salsa::CycleRecoveryAction::Iterate
+}
 
 #[doc(hidden)]
 #[salsa::tracked(return_ref)]
@@ -96,19 +107,6 @@ pub(crate) fn evaluate_params_precursor<'db>(
         .enumerate()
         .map(|(i, p)| p.evaluate(db, set.scope(db), i))
         .collect()
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
-pub(crate) struct AliasCycle<'db>(Vec<HirTypeAlias<'db>>);
-
-impl<'db> AliasCycle<'db> {
-    pub(super) fn representative(&self) -> HirTypeAlias<'db> {
-        *self.0.first().unwrap()
-    }
-
-    pub(super) fn participants(&self) -> impl Iterator<Item = HirTypeAlias<'db>> + '_ {
-        self.0.iter().skip(1).copied()
-    }
 }
 
 /// Represents a lowered type alias. `TyAlias` itself isn't a type, but

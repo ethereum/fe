@@ -8,7 +8,7 @@ use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
         scope_graph::ScopeId, FieldDef, Func, FuncParamListId, GenericParam, GenericParamListId,
-        IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeAlias,
+        IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId,
         TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
@@ -48,7 +48,7 @@ use crate::{
         trait_resolution::{
             constraint::collect_trait_constraints, is_goal_satisfiable, GoalSatisfiability,
         },
-        ty_lower::{lower_hir_ty, lower_type_alias},
+        ty_lower::lower_hir_ty,
         visitor::TyVisitable,
     },
     HirAnalysisDb,
@@ -151,38 +151,6 @@ pub fn analyze_func<'db>(
 
     let analyzer = DefAnalyzer::for_func(db, func_def);
     analyzer.analyze()
-}
-
-/// This function implements analysis for the type alias definition.
-/// The analysis includes the following:
-/// - Check if the type alias is not recursive.
-/// - Check if the type in the type alias is well-formed.
-///
-/// NOTE: This function doesn't check the satisfiability of the type since our
-/// type system treats the alias as kind of macro, meaning type alias doesn't
-/// included in the type system. Satisfiability is checked where the type alias
-/// is used.
-#[salsa::tracked(return_ref)]
-pub fn analyze_type_alias<'db>(
-    db: &'db dyn HirAnalysisDb,
-    alias: TypeAlias<'db>,
-) -> Option<TyDiagCollection<'db>> {
-    let hir_ty = alias.ty(db.as_hir_db()).to_opt()?;
-    let ty = lower_hir_ty(db, hir_ty, alias.scope());
-
-    if let Err(cycle) = lower_type_alias(db, alias) {
-        if cycle.representative() == alias {
-            let diag = TyLowerDiag::TypeAliasCycle {
-                primary: alias.lazy_span().ty().into(),
-                cycle: cycle.participants().collect(),
-            };
-            return Some(diag.into());
-        }
-    }
-
-    // We don't need to check for bound satisfiability here because type alias
-    // doesn't have trait bound, it will be checked where the type alias is used.
-    ty.emit_diag(db, alias.lazy_span().ty().into())
 }
 
 pub struct DefAnalyzer<'db> {

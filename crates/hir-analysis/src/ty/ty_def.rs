@@ -16,6 +16,7 @@ use if_chain::if_chain;
 use num_bigint::BigUint;
 use rustc_hash::FxHashSet;
 use salsa::Update;
+use smallvec::SmallVec;
 
 use super::{
     adt_def::AdtDef,
@@ -414,6 +415,11 @@ impl<'db> TyId<'db> {
 
                     InvalidCause::AssocTy => TyLowerDiag::AssocTy(span).into(),
 
+                    InvalidCause::AliasCycle(cycle) => TyLowerDiag::TypeAliasCycle {
+                        cycle: cycle.to_vec(),
+                    }
+                    .into(),
+
                     InvalidCause::InvalidConstTyExpr { body } => {
                         TyLowerDiag::InvalidConstTyExpr(body.lazy_span().into()).into()
                     }
@@ -730,6 +736,8 @@ pub enum InvalidCause<'db> {
         alias: HirTypeAlias<'db>,
         n_given_args: usize,
     },
+
+    AliasCycle(SmallVec<HirTypeAlias<'db>, 4>),
 
     /// Associated Type is not allowed at the moment.
     AssocTy,

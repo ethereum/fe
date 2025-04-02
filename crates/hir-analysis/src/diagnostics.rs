@@ -424,16 +424,17 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::TypeAliasCycle { primary, cycle } => CompleteDiagnostic {
+            Self::TypeAliasCycle { cycle } => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "recursive type alias cycle is detected".to_string(),
                 sub_diagnostics: {
+                    let mut iter = cycle.iter();
                     let mut labels = vec![SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "cycle happens here".to_string(),
-                        span: primary.resolve(db),
+                        span: iter.next_back().unwrap().lazy_span().ty().resolve(db),
                     }];
-                    labels.extend(cycle.iter().map(|type_alias| SubDiagnostic {
+                    labels.extend(iter.map(|type_alias| SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "type alias defined here".to_string(),
                         span: type_alias.lazy_span().alias_moved().resolve(db),

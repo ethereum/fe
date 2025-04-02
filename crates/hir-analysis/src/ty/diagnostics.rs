@@ -76,8 +76,8 @@ pub enum TyLowerDiag<'db> {
         alias: HirTypeAlias<'db>,
         n_given_args: usize,
     },
+
     TypeAliasCycle {
-        primary: DynLazySpan<'db>,
         cycle: Vec<HirTypeAlias<'db>>,
     },
 
