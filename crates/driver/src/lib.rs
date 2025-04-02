@@ -2,7 +2,10 @@ pub mod db;
 pub mod diagnostics;
 pub mod files;
 use camino::Utf8PathBuf;
-use common::InputIngot;
+use common::{
+    ingot::{builtin_core, IngotBuilder},
+    input::IngotKind,
+};
 pub use db::{DriverDataBase, DriverDb};
 
 use clap::{Parser, Subcommand};
@@ -16,7 +19,7 @@ pub fn run(opts: &Options) {
     match &opts.command {
         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
-            let mut db = DriverDataBase::default();
+            let db = DriverDataBase::default();
             let mut ingot_resolver = IngotResolver::default();
 
             let core_ingot = if let Some(core_path) = core {
@@ -41,7 +44,13 @@ pub fn run(opts: &Options) {
                             }
                             std::process::exit(2)
                         }
-                        db.core_ingot(core_path, &version, &root, files).0
+                        IngotBuilder::new(&db, "core")
+                            .kind(IngotKind::Core)
+                            .version(version)
+                            .entrypoint(root)
+                            .files_from_contents(files)
+                            .build()
+                            .0
                     }
                     Ok(Ingot::SingleFile { .. }) => {
                         eprintln!("standalone core ingot not supported");
@@ -61,7 +70,7 @@ pub fn run(opts: &Options) {
                     }
                 }
             } else {
-                InputIngot::core(&db)
+                builtin_core(&db)
             };
 
             let local_ingot = match ingot_resolver.resolve(path) {
@@ -85,10 +94,20 @@ pub fn run(opts: &Options) {
                         }
                         std::process::exit(2)
                     }
-                    db.local_ingot(path, &version, &root, files, core_ingot).0
+                    // db.local_ingot(path, &version, &root, files, core_ingot).0
+                    IngotBuilder::new(&db, path)
+                        .kind(IngotKind::Local)
+                        .version(version)
+                        .entrypoint(root)
+                        .files_from_contents(files)
+                        .build()
+                        .0
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
-                    db.standalone(&path, &content, core_ingot).0
+                    IngotBuilder::standalone(&db, path, content)
+                        .with_core_ingot(core_ingot)
+                        .build()
+                        .0
                 }
                 Ok(_) => {
                     eprintln!("an error was encountered while resolving `{path}`");

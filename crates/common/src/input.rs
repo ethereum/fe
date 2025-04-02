@@ -1,5 +1,3 @@
-use core::panic;
-
 use camino::Utf8PathBuf;
 use rust_embed::Embed;
 use salsa::Setter;
@@ -13,7 +11,7 @@ struct Core;
 
 /// An ingot is a collection of files which are compiled together.
 /// Ingot can depend on other ingots.
-#[salsa::input(constructor = __new_impl)]
+#[salsa::input]
 pub struct InputIngot {
     /// An absolute path to the ingot root directory.
     /// The all files in the ingot should be located under this directory.
@@ -41,64 +39,6 @@ pub struct InputIngot {
     root_file: Option<InputFile>,
 }
 impl InputIngot {
-    pub fn new(
-        db: &dyn InputDb,
-        path: &str,
-        kind: IngotKind,
-        version: Version,
-        external_ingots: IndexSet<IngotDependency>,
-    ) -> InputIngot {
-        let path = Utf8PathBuf::from(path);
-        let root_file = None;
-        Self::__new_impl(
-            db,
-            path,
-            kind,
-            version,
-            external_ingots,
-            IndexSet::default(),
-            root_file,
-        )
-    }
-
-    pub fn core(db: &dyn InputDb) -> InputIngot {
-        let mut files = IndexSet::new();
-        let mut root_file = None;
-        let ingot_path = Utf8PathBuf::from("core");
-
-        for file in Core::iter() {
-            if file.ends_with(".fe") {
-                let path = ingot_path.join(Utf8PathBuf::from(&file));
-                if let Some(content) = Core::get(&file) {
-                    let is_root = path == "core/src/lib.fe";
-                    let input_file = InputFile::new(
-                        db,
-                        path,
-                        String::from_utf8(content.data.into_owned()).unwrap(),
-                    );
-                    if is_root {
-                        root_file = Some(input_file);
-                    }
-                    files.insert(input_file);
-                }
-            }
-        }
-
-        if root_file.is_none() {
-            panic!("root file missing from core")
-        }
-
-        Self::__new_impl(
-            db,
-            ingot_path,
-            IngotKind::Core,
-            Version::new(0, 0, 0),
-            IndexSet::default(),
-            files,
-            root_file,
-        )
-    }
-
     /// Set the root file of the ingot.
     /// The root file must be set before the ingot is used.
     pub fn set_root_file(self, db: &mut dyn InputDb, file: InputFile) {
