@@ -1,7 +1,5 @@
 use common::indexmap::IndexSet;
-use hir::hir_def::{
-    scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
-};
+use hir::hir_def::{GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound};
 use salsa::Update;
 
 use crate::{
@@ -56,19 +54,46 @@ pub(crate) fn collect_super_traits<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef<'db>,
 ) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
-    let collector = SuperTraitCollector::new(db, trait_);
-    let insts = collector.collect();
+    let hir_trait = trait_.trait_(db);
+    let hir_db = db.as_hir_db();
+    let self_param = trait_.self_param(db);
+    let scope = trait_.trait_(db).scope();
 
-    let mut cycles = IndexSet::new();
+    let mut super_traits = IndexSet::new();
+
+    for &super_ in hir_trait.super_traits(hir_db).iter() {
+        if let Ok(inst) = lower_trait_ref(db, self_param, super_, scope) {
+            super_traits.insert(Binder::bind(inst));
+        }
+    }
+
+    for pred in hir_trait.where_clause(hir_db).data(hir_db) {
+        if pred
+            .ty
+            .to_opt()
+            .map(|ty| ty.is_self_ty(hir_db))
+            .unwrap_or_default()
+        {
+            for bound in &pred.bounds {
+                if let TypeBound::Trait(bound) = bound {
+                    if let Ok(inst) = lower_trait_ref(db, self_param, *bound, scope) {
+                        super_traits.insert(Binder::bind(inst));
+                    }
+                }
+            }
+        }
+    }
+
     // Check for cycles.
-    for &inst in &insts {
+    let mut cycles = IndexSet::new();
+    for &inst in &super_traits {
         if let Err(err) = collect_super_traits(db, inst.skip_binder().def(db)) {
             cycles.extend(err.0.iter().copied());
         }
     }
 
     if cycles.is_empty() {
-        Ok(insts)
+        Ok(super_traits)
     } else {
         Err(SuperTraitCycle(cycles))
     }
@@ -183,71 +208,6 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
     };
 
     Binder::bind(ConstraintCollector::new(db, hir_func.into()).collect())
-}
-
-// xxx
-// pub(crate) fn recover_collect_super_traits<'db>(
-//     _db: &'db dyn HirAnalysisDb,
-//     cycle: &salsa::Cycle,
-//     _trait_: TraitDef<'db>,
-// ) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
-//     let mut trait_cycle = IndexSet::new();
-//     for key in cycle.participant_keys() {
-//         let id = key.key_index();
-//         let inst = TraitDef::from_id(id);
-//         trait_cycle.insert(inst);
-//     }
-
-//     Err(SuperTraitCycle(trait_cycle))
-// }
-
-struct SuperTraitCollector<'db> {
-    db: &'db dyn HirAnalysisDb,
-    trait_: TraitDef<'db>,
-    super_traits: IndexSet<Binder<TraitInstId<'db>>>,
-    scope: ScopeId<'db>,
-}
-
-impl<'db> SuperTraitCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: TraitDef<'db>) -> Self {
-        Self {
-            db,
-            trait_,
-            super_traits: IndexSet::default(),
-            scope: trait_.trait_(db).scope(),
-        }
-    }
-
-    fn collect(mut self) -> IndexSet<Binder<TraitInstId<'db>>> {
-        let hir_trait = self.trait_.trait_(self.db);
-        let hir_db = self.db.as_hir_db();
-        let self_param = self.trait_.self_param(self.db);
-
-        for &super_ in hir_trait.super_traits(hir_db).iter() {
-            if let Ok(inst) = lower_trait_ref(self.db, self_param, super_, self.scope) {
-                self.super_traits.insert(Binder::bind(inst));
-            }
-        }
-
-        for pred in hir_trait.where_clause(hir_db).data(hir_db) {
-            if pred
-                .ty
-                .to_opt()
-                .map(|ty| ty.is_self_ty(hir_db))
-                .unwrap_or_default()
-            {
-                for bound in &pred.bounds {
-                    if let TypeBound::Trait(bound) = bound {
-                        if let Ok(inst) = lower_trait_ref(self.db, self_param, *bound, self.scope) {
-                            self.super_traits.insert(Binder::bind(inst));
-                        }
-                    }
-                }
-            }
-        }
-
-        self.super_traits
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Update)]
