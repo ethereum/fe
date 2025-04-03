@@ -1,6 +1,10 @@
 use adt_def::AdtRef;
+use diagnostics::TraitLowerDiag;
 use hir::hir_def::{TopLevelMod, TypeAlias};
 use rustc_hash::FxHashSet;
+use trait_def::TraitDef;
+use trait_lower::lower_trait;
+use trait_resolution::constraint::super_trait_cycle;
 use ty_def::{InvalidCause, TyData};
 use ty_lower::{lower_hir_ty, lower_type_alias};
 
@@ -102,12 +106,26 @@ impl<'db> ModuleAnalysisPass<'db> for TraitAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        top_mod
-            .all_traits(self.db.as_hir_db())
-            .iter()
-            .flat_map(|trait_| analyze_trait(self.db, *trait_))
-            .map(|diag| diag.to_voucher())
-            .collect()
+        let mut diags = vec![];
+        let mut cycle_participants = FxHashSet::<TraitDef<'db>>::default();
+
+        for hir_trait in top_mod.all_traits(self.db.as_hir_db()) {
+            let trait_ = lower_trait(self.db, *hir_trait);
+            if !cycle_participants.contains(&trait_) {
+                if let Some(cycle) = super_trait_cycle(self.db, trait_) {
+                    diags.push(Box::new(TraitLowerDiag::CyclicSuperTraits(Vec::from_iter(
+                        cycle.members.iter().copied(),
+                    ))) as _);
+                    cycle_participants.extend(&cycle.members);
+                }
+            }
+            diags.extend(
+                analyze_trait(self.db, *hir_trait)
+                    .iter()
+                    .map(|d| d.to_voucher()),
+            )
+        }
+        diags
     }
 }
 

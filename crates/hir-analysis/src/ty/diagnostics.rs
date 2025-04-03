@@ -464,7 +464,7 @@ pub enum TraitLowerDiag<'db> {
         conflict_with: ImplTrait<'db>,
     },
 
-    CyclicSuperTraits(DynLazySpan<'db>),
+    CyclicSuperTraits(Vec<TraitDef<'db>>),
 }
 
 impl TraitLowerDiag<'_> {

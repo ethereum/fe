@@ -1,6 +1,5 @@
 use common::indexmap::IndexSet;
 use hir::hir_def::{GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound};
-use salsa::Update;
 
 use crate::{
     ty::{
@@ -49,11 +48,11 @@ pub(crate) fn ty_constraints<'db>(
 
 /// Collect super traits of the given trait.
 /// The returned trait ref is bound by the given trait's generic parameters.
-#[salsa::tracked(return_ref)] // xxx recovery_fn = recover_collect_super_traits)]
+#[salsa::tracked(return_ref)]
 pub(crate) fn collect_super_traits<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef<'db>,
-) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
+) -> IndexSet<Binder<TraitInstId<'db>>> {
     let hir_trait = trait_.trait_(db);
     let hir_db = db.as_hir_db();
     let self_param = trait_.self_param(db);
@@ -84,18 +83,61 @@ pub(crate) fn collect_super_traits<'db>(
         }
     }
 
-    // Check for cycles.
-    let mut cycles = IndexSet::new();
-    for &inst in &super_traits {
-        if let Err(err) = collect_super_traits(db, inst.skip_binder().def(db)) {
-            cycles.extend(err.0.iter().copied());
+    super_traits
+}
+
+#[salsa::tracked(return_ref, cycle_fn=super_trait_cycle_recover, cycle_initial=super_trait_cycle_initial)]
+pub fn super_trait_cycle<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: TraitDef<'db>,
+) -> Option<SuperTraitCycle<'db>> {
+    let bounds = collect_super_traits(db, trait_);
+
+    for t in bounds {
+        if let Some(cycle) = super_trait_cycle(db, t.skip_binder().def(db)) {
+            if cycle.contains(trait_) {
+                return Some(SuperTraitCycle {
+                    members: cycle.members.clone(),
+                    complete: true,
+                });
+            }
+            if !cycle.complete {
+                let mut cycle = cycle.clone();
+                cycle.members.insert(trait_);
+                return Some(cycle);
+            }
         }
     }
+    None
+}
 
-    if cycles.is_empty() {
-        Ok(super_traits)
-    } else {
-        Err(SuperTraitCycle(cycles))
+fn super_trait_cycle_initial<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    trait_: TraitDef<'db>,
+) -> Option<SuperTraitCycle<'db>> {
+    Some(SuperTraitCycle {
+        members: IndexSet::from_iter([trait_]),
+        complete: false,
+    })
+}
+
+fn super_trait_cycle_recover<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _value: &Option<SuperTraitCycle<'db>>,
+    _count: u32,
+    _trait_: TraitDef<'db>,
+) -> salsa::CycleRecoveryAction<Option<SuperTraitCycle<'db>>> {
+    salsa::CycleRecoveryAction::Iterate
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, salsa::Update)]
+pub(crate) struct SuperTraitCycle<'db> {
+    pub members: IndexSet<TraitDef<'db>>,
+    complete: bool,
+}
+impl<'db> SuperTraitCycle<'db> {
+    pub fn contains(&self, def: TraitDef<'db>) -> bool {
+        self.members.contains(&def)
     }
 }
 
@@ -208,14 +250,6 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
     };
 
     Binder::bind(ConstraintCollector::new(db, hir_func.into()).collect())
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default, Update)]
-pub(crate) struct SuperTraitCycle<'db>(IndexSet<TraitDef<'db>>);
-impl<'db> SuperTraitCycle<'db> {
-    pub fn contains(&self, def: TraitDef<'db>) -> bool {
-        self.0.contains(&def)
-    }
 }
 
 struct ConstraintCollector<'db> {

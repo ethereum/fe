@@ -23,7 +23,10 @@ use super::{
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
 };
-use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
+use crate::{
+    ty::{trait_lower::collect_trait_impls, trait_resolution::constraint::super_trait_cycle},
+    HirAnalysisDb,
+};
 
 /// Returns [`TraitEnv`] for the given ingot.
 #[salsa::tracked(return_ref)]
@@ -355,9 +358,11 @@ impl<'db> TraitDef<'db> {
         use std::sync::OnceLock;
         static EMPTY: OnceLock<IndexSet<Binder<TraitInstId>>> = OnceLock::new();
 
-        collect_super_traits(db, self)
-            .as_ref()
-            .unwrap_or_else(|_| EMPTY.get_or_init(IndexSet::new))
+        if super_trait_cycle(db, self).is_some() {
+            EMPTY.get_or_init(IndexSet::new)
+        } else {
+            collect_super_traits(db, self)
+        }
     }
 
     fn name(self, db: &'db dyn HirAnalysisDb) -> Option<&'db str> {

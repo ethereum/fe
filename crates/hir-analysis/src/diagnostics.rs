@@ -10,6 +10,7 @@ use crate::{
             BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
             TyDiagCollection, TyLowerDiag,
         },
+        trait_def::TraitDef,
         ty_check::RecordLike,
         ty_def::{TyData, TyVarSort},
     },
@@ -1552,17 +1553,28 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
                 error_code,
             },
 
-            Self::CyclicSuperTraits(span) => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "cyclic super traits are not allowed".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "super traits cycle is detected here".to_string(),
-                    span: span.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            Self::CyclicSuperTraits(traits) => {
+                let span = |t: &TraitDef| t.trait_(db).lazy_span().name().resolve(db);
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "cyclic trait bounds are not allowed".to_string(),
+                    sub_diagnostics: {
+                        let mut subs = vec![SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: "trait cycle detected here".to_string(),
+                            span: span(traits.first().unwrap()),
+                        }];
+                        subs.extend(traits.iter().skip(1).map(|t| SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "cycle continues here".to_string(),
+                            span: span(t),
+                        }));
+                        subs
+                    },
+                    notes: vec![],
+                    error_code,
+                }
+            }
         }
     }
 }

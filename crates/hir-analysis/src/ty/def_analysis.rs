@@ -28,7 +28,7 @@ use super::{
     trait_resolution::{
         constraint::{
             collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
-            collect_super_traits, SuperTraitCycle,
+            SuperTraitCycle,
         },
         PredicateListId,
     },
@@ -46,7 +46,8 @@ use crate::{
         trait_def::{does_impl_trait_conflict, TraitInstId},
         trait_lower::lower_impl_trait,
         trait_resolution::{
-            constraint::collect_trait_constraints, is_goal_satisfiable, GoalSatisfiability,
+            constraint::{collect_trait_constraints, super_trait_cycle},
+            is_goal_satisfiable, GoalSatisfiability,
         },
         ty_lower::lower_hir_ty,
         visitor::TyVisitable,
@@ -619,20 +620,9 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             .map(|(ty, _)| *ty)
             .unwrap_or(TyId::invalid(self.db, InvalidCause::Other));
 
-        if current_ty.is_trait_self(self.db) {
-            if let Some(cycle) = self.def.collect_super_trait_cycle(self.db) {
-                if let Ok(trait_inst) =
-                    lower_trait_ref(self.db, current_ty, trait_ref, self.scope())
-                {
-                    if cycle.contains(trait_inst.def(self.db)) {
-                        self.diags.push(
-                            TraitLowerDiag::CyclicSuperTraits(ctxt.span().unwrap().path().into())
-                                .into(),
-                        );
-                        return;
-                    }
-                }
-            }
+        if current_ty.is_trait_self(self.db) && self.def.super_trait_cycle(self.db).is_some() {
+            // Skip analysis of traits involved in cycles.
+            return;
         }
 
         if let (Some((ty, span)), Ok(trait_inst)) = (
@@ -988,12 +978,9 @@ impl<'db> DefKind<'db> {
         }
     }
 
-    fn collect_super_trait_cycle(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Option<&'db SuperTraitCycle<'db>> {
+    fn super_trait_cycle(self, db: &'db dyn HirAnalysisDb) -> Option<&'db SuperTraitCycle<'db>> {
         if let Self::Trait(def) = self {
-            collect_super_traits(db, def).as_ref().err()
+            super_trait_cycle(db, def).as_ref()
         } else {
             None
         }

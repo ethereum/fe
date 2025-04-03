@@ -962,6 +962,9 @@ name = "fe-test-utils"
 version = "0.1.0"
 dependencies = [
  "insta",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
 ]
 
 [[package]]
