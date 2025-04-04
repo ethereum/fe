@@ -6,6 +6,7 @@
 use crate::{
     name_resolution::diagnostics::NameResDiag,
     ty::{
+        def_analysis::AdtCycleMember,
         diagnostics::{
             BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
             TyDiagCollection, TyLowerDiag,
@@ -378,24 +379,33 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::RecursiveType {
-                primary_span,
-                field_span,
-            } => CompleteDiagnostic {
+            // TODO: add hint about indirection (eg *T)
+            Self::RecursiveType(cycle) => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "recursive type is not allowed".to_string(),
-                sub_diagnostics: vec![
-                    SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: "recursive type definition here".to_string(),
-                        span: primary_span.resolve(db),
-                    },
-                    SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: "recursion occurs here".to_string(),
-                        span: field_span.resolve(db),
-                    },
-                ],
+                message: "recursive type definition".to_string(),
+                sub_diagnostics: {
+                    cycle
+                        .iter()
+                        .map(|c| match c {
+                            AdtCycleMember::Adt(adt_def) => SubDiagnostic {
+                                style: LabelStyle::Primary,
+                                message: "recursive type definition here".to_string(),
+                                span: adt_def.adt_ref(db).name_span(ha_db).resolve(db),
+                            },
+                            AdtCycleMember::Field {
+                                adt,
+                                field_idx,
+                                ty_idx,
+                            } => SubDiagnostic {
+                                style: LabelStyle::Secondary,
+                                message: "recursion occurs here".to_string(),
+                                span: adt
+                                    .variant_ty_span(ha_db, *field_idx as usize, *ty_idx as usize)
+                                    .resolve(db),
+                            },
+                        })
+                        .collect()
+                },
                 notes: vec![],
                 error_code,
             },
@@ -427,7 +437,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
 
             Self::TypeAliasCycle { cycle } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "recursive type alias cycle is detected".to_string(),
+                message: "type alias cycle".to_string(),
                 sub_diagnostics: {
                     let mut iter = cycle.iter();
                     let mut labels = vec![SubDiagnostic {

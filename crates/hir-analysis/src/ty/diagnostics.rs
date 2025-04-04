@@ -1,4 +1,5 @@
 use super::{
+    def_analysis::AdtCycleMember,
     func_def::FuncDef,
     trait_def::{TraitDef, TraitInstId},
     ty_check::{RecordLike, TraitOps},
@@ -66,10 +67,7 @@ pub enum TyLowerDiag<'db> {
         given: usize,
     },
 
-    RecursiveType {
-        primary_span: DynLazySpan<'db>,
-        field_span: DynLazySpan<'db>,
-    },
+    RecursiveType(Vec<AdtCycleMember<'db>>),
 
     UnboundTypeAliasParam {
         span: DynLazySpan<'db>,

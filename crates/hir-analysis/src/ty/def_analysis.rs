@@ -73,8 +73,9 @@ pub fn analyze_adt<'db>(
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
     let mut diags = analyzer.analyze();
 
-    if let Some(diag) = check_recursive_adt(db, adt_ref) {
-        diags.push(diag);
+    let adt = lower_adt(db, adt_ref);
+    if let Some(cycle) = check_recursive_adt(db, adt) {
+        diags.push(TyLowerDiag::RecursiveType(cycle.members.iter().copied().collect()).into());
     }
     diags
 }
@@ -799,53 +800,75 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     }
 }
 
-#[salsa::tracked] // xxx (recovery_fn = check_recursive_adt_impl)]
+#[salsa::tracked(return_ref, cycle_fn=check_recursive_adt_recover, cycle_initial=check_recursive_adt_initial)]
 pub(crate) fn check_recursive_adt<'db>(
     db: &'db dyn HirAnalysisDb,
-    adt: AdtRef<'db>,
-) -> Option<TyDiagCollection<'db>> {
-    let adt_def = lower_adt(db, adt);
-    for field in adt_def.fields(db) {
-        for ty in field.iter_types(db) {
-            for adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
-                check_recursive_adt(db, adt_ref);
+    adt: AdtDef<'db>,
+) -> Option<AdtCycle<'db>> {
+    for (field_idx, field) in adt.fields(db).iter().enumerate() {
+        for (ty_idx, ty) in field.iter_types(db).enumerate() {
+            for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
+                let field_adt = lower_adt(db, field_adt_ref);
+                if let Some(cycle) = check_recursive_adt(db, field_adt) {
+                    let member = AdtCycleMember::Field {
+                        adt: field_adt,
+                        field_idx: field_idx as u16,
+                        ty_idx: ty_idx as u16,
+                    };
+                    if cycle.members.contains(&member) {
+                        return Some(AdtCycle {
+                            members: cycle.members.clone(),
+                            complete: true,
+                        });
+                    } else {
+                        let mut members = cycle.members.clone();
+                        members.insert(member);
+                        return Some(AdtCycle {
+                            members,
+                            complete: false,
+                        });
+                    }
+                }
             }
         }
     }
     None
 }
 
-// xxx
-// fn check_recursive_adt_impl<'db>(
-//     db: &'db dyn HirAnalysisDb,
-//     cycle: &salsa::Cycle,
-//     adt: AdtRef<'db>,
-// ) -> Option<TyDiagCollection<'db>> {
-//     let participants: FxHashSet<_> = cycle
-//         .participant_keys()
-//         .map(|key| {
-//             let id = key.key_index();
-//             AdtRef::from_id(id, db)
-//         })
-//         .collect();
+fn check_recursive_adt_initial<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    adt: AdtDef<'db>,
+) -> Option<AdtCycle<'db>> {
+    Some(AdtCycle {
+        members: IndexSet::from_iter([AdtCycleMember::Adt(adt)]),
+        complete: false,
+    })
+}
 
-//     let adt_def = lower_adt(db, adt);
-//     for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
-//         for (ty_idx, ty) in field.iter_types(db).enumerate() {
-//             for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
-//                 if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-//                     let diag = TyLowerDiag::RecursiveType {
-//                         primary_span: adt.name_span(db),
-//                         field_span: adt_def.variant_ty_span(db, field_idx, ty_idx),
-//                     };
-//                     return Some(diag.into());
-//                 }
-//             }
-//         }
-//     }
+fn check_recursive_adt_recover<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _value: &Option<AdtCycle<'db>>,
+    _count: u32,
+    _adt: AdtDef<'db>,
+) -> salsa::CycleRecoveryAction<Option<AdtCycle<'db>>> {
+    salsa::CycleRecoveryAction::Iterate
+}
 
-//     None
-// }
+#[derive(Debug, Clone, PartialEq, Eq, salsa::Update)]
+pub struct AdtCycle<'db> {
+    members: IndexSet<AdtCycleMember<'db>>,
+    complete: bool,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub enum AdtCycleMember<'db> {
+    Adt(AdtDef<'db>),
+    Field {
+        adt: AdtDef<'db>,
+        field_idx: u16,
+        ty_idx: u16,
+    },
+}
 
 impl<'db> TyId<'db> {
     /// Collect all adts inside types which are not wrapped by indirect type
