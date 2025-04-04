@@ -23,7 +23,7 @@ glob = "0.3.2"
 rustc-hash = "2.1.0"
 num-bigint = "0.4"
 paste = "1.0.15"
-salsa = { git = "https://github.com/salsa-rs/salsa", rev = "a89e3d23574f3749847b8b5cab0a8d79567214ed" }
+salsa = { git = "https://github.com/salsa-rs/salsa", rev = "296a8c78da1b54c76ff5795eb4c1e3fe2467e9fc" }
 smallvec = { version = "2.0.0-alpha.10" }
 semver = "1.0.24"
 tracing = "0.1.41"
