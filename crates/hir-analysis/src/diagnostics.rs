@@ -21,11 +21,7 @@ use common::diagnostics::{
     SubDiagnostic,
 };
 use either::Either;
-use hir::{
-    hir_def::FieldIndex,
-    span::{DynLazySpan, LazySpan},
-    ParserError,
-};
+use hir::{hir_def::FieldIndex, span::LazySpan, ParserError};
 use itertools::Itertools;
 
 /// All diagnostics accumulated in salsa-db should implement
@@ -62,11 +58,6 @@ impl<'db> DiagnosticVoucher<'db> for Box<dyn DiagnosticVoucher<'db> + 'db> {
 pub trait SpannedHirAnalysisDb:
     salsa::Database + hir::HirDb + hir::SpannedHirDb + HirAnalysisDb
 {
-    fn as_spanned_hir_analysis_db(&self) -> &dyn SpannedHirAnalysisDb;
-
-    fn resolve(&self, span: &DynLazySpan) -> Option<Span> {
-        span.resolve(self.as_spanned_hir_db())
-    }
 }
 
 // `ParseError` has span information, but this is not a problem because the
@@ -121,7 +112,7 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
         let severity = Severity::Error;
         match self {
             Self::Conflict(ident, conflicts) => {
-                let ident = ident.data(db.as_hir_db());
+                let ident = ident.data(db);
                 let mut spans: Vec<_> = conflicts
                     .iter()
                     .filter_map(|span| span.resolve(db))
@@ -152,14 +143,14 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
             }
 
             Self::NotFound(prim_span, ident) => {
-                let ident = ident.data(db.as_hir_db());
+                let ident = ident.data(db);
                 CompleteDiagnostic {
                     severity,
                     message: format!("`{}` is not found", ident),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!("`{ident}` is not found"),
-                        span: db.resolve(prim_span),
+                        span: prim_span.resolve(db),
                     }],
                     notes: vec![],
                     error_code,
@@ -167,18 +158,18 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
             }
 
             Self::Invisible(prim_span, ident, span) => {
-                let ident = ident.data(db.as_hir_db());
+                let ident = ident.data(db);
 
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!("`{ident}` is not visible"),
-                    span: db.resolve(prim_span),
+                    span: prim_span.resolve(db),
                 }];
                 if let Some(span) = span {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!("`{ident}` is defined here"),
-                        span: db.resolve(span),
+                        span: span.resolve(db),
                     });
                 }
 
@@ -192,11 +183,11 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
             }
 
             Self::Ambiguous(prim_span, ident, candidates) => {
-                let ident = ident.data(db.as_hir_db());
+                let ident = ident.data(db);
                 let mut diags = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!("`{ident}` is ambiguous"),
-                    span: db.resolve(prim_span),
+                    span: prim_span.resolve(db),
                 }];
 
                 let mut cand_spans: Vec<_> = candidates
@@ -222,18 +213,18 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
             }
 
             Self::InvalidPathSegment(prim_span, name, res_span) => {
-                let name = name.data(db.as_hir_db());
+                let name = name.data(db);
                 let mut labels = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!("`{}` can't be used as a middle segment of a path", name,),
-                    span: db.resolve(prim_span),
+                    span: prim_span.resolve(db),
                 }];
 
                 if let Some(span) = res_span {
                     labels.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!("`{name}` is defined here"),
-                        span: db.resolve(span),
+                        span: span.resolve(db),
                     });
                 }
 
@@ -247,7 +238,7 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
             }
 
             Self::ExpectedType(prim_span, name, given_kind) => {
-                let name = name.data(db.as_hir_db());
+                let name = name.data(db);
                 CompleteDiagnostic {
                     severity,
                     message: "expected type item here".to_string(),
@@ -262,7 +253,7 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
             }
 
             Self::ExpectedTrait(prim_span, name, given_kind) => {
-                let name = name.data(db.as_hir_db());
+                let name = name.data(db);
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "expected trait item here".to_string(),
@@ -277,7 +268,7 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
             }
 
             Self::ExpectedValue(prim_span, name, given_kind) => {
-                let name = name.data(db.as_hir_db());
+                let name = name.data(db);
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "expected value here".to_string(),
@@ -312,7 +303,6 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
 
 impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
-        let ha_db = db.as_hir_analysis_db();
         let error_code = GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code());
         match self {
             Self::ExpectedStarKind(span) => {
@@ -336,13 +326,13 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 expected,
             } => {
                 let msg = if let Some(expected) = expected {
-                    let arg_kind = given.kind(ha_db);
+                    let arg_kind = given.kind(db);
                     debug_assert!(!expected.does_match(arg_kind));
 
                     format!(
                         "expected `{}` kind, but `{}` has `{}` kind",
                         expected,
-                        given.pretty_print(ha_db),
+                        given.pretty_print(db),
                         arg_kind
                     )
                 } else {
@@ -387,7 +377,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     let mut subs = vec![SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "recursive type definition here".to_string(),
-                        span: head.adt.adt_ref(db).name_span(ha_db).resolve(db),
+                        span: head.adt.adt_ref(db).name_span(db).resolve(db),
                     }];
                     subs.extend(cycle.iter().map(|m| {
                         SubDiagnostic {
@@ -395,7 +385,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                             message: "recursion occurs here".to_string(),
                             span: m
                                 .adt
-                                .variant_ty_span(ha_db, m.field_idx as usize, m.ty_idx as usize)
+                                .variant_ty_span(db, m.field_idx as usize, m.ty_idx as usize)
                                 .resolve(db),
                         }
                     }));
@@ -416,7 +406,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                         style: LabelStyle::Primary,
                         message: format!(
                             "expected at least {} arguments here",
-                            alias.generic_params(db.as_hir_db()).len(db.as_hir_db())
+                            alias.generic_params(db).len(db)
                         ),
                         span: span.resolve(db),
                     },
@@ -454,7 +444,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
             Self::InconsistentKindBound { span, ty, old, new } => {
                 let msg = format!(
                     "`{}` is already declared with `{}` kind, but found `{}` kind here",
-                    ty.pretty_print(ha_db),
+                    ty.pretty_print(db),
                     old,
                     new
                 );
@@ -495,7 +485,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("`{}` is already defined", name.data(db.as_hir_db())),
+                        message: format!("`{}` is already defined", name.data(db)),
                         span: span.resolve(db),
                     },
                     SubDiagnostic {
@@ -519,10 +509,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!(
-                            "duplicated argument name `{}`",
-                            name.data(db.as_hir_db())
-                        ),
+                        message: format!("duplicated argument name `{}`", name.data(db)),
                         span: primary.resolve(db),
                     },
                     SubDiagnostic {
@@ -571,8 +558,8 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "expected `{}` type here, but `{}` is given",
-                        expected.pretty_print(ha_db),
-                        given.pretty_print(ha_db)
+                        expected.pretty_print(db),
+                        given.pretty_print(db)
                     ),
                     span: span.resolve(db),
                 }],
@@ -587,7 +574,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "expected const type of `{}` here",
-                        expected.pretty_print(ha_db)
+                        expected.pretty_print(db)
                     ),
                     span: span.resolve(db),
                 }],
@@ -602,7 +589,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "expected a normal type here, but `{}` is given",
-                        given.pretty_print(ha_db)
+                        given.pretty_print(db)
                     ),
                     span: span.resolve(db),
                 }],
@@ -639,7 +626,6 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
 
 impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
-        let adb = db.as_hir_analysis_db();
         let error_code = GlobalErrorCode::new(DiagnosticPass::TyCheck, self.local_code());
         let severity = Severity::Error;
 
@@ -655,8 +641,8 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "expected `{}`, but `{}` is given",
-                        expected.pretty_print(adb),
-                        given.pretty_print(adb),
+                        expected.pretty_print(db),
+                        given.pretty_print(db),
                     ),
                     span: span.resolve(db),
                 }],
@@ -681,22 +667,16 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 name,
             } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: format!(
-                    "duplicate binding `{}` in pattern",
-                    name.data(db.as_hir_db())
-                ),
+                message: format!("duplicate binding `{}` in pattern", name.data(db)),
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("`{}` is defined again here", name.data(db.as_hir_db())),
+                        message: format!("`{}` is defined again here", name.data(db)),
                         span: primary.resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!(
-                            "first definition of `{}` in this pattern",
-                            name.data(db.as_hir_db())
-                        ),
+                        message: format!("first definition of `{}` in this pattern", name.data(db)),
                         span: conflicat_with.resolve(db),
                     },
                 ],
@@ -861,12 +841,12 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("duplicate field binding `{}`", name.data(db.as_hir_db())),
+                        message: format!("duplicate field binding `{}`", name.data(db)),
                         span: primary.resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("first use of `{}`", name.data(db.as_hir_db())),
+                        message: format!("first use of `{}`", name.data(db)),
                         span: first_use.resolve(db),
                     },
                 ],
@@ -879,7 +859,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 message: "specified field not found".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("field `{}` not found", label.data(db.as_hir_db())),
+                    message: format!("field `{}` not found", label.data(db)),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
@@ -917,7 +897,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
             } => {
                 let missing = missing_fields
                     .iter()
-                    .map(|id| id.data(db.as_hir_db()).as_str())
+                    .map(|id| id.data(db).as_str())
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -949,7 +929,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 message: "undefined variable".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("undefined variable `{}`", ident.data(db.as_hir_db())),
+                    message: format!("undefined variable `{}`", ident.data(db)),
                     span: primary.resolve(db),
                 }],
                 notes: vec![],
@@ -962,8 +942,8 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 expected,
                 func,
             } => {
-                let actual = actual.pretty_print(adb);
-                let expected = expected.pretty_print(adb);
+                let actual = actual.pretty_print(db);
+                let expected = expected.pretty_print(db);
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!("expected `{expected}`, but `{actual}` is returned"),
@@ -971,7 +951,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 }];
 
                 if let Some(func) = func {
-                    if func.ret_ty(db.as_hir_db()).is_some() {
+                    if func.ret_ty(db).is_some() {
                         sub_diagnostics.push(SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: format!("this function expects `{expected}` to be returned"),
@@ -1014,13 +994,13 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 let message = match index {
                     FieldIndex::Ident(ident) => format!(
                         "field `{}` is not found in `{}`",
-                        ident.data(db.as_hir_db()),
-                        given_ty.pretty_print(adb)
+                        ident.data(db),
+                        given_ty.pretty_print(db)
                     ),
                     FieldIndex::Index(index) => format!(
                         "field `{}` is not found in `{}`",
-                        index.data(db.as_hir_db()),
-                        given_ty.pretty_print(adb)
+                        index.data(db),
+                        given_ty.pretty_print(db)
                     ),
                 };
 
@@ -1046,11 +1026,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 let sub_diagnostics = vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!(
-                            "`{}` can't be applied to `{}`",
-                            op.data(db.as_hir_db()),
-                            ty
-                        ),
+                        message: format!("`{}` can't be applied to `{}`", op.data(db), ty),
                         span: span.resolve(db),
                     },
                     // xxx move to hint
@@ -1058,7 +1034,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                         style: LabelStyle::Secondary,
                         message: format!(
                             "Try implementing `{}` for `{}`",
-                            trait_path.pretty_print(db.as_hir_db()),
+                            trait_path.pretty_print(db),
                             ty
                         ),
                         span: span.resolve(db),
@@ -1067,10 +1043,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: format!(
-                        "`{}` trait is not implemented",
-                        trait_path.pretty_print(db.as_hir_db())
-                    ),
+                    message: format!("`{}` trait is not implemented", trait_path.pretty_print(db)),
                     sub_diagnostics,
                     notes: vec![],
                     error_code,
@@ -1099,7 +1072,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 if let Some((name, span)) = binding {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("try changing to `mut {}`", name.data(db.as_hir_db())),
+                        message: format!("try changing to `mut {}`", name.data(db)),
                         span: span.resolve(db),
                     });
                 }
@@ -1134,7 +1107,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 ty,
                 trait_name,
             } => {
-                let trait_name = trait_name.data(db.as_hir_db());
+                let trait_name = trait_name.data(db);
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
@@ -1157,7 +1130,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
             }
 
             Self::NotCallable(primary, ty) => {
-                let ty = ty.pretty_print(adb);
+                let ty = ty.pretty_print(db);
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: format!("expected function, found `{ty}`"),
@@ -1235,15 +1208,15 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                         style: LabelStyle::Primary,
                         message: format!(
                             "expected `{}` label, but `{}` given",
-                            expected.data(db.as_hir_db()),
-                            given.data(db.as_hir_db())
+                            expected.data(db),
+                            given.data(db)
                         ),
                         span: primary.resolve(db),
                     }]
                 } else {
                     vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("expected `{}` label", expected.data(db.as_hir_db())),
+                        message: format!("expected `{}` label", expected.data(db)),
                         span: primary.resolve(db),
                     }]
                 };
@@ -1270,13 +1243,13 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 func_ty,
             } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: format!("`{}` is not a method", func_name.data(adb)),
+                message: format!("`{}` is not a method", func_name.data(db)),
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!(
                             "`{}` is an associated function, not a method",
-                            func_name.data(adb),
+                            func_name.data(db),
                         ),
                         span: span.method_name().resolve(db),
                     },
@@ -1284,15 +1257,15 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                         style: LabelStyle::Primary,
                         message: format!(
                             "help: use associated function syntax instead: `{}::{}`",
-                            receiver_ty.pretty_print(adb),
-                            func_name.data(adb)
+                            receiver_ty.pretty_print(db),
+                            func_name.data(db)
                         ),
                         span: span.resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "function defined here".to_string(),
-                        span: func_ty.name_span(adb).unwrap().resolve(db),
+                        span: func_ty.name_span(db).unwrap().resolve(db),
                     },
                 ],
                 notes: vec![
@@ -1307,7 +1280,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 method_name,
                 cand_spans,
             } => {
-                let method_name = method_name.data(db.as_hir_db());
+                let method_name = method_name.data(db);
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!("`{}` is ambiguous", method_name),
@@ -1336,7 +1309,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 method_name,
                 traits,
             } => {
-                let method_name = method_name.data(db.as_hir_db());
+                let method_name = method_name.data(db);
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!("`{method_name}` is ambiguous"),
@@ -1344,7 +1317,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 }];
 
                 for trait_ in traits {
-                    let trait_name = trait_.name(db.as_hir_db()).unwrap().data(db.as_hir_db());
+                    let trait_name = trait_.name(db).unwrap().data(db);
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!("candidate: `{trait_name}::{method_name}`"),
@@ -1371,7 +1344,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 for cand in cands {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("candidate: {}", cand.pretty_print(adb, false)),
+                        message: format!("candidate: {}", cand.pretty_print(db, false)),
                         span: primary.resolve(db), // xxx cand span??
                     });
                 }
@@ -1393,7 +1366,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 }];
 
                 for trait_ in traits {
-                    if let Some(path) = trait_.scope().pretty_path(db.as_hir_db()) {
+                    if let Some(path) = trait_.scope().pretty_path(db) {
                         sub_diagnostics.push(SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: format!("`use {path}`"),
@@ -1417,25 +1390,21 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                 receiver,
             } => {
                 let (recv_name, recv_ty, recv_kind) = match receiver {
-                    Either::Left(ty) => (ty.pretty_print(adb), Some(ty), ty.kind_name(adb)),
+                    Either::Left(ty) => (ty.pretty_print(db), Some(ty), ty.kind_name(db)),
                     Either::Right(trait_) => {
-                        let name = trait_
-                            .trait_(db)
-                            .name(db.as_hir_db())
-                            .unwrap()
-                            .data(db.as_hir_db());
+                        let name = trait_.trait_(db).name(db).unwrap().data(db);
                         (name, None, "trait".to_string())
                     }
                 };
 
-                let method_str = method_name.data(db.as_hir_db());
+                let method_str = method_name.data(db);
                 let message = format!(
                     "no method named `{}` found for {} `{}`",
                     method_str, recv_kind, recv_name
                 );
 
                 if let Some(ty) = recv_ty {
-                    if let Some(field_ty) = ty.record_field_ty(adb, *method_name) {
+                    if let Some(field_ty) = ty.record_field_ty(db, *method_name) {
                         return CompleteDiagnostic {
                             severity: Severity::Error,
                             message,
@@ -1445,7 +1414,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                                     "field `{}` in `{}` has type `{}`",
                                     method_str,
                                     recv_name,
-                                    field_ty.pretty_print(adb)
+                                    field_ty.pretty_print(db)
                                 ),
                                 span: primary.resolve(db),
                             }],
@@ -1493,12 +1462,12 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                     span: primary.resolve(db),
                 }];
 
-                let sub_diag_msg = match ty.base_ty(adb).data(db) {
+                let sub_diag_msg = match ty.base_ty(db).data(db) {
                     TyData::TyVar(var) if var.sort == TyVarSort::Integral => {
                         "no default type is provided for an integer type. consider giving integer type".to_string()
                     }
                     TyData::TyVar(_) => "consider giving `: Type` here".to_string(),
-                    _ => format!("consider giving `: {}` here", ty.pretty_print(adb)),
+                    _ => format!("consider giving `: {}` here", ty.pretty_print(db)),
                 };
 
                 sub_diagnostics.push(SubDiagnostic {
@@ -1586,7 +1555,6 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
 
 impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
-        let adb = db.as_hir_analysis_db();
         let error_code = GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code());
         let severity = Severity::Error;
         match self {
@@ -1630,8 +1598,8 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
                 expected,
                 actual,
             } => {
-                let actual_kind = actual.kind(adb);
-                let ty_display = actual.pretty_print(adb);
+                let actual_kind = actual.kind(db);
+                let ty_display = actual.pretty_print(db);
 
                 CompleteDiagnostic {
                     severity,
@@ -1656,14 +1624,14 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
             } => {
                 let msg = format!(
                     "`{}` doesn't implement `{}`",
-                    primary_goal.self_ty(adb).pretty_print(adb),
-                    primary_goal.pretty_print(adb, false)
+                    primary_goal.self_ty(db).pretty_print(db),
+                    primary_goal.pretty_print(db, false)
                 );
 
                 let unsat_subgoal = unsat_subgoal.map(|unsat| {
                     format!(
                         "trait bound `{}` is not satisfied",
-                        unsat.pretty_print(adb, true)
+                        unsat.pretty_print(db, true)
                     )
                 });
 
@@ -1707,7 +1675,7 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
                 message: "trait bound for concrete type is not allowed".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("`{}` is a concrete type", ty.pretty_print(adb)),
+                    message: format!("`{}` is a concrete type", ty.pretty_print(db)),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
@@ -1719,7 +1687,7 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
                 message: "trait bound for const type is not allowed".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("`{}` is a const type", ty.pretty_print(adb)),
+                    message: format!("`{}` is a const type", ty.pretty_print(db)),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
@@ -1731,7 +1699,6 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
 
 impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
-        let adb = db.as_hir_analysis_db();
         let error_code = GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code());
         let severity = Severity::Error;
 
@@ -1746,12 +1713,12 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "".into(),
-                        span: primary.name_span(adb).resolve(db),
+                        span: primary.name_span(db).resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "".into(),
-                        span: conflict_with.name_span(adb).resolve(db),
+                        span: conflict_with.name_span(db).resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -1769,8 +1736,8 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "method `{}` is not defined in trait `{}`",
-                        method_name.data(db.as_hir_db()),
-                        trait_.name(db.as_hir_db()).unwrap().data(db.as_hir_db())
+                        method_name.data(db),
+                        trait_.name(db).unwrap().data(db)
                     ),
                     span: primary.resolve(db),
                 }],
@@ -1784,7 +1751,7 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
             } => {
                 let missing = not_implemented
                     .iter()
-                    .map(|id| id.data(db.as_hir_db()).as_str())
+                    .map(|id| id.data(db).as_str())
                     .collect::<Vec<_>>()
                     .join(", ");
 
@@ -1802,8 +1769,8 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
             }
 
             Self::MethodTypeParamNumMismatch { trait_m, impl_m } => {
-                let impl_params = impl_m.explicit_params(adb);
-                let trait_params = trait_m.explicit_params(adb);
+                let impl_params = impl_m.explicit_params(db);
+                let trait_params = trait_m.explicit_params(db);
 
                 CompleteDiagnostic {
                     severity,
@@ -1815,7 +1782,7 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                             trait_params.len(),
                             impl_params.len(),
                         ),
-                        span: impl_m.name_span(adb).resolve(db),
+                        span: impl_m.name_span(db).resolve(db),
                     }],
                     notes: vec![],
                     error_code,
@@ -1829,8 +1796,8 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
             } => {
                 let message = format!(
                     "expected `{}` kind, but the given type has `{}` kind",
-                    trait_m.explicit_params(adb)[*param_idx].kind(adb),
-                    impl_m.explicit_params(adb)[*param_idx].kind(adb),
+                    trait_m.explicit_params(db)[*param_idx].kind(db),
+                    impl_m.explicit_params(db)[*param_idx].kind(db),
                 );
 
                 CompleteDiagnostic {
@@ -1840,7 +1807,7 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                         style: LabelStyle::Primary,
                         message,
                         span: impl_m
-                            .hir_func_def(adb)
+                            .hir_func_def(db)
                             .unwrap()
                             .lazy_span()
                             .generic_params_moved()
@@ -1859,10 +1826,10 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "expected {} arguments, but {} given",
-                        trait_m.arg_tys(adb).len(),
-                        impl_m.arg_tys(adb).len(),
+                        trait_m.arg_tys(db).len(),
+                        impl_m.arg_tys(db).len(),
                     ),
-                    span: impl_m.param_list_span(adb).resolve(db),
+                    span: impl_m.param_list_span(db).resolve(db),
                 }],
                 notes: vec![],
                 error_code,
@@ -1881,20 +1848,20 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                         message: format!(
                             "expected `{}` label, but the given label is `{}`",
                             trait_m
-                                .param_label_or_name(adb, *param_idx)
+                                .param_label_or_name(db, *param_idx)
                                 .unwrap()
-                                .pretty_print(db.as_hir_db()),
+                                .pretty_print(db),
                             impl_m
-                                .param_label_or_name(adb, *param_idx)
+                                .param_label_or_name(db, *param_idx)
                                 .unwrap()
-                                .pretty_print(db.as_hir_db()),
+                                .pretty_print(db),
                         ),
-                        span: impl_m.param_span(adb, *param_idx).resolve(db),
+                        span: impl_m.param_span(db, *param_idx).resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "argument label defined here".to_string(),
-                        span: trait_m.param_span(adb, *param_idx).resolve(db),
+                        span: trait_m.param_span(db, *param_idx).resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -1914,10 +1881,10 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "expected `{}` type, but the given type is `{}`",
-                        trait_m_ty.pretty_print(adb),
-                        impl_m_ty.pretty_print(adb)
+                        trait_m_ty.pretty_print(db),
+                        impl_m_ty.pretty_print(db)
                     ),
-                    span: impl_m.param_span(adb, *param_idx).resolve(db),
+                    span: impl_m.param_span(db, *param_idx).resolve(db),
                 }],
                 notes: vec![],
                 error_code,
@@ -1935,11 +1902,11 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                     style: LabelStyle::Primary,
                     message: format!(
                         "expected `{}` type, but the given type is `{}`",
-                        trait_ty.pretty_print(adb),
-                        impl_ty.pretty_print(adb),
+                        trait_ty.pretty_print(db),
+                        impl_ty.pretty_print(db),
                     ),
                     span: impl_m
-                        .hir_func_def(adb)
+                        .hir_func_def(db)
                         .unwrap()
                         .lazy_span()
                         .ret_ty()
@@ -1960,7 +1927,7 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                     "method has stricter bounds than the declared method in the trait: {}",
                     stricter_bounds
                         .iter()
-                        .map(|pred| format!("`{}`", pred.pretty_print(adb, true)))
+                        .map(|pred| format!("`{}`", pred.pretty_print(db, true)))
                         .join(", ")
                 );
                 CompleteDiagnostic {
@@ -1981,16 +1948,16 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                 expected,
                 given,
             } => {
-                let message = if expected.is_trait_self(adb) {
+                let message = if expected.is_trait_self(db) {
                     format!(
                         "type of `self` must start with `Self`, but the given type is `{}`",
-                        given.pretty_print(adb),
+                        given.pretty_print(db),
                     )
                 } else {
                     format!(
                         "type of `self` must start with `Self` or `{}`, but the given type is `{}`",
-                        expected.pretty_print(adb),
-                        given.pretty_print(adb),
+                        expected.pretty_print(db),
+                        given.pretty_print(db),
                     )
                 };
 

@@ -6,7 +6,6 @@ use fe_hir_analysis::name_resolution::{resolve_path, NameDomain};
 use hir::{
     hir_def::{Expr, ExprId, ItemKind, Pat, PatId, PathId, TopLevelMod, TypeId},
     visitor::prelude::*,
-    HirDb, SpannedHirDb,
 };
 use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
 use test_utils::snap_test;
@@ -23,7 +22,7 @@ fn early_path_resolution_standalone(fixture: Fixture<&str>) {
     let (top_mod, mut prop_formatter) = db.top_mod(ingot, file);
     db.assert_no_diags(top_mod);
 
-    let mut ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
+    let mut ctxt = VisitorCtxt::with_top_mod(&db, top_mod);
     PathVisitor {
         db: &db,
         top_mod,
@@ -32,7 +31,7 @@ fn early_path_resolution_standalone(fixture: Fixture<&str>) {
     }
     .visit_top_mod(&mut ctxt, top_mod);
 
-    let res = prop_formatter.finish(db.as_spanned_hir_db());
+    let res = prop_formatter.finish(&db);
     snap_test!(res, fixture.path());
 }
 
@@ -82,7 +81,7 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
         let span = ctxt
             .span()
             .unwrap()
-            .segment(path.segment_index(self.db.as_hir_db()))
+            .segment(path.segment_index(self.db))
             .ident()
             .into();
         self.prop_formatter.push_prop(self.top_mod, span, prop);

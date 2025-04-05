@@ -3,9 +3,7 @@ pub mod analysis_pass;
 pub mod diagnostics;
 
 #[salsa::db]
-pub trait HirAnalysisDb: salsa::Database + HirDb {
-    fn as_hir_analysis_db(&self) -> &dyn HirAnalysisDb;
-}
+pub trait HirAnalysisDb: salsa::Database + HirDb {}
 
 pub mod name_resolution;
 pub mod ty;

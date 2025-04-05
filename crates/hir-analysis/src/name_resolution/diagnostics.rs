@@ -49,17 +49,17 @@ impl<'db> NameResDiag<'db> {
         match self {
             Self::Conflict(_, conflicts) => conflicts
                 .iter()
-                .filter_map(|span| span.top_mod(db.as_hir_db()))
+                .filter_map(|span| span.top_mod(db))
                 .min()
                 .unwrap(),
-            Self::NotFound(span, _) => span.top_mod(db.as_hir_db()).unwrap(),
-            Self::Invisible(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
-            Self::Ambiguous(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
-            Self::InvalidPathSegment(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
-            Self::ExpectedType(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
-            Self::ExpectedTrait(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
-            Self::ExpectedValue(span, _, _) => span.top_mod(db.as_hir_db()).unwrap(),
-            Self::TooManyGenericArgs { span, .. } => span.top_mod(db.as_hir_db()).unwrap(),
+            Self::NotFound(span, _) => span.top_mod(db).unwrap(),
+            Self::Invisible(span, _, _) => span.top_mod(db).unwrap(),
+            Self::Ambiguous(span, _, _) => span.top_mod(db).unwrap(),
+            Self::InvalidPathSegment(span, _, _) => span.top_mod(db).unwrap(),
+            Self::ExpectedType(span, _, _) => span.top_mod(db).unwrap(),
+            Self::ExpectedTrait(span, _, _) => span.top_mod(db).unwrap(),
+            Self::ExpectedValue(span, _, _) => span.top_mod(db).unwrap(),
+            Self::TooManyGenericArgs { span, .. } => span.top_mod(db).unwrap(),
         }
     }
 

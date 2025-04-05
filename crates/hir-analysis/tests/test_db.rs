@@ -96,13 +96,7 @@ impl HirAnalysisTestDb {
 
             for diag in diags {
                 let cs_diag = &diag.to_cs(self);
-                term::emit(
-                    &mut buffer,
-                    &config,
-                    &CsDbWrapper(self.as_driver_db()),
-                    cs_diag,
-                )
-                .unwrap();
+                term::emit(&mut buffer, &config, &CsDbWrapper(self), cs_diag).unwrap();
             }
             eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 

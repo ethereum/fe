@@ -71,7 +71,7 @@ impl<'db> AdtDef<'db> {
         match self.adt_ref(db) {
             AdtRef::Enum(e) => {
                 let span = e.lazy_span().variants_moved().variant_moved(field_idx);
-                match e.variants(db.as_hir_db()).data(db.as_hir_db())[field_idx].kind {
+                match e.variants(db).data(db)[field_idx].kind {
                     VariantKind::Tuple(_) => span.tuple_type_moved().elem_ty_moved(ty_idx).into(),
                     VariantKind::Record(_) => {
                         span.fields_moved().field_moved(ty_idx).ty_moved().into()
@@ -97,7 +97,7 @@ impl<'db> AdtDef<'db> {
     }
 
     pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
         match self.adt_ref(db) {
             AdtRef::Enum(e) => e.top_mod(hir_db).ingot(hir_db),
             AdtRef::Struct(s) => s.top_mod(hir_db).ingot(hir_db),
@@ -189,7 +189,7 @@ impl<'db> AdtRef<'db> {
     }
 
     pub fn name(self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
         match self {
             AdtRef::Enum(e) => e.name(hir_db),
             AdtRef::Struct(s) => s.name(hir_db),
@@ -205,7 +205,7 @@ impl<'db> AdtRef<'db> {
 
     pub fn name_span(self, db: &'db dyn HirAnalysisDb) -> DynLazySpan<'db> {
         self.scope()
-            .name_span(db.as_hir_db())
+            .name_span(db)
             .unwrap_or_else(DynLazySpan::invalid)
     }
 
@@ -253,27 +253,19 @@ impl<'db> AdtTyBuilder<'db> {
     fn collect_variants(&mut self) {
         match self.adt {
             AdtRef::Struct(struct_) => {
-                self.collect_field_types(struct_.fields(self.db.as_hir_db()));
+                self.collect_field_types(struct_.fields(self.db));
             }
 
-            AdtRef::Contract(contract) => {
-                self.collect_field_types(contract.fields(self.db.as_hir_db()))
-            }
+            AdtRef::Contract(contract) => self.collect_field_types(contract.fields(self.db)),
 
-            AdtRef::Enum(enum_) => {
-                self.collect_enum_variant_types(enum_.variants(self.db.as_hir_db()))
-            }
+            AdtRef::Enum(enum_) => self.collect_enum_variant_types(enum_.variants(self.db)),
         };
     }
 
     fn collect_field_types(&mut self, fields: FieldDefListId<'db>) {
         let scope = self.adt.scope();
 
-        let fields = fields
-            .data(self.db.as_hir_db())
-            .iter()
-            .map(|field| field.ty)
-            .collect();
+        let fields = fields.data(self.db).iter().map(|field| field.ty).collect();
 
         self.variants.push(AdtField::new(fields, scope));
     }
@@ -281,25 +273,20 @@ impl<'db> AdtTyBuilder<'db> {
     fn collect_enum_variant_types(&mut self, variants: VariantDefListId<'db>) {
         let scope = self.adt.scope();
 
-        variants
-            .data(self.db.as_hir_db())
-            .iter()
-            .for_each(|variant| {
-                // TODO: FIX here when record variant is introduced.
-                let tys = match variant.kind {
-                    VariantKind::Tuple(tuple_id) => tuple_id.data(self.db.as_hir_db()).clone(),
+        variants.data(self.db).iter().for_each(|variant| {
+            // TODO: FIX here when record variant is introduced.
+            let tys = match variant.kind {
+                VariantKind::Tuple(tuple_id) => tuple_id.data(self.db).clone(),
 
-                    VariantKind::Record(fields) => fields
-                        .data(self.db.as_hir_db())
-                        .iter()
-                        .map(|field| field.ty)
-                        .collect(),
+                VariantKind::Record(fields) => {
+                    fields.data(self.db).iter().map(|field| field.ty).collect()
+                }
 
-                    VariantKind::Unit => vec![],
-                };
+                VariantKind::Unit => vec![],
+            };
 
-                let variant = AdtField::new(tys, scope);
-                self.variants.push(variant)
-            })
+            let variant = AdtField::new(tys, scope);
+            self.variants.push(variant)
+        })
     }
 }

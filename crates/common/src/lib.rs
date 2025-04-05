@@ -4,9 +4,7 @@ pub mod input;
 pub use input::{InputFile, InputIngot};
 
 #[salsa::db]
-pub trait InputDb: salsa::Database {
-    fn as_input_db(&self) -> &dyn InputDb;
-}
+pub trait InputDb: salsa::Database {}
 
 #[doc(hidden)]
 pub use paste::paste;
@@ -22,11 +20,7 @@ macro_rules! impl_db_traits {
         $(
             $crate::paste! {
                 #[salsa::db]
-                impl $trait_name for $db_type {
-                    fn [<as_ $trait_name:snake>](&self) -> &dyn $trait_name {
-                        self
-                    }
-                }
+                impl $trait_name for $db_type {}
             }
         )+
     };

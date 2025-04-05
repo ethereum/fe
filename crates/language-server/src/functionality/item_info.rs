@@ -27,7 +27,7 @@ pub fn get_item_path_markdown(item: ItemKind, hir_db: &dyn HirDb) -> Option<Stri
 
 pub fn get_item_definition_markdown(item: ItemKind, db: &dyn SpannedHirDb) -> Option<String> {
     // TODO: use pending AST features to get the definition without all this text manipulation
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
     let span = item.lazy_span().resolve(db)?;
 
     let mut start: usize = span.range.start().into();
@@ -48,13 +48,13 @@ pub fn get_item_definition_markdown(item: ItemKind, db: &dyn SpannedHirDb) -> Op
     let name_span = item.name_span()?.resolve(db);
     if let Some(name_span) = name_span {
         let mut name_line_start = name_span.range.start().into();
-        let file_text = span.file.text(db.as_input_db()).as_str();
+        let file_text = span.file.text(db).as_str();
         while name_line_start > 0 && file_text.chars().nth(name_line_start - 1).unwrap() != '\n' {
             name_line_start -= 1;
         }
         start = name_line_start;
     }
 
-    let item_definition = span.file.text(db.as_input_db()).as_str()[start..end].to_string();
+    let item_definition = span.file.text(db).as_str()[start..end].to_string();
     Some(format!("```fe\n{}\n```", item_definition.trim()))
 }

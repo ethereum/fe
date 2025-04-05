@@ -200,11 +200,8 @@ impl<'db> ModuleTreeBuilder<'db> {
         self.set_modules();
         self.build_tree();
 
-        let root_mod = map_file_to_mod_impl(
-            self.db,
-            self.ingot,
-            self.input_ingot.root_file(self.db.as_input_db()),
-        );
+        let root_mod =
+            map_file_to_mod_impl(self.db, self.ingot, self.input_ingot.root_file(self.db));
         let root = self.mod_map[&root_mod];
         ModuleTree {
             root,
@@ -215,28 +212,27 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn set_modules(&mut self) {
-        for &file in self.input_ingot.files(self.db.as_input_db()) {
+        for &file in self.input_ingot.files(self.db) {
             let top_mod = map_file_to_mod_impl(self.db, self.ingot, file);
 
             let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
-            self.path_map
-                .insert(file.path(self.db.as_input_db()), module_id);
+            self.path_map.insert(file.path(self.db), module_id);
             self.mod_map.insert(top_mod, module_id);
         }
     }
 
     fn build_tree(&mut self) {
-        let root = self.input_ingot.root_file(self.db.as_input_db());
+        let root = self.input_ingot.root_file(self.db);
 
-        for &child in self.input_ingot.files(self.db.as_input_db()) {
+        for &child in self.input_ingot.files(self.db) {
             // Ignore the root file because it has no parent.
             if child == root {
                 continue;
             }
 
-            let root_path = root.path(self.db.as_input_db());
+            let root_path = root.path(self.db);
             let root_mod = map_file_to_mod_impl(self.db, self.ingot, root);
-            let child_path = child.path(self.db.as_input_db());
+            let child_path = child.path(self.db);
             let child_mod = map_file_to_mod_impl(self.db, self.ingot, child);
 
             // If the file is in the same directory as the root file, the file is a direct
@@ -261,7 +257,7 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn parent_module(&self, file: InputFile) -> Option<ModuleTreeNodeId> {
-        let file_path = file.path(self.db.as_input_db());
+        let file_path = file.path(self.db);
         let file_dir = file_path.parent()?;
         let parent_dir = file_dir.parent()?;
 

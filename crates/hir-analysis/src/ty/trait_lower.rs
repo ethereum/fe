@@ -36,12 +36,12 @@ pub(crate) fn collect_trait_impls<'db>(
     ingot: IngotId<'db>,
 ) -> TraitImplTable<'db> {
     let const_impls = ingot
-        .external_ingots(db.as_hir_db())
+        .external_ingots(db)
         .iter()
         .map(|(_, external)| collect_trait_impls(db, *external))
         .collect();
 
-    let impl_traits = ingot.all_impl_traits(db.as_hir_db());
+    let impl_traits = ingot.all_impl_traits(db);
     ImplementorCollector::new(db, const_impls).collect(impl_traits)
 }
 
@@ -53,7 +53,7 @@ pub(crate) fn lower_impl_trait<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_trait: ImplTrait<'db>,
 ) -> Option<Binder<Implementor<'db>>> {
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
     let scope = impl_trait.scope();
 
     let hir_ty = impl_trait.ty(hir_db).to_opt()?;
@@ -93,7 +93,7 @@ pub(crate) fn lower_trait_ref<'db>(
     trait_ref: TraitRefId<'db>,
     scope: ScopeId<'db>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
 
     let mut args = vec![self_ty];
     if let Some(generic_args) = trait_ref.generic_args(hir_db) {
@@ -173,7 +173,7 @@ pub(crate) fn collect_implementor_methods<'db>(
 ) -> IndexMap<IdentId<'db>, FuncDef<'db>> {
     let mut methods = IndexMap::default();
 
-    for method in implementor.hir_impl_trait(db).methods(db.as_hir_db()) {
+    for method in implementor.hir_impl_trait(db).methods(db) {
         if let Some(func) = lower_func(db, method) {
             methods.insert(func.name(db), func);
         }
@@ -233,7 +233,7 @@ impl<'db> TraitBuilder<'db> {
     }
 
     fn collect_methods(&mut self) {
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
         for method in self.trait_.methods(hir_db) {
             let Some(func) = lower_func(self.db, method) else {
                 continue;

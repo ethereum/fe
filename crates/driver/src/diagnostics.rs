@@ -23,7 +23,7 @@ where
     T: for<'db> DiagnosticVoucher<'db>,
 {
     fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile> {
-        let complete = self.to_complete(db.as_spanned_hir_analysis_db());
+        let complete = self.to_complete(db);
 
         let severity = convert_severity(complete.severity);
         let code = Some(complete.error_code.to_string());
@@ -67,7 +67,7 @@ fn convert_severity(severity: Severity) -> cs_diag::Severity {
 
 #[salsa::tracked(return_ref)]
 pub fn file_line_starts(db: &dyn DriverDb, file: InputFile) -> Vec<usize> {
-    cs::files::line_starts(file.text(db.as_input_db())).collect()
+    cs::files::line_starts(file.text(db)).collect()
 }
 
 pub struct CsDbWrapper<'a>(pub &'a dyn DriverDb);
@@ -78,11 +78,11 @@ impl<'db> cs_files::Files<'db> for CsDbWrapper<'db> {
     type Source = &'db str;
 
     fn name(&'db self, file_id: Self::FileId) -> Result<Self::Name, cs_files::Error> {
-        Ok(file_id.path(self.0.as_input_db()).as_path())
+        Ok(file_id.path(self.0).as_path())
     }
 
     fn source(&'db self, file_id: Self::FileId) -> Result<Self::Source, cs_files::Error> {
-        Ok(file_id.text(self.0.as_input_db()))
+        Ok(file_id.text(self.0))
     }
 
     fn line_index(
@@ -111,7 +111,7 @@ impl<'db> cs_files::Files<'db> for CsDbWrapper<'db> {
             })?;
 
         let end = if line_index == line_starts.len() - 1 {
-            file_id.text(self.0.as_input_db()).len()
+            file_id.text(self.0).len()
         } else {
             *line_starts
                 .get(line_index + 1)

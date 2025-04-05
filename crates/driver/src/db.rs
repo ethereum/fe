@@ -33,7 +33,6 @@ use crate::diagnostics::ToCsDiag;
 pub trait DriverDb:
     salsa::Database + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb + SpannedHirAnalysisDb
 {
-    fn as_driver_db(&self) -> &dyn DriverDb;
 }
 
 #[derive(Default, Clone)]

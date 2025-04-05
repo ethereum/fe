@@ -354,7 +354,7 @@ where
                     return Ok(());
                 };
 
-                if &BigUint::from(n_var) <= n_value.data(self.db.as_hir_db()) {
+                if &BigUint::from(n_var) <= n_value.data(self.db) {
                     self.table
                         .unify_var_value(root_var.key, InferenceValue::Bound(value))
                 } else {

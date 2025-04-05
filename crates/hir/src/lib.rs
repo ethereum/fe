@@ -7,9 +7,7 @@ pub mod span;
 pub mod visitor;
 
 #[salsa::db]
-pub trait HirDb: salsa::Database + InputDb {
-    fn as_hir_db(&self) -> &dyn HirDb;
-}
+pub trait HirDb: salsa::Database + InputDb {}
 
 /// `LowerHirDb` is a marker trait for lowering AST to HIR items.
 /// All code that requires [`LowerHirDb`] is considered have a possibility to
@@ -17,9 +15,7 @@ pub trait HirDb: salsa::Database + InputDb {
 /// implementations relying on `LowerHirDb` are prohibited in all
 /// Analysis phases.
 #[salsa::db]
-pub trait LowerHirDb: salsa::Database + HirDb {
-    fn as_lower_hir_db(&self) -> &dyn LowerHirDb;
-}
+pub trait LowerHirDb: salsa::Database + HirDb {}
 
 /// `SpannedHirDb` is a marker trait for extracting span-dependent information
 /// from HIR Items.
@@ -33,9 +29,7 @@ pub trait LowerHirDb: salsa::Database + HirDb {
 /// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
 /// See also `[LazySpan]`[`crate::span::LazySpan`] for more details.
 #[salsa::db]
-pub trait SpannedHirDb: salsa::Database + HirDb {
-    fn as_spanned_hir_db(&self) -> &dyn SpannedHirDb;
-}
+pub trait SpannedHirDb: salsa::Database + HirDb {}
 
 #[cfg(test)]
 mod test_db {
@@ -92,8 +86,8 @@ mod test_db {
 
         pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {
             let range = span.resolve(self).unwrap().range;
-            let file = top_mod.file(self.as_hir_db());
-            let text = file.text(self.as_hir_db().as_input_db());
+            let file = top_mod.file(self);
+            let text = file.text(self);
             &text[range.start().into()..range.end().into()]
         }
 

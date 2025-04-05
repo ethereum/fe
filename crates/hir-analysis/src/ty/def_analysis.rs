@@ -126,7 +126,7 @@ pub fn analyze_impl<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_: HirImpl<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
-    let Some(hir_ty) = impl_.ty(db.as_hir_db()).to_opt() else {
+    let Some(hir_ty) = impl_.ty(db).to_opt() else {
         return Vec::new();
     };
     let ty = lower_hir_ty(db, hir_ty, impl_.scope());
@@ -210,7 +210,7 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef<'db>) -> Self {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
         let assumptions = collect_func_def_constraints(db, func, true).instantiate_identity();
         let self_ty = match func
             .hir_func_def(db)
@@ -275,11 +275,11 @@ impl<'db> DefAnalyzer<'db> {
         span: LazyGenericParamListSpan<'db>,
     ) -> bool {
         let mut is_conflict = false;
-        for (i, param) in params.data(self.db.as_hir_db()).iter().enumerate() {
+        for (i, param) in params.data(self.db).iter().enumerate() {
             if let Some(name) = param.name().to_opt() {
                 let scope = self.scope();
-                let parent_scope = scope.parent_item(self.db.as_hir_db()).unwrap().scope();
-                let path = PathId::from_ident(self.db.as_hir_db(), name);
+                let parent_scope = scope.parent_item(self.db).unwrap().scope();
+                let path = PathId::from_ident(self.db, name);
 
                 match resolve_path(self.db, path, parent_scope, false) {
                     Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
@@ -353,7 +353,7 @@ impl<'db> DefAnalyzer<'db> {
 
         for &cand in probe_method(
             self.db,
-            self.scope().ingot(self.db.as_hir_db()),
+            self.scope().ingot(self.db),
             Canonical::new(self.db, self_ty),
             func.name(self.db),
         ) {
@@ -380,41 +380,41 @@ impl<'db> DefAnalyzer<'db> {
         match self.def {
             DefKind::Adt(def) => match def.adt_ref(self.db) {
                 AdtRef::Struct(struct_) => {
-                    let mut ctxt = VisitorCtxt::with_struct(self.db.as_hir_db(), struct_);
+                    let mut ctxt = VisitorCtxt::with_struct(self.db, struct_);
                     self.visit_struct(&mut ctxt, struct_);
                 }
 
                 AdtRef::Enum(enum_) => {
-                    let mut ctxt = VisitorCtxt::with_enum(self.db.as_hir_db(), enum_);
+                    let mut ctxt = VisitorCtxt::with_enum(self.db, enum_);
                     self.visit_enum(&mut ctxt, enum_);
                 }
 
                 AdtRef::Contract(contract) => {
-                    let mut ctxt = VisitorCtxt::with_contract(self.db.as_hir_db(), contract);
+                    let mut ctxt = VisitorCtxt::with_contract(self.db, contract);
                     self.visit_contract(&mut ctxt, contract);
                 }
             },
 
             DefKind::Trait(trait_) => {
                 let trait_ = trait_.trait_(self.db);
-                let mut ctxt = VisitorCtxt::with_trait(self.db.as_hir_db(), trait_);
+                let mut ctxt = VisitorCtxt::with_trait(self.db, trait_);
                 self.visit_trait(&mut ctxt, trait_);
             }
 
             DefKind::ImplTrait(implementor) => {
                 let impl_trait = implementor.hir_impl_trait(self.db);
-                let mut ctxt = VisitorCtxt::with_impl_trait(self.db.as_hir_db(), impl_trait);
+                let mut ctxt = VisitorCtxt::with_impl_trait(self.db, impl_trait);
                 self.visit_impl_trait(&mut ctxt, impl_trait);
             }
 
             DefKind::Impl(hir_impl) => {
-                let mut ctxt = VisitorCtxt::with_impl(self.db.as_hir_db(), hir_impl);
+                let mut ctxt = VisitorCtxt::with_impl(self.db, hir_impl);
                 self.visit_impl(&mut ctxt, hir_impl)
             }
 
             DefKind::Func(func) => {
                 let hir_func = func.hir_func_def(self.db).unwrap();
-                let mut ctxt = VisitorCtxt::with_func(self.db.as_hir_db(), hir_func);
+                let mut ctxt = VisitorCtxt::with_func(self.db, hir_func);
                 self.visit_func(&mut ctxt, hir_func);
             }
         }
@@ -516,7 +516,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     ) {
         if let VariantKind::Tuple(tuple_id) = variant.kind {
             let span = ctxt.span().unwrap().tuple_type_moved();
-            for (i, elem_ty) in tuple_id.data(self.db.as_hir_db()).iter().enumerate() {
+            for (i, elem_ty) in tuple_id.data(self.db).iter().enumerate() {
                 let Some(elem_ty) = elem_ty.to_opt() else {
                     continue;
                 };
@@ -538,8 +538,8 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
         if let Some(name) = param.name().to_opt() {
             let scope = self.scope();
-            let parent_scope = scope.parent_item(self.db.as_hir_db()).unwrap().scope();
-            let path = PathId::from_ident(self.db.as_hir_db(), name);
+            let parent_scope = scope.parent_item(self.db).unwrap().scope();
+            let path = PathId::from_ident(self.db, name);
             match resolve_path(self.db, path, parent_scope, false) {
                 Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                     self.diags.push(
@@ -664,12 +664,12 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     }
 
     fn visit_impl(&mut self, ctxt: &mut VisitorCtxt<'db, LazyImplSpan<'db>>, impl_: HirImpl<'db>) {
-        let Some(impl_ty) = impl_.ty(self.db.as_hir_db()).to_opt() else {
+        let Some(impl_ty) = impl_.ty(self.db).to_opt() else {
             return;
         };
 
         let impl_ty = lower_hir_ty(self.db, impl_ty, impl_.scope());
-        if !impl_ty.is_inherent_impl_allowed(self.db, self.scope().ingot(self.db.as_hir_db())) {
+        if !impl_ty.is_inherent_impl_allowed(self.db, self.scope().ingot(self.db)) {
             let base = impl_ty.base_ty(self.db);
             let diag = ImplDiag::InherentImplIsNotAllowed {
                 primary: ctxt.span().unwrap().target_ty().into(),
@@ -700,7 +700,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         // block since this check requires the ingot-wide method table(i.e., which is
         // not performed in name resolution phase).
         if matches!(
-            ctxt.scope().parent_item(self.db.as_hir_db()).unwrap(),
+            ctxt.scope().parent_item(self.db).unwrap(),
             ItemKind::Impl(_)
         ) && !self.check_method_conflict(func)
         {
@@ -708,7 +708,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         }
 
         if !self.verify_method_generic_param_conflict(
-            hir_func.generic_params(self.db.as_hir_db()),
+            hir_func.generic_params(self.db),
             hir_func.lazy_span().generic_params_moved(),
         ) {
             return;
@@ -722,7 +722,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
         walk_func(self, ctxt, hir_func);
 
-        if let Some(ret_ty) = hir_func.ret_ty(self.db.as_hir_db()) {
+        if let Some(ret_ty) = hir_func.ret_ty(self.db) {
             self.verify_term_type_kind(ret_ty, hir_func.lazy_span().ret_ty().into());
         }
 
@@ -741,7 +741,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         // Checks if the argument names are not duplicated.
         let mut already_seen: FxHashMap<IdentId, usize> = FxHashMap::default();
 
-        for (i, param) in params.data(self.db.as_hir_db()).iter().enumerate() {
+        for (i, param) in params.data(self.db).iter().enumerate() {
             let Some(name) = param.name.to_opt().and_then(|name| name.ident()) else {
                 continue;
             };
@@ -940,7 +940,7 @@ fn analyze_trait_ref<'db>(
     };
 
     if let Some(assumptions) = assumptions {
-        trait_inst.emit_sat_diag(db, scope.ingot(db.as_hir_db()), assumptions, span)
+        trait_inst.emit_sat_diag(db, scope.ingot(db), assumptions, span)
     } else {
         None
     }
@@ -1006,7 +1006,7 @@ fn analyze_impl_trait_specific_error<'db>(
     impl_trait: ImplTrait<'db>,
 ) -> Result<Binder<Implementor<'db>>, Vec<TyDiagCollection<'db>>> {
     let mut diags = vec![];
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
     // We don't need to report error because it should be reported from the parser.
     let (Some(trait_ref), Some(ty)) = (
         impl_trait.trait_ref(hir_db).to_opt(),
@@ -1236,7 +1236,7 @@ fn find_const_ty_param<'db>(
     ident: IdentId<'db>,
     scope: ScopeId<'db>,
 ) -> Option<ConstTyId<'db>> {
-    let path = PathId::from_ident(db.as_hir_db(), ident);
+    let path = PathId::from_ident(db, ident);
     let Ok(PathRes::Ty(ty)) = resolve_path(db, path, scope, true) else {
         return None;
     };

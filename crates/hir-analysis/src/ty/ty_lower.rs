@@ -23,7 +23,7 @@ pub fn lower_hir_ty<'db>(
     ty: HirTyId<'db>,
     scope: ScopeId<'db>,
 ) -> TyId<'db> {
-    match ty.data(db.as_hir_db()) {
+    match ty.data(db) {
         HirTyKind::Ptr(pointee) => {
             let pointee = lower_opt_hir_ty(db, scope, *pointee);
             let ptr = TyId::ptr(db);
@@ -33,7 +33,7 @@ pub fn lower_hir_ty<'db>(
         HirTyKind::Path(path) => lower_path(db, scope, *path),
 
         HirTyKind::SelfType(args) => {
-            let path = PathId::self_ty(db.as_hir_db(), *args);
+            let path = PathId::self_ty(db, *args);
             match resolve_path(db, path, scope, false) {
                 Ok(PathRes::Ty(ty)) => ty,
                 Ok(_) => unreachable!(),
@@ -42,7 +42,7 @@ pub fn lower_hir_ty<'db>(
         }
 
         HirTyKind::Tuple(tuple_id) => {
-            let elems = tuple_id.data(db.as_hir_db());
+            let elems = tuple_id.data(db);
             let len = elems.len();
             let tuple = TyId::tuple(db, len);
             elems.iter().fold(tuple, |acc, &elem| {
@@ -98,7 +98,7 @@ fn lower_const_ty_ty<'db>(
     scope: ScopeId<'db>,
     ty: HirTyId<'db>,
 ) -> TyId<'db> {
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
     let HirTyKind::Path(path) = ty.data(hir_db) else {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
     };
@@ -136,7 +136,7 @@ pub(crate) fn lower_type_alias<'db>(
 ) -> TyAlias<'db> {
     let param_set = collect_generic_params(db, alias.into());
 
-    let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
+    let Some(hir_ty) = alias.ty(db).to_opt() else {
         return TyAlias {
             alias,
             alias_to: Binder::bind(TyId::invalid(db, InvalidCause::Other)),
@@ -245,7 +245,7 @@ pub(crate) fn lower_generic_arg_list<'db>(
     args: GenericArgListId<'db>,
     scope: ScopeId<'db>,
 ) -> Vec<TyId<'db>> {
-    args.data(db.as_hir_db())
+    args.data(db)
         .iter()
         .map(|arg| lower_generic_arg(db, arg, scope))
         .collect()
@@ -315,8 +315,8 @@ impl<'db> GenericParamCollector<'db> {
                 vec![TyParamPrecursor::trait_self(db, None)]
             }
 
-            GenericParamOwner::Func(func) if func.is_associated_func(db.as_hir_db()) => {
-                let parent = owner.parent(db.as_hir_db()).unwrap();
+            GenericParamOwner::Func(func) if func.is_associated_func(db) => {
+                let parent = owner.parent(db).unwrap();
                 collect_generic_params(db, parent)
                     .params_precursor(db)
                     .to_vec()
@@ -335,7 +335,7 @@ impl<'db> GenericParamCollector<'db> {
     }
 
     fn collect_generic_params(&mut self) {
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
         let param_list = self.owner.params(hir_db);
         for (idx, param) in param_list.data(hir_db).iter().enumerate() {
             let idx = idx + self.offset_to_original;
@@ -365,7 +365,7 @@ impl<'db> GenericParamCollector<'db> {
             return;
         };
 
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
         let where_clause = where_clause_owner.where_clause(hir_db);
         for pred in where_clause.data(hir_db) {
             match self.param_idx_from_ty(pred.ty.to_opt()) {
@@ -416,9 +416,9 @@ impl<'db> GenericParamCollector<'db> {
             return ParamLoc::NonParam;
         };
 
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
 
-        let path = match ty.data(self.db.as_hir_db()) {
+        let path = match ty.data(self.db) {
             HirTyKind::Path(Partial::Present(path)) => {
                 if path.is_bare_ident(hir_db) {
                     *path
@@ -528,7 +528,7 @@ impl<'db> TyParamPrecursor<'db> {
     }
 
     fn trait_self(db: &'db dyn HirAnalysisDb, kind: Option<Kind>) -> Self {
-        let name = Partial::Present(IdentId::make_self_ty(db.as_hir_db()));
+        let name = Partial::Present(IdentId::make_self_ty(db));
         Self {
             name,
             original_idx: None,

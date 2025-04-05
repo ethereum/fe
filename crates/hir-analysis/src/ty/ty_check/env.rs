@@ -46,7 +46,7 @@ pub(super) struct TyCheckEnv<'db> {
 
 impl<'db> TyCheckEnv<'db> {
     pub(super) fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Result<Self, ()> {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
         let Some(body) = func.body(hir_db) else {
             return Err(());
         };
@@ -114,7 +114,7 @@ impl<'db> TyCheckEnv<'db> {
     /// Returns a function if the `body` being checked has `BodyKind::FuncBody`.
     /// If the `body` has `BodyKind::Anonymous`, returns None
     pub(super) fn func(&self) -> Option<FuncDef<'db>> {
-        let func = match self.body.body_kind(self.db.as_hir_db()) {
+        let func = match self.body.body_kind(self.db) {
             BodyKind::FuncBody => self.var_env.first()?.scope.item().try_into().ok(),
             BodyKind::Anonymous => None,
         }?;
@@ -146,7 +146,7 @@ impl<'db> TyCheckEnv<'db> {
     }
 
     pub(super) fn enter_scope(&mut self, block: ExprId) {
-        let new_scope = match block.data(self.db.as_hir_db(), self.body) {
+        let new_scope = match block.data(self.db, self.body) {
             Partial::Present(Expr::Block(_)) => ScopeId::Block(self.body, block),
             _ => self.scope(),
         };
@@ -272,11 +272,11 @@ impl<'db> TyCheckEnv<'db> {
     }
 
     pub(super) fn expr_data(&self, expr: ExprId) -> &'db Partial<Expr<'db>> {
-        expr.data(self.db.as_hir_db(), self.body)
+        expr.data(self.db, self.body)
     }
 
     pub(super) fn stmt_data(&self, stmt: StmtId) -> &'db Partial<Stmt<'db>> {
-        stmt.data(self.db.as_hir_db(), self.body)
+        stmt.data(self.db, self.body)
     }
 
     pub(super) fn scope(&self) -> ScopeId<'db> {
@@ -314,7 +314,7 @@ impl<'db> TyCheckEnv<'db> {
     ) {
         let assumptions = self.assumptions();
         let mut changed = true;
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
         let ingot = self.body().top_mod(hir_db).ingot(hir_db);
         // Try to perform confirmation until all pending confirmations reaches to
         // the fixed point.
@@ -457,7 +457,7 @@ impl<'db> LocalBinding<'db> {
     }
 
     pub(super) fn binding_name(&self, env: &TyCheckEnv<'db>) -> IdentId<'db> {
-        let hir_db = env.db.as_hir_db();
+        let hir_db = env.db;
         match self {
             Self::Local { pat, .. } => {
                 let Partial::Present(Pat::Path(Partial::Present(path), ..)) =
@@ -515,8 +515,7 @@ impl<'db> TyFolder<'db> for Prober<'db, '_> {
         // String type variable fallback.
         if let TyVarSort::String(len) = var.sort {
             let ty = TyId::new(self.db(), TyData::TyBase(PrimTy::String.into()));
-            let len =
-                EvaluatedConstTy::LitInt(IntegerId::new(self.db().as_hir_db(), BigUint::from(len)));
+            let len = EvaluatedConstTy::LitInt(IntegerId::new(self.db(), BigUint::from(len)));
             let len =
                 ConstTyData::Evaluated(len, ty.applicable_ty(self.db()).unwrap().const_ty.unwrap());
             let len = TyId::const_ty(self.db(), ConstTyId::new(self.db(), len));
