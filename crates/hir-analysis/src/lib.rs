@@ -3,7 +3,10 @@ pub mod analysis_pass;
 pub mod diagnostics;
 
 #[salsa::db]
-pub trait HirAnalysisDb: salsa::Database + HirDb {}
+pub trait HirAnalysisDb: HirDb {}
+
+#[salsa::db]
+impl<T> HirAnalysisDb for T where T: HirDb {}
 
 pub mod name_resolution;
 pub mod ty;

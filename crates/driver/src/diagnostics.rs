@@ -9,8 +9,6 @@ use common::{
 use cs::{diagnostic as cs_diag, files as cs_files};
 use hir_analysis::diagnostics::{DiagnosticVoucher, SpannedHirAnalysisDb};
 
-use crate::DriverDb;
-
 pub trait ToCsDiag {
     fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile>;
 }
@@ -66,11 +64,11 @@ fn convert_severity(severity: Severity) -> cs_diag::Severity {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn file_line_starts(db: &dyn DriverDb, file: InputFile) -> Vec<usize> {
+pub fn file_line_starts(db: &dyn SpannedHirAnalysisDb, file: InputFile) -> Vec<usize> {
     cs::files::line_starts(file.text(db)).collect()
 }
 
-pub struct CsDbWrapper<'a>(pub &'a dyn DriverDb);
+pub struct CsDbWrapper<'a>(pub &'a dyn SpannedHirAnalysisDb);
 
 impl<'db> cs_files::Files<'db> for CsDbWrapper<'db> {
     type FileId = InputFile;

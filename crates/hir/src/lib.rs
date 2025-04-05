@@ -9,6 +9,9 @@ pub mod visitor;
 #[salsa::db]
 pub trait HirDb: salsa::Database + InputDb {}
 
+#[salsa::db]
+impl<T> HirDb for T where T: salsa::Database + InputDb {}
+
 /// `LowerHirDb` is a marker trait for lowering AST to HIR items.
 /// All code that requires [`LowerHirDb`] is considered have a possibility to
 /// invalidate the cache in salsa when a revision is updated. Therefore,
@@ -16,6 +19,8 @@ pub trait HirDb: salsa::Database + InputDb {}
 /// Analysis phases.
 #[salsa::db]
 pub trait LowerHirDb: salsa::Database + HirDb {}
+#[salsa::db]
+impl<T> LowerHirDb for T where T: HirDb {}
 
 /// `SpannedHirDb` is a marker trait for extracting span-dependent information
 /// from HIR Items.
@@ -30,23 +35,22 @@ pub trait LowerHirDb: salsa::Database + HirDb {}
 /// See also `[LazySpan]`[`crate::span::LazySpan`] for more details.
 #[salsa::db]
 pub trait SpannedHirDb: salsa::Database + HirDb {}
+#[salsa::db]
+impl<T> SpannedHirDb for T where T: HirDb {}
 
 #[cfg(test)]
 mod test_db {
     use common::{
-        impl_db_traits,
         indexmap::IndexSet,
         input::{IngotKind, Version},
-        InputDb, InputFile, InputIngot,
+        InputFile, InputIngot,
     };
     use derive_more::TryIntoError;
 
-    use super::HirDb;
     use crate::{
         hir_def::{scope_graph::ScopeGraph, ItemKind, TopLevelMod},
         lower::{map_file_to_mod, scope_graph},
         span::LazySpan,
-        LowerHirDb, SpannedHirDb,
     };
 
     #[derive(Clone, Default)]
@@ -54,7 +58,10 @@ mod test_db {
     pub(crate) struct TestDb {
         storage: salsa::Storage<Self>,
     }
-    impl_db_traits!(TestDb, InputDb, HirDb, LowerHirDb, SpannedHirDb);
+    #[salsa::db]
+    impl salsa::Database for TestDb {
+        fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+    }
 
     impl TestDb {
         pub fn parse_source(&self, ingot: InputIngot, file: InputFile) -> &ScopeGraph {

@@ -6,6 +6,9 @@ pub use input::{InputFile, InputIngot};
 #[salsa::db]
 pub trait InputDb: salsa::Database {}
 
+#[salsa::db]
+impl<T> InputDb for T where T: salsa::Database {}
+
 #[doc(hidden)]
 pub use paste::paste;
 
@@ -16,12 +19,5 @@ macro_rules! impl_db_traits {
         impl salsa::Database for $db_type {
             fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
         }
-
-        $(
-            $crate::paste! {
-                #[salsa::db]
-                impl $trait_name for $db_type {}
-            }
-        )+
     };
 }

@@ -21,7 +21,7 @@ use common::diagnostics::{
     SubDiagnostic,
 };
 use either::Either;
-use hir::{hir_def::FieldIndex, span::LazySpan, ParserError};
+use hir::{hir_def::FieldIndex, span::LazySpan, ParserError, SpannedHirDb};
 use itertools::Itertools;
 
 /// All diagnostics accumulated in salsa-db should implement
@@ -59,6 +59,9 @@ pub trait SpannedHirAnalysisDb:
     salsa::Database + hir::HirDb + hir::SpannedHirDb + HirAnalysisDb
 {
 }
+
+#[salsa::db]
+impl<T> SpannedHirAnalysisDb for T where T: HirAnalysisDb + SpannedHirDb {}
 
 // `ParseError` has span information, but this is not a problem because the
 // parsing procedure itself depends on the file content, and thus span

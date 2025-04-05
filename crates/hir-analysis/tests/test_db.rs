@@ -10,30 +10,24 @@ use codespan_reporting::{
 };
 use common::{
     diagnostics::Span,
-    impl_db_traits,
     indexmap::{IndexMap, IndexSet},
     input::{IngotKind, Version},
-    InputDb, InputFile, InputIngot,
+    InputFile, InputIngot,
 };
-use driver::{
-    diagnostics::{CsDbWrapper, ToCsDiag},
-    DriverDb,
-};
+use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    diagnostics::SpannedHirAnalysisDb,
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
         ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
-    HirAnalysisDb,
 };
 use hir::{
     hir_def::TopLevelMod,
     lower,
     span::{DynLazySpan, LazySpan},
-    HirDb, LowerHirDb, SpannedHirDb,
+    SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
 
@@ -44,16 +38,10 @@ type CodeSpanFileId = usize;
 pub struct HirAnalysisTestDb {
     storage: salsa::Storage<Self>,
 }
-impl_db_traits!(
-    HirAnalysisTestDb,
-    InputDb,
-    HirDb,
-    LowerHirDb,
-    SpannedHirDb,
-    HirAnalysisDb,
-    SpannedHirAnalysisDb,
-    DriverDb,
-);
+#[salsa::db]
+impl salsa::Database for HirAnalysisTestDb {
+    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+}
 
 // https://github.com/rust-lang/rust/issues/46379
 #[allow(dead_code)]

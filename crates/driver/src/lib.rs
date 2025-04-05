@@ -3,7 +3,7 @@ pub mod diagnostics;
 pub mod files;
 use camino::Utf8PathBuf;
 use common::InputIngot;
-pub use db::{DriverDataBase, DriverDb};
+pub use db::DriverDataBase;
 
 use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;

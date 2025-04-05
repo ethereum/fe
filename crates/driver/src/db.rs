@@ -6,50 +6,35 @@ use codespan_reporting::term::{
 };
 use common::{
     diagnostics::CompleteDiagnostic,
-    impl_db_traits,
     indexmap::IndexSet,
     input::{IngotDependency, IngotKind, Version},
-    InputDb, InputFile, InputIngot,
+    InputFile, InputIngot,
 };
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
-    HirDb, LowerHirDb, SpannedHirDb,
 };
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    diagnostics::{DiagnosticVoucher, SpannedHirAnalysisDb},
+    diagnostics::DiagnosticVoucher,
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
         ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
-    HirAnalysisDb,
 };
 
 use crate::diagnostics::ToCsDiag;
-
-#[salsa::db]
-pub trait DriverDb:
-    salsa::Database + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb + SpannedHirAnalysisDb
-{
-}
 
 #[derive(Default, Clone)]
 #[salsa::db]
 pub struct DriverDataBase {
     storage: salsa::Storage<Self>,
 }
-impl_db_traits!(
-    DriverDataBase,
-    InputDb,
-    HirDb,
-    LowerHirDb,
-    SpannedHirDb,
-    HirAnalysisDb,
-    SpannedHirAnalysisDb,
-    DriverDb,
-);
+#[salsa::db]
+impl salsa::Database for DriverDataBase {
+    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+}
 
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
