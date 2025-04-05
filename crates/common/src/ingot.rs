@@ -25,11 +25,9 @@ impl<'a> IngotBuilder<'a> {
     /// Create a new InputIngot builder
     /// `ingot_path` should be the absolute path to the base of the ingot
     pub fn new(db: &'a dyn InputDb, ingot_path: impl Into<Utf8PathBuf>) -> Self {
-        let path = ingot_path.into();
-        // Use the path directly without attempting to modify it
         Self {
             db,
-            ingot_path: path,
+            ingot_path: ingot_path.into(),
             kind: IngotKind::Local,
             version: Version::new(0, 0, 0),
             dependencies: IndexSet::default(),
@@ -53,20 +51,9 @@ impl<'a> IngotBuilder<'a> {
             .map(|p| p.to_path_buf())
             .expect("Standalone ingot file must have a parent directory");
 
-        // For standalone files, derive a relative path from the original
-        let relative_file_path = if full_path.is_absolute() && full_path.starts_with(&ingot_path) {
-            // If path is under ingot_path, make it relative
-            match full_path.strip_prefix(&ingot_path) {
-                Ok(rel_path) => rel_path.to_path_buf(),
-                Err(_) => Utf8PathBuf::from(full_path.file_name().unwrap_or("file.fe")),
-            }
-        } else if full_path.is_absolute() {
-            // Just use the filename if it's absolute but not under ingot_path
-            Utf8PathBuf::from(full_path.file_name().unwrap_or("file.fe"))
-        } else {
-            // Already relative, use as-is
-            full_path
-        };
+        // For standalone files, we need to derive a relative path from the original
+        let relative_file_path = ensure_relative_path(&ingot_path, full_path)
+            .expect("Could not create a relative path for standalone file");
 
         Self::new(db, ingot_path)
             .kind(IngotKind::StandAlone)
@@ -120,27 +107,35 @@ impl<'a> IngotBuilder<'a> {
     }
 
     /// Add a file to the ingot from a path and contents
-    /// The path should be relative to the ingot base
+    /// The path can be either relative to the ingot base or absolute
+    /// (which will be converted to a relative path)
     pub fn file_from_contents(
         mut self,
         path: impl Into<Utf8PathBuf>,
         contents: impl Into<String>,
     ) -> Self {
-        let relative_path = path.into();
-        // Create a new InputFile with the given path and contents
+        let input_path = path.into();
+        let relative_path = ensure_relative_path(&self.ingot_path, input_path)
+            .expect("Path must be relative or a child of the ingot base path");
+
+        // Create a new InputFile with the relative path and contents
         let file = InputFile::new(self.db, relative_path, contents.into());
         self.files.insert(file);
         self
     }
 
     /// Add multiple files to the ingot from path-content pairs
-    /// Paths should be relative to the ingot base
+    /// Paths can be either relative to the ingot base or absolute
+    /// (which will be converted to relative paths)
     pub fn files_from_contents(
         mut self,
         files: impl IntoIterator<Item = (impl Into<Utf8PathBuf>, impl Into<String>)>,
     ) -> Self {
         for (path, contents) in files {
-            let relative_path = path.into();
+            let input_path = path.into();
+            let relative_path = ensure_relative_path(&self.ingot_path, input_path)
+                .expect("Path must be relative or a child of the ingot base path");
+
             // Create a new InputFile for each path-content pair
             let file = InputFile::new(self.db, relative_path, contents.into());
             self.files.insert(file);
@@ -158,7 +153,11 @@ impl<'a> IngotBuilder<'a> {
     /// This will only take effect during build if no root_file is explicitly set
     /// The path should be relative to the ingot base
     pub fn entrypoint(mut self, path: impl Into<Utf8PathBuf>) -> Self {
-        self.entrypoint_path = Some(path.into());
+        let input_path = path.into();
+        let relative_path = ensure_relative_path(&self.ingot_path, input_path)
+            .expect("Entrypoint path must be relative or a child of the ingot base path");
+
+        self.entrypoint_path = Some(relative_path);
         self
     }
 
@@ -212,6 +211,29 @@ impl<'a> IngotBuilder<'a> {
             ),
             root_file.expect("Root file not found"),
         )
+    }
+}
+
+/// Helper function to ensure a path is relative to a base path
+/// Returns a relative path if:
+/// - The path is already relative (returned as-is)
+/// - The path is absolute and is a child of the base path (converted to relative)
+///   Returns an error if the path is absolute but not a child of the base path
+fn ensure_relative_path(
+    base_path: &Utf8PathBuf,
+    path: Utf8PathBuf,
+) -> Result<Utf8PathBuf, &'static str> {
+    if path.is_relative() {
+        // Path is already relative, return as-is
+        Ok(path)
+    } else if path.starts_with(base_path) {
+        // Path is absolute and under the base path, make it relative
+        path.strip_prefix(base_path)
+            .map(|p| p.to_path_buf())
+            .map_err(|_| "Failed to strip prefix from path")
+    } else {
+        // Path is absolute but not under the base path
+        Err("Absolute path must be a child of the ingot base path")
     }
 }
 
