@@ -1,5 +1,6 @@
-use adt_def::AdtRef;
-use diagnostics::TraitLowerDiag;
+use adt_def::{lower_adt, AdtDef, AdtRef};
+use def_analysis::check_recursive_adt;
+use diagnostics::{TraitLowerDiag, TyLowerDiag};
 use hir::hir_def::{TopLevelMod, TypeAlias};
 use rustc_hash::FxHashSet;
 use trait_def::TraitDef;
@@ -63,9 +64,20 @@ impl<'db> ModuleAnalysisPass<'db> for AdtDefAnalysisPass<'db> {
                     .map(AdtRef::from),
             );
 
-        adts.flat_map(|adt| analyze_adt(self.db, adt).iter())
-            .map(|diag| diag.to_voucher())
-            .collect()
+        let mut diags = vec![];
+        let mut cycle_participants = FxHashSet::<AdtDef<'db>>::default();
+
+        for adt in adts {
+            diags.extend(analyze_adt(self.db, adt).iter().map(|d| d.to_voucher()));
+            let adt = lower_adt(self.db, adt);
+            if !cycle_participants.contains(&adt) {
+                if let Some(cycle) = check_recursive_adt(self.db, adt) {
+                    diags.push(Box::new(TyLowerDiag::RecursiveType(cycle.clone())) as _);
+                    cycle_participants.extend(cycle.iter().map(|m| m.adt));
+                }
+            }
+        }
+        diags
     }
 }
 

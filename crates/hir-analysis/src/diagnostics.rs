@@ -6,7 +6,6 @@
 use crate::{
     name_resolution::diagnostics::NameResDiag,
     ty::{
-        def_analysis::AdtCycleMember,
         diagnostics::{
             BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
             TyDiagCollection, TyLowerDiag,
@@ -384,27 +383,23 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 severity: Severity::Error,
                 message: "recursive type definition".to_string(),
                 sub_diagnostics: {
-                    cycle
-                        .iter()
-                        .map(|c| match c {
-                            AdtCycleMember::Adt(adt_def) => SubDiagnostic {
-                                style: LabelStyle::Primary,
-                                message: "recursive type definition here".to_string(),
-                                span: adt_def.adt_ref(db).name_span(ha_db).resolve(db),
-                            },
-                            AdtCycleMember::Field {
-                                adt,
-                                field_idx,
-                                ty_idx,
-                            } => SubDiagnostic {
-                                style: LabelStyle::Secondary,
-                                message: "recursion occurs here".to_string(),
-                                span: adt
-                                    .variant_ty_span(ha_db, *field_idx as usize, *ty_idx as usize)
-                                    .resolve(db),
-                            },
-                        })
-                        .collect()
+                    let head = cycle.first().unwrap();
+                    let mut subs = vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: "recursive type definition here".to_string(),
+                        span: head.adt.adt_ref(db).name_span(ha_db).resolve(db),
+                    }];
+                    subs.extend(cycle.iter().map(|m| {
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "recursion occurs here".to_string(),
+                            span: m
+                                .adt
+                                .variant_ty_span(ha_db, m.field_idx as usize, m.ty_idx as usize)
+                                .resolve(db),
+                        }
+                    }));
+                    subs
                 },
                 notes: vec![],
                 error_code,

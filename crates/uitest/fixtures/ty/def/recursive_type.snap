@@ -26,45 +26,12 @@ error[3-0002]: recursive type definition
    │        -- recursion occurs here
 
 error[3-0002]: recursive type definition
-   ┌─ recursive_type.fe:5:12
+   ┌─ recursive_type.fe:17:12
    │
- 5 │ pub struct S2 {
+17 │ pub struct S5<T> {
    │            ^^ recursive type definition here
- 6 │     s: S3
+18 │     s: S6,
    │        -- recursion occurs here
    ·
-10 │     s: S4
-   │        -- recursion occurs here
-   ·
-14 │     s: S2
-   │        -- recursion occurs here
-
-error[3-0002]: recursive type definition
-   ┌─ recursive_type.fe:5:12
-   │
- 5 │ pub struct S2 {
-   │            ^^ recursive type definition here
- 6 │     s: S3
-   │        -- recursion occurs here
-   ·
-10 │     s: S4
-   │        -- recursion occurs here
-   ·
-14 │     s: S2
-   │        -- recursion occurs here
-
-error[3-0002]: recursive type definition
-   ┌─ recursive_type.fe:22:12
-   │
-22 │ pub struct S6 {
-   │            ^^ recursive type definition here
-23 │     s: S5<S6>
-   │        ------ recursion occurs here
-
-error[3-0002]: recursive type definition
-   ┌─ recursive_type.fe:22:12
-   │
-22 │ pub struct S6 {
-   │            ^^ recursive type definition here
 23 │     s: S5<S6>
    │        ------ recursion occurs here
