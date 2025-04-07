@@ -428,10 +428,10 @@ impl<'db> ImportResolver<'db> {
     }
 
     fn initialize_i_uses(&mut self) {
-        let m_tree = self.ingot.module_tree(self.db.as_hir_db());
+        let m_tree = self.ingot.module_tree(self.db);
 
         for top_mod in m_tree.all_modules() {
-            let s_graph = top_mod.scope_graph(self.db.as_hir_db());
+            let s_graph = top_mod.scope_graph(self.db);
             for &use_ in &s_graph.unresolved_uses {
                 let i_use = IntermediateUse::new(self.db, use_);
                 self.intermediate_uses
@@ -521,12 +521,12 @@ impl<'db> ImportResolver<'db> {
         if !res.is_external(self.db, self.ingot)
             && (self
                 .ingot
-                .external_ingots(self.db.as_hir_db())
+                .external_ingots(self.db)
                 .iter()
                 .any(|(ingot_name, _)| *ingot_name == first_segment_ident)
                 || PrimTy::all_types()
                     .iter()
-                    .any(|ty| ty.name(self.db.as_hir_db()) == first_segment_ident))
+                    .any(|ty| ty.name(self.db) == first_segment_ident))
         {
             self.register_error(&i_use, NameResolutionError::Ambiguous(vec![]));
         }
@@ -636,7 +636,7 @@ impl<'db> ImportResolver<'db> {
             if !allow_lex {
                 break;
             }
-            current_scope = scope.lex_parent(self.db.as_hir_db());
+            current_scope = scope.lex_parent(self.db);
         }
 
         false
@@ -644,7 +644,7 @@ impl<'db> ImportResolver<'db> {
 
     /// Returns the current state of the scope.
     fn scope_state(&self, scope: ScopeId) -> ScopeState {
-        if scope.ingot(self.db.as_hir_db()) != self.ingot {
+        if scope.ingot(self.db) != self.ingot {
             return ScopeState::Closed;
         }
 
@@ -672,7 +672,7 @@ impl<'db> ImportResolver<'db> {
                 if self.scope_state(scope) != ScopeState::Closed {
                     return false;
                 }
-                target_scope = scope.lex_parent(self.db.as_hir_db());
+                target_scope = scope.lex_parent(self.db);
             }
             true
         } else {
@@ -775,9 +775,7 @@ struct IntermediateUse<'db> {
 
 impl<'db> IntermediateUse<'db> {
     fn new(db: &'db dyn HirAnalysisDb, use_: Use<'db>) -> Self {
-        let scope = ScopeId::from_item(use_.into())
-            .lex_parent(db.as_hir_db())
-            .unwrap();
+        let scope = ScopeId::from_item(use_.into()).lex_parent(db).unwrap();
         Self {
             use_,
             current_res: None,
@@ -799,7 +797,7 @@ impl<'db> IntermediateUse<'db> {
     }
 
     fn is_glob(&self, db: &dyn HirAnalysisDb) -> bool {
-        self.use_.is_glob(db.as_hir_db())
+        self.use_.is_glob(db)
     }
 
     /// Proceed the resolution of the use path to the next segment.
@@ -845,11 +843,7 @@ impl<'db> IntermediateUse<'db> {
     }
 
     fn current_segment_ident(&self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
-        let segments = self
-            .use_
-            .path(db.as_hir_db())
-            .to_opt()?
-            .data(db.as_hir_db());
+        let segments = self.use_.path(db).to_opt()?.data(db);
 
         let seg_idx = self.unresolved_from;
         let segment = segments[seg_idx].to_opt()?;
@@ -857,14 +851,11 @@ impl<'db> IntermediateUse<'db> {
     }
 
     fn imported_name(&self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
-        self.use_.imported_name(db.as_hir_db())
+        self.use_.imported_name(db)
     }
 
     fn segment_len(&self, db: &dyn HirAnalysisDb) -> Option<usize> {
-        self.use_
-            .path(db.as_hir_db())
-            .to_opt()
-            .map(|p| p.segment_len(db.as_hir_db()))
+        self.use_.path(db).to_opt().map(|p| p.segment_len(db))
     }
 
     /// Returns `true` if the segment that should be resolved next is the first
@@ -957,7 +948,7 @@ impl<'db> IntermediateResolvedImports<'db> {
                             return Err(NameResolutionError::Conflict(
                                 imported_name,
                                 vec![
-                                    i_use.use_.imported_name_span(db.as_hir_db()).unwrap(),
+                                    i_use.use_.imported_name_span(db).unwrap(),
                                     cand.derived_from(db).unwrap(),
                                 ],
                             ));
@@ -999,7 +990,7 @@ impl<'db> Importer<'db> for IntermediateResolvedImports<'db> {
         db: &'db dyn HirAnalysisDb,
         scope: ScopeId<'db>,
     ) -> Option<&'a NamedImportSet<'db>> {
-        if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
+        if scope.top_mod(db).ingot(db) != self.ingot {
             resolved_imports_for_scope(db, scope)
                 .named_resolved
                 .get(&scope)
@@ -1013,7 +1004,7 @@ impl<'db> Importer<'db> for IntermediateResolvedImports<'db> {
         db: &'db dyn HirAnalysisDb,
         scope: ScopeId<'db>,
     ) -> Option<&'a GlobImportSet<'db>> {
-        if scope.top_mod(db.as_hir_db()).ingot(db.as_hir_db()) != self.ingot {
+        if scope.top_mod(db).ingot(db) != self.ingot {
             resolved_imports_for_scope(db, scope)
                 .glob_resolved
                 .get(&scope)
@@ -1027,7 +1018,7 @@ fn resolved_imports_for_scope<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
 ) -> &'db ResolvedImports<'db> {
-    let ingot = scope.ingot(db.as_hir_db());
+    let ingot = scope.ingot(db);
     &super::resolve_imports(db, ingot).1
 }
 
@@ -1036,7 +1027,7 @@ impl NameRes<'_> {
     /// same ingot as the current resolution of the `i_use`.
     fn is_external(&self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {
         match self.kind {
-            NameResKind::Scope(scope) => scope.ingot(db.as_hir_db()) != ingot,
+            NameResKind::Scope(scope) => scope.ingot(db) != ingot,
             NameResKind::Prim(_) => true,
         }
     }

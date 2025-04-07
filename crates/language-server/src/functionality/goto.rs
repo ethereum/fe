@@ -35,15 +35,12 @@ fn find_path_surrounding_cursor<'db>(
     cursor: Cursor,
     full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
 ) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
     for (path, scope, lazy_span) in full_paths {
-        let span = lazy_span.resolve(db.as_spanned_hir_db()).unwrap();
+        let span = lazy_span.resolve(db).unwrap();
         if span.range.contains(cursor) {
             for idx in 0..=path.segment_index(hir_db) {
-                let seg_span = lazy_span
-                    .segment(idx)
-                    .resolve(db.as_spanned_hir_db())
-                    .unwrap();
+                let seg_span = lazy_span.segment(idx).resolve(db).unwrap();
                 if seg_span.range.contains(cursor) {
                     return Some((
                         path.segment(hir_db, idx).unwrap(),
@@ -62,18 +59,14 @@ pub fn find_enclosing_item<'db>(
     top_mod: TopLevelMod<'db>,
     cursor: Cursor,
 ) -> Option<ItemKind<'db>> {
-    let items = top_mod
-        .scope_graph(db.as_hir_db())
-        .items_dfs(db.as_hir_db());
+    let items = top_mod.scope_graph(db).items_dfs(db);
 
     let mut smallest_enclosing_item = None;
     let mut smallest_range_size = None;
 
     for item in items {
         let lazy_item_span = DynLazySpan::from(item.lazy_span());
-        let item_span = lazy_item_span
-            .resolve(SpannedHirDb::as_spanned_hir_db(db))
-            .unwrap();
+        let item_span = lazy_item_span.resolve(db).unwrap();
 
         if item_span.range.contains(cursor) {
             let range_size = item_span.range.end() - item_span.range.start();
@@ -92,20 +85,18 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     top_mod: TopLevelMod<'db>,
     cursor: Cursor,
 ) -> Option<Vec<ScopeId<'db>>> {
-    let item: ItemKind = find_enclosing_item(db.as_spanned_hir_db(), top_mod, cursor)?;
+    let item: ItemKind = find_enclosing_item(db, top_mod, cursor)?;
 
-    let mut visitor_ctxt = VisitorCtxt::with_item(db.as_hir_db(), item);
+    let mut visitor_ctxt = VisitorCtxt::with_item(db, item);
     let mut path_segment_collector = PathSpanCollector::default();
     path_segment_collector.visit_item(&mut visitor_ctxt, item);
 
     let (path, _is_intermediate, scope) =
         find_path_surrounding_cursor(db, cursor, path_segment_collector.paths)?;
 
-    let hdb = db.as_hir_analysis_db();
-
-    let resolved = resolve_path(hdb, path, scope, false);
+    let resolved = resolve_path(db, path, scope, false);
     let scopes = match resolved {
-        Ok(r) => r.as_scope(hdb).into_iter().collect::<Vec<_>>(),
+        Ok(r) => r.as_scope(db).into_iter().collect::<Vec<_>>(),
         Err(err) => match err.kind {
             PathResErrorKind::NotFound(bucket) => {
                 bucket.iter_ok().flat_map(|r| r.scope()).collect()
@@ -142,7 +133,7 @@ pub async fn handle_goto_definition(
 
     let locations = scopes
         .iter()
-        .map(|scope| to_lsp_location_from_scope(backend.db.as_spanned_hir_db(), ingot, *scope))
+        .map(|scope| to_lsp_location_from_scope(&backend.db, ingot, *scope))
         .collect::<Vec<_>>();
 
     let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
@@ -168,7 +159,6 @@ mod tests {
 
     use common::input::IngotKind;
     use dir_test::{dir_test, Fixture};
-    use hir::{HirDb, LowerHirDb};
     use salsa::Setter;
     use test_utils::snap_test;
 
@@ -200,7 +190,7 @@ mod tests {
         db: &LanguageServerDatabase,
         top_mod: TopLevelMod,
     ) -> Vec<parser::TextSize> {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
         let mut visitor_ctxt = VisitorCtxt::with_top_mod(hir_db, top_mod);
         let mut path_collector = PathSpanCollector::default();
         path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
@@ -208,10 +198,7 @@ mod tests {
         let mut cursors = Vec::new();
         for (path, _, lazy_span) in path_collector.paths {
             for idx in 0..=path.segment_index(hir_db) {
-                let seg_span = lazy_span
-                    .segment(idx)
-                    .resolve(db.as_spanned_hir_db())
-                    .unwrap();
+                let seg_span = lazy_span.segment(idx).resolve(db).unwrap();
                 cursors.push(seg_span.range.start());
             }
         }
@@ -293,7 +280,7 @@ mod tests {
         // Introduce a new scope to limit the lifetime of `top_mod`
         {
             let (ingot, file) = workspace.get_input_for_file_path(fe_source_path).unwrap();
-            let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
+            let top_mod = map_file_to_mod(&db, ingot, file);
 
             let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
             snap_test!(snapshot, fixture.path());
@@ -314,7 +301,7 @@ mod tests {
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
         file.set_text(db).to((*fixture.content()).to_string());
-        let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
+        let top_mod = map_file_to_mod(db, ingot, file);
 
         let snapshot = make_goto_cursors_snapshot(db, &fixture, top_mod);
         snap_test!(snapshot, fixture.path());
@@ -332,14 +319,14 @@ mod tests {
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
         file.set_text(db).to((*fixture.content()).to_string());
-        let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
+        let top_mod = map_file_to_mod(db, ingot, file);
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
 
         let mut cursor_paths: Vec<(Cursor, String)> = vec![];
 
         for cursor in &cursors {
-            let mut visitor_ctxt = VisitorCtxt::with_top_mod(db.as_hir_db(), top_mod);
+            let mut visitor_ctxt = VisitorCtxt::with_top_mod(db, top_mod);
             let mut path_collector = PathSpanCollector::default();
             path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
 

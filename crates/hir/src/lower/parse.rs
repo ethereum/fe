@@ -7,7 +7,7 @@ use crate::{hir_def::TopLevelMod, HirDb};
 #[salsa::tracked]
 pub fn parse_file_impl<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> GreenNode {
     let file = top_mod.file(db);
-    let text = file.text(db.as_input_db());
+    let text = file.text(db);
     let (node, parse_errors) = parser::parse_source_file(text);
 
     for error in parse_errors {

@@ -69,7 +69,7 @@ impl<'db> IngotId<'db> {
     #[salsa::tracked(return_ref)]
     pub fn external_ingots(self, db: &'db dyn HirDb) -> Vec<(IdentId<'db>, IngotId<'db>)> {
         self.inner(db)
-            .external_ingots(db.as_input_db())
+            .external_ingots(db)
             .iter()
             .map(|dep| {
                 let name = IdentId::new(db, dep.name.to_string());
@@ -83,7 +83,7 @@ impl<'db> IngotId<'db> {
     }
 
     pub fn kind(self, db: &dyn HirDb) -> IngotKind {
-        self.inner(db).kind(db.as_input_db())
+        self.inner(db).kind(db)
     }
 
     #[salsa::tracked(return_ref)]

@@ -115,7 +115,7 @@ pub fn resolve_ident_to_bucket<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
 ) -> &'db NameResBucket<'db> {
-    assert!(path.parent(db.as_hir_db()).is_none());
+    assert!(path.parent(db).is_none());
     let query = make_query(db, path, scope);
     resolve_query(db, query)
 }
@@ -128,12 +128,12 @@ fn make_query<'db>(
 ) -> EarlyNameQueryId<'db> {
     let mut directive = QueryDirective::new();
 
-    if path.segment_index(db.as_hir_db()) != 0 {
+    if path.segment_index(db) != 0 {
         directive = directive.disallow_external();
         directive = directive.disallow_lex();
     }
 
-    let name = *path.ident(db.as_hir_db()).unwrap();
+    let name = *path.ident(db).unwrap();
     EarlyNameQueryId::new(db, name, scope, directive)
 }
 
@@ -190,11 +190,11 @@ impl<'db> PathRes<'db> {
     }
 
     pub fn name_span(&self, db: &'db dyn HirAnalysisDb) -> Option<DynLazySpan<'db>> {
-        self.as_scope(db)?.name_span(db.as_hir_db())
+        self.as_scope(db)?.name_span(db)
     }
 
     pub fn pretty_path(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
 
         let ty_path = |ty: TyId<'db>| {
             if let Some(scope) = ty.as_scope(db) {
@@ -212,14 +212,14 @@ impl<'db> PathRes<'db> {
                 Some(format!(
                     "{}::{}",
                     ty_path(v.ty).unwrap_or_else(|| "<missing>".into()),
-                    v.enum_(db).variants(db.as_hir_db()).data(db.as_hir_db())[variant_idx]
+                    v.enum_(db).variants(db).data(db)[variant_idx]
                         .name
                         .to_opt()?
-                        .data(db.as_hir_db())
+                        .data(db)
                 ))
             }
             r @ (PathRes::Trait(..) | PathRes::Mod(..) | PathRes::FuncParam(..)) => {
-                r.as_scope(db).unwrap().pretty_path(db.as_hir_db())
+                r.as_scope(db).unwrap().pretty_path(db)
             }
             PathRes::TypeMemberTbd(parent_ty) => Some(format!(
                 "<TBD member of {}>",
@@ -255,7 +255,7 @@ impl<'db> ResolvedVariant<'db> {
     }
 
     pub fn variant_def(&self, db: &'db dyn HirAnalysisDb) -> &'db VariantDef<'db> {
-        &self.enum_(db).variants(db.as_hir_db()).data(db.as_hir_db())[self.idx]
+        &self.enum_(db).variants(db).data(db)[self.idx]
     }
 
     pub fn variant_kind(&self, db: &'db dyn HirAnalysisDb) -> VariantKind<'db> {
@@ -352,7 +352,7 @@ fn resolve_path_impl<'db, F>(
 where
     F: FnMut(PathId<'db>, &PathRes<'db>),
 {
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
 
     let parent_res = path
         .parent(hir_db)
@@ -429,7 +429,7 @@ pub fn resolve_name_res<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
 
     let args = &lower_generic_arg_list(db, path.generic_args(hir_db), scope);
     let res = match nameres.kind {

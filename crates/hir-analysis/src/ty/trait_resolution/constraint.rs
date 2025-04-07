@@ -54,7 +54,7 @@ pub(crate) fn collect_super_traits<'db>(
     trait_: TraitDef<'db>,
 ) -> IndexSet<Binder<TraitInstId<'db>>> {
     let hir_trait = trait_.trait_(db);
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
     let self_param = trait_.self_param(db);
     let scope = trait_.trait_(db).scope();
 
@@ -190,7 +190,7 @@ pub(crate) fn collect_func_def_constraints<'db>(
         return func_constraints;
     }
 
-    let parent_constraints = match hir_func.scope().parent_item(db.as_hir_db()) {
+    let parent_constraints = match hir_func.scope().parent_item(db) {
         Some(ItemKind::Trait(trait_)) => collect_trait_constraints(db, lower_trait(db, trait_)),
 
         Some(ItemKind::Impl(impl_)) => collect_impl_block_constraints(db, impl_),
@@ -270,11 +270,11 @@ impl<'db> ConstraintCollector<'db> {
     }
 
     fn collect_constraints_from_where_clause(&mut self) {
-        let Some(where_clause) = self.owner.where_clause(self.db.as_hir_db()) else {
+        let Some(where_clause) = self.owner.where_clause(self.db) else {
             return;
         };
 
-        for hir_pred in where_clause.data(self.db.as_hir_db()) {
+        for hir_pred in where_clause.data(self.db) {
             let Some(hir_ty) = hir_pred.ty.to_opt() else {
                 continue;
             };
@@ -293,9 +293,9 @@ impl<'db> ConstraintCollector<'db> {
 
     fn collect_constraints_from_generic_params(&mut self) {
         let param_set = collect_generic_params(self.db, self.owner);
-        let param_list = self.owner.params(self.db.as_hir_db());
+        let param_list = self.owner.params(self.db);
 
-        for (i, hir_param) in param_list.data(self.db.as_hir_db()).iter().enumerate() {
+        for (i, hir_param) in param_list.data(self.db).iter().enumerate() {
             let GenericParam::Type(hir_param) = hir_param else {
                 continue;
             };

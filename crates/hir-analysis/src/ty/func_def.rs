@@ -16,12 +16,12 @@ use crate::{
 /// name is `Partial::Absent`.
 #[salsa::tracked]
 pub fn lower_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Option<FuncDef<'db>> {
-    let name = func.name(db.as_hir_db()).to_opt()?;
+    let name = func.name(db).to_opt()?;
     let params_set = collect_generic_params(db, func.into());
 
-    let args = match func.params(db.as_hir_db()) {
+    let args = match func.params(db) {
         Partial::Present(args) => args
-            .data(db.as_hir_db())
+            .data(db)
             .iter()
             .map(|arg| {
                 let ty = arg
@@ -36,7 +36,7 @@ pub fn lower_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Option<Fu
     };
 
     let ret_ty = func
-        .ret_ty(db.as_hir_db())
+        .ret_ty(db)
         .map(|ty| lower_hir_ty(db, ty, func.scope()))
         .unwrap_or_else(|| TyId::unit(db));
 
@@ -118,7 +118,7 @@ impl<'db> FuncDef<'db> {
     }
 
     pub fn param_label(self, db: &'db dyn HirAnalysisDb, idx: usize) -> Option<IdentId<'db>> {
-        self.hir_func_def(db)?.param_label(db.as_hir_db(), idx)
+        self.hir_func_def(db)?.param_label(db, idx)
     }
 
     pub fn param_label_or_name(
@@ -126,8 +126,7 @@ impl<'db> FuncDef<'db> {
         db: &'db dyn HirAnalysisDb,
         idx: usize,
     ) -> Option<FuncParamName<'db>> {
-        self.hir_func_def(db)?
-            .param_label_or_name(db.as_hir_db(), idx)
+        self.hir_func_def(db)?.param_label_or_name(db, idx)
     }
 }
 
@@ -152,18 +151,18 @@ impl<'db> HirFuncDefKind<'db> {
 
     pub fn is_method(self, db: &dyn HirAnalysisDb) -> bool {
         match self {
-            Self::Func(func) => func.is_method(db.as_hir_db()),
+            Self::Func(func) => func.is_method(db),
             Self::VariantCtor(..) => false,
         }
     }
 
     pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
         let top_mod = match self {
-            Self::Func(func) => func.top_mod(db.as_hir_db()),
-            Self::VariantCtor(enum_, ..) => enum_.top_mod(db.as_hir_db()),
+            Self::Func(func) => func.top_mod(db),
+            Self::VariantCtor(enum_, ..) => enum_.top_mod(db),
         };
 
-        top_mod.ingot(db.as_hir_db())
+        top_mod.ingot(db)
     }
 
     pub fn scope(self) -> ScopeId<'db> {

@@ -14,7 +14,7 @@ pub(crate) fn is_scope_visible_from(
     scope: ScopeId,
     from_scope: ScopeId,
 ) -> bool {
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
     // If resolved is public, then it is visible.
     if scope.data(hir_db).vis.is_pub() {
         return true;
@@ -46,7 +46,7 @@ pub(crate) fn is_scope_visible_from(
         return false;
     };
 
-    from_scope.is_transitive_child_of(db.as_hir_db(), def_scope)
+    from_scope.is_transitive_child_of(db, def_scope)
 }
 
 pub(crate) fn is_ty_visible_from(db: &dyn HirAnalysisDb, ty: TyId, from_scope: ScopeId) -> bool {
@@ -75,10 +75,10 @@ pub(crate) fn is_ty_visible_from(db: &dyn HirAnalysisDb, ty: TyId, from_scope: S
 pub(super) fn is_use_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, use_: Use) -> bool {
     let use_scope = ScopeId::from_item(use_.into());
 
-    if use_scope.data(db.as_hir_db()).vis.is_pub() {
+    if use_scope.data(db).vis.is_pub() {
         return true;
     }
 
-    let use_def_scope = use_scope.parent(db.as_hir_db()).unwrap();
-    ref_scope.is_transitive_child_of(db.as_hir_db(), use_def_scope)
+    let use_def_scope = use_scope.parent(db).unwrap();
+    ref_scope.is_transitive_child_of(db, use_def_scope)
 }

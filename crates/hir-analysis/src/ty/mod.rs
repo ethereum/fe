@@ -49,7 +49,7 @@ impl<'db> ModuleAnalysisPass<'db> for AdtDefAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
         let adts = top_mod
             .all_structs(hir_db)
             .iter()
@@ -95,7 +95,7 @@ impl<'db> ModuleAnalysisPass<'db> for BodyAnalysisPass<'db> {
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         top_mod
-            .all_funcs(self.db.as_hir_db())
+            .all_funcs(self.db)
             .iter()
             .flat_map(|func| &ty_check::check_func_body(self.db, *func).0)
             .map(|diag| diag.to_voucher())
@@ -121,7 +121,7 @@ impl<'db> ModuleAnalysisPass<'db> for TraitAnalysisPass<'db> {
         let mut diags = vec![];
         let mut cycle_participants = FxHashSet::<TraitDef<'db>>::default();
 
-        for hir_trait in top_mod.all_traits(self.db.as_hir_db()) {
+        for hir_trait in top_mod.all_traits(self.db) {
             let trait_ = lower_trait(self.db, *hir_trait);
             if !cycle_participants.contains(&trait_) {
                 if let Some(cycle) = super_trait_cycle(self.db, trait_) {
@@ -155,7 +155,7 @@ impl<'db> ModuleAnalysisPass<'db> for ImplAnalysisPass<'db> {
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         top_mod
-            .all_impls(self.db.as_hir_db())
+            .all_impls(self.db)
             .iter()
             .flat_map(|impl_| analyze_impl(self.db, *impl_))
             .map(|diag| diag.to_voucher())
@@ -180,7 +180,7 @@ impl<'db> ModuleAnalysisPass<'db> for ImplTraitAnalysisPass<'db> {
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         top_mod
-            .all_impl_traits(self.db.as_hir_db())
+            .all_impl_traits(self.db)
             .iter()
             .flat_map(|trait_| analyze_impl_trait(self.db, *trait_))
             .map(|diag| diag.to_voucher())
@@ -205,7 +205,7 @@ impl<'db> ModuleAnalysisPass<'db> for FuncAnalysisPass<'db> {
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         top_mod
-            .all_funcs(self.db.as_hir_db())
+            .all_funcs(self.db)
             .iter()
             .flat_map(|func| analyze_func(self.db, *func))
             .map(|diag| diag.to_voucher())
@@ -241,7 +241,7 @@ impl<'db> ModuleAnalysisPass<'db> for TypeAliasAnalysisPass<'db> {
         let mut diags = vec![];
         let mut cycle_participants = FxHashSet::<TypeAlias>::default();
 
-        for alias in top_mod.all_type_aliases(self.db.as_hir_db()) {
+        for alias in top_mod.all_type_aliases(self.db) {
             if cycle_participants.contains(alias) {
                 continue;
             }

@@ -35,8 +35,8 @@ mod use_tree;
 /// any parsing or lowering.
 /// To perform the actual lowering, use [`scope_graph`] instead.
 pub fn map_file_to_mod(db: &dyn LowerHirDb, ingot: InputIngot, file: InputFile) -> TopLevelMod {
-    let ingot = module_tree_impl(db.as_hir_db(), ingot).ingot;
-    map_file_to_mod_impl(db.as_hir_db(), ingot, file)
+    let ingot = module_tree_impl(db, ingot).ingot;
+    map_file_to_mod_impl(db, ingot, file)
 }
 
 /// Returns the scope graph of the given top-level module.
@@ -44,12 +44,12 @@ pub fn scope_graph<'db>(
     db: &'db dyn LowerHirDb,
     top_mod: TopLevelMod<'db>,
 ) -> &'db ScopeGraph<'db> {
-    scope_graph_impl(db.as_hir_db(), top_mod)
+    scope_graph_impl(db, top_mod)
 }
 
 /// Returns the ingot module tree of the given ingot.
 pub fn module_tree(db: &dyn LowerHirDb, ingot: InputIngot) -> &ModuleTree {
-    module_tree_impl(db.as_hir_db(), ingot)
+    module_tree_impl(db, ingot)
 }
 
 #[salsa::tracked]
@@ -58,7 +58,7 @@ pub(crate) fn map_file_to_mod_impl<'db>(
     ingot: IngotId<'db>,
     file: InputFile,
 ) -> TopLevelMod<'db> {
-    let path = file.path(db.as_input_db());
+    let path = file.path(db);
     let name = path.file_stem().unwrap();
     let mod_name = IdentId::new(db, name.to_string());
     TopLevelMod::new(db, mod_name, ingot, file)

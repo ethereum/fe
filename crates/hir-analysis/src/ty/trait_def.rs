@@ -132,7 +132,7 @@ impl<'db> TraitEnv<'db> {
             FxHashMap::default();
 
         for impl_map in ingot
-            .external_ingots(db.as_hir_db())
+            .external_ingots(db)
             .iter()
             .map(|(_, external)| collect_trait_impls(db, *external))
             .chain(std::iter::once(collect_trait_impls(db, ingot)))
@@ -331,11 +331,7 @@ pub struct TraitMethod<'db>(pub FuncDef<'db>);
 
 impl TraitMethod<'_> {
     pub fn has_default_impl(self, db: &dyn HirAnalysisDb) -> bool {
-        self.0
-            .hir_func_def(db)
-            .unwrap()
-            .body(db.as_hir_db())
-            .is_some()
+        self.0.hir_func_def(db).unwrap().body(db).is_some()
     }
 }
 
@@ -347,7 +343,7 @@ impl<'db> TraitDef<'db> {
 
     /// Returns `ingot` in which this trait is defined.
     pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
@@ -367,8 +363,8 @@ impl<'db> TraitDef<'db> {
 
     fn name(self, db: &'db dyn HirAnalysisDb) -> Option<&'db str> {
         self.trait_(db)
-            .name(db.as_hir_db())
+            .name(db)
             .to_opt()
-            .map(|name| name.data(db.as_hir_db()).as_str())
+            .map(|name| name.data(db).as_str())
     }
 }

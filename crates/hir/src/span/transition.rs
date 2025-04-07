@@ -129,7 +129,7 @@ impl ResolvedOrigin {
     where
         T: AstNode<Language = FeLang>,
     {
-        let root = top_mod_ast(db.as_hir_db(), top_mod).syntax().clone();
+        let root = top_mod_ast(db, top_mod).syntax().clone();
         let kind = match origin {
             HirOrigin::Raw(ptr) => ResolvedOriginKind::Node(ptr.syntax_node_ptr().to_node(&root)),
             HirOrigin::Expanded(ptr) => ResolvedOriginKind::Expanded(ptr.to_node(&root)),
@@ -139,7 +139,7 @@ impl ResolvedOrigin {
             HirOrigin::None => ResolvedOriginKind::None,
         };
 
-        ResolvedOrigin::new(top_mod.file(db.as_hir_db()), kind)
+        ResolvedOrigin::new(top_mod.file(db), kind)
     }
 
     pub(crate) fn map<F>(self, f: F) -> Self
@@ -225,8 +225,7 @@ impl ChainInitiator for ChainRoot<'_> {
 }
 
 impl LazySpan for SpanTransitionChain<'_> {
-    fn resolve<D: SpannedHirDb + ?Sized>(&self, db: &D) -> Option<Span> {
-        let db = db.as_spanned_hir_db();
+    fn resolve(&self, db: &dyn SpannedHirDb) -> Option<Span> {
         let mut resolved = self.root.init(db);
 
         for LazyTransitionFn { f, arg } in &self.chain {
@@ -259,8 +258,8 @@ pub(crate) trait ChainInitiator {
 
 impl ChainInitiator for TopLevelMod<'_> {
     fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
-        let file = self.file(db.as_hir_db());
-        let ast = top_mod_ast(db.as_hir_db(), *self);
+        let file = self.file(db);
+        let ast = top_mod_ast(db, *self);
         ResolvedOrigin::new(file, ResolvedOriginKind::Node(ast.syntax().clone()))
     }
 }
@@ -270,7 +269,7 @@ macro_rules! impl_chain_root {
         $(
         impl<'db> ChainInitiator for $ty {
             fn init(&self, db: &dyn crate::SpannedHirDb) -> ResolvedOrigin {
-                let top_mod = self.top_mod(db.as_hir_db());
+                let top_mod = self.top_mod(db);
                 let origin = $fn(db, *self);
                 ResolvedOrigin::resolve(db, top_mod, origin)
             }
@@ -409,7 +408,7 @@ macro_rules! define_lazy_span_node {
 
 
         impl<'db> crate::span::LazySpan for $name<'db> {
-            fn resolve<D: crate::SpannedHirDb + ?Sized>(&self, db: &D) -> Option<common::diagnostics::Span> {
+            fn resolve(&self, db: &dyn crate::SpannedHirDb) -> Option<common::diagnostics::Span> {
                 self.0.resolve(db)
             }
         }

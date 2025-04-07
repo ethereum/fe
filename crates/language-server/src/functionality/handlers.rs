@@ -7,7 +7,6 @@ use async_lsp::{
     },
     LanguageClient, ResponseError,
 };
-use common::InputDb;
 use rustc_hash::FxHashSet;
 use salsa::Setter;
 
@@ -93,7 +92,7 @@ pub async fn initialized(
     info!("language server initialized! recieved notification!");
 
     backend.workspace.all_files().for_each(|file| {
-        let path = file.path(backend.db.as_input_db());
+        let path = file.path(&backend.db);
         let _ = backend
             .client
             .emit(NeedsDiagnostics(url::Url::from_file_path(path).unwrap()));

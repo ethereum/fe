@@ -33,7 +33,7 @@ pub(crate) fn evaluate_const_ty<'db>(
         };
     };
 
-    let Partial::Present(expr) = body.expr(db.as_hir_db()).data(db.as_hir_db(), *body) else {
+    let Partial::Present(expr) = body.expr(db).data(db, *body) else {
         let data = ConstTyData::Evaluated(
             EvaluatedConstTy::Invalid,
             TyId::invalid(db, InvalidCause::Other),
@@ -180,7 +180,7 @@ impl EvaluatedConstTy<'_> {
     pub fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         match self {
             EvaluatedConstTy::LitInt(val) => {
-                format!("{}", val.data(db.as_hir_db()))
+                format!("{}", val.data(db))
             }
             EvaluatedConstTy::LitBool(val) => format!("{}", val),
             EvaluatedConstTy::Invalid => "<invalid>".to_string(),

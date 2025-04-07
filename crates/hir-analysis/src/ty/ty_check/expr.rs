@@ -280,13 +280,13 @@ impl<'db> TyChecker<'db> {
         let call_span = expr.lazy_span(self.body()).into_call_expr();
 
         if let Partial::Present(Expr::Path(Partial::Present(path))) =
-            callee.data(self.db.as_hir_db(), self.body())
+            callee.data(self.db, self.body())
         {
-            let idx = path.segment_index(self.db.as_hir_db());
+            let idx = path.segment_index(self.db);
 
             if !callable.unify_generic_args(
                 self,
-                path.generic_args(self.db.as_hir_db()),
+                path.generic_args(self.db),
                 expr.lazy_span(self.body())
                     .into_path_expr()
                     .path()
@@ -403,7 +403,7 @@ impl<'db> TyChecker<'db> {
 
         let span = expr.lazy_span(self.body()).into_path_expr();
 
-        let res = if path.is_bare_ident(self.db.as_hir_db()) {
+        let res = if path.is_bare_ident(self.db) {
             resolve_ident_expr(self.db, &self.env, *path)
         } else {
             self.resolve_path(*path, true)
@@ -479,9 +479,7 @@ impl<'db> TyChecker<'db> {
                 PathRes::Const(ty) => ExprProp::new(ty, true),
                 PathRes::TypeMemberTbd(parent_ty) => {
                     let ty = if parent_ty.has_invalid(self.db) {
-                        let span = span
-                            .path()
-                            .segment(path.segment_index(self.db.as_hir_db()) - 1);
+                        let span = span.path().segment(path.segment_index(self.db) - 1);
                         if let Some(diag) = parent_ty.emit_diag(self.db, span.into()) {
                             self.diags.push(diag.into());
                         }
@@ -560,7 +558,7 @@ impl<'db> TyChecker<'db> {
     }
 
     fn check_record_init_fields<T: RecordLike<'db>>(&mut self, record_like: &T, expr: ExprId) {
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
 
         let Partial::Present(Expr::RecordInit(_, fields)) = expr.data(hir_db, self.body()) else {
             unreachable!()
@@ -570,7 +568,7 @@ impl<'db> TyChecker<'db> {
         let mut rec_checker = RecordInitChecker::new(self, record_like);
 
         for (i, field) in fields.iter().enumerate() {
-            let label = field.label_eagerly(rec_checker.tc.db.as_hir_db(), rec_checker.tc.body());
+            let label = field.label_eagerly(rec_checker.tc.db, rec_checker.tc.body());
             let field_span = span.fields().field(i).into();
 
             let expected = match rec_checker.feed_label(label, field_span) {
@@ -624,7 +622,7 @@ impl<'db> TyChecker<'db> {
                                     .accessor()
                                     .into(),
                                 *label,
-                                scope.name_span(self.db.as_hir_db()),
+                                scope.name_span(self.db),
                             );
 
                             self.push_diag(diag);
@@ -637,8 +635,8 @@ impl<'db> TyChecker<'db> {
 
             FieldIndex::Index(i) => {
                 let arg_len = ty_args.len().into();
-                if ty_base.is_tuple(self.db) && i.data(self.db.as_hir_db()) < &arg_len {
-                    let i: usize = i.data(self.db.as_hir_db()).try_into().unwrap();
+                if ty_base.is_tuple(self.db) && i.data(self.db) < &arg_len {
+                    let i: usize = i.data(self.db).try_into().unwrap();
                     let ty = ty_args[i];
                     return ExprProp::new(ty, typed_lhs.is_mut);
                 }
@@ -946,7 +944,7 @@ impl<'db> TyChecker<'db> {
         span: LazyPathSpan<'db>,
     ) -> Option<TyId<'db>> {
         let db = self.db;
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
 
         let name = *path.ident(hir_db).unwrap();
         let canonical_r_ty = Canonicalized::new(db, receiver_ty);
@@ -1026,7 +1024,7 @@ impl<'db> TyChecker<'db> {
     /// assignment.
     /// This method doesn't take mutability into account.
     fn is_assignable_expr(&self, expr: ExprId) -> bool {
-        let Partial::Present(expr_data) = expr.data(self.db.as_hir_db(), self.body()) else {
+        let Partial::Present(expr_data) = expr.data(self.db, self.body()) else {
             return false;
         };
 
@@ -1042,7 +1040,7 @@ fn resolve_ident_expr<'db>(
     env: &TyCheckEnv<'db>,
     path: PathId<'db>,
 ) -> ResolvedPathInBody<'db> {
-    let ident = *path.ident(db.as_hir_db()).unwrap();
+    let ident = *path.ident(db).unwrap();
 
     let resolve_bucket = |bucket: &NameResBucket<'db>, scope| {
         let Ok(res) = bucket.pick_any(&[NameDomain::VALUE, NameDomain::TYPE]) else {
@@ -1097,7 +1095,7 @@ fn resolve_ident_expr<'db>(
 /// smoothly.
 pub(crate) trait TraitOps {
     fn trait_path<'db>(&self, db: &'db dyn HirAnalysisDb) -> PathId<'db> {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
         let path = std_ops_path(db);
         path.push(
             hir_db,
@@ -1126,7 +1124,7 @@ impl TraitOps for UnOp {
             UnOp::BitNot => ["BitNot", "bit_not", "~"],
         };
 
-        triple.map(|s| IdentId::new(db.as_hir_db(), s.to_string()))
+        triple.map(|s| IdentId::new(db, s.to_string()))
     }
 }
 
@@ -1175,7 +1173,7 @@ impl TraitOps for BinOp {
             }
         };
 
-        triple.map(|s| IdentId::new(db.as_hir_db(), s.to_string()))
+        triple.map(|s| IdentId::new(db, s.to_string()))
     }
 }
 
@@ -1188,9 +1186,9 @@ impl TraitOps for IndexingOp {
         let symbol = "[]";
 
         [
-            IdentId::new(db.as_hir_db(), name.to_string()),
-            IdentId::new(db.as_hir_db(), method_name.to_string()),
-            IdentId::new(db.as_hir_db(), symbol.to_string()),
+            IdentId::new(db, name.to_string()),
+            IdentId::new(db, method_name.to_string()),
+            IdentId::new(db, symbol.to_string()),
         ]
     }
 }
@@ -1214,12 +1212,11 @@ impl TraitOps for AugAssignOp {
             BitXor => ["BitXorAssign", "bitxor_assign", "^="],
         };
 
-        triple.map(|s| IdentId::new(db.as_hir_db(), s.to_string()))
+        triple.map(|s| IdentId::new(db, s.to_string()))
     }
 }
 
 fn std_ops_path(db: &dyn HirAnalysisDb) -> PathId {
-    let db = db.as_hir_db();
     let std_ = IdentId::new(db, "std".to_string());
     let ops_ = IdentId::new(db, "ops".to_string());
     PathId::from_ident(db, std_).push_ident(db, ops_)
