@@ -22,7 +22,21 @@ type TraitImplTable<'db> = FxHashMap<TraitDef<'db>, Vec<Binder<Implementor<'db>>
 
 #[salsa::tracked]
 pub(crate) fn lower_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> TraitDef<'db> {
-    TraitBuilder::new(db, trait_).build()
+    let param_set = collect_generic_params(db, trait_.into());
+
+    let mut methods = IndexMap::<IdentId<'db>, TraitMethod<'db>>::default();
+    for method in trait_.methods(db) {
+        let Some(func) = lower_func(db, method) else {
+            continue;
+        };
+        let name = func.name(db);
+        let trait_method = TraitMethod(func);
+        // We can simply ignore the conflict here because it's already handled by the
+        // name resolution.
+        methods.entry(name).or_insert(trait_method);
+    }
+
+    TraitDef::new(db, trait_, param_set, methods)
 }
 
 /// Collect all trait implementors in the ingot.
@@ -225,52 +239,6 @@ pub(crate) enum TraitRefLowerError<'db> {
     /// Other errors, which is reported by another pass. So we don't need to
     /// report this error kind.
     Other,
-}
-
-struct TraitBuilder<'db> {
-    db: &'db dyn HirAnalysisDb,
-    trait_: Trait<'db>,
-    param_set: GenericParamTypeSet<'db>,
-    methods: IndexMap<IdentId<'db>, TraitMethod<'db>>,
-}
-
-impl<'db> TraitBuilder<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
-        let param_set = collect_generic_params(db, trait_.into());
-
-        Self {
-            db,
-            trait_,
-            param_set,
-            methods: IndexMap::default(),
-        }
-    }
-
-    fn build(mut self) -> TraitDef<'db> {
-        self.collect_params();
-        self.collect_methods();
-
-        TraitDef::new(self.db, self.trait_, self.param_set, self.methods)
-    }
-
-    fn collect_params(&mut self) {
-        self.param_set = collect_generic_params(self.db, self.trait_.into());
-    }
-
-    fn collect_methods(&mut self) {
-        let hir_db = self.db;
-        for method in self.trait_.methods(hir_db) {
-            let Some(func) = lower_func(self.db, method) else {
-                continue;
-            };
-
-            let name = func.name(self.db);
-            let trait_method = TraitMethod(func);
-            // We can simply ignore the conflict here because it's already handled by the
-            // name resolution.
-            self.methods.entry(name).or_insert(trait_method);
-        }
-    }
 }
 
 /// Collect all implementors in an ingot.
