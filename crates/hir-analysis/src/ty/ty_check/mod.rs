@@ -1,7 +1,6 @@
 mod callable;
 mod env;
 mod expr;
-mod method_selection;
 mod pat;
 mod path;
 mod stmt;
@@ -236,6 +235,7 @@ impl<'db> TyChecker<'db> {
             self.db,
             path,
             scope,
+            Some(self.env.assumptions()),
             resolve_tail_as_value,
             &mut check_visibility,
         ) {
@@ -311,7 +311,7 @@ impl Typeable<'_> {
 }
 
 impl<'db> TraitMethod<'db> {
-    fn instantiate_with_inst(
+    pub fn instantiate_with_inst(
         self,
         table: &mut UnificationTable<'db>,
         receiver_ty: TyId<'db>,

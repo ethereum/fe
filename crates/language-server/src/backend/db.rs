@@ -2,7 +2,6 @@ use common::InputDb;
 
 use hir::{HirDb, LowerHirDb, SpannedHirDb};
 use hir_analysis::{diagnostics::SpannedHirAnalysisDb, HirAnalysisDb};
-// xxx use salsa::{ParallelDatabase, Snapshot};
 
 #[salsa::db]
 pub trait LanguageServerDb:

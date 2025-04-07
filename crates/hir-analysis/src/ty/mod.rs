@@ -20,11 +20,13 @@ use crate::{analysis_pass::ModuleAnalysisPass, diagnostics::DiagnosticVoucher, H
 
 pub mod adt_def;
 pub mod binder;
+pub mod canonical;
 pub mod const_ty;
 pub mod def_analysis;
 pub mod diagnostics;
 pub mod fold;
 pub mod func_def;
+mod method_cmp;
 pub mod method_table;
 pub mod trait_def;
 pub mod trait_lower;
@@ -33,11 +35,8 @@ pub mod ty_check;
 pub mod ty_def;
 pub mod ty_error;
 pub mod ty_lower;
+pub mod unify;
 pub mod visitor;
-
-mod canonical;
-mod method_cmp;
-mod unify;
 
 /// An analysis pass for type definitions.
 pub struct AdtDefAnalysisPass {}

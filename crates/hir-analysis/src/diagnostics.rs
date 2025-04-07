@@ -736,18 +736,6 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
-            Self::AssocTy(span) => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "associated type is not supported ".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "associated type is not implemented".to_string(),
-                    span: span.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
-
             Self::InvalidConstTyExpr(span) => CompleteDiagnostic {
                 severity: Severity::Error,
                 message: "the expression is not supported yet in a const type context".to_string(),
@@ -1437,7 +1425,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
             Self::AmbiguousInherentMethodCall {
                 primary,
                 method_name,
-                cand_spans,
+                candidates,
             } => {
                 let method_name = method_name.data(db);
                 let mut sub_diagnostics = vec![SubDiagnostic {
@@ -1446,11 +1434,11 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }];
 
-                for span in cand_spans {
+                for cand in candidates {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!("`{method_name}` is defined here"),
-                        span: span.resolve(db),
+                        span: cand.name_span(db).resolve(db),
                     });
                 }
 

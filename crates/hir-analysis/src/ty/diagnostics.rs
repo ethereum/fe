@@ -123,8 +123,6 @@ pub enum TyLowerDiag<'db> {
         given: TyId<'db>,
     },
 
-    AssocTy(DynLazySpan<'db>),
-
     InvalidConstTyExpr(DynLazySpan<'db>),
 }
 
@@ -145,7 +143,6 @@ impl TyLowerDiag<'_> {
             Self::ConstTyMismatch { .. } => 11,
             Self::ConstTyExpected { .. } => 12,
             Self::NormalTypeExpected { .. } => 13,
-            Self::AssocTy(_) => 14,
             Self::InvalidConstTyExpr(_) => 15,
             Self::TooManyGenericArgs { .. } => 16,
             Self::DuplicateFieldName(..) => 17,
@@ -299,7 +296,7 @@ pub enum BodyDiag<'db> {
     AmbiguousInherentMethodCall {
         primary: DynLazySpan<'db>,
         method_name: IdentId<'db>,
-        cand_spans: Vec<DynLazySpan<'db>>,
+        candidates: Vec<FuncDef<'db>>,
     },
 
     AmbiguousTrait {

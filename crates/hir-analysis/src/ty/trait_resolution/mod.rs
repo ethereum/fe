@@ -154,7 +154,7 @@ impl<'db> PredicateListId<'db> {
         PredicateListId::new(db, predicates)
     }
 
-    pub(super) fn empty_list(db: &'db dyn HirAnalysisDb) -> Self {
+    pub fn empty_list(db: &'db dyn HirAnalysisDb) -> Self {
         Self::new(db, Vec::new())
     }
 

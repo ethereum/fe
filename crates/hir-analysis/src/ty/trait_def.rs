@@ -186,6 +186,9 @@ pub(crate) struct Implementor<'db> {
     #[return_ref]
     pub(crate) params: Vec<TyId<'db>>,
 
+    #[return_ref]
+    pub(crate) types: IndexMap<IdentId<'db>, TyId<'db>>,
+
     /// The original hir.
     pub(crate) hir_impl_trait: ImplTrait<'db>,
 }
@@ -346,7 +349,7 @@ impl<'db> TraitDef<'db> {
         self.trait_(db).top_mod(db).ingot(db)
     }
 
-    pub(super) fn super_traits(
+    pub fn super_traits(
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> &'db IndexSet<Binder<TraitInstId<'db>>> {

@@ -654,9 +654,6 @@ pub enum InvalidCause<'db> {
 
     AliasCycle(SmallVec<HirTypeAlias<'db>, 4>),
 
-    /// Associated Type is not allowed at the moment.
-    AssocTy,
-
     // The given expression is not supported yet in the const type context.
     // TODO: Remove this error kind and introduce a new error kind for more specific cause when
     // type inference is implemented.
@@ -704,7 +701,6 @@ impl InvalidCause<'_> {
             | InvalidCause::TooManyGenericArgs { .. }
             | InvalidCause::InvalidConstParamTy
             | InvalidCause::RecursiveConstParamTy
-            | InvalidCause::AssocTy
             | InvalidCause::Other => format!("{self:?}"),
 
             InvalidCause::InvalidConstTyExpr { body: _ } => "InvalidConstTyExpr".into(),

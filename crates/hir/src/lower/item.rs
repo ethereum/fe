@@ -4,7 +4,7 @@ use super::FileLowerCtxt;
 use crate::{
     hir_def::{
         item::*, AttrListId, Body, FuncParamListId, GenericParamListId, IdentId, TraitRefId,
-        TupleTypeId, TypeId, WhereClauseId,
+        TupleTypeId, TypeBound, TypeId, WhereClauseId,
     },
     span::HirOrigin,
 };
@@ -288,11 +288,15 @@ impl<'db> Trait<'db> {
         };
         let origin = HirOrigin::raw(&ast);
 
+        let mut types = vec![];
+
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
                 match impl_item.kind() {
-                    ast::TraitItemKind::Func(func) => Func::lower_ast(ctxt, func, false),
-                    ast::TraitItemKind::Type(_) => todo!(), // xxx
+                    ast::TraitItemKind::Func(func) => {
+                        Func::lower_ast(ctxt, func, false);
+                    }
+                    ast::TraitItemKind::Type(t) => types.push(TraitType::lower_ast(ctxt, t)),
                 };
             }
         }
@@ -306,11 +310,35 @@ impl<'db> Trait<'db> {
             generic_params,
             super_traits,
             where_clause,
+            types,
             ctxt.top_mod(),
             origin,
         );
 
         ctxt.leave_item_scope(trait_)
+    }
+}
+
+impl<'db> TraitType<'db> {
+    pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitTypeItem) -> Self {
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
+        let bounds = ast
+            .bounds()
+            .map(|bounds| {
+                bounds
+                    .into_iter()
+                    .map(|bound| TypeBound::lower_ast(ctxt, bound))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        let default = TypeId::lower_ast_partial(ctxt, ast.ty()).to_opt();
+
+        TraitType {
+            name,
+            bounds,
+            default,
+        }
     }
 }
 
@@ -326,11 +354,14 @@ impl<'db> ImplTrait<'db> {
         let where_clause = WhereClauseId::lower_ast_opt(ctxt, ast.where_clause());
         let origin = HirOrigin::raw(&ast);
 
+        let mut types = vec![];
         if let Some(item_list) = ast.item_list() {
             for impl_item in item_list {
                 match impl_item.kind() {
-                    ast::TraitItemKind::Func(func) => Func::lower_ast(ctxt, func, false),
-                    ast::TraitItemKind::Type(_) => todo!(), // xxx
+                    ast::TraitItemKind::Func(func) => {
+                        Func::lower_ast(ctxt, func, false);
+                    }
+                    ast::TraitItemKind::Type(t) => types.push(ImplTraitType::lower_ast(ctxt, t)),
                 };
             }
         }
@@ -343,10 +374,20 @@ impl<'db> ImplTrait<'db> {
             attributes,
             generic_params,
             where_clause,
+            types,
             ctxt.top_mod(),
             origin,
         );
         ctxt.leave_item_scope(impl_trait)
+    }
+}
+
+impl<'db> ImplTraitType<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitTypeItem) -> Self {
+        ImplTraitType {
+            name: IdentId::lower_token_partial(ctxt, ast.name()),
+            ty: TypeId::lower_ast_partial(ctxt, ast.ty()),
+        }
     }
 }
 
