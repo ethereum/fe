@@ -125,10 +125,8 @@ impl<'db> ModuleAnalysisPass<'db> for TraitAnalysisPass<'db> {
             let trait_ = lower_trait(self.db, *hir_trait);
             if !cycle_participants.contains(&trait_) {
                 if let Some(cycle) = super_trait_cycle(self.db, trait_) {
-                    diags.push(Box::new(TraitLowerDiag::CyclicSuperTraits(Vec::from_iter(
-                        cycle.members.iter().copied(),
-                    ))) as _);
-                    cycle_participants.extend(&cycle.members);
+                    diags.push(Box::new(TraitLowerDiag::CyclicSuperTraits(cycle.clone())) as _);
+                    cycle_participants.extend(cycle.iter());
                 }
             }
             diags.extend(

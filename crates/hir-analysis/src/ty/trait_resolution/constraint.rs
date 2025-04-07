@@ -86,59 +86,36 @@ pub(crate) fn collect_super_traits<'db>(
     super_traits
 }
 
-#[salsa::tracked(return_ref, cycle_fn=super_trait_cycle_recover, cycle_initial=super_trait_cycle_initial)]
+#[salsa::tracked(return_ref)]
 pub fn super_trait_cycle<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef<'db>,
-) -> Option<SuperTraitCycle<'db>> {
-    let bounds = collect_super_traits(db, trait_);
+) -> Option<Vec<TraitDef<'db>>> {
+    super_trait_cycle_impl(db, trait_, &[])
+}
 
+pub fn super_trait_cycle_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: TraitDef<'db>,
+    chain: &[TraitDef<'db>],
+) -> Option<Vec<TraitDef<'db>>> {
+    if chain.contains(&trait_) {
+        return Some(chain.to_vec());
+    }
+    let bounds = collect_super_traits(db, trait_);
+    if bounds.is_empty() {
+        return None;
+    }
+
+    let chain = [chain, &[trait_]].concat();
     for t in bounds {
-        if let Some(cycle) = super_trait_cycle(db, t.skip_binder().def(db)) {
-            if cycle.contains(trait_) {
-                return Some(SuperTraitCycle {
-                    members: cycle.members.clone(),
-                    complete: true,
-                });
-            }
-            if !cycle.complete {
-                let mut cycle = cycle.clone();
-                cycle.members.insert(trait_);
-                return Some(cycle);
+        if let Some(cycle) = super_trait_cycle_impl(db, t.skip_binder().def(db), &chain) {
+            if cycle.contains(&trait_) {
+                return Some(cycle.clone());
             }
         }
     }
     None
-}
-
-fn super_trait_cycle_initial<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    trait_: TraitDef<'db>,
-) -> Option<SuperTraitCycle<'db>> {
-    Some(SuperTraitCycle {
-        members: IndexSet::from_iter([trait_]),
-        complete: false,
-    })
-}
-
-fn super_trait_cycle_recover<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    _value: &Option<SuperTraitCycle<'db>>,
-    _count: u32,
-    _trait_: TraitDef<'db>,
-) -> salsa::CycleRecoveryAction<Option<SuperTraitCycle<'db>>> {
-    salsa::CycleRecoveryAction::Iterate
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default, salsa::Update)]
-pub(crate) struct SuperTraitCycle<'db> {
-    pub members: IndexSet<TraitDef<'db>>,
-    complete: bool,
-}
-impl<'db> SuperTraitCycle<'db> {
-    pub fn contains(&self, def: TraitDef<'db>) -> bool {
-        self.members.contains(&def)
-    }
 }
 
 /// Collect trait constraints that are specified by the given trait definition.

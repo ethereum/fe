@@ -28,7 +28,6 @@ use super::{
     trait_resolution::{
         constraint::{
             collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
-            SuperTraitCycle,
         },
         PredicateListId,
     },
@@ -975,7 +974,7 @@ impl<'db> DefKind<'db> {
         }
     }
 
-    fn super_trait_cycle(self, db: &'db dyn HirAnalysisDb) -> Option<&'db SuperTraitCycle<'db>> {
+    fn super_trait_cycle(self, db: &'db dyn HirAnalysisDb) -> Option<&'db Vec<TraitDef<'db>>> {
         if let Self::Trait(def) = self {
             super_trait_cycle(db, def).as_ref()
         } else {
