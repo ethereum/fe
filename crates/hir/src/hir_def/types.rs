@@ -2,6 +2,7 @@ use super::{Body, GenericArgListId, Partial, PathId};
 use crate::HirDb;
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TypeId<'db> {
     #[return_ref]
     pub data: TypeKind<'db>,
@@ -32,6 +33,7 @@ pub enum TypeKind<'db> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TupleTypeId<'db> {
     #[return_ref]
     pub data: Vec<Partial<TypeId<'db>>>,

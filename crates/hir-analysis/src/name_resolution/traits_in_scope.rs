@@ -69,6 +69,7 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TraitScope<'db> {
     inner: TraitScopeKind<'db>,
 }

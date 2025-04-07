@@ -10,6 +10,7 @@ use crate::{
             BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
             TyDiagCollection, TyLowerDiag,
         },
+        trait_def::TraitDef,
         ty_check::RecordLike,
         ty_def::{TyData, TyVarSort},
     },
@@ -377,24 +378,29 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::RecursiveType {
-                primary_span,
-                field_span,
-            } => CompleteDiagnostic {
+            // TODO: add hint about indirection (eg *T)
+            Self::RecursiveType(cycle) => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "recursive type is not allowed".to_string(),
-                sub_diagnostics: vec![
-                    SubDiagnostic {
+                message: "recursive type definition".to_string(),
+                sub_diagnostics: {
+                    let head = cycle.first().unwrap();
+                    let mut subs = vec![SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "recursive type definition here".to_string(),
-                        span: primary_span.resolve(db),
-                    },
-                    SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: "recursion occurs here".to_string(),
-                        span: field_span.resolve(db),
-                    },
-                ],
+                        span: head.adt.adt_ref(db).name_span(ha_db).resolve(db),
+                    }];
+                    subs.extend(cycle.iter().map(|m| {
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "recursion occurs here".to_string(),
+                            span: m
+                                .adt
+                                .variant_ty_span(ha_db, m.field_idx as usize, m.ty_idx as usize)
+                                .resolve(db),
+                        }
+                    }));
+                    subs
+                },
                 notes: vec![],
                 error_code,
             },
@@ -424,16 +430,17 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::TypeAliasCycle { primary, cycle } => CompleteDiagnostic {
+            Self::TypeAliasCycle { cycle } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "recursive type alias cycle is detected".to_string(),
+                message: "type alias cycle".to_string(),
                 sub_diagnostics: {
+                    let mut iter = cycle.iter();
                     let mut labels = vec![SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "cycle happens here".to_string(),
-                        span: primary.resolve(db),
+                        span: iter.next_back().unwrap().lazy_span().ty().resolve(db),
                     }];
-                    labels.extend(cycle.iter().map(|type_alias| SubDiagnostic {
+                    labels.extend(iter.map(|type_alias| SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "type alias defined here".to_string(),
                         span: type_alias.lazy_span().alias_moved().resolve(db),
@@ -1551,17 +1558,28 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
                 error_code,
             },
 
-            Self::CyclicSuperTraits(span) => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "cyclic super traits are not allowed".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "super traits cycle is detected here".to_string(),
-                    span: span.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            Self::CyclicSuperTraits(traits) => {
+                let span = |t: &TraitDef| t.trait_(db).lazy_span().name().resolve(db);
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "cyclic trait bounds are not allowed".to_string(),
+                    sub_diagnostics: {
+                        let mut subs = vec![SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: "trait cycle detected here".to_string(),
+                            span: span(traits.first().unwrap()),
+                        }];
+                        subs.extend(traits.iter().skip(1).map(|t| SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "cycle continues here".to_string(),
+                            span: span(t),
+                        }));
+                        subs
+                    },
+                    notes: vec![],
+                    error_code,
+                }
+            }
         }
     }
 }

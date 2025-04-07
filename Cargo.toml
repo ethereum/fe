@@ -19,14 +19,17 @@ derive_more = { version = "1.0", default-features = false, features = [
     "try_into",
 ] }
 dir-test = "0.4"
+glob = "0.3.2"
 rustc-hash = "2.1.0"
 num-bigint = "0.4"
 paste = "1.0.15"
-salsa = { git = "https://github.com/salsa-rs/salsa", rev = "99be5d9917c3dd88e19735a82ef6bf39ba84bd7e" }
+salsa = { git = "https://github.com/salsa-rs/salsa", rev = "296a8c78da1b54c76ff5795eb4c1e3fe2467e9fc" }
 smallvec = { version = "2.0.0-alpha.10" }
-wasm-bindgen-test = "0.3"
-glob = "0.3.2"
 semver = "1.0.24"
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+tracing-tree = "0.4.0"
+wasm-bindgen-test = "0.3"
 
 [profile.dev]
 # Set to 0 to make the build faster and debugging more difficult.

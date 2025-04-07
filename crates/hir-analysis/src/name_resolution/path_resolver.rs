@@ -462,11 +462,7 @@ pub fn resolve_name_res<'db>(
                 }
 
                 ItemKind::TypeAlias(type_alias) => {
-                    let Ok(alias) = lower_type_alias(db, type_alias) else {
-                        // Type alias cycle error reported in `def_analysis.rs`
-                        return Ok(PathRes::Ty(TyId::invalid(db, InvalidCause::Other)));
-                    };
-
+                    let alias = lower_type_alias(db, type_alias);
                     if args.len() < alias.params(db).len() {
                         PathRes::Ty(TyId::invalid(
                             db,

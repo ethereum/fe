@@ -51,6 +51,7 @@ pub fn lower_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Option<Fu
 }
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct FuncDef<'db> {
     pub hir_def: HirFuncDefKind<'db>,
 

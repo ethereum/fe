@@ -1,9 +1,10 @@
 use hir::hir_def::{
     scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamOwner, IdentId,
-    ItemKind, KindBound as HirKindBound, Partial, PathId, TupleTypeId, TypeAlias as HirTypeAlias,
-    TypeBound, TypeId as HirTyId, TypeKind as HirTyKind,
+    ItemKind, KindBound as HirKindBound, Partial, PathId, TypeAlias as HirTypeAlias, TypeBound,
+    TypeId as HirTyId, TypeKind as HirTyKind,
 };
-use salsa::{plumbing::FromId, Update};
+use salsa::Update;
+use smallvec::smallvec;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
@@ -22,7 +23,100 @@ pub fn lower_hir_ty<'db>(
     ty: HirTyId<'db>,
     scope: ScopeId<'db>,
 ) -> TyId<'db> {
-    TyBuilder::new(db, scope).lower_ty(ty)
+    match ty.data(db.as_hir_db()) {
+        HirTyKind::Ptr(pointee) => {
+            let pointee = lower_opt_hir_ty(db, scope, *pointee);
+            let ptr = TyId::ptr(db);
+            TyId::app(db, ptr, pointee)
+        }
+
+        HirTyKind::Path(path) => lower_path(db, scope, *path),
+
+        HirTyKind::SelfType(args) => {
+            let path = PathId::self_ty(db.as_hir_db(), *args);
+            match resolve_path(db, path, scope, false) {
+                Ok(PathRes::Ty(ty)) => ty,
+                Ok(_) => unreachable!(),
+                Err(_) => TyId::invalid(db, InvalidCause::Other),
+            }
+        }
+
+        HirTyKind::Tuple(tuple_id) => {
+            let elems = tuple_id.data(db.as_hir_db());
+            let len = elems.len();
+            let tuple = TyId::tuple(db, len);
+            elems.iter().fold(tuple, |acc, &elem| {
+                let elem_ty = lower_opt_hir_ty(db, scope, elem);
+                if !elem_ty.has_star_kind(db) {
+                    return TyId::invalid(db, InvalidCause::NotFullyApplied);
+                }
+
+                TyId::app(db, acc, elem_ty)
+            })
+        }
+
+        HirTyKind::Array(hir_elem_ty, len) => {
+            let elem_ty = lower_opt_hir_ty(db, scope, *hir_elem_ty);
+            let len_ty = ConstTyId::from_opt_body(db, *len);
+            let len_ty = TyId::const_ty(db, len_ty);
+            let array = TyId::array(db, elem_ty);
+            TyId::app(db, array, len_ty)
+        }
+
+        HirTyKind::Never => TyId::never(db),
+    }
+}
+
+fn lower_opt_hir_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    hir_ty: Partial<HirTyId<'db>>,
+) -> TyId<'db> {
+    hir_ty
+        .to_opt()
+        .map(|hir_ty| lower_hir_ty(db, hir_ty, scope))
+        .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
+}
+
+fn lower_path<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    path: Partial<PathId<'db>>,
+) -> TyId<'db> {
+    let Some(path) = path.to_opt() else {
+        return TyId::invalid(db, InvalidCause::Other);
+    };
+    match resolve_path(db, path, scope, false) {
+        Ok(PathRes::Ty(ty) | PathRes::Func(ty)) => ty,
+        // Other cases should be reported as errors by nameres
+        _ => TyId::invalid(db, InvalidCause::Other),
+    }
+}
+
+fn lower_const_ty_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: HirTyId<'db>,
+) -> TyId<'db> {
+    let hir_db = db.as_hir_db();
+    let HirTyKind::Path(path) = ty.data(hir_db) else {
+        return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
+    };
+
+    if !path
+        .to_opt()
+        .map(|p| p.generic_args(hir_db).is_empty(hir_db))
+        .unwrap_or(true)
+    {
+        return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
+    }
+    let ty = lower_path(db, scope, *path);
+
+    if ty.has_invalid(db) || ty.is_integral(db) || ty.is_bool(db) {
+        ty
+    } else {
+        TyId::invalid(db, InvalidCause::InvalidConstParamTy)
+    }
 }
 
 /// Collects the generic parameters of the given generic parameter owner.
@@ -35,53 +129,64 @@ pub(crate) fn collect_generic_params<'db>(
 }
 
 /// Lowers the given type alias to [`TyAlias`].
-#[salsa::tracked(return_ref, recovery_fn = recover_lower_type_alias_cycle)]
+#[salsa::tracked(return_ref, cycle_fn=lower_type_alias_cycle_recover, cycle_initial=lower_type_alias_cycle_initial)]
 pub(crate) fn lower_type_alias<'db>(
     db: &'db dyn HirAnalysisDb,
     alias: HirTypeAlias<'db>,
-) -> Result<TyAlias<'db>, AliasCycle<'db>> {
+) -> TyAlias<'db> {
     let param_set = collect_generic_params(db, alias.into());
 
     let Some(hir_ty) = alias.ty(db.as_hir_db()).to_opt() else {
-        return Ok(TyAlias {
+        return TyAlias {
             alias,
             alias_to: Binder::bind(TyId::invalid(db, InvalidCause::Other)),
             param_set,
-        });
+        };
     };
 
     let alias_to = lower_hir_ty(db, hir_ty, alias.scope());
-    let alias_to = Binder::bind(if alias_to.has_invalid(db) {
+    let alias_to = if let TyData::Invalid(InvalidCause::AliasCycle(cycle)) = alias_to.data(db) {
+        if cycle.contains(&alias) {
+            alias_to
+        } else {
+            let mut cycle = cycle.clone();
+            cycle.push(alias);
+            TyId::invalid(db, InvalidCause::AliasCycle(cycle))
+        }
+    } else if alias_to.has_invalid(db) {
+        // Should be reported by TypeAliasAnalysisPass
         TyId::invalid(db, InvalidCause::Other)
     } else {
         alias_to
-    });
-    Ok(TyAlias {
+    };
+    TyAlias {
         alias,
-        alias_to,
+        alias_to: Binder::bind(alias_to),
         param_set,
-    })
+    }
 }
 
-fn recover_lower_type_alias_cycle<'db>(
+fn lower_type_alias_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    _alias: HirTypeAlias<'db>,
-) -> Result<TyAlias<'db>, AliasCycle<'db>> {
-    let alias_cycle = cycle
-        .participant_keys()
-        .filter_map(|key| {
-            // TODO Salsa 3.0: add method to lookup IngredientIndex for type
-            if db.ingredient_debug_name(key.ingredient_index()) == "lower_type_alias" {
-                let id = key.key_index();
-                Some(HirTypeAlias::from_id(id))
-            } else {
-                None
-            }
-        })
-        .collect();
+    alias: HirTypeAlias<'db>,
+) -> TyAlias<'db> {
+    TyAlias {
+        alias,
+        alias_to: Binder::bind(TyId::invalid(
+            db,
+            InvalidCause::AliasCycle(smallvec![alias]),
+        )),
+        param_set: GenericParamTypeSet::empty(db, alias.scope()),
+    }
+}
 
-    Err(AliasCycle(alias_cycle))
+fn lower_type_alias_cycle_recover<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    _value: &TyAlias<'db>,
+    _count: u32,
+    _alias: HirTypeAlias<'db>,
+) -> salsa::CycleRecoveryAction<TyAlias<'db>> {
+    salsa::CycleRecoveryAction::Iterate
 }
 
 #[doc(hidden)]
@@ -95,19 +200,6 @@ pub(crate) fn evaluate_params_precursor<'db>(
         .enumerate()
         .map(|(i, p)| p.evaluate(db, set.scope(db), i))
         .collect()
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
-pub(crate) struct AliasCycle<'db>(Vec<HirTypeAlias<'db>>);
-
-impl<'db> AliasCycle<'db> {
-    pub(super) fn representative(&self) -> HirTypeAlias<'db> {
-        *self.0.first().unwrap()
-    }
-
-    pub(super) fn participants(&self) -> impl Iterator<Item = HirTypeAlias<'db>> + '_ {
-        self.0.iter().skip(1).copied()
-    }
 }
 
 /// Represents a lowered type alias. `TyAlias` itself isn't a type, but
@@ -126,110 +218,6 @@ pub(crate) struct TyAlias<'db> {
 impl<'db> TyAlias<'db> {
     pub fn params(&self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set.params(db)
-    }
-}
-
-struct TyBuilder<'db> {
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-}
-
-impl<'db> TyBuilder<'db> {
-    pub(super) fn new(db: &'db dyn HirAnalysisDb, scope: ScopeId<'db>) -> Self {
-        Self { db, scope }
-    }
-
-    pub(super) fn lower_ty(&mut self, ty: HirTyId<'db>) -> TyId<'db> {
-        match ty.data(self.db.as_hir_db()) {
-            HirTyKind::Ptr(pointee) => self.lower_ptr(*pointee),
-
-            HirTyKind::Path(path) => self.lower_path(*path),
-
-            HirTyKind::SelfType(args) => self.lower_self_ty(*args),
-
-            HirTyKind::Tuple(tuple_id) => self.lower_tuple(*tuple_id),
-
-            HirTyKind::Array(hir_elem_ty, len) => {
-                let elem_ty = self.lower_opt_hir_ty(*hir_elem_ty);
-                let len_ty = ConstTyId::from_opt_body(self.db, *len);
-                let len_ty = TyId::const_ty(self.db, len_ty);
-                let array = TyId::array(self.db, elem_ty);
-                TyId::app(self.db, array, len_ty)
-            }
-
-            HirTyKind::Never => TyId::never(self.db),
-        }
-    }
-
-    pub(super) fn lower_path(&mut self, path: Partial<PathId<'db>>) -> TyId<'db> {
-        let Some(path) = path.to_opt() else {
-            return TyId::invalid(self.db, InvalidCause::Other);
-        };
-
-        match resolve_path(self.db, path, self.scope, false) {
-            Ok(PathRes::Ty(ty) | PathRes::Func(ty)) => ty,
-            // Other cases should be reported as errors by nameres
-            _ => TyId::invalid(self.db, InvalidCause::Other),
-        }
-    }
-
-    pub(super) fn lower_const_ty_ty(&mut self, ty: HirTyId<'db>) -> TyId<'db> {
-        let hir_db = self.db.as_hir_db();
-        let HirTyKind::Path(path) = ty.data(hir_db) else {
-            return TyId::invalid(self.db, InvalidCause::InvalidConstParamTy);
-        };
-
-        if !path
-            .to_opt()
-            .map(|p| p.generic_args(hir_db).is_empty(hir_db))
-            .unwrap_or(true)
-        {
-            return TyId::invalid(self.db, InvalidCause::InvalidConstParamTy);
-        }
-        let ty = self.lower_path(*path);
-
-        if ty.has_invalid(self.db) || ty.is_integral(self.db) || ty.is_bool(self.db) {
-            ty
-        } else {
-            TyId::invalid(self.db, InvalidCause::InvalidConstParamTy)
-        }
-    }
-
-    pub(super) fn lower_self_ty(&mut self, args: GenericArgListId<'db>) -> TyId<'db> {
-        let path = PathId::self_ty(self.db.as_hir_db(), args);
-        match resolve_path(self.db, path, self.scope, false) {
-            Ok(PathRes::Ty(ty)) => ty,
-            Ok(_) => unreachable!(),
-            Err(_) => TyId::invalid(self.db, InvalidCause::Other),
-        }
-    }
-
-    fn lower_ptr(&mut self, pointee: Partial<HirTyId<'db>>) -> TyId<'db> {
-        let pointee = self.lower_opt_hir_ty(pointee);
-
-        let ptr = TyId::ptr(self.db);
-        TyId::app(self.db, ptr, pointee)
-    }
-
-    fn lower_tuple(&mut self, tuple_id: TupleTypeId<'db>) -> TyId<'db> {
-        let elems = tuple_id.data(self.db.as_hir_db());
-        let len = elems.len();
-        let tuple = TyId::tuple(self.db, len);
-        elems.iter().fold(tuple, |acc, &elem| {
-            let elem_ty = self.lower_opt_hir_ty(elem);
-            if !elem_ty.has_star_kind(self.db) {
-                return TyId::invalid(self.db, InvalidCause::NotFullyApplied);
-            }
-
-            TyId::app(self.db, acc, elem_ty)
-        })
-    }
-
-    fn lower_opt_hir_ty(&self, hir_ty: Partial<HirTyId<'db>>) -> TyId<'db> {
-        hir_ty
-            .to_opt()
-            .map(|hir_ty| lower_hir_ty(self.db, hir_ty, self.scope))
-            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
     }
 }
 
@@ -264,6 +252,7 @@ pub(crate) fn lower_generic_arg_list<'db>(
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct GenericParamTypeSet<'db> {
     #[return_ref]
     pub(crate) params_precursor: Vec<TyParamPrecursor<'db>>,
@@ -510,16 +499,11 @@ impl<'db> TyParamPrecursor<'db> {
         }
 
         let const_ty_ty = match self.const_ty_ty {
-            Some(ty) => {
-                let mut ty_builder = TyBuilder::new(db, scope);
-                ty_builder.lower_const_ty_ty(ty)
-            }
-
+            Some(ty) => lower_const_ty_ty(db, scope, ty),
             None => TyId::invalid(db, InvalidCause::Other),
         };
 
         let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, const_ty_ty));
-
         TyId::new(db, TyData::ConstTy(const_ty))
     }
 

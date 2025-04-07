@@ -8,13 +8,12 @@ use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
         scope_graph::ScopeId, FieldDef, Func, FuncParamListId, GenericParam, GenericParamListId,
-        IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeAlias,
+        IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId,
         TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use salsa::plumbing::FromIdWithDb;
 
 use super::{
     adt_def::{lower_adt, AdtRef},
@@ -29,7 +28,6 @@ use super::{
     trait_resolution::{
         constraint::{
             collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
-            collect_super_traits, SuperTraitCycle,
         },
         PredicateListId,
     },
@@ -47,9 +45,10 @@ use crate::{
         trait_def::{does_impl_trait_conflict, TraitInstId},
         trait_lower::lower_impl_trait,
         trait_resolution::{
-            constraint::collect_trait_constraints, is_goal_satisfiable, GoalSatisfiability,
+            constraint::{collect_trait_constraints, super_trait_cycle},
+            is_goal_satisfiable, GoalSatisfiability,
         },
-        ty_lower::{lower_hir_ty, lower_type_alias},
+        ty_lower::lower_hir_ty,
         visitor::TyVisitable,
     },
     HirAnalysisDb,
@@ -71,12 +70,7 @@ pub fn analyze_adt<'db>(
     adt_ref: AdtRef<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
-    let mut diags = analyzer.analyze();
-
-    if let Some(diag) = check_recursive_adt(db, adt_ref) {
-        diags.push(diag);
-    }
-    diags
+    analyzer.analyze()
 }
 
 /// This function implements analysis for the trait definition.
@@ -152,38 +146,6 @@ pub fn analyze_func<'db>(
 
     let analyzer = DefAnalyzer::for_func(db, func_def);
     analyzer.analyze()
-}
-
-/// This function implements analysis for the type alias definition.
-/// The analysis includes the following:
-/// - Check if the type alias is not recursive.
-/// - Check if the type in the type alias is well-formed.
-///
-/// NOTE: This function doesn't check the satisfiability of the type since our
-/// type system treats the alias as kind of macro, meaning type alias doesn't
-/// included in the type system. Satisfiability is checked where the type alias
-/// is used.
-#[salsa::tracked(return_ref)]
-pub fn analyze_type_alias<'db>(
-    db: &'db dyn HirAnalysisDb,
-    alias: TypeAlias<'db>,
-) -> Option<TyDiagCollection<'db>> {
-    let hir_ty = alias.ty(db.as_hir_db()).to_opt()?;
-    let ty = lower_hir_ty(db, hir_ty, alias.scope());
-
-    if let Err(cycle) = lower_type_alias(db, alias) {
-        if cycle.representative() == alias {
-            let diag = TyLowerDiag::TypeAliasCycle {
-                primary: alias.lazy_span().ty().into(),
-                cycle: cycle.participants().collect(),
-            };
-            return Some(diag.into());
-        }
-    }
-
-    // We don't need to check for bound satisfiability here because type alias
-    // doesn't have trait bound, it will be checked where the type alias is used.
-    ty.emit_diag(db, alias.lazy_span().ty().into())
 }
 
 pub struct DefAnalyzer<'db> {
@@ -652,20 +614,9 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             .map(|(ty, _)| *ty)
             .unwrap_or(TyId::invalid(self.db, InvalidCause::Other));
 
-        if current_ty.is_trait_self(self.db) {
-            if let Some(cycle) = self.def.collect_super_trait_cycle(self.db) {
-                if let Ok(trait_inst) =
-                    lower_trait_ref(self.db, current_ty, trait_ref, self.scope())
-                {
-                    if cycle.contains(trait_inst.def(self.db)) {
-                        self.diags.push(
-                            TraitLowerDiag::CyclicSuperTraits(ctxt.span().unwrap().path().into())
-                                .into(),
-                        );
-                        return;
-                    }
-                }
-            }
+        if current_ty.is_trait_self(self.db) && self.def.super_trait_cycle(self.db).is_some() {
+            // Skip analysis of traits involved in cycles.
+            return;
         }
 
         if let (Some((ty, span)), Ok(trait_inst)) = (
@@ -842,51 +793,54 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     }
 }
 
-#[salsa::tracked(recovery_fn = check_recursive_adt_impl)]
+#[salsa::tracked(return_ref)]
 pub(crate) fn check_recursive_adt<'db>(
     db: &'db dyn HirAnalysisDb,
-    adt: AdtRef<'db>,
-) -> Option<TyDiagCollection<'db>> {
-    let adt_def = lower_adt(db, adt);
-    for field in adt_def.fields(db) {
-        for ty in field.iter_types(db) {
-            for adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
-                check_recursive_adt(db, adt_ref);
+    adt: AdtDef<'db>,
+) -> Option<Vec<AdtCycleMember<'db>>> {
+    check_recursive_adt_impl(db, adt, &[])
+}
+
+pub(crate) fn check_recursive_adt_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    adt: AdtDef<'db>,
+    chain: &[AdtCycleMember<'db>],
+) -> Option<Vec<AdtCycleMember<'db>>> {
+    if chain.iter().any(|m| m.adt == adt) {
+        return Some(chain.to_vec());
+    } else if adt.fields(db).is_empty() {
+        return None;
+    }
+
+    let mut chain = chain.to_vec();
+    for (field_idx, field) in adt.fields(db).iter().enumerate() {
+        for (ty_idx, ty) in field.iter_types(db).enumerate() {
+            for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
+                chain.push(AdtCycleMember {
+                    adt,
+                    field_idx: field_idx as u16,
+                    ty_idx: ty_idx as u16,
+                });
+
+                if let Some(cycle) =
+                    check_recursive_adt_impl(db, lower_adt(db, field_adt_ref), &chain)
+                {
+                    if cycle.iter().any(|m| m.adt == adt) {
+                        return Some(cycle);
+                    }
+                }
+                chain.pop();
             }
         }
     }
     None
 }
 
-fn check_recursive_adt_impl<'db>(
-    db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    adt: AdtRef<'db>,
-) -> Option<TyDiagCollection<'db>> {
-    let participants: FxHashSet<_> = cycle
-        .participant_keys()
-        .map(|key| {
-            let id = key.key_index();
-            AdtRef::from_id(id, db)
-        })
-        .collect();
-
-    let adt_def = lower_adt(db, adt);
-    for (field_idx, field) in adt_def.fields(db).iter().enumerate() {
-        for (ty_idx, ty) in field.iter_types(db).enumerate() {
-            for field_adt_ref in ty.instantiate_identity().collect_direct_adts(db) {
-                if participants.contains(&field_adt_ref) && participants.contains(&adt) {
-                    let diag = TyLowerDiag::RecursiveType {
-                        primary_span: adt.name_span(db),
-                        field_span: adt_def.variant_ty_span(db, field_idx, ty_idx),
-                    };
-                    return Some(diag.into());
-                }
-            }
-        }
-    }
-
-    None
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct AdtCycleMember<'db> {
+    pub adt: AdtDef<'db>,
+    pub field_idx: u16,
+    pub ty_idx: u16,
 }
 
 impl<'db> TyId<'db> {
@@ -1020,12 +974,9 @@ impl<'db> DefKind<'db> {
         }
     }
 
-    fn collect_super_trait_cycle(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Option<&'db SuperTraitCycle<'db>> {
+    fn super_trait_cycle(self, db: &'db dyn HirAnalysisDb) -> Option<&'db Vec<TraitDef<'db>>> {
         if let Self::Trait(def) = self {
-            collect_super_traits(db, def).as_ref().err()
+            super_trait_cycle(db, def).as_ref()
         } else {
             None
         }

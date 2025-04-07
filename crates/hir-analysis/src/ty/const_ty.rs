@@ -10,6 +10,7 @@ use crate::{
 };
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct ConstTyId<'db> {
     #[return_ref]
     pub(crate) data: ConstTyData<'db>,

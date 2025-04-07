@@ -22,6 +22,7 @@ pub fn lower_adt<'db>(db: &'db dyn HirAnalysisDb, adt: AdtRef<'db>) -> AdtDef<'d
 
 /// Represents a ADT type definition.
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct AdtDef<'db> {
     pub adt_ref: AdtRef<'db>,
 

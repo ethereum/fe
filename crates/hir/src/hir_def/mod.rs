@@ -37,6 +37,7 @@ pub use use_tree::*;
 use crate::HirDb;
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct IngotId<'db> {
     inner: InputIngot,
 }
@@ -115,6 +116,7 @@ impl<'db> IngotId<'db> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct IntegerId<'db> {
     #[return_ref]
     pub data: BigUint,
@@ -128,6 +130,7 @@ impl<'db> IntegerId<'db> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct StringId<'db> {
     /// The text of the string literal, without the quotes.
     #[return_ref]
