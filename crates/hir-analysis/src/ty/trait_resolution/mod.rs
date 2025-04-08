@@ -141,6 +141,7 @@ impl GoalSatisfiability<'_> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct PredicateListId<'db> {
     #[return_ref]
     pub list: Vec<TraitInstId<'db>>,

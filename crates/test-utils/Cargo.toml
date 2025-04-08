@@ -5,3 +5,6 @@ edition = "2021"
 
 [dependencies]
 insta = { default-features = false, version = "1.42" }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true

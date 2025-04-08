@@ -160,14 +160,14 @@ impl<'db> CandidateAssembler<'db> {
             .receiver_ty
             .value
             .ingot(self.db)
-            .unwrap_or_else(|| self.scope.ingot(self.db.as_hir_db()));
+            .unwrap_or_else(|| self.scope.ingot(self.db));
         for &method in probe_method(self.db, ingot, self.receiver_ty, self.method_name) {
             self.candidates.insert_inherent_method(method);
         }
     }
 
     fn assemble_trait_method_candidates(&mut self) {
-        let ingot = self.scope.ingot(self.db.as_hir_db());
+        let ingot = self.scope.ingot(self.db);
         let mut table = UnificationTable::new(self.db);
         let extracted_receiver_ty = self.receiver_ty.extract_identity(&mut table);
 
@@ -332,7 +332,7 @@ impl<'db> MethodSelector<'db> {
 
         match is_goal_satisfiable(
             self.db,
-            self.scope.ingot(self.db.as_hir_db()),
+            self.scope.ingot(self.db),
             canonical_cand.value,
             self.assumptions,
         ) {

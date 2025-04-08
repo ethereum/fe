@@ -69,7 +69,7 @@ impl<'db> TyChecker<'db> {
             let diag = BodyDiag::TraitNotImplemented {
                 primary: expr.lazy_span(self.body()).into(),
                 ty: expr_ty.pretty_print(self.db).to_string(),
-                trait_name: IdentId::new(self.db.as_hir_db(), "Iterator".to_string()),
+                trait_name: IdentId::new(self.db, "Iterator".to_string()),
             };
             self.push_diag(diag);
 

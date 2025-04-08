@@ -59,7 +59,7 @@ pub struct TyChecker<'db> {
 impl<'db> TyChecker<'db> {
     fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Result<Self, ()> {
         let env = TyCheckEnv::new_with_func(db, func)?;
-        let expected_ty = match func.ret_ty(db.as_hir_db()) {
+        let expected_ty = match func.ret_ty(db) {
             Some(hir_ty) => {
                 let ty = lower_hir_ty(db, hir_ty, func.scope());
                 if ty.is_star_kind(db) {
@@ -75,7 +75,7 @@ impl<'db> TyChecker<'db> {
     }
 
     fn run(&mut self) {
-        let root_expr = self.env.body().expr(self.db.as_hir_db());
+        let root_expr = self.env.body().expr(self.db);
         self.check_expr(root_expr, self.expected);
     }
 
@@ -107,7 +107,7 @@ impl<'db> TyChecker<'db> {
             LitKind::Bool(_) => TyId::bool(self.db),
             LitKind::Int(_) => self.table.new_var(TyVarSort::Integral, &Kind::Star),
             LitKind::String(s) => {
-                let len_bytes = s.len_bytes(self.db.as_hir_db());
+                let len_bytes = s.len_bytes(self.db);
                 self.table
                     .new_var(TyVarSort::String(len_bytes), &Kind::Star)
             }
@@ -377,7 +377,7 @@ impl<'db> TyCheckerFinalizer<'db> {
 
     fn check_unknown_types(&mut self) {
         if let Some(body) = self.body.body {
-            let mut ctxt = VisitorCtxt::with_body(self.db.as_hir_db(), body);
+            let mut ctxt = VisitorCtxt::with_body(self.db, body);
             self.visit_body(&mut ctxt, body);
         }
     }
@@ -407,7 +407,7 @@ impl<'db> TyCheckerFinalizer<'db> {
             return;
         }
 
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
         let ingot = self.body.body.unwrap().top_mod(hir_db).ingot(hir_db);
         if let Some(diag) = ty.emit_wf_diag(self.db, ingot, self.assumptions, span) {
             self.diags.push(diag.into());

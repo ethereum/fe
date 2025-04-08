@@ -23,7 +23,10 @@ use super::{
     ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
 };
-use crate::{ty::trait_lower::collect_trait_impls, HirAnalysisDb};
+use crate::{
+    ty::{trait_lower::collect_trait_impls, trait_resolution::constraint::super_trait_cycle},
+    HirAnalysisDb,
+};
 
 /// Returns [`TraitEnv`] for the given ingot.
 #[salsa::tracked(return_ref)]
@@ -129,7 +132,7 @@ impl<'db> TraitEnv<'db> {
             FxHashMap::default();
 
         for impl_map in ingot
-            .external_ingots(db.as_hir_db())
+            .external_ingots(db)
             .iter()
             .map(|(_, external)| collect_trait_impls(db, *external))
             .chain(std::iter::once(collect_trait_impls(db, ingot)))
@@ -174,6 +177,7 @@ impl<'db> TraitEnv<'db> {
 /// Represents an implementor of a trait, which can be thought of as a lowered
 /// `impl Trait`.
 #[salsa::interned]
+#[derive(Debug)]
 pub(crate) struct Implementor<'db> {
     /// The trait that this implementor implements.
     pub(crate) trait_: TraitInstId<'db>,
@@ -231,6 +235,7 @@ pub(super) fn does_impl_trait_conflict(
 /// Represents an instantiated trait, which can be thought of as a trait
 /// reference from a HIR perspective.
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TraitInstId<'db> {
     pub def: TraitDef<'db>,
     #[return_ref]
@@ -298,6 +303,7 @@ impl<'db> TraitInstId<'db> {
 
 /// Represents a trait definition.
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct TraitDef<'db> {
     pub trait_: Trait<'db>,
     #[return_ref]
@@ -325,11 +331,7 @@ pub struct TraitMethod<'db>(pub FuncDef<'db>);
 
 impl TraitMethod<'_> {
     pub fn has_default_impl(self, db: &dyn HirAnalysisDb) -> bool {
-        self.0
-            .hir_func_def(db)
-            .unwrap()
-            .body(db.as_hir_db())
-            .is_some()
+        self.0.hir_func_def(db).unwrap().body(db).is_some()
     }
 }
 
@@ -341,7 +343,7 @@ impl<'db> TraitDef<'db> {
 
     /// Returns `ingot` in which this trait is defined.
     pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
-        let hir_db = db.as_hir_db();
+        let hir_db = db;
         self.trait_(db).top_mod(hir_db).ingot(hir_db)
     }
 
@@ -352,15 +354,17 @@ impl<'db> TraitDef<'db> {
         use std::sync::OnceLock;
         static EMPTY: OnceLock<IndexSet<Binder<TraitInstId>>> = OnceLock::new();
 
-        collect_super_traits(db, self)
-            .as_ref()
-            .unwrap_or_else(|_| EMPTY.get_or_init(IndexSet::new))
+        if super_trait_cycle(db, self).is_some() {
+            EMPTY.get_or_init(IndexSet::new)
+        } else {
+            collect_super_traits(db, self)
+        }
     }
 
     fn name(self, db: &'db dyn HirAnalysisDb) -> Option<&'db str> {
         self.trait_(db)
-            .name(db.as_hir_db())
+            .name(db)
             .to_opt()
-            .map(|name| name.data(db.as_hir_db()).as_str())
+            .map(|name| name.data(db).as_str())
     }
 }

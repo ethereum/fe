@@ -19,7 +19,7 @@ pub(crate) fn collect_methods<'db>(
 ) -> MethodTable<'db> {
     let mut collector = MethodCollector::new(db, ingot);
 
-    let impls = ingot.all_impls(db.as_hir_db());
+    let impls = ingot.all_impls(db);
     collector.collect_impls(impls);
     collector.finalize()
 }
@@ -145,7 +145,7 @@ impl<'db> MethodCollector<'db> {
 
     fn collect_impls(&mut self, impls: &[Impl<'db>]) {
         for impl_ in impls {
-            let ty = match impl_.ty(self.db.as_hir_db()).to_opt() {
+            let ty = match impl_.ty(self.db).to_opt() {
                 Some(ty) => lower_hir_ty(self.db, ty, impl_.scope()),
                 None => TyId::invalid(self.db, InvalidCause::Other),
             };
@@ -154,7 +154,7 @@ impl<'db> MethodCollector<'db> {
                 continue;
             }
 
-            for func in impl_.funcs(self.db.as_hir_db()) {
+            for func in impl_.funcs(self.db) {
                 let Some(func) = lower_func(self.db, func) else {
                     continue;
                 };

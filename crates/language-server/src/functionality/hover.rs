@@ -17,23 +17,23 @@ pub fn hover_helper(
     params: async_lsp::lsp_types::HoverParams,
 ) -> Result<Option<Hover>, Error> {
     info!("handling hover");
-    let file_text = file.text(db.as_input_db());
+    let file_text = file.text(db);
 
     let cursor: Cursor = to_offset_from_position(
         params.text_document_position_params.position,
         file_text.as_str(),
     );
 
-    let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
+    let top_mod = map_file_to_mod(db, ingot, file);
     let goto_info = &get_goto_target_scopes_for_cursor(db, top_mod, cursor).unwrap_or_default();
 
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
     let scopes_info = goto_info
         .iter()
         .map(|scope| {
             let item = scope.item();
             let pretty_path = get_item_path_markdown(item, hir_db);
-            let definition_source = get_item_definition_markdown(item, db.as_spanned_hir_db());
+            let definition_source = get_item_definition_markdown(item, db);
             let docs = get_docstring(*scope, hir_db);
 
             let result = [pretty_path, definition_source, docs]

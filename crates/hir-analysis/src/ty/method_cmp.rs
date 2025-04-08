@@ -154,7 +154,7 @@ fn compare_arg_label<'db>(
     trait_m: FuncDef<'db>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
-    let hir_db = db.as_hir_db();
+    let hir_db = db;
 
     let mut err = false;
     let hir_impl_m = impl_m.hir_func_def(db).unwrap();

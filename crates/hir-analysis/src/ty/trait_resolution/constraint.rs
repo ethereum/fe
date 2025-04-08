@@ -1,8 +1,5 @@
 use common::indexmap::IndexSet;
-use hir::hir_def::{
-    scope_graph::ScopeId, GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound,
-};
-use salsa::{plumbing::FromId, Update};
+use hir::hir_def::{GenericParam, GenericParamOwner, Impl, ItemKind, TypeBound};
 
 use crate::{
     ty::{
@@ -51,27 +48,74 @@ pub(crate) fn ty_constraints<'db>(
 
 /// Collect super traits of the given trait.
 /// The returned trait ref is bound by the given trait's generic parameters.
-#[salsa::tracked(return_ref, recovery_fn = recover_collect_super_traits)]
+#[salsa::tracked(return_ref)]
 pub(crate) fn collect_super_traits<'db>(
     db: &'db dyn HirAnalysisDb,
     trait_: TraitDef<'db>,
-) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
-    let collector = SuperTraitCollector::new(db, trait_);
-    let insts = collector.collect();
+) -> IndexSet<Binder<TraitInstId<'db>>> {
+    let hir_trait = trait_.trait_(db);
+    let hir_db = db;
+    let self_param = trait_.self_param(db);
+    let scope = trait_.trait_(db).scope();
 
-    let mut cycles = IndexSet::new();
-    // Check for cycles.
-    for &inst in &insts {
-        if let Err(err) = collect_super_traits(db, inst.skip_binder().def(db)) {
-            cycles.extend(err.0.iter().copied());
+    let mut super_traits = IndexSet::new();
+
+    for &super_ in hir_trait.super_traits(hir_db).iter() {
+        if let Ok(inst) = lower_trait_ref(db, self_param, super_, scope) {
+            super_traits.insert(Binder::bind(inst));
         }
     }
 
-    if cycles.is_empty() {
-        Ok(insts)
-    } else {
-        Err(SuperTraitCycle(cycles))
+    for pred in hir_trait.where_clause(hir_db).data(hir_db) {
+        if pred
+            .ty
+            .to_opt()
+            .map(|ty| ty.is_self_ty(hir_db))
+            .unwrap_or_default()
+        {
+            for bound in &pred.bounds {
+                if let TypeBound::Trait(bound) = bound {
+                    if let Ok(inst) = lower_trait_ref(db, self_param, *bound, scope) {
+                        super_traits.insert(Binder::bind(inst));
+                    }
+                }
+            }
+        }
     }
+
+    super_traits
+}
+
+#[salsa::tracked(return_ref)]
+pub fn super_trait_cycle<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: TraitDef<'db>,
+) -> Option<Vec<TraitDef<'db>>> {
+    super_trait_cycle_impl(db, trait_, &[])
+}
+
+pub fn super_trait_cycle_impl<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: TraitDef<'db>,
+    chain: &[TraitDef<'db>],
+) -> Option<Vec<TraitDef<'db>>> {
+    if chain.contains(&trait_) {
+        return Some(chain.to_vec());
+    }
+    let bounds = collect_super_traits(db, trait_);
+    if bounds.is_empty() {
+        return None;
+    }
+
+    let chain = [chain, &[trait_]].concat();
+    for t in bounds {
+        if let Some(cycle) = super_trait_cycle_impl(db, t.skip_binder().def(db), &chain) {
+            if cycle.contains(&trait_) {
+                return Some(cycle.clone());
+            }
+        }
+    }
+    None
 }
 
 /// Collect trait constraints that are specified by the given trait definition.
@@ -146,7 +190,7 @@ pub(crate) fn collect_func_def_constraints<'db>(
         return func_constraints;
     }
 
-    let parent_constraints = match hir_func.scope().parent_item(db.as_hir_db()) {
+    let parent_constraints = match hir_func.scope().parent_item(db) {
         Some(ItemKind::Trait(trait_)) => collect_trait_constraints(db, lower_trait(db, trait_)),
 
         Some(ItemKind::Impl(impl_)) => collect_impl_block_constraints(db, impl_),
@@ -183,78 +227,6 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
     };
 
     Binder::bind(ConstraintCollector::new(db, hir_func.into()).collect())
-}
-
-pub(crate) fn recover_collect_super_traits<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    cycle: &salsa::Cycle,
-    _trait_: TraitDef<'db>,
-) -> Result<IndexSet<Binder<TraitInstId<'db>>>, SuperTraitCycle<'db>> {
-    let mut trait_cycle = IndexSet::new();
-    for key in cycle.participant_keys() {
-        let id = key.key_index();
-        let inst = TraitDef::from_id(id);
-        trait_cycle.insert(inst);
-    }
-
-    Err(SuperTraitCycle(trait_cycle))
-}
-
-struct SuperTraitCollector<'db> {
-    db: &'db dyn HirAnalysisDb,
-    trait_: TraitDef<'db>,
-    super_traits: IndexSet<Binder<TraitInstId<'db>>>,
-    scope: ScopeId<'db>,
-}
-
-impl<'db> SuperTraitCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: TraitDef<'db>) -> Self {
-        Self {
-            db,
-            trait_,
-            super_traits: IndexSet::default(),
-            scope: trait_.trait_(db).scope(),
-        }
-    }
-
-    fn collect(mut self) -> IndexSet<Binder<TraitInstId<'db>>> {
-        let hir_trait = self.trait_.trait_(self.db);
-        let hir_db = self.db.as_hir_db();
-        let self_param = self.trait_.self_param(self.db);
-
-        for &super_ in hir_trait.super_traits(hir_db).iter() {
-            if let Ok(inst) = lower_trait_ref(self.db, self_param, super_, self.scope) {
-                self.super_traits.insert(Binder::bind(inst));
-            }
-        }
-
-        for pred in hir_trait.where_clause(hir_db).data(hir_db) {
-            if pred
-                .ty
-                .to_opt()
-                .map(|ty| ty.is_self_ty(hir_db))
-                .unwrap_or_default()
-            {
-                for bound in &pred.bounds {
-                    if let TypeBound::Trait(bound) = bound {
-                        if let Ok(inst) = lower_trait_ref(self.db, self_param, *bound, self.scope) {
-                            self.super_traits.insert(Binder::bind(inst));
-                        }
-                    }
-                }
-            }
-        }
-
-        self.super_traits
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Default, Update)]
-pub(crate) struct SuperTraitCycle<'db>(IndexSet<TraitDef<'db>>);
-impl<'db> SuperTraitCycle<'db> {
-    pub fn contains(&self, def: TraitDef<'db>) -> bool {
-        self.0.contains(&def)
-    }
 }
 
 struct ConstraintCollector<'db> {
@@ -298,11 +270,11 @@ impl<'db> ConstraintCollector<'db> {
     }
 
     fn collect_constraints_from_where_clause(&mut self) {
-        let Some(where_clause) = self.owner.where_clause(self.db.as_hir_db()) else {
+        let Some(where_clause) = self.owner.where_clause(self.db) else {
             return;
         };
 
-        for hir_pred in where_clause.data(self.db.as_hir_db()) {
+        for hir_pred in where_clause.data(self.db) {
             let Some(hir_ty) = hir_pred.ty.to_opt() else {
                 continue;
             };
@@ -321,9 +293,9 @@ impl<'db> ConstraintCollector<'db> {
 
     fn collect_constraints_from_generic_params(&mut self) {
         let param_set = collect_generic_params(self.db, self.owner);
-        let param_list = self.owner.params(self.db.as_hir_db());
+        let param_list = self.owner.params(self.db);
 
-        for (i, hir_param) in param_list.data(self.db.as_hir_db()).iter().enumerate() {
+        for (i, hir_param) in param_list.data(self.db).iter().enumerate() {
             let GenericParam::Type(hir_param) = hir_param else {
                 continue;
             };

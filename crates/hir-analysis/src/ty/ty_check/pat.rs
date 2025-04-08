@@ -16,7 +16,7 @@ use crate::{
 
 impl<'db> TyChecker<'db> {
     pub(super) fn check_pat(&mut self, pat: PatId, expected: TyId<'db>) -> TyId<'db> {
-        let Partial::Present(pat_data) = pat.data(self.db.as_hir_db(), self.body()) else {
+        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             let actual = TyId::invalid(self.db, InvalidCause::Other);
             return self.unify_ty(pat, actual, expected);
         };
@@ -86,7 +86,7 @@ impl<'db> TyChecker<'db> {
                 break;
             };
 
-            if pat_tup[pat_idx].is_rest(self.db.as_hir_db(), self.body()) {
+            if pat_tup[pat_idx].is_rest(self.db, self.body()) {
                 pat_idx += 1;
                 continue;
             }
@@ -114,7 +114,7 @@ impl<'db> TyChecker<'db> {
         let span = pat.lazy_span(self.body()).into_path_pat();
         let res = self.resolve_path(*path, true);
 
-        if path.is_bare_ident(self.db.as_hir_db()) {
+        if path.is_bare_ident(self.db) {
             match res {
                 Ok(PathRes::Ty(ty)) if ty.is_record(self.db) => {
                     let diag = BodyDiag::unit_variant_expected(
@@ -140,7 +140,7 @@ impl<'db> TyChecker<'db> {
                     }
                 }
                 _ => {
-                    let name = *path.ident(self.db.as_hir_db()).unwrap();
+                    let name = *path.ident(self.db).unwrap();
                     let binding = LocalBinding::local(pat, *is_mut);
                     if let Some(LocalBinding::Local {
                         pat: conflict_with, ..
@@ -266,7 +266,7 @@ impl<'db> TyChecker<'db> {
             Err(_) => return TyId::invalid(self.db, InvalidCause::Other),
         };
 
-        let expected_len = expected_elems.len(self.db.as_hir_db());
+        let expected_len = expected_elems.len(self.db);
 
         let (actual_elems, rest_range) = self.unpack_rest_pat(elems, Some(expected_len));
         if actual_elems.len() != expected_len {
@@ -281,12 +281,12 @@ impl<'db> TyChecker<'db> {
         };
 
         let mut arg_idx = 0;
-        for (i, &hir_ty) in expected_elems.data(self.db.as_hir_db()).iter().enumerate() {
+        for (i, &hir_ty) in expected_elems.data(self.db).iter().enumerate() {
             if arg_idx >= elems.len() {
                 break;
             }
 
-            if elems[arg_idx].is_rest(self.db.as_hir_db(), self.body()) {
+            if elems[arg_idx].is_rest(self.db, self.body()) {
                 arg_idx += 1;
                 continue;
             }
@@ -385,12 +385,11 @@ impl<'db> TyChecker<'db> {
     where
         T: RecordLike<'db>,
     {
-        let Partial::Present(Pat::Record(_, fields)) = pat.data(self.db.as_hir_db(), self.body())
-        else {
+        let Partial::Present(Pat::Record(_, fields)) = pat.data(self.db, self.body()) else {
             unreachable!()
         };
 
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
         let mut contains_rest = false;
 
         let pat_span = pat.lazy_span(self.body()).into_record_pat();
@@ -436,7 +435,7 @@ impl<'db> TyChecker<'db> {
     ) -> (Vec<TyId<'db>>, std::ops::Range<usize>) {
         let mut rest_start = None;
         for (i, &pat) in pat_tup.iter().enumerate() {
-            if pat.is_rest(self.db.as_hir_db(), self.body()) && rest_start.replace(i).is_some() {
+            if pat.is_rest(self.db, self.body()) && rest_start.replace(i).is_some() {
                 let span = pat.lazy_span(self.body());
                 self.push_diag(BodyDiag::DuplicatedRestPat(span.into()));
                 return (

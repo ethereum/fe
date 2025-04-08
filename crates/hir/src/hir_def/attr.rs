@@ -1,6 +1,7 @@
 use super::{IdentId, Partial, StringId};
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct AttrListId<'db> {
     #[return_ref]
     pub data: Vec<Attr<'db>>,

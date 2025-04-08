@@ -21,7 +21,7 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
     let mut traits = IndexSet::default();
     let scope = t_scope.inner(db).to_scope();
 
-    let imports = &resolve_imports(db, scope.ingot(db.as_hir_db())).1;
+    let imports = &resolve_imports(db, scope.ingot(db)).1;
     if let Some(named) = imports.named_resolved.get(&scope) {
         named
             .values()
@@ -54,13 +54,13 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
             })
     }
 
-    for child in scope.child_items(db.as_hir_db()) {
+    for child in scope.child_items(db) {
         if let ItemKind::Trait(trait_) = child {
             traits.insert(trait_);
         }
     }
 
-    if let Some(parent) = scope.parent(db.as_hir_db()) {
+    if let Some(parent) = scope.parent(db) {
         let parent_traits = available_traits_in_scope(db, parent);
         traits.extend(parent_traits.iter().copied());
     }
@@ -69,6 +69,7 @@ pub(crate) fn available_traits_in_scope_impl<'db>(
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TraitScope<'db> {
     inner: TraitScopeKind<'db>,
 }
@@ -98,7 +99,7 @@ impl<'db> TraitScopeKind<'db> {
                 }
                 _ => {}
             }
-            scope = scope.parent(db.as_hir_db()).unwrap();
+            scope = scope.parent(db).unwrap();
         }
     }
 

@@ -16,6 +16,7 @@ use if_chain::if_chain;
 use num_bigint::BigUint;
 use rustc_hash::FxHashSet;
 use salsa::Update;
+use smallvec::SmallVec;
 
 use super::{
     adt_def::AdtDef,
@@ -33,6 +34,7 @@ use crate::{
 };
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TyId<'db> {
     #[return_ref]
     pub data: TyData<'db>,
@@ -156,7 +158,7 @@ impl<'db> TyId<'db> {
         };
 
         let ty_ingot = self.ingot(db);
-        match ingot.kind(db.as_hir_db()) {
+        match ingot.kind(db) {
             IngotKind::Core => ty_ingot.is_none() || ty_ingot == Some(ingot),
             _ => ty_ingot == Some(ingot),
         }
@@ -203,7 +205,7 @@ impl<'db> TyId<'db> {
     pub(super) fn array_with_len(db: &'db dyn HirAnalysisDb, elem: TyId<'db>, len: usize) -> Self {
         let array = Self::array(db, elem);
 
-        let len = EvaluatedConstTy::LitInt(IntegerId::new(db.as_hir_db(), BigUint::from(len)));
+        let len = EvaluatedConstTy::LitInt(IntegerId::new(db, BigUint::from(len)));
         let len = ConstTyData::Evaluated(len, array.applicable_ty(db).unwrap().const_ty.unwrap());
         let len = TyId::const_ty(db, ConstTyId::new(db, len));
 
@@ -320,14 +322,14 @@ impl<'db> TyId<'db> {
     pub fn name_span(self, db: &'db dyn HirAnalysisDb) -> Option<DynLazySpan<'db>> {
         match self.base_ty(db).data(db) {
             TyData::TyVar(_) => None,
-            TyData::TyParam(param) => param.scope(db).name_span(db.as_hir_db()),
+            TyData::TyParam(param) => param.scope(db).name_span(db),
 
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.name_span(db)),
             TyData::TyBase(TyBase::Func(func)) => Some(func.name_span(db)),
             TyData::TyBase(TyBase::Prim(_)) => None,
 
             TyData::ConstTy(ty) => match ty.data(db) {
-                ConstTyData::TyParam(param, _) => param.scope(db).name_span(db.as_hir_db()),
+                ConstTyData::TyParam(param, _) => param.scope(db).name_span(db),
                 _ => None,
             },
 
@@ -412,6 +414,11 @@ impl<'db> TyId<'db> {
                     .into(),
 
                     InvalidCause::AssocTy => TyLowerDiag::AssocTy(span).into(),
+
+                    InvalidCause::AliasCycle(cycle) => TyLowerDiag::TypeAliasCycle {
+                        cycle: cycle.to_vec(),
+                    }
+                    .into(),
 
                     InvalidCause::InvalidConstTyExpr { body } => {
                         TyLowerDiag::InvalidConstTyExpr(body.lazy_span().into()).into()
@@ -730,6 +737,8 @@ pub enum InvalidCause<'db> {
         n_given_args: usize,
     },
 
+    AliasCycle(SmallVec<HirTypeAlias<'db>, 4>),
+
     /// Associated Type is not allowed at the moment.
     AssocTy,
 
@@ -877,7 +886,7 @@ pub struct TyParam<'db> {
 
 impl<'db> TyParam<'db> {
     pub(super) fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
-        self.name.data(db.as_hir_db()).to_string()
+        self.name.data(db).to_string()
     }
 
     pub(super) fn normal_param(
@@ -897,7 +906,7 @@ impl<'db> TyParam<'db> {
 
     pub(super) fn trait_self(db: &'db dyn HirAnalysisDb, kind: Kind, scope: ScopeId<'db>) -> Self {
         Self {
-            name: IdentId::make_self_ty(db.as_hir_db()),
+            name: IdentId::make_self_ty(db),
             idx: 0,
             kind,
             is_trait_self: true,
@@ -978,9 +987,9 @@ impl<'db> TyBase<'db> {
             }
             .to_string(),
 
-            Self::Adt(adt) => adt.name(db).data(db.as_hir_db()).to_string(),
+            Self::Adt(adt) => adt.name(db).data(db).to_string(),
 
-            Self::Func(func) => format!("fn {}", func.name(db).data(db.as_hir_db())),
+            Self::Func(func) => format!("fn {}", func.name(db).data(db)),
         }
     }
 

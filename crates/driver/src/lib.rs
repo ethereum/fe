@@ -6,7 +6,7 @@ use common::{
     ingot::{builtin_core, IngotBuilder},
     input::IngotKind,
 };
-pub use db::{DriverDataBase, DriverDb};
+pub use db::DriverDataBase;
 
 use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;

@@ -213,7 +213,7 @@ impl ChainInitiator for ExprRoot<'_> {
     fn init(&self, db: &dyn SpannedHirDb) -> ResolvedOrigin {
         let source_map = body_source_map(db, self.body);
         let origin = source_map.expr_map.node_to_source(self.expr);
-        let top_mod = self.body.top_mod(db.as_hir_db());
+        let top_mod = self.body.top_mod(db);
         ResolvedOrigin::resolve(db, top_mod, origin)
     }
 }
@@ -223,7 +223,6 @@ mod tests {
     use crate::{
         hir_def::{ArithBinOp, Body, Expr},
         test_db::TestDb,
-        HirDb,
     };
 
     #[test]
@@ -238,11 +237,11 @@ mod tests {
 
         let (ingot, file) = db.standalone_file(text);
         let body: Body = db.expect_item::<Body>(ingot, file);
-        let bin_expr = match body.exprs(db.as_hir_db()).values().nth(2).unwrap().unwrap() {
+        let bin_expr = match body.exprs(&db).values().nth(2).unwrap().unwrap() {
             Expr::AugAssign(lhs, rhs, bin_op) => (*lhs, *rhs, *bin_op),
             _ => unreachable!(),
         };
-        let top_mod = body.top_mod(db.as_hir_db());
+        let top_mod = body.top_mod(&db);
         assert_eq!("x", db.text_at(top_mod, &bin_expr.0.lazy_span(body)));
         assert_eq!("1", db.text_at(top_mod, &bin_expr.1.lazy_span(body)));
         assert_eq!(ArithBinOp::Add, bin_expr.2);

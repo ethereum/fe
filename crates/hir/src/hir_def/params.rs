@@ -2,6 +2,7 @@ use super::{Body, IdentId, Partial, PathId};
 use crate::{hir_def::TypeId, HirDb};
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct GenericArgListId<'db> {
     #[return_ref]
     pub data: Vec<GenericArg<'db>>,
@@ -23,6 +24,7 @@ impl<'db> GenericArgListId<'db> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct GenericParamListId<'db> {
     #[return_ref]
     pub data: Vec<GenericParam<'db>>,
@@ -35,12 +37,14 @@ impl GenericParamListId<'_> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct FuncParamListId<'db> {
     #[return_ref]
     pub data: Vec<FuncParam<'db>>,
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct WhereClauseId<'db> {
     #[return_ref]
     pub data: Vec<WherePredicate<'db>>,
@@ -167,6 +171,7 @@ pub enum TypeBound<'db> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct TraitRefId<'db> {
     /// The path to the trait.
     pub path: Partial<PathId<'db>>,

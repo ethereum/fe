@@ -26,6 +26,7 @@ use super::{
 use crate::HirAnalysisDb;
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct EarlyNameQueryId<'db> {
     /// The name to be resolved.
     name: IdentId<'db>,
@@ -310,7 +311,7 @@ impl<'db> NameRes<'db> {
     pub fn is_enum(&self, db: &dyn HirAnalysisDb) -> bool {
         match self.kind {
             NameResKind::Prim(_) => false,
-            NameResKind::Scope(scope) => scope.resolve_to::<Enum>(db.as_hir_db()).is_some(),
+            NameResKind::Scope(scope) => scope.resolve_to::<Enum>(db).is_some(),
         }
     }
 
@@ -318,8 +319,8 @@ impl<'db> NameRes<'db> {
         match self.kind {
             NameResKind::Prim(_) => false,
             NameResKind::Scope(scope) => {
-                scope.resolve_to::<TopLevelMod>(db.as_hir_db()).is_some()
-                    || scope.resolve_to::<Mod>(db.as_hir_db()).is_some()
+                scope.resolve_to::<TopLevelMod>(db).is_some()
+                    || scope.resolve_to::<Mod>(db).is_some()
             }
         }
     }
@@ -339,12 +340,8 @@ impl<'db> NameRes<'db> {
 
     pub fn pretty_path(&self, db: &dyn HirAnalysisDb) -> Option<String> {
         match self.kind {
-            NameResKind::Scope(scope) => scope.pretty_path(db.as_hir_db()),
-            NameResKind::Prim(prim) => prim
-                .name(db.as_hir_db())
-                .data(db.as_hir_db())
-                .clone()
-                .into(),
+            NameResKind::Scope(scope) => scope.pretty_path(db),
+            NameResKind::Prim(prim) => prim.name(db).data(db).clone().into(),
         }
     }
 
@@ -353,8 +350,8 @@ impl<'db> NameRes<'db> {
             NameDerivation::Def | NameDerivation::Prim | NameDerivation::External => {
                 self.kind.name_span(db)
             }
-            NameDerivation::NamedImported(use_) => use_.imported_name_span(db.as_hir_db()),
-            NameDerivation::GlobImported(use_) => use_.glob_span(db.as_hir_db()),
+            NameDerivation::NamedImported(use_) => use_.imported_name_span(db),
+            NameDerivation::GlobImported(use_) => use_.glob_span(db),
             NameDerivation::Lex(ref inner) => {
                 let mut inner = inner;
                 while let NameDerivation::Lex(parent) = inner.as_ref() {
@@ -412,15 +409,15 @@ pub enum NameResKind<'db> {
 impl<'db> NameResKind<'db> {
     pub fn name_span(self, db: &'db dyn HirAnalysisDb) -> Option<DynLazySpan<'db>> {
         match self {
-            NameResKind::Scope(scope) => scope.name_span(db.as_hir_db()),
+            NameResKind::Scope(scope) => scope.name_span(db),
             NameResKind::Prim(_) => None,
         }
     }
 
     pub fn name(self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
         match self {
-            NameResKind::Scope(scope) => scope.name(db.as_hir_db()).unwrap(),
-            NameResKind::Prim(prim) => prim.name(db.as_hir_db()),
+            NameResKind::Scope(scope) => scope.name(db).unwrap(),
+            NameResKind::Prim(prim) => prim.name(db),
         }
     }
 }
@@ -508,7 +505,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 
     pub(crate) fn resolve_query(&mut self, query: EarlyNameQueryId<'db>) -> NameResBucket<'db> {
-        let hir_db = self.db.as_hir_db();
+        let hir_db = self.db;
 
         let mut bucket = NameResBucket::default();
 
@@ -598,7 +595,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         for &prim in PrimTy::all_types() {
             // We don't care about the result of `push` because we assume builtin types are
             // guaranteed to be unique.
-            if query.name(self.db) == prim.name(self.db.as_hir_db()) {
+            if query.name(self.db) == prim.name(self.db) {
                 bucket.push(&NameRes::new_prim(prim));
             }
         }
@@ -655,7 +652,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         let mut found_domains: FxHashMap<IdentId, NameDomain> = FxHashMap::default();
         let mut found_kinds: FxHashSet<(IdentId, NameResKind)> = FxHashSet::default();
 
-        for edge in target.edges(self.db.as_hir_db()) {
+        for edge in target.edges(self.db) {
             let scope = match edge.kind.propagate_glob() {
                 PropagationResult::Terminated => edge.dest,
                 _ => {
@@ -663,7 +660,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
                 }
             };
 
-            let name = scope.name(self.db.as_hir_db()).unwrap();
+            let name = scope.name(self.db).unwrap();
             if !found_kinds.insert((name, scope.into())) {
                 continue;
             }
@@ -811,7 +808,7 @@ impl NameDomain {
             ScopeId::GenericParam(parent, idx) => {
                 let parent = GenericParamOwner::from_item_opt(parent).unwrap();
 
-                let param = &parent.params(db.as_hir_db()).data(db.as_hir_db())[idx];
+                let param = &parent.params(db).data(db)[idx];
                 match param {
                     GenericParam::Type(_) => NameDomain::TYPE,
                     GenericParam::Const(_) => NameDomain::TYPE | NameDomain::VALUE,
@@ -1000,7 +997,7 @@ impl<'db> QueryPropagator<'db> for SuperEdge {
         db: &'db dyn HirAnalysisDb,
         query: EarlyNameQueryId<'db>,
     ) -> PropagationResult {
-        if query.name(db).is_super(db.as_hir_db()) {
+        if query.name(db).is_super(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1018,7 +1015,7 @@ impl<'db> QueryPropagator<'db> for IngotEdge {
         db: &'db dyn HirAnalysisDb,
         query: EarlyNameQueryId<'db>,
     ) -> PropagationResult {
-        if query.name(db).is_ingot(db.as_hir_db()) {
+        if query.name(db).is_ingot(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1036,7 +1033,7 @@ impl<'db> QueryPropagator<'db> for SelfTyEdge {
         db: &'db dyn HirAnalysisDb,
         query: EarlyNameQueryId<'db>,
     ) -> PropagationResult {
-        if query.name(db).is_self_ty(db.as_hir_db()) {
+        if query.name(db).is_self_ty(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated
@@ -1054,7 +1051,7 @@ impl<'db> QueryPropagator<'db> for SelfEdge {
         db: &'db dyn HirAnalysisDb,
         query: EarlyNameQueryId<'db>,
     ) -> PropagationResult {
-        if query.name(db).is_self(db.as_hir_db()) {
+        if query.name(db).is_self(db) {
             PropagationResult::Terminated
         } else {
             PropagationResult::UnPropagated

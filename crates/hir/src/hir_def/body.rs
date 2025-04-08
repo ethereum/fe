@@ -22,6 +22,7 @@ use crate::{
 };
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct Body<'db> {
     //    #[id]
     id: TrackedItemId<'db>,

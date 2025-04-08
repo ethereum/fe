@@ -58,13 +58,9 @@ pub fn to_lsp_location_from_scope(
     ingot: InputIngot,
     scope: ScopeId,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
-    let lazy_span = scope
-        .name_span(db.as_hir_db())
-        .ok_or("Failed to get name span")?;
-    let span = lazy_span
-        .resolve(db.as_spanned_hir_db())
-        .ok_or("Failed to resolve span")?;
-    to_lsp_location_from_span(db.as_input_db(), ingot, span)
+    let lazy_span = scope.name_span(db).ok_or("Failed to get name span")?;
+    let span = lazy_span.resolve(db).ok_or("Failed to resolve span")?;
+    to_lsp_location_from_span(db, ingot, span)
 }
 
 pub fn severity_to_lsp(is_primary: bool, severity: Severity) -> DiagnosticSeverity {
@@ -149,8 +145,8 @@ fn to_lsp_location_from_span(
     ingot: InputIngot,
     span: Span,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
-    let uri = span.file.abs_path(db.as_input_db(), ingot);
-    let range = to_lsp_range_from_span(span, db.as_input_db())?;
+    let uri = span.file.abs_path(db, ingot);
+    let range = to_lsp_range_from_span(span, db)?;
     let uri = async_lsp::lsp_types::Url::from_file_path(uri)
         .map_err(|()| "Failed to convert path to URL")?;
     Ok(async_lsp::lsp_types::Location { uri, range })

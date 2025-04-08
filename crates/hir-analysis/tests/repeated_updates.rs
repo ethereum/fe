@@ -3,7 +3,7 @@ mod test_db;
 use fe_hir_analysis::{
     analysis_pass::AnalysisPassManager, name_resolution::PathAnalysisPass, ty::FuncAnalysisPass,
 };
-use hir::{lower::map_file_to_mod, LowerHirDb};
+use hir::lower::map_file_to_mod;
 use test_db::HirAnalysisTestDb;
 
 use salsa::Setter;
@@ -28,7 +28,7 @@ fn test_updated() {
 
     for version in versions {
         {
-            let top_mod = map_file_to_mod(db.as_lower_hir_db(), ingot, file);
+            let top_mod = map_file_to_mod(&db, ingot, file);
             let mut pass_manager = initialize_pass_manager(&db);
             let _ = pass_manager.run_on_module(top_mod);
         }
