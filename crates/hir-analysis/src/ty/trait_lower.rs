@@ -10,7 +10,7 @@ use super::{
     func_def::FuncDef,
     trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId, TraitMethod},
     ty_def::{InvalidCause, Kind, TyId},
-    ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamTypeSet},
+    ty_lower::{collect_generic_params, lower_generic_arg_list},
 };
 use crate::{
     name_resolution::{resolve_path, PathRes, PathResError},
@@ -22,8 +22,6 @@ type TraitImplTable<'db> = FxHashMap<TraitDef<'db>, Vec<Binder<Implementor<'db>>
 
 #[salsa::tracked]
 pub(crate) fn lower_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> TraitDef<'db> {
-    let param_set = collect_generic_params(db, trait_.into());
-
     let mut methods = IndexMap::<IdentId<'db>, TraitMethod<'db>>::default();
     for method in trait_.methods(db) {
         let Some(func) = lower_func(db, method) else {
@@ -36,7 +34,7 @@ pub(crate) fn lower_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -
         methods.entry(name).or_insert(trait_method);
     }
 
-    TraitDef::new(db, trait_, param_set, methods)
+    TraitDef::new(db, trait_, methods)
 }
 
 /// Collect all trait implementors in the ingot.

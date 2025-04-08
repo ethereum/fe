@@ -24,7 +24,10 @@ use super::{
     unify::UnificationTable,
 };
 use crate::{
-    ty::{trait_lower::collect_trait_impls, trait_resolution::constraint::super_trait_cycle},
+    ty::{
+        trait_lower::collect_trait_impls, trait_resolution::constraint::super_trait_cycle,
+        ty_lower::collect_generic_params,
+    },
     HirAnalysisDb,
 };
 
@@ -310,14 +313,18 @@ impl<'db> TraitInstId<'db> {
 pub struct TraitDef<'db> {
     pub trait_: Trait<'db>,
     #[return_ref]
-    pub(crate) param_set: GenericParamTypeSet<'db>,
-    #[return_ref]
     pub methods: IndexMap<IdentId<'db>, TraitMethod<'db>>,
 }
 
+#[salsa::tracked]
 impl<'db> TraitDef<'db> {
     pub fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
+    }
+
+    #[salsa::tracked(return_ref)]
+    pub fn param_set(self, db: &'db dyn HirAnalysisDb) -> GenericParamTypeSet<'db> {
+        collect_generic_params(db, self.trait_(db).into())
     }
 
     pub fn self_param(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
