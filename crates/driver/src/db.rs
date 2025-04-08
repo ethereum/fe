@@ -1,15 +1,9 @@
 use crate::diagnostics::CsDbWrapper;
-use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
 };
-use common::{
-    diagnostics::CompleteDiagnostic,
-    indexmap::IndexSet,
-    input::{IngotDependency, IngotKind, Version},
-    InputFile, InputIngot,
-};
+use common::{diagnostics::CompleteDiagnostic, InputFile, InputIngot};
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
@@ -69,136 +63,6 @@ impl DriverDataBase {
         let tree = module_tree(self, ingot);
         let mut pass_manager = pm_builder(self);
         DiagnosticsCollection(pass_manager.run_on_module_tree(tree))
-    }
-
-    pub fn standalone(
-        &mut self,
-        file_path: &Utf8Path,
-        source: &str,
-        core_ingot: InputIngot,
-    ) -> (InputIngot, InputFile) {
-        let kind = IngotKind::StandAlone;
-
-        // We set the ingot version to 0.0.0 for stand-alone file.
-        let version = Version::new(0, 0, 0);
-        let root_file = file_path;
-        let core_dependency = IngotDependency::new("core", core_ingot);
-        let mut external_ingots = IndexSet::default();
-        external_ingots.insert(core_dependency);
-
-        let ingot = InputIngot::new(
-            self,
-            file_path.parent().unwrap().as_str(),
-            kind,
-            version,
-            external_ingots,
-        );
-
-        let file_name = root_file.file_name().unwrap();
-        let input_file = InputFile::new(self, file_name.into(), source.to_string());
-        ingot.set_root_file(self, input_file);
-        ingot.set_files(self, [input_file].into_iter().collect());
-        (ingot, input_file)
-    }
-
-    pub fn standalone_no_core(
-        &mut self,
-        file_path: &Utf8Path,
-        source: &str,
-    ) -> (InputIngot, InputFile) {
-        let kind = IngotKind::StandAlone;
-
-        // We set the ingot version to 0.0.0 for stand-alone file.
-        let version = Version::new(0, 0, 0);
-        let root_file = file_path;
-
-        let ingot = InputIngot::new(
-            self,
-            file_path.parent().unwrap().as_str(),
-            kind,
-            version,
-            IndexSet::default(),
-        );
-
-        let file_name = root_file.file_name().unwrap();
-        let input_file = InputFile::new(self, file_name.into(), source.to_string());
-        ingot.set_root_file(self, input_file);
-        ingot.set_files(self, [input_file].into_iter().collect());
-        (ingot, input_file)
-    }
-
-    pub fn local_ingot(
-        &mut self,
-        path: &Utf8Path,
-        version: &Version,
-        source_root: &Utf8Path,
-        source_files: Vec<(Utf8PathBuf, String)>,
-        core_ingot: InputIngot,
-    ) -> (InputIngot, IndexSet<InputFile>) {
-        let core_dependency = IngotDependency::new("core", core_ingot);
-        let mut external_ingots = IndexSet::default();
-        external_ingots.insert(core_dependency);
-        let input_ingot = InputIngot::new(
-            self,
-            path.as_str(),
-            IngotKind::Local,
-            version.clone(),
-            external_ingots,
-        );
-
-        let input_files = self.set_ingot_source_files(input_ingot, source_root, source_files);
-        (input_ingot, input_files)
-    }
-
-    pub fn core_ingot(
-        &mut self,
-        path: &Utf8Path,
-        version: &Version,
-        source_root: &Utf8Path,
-        source_files: Vec<(Utf8PathBuf, String)>,
-    ) -> (InputIngot, IndexSet<InputFile>) {
-        let input_ingot = InputIngot::new(
-            self,
-            path.as_str(),
-            IngotKind::Core,
-            version.clone(),
-            IndexSet::default(),
-        );
-
-        let input_files = self.set_ingot_source_files(input_ingot, source_root, source_files);
-        (input_ingot, input_files)
-    }
-
-    fn set_ingot_source_files(
-        &mut self,
-        ingot: InputIngot,
-        root: &Utf8Path,
-        files: Vec<(Utf8PathBuf, String)>,
-    ) -> IndexSet<InputFile> {
-        let input_files = files
-            .into_iter()
-            .map(|(path, content)| InputFile::new(self, path, content))
-            .collect::<IndexSet<_>>();
-
-        let root_file = *input_files
-            .iter()
-            .find(|input_file| {
-                let input_path = input_file.path(self);
-                if let (Ok(input_abs), Ok(root_abs)) = (
-                    std::path::PathBuf::from(input_path).canonicalize(),
-                    std::path::PathBuf::from(root).canonicalize(),
-                ) {
-                    input_abs == root_abs
-                } else {
-                    input_path == root
-                }
-            })
-            .expect("missing root source file");
-
-        ingot.set_files(self, input_files.clone());
-        ingot.set_root_file(self, root_file);
-
-        input_files
     }
 
     pub fn top_mod(&self, ingot: InputIngot, input: InputFile) -> TopLevelMod {

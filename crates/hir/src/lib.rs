@@ -102,7 +102,15 @@ mod test_db {
             let path = "hir_test";
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);
-            let ingot = InputIngot::new(self, path, kind, version, IndexSet::default());
+            let ingot = InputIngot::new(
+                self,
+                path.into(),
+                kind,
+                version,
+                IndexSet::default(),
+                IndexSet::default(),
+                None,
+            );
             let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
             ingot.set_root_file(self, file);
             ingot.set_files(self, [file].into_iter().collect());
