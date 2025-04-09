@@ -94,7 +94,7 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     let (path, _is_intermediate, scope) =
         find_path_surrounding_cursor(db, cursor, path_segment_collector.paths)?;
 
-    let resolved = resolve_path(db, path, scope, false);
+    let resolved = resolve_path(db, path, scope, None, false);
     let scopes = match resolved {
         Ok(r) => r.as_scope(db).into_iter().collect::<Vec<_>>(),
         Err(err) => match err.kind {
@@ -333,7 +333,7 @@ mod tests {
             let full_paths = path_collector.paths;
 
             if let Some((path, _, scope)) = find_path_surrounding_cursor(db, *cursor, full_paths) {
-                let resolved_enclosing_path = resolve_path(db, path, scope, false);
+                let resolved_enclosing_path = resolve_path(db, path, scope, None, false);
 
                 let res = match resolved_enclosing_path {
                     Ok(res) => res.pretty_path(db).unwrap(),

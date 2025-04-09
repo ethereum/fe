@@ -1,0 +1,17 @@
+trait Abi {
+    type Selector: Encode<Self>
+    type Encoder
+}
+
+struct SolAbi {}
+impl Abi for SolAbi {
+    type Selector = [u8; 4]
+}
+
+trait Encode<A: Abi> {
+    fn encode(self, mut e: A::Encoder)
+}
+
+impl Encode<SolAbi> for [u8; 4] {
+    fn encode(self, mut e: SolAbi::Encoder) {}
+}

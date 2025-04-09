@@ -9,7 +9,7 @@ use parser::ast;
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
     AttrListId, Body, FuncParamListId, FuncParamName, GenericParamListId, IdentId, IngotId,
-    Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
+    Partial, TupleTypeId, TypeBound, TypeId, UseAlias, WhereClauseId,
 };
 use crate::{
     hir_def::TraitRefId,
@@ -809,6 +809,9 @@ pub struct Trait<'db> {
     #[return_ref]
     pub super_traits: Vec<TraitRefId<'db>>,
     pub where_clause: WhereClauseId<'db>,
+    #[return_ref]
+    pub types: Vec<TraitType<'db>>,
+
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -842,6 +845,13 @@ impl<'db> Trait<'db> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct TraitType<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub bounds: Vec<TypeBound<'db>>,
+    pub default: Option<TypeId<'db>>,
+}
+
 #[salsa::tracked]
 #[derive(Debug)]
 pub struct ImplTrait<'db> {
@@ -853,6 +863,8 @@ pub struct ImplTrait<'db> {
     pub attributes: AttrListId<'db>,
     pub generic_params: GenericParamListId<'db>,
     pub where_clause: WhereClauseId<'db>,
+    #[return_ref]
+    pub types: Vec<ImplTraitType<'db>>,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -882,6 +894,12 @@ impl<'db> ImplTrait<'db> {
             _ => None,
         })
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct ImplTraitType<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub ty: Partial<TypeId<'db>>,
 }
 
 #[salsa::tracked]
@@ -1098,18 +1116,6 @@ pub enum VariantKind<'db> {
     Tuple(TupleTypeId<'db>),
     Record(FieldDefListId<'db>),
 }
-
-// xxx dead code {
-#[salsa::interned]
-#[derive(Debug)]
-pub struct ImplItemListId<'db> {
-    #[return_ref]
-    pub items: Vec<Func<'db>>,
-}
-pub type TraitItemListId<'db> = ImplItemListId<'db>;
-pub type ImplTraitItemListId<'db> = ImplItemListId<'db>;
-pub type ExternItemListId<'db> = ImplItemListId<'db>;
-// } xxx dead code
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Visibility {

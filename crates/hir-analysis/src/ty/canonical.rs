@@ -38,7 +38,7 @@ where
     ///
     /// # Panics
     /// This function will panic if the `table` is not empty.
-    pub(super) fn extract_identity<S>(self, table: &mut UnificationTableBase<'db, S>) -> T
+    pub fn extract_identity<S>(self, table: &mut UnificationTableBase<'db, S>) -> T
     where
         S: UnificationStore<'db>,
     {
@@ -66,7 +66,7 @@ where
     /// # Returns
     /// A `Solution<U>` where `U` is the type of the provided solution,
     /// canonicalized to the context of the canonical query.
-    pub(super) fn canonicalize_solution<S, U>(
+    pub fn canonicalize_solution<S, U>(
         &self,
         db: &'db dyn HirAnalysisDb,
         table: &mut UnificationTableBase<'db, S>,

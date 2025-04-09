@@ -1,14 +1,12 @@
 use common::indexmap::IndexSet;
-use either::Either;
 use hir::hir_def::{scope_graph::ScopeId, IdentId, Trait};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    name_resolution::{available_traits_in_scope, diagnostics::NameResDiag, is_scope_visible_from},
+    name_resolution::{available_traits_in_scope, is_scope_visible_from},
     ty::{
         canonical::{Canonical, Canonicalized, Solution},
-        diagnostics::{BodyDiag, FuncBodyDiag},
         fold::TyFoldable,
         func_def::FuncDef,
         method_table::probe_method,
@@ -18,20 +16,32 @@ use crate::{
         ty_def::TyId,
         unify::UnificationTable,
     },
-    HirAnalysisDb, Spanned,
+    HirAnalysisDb,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum Candidate<'db> {
+pub enum Candidate<'db> {
+    // xxx MethodCandidate
     InherentMethod(FuncDef<'db>),
     TraitMethod(TraitMethodCand<'db>),
     NeedsConfirmation(TraitMethodCand<'db>),
 }
 
+impl<'db> Candidate<'db> {
+    pub fn name(&self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
+        match self {
+            Candidate::InherentMethod(func_def) => func_def.name(db),
+            Candidate::TraitMethod(cand) | Candidate::NeedsConfirmation(cand) => {
+                cand.method.0.name(db)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(super) struct TraitMethodCand<'db> {
-    pub(super) inst: Solution<TraitInstId<'db>>,
-    pub(super) method: TraitMethod<'db>,
+pub struct TraitMethodCand<'db> {
+    pub inst: Solution<TraitInstId<'db>>,
+    pub method: TraitMethod<'db>,
 }
 
 impl<'db> TraitMethodCand<'db> {
@@ -40,81 +50,28 @@ impl<'db> TraitMethodCand<'db> {
     }
 }
 
-pub(super) fn select_method_candidate<'db>(
+pub(crate) fn select_method_candidate<'db>(
     db: &'db dyn HirAnalysisDb,
-    receiver: Spanned<Canonical<TyId<'db>>>,
-    method_name: Spanned<'db, IdentId<'db>>,
+    receiver: Canonical<TyId<'db>>,
+    method_name: IdentId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-) -> Result<Candidate<'db>, FuncBodyDiag<'db>> {
-    if receiver.data.value.is_ty_var(db) {
-        return Err(BodyDiag::TypeMustBeKnown(method_name.span).into());
+) -> Result<Candidate<'db>, MethodSelectionError<'db>> {
+    if receiver.value.is_ty_var(db) {
+        return Err(MethodSelectionError::ReceiverTypeMustBeKnown);
     }
 
-    let candidates =
-        assemble_method_candidates(db, receiver.data, method_name.data, scope, assumptions);
+    let candidates = assemble_method_candidates(db, receiver, method_name, scope, assumptions);
 
     let selector = MethodSelector {
         db,
-        receiver: receiver.data,
+        receiver,
         scope,
         candidates,
         assumptions,
     };
 
-    match selector.select() {
-        Ok(candidate) => Ok(candidate),
-
-        Err(MethodSelectionError::AmbiguousInherentMethod(cands)) => {
-            let cand_spans = cands.into_iter().map(|cand| cand.name_span(db)).collect();
-            let diag = BodyDiag::AmbiguousInherentMethodCall {
-                primary: method_name.span,
-                method_name: method_name.data,
-                cand_spans,
-            };
-
-            Err(diag.into())
-        }
-
-        Err(MethodSelectionError::AmbiguousTraitMethod(traits)) => {
-            let traits = traits.into_iter().map(|def| def.trait_(db)).collect();
-
-            let diag = BodyDiag::AmbiguousTrait {
-                primary: method_name.span,
-                method_name: method_name.data,
-                traits,
-            };
-
-            Err(diag.into())
-        }
-
-        Err(MethodSelectionError::NotFound) => {
-            let base_ty = receiver.data.value.base_ty(db);
-            let diag = BodyDiag::MethodNotFound {
-                primary: method_name.span,
-                method_name: method_name.data,
-                receiver: Either::Left(base_ty),
-            };
-            Err(diag.into())
-        }
-
-        Err(MethodSelectionError::InvisibleInherentMethod(func)) => {
-            let diag = NameResDiag::Invisible(
-                method_name.span,
-                method_name.data,
-                func.name_span(db).into(),
-            );
-            Err(diag.into())
-        }
-
-        Err(MethodSelectionError::InvisibleTraitMethod(traits)) => {
-            let diag = BodyDiag::InvisibleAmbiguousTrait {
-                primary: method_name.span,
-                traits,
-            };
-            Err(diag.into())
-        }
-    }
+    selector.select()
 }
 
 fn assemble_method_candidates<'db>(
@@ -315,6 +272,7 @@ impl<'db> MethodSelector<'db> {
     fn find_inst(&self, def: TraitDef<'db>, method: TraitMethod<'db>) -> Candidate<'db> {
         let mut table = UnificationTable::new(self.db);
         let receiver = self.receiver.extract_identity(&mut table);
+        let receiver = table.instantiate_to_term(receiver); // xxx remove?
 
         // Assign type variables to trait parameters.
         let inst_args = def
@@ -389,12 +347,14 @@ impl<'db> MethodSelector<'db> {
     }
 }
 
+#[derive(Debug)]
 pub enum MethodSelectionError<'db> {
     AmbiguousInherentMethod(Vec<FuncDef<'db>>),
     AmbiguousTraitMethod(Vec<TraitDef<'db>>),
     NotFound,
     InvisibleInherentMethod(FuncDef<'db>),
     InvisibleTraitMethod(Vec<Trait<'db>>),
+    ReceiverTypeMustBeKnown,
 }
 
 #[derive(Default)]

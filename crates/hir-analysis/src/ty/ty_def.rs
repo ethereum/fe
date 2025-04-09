@@ -413,8 +413,6 @@ impl<'db> TyId<'db> {
                     }
                     .into(),
 
-                    InvalidCause::AssocTy => TyLowerDiag::AssocTy(span).into(),
-
                     InvalidCause::AliasCycle(cycle) => TyLowerDiag::TypeAliasCycle {
                         cycle: cycle.to_vec(),
                     }
@@ -738,9 +736,6 @@ pub enum InvalidCause<'db> {
     },
 
     AliasCycle(SmallVec<HirTypeAlias<'db>, 4>),
-
-    /// Associated Type is not allowed at the moment.
-    AssocTy,
 
     // The given expression is not supported yet in the const type context.
     // TODO: Remove this error kind and introduce a new error kind for more specific cause when

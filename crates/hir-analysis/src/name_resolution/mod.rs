@@ -1,6 +1,7 @@
 pub mod diagnostics;
 
 mod import_resolver;
+pub(crate) mod method_selection;
 mod name_resolver;
 mod path_resolver;
 pub(crate) mod traits_in_scope;
@@ -373,6 +374,7 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
             self.db,
             path,
             scope,
+            None,
             resolve_tail_as_value,
             &mut check_visibility,
         ) {
@@ -439,7 +441,6 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
                         NameResDiag::ambiguous(self.db, span.into(), ident, cands)
                     }
 
-                    PathResErrorKind::AssocTy(_) => todo!(),
                     PathResErrorKind::TraitMethodNotFound(_) => todo!(),
                     PathResErrorKind::TooManyGenericArgs { expected, given } => {
                         NameResDiag::TooManyGenericArgs {
@@ -450,11 +451,12 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
                     }
 
                     PathResErrorKind::InvalidPathSegment(res) => {
-                        // res.name_span(db)
                         NameResDiag::InvalidPathSegment(span.into(), ident, res.name_span(self.db))
                     }
 
                     PathResErrorKind::Conflict(spans) => NameResDiag::Conflict(ident, spans),
+
+                    PathResErrorKind::MethodSelection(_) => todo!(), // xxx
                 };
 
                 self.diags.push(diag);

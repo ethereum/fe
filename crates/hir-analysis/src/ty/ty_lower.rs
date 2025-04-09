@@ -10,11 +10,10 @@ use super::{
     const_ty::{ConstTyData, ConstTyId},
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
-use crate::{
-    name_resolution::{resolve_ident_to_bucket, resolve_path, NameDomain, NameResKind, PathRes},
-    ty::binder::Binder,
-    HirAnalysisDb,
+use crate::name_resolution::{
+    resolve_ident_to_bucket, resolve_path, NameDomain, NameResKind, PathRes,
 };
+use crate::{ty::binder::Binder, HirAnalysisDb};
 
 /// Lowers the given HirTy to `TyId`.
 #[salsa::tracked]
@@ -34,7 +33,7 @@ pub fn lower_hir_ty<'db>(
 
         HirTyKind::SelfType(args) => {
             let path = PathId::self_ty(db, *args);
-            match resolve_path(db, path, scope, false) {
+            match resolve_path(db, path, scope, None, false) {
                 Ok(PathRes::Ty(ty)) => ty,
                 Ok(_) => unreachable!(),
                 Err(_) => TyId::invalid(db, InvalidCause::Other),
@@ -86,7 +85,7 @@ fn lower_path<'db>(
     let Some(path) = path.to_opt() else {
         return TyId::invalid(db, InvalidCause::Other);
     };
-    match resolve_path(db, path, scope, false) {
+    match resolve_path(db, path, scope, None, false) {
         Ok(PathRes::Ty(ty) | PathRes::Func(ty)) => ty,
         // Other cases should be reported as errors by nameres
         _ => TyId::invalid(db, InvalidCause::Other),

@@ -80,7 +80,24 @@ pub(crate) fn lower_impl_trait<'db>(
         .params(db)
         .to_vec();
 
-    let implementor = Implementor::new(db, trait_, params, impl_trait);
+    let mut types: IndexMap<_, _> = impl_trait
+        .types(db)
+        .iter()
+        .filter_map(|t| match (t.name.to_opt(), t.ty.to_opt()) {
+            (Some(name), Some(ty)) => Some((name, lower_hir_ty(db, ty, scope))),
+            _ => None,
+        })
+        .collect();
+
+    for t in trait_.def(db).trait_(db).types(db).iter() {
+        let (Some(name), Some(default)) = (t.name.to_opt(), t.default) else {
+            continue;
+        };
+        types
+            .entry(name)
+            .or_insert_with(|| lower_hir_ty(db, default, scope));
+    }
+    let implementor = Implementor::new(db, trait_, params, types, impl_trait);
 
     Some(Binder::bind(implementor))
 }
@@ -104,7 +121,7 @@ pub(crate) fn lower_trait_ref<'db>(
         return Err(TraitRefLowerError::Other);
     };
 
-    let trait_def = match resolve_path(db, path, scope, false) {
+    let trait_def = match resolve_path(db, path, scope, None, false) {
         Ok(PathRes::Trait(t)) => t,
         _ => return Err(TraitRefLowerError::Other),
     };

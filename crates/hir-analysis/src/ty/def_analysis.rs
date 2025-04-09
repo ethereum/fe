@@ -281,7 +281,7 @@ impl<'db> DefAnalyzer<'db> {
                 let parent_scope = scope.parent_item(self.db).unwrap().scope();
                 let path = PathId::from_ident(self.db, name);
 
-                match resolve_path(self.db, path, parent_scope, false) {
+                match resolve_path(self.db, path, parent_scope, None, false) {
                     Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                         self.diags.push(
                             TyLowerDiag::GenericParamAlreadyDefinedInParent {
@@ -540,7 +540,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             let scope = self.scope();
             let parent_scope = scope.parent_item(self.db).unwrap().scope();
             let path = PathId::from_ident(self.db, name);
-            match resolve_path(self.db, path, parent_scope, false) {
+            match resolve_path(self.db, path, parent_scope, None, false) {
                 Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
                     self.diags.push(
                         TyLowerDiag::GenericParamAlreadyDefinedInParent {
@@ -1237,7 +1237,7 @@ fn find_const_ty_param<'db>(
     scope: ScopeId<'db>,
 ) -> Option<ConstTyId<'db>> {
     let path = PathId::from_ident(db, ident);
-    let Ok(PathRes::Ty(ty)) = resolve_path(db, path, scope, true) else {
+    let Ok(PathRes::Ty(ty)) = resolve_path(db, path, scope, None, true) else {
         return None;
     };
     match ty.data(db) {

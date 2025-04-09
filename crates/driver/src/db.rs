@@ -11,7 +11,7 @@ use hir::{
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
     diagnostics::DiagnosticVoucher,
-    name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
+    name_resolution::ImportAnalysisPass,
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
         ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
@@ -114,9 +114,9 @@ impl<'db> DiagnosticsCollection<'db> {
 fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
     let mut pass_manager = AnalysisPassManager::new();
     pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
-    pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
+    // xxx pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
+    // xxx pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));

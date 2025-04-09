@@ -1,13 +1,15 @@
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Enum, GenericParamOwner, ItemKind, Partial, PathId, TypeId,
+        scope_graph::ScopeId, Enum, GenericParamOwner, IdentId, ItemKind, Partial, PathId, TypeId,
         VariantDef, VariantKind,
     },
     span::DynLazySpan,
 };
+use smallvec::SmallVec;
 
 use super::{
     is_scope_visible_from,
+    method_selection::{select_method_candidate, Candidate, MethodSelectionError},
     name_resolver::{NameRes, NameResBucket, NameResolutionError},
     resolve_query,
     visibility_checker::is_ty_visible_from,
@@ -18,9 +20,11 @@ use crate::{
     ty::{
         adt_def::{lower_adt, AdtRef},
         binder::Binder,
+        canonical::{Canonical, Canonicalized},
         func_def::{lower_func, FuncDef, HirFuncDefKind},
-        trait_def::TraitDef,
+        trait_def::{impls_for_ty, TraitDef},
         trait_lower::lower_trait,
+        trait_resolution::PredicateListId,
         ty_def::{InvalidCause, TyId},
         ty_lower::{
             collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias,
@@ -60,9 +64,9 @@ pub enum PathResErrorKind<'db> {
         given: usize,
     },
 
-    TraitMethodNotFound(TraitDef<'db>),
+    MethodSelection(MethodSelectionError<'db>),
 
-    AssocTy(TyId<'db>), // TyId is parent type.
+    TraitMethodNotFound(TraitDef<'db>),
 }
 
 impl<'db> PathResError<'db> {
@@ -76,6 +80,10 @@ impl<'db> PathResError<'db> {
 
     pub fn parse_err(path: PathId<'db>) -> Self {
         Self::new(PathResErrorKind::ParseError, path)
+    }
+
+    pub fn method_selection(err: MethodSelectionError<'db>, path: PathId<'db>) -> Self {
+        Self::new(PathResErrorKind::MethodSelection(err), path)
     }
 
     pub fn from_name_res_error(err: NameResolutionError<'db>, path: PathId<'db>) -> Self {
@@ -104,7 +112,7 @@ impl<'db> PathResError<'db> {
                 format!("Incorrect number of generic args; expected {expected}, given {actual}.")
             }
             PathResErrorKind::TraitMethodNotFound(_) => "Trait method not found".to_string(),
-            PathResErrorKind::AssocTy(_) => "Types cannot be nested inside other types".to_string(),
+            PathResErrorKind::MethodSelection(..) => todo!(),
         }
     }
 }
@@ -146,7 +154,7 @@ pub enum PathRes<'db> {
     EnumVariant(ResolvedVariant<'db>),
     Const(TyId<'db>),
     Mod(ScopeId<'db>),
-    TypeMemberTbd(TyId<'db>),
+    Method(TyId<'db>, Candidate<'db>),
 }
 
 impl<'db> PathRes<'db> {
@@ -161,30 +169,28 @@ impl<'db> PathRes<'db> {
             PathRes::EnumVariant(v) => {
                 PathRes::EnumVariant(ResolvedVariant::new(f(v.ty), v.idx, v.path))
             }
-            PathRes::TypeMemberTbd(parent_ty) => PathRes::TypeMemberTbd(f(parent_ty)),
+            // xxx map over candidate ty?
+            PathRes::Method(ty, candidate) => PathRes::Method(f(ty), candidate),
             r @ (PathRes::Trait(_) | PathRes::Mod(_) | PathRes::FuncParam(..)) => r,
         }
     }
 
     pub fn as_scope(&self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
         match self {
-            PathRes::Ty(ty)
-            | PathRes::Func(ty)
-            | PathRes::Const(ty)
-            | PathRes::TypeMemberTbd(ty) => ty.as_scope(db),
+            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => ty.as_scope(db),
             PathRes::Trait(trait_) => Some(trait_.trait_(db).scope()),
             PathRes::EnumVariant(variant) => Some(variant.enum_(db).scope()),
             PathRes::FuncParam(item, idx) => Some(ScopeId::FuncParam(*item, *idx)),
             PathRes::Mod(scope) => Some(*scope),
+            PathRes::Method(ty, _) => ty.as_scope(db),
         }
     }
 
     pub fn is_visible_from(&self, db: &'db dyn HirAnalysisDb, from_scope: ScopeId<'db>) -> bool {
         match self {
-            PathRes::Ty(ty)
-            | PathRes::Func(ty)
-            | PathRes::Const(ty)
-            | PathRes::TypeMemberTbd(ty) => is_ty_visible_from(db, *ty, from_scope),
+            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) | PathRes::Method(ty, _) => {
+                is_ty_visible_from(db, *ty, from_scope)
+            }
             r => is_scope_visible_from(db, r.as_scope(db).unwrap(), from_scope),
         }
     }
@@ -221,9 +227,11 @@ impl<'db> PathRes<'db> {
             r @ (PathRes::Trait(..) | PathRes::Mod(..) | PathRes::FuncParam(..)) => {
                 r.as_scope(db).unwrap().pretty_path(db)
             }
-            PathRes::TypeMemberTbd(parent_ty) => Some(format!(
-                "<TBD member of {}>",
-                ty_path(*parent_ty).unwrap_or_else(|| "<missing>".into())
+
+            PathRes::Method(ty, cand) => Some(format!(
+                "{}::{}",
+                ty_path(*ty).unwrap_or_else(|| "<missing>".into()),
+                cand.name(db).data(db)
             )),
         }
     }
@@ -237,7 +245,7 @@ impl<'db> PathRes<'db> {
             PathRes::EnumVariant(_) => "enum variant",
             PathRes::Const(_) => "constant",
             PathRes::Mod(_) => "module",
-            PathRes::TypeMemberTbd(_) => "method",
+            PathRes::Method(..) => "method",
         }
     }
 }
@@ -323,28 +331,47 @@ pub fn resolve_path<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
+    assumptions: Option<PredicateListId<'db>>,
     resolve_tail_as_value: bool,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
-    resolve_path_impl(db, path, scope, resolve_tail_as_value, true, &mut |_, _| {})
+    resolve_path_impl(
+        db,
+        path,
+        scope,
+        assumptions,
+        resolve_tail_as_value,
+        true,
+        &mut |_, _| {},
+    )
 }
 
 pub fn resolve_path_with_observer<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
+    assumptions: Option<PredicateListId<'db>>,
     resolve_tail_as_value: bool,
     observer: &mut F,
 ) -> PathResolutionResult<'db, PathRes<'db>>
 where
     F: FnMut(PathId<'db>, &PathRes<'db>),
 {
-    resolve_path_impl(db, path, scope, resolve_tail_as_value, true, observer)
+    resolve_path_impl(
+        db,
+        path,
+        scope,
+        assumptions,
+        resolve_tail_as_value,
+        true,
+        observer,
+    )
 }
 
 fn resolve_path_impl<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
+    assumptions: Option<PredicateListId<'db>>,
     resolve_tail_as_value: bool,
     is_tail: bool,
     observer: &mut F,
@@ -356,12 +383,22 @@ where
 
     let parent_res = path
         .parent(hir_db)
-        .map(|path| resolve_path_impl(db, path, scope, resolve_tail_as_value, false, observer))
+        .map(|path| {
+            resolve_path_impl(
+                db,
+                path,
+                scope,
+                assumptions,
+                resolve_tail_as_value,
+                false,
+                observer,
+            )
+        })
         .transpose()?;
 
-    if !path.ident(hir_db).is_present() {
+    let Some(ident) = path.ident(hir_db).to_opt() else {
         return Err(PathResError::parse_err(path));
-    }
+    };
 
     let parent_scope = parent_res
         .as_ref()
@@ -386,13 +423,36 @@ where
                     }
                 }
             }
-            if is_tail {
-                let r = PathRes::TypeMemberTbd(ty);
-                observer(path, &r);
-                return Ok(r);
-            } else {
-                todo!() // assoc type error
+
+            if is_tail && resolve_tail_as_value {
+                let receiver_ty = Canonicalized::new(db, ty);
+                match select_method_candidate(
+                    db,
+                    receiver_ty.value,
+                    ident,
+                    parent_scope,
+                    assumptions.unwrap_or_else(|| PredicateListId::empty_list(db)),
+                ) {
+                    Ok(cand) => {
+                        let r = PathRes::Method(ty, cand);
+                        observer(path, &r);
+                        return Ok(r);
+                    }
+                    Err(MethodSelectionError::NotFound) => {}
+                    Err(err) => {
+                        return Err(PathResError::method_selection(err, path));
+                    }
+                }
             }
+
+            let assoc_tys = find_associated_type(db, scope, Canonical::new(db, ty), ident);
+            let Some(assoc) = assoc_tys.first() else {
+                return Err(PathResError::not_found(path, NameResBucket::default()));
+            };
+            // xxx ambiguous associated type error
+            let r = PathRes::Ty(*assoc);
+            observer(path, &r);
+            return Ok(r);
         }
 
         Some(PathRes::Func(_) | PathRes::EnumVariant(..)) => {
@@ -401,7 +461,7 @@ where
                 path,
             ));
         }
-        Some(PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..)) => unreachable!(),
+        Some(PathRes::FuncParam(..) | PathRes::Method(..)) => unreachable!(),
         Some(PathRes::Const(_) | PathRes::Mod(_) | PathRes::Trait(_)) | None => {}
     };
 
@@ -416,10 +476,25 @@ where
     } else {
         pick_type_domain_from_bucket(bucket, path)?
     };
-    let reso = resolve_name_res(db, &res, parent_res, path, scope)?;
+    let r = resolve_name_res(db, &res, parent_res, path, scope)?;
+    observer(path, &r);
+    Ok(r)
+}
 
-    observer(path, &reso);
-    Ok(reso)
+fn find_associated_type<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: Canonical<TyId<'db>>,
+    name: IdentId<'db>,
+) -> SmallVec<TyId<'db>, 4> {
+    let ingot = scope.ingot(db);
+    impls_for_ty(db, ingot, ty)
+        .iter()
+        .filter_map(|i| {
+            let t = i.skip_binder().types(db).get(&name);
+            t.copied()
+        })
+        .collect()
 }
 
 pub fn resolve_name_res<'db>(

@@ -1,7 +1,6 @@
 mod callable;
 mod env;
 mod expr;
-mod method_selection;
 mod pat;
 mod path;
 mod stmt;
@@ -216,7 +215,13 @@ impl<'db> TyChecker<'db> {
         path: PathId<'db>,
         resolve_tail_as_value: bool,
     ) -> Result<PathRes<'db>, PathResError<'db>> {
-        match resolve_path(self.db, path, self.env.scope(), resolve_tail_as_value) {
+        match resolve_path(
+            self.db,
+            path,
+            self.env.scope(),
+            Some(self.env.assumptions()),
+            resolve_tail_as_value,
+        ) {
             Ok(r) => Ok(r.map_over_ty(|ty| self.table.instantiate_to_term(ty))),
             Err(err) => Err(err),
         }
@@ -280,7 +285,7 @@ impl Typeable<'_> {
 }
 
 impl<'db> TraitMethod<'db> {
-    fn instantiate_with_inst(
+    pub fn instantiate_with_inst(
         self,
         table: &mut UnificationTable<'db>,
         receiver_ty: TyId<'db>,

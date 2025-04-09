@@ -7,7 +7,7 @@ use super::{
     define_scope,
     expr::parse_expr,
     func::FuncDefScope,
-    param::{parse_generic_params_opt, parse_where_clause_opt, TraitRefScope},
+    param::{parse_generic_params_opt, parse_where_clause_opt, TraitRefScope, TypeBoundListScope},
     parse_list,
     struct_::RecordFieldDefListScope,
     token_stream::{LexicalToken, TokenStream},
@@ -384,7 +384,36 @@ impl super::Parse for TraitItemListScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parse_fn_item_block(parser, false, FuncDefScope::TraitDef)
+        parse_trait_item_block(parser, FuncDefScope::TraitDef)
+    }
+}
+
+define_scope! { TraitTypeItemScope, TraitTypeItem }
+impl super::Parse for TraitTypeItemScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.set_newline_as_trivia(false);
+        parser.bump_expected(SyntaxKind::TypeKw);
+
+        parser.set_scope_recovery_stack(&[SyntaxKind::Ident, SyntaxKind::Eq]);
+        if parser.find_and_pop(
+            SyntaxKind::Ident,
+            ExpectedKind::Name(SyntaxKind::TraitTypeItem),
+        )? {
+            parser.bump();
+        }
+
+        if parser.current_kind() == Some(SyntaxKind::Colon) {
+            parser.parse(TypeBoundListScope::new(false))?;
+        }
+
+        if parser.current_kind() == Some(SyntaxKind::Eq) {
+            parser.bump();
+            parse_type(parser, None)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -439,12 +468,12 @@ impl super::Parse for ImplScope {
     }
 }
 
-define_scope! { ImplTraitItemListScope, ImplTraitItemList, (RBrace, FnKw) }
+define_scope! { ImplTraitItemListScope, TraitItemList, (RBrace, FnKw, TypeKw) }
 impl super::Parse for ImplTraitItemListScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parse_fn_item_block(parser, false, FuncDefScope::Impl)
+        parse_trait_item_block(parser, FuncDefScope::Impl)
     }
 }
 
@@ -453,7 +482,7 @@ impl super::Parse for ImplItemListScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parse_fn_item_block(parser, true, FuncDefScope::Impl)
+        parse_fn_item_block(parser, FuncDefScope::Impl)
     }
 }
 
@@ -518,7 +547,7 @@ impl super::Parse for ExternItemListScope {
     type Error = Recovery<ErrProof>;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parse_fn_item_block(parser, true, FuncDefScope::Extern)
+        parse_fn_item_block(parser, FuncDefScope::Extern)
     }
 }
 
@@ -546,14 +575,10 @@ impl super::Parse for TypeAliasScope {
     }
 }
 
-/// Currently, `impl` block, `impl trait` block, `trait` block and `extern`
-/// block only allow `fn` as their items. This function is used to parse the
-/// `fn` item in these blocks. NOTE: This function will be invalidated when
-/// these block have their own allowed items, eg. `trait` block will allow
-/// `type` item.
+/// This function is used to parse items in `impl` and `extern` blocks,
+/// which only allow `fn` definitions.
 fn parse_fn_item_block<S: TokenStream>(
     parser: &mut Parser<S>,
-    allow_modifier: bool,
     fn_def_scope: FuncDefScope,
 ) -> Result<(), Recovery<ErrProof>> {
     parser.bump_expected(SyntaxKind::LBrace);
@@ -565,26 +590,13 @@ fn parse_fn_item_block<S: TokenStream>(
 
         let mut checkpoint = attr::parse_attr_list(parser)?;
 
-        let is_modifier = |kind: Option<SyntaxKind>| match kind {
-            Some(kind) => kind.is_modifier_head(),
-            _ => false,
-        };
+        let is_modifier = |kind: Option<SyntaxKind>| kind.is_some_and(|k| k.is_modifier_head());
 
         if is_modifier(parser.current_kind()) {
-            if allow_modifier {
-                let modifier_checkpoint = parser
-                    .parse_cp(ItemModifierScope::default(), None)
-                    .unwrap_infallible();
-                checkpoint.get_or_insert(modifier_checkpoint);
-            } else {
-                while is_modifier(parser.current_kind()) {
-                    let kind = parser.current_kind().unwrap();
-                    parser.unexpected_token_error(format!(
-                        "{} modifier is not allowed in this block",
-                        kind.describe()
-                    ));
-                }
-            }
+            let modifier_checkpoint = parser
+                .parse_cp(ItemModifierScope::default(), None)
+                .unwrap_infallible();
+            checkpoint.get_or_insert(modifier_checkpoint);
         }
 
         match parser.current_kind() {
@@ -596,6 +608,51 @@ fn parse_fn_item_block<S: TokenStream>(
             }
             _ => {
                 let proof = parser.error_msg_on_current_token("only `fn` is allowed in this block");
+                parser.try_recover().map_err(|r| r.add_err_proof(proof))?;
+            }
+        }
+    }
+
+    parser.bump_or_recover(SyntaxKind::RBrace, "expected `}` to close the block")
+}
+
+fn parse_trait_item_block<S: TokenStream>(
+    parser: &mut Parser<S>,
+    fn_def_scope: FuncDefScope,
+) -> Result<(), Recovery<ErrProof>> {
+    parser.bump_expected(SyntaxKind::LBrace);
+    loop {
+        parser.set_newline_as_trivia(true);
+        if matches!(parser.current_kind(), Some(SyntaxKind::RBrace) | None) {
+            break;
+        }
+
+        let checkpoint = attr::parse_attr_list(parser)?;
+
+        while parser.current_kind().is_some_and(|k| k.is_modifier_head()) {
+            let kind = parser.current_kind().unwrap();
+            parser.unexpected_token_error(format!(
+                "{} modifier is not allowed in this block",
+                kind.describe()
+            ));
+        }
+
+        match parser.current_kind() {
+            Some(SyntaxKind::FnKw) => {
+                parser.parse_cp(FuncScope::new(fn_def_scope), checkpoint)?;
+
+                parser.set_newline_as_trivia(false);
+                parser.expect(&[SyntaxKind::Newline, SyntaxKind::RBrace], None)?;
+            }
+            Some(SyntaxKind::TypeKw) => {
+                parser.parse_cp(TraitTypeItemScope::default(), checkpoint)?;
+
+                parser.set_newline_as_trivia(false);
+                parser.expect(&[SyntaxKind::Newline, SyntaxKind::RBrace], None)?;
+            }
+            _ => {
+                let proof = parser
+                    .error_msg_on_current_token("only `fn` or `type` is allowed in this block");
                 parser.try_recover().map_err(|r| r.add_err_proof(proof))?;
             }
         }

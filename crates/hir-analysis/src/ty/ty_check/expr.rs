@@ -1,10 +1,7 @@
 use either::Either;
-use hir::{
-    hir_def::{
-        ArithBinOp, BinOp, Expr, ExprId, FieldIndex, GenericArgListId, IdentId, Partial, PathId,
-        UnOp, VariantKind,
-    },
-    span::path::LazyPathSpan,
+use hir::hir_def::{
+    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, GenericArgListId, IdentId, Partial, PathId, UnOp,
+    VariantKind,
 };
 
 use super::{
@@ -14,19 +11,17 @@ use super::{
 };
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag, is_scope_visible_from, resolve_name_res, resolve_query,
-        EarlyNameQueryId, NameDomain, NameResBucket, PathRes, QueryDirective,
+        diagnostics::NameResDiag,
+        is_scope_visible_from,
+        method_selection::{select_method_candidate, Candidate, MethodSelectionError},
+        resolve_name_res, resolve_query, EarlyNameQueryId, NameDomain, NameResBucket, PathRes,
+        QueryDirective,
     },
     ty::{
         canonical::Canonicalized,
         const_ty::ConstTyId,
-        diagnostics::BodyDiag,
-        ty_check::{
-            callable::Callable,
-            method_selection::{select_method_candidate, Candidate},
-            path::RecordInitChecker,
-            TyChecker,
-        },
+        diagnostics::{BodyDiag, FuncBodyDiag},
+        ty_check::{callable::Callable, path::RecordInitChecker, TyChecker},
         ty_def::{InvalidCause, TyId},
     },
     HirAnalysisDb, Spanned,
@@ -324,13 +319,22 @@ impl<'db> TyChecker<'db> {
         let canonical_r_ty = Canonicalized::new(self.db, receiver_prop.ty);
         let candidate = match select_method_candidate(
             self.db,
-            Spanned::new(canonical_r_ty.value, receiver.lazy_span(self.body()).into()),
-            Spanned::new(method_name, call_span.method_name().into()),
+            canonical_r_ty.value,
+            method_name,
             self.env.scope(),
             assumptions,
         ) {
             Ok(candidate) => candidate,
             Err(diag) => {
+                let diag = xxx_err_thing(
+                    self.db,
+                    diag,
+                    Spanned::new(
+                        canonical_r_ty.value.value,
+                        receiver.lazy_span(self.body()).into(),
+                    ),
+                    Spanned::new(method_name, call_span.method_name().into()),
+                );
                 self.push_diag(diag);
                 return ExprProp::invalid(self.db);
             }
@@ -477,18 +481,35 @@ impl<'db> TyChecker<'db> {
                     ExprProp::new(self.table.instantiate_to_term(ty), true)
                 }
                 PathRes::Const(ty) => ExprProp::new(ty, true),
-                PathRes::TypeMemberTbd(parent_ty) => {
-                    let ty = if parent_ty.has_invalid(self.db) {
-                        let span = span.path().segment(path.segment_index(self.db) - 1);
-                        if let Some(diag) = parent_ty.emit_diag(self.db, span.into()) {
-                            self.diags.push(diag.into());
+                PathRes::Method(receiver_ty, candidate) => {
+                    let canonical_r_ty = Canonicalized::new(self.db, receiver_ty);
+                    let method_ty = match candidate {
+                        Candidate::InherentMethod(func_def) => {
+                            // xxx move this stuff to path_resolver
+                            let mut method_ty = TyId::func(self.db, func_def);
+                            for &arg in receiver_ty.generic_args(self.db) {
+                                // If the method is defined in "specialized" impl block
+                                // of a generic type (eg `impl Option<i32>`), then
+                                // calling `TyId::app(db, method_ty, ..)` will result in
+                                // `TyId::invalid`.
+                                if method_ty.applicable_ty(self.db).is_some() {
+                                    method_ty = TyId::app(self.db, method_ty, arg);
+                                } else {
+                                    break;
+                                }
+                            }
+                            method_ty
                         }
-                        TyId::invalid(self.db, InvalidCause::Other)
-                    } else {
-                        self.select_method_candidate_for_path(parent_ty, *path, span.path())
-                            .unwrap_or_else(|| TyId::invalid(self.db, InvalidCause::Other))
+                        Candidate::TraitMethod(cand) | Candidate::NeedsConfirmation(cand) => {
+                            let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
+                            if matches!(candidate, Candidate::NeedsConfirmation(_)) {
+                                self.env.register_confirmation(inst, span.clone().into());
+                            }
+                            cand.method
+                                .instantiate_with_inst(&mut self.table, receiver_ty, inst)
+                        }
                     };
-                    ExprProp::new(self.table.instantiate_to_term(ty), true)
+                    ExprProp::new(self.table.instantiate_to_term(method_ty), true)
                 }
                 PathRes::Mod(_) | PathRes::FuncParam(..) => todo!(),
             },
@@ -520,7 +541,7 @@ impl<'db> TyChecker<'db> {
                 self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
-            PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..) => {
+            PathRes::Method(..) | PathRes::FuncParam(..) => {
                 let diag = BodyDiag::record_expected::<TyId>(self.db, span.path().into(), None);
                 self.push_diag(diag);
                 ExprProp::invalid(self.db)
@@ -937,64 +958,6 @@ impl<'db> TyChecker<'db> {
         ty
     }
 
-    fn select_method_candidate_for_path(
-        &mut self,
-        receiver_ty: TyId<'db>,
-        path: PathId<'db>,
-        span: LazyPathSpan<'db>,
-    ) -> Option<TyId<'db>> {
-        let db = self.db;
-        let hir_db = self.db;
-
-        let name = *path.ident(hir_db).unwrap();
-        let canonical_r_ty = Canonicalized::new(db, receiver_ty);
-        let candidate = match select_method_candidate(
-            db,
-            Spanned::new(canonical_r_ty.value, span.clone().into()),
-            Spanned::new(name, span.segment(path.segment_index(hir_db)).into()),
-            self.env.scope(),
-            self.env.assumptions(),
-        ) {
-            Ok(candidate) => candidate,
-            Err(diag) => {
-                self.diags.push(diag);
-                return None;
-            }
-        };
-
-        let trait_cand = match candidate {
-            Candidate::InherentMethod(func_def) => {
-                let mut method_ty = TyId::func(db, func_def);
-
-                for &arg in receiver_ty.generic_args(db) {
-                    // If the method is defined in "specialized" impl block
-                    // of a generic type (eg `impl Option<i32>`), then
-                    // calling `TyId::app(db, method_ty, ..)` will result in
-                    // `TyId::invalid`.
-                    if method_ty.applicable_ty(db).is_some() {
-                        method_ty = TyId::app(db, method_ty, arg);
-                    } else {
-                        break;
-                    }
-                }
-
-                return Some(self.table.instantiate_to_term(method_ty));
-            }
-
-            Candidate::TraitMethod(cand) | Candidate::NeedsConfirmation(cand) => cand,
-        };
-
-        let method = trait_cand.method;
-        let inst = canonical_r_ty.extract_solution(&mut self.table, trait_cand.inst);
-
-        if matches!(candidate, Candidate::NeedsConfirmation(_)) {
-            self.env.register_confirmation(inst, span.clone().into());
-        }
-
-        let method_ty = method.instantiate_with_inst(&mut self.table, receiver_ty, inst);
-        Some(self.table.instantiate_to_term(method_ty))
-    }
-
     /// Returns the base binding for a given expression if it exists.
     ///
     /// This function traverses the expression tree to find the base binding,
@@ -1032,6 +995,58 @@ impl<'db> TyChecker<'db> {
             expr_data,
             Expr::Path(..) | Expr::Field(..) | Expr::Index(..)
         )
+    }
+}
+
+fn xxx_err_thing<'db>(
+    db: &'db dyn HirAnalysisDb,
+    err: MethodSelectionError<'db>,
+    receiver: Spanned<'db, TyId<'db>>,
+    method: Spanned<'db, IdentId<'db>>,
+) -> FuncBodyDiag<'db> {
+    match err {
+        MethodSelectionError::ReceiverTypeMustBeKnown => {
+            BodyDiag::TypeMustBeKnown(receiver.span).into()
+        }
+        MethodSelectionError::AmbiguousInherentMethod(candidates) => {
+            BodyDiag::AmbiguousInherentMethodCall {
+                primary: method.span,
+                method_name: method.data,
+                candidates,
+            }
+            .into()
+        }
+
+        MethodSelectionError::AmbiguousTraitMethod(traits) => {
+            let traits = traits.into_iter().map(|def| def.trait_(db)).collect();
+
+            BodyDiag::AmbiguousTrait {
+                primary: method.span,
+                method_name: method.data,
+                traits,
+            }
+            .into()
+        }
+
+        MethodSelectionError::NotFound => {
+            let base_ty = receiver.data.base_ty(db);
+            BodyDiag::MethodNotFound {
+                primary: method.span,
+                method_name: method.data,
+                receiver: Either::Left(base_ty),
+            }
+            .into()
+        }
+
+        MethodSelectionError::InvisibleInherentMethod(func) => {
+            NameResDiag::Invisible(method.span, method.data, func.name_span(db).into()).into()
+        }
+
+        MethodSelectionError::InvisibleTraitMethod(traits) => BodyDiag::InvisibleAmbiguousTrait {
+            primary: method.span,
+            traits,
+        }
+        .into(),
     }
 }
 
