@@ -90,9 +90,7 @@ impl<'db> Callable<'db> {
         span: LazyGenericArgListSpan<'db>,
     ) -> bool {
         let db = tc.db;
-        let hir_db = db;
-
-        if !args.is_given(hir_db) {
+        if !args.is_given(db) {
             return true;
         }
 

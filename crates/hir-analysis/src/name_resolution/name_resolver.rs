@@ -505,8 +505,6 @@ impl<'db, 'a> NameResolver<'db, 'a> {
     }
 
     pub(crate) fn resolve_query(&mut self, query: EarlyNameQueryId<'db>) -> NameResBucket<'db> {
-        let hir_db = self.db;
-
         let mut bucket = NameResBucket::default();
 
         // The shadowing rule is
@@ -517,7 +515,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
 
         // 1. Look for the name in the current scope.
         let mut found_scopes = FxHashSet::default();
-        for edge in query.scope(self.db).edges(hir_db) {
+        for edge in query.scope(self.db).edges(self.db) {
             match edge.kind.propagate(self.db, query) {
                 PropagationResult::Terminated => {
                     if found_scopes.insert(edge.dest) {
@@ -575,16 +573,16 @@ impl<'db, 'a> NameResolver<'db, 'a> {
         // 5. Look for the name in the external ingots.
         query
             .scope(self.db)
-            .top_mod(hir_db)
-            .ingot(hir_db)
-            .external_ingots(hir_db)
+            .top_mod(self.db)
+            .ingot(self.db)
+            .external_ingots(self.db)
             .iter()
             .for_each(|(name, ingot)| {
                 if *name == query.name(self.db) {
                     // We don't care about the result of `push` because we assume ingots are
                     // guaranteed to be unique.
                     bucket.push(&NameRes::new_from_scope(
-                        ScopeId::from_item((ingot.root_mod(hir_db)).into()),
+                        ScopeId::from_item((ingot.root_mod(self.db)).into()),
                         NameDomain::TYPE,
                         NameDerivation::External,
                     ))

@@ -46,8 +46,7 @@ pub(super) struct TyCheckEnv<'db> {
 
 impl<'db> TyCheckEnv<'db> {
     pub(super) fn new_with_func(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Result<Self, ()> {
-        let hir_db = db;
-        let Some(body) = func.body(hir_db) else {
+        let Some(body) = func.body(db) else {
             return Err(());
         };
 
@@ -63,13 +62,13 @@ impl<'db> TyCheckEnv<'db> {
             loop_stack: Vec::new(),
         };
 
-        env.enter_scope(body.expr(hir_db));
+        env.enter_scope(body.expr(db));
 
-        let Some(params) = func.params(hir_db).to_opt() else {
+        let Some(params) = func.params(db).to_opt() else {
             return Err(());
         };
 
-        for (idx, param) in params.data(hir_db).iter().enumerate() {
+        for (idx, param) in params.data(db).iter().enumerate() {
             let Some(name) = param.name() else {
                 continue;
             };

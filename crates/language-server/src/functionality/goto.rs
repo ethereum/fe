@@ -35,16 +35,15 @@ fn find_path_surrounding_cursor<'db>(
     cursor: Cursor,
     full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
 ) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
-    let hir_db = db;
     for (path, scope, lazy_span) in full_paths {
         let span = lazy_span.resolve(db).unwrap();
         if span.range.contains(cursor) {
-            for idx in 0..=path.segment_index(hir_db) {
+            for idx in 0..=path.segment_index(db) {
                 let seg_span = lazy_span.segment(idx).resolve(db).unwrap();
                 if seg_span.range.contains(cursor) {
                     return Some((
-                        path.segment(hir_db, idx).unwrap(),
-                        idx != path.segment_index(hir_db),
+                        path.segment(db, idx).unwrap(),
+                        idx != path.segment_index(db),
                         scope,
                     ));
                 }
@@ -190,14 +189,13 @@ mod tests {
         db: &LanguageServerDatabase,
         top_mod: TopLevelMod,
     ) -> Vec<parser::TextSize> {
-        let hir_db = db;
-        let mut visitor_ctxt = VisitorCtxt::with_top_mod(hir_db, top_mod);
+        let mut visitor_ctxt = VisitorCtxt::with_top_mod(db, top_mod);
         let mut path_collector = PathSpanCollector::default();
         path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
 
         let mut cursors = Vec::new();
         for (path, _, lazy_span) in path_collector.paths {
-            for idx in 0..=path.segment_index(hir_db) {
+            for idx in 0..=path.segment_index(db) {
                 let seg_span = lazy_span.segment(idx).resolve(db).unwrap();
                 cursors.push(seg_span.range.start());
             }

@@ -31,9 +31,9 @@ pub fn hover_helper(
         .iter()
         .map(|scope| {
             let item = scope.item();
-            let pretty_path = get_item_path_markdown(item, db);
-            let definition_source = get_item_definition_markdown(item, db);
-            let docs = get_docstring(*scope, db);
+            let pretty_path = get_item_path_markdown(db, item);
+            let definition_source = get_item_definition_markdown(db, item);
+            let docs = get_docstring(db, *scope);
 
             let result = [pretty_path, definition_source, docs]
                 .iter()

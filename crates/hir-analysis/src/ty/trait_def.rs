@@ -343,8 +343,7 @@ impl<'db> TraitDef<'db> {
 
     /// Returns `ingot` in which this trait is defined.
     pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
-        let hir_db = db;
-        self.trait_(db).top_mod(hir_db).ingot(hir_db)
+        self.trait_(db).top_mod(db).ingot(db)
     }
 
     pub(super) fn super_traits(

@@ -1095,12 +1095,11 @@ fn resolve_ident_expr<'db>(
 /// smoothly.
 pub(crate) trait TraitOps {
     fn trait_path<'db>(&self, db: &'db dyn HirAnalysisDb) -> PathId<'db> {
-        let hir_db = db;
         let path = std_ops_path(db);
         path.push(
-            hir_db,
+            db,
             Partial::Present(self.trait_name(db)),
-            GenericArgListId::none(hir_db),
+            GenericArgListId::none(db),
         )
     }
 

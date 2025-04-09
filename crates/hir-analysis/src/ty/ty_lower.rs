@@ -98,14 +98,13 @@ fn lower_const_ty_ty<'db>(
     scope: ScopeId<'db>,
     ty: HirTyId<'db>,
 ) -> TyId<'db> {
-    let hir_db = db;
-    let HirTyKind::Path(path) = ty.data(hir_db) else {
+    let HirTyKind::Path(path) = ty.data(db) else {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
     };
 
     if !path
         .to_opt()
-        .map(|p| p.generic_args(hir_db).is_empty(hir_db))
+        .map(|p| p.generic_args(db).is_empty(db))
         .unwrap_or(true)
     {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);

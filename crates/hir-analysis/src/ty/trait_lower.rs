@@ -53,10 +53,9 @@ pub(crate) fn lower_impl_trait<'db>(
     db: &'db dyn HirAnalysisDb,
     impl_trait: ImplTrait<'db>,
 ) -> Option<Binder<Implementor<'db>>> {
-    let hir_db = db;
     let scope = impl_trait.scope();
 
-    let hir_ty = impl_trait.ty(hir_db).to_opt()?;
+    let hir_ty = impl_trait.ty(db).to_opt()?;
     let ty = lower_hir_ty(db, hir_ty, scope);
     if ty.has_invalid(db) {
         return None;
@@ -65,12 +64,12 @@ pub(crate) fn lower_impl_trait<'db>(
     let trait_ = lower_trait_ref(
         db,
         ty,
-        impl_trait.trait_ref(hir_db).to_opt()?,
+        impl_trait.trait_ref(db).to_opt()?,
         impl_trait.scope(),
     )
     .ok()?;
 
-    let impl_trait_ingot = impl_trait.top_mod(hir_db).ingot(hir_db);
+    let impl_trait_ingot = impl_trait.top_mod(db).ingot(db);
 
     if Some(impl_trait_ingot) != ty.ingot(db) && impl_trait_ingot != trait_.def(db).ingot(db) {
         return None;
@@ -93,14 +92,12 @@ pub(crate) fn lower_trait_ref<'db>(
     trait_ref: TraitRefId<'db>,
     scope: ScopeId<'db>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
-    let hir_db = db;
-
     let mut args = vec![self_ty];
-    if let Some(generic_args) = trait_ref.generic_args(hir_db) {
+    if let Some(generic_args) = trait_ref.generic_args(db) {
         args.extend(lower_generic_arg_list(db, generic_args, scope));
     };
 
-    let Partial::Present(path) = trait_ref.path(hir_db) else {
+    let Partial::Present(path) = trait_ref.path(db) else {
         return Err(TraitRefLowerError::Other);
     };
 

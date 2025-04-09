@@ -154,23 +154,21 @@ fn compare_arg_label<'db>(
     trait_m: FuncDef<'db>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
-    let hir_db = db;
-
     let mut err = false;
     let hir_impl_m = impl_m.hir_func_def(db).unwrap();
     let hir_trait_m = trait_m.hir_func_def(db).unwrap();
 
     let (Some(impl_m_params), Some(trait_m_params)) = (
-        hir_impl_m.params(hir_db).to_opt(),
-        hir_trait_m.params(hir_db).to_opt(),
+        hir_impl_m.params(db).to_opt(),
+        hir_trait_m.params(db).to_opt(),
     ) else {
         return true;
     };
 
     for (idx, (expected_param, method_param)) in trait_m_params
-        .data(hir_db)
+        .data(db)
         .iter()
-        .zip(impl_m_params.data(hir_db))
+        .zip(impl_m_params.data(db))
         .enumerate()
     {
         let Some(expected_label) = expected_param

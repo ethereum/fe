@@ -197,11 +197,9 @@ impl<'db> PathRes<'db> {
     }
 
     pub fn pretty_path(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
-        let hir_db = db;
-
         let ty_path = |ty: TyId<'db>| {
             if let Some(scope) = ty.as_scope(db) {
-                scope.pretty_path(hir_db)
+                scope.pretty_path(db)
             } else {
                 Some(ty.pretty_print(db).to_string())
             }
@@ -356,14 +354,12 @@ fn resolve_path_impl<'db, F>(
 where
     F: FnMut(PathId<'db>, &PathRes<'db>),
 {
-    let hir_db = db;
-
     let parent_res = path
-        .parent(hir_db)
+        .parent(db)
         .map(|path| resolve_path_impl(db, path, scope, resolve_tail_as_value, false, observer))
         .transpose()?;
 
-    if !path.ident(hir_db).is_present() {
+    if !path.ident(db).is_present() {
         return Err(PathResError::parse_err(path));
     }
 
@@ -433,9 +429,7 @@ pub fn resolve_name_res<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
-    let hir_db = db;
-
-    let args = &lower_generic_arg_list(db, path.generic_args(hir_db), scope);
+    let args = &lower_generic_arg_list(db, path.generic_args(db), scope);
     let res = match nameres.kind {
         NameResKind::Prim(prim) => {
             let ty = TyId::from_hir_prim_ty(db, prim);
@@ -457,7 +451,7 @@ pub fn resolve_name_res<'db>(
                 }
                 ItemKind::Const(const_) => {
                     // TODO err if any args
-                    let ty = if let Some(ty) = const_.ty(hir_db).to_opt() {
+                    let ty = if let Some(ty) = const_.ty(db).to_opt() {
                         lower_hir_ty(db, ty, scope)
                     } else {
                         TyId::invalid(db, InvalidCause::Other)
@@ -484,14 +478,14 @@ pub fn resolve_name_res<'db>(
                 }
 
                 ItemKind::Impl(impl_) => {
-                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(hir_db), scope, args)?)
+                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(db), scope, args)?)
                 }
                 ItemKind::ImplTrait(impl_) => {
-                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(hir_db), scope, args)?)
+                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(db), scope, args)?)
                 }
 
                 ItemKind::Trait(t) => {
-                    if path.is_self_ty(hir_db) {
+                    if path.is_self_ty(db) {
                         let params = collect_generic_params(db, t.into());
                         let ty = params.trait_self(db).unwrap();
                         let ty = TyId::foldl(db, ty, args);
@@ -516,7 +510,7 @@ pub fn resolve_name_res<'db>(
                     ty
                 } else {
                     // The variant was imported via `use`.
-                    debug_assert!(path.parent(hir_db).is_none());
+                    debug_assert!(path.parent(db).is_none());
                     let enum_: Enum = enum_.try_into().unwrap();
                     ty_from_adtref(db, enum_.into(), &[])?
                 };

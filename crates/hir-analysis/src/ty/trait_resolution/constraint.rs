@@ -54,23 +54,22 @@ pub(crate) fn collect_super_traits<'db>(
     trait_: TraitDef<'db>,
 ) -> IndexSet<Binder<TraitInstId<'db>>> {
     let hir_trait = trait_.trait_(db);
-    let hir_db = db;
     let self_param = trait_.self_param(db);
     let scope = trait_.trait_(db).scope();
 
     let mut super_traits = IndexSet::new();
 
-    for &super_ in hir_trait.super_traits(hir_db).iter() {
+    for &super_ in hir_trait.super_traits(db).iter() {
         if let Ok(inst) = lower_trait_ref(db, self_param, super_, scope) {
             super_traits.insert(Binder::bind(inst));
         }
     }
 
-    for pred in hir_trait.where_clause(hir_db).data(hir_db) {
+    for pred in hir_trait.where_clause(db).data(db) {
         if pred
             .ty
             .to_opt()
-            .map(|ty| ty.is_self_ty(hir_db))
+            .map(|ty| ty.is_self_ty(db))
             .unwrap_or_default()
         {
             for bound in &pred.bounds {
