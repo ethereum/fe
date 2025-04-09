@@ -429,7 +429,7 @@ impl<'db> TyChecker<'db> {
             ResolvedPathInBody::Invalid => ExprProp::invalid(self.db),
 
             ResolvedPathInBody::Reso(reso) => match reso {
-                PathRes::Ty(ty) => {
+                PathRes::Ty(ty) | PathRes::TyAlias(_, ty) => {
                     if let Some(const_ty_ty) = ty.const_ty_ty(self.db) {
                         ExprProp::new(self.table.instantiate_to_term(const_ty_ty), true)
                     } else {
@@ -510,12 +510,12 @@ impl<'db> TyChecker<'db> {
         };
 
         match reso {
-            PathRes::Ty(ty) if ty.is_record(self.db) => {
+            PathRes::Ty(ty) | PathRes::TyAlias(_, ty) if ty.is_record(self.db) => {
                 self.check_record_init_fields(&ty, expr);
                 ExprProp::new(ty, true)
             }
 
-            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => {
+            PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty) | PathRes::Const(ty) => {
                 let diag = BodyDiag::record_expected(self.db, span.path().into(), Some(ty));
                 self.push_diag(diag);
                 ExprProp::invalid(self.db)
@@ -1095,12 +1095,11 @@ fn resolve_ident_expr<'db>(
 /// smoothly.
 pub(crate) trait TraitOps {
     fn trait_path<'db>(&self, db: &'db dyn HirAnalysisDb) -> PathId<'db> {
-        let hir_db = db;
         let path = std_ops_path(db);
         path.push(
-            hir_db,
+            db,
             Partial::Present(self.trait_name(db)),
-            GenericArgListId::none(hir_db),
+            GenericArgListId::none(db),
         )
     }
 

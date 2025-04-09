@@ -379,22 +379,21 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
             Ok(res) => res,
 
             Err(err) => {
-                let hir_db = self.db;
                 let failed_at = err.failed_at;
                 let span = ctxt
                     .span()
                     .unwrap()
-                    .segment(failed_at.segment_index(hir_db))
+                    .segment(failed_at.segment_index(self.db))
                     .ident();
 
-                let Some(ident) = failed_at.ident(hir_db).to_opt() else {
+                let Some(ident) = failed_at.ident(self.db).to_opt() else {
                     return;
                 };
 
                 let diag = match err.kind {
                     PathResErrorKind::ParseError => unreachable!(),
                     PathResErrorKind::NotFound(bucket) => {
-                        if path.len(hir_db) == 1
+                        if path.len(self.db) == 1
                             && matches!(
                                 self.path_ctxt.last().unwrap(),
                                 ExpectedPathKind::Expr | ExpectedPathKind::Pat
@@ -463,19 +462,18 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
         };
 
         if let Some((path, deriv_span)) = invisible {
-            let hir_db = self.db;
             let span = ctxt
                 .span()
                 .unwrap()
-                .segment(path.segment_index(hir_db))
+                .segment(path.segment_index(self.db))
                 .ident();
 
-            let ident = path.ident(hir_db);
+            let ident = path.ident(self.db);
             let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag);
         }
 
-        let is_type = matches!(res, PathRes::Ty(_));
+        let is_type = matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..));
         let is_trait = matches!(res, PathRes::Trait(_));
 
         let span = ctxt

@@ -87,7 +87,7 @@ fn lower_path<'db>(
         return TyId::invalid(db, InvalidCause::Other);
     };
     match resolve_path(db, path, scope, false) {
-        Ok(PathRes::Ty(ty) | PathRes::Func(ty)) => ty,
+        Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => ty,
         // Other cases should be reported as errors by nameres
         _ => TyId::invalid(db, InvalidCause::Other),
     }
@@ -98,14 +98,13 @@ fn lower_const_ty_ty<'db>(
     scope: ScopeId<'db>,
     ty: HirTyId<'db>,
 ) -> TyId<'db> {
-    let hir_db = db;
-    let HirTyKind::Path(path) = ty.data(hir_db) else {
+    let HirTyKind::Path(path) = ty.data(db) else {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
     };
 
     if !path
         .to_opt()
-        .map(|p| p.generic_args(hir_db).is_empty(hir_db))
+        .map(|p| p.generic_args(db).is_empty(db))
         .unwrap_or(true)
     {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
@@ -209,8 +208,8 @@ pub(crate) fn evaluate_params_precursor<'db>(
 /// NOTE: `TyAlias` can't become an alias to partial applied types, i.e., the
 /// right hand side of the alias declaration must be a fully applied type.
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
-pub(crate) struct TyAlias<'db> {
-    alias: HirTypeAlias<'db>,
+pub struct TyAlias<'db> {
+    pub alias: HirTypeAlias<'db>,
     pub alias_to: Binder<TyId<'db>>,
     param_set: GenericParamTypeSet<'db>,
 }

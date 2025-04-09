@@ -97,11 +97,10 @@ impl<'db> AdtDef<'db> {
     }
 
     pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
-        let hir_db = db;
         match self.adt_ref(db) {
-            AdtRef::Enum(e) => e.top_mod(hir_db).ingot(hir_db),
-            AdtRef::Struct(s) => s.top_mod(hir_db).ingot(hir_db),
-            AdtRef::Contract(c) => c.top_mod(hir_db).ingot(hir_db),
+            AdtRef::Enum(e) => e.top_mod(db).ingot(db),
+            AdtRef::Struct(s) => s.top_mod(db).ingot(db),
+            AdtRef::Contract(c) => c.top_mod(db).ingot(db),
         }
     }
 
@@ -189,14 +188,13 @@ impl<'db> AdtRef<'db> {
     }
 
     pub fn name(self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
-        let hir_db = db;
         match self {
-            AdtRef::Enum(e) => e.name(hir_db),
-            AdtRef::Struct(s) => s.name(hir_db),
-            AdtRef::Contract(c) => c.name(hir_db),
+            AdtRef::Enum(e) => e.name(db),
+            AdtRef::Struct(s) => s.name(db),
+            AdtRef::Contract(c) => c.name(db),
         }
         .to_opt()
-        .unwrap_or_else(|| IdentId::new(hir_db, "<unknown>".to_string()))
+        .unwrap_or_else(|| IdentId::new(db, "<unknown>".to_string()))
     }
 
     pub fn kind_name(self) -> &'static str {

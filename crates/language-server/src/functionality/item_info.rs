@@ -4,14 +4,14 @@ use hir::{
     HirDb, SpannedHirDb,
 };
 
-pub fn get_docstring(scope: ScopeId, hir_db: &dyn HirDb) -> Option<String> {
+pub fn get_docstring(db: &dyn HirDb, scope: ScopeId) -> Option<String> {
     scope
-        .attrs(hir_db)?
-        .data(hir_db)
+        .attrs(db)?
+        .data(db)
         .iter()
         .filter_map(|attr| {
             if let Attr::DocComment(doc) = attr {
-                Some(doc.text.data(hir_db).clone())
+                Some(doc.text.data(db).clone())
             } else {
                 None
             }
@@ -19,15 +19,14 @@ pub fn get_docstring(scope: ScopeId, hir_db: &dyn HirDb) -> Option<String> {
         .reduce(|a, b| a + "\n" + &b)
 }
 
-pub fn get_item_path_markdown(item: ItemKind, hir_db: &dyn HirDb) -> Option<String> {
+pub fn get_item_path_markdown(db: &dyn HirDb, item: ItemKind) -> Option<String> {
     item.scope()
-        .pretty_path(hir_db)
+        .pretty_path(db)
         .map(|path| format!("```fe\n{}\n```", path))
 }
 
-pub fn get_item_definition_markdown(item: ItemKind, db: &dyn SpannedHirDb) -> Option<String> {
+pub fn get_item_definition_markdown(db: &dyn SpannedHirDb, item: ItemKind) -> Option<String> {
     // TODO: use pending AST features to get the definition without all this text manipulation
-    let hir_db = db;
     let span = item.lazy_span().resolve(db)?;
 
     let mut start: usize = span.range.start().into();
@@ -35,8 +34,8 @@ pub fn get_item_definition_markdown(item: ItemKind, db: &dyn SpannedHirDb) -> Op
 
     // if the item has a body or children, cut that stuff out
     let body_start = match item {
-        ItemKind::Func(func) => Some(func.body(hir_db)?.lazy_span().resolve(db)?.range.start()),
-        ItemKind::Mod(module) => Some(module.scope().name_span(hir_db)?.resolve(db)?.range.end()),
+        ItemKind::Func(func) => Some(func.body(db)?.lazy_span().resolve(db)?.range.start()),
+        ItemKind::Mod(module) => Some(module.scope().name_span(db)?.resolve(db)?.range.end()),
         // TODO: handle other item types
         _ => None,
     };

@@ -197,11 +197,9 @@ impl<'db> RecordLike<'db> for TyId<'db> {
 
     fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
         let args = self.generic_args(db);
-        let hir_db = db;
-
         let (hir_field_list, field_list) = self.record_field_list(db)?;
 
-        let field_idx = hir_field_list.field_idx(hir_db, name)?;
+        let field_idx = hir_field_list.field_idx(db, name)?;
         let field_ty = field_list.ty(db, field_idx).instantiate(db, args);
 
         if field_ty.is_star_kind(db) {
@@ -216,12 +214,10 @@ impl<'db> RecordLike<'db> for TyId<'db> {
         &self,
         db: &'db dyn HirAnalysisDb,
     ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)> {
-        let hir_db = db;
-
         let adt_def = self.adt_def(db)?;
         match adt_def.adt_ref(db) {
-            AdtRef::Struct(s) => (s.fields(hir_db), &adt_def.fields(db)[0]).into(),
-            AdtRef::Contract(c) => (c.fields(hir_db), &adt_def.fields(db)[0]).into(),
+            AdtRef::Struct(s) => (s.fields(db), &adt_def.fields(db)[0]).into(),
+            AdtRef::Contract(c) => (c.fields(db), &adt_def.fields(db)[0]).into(),
 
             _ => None,
         }
@@ -240,19 +236,18 @@ impl<'db> RecordLike<'db> for TyId<'db> {
     }
 
     fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
-        let hir_db = db;
         let Some(adt_ref) = self.adt_ref(db) else {
             return Vec::default();
         };
         let fields = match adt_ref {
-            AdtRef::Struct(s) => s.fields(hir_db),
-            AdtRef::Contract(c) => c.fields(hir_db),
+            AdtRef::Struct(s) => s.fields(db),
+            AdtRef::Contract(c) => c.fields(db),
 
             _ => return Vec::default(),
         };
 
         fields
-            .data(hir_db)
+            .data(db)
             .iter()
             .filter_map(|field| field.name.to_opt())
             .collect()
@@ -269,14 +264,12 @@ impl<'db> RecordLike<'db> for TyId<'db> {
     }
 
     fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
-        let hir_db = db;
-
         if self.adt_ref(db).is_some() {
             let AdtRef::Struct(s) = self.adt_ref(db)? else {
                 return None;
             };
 
-            let name = s.name(hir_db).unwrap().data(hir_db);
+            let name = s.name(db).unwrap().data(db);
             let init_args = s.format_initializer_args(db);
             Some(format!("{}{}", name, init_args))
         } else {
@@ -292,10 +285,9 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
 
     fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
         let args = self.ty.generic_args(db);
-        let hir_db = db;
 
         let (hir_field_list, field_list) = self.record_field_list(db)?;
-        let field_idx = hir_field_list.field_idx(hir_db, name)?;
+        let field_idx = hir_field_list.field_idx(db, name)?;
 
         Some(field_list.ty(db, field_idx).instantiate(db, args))
     }
@@ -324,23 +316,20 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
     }
 
     fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
-        let hir_db = db;
-
         let fields = match self.variant_kind(db) {
             hir::hir_def::VariantKind::Record(fields) => fields,
             _ => return Vec::default(),
         };
 
         fields
-            .data(hir_db)
+            .data(db)
             .iter()
             .filter_map(|field| field.name.to_opt())
             .collect()
     }
 
     fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String {
-        let hir_db = db;
-        match self.enum_(db).variants(hir_db).data(hir_db)[self.idx].kind {
+        match self.enum_(db).variants(db).data(db)[self.idx].kind {
             HirVariantKind::Unit => "unit variant",
             HirVariantKind::Tuple(_) => "tuple variant",
             HirVariantKind::Record(_) => "record variant",
@@ -349,11 +338,10 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
     }
 
     fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
-        let hir_db = db;
         let expected_sub_pat =
-            self.enum_(db).variants(hir_db).data(hir_db)[self.idx].format_initializer_args(hir_db);
+            self.enum_(db).variants(db).data(db)[self.idx].format_initializer_args(db);
 
-        let path = self.path.pretty_print(hir_db);
+        let path = self.path.pretty_print(db);
         Some(format!("{}{}", path, expected_sub_pat))
     }
 }

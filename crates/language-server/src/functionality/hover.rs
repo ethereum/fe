@@ -27,14 +27,13 @@ pub fn hover_helper(
     let top_mod = map_file_to_mod(db, ingot, file);
     let goto_info = &get_goto_target_scopes_for_cursor(db, top_mod, cursor).unwrap_or_default();
 
-    let hir_db = db;
     let scopes_info = goto_info
         .iter()
         .map(|scope| {
             let item = scope.item();
-            let pretty_path = get_item_path_markdown(item, hir_db);
-            let definition_source = get_item_definition_markdown(item, db);
-            let docs = get_docstring(*scope, hir_db);
+            let pretty_path = get_item_path_markdown(db, item);
+            let definition_source = get_item_definition_markdown(db, item);
+            let docs = get_docstring(db, *scope);
 
             let result = [pretty_path, definition_source, docs]
                 .iter()

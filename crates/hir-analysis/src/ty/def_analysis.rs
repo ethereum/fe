@@ -210,23 +210,14 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef<'db>) -> Self {
-        let hir_db = db;
         let assumptions = collect_func_def_constraints(db, func, true).instantiate_identity();
-        let self_ty = match func
-            .hir_func_def(db)
-            .unwrap()
-            .scope()
-            .parent(hir_db)
-            .unwrap()
-        {
+        let self_ty = match func.hir_func_def(db).unwrap().scope().parent(db).unwrap() {
             ScopeId::Item(ItemKind::Trait(trait_)) => lower_trait(db, trait_).self_param(db).into(),
-            ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => {
-                match impl_trait.ty(hir_db).to_opt() {
-                    Some(hir_ty) => lower_hir_ty(db, hir_ty, impl_trait.scope()).into(),
-                    _ => TyId::invalid(db, InvalidCause::Other).into(),
-                }
-            }
-            ScopeId::Item(ItemKind::Impl(impl_)) => match impl_.ty(hir_db).to_opt() {
+            ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => match impl_trait.ty(db).to_opt() {
+                Some(hir_ty) => lower_hir_ty(db, hir_ty, impl_trait.scope()).into(),
+                _ => TyId::invalid(db, InvalidCause::Other).into(),
+            },
+            ScopeId::Item(ItemKind::Impl(impl_)) => match impl_.ty(db).to_opt() {
                 Some(hir_ty) => lower_hir_ty(db, hir_ty, impl_.scope()).into(),
                 None => TyId::invalid(db, InvalidCause::Other).into(),
             },
@@ -1006,11 +997,10 @@ fn analyze_impl_trait_specific_error<'db>(
     impl_trait: ImplTrait<'db>,
 ) -> Result<Binder<Implementor<'db>>, Vec<TyDiagCollection<'db>>> {
     let mut diags = vec![];
-    let hir_db = db;
     // We don't need to report error because it should be reported from the parser.
     let (Some(trait_ref), Some(ty)) = (
-        impl_trait.trait_ref(hir_db).to_opt(),
-        impl_trait.ty(hir_db).to_opt(),
+        impl_trait.trait_ref(db).to_opt(),
+        impl_trait.ty(db).to_opt(),
     ) else {
         return Err(diags);
     };
@@ -1047,7 +1037,7 @@ fn analyze_impl_trait_specific_error<'db>(
 
     // 3. Check if the ingot containing impl trait is the same as the ingot which
     //    contains either the type or trait.
-    let impl_trait_ingot = impl_trait.top_mod(hir_db).ingot(hir_db);
+    let impl_trait_ingot = impl_trait.top_mod(db).ingot(db);
     if Some(impl_trait_ingot) != ty.ingot(db) && impl_trait_ingot != trait_inst.def(db).ingot(db) {
         diags.push(TraitLowerDiag::ExternalTraitForExternalType(impl_trait).into());
         return Err(diags);
