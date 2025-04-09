@@ -23,7 +23,7 @@ use crate::{
         trait_lower::lower_trait,
         ty_def::{InvalidCause, TyId},
         ty_lower::{
-            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias,
+            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias, TyAlias,
         },
     },
     HirAnalysisDb,
@@ -140,6 +140,7 @@ fn make_query<'db>(
 #[derive(Debug, Clone)]
 pub enum PathRes<'db> {
     Ty(TyId<'db>),
+    TyAlias(TyAlias<'db>, TyId<'db>),
     Func(TyId<'db>),
     FuncParam(ItemKind<'db>, usize),
     Trait(TraitDef<'db>),
@@ -156,6 +157,7 @@ impl<'db> PathRes<'db> {
     {
         match self {
             PathRes::Ty(ty) => PathRes::Ty(f(ty)),
+            PathRes::TyAlias(alias, ty) => PathRes::TyAlias(alias, f(ty)),
             PathRes::Func(ty) => PathRes::Func(f(ty)),
             PathRes::Const(ty) => PathRes::Const(f(ty)),
             PathRes::EnumVariant(v) => {
@@ -172,6 +174,7 @@ impl<'db> PathRes<'db> {
             | PathRes::Func(ty)
             | PathRes::Const(ty)
             | PathRes::TypeMemberTbd(ty) => ty.as_scope(db),
+            PathRes::TyAlias(alias, _) => Some(alias.alias.scope()),
             PathRes::Trait(trait_) => Some(trait_.trait_(db).scope()),
             PathRes::EnumVariant(variant) => Some(variant.enum_(db).scope()),
             PathRes::FuncParam(item, idx) => Some(ScopeId::FuncParam(*item, *idx)),
@@ -206,7 +209,7 @@ impl<'db> PathRes<'db> {
 
         match self {
             PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => ty_path(*ty),
-
+            PathRes::TyAlias(alias, _) => alias.alias.scope().pretty_path(db),
             PathRes::EnumVariant(v) => {
                 let variant_idx = v.idx;
                 Some(format!(
@@ -231,6 +234,7 @@ impl<'db> PathRes<'db> {
     pub fn kind_name(&self) -> &'static str {
         match self {
             PathRes::Ty(_) => "type",
+            PathRes::TyAlias(..) => "type alias",
             PathRes::Func(_) => "function",
             PathRes::FuncParam(..) => "function parameter",
             PathRes::Trait(_) => "trait",
@@ -369,7 +373,7 @@ where
         .unwrap_or(scope);
 
     match parent_res {
-        Some(PathRes::Ty(ty)) => {
+        Some(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) => {
             // Try to resolve as an enum variant
             if let Some(enum_) = ty.as_enum(db) {
                 // We need to use the concrete enum scope instead of
@@ -464,15 +468,18 @@ pub fn resolve_name_res<'db>(
                 ItemKind::TypeAlias(type_alias) => {
                     let alias = lower_type_alias(db, type_alias);
                     if args.len() < alias.params(db).len() {
-                        PathRes::Ty(TyId::invalid(
-                            db,
-                            InvalidCause::UnboundTypeAliasParam {
-                                alias: type_alias,
-                                n_given_args: args.len(),
-                            },
-                        ))
+                        PathRes::TyAlias(
+                            alias.clone(),
+                            TyId::invalid(
+                                db,
+                                InvalidCause::UnboundTypeAliasParam {
+                                    alias: type_alias,
+                                    n_given_args: args.len(),
+                                },
+                            ),
+                        )
                     } else {
-                        PathRes::Ty(alias.alias_to.instantiate(db, args))
+                        PathRes::TyAlias(alias.clone(), alias.alias_to.instantiate(db, args))
                     }
                 }
 

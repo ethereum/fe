@@ -475,7 +475,7 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
             self.diags.push(diag);
         }
 
-        let is_type = matches!(res, PathRes::Ty(_));
+        let is_type = matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..));
         let is_trait = matches!(res, PathRes::Trait(_));
 
         let span = ctxt

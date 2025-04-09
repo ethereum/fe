@@ -116,7 +116,7 @@ impl<'db> TyChecker<'db> {
 
         if path.is_bare_ident(self.db) {
             match res {
-                Ok(PathRes::Ty(ty)) if ty.is_record(self.db) => {
+                Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) if ty.is_record(self.db) => {
                     let diag = BodyDiag::unit_variant_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
@@ -158,7 +158,12 @@ impl<'db> TyChecker<'db> {
             }
         } else {
             match res {
-                Ok(PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty)) => {
+                Ok(
+                    PathRes::Ty(ty)
+                    | PathRes::TyAlias(_, ty)
+                    | PathRes::Func(ty)
+                    | PathRes::Const(ty),
+                ) => {
                     let diag = BodyDiag::unit_variant_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
@@ -216,7 +221,10 @@ impl<'db> TyChecker<'db> {
 
         let (variant, expected_elems) = match self.resolve_path(*path, true) {
             Ok(res) => match res {
-                PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => {
+                PathRes::Ty(ty)
+                | PathRes::TyAlias(_, ty)
+                | PathRes::Func(ty)
+                | PathRes::Const(ty) => {
                     let diag = BodyDiag::tuple_variant_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
@@ -318,12 +326,15 @@ impl<'db> TyChecker<'db> {
 
         match self.resolve_path(*path, true) {
             Ok(reso) => match reso {
-                PathRes::Ty(ty) if ty.is_record(self.db) => {
+                PathRes::Ty(ty) | PathRes::TyAlias(_, ty) if ty.is_record(self.db) => {
                     self.check_record_pat_fields(ty, pat);
                     ty
                 }
 
-                PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => {
+                PathRes::Ty(ty)
+                | PathRes::TyAlias(_, ty)
+                | PathRes::Func(ty)
+                | PathRes::Const(ty) => {
                     let diag = BodyDiag::record_expected(
                         self.db,
                         pat.lazy_span(self.body()).into(),
