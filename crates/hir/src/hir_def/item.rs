@@ -3,6 +3,8 @@
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
+use std::borrow::Cow;
+
 use common::InputFile;
 use parser::ast;
 
@@ -1041,6 +1043,82 @@ impl<'db> FieldDefListId<'db> {
             .join(", ");
 
         format!(" {{ {} }}", args)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, salsa::Update)]
+pub enum FieldParent<'db> {
+    Struct(Struct<'db>),
+    Contract(Contract<'db>),
+    Variant(Enum<'db>, u16),
+}
+
+impl<'db> FieldParent<'db> {
+    pub fn name(self, db: &'db dyn HirDb) -> Option<Cow<'db, str>> {
+        match self {
+            FieldParent::Struct(struct_) => Some(struct_.name(db).to_opt()?.data(db).into()),
+            FieldParent::Contract(contract) => Some(contract.name(db).to_opt()?.data(db).into()),
+            FieldParent::Variant(enum_, idx) => {
+                let e = enum_.name(db).to_opt()?.data(db);
+                let v = enum_.variants(db).data(db)[idx as usize]
+                    .name
+                    .to_opt()?
+                    .data(db);
+                Some(format!("{e}::{v}").into())
+            }
+        }
+    }
+
+    pub fn kind_name(self) -> &'static str {
+        match self {
+            FieldParent::Struct(_) => "struct",
+            FieldParent::Contract(_) => "contract",
+            FieldParent::Variant(..) => "enum variant",
+        }
+    }
+
+    pub fn scope(self) -> ScopeId<'db> {
+        match self {
+            FieldParent::Struct(struct_) => struct_.scope(),
+            FieldParent::Contract(contract) => contract.scope(),
+            FieldParent::Variant(enum_, idx) => ScopeId::Variant(enum_.into(), idx as usize),
+        }
+    }
+
+    pub fn fields(self, db: &'db dyn HirDb) -> FieldDefListId<'db> {
+        match self {
+            FieldParent::Struct(struct_) => struct_.fields(db),
+            FieldParent::Contract(contract) => contract.fields(db),
+            FieldParent::Variant(enum_, idx) => {
+                match enum_.variants(db).data(db)[idx as usize].kind {
+                    VariantKind::Record(fields) => fields,
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+
+    pub fn top_mod(self, db: &'db dyn HirDb) -> TopLevelMod<'db> {
+        match self {
+            FieldParent::Struct(i) => i.top_mod(db),
+            FieldParent::Contract(i) => i.top_mod(db),
+            FieldParent::Variant(i, _) => i.top_mod(db),
+        }
+    }
+
+    pub fn field_name_span(self, idx: usize) -> DynLazySpan<'db> {
+        match self {
+            FieldParent::Struct(s) => s.lazy_span().fields().field(idx).name().into(),
+            FieldParent::Contract(c) => c.lazy_span().fields().field(idx).name().into(),
+            FieldParent::Variant(enum_, vidx) => enum_
+                .lazy_span()
+                .variants()
+                .variant(vidx as usize)
+                .fields()
+                .field(idx)
+                .name()
+                .into(),
+        }
     }
 }
 

@@ -7,13 +7,14 @@ use std::collections::hash_map::Entry;
 use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, Func, FuncParamListId, GenericParam, GenericParamListId,
-        IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId,
-        TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, FieldDef, FieldParent, Func, FuncParamListId, GenericParam,
+        GenericParamListId, IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait,
+        TraitRefId, TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec1::SmallVec;
 
 use super::{
     adt_def::{lower_adt, AdtRef},
@@ -69,8 +70,66 @@ pub fn analyze_adt<'db>(
     db: &'db dyn HirAnalysisDb,
     adt_ref: AdtRef<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
+    let dupes = match adt_ref {
+        AdtRef::Struct(x) => check_duplicate_field_names(db, FieldParent::Struct(x)),
+        AdtRef::Contract(x) => check_duplicate_field_names(db, FieldParent::Contract(x)),
+        AdtRef::Enum(enum_) => {
+            let mut dupes = check_duplicate_variant_names(db, enum_);
+
+            for (idx, var) in enum_.variants(db).data(db).iter().enumerate() {
+                if matches!(var.kind, VariantKind::Record(..)) {
+                    dupes.extend(check_duplicate_field_names(
+                        db,
+                        FieldParent::Variant(enum_, idx as u16),
+                    ))
+                }
+            }
+            dupes
+        }
+    };
+
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
-    analyzer.analyze()
+    let mut diags = analyzer.analyze();
+    diags.extend(dupes);
+    diags
+}
+
+fn check_duplicate_field_names<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: FieldParent<'db>,
+) -> SmallVec<[TyDiagCollection<'db>; 2]> {
+    check_duplicate_names(
+        owner.fields(db).data(db).iter().map(|f| f.name.to_opt()),
+        |idxs| TyLowerDiag::DuplicateFieldName(owner, idxs).into(),
+    )
+}
+
+fn check_duplicate_variant_names<'db>(
+    db: &'db dyn HirAnalysisDb,
+    enum_: hir::hir_def::Enum<'db>,
+) -> SmallVec<[TyDiagCollection<'db>; 2]> {
+    check_duplicate_names(
+        enum_.variants(db).data(db).iter().map(|v| v.name.to_opt()),
+        |idxs| TyLowerDiag::DuplicateVariantName(enum_, idxs).into(),
+    )
+}
+
+fn check_duplicate_names<'db, F>(
+    names: impl Iterator<Item = Option<IdentId<'db>>>,
+    create_diag: F,
+) -> SmallVec<[TyDiagCollection<'db>; 2]>
+where
+    F: Fn(SmallVec<[u16; 4]>) -> TyDiagCollection<'db>,
+{
+    let mut defs = FxHashMap::<IdentId<'db>, SmallVec<[u16; 4]>>::default();
+    for (i, name) in names.enumerate() {
+        if let Some(name) = name {
+            defs.entry(name).or_default().push(i as u16);
+        }
+    }
+    defs.into_iter()
+        .filter_map(|(_name, idxs)| (idxs.len() > 1).then_some(create_diag(idxs)))
+        .collect()
 }
 
 /// This function implements analysis for the trait definition.
@@ -739,7 +798,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
             match already_seen.entry(name) {
                 Entry::Occupied(entry) => {
-                    let diag = TyLowerDiag::DuplicatedArgName {
+                    let diag = TyLowerDiag::DuplicateArgName {
                         primary: ctxt.span().unwrap().param(i).name().into(),
                         conflict_with: ctxt.span().unwrap().param(*entry.get()).name().into(),
                         name,

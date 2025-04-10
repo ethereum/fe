@@ -18,6 +18,7 @@ num-bigint.workspace = true
 rustc-hash.workspace = true
 salsa.workspace = true
 smallvec.workspace = true
+smallvec1.workspace = true
 
 common.workspace = true
 test-utils.workspace = true

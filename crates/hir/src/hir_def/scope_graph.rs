@@ -6,8 +6,9 @@ use salsa::Update;
 
 use super::{
     scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, ExprId,
-    FieldDef, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl, ImplTrait, IngotId,
-    ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind, Visibility,
+    FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl, ImplTrait,
+    IngotId, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind,
+    Visibility,
 };
 use crate::{
     hir_def::{BodyKind, GenericParamOwner},
@@ -98,8 +99,7 @@ impl<'db> ScopeId<'db> {
             ScopeId::Item(item) => item.top_mod(db),
             ScopeId::GenericParam(item, _) => item.top_mod(db),
             ScopeId::FuncParam(item, _) => item.top_mod(db),
-            ScopeId::Field(FieldParent::Item(item), _) => item.top_mod(db),
-            ScopeId::Field(FieldParent::Variant(item, _), _) => item.top_mod(db),
+            ScopeId::Field(p, _) => p.top_mod(db),
             ScopeId::Variant(item, _) => item.top_mod(db),
             ScopeId::Block(body, _) => body.top_mod(db),
         }
@@ -125,8 +125,9 @@ impl<'db> ScopeId<'db> {
             ScopeId::Item(item) => item,
             ScopeId::GenericParam(item, _) => item,
             ScopeId::FuncParam(item, _) => item,
-            ScopeId::Field(FieldParent::Item(item), _) => item,
-            ScopeId::Field(FieldParent::Variant(item, _), _) => item,
+            ScopeId::Field(FieldParent::Struct(s), _) => s.into(),
+            ScopeId::Field(FieldParent::Contract(c), _) => c.into(),
+            ScopeId::Field(FieldParent::Variant(e, _), _) => e.into(),
             ScopeId::Variant(item, _) => item,
             ScopeId::Block(body, _) => body.into(),
         }
@@ -313,24 +314,7 @@ impl<'db> ScopeId<'db> {
                 Some(enum_.lazy_span().variants().variant(idx).name().into())
             }
 
-            ScopeId::Field(FieldParent::Item(parent), idx) => match parent {
-                ItemKind::Struct(s) => Some(s.lazy_span().fields().field(idx).name().into()),
-                ItemKind::Contract(c) => Some(c.lazy_span().fields().field(idx).name().into()),
-                _ => unreachable!(),
-            },
-            ScopeId::Field(FieldParent::Variant(parent, vidx), fidx) => {
-                let enum_: Enum = parent.try_into().unwrap();
-                Some(
-                    enum_
-                        .lazy_span()
-                        .variants()
-                        .variant(vidx)
-                        .fields()
-                        .field(fidx)
-                        .name()
-                        .into(),
-                )
-            }
+            ScopeId::Field(p, idx) => Some(p.field_name_span(idx)),
 
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
@@ -379,21 +363,6 @@ impl<'db> ScopeId<'db> {
             Some(format!("{}::{}", parent_path, name))
         } else {
             Some(name)
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
-pub enum FieldParent<'db> {
-    Item(ItemKind<'db>),
-    Variant(ItemKind<'db>, usize),
-}
-
-impl<'db> FieldParent<'db> {
-    pub fn scope(self) -> ScopeId<'db> {
-        match self {
-            FieldParent::Item(item) => ScopeId::Item(item),
-            FieldParent::Variant(variant, idx) => ScopeId::Variant(variant, idx),
         }
     }
 }
@@ -639,15 +608,10 @@ impl<'db> FromScope<'db> for &'db FieldDef<'db> {
         };
 
         match parent {
-            FieldParent::Item(item) => match item {
-                ItemKind::Struct(s) => Some(&s.fields(db).data(db)[idx]),
-                ItemKind::Contract(c) => Some(&c.fields(db).data(db)[idx]),
-                _ => unreachable!(),
-            },
-
-            FieldParent::Variant(parent, vidx) => {
-                let enum_: Enum = parent.try_into().unwrap();
-                match enum_.variants(db).data(db)[vidx].kind {
+            FieldParent::Struct(s) => Some(&s.fields(db).data(db)[idx]),
+            FieldParent::Contract(c) => Some(&c.fields(db).data(db)[idx]),
+            FieldParent::Variant(enum_, vidx) => {
+                match enum_.variants(db).data(db)[vidx as usize].kind {
                     VariantKind::Record(fields) => Some(&fields.data(db)[idx]),
                     _ => unreachable!(),
                 }

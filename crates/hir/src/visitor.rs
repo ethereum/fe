@@ -2,15 +2,13 @@ use std::{marker::PhantomData, mem};
 
 use crate::{
     hir_def::{
-        attr,
-        scope_graph::{FieldParent, ScopeId},
-        Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field, FieldDef, FieldDefListId,
-        FieldIndex, Func, FuncParam, FuncParamListId, FuncParamName, GenericArg, GenericArgListId,
-        GenericParam, GenericParamListId, IdentId, Impl, ImplTrait, IngotId, ItemKind, KindBound,
-        LitKind, MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod,
-        Trait, TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias,
-        UsePathId, UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId,
-        WherePredicate,
+        attr, scope_graph::ScopeId, Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field,
+        FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam, FuncParamListId,
+        FuncParamName, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
+        Impl, ImplTrait, IngotId, ItemKind, KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId,
+        PathId, Stmt, StmtId, Struct, TopLevelMod, Trait, TraitRefId, TupleTypeId, TypeAlias,
+        TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId, UsePathSegment, VariantDef,
+        VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{
         item::LazySuperTraitListSpan, lazy_spans::*, params::LazyTraitRefSpan,
@@ -1602,8 +1600,9 @@ pub fn walk_field_def_list<'db, V>(
     V: Visitor<'db> + ?Sized,
 {
     let parent = match ctxt.scope() {
-        ScopeId::Item(item) => FieldParent::Item(item),
-        ScopeId::Variant(item, idx) => FieldParent::Variant(item, idx),
+        ScopeId::Item(ItemKind::Struct(s)) => FieldParent::Struct(s),
+        ScopeId::Item(ItemKind::Contract(c)) => FieldParent::Contract(c),
+        ScopeId::Variant(ItemKind::Enum(e), idx) => FieldParent::Variant(e, idx as u16),
         _ => unreachable!(),
     };
     for (idx, field) in fields.data(ctxt.db).iter().enumerate() {

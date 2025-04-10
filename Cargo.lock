@@ -889,6 +889,7 @@ dependencies = [
  "num-bigint",
  "rustc-hash 2.1.1",
  "salsa",
+ "smallvec 1.14.0",
  "smallvec 2.0.0-alpha.10",
 ]
 

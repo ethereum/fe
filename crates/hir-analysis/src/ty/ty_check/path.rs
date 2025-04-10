@@ -2,8 +2,8 @@ use std::collections::hash_map::Entry;
 
 use hir::{
     hir_def::{
-        scope_graph::{FieldParent, ScopeId},
-        FieldDefListId as HirFieldDefListId, IdentId, VariantKind as HirVariantKind,
+        scope_graph::ScopeId, FieldDefListId as HirFieldDefListId, FieldParent, IdentId,
+        VariantKind as HirVariantKind,
     },
     span::DynLazySpan,
 };
@@ -230,8 +230,11 @@ impl<'db> RecordLike<'db> for TyId<'db> {
     ) -> Option<ScopeId<'db>> {
         let field_idx = self.record_field_idx(db, name)?;
         let adt_ref = self.adt_ref(db)?;
-
-        let parent = FieldParent::Item(adt_ref.as_item());
+        let parent = match adt_ref {
+            AdtRef::Struct(s) => FieldParent::Struct(s),
+            AdtRef::Contract(c) => FieldParent::Contract(c),
+            _ => return None,
+        };
         Some(ScopeId::Field(parent, field_idx))
     }
 
@@ -311,7 +314,7 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
         name: IdentId<'db>,
     ) -> Option<ScopeId<'db>> {
         let field_idx = self.record_field_idx(db, name)?;
-        let parent = FieldParent::Variant(self.enum_(db).into(), self.idx);
+        let parent = FieldParent::Variant(self.enum_(db), self.idx as u16);
         Some(ScopeId::Field(parent, field_idx))
     }
 
