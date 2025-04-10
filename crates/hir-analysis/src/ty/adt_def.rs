@@ -17,7 +17,54 @@ use crate::HirAnalysisDb;
 /// Lower HIR ADT definition(`struct/enum/contract`) to [`AdtDef`].
 #[salsa::tracked]
 pub fn lower_adt<'db>(db: &'db dyn HirAnalysisDb, adt: AdtRef<'db>) -> AdtDef<'db> {
-    AdtTyBuilder::new(db, adt).build()
+    let scope = adt.scope();
+
+    let (params, variants) = match adt {
+        AdtRef::Contract(c) => (
+            GenericParamTypeSet::empty(db, scope),
+            vec![collect_field_types(db, scope, c.fields(db))],
+        ),
+        AdtRef::Struct(s) => (
+            collect_generic_params(db, s.into()),
+            vec![collect_field_types(db, scope, s.fields(db))],
+        ),
+        AdtRef::Enum(e) => (
+            collect_generic_params(db, e.into()),
+            collect_enum_variant_types(db, scope, e.variants(db)),
+        ),
+    };
+
+    AdtDef::new(db, adt, params, variants)
+}
+
+fn collect_field_types<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    fields: FieldDefListId<'db>,
+) -> AdtField<'db> {
+    let fields = fields.data(db).iter().map(|field| field.ty).collect();
+    AdtField::new(fields, scope)
+}
+
+fn collect_enum_variant_types<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    variants: VariantDefListId<'db>,
+) -> Vec<AdtField<'db>> {
+    variants
+        .data(db)
+        .iter()
+        .map(|variant| {
+            let tys = match variant.kind {
+                VariantKind::Tuple(tuple_id) => tuple_id.data(db).clone(),
+                VariantKind::Record(fields) => {
+                    fields.data(db).iter().map(|field| field.ty).collect()
+                }
+                VariantKind::Unit => vec![],
+            };
+            AdtField::new(tys, scope)
+        })
+        .collect()
 }
 
 /// Represents a ADT type definition.
@@ -213,78 +260,5 @@ impl<'db> AdtRef<'db> {
             AdtRef::Struct(s) => Some(s.into()),
             AdtRef::Contract(_) => None,
         }
-    }
-}
-
-struct AdtTyBuilder<'db> {
-    db: &'db dyn HirAnalysisDb,
-    adt: AdtRef<'db>,
-    params: GenericParamTypeSet<'db>,
-    variants: Vec<AdtField<'db>>,
-}
-
-impl<'db> AdtTyBuilder<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, adt: AdtRef<'db>) -> Self {
-        Self {
-            db,
-            adt,
-            params: GenericParamTypeSet::empty(db, adt.scope()),
-            variants: Vec::new(),
-        }
-    }
-
-    fn build(mut self) -> AdtDef<'db> {
-        self.collect_generic_params();
-        self.collect_variants();
-        AdtDef::new(self.db, self.adt, self.params, self.variants)
-    }
-
-    fn collect_generic_params(&mut self) {
-        let owner = match self.adt {
-            AdtRef::Contract(_) => return,
-            AdtRef::Enum(enum_) => enum_.into(),
-            AdtRef::Struct(struct_) => struct_.into(),
-        };
-        self.params = collect_generic_params(self.db, owner);
-    }
-
-    fn collect_variants(&mut self) {
-        match self.adt {
-            AdtRef::Struct(struct_) => {
-                self.collect_field_types(struct_.fields(self.db));
-            }
-
-            AdtRef::Contract(contract) => self.collect_field_types(contract.fields(self.db)),
-
-            AdtRef::Enum(enum_) => self.collect_enum_variant_types(enum_.variants(self.db)),
-        };
-    }
-
-    fn collect_field_types(&mut self, fields: FieldDefListId<'db>) {
-        let scope = self.adt.scope();
-
-        let fields = fields.data(self.db).iter().map(|field| field.ty).collect();
-
-        self.variants.push(AdtField::new(fields, scope));
-    }
-
-    fn collect_enum_variant_types(&mut self, variants: VariantDefListId<'db>) {
-        let scope = self.adt.scope();
-
-        variants.data(self.db).iter().for_each(|variant| {
-            // TODO: FIX here when record variant is introduced.
-            let tys = match variant.kind {
-                VariantKind::Tuple(tuple_id) => tuple_id.data(self.db).clone(),
-
-                VariantKind::Record(fields) => {
-                    fields.data(self.db).iter().map(|field| field.ty).collect()
-                }
-
-                VariantKind::Unit => vec![],
-            };
-
-            let variant = AdtField::new(tys, scope);
-            self.variants.push(variant)
-        })
     }
 }
