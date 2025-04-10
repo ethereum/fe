@@ -11,11 +11,13 @@ use crate::{
 use either::Either;
 use hir::{
     hir_def::{
-        FieldIndex, Func, IdentId, ImplTrait, ItemKind, PathId, Trait, TypeAlias as HirTypeAlias,
+        FieldIndex, Func, IdentId, ImplTrait, ItemKind, PathId, Struct, Trait,
+        TypeAlias as HirTypeAlias,
     },
     span::{expr::LazyMethodCallExprSpan, DynLazySpan},
 };
 use salsa::Update;
+use smallvec1::SmallVec;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
 pub enum FuncBodyDiag<'db> {
@@ -94,11 +96,12 @@ pub enum TyLowerDiag<'db> {
         name: IdentId<'db>,
     },
 
-    DuplicatedArgName {
+    DuplicateArgName {
         primary: DynLazySpan<'db>,
         conflict_with: DynLazySpan<'db>,
         name: IdentId<'db>,
     },
+    DuplicateStructFieldName(Struct<'db>, SmallVec<[u16; 4]>),
 
     InvalidConstParamTy(DynLazySpan<'db>),
     RecursiveConstParamTy(DynLazySpan<'db>),
@@ -135,7 +138,7 @@ impl TyLowerDiag<'_> {
             Self::InconsistentKindBound { .. } => 5,
             Self::KindBoundNotAllowed(_) => 6,
             Self::GenericParamAlreadyDefinedInParent { .. } => 7,
-            Self::DuplicatedArgName { .. } => 8,
+            Self::DuplicateArgName { .. } => 8,
             Self::InvalidConstParamTy { .. } => 9,
             Self::RecursiveConstParamTy { .. } => 10,
             Self::ConstTyMismatch { .. } => 11,
@@ -144,6 +147,7 @@ impl TyLowerDiag<'_> {
             Self::AssocTy(_) => 14,
             Self::InvalidConstTyExpr(_) => 15,
             Self::TooManyGenericArgs { .. } => 16,
+            Self::DuplicateStructFieldName(..) => 17,
         }
     }
 }

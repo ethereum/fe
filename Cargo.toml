@@ -25,6 +25,7 @@ num-bigint = "0.4"
 paste = "1.0.15"
 salsa = { git = "https://github.com/salsa-rs/salsa", rev = "296a8c78da1b54c76ff5795eb4c1e3fe2467e9fc" }
 smallvec = { version = "2.0.0-alpha.10" }
+smallvec1 = { version = "1", package = "smallvec" }
 semver = "1.0.24"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }

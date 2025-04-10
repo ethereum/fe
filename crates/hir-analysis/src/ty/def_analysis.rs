@@ -14,6 +14,7 @@ use hir::{
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec1::SmallVec;
 
 use super::{
     adt_def::{lower_adt, AdtRef},
@@ -69,8 +70,29 @@ pub fn analyze_adt<'db>(
     db: &'db dyn HirAnalysisDb,
     adt_ref: AdtRef<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
+    let dupes: Vec<TyDiagCollection> = match adt_ref {
+        AdtRef::Struct(struct_) => {
+            let mut defs = FxHashMap::<IdentId<'db>, SmallVec<[u16; 4]>>::default();
+            for (i, field) in struct_.fields(db).data(db).iter().enumerate() {
+                if let Some(name) = field.name.to_opt() {
+                    defs.entry(name).or_default().push(i as u16);
+                }
+            }
+            defs.into_iter()
+                .filter_map(|(_name, idxs)| {
+                    (idxs.len() > 1)
+                        .then_some(TyLowerDiag::DuplicateStructFieldName(struct_, idxs).into())
+                })
+                .collect()
+        }
+        AdtRef::Enum(_) => vec![],
+        AdtRef::Contract(_) => vec![],
+    };
+
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
-    analyzer.analyze()
+    let mut diags = analyzer.analyze();
+    diags.extend(dupes);
+    diags
 }
 
 /// This function implements analysis for the trait definition.
@@ -739,7 +761,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
             match already_seen.entry(name) {
                 Entry::Occupied(entry) => {
-                    let diag = TyLowerDiag::DuplicatedArgName {
+                    let diag = TyLowerDiag::DuplicateArgName {
                         primary: ctxt.span().unwrap().param(i).name().into(),
                         conflict_with: ctxt.span().unwrap().param(*entry.get()).name().into(),
                         name,

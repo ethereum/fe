@@ -1,5 +1,5 @@
 use common::InputDb;
-pub use lower::parse::{ParseErrorAccumulator, ParserError};
+pub use lower::parse::ParserError;
 
 pub mod hir_def;
 pub mod lower;

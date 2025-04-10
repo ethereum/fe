@@ -4,7 +4,7 @@
 //! [`CompleteDiagnostic`].
 
 use crate::{
-    name_resolution::diagnostics::NameResDiag,
+    name_resolution::{diagnostics::NameResDiag, DefConflictError},
     ty::{
         diagnostics::{
             BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
@@ -86,6 +86,35 @@ impl<'db> DiagnosticVoucher<'db> for ParserError {
 
 pub trait LazyDiagnostic<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic;
+}
+
+impl<'db> DiagnosticVoucher<'db> for DefConflictError<'db> {
+    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let mut items = self.0.iter();
+        let first = items.next().unwrap();
+        let name = first.name(db).unwrap().data(db);
+        CompleteDiagnostic {
+            severity: Severity::Error,
+            message: format!("conflicting definitions of `{name}`",),
+            sub_diagnostics: {
+                let mut subs = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{name}` is defined here"),
+                    first.name_span().unwrap().resolve(db),
+                )];
+                subs.extend(items.map(|item| {
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format! {"`{name}` is redefined here"},
+                        item.name_span().unwrap().resolve(db),
+                    )
+                }));
+                subs
+            },
+            notes: vec![],
+            error_code: GlobalErrorCode::new(DiagnosticPass::TypeDefinition, 100),
+        }
+    }
 }
 
 impl<'db> DiagnosticVoucher<'db> for FuncBodyDiag<'db> {
@@ -501,18 +530,17 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::DuplicatedArgName {
+            Self::DuplicateArgName {
                 primary,
                 conflict_with,
                 name,
             } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "duplicated argument name in function definition is not allowed"
-                    .to_string(),
+                message: "duplicate argument name in function definition".to_string(),
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("duplicated argument name `{}`", name.data(db)),
+                        message: format!("duplicate argument name `{}`", name.data(db)),
                         span: primary.resolve(db),
                     },
                     SubDiagnostic {
@@ -524,6 +552,47 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 notes: vec![],
                 error_code,
             },
+
+            Self::DuplicateStructFieldName(struct_, fields) => {
+                let name = struct_.fields(db).data(db)[fields[0] as usize]
+                    .name
+                    .unwrap()
+                    .data(db);
+
+                let mut spans = fields.iter().map(|i| {
+                    struct_
+                        .lazy_span()
+                        .fields()
+                        .field(*i as usize)
+                        .name()
+                        .resolve(db)
+                });
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: format!(
+                        "duplicate field name in struct `{}`",
+                        struct_.name(db).unwrap().data(db)
+                    ),
+                    sub_diagnostics: {
+                        let mut subs = vec![SubDiagnostic::new(
+                            LabelStyle::Primary,
+                            format!("`{name}` is defined here"),
+                            spans.next().unwrap(),
+                        )];
+                        subs.extend(spans.map(|span| {
+                            SubDiagnostic::new(
+                                LabelStyle::Secondary,
+                                format! {"`{name}` is redefined here"},
+                                span,
+                            )
+                        }));
+                        subs
+                    },
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::InvalidConstParamTy(span) => CompleteDiagnostic {
                 severity: Severity::Error,
