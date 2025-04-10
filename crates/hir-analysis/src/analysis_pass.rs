@@ -2,7 +2,7 @@ use crate::diagnostics::DiagnosticVoucher;
 use hir::{
     hir_def::{ModuleTree, TopLevelMod},
     lower::parse_file_impl,
-    HirDb, ParseErrorAccumulator,
+    HirDb, ParserError,
 };
 
 /// All analysis passes that run analysis on the HIR top level module
@@ -69,9 +69,9 @@ impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        parse_file_impl::accumulated::<ParseErrorAccumulator>(self.db, top_mod)
+        parse_file_impl::accumulated::<ParserError>(self.db, top_mod)
             .into_iter()
-            .map(|d| Box::new(d.0.clone()) as _)
+            .map(|d| Box::new(d.clone()) as _)
             .collect::<Vec<_>>()
     }
 }
