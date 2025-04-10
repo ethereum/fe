@@ -8,8 +8,9 @@ mod visibility_checker;
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Expr, ExprId, GenericArgListId, IngotId, ItemKind, Pat, PatId,
-        PathId, TopLevelMod, TraitRefId, TypeId,
+        scope_graph::{ScopeGraph, ScopeId},
+        Expr, ExprId, GenericArgListId, IdentId, IngotId, ItemKind, Pat, PatId, PathId,
+        TopLevelMod, TraitRefId, TypeId,
     },
     visitor::prelude::*,
 };
@@ -23,7 +24,8 @@ pub use path_resolver::{
     resolve_ident_to_bucket, resolve_name_res, resolve_path, PathRes, PathResError,
     PathResErrorKind, ResolvedVariant,
 };
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec::SmallVec;
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
@@ -123,24 +125,70 @@ impl<'db> DefConflictAnalysisPass<'db> {
     }
 }
 
-/// TODO: Remove this!!!!
 impl<'db> ModuleAnalysisPass<'db> for DefConflictAnalysisPass<'db> {
     fn run_on_module(
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let importer = DefaultImporter;
-        let mut visitor = EarlyPathVisitor::new(self.db, &importer);
-        let mut ctxt = VisitorCtxt::with_item(self.db, top_mod.into());
-        visitor.visit_item(&mut ctxt, top_mod.into());
+        let graph = top_mod.scope_graph(self.db);
 
-        visitor
-            .diags
-            .iter()
-            .filter(|diag| matches!(diag, NameResDiag::Conflict(..)))
-            .map(|diag| Box::new(diag.clone()) as _)
+        walk(self.db, graph, top_mod.scope())
+            .into_iter()
+            .map(|d| Box::new(d) as _)
             .collect()
     }
+}
+
+pub struct DefConflictError<'db>(pub SmallVec<ItemKind<'db>, 2>);
+
+fn walk<'db>(
+    db: &'db dyn HirAnalysisDb,
+    graph: &ScopeGraph<'db>,
+    scope: ScopeId<'db>,
+) -> Vec<DefConflictError<'db>> {
+    let mut work: Vec<ScopeId<'db>> = vec![scope];
+
+    #[derive(Hash, PartialEq, Eq)]
+    enum Domain {
+        Type,
+        Val,
+    }
+
+    let mut defs = FxHashMap::<(Domain, IdentId<'db>), SmallVec<ItemKind<'db>, 2>>::default();
+    let mut diags = vec![];
+
+    while let Some(scope) = work.pop() {
+        for item in graph.child_items(scope).filter(|i| i.name(db).is_some()) {
+            let domain = match item {
+                ItemKind::Func(_) | ItemKind::Const(_) => Domain::Val,
+
+                ItemKind::Mod(_)
+                | ItemKind::Struct(_)
+                | ItemKind::Contract(_)
+                | ItemKind::Enum(_)
+                | ItemKind::TypeAlias(_)
+                | ItemKind::Trait(_) => Domain::Type,
+
+                ItemKind::TopMod(_)
+                | ItemKind::Use(_)
+                | ItemKind::Impl(_)
+                | ItemKind::ImplTrait(_)
+                | ItemKind::Body(_) => continue,
+            };
+            defs.entry((domain, item.name(db).unwrap()))
+                .or_default()
+                .push(item);
+            if matches!(item, ItemKind::Mod(_)) {
+                work.push(item.scope());
+            }
+        }
+        diags.extend(
+            defs.drain()
+                .filter_map(|(_k, v)| (v.len() > 1).then_some(v))
+                .map(DefConflictError),
+        )
+    }
+    diags
 }
 
 #[salsa::tracked(return_ref)]

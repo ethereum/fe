@@ -4,7 +4,7 @@
 //! [`CompleteDiagnostic`].
 
 use crate::{
-    name_resolution::diagnostics::NameResDiag,
+    name_resolution::{diagnostics::NameResDiag, DefConflictError},
     ty::{
         diagnostics::{
             BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
@@ -86,6 +86,35 @@ impl<'db> DiagnosticVoucher<'db> for ParserError {
 
 pub trait LazyDiagnostic<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic;
+}
+
+impl<'db> DiagnosticVoucher<'db> for DefConflictError<'db> {
+    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let mut items = self.0.iter();
+        let first = items.next().unwrap();
+        let name = first.name(db).unwrap().data(db);
+        CompleteDiagnostic {
+            severity: Severity::Error,
+            message: format!("conflicting definitions of `{name}`",),
+            sub_diagnostics: {
+                let mut subs = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{name}` is defined here"),
+                    first.name_span().unwrap().resolve(db),
+                )];
+                subs.extend(items.map(|item| {
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format! {"`{name}` is redefined here"},
+                        item.name_span().unwrap().resolve(db),
+                    )
+                }));
+                subs
+            },
+            notes: vec![],
+            error_code: GlobalErrorCode::new(DiagnosticPass::TypeDefinition, 100),
+        }
+    }
 }
 
 impl<'db> DiagnosticVoucher<'db> for FuncBodyDiag<'db> {
