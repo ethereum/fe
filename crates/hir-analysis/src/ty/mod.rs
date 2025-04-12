@@ -1,8 +1,12 @@
 use adt_def::{lower_adt, AdtDef, AdtRef};
 use def_analysis::check_recursive_adt;
-use diagnostics::{TraitLowerDiag, TyLowerDiag};
-use hir::hir_def::{TopLevelMod, TypeAlias};
-use rustc_hash::FxHashSet;
+use diagnostics::{DefConflictError, TraitLowerDiag, TyLowerDiag};
+use hir::hir_def::{
+    scope_graph::{ScopeGraph, ScopeId},
+    IdentId, ItemKind, TopLevelMod, TypeAlias,
+};
+use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec1::SmallVec;
 use trait_def::TraitDef;
 use trait_lower::lower_trait;
 use trait_resolution::constraint::super_trait_cycle;
@@ -79,6 +83,81 @@ impl<'db> ModuleAnalysisPass<'db> for AdtDefAnalysisPass<'db> {
         }
         diags
     }
+}
+
+/// Checks for name conflicts of item definitions.
+pub struct DefConflictAnalysisPass<'db> {
+    db: &'db dyn HirAnalysisDb,
+}
+
+impl<'db> DefConflictAnalysisPass<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
+        Self { db }
+    }
+}
+
+impl<'db> ModuleAnalysisPass<'db> for DefConflictAnalysisPass<'db> {
+    fn run_on_module(
+        &mut self,
+        top_mod: TopLevelMod<'db>,
+    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+        let graph = top_mod.scope_graph(self.db);
+
+        walk(self.db, graph, top_mod.scope())
+            .into_iter()
+            .map(|d| Box::new(d) as _)
+            .collect()
+    }
+}
+
+fn walk<'db>(
+    db: &'db dyn HirAnalysisDb,
+    graph: &ScopeGraph<'db>,
+    scope: ScopeId<'db>,
+) -> Vec<DefConflictError<'db>> {
+    let mut work: Vec<ScopeId<'db>> = vec![scope];
+
+    #[derive(Hash, PartialEq, Eq)]
+    enum Domain {
+        Type,
+        Val,
+    }
+
+    let mut defs = FxHashMap::<(Domain, IdentId<'db>), SmallVec<[ItemKind<'db>; 2]>>::default();
+    let mut diags = vec![];
+
+    while let Some(scope) = work.pop() {
+        for item in graph.child_items(scope).filter(|i| i.name(db).is_some()) {
+            let domain = match item {
+                ItemKind::Func(_) | ItemKind::Const(_) => Domain::Val,
+
+                ItemKind::Mod(_)
+                | ItemKind::Struct(_)
+                | ItemKind::Contract(_)
+                | ItemKind::Enum(_)
+                | ItemKind::TypeAlias(_)
+                | ItemKind::Trait(_) => Domain::Type,
+
+                ItemKind::TopMod(_)
+                | ItemKind::Use(_)
+                | ItemKind::Impl(_)
+                | ItemKind::ImplTrait(_)
+                | ItemKind::Body(_) => continue,
+            };
+            defs.entry((domain, item.name(db).unwrap()))
+                .or_default()
+                .push(item);
+            if matches!(item, ItemKind::Mod(_)) {
+                work.push(item.scope());
+            }
+        }
+        diags.extend(
+            defs.drain()
+                .filter_map(|(_k, v)| (v.len() > 1).then_some(v))
+                .map(DefConflictError),
+        )
+    }
+    diags
 }
 
 pub struct BodyAnalysisPass<'db> {

@@ -11,10 +11,10 @@ use hir::{
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
     diagnostics::DiagnosticVoucher,
-    name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
+    name_resolution::{ImportAnalysisPass, PathAnalysisPass},
     ty::{
-        AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
-        ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
+        AdtDefAnalysisPass, BodyAnalysisPass, DefConflictAnalysisPass, FuncAnalysisPass,
+        ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
 };
 

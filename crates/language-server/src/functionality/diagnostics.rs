@@ -7,10 +7,10 @@ use cs::files as cs_files;
 use hir::lower::map_file_to_mod;
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
+    name_resolution::{ImportAnalysisPass, PathAnalysisPass},
     ty::{
-        AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
-        ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
+        AdtDefAnalysisPass, BodyAnalysisPass, DefConflictAnalysisPass, FuncAnalysisPass,
+        ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
 };
 use rustc_hash::FxHashMap;

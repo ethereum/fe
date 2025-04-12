@@ -621,3 +621,5 @@ impl ImplDiag<'_> {
         }
     }
 }
+
+pub struct DefConflictError<'db>(pub SmallVec<[ItemKind<'db>; 2]>);

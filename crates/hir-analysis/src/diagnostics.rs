@@ -4,11 +4,11 @@
 //! [`CompleteDiagnostic`].
 
 use crate::{
-    name_resolution::{diagnostics::NameResDiag, DefConflictError},
+    name_resolution::diagnostics::NameResDiag,
     ty::{
         diagnostics::{
-            BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
-            TyDiagCollection, TyLowerDiag,
+            BodyDiag, DefConflictError, FuncBodyDiag, ImplDiag, TraitConstraintDiag,
+            TraitLowerDiag, TyDiagCollection, TyLowerDiag,
         },
         trait_def::TraitDef,
         ty_check::RecordLike,

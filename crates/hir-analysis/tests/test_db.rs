@@ -17,10 +17,10 @@ use common::{
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
+    name_resolution::{ImportAnalysisPass, PathAnalysisPass},
     ty::{
-        AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
-        ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
+        AdtDefAnalysisPass, BodyAnalysisPass, DefConflictAnalysisPass, FuncAnalysisPass,
+        ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
 };
 use hir::{
