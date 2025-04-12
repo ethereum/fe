@@ -559,7 +559,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     .unwrap()
                     .data(db);
 
-                let mut spans = idxs
+                let spans = idxs
                     .iter()
                     .map(|i| parent.field_name_span(*i as usize).resolve(db));
 
@@ -567,27 +567,13 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 let message = if let Some(name) = parent.name(db) {
                     format!("duplicate field name in {kind} `{name}`")
                 } else {
-                    "duplicate field name in {kind} definition".into()
+                    format!("duplicate field name in {kind} definition")
                 };
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message,
-                    sub_diagnostics: {
-                        let mut subs = vec![SubDiagnostic::new(
-                            LabelStyle::Primary,
-                            format!("`{name}` is defined here"),
-                            spans.next().unwrap(),
-                        )];
-                        subs.extend(spans.map(|span| {
-                            SubDiagnostic::new(
-                                LabelStyle::Secondary,
-                                format! {"`{name}` is redefined here"},
-                                span,
-                            )
-                        }));
-                        subs
-                    },
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
                     notes: vec![],
                     error_code,
                 }
@@ -604,7 +590,7 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     .name
                     .unwrap()
                     .data(db);
-                let mut spans = idxs.iter().map(|i| {
+                let spans = idxs.iter().map(|i| {
                     enum_
                         .lazy_span()
                         .variants()
@@ -614,21 +600,35 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message,
-                    sub_diagnostics: {
-                        let mut subs = vec![SubDiagnostic::new(
-                            LabelStyle::Primary,
-                            format!("`{name}` is defined here"),
-                            spans.next().unwrap(),
-                        )];
-                        subs.extend(spans.map(|span| {
-                            SubDiagnostic::new(
-                                LabelStyle::Secondary,
-                                format! {"`{name}` is redefined here"},
-                                span,
-                            )
-                        }));
-                        subs
-                    },
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::DuplicateGenericParamName(adt, idxs) => {
+                let message = if let Some(name) = adt.name(db) {
+                    format!(
+                        "duplicate generic parameter name in {} `{}`",
+                        adt.kind_name(),
+                        name.data(db)
+                    )
+                } else {
+                    format!(
+                        "duplicate generic parameter name in {} definition",
+                        adt.kind_name()
+                    )
+                };
+
+                let gen = adt.generic_owner().unwrap();
+                let name = gen.params(db).data(db)[0].name().unwrap().data(db);
+                let spans = idxs
+                    .iter()
+                    .map(|i| gen.params_span().param(*i as usize).resolve(db));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
                     notes: vec![],
                     error_code,
                 }
@@ -734,6 +734,26 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
             },
         }
     }
+}
+
+fn duplicate_name_subdiags<I>(name: &str, spans: I) -> Vec<SubDiagnostic>
+where
+    I: Iterator<Item = Option<Span>>,
+{
+    let mut spans = spans;
+    let mut subs = vec![SubDiagnostic::new(
+        LabelStyle::Primary,
+        format!("`{}` is defined here", name),
+        spans.next().unwrap(),
+    )];
+    subs.extend(spans.map(|span| {
+        SubDiagnostic::new(
+            LabelStyle::Secondary,
+            format!("`{}` is redefined here", name),
+            span,
+        )
+    }));
+    subs
 }
 
 impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {

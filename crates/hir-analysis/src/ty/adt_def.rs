@@ -84,7 +84,7 @@ pub struct AdtDef<'db> {
 }
 
 impl<'db> AdtDef<'db> {
-    pub(crate) fn name(self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
+    pub(crate) fn name(self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
         self.adt_ref(db).name(db)
     }
 
@@ -234,14 +234,13 @@ impl<'db> AdtRef<'db> {
         }
     }
 
-    pub fn name(self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
+    pub fn name(self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
         match self {
             AdtRef::Enum(e) => e.name(db),
             AdtRef::Struct(s) => s.name(db),
             AdtRef::Contract(c) => c.name(db),
         }
         .to_opt()
-        .unwrap_or_else(|| IdentId::new(db, "<unknown>".to_string()))
     }
 
     pub fn kind_name(self) -> &'static str {

@@ -1,4 +1,5 @@
 use super::{
+    adt_def::AdtRef,
     def_analysis::AdtCycleMember,
     func_def::FuncDef,
     trait_def::{TraitDef, TraitInstId},
@@ -103,6 +104,8 @@ pub enum TyLowerDiag<'db> {
     },
     DuplicateFieldName(FieldParent<'db>, SmallVec<[u16; 4]>),
     DuplicateVariantName(Enum<'db>, SmallVec<[u16; 4]>),
+    DuplicateGenericParamName(AdtRef<'db>, SmallVec<[u16; 4]>),
+
     InvalidConstParamTy(DynLazySpan<'db>),
     RecursiveConstParamTy(DynLazySpan<'db>),
 
@@ -149,6 +152,7 @@ impl TyLowerDiag<'_> {
             Self::TooManyGenericArgs { .. } => 16,
             Self::DuplicateFieldName(..) => 17,
             Self::DuplicateVariantName(..) => 18,
+            Self::DuplicateGenericParamName(..) => 19,
         }
     }
 }

@@ -70,7 +70,7 @@ pub fn analyze_adt<'db>(
     db: &'db dyn HirAnalysisDb,
     adt_ref: AdtRef<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
-    let dupes = match adt_ref {
+    let mut dupes = match adt_ref {
         AdtRef::Struct(x) => check_duplicate_field_names(db, FieldParent::Struct(x)),
         AdtRef::Contract(x) => check_duplicate_field_names(db, FieldParent::Contract(x)),
         AdtRef::Enum(enum_) => {
@@ -87,6 +87,13 @@ pub fn analyze_adt<'db>(
             dupes
         }
     };
+
+    if let Some(go) = adt_ref.generic_owner() {
+        dupes.extend(check_duplicate_names(
+            go.params(db).data(db).iter().map(|p| p.name().to_opt()),
+            |idxs| TyLowerDiag::DuplicateGenericParamName(adt_ref, idxs).into(),
+        ))
+    }
 
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
     let mut diags = analyzer.analyze();

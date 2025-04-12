@@ -987,7 +987,10 @@ impl<'db> TyBase<'db> {
             }
             .to_string(),
 
-            Self::Adt(adt) => adt.name(db).data(db).to_string(),
+            Self::Adt(adt) => adt
+                .name(db)
+                .map(|i| i.data(db).to_string())
+                .unwrap_or_else(|| "<unknown>".to_string()),
 
             Self::Func(func) => format!("fn {}", func.name(db).data(db)),
         }
