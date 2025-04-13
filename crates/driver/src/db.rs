@@ -62,13 +62,13 @@ impl DriverDataBase {
     }
 }
 
-pub struct DiagnosticsCollection<'db>(Vec<Box<dyn DiagnosticVoucher<'db> + 'db>>);
-impl<'db> DiagnosticsCollection<'db> {
+pub struct DiagnosticsCollection<'db>(Vec<Box<dyn DiagnosticVoucher + 'db>>);
+impl DiagnosticsCollection<'_> {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    pub fn emit(&self, db: &'db DriverDataBase) {
+    pub fn emit(&self, db: &DriverDataBase) {
         let writer = BufferWriter::stderr(ColorChoice::Auto);
         let mut buffer = writer.buffer();
         let config = term::Config::default();
@@ -81,7 +81,7 @@ impl<'db> DiagnosticsCollection<'db> {
     }
 
     /// Format the accumulated diagnostics to a string.
-    pub fn format_diags(&self, db: &'db DriverDataBase) -> String {
+    pub fn format_diags(&self, db: &DriverDataBase) -> String {
         let writer = BufferWriter::stderr(ColorChoice::Never);
         let mut buffer = writer.buffer();
         let config = term::Config::default();
@@ -93,8 +93,8 @@ impl<'db> DiagnosticsCollection<'db> {
         std::str::from_utf8(buffer.as_slice()).unwrap().to_string()
     }
 
-    fn finalize(&self, db: &'db DriverDataBase) -> Vec<CompleteDiagnostic> {
-        let mut diags: Vec<_> = self.0.iter().map(|d| d.to_complete(db)).collect();
+    fn finalize(&self, db: &DriverDataBase) -> Vec<CompleteDiagnostic> {
+        let mut diags: Vec<_> = self.0.iter().map(|d| d.as_ref().to_complete(db)).collect();
         diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
             std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
             ord => ord,

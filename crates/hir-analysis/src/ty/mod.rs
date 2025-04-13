@@ -46,7 +46,7 @@ impl ModuleAnalysisPass for AdtDefAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let adts = top_mod
             .all_structs(db)
             .iter()
@@ -80,7 +80,7 @@ impl ModuleAnalysisPass for DefConflictAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let graph = top_mod.scope_graph(db);
 
         walk(db, graph, top_mod.scope())
@@ -147,7 +147,7 @@ impl ModuleAnalysisPass for BodyAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         top_mod
             .all_funcs(db)
             .iter()
@@ -165,7 +165,7 @@ impl ModuleAnalysisPass for TraitAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let mut diags = vec![];
         let mut cycle_participants = FxHashSet::<TraitDef<'db>>::default();
 
@@ -190,7 +190,7 @@ impl ModuleAnalysisPass for ImplAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         top_mod
             .all_impls(db)
             .iter()
@@ -208,7 +208,7 @@ impl ModuleAnalysisPass for ImplTraitAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         top_mod
             .all_impl_traits(db)
             .iter()
@@ -226,7 +226,7 @@ impl ModuleAnalysisPass for FuncAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         top_mod
             .all_funcs(db)
             .iter()
@@ -253,7 +253,7 @@ impl ModuleAnalysisPass for TypeAliasAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let mut diags = vec![];
         let mut cycle_participants = FxHashSet::<TypeAlias>::default();
 

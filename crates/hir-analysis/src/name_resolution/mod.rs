@@ -48,7 +48,7 @@ impl ModuleAnalysisPass for ImportAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let ingot = top_mod.ingot(db);
         resolve_imports(db, ingot)
             .0
@@ -77,7 +77,7 @@ impl ModuleAnalysisPass for PathAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let mut visitor = EarlyPathVisitor::new(db);
         let mut ctxt = VisitorCtxt::with_item(db, top_mod.into());
         visitor.visit_item(&mut ctxt, top_mod.into());

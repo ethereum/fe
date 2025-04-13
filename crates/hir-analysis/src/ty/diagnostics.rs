@@ -28,7 +28,7 @@ pub enum FuncBodyDiag<'db> {
 }
 
 impl<'db> FuncBodyDiag<'db> {
-    pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher<'db> + 'db> {
+    pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher + 'db> {
         match self {
             Self::Ty(diag) => diag.to_voucher(),
             Self::Body(diag) => Box::new(diag.clone()) as _,
@@ -46,7 +46,7 @@ pub enum TyDiagCollection<'db> {
 }
 
 impl<'db> TyDiagCollection<'db> {
-    pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher<'db> + 'db> {
+    pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher + 'db> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
             TyDiagCollection::Satisfiability(diag) => Box::new(diag) as _,

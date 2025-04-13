@@ -12,7 +12,7 @@ pub trait ModuleAnalysisPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>>;
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>>;
 }
 
 #[derive(Default)]
@@ -33,7 +33,7 @@ impl AnalysisPassManager {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let mut diags = vec![];
         for pass in self.module_passes.iter_mut() {
             diags.extend(pass.run_on_module(db, top_mod));
@@ -45,7 +45,7 @@ impl AnalysisPassManager {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         tree: &'db ModuleTree<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
         let mut diags = vec![];
         for module in tree.all_modules() {
             for pass in self.module_passes.iter_mut() {
@@ -64,7 +64,7 @@ impl ModuleAnalysisPass for ParsingPass {
         &mut self,
         db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
+    ) -> Vec<Box<dyn DiagnosticVoucher>> {
         parse_file_impl::accumulated::<ParserError>(db, top_mod)
             .into_iter()
             .map(|d| Box::new(d.clone()) as _)

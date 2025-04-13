@@ -37,20 +37,14 @@ use itertools::Itertools;
 ///
 /// To obtain a span from HIR nodes in a lazy manner, it's recommended to use
 /// `[LazySpan]`(crate::span::LazySpan) and types that implement `LazySpan`.
-pub trait DiagnosticVoucher<'db>: Send {
+pub trait DiagnosticVoucher: Send + Sync {
     /// Makes a [`CompleteDiagnostic`].
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic;
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic;
 }
 
-impl DiagnosticVoucher<'_> for CompleteDiagnostic {
+impl DiagnosticVoucher for CompleteDiagnostic {
     fn to_complete(&self, _db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         self.clone()
-    }
-}
-
-impl<'db> DiagnosticVoucher<'db> for Box<dyn DiagnosticVoucher<'db> + 'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
-        self.as_ref().to_complete(db)
     }
 }
 
@@ -66,8 +60,8 @@ impl<T> SpannedHirAnalysisDb for T where T: HirAnalysisDb + SpannedHirDb {}
 // `ParseError` has span information, but this is not a problem because the
 // parsing procedure itself depends on the file content, and thus span
 // information.
-impl<'db> DiagnosticVoucher<'db> for ParserError {
-    fn to_complete(&self, _db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for ParserError {
+    fn to_complete(&self, _db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::Parse, 1);
         let span = Span::new(self.file, self.error.range(), SpanKind::Original);
         CompleteDiagnostic::new(
@@ -88,8 +82,8 @@ pub trait LazyDiagnostic<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic;
 }
 
-impl<'db> DiagnosticVoucher<'db> for DefConflictError<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for DefConflictError<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let mut items = self.0.iter();
         let first = items.next().unwrap();
         let name = first.name(db).unwrap().data(db);
@@ -117,8 +111,8 @@ impl<'db> DiagnosticVoucher<'db> for DefConflictError<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for FuncBodyDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for FuncBodyDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         match self {
             Self::Ty(diag) => diag.to_complete(db),
             Self::Body(diag) => diag.to_complete(db),
@@ -127,8 +121,8 @@ impl<'db> DiagnosticVoucher<'db> for FuncBodyDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for TyDiagCollection<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for TyDiagCollection<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         match self {
             Self::Ty(diag) => diag.to_complete(db),
             Self::Satisfiability(diag) => diag.to_complete(db),
@@ -138,8 +132,8 @@ impl<'db> DiagnosticVoucher<'db> for TyDiagCollection<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for NameResDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::NameResolution, self.local_code());
         let severity = Severity::Error;
         match self {
@@ -333,8 +327,8 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for TyLowerDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code());
         match self {
             Self::ExpectedStarKind(span) => {
@@ -756,8 +750,8 @@ where
     subs
 }
 
-impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for BodyDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TyCheck, self.local_code());
         let severity = Severity::Error;
 
@@ -1620,8 +1614,8 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for TraitLowerDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code =
             GlobalErrorCode::new(DiagnosticPass::ImplTraitDefinition, self.local_code());
         match self {
@@ -1685,8 +1679,8 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for TraitConstraintDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code());
         let severity = Severity::Error;
         match self {
@@ -1829,8 +1823,8 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for ImplDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code());
         let severity = Severity::Error;
 
