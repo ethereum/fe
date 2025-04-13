@@ -17,6 +17,7 @@ paste.workspace = true
 rustc-hash.workspace = true
 salsa.workspace = true
 smallvec.workspace = true
+thin-vec = "0.2.14"
 
 common.workspace = true
 parser.workspace = true

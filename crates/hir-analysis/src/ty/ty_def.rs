@@ -1307,7 +1307,7 @@ pub(crate) fn decompose_ty_app<'db>(
 
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    pub struct TyFlags: u32 {
+    pub struct TyFlags: u8 {
         const HAS_INVALID =  0b0000_0001;
         const HAS_VAR = 0b0000_0010;
         const HAS_PARAM = 0b0000_0100;

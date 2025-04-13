@@ -866,6 +866,7 @@ dependencies = [
  "rustc-hash 2.1.1",
  "salsa",
  "smallvec 2.0.0-alpha.10",
+ "thin-vec",
 ]
 
 [[package]]

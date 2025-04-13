@@ -6,6 +6,7 @@ use parser::{
     ast::prelude::*, syntax_node::NodeOrToken, FeLang, SyntaxNode, SyntaxToken, TextRange,
 };
 use salsa::Update;
+use thin_vec::ThinVec;
 
 use super::{
     body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
@@ -43,7 +44,7 @@ pub(crate) enum LazyArg {
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Update)]
 pub(crate) struct SpanTransitionChain<'db> {
     pub(crate) root: ChainRoot<'db>,
-    pub(super) chain: Vec<LazyTransitionFn>,
+    pub(super) chain: ThinVec<LazyTransitionFn>,
 }
 
 impl<'db> SpanTransitionChain<'db> {
@@ -58,7 +59,7 @@ impl<'db> SpanTransitionChain<'db> {
     pub(super) fn new(root: impl Into<ChainRoot<'db>>) -> Self {
         Self {
             root: root.into(),
-            chain: Vec::new(),
+            chain: ThinVec::new(),
         }
     }
 

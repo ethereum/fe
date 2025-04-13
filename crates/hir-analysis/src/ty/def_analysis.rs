@@ -652,8 +652,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
                 TyLowerDiag::InconsistentKindBound {
                     span: ctxt.span().unwrap().into(),
                     ty,
-                    old: former_kind.clone(),
-                    new: kind,
+                    bound: kind,
                 }
                 .into(),
             );

@@ -85,8 +85,7 @@ pub enum TyLowerDiag<'db> {
     InconsistentKindBound {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
-        old: Kind,
-        new: Kind,
+        bound: Kind,
     },
 
     KindBoundNotAllowed(DynLazySpan<'db>),

@@ -473,12 +473,12 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::InconsistentKindBound { span, ty, old, new } => {
+            Self::InconsistentKindBound { span, ty, bound } => {
                 let msg = format!(
                     "`{}` is already declared with `{}` kind, but found `{}` kind here",
                     ty.pretty_print(db),
-                    old,
-                    new
+                    ty.kind(db),
+                    bound
                 );
 
                 CompleteDiagnostic {
