@@ -41,30 +41,19 @@ pub fn resolve_query<'db>(
 
 /// Performs import resolution analysis. This pass only checks correctness of
 /// the imports and doesn't emit other name resolutions errors.
-pub struct ImportAnalysisPass<'db> {
-    db: &'db dyn HirAnalysisDb,
-}
+pub struct ImportAnalysisPass {}
 
-impl<'db> ImportAnalysisPass<'db> {
-    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
-        Self { db }
-    }
-
-    pub fn resolve_imports(&self, ingot: IngotId<'db>) -> &'db ResolvedImports<'db> {
-        &resolve_imports(self.db, ingot).1
-    }
-}
-
-impl<'db> ModuleAnalysisPass<'db> for ImportAnalysisPass<'db> {
-    fn run_on_module(
+impl ModuleAnalysisPass for ImportAnalysisPass {
+    fn run_on_module<'db>(
         &mut self,
+        db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let ingot = top_mod.ingot(self.db);
-        resolve_imports(self.db, ingot)
+        let ingot = top_mod.ingot(db);
+        resolve_imports(db, ingot)
             .0
             .iter()
-            .filter(|diag| diag.top_mod(self.db) == top_mod)
+            .filter(|diag| diag.top_mod(db) == top_mod)
             .map(|diag| Box::new(diag.clone()) as _)
             .collect()
     }
@@ -80,24 +69,17 @@ impl<'db> ModuleAnalysisPass<'db> for ImportAnalysisPass<'db> {
 /// NOTE: This pass doesn't check the conflict of item definitions or import
 /// errors. If you need to check them, please consider using
 /// [`ImportAnalysisPass`] or [`DefConflictAnalysisPass`].
-pub struct PathAnalysisPass<'db> {
-    db: &'db dyn HirAnalysisDb,
-}
-
-impl<'db> PathAnalysisPass<'db> {
-    pub fn new(db: &'db dyn HirAnalysisDb) -> Self {
-        Self { db }
-    }
-}
+pub struct PathAnalysisPass {}
 
 /// TODO: Remove this!!!!
-impl<'db> ModuleAnalysisPass<'db> for PathAnalysisPass<'db> {
-    fn run_on_module(
+impl ModuleAnalysisPass for PathAnalysisPass {
+    fn run_on_module<'db>(
         &mut self,
+        db: &'db dyn HirAnalysisDb,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let mut visitor = EarlyPathVisitor::new(self.db);
-        let mut ctxt = VisitorCtxt::with_item(self.db, top_mod.into());
+        let mut visitor = EarlyPathVisitor::new(db);
+        let mut ctxt = VisitorCtxt::with_item(db, top_mod.into());
         visitor.visit_item(&mut ctxt, top_mod.into());
 
         visitor
@@ -317,7 +299,7 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db> {
                     }
 
                     PathResErrorKind::InvalidPathSegment(res) => {
-                        // res.name_span(db)
+                        // res.name_span(self.db)
                         NameResDiag::InvalidPathSegment(span.into(), ident, res.name_span(self.db))
                     }
 
