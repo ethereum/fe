@@ -2,10 +2,11 @@ use std::path::{Path, PathBuf};
 
 use super::db::LanguageServerDatabase;
 use anyhow::Result;
+use camino::Utf8PathBuf;
 use common::{
-    indexmap::IndexSet,
+    indexmap::{IndexMap, IndexSet},
     ingot::builtin_core,
-    input::{IngotDependency, IngotKind, Version},
+    input::{IngotDependency, IngotFiles, IngotKind, Version},
     InputFile, InputIngot,
 };
 
@@ -92,7 +93,7 @@ impl LocalIngotContext {
             IngotKind::Local,
             Version::new(0, 0, 0),
             external_ingots,
-            IndexSet::default(),
+            IngotFiles::new(db, IndexMap::default()),
             None,
         );
         Some(Self {
@@ -109,13 +110,7 @@ impl IngotFileContext for LocalIngotContext {
         path: &str,
     ) -> Option<(InputIngot, InputFile)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
-        let input = self
-            .files
-            .get(path)
-            .copied()
-            .unwrap_or_else(|| InputFile::new(db, path.into(), String::new()));
-        self.files.insert(path, input);
-        ingot.set_files(db, self.files.values().copied().collect());
+        let input = self.ingot.files(db).touch(db, Utf8PathBuf::from(path));
         Some((ingot, input))
     }
 
@@ -146,12 +141,7 @@ impl IngotFileContext for LocalIngotContext {
 
         if let Some(_file) = file {
             let ingot = self.ingot;
-            let new_ingot_files = self
-                .files
-                .values()
-                .copied()
-                .collect::<IndexSet<InputFile>>();
-            ingot.set_files(db, new_ingot_files);
+            ingot.files(db).remove_file(db, &Utf8PathBuf::from(path));
             Ok(())
         } else {
             Err(anyhow::anyhow!("File not found in ingot"))
@@ -180,17 +170,8 @@ impl IngotFileContext for StandaloneIngotContext {
         path: &str,
     ) -> Option<(InputIngot, InputFile)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
-        let input_file = self
-            .files
-            .get(path)
-            .copied()
-            .unwrap_or_else(|| InputFile::new(db, path.into(), String::new()));
-        let mut files = IndexSet::new();
-        files.insert(input_file);
-        ingot.set_files(db, files);
-        ingot.set_root_file(db, input_file);
-        self.files.insert(path, input_file);
-        Some((ingot, input_file))
+        let input = ingot.files(db).touch(db, Utf8PathBuf::from(path));
+        Some((ingot, input))
     }
 
     fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
@@ -218,7 +199,7 @@ impl IngotFileContext for StandaloneIngotContext {
                         IngotKind::StandAlone,
                         Version::new(0, 0, 0),
                         external_ingots,
-                        IndexSet::default(),
+                        IngotFiles::new(db, IndexMap::default()),
                         None,
                     );
                     self.ingots.insert(path, ingot);
@@ -392,13 +373,13 @@ impl Workspace {
             }
         }
 
-        let ingot_context_files = ingot_context
-            .files
-            .values()
-            .copied()
-            .collect::<IndexSet<InputFile>>();
+        let ingot_context_files = IngotFiles::from_files(db, ingot_context.files.values().copied());
 
-        ingot_context.ingot.set_files(db, ingot_context_files);
+        // TODO: this will disappear when we move this functionality to common / driver
+        ingot_context
+            .ingot
+            .__set_files_impl(db)
+            .to(ingot_context_files);
 
         // find the root file, which is either at `./src/main.fe` or `./src/lib.fe`
         let root_file = ingot_context

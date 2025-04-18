@@ -2,7 +2,7 @@ use camino::Utf8PathBuf;
 
 use crate::{
     indexmap::IndexSet,
-    input::{IngotDependency, IngotKind, Version},
+    input::{IngotDependency, IngotFiles, IngotKind, Version},
     Core, InputDb, InputFile, InputIngot,
 };
 
@@ -119,7 +119,7 @@ impl<'a> IngotBuilder<'a> {
             .expect("Path must be relative or a child of the ingot base path");
 
         // Create a new InputFile with the relative path and contents
-        let file = InputFile::new(self.db, relative_path, contents.into());
+        let file = InputFile::__new_impl(self.db, relative_path, contents.into());
         self.files.insert(file);
         self
     }
@@ -137,7 +137,7 @@ impl<'a> IngotBuilder<'a> {
                 .expect("Path must be relative or a child of the ingot base path");
 
             // Create a new InputFile for each path-content pair
-            let file = InputFile::new(self.db, relative_path, contents.into());
+            let file = InputFile::__new_impl(self.db, relative_path, contents.into());
             self.files.insert(file);
         }
         self
@@ -206,7 +206,7 @@ impl<'a> IngotBuilder<'a> {
                 self.kind,
                 self.version,
                 dependencies,
-                files,
+                IngotFiles::from_files(self.db, files),
                 root_file,
             ),
             root_file.expect("Root file not found"),

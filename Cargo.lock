@@ -829,6 +829,7 @@ dependencies = [
  "fe-parser",
  "ordermap",
  "paste",
+ "patricia_tree",
  "rust-embed",
  "rustc-hash 2.1.1",
  "salsa",

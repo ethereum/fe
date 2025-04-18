@@ -42,10 +42,11 @@ impl<T> SpannedHirDb for T where T: HirDb {}
 mod test_db {
     use common::{
         indexmap::IndexSet,
-        input::{IngotKind, Version},
+        input::{IngotFiles, IngotKind, Version},
         InputFile, InputIngot,
     };
     use derive_more::TryIntoError;
+    use salsa::Setter;
 
     use crate::{
         hir_def::{scope_graph::ScopeGraph, ItemKind, TopLevelMod},
@@ -108,12 +109,13 @@ mod test_db {
                 kind,
                 version,
                 IndexSet::default(),
-                IndexSet::default(),
+                IngotFiles::default(self),
                 None,
             );
-            let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
+            // let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
+            let file = ingot.files(self).touch(self, "test_file.fe".into());
+            file.set_text(self).to(text.into());
             ingot.set_root_file(self, file);
-            ingot.set_files(self, [file].into_iter().collect());
             (ingot, file)
         }
     }

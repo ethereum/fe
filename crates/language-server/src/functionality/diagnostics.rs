@@ -88,7 +88,7 @@ impl LanguageServerDatabase {
             FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default(
             );
         let mut pass_manager = initialize_analysis_pass(self);
-        let ingot_files = ingot.files(self).iter();
+        let ingot_files = ingot.files_map(self).values();
 
         for file in ingot_files {
             // initialize an empty diagnostic list for this file
