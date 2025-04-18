@@ -1,8 +1,9 @@
+use bimap::BiMap;
 use camino::Utf8PathBuf;
 
 use crate::{
     indexmap::IndexSet,
-    input::{IngotDependency, IngotKind, Version},
+    input::{FileContents, IngotDependency, IngotFiles, IngotKind, Version},
     Core, InputDb, InputFile, InputIngot,
 };
 
@@ -15,7 +16,7 @@ pub struct IngotBuilder<'a> {
     kind: IngotKind,
     version: Version,
     dependencies: IndexSet<IngotDependency>,
-    files: IndexSet<InputFile>,
+    files: BiMap<Utf8PathBuf, FileContents>,
     entrypoint_path: Option<Utf8PathBuf>, // Path to main file, relative to ingot_path
     entrypoint_file: Option<InputFile>,
     core_ingot: Option<InputIngot>,
@@ -31,7 +32,7 @@ impl<'a> IngotBuilder<'a> {
             kind: IngotKind::Local,
             version: Version::new(0, 0, 0),
             dependencies: IndexSet::default(),
-            files: IndexSet::default(),
+            files: BiMap::default(),
             entrypoint_path: None,
             entrypoint_file: None,
             core_ingot: None,
@@ -94,14 +95,14 @@ impl<'a> IngotBuilder<'a> {
         self
     }
 
-    /// Add a file to the ingot
-    pub fn file(mut self, file: InputFile) -> Self {
-        self.files.insert(file);
-        self
-    }
+    // /// Add a file to the ingot
+    // pub fn file(mut self, file: InputFile) -> Self {
+    //     self.files.insert(file.0, file.1);
+    //     self
+    // }
 
     /// Add multiple files to the ingot
-    pub fn files(mut self, files: IndexSet<InputFile>) -> Self {
+    pub fn files(mut self, files: BiMap<Utf8PathBuf, FileContents>) -> Self {
         self.files = files;
         self
     }
@@ -118,9 +119,8 @@ impl<'a> IngotBuilder<'a> {
         let relative_path = ensure_relative_path(&self.ingot_path, input_path)
             .expect("Path must be relative or a child of the ingot base path");
 
-        // Create a new InputFile with the relative path and contents
-        let file = InputFile::new(self.db, relative_path, contents.into());
-        self.files.insert(file);
+        self.files
+            .insert(relative_path, FileContents::new(self.db, contents.into()));
         self
     }
 
@@ -136,9 +136,8 @@ impl<'a> IngotBuilder<'a> {
             let relative_path = ensure_relative_path(&self.ingot_path, input_path)
                 .expect("Path must be relative or a child of the ingot base path");
 
-            // Create a new InputFile for each path-content pair
-            let file = InputFile::new(self.db, relative_path, contents.into());
-            self.files.insert(file);
+            self.files
+                .insert(relative_path, FileContents::new(self.db, contents.into()));
         }
         self
     }
@@ -168,9 +167,9 @@ impl<'a> IngotBuilder<'a> {
     }
 
     /// Build the InputIngot
-    pub fn build(self) -> (InputIngot, InputFile) {
+    pub fn build(self) -> InputIngot {
         // For standalone ingots, ensure there's only one file and set it as the root file
-        let (root_file, files) = match self.kind {
+        let files = match self.kind {
             IngotKind::StandAlone => {
                 if self.files.len() != 1 {
                     panic!(
@@ -179,17 +178,11 @@ impl<'a> IngotBuilder<'a> {
                     );
                 }
                 // Use the single file as the root file
-                let single_file = self.files.iter().next().cloned().unwrap();
-                (Some(single_file), self.files)
+                self.files
             }
             _ => {
                 // For other non-standalone ingots, use the specified root file or find it by path
-                let root_file = self.entrypoint_file.or_else(|| {
-                    self.entrypoint_path
-                        .as_ref()
-                        .and_then(|path| find_root_file(self.db, &self.files, path.as_str()))
-                });
-                (root_file, self.files)
+                self.files
             }
         };
 
@@ -199,17 +192,13 @@ impl<'a> IngotBuilder<'a> {
             dependencies.insert(IngotDependency::new("core", core));
         }
 
-        (
-            InputIngot::new(
-                self.db,
-                self.ingot_path,
-                self.kind,
-                self.version,
-                dependencies,
-                files,
-                root_file,
-            ),
-            root_file.expect("Root file not found"),
+        InputIngot::new(
+            self.db,
+            self.ingot_path,
+            self.kind,
+            self.version,
+            dependencies,
+            IngotFiles::new(self.db, files),
         )
     }
 }
@@ -237,27 +226,6 @@ fn ensure_relative_path(
     }
 }
 
-/// Find the root file in a collection of input files matching the given path.
-/// Returns None if files is empty or no matching file is found.
-fn find_root_file(
-    db: &dyn InputDb,
-    files: &IndexSet<InputFile>,
-    entrypoint_path: &str,
-) -> Option<InputFile> {
-    if files.is_empty() {
-        return None;
-    }
-
-    files
-        .iter()
-        .find(|input_file| {
-            let input_path = input_file.path(db);
-            // Simple string comparison is more reliable across platforms
-            input_path == entrypoint_path
-        })
-        .cloned()
-}
-
 pub fn builtin_core(db: &dyn InputDb) -> InputIngot {
     // Use a virtual path that doesn't depend on the filesystem
     let ingot_path = Utf8PathBuf::from("/virtual/core");
@@ -277,5 +245,5 @@ pub fn builtin_core(db: &dyn InputDb) -> InputIngot {
             })
         });
 
-    builder.files_from_contents(files).build().0
+    builder.files_from_contents(files).build()
 }

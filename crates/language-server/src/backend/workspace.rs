@@ -5,7 +5,7 @@ use anyhow::Result;
 use common::{
     indexmap::IndexSet,
     ingot::builtin_core,
-    input::{IngotDependency, IngotKind, Version},
+    input::{IngotDependency, IngotFiles, IngotKind, Version},
     InputFile, InputIngot,
 };
 
@@ -92,8 +92,7 @@ impl LocalIngotContext {
             IngotKind::Local,
             Version::new(0, 0, 0),
             external_ingots,
-            IndexSet::default(),
-            None,
+            IngotFiles::default(db),
         );
         Some(Self {
             ingot,
@@ -218,8 +217,7 @@ impl IngotFileContext for StandaloneIngotContext {
                         IngotKind::StandAlone,
                         Version::new(0, 0, 0),
                         external_ingots,
-                        IndexSet::default(),
-                        None,
+                        IngotFiles::default(db),
                     );
                     self.ingots.insert(path, ingot);
                     Some(ingot)
@@ -386,7 +384,7 @@ impl Workspace {
             if !previous_ingot_context_file_keys.contains(&path) {
                 if let Some((_ingot, file)) = ingot_context.touch_input_for_file_path(db, &path) {
                     if let Ok(contents) = std::fs::read_to_string(&path) {
-                        file.set_text(db).to(contents);
+                        file.contents(db).set_text(db).to(contents);
                     }
                 }
             }
@@ -398,7 +396,7 @@ impl Workspace {
             .copied()
             .collect::<IndexSet<InputFile>>();
 
-        ingot_context.ingot.set_files(db, ingot_context_files);
+        ingot_context.ingot.set_files(db).to(ingot_context_files);
 
         // find the root file, which is either at `./src/main.fe` or `./src/lib.fe`
         let root_file = ingot_context
@@ -408,11 +406,6 @@ impl Workspace {
                 file.path(db).ends_with("src/main.fe") || file.path(db).ends_with("src/lib.fe")
             })
             .copied();
-
-        if let Some(root_file) = root_file {
-            info!("Setting root file for ingot: {:?}", root_file.path(db));
-            ingot_context.ingot.set_root_file(db, root_file);
-        }
     }
 }
 
@@ -706,7 +699,7 @@ mod tests {
                 .touch_input_for_file_path(&mut db, &file)
                 .unwrap();
 
-            assert!(*file.text(&db) == contents);
+            assert!(*file.contents(&db).text(&db) == contents);
         }
     }
 

@@ -13,8 +13,8 @@ fn run_parser(fixture: Fixture<&str>) {
     let db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
-    let top_mod = db.top_mod(ingot, file);
+    let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
+    let top_mod = db.top_mod_for_path(ingot, path).unwrap();
 
     let diags = db.run_on_file_with_pass_manager(top_mod, init_parser_pass);
     let diags = diags.format_diags(&db);

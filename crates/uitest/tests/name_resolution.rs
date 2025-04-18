@@ -13,10 +13,10 @@ fn run_name_resolution(fixture: Fixture<&str>) {
     let path = Utf8Path::new(fixture.path());
 
     let core = builtin_core(&db);
-    let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string())
+    let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string())
         .with_core_ingot(core)
         .build();
-    let top_mod = db.top_mod(ingot, file);
+    let top_mod = db.top_mod_for_path(ingot, path).unwrap();
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);

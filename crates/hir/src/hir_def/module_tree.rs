@@ -1,5 +1,5 @@
-use camino::Utf8Path;
-use common::{indexmap::IndexMap, InputFile, InputIngot};
+use camino::{Utf8Path, Utf8PathBuf};
+use common::{indexmap::IndexMap, input::ingot_root_file, InputFile, InputIngot};
 use cranelift_entity::{entity_impl, EntityRef, PrimaryMap};
 use salsa::Update;
 
@@ -200,8 +200,11 @@ impl<'db> ModuleTreeBuilder<'db> {
         self.set_modules();
         self.build_tree();
 
-        let root_mod =
-            map_file_to_mod_impl(self.db, self.ingot, self.input_ingot.root_file(self.db));
+        let root_mod = map_file_to_mod_impl(
+            self.db,
+            self.ingot,
+            ingot_root_file(self.db, self.ingot.inner(self.db)),
+        );
         let root = self.mod_map[&root_mod];
         ModuleTree {
             root,
@@ -212,28 +215,34 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn set_modules(&mut self) {
-        for &file in self.input_ingot.files(self.db) {
+        for file in self.input_ingot.input_files(self.db) {
+            // Get the path reference directly, which has the 'db lifetime.
+            let path: &'db Utf8Path = file.path(self.db);
             let top_mod = map_file_to_mod_impl(self.db, self.ingot, file);
 
             let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
-            self.path_map.insert(file.path(self.db), module_id);
+            // Insert the path reference directly into the map.
+            self.path_map.insert(path, module_id);
             self.mod_map.insert(top_mod, module_id);
         }
     }
 
     fn build_tree(&mut self) {
-        let root = self.input_ingot.root_file(self.db);
+        let db = self.db.clone();
+        let root = ingot_root_file(self.db, self.ingot.inner(self.db)).clone();
+        let input_ingot = self.ingot.inner(db).clone();
+        let input_files = input_ingot.input_files(self.db);
 
-        for &child in self.input_ingot.files(self.db) {
+        for child in input_files {
             // Ignore the root file because it has no parent.
             if child == root {
                 continue;
             }
 
             let root_path = root.path(self.db);
-            let root_mod = map_file_to_mod_impl(self.db, self.ingot, root);
+            let root_mod = map_file_to_mod_impl(self.db, self.ingot, root.clone());
             let child_path = child.path(self.db);
-            let child_mod = map_file_to_mod_impl(self.db, self.ingot, child);
+            let child_mod = map_file_to_mod_impl(self.db, self.ingot, child.clone());
 
             // If the file is in the same directory as the root file, the file is a direct
             // child of the root.
@@ -275,14 +284,35 @@ impl<'db> ModuleTreeBuilder<'db> {
 
 #[cfg(test)]
 mod tests {
-    use common::input::{IngotKind, Version};
+    use common::input::{IngotFiles, IngotKind, Version};
 
     use super::*;
     use crate::{lower, test_db::TestDb};
 
     #[test]
     fn module_tree() {
-        let mut db = TestDb::default();
+        let db = TestDb::default();
+
+        let local_root_path = Utf8PathBuf::from("src/lib.fe");
+        let mod1_path = Utf8PathBuf::from("src/mod1.fe");
+        let mod2_path = Utf8PathBuf::from("src/mod2.fe");
+        let foo_path = Utf8PathBuf::from("src/mod1/foo.fe");
+        let bar_path = Utf8PathBuf::from("src/mod2/bar.fe");
+        let baz_path = Utf8PathBuf::from("src/mod2/baz.fe");
+        let floating_path = Utf8PathBuf::from("src/mod3/floating.fe");
+
+        let ingot_files = IngotFiles::from_contents(
+            &db,
+            vec![
+                (local_root_path.clone(), ""),
+                (mod1_path.clone(), ""),
+                (mod2_path.clone(), ""),
+                (foo_path.clone(), ""),
+                (bar_path.clone(), ""),
+                (baz_path.clone(), ""),
+                (floating_path.clone(), ""),
+            ],
+        );
 
         let local_ingot = InputIngot::new(
             &db,
@@ -290,30 +320,18 @@ mod tests {
             IngotKind::Local,
             Version::new(0, 0, 1),
             Default::default(),
-            Default::default(),
-            None,
-        );
-        let local_root = InputFile::new(&db, "src/lib.fe".into(), "".into());
-        let mod1 = InputFile::new(&db, "src/mod1.fe".into(), "".into());
-        let mod2 = InputFile::new(&db, "src/mod2.fe".into(), "".into());
-        let foo = InputFile::new(&db, "src/mod1/foo.fe".into(), "".into());
-        let bar = InputFile::new(&db, "src/mod2/bar.fe".into(), "".into());
-        let baz = InputFile::new(&db, "src/mod2/baz.fe".into(), "".into());
-        let floating = InputFile::new(&db, "src/mod3/floating.fe".into(), "".into());
-        local_ingot.set_root_file(&mut db, local_root);
-        local_ingot.set_files(
-            &mut db,
-            [local_root, mod1, mod2, foo, bar, baz, floating]
-                .into_iter()
-                .collect(),
+            ingot_files,
+            // Default::default(),
+            // None,
         );
 
-        let local_root_mod = lower::map_file_to_mod(&db, local_ingot, local_root);
-        let mod1_mod = lower::map_file_to_mod(&db, local_ingot, mod1);
-        let mod2_mod = lower::map_file_to_mod(&db, local_ingot, mod2);
-        let foo_mod = lower::map_file_to_mod(&db, local_ingot, foo);
-        let bar_mod = lower::map_file_to_mod(&db, local_ingot, bar);
-        let baz_mod = lower::map_file_to_mod(&db, local_ingot, baz);
+        let local_root_mod =
+            lower::map_file_path_to_mod(&db, local_ingot, local_root_path).unwrap();
+        let mod1_mod = lower::map_file_path_to_mod(&db, local_ingot, mod1_path).unwrap();
+        let mod2_mod = lower::map_file_path_to_mod(&db, local_ingot, mod2_path).unwrap();
+        let foo_mod = lower::map_file_path_to_mod(&db, local_ingot, foo_path).unwrap();
+        let bar_mod = lower::map_file_path_to_mod(&db, local_ingot, bar_path).unwrap();
+        let baz_mod = lower::map_file_path_to_mod(&db, local_ingot, baz_path).unwrap();
 
         let local_tree = lower::module_tree(&db, local_ingot);
         let root_node = local_tree.root_data();

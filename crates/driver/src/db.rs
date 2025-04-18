@@ -1,4 +1,5 @@
 use crate::diagnostics::CsDbWrapper;
+use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
@@ -6,7 +7,7 @@ use codespan_reporting::term::{
 use common::{diagnostics::CompleteDiagnostic, InputFile, InputIngot};
 use hir::{
     hir_def::TopLevelMod,
-    lower::{map_file_to_mod, module_tree},
+    lower::{map_file_path_to_mod, map_file_to_mod, module_tree},
 };
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
@@ -67,6 +68,14 @@ impl DriverDataBase {
 
     pub fn top_mod(&self, ingot: InputIngot, input: InputFile) -> TopLevelMod {
         map_file_to_mod(self, ingot, input)
+    }
+
+    pub fn top_mod_for_path<P: Into<Utf8PathBuf>>(
+        &self,
+        ingot: InputIngot,
+        path: P,
+    ) -> Option<TopLevelMod> {
+        map_file_path_to_mod(self, ingot, path.into())
     }
 }
 

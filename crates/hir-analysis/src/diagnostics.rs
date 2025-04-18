@@ -69,7 +69,7 @@ impl<T> SpannedHirAnalysisDb for T where T: HirAnalysisDb + SpannedHirDb {}
 impl<'db> DiagnosticVoucher<'db> for ParserError {
     fn to_complete(&self, _db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::Parse, 1);
-        let span = Span::new(self.file, self.error.range(), SpanKind::Original);
+        let span = Span::new(self.file.clone(), self.error.range(), SpanKind::Original);
         CompleteDiagnostic::new(
             Severity::Error,
             self.error.msg(),

@@ -25,7 +25,7 @@ fn corelib_standalone(fixture: Fixture<&str>) {
     let db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
     let core = builtin_core(&db);
-    let (ingot, _) = IngotBuilder::standalone(&db, path, fixture.content().to_string())
+    let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string())
         .with_core_ingot(core)
         .build();
 

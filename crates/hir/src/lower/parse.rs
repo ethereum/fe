@@ -7,11 +7,17 @@ use crate::{hir_def::TopLevelMod, HirDb};
 #[salsa::tracked]
 pub fn parse_file_impl<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> GreenNode {
     let file = top_mod.file(db);
-    let text = file.text(db);
+    let text = file.contents(db).text(db);
     let (node, parse_errors) = parser::parse_source_file(text);
 
     for error in parse_errors {
-        ParseErrorAccumulator::push(db, ParserError { file, error });
+        ParseErrorAccumulator::push(
+            db,
+            ParserError {
+                file: top_mod.file(db),
+                error,
+            },
+        );
     }
     node
 }

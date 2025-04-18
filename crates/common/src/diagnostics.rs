@@ -4,6 +4,8 @@ use parser::TextRange;
 
 use crate::InputFile;
 
+// use crate::InputFile;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompleteDiagnostic {
     pub severity: Severity,

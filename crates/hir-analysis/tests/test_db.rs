@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use camino::Utf8PathBuf;
 use codespan_reporting::{
     diagnostic::{Diagnostic, Label},
     files::SimpleFiles,
@@ -11,7 +12,7 @@ use codespan_reporting::{
 use common::{
     diagnostics::Span,
     indexmap::{IndexMap, IndexSet},
-    input::{IngotKind, Version},
+    input::{IngotFiles, IngotKind, Version},
     InputFile, InputIngot,
 };
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
@@ -49,18 +50,18 @@ impl HirAnalysisTestDb {
     pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> (InputIngot, InputFile) {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
+        let ingot_files = IngotFiles::from_contents(self, vec![(file_name, text)]);
         let ingot = InputIngot::new(
             self,
             file_name.into(),
             kind,
             version,
             IndexSet::default(),
-            IndexSet::default(),
-            None,
+            ingot_files,
         );
-        let root = InputFile::new(self, file_name.into(), text.to_string());
-        ingot.set_root_file(self, root);
-        ingot.set_files(self, [root].into_iter().collect());
+        let root = ingot
+            .input_file(self, Utf8PathBuf::from(file_name))
+            .unwrap();
         (ingot, root)
     }
 
@@ -108,7 +109,7 @@ impl HirAnalysisTestDb {
     ) -> TopLevelMod<'db> {
         let top_mod = lower::map_file_to_mod(self, ingot, input_file);
         let path = input_file.path(self);
-        let text = input_file.text(self);
+        let text = input_file.contents(self).text(self);
         prop_formatter.register_top_mod(path.as_str(), text, top_mod);
         top_mod
     }

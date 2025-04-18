@@ -65,7 +65,7 @@ fn convert_severity(severity: Severity) -> cs_diag::Severity {
 
 #[salsa::tracked(return_ref)]
 pub fn file_line_starts(db: &dyn SpannedHirAnalysisDb, file: InputFile) -> Vec<usize> {
-    cs::files::line_starts(file.text(db)).collect()
+    cs::files::line_starts(file.contents(db).text(db)).collect()
 }
 
 pub struct CsDbWrapper<'a>(pub &'a dyn SpannedHirAnalysisDb);
@@ -76,11 +76,11 @@ impl<'db> cs_files::Files<'db> for CsDbWrapper<'db> {
     type Source = &'db str;
 
     fn name(&'db self, file_id: Self::FileId) -> Result<Self::Name, cs_files::Error> {
-        Ok(file_id.path(self.0).as_path())
+        Ok(file_id.path(self.0))
     }
 
     fn source(&'db self, file_id: Self::FileId) -> Result<Self::Source, cs_files::Error> {
-        Ok(file_id.text(self.0))
+        Ok(file_id.contents(self.0).text(self.0))
     }
 
     fn line_index(
@@ -109,7 +109,7 @@ impl<'db> cs_files::Files<'db> for CsDbWrapper<'db> {
             })?;
 
         let end = if line_index == line_starts.len() - 1 {
-            file_id.text(self.0).len()
+            file_id.contents(self.0).text(self.0).len()
         } else {
             *line_starts
                 .get(line_index + 1)

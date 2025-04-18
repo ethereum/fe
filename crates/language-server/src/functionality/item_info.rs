@@ -47,13 +47,13 @@ pub fn get_item_definition_markdown(db: &dyn SpannedHirDb, item: ItemKind) -> Op
     let name_span = item.name_span()?.resolve(db);
     if let Some(name_span) = name_span {
         let mut name_line_start = name_span.range.start().into();
-        let file_text = span.file.text(db).as_str();
+        let file_text = span.file.contents(db).text(db).as_str();
         while name_line_start > 0 && file_text.chars().nth(name_line_start - 1).unwrap() != '\n' {
             name_line_start -= 1;
         }
         start = name_line_start;
     }
 
-    let item_definition = span.file.text(db).as_str()[start..end].to_string();
+    let item_definition = span.file.contents(db).text(db).as_str()[start..end].to_string();
     Some(format!("```fe\n{}\n```", item_definition.trim()))
 }

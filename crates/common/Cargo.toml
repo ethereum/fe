@@ -19,3 +19,4 @@ rust-embed = { version = "8.5.0", features = ["debug-embed"] }
 parser.workspace = true
 ordermap = "0.5.5"
 rustc-hash.workspace = true
+bimap = "0.6.3"

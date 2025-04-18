@@ -4,7 +4,7 @@ use camino::Utf8Path;
 use codespan_reporting as cs;
 use common::{diagnostics::CompleteDiagnostic, InputFile, InputIngot};
 use cs::files as cs_files;
-use hir::lower::map_file_to_mod;
+use hir::lower::{map_file_path_to_mod, map_file_to_mod};
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
@@ -23,7 +23,7 @@ use crate::{
 
 #[salsa::tracked(return_ref)]
 pub fn file_line_starts(db: &dyn LanguageServerDb, file: InputFile) -> Vec<usize> {
-    cs::files::line_starts(file.text(db)).collect()
+    cs::files::line_starts(file.contents(db).text(db)).collect()
 }
 
 impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
@@ -32,11 +32,11 @@ impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
     type Source = &'a str;
 
     fn name(&'a self, file_id: Self::FileId) -> Result<Self::Name, cs_files::Error> {
-        Ok(file_id.path(self).as_path())
+        Ok(file_id.path(self))
     }
 
     fn source(&'a self, file_id: Self::FileId) -> Result<Self::Source, cs_files::Error> {
-        Ok(file_id.text(self))
+        Ok(file_id.contents(self).text(self))
     }
 
     fn line_index(
@@ -65,7 +65,7 @@ impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
             })?;
 
         let end = if line_index == line_starts.len() - 1 {
-            file_id.text(self).len()
+            file_id.contents(self).text(self).len()
         } else {
             *line_starts
                 .get(line_index + 1)
@@ -88,7 +88,7 @@ impl LanguageServerDatabase {
             FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default(
             );
         let mut pass_manager = initialize_analysis_pass(self);
-        let ingot_files = ingot.files(self).iter();
+        let ingot_files = ingot.input_files(self);
 
         for file in ingot_files {
             // initialize an empty diagnostic list for this file
@@ -100,7 +100,7 @@ impl LanguageServerDatabase {
                 )
                 .or_default();
 
-            let top_mod = map_file_to_mod(self, ingot, *file);
+            let top_mod = map_file_path_to_mod(self, ingot, file.path(self).into()).unwrap();
             let diagnostics = pass_manager.run_on_module(top_mod);
             let mut finalized_diags: Vec<CompleteDiagnostic> = diagnostics
                 .iter()

@@ -17,7 +17,7 @@ pub fn hover_helper(
     params: async_lsp::lsp_types::HoverParams,
 ) -> Result<Option<Hover>, Error> {
     info!("handling hover");
-    let file_text = file.text(db);
+    let file_text = file.contents(db).text(db);
 
     let cursor: Cursor = to_offset_from_position(
         params.text_document_position_params.position,

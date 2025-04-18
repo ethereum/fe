@@ -50,7 +50,6 @@ pub fn run(opts: &Options) {
                             .entrypoint(root)
                             .files_from_contents(files)
                             .build()
-                            .0
                     }
                     Ok(Ingot::SingleFile { .. }) => {
                         eprintln!("standalone core ingot not supported");
@@ -101,13 +100,11 @@ pub fn run(opts: &Options) {
                         .entrypoint(root)
                         .files_from_contents(files)
                         .build()
-                        .0
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
                     IngotBuilder::standalone(&db, path, content)
                         .with_core_ingot(core_ingot)
                         .build()
-                        .0
                 }
                 Ok(_) => {
                     eprintln!("an error was encountered while resolving `{path}`");

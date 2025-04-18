@@ -273,7 +273,9 @@ mod tests {
             .unwrap();
         assert_eq!(ingot.kind(&db), IngotKind::Local);
 
-        file.set_text(&mut db).to((*fixture.content()).to_string());
+        file.contents(&db)
+            .set_text(&mut db)
+            .to((*fixture.content()).to_string());
 
         // Introduce a new scope to limit the lifetime of `top_mod`
         {
@@ -298,7 +300,9 @@ mod tests {
         let (ingot, file) = workspace
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
-        file.set_text(db).to((*fixture.content()).to_string());
+        file.contents(db)
+            .set_text(db)
+            .to((*fixture.content()).to_string());
         let top_mod = map_file_to_mod(db, ingot, file);
 
         let snapshot = make_goto_cursors_snapshot(db, &fixture, top_mod);
@@ -316,7 +320,9 @@ mod tests {
         let (ingot, file) = workspace
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
-        file.set_text(db).to((*fixture.content()).to_string());
+        file.contents(db)
+            .set_text(db)
+            .to((*fixture.content()).to_string());
         let top_mod = map_file_to_mod(db, ingot, file);
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);

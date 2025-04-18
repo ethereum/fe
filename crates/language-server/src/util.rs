@@ -31,7 +31,7 @@ pub fn to_lsp_range_from_span(
     span: Span,
     db: &dyn InputDb,
 ) -> Result<async_lsp::lsp_types::Range, Box<dyn std::error::Error>> {
-    let text = span.file.text(db);
+    let text = span.file.contents(db).text(db);
     let line_offsets = calculate_line_offsets(text);
     let start = span.range.start();
     let end = span.range.end();
@@ -145,7 +145,7 @@ fn to_lsp_location_from_span(
     ingot: InputIngot,
     span: Span,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
-    let uri = span.file.abs_path(db, ingot);
+    let uri = span.file.abs_path(db);
     let range = to_lsp_range_from_span(span, db)?;
     let uri = async_lsp::lsp_types::Url::from_file_path(uri)
         .map_err(|()| "Failed to convert path to URL")?;

@@ -12,8 +12,8 @@ fn run_ty_def(fixture: Fixture<&str>) {
     let db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
-    let top_mod = db.top_mod(ingot, file);
+    let ingot = IngotBuilder::standalone(&db, &path, fixture.content().to_string()).build();
+    let top_mod = db.top_mod_for_path(ingot, &path).unwrap();
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);
@@ -28,8 +28,8 @@ fn run_const_ty(fixture: Fixture<&str>) {
     let db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
-    let top_mod = db.top_mod(ingot, file);
+    let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
+    let top_mod = db.top_mod_for_path(ingot, path).unwrap();
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);
@@ -44,8 +44,8 @@ fn run_trait_bound(fixture: Fixture<&str>) {
     let db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
-    let top_mod = db.top_mod(ingot, file);
+    let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
+    let top_mod = db.top_mod_for_path(ingot, path).unwrap();
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);
@@ -60,8 +60,8 @@ fn run_trait_impl(fixture: Fixture<&str>) {
     let db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
-    let top_mod = db.top_mod(ingot, file);
+    let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
+    let top_mod = db.top_mod_for_path(ingot, path).unwrap();
 
     let diags = db.run_on_top_mod(top_mod);
     let diags = diags.format_diags(&db);

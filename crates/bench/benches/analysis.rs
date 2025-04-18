@@ -34,9 +34,12 @@ fn diagnostics(c: &mut Criterion) {
             let db = DriverDataBase::default();
             let core = builtin_core(&db);
             for (path, content) in &files {
-                let (ingot, file) = IngotBuilder::standalone(&db, path, content)
+                let ingot = IngotBuilder::standalone(&db, path.clone(), content)
                     .with_core_ingot(core)
                     .build();
+                let file = ingot
+                    .input_file(&db, path.clone())
+                    .expect("`InputFile` should exist");
                 let top_mod = db.top_mod(ingot, file);
 
                 db.run_on_top_mod(top_mod);

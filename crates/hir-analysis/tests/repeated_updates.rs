@@ -34,7 +34,7 @@ fn test_updated() {
         }
 
         {
-            file.set_text(&mut db).to(version.into());
+            file.contents(&db).set_text(&mut db).to(version.into());
         }
     }
 }

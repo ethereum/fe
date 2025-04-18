@@ -40,9 +40,10 @@ impl<T> SpannedHirDb for T where T: HirDb {}
 
 #[cfg(test)]
 mod test_db {
+    use camino::Utf8PathBuf;
     use common::{
         indexmap::IndexSet,
-        input::{IngotKind, Version},
+        input::{IngotFiles, IngotKind, Version},
         InputFile, InputIngot,
     };
     use derive_more::TryIntoError;
@@ -94,7 +95,7 @@ mod test_db {
         pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {
             let range = span.resolve(self).unwrap().range;
             let file = top_mod.file(self);
-            let text = file.text(self);
+            let text = file.contents(self).text(self);
             &text[range.start().into()..range.end().into()]
         }
 
@@ -102,18 +103,17 @@ mod test_db {
             let path = "hir_test";
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);
+            let file_path = Utf8PathBuf::from("test_file.fe");
+            let ingot_files = IngotFiles::from_contents(self, vec![(file_path.clone(), text)]);
             let ingot = InputIngot::new(
                 self,
                 path.into(),
                 kind,
                 version,
                 IndexSet::default(),
-                IndexSet::default(),
-                None,
+                ingot_files,
             );
-            let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
-            ingot.set_root_file(self, file);
-            ingot.set_files(self, [file].into_iter().collect());
+            let file = ingot.input_file(self, file_path).unwrap();
             (ingot, file)
         }
     }

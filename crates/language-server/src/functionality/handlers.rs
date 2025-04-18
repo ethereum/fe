@@ -54,7 +54,7 @@ impl Backend {
             .workspace
             .touch_input_for_file_path(&mut self.db, path)
             .unwrap();
-        file.set_text(&mut self.db).to(contents);
+        file.contents(&self.db).set_text(&mut self.db).to(contents);
     }
 }
 

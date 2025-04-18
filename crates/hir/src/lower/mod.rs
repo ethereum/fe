@@ -1,3 +1,4 @@
+use camino::Utf8PathBuf;
 use common::{InputFile, InputIngot};
 use num_bigint::BigUint;
 use num_traits::Num;
@@ -37,6 +38,15 @@ mod use_tree;
 pub fn map_file_to_mod(db: &dyn LowerHirDb, ingot: InputIngot, file: InputFile) -> TopLevelMod {
     let ingot = module_tree_impl(db, ingot).ingot;
     map_file_to_mod_impl(db, ingot, file)
+}
+
+pub fn map_file_path_to_mod<'db>(
+    db: &'db dyn LowerHirDb,
+    ingot: InputIngot,
+    path: Utf8PathBuf,
+) -> Option<TopLevelMod<'db>> {
+    let file = ingot.input_file(db, path);
+    file.map(|file| map_file_to_mod(db, ingot, file))
 }
 
 /// Returns the scope graph of the given top-level module.
