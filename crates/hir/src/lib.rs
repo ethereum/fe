@@ -110,12 +110,10 @@ mod test_db {
                 version,
                 IndexSet::default(),
                 IngotFiles::default(self),
-                None,
             );
             // let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
             let file = ingot.files(self).touch(self, "test_file.fe".into());
             file.set_text(self).to(text.into());
-            ingot.set_root_file(self, file);
             (ingot, file)
         }
     }

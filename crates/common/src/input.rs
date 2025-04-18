@@ -37,27 +37,58 @@ pub struct InputIngot {
     #[return_ref]
     #[set(__set_files_impl)]
     pub files: IngotFiles,
-
-    #[set(__set_root_file_impl)]
-    #[get(__get_root_file_impl)]
-    root_file: Option<InputFile>,
 }
 
+#[salsa::tracked]
 impl InputIngot {
-    /// Set the root file of the ingot.
-    /// The root file must be set before the ingot is used.
-    pub fn set_root_file(self, db: &mut dyn InputDb, file: InputFile) {
-        self.__set_root_file_impl(db).to(Some(file));
-    }
-
-    /// Returns the root file of the ingot.
-    /// Panics if the root file is not set.
-    pub fn root_file(&self, db: &dyn InputDb) -> InputFile {
-        self.__get_root_file_impl(db).unwrap()
-    }
-
     pub fn files_map<'db>(&self, db: &'db dyn InputDb) -> &'db IndexMap<Utf8PathBuf, InputFile> {
         self.files(db).map(db)
+    }
+
+    // This can be more sophisticated potentially
+    #[salsa::tracked]
+    pub fn file_kind(self, db: &dyn InputDb, file: InputFile) -> Option<IngotFileKind> {
+        let path = file.path(db);
+        if path.as_str() == "fe.toml" {
+            Some(IngotFileKind::Config)
+        } else if path.extension() == Some("fe") {
+            Some(IngotFileKind::Source)
+        } else {
+            None
+        }
+    }
+
+    #[salsa::tracked]
+    pub fn config_file(self, db: &dyn InputDb) -> Option<InputFile> {
+        let config_path = &Utf8PathBuf::from("fe.toml");
+
+        if let Some(file) = self.files(db).get_file(db, config_path) {
+            return Some(file);
+        }
+
+        None
+    }
+
+    #[salsa::tracked]
+    pub fn root_file(self, db: &dyn InputDb) -> InputFile {
+        match self.kind(db) {
+            IngotKind::StandAlone => {
+                // For standalone ingots, get the single file
+                let files_map = self.files_map(db);
+                assert!(
+                    files_map.len() == 1,
+                    "Standalone ingot must have exactly one file"
+                );
+                *files_map.values().next().unwrap()
+            }
+            _ => {
+                // For other ingots, use src/lib.fe
+                let lib_path = Utf8PathBuf::from("src/lib.fe");
+                self.files(db)
+                    .get_file(db, &lib_path)
+                    .expect("Missing src/lib.fe file in ingot")
+            }
+        }
     }
 }
 
@@ -79,7 +110,7 @@ impl IngotFiles {
     {
         let mut files_index = IndexMap::new();
         for file in files {
-            files_index.insert(file.path(db).clone(), file.clone());
+            files_index.insert(file.path(db).clone(), file);
         }
         Self::new(db, files_index)
     }
@@ -146,6 +177,15 @@ pub enum IngotKind {
 
     /// Core library ingot.
     Core,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum IngotFileKind {
+    /// A source file containing Fe code.
+    Source,
+
+    /// A configuration file for the ingot.
+    Config,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -16,8 +16,6 @@ pub struct IngotBuilder<'a> {
     version: Version,
     dependencies: IndexSet<IngotDependency>,
     files: IndexSet<InputFile>,
-    entrypoint_path: Option<Utf8PathBuf>, // Path to main file, relative to ingot_path
-    entrypoint_file: Option<InputFile>,
     core_ingot: Option<InputIngot>,
 }
 
@@ -32,8 +30,6 @@ impl<'a> IngotBuilder<'a> {
             version: Version::new(0, 0, 0),
             dependencies: IndexSet::default(),
             files: IndexSet::default(),
-            entrypoint_path: None,
-            entrypoint_file: None,
             core_ingot: None,
         }
     }
@@ -143,24 +139,6 @@ impl<'a> IngotBuilder<'a> {
         self
     }
 
-    /// Set the root file of the ingot directly
-    pub fn root_file(mut self, root_file: InputFile) -> Self {
-        self.entrypoint_file = Some(root_file);
-        self
-    }
-
-    /// Set the entrypoint file path of the ingot
-    /// This will only take effect during build if no root_file is explicitly set
-    /// The path should be relative to the ingot base
-    pub fn entrypoint(mut self, path: impl Into<Utf8PathBuf>) -> Self {
-        let input_path = path.into();
-        let relative_path = ensure_relative_path(&self.ingot_path, input_path)
-            .expect("Entrypoint path must be relative or a child of the ingot base path");
-
-        self.entrypoint_path = Some(relative_path);
-        self
-    }
-
     /// Set the core ingot of the ingot
     pub fn with_core_ingot(mut self, core_ingot: InputIngot) -> Self {
         self.core_ingot = Some(core_ingot);
@@ -168,30 +146,9 @@ impl<'a> IngotBuilder<'a> {
     }
 
     /// Build the InputIngot
-    pub fn build(self) -> (InputIngot, InputFile) {
+    pub fn build(self) -> InputIngot {
         // For standalone ingots, ensure there's only one file and set it as the root file
-        let (root_file, files) = match self.kind {
-            IngotKind::StandAlone => {
-                if self.files.len() != 1 {
-                    panic!(
-                        "A standalone ingot must have exactly one file, but found {}",
-                        self.files.len()
-                    );
-                }
-                // Use the single file as the root file
-                let single_file = self.files.iter().next().cloned().unwrap();
-                (Some(single_file), self.files)
-            }
-            _ => {
-                // For other non-standalone ingots, use the specified root file or find it by path
-                let root_file = self.entrypoint_file.or_else(|| {
-                    self.entrypoint_path
-                        .as_ref()
-                        .and_then(|path| find_root_file(self.db, &self.files, path.as_str()))
-                });
-                (root_file, self.files)
-            }
-        };
+        let files = self.files;
 
         let mut dependencies = self.dependencies;
         // Add core ingot as a dependency if provided
@@ -199,17 +156,13 @@ impl<'a> IngotBuilder<'a> {
             dependencies.insert(IngotDependency::new("core", core));
         }
 
-        (
-            InputIngot::new(
-                self.db,
-                self.ingot_path,
-                self.kind,
-                self.version,
-                dependencies,
-                IngotFiles::from_files(self.db, files),
-                root_file,
-            ),
-            root_file.expect("Root file not found"),
+        InputIngot::new(
+            self.db,
+            self.ingot_path,
+            self.kind,
+            self.version,
+            dependencies,
+            IngotFiles::from_files(self.db, files),
         )
     }
 }
@@ -237,35 +190,13 @@ fn ensure_relative_path(
     }
 }
 
-/// Find the root file in a collection of input files matching the given path.
-/// Returns None if files is empty or no matching file is found.
-fn find_root_file(
-    db: &dyn InputDb,
-    files: &IndexSet<InputFile>,
-    entrypoint_path: &str,
-) -> Option<InputFile> {
-    if files.is_empty() {
-        return None;
-    }
-
-    files
-        .iter()
-        .find(|input_file| {
-            let input_path = input_file.path(db);
-            // Simple string comparison is more reliable across platforms
-            input_path == entrypoint_path
-        })
-        .cloned()
-}
-
 pub fn builtin_core(db: &dyn InputDb) -> InputIngot {
     // Use a virtual path that doesn't depend on the filesystem
     let ingot_path = Utf8PathBuf::from("/virtual/core");
 
     let builder = IngotBuilder::new(db, ingot_path)
         .kind(IngotKind::Core)
-        .version(Version::new(0, 0, 0))
-        .entrypoint("src/lib.fe");
+        .version(Version::new(0, 0, 0));
 
     let files = Core::iter()
         .filter(|file| file.ends_with(".fe"))
@@ -277,5 +208,5 @@ pub fn builtin_core(db: &dyn InputDb) -> InputIngot {
             })
         });
 
-    builder.files_from_contents(files).build().0
+    builder.files_from_contents(files).build()
 }

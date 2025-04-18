@@ -57,12 +57,10 @@ impl HirAnalysisTestDb {
             version,
             IndexSet::default(),
             IngotFiles::default(self),
-            None,
         );
         // let root = InputFile::new(self, file_name.into(), text.to_string());
         let root = ingot.files(self).touch(self, file_name.into());
         root.set_text(self).to(text.into());
-        ingot.set_root_file(self, root);
         (ingot, root)
     }
 

@@ -4,7 +4,7 @@ use super::db::LanguageServerDatabase;
 use anyhow::Result;
 use camino::Utf8PathBuf;
 use common::{
-    indexmap::{IndexMap, IndexSet},
+    indexmap::IndexMap,
     ingot::builtin_core,
     input::{IngotDependency, IngotFiles, IngotKind, Version},
     InputFile, InputIngot,
@@ -94,7 +94,6 @@ impl LocalIngotContext {
             Version::new(0, 0, 0),
             external_ingots,
             IngotFiles::new(db, IndexMap::default()),
-            None,
         );
         Some(Self {
             ingot,
@@ -200,7 +199,6 @@ impl IngotFileContext for StandaloneIngotContext {
                         Version::new(0, 0, 0),
                         external_ingots,
                         IngotFiles::new(db, IndexMap::default()),
-                        None,
                     );
                     self.ingots.insert(path, ingot);
                     Some(ingot)
@@ -380,20 +378,6 @@ impl Workspace {
             .ingot
             .__set_files_impl(db)
             .to(ingot_context_files);
-
-        // find the root file, which is either at `./src/main.fe` or `./src/lib.fe`
-        let root_file = ingot_context
-            .files
-            .values()
-            .find(|file| {
-                file.path(db).ends_with("src/main.fe") || file.path(db).ends_with("src/lib.fe")
-            })
-            .copied();
-
-        if let Some(root_file) = root_file {
-            info!("Setting root file for ingot: {:?}", root_file.path(db));
-            ingot_context.ingot.set_root_file(db, root_file);
-        }
     }
 }
 

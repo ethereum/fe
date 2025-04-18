@@ -291,7 +291,6 @@ mod tests {
             Version::new(0, 0, 1),
             Default::default(),
             IngotFiles::default(&db),
-            None,
         );
         let local_root = local_ingot.files(&db).touch(&mut db, "src/lib.fe".into());
         let mod1 = local_ingot.files(&db).touch(&mut db, "src/mod1.fe".into());
@@ -308,7 +307,6 @@ mod tests {
         let _floating = local_ingot
             .files(&db)
             .touch(&mut db, "src/mod3/floating.fe".into());
-        local_ingot.set_root_file(&mut db, local_root);
 
         let local_root_mod = lower::map_file_to_mod(&db, local_ingot, local_root);
         let mod1_mod = lower::map_file_to_mod(&db, local_ingot, mod1);
