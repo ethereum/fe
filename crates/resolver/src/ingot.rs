@@ -1,7 +1,8 @@
 use std::{fmt, fs};
 
 use camino::Utf8PathBuf;
-use config::{Config, ConfigResolver};
+use common::config::Config;
+use config::ConfigResolver;
 use source_files::{SourceFiles, SourceFilesResolver};
 
 use crate::Resolver;

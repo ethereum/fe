@@ -18,3 +18,5 @@ common.workspace = true
 hir.workspace = true
 hir-analysis.workspace = true
 resolver.workspace = true
+url.workspace = true
+smol_str.workspace = true

@@ -1,5 +1,5 @@
 use camino::Utf8Path;
-use common::{indexmap::IndexMap, InputFile, InputIngot};
+use common::{file::File, indexmap::IndexMap, ingot::IngotDescription};
 use cranelift_entity::{entity_impl, EntityRef, PrimaryMap};
 use salsa::Update;
 

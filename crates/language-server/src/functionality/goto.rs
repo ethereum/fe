@@ -125,7 +125,7 @@ pub async fn handle_goto_definition(
         .workspace
         .get_input_for_file_path(file_path)
         .unwrap();
-    let top_mod = map_file_to_mod(&backend.db, ingot, file);
+    let top_mod = map_file_to_mod(&backend.db, file);
 
     let scopes =
         get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
@@ -156,7 +156,7 @@ pub async fn handle_goto_definition(
 mod tests {
     use std::{collections::BTreeMap, path::Path};
 
-    use common::input::IngotKind;
+    use common::ingot::IngotKind;
     use dir_test::{dir_test, Fixture};
     use salsa::Setter;
     use test_utils::snap_test;
@@ -266,10 +266,9 @@ mod tests {
 
         let _ = workspace.set_workspace_root(&mut db, &ingot_base_dir);
 
-        let fe_source_path = ingot_base_dir.join(fixture.path());
-        let fe_source_path = fe_source_path.to_str().unwrap();
+        let fe_source_path = fixture.path();
         let (ingot, file) = workspace
-            .touch_input_for_file_path(&mut db, fixture.path())
+            .touch_input_for_file_path(&mut db, fe_source_path)
             .unwrap();
         assert_eq!(ingot.kind(&db), IngotKind::Local);
 
@@ -278,7 +277,7 @@ mod tests {
         // Introduce a new scope to limit the lifetime of `top_mod`
         {
             let (ingot, file) = workspace.get_input_for_file_path(fe_source_path).unwrap();
-            let top_mod = map_file_to_mod(&db, ingot, file);
+            let top_mod = map_file_to_mod(&db, file);
 
             let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
             snap_test!(snapshot, fixture.path());
@@ -299,7 +298,7 @@ mod tests {
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
         file.set_text(db).to((*fixture.content()).to_string());
-        let top_mod = map_file_to_mod(db, ingot, file);
+        let top_mod = map_file_to_mod(db, file);
 
         let snapshot = make_goto_cursors_snapshot(db, &fixture, top_mod);
         snap_test!(snapshot, fixture.path());
@@ -317,7 +316,7 @@ mod tests {
             .touch_input_for_file_path(db, fixture.path())
             .unwrap();
         file.set_text(db).to((*fixture.content()).to_string());
-        let top_mod = map_file_to_mod(db, ingot, file);
+        let top_mod = map_file_to_mod(db, file);
 
         let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
 

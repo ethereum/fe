@@ -92,10 +92,8 @@ pub async fn initialized(
     info!("language server initialized! recieved notification!");
 
     backend.workspace.all_files().for_each(|file| {
-        let path = file.path(&backend.db);
-        let _ = backend
-            .client
-            .emit(NeedsDiagnostics(url::Url::from_file_path(path).unwrap()));
+        let url = file.url(&backend.db).expect("Failed to get file URL");
+        let _ = backend.client.emit(NeedsDiagnostics(url));
     });
 
     let _ = backend.client.clone().log_message(LogMessageParams {
@@ -254,7 +252,7 @@ pub async fn handle_hover_request(
     };
 
     info!("handling hover request in file: {:?}", file);
-    let response = hover_helper(&backend.db, ingot, file, message).unwrap_or_else(|e| {
+    let response = hover_helper(&backend.db, file, message).unwrap_or_else(|e| {
         error!("Error handling hover: {:?}", e);
         None
     });

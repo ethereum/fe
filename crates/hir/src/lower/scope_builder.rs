@@ -3,10 +3,17 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     hir_def::{
+<<<<<<< HEAD
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
         Body, Enum, EnumVariant, ExprId, FieldDefListId, FieldParent, FuncParamListId,
         FuncParamName, GenericParamListId, ItemKind, TopLevelMod, TrackedItemId,
         TrackedItemVariant, Use, VariantDefListId, VariantKind, Visibility,
+=======
+        scope_graph::{EdgeKind, FieldParent, Scope, ScopeEdge, ScopeGraph, ScopeId},
+        Body, ExprId, FieldDefListId, FuncParamListId, FuncParamName, GenericParamListId, HirIngot,
+        ItemKind, TopLevelMod, TrackedItemId, TrackedItemVariant, Use, VariantDefListId,
+        VariantKind, Visibility,
+>>>>>>> 6b3230ec (IngotFiles for InputIngot file management)
     },
     HirDb,
 };

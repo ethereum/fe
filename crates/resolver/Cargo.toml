@@ -13,6 +13,6 @@ common.workspace = true
 camino.workspace = true
 glob.workspace = true
 serde-semver.workspace = true
-smol_str = "0.1"
 toml = "0.8"
 serde = { version = "1", features = ["derive"] }
+smol_str.workspace = true

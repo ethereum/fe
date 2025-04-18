@@ -560,7 +560,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             .scope(self.db)
             .top_mod(self.db)
             .ingot(self.db)
-            .external_ingots(self.db)
+            .resolved_external_ingots(self.db)
             .iter()
             .for_each(|(name, ingot)| {
                 if *name == query.name(self.db) {

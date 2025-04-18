@@ -10,6 +10,7 @@ publish = false
 camino.workspace = true
 dir-test.workspace = true
 wasm-bindgen-test.workspace = true
+url.workspace = true
 
 driver.workspace = true
 test-utils.workspace = true

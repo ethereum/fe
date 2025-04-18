@@ -1,5 +1,5 @@
 use camino::Utf8PathBuf;
-use common::input::Version;
+use common::{config::Config, ingot::Version};
 use serde::Deserialize;
 use smol_str::SmolStr;
 use std::{fmt, fs, mem};
@@ -8,12 +8,6 @@ use toml::{self, Table};
 use crate::Resolver;
 
 const FE_CONFIG_SUFFIX: &str = "fe.toml";
-
-#[derive(Default, Debug, Clone)]
-pub struct Config {
-    pub name: Option<SmolStr>,
-    pub version: Option<Version>,
-}
 
 #[derive(Debug)]
 pub enum Error {
@@ -27,7 +21,7 @@ pub enum Diagnostic {
     MissingName,
     MissingVersion,
     InvalidName,
-    InvalidVersion(semver::Error),
+    InvalidVersion(serde_semver::semver::Error),
 }
 
 #[derive(Default)]

@@ -4,6 +4,12 @@ use codespan_reporting::term::{
     termcolor::{BufferWriter, ColorChoice},
 };
 use common::{diagnostics::CompleteDiagnostic, define_input_db, InputFile, InputIngot};
+use common::{
+    diagnostics::CompleteDiagnostic,
+    file::{File, FileIndex},
+    ingot::{IngotBaseUrl, IngotDescription, IngotIndex, Version},
+    InputDb,
+};
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
@@ -49,8 +55,8 @@ impl DriverDataBase {
         DiagnosticsCollection(pass_manager.run_on_module_tree(self, tree))
     }
 
-    pub fn top_mod(&self, ingot: InputIngot, input: InputFile) -> TopLevelMod {
-        map_file_to_mod(self, ingot, input)
+    pub fn top_mod(&self, input: File) -> TopLevelMod {
+        map_file_to_mod(self, input)
     }
 }
 

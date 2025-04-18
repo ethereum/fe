@@ -198,8 +198,8 @@ impl<'db> ScopeId<'db> {
         false
     }
 
-    /// Return the `IngotId` containing the scope.
-    pub fn ingot(self, db: &'db dyn HirDb) -> IngotId<'db> {
+    /// Return the `IngotDescription` containing the scope.
+    pub fn ingot(self, db: &'db dyn HirDb) -> IngotDescription<'db> {
         self.top_mod(db).ingot(db)
     }
 
@@ -651,6 +651,8 @@ impl<'db> FromScope<'db> for &'db GenericParam<'db> {
 #[cfg(test)]
 mod tests {
 
+    use common::file::FileIndex;
+
     use crate::{
         hir_def::{
             scope_graph::{FieldParent, ScopeId},
@@ -678,8 +680,8 @@ mod tests {
             }
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let scope_graph = db.parse_source(ingot, file);
+        let file = db.standalone_file(text);
+        let scope_graph = db.parse_source(file);
         assert_eq!(scope_graph.items_dfs(&db).count(), 8);
 
         for (i, item) in scope_graph.items_dfs(&db).enumerate() {
@@ -707,8 +709,8 @@ mod tests {
             }
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let scope_graph = db.parse_source(ingot, file);
+        let file = db.standalone_file(text);
+        let scope_graph = db.parse_source(file);
         let root = scope_graph.top_mod.scope();
         let enum_ = scope_graph.children(root).next().unwrap();
         assert!(matches!(enum_.item(), ItemKind::Enum(_)));

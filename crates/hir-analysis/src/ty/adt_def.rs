@@ -1,7 +1,8 @@
+use common::ingot::IngotDescription;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Contract, Enum, FieldDefListId, GenericParamOwner, IdentId, IngotId,
-        ItemKind, Partial, Struct, TypeId as HirTyId, VariantDefListId, VariantKind,
+        scope_graph::ScopeId, Contract, Enum, FieldDefListId, GenericParamOwner, IdentId, ItemKind,
+        Partial, Struct, TypeId as HirTyId, VariantDefListId, VariantKind,
     },
     span::DynLazySpan,
 };
@@ -130,7 +131,7 @@ impl<'db> AdtDef<'db> {
         }
     }
 
-    pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
+    pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotDescription<'db> {
         match self.adt_ref(db) {
             AdtRef::Enum(e) => e.top_mod(db).ingot(db),
             AdtRef::Struct(s) => s.top_mod(db).ingot(db),

@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use camino::Utf8PathBuf;
 use codespan_reporting::{
     diagnostic::{Diagnostic, Label},
     files::SimpleFiles,
@@ -9,10 +10,11 @@ use codespan_reporting::{
     },
 };
 use common::{
+    define_input_db,
     diagnostics::Span,
     indexmap::{IndexMap, IndexSet},
     input::{IngotKind, Version},
-    define_input_db, InputFile, InputIngot,
+    InputFile, InputIngot,
 };
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
@@ -30,39 +32,42 @@ use hir::{
     SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
+use url::Url;
 
 type CodeSpanFileId = usize;
 
 define_input_db!(HirAnalysisTestDb);
 
+#[salsa::db]
+impl InputDb for HirAnalysisTestDb {
+    fn file_index(&self) -> FileIndex {
+        self.index.clone().expect("File index not initialized")
+    }
+}
+
 // https://github.com/rust-lang/rust/issues/46379
 #[allow(dead_code)]
 impl HirAnalysisTestDb {
-    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> (InputIngot, InputFile) {
-        let kind = IngotKind::StandAlone;
-        let version = Version::new(0, 0, 1);
-        let ingot = InputIngot::new(
+    pub fn new_stand_alone<'db>(&'db mut self, file_path: Utf8PathBuf, text: &str) -> File {
+        let file_name = if file_path.is_relative() {
+            format!("/{}", file_path)
+        } else {
+            file_path.to_string()
+        };
+        // Use the index from the database and reinitialize it with core files
+        let index = self.file_index();
+        index.initialize_builtin_core(self);
+        index.touch_with_initial_content(
             self,
-            file_name.into(),
-            kind,
-            version,
-            IndexSet::default(),
-            IndexSet::default(),
-            None,
-        );
-        let root = InputFile::new(self, file_name.into(), text.to_string());
-        ingot.set_root_file(self, root);
-        ingot.set_files(self, [root].into_iter().collect());
-        (ingot, root)
+            Url::from_file_path(&file_name)
+                .unwrap_or_else(|()| panic!("Failed to create URL from file path: {}", file_name)),
+            Some(text.to_string()),
+        )
     }
 
-    pub fn top_mod(
-        &self,
-        ingot: InputIngot,
-        input: InputFile,
-    ) -> (TopLevelMod, HirPropertyFormatter) {
+    pub fn top_mod(&self, input: File) -> (TopLevelMod, HirPropertyFormatter) {
         let mut prop_formatter = HirPropertyFormatter::default();
-        let top_mod = self.register_file(&mut prop_formatter, ingot, input);
+        let top_mod = self.register_file(&mut prop_formatter, input);
         (top_mod, prop_formatter)
     }
 
@@ -95,11 +100,13 @@ impl HirAnalysisTestDb {
     fn register_file<'db>(
         &'db self,
         prop_formatter: &mut HirPropertyFormatter<'db>,
-        ingot: InputIngot,
-        input_file: InputFile,
+        input_file: File,
     ) -> TopLevelMod<'db> {
-        let top_mod = lower::map_file_to_mod(self, ingot, input_file);
-        let path = input_file.path(self);
+        let top_mod = lower::map_file_to_mod(self, input_file);
+        let path = input_file
+            .path(self)
+            .as_ref()
+            .expect("Failed to get file path");
         let text = input_file.text(self);
         prop_formatter.register_top_mod(path.as_str(), text, top_mod);
         top_mod

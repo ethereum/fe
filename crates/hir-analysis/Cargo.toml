@@ -24,6 +24,7 @@ thin-vec.workspace = true
 common.workspace = true
 test-utils.workspace = true
 hir.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 camino.workspace = true

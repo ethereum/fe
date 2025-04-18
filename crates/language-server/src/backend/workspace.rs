@@ -2,11 +2,11 @@ use std::path::{Path, PathBuf};
 
 use super::db::LanguageServerDatabase;
 use anyhow::Result;
+use camino::Utf8PathBuf;
 use common::{
-    indexmap::IndexSet,
-    ingot::builtin_core,
-    input::{IngotDependency, IngotKind, Version},
-    InputFile, InputIngot,
+    file::File,
+    indexmap::IndexMap,
+    ingot::{IngotBaseUrl, IngotDescription},
 };
 
 use patricia_tree::StringPatriciaMap;
@@ -26,21 +26,21 @@ fn ingot_directory_key(path: String) -> String {
 }
 
 pub trait IngotFileContext {
-    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)>;
+    fn get_input_for_file_path(&self, path: &str) -> Option<File>;
 
     fn touch_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<(InputIngot, InputFile)>;
+    ) -> Option<File>;
 
-    fn get_ingot_for_file_path(&self, path: &str) -> Option<InputIngot>;
+    fn get_ingot_for_file_path(&self, path: &str) -> Option<IngotDescription>;
 
     fn touch_ingot_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<InputIngot>;
+    ) -> Option<IngotDescription>;
 
     fn remove_input_for_file_path(
         &mut self,
@@ -50,8 +50,8 @@ pub trait IngotFileContext {
 }
 
 pub struct LocalIngotContext {
-    pub ingot: InputIngot,
-    pub files: StringPatriciaMap<InputFile>,
+    pub ingot: IngotBaseUrl,
+    pub files: StringPatriciaMap<File>,
 }
 
 fn ingot_contains_file(ingot_path: &str, file_path: &str) -> bool {
@@ -92,8 +92,7 @@ impl LocalIngotContext {
             IngotKind::Local,
             Version::new(0, 0, 0),
             external_ingots,
-            IndexSet::default(),
-            None,
+            IndexMap::default(),
         );
         Some(Self {
             ingot,
@@ -107,33 +106,28 @@ impl IngotFileContext for LocalIngotContext {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<(InputIngot, InputFile)> {
+    ) -> Option<File> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
-        let input = self
-            .files
-            .get(path)
-            .copied()
-            .unwrap_or_else(|| InputFile::new(db, path.into(), String::new()));
+        let input = self.ingot.touch(db, Utf8PathBuf::from(path));
         self.files.insert(path, input);
-        ingot.set_files(db, self.files.values().copied().collect());
-        Some((ingot, input))
+        Some(input)
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
+    fn get_input_for_file_path(&self, path: &str) -> Option<File> {
         let ingot = self.get_ingot_for_file_path(path)?;
         let file = self.files.get(path).copied()?;
-        Some((ingot, file))
+        Some(file)
     }
 
     fn touch_ingot_for_file_path(
         &mut self,
         _db: &mut LanguageServerDatabase,
         _path: &str,
-    ) -> Option<InputIngot> {
+    ) -> Option<IngotDescription> {
         Some(self.ingot)
     }
 
-    fn get_ingot_for_file_path(&self, _path: &str) -> Option<InputIngot> {
+    fn get_ingot_for_file_path(&self, _path: &str) -> Option<IngotDescription> {
         Some(self.ingot)
     }
 
@@ -146,12 +140,7 @@ impl IngotFileContext for LocalIngotContext {
 
         if let Some(_file) = file {
             let ingot = self.ingot;
-            let new_ingot_files = self
-                .files
-                .values()
-                .copied()
-                .collect::<IndexSet<InputFile>>();
-            ingot.set_files(db, new_ingot_files);
+            ingot.remove_file(db, &Utf8PathBuf::from(path));
             Ok(())
         } else {
             Err(anyhow::anyhow!("File not found in ingot"))
@@ -161,7 +150,7 @@ impl IngotFileContext for LocalIngotContext {
 
 pub struct StandaloneIngotContext {
     ingots: StringPatriciaMap<InputIngot>,
-    files: StringPatriciaMap<InputFile>,
+    files: StringPatriciaMap<File>,
 }
 
 impl StandaloneIngotContext {
@@ -178,22 +167,19 @@ impl IngotFileContext for StandaloneIngotContext {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<(InputIngot, InputFile)> {
+    ) -> Option<(InputIngot, File)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
-        let input_file = self
-            .files
-            .get(path)
-            .copied()
-            .unwrap_or_else(|| InputFile::new(db, path.into(), String::new()));
-        let mut files = IndexSet::new();
-        files.insert(input_file);
-        ingot.set_files(db, files);
-        ingot.set_root_file(db, input_file);
-        self.files.insert(path, input_file);
-        Some((ingot, input_file))
+
+        let path_buf = Utf8PathBuf::from(path);
+        let file_name = path_buf.file_name().unwrap_or(path);
+        let input = ingot.touch(db, Utf8PathBuf::from(file_name));
+
+        self.files.insert(path, input);
+
+        Some((ingot, input))
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, File)> {
         let ingot = self.get_ingot_for_file_path(path)?;
         let file = self.files.get(path).copied()?;
         Some((ingot, file))
@@ -212,14 +198,21 @@ impl IngotFileContext for StandaloneIngotContext {
                     let external_ingots = [IngotDependency::new("core", builtin_core(db))]
                         .into_iter()
                         .collect();
+
+                    // Use the absolute parent directory of the file as the ingot path
+                    let path_buf = Utf8PathBuf::from(path);
+                    let ingot_path = path_buf
+                        .parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_else(|| Utf8PathBuf::from("."));
+
                     let ingot = InputIngot::new(
                         db,
-                        path.into(),
+                        ingot_path,
                         IngotKind::StandAlone,
                         Version::new(0, 0, 0),
                         external_ingots,
-                        IndexSet::default(),
-                        None,
+                        IndexMap::default(),
                     );
                     self.ingots.insert(path, ingot);
                     Some(ingot)
@@ -261,7 +254,7 @@ impl Workspace {
         }
     }
 
-    pub fn all_files(&self) -> impl Iterator<Item = &InputFile> {
+    pub fn all_files(&self) -> impl Iterator<Item = &File> {
         // Iterate over all files in the ingot contexts
         let ingot_files = self
             .ingot_contexts
@@ -392,27 +385,19 @@ impl Workspace {
             }
         }
 
+        // Convert the iterator of files to an IndexMap
         let ingot_context_files = ingot_context
             .files
             .values()
             .copied()
-            .collect::<IndexSet<InputFile>>();
+            .map(|file| (file.path(db).clone(), file))
+            .collect();
 
-        ingot_context.ingot.set_files(db, ingot_context_files);
-
-        // find the root file, which is either at `./src/main.fe` or `./src/lib.fe`
-        let root_file = ingot_context
-            .files
-            .values()
-            .find(|file| {
-                file.path(db).ends_with("src/main.fe") || file.path(db).ends_with("src/lib.fe")
-            })
-            .copied();
-
-        if let Some(root_file) = root_file {
-            info!("Setting root file for ingot: {:?}", root_file.path(db));
-            ingot_context.ingot.set_root_file(db, root_file);
-        }
+        // TODO: this will disappear when we move this functionality to common / driver
+        ingot_context
+            .ingot
+            .__set_files_map_impl(db)
+            .to(ingot_context_files);
     }
 }
 
@@ -421,7 +406,7 @@ impl IngotFileContext for Workspace {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<(InputIngot, InputFile)> {
+    ) -> Option<File> {
         let ctx = get_containing_ingot_mut(&mut self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             ctx.touch_input_for_file_path(db, path)
@@ -431,7 +416,7 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
+    fn get_input_for_file_path(&self, path: &str) -> Option<File> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             ctx.get_input_for_file_path(path)
@@ -444,7 +429,7 @@ impl IngotFileContext for Workspace {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<InputIngot> {
+    ) -> Option<IngotDescription> {
         let ctx = get_containing_ingot_mut(&mut self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             ctx.touch_ingot_for_file_path(db, path)
@@ -454,7 +439,7 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn get_ingot_for_file_path(&self, path: &str) -> Option<InputIngot> {
+    fn get_ingot_for_file_path(&self, path: &str) -> Option<IngotDescription> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             ctx.get_ingot_for_file_path(path)
@@ -513,6 +498,7 @@ impl SyncableIngotFileContext for Workspace {
 
 #[cfg(test)]
 mod tests {
+    use common::ingot::IngotKind;
     use hir::lower::map_file_to_mod;
 
     use crate::backend::workspace::{
@@ -534,10 +520,7 @@ mod tests {
 
         let ingot = ctx.touch_ingot_for_file_path(&mut db, file_path);
         assert!(ingot.is_some());
-        assert_eq!(
-            ingot.unwrap().kind(&db),
-            common::input::IngotKind::StandAlone
-        );
+        assert_eq!(ingot.unwrap().kind(&db), IngotKind::StandAlone);
     }
 
     #[test]
@@ -601,11 +584,8 @@ mod tests {
             .touch_input_for_file_path(&mut db, file_path)
             .unwrap();
 
-        assert_eq!(
-            ingot_context_ingot.unwrap().kind(&db),
-            common::input::IngotKind::Local
-        );
-        assert_eq!(ingot.kind(&db), common::input::IngotKind::Local);
+        assert_eq!(ingot_context_ingot.unwrap().kind(&db), IngotKind::Local);
+        assert_eq!(ingot.kind(&db), IngotKind::Local);
         assert_eq!(ingot_context_ingot.unwrap(), ingot);
     }
 
@@ -629,7 +609,7 @@ mod tests {
         let (ingot, _file) = workspace
             .touch_input_for_file_path(&mut db, fe_source_path.to_str().unwrap())
             .unwrap();
-        assert!(ingot.kind(&db) == common::input::IngotKind::Local);
+        assert!(ingot.kind(&db) == IngotKind::Local);
     }
 
     #[test]
@@ -668,7 +648,7 @@ mod tests {
 
             // this would panic if a file has been added to multiple ingots
             let (ingot, file) = workspace.get_input_for_file_path(&src_path).unwrap();
-            let _top_mod = map_file_to_mod(&db, ingot, file);
+            let _top_mod = map_file_to_mod(&db, file);
         }
     }
 
@@ -724,7 +704,7 @@ mod tests {
             .touch_input_for_file_path(&mut db, &dangling_path)
             .unwrap();
 
-        assert_eq!(d_ingot.kind(&db), common::input::IngotKind::StandAlone);
+        assert_eq!(d_ingot.kind(&db), IngotKind::StandAlone);
 
         // TODO: make it easier to go both ways between an ingot root path and its config path
         let ingot_paths = workspace
@@ -742,6 +722,6 @@ mod tests {
             .touch_input_for_file_path(&mut db, &non_dangling_file_path)
             .unwrap();
 
-        assert_eq!(n_ingot.kind(&db), common::input::IngotKind::Local);
+        assert_eq!(n_ingot.kind(&db), IngotKind::Local);
     }
 }

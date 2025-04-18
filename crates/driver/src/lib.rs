@@ -2,40 +2,36 @@ pub mod db;
 pub mod diagnostics;
 pub mod files;
 use camino::Utf8PathBuf;
-use common::{
-    ingot::{builtin_core, IngotBuilder},
-    input::IngotKind,
-};
+use common::ingot::{IngotBaseUrl, IngotIndex};
+use common::InputDb;
 pub use db::DriverDataBase;
 
 use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;
 use resolver::{
-    ingot::{config::Config, source_files::SourceFiles, Ingot, IngotResolver},
+    ingot::{source_files::SourceFiles, Ingot, IngotResolver},
     Resolver,
 };
+use url::Url;
 
 pub fn run(opts: &Options) {
     match &opts.command {
         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
-            let db = DriverDataBase::default();
+            let mut db = DriverDataBase::default();
             let mut ingot_resolver = IngotResolver::default();
 
             let core_ingot = if let Some(core_path) = core {
                 match ingot_resolver.resolve(core_path) {
                     Ok(Ingot::Folder {
-                        config:
-                            Some(Config {
-                                version: Some(version),
-                                ..
-                            }),
+                        config,
                         source_files:
                             Some(SourceFiles {
                                 root: Some(root),
                                 files,
                             }),
                     }) => {
+                        let core_base_url = Url::parse("core-ingot:///").unwrap();
                         let diagnostics = ingot_resolver.take_diagnostics();
                         if !diagnostics.is_empty() {
                             eprintln!("an error was encountered while resolving `{core_path}`");
@@ -44,13 +40,16 @@ pub fn run(opts: &Options) {
                             }
                             std::process::exit(2)
                         }
-                        IngotBuilder::new(&db, "core")
-                            .kind(IngotKind::Core)
-                            .version(version)
-                            .entrypoint(root)
-                            .files_from_contents(files)
-                            .build()
-                            .0
+                        let index = db.file_index();
+                        index.touch_ingot(
+                            &mut db,
+                            &core_base_url,
+                            config.expect("config is required"),
+                        );
+                        for (path, content) in files {
+                            core_base_url.touch_with_initial_content(&mut db, path, Some(content));
+                        }
+                        core_base_url
                     }
                     Ok(Ingot::SingleFile { .. }) => {
                         eprintln!("standalone core ingot not supported");
@@ -70,19 +69,15 @@ pub fn run(opts: &Options) {
                     }
                 }
             } else {
-                builtin_core(&db)
+                db.file_index().builtin_core(&db)
             };
 
             let local_ingot = match ingot_resolver.resolve(path) {
                 Ok(Ingot::Folder {
-                    config:
-                        Some(Config {
-                            version: Some(version),
-                            ..
-                        }),
+                    config,
                     source_files:
                         Some(SourceFiles {
-                            root: Some(root),
+                            root: Some(_root),
                             files,
                         }),
                 }) => {
@@ -94,20 +89,27 @@ pub fn run(opts: &Options) {
                         }
                         std::process::exit(2)
                     }
-                    // db.local_ingot(path, &version, &root, files, core_ingot).0
-                    IngotBuilder::new(&db, path)
-                        .kind(IngotKind::Local)
-                        .version(version)
-                        .entrypoint(root)
-                        .files_from_contents(files)
-                        .build()
-                        .0
+                    let local_base_url =
+                        Url::from_file_path(&_root).expect("Failed to create URL from file path");
+                    let index = db.file_index();
+                    index.touch_ingot(
+                        &mut db,
+                        &local_base_url,
+                        config.expect("config is required"),
+                    );
+                    for (path, content) in files {
+                        local_base_url.touch_with_initial_content(&mut db, path, Some(content));
+                    }
+                    local_base_url
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
-                    IngotBuilder::standalone(&db, path, content)
-                        .with_core_ingot(core_ingot)
-                        .build()
-                        .0
+                    let url =
+                        Url::from_file_path(&path).expect("Failed to create URL from file path");
+                    db.file_index()
+                        .touch_with_initial_content(&mut db, url.clone(), Some(content));
+                    db.file_index()
+                        .containing_ingot_base(&db, &url)
+                        .expect("Failed to find ingot base")
                 }
                 Ok(_) => {
                     eprintln!("an error was encountered while resolving `{path}`");
@@ -123,8 +125,10 @@ pub fn run(opts: &Options) {
                 }
             };
 
-            let core_diags = db.run_on_ingot(core_ingot);
-            let local_diags = db.run_on_ingot(local_ingot);
+            let core_diags =
+                db.run_on_ingot(core_ingot.ingot(&db).expect("core ingot should exist"));
+            let local_diags =
+                db.run_on_ingot(local_ingot.ingot(&db).expect("local ingot should exist"));
 
             if !core_diags.is_empty() || !local_diags.is_empty() {
                 core_diags.emit(&db);

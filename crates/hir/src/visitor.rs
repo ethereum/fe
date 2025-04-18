@@ -2008,7 +2008,7 @@ where
         self.db
     }
 
-    pub fn ingot(&self) -> IngotId<'db> {
+    pub fn ingot(&self) -> IngotDescription<'db> {
         self.scope().ingot(self.db)
     }
 
@@ -2228,10 +2228,13 @@ macro_rules! visit_node_in_body {
         }
     }
 }
+use common::ingot::IngotDescription;
 use visit_node_in_body;
 
 #[cfg(test)]
 mod tests {
+
+    use common::file::FileIndex;
 
     use super::*;
     use crate::test_db::TestDb;
@@ -2277,9 +2280,9 @@ mod tests {
                 42
             }"#;
 
-        let (ingot, file) = db.standalone_file(text);
+        let file = db.standalone_file(text);
 
-        let func = db.expect_item::<Func>(ingot, file);
+        let func = db.expect_item::<Func>(file);
         let top_mod = func.top_mod(&db);
 
         let mut visitor = MyVisitor {

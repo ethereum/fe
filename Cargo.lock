@@ -815,6 +815,7 @@ dependencies = [
  "fe-driver",
  "fe-hir-analysis",
  "fe-parser",
+ "url",
  "walkdir",
 ]
 
@@ -851,6 +852,8 @@ dependencies = [
  "fe-hir-analysis",
  "fe-resolver",
  "salsa",
+ "smol_str",
+ "url",
 ]
 
 [[package]]
@@ -870,6 +873,7 @@ dependencies = [
  "salsa",
  "smallvec 2.0.0-alpha.10",
  "thin-vec",
+ "url",
 ]
 
 [[package]]
@@ -896,6 +900,7 @@ dependencies = [
  "smallvec 1.14.0",
  "smallvec 2.0.0-alpha.10",
  "thin-vec",
+ "url",
 ]
 
 [[package]]
@@ -984,6 +989,7 @@ dependencies = [
  "fe-hir",
  "fe-hir-analysis",
  "fe-test-utils",
+ "url",
  "wasm-bindgen-test",
 ]
 

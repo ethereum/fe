@@ -6,12 +6,15 @@
 use std::borrow::Cow;
 
 use common::InputFile;
+use common::{file::File, ingot::IngotDescription};
 use parser::ast;
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
     AttrListId, Body, FuncParamListId, FuncParamName, GenericParam, GenericParamListId, IdentId,
     IngotId, Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
+    AttrListId, Body, FuncParamListId, FuncParamName, GenericParamListId, HirIngot, IdentId,
+    Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
 };
 use crate::{
     hir_def::TraitRefId,
@@ -153,10 +156,10 @@ impl<'db> ItemKind<'db> {
         }
     }
 
-    pub fn ingot(self, db: &'db dyn HirDb) -> IngotId<'db> {
-        let top_mod = self.top_mod(db);
-        top_mod.ingot(db)
-    }
+    // pub fn ingot(self, db: &'db dyn HirDb) -> IngotDescription<'db> {
+    //     let top_mod = self.top_mod(db);
+    //     top_mod.ingot(db)
+    // }
 
     pub fn top_mod(self, db: &'db dyn HirDb) -> TopLevelMod<'db> {
         match self {
@@ -366,14 +369,19 @@ pub struct TopLevelMod<'db> {
     // No #[id] here, because `TopLevelMod` is always unique to a `InputFile` that is an argument
     // of `module_scope_graph`.
     pub name: IdentId<'db>,
-
-    pub ingot: IngotId<'db>,
-    pub(crate) file: InputFile,
+    pub(crate) file: File,
 }
 
 #[salsa::tracked]
 impl<'db> TopLevelMod<'db> {
     pub fn span(self) -> LazyTopModSpan<'db> {
+    pub fn ingot(self, db: &'db dyn HirDb) -> IngotDescription<'db> {
+        self.file(db)
+            .containing_ingot(db)
+            .expect("top level mod should have an ingot")
+    }
+
+    pub fn lazy_span(self) -> LazyTopModSpan<'db> {
         LazyTopModSpan::new(self)
     }
 
@@ -390,6 +398,7 @@ impl<'db> TopLevelMod<'db> {
         self,
         db: &'db dyn HirDb,
     ) -> impl Iterator<Item = TopLevelMod<'db>> + 'db {
+        // let ingot = self.index(db).containing_ingot(db, location)
         let module_tree = self.ingot(db).module_tree(db);
         module_tree.children(self)
     }
