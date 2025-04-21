@@ -35,16 +35,12 @@ pub struct InputIngot {
 
     /// A list of files which the current ingot contains.
     #[return_ref]
-    #[set(__set_files_impl)]
-    pub files: IngotFiles,
+    #[set(__set_files_map_impl)]
+    pub files_map: IndexMap<Utf8PathBuf, InputFile>,
 }
 
 #[salsa::tracked]
 impl InputIngot {
-    pub fn files_map<'db>(&self, db: &'db dyn InputDb) -> &'db IndexMap<Utf8PathBuf, InputFile> {
-        self.files(db).map(db)
-    }
-
     // This can be more sophisticated potentially
     #[salsa::tracked]
     pub fn file_kind(self, db: &dyn InputDb, file: InputFile) -> Option<IngotFileKind> {
@@ -61,12 +57,7 @@ impl InputIngot {
     #[salsa::tracked]
     pub fn config_file(self, db: &dyn InputDb) -> Option<InputFile> {
         let config_path = &Utf8PathBuf::from("fe.toml");
-
-        if let Some(file) = self.files(db).get_file(db, config_path) {
-            return Some(file);
-        }
-
-        None
+        self.get_file(db, config_path)
     }
 
     #[salsa::tracked]
@@ -82,29 +73,91 @@ impl InputIngot {
                 *files_map.values().next().unwrap()
             }
             _ => {
-                // For other ingots, use src/lib.fe
+                // For other ingots, use src/lib.fe or src/main.fe
                 let lib_path = Utf8PathBuf::from("src/lib.fe");
-                self.files(db)
-                    .get_file(db, &lib_path)
-                    .expect("Missing src/lib.fe file in ingot")
+                let main_path = Utf8PathBuf::from("src/main.fe");
+                let files = self.files_map(db);
+
+                // Try lib.fe first, then main.fe
+                if let Some(file) = self.get_file(db, &lib_path) {
+                    file
+                } else if let Some(file) = self.get_file(db, &main_path) {
+                    file
+                } else {
+                    let available_files = files
+                        .keys()
+                        .map(|p| p.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    panic!(
+                        "Missing src/lib.fe or src/main.fe file in ingot. Available files: {}",
+                        available_files
+                    );
+                }
             }
         }
     }
-}
 
-#[salsa::input]
-#[derive(Debug)]
-pub struct IngotFiles {
-    #[return_ref]
-    pub map: IndexMap<Utf8PathBuf, InputFile>,
-}
-#[salsa::tracked]
-impl IngotFiles {
-    pub fn default(db: &dyn InputDb) -> Self {
-        Self::new(db, IndexMap::default())
+    /// Get a file from this ingot by its path
+    pub fn get_file(self, db: &dyn InputDb, path: &Utf8PathBuf) -> Option<InputFile> {
+        self.files_map(db).get(path).cloned()
     }
 
-    pub fn from_files<I>(db: &dyn InputDb, files: I) -> Self
+    /// Create a new file in this ingot or return an existing one
+    pub fn touch(self, db: &mut dyn InputDb, mut path: Utf8PathBuf) -> InputFile {
+        // Normalize the path - make it relative to the ingot path if it's absolute
+        if path.is_absolute() {
+            let ingot_path = self.path(db);
+
+            // Verify the path is within the ingot directory
+            if !path.as_str().starts_with(ingot_path.as_str()) {
+                panic!(
+                    "Cannot touch a file outside of the ingot directory. File: {}, Ingot: {}",
+                    path, ingot_path
+                );
+            }
+
+            // Convert absolute path to relative path
+            path = path
+                .strip_prefix(ingot_path)
+                .expect("Failed to strip prefix after validation")
+                .to_path_buf();
+        }
+
+        // Check if the file already exists in the ingot
+        let files_map = self.files_map(db);
+        if let Some(&file) = files_map.get(&path) {
+            return file;
+        }
+
+        // Create a new file
+        let file = InputFile::__new_impl(db, path.clone(), String::new());
+
+        let mut files = files_map.clone();
+        files.insert(path, file);
+        self.__set_files_map_impl(db).to(files);
+
+        file
+    }
+
+    /// Remove a file from this ingot
+    pub fn remove_file(self, db: &mut dyn InputDb, path: &Utf8PathBuf) -> Option<InputFile> {
+        let mut files = self.files_map(db).clone();
+        let removed_file = files.remove(path);
+        self.__set_files_map_impl(db).to(files);
+
+        removed_file
+    }
+
+    /// Create an ingot from a collection of files
+    pub fn from_files<I>(
+        db: &dyn InputDb,
+        path: Utf8PathBuf,
+        kind: IngotKind,
+        version: Version,
+        external_ingots: IndexSet<IngotDependency>,
+        files: I,
+    ) -> Self
     where
         I: IntoIterator<Item = InputFile>,
     {
@@ -112,36 +165,7 @@ impl IngotFiles {
         for file in files {
             files_index.insert(file.path(db).clone(), file);
         }
-        Self::new(db, files_index)
-    }
-
-    pub fn get_file(self, db: &dyn InputDb, path: &Utf8PathBuf) -> Option<InputFile> {
-        self.map(db).get(path).cloned()
-    }
-
-    pub fn touch(self, db: &mut dyn InputDb, path: Utf8PathBuf) -> InputFile {
-        // Check if the file already exists in the ingot
-        let files_index = self.map(db);
-        if let Some(&file) = files_index.get(&path) {
-            return file;
-        }
-
-        // Create a new file
-        let file = InputFile::__new_impl(db, path.clone(), String::new());
-
-        let mut files = self.map(db).clone();
-        files.insert(path, file);
-        self.set_map(db).to(files);
-
-        file
-    }
-
-    pub fn remove_file(self, db: &mut dyn InputDb, path: &Utf8PathBuf) -> Option<InputFile> {
-        let mut files = self.map(db).clone();
-        let removed_file = files.remove(path);
-        self.set_map(db).to(files);
-
-        removed_file
+        Self::new(db, path, kind, version, external_ingots, files_index)
     }
 }
 

@@ -41,8 +41,8 @@ impl<T> SpannedHirDb for T where T: HirDb {}
 #[cfg(test)]
 mod test_db {
     use common::{
-        indexmap::IndexSet,
-        input::{IngotFiles, IngotKind, Version},
+        indexmap::{IndexMap, IndexSet},
+        input::{IngotKind, Version},
         InputFile, InputIngot,
     };
     use derive_more::TryIntoError;
@@ -109,10 +109,10 @@ mod test_db {
                 kind,
                 version,
                 IndexSet::default(),
-                IngotFiles::default(self),
+                IndexMap::default(),
             );
             // let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
-            let file = ingot.files(self).touch(self, "test_file.fe".into());
+            let file = ingot.touch(self, "test_file.fe".into());
             file.set_text(self).to(text.into());
             (ingot, file)
         }

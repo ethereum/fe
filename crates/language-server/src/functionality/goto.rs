@@ -266,10 +266,9 @@ mod tests {
 
         let _ = workspace.set_workspace_root(&mut db, &ingot_base_dir);
 
-        let fe_source_path = ingot_base_dir.join(fixture.path());
-        let fe_source_path = fe_source_path.to_str().unwrap();
+        let fe_source_path = fixture.path();
         let (ingot, file) = workspace
-            .touch_input_for_file_path(&mut db, fixture.path())
+            .touch_input_for_file_path(&mut db, fe_source_path)
             .unwrap();
         assert_eq!(ingot.kind(&db), IngotKind::Local);
 

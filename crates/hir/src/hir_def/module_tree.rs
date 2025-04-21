@@ -275,7 +275,7 @@ impl<'db> ModuleTreeBuilder<'db> {
 
 #[cfg(test)]
 mod tests {
-    use common::input::{IngotFiles, IngotKind, Version};
+    use common::input::{IngotKind, Version};
 
     use super::*;
     use crate::{lower, test_db::TestDb};
@@ -290,23 +290,15 @@ mod tests {
             IngotKind::Local,
             Version::new(0, 0, 1),
             Default::default(),
-            IngotFiles::default(&db),
+            IndexMap::default(),
         );
-        let local_root = local_ingot.files(&db).touch(&mut db, "src/lib.fe".into());
-        let mod1 = local_ingot.files(&db).touch(&mut db, "src/mod1.fe".into());
-        let mod2 = local_ingot.files(&db).touch(&mut db, "src/mod2.fe".into());
-        let foo = local_ingot
-            .files(&db)
-            .touch(&mut db, "src/mod1/foo.fe".into());
-        let bar = local_ingot
-            .files(&db)
-            .touch(&mut db, "src/mod2/bar.fe".into());
-        let baz = local_ingot
-            .files(&db)
-            .touch(&mut db, "src/mod2/baz.fe".into());
-        let _floating = local_ingot
-            .files(&db)
-            .touch(&mut db, "src/mod3/floating.fe".into());
+        let local_root = local_ingot.touch(&mut db, "src/lib.fe".into());
+        let mod1 = local_ingot.touch(&mut db, "src/mod1.fe".into());
+        let mod2 = local_ingot.touch(&mut db, "src/mod2.fe".into());
+        let foo = local_ingot.touch(&mut db, "src/mod1/foo.fe".into());
+        let bar = local_ingot.touch(&mut db, "src/mod2/bar.fe".into());
+        let baz = local_ingot.touch(&mut db, "src/mod2/baz.fe".into());
+        let _floating = local_ingot.touch(&mut db, "src/mod3/floating.fe".into());
 
         let local_root_mod = lower::map_file_to_mod(&db, local_ingot, local_root);
         let mod1_mod = lower::map_file_to_mod(&db, local_ingot, mod1);

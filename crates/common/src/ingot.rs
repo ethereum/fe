@@ -2,7 +2,7 @@ use camino::Utf8PathBuf;
 
 use crate::{
     indexmap::IndexSet,
-    input::{IngotDependency, IngotFiles, IngotKind, Version},
+    input::{IngotDependency, IngotKind, Version},
     Core, InputDb, InputFile, InputIngot,
 };
 
@@ -156,13 +156,13 @@ impl<'a> IngotBuilder<'a> {
             dependencies.insert(IngotDependency::new("core", core));
         }
 
-        InputIngot::new(
+        InputIngot::from_files(
             self.db,
             self.ingot_path,
             self.kind,
             self.version,
             dependencies,
-            IngotFiles::from_files(self.db, files),
+            files,
         )
     }
 }

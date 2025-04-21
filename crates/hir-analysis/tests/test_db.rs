@@ -11,7 +11,7 @@ use codespan_reporting::{
 use common::{
     diagnostics::Span,
     indexmap::{IndexMap, IndexSet},
-    input::{IngotFiles, IngotKind, Version},
+    input::{IngotKind, Version},
     InputFile, InputIngot,
 };
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
@@ -56,10 +56,10 @@ impl HirAnalysisTestDb {
             kind,
             version,
             IndexSet::default(),
-            IngotFiles::default(self),
+            IndexMap::default(),
         );
         // let root = InputFile::new(self, file_name.into(), text.to_string());
-        let root = ingot.files(self).touch(self, file_name.into());
+        let root = ingot.touch(self, file_name.into());
         root.set_text(self).to(text.into());
         (ingot, root)
     }

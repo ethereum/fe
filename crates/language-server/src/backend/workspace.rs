@@ -6,7 +6,7 @@ use camino::Utf8PathBuf;
 use common::{
     indexmap::IndexMap,
     ingot::builtin_core,
-    input::{IngotDependency, IngotFiles, IngotKind, Version},
+    input::{IngotDependency, IngotKind, Version},
     InputFile, InputIngot,
 };
 
@@ -93,7 +93,7 @@ impl LocalIngotContext {
             IngotKind::Local,
             Version::new(0, 0, 0),
             external_ingots,
-            IngotFiles::new(db, IndexMap::default()),
+            IndexMap::default(),
         );
         Some(Self {
             ingot,
@@ -109,7 +109,8 @@ impl IngotFileContext for LocalIngotContext {
         path: &str,
     ) -> Option<(InputIngot, InputFile)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
-        let input = self.ingot.files(db).touch(db, Utf8PathBuf::from(path));
+        let input = self.ingot.touch(db, Utf8PathBuf::from(path));
+        self.files.insert(path, input);
         Some((ingot, input))
     }
 
@@ -140,7 +141,7 @@ impl IngotFileContext for LocalIngotContext {
 
         if let Some(_file) = file {
             let ingot = self.ingot;
-            ingot.files(db).remove_file(db, &Utf8PathBuf::from(path));
+            ingot.remove_file(db, &Utf8PathBuf::from(path));
             Ok(())
         } else {
             Err(anyhow::anyhow!("File not found in ingot"))
@@ -169,7 +170,13 @@ impl IngotFileContext for StandaloneIngotContext {
         path: &str,
     ) -> Option<(InputIngot, InputFile)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
-        let input = ingot.files(db).touch(db, Utf8PathBuf::from(path));
+
+        let path_buf = Utf8PathBuf::from(path);
+        let file_name = path_buf.file_name().unwrap_or(path);
+        let input = ingot.touch(db, Utf8PathBuf::from(file_name));
+
+        self.files.insert(path, input);
+
         Some((ingot, input))
     }
 
@@ -192,13 +199,21 @@ impl IngotFileContext for StandaloneIngotContext {
                     let external_ingots = [IngotDependency::new("core", builtin_core(db))]
                         .into_iter()
                         .collect();
+
+                    // Use the absolute parent directory of the file as the ingot path
+                    let path_buf = Utf8PathBuf::from(path);
+                    let ingot_path = path_buf
+                        .parent()
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_else(|| Utf8PathBuf::from("."));
+
                     let ingot = InputIngot::new(
                         db,
-                        path.into(),
+                        ingot_path,
                         IngotKind::StandAlone,
                         Version::new(0, 0, 0),
                         external_ingots,
-                        IngotFiles::new(db, IndexMap::default()),
+                        IndexMap::default(),
                     );
                     self.ingots.insert(path, ingot);
                     Some(ingot)
@@ -371,12 +386,18 @@ impl Workspace {
             }
         }
 
-        let ingot_context_files = IngotFiles::from_files(db, ingot_context.files.values().copied());
+        // Convert the iterator of files to an IndexMap
+        let ingot_context_files = ingot_context
+            .files
+            .values()
+            .copied()
+            .map(|file| (file.path(db).clone(), file))
+            .collect();
 
         // TODO: this will disappear when we move this functionality to common / driver
         ingot_context
             .ingot
-            .__set_files_impl(db)
+            .__set_files_map_impl(db)
             .to(ingot_context_files);
     }
 }
