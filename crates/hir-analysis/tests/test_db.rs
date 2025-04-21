@@ -30,6 +30,7 @@ use hir::{
     SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
+use salsa::Setter;
 
 type CodeSpanFileId = usize;
 
@@ -55,12 +56,11 @@ impl HirAnalysisTestDb {
             kind,
             version,
             IndexSet::default(),
-            IndexSet::default(),
-            None,
+            IndexMap::default(),
         );
-        let root = InputFile::new(self, file_name.into(), text.to_string());
-        ingot.set_root_file(self, root);
-        ingot.set_files(self, [root].into_iter().collect());
+        // let root = InputFile::new(self, file_name.into(), text.to_string());
+        let root = ingot.touch(self, file_name.into());
+        root.set_text(self).to(text.into());
         (ingot, root)
     }
 

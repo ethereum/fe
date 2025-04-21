@@ -212,7 +212,7 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn set_modules(&mut self) {
-        for &file in self.input_ingot.files(self.db) {
+        for &file in self.input_ingot.files_map(self.db).values() {
             let top_mod = map_file_to_mod_impl(self.db, self.ingot, file);
 
             let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
@@ -224,7 +224,7 @@ impl<'db> ModuleTreeBuilder<'db> {
     fn build_tree(&mut self) {
         let root = self.input_ingot.root_file(self.db);
 
-        for &child in self.input_ingot.files(self.db) {
+        for &child in self.input_ingot.files_map(self.db).values() {
             // Ignore the root file because it has no parent.
             if child == root {
                 continue;
@@ -290,23 +290,15 @@ mod tests {
             IngotKind::Local,
             Version::new(0, 0, 1),
             Default::default(),
-            Default::default(),
-            None,
+            IndexMap::default(),
         );
-        let local_root = InputFile::new(&db, "src/lib.fe".into(), "".into());
-        let mod1 = InputFile::new(&db, "src/mod1.fe".into(), "".into());
-        let mod2 = InputFile::new(&db, "src/mod2.fe".into(), "".into());
-        let foo = InputFile::new(&db, "src/mod1/foo.fe".into(), "".into());
-        let bar = InputFile::new(&db, "src/mod2/bar.fe".into(), "".into());
-        let baz = InputFile::new(&db, "src/mod2/baz.fe".into(), "".into());
-        let floating = InputFile::new(&db, "src/mod3/floating.fe".into(), "".into());
-        local_ingot.set_root_file(&mut db, local_root);
-        local_ingot.set_files(
-            &mut db,
-            [local_root, mod1, mod2, foo, bar, baz, floating]
-                .into_iter()
-                .collect(),
-        );
+        let local_root = local_ingot.touch(&mut db, "src/lib.fe".into());
+        let mod1 = local_ingot.touch(&mut db, "src/mod1.fe".into());
+        let mod2 = local_ingot.touch(&mut db, "src/mod2.fe".into());
+        let foo = local_ingot.touch(&mut db, "src/mod1/foo.fe".into());
+        let bar = local_ingot.touch(&mut db, "src/mod2/bar.fe".into());
+        let baz = local_ingot.touch(&mut db, "src/mod2/baz.fe".into());
+        let _floating = local_ingot.touch(&mut db, "src/mod3/floating.fe".into());
 
         let local_root_mod = lower::map_file_to_mod(&db, local_ingot, local_root);
         let mod1_mod = lower::map_file_to_mod(&db, local_ingot, mod1);

@@ -12,7 +12,8 @@ fn run_ty_check(fixture: Fixture<&str>) {
     let db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
+    let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
+    let file = ingot.root_file(&db);
     let top_mod = db.top_mod(ingot, file);
 
     let diags = db.run_on_top_mod(top_mod);
@@ -38,8 +39,8 @@ mod wasm {
         let db = DriverDataBase::default();
         let path = Utf8Path::new(fixture.path());
 
-        let (ingot, file) =
-            IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
+        let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
+        let file = ingot.root_file(&db);
         let top_mod = db.top_mod(ingot, file);
         db.run_on_top_mod(top_mod);
     }

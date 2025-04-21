@@ -32,7 +32,7 @@ pub fn run(opts: &Options) {
                             }),
                         source_files:
                             Some(SourceFiles {
-                                root: Some(root),
+                                root: Some(_root),
                                 files,
                             }),
                     }) => {
@@ -47,10 +47,8 @@ pub fn run(opts: &Options) {
                         IngotBuilder::new(&db, "core")
                             .kind(IngotKind::Core)
                             .version(version)
-                            .entrypoint(root)
                             .files_from_contents(files)
                             .build()
-                            .0
                     }
                     Ok(Ingot::SingleFile { .. }) => {
                         eprintln!("standalone core ingot not supported");
@@ -82,7 +80,7 @@ pub fn run(opts: &Options) {
                         }),
                     source_files:
                         Some(SourceFiles {
-                            root: Some(root),
+                            root: Some(_root),
                             files,
                         }),
                 }) => {
@@ -98,16 +96,13 @@ pub fn run(opts: &Options) {
                     IngotBuilder::new(&db, path)
                         .kind(IngotKind::Local)
                         .version(version)
-                        .entrypoint(root)
                         .files_from_contents(files)
                         .build()
-                        .0
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
                     IngotBuilder::standalone(&db, path, content)
                         .with_core_ingot(core_ingot)
                         .build()
-                        .0
                 }
                 Ok(_) => {
                     eprintln!("an error was encountered while resolving `{path}`");
