@@ -7,11 +7,12 @@ use hir::{
 };
 
 use super::{
+    diagnostics::NameResDiag,
     is_scope_visible_from,
     name_resolver::{NameRes, NameResBucket, NameResolutionError},
     resolve_query,
     visibility_checker::is_ty_visible_from,
-    EarlyNameQueryId, NameDomain,
+    EarlyNameQueryId, ExpectedPathKind, NameDomain,
 };
 use crate::{
     name_resolution::{NameResKind, QueryDirective},
@@ -106,6 +107,62 @@ impl<'db> PathResError<'db> {
             PathResErrorKind::TraitMethodNotFound(_) => "Trait method not found".to_string(),
             PathResErrorKind::AssocTy(_) => "Types cannot be nested inside other types".to_string(),
         }
+    }
+
+    pub fn into_diag(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        path: PathId<'db>,
+        span: DynLazySpan<'db>,
+        expected: ExpectedPathKind,
+    ) -> Option<NameResDiag<'db>> {
+        let failed_at = self.failed_at;
+        let ident = failed_at.ident(db).to_opt()?;
+
+        let diag = match self.kind {
+            PathResErrorKind::ParseError => unreachable!(),
+            PathResErrorKind::NotFound(bucket) => {
+                if let Some(nr) = bucket.iter_ok().next() {
+                    if path != self.failed_at {
+                        NameResDiag::InvalidPathSegment(span, ident, nr.kind.name_span(db))
+                    } else {
+                        match expected {
+                            ExpectedPathKind::Record | ExpectedPathKind::Type => {
+                                NameResDiag::ExpectedType(span, ident, nr.kind_name())
+                            }
+                            ExpectedPathKind::Trait => {
+                                NameResDiag::ExpectedTrait(span, ident, nr.kind_name())
+                            }
+                            ExpectedPathKind::Value => {
+                                NameResDiag::ExpectedValue(span, ident, nr.kind_name())
+                            }
+                            _ => NameResDiag::NotFound(span, ident),
+                        }
+                    }
+                } else {
+                    NameResDiag::NotFound(span, ident)
+                }
+            }
+
+            PathResErrorKind::Ambiguous(cands) => NameResDiag::ambiguous(db, span, ident, cands),
+
+            PathResErrorKind::AssocTy(_) => todo!(),
+            PathResErrorKind::TraitMethodNotFound(_) => todo!(),
+            PathResErrorKind::TooManyGenericArgs { expected, given } => {
+                NameResDiag::TooManyGenericArgs {
+                    span,
+                    expected,
+                    given,
+                }
+            }
+
+            PathResErrorKind::InvalidPathSegment(res) => {
+                NameResDiag::InvalidPathSegment(span, ident, res.name_span(db))
+            }
+
+            PathResErrorKind::Conflict(spans) => NameResDiag::Conflict(ident, spans),
+        };
+        Some(diag)
     }
 }
 

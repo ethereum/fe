@@ -204,9 +204,9 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
+        let path_span = ctxt.span().unwrap();
 
         let mut invisible = None;
-
         let mut check_visibility = |path: PathId<'db>, reso: &PathRes<'db>| {
             if invisible.is_some() {
                 return;
@@ -229,95 +229,30 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db> {
             Ok(res) => res,
 
             Err(err) => {
-                let failed_at = err.failed_at;
-                let span = ctxt
-                    .span()
-                    .unwrap()
-                    .segment(failed_at.segment_index(self.db))
+                if matches!(err.kind, PathResErrorKind::NotFound(_))
+                    && path.len(self.db) == 1
+                    && matches!(
+                        self.path_ctxt.last().unwrap(),
+                        ExpectedPathKind::Expr | ExpectedPathKind::Pat
+                    )
+                {
+                    return;
+                }
+
+                let segment_span = path_span
+                    .segment(err.failed_at.segment_index(self.db))
                     .ident();
 
-                let Some(ident) = failed_at.ident(self.db).to_opt() else {
-                    return;
-                };
-
-                let diag = match err.kind {
-                    PathResErrorKind::ParseError => unreachable!(),
-                    PathResErrorKind::NotFound(bucket) => {
-                        if path.len(self.db) == 1
-                            && matches!(
-                                self.path_ctxt.last().unwrap(),
-                                ExpectedPathKind::Expr | ExpectedPathKind::Pat
-                            )
-                        {
-                            return;
-                        } else if let Some(nr) = bucket.iter_ok().next() {
-                            if path != err.failed_at {
-                                NameResDiag::InvalidPathSegment(
-                                    span.into(),
-                                    ident,
-                                    nr.kind.name_span(self.db),
-                                )
-                            } else {
-                                match expected_path_kind {
-                                    ExpectedPathKind::Record | ExpectedPathKind::Type => {
-                                        NameResDiag::ExpectedType(
-                                            span.into(),
-                                            ident,
-                                            nr.kind_name(),
-                                        )
-                                    }
-                                    ExpectedPathKind::Trait => NameResDiag::ExpectedTrait(
-                                        span.into(),
-                                        ident,
-                                        nr.kind_name(),
-                                    ),
-                                    ExpectedPathKind::Value => NameResDiag::ExpectedValue(
-                                        span.into(),
-                                        ident,
-                                        nr.kind_name(),
-                                    ),
-                                    _ => NameResDiag::NotFound(span.into(), ident),
-                                }
-                            }
-                        } else {
-                            NameResDiag::NotFound(span.into(), ident)
-                        }
-                    }
-
-                    PathResErrorKind::Ambiguous(cands) => {
-                        NameResDiag::ambiguous(self.db, span.into(), ident, cands)
-                    }
-
-                    PathResErrorKind::AssocTy(_) => todo!(),
-                    PathResErrorKind::TraitMethodNotFound(_) => todo!(),
-                    PathResErrorKind::TooManyGenericArgs { expected, given } => {
-                        NameResDiag::TooManyGenericArgs {
-                            span: span.into(),
-                            expected,
-                            given,
-                        }
-                    }
-
-                    PathResErrorKind::InvalidPathSegment(res) => {
-                        // res.name_span(self.db)
-                        NameResDiag::InvalidPathSegment(span.into(), ident, res.name_span(self.db))
-                    }
-
-                    PathResErrorKind::Conflict(spans) => NameResDiag::Conflict(ident, spans),
-                };
-
-                self.diags.push(diag);
+                let expected = self.path_ctxt.last().unwrap();
+                if let Some(diag) = err.into_diag(self.db, path, segment_span.into(), *expected) {
+                    self.diags.push(diag);
+                }
                 return;
             }
         };
 
         if let Some((path, deriv_span)) = invisible {
-            let span = ctxt
-                .span()
-                .unwrap()
-                .segment(path.segment_index(self.db))
-                .ident();
-
+            let span = path_span.segment(path.segment_index(self.db)).ident();
             let ident = path.ident(self.db);
             let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag);
@@ -326,28 +261,25 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db> {
         let is_type = matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..));
         let is_trait = matches!(res, PathRes::Trait(_));
 
-        let span = ctxt
-            .span()
-            .unwrap()
-            .segment(path.segment_index(self.db))
-            .into();
-
         let ident = path.ident(self.db).to_opt().unwrap();
 
+        let span = path_span.segment(path.segment_index(self.db));
         match expected_path_kind {
-            ExpectedPathKind::Type if !is_type => {
-                self.diags
-                    .push(NameResDiag::ExpectedType(span, ident, res.kind_name()))
-            }
+            ExpectedPathKind::Type if !is_type => self.diags.push(NameResDiag::ExpectedType(
+                span.into(),
+                ident,
+                res.kind_name(),
+            )),
 
-            ExpectedPathKind::Trait if !is_trait => {
-                self.diags
-                    .push(NameResDiag::ExpectedTrait(span, ident, res.kind_name()))
-            }
+            ExpectedPathKind::Trait if !is_trait => self.diags.push(NameResDiag::ExpectedTrait(
+                span.into(),
+                ident,
+                res.kind_name(),
+            )),
 
-            ExpectedPathKind::Value if is_type || is_trait => self
-                .diags
-                .push(NameResDiag::ExpectedValue(span, ident, res.kind_name())),
+            ExpectedPathKind::Value if is_type || is_trait => self.diags.push(
+                NameResDiag::ExpectedValue(span.into(), ident, res.kind_name()),
+            ),
 
             _ => {}
         }
@@ -357,7 +289,7 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum ExpectedPathKind {
+pub enum ExpectedPathKind {
     Type,
     Trait,
     Value,

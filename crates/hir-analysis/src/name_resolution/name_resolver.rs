@@ -1,8 +1,4 @@
-use std::{
-    cmp,
-    collections::hash_map::{Entry, IntoValues},
-    fmt, mem,
-};
+use std::{cmp, collections::hash_map::Entry, fmt, mem};
 
 use bitflags::bitflags;
 use hir::{
@@ -221,15 +217,6 @@ impl<'db> NameResBucket<'db> {
         for res in self.iter_ok_mut() {
             res.derivation.lexed()
         }
-    }
-}
-
-impl<'db> IntoIterator for NameResBucket<'db> {
-    type Item = NameResolutionResult<'db, NameRes<'db>>;
-    type IntoIter = IntoValues<NameDomain, NameResolutionResult<'db, NameRes<'db>>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.bucket.into_values()
     }
 }
 
