@@ -242,7 +242,7 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 let name = name.data(db);
                 let mut labels = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("`{}` can't be used as a middle segment of a path", name,),
+                    message: format!("`{name}` can't be used as a middle segment of a path"),
                     span: prim_span.resolve(db),
                 }];
 

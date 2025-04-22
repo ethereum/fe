@@ -352,7 +352,7 @@ impl<'db> ImportResolver<'db> {
         let mut bucket = resolver.resolve_query(query);
         // Filter out invisible resolutions.
         let mut invisible_span = None;
-        bucket.bucket.retain(|_, res| {
+        bucket.bucket.retain(|(_, res)| {
             let Ok(res) = res else {
                 return true;
             };
