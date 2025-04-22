@@ -5,6 +5,7 @@ use hir::{
     },
     span::DynLazySpan,
 };
+use thin_vec::ThinVec;
 
 use super::{
     diagnostics::NameResDiag,
@@ -48,13 +49,13 @@ pub enum PathResErrorKind<'db> {
     ParseError,
 
     /// The name is found, but it's ambiguous.
-    Ambiguous(Vec<NameRes<'db>>),
+    Ambiguous(ThinVec<NameRes<'db>>),
 
     /// The name is found, but it can't be used in the middle of a use path.
     InvalidPathSegment(PathRes<'db>),
 
     /// The definition conflicts with other definitions.
-    Conflict(Vec<DynLazySpan<'db>>),
+    Conflict(ThinVec<DynLazySpan<'db>>),
 
     TooManyGenericArgs {
         expected: usize,

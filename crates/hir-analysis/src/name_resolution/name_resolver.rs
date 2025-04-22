@@ -14,6 +14,7 @@ use hir::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
+use thin_vec::ThinVec;
 
 use super::{
     import_resolver::Importer,
@@ -89,7 +90,7 @@ impl Default for QueryDirective {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
 pub struct NameResBucket<'db> {
     // Contains a maximum of 3 entries (one for each distinct NameDomain)
-    pub(super) bucket: Vec<(NameDomain, NameResolutionResult<'db, NameRes<'db>>)>,
+    pub(super) bucket: ThinVec<(NameDomain, NameResolutionResult<'db, NameRes<'db>>)>,
 }
 
 impl<'db> NameResBucket<'db> {
@@ -184,10 +185,11 @@ impl<'db> NameResBucket<'db> {
                         cmp::Ordering::Less => {}
                         cmp::Ordering::Equal => {
                             if old_res.kind != res.kind {
-                                *existing_res = Err(NameResolutionError::Ambiguous(vec![
-                                    old_res.clone(),
-                                    res.clone(),
-                                ]));
+                                *existing_res =
+                                    Err(NameResolutionError::Ambiguous(ThinVec::from([
+                                        old_res.clone(),
+                                        res.clone(),
+                                    ])));
                             }
                         }
                         cmp::Ordering::Greater => {
@@ -218,7 +220,7 @@ impl<'db> NameResBucket<'db> {
 impl<'db> From<NameRes<'db>> for NameResBucket<'db> {
     fn from(res: NameRes<'db>) -> Self {
         Self {
-            bucket: Vec::from([(res.domain, Ok(res))]),
+            bucket: ThinVec::from([(res.domain, Ok(res))]),
         }
     }
 }
@@ -723,13 +725,13 @@ pub enum NameResolutionError<'db> {
     Invisible(Option<DynLazySpan<'db>>),
 
     /// The name is found, but it's ambiguous.
-    Ambiguous(Vec<NameRes<'db>>),
+    Ambiguous(ThinVec<NameRes<'db>>),
 
     /// The name is found, but it can't be used in the middle of a use path.
     InvalidPathSegment(NameRes<'db>),
 
     /// The definition conflicts with other definitions.
-    Conflict(IdentId<'db>, Vec<DynLazySpan<'db>>),
+    Conflict(IdentId<'db>, ThinVec<DynLazySpan<'db>>),
 }
 
 pub type NameResolutionResult<'db, T> = Result<T, NameResolutionError<'db>>;

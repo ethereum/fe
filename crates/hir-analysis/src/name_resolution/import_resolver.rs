@@ -12,6 +12,7 @@ use hir::{
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
+use thin_vec::ThinVec;
 
 use super::{
     diagnostics::NameResDiag,
@@ -528,7 +529,7 @@ impl<'db> ImportResolver<'db> {
                     .iter()
                     .any(|ty| ty.name(self.db) == first_segment_ident))
         {
-            self.register_error(&i_use, NameResolutionError::Ambiguous(vec![]));
+            self.register_error(&i_use, NameResolutionError::Ambiguous(ThinVec::new()));
         }
     }
 
@@ -947,10 +948,10 @@ impl<'db> IntermediateResolvedImports<'db> {
                         if i_use.use_ != use_ {
                             return Err(NameResolutionError::Conflict(
                                 imported_name,
-                                vec![
+                                ThinVec::from([
                                     i_use.use_.imported_name_span(db).unwrap(),
                                     cand.derived_from(db).unwrap(),
-                                ],
+                                ]),
                             ));
                         }
                     }

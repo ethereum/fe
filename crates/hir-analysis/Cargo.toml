@@ -19,6 +19,7 @@ rustc-hash.workspace = true
 salsa.workspace = true
 smallvec.workspace = true
 smallvec1.workspace = true
+thin-vec.workspace = true
 
 common.workspace = true
 test-utils.workspace = true

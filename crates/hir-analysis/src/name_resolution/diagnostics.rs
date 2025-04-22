@@ -3,6 +3,7 @@ use hir::{
     span::DynLazySpan,
 };
 use salsa::Update;
+use thin_vec::ThinVec;
 
 use super::NameRes;
 use crate::HirAnalysisDb;
@@ -10,7 +11,7 @@ use crate::HirAnalysisDb;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum NameResDiag<'db> {
     /// The definition conflicts with other definitions.
-    Conflict(IdentId<'db>, Vec<DynLazySpan<'db>>),
+    Conflict(IdentId<'db>, ThinVec<DynLazySpan<'db>>),
 
     /// The name is not found.
     NotFound(DynLazySpan<'db>, IdentId<'db>),
@@ -67,7 +68,7 @@ impl<'db> NameResDiag<'db> {
         db: &'db dyn HirAnalysisDb,
         span: DynLazySpan<'db>,
         ident: IdentId<'db>,
-        cands: Vec<NameRes<'db>>,
+        cands: ThinVec<NameRes<'db>>,
     ) -> Self {
         let cands = cands
             .into_iter()
