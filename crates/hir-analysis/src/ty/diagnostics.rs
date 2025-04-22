@@ -15,7 +15,7 @@ use hir::{
         Enum, FieldIndex, FieldParent, Func, IdentId, ImplTrait, ItemKind, PathId, Trait,
         TypeAlias as HirTypeAlias,
     },
-    span::{expr::LazyMethodCallExprSpan, DynLazySpan},
+    span::{expr::LazyMethodCallExprSpan, params::LazyGenericParamSpan, DynLazySpan},
 };
 use salsa::Update;
 use smallvec1::SmallVec;
@@ -91,7 +91,7 @@ pub enum TyLowerDiag<'db> {
     KindBoundNotAllowed(DynLazySpan<'db>),
 
     GenericParamAlreadyDefinedInParent {
-        span: DynLazySpan<'db>,
+        span: LazyGenericParamSpan<'db>,
         conflict_with: DynLazySpan<'db>,
         name: IdentId<'db>,
     },

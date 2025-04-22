@@ -7,9 +7,9 @@ use std::collections::hash_map::Entry;
 use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, FieldParent, Func, FuncParamListId, GenericParam,
-        GenericParamListId, IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait,
-        TraitRefId, TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, FieldDef, FieldParent, Func, FuncParamListId, GenericParam, IdentId,
+        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeId as HirTyId,
+        VariantKind,
     },
     visitor::prelude::*,
 };
@@ -320,44 +320,6 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    // Check if the same generic parameter is already defined in the parent item.
-    // Other name conflict check is done in the name resolution.
-    //
-    // This check is necessary because the conflict rule
-    // for the generic parameter is the exceptional case where shadowing shouldn't
-    // occur.
-    fn verify_method_generic_param_conflict(
-        &mut self,
-        params: GenericParamListId<'db>,
-        span: LazyGenericParamListSpan<'db>,
-    ) -> bool {
-        let mut is_conflict = false;
-        for (i, param) in params.data(self.db).iter().enumerate() {
-            if let Some(name) = param.name().to_opt() {
-                let scope = self.scope();
-                let parent_scope = scope.parent_item(self.db).unwrap().scope();
-                let path = PathId::from_ident(self.db, name);
-
-                match resolve_path(self.db, path, parent_scope, false) {
-                    Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
-                        self.diags.push(
-                            TyLowerDiag::GenericParamAlreadyDefinedInParent {
-                                span: span.param(i).into(),
-                                conflict_with: r.name_span(self.db).unwrap(),
-                                name,
-                            }
-                            .into(),
-                        );
-                        is_conflict = true;
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        !is_conflict
-    }
-
     fn verify_self_type(&mut self, self_ty: HirTyId<'db>, span: DynLazySpan<'db>) -> bool {
         let Some(expected_ty) = self.self_ty else {
             return false;
@@ -480,6 +442,34 @@ impl<'db> DefAnalyzer<'db> {
     }
 }
 
+// Check if the same generic parameter is already defined in the parent item.
+// Other name conflict check is done in the name resolution.
+//
+// This check is necessary because the conflict rule
+// for the generic parameter is the exceptional case where shadowing shouldn't
+// occur.
+fn check_param_defined_in_parent<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    param: &GenericParam<'db>,
+    span: LazyGenericParamSpan<'db>,
+) -> Option<TyLowerDiag<'db>> {
+    let name = param.name().to_opt()?;
+    let parent_scope = scope.parent_item(db)?.scope();
+    let path = PathId::from_ident(db, name);
+
+    match resolve_path(db, path, parent_scope, false) {
+        Ok(r @ PathRes::Ty(ty)) if ty.is_param(db) => {
+            Some(TyLowerDiag::GenericParamAlreadyDefinedInParent {
+                span,
+                conflict_with: r.name_span(db).unwrap(),
+                name,
+            })
+        }
+        _ => None,
+    }
+}
+
 impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     // We don't need to traverse the nested item, each item kinds are explicitly
     // handled(e.g, `visit_trait` or `visit_enum`).
@@ -593,24 +583,11 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             unreachable!()
         };
 
-        if let Some(name) = param.name().to_opt() {
-            let scope = self.scope();
-            let parent_scope = scope.parent_item(self.db).unwrap().scope();
-            let path = PathId::from_ident(self.db, name);
-            match resolve_path(self.db, path, parent_scope, false) {
-                Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
-                    self.diags.push(
-                        TyLowerDiag::GenericParamAlreadyDefinedInParent {
-                            span: ctxt.span().unwrap().into(),
-                            conflict_with: r.name_span(self.db).unwrap(),
-                            name,
-                        }
-                        .into(),
-                    );
-                    return;
-                }
-                _ => {}
-            }
+        if let Some(diag) =
+            check_param_defined_in_parent(self.db, self.scope(), param, ctxt.span().unwrap())
+        {
+            self.diags.push(diag.into());
+            return;
         }
 
         match param {
@@ -763,10 +740,19 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             return;
         }
 
-        if !self.verify_method_generic_param_conflict(
-            hir_func.generic_params(self.db),
-            hir_func.lazy_span().generic_params_moved(),
-        ) {
+        // Skip the rest of the analysis if any param names conflict with a parent's param
+        let span = hir_func.lazy_span().generic_params_moved();
+        let params = hir_func.generic_params(self.db).data(self.db);
+        let mut is_conflict = false;
+        for (i, param) in params.iter().enumerate() {
+            if let Some(diag) =
+                check_param_defined_in_parent(self.db, self.scope(), param, span.param(i))
+            {
+                self.diags.push(diag.into());
+                is_conflict = true;
+            }
+        }
+        if is_conflict {
             return;
         }
 
