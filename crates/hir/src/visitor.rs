@@ -2,13 +2,13 @@ use std::{marker::PhantomData, mem};
 
 use crate::{
     hir_def::{
-        attr, scope_graph::ScopeId, Body, CallArg, Const, Contract, Enum, Expr, ExprId, Field,
-        FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam, FuncParamListId,
-        FuncParamName, GenericArg, GenericArgListId, GenericParam, GenericParamListId, IdentId,
-        Impl, ImplTrait, IngotId, ItemKind, KindBound, LitKind, MatchArm, Mod, Partial, Pat, PatId,
-        PathId, Stmt, StmtId, Struct, TopLevelMod, Trait, TraitRefId, TupleTypeId, TypeAlias,
-        TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId, UsePathSegment, VariantDef,
-        VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
+        attr, scope_graph::ScopeId, Body, CallArg, Const, Contract, Enum, EnumVariant, Expr,
+        ExprId, Field, FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam,
+        FuncParamListId, FuncParamName, GenericArg, GenericArgListId, GenericParam,
+        GenericParamListId, IdentId, Impl, ImplTrait, IngotId, ItemKind, KindBound, LitKind,
+        MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait,
+        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{
         item::LazySuperTraitListSpan, lazy_spans::*, params::LazyTraitRefSpan,
@@ -1363,7 +1363,7 @@ pub fn walk_generic_param_list<'db, V>(
     let parent_item = ctxt.scope().item();
     for (i, param) in params.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
-            ScopeId::GenericParam(parent_item, i),
+            ScopeId::GenericParam(parent_item, i as u16),
             |span| span.param_moved(i),
             |ctxt| {
                 visitor.visit_generic_param(ctxt, param);
@@ -1514,7 +1514,7 @@ pub fn walk_func_param_list<'db, V>(
     let parent_item = ctxt.scope().item();
     for (idx, param) in params.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
-            ScopeId::FuncParam(parent_item, idx),
+            ScopeId::FuncParam(parent_item, idx as u16),
             |span| span.param_moved(idx),
             |ctxt| {
                 visitor.visit_func_param(ctxt, param);
@@ -1602,12 +1602,12 @@ pub fn walk_field_def_list<'db, V>(
     let parent = match ctxt.scope() {
         ScopeId::Item(ItemKind::Struct(s)) => FieldParent::Struct(s),
         ScopeId::Item(ItemKind::Contract(c)) => FieldParent::Contract(c),
-        ScopeId::Variant(ItemKind::Enum(e), idx) => FieldParent::Variant(e, idx as u16),
+        ScopeId::Variant(v) => FieldParent::Variant(v),
         _ => unreachable!(),
     };
     for (idx, field) in fields.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
-            ScopeId::Field(parent, idx),
+            ScopeId::Field(parent, idx as u16),
             |span| span.field_moved(idx),
             |ctxt| {
                 visitor.visit_field_def(ctxt, field);
@@ -1649,10 +1649,12 @@ pub fn walk_variant_def_list<'db, V>(
 ) where
     V: Visitor<'db> + ?Sized,
 {
-    let parent_item = ctxt.scope().item();
+    let ItemKind::Enum(enum_) = ctxt.scope().item() else {
+        unreachable!()
+    };
     for (idx, variant) in variants.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
-            ScopeId::Variant(parent_item, idx),
+            ScopeId::Variant(EnumVariant::new(enum_, idx)),
             |span| span.variant_moved(idx),
             |ctxt| {
                 visitor.visit_variant_def(ctxt, variant);

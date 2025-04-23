@@ -8,7 +8,8 @@ use hir::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
-        Enum, GenericParam, GenericParamOwner, IdentId, ItemKind, Mod, TopLevelMod, Trait, Use,
+        Enum, EnumVariant, GenericParam, GenericParamOwner, IdentId, ItemKind, Mod, TopLevelMod,
+        Trait, Use,
     },
     span::DynLazySpan,
 };
@@ -280,9 +281,9 @@ impl<'db> NameRes<'db> {
         }
     }
 
-    pub fn enum_variant(&self) -> Option<(ItemKind<'db>, usize)> {
+    pub fn enum_variant(&self) -> Option<EnumVariant> {
         match self.kind {
-            NameResKind::Scope(ScopeId::Variant(item, idx)) => Some((item, idx)),
+            NameResKind::Scope(ScopeId::Variant(v)) => Some(v),
             _ => None,
         }
     }
@@ -789,9 +790,7 @@ impl NameDomain {
             ScopeId::Item(_) => Self::TYPE,
             ScopeId::GenericParam(parent, idx) => {
                 let parent = GenericParamOwner::from_item_opt(parent).unwrap();
-
-                let param = &parent.params(db).data(db)[idx];
-                match param {
+                match parent.param(db, idx as usize) {
                     GenericParam::Type(_) => NameDomain::TYPE,
                     GenericParam::Const(_) => NameDomain::TYPE | NameDomain::VALUE,
                 }

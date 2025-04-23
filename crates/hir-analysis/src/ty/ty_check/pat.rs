@@ -126,7 +126,7 @@ impl<'db> TyChecker<'db> {
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
                 Ok(PathRes::EnumVariant(variant)) => {
-                    if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
+                    if matches!(variant.kind(self.db), VariantKind::Unit) {
                         self.table.instantiate_to_term(variant.ty)
                     } else {
                         let diag = BodyDiag::unit_variant_expected(
@@ -181,7 +181,7 @@ impl<'db> TyChecker<'db> {
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
                 Ok(PathRes::EnumVariant(variant)) => {
-                    if matches!(variant.variant_kind(self.db), VariantKind::Unit) {
+                    if matches!(variant.kind(self.db), VariantKind::Unit) {
                         self.table.instantiate_to_term(variant.ty)
                     } else {
                         let diag = BodyDiag::unit_variant_expected(
@@ -243,7 +243,7 @@ impl<'db> TyChecker<'db> {
                     self.push_diag(diag);
                     return TyId::invalid(self.db, InvalidCause::Other);
                 }
-                PathRes::EnumVariant(variant) => match variant.variant_kind(self.db) {
+                PathRes::EnumVariant(variant) => match variant.kind(self.db) {
                     VariantKind::Tuple(elems) => (variant, elems),
                     _ => {
                         let diag = BodyDiag::tuple_variant_expected(

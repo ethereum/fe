@@ -5,9 +5,9 @@ use rustc_hash::FxHashSet;
 use salsa::Update;
 
 use super::{
-    scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, ExprId,
-    FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl, ImplTrait,
-    IngotId, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind,
+    scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, EnumVariant,
+    ExprId, FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl,
+    ImplTrait, IngotId, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind,
     Visibility,
 };
 use crate::{
@@ -78,16 +78,16 @@ pub enum ScopeId<'db> {
     Item(ItemKind<'db>),
 
     /// A generic parameter scope.
-    GenericParam(ItemKind<'db>, usize),
+    GenericParam(ItemKind<'db>, u16),
 
     /// A function parameter scope.
-    FuncParam(ItemKind<'db>, usize),
+    FuncParam(ItemKind<'db>, u16),
 
     /// A field scope.
-    Field(FieldParent<'db>, usize),
+    Field(FieldParent<'db>, u16),
 
     /// A variant scope.
-    Variant(ItemKind<'db>, usize),
+    Variant(EnumVariant<'db>),
 
     /// A block scope.
     Block(Body<'db>, ExprId),
@@ -100,7 +100,7 @@ impl<'db> ScopeId<'db> {
             ScopeId::GenericParam(item, _) => item.top_mod(db),
             ScopeId::FuncParam(item, _) => item.top_mod(db),
             ScopeId::Field(p, _) => p.top_mod(db),
-            ScopeId::Variant(item, _) => item.top_mod(db),
+            ScopeId::Variant(v) => v.enum_.top_mod(db),
             ScopeId::Block(body, _) => body.top_mod(db),
         }
     }
@@ -127,8 +127,7 @@ impl<'db> ScopeId<'db> {
             ScopeId::FuncParam(item, _) => item,
             ScopeId::Field(FieldParent::Struct(s), _) => s.into(),
             ScopeId::Field(FieldParent::Contract(c), _) => c.into(),
-            ScopeId::Field(FieldParent::Variant(e, _), _) => e.into(),
-            ScopeId::Variant(item, _) => item,
+            ScopeId::Field(FieldParent::Variant(v), _) | ScopeId::Variant(v) => v.enum_.into(),
             ScopeId::Block(body, _) => body.into(),
         }
     }
@@ -309,17 +308,14 @@ impl<'db> ScopeId<'db> {
         match self.data(db).id {
             ScopeId::Item(item) => item.name_span(),
 
-            ScopeId::Variant(parent, idx) => {
-                let enum_: Enum = parent.try_into().unwrap();
-                Some(enum_.lazy_span().variants().variant(idx).name().into())
-            }
+            ScopeId::Variant(v) => Some(v.lazy_span().name_moved().into()),
 
-            ScopeId::Field(p, idx) => Some(p.field_name_span(idx)),
+            ScopeId::Field(p, idx) => Some(p.field_name_span(idx as usize)),
 
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
-                let param = &func.params(db).to_opt()?.data(db)[idx];
-                let param_span = func.lazy_span().params().param(idx);
+                let param = &func.params(db).to_opt()?.data(db)[idx as usize];
+                let param_span = func.lazy_span().params().param(idx as usize);
                 if let Some(FuncParamName::Ident(_)) = param.label {
                     Some(param_span.label().into())
                 } else {
@@ -330,7 +326,7 @@ impl<'db> ScopeId<'db> {
             ScopeId::GenericParam(parent, idx) => {
                 let parent = GenericParamOwner::from_item_opt(parent).unwrap();
 
-                Some(parent.params_span().param(idx).into())
+                Some(parent.params_span().param(idx as usize).into())
             }
 
             ScopeId::Block(..) => None,
@@ -343,7 +339,7 @@ impl<'db> ScopeId<'db> {
             ScopeId::GenericParam(_, _) => "type",
             ScopeId::FuncParam(_, _) => "value",
             ScopeId::Field(_, _) => "field",
-            ScopeId::Variant(_, _) => "value",
+            ScopeId::Variant(..) => "value",
             ScopeId::Block(_, _) => "block",
         }
     }
@@ -606,28 +602,25 @@ impl<'db> FromScope<'db> for &'db FieldDef<'db> {
         let ScopeId::Field(parent, idx) = scope else {
             return None;
         };
+        let idx = idx as usize;
 
         match parent {
             FieldParent::Struct(s) => Some(&s.fields(db).data(db)[idx]),
             FieldParent::Contract(c) => Some(&c.fields(db).data(db)[idx]),
-            FieldParent::Variant(enum_, vidx) => {
-                match enum_.variants(db).data(db)[vidx as usize].kind {
-                    VariantKind::Record(fields) => Some(&fields.data(db)[idx]),
-                    _ => unreachable!(),
-                }
-            }
+            FieldParent::Variant(v) => match v.kind(db) {
+                VariantKind::Record(fields) => Some(&fields.data(db)[idx]),
+                _ => unreachable!(),
+            },
         }
     }
 }
 
 impl<'db> FromScope<'db> for &'db VariantDef<'db> {
     fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self> {
-        let ScopeId::Variant(parent, idx) = scope else {
+        let ScopeId::Variant(v) = scope else {
             return None;
         };
-        let enum_: Enum = parent.try_into().unwrap();
-
-        Some(&enum_.variants(db).data(db)[idx])
+        Some(v.def(db))
     }
 }
 
@@ -638,7 +631,9 @@ impl<'db> FromScope<'db> for &'db FuncParam<'db> {
         };
 
         let func: Func = parent.try_into().unwrap();
-        func.params(db).to_opt().map(|params| &params.data(db)[idx])
+        func.params(db)
+            .to_opt()
+            .map(|params| &params.data(db)[idx as usize])
     }
 }
 
@@ -649,7 +644,7 @@ impl<'db> FromScope<'db> for &'db GenericParam<'db> {
         };
 
         let parent = GenericParamOwner::from_item_opt(parent).unwrap();
-        Some(&parent.params(db).data(db)[idx])
+        Some(&parent.params(db).data(db)[idx as usize])
     }
 }
 
@@ -719,12 +714,9 @@ mod tests {
         assert!(matches!(enum_.item(), ItemKind::Enum(_)));
 
         let variant = scope_graph.children(enum_).next().unwrap();
-        assert!(matches!(variant, ScopeId::Variant(_, _)));
+        assert!(matches!(variant, ScopeId::Variant(..)));
 
         let field = scope_graph.children(variant).next().unwrap();
-        assert!(matches!(
-            field,
-            ScopeId::Field(FieldParent::Variant(_, _), _)
-        ));
+        assert!(matches!(field, ScopeId::Field(FieldParent::Variant(..), _)));
     }
 }

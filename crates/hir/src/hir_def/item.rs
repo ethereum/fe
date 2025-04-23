@@ -10,8 +10,8 @@ use parser::ast;
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, FuncParamListId, FuncParamName, GenericParamListId, IdentId, IngotId,
-    Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
+    AttrListId, Body, FuncParamListId, FuncParamName, GenericParam, GenericParamListId, IdentId,
+    IngotId, Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
 };
 use crate::{
     hir_def::TraitRefId,
@@ -20,7 +20,7 @@ use crate::{
         item::{
             LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFuncSpan, LazyImplSpan,
             LazyImplTraitSpan, LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan,
-            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan,
+            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefSpan,
         },
         params::{LazyGenericParamListSpan, LazyWhereClauseSpan},
         DynLazySpan, HirOrigin,
@@ -243,6 +243,10 @@ impl<'db> GenericParamOwner<'db> {
             GenericParamOwner::Trait(trait_) => trait_.generic_params(db),
             GenericParamOwner::ImplTrait(impl_trait) => impl_trait.generic_params(db),
         }
+    }
+
+    pub fn param(self, db: &'db dyn HirDb, idx: usize) -> &'db GenericParam<'db> {
+        &self.params(db).data(db)[idx]
     }
 
     pub fn params_span(self) -> LazyGenericParamListSpan<'db> {
@@ -723,8 +727,46 @@ impl<'db> Enum<'db> {
         LazyEnumSpan::new(self)
     }
 
+    pub fn variant_span(self, idx: usize) -> LazyVariantDefSpan<'db> {
+        self.lazy_span().variants_moved().variant_moved(idx)
+    }
+
     pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Update)]
+pub struct EnumVariant<'db> {
+    pub enum_: Enum<'db>,
+    pub idx: u16,
+}
+
+impl<'db> EnumVariant<'db> {
+    pub fn new(enum_: Enum<'db>, idx: usize) -> Self {
+        Self {
+            enum_,
+            idx: idx as u16,
+        }
+    }
+    pub fn def(self, db: &'db dyn HirDb) -> &'db VariantDef<'db> {
+        &self.enum_.variants(db).data(db)[self.idx as usize]
+    }
+
+    pub fn kind(self, db: &'db dyn HirDb) -> VariantKind<'db> {
+        self.def(db).kind
+    }
+
+    pub fn name(self, db: &'db dyn HirDb) -> Option<&'db str> {
+        Some(self.def(db).name.to_opt()?.data(db))
+    }
+
+    pub fn scope(self) -> ScopeId<'db> {
+        ScopeId::Variant(self)
+    }
+
+    pub fn lazy_span(self) -> LazyVariantDefSpan<'db> {
+        self.enum_.variant_span(self.idx as usize)
     }
 }
 
@@ -1050,7 +1092,7 @@ impl<'db> FieldDefListId<'db> {
 pub enum FieldParent<'db> {
     Struct(Struct<'db>),
     Contract(Contract<'db>),
-    Variant(Enum<'db>, u16),
+    Variant(EnumVariant<'db>),
 }
 
 impl<'db> FieldParent<'db> {
@@ -1058,13 +1100,9 @@ impl<'db> FieldParent<'db> {
         match self {
             FieldParent::Struct(struct_) => Some(struct_.name(db).to_opt()?.data(db).into()),
             FieldParent::Contract(contract) => Some(contract.name(db).to_opt()?.data(db).into()),
-            FieldParent::Variant(enum_, idx) => {
-                let e = enum_.name(db).to_opt()?.data(db);
-                let v = enum_.variants(db).data(db)[idx as usize]
-                    .name
-                    .to_opt()?
-                    .data(db);
-                Some(format!("{e}::{v}").into())
+            FieldParent::Variant(variant) => {
+                let e = variant.enum_.name(db).to_opt()?.data(db);
+                Some(format!("{e}::{}", variant.name(db)?).into())
             }
         }
     }
@@ -1081,7 +1119,7 @@ impl<'db> FieldParent<'db> {
         match self {
             FieldParent::Struct(struct_) => struct_.scope(),
             FieldParent::Contract(contract) => contract.scope(),
-            FieldParent::Variant(enum_, idx) => ScopeId::Variant(enum_.into(), idx as usize),
+            FieldParent::Variant(variant) => variant.scope(),
         }
     }
 
@@ -1089,12 +1127,10 @@ impl<'db> FieldParent<'db> {
         match self {
             FieldParent::Struct(struct_) => struct_.fields(db),
             FieldParent::Contract(contract) => contract.fields(db),
-            FieldParent::Variant(enum_, idx) => {
-                match enum_.variants(db).data(db)[idx as usize].kind {
-                    VariantKind::Record(fields) => fields,
-                    _ => unreachable!(),
-                }
-            }
+            FieldParent::Variant(variant) => match variant.kind(db) {
+                VariantKind::Record(fields) => fields,
+                _ => unreachable!(),
+            },
         }
     }
 
@@ -1102,7 +1138,7 @@ impl<'db> FieldParent<'db> {
         match self {
             FieldParent::Struct(i) => i.top_mod(db),
             FieldParent::Contract(i) => i.top_mod(db),
-            FieldParent::Variant(i, _) => i.top_mod(db),
+            FieldParent::Variant(i) => i.enum_.top_mod(db),
         }
     }
 
@@ -1110,14 +1146,7 @@ impl<'db> FieldParent<'db> {
         match self {
             FieldParent::Struct(s) => s.lazy_span().fields().field(idx).name().into(),
             FieldParent::Contract(c) => c.lazy_span().fields().field(idx).name().into(),
-            FieldParent::Variant(enum_, vidx) => enum_
-                .lazy_span()
-                .variants()
-                .variant(vidx as usize)
-                .fields()
-                .field(idx)
-                .name()
-                .into(),
+            FieldParent::Variant(v) => v.lazy_span().fields().field(idx).name().into(),
         }
     }
 }

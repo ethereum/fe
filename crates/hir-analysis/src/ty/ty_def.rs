@@ -927,7 +927,7 @@ impl<'db> TyParam<'db> {
         if self.is_trait_self {
             self.owner
         } else {
-            ScopeId::GenericParam(self.owner.item(), self.original_idx(db))
+            ScopeId::GenericParam(self.owner.item(), self.original_idx(db) as u16)
         }
     }
 }

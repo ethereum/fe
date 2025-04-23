@@ -7,9 +7,9 @@ use std::collections::hash_map::Entry;
 use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, FieldParent, Func, FuncParamListId, GenericParam, IdentId,
-        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeId as HirTyId,
-        VariantKind,
+        scope_graph::ScopeId, EnumVariant, FieldDef, FieldParent, Func, FuncParamListId,
+        GenericParam, IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId,
+        TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
@@ -80,7 +80,7 @@ pub fn analyze_adt<'db>(
                 if matches!(var.kind, VariantKind::Record(..)) {
                     dupes.extend(check_duplicate_field_names(
                         db,
-                        FieldParent::Variant(enum_, idx as u16),
+                        FieldParent::Variant(EnumVariant::new(enum_, idx)),
                     ))
                 }
             }
@@ -593,13 +593,13 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         match param {
             GenericParam::Type(_) => {
                 self.current_ty = Some((
-                    self.def.original_params(self.db)[idx],
+                    self.def.original_params(self.db)[idx as usize],
                     ctxt.span().unwrap().into_type_param().name().into(),
                 ));
                 walk_generic_param(self, ctxt, param)
             }
             GenericParam::Const(_) => {
-                let ty = self.def.original_params(self.db)[idx];
+                let ty = self.def.original_params(self.db)[idx as usize];
                 let Some(const_ty_param) = ty.const_ty_param(self.db) else {
                     return;
                 };

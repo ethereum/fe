@@ -456,7 +456,7 @@ impl<'db> TyChecker<'db> {
                     ExprProp::invalid(self.db)
                 }
                 PathRes::EnumVariant(variant) => {
-                    let ty = match variant.variant_kind(self.db) {
+                    let ty = match variant.kind(self.db) {
                         VariantKind::Unit => variant.ty,
                         VariantKind::Tuple(_) => {
                             let ty = variant.constructor_func_ty(self.db).unwrap();

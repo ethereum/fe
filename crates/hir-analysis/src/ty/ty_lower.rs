@@ -443,7 +443,7 @@ impl<'db> GenericParamCollector<'db> {
                 NameResKind::Scope(ScopeId::GenericParam(scope, idx))
                     if scope == self.owner.scope().item() =>
                 {
-                    ParamLoc::Idx(idx + self.offset_to_original)
+                    ParamLoc::Idx(idx as usize + self.offset_to_original)
                 }
                 _ => ParamLoc::NonParam,
             },

@@ -108,7 +108,6 @@ impl<'db> AdtDef<'db> {
         self.adt_ref(db).scope()
     }
 
-    #[allow(dead_code)] // xxx
     pub(crate) fn variant_ty_span(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -117,7 +116,7 @@ impl<'db> AdtDef<'db> {
     ) -> DynLazySpan<'db> {
         match self.adt_ref(db) {
             AdtRef::Enum(e) => {
-                let span = e.lazy_span().variants_moved().variant_moved(field_idx);
+                let span = e.variant_span(field_idx);
                 match e.variants(db).data(db)[field_idx].kind {
                     VariantKind::Tuple(_) => span.tuple_type_moved().elem_ty_moved(ty_idx).into(),
                     VariantKind::Record(_) => {

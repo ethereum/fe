@@ -1,5 +1,5 @@
 use hir::{
-    hir_def::{scope_graph::ScopeId, Enum, Func, FuncParamName, IdentId, IngotId, Partial},
+    hir_def::{scope_graph::ScopeId, EnumVariant, Func, FuncParamName, IdentId, IngotId, Partial},
     span::DynLazySpan,
 };
 
@@ -133,19 +133,14 @@ impl<'db> FuncDef<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, salsa::Update)]
 pub enum HirFuncDefKind<'db> {
     Func(Func<'db>),
-    VariantCtor(Enum<'db>, usize),
+    VariantCtor(EnumVariant<'db>),
 }
 
 impl<'db> HirFuncDefKind<'db> {
     pub fn name_span(self) -> DynLazySpan<'db> {
         match self {
             Self::Func(func) => func.lazy_span().name_moved().into(),
-            Self::VariantCtor(enum_, idx) => enum_
-                .lazy_span()
-                .variants_moved()
-                .variant_moved(idx)
-                .name_moved()
-                .into(),
+            Self::VariantCtor(v) => v.lazy_span().name_moved().into(),
         }
     }
 
@@ -159,7 +154,7 @@ impl<'db> HirFuncDefKind<'db> {
     pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
         let top_mod = match self {
             Self::Func(func) => func.top_mod(db),
-            Self::VariantCtor(enum_, ..) => enum_.top_mod(db),
+            Self::VariantCtor(v) => v.enum_.top_mod(db),
         };
 
         top_mod.ingot(db)
@@ -168,32 +163,21 @@ impl<'db> HirFuncDefKind<'db> {
     pub fn scope(self) -> ScopeId<'db> {
         match self {
             Self::Func(func) => func.scope(),
-            Self::VariantCtor(enum_, idx) => ScopeId::Variant(enum_.into(), idx),
+            Self::VariantCtor(v) => ScopeId::Variant(v),
         }
     }
 
     pub fn param_list_span(self) -> DynLazySpan<'db> {
         match self {
             Self::Func(func) => func.lazy_span().params_moved().into(),
-            Self::VariantCtor(enum_, idx) => enum_
-                .lazy_span()
-                .variants_moved()
-                .variant(idx)
-                .tuple_type()
-                .into(),
+            Self::VariantCtor(v) => v.lazy_span().tuple_type().into(),
         }
     }
 
     pub fn param_span(self, idx: usize) -> DynLazySpan<'db> {
         match self {
             Self::Func(func) => func.lazy_span().params_moved().param(idx).into(),
-            Self::VariantCtor(enum_, variant_idx) => enum_
-                .lazy_span()
-                .variants_moved()
-                .variant_moved(variant_idx)
-                .tuple_type_moved()
-                .elem_ty_moved(idx)
-                .into(),
+            Self::VariantCtor(var) => var.lazy_span().tuple_type_moved().elem_ty_moved(idx).into(),
         }
     }
 }

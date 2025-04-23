@@ -27,8 +27,8 @@ pub enum NameResDiag<'db> {
 
     TooManyGenericArgs {
         span: DynLazySpan<'db>,
-        expected: usize,
-        given: usize,
+        expected: u16,
+        given: u16,
     },
 
     /// The name is found but belongs to a different name domain other than the

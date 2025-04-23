@@ -235,7 +235,7 @@ impl<'db> RecordLike<'db> for TyId<'db> {
             AdtRef::Contract(c) => FieldParent::Contract(c),
             _ => return None,
         };
-        Some(ScopeId::Field(parent, field_idx))
+        Some(ScopeId::Field(parent, field_idx as u16))
     }
 
     fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
@@ -283,7 +283,7 @@ impl<'db> RecordLike<'db> for TyId<'db> {
 
 impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
     fn is_record(&self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.variant_kind(db), HirVariantKind::Record(..))
+        matches!(self.kind(db), HirVariantKind::Record(..))
     }
 
     fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
@@ -299,10 +299,12 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
         &self,
         db: &'db dyn HirAnalysisDb,
     ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)> {
-        match self.variant_kind(db) {
-            hir::hir_def::VariantKind::Record(fields) => {
-                (fields, &self.ty.adt_def(db).unwrap().fields(db)[self.idx]).into()
-            }
+        match self.kind(db) {
+            HirVariantKind::Record(fields) => (
+                fields,
+                &self.ty.adt_def(db).unwrap().fields(db)[self.variant.idx as usize],
+            )
+                .into(),
 
             _ => None,
         }
@@ -314,13 +316,13 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
         name: IdentId<'db>,
     ) -> Option<ScopeId<'db>> {
         let field_idx = self.record_field_idx(db, name)?;
-        let parent = FieldParent::Variant(self.enum_(db), self.idx as u16);
-        Some(ScopeId::Field(parent, field_idx))
+        let parent = FieldParent::Variant(self.variant);
+        Some(ScopeId::Field(parent, field_idx as u16))
     }
 
     fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
-        let fields = match self.variant_kind(db) {
-            hir::hir_def::VariantKind::Record(fields) => fields,
+        let fields = match self.kind(db) {
+            HirVariantKind::Record(fields) => fields,
             _ => return Vec::default(),
         };
 
@@ -332,7 +334,7 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
     }
 
     fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String {
-        match self.enum_(db).variants(db).data(db)[self.idx].kind {
+        match self.kind(db) {
             HirVariantKind::Unit => "unit variant",
             HirVariantKind::Tuple(_) => "tuple variant",
             HirVariantKind::Record(_) => "record variant",
@@ -341,8 +343,7 @@ impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
     }
 
     fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
-        let expected_sub_pat =
-            self.enum_(db).variants(db).data(db)[self.idx].format_initializer_args(db);
+        let expected_sub_pat = self.variant.def(db).format_initializer_args(db);
 
         let path = self.path.pretty_print(db);
         Some(format!("{}{}", path, expected_sub_pat))
