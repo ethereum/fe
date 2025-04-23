@@ -20,6 +20,7 @@ pub struct InputIngot {
     /// An absolute path to the ingot root directory.
     /// The all files in the ingot should be located under this directory.
     #[return_ref]
+    #[set(__set_path_impl)]
     pub path: Utf8PathBuf,
 
     /// Specifies the kind of the ingot.
