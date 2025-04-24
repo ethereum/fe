@@ -441,7 +441,7 @@ pub fn walk_mod<'db, V>(
 {
     if let Some(name) = mod_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, name);
             },
@@ -449,7 +449,7 @@ pub fn walk_mod<'db, V>(
     };
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = mod_.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -470,7 +470,7 @@ pub fn walk_func<'db, V>(
 {
     if let Some(name) = func.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, name);
             },
@@ -478,7 +478,7 @@ pub fn walk_func<'db, V>(
     };
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = func.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -486,7 +486,7 @@ pub fn walk_func<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.generic_params_moved(),
+        |span| span.generic_params(),
         |ctxt| {
             let id = func.generic_params(ctxt.db);
             visitor.visit_generic_param_list(ctxt, id);
@@ -494,7 +494,7 @@ pub fn walk_func<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.where_clause_moved(),
+        |span| span.where_clause(),
         |ctxt| {
             let id = func.where_clause(ctxt.db);
             visitor.visit_where_clause(ctxt, id);
@@ -503,7 +503,7 @@ pub fn walk_func<'db, V>(
 
     if let Some(id) = func.params(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.params_moved(),
+            |span| span.params(),
             |ctxt| {
                 visitor.visit_func_param_list(ctxt, id);
             },
@@ -512,7 +512,7 @@ pub fn walk_func<'db, V>(
 
     if let Some(ty) = func.ret_ty(ctxt.db) {
         ctxt.with_new_ctxt(
-            |span| span.ret_ty_moved(),
+            |span| span.ret_ty(),
             |ctxt| {
                 visitor.visit_ty(ctxt, ty);
             },
@@ -533,7 +533,7 @@ pub fn walk_struct<'db, V>(
 {
     if let Some(id) = struct_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, id);
             },
@@ -541,7 +541,7 @@ pub fn walk_struct<'db, V>(
     }
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = struct_.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -549,7 +549,7 @@ pub fn walk_struct<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.generic_params_moved(),
+        |span| span.generic_params(),
         |ctxt| {
             let id = struct_.generic_params(ctxt.db);
             visitor.visit_generic_param_list(ctxt, id);
@@ -557,7 +557,7 @@ pub fn walk_struct<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.where_clause_moved(),
+        |span| span.where_clause(),
         |ctxt| {
             let id = struct_.where_clause(ctxt.db);
             visitor.visit_where_clause(ctxt, id);
@@ -565,7 +565,7 @@ pub fn walk_struct<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.fields_moved(),
+        |span| span.fields(),
         |ctxt| {
             let id = struct_.fields(ctxt.db);
             visitor.visit_field_def_list(ctxt, id);
@@ -582,7 +582,7 @@ pub fn walk_contract<'db, V>(
 {
     if let Some(id) = contract.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, id);
             },
@@ -590,7 +590,7 @@ pub fn walk_contract<'db, V>(
     }
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = contract.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -598,7 +598,7 @@ pub fn walk_contract<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.fields_moved(),
+        |span| span.fields(),
         |ctxt| {
             let id = contract.fields(ctxt.db);
             visitor.visit_field_def_list(ctxt, id);
@@ -615,7 +615,7 @@ pub fn walk_enum<'db, V>(
 {
     if let Some(id) = enum_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, id);
             },
@@ -623,7 +623,7 @@ pub fn walk_enum<'db, V>(
     }
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = enum_.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -631,7 +631,7 @@ pub fn walk_enum<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.generic_params_moved(),
+        |span| span.generic_params(),
         |ctxt| {
             let id = enum_.generic_params(ctxt.db);
             visitor.visit_generic_param_list(ctxt, id);
@@ -639,7 +639,7 @@ pub fn walk_enum<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.where_clause_moved(),
+        |span| span.where_clause(),
         |ctxt| {
             let id = enum_.where_clause(ctxt.db);
             visitor.visit_where_clause(ctxt, id);
@@ -647,7 +647,7 @@ pub fn walk_enum<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.variants_moved(),
+        |span| span.variants(),
         |ctxt| {
             let id = enum_.variants(ctxt.db);
             visitor.visit_variant_def_list(ctxt, id);
@@ -664,7 +664,7 @@ pub fn walk_type_alias<'db, V>(
 {
     if let Some(id) = alias.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.alias_moved(),
+            |span| span.alias(),
             |ctxt| {
                 visitor.visit_ident(ctxt, id);
             },
@@ -672,7 +672,7 @@ pub fn walk_type_alias<'db, V>(
     }
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = alias.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -680,7 +680,7 @@ pub fn walk_type_alias<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.generic_params_moved(),
+        |span| span.generic_params(),
         |ctxt| {
             let id = alias.generic_params(ctxt.db);
             visitor.visit_generic_param_list(ctxt, id);
@@ -689,7 +689,7 @@ pub fn walk_type_alias<'db, V>(
 
     if let Some(ty) = alias.ty(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.ty_moved(),
+            |span| span.ty(),
             |ctxt| {
                 visitor.visit_ty(ctxt, ty);
             },
@@ -706,7 +706,7 @@ pub fn walk_impl<'db, V>(
 {
     if let Some(ty) = impl_.ty(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.target_ty_moved(),
+            |span| span.target_ty(),
             |ctxt| {
                 visitor.visit_ty(ctxt, ty);
             },
@@ -714,7 +714,7 @@ pub fn walk_impl<'db, V>(
     }
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = impl_.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -722,7 +722,7 @@ pub fn walk_impl<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.generic_params_moved(),
+        |span| span.generic_params(),
         |ctxt| {
             let id = impl_.generic_params(ctxt.db);
             visitor.visit_generic_param_list(ctxt, id);
@@ -730,7 +730,7 @@ pub fn walk_impl<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.where_clause_moved(),
+        |span| span.where_clause(),
         |ctxt| {
             let id = impl_.where_clause(ctxt.db);
             visitor.visit_where_clause(ctxt, id);
@@ -751,7 +751,7 @@ pub fn walk_trait<'db, V>(
 {
     if let Some(name) = trait_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, name);
             },
@@ -759,7 +759,7 @@ pub fn walk_trait<'db, V>(
     }
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = trait_.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -767,7 +767,7 @@ pub fn walk_trait<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.generic_params_moved(),
+        |span| span.generic_params(),
         |ctxt| {
             let id = trait_.generic_params(ctxt.db);
             visitor.visit_generic_param_list(ctxt, id);
@@ -780,7 +780,7 @@ pub fn walk_trait<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.where_clause_moved(),
+        |span| span.where_clause(),
         |ctxt| {
             let id = trait_.where_clause(ctxt.db);
             visitor.visit_where_clause(ctxt, id);
@@ -801,7 +801,7 @@ pub fn walk_impl_trait<'db, V>(
 {
     if let Some(trait_ref) = impl_trait.trait_ref(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.trait_ref_moved(),
+            |span| span.trait_ref(),
             |ctxt| {
                 visitor.visit_trait_ref(ctxt, trait_ref);
             },
@@ -810,7 +810,7 @@ pub fn walk_impl_trait<'db, V>(
 
     if let Some(ty) = impl_trait.ty(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.ty_moved(),
+            |span| span.ty(),
             |ctxt| {
                 visitor.visit_ty(ctxt, ty);
             },
@@ -818,7 +818,7 @@ pub fn walk_impl_trait<'db, V>(
     }
 
     ctxt.with_new_ctxt(
-        |span| span.attributes_moved(),
+        |span| span.attributes(),
         |ctxt| {
             let id = impl_trait.attributes(ctxt.db);
             visitor.visit_attribute_list(ctxt, id);
@@ -826,7 +826,7 @@ pub fn walk_impl_trait<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.generic_params_moved(),
+        |span| span.generic_params(),
         |ctxt| {
             let id = impl_trait.generic_params(ctxt.db);
             visitor.visit_generic_param_list(ctxt, id);
@@ -834,7 +834,7 @@ pub fn walk_impl_trait<'db, V>(
     );
 
     ctxt.with_new_ctxt(
-        |span| span.where_clause_moved(),
+        |span| span.where_clause(),
         |ctxt| {
             let id = impl_trait.where_clause(ctxt.db);
             visitor.visit_where_clause(ctxt, id);
@@ -855,7 +855,7 @@ pub fn walk_const<'db, V>(
 {
     if let Some(name) = const_.name(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, name);
             },
@@ -864,7 +864,7 @@ pub fn walk_const<'db, V>(
 
     if let Some(ty) = const_.ty(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.ty_moved(),
+            |span| span.ty(),
             |ctxt| {
                 visitor.visit_ty(ctxt, ty);
             },
@@ -885,7 +885,7 @@ pub fn walk_use<'db, V>(
 {
     if let Some(use_path) = use_.path(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.path_moved(),
+            |span| span.path(),
             |ctxt| {
                 visitor.visit_use_path(ctxt, use_path);
             },
@@ -894,7 +894,7 @@ pub fn walk_use<'db, V>(
 
     if let Some(Partial::Present(UseAlias::Ident(ident))) = use_.alias(ctxt.db) {
         ctxt.with_new_ctxt(
-            |span| span.alias_moved().name_moved(),
+            |span| span.alias().name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, ident);
             },
@@ -930,7 +930,7 @@ pub fn walk_stmt<'db, V>(
 
             if let Some(ty) = ty {
                 ctxt.with_new_ctxt(
-                    |span| span.into_let_stmt().ty_moved(),
+                    |span| span.into_let_stmt().ty(),
                     |ctxt| {
                         visitor.visit_ty(ctxt, *ty);
                     },
@@ -974,7 +974,7 @@ pub fn walk_expr<'db, V>(
 
     match data {
         Expr::Lit(lit) => ctxt.with_new_ctxt(
-            |span| span.into_lit_expr().lit_moved(),
+            |span| span.into_lit_expr().lit(),
             |ctxt| {
                 visitor.visit_lit(ctxt, *lit);
             },
@@ -1008,7 +1008,7 @@ pub fn walk_expr<'db, V>(
                 |span| span.into_call_expr(),
                 |ctxt| {
                     ctxt.with_new_ctxt(
-                        |span| span.args_moved(),
+                        |span| span.args(),
                         |ctxt| {
                             visitor.visit_call_arg_list(ctxt, call_args);
                         },
@@ -1025,18 +1025,18 @@ pub fn walk_expr<'db, V>(
                 |ctxt| {
                     if let Some(method_name) = method_name.to_opt() {
                         ctxt.with_new_ctxt(
-                            |span| span.method_name_moved(),
+                            |span| span.method_name(),
                             |ctxt| visitor.visit_ident(ctxt, method_name),
                         );
                     }
 
                     ctxt.with_new_ctxt(
-                        |span| span.generic_args_moved(),
+                        |span| span.generic_args(),
                         |ctxt| visitor.visit_generic_arg_list(ctxt, *generic_args),
                     );
 
                     ctxt.with_new_ctxt(
-                        |span| span.args_moved(),
+                        |span| span.args(),
                         |ctxt| {
                             visitor.visit_call_arg_list(ctxt, call_args);
                         },
@@ -1048,7 +1048,7 @@ pub fn walk_expr<'db, V>(
         Expr::Path(path) => {
             if let Some(path) = path.to_opt() {
                 ctxt.with_new_ctxt(
-                    |span| span.into_path_expr().path_moved(),
+                    |span| span.into_path_expr().path(),
                     |ctxt| {
                         visitor.visit_path(ctxt, path);
                     },
@@ -1062,7 +1062,7 @@ pub fn walk_expr<'db, V>(
                 |ctxt| {
                     if let Some(path) = path.to_opt() {
                         ctxt.with_new_ctxt(
-                            |span| span.path_moved(),
+                            |span| span.path(),
                             |ctxt| {
                                 visitor.visit_path(ctxt, path);
                             },
@@ -1070,7 +1070,7 @@ pub fn walk_expr<'db, V>(
                     }
 
                     ctxt.with_new_ctxt(
-                        |span| span.fields_moved(),
+                        |span| span.fields(),
                         |ctxt| {
                             visitor.visit_field_list(ctxt, fields);
                         },
@@ -1085,14 +1085,14 @@ pub fn walk_expr<'db, V>(
             match field_name {
                 Partial::Present(FieldIndex::Ident(ident)) => {
                     ctxt.with_new_ctxt(
-                        |span| span.into_field_expr().accessor_moved(),
+                        |span| span.into_field_expr().accessor(),
                         |ctxt| visitor.visit_ident(ctxt, *ident),
                     );
                 }
 
                 Partial::Present(FieldIndex::Index(index)) => {
                     ctxt.with_new_ctxt(
-                        |span| span.into_field_expr().accessor_moved().into_lit_span(),
+                        |span| span.into_field_expr().accessor().into_lit_span(),
                         |ctxt| visitor.visit_lit(ctxt, (*index).into()),
                     );
                 }
@@ -1138,11 +1138,11 @@ pub fn walk_expr<'db, V>(
 
             if let Partial::Present(arms) = arms {
                 ctxt.with_new_ctxt(
-                    |span| span.into_match_expr().arms_moved(),
+                    |span| span.into_match_expr().arms(),
                     |ctxt| {
                         for (i, arm) in arms.iter().enumerate() {
                             ctxt.with_new_ctxt(
-                                |span| span.arm_moved(i),
+                                |span| span.arm(i),
                                 |ctxt| {
                                     visitor.visit_arm(ctxt, arm);
                                 },
@@ -1188,7 +1188,7 @@ where
         Pat::Lit(lit) => {
             if let Some(lit) = lit.to_opt() {
                 ctxt.with_new_ctxt(
-                    |span| span.into_lit_pat().lit_moved(),
+                    |span| span.into_lit_pat().lit(),
                     |ctxt| {
                         visitor.visit_lit(ctxt, lit);
                     },
@@ -1205,7 +1205,7 @@ where
         Pat::Path(path, _) => {
             if let Some(path) = path.to_opt() {
                 ctxt.with_new_ctxt(
-                    |span| span.into_path_pat().path_moved(),
+                    |span| span.into_path_pat().path(),
                     |ctxt| {
                         visitor.visit_path(ctxt, path);
                     },
@@ -1216,7 +1216,7 @@ where
         Pat::PathTuple(path, elems) => {
             if let Some(path) = path.to_opt() {
                 ctxt.with_new_ctxt(
-                    |span| span.into_path_tuple_pat().path_moved(),
+                    |span| span.into_path_tuple_pat().path(),
                     |ctxt| {
                         visitor.visit_path(ctxt, path);
                     },
@@ -1233,7 +1233,7 @@ where
             |ctxt| {
                 if let Some(path) = path.to_opt() {
                     ctxt.with_new_ctxt(
-                        |span| span.path_moved(),
+                        |span| span.path(),
                         |ctxt| {
                             visitor.visit_path(ctxt, path);
                         },
@@ -1241,15 +1241,15 @@ where
                 }
 
                 ctxt.with_new_ctxt(
-                    |span| span.fields_moved(),
+                    |span| span.fields(),
                     |ctxt| {
                         for (i, field) in fields.iter().enumerate() {
                             ctxt.with_new_ctxt(
-                                |span| span.field_moved(i),
+                                |span| span.field(i),
                                 |ctxt| {
                                     if let Some(label) = field.label.to_opt() {
                                         ctxt.with_new_ctxt(
-                                            |span| span.name_moved(),
+                                            |span| span.name(),
                                             |ctxt| {
                                                 visitor.visit_ident(ctxt, label);
                                             },
@@ -1283,7 +1283,7 @@ pub fn walk_attribute_list<'db, V>(
 {
     for (idx, attr) in attr.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_ctxt(
-            |span| span.attr_moved(idx),
+            |span| span.attr(idx),
             |ctxt| {
                 visitor.visit_attribute(ctxt, attr);
             },
@@ -1305,7 +1305,7 @@ pub fn walk_attribute<'db, V>(
                 |ctxt| {
                     if let Some(ident) = normal_attr.name.to_opt() {
                         ctxt.with_new_ctxt(
-                            |span| span.name_moved(),
+                            |span| span.name(),
                             |ctxt| {
                                 visitor.visit_ident(ctxt, ident);
                             },
@@ -1313,15 +1313,15 @@ pub fn walk_attribute<'db, V>(
                     }
 
                     ctxt.with_new_ctxt(
-                        |span| span.args_moved(),
+                        |span| span.args(),
                         |ctxt| {
                             for (i, arg) in normal_attr.args.iter().enumerate() {
                                 ctxt.with_new_ctxt(
-                                    |span| span.arg_moved(i),
+                                    |span| span.arg(i),
                                     |ctxt| {
                                         if let Some(key) = arg.key.to_opt() {
                                             ctxt.with_new_ctxt(
-                                                |span| span.key_moved(),
+                                                |span| span.key(),
                                                 |ctxt| {
                                                     visitor.visit_ident(ctxt, key);
                                                 },
@@ -1329,7 +1329,7 @@ pub fn walk_attribute<'db, V>(
                                         }
                                         if let Some(value) = arg.value.to_opt() {
                                             ctxt.with_new_ctxt(
-                                                |span| span.value_moved(),
+                                                |span| span.value(),
                                                 |ctxt| {
                                                     visitor.visit_ident(ctxt, value);
                                                 },
@@ -1345,7 +1345,7 @@ pub fn walk_attribute<'db, V>(
         }
 
         Attr::DocComment(doc_comment) => ctxt.with_new_ctxt(
-            |span| span.into_doc_comment_attr().doc_moved().into_lit_span(),
+            |span| span.into_doc_comment_attr().doc().into_lit_span(),
             |ctxt| {
                 visitor.visit_lit(ctxt, doc_comment.text.into());
             },
@@ -1364,7 +1364,7 @@ pub fn walk_generic_param_list<'db, V>(
     for (i, param) in params.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
             ScopeId::GenericParam(parent_item, i as u16),
-            |span| span.param_moved(i),
+            |span| span.param(i),
             |ctxt| {
                 visitor.visit_generic_param(ctxt, param);
             },
@@ -1385,7 +1385,7 @@ pub fn walk_generic_param<'db, V>(
             |ctxt| {
                 if let Some(name) = ty_param.name.to_opt() {
                     ctxt.with_new_ctxt(
-                        |span| span.name_moved(),
+                        |span| span.name(),
                         |ctxt| {
                             visitor.visit_ident(ctxt, name);
                         },
@@ -1393,7 +1393,7 @@ pub fn walk_generic_param<'db, V>(
                 }
 
                 ctxt.with_new_ctxt(
-                    |span| span.bounds_moved(),
+                    |span| span.bounds(),
                     |ctxt| {
                         visitor.visit_type_bound_list(ctxt, &ty_param.bounds);
                     },
@@ -1406,7 +1406,7 @@ pub fn walk_generic_param<'db, V>(
             |ctxt| {
                 if let Some(name) = const_param.name.to_opt() {
                     ctxt.with_new_ctxt(
-                        |span| span.name_moved(),
+                        |span| span.name(),
                         |ctxt| {
                             visitor.visit_ident(ctxt, name);
                         },
@@ -1415,7 +1415,7 @@ pub fn walk_generic_param<'db, V>(
 
                 if let Some(ty) = const_param.ty.to_opt() {
                     ctxt.with_new_ctxt(
-                        |span| span.ty_moved(),
+                        |span| span.ty(),
                         |ctxt| {
                             visitor.visit_ty(ctxt, ty);
                         },
@@ -1435,7 +1435,7 @@ pub fn walk_generic_arg_list<'db, V>(
 {
     for (i, arg) in args.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_ctxt(
-            |span| span.arg_moved(i),
+            |span| span.arg(i),
             |ctxt| {
                 visitor.visit_generic_arg(ctxt, arg);
             },
@@ -1454,7 +1454,7 @@ pub fn walk_generic_arg<'db, V>(
         GenericArg::Type(type_arg) => {
             if let Some(ty) = type_arg.ty.to_opt() {
                 ctxt.with_new_ctxt(
-                    |span| span.into_type_arg().ty_moved(),
+                    |span| span.into_type_arg().ty(),
                     |ctxt| {
                         visitor.visit_ty(ctxt, ty);
                     },
@@ -1479,7 +1479,7 @@ pub fn walk_call_arg_list<'db, V>(
 {
     for (idx, arg) in args.iter().copied().enumerate() {
         ctxt.with_new_ctxt(
-            |span| span.arg_moved(idx),
+            |span| span.arg(idx),
             |ctxt| {
                 visitor.visit_call_arg(ctxt, arg);
             },
@@ -1495,10 +1495,7 @@ pub fn walk_call_arg<'db, V>(
     V: Visitor<'db> + ?Sized,
 {
     if let Some(label) = arg.label {
-        ctxt.with_new_ctxt(
-            |span| span.label_moved(),
-            |ctxt| visitor.visit_ident(ctxt, label),
-        );
+        ctxt.with_new_ctxt(|span| span.label(), |ctxt| visitor.visit_ident(ctxt, label));
     }
 
     visit_node_in_body!(visitor, ctxt, &arg.expr, expr);
@@ -1515,7 +1512,7 @@ pub fn walk_func_param_list<'db, V>(
     for (idx, param) in params.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
             ScopeId::FuncParam(parent_item, idx as u16),
-            |span| span.param_moved(idx),
+            |span| span.param(idx),
             |ctxt| {
                 visitor.visit_func_param(ctxt, param);
             },
@@ -1531,17 +1528,11 @@ pub fn walk_func_param<'db, V>(
     V: Visitor<'db> + ?Sized,
 {
     if let Some(FuncParamName::Ident(ident)) = param.label {
-        ctxt.with_new_ctxt(
-            |span| span.label_moved(),
-            |ctxt| visitor.visit_ident(ctxt, ident),
-        );
+        ctxt.with_new_ctxt(|span| span.label(), |ctxt| visitor.visit_ident(ctxt, ident));
     }
 
     if let Some(FuncParamName::Ident(ident)) = param.name.to_opt() {
-        ctxt.with_new_ctxt(
-            |span| span.name_moved(),
-            |ctxt| visitor.visit_ident(ctxt, ident),
-        );
+        ctxt.with_new_ctxt(|span| span.name(), |ctxt| visitor.visit_ident(ctxt, ident));
     }
 
     if let Some(ty) = param.ty.to_opt() {
@@ -1553,7 +1544,7 @@ pub fn walk_func_param<'db, V>(
                 },
             );
         } else {
-            ctxt.with_new_ctxt(|span| span.ty_moved(), |ctxt| visitor.visit_ty(ctxt, ty));
+            ctxt.with_new_ctxt(|span| span.ty(), |ctxt| visitor.visit_ty(ctxt, ty));
         }
     }
 }
@@ -1567,7 +1558,7 @@ pub fn walk_field_list<'db, V>(
 {
     for (idx, field) in fields.iter().copied().enumerate() {
         ctxt.with_new_ctxt(
-            |span| span.field_moved(idx),
+            |span| span.field(idx),
             |ctxt| {
                 visitor.visit_field(ctxt, field);
             },
@@ -1583,10 +1574,7 @@ pub fn walk_field<'db, V>(
     V: Visitor<'db> + ?Sized,
 {
     if let Some(name) = field.label {
-        ctxt.with_new_ctxt(
-            |span| span.label_moved(),
-            |ctxt| visitor.visit_ident(ctxt, name),
-        );
+        ctxt.with_new_ctxt(|span| span.label(), |ctxt| visitor.visit_ident(ctxt, name));
     }
 
     visit_node_in_body!(visitor, ctxt, &field.expr, expr);
@@ -1608,7 +1596,7 @@ pub fn walk_field_def_list<'db, V>(
     for (idx, field) in fields.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
             ScopeId::Field(parent, idx as u16),
-            |span| span.field_moved(idx),
+            |span| span.field(idx),
             |ctxt| {
                 visitor.visit_field_def(ctxt, field);
             },
@@ -1625,7 +1613,7 @@ pub fn walk_field_def<'db, V>(
 {
     if let Some(name) = field.name.to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, name);
             },
@@ -1634,7 +1622,7 @@ pub fn walk_field_def<'db, V>(
 
     if let Some(ty) = field.ty.to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.ty_moved(),
+            |span| span.ty(),
             |ctxt| {
                 visitor.visit_ty(ctxt, ty);
             },
@@ -1655,7 +1643,7 @@ pub fn walk_variant_def_list<'db, V>(
     for (idx, variant) in variants.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_scoped_ctxt(
             ScopeId::Variant(EnumVariant::new(enum_, idx)),
-            |span| span.variant_moved(idx),
+            |span| span.variant(idx),
             |ctxt| {
                 visitor.visit_variant_def(ctxt, variant);
             },
@@ -1672,7 +1660,7 @@ pub fn walk_variant_def<'db, V>(
 {
     if let Some(name) = variant.name.to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.name_moved(),
+            |span| span.name(),
             |ctxt| {
                 visitor.visit_ident(ctxt, name);
             },
@@ -1682,12 +1670,12 @@ pub fn walk_variant_def<'db, V>(
     match variant.kind {
         VariantKind::Unit => {}
         VariantKind::Tuple(t) => ctxt.with_new_ctxt(
-            |span| span.tuple_type_moved(),
+            |span| span.tuple_type(),
             |ctxt| visitor.visit_tuple_type(ctxt, t),
         ),
 
         VariantKind::Record(fields) => ctxt.with_new_ctxt(
-            |span| span.fields_moved(),
+            |span| span.fields(),
             |ctxt| visitor.visit_field_def_list(ctxt, fields),
         ),
     }
@@ -1718,7 +1706,7 @@ where
     };
     if let Some(ident) = path.ident(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.segment_moved(idx).into_atom(),
+            |span| span.segment(idx).into_atom(),
             |ctxt| {
                 visitor.visit_ident(ctxt, ident);
             },
@@ -1726,7 +1714,7 @@ where
     }
     let generic_args = path.generic_args(ctxt.db);
     ctxt.with_new_ctxt(
-        |span| span.segment(idx).generic_args_moved(),
+        |span| span.segment(idx).generic_args(),
         |ctxt| {
             visitor.visit_generic_arg_list(ctxt, generic_args);
         },
@@ -1744,7 +1732,7 @@ pub fn walk_use_path<'db, V>(
     for (i, segment) in path.data(ctxt.db).iter().enumerate() {
         if let Some(UsePathSegment::Ident(ident)) = segment.to_opt() {
             ctxt.with_new_ctxt(
-                |span| span.segment_moved(i).into_atom(),
+                |span| span.segment(i).into_atom(),
                 |ctxt| {
                     visitor.visit_ident(ctxt, ident);
                 },
@@ -1776,10 +1764,7 @@ pub fn walk_ty<'db, V>(
             |span| span.into_path_type(),
             |ctxt| {
                 if let Some(path) = path.to_opt() {
-                    ctxt.with_new_ctxt(
-                        |span| span.path_moved(),
-                        |ctxt| visitor.visit_path(ctxt, path),
-                    );
+                    ctxt.with_new_ctxt(|span| span.path(), |ctxt| visitor.visit_path(ctxt, path));
                 }
             },
         ),
@@ -1794,7 +1779,7 @@ pub fn walk_ty<'db, V>(
             |ctxt| {
                 if let Some(elem) = elem.to_opt() {
                     ctxt.with_new_ctxt(
-                        |span| span.elem_moved(),
+                        |span| span.elem(),
                         |ctxt| {
                             visitor.visit_ty(ctxt, elem);
                         },
@@ -1810,7 +1795,7 @@ pub fn walk_ty<'db, V>(
             |span| span.into_self_type(),
             |ctxt| {
                 ctxt.with_new_ctxt(
-                    |span| span.generic_args_moved(),
+                    |span| span.generic_args(),
                     |ctxt| {
                         visitor.visit_generic_arg_list(ctxt, *generic_args);
                     },
@@ -1834,7 +1819,7 @@ pub fn walk_tuple_type<'db, V>(
             continue;
         };
         ctxt.with_new_ctxt(
-            |span| span.elem_ty_moved(i),
+            |span| span.elem_ty(i),
             |ctxt| {
                 visitor.visit_ty(ctxt, elem);
             },
@@ -1851,7 +1836,7 @@ pub fn walk_type_bound_list<'db, V>(
 {
     for (idx, bound) in bounds.iter().enumerate() {
         ctxt.with_new_ctxt(
-            |span| span.bound_moved(idx),
+            |span| span.bound(idx),
             |ctxt| {
                 visitor.visit_type_bound(ctxt, bound);
             },
@@ -1868,11 +1853,11 @@ pub fn walk_type_bound<'db, V>(
 {
     match bound {
         TypeBound::Trait(trait_ref) => ctxt.with_new_ctxt(
-            |span| span.trait_bound_moved(),
+            |span| span.trait_bound(),
             |ctxt| visitor.visit_trait_ref(ctxt, *trait_ref),
         ),
         TypeBound::Kind(Partial::Present(kind_bound)) => ctxt.with_new_ctxt(
-            |span| span.kind_bound_moved(),
+            |span| span.kind_bound(),
             |ctxt| {
                 visitor.visit_kind_bound(ctxt, kind_bound);
             },
@@ -1890,7 +1875,7 @@ pub fn walk_trait_ref<'db, V>(
 {
     if let Some(path) = trait_ref.path(ctxt.db()).to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.path_moved(),
+            |span| span.path(),
             |ctxt| {
                 visitor.visit_path(ctxt, path);
             },
@@ -1907,7 +1892,7 @@ pub fn walk_super_trait_list<'db, V>(
 {
     for (idx, super_trait) in super_traits.iter().enumerate() {
         ctxt.with_new_ctxt(
-            |span| span.super_trait_moved(idx),
+            |span| span.super_trait(idx),
             |ctxt| {
                 visitor.visit_trait_ref(ctxt, *super_trait);
             },
@@ -1928,7 +1913,7 @@ pub fn walk_kind_bound<'db, V>(
 
     if let Partial::Present(lhs) = lhs {
         ctxt.with_new_ctxt(
-            |span| span.abs_moved().lhs_moved(),
+            |span| span.abs().lhs(),
             |ctxt| {
                 visitor.visit_kind_bound(ctxt, lhs.as_ref());
             },
@@ -1937,7 +1922,7 @@ pub fn walk_kind_bound<'db, V>(
 
     if let Partial::Present(rhs) = rhs {
         ctxt.with_new_ctxt(
-            |span| span.abs_moved().rhs_moved(),
+            |span| span.abs().rhs(),
             |ctxt| {
                 visitor.visit_kind_bound(ctxt, rhs.as_ref());
             },
@@ -1954,7 +1939,7 @@ pub fn walk_where_clause<'db, V>(
 {
     for (idx, predicate) in predicates.data(ctxt.db).iter().enumerate() {
         ctxt.with_new_ctxt(
-            |span| span.predicate_moved(idx),
+            |span| span.predicate(idx),
             |ctxt| {
                 visitor.visit_where_predicate(ctxt, predicate);
             },
@@ -1971,7 +1956,7 @@ pub fn walk_where_predicate<'db, V>(
 {
     if let Some(ty) = predicate.ty.to_opt() {
         ctxt.with_new_ctxt(
-            |span| span.ty_moved(),
+            |span| span.ty(),
             |ctxt| {
                 visitor.visit_ty(ctxt, ty);
             },
@@ -1979,7 +1964,7 @@ pub fn walk_where_predicate<'db, V>(
     }
 
     ctxt.with_new_ctxt(
-        |span| span.bounds_moved(),
+        |span| span.bounds(),
         |ctxt| {
             visitor.visit_type_bound_list(ctxt, &predicate.bounds);
         },

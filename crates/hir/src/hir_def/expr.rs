@@ -55,7 +55,7 @@ pub struct ExprId(u32);
 entity_impl!(ExprId);
 
 impl ExprId {
-    pub fn lazy_span(self, body: Body) -> LazyExprSpan {
+    pub fn span(self, body: Body) -> LazyExprSpan {
         LazyExprSpan::new(body, self)
     }
 

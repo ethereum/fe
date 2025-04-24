@@ -482,15 +482,10 @@ impl<'db> LocalBinding<'db> {
 
     fn def_span(&self, env: &TyCheckEnv<'db>) -> DynLazySpan<'db> {
         match self {
-            LocalBinding::Local { pat, .. } => pat.lazy_span(env.body).into(),
+            LocalBinding::Local { pat, .. } => pat.span(env.body).into(),
             LocalBinding::Param { idx, .. } => {
                 let hir_func = env.func().unwrap().hir_func_def(env.db).unwrap();
-                hir_func
-                    .lazy_span()
-                    .params_moved()
-                    .param(*idx)
-                    .name_moved()
-                    .into()
+                hir_func.span().params().param(*idx).name().into()
             }
         }
     }

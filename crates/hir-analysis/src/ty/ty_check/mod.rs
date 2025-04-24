@@ -149,7 +149,7 @@ impl<'db> TyChecker<'db> {
         T: Into<Typeable<'db>>,
     {
         let t = t.into();
-        let actual = self.equate_ty(actual, expected, t.lazy_span(self.env.body()));
+        let actual = self.equate_ty(actual, expected, t.span(self.env.body()));
 
         match t {
             Typeable::Expr(expr, mut typed_expr) => {
@@ -271,10 +271,10 @@ enum Typeable<'db> {
 }
 
 impl Typeable<'_> {
-    fn lazy_span(self, body: Body) -> DynLazySpan {
+    fn span(self, body: Body) -> DynLazySpan {
         match self {
-            Self::Expr(expr, ..) => expr.lazy_span(body).into(),
-            Self::Pat(pat) => pat.lazy_span(body).into(),
+            Self::Expr(expr, ..) => expr.span(body).into(),
+            Self::Pat(pat) => pat.span(body).into(),
         }
     }
 }

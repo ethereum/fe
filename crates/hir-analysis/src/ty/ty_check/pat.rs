@@ -111,17 +111,14 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        let span = pat.lazy_span(self.body()).into_path_pat();
+        let span = pat.span(self.body()).into_path_pat();
         let res = self.resolve_path(*path, true);
 
         if path.is_bare_ident(self.db) {
             match res {
                 Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) if ty.is_record(self.db) => {
-                    let diag = BodyDiag::unit_variant_expected(
-                        self.db,
-                        pat.lazy_span(self.body()).into(),
-                        ty,
-                    );
+                    let diag =
+                        BodyDiag::unit_variant_expected(self.db, pat.span(self.body()).into(), ty);
                     self.push_diag(diag);
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
@@ -131,7 +128,7 @@ impl<'db> TyChecker<'db> {
                     } else {
                         let diag = BodyDiag::unit_variant_expected(
                             self.db,
-                            pat.lazy_span(self.body()).into(),
+                            pat.span(self.body()).into(),
                             variant,
                         );
 
@@ -148,7 +145,7 @@ impl<'db> TyChecker<'db> {
                     {
                         let diag = BodyDiag::DuplicatedBinding {
                             primary: span.into(),
-                            conflicat_with: conflict_with.lazy_span(self.body()).into(),
+                            conflicat_with: conflict_with.span(self.body()).into(),
                             name,
                         };
                         self.push_diag(diag);
@@ -164,11 +161,8 @@ impl<'db> TyChecker<'db> {
                     | PathRes::Func(ty)
                     | PathRes::Const(ty),
                 ) => {
-                    let diag = BodyDiag::unit_variant_expected(
-                        self.db,
-                        pat.lazy_span(self.body()).into(),
-                        ty,
-                    );
+                    let diag =
+                        BodyDiag::unit_variant_expected(self.db, pat.span(self.body()).into(), ty);
                     self.push_diag(diag);
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
@@ -186,7 +180,7 @@ impl<'db> TyChecker<'db> {
                     } else {
                         let diag = BodyDiag::unit_variant_expected(
                             self.db,
-                            pat.lazy_span(self.body()).into(),
+                            pat.span(self.body()).into(),
                             variant,
                         );
 
@@ -217,7 +211,7 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        let span = pat.lazy_span(self.body()).into_path_tuple_pat();
+        let span = pat.span(self.body()).into_path_tuple_pat();
 
         let (variant, expected_elems) = match self.resolve_path(*path, true) {
             Ok(res) => match res {
@@ -227,7 +221,7 @@ impl<'db> TyChecker<'db> {
                 | PathRes::Const(ty) => {
                     let diag = BodyDiag::tuple_variant_expected(
                         self.db,
-                        pat.lazy_span(self.body()).into(),
+                        pat.span(self.body()).into(),
                         Some(ty),
                     );
                     self.push_diag(diag);
@@ -248,7 +242,7 @@ impl<'db> TyChecker<'db> {
                     _ => {
                         let diag = BodyDiag::tuple_variant_expected(
                             self.db,
-                            pat.lazy_span(self.body()).into(),
+                            pat.span(self.body()).into(),
                             Some(variant),
                         );
                         self.push_diag(diag);
@@ -279,7 +273,7 @@ impl<'db> TyChecker<'db> {
         let (actual_elems, rest_range) = self.unpack_rest_pat(elems, Some(expected_len));
         if actual_elems.len() != expected_len {
             let diag = BodyDiag::MismatchedFieldCount {
-                primary: pat.lazy_span(self.body()).into(),
+                primary: pat.span(self.body()).into(),
                 expected: expected_len,
                 given: actual_elems.len(),
             };
@@ -322,7 +316,7 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
-        let span = pat.lazy_span(self.body()).into_record_pat();
+        let span = pat.span(self.body()).into_record_pat();
 
         match self.resolve_path(*path, true) {
             Ok(reso) => match reso {
@@ -335,11 +329,8 @@ impl<'db> TyChecker<'db> {
                 | PathRes::TyAlias(_, ty)
                 | PathRes::Func(ty)
                 | PathRes::Const(ty) => {
-                    let diag = BodyDiag::record_expected(
-                        self.db,
-                        pat.lazy_span(self.body()).into(),
-                        Some(ty),
-                    );
+                    let diag =
+                        BodyDiag::record_expected(self.db, pat.span(self.body()).into(), Some(ty));
                     self.push_diag(diag);
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
@@ -362,7 +353,7 @@ impl<'db> TyChecker<'db> {
                 PathRes::EnumVariant(variant) => {
                     let diag = BodyDiag::record_expected(
                         self.db,
-                        pat.lazy_span(self.body()).into(),
+                        pat.span(self.body()).into(),
                         Some(variant),
                     );
                     self.push_diag(diag);
@@ -381,7 +372,7 @@ impl<'db> TyChecker<'db> {
                 PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..) => {
                     let diag = BodyDiag::record_expected::<TyId>(
                         self.db,
-                        pat.lazy_span(self.body()).into(),
+                        pat.span(self.body()).into(),
                         None,
                     );
                     self.push_diag(diag);
@@ -403,16 +394,14 @@ impl<'db> TyChecker<'db> {
         let hir_db = self.db;
         let mut contains_rest = false;
 
-        let pat_span = pat.lazy_span(self.body()).into_record_pat();
+        let pat_span = pat.span(self.body()).into_record_pat();
         let mut rec_checker = RecordInitChecker::new(self, &record_like);
 
         for (i, field_pat) in fields.iter().enumerate() {
-            let field_pat_span = pat_span.fields().field(i);
-
             if field_pat.pat.is_rest(hir_db, rec_checker.tc.body()) {
                 if contains_rest {
                     let diag = BodyDiag::DuplicatedRestPat(
-                        field_pat.pat.lazy_span(rec_checker.tc.body()).into(),
+                        field_pat.pat.span(rec_checker.tc.body()).into(),
                     );
                     rec_checker.tc.push_diag(diag);
                     continue;
@@ -423,13 +412,14 @@ impl<'db> TyChecker<'db> {
             }
 
             let label = field_pat.label(hir_db, rec_checker.tc.body());
-            let expected = match rec_checker.feed_label(label, field_pat_span.into()) {
-                Ok(ty) => ty,
-                Err(diag) => {
-                    rec_checker.tc.push_diag(diag);
-                    TyId::invalid(rec_checker.tc.db, InvalidCause::Other)
-                }
-            };
+            let expected =
+                match rec_checker.feed_label(label, pat_span.clone().fields().field(i).into()) {
+                    Ok(ty) => ty,
+                    Err(diag) => {
+                        rec_checker.tc.push_diag(diag);
+                        TyId::invalid(rec_checker.tc.db, InvalidCause::Other)
+                    }
+                };
 
             rec_checker.tc.check_pat(field_pat.pat, expected);
         }
@@ -447,7 +437,7 @@ impl<'db> TyChecker<'db> {
         let mut rest_start = None;
         for (i, &pat) in pat_tup.iter().enumerate() {
             if pat.is_rest(self.db, self.body()) && rest_start.replace(i).is_some() {
-                let span = pat.lazy_span(self.body());
+                let span = pat.span(self.body());
                 self.push_diag(BodyDiag::DuplicatedRestPat(span.into()));
                 return (
                     self.fresh_tys_n(expected_len.unwrap_or(0)),

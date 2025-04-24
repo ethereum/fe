@@ -308,14 +308,14 @@ impl<'db> ScopeId<'db> {
         match self.data(db).id {
             ScopeId::Item(item) => item.name_span(),
 
-            ScopeId::Variant(v) => Some(v.lazy_span().name_moved().into()),
+            ScopeId::Variant(v) => Some(v.span().name().into()),
 
             ScopeId::Field(p, idx) => Some(p.field_name_span(idx as usize)),
 
             ScopeId::FuncParam(parent, idx) => {
                 let func: Func = parent.try_into().unwrap();
                 let param = &func.params(db).to_opt()?.data(db)[idx as usize];
-                let param_span = func.lazy_span().params().param(idx as usize);
+                let param_span = func.span().params().param(idx as usize);
                 if let Some(FuncParamName::Ident(_)) = param.label {
                     Some(param_span.label().into())
                 } else {

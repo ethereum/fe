@@ -317,15 +317,8 @@ macro_rules! define_lazy_span_node {
             }
 
             $($(
-                pub fn $name_token(&self) -> crate::span::LazySpanAtom<'db> {
-                    let cloned = self.clone();
-                    paste::paste! {
-                        cloned.[<$name_token _moved>]()
-                    }
-                }
-
                 paste::paste! {
-                    pub fn [<$name_token _moved>](mut self) -> crate::span::LazySpanAtom<'db> {
+                    pub fn $name_token(mut self) -> crate::span::LazySpanAtom<'db> {
                         use parser::ast::prelude::*;
                         fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
                             origin.map(|node| <$sk_node as AstNode>::cast(node)
@@ -345,15 +338,8 @@ macro_rules! define_lazy_span_node {
             )*)?
 
             $($(
-                pub fn $name_node(&self) -> $result<'db> {
-                    let cloned = self.clone();
-                    paste::paste! {
-                        cloned.[<$name_node _moved>]()
-                    }
-                }
-
                 paste::paste! {
-                        pub fn [<$name_node _moved>](mut self) -> $result<'db> {
+                        pub fn $name_node(mut self) -> $result<'db> {
                         use parser::ast::prelude::*;
 
                         fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
@@ -373,16 +359,8 @@ macro_rules! define_lazy_span_node {
             )*)?
 
             $($(
-
-                pub fn $name_iter(&self, idx: usize) -> $result_iter<'db> {
-                    let cloned = self.clone();
-                    paste::paste! {
-                        cloned.[<$name_iter _moved>](idx)
-                    }
-                }
-
                 paste::paste! {
-                    pub fn [<$name_iter _moved>](mut self, idx: usize) -> $result_iter<'db> {
+                    pub fn $name_iter(mut self, idx: usize) -> $result_iter<'db> {
                         use parser::ast::prelude::*;
                         fn f(origin: crate::span::transition::ResolvedOrigin, arg: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
                             let idx = match arg {

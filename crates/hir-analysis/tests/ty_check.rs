@@ -29,7 +29,7 @@ fn ty_check_standalone(fixture: Fixture<&str>) {
             let ty = typed_body.expr_ty(&db, expr);
             prop_formatter.push_prop(
                 func.top_mod(&db),
-                expr.lazy_span(body).into(),
+                expr.span(body).into(),
                 ty.pretty_print(&db).to_string(),
             );
         }
@@ -38,7 +38,7 @@ fn ty_check_standalone(fixture: Fixture<&str>) {
             let ty = typed_body.pat_ty(&db, pat);
             prop_formatter.push_prop(
                 func.top_mod(&db),
-                pat.lazy_span(body).into(),
+                pat.span(body).into(),
                 ty.pretty_print(&db).to_string(),
             );
         }

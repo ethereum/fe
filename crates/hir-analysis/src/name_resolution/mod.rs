@@ -252,7 +252,10 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db> {
         };
 
         if let Some((path, deriv_span)) = invisible {
-            let span = path_span.segment(path.segment_index(self.db)).ident();
+            let span = path_span
+                .clone()
+                .segment(path.segment_index(self.db))
+                .ident();
             let ident = path.ident(self.db);
             let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag);

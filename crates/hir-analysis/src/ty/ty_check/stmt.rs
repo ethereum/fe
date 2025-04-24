@@ -29,10 +29,10 @@ impl<'db> TyChecker<'db> {
             unreachable!()
         };
 
-        let span = stmt.lazy_span(self.env.body()).into_let_stmt();
+        let span = stmt.span(self.env.body()).into_let_stmt();
 
         let ascription = match ascription {
-            Some(ty) => self.lower_ty(*ty, span.ty_moved().into(), true),
+            Some(ty) => self.lower_ty(*ty, span.ty().into(), true),
             None => self.fresh_ty(),
         };
 
@@ -62,12 +62,12 @@ impl<'db> TyChecker<'db> {
         } else if base.has_invalid(self.db) {
             TyId::invalid(self.db, InvalidCause::Other)
         } else if base.is_ty_var(self.db) {
-            let diag = BodyDiag::TypeMustBeKnown(expr.lazy_span(self.body()).into());
+            let diag = BodyDiag::TypeMustBeKnown(expr.span(self.body()).into());
             self.push_diag(diag);
             TyId::invalid(self.db, InvalidCause::Other)
         } else {
             let diag = BodyDiag::TraitNotImplemented {
-                primary: expr.lazy_span(self.body()).into(),
+                primary: expr.span(self.body()).into(),
                 ty: expr_ty.pretty_print(self.db).to_string(),
                 trait_name: IdentId::new(self.db, "Iterator".to_string()),
             };
@@ -109,7 +109,7 @@ impl<'db> TyChecker<'db> {
         assert!(matches!(stmt_data, Stmt::Continue));
 
         if self.env.current_loop().is_none() {
-            let span = stmt.lazy_span(self.env.body());
+            let span = stmt.span(self.env.body());
             let diag = BodyDiag::LoopControlOutsideOfLoop {
                 primary: span.into(),
                 is_break: false,
@@ -124,7 +124,7 @@ impl<'db> TyChecker<'db> {
         assert!(matches!(stmt_data, Stmt::Break));
 
         if self.env.current_loop().is_none() {
-            let span = stmt.lazy_span(self.env.body());
+            let span = stmt.span(self.env.body());
             let diag = BodyDiag::LoopControlOutsideOfLoop {
                 primary: span.into(),
                 is_break: true,
@@ -150,7 +150,7 @@ impl<'db> TyChecker<'db> {
 
         if self.table.unify(returned_ty, self.expected).is_err() {
             let func = self.env.func();
-            let span = stmt.lazy_span(self.env.body());
+            let span = stmt.span(self.env.body());
             let diag = BodyDiag::ReturnedTypeMismatch {
                 primary: span.into(),
                 actual: returned_ty,

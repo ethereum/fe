@@ -421,7 +421,7 @@ impl<'db> TyId<'db> {
                     .into(),
 
                     InvalidCause::InvalidConstTyExpr { body } => {
-                        TyLowerDiag::InvalidConstTyExpr(body.lazy_span().into()).into()
+                        TyLowerDiag::InvalidConstTyExpr(body.span().into()).into()
                     }
 
                     InvalidCause::Other => return,

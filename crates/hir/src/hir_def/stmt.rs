@@ -31,7 +31,7 @@ pub struct StmtId(u32);
 entity_impl!(StmtId);
 
 impl StmtId {
-    pub fn lazy_span(self, body: Body) -> LazyStmtSpan {
+    pub fn span(self, body: Body) -> LazyStmtSpan {
         LazyStmtSpan::new(body, self)
     }
 

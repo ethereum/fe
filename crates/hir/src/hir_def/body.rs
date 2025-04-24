@@ -48,7 +48,7 @@ pub struct Body<'db> {
 }
 
 impl<'db> Body<'db> {
-    pub fn lazy_span(self) -> LazyBodySpan<'db> {
+    pub fn span(self) -> LazyBodySpan<'db> {
         LazyBodySpan::new(self)
     }
 

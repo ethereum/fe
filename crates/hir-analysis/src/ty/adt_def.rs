@@ -118,27 +118,15 @@ impl<'db> AdtDef<'db> {
             AdtRef::Enum(e) => {
                 let span = e.variant_span(field_idx);
                 match e.variants(db).data(db)[field_idx].kind {
-                    VariantKind::Tuple(_) => span.tuple_type_moved().elem_ty_moved(ty_idx).into(),
-                    VariantKind::Record(_) => {
-                        span.fields_moved().field_moved(ty_idx).ty_moved().into()
-                    }
+                    VariantKind::Tuple(_) => span.tuple_type().elem_ty(ty_idx).into(),
+                    VariantKind::Record(_) => span.fields().field(ty_idx).ty().into(),
                     VariantKind::Unit => unreachable!(),
                 }
             }
 
-            AdtRef::Struct(s) => s
-                .lazy_span()
-                .fields_moved()
-                .field_moved(field_idx)
-                .ty_moved()
-                .into(),
+            AdtRef::Struct(s) => s.span().fields().field(field_idx).ty().into(),
 
-            AdtRef::Contract(c) => c
-                .lazy_span()
-                .fields_moved()
-                .field_moved(field_idx)
-                .ty_moved()
-                .into(),
+            AdtRef::Contract(c) => c.span().fields().field(field_idx).ty().into(),
         }
     }
 

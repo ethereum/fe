@@ -836,11 +836,7 @@ impl<'db> IntermediateUse<'db> {
 
     /// Returns the span of the current segment of the use.
     fn current_segment_span(&self) -> DynLazySpan<'db> {
-        self.use_
-            .lazy_span()
-            .path()
-            .segment(self.unresolved_from)
-            .into()
+        self.use_.span().path().segment(self.unresolved_from).into()
     }
 
     fn current_segment_ident(&self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {

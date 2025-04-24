@@ -67,7 +67,7 @@ fn format_imports<'db>(
         }
     }
     for (use_, mut values) in use_res_map.into_iter() {
-        let use_span = use_.lazy_span().into();
+        let use_span = use_.span().into();
         values.sort_unstable();
         let imported_names = values.join(" | ");
         prop_formatter.push_prop(use_.top_mod(db), use_span, imported_names)

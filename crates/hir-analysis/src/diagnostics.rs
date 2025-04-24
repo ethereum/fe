@@ -439,7 +439,7 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "type alias defined here".to_string(),
-                        span: alias.lazy_span().resolve(db),
+                        span: alias.span().resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -454,12 +454,12 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                     let mut labels = vec![SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "cycle happens here".to_string(),
-                        span: iter.next_back().unwrap().lazy_span().ty().resolve(db),
+                        span: iter.next_back().unwrap().span().ty().resolve(db),
                     }];
                     labels.extend(iter.map(|type_alias| SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "type alias defined here".to_string(),
-                        span: type_alias.lazy_span().alias_moved().resolve(db),
+                        span: type_alias.span().alias().resolve(db),
                     }));
                     labels
                 },
@@ -584,13 +584,9 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                     .name
                     .unwrap()
                     .data(db);
-                let spans = idxs.iter().map(|i| {
-                    enum_
-                        .lazy_span()
-                        .variants()
-                        .variant(*i as usize)
-                        .resolve(db)
-                });
+                let spans = idxs
+                    .iter()
+                    .map(|i| enum_.span().variants().variant(*i as usize).resolve(db));
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message,
@@ -1081,13 +1077,13 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         sub_diagnostics.push(SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: format!("this function expects `{expected}` to be returned"),
-                            span: func.lazy_span().ret_ty_moved().resolve(db),
+                            span: func.span().ret_ty().resolve(db),
                         });
                     } else {
                         sub_diagnostics.push(SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: format!("try adding `-> {actual}`"),
-                            span: func.lazy_span().name_moved().resolve(db),
+                            span: func.span().name().resolve(db),
                         });
                     }
                 }
@@ -1377,7 +1373,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                             "`{}` is an associated function, not a method",
                             func_name.data(db),
                         ),
-                        span: span.method_name().resolve(db),
+                        span: span.clone().method_name().resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Primary,
@@ -1625,7 +1621,7 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "external trait cannot be implemented for external type".to_string(),
-                    span: impl_trait.lazy_span().resolve(db),
+                    span: impl_trait.span().resolve(db),
                 }],
                 notes: vec![],
                 error_code,
@@ -1641,12 +1637,12 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "conflict trait implementation".to_string(),
-                        span: primary.lazy_span().ty().resolve(db),
+                        span: primary.span().ty().resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "conflict with this trait implementation".to_string(),
-                        span: conflict_with.lazy_span().ty().resolve(db),
+                        span: conflict_with.span().ty().resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -1654,7 +1650,7 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
             },
 
             Self::CyclicSuperTraits(traits) => {
-                let span = |t: &TraitDef| t.trait_(db).lazy_span().name().resolve(db);
+                let span = |t: &TraitDef| t.trait_(db).span().name().resolve(db);
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "cyclic trait bounds are not allowed".to_string(),
@@ -1696,7 +1692,7 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "trait is defined here".to_string(),
-                        span: trait_def.lazy_span().name().resolve(db),
+                        span: trait_def.span().name().resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -1935,9 +1931,9 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         span: impl_m
                             .hir_func_def(db)
                             .unwrap()
-                            .lazy_span()
-                            .generic_params_moved()
-                            .param_moved(*param_idx)
+                            .span()
+                            .generic_params()
+                            .param(*param_idx)
                             .resolve(db),
                     }],
                     notes: vec![],
@@ -2031,12 +2027,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         trait_ty.pretty_print(db),
                         impl_ty.pretty_print(db),
                     ),
-                    span: impl_m
-                        .hir_func_def(db)
-                        .unwrap()
-                        .lazy_span()
-                        .ret_ty()
-                        .resolve(db),
+                    span: impl_m.hir_func_def(db).unwrap().span().ret_ty().resolve(db),
                 }],
                 notes: vec![],
                 error_code,

@@ -264,14 +264,14 @@ impl ModuleAnalysisPass for TypeAliasAnalysisPass {
             let ta = lower_type_alias(db, *alias);
             let ty = ta.alias_to.skip_binder();
             if let TyData::Invalid(InvalidCause::AliasCycle(cycle)) = ty.data(db) {
-                if let Some(diag) = ty.emit_diag(db, alias.lazy_span().ty().into()) {
+                if let Some(diag) = ty.emit_diag(db, alias.span().ty().into()) {
                     diags.push(diag.to_voucher());
                 }
                 cycle_participants.extend(cycle.iter());
             } else if ty.has_invalid(db) {
                 if let Some(hir_ty) = alias.ty(db).to_opt() {
                     let ty = lower_hir_ty(db, hir_ty, alias.scope());
-                    if let Some(diag) = ty.emit_diag(db, alias.lazy_span().ty().into()) {
+                    if let Some(diag) = ty.emit_diag(db, alias.span().ty().into()) {
                         diags.push(diag.to_voucher());
                     }
                 }

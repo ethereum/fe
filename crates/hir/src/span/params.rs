@@ -52,7 +52,7 @@ define_lazy_span_node!(
 );
 
 impl<'db> LazyFuncParamSpan<'db> {
-    pub fn fallback_self_ty(&self) -> LazyTySpan<'db> {
+    pub fn fallback_self_ty(self) -> LazyTySpan<'db> {
         LazyTySpan(self.name().0)
     }
 }

@@ -8,11 +8,7 @@ use crate::span::{
 
 define_lazy_span_node!(LazyUsePathSpan);
 impl<'db> LazyUsePathSpan<'db> {
-    pub fn segment(&self, idx: usize) -> LazyUsePathSegmentSpan<'db> {
-        self.clone().segment_moved(idx)
-    }
-
-    pub fn segment_moved(mut self, idx: usize) -> LazyUsePathSegmentSpan<'db> {
+    pub fn segment(mut self, idx: usize) -> LazyUsePathSegmentSpan<'db> {
         fn f(origin: ResolvedOrigin, arg: LazyArg) -> ResolvedOrigin {
             let LazyArg::Idx(idx) = arg else {
                 unreachable!()
@@ -53,11 +49,7 @@ impl<'db> LazyUsePathSegmentSpan<'db> {
 define_lazy_span_node!(LazyUseAliasSpan, ast::UseAlias,);
 
 impl<'db> LazyUseAliasSpan<'db> {
-    pub fn name(&self) -> LazySpanAtom {
-        self.clone().name_moved()
-    }
-
-    pub fn name_moved(mut self) -> LazySpanAtom<'db> {
+    pub fn name(mut self) -> LazySpanAtom<'db> {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {

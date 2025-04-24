@@ -139,8 +139,8 @@ pub enum HirFuncDefKind<'db> {
 impl<'db> HirFuncDefKind<'db> {
     pub fn name_span(self) -> DynLazySpan<'db> {
         match self {
-            Self::Func(func) => func.lazy_span().name_moved().into(),
-            Self::VariantCtor(v) => v.lazy_span().name_moved().into(),
+            Self::Func(func) => func.span().name().into(),
+            Self::VariantCtor(v) => v.span().name().into(),
         }
     }
 
@@ -169,15 +169,15 @@ impl<'db> HirFuncDefKind<'db> {
 
     pub fn param_list_span(self) -> DynLazySpan<'db> {
         match self {
-            Self::Func(func) => func.lazy_span().params_moved().into(),
-            Self::VariantCtor(v) => v.lazy_span().tuple_type().into(),
+            Self::Func(func) => func.span().params().into(),
+            Self::VariantCtor(v) => v.span().tuple_type().into(),
         }
     }
 
     pub fn param_span(self, idx: usize) -> DynLazySpan<'db> {
         match self {
-            Self::Func(func) => func.lazy_span().params_moved().param(idx).into(),
-            Self::VariantCtor(var) => var.lazy_span().tuple_type_moved().elem_ty_moved(idx).into(),
+            Self::Func(func) => func.span().params().param(idx).into(),
+            Self::VariantCtor(var) => var.span().tuple_type().elem_ty(idx).into(),
         }
     }
 }

@@ -562,13 +562,13 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         variant: &hir::hir_def::VariantDef<'db>,
     ) {
         if let VariantKind::Tuple(tuple_id) = variant.kind {
-            let span = ctxt.span().unwrap().tuple_type_moved();
+            let span = ctxt.span().unwrap().tuple_type();
             for (i, elem_ty) in tuple_id.data(self.db).iter().enumerate() {
                 let Some(elem_ty) = elem_ty.to_opt() else {
                     continue;
                 };
 
-                self.verify_term_type_kind(elem_ty, span.elem_ty(i).into());
+                self.verify_term_type_kind(elem_ty, span.clone().elem_ty(i).into());
             }
         }
         walk_variant_def(self, ctxt, variant);
@@ -691,7 +691,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         let DefKind::Trait(def) = self.def else {
             unreachable!()
         };
-        let name_span = def.trait_(self.db).lazy_span().name().into();
+        let name_span = def.trait_(self.db).span().name().into();
         self.current_ty = Some((self.def.trait_self_param(self.db), name_span));
         walk_super_trait_list(self, ctxt, super_traits);
     }
@@ -741,12 +741,12 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         }
 
         // Skip the rest of the analysis if any param names conflict with a parent's param
-        let span = hir_func.lazy_span().generic_params_moved();
+        let span = hir_func.span().generic_params();
         let params = hir_func.generic_params(self.db).data(self.db);
         let mut is_conflict = false;
         for (i, param) in params.iter().enumerate() {
             if let Some(diag) =
-                check_param_defined_in_parent(self.db, self.scope(), param, span.param(i))
+                check_param_defined_in_parent(self.db, self.scope(), param, span.clone().param(i))
             {
                 self.diags.push(diag.into());
                 is_conflict = true;
@@ -765,7 +765,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         walk_func(self, ctxt, hir_func);
 
         if let Some(ret_ty) = hir_func.ret_ty(self.db) {
-            self.verify_term_type_kind(ret_ty, hir_func.lazy_span().ret_ty().into());
+            self.verify_term_type_kind(ret_ty, hir_func.span().ret_ty().into());
         }
 
         self.assumptions = constraints;
@@ -1058,7 +1058,7 @@ fn analyze_impl_trait_specific_error<'db>(
 
     // 1. Checks if implementor type is well-formed except for the satisfiability.
     let ty = lower_hir_ty(db, ty, impl_trait.scope());
-    if let Some(diag) = ty.emit_diag(db, impl_trait.lazy_span().ty().into()) {
+    if let Some(diag) = ty.emit_diag(db, impl_trait.span().ty().into()) {
         diags.push(diag);
     }
 
@@ -1069,7 +1069,7 @@ fn analyze_impl_trait_specific_error<'db>(
         trait_ref,
         impl_trait.scope(),
         None,
-        impl_trait.lazy_span().trait_ref().into(),
+        impl_trait.span().trait_ref().into(),
     ) {
         diags.push(diag);
     }
@@ -1142,7 +1142,7 @@ fn analyze_impl_trait_specific_error<'db>(
     if ty.kind(db) != expected_kind {
         diags.push(
             TraitConstraintDiag::TraitArgKindMismatch {
-                span: impl_trait.lazy_span().ty().into(),
+                span: impl_trait.span().ty().into(),
                 expected: expected_kind.clone(),
                 actual: implementor.instantiate_identity().self_ty(db),
             }
@@ -1175,13 +1175,13 @@ fn analyze_impl_trait_specific_error<'db>(
     };
 
     // 6. Checks if the trait inst is WF.
-    let trait_ref_span: DynLazySpan = impl_trait.lazy_span().trait_ref_moved().into();
+    let trait_ref_span: DynLazySpan = impl_trait.span().trait_ref().into();
     for &goal in trait_constraints.list(db) {
         is_satisfied(goal, trait_ref_span.clone());
     }
 
     // 7. Checks if the implementor ty satisfies the super trait constraints.
-    let target_ty_span: DynLazySpan = impl_trait.lazy_span().ty().into();
+    let target_ty_span: DynLazySpan = impl_trait.span().ty().into();
     for &super_trait in trait_def.super_traits(db) {
         let super_trait = super_trait.instantiate(db, trait_inst.args(db));
         is_satisfied(super_trait, target_ty_span.clone())
@@ -1231,7 +1231,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                         primary: self
                             .implementor
                             .hir_impl_trait(self.db)
-                            .lazy_span()
+                            .span()
                             .trait_ref()
                             .into(),
                         method_name: *name,
@@ -1256,12 +1256,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         if !required_methods.is_empty() {
             self.diags.push(
                 ImplDiag::NotAllTraitItemsImplemented {
-                    primary: self
-                        .implementor
-                        .hir_impl_trait(self.db)
-                        .lazy_span()
-                        .ty_moved()
-                        .into(),
+                    primary: self.implementor.hir_impl_trait(self.db).span().ty().into(),
                     not_implemented: required_methods.into_iter().collect(),
                 }
                 .into(),
