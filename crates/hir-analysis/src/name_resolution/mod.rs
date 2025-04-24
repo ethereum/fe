@@ -8,8 +8,8 @@ mod visibility_checker;
 
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Expr, ExprId, GenericArgListId, IngotId, ItemKind, Pat, PatId,
-        PathId, TopLevelMod, TraitRefId, TypeId,
+        Expr, ExprId, GenericArgListId, IngotId, ItemKind, Pat, PatId, PathId, TopLevelMod,
+        TraitRefId, TypeId,
     },
     visitor::prelude::*,
 };
@@ -23,7 +23,6 @@ pub use path_resolver::{
     resolve_ident_to_bucket, resolve_name_res, resolve_path, PathRes, PathResError,
     PathResErrorKind, ResolvedVariant,
 };
-use rustc_hash::FxHashSet;
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
@@ -97,16 +96,14 @@ impl<'db> ModuleAnalysisPass<'db> for PathAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let importer = DefaultImporter;
-        let mut visitor = EarlyPathVisitor::new(self.db, &importer);
+        let mut visitor = EarlyPathVisitor::new(self.db);
         let mut ctxt = VisitorCtxt::with_item(self.db, top_mod.into());
         visitor.visit_item(&mut ctxt, top_mod.into());
 
         visitor
             .diags
-            .iter()
-            .filter(|diag| !matches!(diag, NameResDiag::Conflict(..)))
-            .map(|diag| Box::new(diag.clone()) as _)
+            .into_iter()
+            .map(|diag| Box::new(diag) as _)
             .collect()
     }
 }
@@ -121,97 +118,30 @@ pub fn resolve_imports<'db>(
     (diags, imports)
 }
 
-struct EarlyPathVisitor<'db, 'a> {
+struct EarlyPathVisitor<'db> {
     db: &'db dyn HirAnalysisDb,
-    inner: name_resolver::NameResolver<'db, 'a>,
     diags: Vec<diagnostics::NameResDiag<'db>>,
     item_stack: Vec<ItemKind<'db>>,
     path_ctxt: Vec<ExpectedPathKind>,
-
-    /// The set of scopes that have already been conflicted to avoid duplicate
-    /// diagnostics.
-    already_conflicted: FxHashSet<ScopeId<'db>>,
 }
 
-impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
-    fn new(db: &'db dyn HirAnalysisDb, importer: &'a DefaultImporter) -> Self {
-        let resolver = name_resolver::NameResolver::new(db, importer);
+impl<'db> EarlyPathVisitor<'db> {
+    fn new(db: &'db dyn HirAnalysisDb) -> Self {
         Self {
             db,
-            inner: resolver,
             diags: Vec::new(),
             item_stack: Vec::new(),
             path_ctxt: Vec::new(),
-            already_conflicted: FxHashSet::default(),
         }
-    }
-
-    fn check_conflict(&mut self, scope: ScopeId<'db>) {
-        if !self.already_conflicted.insert(scope) {
-            return;
-        }
-
-        let Some(query) = self.make_query_for_conflict_check(scope) else {
-            return;
-        };
-
-        let domain = NameDomain::from_scope(self.db, scope);
-        let binding = self.inner.resolve_query(query);
-        match binding.pick(domain) {
-            Ok(_) => {}
-
-            Err(NameResolutionError::Ambiguous(cands)) => {
-                let conflicted_span = cands
-                    .iter()
-                    .filter_map(|res| {
-                        let conflicted_scope = res.scope()?;
-                        self.already_conflicted.insert(conflicted_scope);
-                        conflicted_scope.name_span(self.db)
-                    })
-                    .collect();
-
-                let diag = diagnostics::NameResDiag::Conflict(
-                    scope.name(self.db).unwrap(),
-                    conflicted_span,
-                );
-                self.diags.push(diag);
-            }
-
-            Err(_) => unreachable!(),
-        };
-    }
-
-    fn make_query_for_conflict_check(&self, scope: ScopeId<'db>) -> Option<EarlyNameQueryId<'db>> {
-        let name = scope.name(self.db)?;
-        let directive = QueryDirective::new()
-            .disallow_lex()
-            .disallow_glob()
-            .disallow_external();
-
-        let parent_scope = scope.parent(self.db)?;
-        Some(EarlyNameQueryId::new(
-            self.db,
-            name,
-            parent_scope,
-            directive,
-        ))
     }
 }
 
-impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
+impl<'db> Visitor<'db> for EarlyPathVisitor<'db> {
     fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'db, LazyItemSpan<'db>>, item: ItemKind<'db>) {
         // We don't need to check use statements for conflicts because they are
         // already checked in import resolution.
         if matches!(item, ItemKind::Use(_)) {
             return;
-        }
-
-        // We don't need to check impl blocks for conflicts because they
-        // needs ingot granularity analysis, the conflict checks for them is done by the
-        // `ImplCollector`.
-        if !matches!(item, ItemKind::Impl(_)) {
-            let scope = ScopeId::from_item(item);
-            self.check_conflict(scope);
         }
 
         self.item_stack.push(item);
@@ -235,36 +165,6 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
         self.path_ctxt.push(ExpectedPathKind::Trait);
         walk_trait_ref(self, ctxt, trait_ref);
         self.path_ctxt.pop();
-    }
-
-    fn visit_field_def(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyFieldDefSpan<'db>>,
-        field: &hir::hir_def::FieldDef<'db>,
-    ) {
-        let scope = ctxt.scope();
-        self.check_conflict(scope);
-        walk_field_def(self, ctxt, field);
-    }
-
-    fn visit_variant_def(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyVariantDefSpan<'db>>,
-        variant: &hir::hir_def::VariantDef<'db>,
-    ) {
-        let scope = ctxt.scope();
-        self.check_conflict(scope);
-        walk_variant_def(self, ctxt, variant);
-    }
-
-    fn visit_generic_param(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyGenericParamSpan<'db>>,
-        param: &hir::hir_def::GenericParam<'db>,
-    ) {
-        let scope = ctxt.scope();
-        self.check_conflict(scope);
-        walk_generic_param(self, ctxt, param);
     }
 
     fn visit_generic_arg_list(
