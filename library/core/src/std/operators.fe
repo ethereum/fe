@@ -1,0 +1,27 @@
+pub trait Add {
+    fn add(self, other: Self) -> Self
+}
+
+pub trait Sub {
+    fn sub(self, other: Self) -> Self
+}
+
+pub trait AddAssign<V> {
+    fn add_assign(mut self, other: V)
+}
+
+pub trait SubAssign<V> {
+    fn sub_assign(mut self, other: V)
+}
+
+impl Add for u256 {
+    fn add(self, other: u256) -> u256 {
+        self + other
+    }
+}
+
+impl Sub for u256 {
+    fn sub(self, other: u256) -> u256 {
+        self - other
+    }
+} 
