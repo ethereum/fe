@@ -1,4 +1,5 @@
 use camino::Utf8Path;
+use common::ingot::IngotBuilder;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
@@ -8,10 +9,10 @@ use test_utils::snap_test;
     glob: "**/*.fe"
 )]
 fn run_ty_check(fixture: Fixture<&str>) {
-    let mut db = DriverDataBase::default();
+    let db = DriverDataBase::default();
     let path = Utf8Path::new(fixture.path());
 
-    let (ingot, file) = db.standalone_no_core(path, fixture.content());
+    let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
     let top_mod = db.top_mod(ingot, file);
 
     let diags = db.run_on_top_mod(top_mod);
@@ -34,10 +35,11 @@ mod wasm {
         #[wasm_bindgen_test]
     )]
     fn run_ty_check(fixture: Fixture<&str>) {
-        let mut db = DriverDataBase::default();
+        let db = DriverDataBase::default();
         let path = Utf8Path::new(fixture.path());
 
-        let (ingot, file) = db.standalone_no_core(path, fixture.content());
+        let (ingot, file) =
+            IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
         let top_mod = db.top_mod(ingot, file);
         db.run_on_top_mod(top_mod);
     }

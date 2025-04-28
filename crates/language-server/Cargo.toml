@@ -19,9 +19,8 @@ clap.workspace = true
 codespan-reporting = "0.11"
 futures = "0.3.31"
 futures-batch = "0.6.1"
-glob.workspace = true 
+glob.workspace = true
 patricia_tree = "0.9.0"
-rust-embed = "8.5.0"
 rustc-hash.workspace = true
 salsa.workspace = true
 serde = "1.0.217"
@@ -29,9 +28,9 @@ serde_json = "1.0.135"
 tokio = { version = "1.43.0", features = ["full", "io-std", "tracing", "net"] }
 tokio-macros = "2.5.0"
 tower = "0.5.2"
-tracing = "0.1.41"
-tracing-subscriber = "0.3.19"
-tracing-tree = "0.4.0"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tracing-tree.workspace = true
 url = "2.5.4"
 
 common.workspace = true

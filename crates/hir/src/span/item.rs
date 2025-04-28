@@ -360,7 +360,6 @@ mod tests {
     use crate::{
         hir_def::{Enum, Func, Mod, Struct, TypeAlias, Use},
         test_db::TestDb,
-        HirDb,
     };
 
     #[test]
@@ -396,7 +395,7 @@ mod tests {
 
         let (ingot, file) = db.standalone_file(text);
         let mod_ = db.expect_item::<Mod>(ingot, file);
-        let top_mod = mod_.top_mod(db.as_hir_db());
+        let top_mod = mod_.top_mod(&db);
         let mod_span = mod_.lazy_span();
         assert_eq!(
             r#"mod foo {
@@ -419,7 +418,7 @@ mod tests {
         let (ingot, file) = db.standalone_file(text);
 
         let fn_ = db.expect_item::<Func>(ingot, file);
-        let top_mod = fn_.top_mod(db.as_hir_db());
+        let top_mod = fn_.top_mod(&db);
         let fn_span = fn_.lazy_span();
         assert_eq!("my_func", db.text_at(top_mod, &fn_span.name()));
 
@@ -471,7 +470,7 @@ mod tests {
 
         let (ingot, file) = db.standalone_file(text);
         let struct_ = db.expect_item::<Struct>(ingot, file);
-        let top_mod = struct_.top_mod(db.as_hir_db());
+        let top_mod = struct_.top_mod(&db);
         let struct_span = struct_.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &struct_span.name()));
 
@@ -503,7 +502,7 @@ mod tests {
 
         let (ingot, file) = db.standalone_file(text);
         let enum_ = db.expect_item::<Enum>(ingot, file);
-        let top_mod = enum_.top_mod(db.as_hir_db());
+        let top_mod = enum_.top_mod(&db);
         let enum_span = enum_.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &enum_span.name()));
 
@@ -529,7 +528,7 @@ mod tests {
 
         let (ingot, file) = db.standalone_file(text);
         let type_alias = db.expect_item::<TypeAlias>(ingot, file);
-        let top_mod = type_alias.top_mod(db.as_hir_db());
+        let top_mod = type_alias.top_mod(&db);
         let type_alias_span = type_alias.lazy_span();
         assert_eq!("Foo", db.text_at(top_mod, &type_alias_span.alias()));
         assert_eq!("u32", db.text_at(top_mod, &type_alias_span.ty()));
@@ -547,7 +546,7 @@ mod tests {
         let (ingot, file) = db.standalone_file(text);
         let use_ = db.expect_item::<Use>(ingot, file);
 
-        let top_mod = use_.top_mod(db.as_hir_db());
+        let top_mod = use_.top_mod(&db);
         let use_span = use_.lazy_span();
         let use_path_span = use_span.path();
         assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
@@ -570,7 +569,7 @@ mod tests {
         let uses = db.expect_items::<Use>(ingot, file);
         assert_eq!(uses.len(), 2);
 
-        let top_mod = uses[0].top_mod(db.as_hir_db());
+        let top_mod = uses[0].top_mod(&db);
 
         let use_span = uses[0].lazy_span();
         let use_path_span = use_span.path();

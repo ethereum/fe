@@ -10,30 +10,24 @@ use codespan_reporting::{
 };
 use common::{
     diagnostics::Span,
-    impl_db_traits,
     indexmap::{IndexMap, IndexSet},
     input::{IngotKind, Version},
-    InputDb, InputFile, InputIngot,
+    InputFile, InputIngot,
 };
-use driver::{
-    diagnostics::{CsDbWrapper, ToCsDiag},
-    DriverDb,
-};
+use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    diagnostics::SpannedHirAnalysisDb,
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
         ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
-    HirAnalysisDb,
 };
 use hir::{
     hir_def::TopLevelMod,
     lower,
     span::{DynLazySpan, LazySpan},
-    HirDb, LowerHirDb, SpannedHirDb,
+    SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
 
@@ -44,16 +38,10 @@ type CodeSpanFileId = usize;
 pub struct HirAnalysisTestDb {
     storage: salsa::Storage<Self>,
 }
-impl_db_traits!(
-    HirAnalysisTestDb,
-    InputDb,
-    HirDb,
-    LowerHirDb,
-    SpannedHirDb,
-    HirAnalysisDb,
-    SpannedHirAnalysisDb,
-    DriverDb,
-);
+#[salsa::db]
+impl salsa::Database for HirAnalysisTestDb {
+    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+}
 
 // https://github.com/rust-lang/rust/issues/46379
 #[allow(dead_code)]
@@ -61,7 +49,15 @@ impl HirAnalysisTestDb {
     pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> (InputIngot, InputFile) {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
-        let ingot = InputIngot::new(self, file_name, kind, version, IndexSet::default());
+        let ingot = InputIngot::new(
+            self,
+            file_name.into(),
+            kind,
+            version,
+            IndexSet::default(),
+            IndexSet::default(),
+            None,
+        );
         let root = InputFile::new(self, file_name.into(), text.to_string());
         ingot.set_root_file(self, root);
         ingot.set_files(self, [root].into_iter().collect());
@@ -96,13 +92,7 @@ impl HirAnalysisTestDb {
 
             for diag in diags {
                 let cs_diag = &diag.to_cs(self);
-                term::emit(
-                    &mut buffer,
-                    &config,
-                    &CsDbWrapper(self.as_driver_db()),
-                    cs_diag,
-                )
-                .unwrap();
+                term::emit(&mut buffer, &config, &CsDbWrapper(self), cs_diag).unwrap();
             }
             eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 

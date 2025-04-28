@@ -7,9 +7,10 @@ pub mod span;
 pub mod visitor;
 
 #[salsa::db]
-pub trait HirDb: salsa::Database + InputDb {
-    fn as_hir_db(&self) -> &dyn HirDb;
-}
+pub trait HirDb: salsa::Database + InputDb {}
+
+#[salsa::db]
+impl<T> HirDb for T where T: salsa::Database + InputDb {}
 
 /// `LowerHirDb` is a marker trait for lowering AST to HIR items.
 /// All code that requires [`LowerHirDb`] is considered have a possibility to
@@ -17,9 +18,9 @@ pub trait HirDb: salsa::Database + InputDb {
 /// implementations relying on `LowerHirDb` are prohibited in all
 /// Analysis phases.
 #[salsa::db]
-pub trait LowerHirDb: salsa::Database + HirDb {
-    fn as_lower_hir_db(&self) -> &dyn LowerHirDb;
-}
+pub trait LowerHirDb: salsa::Database + HirDb {}
+#[salsa::db]
+impl<T> LowerHirDb for T where T: HirDb {}
 
 /// `SpannedHirDb` is a marker trait for extracting span-dependent information
 /// from HIR Items.
@@ -33,26 +34,23 @@ pub trait LowerHirDb: salsa::Database + HirDb {
 /// [DiagnosticVoucher](crate::diagnostics::DiagnosticVoucher).
 /// See also `[LazySpan]`[`crate::span::LazySpan`] for more details.
 #[salsa::db]
-pub trait SpannedHirDb: salsa::Database + HirDb {
-    fn as_spanned_hir_db(&self) -> &dyn SpannedHirDb;
-}
+pub trait SpannedHirDb: salsa::Database + HirDb {}
+#[salsa::db]
+impl<T> SpannedHirDb for T where T: HirDb {}
 
 #[cfg(test)]
 mod test_db {
     use common::{
-        impl_db_traits,
         indexmap::IndexSet,
         input::{IngotKind, Version},
-        InputDb, InputFile, InputIngot,
+        InputFile, InputIngot,
     };
     use derive_more::TryIntoError;
 
-    use super::HirDb;
     use crate::{
         hir_def::{scope_graph::ScopeGraph, ItemKind, TopLevelMod},
         lower::{map_file_to_mod, scope_graph},
         span::LazySpan,
-        LowerHirDb, SpannedHirDb,
     };
 
     #[derive(Clone, Default)]
@@ -60,7 +58,10 @@ mod test_db {
     pub(crate) struct TestDb {
         storage: salsa::Storage<Self>,
     }
-    impl_db_traits!(TestDb, InputDb, HirDb, LowerHirDb, SpannedHirDb);
+    #[salsa::db]
+    impl salsa::Database for TestDb {
+        fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+    }
 
     impl TestDb {
         pub fn parse_source(&self, ingot: InputIngot, file: InputFile) -> &ScopeGraph {
@@ -92,8 +93,8 @@ mod test_db {
 
         pub fn text_at(&self, top_mod: TopLevelMod, span: &impl LazySpan) -> &str {
             let range = span.resolve(self).unwrap().range;
-            let file = top_mod.file(self.as_hir_db());
-            let text = file.text(self.as_hir_db().as_input_db());
+            let file = top_mod.file(self);
+            let text = file.text(self);
             &text[range.start().into()..range.end().into()]
         }
 
@@ -101,7 +102,15 @@ mod test_db {
             let path = "hir_test";
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);
-            let ingot = InputIngot::new(self, path, kind, version, IndexSet::default());
+            let ingot = InputIngot::new(
+                self,
+                path.into(),
+                kind,
+                version,
+                IndexSet::default(),
+                IndexSet::default(),
+                None,
+            );
             let file = InputFile::new(self, "test_file.fe".into(), text.to_string());
             ingot.set_root_file(self, file);
             ingot.set_files(self, [file].into_iter().collect());

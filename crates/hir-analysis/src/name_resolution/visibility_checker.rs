@@ -14,39 +14,38 @@ pub(crate) fn is_scope_visible_from(
     scope: ScopeId,
     from_scope: ScopeId,
 ) -> bool {
-    let hir_db = db.as_hir_db();
     // If resolved is public, then it is visible.
-    if scope.data(hir_db).vis.is_pub() {
+    if scope.data(db).vis.is_pub() {
         return true;
     }
 
     let Some(def_scope) = (match scope {
         ScopeId::Item(ItemKind::Func(func)) => {
-            let parent_item = scope.parent_item(hir_db);
+            let parent_item = scope.parent_item(db);
             if matches!(parent_item, Some(ItemKind::Trait(..))) {
                 return true;
             }
 
-            if func.is_associated_func(hir_db) {
+            if func.is_associated_func(db) {
                 scope
-                    .parent_item(hir_db)
-                    .and_then(|item| ScopeId::Item(item).parent(hir_db))
+                    .parent_item(db)
+                    .and_then(|item| ScopeId::Item(item).parent(db))
             } else {
-                scope.parent(hir_db)
+                scope.parent(db)
             }
         }
-        ScopeId::Item(_) => scope.parent(hir_db),
+        ScopeId::Item(_) => scope.parent(db),
         ScopeId::Field(..) | ScopeId::Variant(..) => {
             let parent_item = scope.item();
-            ScopeId::Item(parent_item).parent(hir_db)
+            ScopeId::Item(parent_item).parent(db)
         }
 
-        _ => scope.parent(hir_db),
+        _ => scope.parent(db),
     }) else {
         return false;
     };
 
-    from_scope.is_transitive_child_of(db.as_hir_db(), def_scope)
+    from_scope.is_transitive_child_of(db, def_scope)
 }
 
 pub(crate) fn is_ty_visible_from(db: &dyn HirAnalysisDb, ty: TyId, from_scope: ScopeId) -> bool {
@@ -75,10 +74,10 @@ pub(crate) fn is_ty_visible_from(db: &dyn HirAnalysisDb, ty: TyId, from_scope: S
 pub(super) fn is_use_visible(db: &dyn HirAnalysisDb, ref_scope: ScopeId, use_: Use) -> bool {
     let use_scope = ScopeId::from_item(use_.into());
 
-    if use_scope.data(db.as_hir_db()).vis.is_pub() {
+    if use_scope.data(db).vis.is_pub() {
         return true;
     }
 
-    let use_def_scope = use_scope.parent(db.as_hir_db()).unwrap();
-    ref_scope.is_transitive_child_of(db.as_hir_db(), use_def_scope)
+    let use_def_scope = use_scope.parent(db).unwrap();
+    ref_scope.is_transitive_child_of(db, use_def_scope)
 }

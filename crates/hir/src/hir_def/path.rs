@@ -2,6 +2,7 @@ use super::{GenericArgListId, IdentId};
 use crate::{hir_def::Partial, HirDb};
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct PathId<'db> {
     pub ident: Partial<IdentId<'db>>,
     pub generic_args: GenericArgListId<'db>,

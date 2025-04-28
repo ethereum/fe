@@ -2,6 +2,7 @@ use super::IdentId;
 use crate::{hir_def::Partial, HirDb};
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct UsePathId<'db> {
     #[return_ref]
     pub data: Vec<Partial<UsePathSegment<'db>>>,

@@ -1,61 +1,34 @@
-use std::str::FromStr;
-
 use crate::diagnostics::CsDbWrapper;
-use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
 };
-use common::{
-    diagnostics::CompleteDiagnostic,
-    impl_db_traits,
-    indexmap::IndexSet,
-    input::{IngotDependency, IngotKind, Version},
-    InputDb, InputFile, InputIngot,
-};
+use common::{diagnostics::CompleteDiagnostic, InputFile, InputIngot};
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
-    HirDb, LowerHirDb, SpannedHirDb,
 };
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    diagnostics::{DiagnosticVoucher, SpannedHirAnalysisDb},
+    diagnostics::DiagnosticVoucher,
     name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
         ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
-    HirAnalysisDb,
 };
-use include_dir::{include_dir, Dir};
 
 use crate::diagnostics::ToCsDiag;
-
-static LIBRARY: Dir = include_dir!("$CARGO_MANIFEST_DIR/../../library");
-
-#[salsa::db]
-pub trait DriverDb:
-    salsa::Database + HirAnalysisDb + HirDb + LowerHirDb + SpannedHirDb + InputDb + SpannedHirAnalysisDb
-{
-    fn as_driver_db(&self) -> &dyn DriverDb;
-}
 
 #[derive(Default, Clone)]
 #[salsa::db]
 pub struct DriverDataBase {
     storage: salsa::Storage<Self>,
 }
-impl_db_traits!(
-    DriverDataBase,
-    InputDb,
-    HirDb,
-    LowerHirDb,
-    SpannedHirDb,
-    HirAnalysisDb,
-    SpannedHirAnalysisDb,
-    DriverDb,
-);
+#[salsa::db]
+impl salsa::Database for DriverDataBase {
+    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+}
 
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
@@ -90,151 +63,6 @@ impl DriverDataBase {
         let tree = module_tree(self, ingot);
         let mut pass_manager = pm_builder(self);
         DiagnosticsCollection(pass_manager.run_on_module_tree(tree))
-    }
-
-    pub fn standalone(
-        &mut self,
-        file_path: &Utf8Path,
-        source: &str,
-        core_ingot: InputIngot,
-    ) -> (InputIngot, InputFile) {
-        let kind = IngotKind::StandAlone;
-
-        // We set the ingot version to 0.0.0 for stand-alone file.
-        let version = Version::new(0, 0, 0);
-        let root_file = file_path;
-        let core_dependency = IngotDependency::new("core", core_ingot);
-        let mut external_ingots = IndexSet::default();
-        external_ingots.insert(core_dependency);
-
-        let ingot = InputIngot::new(
-            self,
-            file_path.parent().unwrap().as_str(),
-            kind,
-            version,
-            external_ingots,
-        );
-
-        let file_name = root_file.file_name().unwrap();
-        let input_file = InputFile::new(self, file_name.into(), source.to_string());
-        ingot.set_root_file(self, input_file);
-        ingot.set_files(self, [input_file].into_iter().collect());
-        (ingot, input_file)
-    }
-
-    pub fn standalone_no_core(
-        &mut self,
-        file_path: &Utf8Path,
-        source: &str,
-    ) -> (InputIngot, InputFile) {
-        let kind = IngotKind::StandAlone;
-
-        // We set the ingot version to 0.0.0 for stand-alone file.
-        let version = Version::new(0, 0, 0);
-        let root_file = file_path;
-
-        let ingot = InputIngot::new(
-            self,
-            file_path.parent().unwrap().as_str(),
-            kind,
-            version,
-            IndexSet::default(),
-        );
-
-        let file_name = root_file.file_name().unwrap();
-        let input_file = InputFile::new(self, file_name.into(), source.to_string());
-        ingot.set_root_file(self, input_file);
-        ingot.set_files(self, [input_file].into_iter().collect());
-        (ingot, input_file)
-    }
-
-    pub fn local_ingot(
-        &mut self,
-        path: &Utf8Path,
-        version: &Version,
-        source_root: &Utf8Path,
-        source_files: Vec<(Utf8PathBuf, String)>,
-        core_ingot: InputIngot,
-    ) -> (InputIngot, IndexSet<InputFile>) {
-        let core_dependency = IngotDependency::new("core", core_ingot);
-        let mut external_ingots = IndexSet::default();
-        external_ingots.insert(core_dependency);
-        let input_ingot = InputIngot::new(
-            self,
-            path.as_str(),
-            IngotKind::Local,
-            version.clone(),
-            external_ingots,
-        );
-
-        let input_files = self.set_ingot_source_files(input_ingot, source_root, source_files);
-        (input_ingot, input_files)
-    }
-
-    pub fn core_ingot(
-        &mut self,
-        path: &Utf8Path,
-        version: &Version,
-        source_root: &Utf8Path,
-        source_files: Vec<(Utf8PathBuf, String)>,
-    ) -> (InputIngot, IndexSet<InputFile>) {
-        let input_ingot = InputIngot::new(
-            self,
-            path.as_str(),
-            IngotKind::Core,
-            version.clone(),
-            IndexSet::default(),
-        );
-
-        let input_files = self.set_ingot_source_files(input_ingot, source_root, source_files);
-        (input_ingot, input_files)
-    }
-
-    pub fn static_core_ingot(&mut self) -> (InputIngot, IndexSet<InputFile>) {
-        let src = LIBRARY
-            .get_dir("core/src")
-            .expect("static core error. use cli `--core` arg to debug");
-
-        let mut files = vec![];
-        write_files_recursive(src, &mut files);
-
-        let input_ingot = InputIngot::new(
-            self,
-            "core",
-            IngotKind::Core,
-            Version::new(0, 0, 0),
-            IndexSet::default(),
-        );
-
-        let input_files = self.set_ingot_source_files(
-            input_ingot,
-            &Utf8PathBuf::from_str("core/src/lib.fe").unwrap(),
-            files,
-        );
-
-        (input_ingot, input_files)
-    }
-
-    fn set_ingot_source_files(
-        &mut self,
-        ingot: InputIngot,
-        root: &Utf8Path,
-        files: Vec<(Utf8PathBuf, String)>,
-    ) -> IndexSet<InputFile> {
-        let input_files = files
-            .into_iter()
-            .map(|(path, content)| InputFile::new(self, path, content))
-            .collect::<IndexSet<_>>();
-
-        let root_file = *input_files
-            .iter()
-            .find(|input_file| input_file.path(self) == root)
-            .expect("missing root source file");
-
-        ingot.set_files(self, input_files.clone());
-        ingot.set_root_file(self, root_file);
-
-        input_files
     }
 
     pub fn top_mod(&self, ingot: InputIngot, input: InputFile) -> TopLevelMod {
@@ -297,20 +125,4 @@ fn initialize_analysis_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
     pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
     pass_manager.add_module_pass(Box::new(BodyAnalysisPass::new(db)));
     pass_manager
-}
-
-fn write_files_recursive(dir: &Dir, files: &mut Vec<(Utf8PathBuf, String)>) {
-    for file in dir.files() {
-        files.push((
-            Utf8PathBuf::from_path_buf(file.path().to_path_buf())
-                .expect("static core error. use cli `--core` arg  to debug"),
-            std::str::from_utf8(file.contents())
-                .expect("static core error. use cli `--core` arg  to debug")
-                .to_string(),
-        ));
-    }
-
-    for subdir in dir.dirs() {
-        write_files_recursive(subdir, files);
-    }
 }

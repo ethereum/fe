@@ -90,9 +90,7 @@ impl<'db> Callable<'db> {
         span: LazyGenericArgListSpan<'db>,
     ) -> bool {
         let db = tc.db;
-        let hir_db = db.as_hir_db();
-
-        if !args.is_given(hir_db) {
+        if !args.is_given(db) {
             return true;
         }
 
@@ -148,7 +146,7 @@ impl<'db> Callable<'db> {
         let mut args = if let Some((receiver_expr, receiver_prop)) = receiver {
             let mut args = Vec::with_capacity(call_args.len() + 1);
             let arg = CallArg::new(
-                IdentId::make_self(db.as_hir_db()).into(),
+                IdentId::make_self(db).into(),
                 receiver_prop,
                 None,
                 receiver_expr.lazy_span(tc.body()).into(),
@@ -172,7 +170,7 @@ impl<'db> Callable<'db> {
             if_chain! {
                 // xxx check this
                 if let Some(expected_label) = self.func_def.param_label(db, i);
-                if !expected_label.is_self(db.as_hir_db());
+                if !expected_label.is_self(db);
                 if Some(expected_label) != given.label;
                 then {
                     let diag = BodyDiag::CallArgLabelMismatch {
@@ -207,7 +205,7 @@ impl<'db> CallArg<'db> {
     ) -> Self {
         let ty = tc.fresh_ty();
         let expr_prop = tc.check_expr(arg.expr, ty);
-        let label = arg.label_eagerly(tc.db.as_hir_db(), tc.body());
+        let label = arg.label_eagerly(tc.db, tc.body());
         let label_span = arg.label.is_some().then(|| span.label().into());
         let expr_span = span.expr().into();
 

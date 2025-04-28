@@ -37,6 +37,7 @@ pub use use_tree::*;
 use crate::HirDb;
 
 #[salsa::tracked]
+#[derive(Debug)]
 pub struct IngotId<'db> {
     inner: InputIngot,
 }
@@ -68,7 +69,7 @@ impl<'db> IngotId<'db> {
     #[salsa::tracked(return_ref)]
     pub fn external_ingots(self, db: &'db dyn HirDb) -> Vec<(IdentId<'db>, IngotId<'db>)> {
         self.inner(db)
-            .external_ingots(db.as_input_db())
+            .external_ingots(db)
             .iter()
             .map(|dep| {
                 let name = IdentId::new(db, dep.name.to_string());
@@ -82,7 +83,7 @@ impl<'db> IngotId<'db> {
     }
 
     pub fn kind(self, db: &dyn HirDb) -> IngotKind {
-        self.inner(db).kind(db.as_input_db())
+        self.inner(db).kind(db)
     }
 
     #[salsa::tracked(return_ref)]
@@ -115,6 +116,7 @@ impl<'db> IngotId<'db> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct IntegerId<'db> {
     #[return_ref]
     pub data: BigUint,
@@ -128,6 +130,7 @@ impl<'db> IntegerId<'db> {
 }
 
 #[salsa::interned]
+#[derive(Debug)]
 pub struct StringId<'db> {
     /// The text of the string literal, without the quotes.
     #[return_ref]

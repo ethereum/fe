@@ -61,7 +61,7 @@ impl<'db> ModuleAnalysisPass<'db> for ImportAnalysisPass<'db> {
         &mut self,
         top_mod: TopLevelMod<'db>,
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
-        let ingot = top_mod.ingot(self.db.as_hir_db());
+        let ingot = top_mod.ingot(self.db);
         resolve_imports(self.db, ingot)
             .0
             .iter()
@@ -99,7 +99,7 @@ impl<'db> ModuleAnalysisPass<'db> for PathAnalysisPass<'db> {
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         let importer = DefaultImporter;
         let mut visitor = EarlyPathVisitor::new(self.db, &importer);
-        let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), top_mod.into());
+        let mut ctxt = VisitorCtxt::with_item(self.db, top_mod.into());
         visitor.visit_item(&mut ctxt, top_mod.into());
 
         visitor
@@ -131,7 +131,7 @@ impl<'db> ModuleAnalysisPass<'db> for DefConflictAnalysisPass<'db> {
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         let importer = DefaultImporter;
         let mut visitor = EarlyPathVisitor::new(self.db, &importer);
-        let mut ctxt = VisitorCtxt::with_item(self.db.as_hir_db(), top_mod.into());
+        let mut ctxt = VisitorCtxt::with_item(self.db, top_mod.into());
         visitor.visit_item(&mut ctxt, top_mod.into());
 
         visitor
@@ -169,7 +169,7 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     fn new(db: &'db dyn HirAnalysisDb, importer: &'a DefaultImporter) -> Self {
         let resolver = name_resolver::NameResolver::new(db, importer);
         Self {
-            db: db.as_hir_analysis_db(),
+            db,
             inner: resolver,
             diags: Vec::new(),
             item_stack: Vec::new(),
@@ -198,12 +198,12 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
                     .filter_map(|res| {
                         let conflicted_scope = res.scope()?;
                         self.already_conflicted.insert(conflicted_scope);
-                        conflicted_scope.name_span(self.db.as_hir_db())
+                        conflicted_scope.name_span(self.db)
                     })
                     .collect();
 
                 let diag = diagnostics::NameResDiag::Conflict(
-                    scope.name(self.db.as_hir_db()).unwrap(),
+                    scope.name(self.db).unwrap(),
                     conflicted_span,
                 );
                 self.diags.push(diag);
@@ -214,13 +214,13 @@ impl<'db, 'a> EarlyPathVisitor<'db, 'a> {
     }
 
     fn make_query_for_conflict_check(&self, scope: ScopeId<'db>) -> Option<EarlyNameQueryId<'db>> {
-        let name = scope.name(self.db.as_hir_db())?;
+        let name = scope.name(self.db)?;
         let directive = QueryDirective::new()
             .disallow_lex()
             .disallow_glob()
             .disallow_external();
 
-        let parent_scope = scope.parent(self.db.as_hir_db())?;
+        let parent_scope = scope.parent(self.db)?;
         Some(EarlyNameQueryId::new(
             self.db,
             name,
@@ -379,22 +379,21 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
             Ok(res) => res,
 
             Err(err) => {
-                let hir_db = self.db.as_hir_db();
                 let failed_at = err.failed_at;
                 let span = ctxt
                     .span()
                     .unwrap()
-                    .segment(failed_at.segment_index(hir_db))
+                    .segment(failed_at.segment_index(self.db))
                     .ident();
 
-                let Some(ident) = failed_at.ident(hir_db).to_opt() else {
+                let Some(ident) = failed_at.ident(self.db).to_opt() else {
                     return;
                 };
 
                 let diag = match err.kind {
                     PathResErrorKind::ParseError => unreachable!(),
                     PathResErrorKind::NotFound(bucket) => {
-                        if path.len(hir_db) == 1
+                        if path.len(self.db) == 1
                             && matches!(
                                 self.path_ctxt.last().unwrap(),
                                 ExpectedPathKind::Expr | ExpectedPathKind::Pat
@@ -463,28 +462,27 @@ impl<'db> Visitor<'db> for EarlyPathVisitor<'db, '_> {
         };
 
         if let Some((path, deriv_span)) = invisible {
-            let hir_db = self.db.as_hir_db();
             let span = ctxt
                 .span()
                 .unwrap()
-                .segment(path.segment_index(hir_db))
+                .segment(path.segment_index(self.db))
                 .ident();
 
-            let ident = path.ident(hir_db);
+            let ident = path.ident(self.db);
             let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag);
         }
 
-        let is_type = matches!(res, PathRes::Ty(_));
+        let is_type = matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..));
         let is_trait = matches!(res, PathRes::Trait(_));
 
         let span = ctxt
             .span()
             .unwrap()
-            .segment(path.segment_index(self.db.as_hir_db()))
+            .segment(path.segment_index(self.db))
             .into();
 
-        let ident = path.ident(self.db.as_hir_db()).to_opt().unwrap();
+        let ident = path.ident(self.db).to_opt().unwrap();
 
         match expected_path_kind {
             ExpectedPathKind::Type if !is_type => {

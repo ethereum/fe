@@ -71,7 +71,7 @@ impl<'db> ModuleAnalysisPass<'db> for ParsingPass<'db> {
     ) -> Vec<Box<dyn DiagnosticVoucher<'db> + 'db>> {
         parse_file_impl::accumulated::<ParseErrorAccumulator>(self.db, top_mod)
             .into_iter()
-            .map(|d| Box::new(d.0) as _)
+            .map(|d| Box::new(d.0.clone()) as _)
             .collect::<Vec<_>>()
     }
 }

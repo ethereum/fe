@@ -23,7 +23,7 @@ use crate::{
         trait_lower::lower_trait,
         ty_def::{InvalidCause, TyId},
         ty_lower::{
-            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias,
+            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias, TyAlias,
         },
     },
     HirAnalysisDb,
@@ -115,7 +115,7 @@ pub fn resolve_ident_to_bucket<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
 ) -> &'db NameResBucket<'db> {
-    assert!(path.parent(db.as_hir_db()).is_none());
+    assert!(path.parent(db).is_none());
     let query = make_query(db, path, scope);
     resolve_query(db, query)
 }
@@ -128,18 +128,19 @@ fn make_query<'db>(
 ) -> EarlyNameQueryId<'db> {
     let mut directive = QueryDirective::new();
 
-    if path.segment_index(db.as_hir_db()) != 0 {
+    if path.segment_index(db) != 0 {
         directive = directive.disallow_external();
         directive = directive.disallow_lex();
     }
 
-    let name = *path.ident(db.as_hir_db()).unwrap();
+    let name = *path.ident(db).unwrap();
     EarlyNameQueryId::new(db, name, scope, directive)
 }
 
 #[derive(Debug, Clone)]
 pub enum PathRes<'db> {
     Ty(TyId<'db>),
+    TyAlias(TyAlias<'db>, TyId<'db>),
     Func(TyId<'db>),
     FuncParam(ItemKind<'db>, usize),
     Trait(TraitDef<'db>),
@@ -156,6 +157,7 @@ impl<'db> PathRes<'db> {
     {
         match self {
             PathRes::Ty(ty) => PathRes::Ty(f(ty)),
+            PathRes::TyAlias(alias, ty) => PathRes::TyAlias(alias, f(ty)),
             PathRes::Func(ty) => PathRes::Func(f(ty)),
             PathRes::Const(ty) => PathRes::Const(f(ty)),
             PathRes::EnumVariant(v) => {
@@ -172,6 +174,7 @@ impl<'db> PathRes<'db> {
             | PathRes::Func(ty)
             | PathRes::Const(ty)
             | PathRes::TypeMemberTbd(ty) => ty.as_scope(db),
+            PathRes::TyAlias(alias, _) => Some(alias.alias.scope()),
             PathRes::Trait(trait_) => Some(trait_.trait_(db).scope()),
             PathRes::EnumVariant(variant) => Some(variant.enum_(db).scope()),
             PathRes::FuncParam(item, idx) => Some(ScopeId::FuncParam(*item, *idx)),
@@ -190,15 +193,13 @@ impl<'db> PathRes<'db> {
     }
 
     pub fn name_span(&self, db: &'db dyn HirAnalysisDb) -> Option<DynLazySpan<'db>> {
-        self.as_scope(db)?.name_span(db.as_hir_db())
+        self.as_scope(db)?.name_span(db)
     }
 
     pub fn pretty_path(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
-        let hir_db = db.as_hir_db();
-
         let ty_path = |ty: TyId<'db>| {
             if let Some(scope) = ty.as_scope(db) {
-                scope.pretty_path(hir_db)
+                scope.pretty_path(db)
             } else {
                 Some(ty.pretty_print(db).to_string())
             }
@@ -206,20 +207,20 @@ impl<'db> PathRes<'db> {
 
         match self {
             PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => ty_path(*ty),
-
+            PathRes::TyAlias(alias, _) => alias.alias.scope().pretty_path(db),
             PathRes::EnumVariant(v) => {
                 let variant_idx = v.idx;
                 Some(format!(
                     "{}::{}",
                     ty_path(v.ty).unwrap_or_else(|| "<missing>".into()),
-                    v.enum_(db).variants(db.as_hir_db()).data(db.as_hir_db())[variant_idx]
+                    v.enum_(db).variants(db).data(db)[variant_idx]
                         .name
                         .to_opt()?
-                        .data(db.as_hir_db())
+                        .data(db)
                 ))
             }
             r @ (PathRes::Trait(..) | PathRes::Mod(..) | PathRes::FuncParam(..)) => {
-                r.as_scope(db).unwrap().pretty_path(db.as_hir_db())
+                r.as_scope(db).unwrap().pretty_path(db)
             }
             PathRes::TypeMemberTbd(parent_ty) => Some(format!(
                 "<TBD member of {}>",
@@ -231,6 +232,7 @@ impl<'db> PathRes<'db> {
     pub fn kind_name(&self) -> &'static str {
         match self {
             PathRes::Ty(_) => "type",
+            PathRes::TyAlias(..) => "type alias",
             PathRes::Func(_) => "function",
             PathRes::FuncParam(..) => "function parameter",
             PathRes::Trait(_) => "trait",
@@ -255,7 +257,7 @@ impl<'db> ResolvedVariant<'db> {
     }
 
     pub fn variant_def(&self, db: &'db dyn HirAnalysisDb) -> &'db VariantDef<'db> {
-        &self.enum_(db).variants(db.as_hir_db()).data(db.as_hir_db())[self.idx]
+        &self.enum_(db).variants(db).data(db)[self.idx]
     }
 
     pub fn variant_kind(&self, db: &'db dyn HirAnalysisDb) -> VariantKind<'db> {
@@ -352,14 +354,12 @@ fn resolve_path_impl<'db, F>(
 where
     F: FnMut(PathId<'db>, &PathRes<'db>),
 {
-    let hir_db = db.as_hir_db();
-
     let parent_res = path
-        .parent(hir_db)
+        .parent(db)
         .map(|path| resolve_path_impl(db, path, scope, resolve_tail_as_value, false, observer))
         .transpose()?;
 
-    if !path.ident(hir_db).is_present() {
+    if !path.ident(db).is_present() {
         return Err(PathResError::parse_err(path));
     }
 
@@ -369,7 +369,7 @@ where
         .unwrap_or(scope);
 
     match parent_res {
-        Some(PathRes::Ty(ty)) => {
+        Some(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) => {
             // Try to resolve as an enum variant
             if let Some(enum_) = ty.as_enum(db) {
                 // We need to use the concrete enum scope instead of
@@ -429,9 +429,7 @@ pub fn resolve_name_res<'db>(
     path: PathId<'db>,
     scope: ScopeId<'db>,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
-    let hir_db = db.as_hir_db();
-
-    let args = &lower_generic_arg_list(db, path.generic_args(hir_db), scope);
+    let args = &lower_generic_arg_list(db, path.generic_args(db), scope);
     let res = match nameres.kind {
         NameResKind::Prim(prim) => {
             let ty = TyId::from_hir_prim_ty(db, prim);
@@ -453,7 +451,7 @@ pub fn resolve_name_res<'db>(
                 }
                 ItemKind::Const(const_) => {
                     // TODO err if any args
-                    let ty = if let Some(ty) = const_.ty(hir_db).to_opt() {
+                    let ty = if let Some(ty) = const_.ty(db).to_opt() {
                         lower_hir_ty(db, ty, scope)
                     } else {
                         TyId::invalid(db, InvalidCause::Other)
@@ -462,33 +460,32 @@ pub fn resolve_name_res<'db>(
                 }
 
                 ItemKind::TypeAlias(type_alias) => {
-                    let Ok(alias) = lower_type_alias(db, type_alias) else {
-                        // Type alias cycle error reported in `def_analysis.rs`
-                        return Ok(PathRes::Ty(TyId::invalid(db, InvalidCause::Other)));
-                    };
-
+                    let alias = lower_type_alias(db, type_alias);
                     if args.len() < alias.params(db).len() {
-                        PathRes::Ty(TyId::invalid(
-                            db,
-                            InvalidCause::UnboundTypeAliasParam {
-                                alias: type_alias,
-                                n_given_args: args.len(),
-                            },
-                        ))
+                        PathRes::TyAlias(
+                            alias.clone(),
+                            TyId::invalid(
+                                db,
+                                InvalidCause::UnboundTypeAliasParam {
+                                    alias: type_alias,
+                                    n_given_args: args.len(),
+                                },
+                            ),
+                        )
                     } else {
-                        PathRes::Ty(alias.alias_to.instantiate(db, args))
+                        PathRes::TyAlias(alias.clone(), alias.alias_to.instantiate(db, args))
                     }
                 }
 
                 ItemKind::Impl(impl_) => {
-                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(hir_db), scope, args)?)
+                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(db), scope, args)?)
                 }
                 ItemKind::ImplTrait(impl_) => {
-                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(hir_db), scope, args)?)
+                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(db), scope, args)?)
                 }
 
                 ItemKind::Trait(t) => {
-                    if path.is_self_ty(hir_db) {
+                    if path.is_self_ty(db) {
                         let params = collect_generic_params(db, t.into());
                         let ty = params.trait_self(db).unwrap();
                         let ty = TyId::foldl(db, ty, args);
@@ -513,7 +510,7 @@ pub fn resolve_name_res<'db>(
                     ty
                 } else {
                     // The variant was imported via `use`.
-                    debug_assert!(path.parent(hir_db).is_none());
+                    debug_assert!(path.parent(db).is_none());
                     let enum_: Enum = enum_.try_into().unwrap();
                     ty_from_adtref(db, enum_.into(), &[])?
                 };

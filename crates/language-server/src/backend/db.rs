@@ -1,4 +1,4 @@
-use common::{impl_db_traits, InputDb};
+use common::InputDb;
 
 use hir::{HirDb, LowerHirDb, SpannedHirDb};
 use hir_analysis::{diagnostics::SpannedHirAnalysisDb, HirAnalysisDb};
@@ -29,12 +29,7 @@ pub struct LanguageServerDatabase {
     storage: salsa::Storage<Self>,
 }
 
-impl_db_traits!(
-    LanguageServerDatabase,
-    InputDb,
-    HirDb,
-    LowerHirDb,
-    SpannedHirDb,
-    HirAnalysisDb,
-    SpannedHirAnalysisDb,
-);
+#[salsa::db]
+impl salsa::Database for LanguageServerDatabase {
+    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+}

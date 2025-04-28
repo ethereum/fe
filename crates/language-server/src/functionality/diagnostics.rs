@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use camino::Utf8Path;
 use codespan_reporting as cs;
-use common::{diagnostics::CompleteDiagnostic, InputDb, InputFile, InputIngot};
+use common::{diagnostics::CompleteDiagnostic, InputFile, InputIngot};
 use cs::files as cs_files;
 use hir::lower::map_file_to_mod;
 use hir_analysis::{
@@ -23,7 +23,7 @@ use crate::{
 
 #[salsa::tracked(return_ref)]
 pub fn file_line_starts(db: &dyn LanguageServerDb, file: InputFile) -> Vec<usize> {
-    cs::files::line_starts(file.text(db.as_input_db())).collect()
+    cs::files::line_starts(file.text(db)).collect()
 }
 
 impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
@@ -111,7 +111,7 @@ impl LanguageServerDatabase {
                 ord => ord,
             });
             for diag in finalized_diags {
-                let lsp_diags = diag_to_lsp(self.as_input_db(), ingot, diag).clone();
+                let lsp_diags = diag_to_lsp(self, ingot, diag).clone();
                 for (uri, more_diags) in lsp_diags {
                     let diags = result.entry(uri.clone()).or_insert_with(Vec::new);
                     diags.extend(more_diags);

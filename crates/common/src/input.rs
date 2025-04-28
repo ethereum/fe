@@ -1,12 +1,18 @@
 use camino::Utf8PathBuf;
+use rust_embed::Embed;
 use salsa::Setter;
 use smol_str::SmolStr;
 
 use crate::{indexmap::IndexSet, InputDb};
 
+#[derive(Embed)]
+#[folder = "../../library/core"]
+struct Core;
+
 /// An ingot is a collection of files which are compiled together.
 /// Ingot can depend on other ingots.
-#[salsa::input(constructor = __new_impl)]
+#[salsa::input]
+#[derive(Debug)]
 pub struct InputIngot {
     /// An absolute path to the ingot root directory.
     /// The all files in the ingot should be located under this directory.
@@ -34,26 +40,6 @@ pub struct InputIngot {
     root_file: Option<InputFile>,
 }
 impl InputIngot {
-    pub fn new(
-        db: &dyn InputDb,
-        path: &str,
-        kind: IngotKind,
-        version: Version,
-        external_ingots: IndexSet<IngotDependency>,
-    ) -> InputIngot {
-        let path = Utf8PathBuf::from(path);
-        let root_file = None;
-        Self::__new_impl(
-            db,
-            path,
-            kind,
-            version,
-            external_ingots,
-            IndexSet::default(),
-            root_file,
-        )
-    }
-
     /// Set the root file of the ingot.
     /// The root file must be set before the ingot is used.
     pub fn set_root_file(self, db: &mut dyn InputDb, file: InputFile) {
@@ -74,6 +60,7 @@ impl InputIngot {
 }
 
 #[salsa::input]
+#[derive(Debug)]
 pub struct InputFile {
     /// A path to the file from the ingot root directory.
     #[return_ref]
