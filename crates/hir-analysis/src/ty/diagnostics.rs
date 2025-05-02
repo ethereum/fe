@@ -96,11 +96,8 @@ pub enum TyLowerDiag<'db> {
         name: IdentId<'db>,
     },
 
-    DuplicateArgName {
-        primary: DynLazySpan<'db>,
-        conflict_with: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    },
+    DuplicateArgName(Func<'db>, SmallVec<[u16; 4]>),
+    DuplicateArgLabel(Func<'db>, SmallVec<[u16; 4]>),
     DuplicateFieldName(FieldParent<'db>, SmallVec<[u16; 4]>),
     DuplicateVariantName(Enum<'db>, SmallVec<[u16; 4]>),
     DuplicateGenericParamName(AdtRef<'db>, SmallVec<[u16; 4]>),
@@ -152,6 +149,7 @@ impl TyLowerDiag<'_> {
             Self::DuplicateFieldName(..) => 17,
             Self::DuplicateVariantName(..) => 18,
             Self::DuplicateGenericParamName(..) => 19,
+            Self::DuplicateArgLabel(..) => 20,
         }
     }
 }

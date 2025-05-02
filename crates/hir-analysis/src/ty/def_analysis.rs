@@ -2,14 +2,12 @@
 //! This module is the only module in `ty` module which is allowed to emit
 //! diagnostics.
 
-use std::collections::hash_map::Entry;
-
 use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, EnumVariant, FieldDef, FieldParent, Func, FuncParamListId,
-        GenericParam, IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId,
-        TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, EnumVariant, FieldDef, FieldParent, Func, GenericParam, IdentId,
+        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeId as HirTyId,
+        VariantKind,
     },
     visitor::prelude::*,
 };
@@ -762,6 +760,24 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             collect_func_def_constraints(self.db, func, true).instantiate_identity(),
         );
 
+        if let Some(args) = hir_func.params(self.db).to_opt() {
+            let dupes =
+                check_duplicate_names(args.data(self.db).iter().map(|p| p.name()), |idxs| {
+                    TyLowerDiag::DuplicateArgName(hir_func, idxs).into()
+                });
+            let found_dupes = !dupes.is_empty();
+            self.diags.extend(dupes);
+
+            // For simplicity, we only check for label dupes if there are no name dupes.
+            // (`label_eagerly` gives the arg name if no label is present)
+            if !found_dupes {
+                self.diags.extend(check_duplicate_names(
+                    args.data(self.db).iter().map(|p| p.label_eagerly()),
+                    |idxs| TyLowerDiag::DuplicateArgLabel(hir_func, idxs).into(),
+                ));
+            }
+        }
+
         walk_func(self, ctxt, hir_func);
 
         if let Some(ret_ty) = hir_func.ret_ty(self.db) {
@@ -773,39 +789,6 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     }
 
     fn visit_body(&mut self, _ctxt: &mut VisitorCtxt<'_, LazyBodySpan>, _body: hir::hir_def::Body) {
-    }
-
-    fn visit_func_param_list(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyFuncParamListSpan<'db>>,
-        params: FuncParamListId<'db>,
-    ) {
-        // Checks if the argument names are not duplicated.
-        let mut already_seen: FxHashMap<IdentId, usize> = FxHashMap::default();
-
-        for (i, param) in params.data(self.db).iter().enumerate() {
-            let Some(name) = param.name.to_opt().and_then(|name| name.ident()) else {
-                continue;
-            };
-
-            match already_seen.entry(name) {
-                Entry::Occupied(entry) => {
-                    let diag = TyLowerDiag::DuplicateArgName {
-                        primary: ctxt.span().unwrap().param(i).name().into(),
-                        conflict_with: ctxt.span().unwrap().param(*entry.get()).name().into(),
-                        name,
-                    }
-                    .into();
-                    self.diags.push(diag);
-                }
-
-                Entry::Vacant(entry) => {
-                    entry.insert(i);
-                }
-            }
-        }
-
-        walk_func_param_list(self, ctxt, params)
     }
 
     fn visit_func_param(

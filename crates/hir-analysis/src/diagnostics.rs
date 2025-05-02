@@ -524,28 +524,59 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
-            Self::DuplicateArgName {
-                primary,
-                conflict_with,
-                name,
-            } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "duplicate argument name in function definition".to_string(),
-                sub_diagnostics: vec![
-                    SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: format!("duplicate argument name `{}`", name.data(db)),
-                        span: primary.resolve(db),
-                    },
-                    SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: "conflict with this argument name".to_string(),
-                        span: conflict_with.resolve(db),
-                    },
-                ],
-                notes: vec![],
-                error_code,
-            },
+            Self::DuplicateArgName(func, idxs) => {
+                let name = func.params(db).unwrap().data(db)[idxs[0] as usize]
+                    .name()
+                    .unwrap()
+                    .data(db);
+
+                let pspan = func.span().params();
+                let spans = idxs
+                    .iter()
+                    .map(|i| pspan.clone().param(*i as usize).name().resolve(db));
+
+                let message = if let Some(name) = func.name(db).to_opt() {
+                    format!("duplicate argument name in function `{}`", name.data(db))
+                } else {
+                    "duplicate argument name in function definition".into()
+                };
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::DuplicateArgLabel(func, idxs) => {
+                let params = func.params(db).unwrap().data(db);
+                let name = params[idxs[0] as usize].label_eagerly().unwrap().data(db);
+
+                let spans = idxs.iter().map(|i| {
+                    let s = func.span().params().clone().param(*i as usize);
+                    if params[*i as usize].label.is_some() {
+                        s.label().resolve(db)
+                    } else {
+                        s.name().resolve(db)
+                    }
+                });
+
+                let message = if let Some(name) = func.name(db).to_opt() {
+                    format!("duplicate argument label in function `{}`", name.data(db))
+                } else {
+                    "duplicate argument label in function definition".into()
+                };
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::DuplicateFieldName(parent, idxs) => {
                 let name = parent.fields(db).data(db)[idxs[0] as usize]
