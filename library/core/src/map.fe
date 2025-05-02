@@ -1,5 +1,5 @@
-use ingot::std::codec::{Buffer, BufferResult, Cursor, Read, Write, Encode, Decode}
-use ingot::std::operators::{Add, Sub, AddAssign, SubAssign}
+use ingot::codec::{Buffer, BufferResult, Cursor, Read, Write, Encode, Decode}
+use ingot::operators::{Add, Sub, AddAssign, SubAssign}
 
 pub trait Hasher {
     fn hash<T: Encode>(mut self, key: T) -> u256
