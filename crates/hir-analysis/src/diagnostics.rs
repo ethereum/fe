@@ -446,26 +446,31 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 error_code,
             },
 
-            Self::TypeAliasCycle { cycle } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "type alias cycle".to_string(),
-                sub_diagnostics: {
-                    let mut iter = cycle.iter();
-                    let mut labels = vec![SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: "cycle happens here".to_string(),
-                        span: iter.next_back().unwrap().span().ty().resolve(db),
-                    }];
-                    labels.extend(iter.map(|type_alias| SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: "type alias defined here".to_string(),
-                        span: type_alias.span().alias().resolve(db),
-                    }));
-                    labels
-                },
-                notes: vec![],
-                error_code,
-            },
+            Self::TypeAliasCycle { cycle } => {
+                let mut cycle = cycle.clone();
+                cycle.sort_by_key(|a| a.span().resolve(db));
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "type alias cycle".to_string(),
+                    sub_diagnostics: {
+                        let mut iter = cycle.iter();
+                        let mut labels = vec![SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: "cycle happens here".to_string(),
+                            span: iter.next_back().unwrap().span().ty().resolve(db),
+                        }];
+                        labels.extend(iter.map(|type_alias| SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "type alias defined here".to_string(),
+                            span: type_alias.span().alias().resolve(db),
+                        }));
+                        labels
+                    },
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::InconsistentKindBound { span, ty, bound } => {
                 let msg = format!(
