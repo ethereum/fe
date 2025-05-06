@@ -32,7 +32,7 @@ impl<'db> TyChecker<'db> {
         let span = stmt.span(self.env.body()).into_let_stmt();
 
         let ascription = match ascription {
-            Some(ty) => self.lower_ty(*ty, span.ty().into(), true),
+            Some(ty) => self.lower_ty(*ty, span.ty(), true),
             None => self.fresh_ty(),
         };
 

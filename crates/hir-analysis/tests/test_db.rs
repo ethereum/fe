@@ -17,7 +17,7 @@ use common::{
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    name_resolution::{ImportAnalysisPass, PathAnalysisPass},
+    name_resolution::ImportAnalysisPass,
     ty::{
         AdtDefAnalysisPass, BodyAnalysisPass, DefConflictAnalysisPass, FuncAnalysisPass,
         ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
@@ -193,7 +193,6 @@ fn initialize_analysis_pass() -> AnalysisPassManager {
     pass_manager.add_module_pass(Box::new(ParsingPass {}));
     pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass {}));
     pass_manager.add_module_pass(Box::new(ImportAnalysisPass {}));
-    pass_manager.add_module_pass(Box::new(PathAnalysisPass {}));
     pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass {}));
     pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass {}));
     pass_manager.add_module_pass(Box::new(TraitAnalysisPass {}));

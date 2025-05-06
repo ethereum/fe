@@ -21,7 +21,7 @@ use smallvec::SmallVec;
 use super::{
     adt_def::AdtDef,
     const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
-    diagnostics::{TraitConstraintDiag, TyDiagCollection, TyLowerDiag},
+    diagnostics::{TraitConstraintDiag, TyDiagCollection},
     func_def::FuncDef,
     trait_resolution::{PredicateListId, WellFormedness},
     ty_lower::collect_generic_params,
@@ -29,7 +29,7 @@ use super::{
     visitor::{TyVisitable, TyVisitor},
 };
 use crate::{
-    ty::{adt_def::AdtRef, trait_resolution::check_ty_wf},
+    ty::{adt_def::AdtRef, trait_resolution::check_ty_wf, ty_error::emit_invalid_ty_error},
     HirAnalysisDb,
 };
 
@@ -148,7 +148,7 @@ impl<'db> TyId<'db> {
             TyData::TyBase(ty_con) => ty_con.pretty_print(db),
             TyData::ConstTy(const_ty) => const_ty.pretty_print(db),
             TyData::Never => "!".to_string(),
-            TyData::Invalid(..) => "<invalid>".to_string(),
+            TyData::Invalid(cause) => format!("invalid({})", cause.pretty_print(db)),
         }
     }
 
@@ -338,111 +338,14 @@ impl<'db> TyId<'db> {
         }
     }
 
+    // xxx remove/edit in favor of ty_error.rs
     /// Emit diagnostics for the type if the type contains invalid types.
     pub(super) fn emit_diag(
         self,
         db: &'db dyn HirAnalysisDb,
         span: DynLazySpan<'db>,
     ) -> Option<TyDiagCollection<'db>> {
-        struct EmitDiagVisitor<'db> {
-            db: &'db dyn HirAnalysisDb,
-            diag: Option<TyDiagCollection<'db>>,
-            span: DynLazySpan<'db>,
-        }
-
-        impl<'db> TyVisitor<'db> for EmitDiagVisitor<'db> {
-            fn db(&self) -> &'db dyn HirAnalysisDb {
-                self.db
-            }
-
-            fn visit_invalid(&mut self, cause: &InvalidCause<'db>) {
-                let span = self.span.clone();
-                let diag = match cause.clone() {
-                    InvalidCause::NotFullyApplied => TyLowerDiag::ExpectedStarKind(span).into(),
-
-                    InvalidCause::KindMismatch { expected, given } => {
-                        TyLowerDiag::InvalidTypeArgKind {
-                            span,
-                            expected,
-                            given,
-                        }
-                        .into()
-                    }
-
-                    InvalidCause::TooManyGenericArgs { expected, given } => {
-                        TyLowerDiag::TooManyGenericArgs {
-                            span,
-                            expected,
-                            given,
-                        }
-                        .into()
-                    }
-
-                    InvalidCause::InvalidConstParamTy => {
-                        TyLowerDiag::InvalidConstParamTy(span).into()
-                    }
-
-                    InvalidCause::RecursiveConstParamTy => {
-                        TyLowerDiag::RecursiveConstParamTy(span).into()
-                    }
-
-                    InvalidCause::ConstTyMismatch { expected, given } => {
-                        TyLowerDiag::ConstTyMismatch {
-                            span,
-                            expected,
-                            given,
-                        }
-                        .into()
-                    }
-
-                    InvalidCause::ConstTyExpected { expected } => {
-                        TyLowerDiag::ConstTyExpected { span, expected }.into()
-                    }
-
-                    InvalidCause::NormalTypeExpected { given } => {
-                        TyLowerDiag::NormalTypeExpected { span, given }.into()
-                    }
-
-                    InvalidCause::UnboundTypeAliasParam {
-                        alias,
-                        n_given_args,
-                    } => TyLowerDiag::UnboundTypeAliasParam {
-                        span,
-                        alias,
-                        n_given_args,
-                    }
-                    .into(),
-
-                    InvalidCause::AssocTy => TyLowerDiag::AssocTy(span).into(),
-
-                    InvalidCause::AliasCycle(cycle) => TyLowerDiag::TypeAliasCycle {
-                        cycle: cycle.to_vec(),
-                    }
-                    .into(),
-
-                    InvalidCause::InvalidConstTyExpr { body } => {
-                        TyLowerDiag::InvalidConstTyExpr(body.span().into()).into()
-                    }
-
-                    InvalidCause::Other => return,
-                };
-
-                self.diag.get_or_insert(diag);
-            }
-        }
-
-        if !self.has_invalid(db) {
-            return None;
-        }
-
-        let mut visitor = EmitDiagVisitor {
-            db,
-            diag: None,
-            span,
-        };
-
-        visitor.visit_ty(self);
-        visitor.diag
+        emit_invalid_ty_error(db, self, span)
     }
 
     pub(super) fn emit_wf_diag(
@@ -495,7 +398,13 @@ impl<'db> TyId<'db> {
     /// Perform type level application.
     pub(crate) fn app(db: &'db dyn HirAnalysisDb, lhs: Self, rhs: Self) -> TyId<'db> {
         let Some(applicable_ty) = lhs.applicable_ty(db) else {
-            return Self::invalid(db, InvalidCause::kind_mismatch(None, rhs));
+            return Self::invalid(
+                db,
+                InvalidCause::KindMismatch {
+                    expected: None,
+                    given: rhs,
+                },
+            );
         };
 
         let rhs = rhs
@@ -504,7 +413,13 @@ impl<'db> TyId<'db> {
 
         let applicable_kind = applicable_ty.kind;
         if !applicable_kind.does_match(rhs.kind(db)) {
-            return Self::invalid(db, InvalidCause::kind_mismatch(Some(&applicable_kind), rhs));
+            return Self::invalid(
+                db,
+                InvalidCause::KindMismatch {
+                    expected: Some(applicable_kind),
+                    given: rhs,
+                },
+            );
         };
 
         Self::new(db, TyData::TyApp(lhs, rhs))
@@ -755,11 +670,44 @@ pub enum InvalidCause<'db> {
     Other,
 }
 
-impl<'db> InvalidCause<'db> {
-    pub(super) fn kind_mismatch(expected: Option<&Kind>, ty: TyId<'db>) -> Self {
-        Self::KindMismatch {
-            expected: expected.cloned(),
-            given: ty,
+impl InvalidCause<'_> {
+    pub fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
+        match self {
+            InvalidCause::KindMismatch { expected, given } => format!(
+                "KindMismatch {{ expected: {:?}, given: {} }}",
+                expected.clone().map(|k| format!("{k}")),
+                given.pretty_print(db)
+            ),
+            InvalidCause::ConstTyMismatch { expected, given } => format!(
+                "ConstTyMismatch {{ expected: {}, given: {} }}",
+                expected.pretty_print(db),
+                given.pretty_print(db)
+            ),
+            InvalidCause::ConstTyExpected { expected } => {
+                format!("ConstTyExpected({})", expected.pretty_print(db))
+            }
+            InvalidCause::NormalTypeExpected { given } => {
+                format!("NormallTyExpected({})", given.pretty_print(db))
+            }
+            InvalidCause::UnboundTypeAliasParam {
+                alias,
+                n_given_args,
+            } => {
+                format!(
+                    "UnboundTypeAliasParam {{ alias: {:?},  given: {n_given_args} }}",
+                    alias.name(db).to_opt().map(|i| i.data(db)),
+                )
+            }
+            InvalidCause::AliasCycle(v) => format!("AliasCycle(len={})", v.len()),
+
+            InvalidCause::NotFullyApplied
+            | InvalidCause::TooManyGenericArgs { .. }
+            | InvalidCause::InvalidConstParamTy
+            | InvalidCause::RecursiveConstParamTy
+            | InvalidCause::AssocTy
+            | InvalidCause::Other => format!("{self:?}"),
+
+            InvalidCause::InvalidConstTyExpr { body: _ } => "InvalidConstTyExpr".into(),
         }
     }
 }
@@ -1308,7 +1256,7 @@ pub(crate) fn decompose_ty_app<'db>(
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct TyFlags: u8 {
-        const HAS_INVALID =  0b0000_0001;
+        const HAS_INVALID = 0b0000_0001;
         const HAS_VAR = 0b0000_0010;
         const HAS_PARAM = 0b0000_0100;
     }
@@ -1335,7 +1283,7 @@ pub(crate) fn ty_flags<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyFlag
         }
 
         fn visit_invalid(&mut self, _: &InvalidCause) {
-            self.flags.insert(TyFlags::HAS_INVALID)
+            self.flags.insert(TyFlags::HAS_INVALID);
         }
     }
 

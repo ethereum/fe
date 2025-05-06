@@ -31,6 +31,7 @@ pub mod trait_lower;
 pub mod trait_resolution;
 pub mod ty_check;
 pub mod ty_def;
+pub mod ty_error;
 pub mod ty_lower;
 pub mod visitor;
 

@@ -55,7 +55,7 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, ty: TypeId<'db>) {
         self.domain_stack.push(NameDomain::TYPE);
-        walk_ty(self, ctxt, ty);
+        walk_type(self, ctxt, ty);
         self.domain_stack.pop();
     }
 

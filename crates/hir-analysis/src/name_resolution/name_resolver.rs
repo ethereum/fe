@@ -88,7 +88,7 @@ impl Default for QueryDirective {
 /// The struct contains the lookup result of a name query.
 /// The results can contain more than one name resolutions which belong to
 /// different name domains.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Update)]
 pub struct NameResBucket<'db> {
     // Contains a maximum of 3 entries (one for each distinct NameDomain)
     pub(super) bucket: ThinVec<(NameDomain, NameResolutionResult<'db, NameRes<'db>>)>,

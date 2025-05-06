@@ -1,7 +1,8 @@
 mod test_db;
 
 use fe_hir_analysis::{
-    analysis_pass::AnalysisPassManager, name_resolution::PathAnalysisPass, ty::FuncAnalysisPass,
+    analysis_pass::AnalysisPassManager,
+    ty::{AdtDefAnalysisPass, FuncAnalysisPass},
 };
 use hir::lower::map_file_to_mod;
 use test_db::HirAnalysisTestDb;
@@ -42,10 +43,8 @@ fn test_updated() {
 fn initialize_pass_manager() -> AnalysisPassManager {
     let mut pass_manager = AnalysisPassManager::new();
     // pass_manager.add_module_pass(Box::new(ParsingPass {}));
-    // pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass {}));
     // pass_manager.add_module_pass(Box::new(ImportAnalysisPass {}));
-    pass_manager.add_module_pass(Box::new(PathAnalysisPass {}));
-    // pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass {}));
     // pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass {}));
     // pass_manager.add_module_pass(Box::new(TraitAnalysisPass {}));
     // pass_manager.add_module_pass(Box::new(ImplAnalysisPass {}));

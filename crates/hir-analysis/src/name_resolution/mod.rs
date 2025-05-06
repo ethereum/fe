@@ -6,22 +6,15 @@ mod path_resolver;
 pub(crate) mod traits_in_scope;
 mod visibility_checker;
 
-use hir::{
-    hir_def::{
-        Expr, ExprId, GenericArgListId, IngotId, ItemKind, Pat, PatId, PathId, TopLevelMod,
-        TraitRefId, TypeId,
-    },
-    visitor::prelude::*,
-};
+use hir::hir_def::{IngotId, TopLevelMod};
 pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
     EarlyNameQueryId, NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind,
     NameResolutionError, QueryDirective,
 };
-use path_resolver::resolve_path_with_observer;
 pub use path_resolver::{
-    resolve_ident_to_bucket, resolve_name_res, resolve_path, PathRes, PathResError,
-    PathResErrorKind, ResolvedVariant,
+    resolve_ident_to_bucket, resolve_name_res, resolve_path, resolve_path_with_observer, PathRes,
+    PathResError, PathResErrorKind, ResolvedVariant,
 };
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
@@ -59,37 +52,6 @@ impl ModuleAnalysisPass for ImportAnalysisPass {
     }
 }
 
-/// Performs path resolution analysis. This pass checks all paths appeared in a
-/// module for
-/// - Existence
-/// - Visibility
-/// - Domain correctness
-/// - Ambiguity
-///
-/// NOTE: This pass doesn't check the conflict of item definitions or import
-/// errors. If you need to check them, please consider using
-/// [`ImportAnalysisPass`] or [`DefConflictAnalysisPass`].
-pub struct PathAnalysisPass {}
-
-/// TODO: Remove this!!!!
-impl ModuleAnalysisPass for PathAnalysisPass {
-    fn run_on_module<'db>(
-        &mut self,
-        db: &'db dyn HirAnalysisDb,
-        top_mod: TopLevelMod<'db>,
-    ) -> Vec<Box<dyn DiagnosticVoucher + 'db>> {
-        let mut visitor = EarlyPathVisitor::new(db);
-        let mut ctxt = VisitorCtxt::with_item(db, top_mod.into());
-        visitor.visit_item(&mut ctxt, top_mod.into());
-
-        visitor
-            .diags
-            .into_iter()
-            .map(|diag| Box::new(diag) as _)
-            .collect()
-    }
-}
-
 #[salsa::tracked(return_ref)]
 pub fn resolve_imports<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -100,216 +62,18 @@ pub fn resolve_imports<'db>(
     (diags, imports)
 }
 
-struct EarlyPathVisitor<'db> {
-    db: &'db dyn HirAnalysisDb,
-    diags: Vec<diagnostics::NameResDiag<'db>>,
-    item_stack: Vec<ItemKind<'db>>,
-    path_ctxt: Vec<ExpectedPathKind>,
-}
-
-impl<'db> EarlyPathVisitor<'db> {
-    fn new(db: &'db dyn HirAnalysisDb) -> Self {
-        Self {
-            db,
-            diags: Vec::new(),
-            item_stack: Vec::new(),
-            path_ctxt: Vec::new(),
-        }
-    }
-}
-
-impl<'db> Visitor<'db> for EarlyPathVisitor<'db> {
-    fn visit_item(&mut self, ctxt: &mut VisitorCtxt<'db, LazyItemSpan<'db>>, item: ItemKind<'db>) {
-        // We don't need to check use statements for conflicts because they are
-        // already checked in import resolution.
-        if matches!(item, ItemKind::Use(_)) {
-            return;
-        }
-
-        self.item_stack.push(item);
-        if matches!(item, ItemKind::Body(_)) {
-            self.path_ctxt.push(ExpectedPathKind::Value);
-        } else {
-            self.path_ctxt.push(ExpectedPathKind::Type);
-        }
-
-        walk_item(self, ctxt, item);
-
-        self.item_stack.pop();
-        self.path_ctxt.pop();
-    }
-
-    fn visit_trait_ref(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyTraitRefSpan<'db>>,
-        trait_ref: TraitRefId<'db>,
-    ) {
-        self.path_ctxt.push(ExpectedPathKind::Trait);
-        walk_trait_ref(self, ctxt, trait_ref);
-        self.path_ctxt.pop();
-    }
-
-    fn visit_generic_arg_list(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyGenericArgListSpan<'db>>,
-        args: GenericArgListId<'db>,
-    ) {
-        self.path_ctxt.push(ExpectedPathKind::Type);
-        walk_generic_arg_list(self, ctxt, args);
-        self.path_ctxt.pop();
-    }
-
-    fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, ty: TypeId<'db>) {
-        self.path_ctxt.push(ExpectedPathKind::Type);
-        walk_ty(self, ctxt, ty);
-        self.path_ctxt.pop();
-    }
-
-    // We don't need to run path analysis on patterns, statements and expressions in
-    // early path resolution.
-    fn visit_pat(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyPatSpan<'db>>,
-        pat: PatId,
-        pat_data: &Pat<'db>,
-    ) {
-        match pat_data {
-            Pat::PathTuple { .. } | Pat::Record { .. } => {
-                self.path_ctxt.push(ExpectedPathKind::Record)
-            }
-            _ => self.path_ctxt.push(ExpectedPathKind::Pat),
-        }
-        walk_pat(self, ctxt, pat);
-        self.path_ctxt.pop();
-    }
-
-    fn visit_expr(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
-        expr: ExprId,
-        expr_data: &Expr<'db>,
-    ) {
-        match expr_data {
-            Expr::RecordInit(..) => {
-                self.path_ctxt.push(ExpectedPathKind::Record);
-            }
-
-            _ => {
-                self.path_ctxt.push(ExpectedPathKind::Expr);
-            }
-        }
-        walk_expr(self, ctxt, expr);
-        self.path_ctxt.pop();
-    }
-
-    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
-        let scope = ctxt.scope();
-        let path_span = ctxt.span().unwrap();
-
-        let mut invisible = None;
-        let mut check_visibility = |path: PathId<'db>, reso: &PathRes<'db>| {
-            if invisible.is_some() {
-                return;
-            }
-            if !reso.is_visible_from(self.db, scope) {
-                invisible = Some((path, reso.name_span(self.db)));
-            }
-        };
-
-        let expected_path_kind = *self.path_ctxt.last().unwrap();
-        let resolve_tail_as_value = expected_path_kind.domain().contains(NameDomain::VALUE);
-
-        let res = match resolve_path_with_observer(
-            self.db,
-            path,
-            scope,
-            resolve_tail_as_value,
-            &mut check_visibility,
-        ) {
-            Ok(res) => res,
-
-            Err(err) => {
-                if matches!(err.kind, PathResErrorKind::NotFound(_))
-                    && path.len(self.db) == 1
-                    && matches!(
-                        self.path_ctxt.last().unwrap(),
-                        ExpectedPathKind::Expr | ExpectedPathKind::Pat
-                    )
-                {
-                    return;
-                }
-
-                let segment_span = path_span
-                    .segment(err.failed_at.segment_index(self.db))
-                    .ident();
-
-                let expected = self.path_ctxt.last().unwrap();
-                if let Some(diag) = err.into_diag(self.db, path, segment_span.into(), *expected) {
-                    self.diags.push(diag);
-                }
-                return;
-            }
-        };
-
-        if let Some((path, deriv_span)) = invisible {
-            let span = path_span
-                .clone()
-                .segment(path.segment_index(self.db))
-                .ident();
-            let ident = path.ident(self.db);
-            let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
-            self.diags.push(diag);
-        }
-
-        let is_type = matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..));
-        let is_trait = matches!(res, PathRes::Trait(_));
-
-        let ident = path.ident(self.db).to_opt().unwrap();
-
-        let span = path_span.segment(path.segment_index(self.db));
-        match expected_path_kind {
-            ExpectedPathKind::Type if !is_type => self.diags.push(NameResDiag::ExpectedType(
-                span.into(),
-                ident,
-                res.kind_name(),
-            )),
-
-            ExpectedPathKind::Trait if !is_trait => self.diags.push(NameResDiag::ExpectedTrait(
-                span.into(),
-                ident,
-                res.kind_name(),
-            )),
-
-            ExpectedPathKind::Value if is_type || is_trait => self.diags.push(
-                NameResDiag::ExpectedValue(span.into(), ident, res.kind_name()),
-            ),
-
-            _ => {}
-        }
-
-        walk_path(self, ctxt, path);
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ExpectedPathKind {
+    /// NameDomain::TYPE
     Type,
+    /// NameDomain::TYPE
     Trait,
+    /// NameDomain::VALUE
     Value,
+    /// NameDomain::VALUE | NameDomain::TYPE
     Record,
+    /// NameDomain::VALUE | NameDomain::TYPE
     Pat,
+    /// NameDomain::VALUE | NameDomain::TYPE
     Expr,
-}
-
-impl ExpectedPathKind {
-    fn domain(self) -> NameDomain {
-        match self {
-            ExpectedPathKind::Type => NameDomain::TYPE,
-            ExpectedPathKind::Trait => NameDomain::TYPE,
-            ExpectedPathKind::Value => NameDomain::VALUE,
-            ExpectedPathKind::Pat | ExpectedPathKind::Record | ExpectedPathKind::Expr => {
-                NameDomain::VALUE | NameDomain::TYPE
-            }
-        }
-    }
 }

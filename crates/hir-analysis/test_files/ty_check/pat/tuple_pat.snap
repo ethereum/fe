@@ -1,7 +1,7 @@
 ---
 source: crates/hir-analysis/tests/ty_check.rs
 expression: res
-input_file: crates/hir-analysis/test_files/ty_check/pat/tuple_pat.fe
+input_file: test_files/ty_check/pat/tuple_pat.fe
 ---
 note: 
   ┌─ tuple_pat.fe:1:10
@@ -49,7 +49,7 @@ note:
   ┌─ tuple_pat.fe:3:10
   │
 3 │     let (.., x, y): (u8, u16, u32, u64, u128)
-  │          ^^ <invalid>
+  │          ^^ invalid(Other)
 
 note: 
   ┌─ tuple_pat.fe:3:14
@@ -91,7 +91,7 @@ note:
   ┌─ tuple_pat.fe:4:19
   │
 4 │     let (x, y, z, ..): (u8, u16, u32, u64, u128)
-  │                   ^^ <invalid>
+  │                   ^^ invalid(Other)
 
 note: 
   ┌─ tuple_pat.fe:5:9
@@ -109,7 +109,7 @@ note:
   ┌─ tuple_pat.fe:5:13
   │
 5 │     let (x, .., y, z): (u8, u16, u32, u64, u128)
-  │             ^^ <invalid>
+  │             ^^ invalid(Other)
 
 note: 
   ┌─ tuple_pat.fe:5:17

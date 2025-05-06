@@ -125,6 +125,7 @@ impl DiagnosticVoucher for TyDiagCollection<'_> {
     fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         match self {
             Self::Ty(diag) => diag.to_complete(db),
+            Self::PathRes(diag) => diag.to_complete(db),
             Self::Satisfiability(diag) => diag.to_complete(db),
             Self::TraitLower(diag) => diag.to_complete(db),
             Self::Impl(diag) => diag.to_complete(db),
@@ -482,7 +483,7 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    // xxx improve message
+                    // TODO improve message
                     message: "duplicate type bound is not allowed.".to_string(),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
@@ -1187,7 +1188,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                         message: format!("`{}` can't be applied to `{}`", op.data(db), ty),
                         span: span.resolve(db),
                     },
-                    // xxx move to hint
+                    // TODO move to hint
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!(
@@ -1503,7 +1504,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!("candidate: {}", cand.pretty_print(db, false)),
-                        span: primary.resolve(db), // xxx cand span??
+                        span: primary.resolve(db), // TODO cand span??
                     });
                 }
 
@@ -2073,7 +2074,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 span,
                 stricter_bounds,
             } => {
-                // xxx sort!
+                // TODO sort!
                 // unsatisfied_goals.sort_by_key(|goal| goal.self_ty(db).pretty_print(db));
 
                 let message = format!(

@@ -10,7 +10,13 @@ error[3-0016]: too many generic args; expected 1, given 2
   │           ^^^^^^^^^^^^^^ expected 1 arguments, but 2 were given
 
 error[3-0016]: too many generic args; expected 1, given 2
-   ┌─ generic_arg_mismatch.fe:10:13
+  ┌─ generic_arg_mismatch.fe:8:10
+  │
+8 │ type W = Wrapper<Opt<i32, i32>> // TODO: err span is too wide
+  │          ^^^^^^^^^^^^^^^^^^^^^^ expected 1 arguments, but 2 were given
+
+error[3-0016]: too many generic args; expected 1, given 2
+   ┌─ generic_arg_mismatch.fe:15:13
    │
-10 │     let o = Opt<i32, ()>::None
+15 │     let o = Opt<i32, ()>::None
    │             ^^^^^^^^^^^^ expected 1 arguments, but 2 were given

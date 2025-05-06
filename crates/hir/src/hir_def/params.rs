@@ -21,6 +21,27 @@ impl<'db> GenericArgListId<'db> {
     pub fn is_empty(self, db: &dyn HirDb) -> bool {
         self.data(db).is_empty()
     }
+
+    pub fn pretty_print(self, db: &dyn HirDb) -> String {
+        if !self.is_given(db) {
+            "".into()
+        } else {
+            format!(
+                "<{}>",
+                self.data(db)
+                    .iter()
+                    .map(|p| match p {
+                        GenericArg::Const(_) => "<const>".into(),
+                        GenericArg::Type(t) => {
+                            t.ty.to_opt()
+                                .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db))
+                        }
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        }
+    }
 }
 
 #[salsa::interned]

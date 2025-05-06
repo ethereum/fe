@@ -25,7 +25,7 @@ pub mod prelude {
         walk_func_param_list, walk_generic_arg, walk_generic_arg_list, walk_generic_param,
         walk_generic_param_list, walk_impl, walk_impl_trait, walk_item, walk_kind_bound, walk_mod,
         walk_pat, walk_path, walk_stmt, walk_struct, walk_super_trait_list, walk_top_mod,
-        walk_trait, walk_trait_ref, walk_ty, walk_type_alias, walk_type_bound,
+        walk_trait, walk_trait_ref, walk_type, walk_type_alias, walk_type_bound,
         walk_type_bound_list, walk_use, walk_use_path, walk_variant_def, walk_variant_def_list,
         walk_where_clause, walk_where_predicate, Visitor, VisitorCtxt,
     };
@@ -338,7 +338,7 @@ pub trait Visitor<'db> {
     }
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, ty: TypeId<'db>) {
-        walk_ty(self, ctxt, ty)
+        walk_type(self, ctxt, ty)
     }
 
     fn visit_tuple_type(
@@ -1741,7 +1741,7 @@ pub fn walk_use_path<'db, V>(
     }
 }
 
-pub fn walk_ty<'db, V>(
+pub fn walk_type<'db, V>(
     visitor: &mut V,
     ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>,
     ty: TypeId<'db>,

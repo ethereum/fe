@@ -40,6 +40,7 @@ impl<'db> FuncBodyDiag<'db> {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
 pub enum TyDiagCollection<'db> {
     Ty(TyLowerDiag<'db>),
+    PathRes(NameResDiag<'db>),
     Satisfiability(TraitConstraintDiag<'db>),
     TraitLower(TraitLowerDiag<'db>),
     Impl(ImplDiag<'db>),
@@ -49,6 +50,7 @@ impl<'db> TyDiagCollection<'db> {
     pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher + 'db> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
+            TyDiagCollection::PathRes(diag) => Box::new(diag) as _,
             TyDiagCollection::Satisfiability(diag) => Box::new(diag) as _,
             TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
             TyDiagCollection::Impl(diag) => Box::new(diag) as _,

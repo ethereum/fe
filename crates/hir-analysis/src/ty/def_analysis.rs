@@ -31,11 +31,12 @@ use super::{
         PredicateListId,
     },
     ty_def::{InvalidCause, TyData, TyId},
+    ty_error::collect_ty_lower_errors,
     ty_lower::{collect_generic_params, lower_kind},
     visitor::{walk_ty, TyVisitor},
 };
 use crate::{
-    name_resolution::{resolve_path, PathRes},
+    name_resolution::{diagnostics::NameResDiag, resolve_path, ExpectedPathKind, PathRes},
     ty::{
         adt_def::AdtDef,
         binder::Binder,
@@ -476,12 +477,16 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, hir_ty: HirTyId<'db>) {
         let ty = lower_hir_ty(self.db, hir_ty, self.scope());
         let span = ctxt.span().unwrap();
-        if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
-            self.diags.push(diag)
-        } else if let Some(diag) =
-            ty.emit_wf_diag(self.db, ctxt.ingot(), self.assumptions, span.into())
-        {
-            self.diags.push(diag)
+
+        if ty.has_invalid(self.db) {
+            let diags = collect_ty_lower_errors(self.db, ctxt.scope(), hir_ty, span.clone());
+            if !diags.is_empty() {
+                self.diags.extend(diags);
+                return;
+            }
+        }
+        if let Some(diag) = ty.emit_wf_diag(self.db, ctxt.ingot(), self.assumptions, span.into()) {
+            self.diags.push(diag);
         }
     }
 
@@ -768,8 +773,8 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             let found_dupes = !dupes.is_empty();
             self.diags.extend(dupes);
 
-            // For simplicity, we only check for label dupes if there are no name dupes.
-            // (`label_eagerly` gives the arg name if no label is present)
+            // Check for duplicate labels (if no name dupes were found, for simplicity;
+            // `label_eagerly` gives the arg name if no label is present)
             if !found_dupes {
                 self.diags.extend(check_duplicate_names(
                     args.data(self.db).iter().map(|p| p.label_eagerly()),
@@ -958,6 +963,29 @@ fn analyze_trait_ref<'db>(
 
             (None, None) => unreachable!(),
         },
+
+        Err(TraitRefLowerError::PathResError(err)) => {
+            return Some(
+                err.into_diag(
+                    db,
+                    *trait_ref.path(db).unwrap(),
+                    span,
+                    ExpectedPathKind::Trait,
+                )?
+                .into(),
+            )
+        }
+
+        Err(TraitRefLowerError::InvalidDomain(res)) => {
+            return Some(
+                NameResDiag::ExpectedTrait(
+                    span,
+                    *trait_ref.path(db).unwrap().ident(db).unwrap(),
+                    res.kind_name(),
+                )
+                .into(),
+            )
+        }
 
         Err(TraitRefLowerError::Other) => {
             return None;

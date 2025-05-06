@@ -112,7 +112,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let span = pat.span(self.body()).into_path_pat();
-        let res = self.resolve_path(*path, true);
+        let res = self.resolve_path(*path, true, span.clone().path());
 
         if path.is_bare_ident(self.db) {
             match res {
@@ -213,7 +213,7 @@ impl<'db> TyChecker<'db> {
 
         let span = pat.span(self.body()).into_path_tuple_pat();
 
-        let (variant, expected_elems) = match self.resolve_path(*path, true) {
+        let (variant, expected_elems) = match self.resolve_path(*path, true, span.clone().path()) {
             Ok(res) => match res {
                 PathRes::Ty(ty)
                 | PathRes::TyAlias(_, ty)
@@ -318,7 +318,7 @@ impl<'db> TyChecker<'db> {
 
         let span = pat.span(self.body()).into_record_pat();
 
-        match self.resolve_path(*path, true) {
+        match self.resolve_path(*path, true, span.clone().path()) {
             Ok(reso) => match reso {
                 PathRes::Ty(ty) | PathRes::TyAlias(_, ty) if ty.is_record(self.db) => {
                     self.check_record_pat_fields(ty, pat);

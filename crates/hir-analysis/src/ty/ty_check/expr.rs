@@ -406,7 +406,7 @@ impl<'db> TyChecker<'db> {
         let res = if path.is_bare_ident(self.db) {
             resolve_ident_expr(self.db, &self.env, *path)
         } else {
-            self.resolve_path(*path, true)
+            self.resolve_path(*path, true, span.clone().path())
                 .map_or_else(|_| ResolvedPathInBody::Invalid, ResolvedPathInBody::Reso)
         };
 
@@ -505,7 +505,7 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
 
-        let Ok(reso) = self.resolve_path(*path, true) else {
+        let Ok(reso) = self.resolve_path(*path, true, span.clone().path()) else {
             return ExprProp::invalid(self.db);
         };
 

@@ -33,13 +33,13 @@ use crate::{
 
 pub type PathResolutionResult<'db, T> = Result<T, PathResError<'db>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct PathResError<'db> {
     pub kind: PathResErrorKind<'db>,
     pub failed_at: PathId<'db>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum PathResErrorKind<'db> {
     /// The name is not found.
     NotFound(NameResBucket<'db>),
@@ -195,7 +195,7 @@ fn make_query<'db>(
     EarlyNameQueryId::new(db, name, scope, directive)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum PathRes<'db> {
     Ty(TyId<'db>),
     TyAlias(TyAlias<'db>, TyId<'db>),
@@ -294,7 +294,7 @@ impl<'db> PathRes<'db> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct ResolvedVariant<'db> {
     pub ty: TyId<'db>,
     pub variant: EnumVariant<'db>,
