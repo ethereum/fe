@@ -18,7 +18,7 @@ impl<T> SpannedInputDb for T where T: SpannedHirAnalysisDb + InputDb {}
 
 impl<T> ToCsDiag for T
 where
-    T: for<'db> DiagnosticVoucher<'db>,
+    T: DiagnosticVoucher,
 {
     fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile> {
         let complete = self.to_complete(db);

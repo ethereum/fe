@@ -4,7 +4,7 @@ use std::path::Path;
 use dir_test::{dir_test, Fixture};
 use fe_hir_analysis::{
     analysis_pass::ModuleAnalysisPass,
-    name_resolution::{ImportAnalysisPass, NameDerivation, ResolvedImports},
+    name_resolution::{resolve_imports, ImportAnalysisPass, NameDerivation, ResolvedImports},
 };
 use hir::hir_def::Use;
 use rustc_hash::FxHashMap;
@@ -24,14 +24,14 @@ fn import_standalone(fixture: Fixture<&str>) {
 
     db.assert_no_diags(top_mod);
 
-    let mut pass = ImportAnalysisPass::new(&db);
-    let resolved_imports = pass.resolve_imports(top_mod.ingot(&db));
-    let diags = pass.run_on_module(top_mod);
+    let mut pass = ImportAnalysisPass {};
+    let resolved_imports = resolve_imports(&db, top_mod.ingot(&db));
+    let diags = pass.run_on_module(&db, top_mod);
     if !diags.is_empty() {
         panic!("Failed to resolve imports");
     }
 
-    let res = format_imports(&db, &mut prop_formatter, resolved_imports);
+    let res = format_imports(&db, &mut prop_formatter, &resolved_imports.1);
     snap_test!(res, fixture.path());
 }
 
@@ -67,7 +67,7 @@ fn format_imports<'db>(
         }
     }
     for (use_, mut values) in use_res_map.into_iter() {
-        let use_span = use_.lazy_span().into();
+        let use_span = use_.span().into();
         values.sort_unstable();
         let imported_names = values.join(" | ");
         prop_formatter.push_prop(use_.top_mod(db), use_span, imported_names)

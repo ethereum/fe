@@ -88,7 +88,6 @@ fn lower_path<'db>(
     };
     match resolve_path(db, path, scope, false) {
         Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => ty,
-        // Other cases should be reported as errors by nameres
         _ => TyId::invalid(db, InvalidCause::Other),
     }
 }
@@ -207,7 +206,7 @@ pub(crate) fn evaluate_params_precursor<'db>(
 ///
 /// NOTE: `TyAlias` can't become an alias to partial applied types, i.e., the
 /// right hand side of the alias declaration must be a fully applied type.
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub struct TyAlias<'db> {
     pub alias: HirTypeAlias<'db>,
     pub alias_to: Binder<TyId<'db>>,
@@ -443,7 +442,7 @@ impl<'db> GenericParamCollector<'db> {
                 NameResKind::Scope(ScopeId::GenericParam(scope, idx))
                     if scope == self.owner.scope().item() =>
                 {
-                    ParamLoc::Idx(idx + self.offset_to_original)
+                    ParamLoc::Idx(idx as usize + self.offset_to_original)
                 }
                 _ => ParamLoc::NonParam,
             },

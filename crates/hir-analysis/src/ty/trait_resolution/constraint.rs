@@ -174,8 +174,8 @@ pub(crate) fn collect_func_def_constraints<'db>(
 ) -> Binder<PredicateListId<'db>> {
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
-        HirFuncDefKind::VariantCtor(enum_, _) => {
-            let adt = lower_adt(db, enum_.into());
+        HirFuncDefKind::VariantCtor(var) => {
+            let adt = lower_adt(db, var.enum_.into());
             if include_parent {
                 return collect_adt_constraints(db, adt);
             } else {
@@ -218,8 +218,8 @@ pub(crate) fn collect_func_def_constraints_impl<'db>(
 ) -> Binder<PredicateListId<'db>> {
     let hir_func = match func.hir_def(db) {
         HirFuncDefKind::Func(func) => func,
-        HirFuncDefKind::VariantCtor(enum_, _) => {
-            let adt_ref = enum_.into();
+        HirFuncDefKind::VariantCtor(var) => {
+            let adt_ref = var.enum_.into();
             let adt = lower_adt(db, adt_ref);
             return collect_adt_constraints(db, adt);
         }

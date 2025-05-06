@@ -19,6 +19,30 @@ impl<'db> TypeId<'db> {
             TypeKind::SelfType(GenericArgListId::new(db, Vec::new(), false)),
         )
     }
+
+    pub fn pretty_print(self, db: &'db dyn HirDb) -> String {
+        let print_ty = |t: &Partial<TypeId>| {
+            t.to_opt()
+                .map_or("<missing>".into(), |t| t.pretty_print(db))
+        };
+
+        match self.data(db) {
+            TypeKind::Ptr(t) => format!("*{}", print_ty(t)),
+            TypeKind::Path(p) => p
+                .to_opt()
+                .map_or_else(|| "<missing>".into(), |p| p.pretty_print(db)),
+
+            TypeKind::SelfType(args) => format!("Self{}", args.pretty_print(db)),
+            TypeKind::Tuple(tup) => tup
+                .data(db)
+                .iter()
+                .map(print_ty)
+                .collect::<Vec<_>>()
+                .join(", "),
+            TypeKind::Array(t, _) => format!("[{}; {{..}}]", print_ty(t)),
+            TypeKind::Never => "!".into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -13,7 +13,7 @@ use super::{
     ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamTypeSet},
 };
 use crate::{
-    name_resolution::{resolve_path, PathRes},
+    name_resolution::{resolve_path, PathRes, PathResError},
     ty::{func_def::lower_func, ty_def::TyData, ty_lower::lower_hir_ty},
     HirAnalysisDb,
 };
@@ -103,7 +103,8 @@ pub(crate) fn lower_trait_ref<'db>(
 
     let trait_def = match resolve_path(db, path, scope, false) {
         Ok(PathRes::Trait(t)) => t,
-        _ => return Err(TraitRefLowerError::Other),
+        Ok(res) => return Err(TraitRefLowerError::InvalidDomain(res)),
+        Err(e) => return Err(TraitRefLowerError::PathResError(e)),
     };
 
     // The first parameter of the trait is the self type, so we need to skip it.
@@ -182,17 +183,27 @@ pub(crate) fn collect_implementor_methods<'db>(
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub(crate) enum TraitRefLowerError<'db> {
     /// The number of arguments doesn't match the number of parameters.
-    ArgNumMismatch { expected: usize, given: usize },
+    ArgNumMismatch {
+        expected: usize,
+        given: usize,
+    },
 
     /// The kind of the argument doesn't match the kind of the parameter of the
     /// trait.
-    ArgKindMisMatch { expected: Kind, given: TyId<'db> },
+    ArgKindMisMatch {
+        expected: Kind,
+        given: TyId<'db>,
+    },
 
     /// The argument type doesn't match the const parameter type.
     ArgTypeMismatch {
         expected: Option<TyId<'db>>,
         given: Option<TyId<'db>>,
     },
+
+    PathResError(PathResError<'db>),
+
+    InvalidDomain(PathRes<'db>),
 
     /// Other errors, which is reported by another pass. So we don't need to
     /// report this error kind.

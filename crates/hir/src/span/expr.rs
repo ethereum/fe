@@ -242,8 +242,8 @@ mod tests {
             _ => unreachable!(),
         };
         let top_mod = body.top_mod(&db);
-        assert_eq!("x", db.text_at(top_mod, &bin_expr.0.lazy_span(body)));
-        assert_eq!("1", db.text_at(top_mod, &bin_expr.1.lazy_span(body)));
+        assert_eq!("x", db.text_at(top_mod, &bin_expr.0.span(body)));
+        assert_eq!("1", db.text_at(top_mod, &bin_expr.1.span(body)));
         assert_eq!(ArithBinOp::Add, bin_expr.2);
     }
 }

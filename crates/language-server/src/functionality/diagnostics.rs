@@ -7,10 +7,10 @@ use cs::files as cs_files;
 use hir::lower::map_file_to_mod;
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
+    name_resolution::ImportAnalysisPass,
     ty::{
-        AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
-        ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
+        AdtDefAnalysisPass, BodyAnalysisPass, DefConflictAnalysisPass, FuncAnalysisPass,
+        ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
 };
 use rustc_hash::FxHashMap;
@@ -87,7 +87,7 @@ impl LanguageServerDatabase {
         let mut result =
             FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default(
             );
-        let mut pass_manager = initialize_analysis_pass(self);
+        let mut pass_manager = initialize_analysis_pass();
         let ingot_files = ingot.files(self).iter();
 
         for file in ingot_files {
@@ -101,7 +101,7 @@ impl LanguageServerDatabase {
                 .or_default();
 
             let top_mod = map_file_to_mod(self, ingot, *file);
-            let diagnostics = pass_manager.run_on_module(top_mod);
+            let diagnostics = pass_manager.run_on_module(self, top_mod);
             let mut finalized_diags: Vec<CompleteDiagnostic> = diagnostics
                 .iter()
                 .map(|d| d.to_complete(self).clone())
@@ -123,19 +123,18 @@ impl LanguageServerDatabase {
     }
 }
 
-fn initialize_analysis_pass(db: &LanguageServerDatabase) -> AnalysisPassManager<'_> {
+fn initialize_analysis_pass() -> AnalysisPassManager {
     let mut pass_manager = AnalysisPassManager::new();
-    pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
-    pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(ImplAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(BodyAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ParsingPass {}));
+    pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(ImportAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(TraitAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(ImplAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(FuncAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(BodyAnalysisPass {}));
 
     pass_manager
 }

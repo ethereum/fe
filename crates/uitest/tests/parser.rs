@@ -16,14 +16,14 @@ fn run_parser(fixture: Fixture<&str>) {
     let (ingot, file) = IngotBuilder::standalone(&db, path, fixture.content().to_string()).build();
     let top_mod = db.top_mod(ingot, file);
 
-    let diags = db.run_on_file_with_pass_manager(top_mod, init_parser_pass);
+    let diags = db.run_on_file_with_pass_manager(top_mod, init_parser_pass());
     let diags = diags.format_diags(&db);
     snap_test!(diags, fixture.path());
 }
 
-fn init_parser_pass(db: &DriverDataBase) -> AnalysisPassManager<'_> {
+fn init_parser_pass() -> AnalysisPassManager {
     let mut pass_manager = AnalysisPassManager::new();
-    pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ParsingPass {}));
     pass_manager
 }
 

@@ -7,8 +7,8 @@ use crate::{
     name_resolution::diagnostics::NameResDiag,
     ty::{
         diagnostics::{
-            BodyDiag, FuncBodyDiag, ImplDiag, TraitConstraintDiag, TraitLowerDiag,
-            TyDiagCollection, TyLowerDiag,
+            BodyDiag, DefConflictError, FuncBodyDiag, ImplDiag, TraitConstraintDiag,
+            TraitLowerDiag, TyDiagCollection, TyLowerDiag,
         },
         trait_def::TraitDef,
         ty_check::RecordLike,
@@ -37,20 +37,14 @@ use itertools::Itertools;
 ///
 /// To obtain a span from HIR nodes in a lazy manner, it's recommended to use
 /// `[LazySpan]`(crate::span::LazySpan) and types that implement `LazySpan`.
-pub trait DiagnosticVoucher<'db>: Send {
+pub trait DiagnosticVoucher: Send + Sync {
     /// Makes a [`CompleteDiagnostic`].
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic;
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic;
 }
 
-impl DiagnosticVoucher<'_> for CompleteDiagnostic {
+impl DiagnosticVoucher for CompleteDiagnostic {
     fn to_complete(&self, _db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         self.clone()
-    }
-}
-
-impl<'db> DiagnosticVoucher<'db> for Box<dyn DiagnosticVoucher<'db> + 'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
-        self.as_ref().to_complete(db)
     }
 }
 
@@ -66,8 +60,8 @@ impl<T> SpannedHirAnalysisDb for T where T: HirAnalysisDb + SpannedHirDb {}
 // `ParseError` has span information, but this is not a problem because the
 // parsing procedure itself depends on the file content, and thus span
 // information.
-impl<'db> DiagnosticVoucher<'db> for ParserError {
-    fn to_complete(&self, _db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for ParserError {
+    fn to_complete(&self, _db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::Parse, 1);
         let span = Span::new(self.file, self.error.range(), SpanKind::Original);
         CompleteDiagnostic::new(
@@ -88,8 +82,37 @@ pub trait LazyDiagnostic<'db> {
     fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic;
 }
 
-impl<'db> DiagnosticVoucher<'db> for FuncBodyDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for DefConflictError<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let mut items = self.0.iter();
+        let first = items.next().unwrap();
+        let name = first.name(db).unwrap().data(db);
+        CompleteDiagnostic {
+            severity: Severity::Error,
+            message: format!("conflicting definitions of `{name}`",),
+            sub_diagnostics: {
+                let mut subs = vec![SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{name}` is defined here"),
+                    first.name_span().unwrap().resolve(db),
+                )];
+                subs.extend(items.map(|item| {
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format! {"`{name}` is redefined here"},
+                        item.name_span().unwrap().resolve(db),
+                    )
+                }));
+                subs
+            },
+            notes: vec![],
+            error_code: GlobalErrorCode::new(DiagnosticPass::TypeDefinition, 100),
+        }
+    }
+}
+
+impl DiagnosticVoucher for FuncBodyDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         match self {
             Self::Ty(diag) => diag.to_complete(db),
             Self::Body(diag) => diag.to_complete(db),
@@ -98,10 +121,11 @@ impl<'db> DiagnosticVoucher<'db> for FuncBodyDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for TyDiagCollection<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for TyDiagCollection<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         match self {
             Self::Ty(diag) => diag.to_complete(db),
+            Self::PathRes(diag) => diag.to_complete(db),
             Self::Satisfiability(diag) => diag.to_complete(db),
             Self::TraitLower(diag) => diag.to_complete(db),
             Self::Impl(diag) => diag.to_complete(db),
@@ -109,8 +133,8 @@ impl<'db> DiagnosticVoucher<'db> for TyDiagCollection<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for NameResDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::NameResolution, self.local_code());
         let severity = Severity::Error;
         match self {
@@ -219,7 +243,7 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
                 let name = name.data(db);
                 let mut labels = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("`{}` can't be used as a middle segment of a path", name,),
+                    message: format!("`{name}` can't be used as a middle segment of a path"),
                     span: prim_span.resolve(db),
                 }];
 
@@ -304,8 +328,8 @@ impl<'db> DiagnosticVoucher<'db> for NameResDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for TyLowerDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code());
         match self {
             Self::ExpectedStarKind(span) => {
@@ -416,45 +440,50 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "type alias defined here".to_string(),
-                        span: alias.lazy_span().resolve(db),
+                        span: alias.span().resolve(db),
                     },
                 ],
                 notes: vec![],
                 error_code,
             },
 
-            Self::TypeAliasCycle { cycle } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "type alias cycle".to_string(),
-                sub_diagnostics: {
-                    let mut iter = cycle.iter();
-                    let mut labels = vec![SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: "cycle happens here".to_string(),
-                        span: iter.next_back().unwrap().lazy_span().ty().resolve(db),
-                    }];
-                    labels.extend(iter.map(|type_alias| SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: "type alias defined here".to_string(),
-                        span: type_alias.lazy_span().alias_moved().resolve(db),
-                    }));
-                    labels
-                },
-                notes: vec![],
-                error_code,
-            },
+            Self::TypeAliasCycle { cycle } => {
+                let mut cycle = cycle.clone();
+                cycle.sort_by_key(|a| a.span().resolve(db));
 
-            Self::InconsistentKindBound { span, ty, old, new } => {
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "type alias cycle".to_string(),
+                    sub_diagnostics: {
+                        let mut iter = cycle.iter();
+                        let mut labels = vec![SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: "cycle happens here".to_string(),
+                            span: iter.next_back().unwrap().span().ty().resolve(db),
+                        }];
+                        labels.extend(iter.map(|type_alias| SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "type alias defined here".to_string(),
+                            span: type_alias.span().alias().resolve(db),
+                        }));
+                        labels
+                    },
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::InconsistentKindBound { span, ty, bound } => {
                 let msg = format!(
                     "`{}` is already declared with `{}` kind, but found `{}` kind here",
                     ty.pretty_print(db),
-                    old,
-                    new
+                    ty.kind(db),
+                    bound
                 );
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    // xxx improve message
+                    // TODO improve message
                     message: "duplicate type bound is not allowed.".to_string(),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
@@ -501,29 +530,136 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
                 error_code,
             },
 
-            Self::DuplicatedArgName {
-                primary,
-                conflict_with,
-                name,
-            } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "duplicated argument name in function definition is not allowed"
-                    .to_string(),
-                sub_diagnostics: vec![
-                    SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: format!("duplicated argument name `{}`", name.data(db)),
-                        span: primary.resolve(db),
-                    },
-                    SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: "conflict with this argument name".to_string(),
-                        span: conflict_with.resolve(db),
-                    },
-                ],
-                notes: vec![],
-                error_code,
-            },
+            Self::DuplicateArgName(func, idxs) => {
+                let name = func.params(db).unwrap().data(db)[idxs[0] as usize]
+                    .name()
+                    .unwrap()
+                    .data(db);
+
+                let pspan = func.span().params();
+                let spans = idxs
+                    .iter()
+                    .map(|i| pspan.clone().param(*i as usize).name().resolve(db));
+
+                let message = if let Some(name) = func.name(db).to_opt() {
+                    format!("duplicate argument name in function `{}`", name.data(db))
+                } else {
+                    "duplicate argument name in function definition".into()
+                };
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::DuplicateArgLabel(func, idxs) => {
+                let params = func.params(db).unwrap().data(db);
+                let name = params[idxs[0] as usize].label_eagerly().unwrap().data(db);
+
+                let spans = idxs.iter().map(|i| {
+                    let s = func.span().params().clone().param(*i as usize);
+                    if params[*i as usize].label.is_some() {
+                        s.label().resolve(db)
+                    } else {
+                        s.name().resolve(db)
+                    }
+                });
+
+                let message = if let Some(name) = func.name(db).to_opt() {
+                    format!("duplicate argument label in function `{}`", name.data(db))
+                } else {
+                    "duplicate argument label in function definition".into()
+                };
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::DuplicateFieldName(parent, idxs) => {
+                let name = parent.fields(db).data(db)[idxs[0] as usize]
+                    .name
+                    .unwrap()
+                    .data(db);
+
+                let spans = idxs
+                    .iter()
+                    .map(|i| parent.field_name_span(*i as usize).resolve(db));
+
+                let kind = parent.kind_name();
+                let message = if let Some(name) = parent.name(db) {
+                    format!("duplicate field name in {kind} `{name}`")
+                } else {
+                    format!("duplicate field name in {kind} definition")
+                };
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::DuplicateVariantName(enum_, idxs) => {
+                let message = if let Some(name) = enum_.name(db).to_opt() {
+                    format!("duplicate variant name in enum `{}`", name.data(db))
+                } else {
+                    "duplicate variant name in enum definition".into()
+                };
+
+                let name = enum_.variants(db).data(db)[idxs[0] as usize]
+                    .name
+                    .unwrap()
+                    .data(db);
+                let spans = idxs
+                    .iter()
+                    .map(|i| enum_.span().variants().variant(*i as usize).resolve(db));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::DuplicateGenericParamName(adt, idxs) => {
+                let message = if let Some(name) = adt.name(db) {
+                    format!(
+                        "duplicate generic parameter name in {} `{}`",
+                        adt.kind_name(),
+                        name.data(db)
+                    )
+                } else {
+                    format!(
+                        "duplicate generic parameter name in {} definition",
+                        adt.kind_name()
+                    )
+                };
+
+                let gen = adt.generic_owner().unwrap();
+                let name = gen.params(db).data(db)[0].name().unwrap().data(db);
+                let spans = idxs
+                    .iter()
+                    .map(|i| gen.params_span().param(*i as usize).resolve(db));
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: duplicate_name_subdiags(name, spans),
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::InvalidConstParamTy(span) => CompleteDiagnostic {
                 severity: Severity::Error,
@@ -627,8 +763,28 @@ impl<'db> DiagnosticVoucher<'db> for TyLowerDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+fn duplicate_name_subdiags<I>(name: &str, spans: I) -> Vec<SubDiagnostic>
+where
+    I: Iterator<Item = Option<Span>>,
+{
+    let mut spans = spans;
+    let mut subs = vec![SubDiagnostic::new(
+        LabelStyle::Primary,
+        format!("`{}` is defined here", name),
+        spans.next().unwrap(),
+    )];
+    subs.extend(spans.map(|span| {
+        SubDiagnostic::new(
+            LabelStyle::Secondary,
+            format!("`{}` is redefined here", name),
+            span,
+        )
+    }));
+    subs
+}
+
+impl DiagnosticVoucher for BodyDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TyCheck, self.local_code());
         let severity = Severity::Error;
 
@@ -958,13 +1114,13 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                         sub_diagnostics.push(SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: format!("this function expects `{expected}` to be returned"),
-                            span: func.lazy_span().ret_ty_moved().resolve(db),
+                            span: func.span().ret_ty().resolve(db),
                         });
                     } else {
                         sub_diagnostics.push(SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: format!("try adding `-> {actual}`"),
-                            span: func.lazy_span().name_moved().resolve(db),
+                            span: func.span().name().resolve(db),
                         });
                     }
                 }
@@ -1032,7 +1188,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                         message: format!("`{}` can't be applied to `{}`", op.data(db), ty),
                         span: span.resolve(db),
                     },
-                    // xxx move to hint
+                    // TODO move to hint
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!(
@@ -1254,7 +1410,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                             "`{}` is an associated function, not a method",
                             func_name.data(db),
                         ),
-                        span: span.method_name().resolve(db),
+                        span: span.clone().method_name().resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Primary,
@@ -1348,7 +1504,7 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!("candidate: {}", cand.pretty_print(db, false)),
-                        span: primary.resolve(db), // xxx cand span??
+                        span: primary.resolve(db), // TODO cand span??
                     });
                 }
 
@@ -1491,8 +1647,8 @@ impl<'db> DiagnosticVoucher<'db> for BodyDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for TraitLowerDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code =
             GlobalErrorCode::new(DiagnosticPass::ImplTraitDefinition, self.local_code());
         match self {
@@ -1502,7 +1658,7 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "external trait cannot be implemented for external type".to_string(),
-                    span: impl_trait.lazy_span().resolve(db),
+                    span: impl_trait.span().resolve(db),
                 }],
                 notes: vec![],
                 error_code,
@@ -1518,12 +1674,12 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: "conflict trait implementation".to_string(),
-                        span: primary.lazy_span().ty().resolve(db),
+                        span: primary.span().ty().resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "conflict with this trait implementation".to_string(),
-                        span: conflict_with.lazy_span().ty().resolve(db),
+                        span: conflict_with.span().ty().resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -1531,7 +1687,7 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
             },
 
             Self::CyclicSuperTraits(traits) => {
-                let span = |t: &TraitDef| t.trait_(db).lazy_span().name().resolve(db);
+                let span = |t: &TraitDef| t.trait_(db).span().name().resolve(db);
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message: "cyclic trait bounds are not allowed".to_string(),
@@ -1556,8 +1712,8 @@ impl<'db> DiagnosticVoucher<'db> for TraitLowerDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for TraitConstraintDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code());
         let severity = Severity::Error;
         match self {
@@ -1573,7 +1729,7 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: "trait is defined here".to_string(),
-                        span: trait_def.lazy_span().name().resolve(db),
+                        span: trait_def.span().name().resolve(db),
                     },
                 ],
                 notes: vec![],
@@ -1700,8 +1856,8 @@ impl<'db> DiagnosticVoucher<'db> for TraitConstraintDiag<'db> {
     }
 }
 
-impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
-    fn to_complete(&self, db: &'db dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+impl DiagnosticVoucher for ImplDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TraitSatisfaction, self.local_code());
         let severity = Severity::Error;
 
@@ -1812,9 +1968,9 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                         span: impl_m
                             .hir_func_def(db)
                             .unwrap()
-                            .lazy_span()
-                            .generic_params_moved()
-                            .param_moved(*param_idx)
+                            .span()
+                            .generic_params()
+                            .param(*param_idx)
                             .resolve(db),
                     }],
                     notes: vec![],
@@ -1908,12 +2064,7 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                         trait_ty.pretty_print(db),
                         impl_ty.pretty_print(db),
                     ),
-                    span: impl_m
-                        .hir_func_def(db)
-                        .unwrap()
-                        .lazy_span()
-                        .ret_ty()
-                        .resolve(db),
+                    span: impl_m.hir_func_def(db).unwrap().span().ret_ty().resolve(db),
                 }],
                 notes: vec![],
                 error_code,
@@ -1923,7 +2074,7 @@ impl<'db> DiagnosticVoucher<'db> for ImplDiag<'db> {
                 span,
                 stricter_bounds,
             } => {
-                // xxx sort!
+                // TODO sort!
                 // unsatisfied_goals.sort_by_key(|goal| goal.self_ty(db).pretty_print(db));
 
                 let message = format!(

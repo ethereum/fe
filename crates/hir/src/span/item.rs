@@ -236,11 +236,7 @@ impl<'db> LazyUseSpan<'db> {
         Self(crate::span::transition::SpanTransitionChain::new(u))
     }
 
-    pub fn path(&self) -> LazyUsePathSpan<'db> {
-        self.clone().path_moved()
-    }
-
-    pub fn path_moved(mut self) -> LazyUsePathSpan<'db> {
+    pub fn path(mut self) -> LazyUsePathSpan<'db> {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {
@@ -266,11 +262,7 @@ impl<'db> LazyUseSpan<'db> {
         LazyUsePathSpan(self.0)
     }
 
-    pub fn alias(&self) -> LazyUseAliasSpan<'db> {
-        self.clone().alias_moved()
-    }
-
-    pub fn alias_moved(mut self) -> LazyUseAliasSpan<'db> {
+    pub fn alias(mut self) -> LazyUseAliasSpan<'db> {
         fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
             origin
                 .map(|node| {
@@ -379,7 +371,7 @@ mod tests {
         let (ingot, file) = db.standalone_file(text);
         let item_tree = db.parse_source(ingot, file);
         let top_mod = item_tree.top_mod;
-        assert_eq!(text, db.text_at(top_mod, &top_mod.lazy_span()));
+        assert_eq!(text, db.text_at(top_mod, &top_mod.span()));
     }
 
     #[test]
@@ -396,7 +388,7 @@ mod tests {
         let (ingot, file) = db.standalone_file(text);
         let mod_ = db.expect_item::<Mod>(ingot, file);
         let top_mod = mod_.top_mod(&db);
-        let mod_span = mod_.lazy_span();
+        let mod_span = mod_.span();
         assert_eq!(
             r#"mod foo {
                 fn bar() {}
@@ -419,15 +411,17 @@ mod tests {
 
         let fn_ = db.expect_item::<Func>(ingot, file);
         let top_mod = fn_.top_mod(&db);
-        let fn_span = fn_.lazy_span();
-        assert_eq!("my_func", db.text_at(top_mod, &fn_span.name()));
+        assert_eq!("my_func", db.text_at(top_mod, &fn_.span().name()));
 
-        let generic_params = fn_span.generic_params();
-        let type_generic_param_1 = generic_params.param(0).into_type_param();
-        let type_generic_param_2 = generic_params.param(1).into_type_param();
-        let const_generic_param = generic_params.param(2).into_const_param();
+        let generic_params = fn_.span().generic_params();
+        let type_generic_param_1 = generic_params.clone().param(0).into_type_param();
+        let type_generic_param_2 = generic_params.clone().param(1).into_type_param();
+        let const_generic_param = generic_params.clone().param(2).into_const_param();
 
-        assert_eq!("T", db.text_at(top_mod, &type_generic_param_1.name()));
+        assert_eq!(
+            "T",
+            db.text_at(top_mod, &type_generic_param_1.clone().name())
+        );
         assert_eq!(
             "Debug",
             db.text_at(top_mod, &type_generic_param_1.bounds().bound(0))
@@ -435,26 +429,31 @@ mod tests {
         assert_eq!("U", db.text_at(top_mod, &type_generic_param_2.name()));
         assert_eq!(
             "const",
-            db.text_at(top_mod, &const_generic_param.const_token())
+            db.text_at(top_mod, &const_generic_param.clone().const_token())
         );
-        assert_eq!("LEN", db.text_at(top_mod, &const_generic_param.name()));
+        assert_eq!(
+            "LEN",
+            db.text_at(top_mod, &const_generic_param.clone().name())
+        );
         assert_eq!("usize", db.text_at(top_mod, &const_generic_param.ty()));
 
-        let params = fn_span.params();
-        let param_1 = params.param(0);
-        let param_2 = params.param(1);
+        let param_1 = fn_.span().params().param(0);
+        let param_2 = fn_.span().params().param(1);
 
-        assert_eq!("x", db.text_at(top_mod, &param_1.name()));
+        assert_eq!("x", db.text_at(top_mod, &param_1.clone().name()));
         assert_eq!("u32", db.text_at(top_mod, &param_1.ty()));
-        assert_eq!("label", db.text_at(top_mod, &param_2.label()));
+        assert_eq!("label", db.text_at(top_mod, &param_2.clone().label()));
         assert_eq!("foo::Bar<2>", db.text_at(top_mod, &param_2.ty()));
 
-        assert_eq!("FooResult", db.text_at(top_mod, &fn_span.ret_ty()));
+        assert_eq!("FooResult", db.text_at(top_mod, &fn_.span().ret_ty()));
 
-        let where_clause = fn_span.where_clause();
-        let where_predicate = where_clause.predicate(0);
-        assert_eq!("where", db.text_at(top_mod, &where_clause.where_token()));
-        assert_eq!("U", db.text_at(top_mod, &where_predicate.ty()));
+        let where_clause = fn_.span().where_clause();
+        let where_predicate = where_clause.clone().predicate(0);
+        assert_eq!(
+            "where",
+            db.text_at(top_mod, &where_clause.clone().where_token())
+        );
+        assert_eq!("U", db.text_at(top_mod, &where_predicate.clone().ty()));
         assert_eq!(": Add", db.text_at(top_mod, &where_predicate.bounds()));
     }
 
@@ -471,19 +470,18 @@ mod tests {
         let (ingot, file) = db.standalone_file(text);
         let struct_ = db.expect_item::<Struct>(ingot, file);
         let top_mod = struct_.top_mod(&db);
-        let struct_span = struct_.lazy_span();
-        assert_eq!("Foo", db.text_at(top_mod, &struct_span.name()));
+        assert_eq!("Foo", db.text_at(top_mod, &struct_.span().name()));
 
-        let fields = struct_span.fields();
-        let field_1 = fields.field(0);
-        let field_2 = fields.field(1);
+        let fields = struct_.span().fields();
+        let field_1 = fields.clone().field(0);
+        let field_2 = fields.clone().field(1);
 
-        assert_eq!("x", db.text_at(top_mod, &field_1.name()));
+        assert_eq!("x", db.text_at(top_mod, &field_1.clone().name()));
         assert_eq!("u32", db.text_at(top_mod, &field_1.ty()));
 
-        assert_eq!("pub", db.text_at(top_mod, &field_2.pub_span()));
-        assert_eq!("y", db.text_at(top_mod, &field_2.name()));
-        assert_eq!("foo::Bar<2>", db.text_at(top_mod, &field_2.ty()));
+        assert_eq!("pub", db.text_at(top_mod, &field_2.clone().pub_span()));
+        assert_eq!("y", db.text_at(top_mod, &field_2.clone().name()));
+        assert_eq!("foo::Bar<2>", db.text_at(top_mod, &field_2.clone().ty()));
     }
 
     #[test]
@@ -503,18 +501,17 @@ mod tests {
         let (ingot, file) = db.standalone_file(text);
         let enum_ = db.expect_item::<Enum>(ingot, file);
         let top_mod = enum_.top_mod(&db);
-        let enum_span = enum_.lazy_span();
-        assert_eq!("Foo", db.text_at(top_mod, &enum_span.name()));
+        assert_eq!("Foo", db.text_at(top_mod, &enum_.span().name()));
 
-        let variants = enum_span.variants();
-        let variant_1 = variants.variant(0);
-        let variant_2 = variants.variant(1);
-        let variant_3 = variants.variant(2);
+        let variants = enum_.span().variants();
+        let variant_1 = variants.clone().variant(0);
+        let variant_2 = variants.clone().variant(1);
+        let variant_3 = variants.clone().variant(2);
 
-        assert_eq!("Bar", db.text_at(top_mod, &variant_1.name()));
-        assert_eq!("Baz", db.text_at(top_mod, &variant_2.name()));
+        assert_eq!("Bar", db.text_at(top_mod, &variant_1.clone().name()));
+        assert_eq!("Baz", db.text_at(top_mod, &variant_2.clone().name()));
         assert_eq!("(u32, i32)", db.text_at(top_mod, &variant_2.tuple_type()));
-        assert_eq!("Bux", db.text_at(top_mod, &variant_3.name()));
+        assert_eq!("Bux", db.text_at(top_mod, &variant_3.clone().name()));
         assert!(db.text_at(top_mod, &variant_3.fields()).contains("x: i8"));
     }
 
@@ -527,12 +524,11 @@ mod tests {
         "#;
 
         let (ingot, file) = db.standalone_file(text);
-        let type_alias = db.expect_item::<TypeAlias>(ingot, file);
-        let top_mod = type_alias.top_mod(&db);
-        let type_alias_span = type_alias.lazy_span();
-        assert_eq!("Foo", db.text_at(top_mod, &type_alias_span.alias()));
-        assert_eq!("u32", db.text_at(top_mod, &type_alias_span.ty()));
-        assert_eq!("pub", db.text_at(top_mod, &type_alias_span.modifier()));
+        let alias = db.expect_item::<TypeAlias>(ingot, file);
+        let top_mod = alias.top_mod(&db);
+        assert_eq!("Foo", db.text_at(top_mod, &alias.span().alias()));
+        assert_eq!("u32", db.text_at(top_mod, &alias.span().ty()));
+        assert_eq!("pub", db.text_at(top_mod, &alias.span().modifier()));
     }
 
     #[test]
@@ -547,14 +543,12 @@ mod tests {
         let use_ = db.expect_item::<Use>(ingot, file);
 
         let top_mod = use_.top_mod(&db);
-        let use_span = use_.lazy_span();
-        let use_path_span = use_span.path();
-        assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
-        assert_eq!("bar", db.text_at(top_mod, &use_path_span.segment(1)));
-        assert_eq!("baz", db.text_at(top_mod, &use_path_span.segment(2)));
-        assert_eq!("Trait", db.text_at(top_mod, &use_path_span.segment(3)));
-        assert_eq!("as _", db.text_at(top_mod, &use_span.alias()));
-        assert_eq!("_", db.text_at(top_mod, &use_span.alias().name()));
+        assert_eq!("foo", db.text_at(top_mod, &use_.span().path().segment(0)));
+        assert_eq!("bar", db.text_at(top_mod, &use_.span().path().segment(1)));
+        assert_eq!("baz", db.text_at(top_mod, &use_.span().path().segment(2)));
+        assert_eq!("Trait", db.text_at(top_mod, &use_.span().path().segment(3)));
+        assert_eq!("as _", db.text_at(top_mod, &use_.span().alias()));
+        assert_eq!("_", db.text_at(top_mod, &use_.span().alias().name()));
     }
 
     #[test]
@@ -571,19 +565,17 @@ mod tests {
 
         let top_mod = uses[0].top_mod(&db);
 
-        let use_span = uses[0].lazy_span();
-        let use_path_span = use_span.path();
-        assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
-        assert_eq!("bar", db.text_at(top_mod, &use_path_span.segment(1)));
-        assert_eq!("baz", db.text_at(top_mod, &use_path_span.segment(2)));
-        assert_eq!("*", db.text_at(top_mod, &use_path_span.segment(3)));
+        let use_ = uses[0];
+        assert_eq!("foo", db.text_at(top_mod, &use_.span().path().segment(0)));
+        assert_eq!("bar", db.text_at(top_mod, &use_.span().path().segment(1)));
+        assert_eq!("baz", db.text_at(top_mod, &use_.span().path().segment(2)));
+        assert_eq!("*", db.text_at(top_mod, &use_.span().path().segment(3)));
 
-        let use_span = uses[1].lazy_span();
-        let use_path_span = use_span.path();
-        assert_eq!("foo", db.text_at(top_mod, &use_path_span.segment(0)));
-        assert_eq!("bar", db.text_at(top_mod, &use_path_span.segment(1)));
-        assert_eq!("qux", db.text_at(top_mod, &use_path_span.segment(2)));
-        assert_eq!("as Alias", db.text_at(top_mod, &use_span.alias()));
-        assert_eq!("Alias", db.text_at(top_mod, &use_span.alias().name()));
+        let use_ = uses[1];
+        assert_eq!("foo", db.text_at(top_mod, &use_.span().path().segment(0)));
+        assert_eq!("bar", db.text_at(top_mod, &use_.span().path().segment(1)));
+        assert_eq!("qux", db.text_at(top_mod, &use_.span().path().segment(2)));
+        assert_eq!("as Alias", db.text_at(top_mod, &use_.span().alias()));
+        assert_eq!("Alias", db.text_at(top_mod, &use_.span().alias().name()));
     }
 }

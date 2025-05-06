@@ -2,18 +2,17 @@
 //! This module is the only module in `ty` module which is allowed to emit
 //! diagnostics.
 
-use std::collections::hash_map::Entry;
-
 use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, FieldDef, Func, FuncParamListId, GenericParam, GenericParamListId,
-        IdentId, Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId,
-        TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, EnumVariant, FieldDef, FieldParent, Func, GenericParam, IdentId,
+        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeId as HirTyId,
+        VariantKind,
     },
     visitor::prelude::*,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
+use smallvec1::SmallVec;
 
 use super::{
     adt_def::{lower_adt, AdtRef},
@@ -32,11 +31,12 @@ use super::{
         PredicateListId,
     },
     ty_def::{InvalidCause, TyData, TyId},
+    ty_error::collect_ty_lower_errors,
     ty_lower::{collect_generic_params, lower_kind},
     visitor::{walk_ty, TyVisitor},
 };
 use crate::{
-    name_resolution::{resolve_path, PathRes},
+    name_resolution::{diagnostics::NameResDiag, resolve_path, ExpectedPathKind, PathRes},
     ty::{
         adt_def::AdtDef,
         binder::Binder,
@@ -69,8 +69,73 @@ pub fn analyze_adt<'db>(
     db: &'db dyn HirAnalysisDb,
     adt_ref: AdtRef<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
+    let mut dupes = match adt_ref {
+        AdtRef::Struct(x) => check_duplicate_field_names(db, FieldParent::Struct(x)),
+        AdtRef::Contract(x) => check_duplicate_field_names(db, FieldParent::Contract(x)),
+        AdtRef::Enum(enum_) => {
+            let mut dupes = check_duplicate_variant_names(db, enum_);
+
+            for (idx, var) in enum_.variants(db).data(db).iter().enumerate() {
+                if matches!(var.kind, VariantKind::Record(..)) {
+                    dupes.extend(check_duplicate_field_names(
+                        db,
+                        FieldParent::Variant(EnumVariant::new(enum_, idx)),
+                    ))
+                }
+            }
+            dupes
+        }
+    };
+
+    if let Some(go) = adt_ref.generic_owner() {
+        dupes.extend(check_duplicate_names(
+            go.params(db).data(db).iter().map(|p| p.name().to_opt()),
+            |idxs| TyLowerDiag::DuplicateGenericParamName(adt_ref, idxs).into(),
+        ))
+    }
+
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
-    analyzer.analyze()
+    let mut diags = analyzer.analyze();
+    diags.extend(dupes);
+    diags
+}
+
+fn check_duplicate_field_names<'db>(
+    db: &'db dyn HirAnalysisDb,
+    owner: FieldParent<'db>,
+) -> SmallVec<[TyDiagCollection<'db>; 2]> {
+    check_duplicate_names(
+        owner.fields(db).data(db).iter().map(|f| f.name.to_opt()),
+        |idxs| TyLowerDiag::DuplicateFieldName(owner, idxs).into(),
+    )
+}
+
+fn check_duplicate_variant_names<'db>(
+    db: &'db dyn HirAnalysisDb,
+    enum_: hir::hir_def::Enum<'db>,
+) -> SmallVec<[TyDiagCollection<'db>; 2]> {
+    check_duplicate_names(
+        enum_.variants(db).data(db).iter().map(|v| v.name.to_opt()),
+        |idxs| TyLowerDiag::DuplicateVariantName(enum_, idxs).into(),
+    )
+}
+
+fn check_duplicate_names<'db, F>(
+    names: impl Iterator<Item = Option<IdentId<'db>>>,
+    create_diag: F,
+) -> SmallVec<[TyDiagCollection<'db>; 2]>
+where
+    F: Fn(SmallVec<[u16; 4]>) -> TyDiagCollection<'db>,
+{
+    let mut defs = FxHashMap::<IdentId<'db>, SmallVec<[u16; 4]>>::default();
+    for (i, name) in names.enumerate() {
+        if let Some(name) = name {
+            defs.entry(name).or_default().push(i as u16);
+        }
+    }
+    defs.into_iter()
+        .filter_map(|(_name, idxs)| (idxs.len() > 1).then_some(create_diag(idxs)))
+        .collect()
 }
 
 /// This function implements analysis for the trait definition.
@@ -254,44 +319,6 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    // Check if the same generic parameter is already defined in the parent item.
-    // Other name conflict check is done in the name resolution.
-    //
-    // This check is necessary because the conflict rule
-    // for the generic parameter is the exceptional case where shadowing shouldn't
-    // occur.
-    fn verify_method_generic_param_conflict(
-        &mut self,
-        params: GenericParamListId<'db>,
-        span: LazyGenericParamListSpan<'db>,
-    ) -> bool {
-        let mut is_conflict = false;
-        for (i, param) in params.data(self.db).iter().enumerate() {
-            if let Some(name) = param.name().to_opt() {
-                let scope = self.scope();
-                let parent_scope = scope.parent_item(self.db).unwrap().scope();
-                let path = PathId::from_ident(self.db, name);
-
-                match resolve_path(self.db, path, parent_scope, false) {
-                    Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
-                        self.diags.push(
-                            TyLowerDiag::GenericParamAlreadyDefinedInParent {
-                                span: span.param(i).into(),
-                                conflict_with: r.name_span(self.db).unwrap(),
-                                name,
-                            }
-                            .into(),
-                        );
-                        is_conflict = true;
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        !is_conflict
-    }
-
     fn verify_self_type(&mut self, self_ty: HirTyId<'db>, span: DynLazySpan<'db>) -> bool {
         let Some(expected_ty) = self.self_ty else {
             return false;
@@ -414,6 +441,34 @@ impl<'db> DefAnalyzer<'db> {
     }
 }
 
+// Check if the same generic parameter is already defined in the parent item.
+// Other name conflict check is done in the name resolution.
+//
+// This check is necessary because the conflict rule
+// for the generic parameter is the exceptional case where shadowing shouldn't
+// occur.
+fn check_param_defined_in_parent<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    param: &GenericParam<'db>,
+    span: LazyGenericParamSpan<'db>,
+) -> Option<TyLowerDiag<'db>> {
+    let name = param.name().to_opt()?;
+    let parent_scope = scope.parent_item(db)?.scope();
+    let path = PathId::from_ident(db, name);
+
+    match resolve_path(db, path, parent_scope, false) {
+        Ok(r @ PathRes::Ty(ty)) if ty.is_param(db) => {
+            Some(TyLowerDiag::GenericParamAlreadyDefinedInParent {
+                span,
+                conflict_with: r.name_span(db).unwrap(),
+                name,
+            })
+        }
+        _ => None,
+    }
+}
+
 impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     // We don't need to traverse the nested item, each item kinds are explicitly
     // handled(e.g, `visit_trait` or `visit_enum`).
@@ -422,12 +477,16 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, hir_ty: HirTyId<'db>) {
         let ty = lower_hir_ty(self.db, hir_ty, self.scope());
         let span = ctxt.span().unwrap();
-        if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
-            self.diags.push(diag)
-        } else if let Some(diag) =
-            ty.emit_wf_diag(self.db, ctxt.ingot(), self.assumptions, span.into())
-        {
-            self.diags.push(diag)
+
+        if ty.has_invalid(self.db) {
+            let diags = collect_ty_lower_errors(self.db, ctxt.scope(), hir_ty, span.clone());
+            if !diags.is_empty() {
+                self.diags.extend(diags);
+                return;
+            }
+        }
+        if let Some(diag) = ty.emit_wf_diag(self.db, ctxt.ingot(), self.assumptions, span.into()) {
+            self.diags.push(diag);
         }
     }
 
@@ -506,13 +565,13 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         variant: &hir::hir_def::VariantDef<'db>,
     ) {
         if let VariantKind::Tuple(tuple_id) = variant.kind {
-            let span = ctxt.span().unwrap().tuple_type_moved();
+            let span = ctxt.span().unwrap().tuple_type();
             for (i, elem_ty) in tuple_id.data(self.db).iter().enumerate() {
                 let Some(elem_ty) = elem_ty.to_opt() else {
                     continue;
                 };
 
-                self.verify_term_type_kind(elem_ty, span.elem_ty(i).into());
+                self.verify_term_type_kind(elem_ty, span.clone().elem_ty(i).into());
             }
         }
         walk_variant_def(self, ctxt, variant);
@@ -527,36 +586,23 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             unreachable!()
         };
 
-        if let Some(name) = param.name().to_opt() {
-            let scope = self.scope();
-            let parent_scope = scope.parent_item(self.db).unwrap().scope();
-            let path = PathId::from_ident(self.db, name);
-            match resolve_path(self.db, path, parent_scope, false) {
-                Ok(r @ PathRes::Ty(ty)) if ty.is_param(self.db) => {
-                    self.diags.push(
-                        TyLowerDiag::GenericParamAlreadyDefinedInParent {
-                            span: ctxt.span().unwrap().into(),
-                            conflict_with: r.name_span(self.db).unwrap(),
-                            name,
-                        }
-                        .into(),
-                    );
-                    return;
-                }
-                _ => {}
-            }
+        if let Some(diag) =
+            check_param_defined_in_parent(self.db, self.scope(), param, ctxt.span().unwrap())
+        {
+            self.diags.push(diag.into());
+            return;
         }
 
         match param {
             GenericParam::Type(_) => {
                 self.current_ty = Some((
-                    self.def.original_params(self.db)[idx],
+                    self.def.original_params(self.db)[idx as usize],
                     ctxt.span().unwrap().into_type_param().name().into(),
                 ));
                 walk_generic_param(self, ctxt, param)
             }
             GenericParam::Const(_) => {
-                let ty = self.def.original_params(self.db)[idx];
+                let ty = self.def.original_params(self.db)[idx as usize];
                 let Some(const_ty_param) = ty.const_ty_param(self.db) else {
                     return;
                 };
@@ -586,8 +632,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
                 TyLowerDiag::InconsistentKindBound {
                     span: ctxt.span().unwrap().into(),
                     ty,
-                    old: former_kind.clone(),
-                    new: kind,
+                    bound: kind,
                 }
                 .into(),
             );
@@ -649,7 +694,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         let DefKind::Trait(def) = self.def else {
             unreachable!()
         };
-        let name_span = def.trait_(self.db).lazy_span().name().into();
+        let name_span = def.trait_(self.db).span().name().into();
         self.current_ty = Some((self.def.trait_self_param(self.db), name_span));
         walk_super_trait_list(self, ctxt, super_traits);
     }
@@ -698,10 +743,19 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             return;
         }
 
-        if !self.verify_method_generic_param_conflict(
-            hir_func.generic_params(self.db),
-            hir_func.lazy_span().generic_params_moved(),
-        ) {
+        // Skip the rest of the analysis if any param names conflict with a parent's param
+        let span = hir_func.span().generic_params();
+        let params = hir_func.generic_params(self.db).data(self.db);
+        let mut is_conflict = false;
+        for (i, param) in params.iter().enumerate() {
+            if let Some(diag) =
+                check_param_defined_in_parent(self.db, self.scope(), param, span.clone().param(i))
+            {
+                self.diags.push(diag.into());
+                is_conflict = true;
+            }
+        }
+        if is_conflict {
             return;
         }
 
@@ -711,10 +765,28 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             collect_func_def_constraints(self.db, func, true).instantiate_identity(),
         );
 
+        if let Some(args) = hir_func.params(self.db).to_opt() {
+            let dupes =
+                check_duplicate_names(args.data(self.db).iter().map(|p| p.name()), |idxs| {
+                    TyLowerDiag::DuplicateArgName(hir_func, idxs).into()
+                });
+            let found_dupes = !dupes.is_empty();
+            self.diags.extend(dupes);
+
+            // Check for duplicate labels (if no name dupes were found, for simplicity;
+            // `label_eagerly` gives the arg name if no label is present)
+            if !found_dupes {
+                self.diags.extend(check_duplicate_names(
+                    args.data(self.db).iter().map(|p| p.label_eagerly()),
+                    |idxs| TyLowerDiag::DuplicateArgLabel(hir_func, idxs).into(),
+                ));
+            }
+        }
+
         walk_func(self, ctxt, hir_func);
 
         if let Some(ret_ty) = hir_func.ret_ty(self.db) {
-            self.verify_term_type_kind(ret_ty, hir_func.lazy_span().ret_ty().into());
+            self.verify_term_type_kind(ret_ty, hir_func.span().ret_ty().into());
         }
 
         self.assumptions = constraints;
@@ -722,39 +794,6 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     }
 
     fn visit_body(&mut self, _ctxt: &mut VisitorCtxt<'_, LazyBodySpan>, _body: hir::hir_def::Body) {
-    }
-
-    fn visit_func_param_list(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'db, LazyFuncParamListSpan<'db>>,
-        params: FuncParamListId<'db>,
-    ) {
-        // Checks if the argument names are not duplicated.
-        let mut already_seen: FxHashMap<IdentId, usize> = FxHashMap::default();
-
-        for (i, param) in params.data(self.db).iter().enumerate() {
-            let Some(name) = param.name.to_opt().and_then(|name| name.ident()) else {
-                continue;
-            };
-
-            match already_seen.entry(name) {
-                Entry::Occupied(entry) => {
-                    let diag = TyLowerDiag::DuplicatedArgName {
-                        primary: ctxt.span().unwrap().param(i).name().into(),
-                        conflict_with: ctxt.span().unwrap().param(*entry.get()).name().into(),
-                        name,
-                    }
-                    .into();
-                    self.diags.push(diag);
-                }
-
-                Entry::Vacant(entry) => {
-                    entry.insert(i);
-                }
-            }
-        }
-
-        walk_func_param_list(self, ctxt, params)
     }
 
     fn visit_func_param(
@@ -925,6 +964,29 @@ fn analyze_trait_ref<'db>(
             (None, None) => unreachable!(),
         },
 
+        Err(TraitRefLowerError::PathResError(err)) => {
+            return Some(
+                err.into_diag(
+                    db,
+                    *trait_ref.path(db).unwrap(),
+                    span,
+                    ExpectedPathKind::Trait,
+                )?
+                .into(),
+            )
+        }
+
+        Err(TraitRefLowerError::InvalidDomain(res)) => {
+            return Some(
+                NameResDiag::ExpectedTrait(
+                    span,
+                    *trait_ref.path(db).unwrap().ident(db).unwrap(),
+                    res.kind_name(),
+                )
+                .into(),
+            )
+        }
+
         Err(TraitRefLowerError::Other) => {
             return None;
         }
@@ -1007,7 +1069,7 @@ fn analyze_impl_trait_specific_error<'db>(
 
     // 1. Checks if implementor type is well-formed except for the satisfiability.
     let ty = lower_hir_ty(db, ty, impl_trait.scope());
-    if let Some(diag) = ty.emit_diag(db, impl_trait.lazy_span().ty().into()) {
+    if let Some(diag) = ty.emit_diag(db, impl_trait.span().ty().into()) {
         diags.push(diag);
     }
 
@@ -1018,7 +1080,7 @@ fn analyze_impl_trait_specific_error<'db>(
         trait_ref,
         impl_trait.scope(),
         None,
-        impl_trait.lazy_span().trait_ref().into(),
+        impl_trait.span().trait_ref().into(),
     ) {
         diags.push(diag);
     }
@@ -1091,7 +1153,7 @@ fn analyze_impl_trait_specific_error<'db>(
     if ty.kind(db) != expected_kind {
         diags.push(
             TraitConstraintDiag::TraitArgKindMismatch {
-                span: impl_trait.lazy_span().ty().into(),
+                span: impl_trait.span().ty().into(),
                 expected: expected_kind.clone(),
                 actual: implementor.instantiate_identity().self_ty(db),
             }
@@ -1124,13 +1186,13 @@ fn analyze_impl_trait_specific_error<'db>(
     };
 
     // 6. Checks if the trait inst is WF.
-    let trait_ref_span: DynLazySpan = impl_trait.lazy_span().trait_ref_moved().into();
+    let trait_ref_span: DynLazySpan = impl_trait.span().trait_ref().into();
     for &goal in trait_constraints.list(db) {
         is_satisfied(goal, trait_ref_span.clone());
     }
 
     // 7. Checks if the implementor ty satisfies the super trait constraints.
-    let target_ty_span: DynLazySpan = impl_trait.lazy_span().ty().into();
+    let target_ty_span: DynLazySpan = impl_trait.span().ty().into();
     for &super_trait in trait_def.super_traits(db) {
         let super_trait = super_trait.instantiate(db, trait_inst.args(db));
         is_satisfied(super_trait, target_ty_span.clone())
@@ -1180,7 +1242,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                         primary: self
                             .implementor
                             .hir_impl_trait(self.db)
-                            .lazy_span()
+                            .span()
                             .trait_ref()
                             .into(),
                         method_name: *name,
@@ -1205,12 +1267,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
         if !required_methods.is_empty() {
             self.diags.push(
                 ImplDiag::NotAllTraitItemsImplemented {
-                    primary: self
-                        .implementor
-                        .hir_impl_trait(self.db)
-                        .lazy_span()
-                        .ty_moved()
-                        .into(),
+                    primary: self.implementor.hir_impl_trait(self.db).span().ty().into(),
                     not_implemented: required_methods.into_iter().collect(),
                 }
                 .into(),

@@ -22,7 +22,7 @@ error[3-0016]: too many generic args; expected 2, given 3
   │          ^^^^^^^^^^^^^^^^^^^ expected 2 arguments, but 3 were given
 
 error[3-0016]: too many generic args; expected 2, given 3
-   ┌─ kind_mismatch.fe:10:10
+   ┌─ kind_mismatch.fe:10:19
    │
-10 │     boz: Foo<i32, Foo<i32, u32, u256>>, // TODO: wrong span is highlighted
-   │          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected 2 arguments, but 3 were given
+10 │     boz: Foo<i32, Foo<i32, u32, u256>>,
+   │                   ^^^^^^^^^^^^^^^^^^^ expected 2 arguments, but 3 were given

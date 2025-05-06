@@ -111,7 +111,7 @@ impl<'db> Callable<'db> {
         }
 
         for (i, (&given, arg)) in given_args.iter().zip(current_args.iter_mut()).enumerate() {
-            *arg = tc.equate_ty(given, *arg, span.arg(i).into());
+            *arg = tc.equate_ty(given, *arg, span.clone().arg(i).into());
         }
 
         true
@@ -149,7 +149,7 @@ impl<'db> Callable<'db> {
                 IdentId::make_self(db).into(),
                 receiver_prop,
                 None,
-                receiver_expr.lazy_span(tc.body()).into(),
+                receiver_expr.span(tc.body()).into(),
             );
             args.push(arg);
             args
@@ -158,7 +158,7 @@ impl<'db> Callable<'db> {
         };
 
         for (i, hir_arg) in call_args.iter().enumerate() {
-            let arg = CallArg::from_hir_arg(tc, hir_arg, span.arg(i));
+            let arg = CallArg::from_hir_arg(tc, hir_arg, span.clone().arg(i));
             args.push(arg);
         }
 
@@ -206,7 +206,7 @@ impl<'db> CallArg<'db> {
         let ty = tc.fresh_ty();
         let expr_prop = tc.check_expr(arg.expr, ty);
         let label = arg.label_eagerly(tc.db, tc.body());
-        let label_span = arg.label.is_some().then(|| span.label().into());
+        let label_span = arg.label.is_some().then(|| span.clone().label().into());
         let expr_span = span.expr().into();
 
         Self::new(label, expr_prop, label_span, expr_span)

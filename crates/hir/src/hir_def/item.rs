@@ -3,13 +3,15 @@
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
+use std::borrow::Cow;
+
 use common::InputFile;
 use parser::ast;
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, FuncParamListId, FuncParamName, GenericParamListId, IdentId, IngotId,
-    Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
+    AttrListId, Body, FuncParamListId, FuncParamName, GenericParam, GenericParamListId, IdentId,
+    IngotId, Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
 };
 use crate::{
     hir_def::TraitRefId,
@@ -18,7 +20,7 @@ use crate::{
         item::{
             LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFuncSpan, LazyImplSpan,
             LazyImplTraitSpan, LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan,
-            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan,
+            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefSpan,
         },
         params::{LazyGenericParamListSpan, LazyWhereClauseSpan},
         DynLazySpan, HirOrigin,
@@ -58,7 +60,7 @@ pub enum ItemKind<'db> {
 }
 
 impl<'db> ItemKind<'db> {
-    pub fn lazy_span(self) -> LazyItemSpan<'db> {
+    pub fn span(self) -> LazyItemSpan<'db> {
         LazyItemSpan::new(self)
     }
 
@@ -122,14 +124,14 @@ impl<'db> ItemKind<'db> {
     pub fn name_span(self) -> Option<DynLazySpan<'db>> {
         use ItemKind::*;
         match self {
-            Mod(mod_) => Some(mod_.lazy_span().name().into()),
-            Func(func_) => Some(func_.lazy_span().name().into()),
-            Struct(struct_) => Some(struct_.lazy_span().name().into()),
-            Contract(contract_) => Some(contract_.lazy_span().name().into()),
-            Enum(enum_) => Some(enum_.lazy_span().name().into()),
-            TypeAlias(alias) => Some(alias.lazy_span().alias().into()),
-            Trait(trait_) => Some(trait_.lazy_span().name().into()),
-            Const(const_) => Some(const_.lazy_span().name().into()),
+            Mod(mod_) => Some(mod_.span().name().into()),
+            Func(func_) => Some(func_.span().name().into()),
+            Struct(struct_) => Some(struct_.span().name().into()),
+            Contract(contract_) => Some(contract_.span().name().into()),
+            Enum(enum_) => Some(enum_.span().name().into()),
+            TypeAlias(alias) => Some(alias.span().alias().into()),
+            Trait(trait_) => Some(trait_.span().name().into()),
+            Const(const_) => Some(const_.span().name().into()),
             TopMod(_) | Use(_) | Body(_) | Impl(_) | ImplTrait(_) => None,
         }
     }
@@ -243,19 +245,19 @@ impl<'db> GenericParamOwner<'db> {
         }
     }
 
+    pub fn param(self, db: &'db dyn HirDb, idx: usize) -> &'db GenericParam<'db> {
+        &self.params(db).data(db)[idx]
+    }
+
     pub fn params_span(self) -> LazyGenericParamListSpan<'db> {
         match self {
-            GenericParamOwner::Func(func) => func.lazy_span().generic_params_moved(),
-            GenericParamOwner::Struct(struct_) => struct_.lazy_span().generic_params_moved(),
-            GenericParamOwner::Enum(enum_) => enum_.lazy_span().generic_params_moved(),
-            GenericParamOwner::TypeAlias(type_alias) => {
-                type_alias.lazy_span().generic_params_moved()
-            }
-            GenericParamOwner::Impl(impl_) => impl_.lazy_span().generic_params_moved(),
-            GenericParamOwner::Trait(trait_) => trait_.lazy_span().generic_params_moved(),
-            GenericParamOwner::ImplTrait(impl_trait) => {
-                impl_trait.lazy_span().generic_params_moved()
-            }
+            GenericParamOwner::Func(func) => func.span().generic_params(),
+            GenericParamOwner::Struct(struct_) => struct_.span().generic_params(),
+            GenericParamOwner::Enum(enum_) => enum_.span().generic_params(),
+            GenericParamOwner::TypeAlias(type_alias) => type_alias.span().generic_params(),
+            GenericParamOwner::Impl(impl_) => impl_.span().generic_params(),
+            GenericParamOwner::Trait(trait_) => trait_.span().generic_params(),
+            GenericParamOwner::ImplTrait(impl_trait) => impl_trait.span().generic_params(),
         }
     }
 
@@ -332,12 +334,12 @@ impl<'db> WhereClauseOwner<'db> {
 
     pub fn where_clause_span(self) -> LazyWhereClauseSpan<'db> {
         match self {
-            Self::Func(func) => func.lazy_span().where_clause_moved(),
-            Self::Struct(struct_) => struct_.lazy_span().where_clause_moved(),
-            Self::Enum(enum_) => enum_.lazy_span().where_clause_moved(),
-            Self::Impl(impl_) => impl_.lazy_span().where_clause_moved(),
-            Self::Trait(trait_) => trait_.lazy_span().where_clause_moved(),
-            Self::ImplTrait(impl_trait) => impl_trait.lazy_span().where_clause_moved(),
+            Self::Func(func) => func.span().where_clause(),
+            Self::Struct(struct_) => struct_.span().where_clause(),
+            Self::Enum(enum_) => enum_.span().where_clause(),
+            Self::Impl(impl_) => impl_.span().where_clause(),
+            Self::Trait(trait_) => trait_.span().where_clause(),
+            Self::ImplTrait(impl_trait) => impl_trait.span().where_clause(),
         }
     }
 
@@ -371,7 +373,7 @@ pub struct TopLevelMod<'db> {
 
 #[salsa::tracked]
 impl<'db> TopLevelMod<'db> {
-    pub fn lazy_span(self) -> LazyTopModSpan<'db> {
+    pub fn span(self) -> LazyTopModSpan<'db> {
         LazyTopModSpan::new(self)
     }
 
@@ -547,7 +549,7 @@ pub struct Mod<'db> {
     pub(crate) origin: HirOrigin<ast::Mod>,
 }
 impl<'db> Mod<'db> {
-    pub fn lazy_span(self) -> LazyModSpan<'db> {
+    pub fn span(self) -> LazyModSpan<'db> {
         LazyModSpan::new(self)
     }
 
@@ -586,7 +588,7 @@ pub struct Func<'db> {
     pub(crate) origin: HirOrigin<ast::Func>,
 }
 impl<'db> Func<'db> {
-    pub fn lazy_span(self) -> LazyFuncSpan<'db> {
+    pub fn span(self) -> LazyFuncSpan<'db> {
         LazyFuncSpan::new(self)
     }
 
@@ -651,7 +653,7 @@ pub struct Struct<'db> {
     pub(crate) origin: HirOrigin<ast::Struct>,
 }
 impl<'db> Struct<'db> {
-    pub fn lazy_span(self) -> LazyStructSpan<'db> {
+    pub fn span(self) -> LazyStructSpan<'db> {
         LazyStructSpan::new(self)
     }
 
@@ -690,7 +692,7 @@ pub struct Contract<'db> {
     pub(crate) origin: HirOrigin<ast::Contract>,
 }
 impl<'db> Contract<'db> {
-    pub fn lazy_span(self) -> LazyContractSpan<'db> {
+    pub fn span(self) -> LazyContractSpan<'db> {
         LazyContractSpan::new(self)
     }
 
@@ -717,12 +719,50 @@ pub struct Enum<'db> {
     pub(crate) origin: HirOrigin<ast::Enum>,
 }
 impl<'db> Enum<'db> {
-    pub fn lazy_span(self) -> LazyEnumSpan<'db> {
+    pub fn span(self) -> LazyEnumSpan<'db> {
         LazyEnumSpan::new(self)
+    }
+
+    pub fn variant_span(self, idx: usize) -> LazyVariantDefSpan<'db> {
+        self.span().variants().variant(idx)
     }
 
     pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Update)]
+pub struct EnumVariant<'db> {
+    pub enum_: Enum<'db>,
+    pub idx: u16,
+}
+
+impl<'db> EnumVariant<'db> {
+    pub fn new(enum_: Enum<'db>, idx: usize) -> Self {
+        Self {
+            enum_,
+            idx: idx as u16,
+        }
+    }
+    pub fn def(self, db: &'db dyn HirDb) -> &'db VariantDef<'db> {
+        &self.enum_.variants(db).data(db)[self.idx as usize]
+    }
+
+    pub fn kind(self, db: &'db dyn HirDb) -> VariantKind<'db> {
+        self.def(db).kind
+    }
+
+    pub fn name(self, db: &'db dyn HirDb) -> Option<&'db str> {
+        Some(self.def(db).name.to_opt()?.data(db))
+    }
+
+    pub fn scope(self) -> ScopeId<'db> {
+        ScopeId::Variant(self)
+    }
+
+    pub fn span(self) -> LazyVariantDefSpan<'db> {
+        self.enum_.variant_span(self.idx as usize)
     }
 }
 
@@ -743,7 +783,7 @@ pub struct TypeAlias<'db> {
     pub(crate) origin: HirOrigin<ast::TypeAlias>,
 }
 impl<'db> TypeAlias<'db> {
-    pub fn lazy_span(self) -> LazyTypeAliasSpan<'db> {
+    pub fn span(self) -> LazyTypeAliasSpan<'db> {
         LazyTypeAliasSpan::new(self)
     }
 
@@ -768,7 +808,7 @@ pub struct Impl<'db> {
     pub(crate) origin: HirOrigin<ast::Impl>,
 }
 impl<'db> Impl<'db> {
-    pub fn lazy_span(self) -> LazyImplSpan<'db> {
+    pub fn span(self) -> LazyImplSpan<'db> {
         LazyImplSpan::new(self)
     }
 
@@ -815,7 +855,7 @@ pub struct Trait<'db> {
     pub(crate) origin: HirOrigin<ast::Trait>,
 }
 impl<'db> Trait<'db> {
-    pub fn lazy_span(self) -> LazyTraitSpan<'db> {
+    pub fn span(self) -> LazyTraitSpan<'db> {
         LazyTraitSpan::new(self)
     }
 
@@ -859,7 +899,7 @@ pub struct ImplTrait<'db> {
     pub(crate) origin: HirOrigin<ast::ImplTrait>,
 }
 impl<'db> ImplTrait<'db> {
-    pub fn lazy_span(self) -> LazyImplTraitSpan<'db> {
+    pub fn span(self) -> LazyImplTraitSpan<'db> {
         LazyImplTraitSpan::new(self)
     }
 
@@ -901,7 +941,7 @@ pub struct Const<'db> {
     pub(crate) origin: HirOrigin<ast::Const>,
 }
 impl<'db> Const<'db> {
-    pub fn lazy_span(self) -> LazyConstSpan<'db> {
+    pub fn span(self) -> LazyConstSpan<'db> {
         LazyConstSpan::new(self)
     }
 
@@ -925,7 +965,7 @@ pub struct Use<'db> {
     pub(crate) origin: HirOrigin<ast::Use>,
 }
 impl<'db> Use<'db> {
-    pub fn lazy_span(self) -> LazyUseSpan<'db> {
+    pub fn span(self) -> LazyUseSpan<'db> {
         LazyUseSpan::new(self)
     }
 
@@ -955,10 +995,10 @@ impl<'db> Use<'db> {
         }
 
         if self.alias(db).is_some() {
-            Some(self.lazy_span().alias().into())
+            Some(self.span().alias().into())
         } else {
             let segment_len = self.path(db).to_opt()?.segment_len(db);
-            Some(self.lazy_span().path().segment(segment_len - 1).into())
+            Some(self.span().path().segment(segment_len - 1).into())
         }
     }
 
@@ -968,7 +1008,7 @@ impl<'db> Use<'db> {
         }
 
         let segment_len = self.path(db).to_opt()?.segment_len(db);
-        Some(self.lazy_span().path().segment(segment_len - 1).into())
+        Some(self.span().path().segment(segment_len - 1).into())
     }
 
     pub fn is_glob(&self, db: &dyn HirDb) -> bool {
@@ -1041,6 +1081,69 @@ impl<'db> FieldDefListId<'db> {
             .join(", ");
 
         format!(" {{ {} }}", args)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, salsa::Update)]
+pub enum FieldParent<'db> {
+    Struct(Struct<'db>),
+    Contract(Contract<'db>),
+    Variant(EnumVariant<'db>),
+}
+
+impl<'db> FieldParent<'db> {
+    pub fn name(self, db: &'db dyn HirDb) -> Option<Cow<'db, str>> {
+        match self {
+            FieldParent::Struct(struct_) => Some(struct_.name(db).to_opt()?.data(db).into()),
+            FieldParent::Contract(contract) => Some(contract.name(db).to_opt()?.data(db).into()),
+            FieldParent::Variant(variant) => {
+                let e = variant.enum_.name(db).to_opt()?.data(db);
+                Some(format!("{e}::{}", variant.name(db)?).into())
+            }
+        }
+    }
+
+    pub fn kind_name(self) -> &'static str {
+        match self {
+            FieldParent::Struct(_) => "struct",
+            FieldParent::Contract(_) => "contract",
+            FieldParent::Variant(..) => "enum variant",
+        }
+    }
+
+    pub fn scope(self) -> ScopeId<'db> {
+        match self {
+            FieldParent::Struct(struct_) => struct_.scope(),
+            FieldParent::Contract(contract) => contract.scope(),
+            FieldParent::Variant(variant) => variant.scope(),
+        }
+    }
+
+    pub fn fields(self, db: &'db dyn HirDb) -> FieldDefListId<'db> {
+        match self {
+            FieldParent::Struct(struct_) => struct_.fields(db),
+            FieldParent::Contract(contract) => contract.fields(db),
+            FieldParent::Variant(variant) => match variant.kind(db) {
+                VariantKind::Record(fields) => fields,
+                _ => unreachable!(),
+            },
+        }
+    }
+
+    pub fn top_mod(self, db: &'db dyn HirDb) -> TopLevelMod<'db> {
+        match self {
+            FieldParent::Struct(i) => i.top_mod(db),
+            FieldParent::Contract(i) => i.top_mod(db),
+            FieldParent::Variant(i) => i.enum_.top_mod(db),
+        }
+    }
+
+    pub fn field_name_span(self, idx: usize) -> DynLazySpan<'db> {
+        match self {
+            FieldParent::Struct(s) => s.span().fields().field(idx).name().into(),
+            FieldParent::Contract(c) => c.span().fields().field(idx).name().into(),
+            FieldParent::Variant(v) => v.span().fields().field(idx).name().into(),
+        }
     }
 }
 

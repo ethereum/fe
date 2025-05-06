@@ -1,7 +1,7 @@
 ---
 source: crates/hir-analysis/tests/ty_check.rs
 expression: res
-input_file: crates/hir-analysis/test_files/ty_check/match_.fe
+input_file: test_files/ty_check/match_.fe
 ---
 note: 
    ┌─ match_.fe:11:33
@@ -46,7 +46,7 @@ note:
    ┌─ match_.fe:13:28
    │
 13 │             Self::Var { x, .. } => x
-   │                            ^^ <invalid>
+   │                            ^^ invalid(Other)
 
 note: 
    ┌─ match_.fe:13:36
@@ -125,7 +125,7 @@ note:
    ┌─ match_.fe:21:21
    │
 21 │         E::Var { x, .. } => {
-   │                     ^^ <invalid>
+   │                     ^^ invalid(Other)
 
 note: 
    ┌─ match_.fe:21:29

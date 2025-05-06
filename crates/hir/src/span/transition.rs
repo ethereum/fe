@@ -6,6 +6,7 @@ use parser::{
     ast::prelude::*, syntax_node::NodeOrToken, FeLang, SyntaxNode, SyntaxToken, TextRange,
 };
 use salsa::Update;
+use thin_vec::ThinVec;
 
 use super::{
     body_ast, const_ast, contract_ast, enum_ast, expr::ExprRoot, func_ast, impl_ast,
@@ -43,7 +44,7 @@ pub(crate) enum LazyArg {
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Update)]
 pub(crate) struct SpanTransitionChain<'db> {
     pub(crate) root: ChainRoot<'db>,
-    pub(super) chain: Vec<LazyTransitionFn>,
+    pub(super) chain: ThinVec<LazyTransitionFn>,
 }
 
 impl<'db> SpanTransitionChain<'db> {
@@ -58,7 +59,7 @@ impl<'db> SpanTransitionChain<'db> {
     pub(super) fn new(root: impl Into<ChainRoot<'db>>) -> Self {
         Self {
             root: root.into(),
-            chain: Vec::new(),
+            chain: ThinVec::new(),
         }
     }
 
@@ -316,15 +317,8 @@ macro_rules! define_lazy_span_node {
             }
 
             $($(
-                pub fn $name_token(&self) -> crate::span::LazySpanAtom<'db> {
-                    let cloned = self.clone();
-                    paste::paste! {
-                        cloned.[<$name_token _moved>]()
-                    }
-                }
-
                 paste::paste! {
-                    pub fn [<$name_token _moved>](mut self) -> crate::span::LazySpanAtom<'db> {
+                    pub fn $name_token(mut self) -> crate::span::LazySpanAtom<'db> {
                         use parser::ast::prelude::*;
                         fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
                             origin.map(|node| <$sk_node as AstNode>::cast(node)
@@ -344,15 +338,8 @@ macro_rules! define_lazy_span_node {
             )*)?
 
             $($(
-                pub fn $name_node(&self) -> $result<'db> {
-                    let cloned = self.clone();
-                    paste::paste! {
-                        cloned.[<$name_node _moved>]()
-                    }
-                }
-
                 paste::paste! {
-                        pub fn [<$name_node _moved>](mut self) -> $result<'db> {
+                        pub fn $name_node(mut self) -> $result<'db> {
                         use parser::ast::prelude::*;
 
                         fn f(origin: crate::span::transition::ResolvedOrigin, _: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
@@ -372,16 +359,8 @@ macro_rules! define_lazy_span_node {
             )*)?
 
             $($(
-
-                pub fn $name_iter(&self, idx: usize) -> $result_iter<'db> {
-                    let cloned = self.clone();
-                    paste::paste! {
-                        cloned.[<$name_iter _moved>](idx)
-                    }
-                }
-
                 paste::paste! {
-                    pub fn [<$name_iter _moved>](mut self, idx: usize) -> $result_iter<'db> {
+                    pub fn $name_iter(mut self, idx: usize) -> $result_iter<'db> {
                         use parser::ast::prelude::*;
                         fn f(origin: crate::span::transition::ResolvedOrigin, arg: crate::span::transition::LazyArg) -> crate::span::transition::ResolvedOrigin {
                             let idx = match arg {

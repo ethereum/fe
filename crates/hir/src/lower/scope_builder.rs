@@ -3,10 +3,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     hir_def::{
-        scope_graph::{EdgeKind, FieldParent, Scope, ScopeEdge, ScopeGraph, ScopeId},
-        Body, ExprId, FieldDefListId, FuncParamListId, FuncParamName, GenericParamListId, ItemKind,
-        TopLevelMod, TrackedItemId, TrackedItemVariant, Use, VariantDefListId, VariantKind,
-        Visibility,
+        scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
+        Body, Enum, EnumVariant, ExprId, FieldDefListId, FieldParent, FuncParamListId,
+        FuncParamName, GenericParamListId, ItemKind, TopLevelMod, TrackedItemId,
+        TrackedItemVariant, Use, VariantDefListId, VariantKind, Visibility,
     },
     HirDb,
 };
@@ -144,11 +144,7 @@ impl<'db> ScopeGraphBuilder<'db> {
 
             Struct(inner) => {
                 self.graph.add_lex_edge(item_node, parent_node);
-                self.add_field_scope(
-                    item_node,
-                    FieldParent::Item(inner.into()),
-                    inner.fields(self.db),
-                );
+                self.add_field_scope(item_node, FieldParent::Struct(inner), inner.fields(self.db));
                 self.add_generic_param_scope(
                     item_node,
                     inner.into(),
@@ -167,7 +163,7 @@ impl<'db> ScopeGraphBuilder<'db> {
                 self.graph.add_lex_edge(item_node, parent_node);
                 self.add_field_scope(
                     item_node,
-                    FieldParent::Item(inner.into()),
+                    FieldParent::Contract(inner),
                     inner.fields(self.db),
                 );
                 self.graph
@@ -182,7 +178,7 @@ impl<'db> ScopeGraphBuilder<'db> {
 
             Enum(inner) => {
                 self.graph.add_lex_edge(item_node, parent_node);
-                self.add_variant_scope(item_node, inner.into(), inner.variants(self.db));
+                self.add_variant_scope(item_node, inner, inner.variants(self.db));
                 self.add_generic_param_scope(
                     item_node,
                     inner.into(),
@@ -332,7 +328,7 @@ impl<'db> ScopeGraphBuilder<'db> {
         fields: FieldDefListId<'db>,
     ) {
         for (i, field) in fields.data(self.db).iter().enumerate() {
-            let scope_id = ScopeId::Field(parent, i);
+            let scope_id = ScopeId::Field(parent, i as u16);
             let scope_data = Scope::new(scope_id, field.vis);
 
             let field_node = self.graph.push(scope_id, scope_data);
@@ -349,25 +345,26 @@ impl<'db> ScopeGraphBuilder<'db> {
     fn add_variant_scope(
         &mut self,
         parent_node: NodeId,
-        parent_item: ItemKind<'db>,
+        parent_item: Enum<'db>,
         variants: VariantDefListId<'db>,
     ) {
         let parent_vis = parent_item.vis(self.db);
 
-        for (i, variant) in variants.data(self.db).iter().enumerate() {
-            let scope_id = ScopeId::Variant(parent_item, i);
+        for (i, variant_def) in variants.data(self.db).iter().enumerate() {
+            let variant = EnumVariant::new(parent_item, i);
+            let scope_id = ScopeId::Variant(variant);
             let scope_data = Scope::new(scope_id, parent_vis);
 
             let variant_node = self.graph.push(scope_id, scope_data);
             self.graph.add_lex_edge(variant_node, parent_node);
-            let kind = variant
+            let kind = variant_def
                 .name
                 .to_opt()
                 .map(EdgeKind::variant)
                 .unwrap_or_else(EdgeKind::anon);
 
-            if let VariantKind::Record(fields) = variant.kind {
-                self.add_field_scope(variant_node, FieldParent::Variant(parent_item, i), fields)
+            if let VariantKind::Record(fields) = variant_def.kind {
+                self.add_field_scope(variant_node, FieldParent::Variant(variant), fields)
             }
 
             self.graph.add_edge(parent_node, variant_node, kind)
@@ -381,7 +378,7 @@ impl<'db> ScopeGraphBuilder<'db> {
         params: FuncParamListId<'db>,
     ) {
         for (i, param) in params.data(self.db).iter().enumerate() {
-            let scope_id = ScopeId::FuncParam(parent_item, i);
+            let scope_id = ScopeId::FuncParam(parent_item, i as u16);
             let scope = Scope::new(scope_id, Visibility::Private);
             let func_param_node = self.graph.push(scope_id, scope);
 
@@ -405,7 +402,7 @@ impl<'db> ScopeGraphBuilder<'db> {
         params: GenericParamListId<'db>,
     ) {
         for (i, param) in params.data(self.db).iter().enumerate() {
-            let scope_id = ScopeId::GenericParam(parent_item, i);
+            let scope_id = ScopeId::GenericParam(parent_item, i as u16);
             let scope = Scope::new(scope_id, Visibility::Private);
 
             let generic_param_node = self.graph.push(scope_id, scope);

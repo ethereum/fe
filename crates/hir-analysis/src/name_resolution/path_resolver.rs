@@ -1,17 +1,19 @@
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Enum, GenericParamOwner, ItemKind, Partial, PathId, TypeId,
-        VariantDef, VariantKind,
+        scope_graph::ScopeId, Enum, EnumVariant, GenericParamOwner, ItemKind, Partial, PathId,
+        TypeId, VariantKind,
     },
     span::DynLazySpan,
 };
+use thin_vec::ThinVec;
 
 use super::{
+    diagnostics::NameResDiag,
     is_scope_visible_from,
     name_resolver::{NameRes, NameResBucket, NameResolutionError},
     resolve_query,
     visibility_checker::is_ty_visible_from,
-    EarlyNameQueryId, NameDomain,
+    EarlyNameQueryId, ExpectedPathKind, NameDomain,
 };
 use crate::{
     name_resolution::{NameResKind, QueryDirective},
@@ -31,13 +33,13 @@ use crate::{
 
 pub type PathResolutionResult<'db, T> = Result<T, PathResError<'db>>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct PathResError<'db> {
     pub kind: PathResErrorKind<'db>,
     pub failed_at: PathId<'db>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum PathResErrorKind<'db> {
     /// The name is not found.
     NotFound(NameResBucket<'db>),
@@ -47,17 +49,17 @@ pub enum PathResErrorKind<'db> {
     ParseError,
 
     /// The name is found, but it's ambiguous.
-    Ambiguous(Vec<NameRes<'db>>),
+    Ambiguous(ThinVec<NameRes<'db>>),
 
     /// The name is found, but it can't be used in the middle of a use path.
     InvalidPathSegment(PathRes<'db>),
 
     /// The definition conflicts with other definitions.
-    Conflict(Vec<DynLazySpan<'db>>),
+    Conflict(ThinVec<DynLazySpan<'db>>),
 
     TooManyGenericArgs {
-        expected: usize,
-        given: usize,
+        expected: u16,
+        given: u16,
     },
 
     TraitMethodNotFound(TraitDef<'db>),
@@ -107,6 +109,62 @@ impl<'db> PathResError<'db> {
             PathResErrorKind::AssocTy(_) => "Types cannot be nested inside other types".to_string(),
         }
     }
+
+    pub fn into_diag(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        path: PathId<'db>,
+        span: DynLazySpan<'db>,
+        expected: ExpectedPathKind,
+    ) -> Option<NameResDiag<'db>> {
+        let failed_at = self.failed_at;
+        let ident = failed_at.ident(db).to_opt()?;
+
+        let diag = match self.kind {
+            PathResErrorKind::ParseError => unreachable!(),
+            PathResErrorKind::NotFound(bucket) => {
+                if let Some(nr) = bucket.iter_ok().next() {
+                    if path != self.failed_at {
+                        NameResDiag::InvalidPathSegment(span, ident, nr.kind.name_span(db))
+                    } else {
+                        match expected {
+                            ExpectedPathKind::Record | ExpectedPathKind::Type => {
+                                NameResDiag::ExpectedType(span, ident, nr.kind_name())
+                            }
+                            ExpectedPathKind::Trait => {
+                                NameResDiag::ExpectedTrait(span, ident, nr.kind_name())
+                            }
+                            ExpectedPathKind::Value => {
+                                NameResDiag::ExpectedValue(span, ident, nr.kind_name())
+                            }
+                            _ => NameResDiag::NotFound(span, ident),
+                        }
+                    }
+                } else {
+                    NameResDiag::NotFound(span, ident)
+                }
+            }
+
+            PathResErrorKind::Ambiguous(cands) => NameResDiag::ambiguous(db, span, ident, cands),
+
+            PathResErrorKind::AssocTy(_) => todo!(),
+            PathResErrorKind::TraitMethodNotFound(_) => todo!(),
+            PathResErrorKind::TooManyGenericArgs { expected, given } => {
+                NameResDiag::TooManyGenericArgs {
+                    span,
+                    expected,
+                    given,
+                }
+            }
+
+            PathResErrorKind::InvalidPathSegment(res) => {
+                NameResDiag::InvalidPathSegment(span, ident, res.name_span(db))
+            }
+
+            PathResErrorKind::Conflict(spans) => NameResDiag::Conflict(ident, spans),
+        };
+        Some(diag)
+    }
 }
 
 /// Panics if `path` has more than one segment.
@@ -137,12 +195,12 @@ fn make_query<'db>(
     EarlyNameQueryId::new(db, name, scope, directive)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum PathRes<'db> {
     Ty(TyId<'db>),
     TyAlias(TyAlias<'db>, TyId<'db>),
     Func(TyId<'db>),
-    FuncParam(ItemKind<'db>, usize),
+    FuncParam(ItemKind<'db>, u16),
     Trait(TraitDef<'db>),
     EnumVariant(ResolvedVariant<'db>),
     Const(TyId<'db>),
@@ -160,9 +218,7 @@ impl<'db> PathRes<'db> {
             PathRes::TyAlias(alias, ty) => PathRes::TyAlias(alias, f(ty)),
             PathRes::Func(ty) => PathRes::Func(f(ty)),
             PathRes::Const(ty) => PathRes::Const(f(ty)),
-            PathRes::EnumVariant(v) => {
-                PathRes::EnumVariant(ResolvedVariant::new(f(v.ty), v.idx, v.path))
-            }
+            PathRes::EnumVariant(v) => PathRes::EnumVariant(ResolvedVariant { ty: f(v.ty), ..v }),
             PathRes::TypeMemberTbd(parent_ty) => PathRes::TypeMemberTbd(f(parent_ty)),
             r @ (PathRes::Trait(_) | PathRes::Mod(_) | PathRes::FuncParam(..)) => r,
         }
@@ -208,17 +264,11 @@ impl<'db> PathRes<'db> {
         match self {
             PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => ty_path(*ty),
             PathRes::TyAlias(alias, _) => alias.alias.scope().pretty_path(db),
-            PathRes::EnumVariant(v) => {
-                let variant_idx = v.idx;
-                Some(format!(
-                    "{}::{}",
-                    ty_path(v.ty).unwrap_or_else(|| "<missing>".into()),
-                    v.enum_(db).variants(db).data(db)[variant_idx]
-                        .name
-                        .to_opt()?
-                        .data(db)
-                ))
-            }
+            PathRes::EnumVariant(v) => Some(format!(
+                "{}::{}",
+                ty_path(v.ty).unwrap_or_else(|| "<missing>".into()),
+                v.variant.def(db).name.to_opt()?.data(db)
+            )),
             r @ (PathRes::Trait(..) | PathRes::Mod(..) | PathRes::FuncParam(..)) => {
                 r.as_scope(db).unwrap().pretty_path(db)
             }
@@ -244,28 +294,20 @@ impl<'db> PathRes<'db> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct ResolvedVariant<'db> {
     pub ty: TyId<'db>,
-    pub idx: usize,
+    pub variant: EnumVariant<'db>,
     pub path: PathId<'db>,
 }
 
 impl<'db> ResolvedVariant<'db> {
-    pub fn new(ty: TyId<'db>, idx: usize, path: PathId<'db>) -> Self {
-        Self { ty, idx, path }
-    }
-
-    pub fn variant_def(&self, db: &'db dyn HirAnalysisDb) -> &'db VariantDef<'db> {
-        &self.enum_(db).variants(db).data(db)[self.idx]
-    }
-
-    pub fn variant_kind(&self, db: &'db dyn HirAnalysisDb) -> VariantKind<'db> {
-        self.variant_def(db).kind
-    }
-
     pub fn enum_(&self, db: &'db dyn HirAnalysisDb) -> Enum<'db> {
         self.ty.as_enum(db).unwrap()
+    }
+
+    pub fn kind(&self, db: &'db dyn HirAnalysisDb) -> VariantKind<'db> {
+        self.variant.kind(db)
     }
 
     pub fn iter_field_types(
@@ -276,7 +318,7 @@ impl<'db> ResolvedVariant<'db> {
             .adt_def(db)
             .unwrap()
             .fields(db)
-            .get(self.idx)
+            .get(self.variant.idx as usize)
             .unwrap()
             .iter_types(db)
     }
@@ -293,28 +335,21 @@ impl<'db> ResolvedVariant<'db> {
     }
 
     pub fn to_funcdef(&self, db: &'db dyn HirAnalysisDb) -> Option<FuncDef<'db>> {
-        if !matches!(self.variant_kind(db), VariantKind::Tuple(_)) {
+        if !matches!(self.variant.kind(db), VariantKind::Tuple(_)) {
             return None;
         }
 
+        let arg_tys = self.iter_field_types(db).collect();
         let adt = self.ty.adt_def(db).unwrap();
-        let arg_tys = adt
-            .fields(db)
-            .get(self.idx)
-            .unwrap()
-            .iter_types(db)
-            .collect();
-
-        let adt_param_set = adt.param_set(db);
 
         let mut ret_ty = TyId::adt(db, adt);
         ret_ty = TyId::foldl(db, ret_ty, adt.param_set(db).params(db));
 
         Some(FuncDef::new(
             db,
-            HirFuncDefKind::VariantCtor(self.enum_(db), self.idx),
-            *self.variant_def(db).name.unwrap(),
-            *adt_param_set,
+            HirFuncDefKind::VariantCtor(self.variant),
+            *self.variant.def(db).name.unwrap(),
+            *adt.param_set(db),
             arg_tys,
             Binder::bind(ret_ty),
         ))
@@ -379,8 +414,12 @@ where
                 let bucket = resolve_query(db, query);
 
                 if let Ok(res) = bucket.pick(NameDomain::VALUE) {
-                    if let Some((_, idx)) = res.enum_variant() {
-                        let reso = PathRes::EnumVariant(ResolvedVariant::new(ty, idx, path));
+                    if let Some(var) = res.enum_variant() {
+                        let reso = PathRes::EnumVariant(ResolvedVariant {
+                            ty,
+                            variant: var,
+                            path,
+                        });
                         observer(path, &reso);
                         return Ok(reso);
                     }
@@ -500,22 +539,25 @@ pub fn resolve_name_res<'db>(
             ScopeId::GenericParam(parent, idx) => {
                 let owner = GenericParamOwner::from_item_opt(parent).unwrap();
                 let param_set = collect_generic_params(db, owner);
-                let ty = param_set.param_by_original_idx(db, idx).unwrap();
+                let ty = param_set.param_by_original_idx(db, idx as usize).unwrap();
                 let ty = TyId::foldl(db, ty, args);
                 PathRes::Ty(ty)
             }
 
-            ScopeId::Variant(enum_, idx) => {
+            ScopeId::Variant(var) => {
                 let enum_ty = if let Some(PathRes::Ty(ty)) = parent_ty {
                     ty
                 } else {
                     // The variant was imported via `use`.
                     debug_assert!(path.parent(db).is_none());
-                    let enum_: Enum = enum_.try_into().unwrap();
-                    ty_from_adtref(db, enum_.into(), &[])?
+                    ty_from_adtref(db, var.enum_.into(), &[])?
                 };
                 // TODO report error if args isn't empty
-                PathRes::EnumVariant(ResolvedVariant::new(enum_ty, idx, path))
+                PathRes::EnumVariant(ResolvedVariant {
+                    ty: enum_ty,
+                    variant: var,
+                    path,
+                })
             }
             ScopeId::FuncParam(item, idx) => PathRes::FuncParam(item, idx),
             ScopeId::Field(..) => unreachable!(),

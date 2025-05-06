@@ -133,7 +133,7 @@ impl<'db> TyChecker<'db> {
 
         let base_ty = expr_ty.base_ty(self.db);
         if base_ty.is_ty_var(self.db) {
-            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            let diag = BodyDiag::TypeMustBeKnown(lhs.span(self.body()).into());
             self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
@@ -142,7 +142,7 @@ impl<'db> TyChecker<'db> {
         // operator when these traits are defined in `std`.
         let diag = BodyDiag::ops_trait_not_implemented(
             self.db,
-            expr.lazy_span(self.body()).into(),
+            expr.span(self.body()).into(),
             expr_ty,
             *op,
         );
@@ -239,7 +239,7 @@ impl<'db> TyChecker<'db> {
 
         let lhs_base_ty = lhs_ty.base_ty(self.db);
         if lhs_base_ty.is_ty_var(self.db) {
-            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            let diag = BodyDiag::TypeMustBeKnown(lhs.span(self.body()).into());
             self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
@@ -248,7 +248,7 @@ impl<'db> TyChecker<'db> {
         // operator when these traits are defined in `std`.
         let diag = BodyDiag::ops_trait_not_implemented(
             self.db,
-            expr.lazy_span(self.body()).into(),
+            expr.span(self.body()).into(),
             lhs_ty,
             *op,
         );
@@ -268,16 +268,16 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        let mut callable =
-            match Callable::new(self.db, callee_ty, callee.lazy_span(self.body()).into()) {
-                Ok(callable) => callable,
-                Err(diag) => {
-                    self.push_diag(diag);
-                    return ExprProp::invalid(self.db);
-                }
-            };
+        let mut callable = match Callable::new(self.db, callee_ty, callee.span(self.body()).into())
+        {
+            Ok(callable) => callable,
+            Err(diag) => {
+                self.push_diag(diag);
+                return ExprProp::invalid(self.db);
+            }
+        };
 
-        let call_span = expr.lazy_span(self.body()).into_call_expr();
+        let call_span = expr.span(self.body()).into_call_expr();
 
         if let Partial::Present(Expr::Path(Partial::Present(path))) =
             callee.data(self.db, self.body())
@@ -287,7 +287,7 @@ impl<'db> TyChecker<'db> {
             if !callable.unify_generic_args(
                 self,
                 path.generic_args(self.db),
-                expr.lazy_span(self.body())
+                expr.span(self.body())
                     .into_path_expr()
                     .path()
                     .segment(idx)
@@ -297,7 +297,7 @@ impl<'db> TyChecker<'db> {
             }
         };
 
-        callable.check_args(self, args, call_span.args_moved(), None);
+        callable.check_args(self, args, call_span.args(), None);
 
         let ret_ty = callable.ret_ty(self.db);
         self.env.register_callable(expr, callable);
@@ -308,7 +308,7 @@ impl<'db> TyChecker<'db> {
         let Expr::MethodCall(receiver, method_name, generic_args, args) = expr_data else {
             unreachable!()
         };
-        let call_span = expr.lazy_span(self.body()).into_method_call_expr();
+        let call_span = expr.span(self.body()).into_method_call_expr();
         let Some(method_name) = method_name.to_opt() else {
             return ExprProp::invalid(self.db);
         };
@@ -324,8 +324,8 @@ impl<'db> TyChecker<'db> {
         let canonical_r_ty = Canonicalized::new(self.db, receiver_prop.ty);
         let candidate = match select_method_candidate(
             self.db,
-            Spanned::new(canonical_r_ty.value, receiver.lazy_span(self.body()).into()),
-            Spanned::new(method_name, call_span.method_name().into()),
+            Spanned::new(canonical_r_ty.value, receiver.span(self.body()).into()),
+            Spanned::new(method_name, call_span.clone().method_name().into()),
             self.env.scope(),
             assumptions,
         ) {
@@ -357,16 +357,16 @@ impl<'db> TyChecker<'db> {
             }
         };
 
-        let mut callable =
-            match Callable::new(self.db, func_ty, receiver.lazy_span(self.body()).into()) {
-                Ok(callable) => callable,
-                Err(diag) => {
-                    self.push_diag(diag);
-                    return ExprProp::invalid(self.db);
-                }
-            };
+        let mut callable = match Callable::new(self.db, func_ty, receiver.span(self.body()).into())
+        {
+            Ok(callable) => callable,
+            Err(diag) => {
+                self.push_diag(diag);
+                return ExprProp::invalid(self.db);
+            }
+        };
 
-        if !callable.unify_generic_args(self, *generic_args, call_span.generic_args()) {
+        if !callable.unify_generic_args(self, *generic_args, call_span.clone().generic_args()) {
             return ExprProp::invalid(self.db);
         }
 
@@ -384,7 +384,7 @@ impl<'db> TyChecker<'db> {
         callable.check_args(
             self,
             args,
-            call_span.args_moved(),
+            call_span.args(),
             Some((*receiver, receiver_prop)),
         );
         let ret_ty = callable.ret_ty(self.db);
@@ -401,12 +401,12 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
 
-        let span = expr.lazy_span(self.body()).into_path_expr();
+        let span = expr.span(self.body()).into_path_expr();
 
         let res = if path.is_bare_ident(self.db) {
             resolve_ident_expr(self.db, &self.env, *path)
         } else {
-            self.resolve_path(*path, true)
+            self.resolve_path(*path, true, span.clone().path())
                 .map_or_else(|_| ResolvedPathInBody::Invalid, ResolvedPathInBody::Reso)
         };
 
@@ -456,7 +456,7 @@ impl<'db> TyChecker<'db> {
                     ExprProp::invalid(self.db)
                 }
                 PathRes::EnumVariant(variant) => {
-                    let ty = match variant.variant_kind(self.db) {
+                    let ty = match variant.kind(self.db) {
                         VariantKind::Unit => variant.ty,
                         VariantKind::Tuple(_) => {
                             let ty = variant.constructor_func_ty(self.db).unwrap();
@@ -465,7 +465,7 @@ impl<'db> TyChecker<'db> {
                         VariantKind::Record(_) => {
                             let diag = BodyDiag::unit_variant_expected(
                                 self.db,
-                                expr.lazy_span(self.body()).into(),
+                                expr.span(self.body()).into(),
                                 variant,
                             );
                             self.push_diag(diag);
@@ -499,13 +499,13 @@ impl<'db> TyChecker<'db> {
         let Expr::RecordInit(path, ..) = expr_data else {
             unreachable!()
         };
-        let span = expr.lazy_span(self.body()).into_record_init_expr();
+        let span = expr.span(self.body()).into_record_init_expr();
 
         let Partial::Present(path) = path else {
             return ExprProp::invalid(self.db);
         };
 
-        let Ok(reso) = self.resolve_path(*path, true) else {
+        let Ok(reso) = self.resolve_path(*path, true, span.clone().path()) else {
             return ExprProp::invalid(self.db);
         };
 
@@ -563,13 +563,13 @@ impl<'db> TyChecker<'db> {
         let Partial::Present(Expr::RecordInit(_, fields)) = expr.data(hir_db, self.body()) else {
             unreachable!()
         };
-        let span = expr.lazy_span(self.body()).into_record_init_expr();
+        let span = expr.span(self.body()).into_record_init_expr().fields();
 
         let mut rec_checker = RecordInitChecker::new(self, record_like);
 
         for (i, field) in fields.iter().enumerate() {
             let label = field.label_eagerly(rec_checker.tc.db, rec_checker.tc.body());
-            let field_span = span.fields().field(i).into();
+            let field_span = span.clone().field(i).into();
 
             let expected = match rec_checker.feed_label(label, field_span) {
                 Ok(ty) => ty,
@@ -582,7 +582,7 @@ impl<'db> TyChecker<'db> {
             rec_checker.tc.check_expr(field.expr, expected);
         }
 
-        if let Err(diag) = rec_checker.finalize(span.fields().into(), false) {
+        if let Err(diag) = rec_checker.finalize(span.into(), false) {
             self.push_diag(diag);
         }
     }
@@ -605,7 +605,7 @@ impl<'db> TyChecker<'db> {
         }
 
         if ty_base.is_ty_var(self.db) {
-            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            let diag = BodyDiag::TypeMustBeKnown(lhs.span(self.body()).into());
             self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
@@ -617,10 +617,7 @@ impl<'db> TyChecker<'db> {
                         if !is_scope_visible_from(self.db, scope, self.env.scope()) {
                             // Check the visibility of the field.
                             let diag = NameResDiag::Invisible(
-                                expr.lazy_span(self.body())
-                                    .into_field_expr()
-                                    .accessor()
-                                    .into(),
+                                expr.span(self.body()).into_field_expr().accessor().into(),
                                 *label,
                                 scope.name_span(self.db),
                             );
@@ -644,7 +641,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let diag = BodyDiag::AccessedFieldNotFound {
-            primary: expr.lazy_span(self.body()).into(),
+            primary: expr.span(self.body()).into(),
             given_ty: lhs_ty,
             index: *field,
         };
@@ -687,7 +684,7 @@ impl<'db> TyChecker<'db> {
         let (lhs_base, args) = lhs_ty.decompose_ty_app(self.db);
 
         if lhs_base.is_ty_var(self.db) {
-            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            let diag = BodyDiag::TypeMustBeKnown(lhs.span(self.body()).into());
             self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
@@ -707,7 +704,7 @@ impl<'db> TyChecker<'db> {
         // is defined in `std`.
         let diag = BodyDiag::ops_trait_not_implemented(
             self.db,
-            expr.lazy_span(self.body()).into(),
+            expr.span(self.body()).into(),
             lhs_ty,
             IndexingOp {},
         );
@@ -761,7 +758,7 @@ impl<'db> TyChecker<'db> {
             let len_ty = TyId::const_ty(self.db, len_ty);
             let array_ty = TyId::app(self.db, array, len_ty);
 
-            if let Some(diag) = array_ty.emit_diag(self.db, len_body.lazy_span().into()) {
+            if let Some(diag) = array_ty.emit_diag(self.db, len_body.span().into()) {
                 self.push_diag(diag);
             }
 
@@ -878,7 +875,7 @@ impl<'db> TyChecker<'db> {
 
         let lhs_base_ty = lhs_ty.base_ty(self.db);
         if lhs_base_ty.is_ty_var(self.db) {
-            let diag = BodyDiag::TypeMustBeKnown(lhs.lazy_span(self.body()).into());
+            let diag = BodyDiag::TypeMustBeKnown(lhs.span(self.body()).into());
             self.push_diag(diag);
             return ExprProp::invalid(self.db);
         }
@@ -887,7 +884,7 @@ impl<'db> TyChecker<'db> {
         // operator when these traits are defined in `std`.
         let diag = BodyDiag::ops_trait_not_implemented(
             self.db,
-            expr.lazy_span(self.body()).into(),
+            expr.span(self.body()).into(),
             lhs_ty,
             AugAssignOp(*op),
         );
@@ -898,7 +895,7 @@ impl<'db> TyChecker<'db> {
 
     fn check_assign_lhs(&mut self, lhs: ExprId, typed_lhs: &ExprProp<'db>) {
         if !self.is_assignable_expr(lhs) {
-            let diag = BodyDiag::NonAssignableExpr(lhs.lazy_span(self.body()).into());
+            let diag = BodyDiag::NonAssignableExpr(lhs.span(self.body()).into());
             self.push_diag(diag);
 
             return;
@@ -914,13 +911,13 @@ impl<'db> TyChecker<'db> {
                     );
 
                     BodyDiag::ImmutableAssignment {
-                        primary: lhs.lazy_span(self.body()).into(),
+                        primary: lhs.span(self.body()).into(),
                         binding: Some((ident, def_span)),
                     }
                 }
 
                 None => BodyDiag::ImmutableAssignment {
-                    primary: lhs.lazy_span(self.body()).into(),
+                    primary: lhs.span(self.body()).into(),
                     binding: None,
                 },
             };
@@ -951,7 +948,10 @@ impl<'db> TyChecker<'db> {
         let candidate = match select_method_candidate(
             db,
             Spanned::new(canonical_r_ty.value, span.clone().into()),
-            Spanned::new(name, span.segment(path.segment_index(hir_db)).into()),
+            Spanned::new(
+                name,
+                span.clone().segment(path.segment_index(hir_db)).into(),
+            ),
             self.env.scope(),
             self.env.assumptions(),
         ) {
@@ -988,7 +988,7 @@ impl<'db> TyChecker<'db> {
         let inst = canonical_r_ty.extract_solution(&mut self.table, trait_cand.inst);
 
         if matches!(candidate, Candidate::NeedsConfirmation(_)) {
-            self.env.register_confirmation(inst, span.clone().into());
+            self.env.register_confirmation(inst, span.into());
         }
 
         let method_ty = method.instantiate_with_inst(&mut self.table, receiver_ty, inst);

@@ -39,7 +39,7 @@ fn find_path_surrounding_cursor<'db>(
         let span = lazy_span.resolve(db).unwrap();
         if span.range.contains(cursor) {
             for idx in 0..=path.segment_index(db) {
-                let seg_span = lazy_span.segment(idx).resolve(db).unwrap();
+                let seg_span = lazy_span.clone().segment(idx).resolve(db).unwrap();
                 if seg_span.range.contains(cursor) {
                     return Some((
                         path.segment(db, idx).unwrap(),
@@ -64,7 +64,7 @@ pub fn find_enclosing_item<'db>(
     let mut smallest_range_size = None;
 
     for item in items {
-        let lazy_item_span = DynLazySpan::from(item.lazy_span());
+        let lazy_item_span = DynLazySpan::from(item.span());
         let item_span = lazy_item_span.resolve(db).unwrap();
 
         if item_span.range.contains(cursor) {
@@ -196,7 +196,7 @@ mod tests {
         let mut cursors = Vec::new();
         for (path, _, lazy_span) in path_collector.paths {
             for idx in 0..=path.segment_index(db) {
-                let seg_span = lazy_span.segment(idx).resolve(db).unwrap();
+                let seg_span = lazy_span.clone().segment(idx).resolve(db).unwrap();
                 cursors.push(seg_span.range.start());
             }
         }

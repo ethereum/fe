@@ -1,7 +1,8 @@
 mod test_db;
 
 use fe_hir_analysis::{
-    analysis_pass::AnalysisPassManager, name_resolution::PathAnalysisPass, ty::FuncAnalysisPass,
+    analysis_pass::AnalysisPassManager,
+    ty::{AdtDefAnalysisPass, FuncAnalysisPass},
 };
 use hir::lower::map_file_to_mod;
 use test_db::HirAnalysisTestDb;
@@ -29,8 +30,8 @@ fn test_updated() {
     for version in versions {
         {
             let top_mod = map_file_to_mod(&db, ingot, file);
-            let mut pass_manager = initialize_pass_manager(&db);
-            let _ = pass_manager.run_on_module(top_mod);
+            let mut pass_manager = initialize_pass_manager();
+            let _ = pass_manager.run_on_module(&db, top_mod);
         }
 
         {
@@ -39,18 +40,16 @@ fn test_updated() {
     }
 }
 
-fn initialize_pass_manager(db: &HirAnalysisTestDb) -> AnalysisPassManager<'_> {
+fn initialize_pass_manager() -> AnalysisPassManager {
     let mut pass_manager = AnalysisPassManager::new();
-    // pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
-    // pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
-    // pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
-    // pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass::new(db)));
-    // pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass::new(db)));
-    // pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));
-    // pass_manager.add_module_pass(Box::new(ImplAnalysisPass::new(db)));
-    // pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
-    // pass_manager.add_module_pass(Box::new(BodyAnalysisPass::new(db)));
+    // pass_manager.add_module_pass(Box::new(ParsingPass {}));
+    // pass_manager.add_module_pass(Box::new(ImportAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass {}));
+    // pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass {}));
+    // pass_manager.add_module_pass(Box::new(TraitAnalysisPass {}));
+    // pass_manager.add_module_pass(Box::new(ImplAnalysisPass {}));
+    // pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(FuncAnalysisPass {}));
+    // pass_manager.add_module_pass(Box::new(BodyAnalysisPass {}));
     pass_manager
 }

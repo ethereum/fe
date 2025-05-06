@@ -12,7 +12,9 @@ use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
 use hir::{
     hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, TypeId as HirTyId},
-    span::{expr::LazyExprSpan, pat::LazyPatSpan, DynLazySpan},
+    span::{
+        expr::LazyExprSpan, pat::LazyPatSpan, path::LazyPathSpan, types::LazyTySpan, DynLazySpan,
+    },
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
 pub(crate) use path::RecordLike;
@@ -30,7 +32,9 @@ use super::{
     unify::{InferenceKey, UnificationError, UnificationTable},
 };
 use crate::{
-    name_resolution::{resolve_path, PathRes, PathResError},
+    name_resolution::{
+        diagnostics::NameResDiag, resolve_path_with_observer, PathRes, PathResError,
+    },
     ty::ty_def::{inference_keys, TyFlags},
     HirAnalysisDb,
 };
@@ -117,18 +121,18 @@ impl<'db> TyChecker<'db> {
     fn lower_ty(
         &mut self,
         hir_ty: HirTyId<'db>,
-        span: DynLazySpan<'db>,
+        span: LazyTySpan<'db>,
         star_kind_required: bool,
     ) -> TyId<'db> {
         let ty = lower_hir_ty(self.db, hir_ty, self.env.scope());
-        if let Some(diag) = ty.emit_diag(self.db, span.clone()) {
+        if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
             self.push_diag(diag)
         }
 
         if star_kind_required && ty.is_star_kind(self.db) {
             ty
         } else {
-            let diag: TyDiagCollection = TyLowerDiag::ExpectedStarKind(span).into();
+            let diag: TyDiagCollection = TyLowerDiag::ExpectedStarKind(span.into()).into();
             self.push_diag(diag);
             TyId::invalid(self.db, InvalidCause::Other)
         }
@@ -149,7 +153,7 @@ impl<'db> TyChecker<'db> {
         T: Into<Typeable<'db>>,
     {
         let t = t.into();
-        let actual = self.equate_ty(actual, expected, t.lazy_span(self.env.body()));
+        let actual = self.equate_ty(actual, expected, t.span(self.env.body()));
 
         match t {
             Typeable::Expr(expr, mut typed_expr) => {
@@ -215,11 +219,38 @@ impl<'db> TyChecker<'db> {
         &mut self,
         path: PathId<'db>,
         resolve_tail_as_value: bool,
+        span: LazyPathSpan<'db>,
     ) -> Result<PathRes<'db>, PathResError<'db>> {
-        match resolve_path(self.db, path, self.env.scope(), resolve_tail_as_value) {
+        let scope = self.env.scope();
+        let mut invisible = None;
+        let mut check_visibility = |path: PathId<'db>, reso: &PathRes<'db>| {
+            if invisible.is_some() {
+                return;
+            }
+            if !reso.is_visible_from(self.db, scope) {
+                invisible = Some((path, reso.name_span(self.db)));
+            }
+        };
+
+        let res = match resolve_path_with_observer(
+            self.db,
+            path,
+            scope,
+            resolve_tail_as_value,
+            &mut check_visibility,
+        ) {
             Ok(r) => Ok(r.map_over_ty(|ty| self.table.instantiate_to_term(ty))),
             Err(err) => Err(err),
+        };
+
+        if let Some((path, deriv_span)) = invisible {
+            let span = span.clone().segment(path.segment_index(self.db)).ident();
+            let ident = path.ident(self.db);
+            let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
+            self.diags.push(diag.into());
         }
+
+        res
     }
 }
 
@@ -271,10 +302,10 @@ enum Typeable<'db> {
 }
 
 impl Typeable<'_> {
-    fn lazy_span(self, body: Body) -> DynLazySpan {
+    fn span(self, body: Body) -> DynLazySpan {
         match self {
-            Self::Expr(expr, ..) => expr.lazy_span(body).into(),
-            Self::Pat(pat) => pat.lazy_span(body).into(),
+            Self::Expr(expr, ..) => expr.span(body).into(),
+            Self::Pat(pat) => pat.span(body).into(),
         }
     }
 }

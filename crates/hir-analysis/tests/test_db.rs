@@ -17,10 +17,10 @@ use common::{
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
-    name_resolution::{DefConflictAnalysisPass, ImportAnalysisPass, PathAnalysisPass},
+    name_resolution::ImportAnalysisPass,
     ty::{
-        AdtDefAnalysisPass, BodyAnalysisPass, FuncAnalysisPass, ImplAnalysisPass,
-        ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
+        AdtDefAnalysisPass, BodyAnalysisPass, DefConflictAnalysisPass, FuncAnalysisPass,
+        ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
 };
 use hir::{
@@ -75,8 +75,8 @@ impl HirAnalysisTestDb {
     }
 
     pub fn assert_no_diags(&self, top_mod: TopLevelMod) {
-        let mut manager = initialize_analysis_pass(self);
-        let diags = manager.run_on_module(top_mod);
+        let mut manager = initialize_analysis_pass();
+        let diags = manager.run_on_module(self, top_mod);
 
         if !diags.is_empty() {
             let writer = BufferWriter::stderr(ColorChoice::Auto);
@@ -188,18 +188,17 @@ impl Default for HirPropertyFormatter<'_> {
     }
 }
 
-fn initialize_analysis_pass(db: &HirAnalysisTestDb) -> AnalysisPassManager<'_> {
+fn initialize_analysis_pass() -> AnalysisPassManager {
     let mut pass_manager = AnalysisPassManager::new();
-    pass_manager.add_module_pass(Box::new(ParsingPass::new(db)));
-    pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(ImportAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(PathAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(TraitAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(ImplAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(FuncAnalysisPass::new(db)));
-    pass_manager.add_module_pass(Box::new(BodyAnalysisPass::new(db)));
+    pass_manager.add_module_pass(Box::new(ParsingPass {}));
+    pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(ImportAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(AdtDefAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(TypeAliasAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(TraitAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(ImplAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(ImplTraitAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(FuncAnalysisPass {}));
+    pass_manager.add_module_pass(Box::new(BodyAnalysisPass {}));
     pass_manager
 }

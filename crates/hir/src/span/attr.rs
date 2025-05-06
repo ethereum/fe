@@ -12,19 +12,11 @@ define_lazy_span_node!(
 
 define_lazy_span_node!(LazyAttrSpan);
 impl<'db> LazyAttrSpan<'db> {
-    pub fn into_normal_attr(&self) -> LazyNormalAttrSpan<'db> {
-        self.clone().into_normal_attr_moved()
-    }
-
-    pub fn into_normal_attr_moved(self) -> LazyNormalAttrSpan<'db> {
+    pub fn into_normal_attr(self) -> LazyNormalAttrSpan<'db> {
         LazyNormalAttrSpan(self.0)
     }
 
-    pub fn into_doc_comment_attr(&self) -> LazyDocCommentAttrSpan<'db> {
-        self.clone().into_doc_comment_attr_moved()
-    }
-
-    pub fn into_doc_comment_attr_moved(self) -> LazyDocCommentAttrSpan<'db> {
+    pub fn into_doc_comment_attr(self) -> LazyDocCommentAttrSpan<'db> {
         LazyDocCommentAttrSpan(self.0)
     }
 }

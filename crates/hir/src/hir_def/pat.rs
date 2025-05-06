@@ -21,7 +21,7 @@ pub struct PatId(u32);
 entity_impl!(PatId);
 
 impl PatId {
-    pub fn lazy_span(self, body: Body) -> LazyPatSpan {
+    pub fn span(self, body: Body) -> LazyPatSpan {
         LazyPatSpan::new(body, self)
     }
 

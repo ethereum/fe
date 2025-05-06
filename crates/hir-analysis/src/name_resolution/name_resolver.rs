@@ -1,8 +1,4 @@
-use std::{
-    cmp,
-    collections::hash_map::{Entry, IntoValues},
-    fmt, mem,
-};
+use std::{cmp, fmt, mem};
 
 use bitflags::bitflags;
 use hir::{
@@ -12,12 +8,14 @@ use hir::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
-        Enum, GenericParam, GenericParamOwner, IdentId, ItemKind, Mod, TopLevelMod, Trait, Use,
+        Enum, EnumVariant, GenericParam, GenericParamOwner, IdentId, ItemKind, Mod, TopLevelMod,
+        Trait, Use,
     },
     span::DynLazySpan,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
+use thin_vec::ThinVec;
 
 use super::{
     import_resolver::Importer,
@@ -90,9 +88,10 @@ impl Default for QueryDirective {
 /// The struct contains the lookup result of a name query.
 /// The results can contain more than one name resolutions which belong to
 /// different name domains.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Update)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Update)]
 pub struct NameResBucket<'db> {
-    pub(super) bucket: FxHashMap<NameDomain, NameResolutionResult<'db, NameRes<'db>>>,
+    // Contains a maximum of 3 entries (one for each distinct NameDomain)
+    pub(super) bucket: ThinVec<(NameDomain, NameResolutionResult<'db, NameRes<'db>>)>,
 }
 
 impl<'db> NameResBucket<'db> {
@@ -106,15 +105,17 @@ impl<'db> NameResBucket<'db> {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &NameResolutionResult<'db, NameRes<'db>>> {
-        self.bucket.values()
+        self.bucket.iter().map(|(_, res)| res)
     }
 
     pub fn iter_ok(&self) -> impl Iterator<Item = &NameRes<'db>> {
-        self.bucket.values().filter_map(|res| res.as_ref().ok())
+        self.bucket.iter().filter_map(|(_, res)| res.as_ref().ok())
     }
 
     pub fn iter_ok_mut(&mut self) -> impl Iterator<Item = &mut NameRes<'db>> {
-        self.bucket.values_mut().filter_map(|res| res.as_mut().ok())
+        self.bucket
+            .iter_mut()
+            .filter_map(|(_, res)| res.as_mut().ok())
     }
 
     pub fn errors(&self) -> impl Iterator<Item = (NameDomain, &NameResolutionError<'db>)> {
@@ -126,7 +127,7 @@ impl<'db> NameResBucket<'db> {
     /// Returns the resolution of the given `domain`.
     pub fn pick(&self, domain: NameDomain) -> &NameResolutionResult<'db, NameRes<'db>> {
         for domain in domain.iter() {
-            if let Some(res) = self.bucket.get(&domain) {
+            if let Some((_, res)) = self.bucket.iter().find(|(d, _)| *d == domain) {
                 return res;
             }
         }
@@ -147,14 +148,14 @@ impl<'db> NameResBucket<'db> {
 
     pub fn filter_by_domain(&mut self, domain: NameDomain) {
         for domain in domain.iter() {
-            self.bucket.retain(|d, _| *d == domain);
+            self.bucket.retain(|(d, _)| *d == domain);
         }
     }
 
     pub(super) fn merge(&mut self, bucket: &NameResBucket<'db>) {
         for (domain, err) in bucket.errors() {
             if let Err(NameResolutionError::NotFound) = self.pick(domain) {
-                self.bucket.insert(domain, Err(err.clone()));
+                self.bucket.push((domain, Err(err.clone())));
             }
         }
         for res in bucket.iter_ok() {
@@ -171,48 +172,41 @@ impl<'db> NameResBucket<'db> {
     /// Push the `res` into the set.
     fn push(&mut self, res: &NameRes<'db>) {
         for domain in res.domain.iter() {
-            match self.bucket.entry(domain) {
-                Entry::Occupied(mut e) => {
-                    let old_res = match e.get_mut() {
-                        Ok(res) => res,
-                        Err(NameResolutionError::NotFound) => {
-                            e.insert(Ok(res.clone())).ok();
-                            return;
-                        }
-                        Err(NameResolutionError::Ambiguous(ambiguous_set)) => {
-                            if ambiguous_set[0].derivation == res.derivation {
-                                ambiguous_set.push(res.clone());
-                            }
-                            return;
-                        }
-                        Err(_) => {
-                            return;
-                        }
-                    };
+            let existing_idx = self.bucket.iter().position(|(d, _)| *d == domain);
 
+            let Some(idx) = existing_idx else {
+                self.bucket.push((domain, Ok(res.clone())));
+                continue;
+            };
+            let (_, existing_res) = &mut self.bucket[idx];
+            match existing_res {
+                Ok(old_res) => {
                     let old_derivation = old_res.derivation.clone();
                     match res.derivation.cmp(&old_derivation) {
                         cmp::Ordering::Less => {}
                         cmp::Ordering::Equal => {
                             if old_res.kind != res.kind {
-                                let old_res_cloned = old_res.clone();
-                                let res = res.clone();
-                                e.insert(Err(NameResolutionError::Ambiguous(vec![
-                                    old_res_cloned,
-                                    res,
-                                ])))
-                                .ok();
+                                *existing_res =
+                                    Err(NameResolutionError::Ambiguous(ThinVec::from([
+                                        old_res.clone(),
+                                        res.clone(),
+                                    ])));
                             }
                         }
                         cmp::Ordering::Greater => {
-                            e.insert(Ok(res.clone())).ok();
+                            *existing_res = Ok(res.clone());
                         }
                     }
                 }
-
-                Entry::Vacant(e) => {
-                    e.insert(Ok(res.clone()));
+                Err(NameResolutionError::NotFound) => {
+                    *existing_res = Ok(res.clone());
                 }
+                Err(NameResolutionError::Ambiguous(ambiguous_set)) => {
+                    if ambiguous_set[0].derivation == res.derivation {
+                        ambiguous_set.push(res.clone());
+                    }
+                }
+                Err(_) => {}
             }
         }
     }
@@ -224,20 +218,11 @@ impl<'db> NameResBucket<'db> {
     }
 }
 
-impl<'db> IntoIterator for NameResBucket<'db> {
-    type Item = NameResolutionResult<'db, NameRes<'db>>;
-    type IntoIter = IntoValues<NameDomain, NameResolutionResult<'db, NameRes<'db>>>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.bucket.into_values()
-    }
-}
-
 impl<'db> From<NameRes<'db>> for NameResBucket<'db> {
     fn from(res: NameRes<'db>) -> Self {
-        let mut names = FxHashMap::default();
-        names.insert(res.domain, Ok(res));
-        Self { bucket: names }
+        Self {
+            bucket: ThinVec::from([(res.domain, Ok(res))]),
+        }
     }
 }
 
@@ -296,9 +281,9 @@ impl<'db> NameRes<'db> {
         }
     }
 
-    pub fn enum_variant(&self) -> Option<(ItemKind<'db>, usize)> {
+    pub fn enum_variant(&self) -> Option<EnumVariant> {
         match self.kind {
-            NameResKind::Scope(ScopeId::Variant(item, idx)) => Some((item, idx)),
+            NameResKind::Scope(ScopeId::Variant(v)) => Some(v),
             _ => None,
         }
     }
@@ -741,13 +726,13 @@ pub enum NameResolutionError<'db> {
     Invisible(Option<DynLazySpan<'db>>),
 
     /// The name is found, but it's ambiguous.
-    Ambiguous(Vec<NameRes<'db>>),
+    Ambiguous(ThinVec<NameRes<'db>>),
 
     /// The name is found, but it can't be used in the middle of a use path.
     InvalidPathSegment(NameRes<'db>),
 
     /// The definition conflicts with other definitions.
-    Conflict(IdentId<'db>, Vec<DynLazySpan<'db>>),
+    Conflict(IdentId<'db>, ThinVec<DynLazySpan<'db>>),
 }
 
 pub type NameResolutionResult<'db, T> = Result<T, NameResolutionError<'db>>;
@@ -805,9 +790,7 @@ impl NameDomain {
             ScopeId::Item(_) => Self::TYPE,
             ScopeId::GenericParam(parent, idx) => {
                 let parent = GenericParamOwner::from_item_opt(parent).unwrap();
-
-                let param = &parent.params(db).data(db)[idx];
-                match param {
+                match parent.param(db, idx as usize) {
                     GenericParam::Type(_) => NameDomain::TYPE,
                     GenericParam::Const(_) => NameDomain::TYPE | NameDomain::VALUE,
                 }

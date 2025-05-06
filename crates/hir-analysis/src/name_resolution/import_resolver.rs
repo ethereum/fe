@@ -12,6 +12,7 @@ use hir::{
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
+use thin_vec::ThinVec;
 
 use super::{
     diagnostics::NameResDiag,
@@ -352,7 +353,7 @@ impl<'db> ImportResolver<'db> {
         let mut bucket = resolver.resolve_query(query);
         // Filter out invisible resolutions.
         let mut invisible_span = None;
-        bucket.bucket.retain(|_, res| {
+        bucket.bucket.retain(|(_, res)| {
             let Ok(res) = res else {
                 return true;
             };
@@ -528,7 +529,7 @@ impl<'db> ImportResolver<'db> {
                     .iter()
                     .any(|ty| ty.name(self.db) == first_segment_ident))
         {
-            self.register_error(&i_use, NameResolutionError::Ambiguous(vec![]));
+            self.register_error(&i_use, NameResolutionError::Ambiguous(ThinVec::new()));
         }
     }
 
@@ -835,11 +836,7 @@ impl<'db> IntermediateUse<'db> {
 
     /// Returns the span of the current segment of the use.
     fn current_segment_span(&self) -> DynLazySpan<'db> {
-        self.use_
-            .lazy_span()
-            .path()
-            .segment(self.unresolved_from)
-            .into()
+        self.use_.span().path().segment(self.unresolved_from).into()
     }
 
     fn current_segment_ident(&self, db: &'db dyn HirAnalysisDb) -> Option<IdentId<'db>> {
@@ -947,10 +944,10 @@ impl<'db> IntermediateResolvedImports<'db> {
                         if i_use.use_ != use_ {
                             return Err(NameResolutionError::Conflict(
                                 imported_name,
-                                vec![
+                                ThinVec::from([
                                     i_use.use_.imported_name_span(db).unwrap(),
                                     cand.derived_from(db).unwrap(),
-                                ],
+                                ]),
                             ));
                         }
                     }

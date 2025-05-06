@@ -1,4 +1,5 @@
 use super::{
+    adt_def::AdtRef,
     def_analysis::AdtCycleMember,
     func_def::FuncDef,
     trait_def::{TraitDef, TraitInstId},
@@ -11,11 +12,13 @@ use crate::{
 use either::Either;
 use hir::{
     hir_def::{
-        FieldIndex, Func, IdentId, ImplTrait, ItemKind, PathId, Trait, TypeAlias as HirTypeAlias,
+        Enum, FieldIndex, FieldParent, Func, IdentId, ImplTrait, ItemKind, PathId, Trait,
+        TypeAlias as HirTypeAlias,
     },
-    span::{expr::LazyMethodCallExprSpan, DynLazySpan},
+    span::{expr::LazyMethodCallExprSpan, params::LazyGenericParamSpan, DynLazySpan},
 };
 use salsa::Update;
+use smallvec1::SmallVec;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
 pub enum FuncBodyDiag<'db> {
@@ -25,7 +28,7 @@ pub enum FuncBodyDiag<'db> {
 }
 
 impl<'db> FuncBodyDiag<'db> {
-    pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher<'db> + 'db> {
+    pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher + 'db> {
         match self {
             Self::Ty(diag) => diag.to_voucher(),
             Self::Body(diag) => Box::new(diag.clone()) as _,
@@ -37,15 +40,17 @@ impl<'db> FuncBodyDiag<'db> {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
 pub enum TyDiagCollection<'db> {
     Ty(TyLowerDiag<'db>),
+    PathRes(NameResDiag<'db>),
     Satisfiability(TraitConstraintDiag<'db>),
     TraitLower(TraitLowerDiag<'db>),
     Impl(ImplDiag<'db>),
 }
 
 impl<'db> TyDiagCollection<'db> {
-    pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher<'db> + 'db> {
+    pub(super) fn to_voucher(&self) -> Box<dyn DiagnosticVoucher + 'db> {
         match self.clone() {
             TyDiagCollection::Ty(diag) => Box::new(diag) as _,
+            TyDiagCollection::PathRes(diag) => Box::new(diag) as _,
             TyDiagCollection::Satisfiability(diag) => Box::new(diag) as _,
             TyDiagCollection::TraitLower(diag) => Box::new(diag) as _,
             TyDiagCollection::Impl(diag) => Box::new(diag) as _,
@@ -82,23 +87,22 @@ pub enum TyLowerDiag<'db> {
     InconsistentKindBound {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
-        old: Kind,
-        new: Kind,
+        bound: Kind,
     },
 
     KindBoundNotAllowed(DynLazySpan<'db>),
 
     GenericParamAlreadyDefinedInParent {
-        span: DynLazySpan<'db>,
+        span: LazyGenericParamSpan<'db>,
         conflict_with: DynLazySpan<'db>,
         name: IdentId<'db>,
     },
 
-    DuplicatedArgName {
-        primary: DynLazySpan<'db>,
-        conflict_with: DynLazySpan<'db>,
-        name: IdentId<'db>,
-    },
+    DuplicateArgName(Func<'db>, SmallVec<[u16; 4]>),
+    DuplicateArgLabel(Func<'db>, SmallVec<[u16; 4]>),
+    DuplicateFieldName(FieldParent<'db>, SmallVec<[u16; 4]>),
+    DuplicateVariantName(Enum<'db>, SmallVec<[u16; 4]>),
+    DuplicateGenericParamName(AdtRef<'db>, SmallVec<[u16; 4]>),
 
     InvalidConstParamTy(DynLazySpan<'db>),
     RecursiveConstParamTy(DynLazySpan<'db>),
@@ -135,7 +139,7 @@ impl TyLowerDiag<'_> {
             Self::InconsistentKindBound { .. } => 5,
             Self::KindBoundNotAllowed(_) => 6,
             Self::GenericParamAlreadyDefinedInParent { .. } => 7,
-            Self::DuplicatedArgName { .. } => 8,
+            Self::DuplicateArgName { .. } => 8,
             Self::InvalidConstParamTy { .. } => 9,
             Self::RecursiveConstParamTy { .. } => 10,
             Self::ConstTyMismatch { .. } => 11,
@@ -144,6 +148,10 @@ impl TyLowerDiag<'_> {
             Self::AssocTy(_) => 14,
             Self::InvalidConstTyExpr(_) => 15,
             Self::TooManyGenericArgs { .. } => 16,
+            Self::DuplicateFieldName(..) => 17,
+            Self::DuplicateVariantName(..) => 18,
+            Self::DuplicateGenericParamName(..) => 19,
+            Self::DuplicateArgLabel(..) => 20,
         }
     }
 }
@@ -612,3 +620,5 @@ impl ImplDiag<'_> {
         }
     }
 }
+
+pub struct DefConflictError<'db>(pub SmallVec<[ItemKind<'db>; 2]>);

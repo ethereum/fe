@@ -92,11 +92,16 @@ impl<'db> PathId<'db> {
     }
 
     pub fn pretty_print(self, db: &dyn HirDb) -> String {
-        let ident = self.ident(db).to_opt().map_or("_", |id| id.data(db));
+        let this = format!(
+            "{}{}",
+            self.ident(db).to_opt().map_or("_", |id| id.data(db)),
+            self.generic_args(db).pretty_print(db)
+        );
+
         if let Some(parent) = self.parent(db) {
-            parent.pretty_print(db) + "::" + ident
+            parent.pretty_print(db) + "::" + &this
         } else {
-            ident.to_string()
+            this
         }
     }
 }

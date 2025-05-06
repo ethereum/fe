@@ -1,7 +1,7 @@
 ---
 source: crates/hir-analysis/tests/ty_check.rs
 expression: res
-input_file: crates/hir-analysis/test_files/ty_check/pat/path_tuple.fe
+input_file: test_files/ty_check/pat/path_tuple.fe
 ---
 note: 
    ┌─ path_tuple.fe:5:14
@@ -91,7 +91,7 @@ note:
   ┌─ path_tuple.fe:7:22
   │
 7 │     let Foo::Variant(.., a, b) = Foo::Variant(1, 2, 3, 4)
-  │                      ^^ <invalid>
+  │                      ^^ invalid(Other)
 
 note: 
   ┌─ path_tuple.fe:7:26
@@ -157,7 +157,7 @@ note:
   ┌─ path_tuple.fe:8:25
   │
 8 │     let Foo::Variant(a, .., b, c) = Foo::Variant(1, 2, 3, 4)
-  │                         ^^ <invalid>
+  │                         ^^ invalid(Other)
 
 note: 
   ┌─ path_tuple.fe:8:29
@@ -235,7 +235,7 @@ note:
   ┌─ path_tuple.fe:9:31
   │
 9 │     let Foo::Variant(a, b, c, ..) = Foo::Variant(1, 2, 3, 4)
-  │                               ^^ <invalid>
+  │                               ^^ invalid(Other)
 
 note: 
   ┌─ path_tuple.fe:9:37
