@@ -1,212 +1,26 @@
-use camino::Utf8PathBuf;
+use imbl::OrdMap;
+use url::Url;
 
-use crate::{
-    indexmap::IndexSet,
-    input::{IngotDependency, IngotKind, Version},
-    Core, InputDb, InputFile, InputIngot,
-};
+use crate::{workspace::IngotWorkspace, InputDb, InputFile};
 
-// Grant suggested that this `IngotBuilder` could eventually
-// implement the `ResolutionHandler` trait directly (once it's implemented)
-/// A builder for creating InputIngot instances
-pub struct IngotBuilder<'a> {
-    db: &'a dyn InputDb,
-    ingot_path: Utf8PathBuf, // Absolute path to the base of the ingot
-    kind: IngotKind,
-    version: Version,
-    dependencies: IndexSet<IngotDependency>,
-    files: IndexSet<InputFile>,
-    core_ingot: Option<InputIngot>,
-}
+#[salsa::tracked]
+pub fn ingot_files(
+    db: &dyn InputDb,
+    workspace: IngotWorkspace,
+    ingot_root: Url,
+) -> OrdMap<Url, InputFile> {
+    // let ingot_path = self.ingot_path(db, &ingot);
+    // Match ingot_path and return early if None
 
-impl<'a> IngotBuilder<'a> {
-    /// Create a new InputIngot builder
-    /// `ingot_path` should be the absolute path to the base of the ingot
-    pub fn new(db: &'a dyn InputDb, ingot_path: impl Into<Utf8PathBuf>) -> Self {
-        Self {
-            db,
-            ingot_path: ingot_path.into(),
-            kind: IngotKind::Local,
-            version: Version::new(0, 0, 0),
-            dependencies: IndexSet::default(),
-            files: IndexSet::default(),
-            core_ingot: None,
-        }
-    }
+    let upper_bound = ingot_root
 
-    /// Create a standalone ingot with a single file and path
-    pub fn standalone(
-        db: &'a dyn InputDb,
-        file_path: impl Into<Utf8PathBuf>,
-        contents: impl Into<String>,
-    ) -> Self {
-        let full_path = file_path.into();
-        // For standalone ingots, the parent path of the file must exist
-        let ingot_path = full_path
-            .parent()
-            .map(|p| p.to_path_buf())
-            .expect("Standalone ingot file must have a parent directory");
+    // Get files with paths between ingot_path and upper_bound
+    let files = workspace
+        .files(db)
+        .split(&ingot_root)
+        .1 // Get files with paths >= ingot_path
+        .split(&upper_bound)
+        .0; // Get files with paths < upper_bound
 
-        // For standalone files, we need to derive a relative path from the original
-        let relative_file_path = ensure_relative_path(&ingot_path, full_path)
-            .expect("Could not create a relative path for standalone file");
-
-        Self::new(db, ingot_path)
-            .kind(IngotKind::StandAlone)
-            .file_from_contents(relative_file_path, contents)
-    }
-
-    /// Create a library ingot
-    pub fn external(db: &'a dyn InputDb, ingot_path: impl Into<Utf8PathBuf>) -> Self {
-        Self::new(db, ingot_path).kind(IngotKind::External)
-    }
-
-    /// Create a local ingot (default)
-    pub fn local(db: &'a dyn InputDb, ingot_path: impl Into<Utf8PathBuf>) -> Self {
-        Self::new(db, ingot_path).kind(IngotKind::Local)
-    }
-
-    /// Set the ingot kind
-    pub fn kind(mut self, kind: IngotKind) -> Self {
-        self.kind = kind;
-        self
-    }
-
-    /// Set the ingot version
-    pub fn version(mut self, version: Version) -> Self {
-        self.version = version;
-        self
-    }
-
-    /// Add a dependency to the ingot
-    pub fn dependency(mut self, name: &str, ingot: InputIngot) -> Self {
-        self.dependencies.insert(IngotDependency::new(name, ingot));
-        self
-    }
-
-    /// Add multiple dependencies to the ingot
-    pub fn dependencies(mut self, deps: IndexSet<IngotDependency>) -> Self {
-        self.dependencies = deps;
-        self
-    }
-
-    /// Add a file to the ingot
-    pub fn file(mut self, file: InputFile) -> Self {
-        self.files.insert(file);
-        self
-    }
-
-    /// Add multiple files to the ingot
-    pub fn files(mut self, files: IndexSet<InputFile>) -> Self {
-        self.files = files;
-        self
-    }
-
-    /// Add a file to the ingot from a path and contents
-    /// The path can be either relative to the ingot base or absolute
-    /// (which will be converted to a relative path)
-    pub fn file_from_contents(
-        mut self,
-        path: impl Into<Utf8PathBuf>,
-        contents: impl Into<String>,
-    ) -> Self {
-        let input_path = path.into();
-        let relative_path = ensure_relative_path(&self.ingot_path, input_path)
-            .expect("Path must be relative or a child of the ingot base path");
-
-        // Create a new InputFile with the relative path and contents
-        let file = InputFile::__new_impl(self.db, relative_path, contents.into());
-        self.files.insert(file);
-        self
-    }
-
-    /// Add multiple files to the ingot from path-content pairs
-    /// Paths can be either relative to the ingot base or absolute
-    /// (which will be converted to relative paths)
-    pub fn files_from_contents(
-        mut self,
-        files: impl IntoIterator<Item = (impl Into<Utf8PathBuf>, impl Into<String>)>,
-    ) -> Self {
-        for (path, contents) in files {
-            let input_path = path.into();
-            let relative_path = ensure_relative_path(&self.ingot_path, input_path)
-                .expect("Path must be relative or a child of the ingot base path");
-
-            // Create a new InputFile for each path-content pair
-            let file = InputFile::__new_impl(self.db, relative_path, contents.into());
-            self.files.insert(file);
-        }
-        self
-    }
-
-    /// Set the core ingot of the ingot
-    pub fn with_core_ingot(mut self, core_ingot: InputIngot) -> Self {
-        self.core_ingot = Some(core_ingot);
-        self
-    }
-
-    /// Build the InputIngot
-    pub fn build(self) -> InputIngot {
-        // For standalone ingots, ensure there's only one file and set it as the root file
-        let files = self.files;
-
-        let mut dependencies = self.dependencies;
-        // Add core ingot as a dependency if provided
-        if let Some(core) = self.core_ingot {
-            dependencies.insert(IngotDependency::new("core", core));
-        }
-
-        InputIngot::from_files(
-            self.db,
-            self.ingot_path,
-            self.kind,
-            self.version,
-            dependencies,
-            files,
-        )
-    }
-}
-
-/// Helper function to ensure a path is relative to a base path
-/// Returns a relative path if:
-/// - The path is already relative (returned as-is)
-/// - The path is absolute and is a child of the base path (converted to relative)
-///   Returns an error if the path is absolute but not a child of the base path
-fn ensure_relative_path(
-    base_path: &Utf8PathBuf,
-    path: Utf8PathBuf,
-) -> Result<Utf8PathBuf, &'static str> {
-    if path.is_relative() {
-        // Path is already relative, return as-is
-        Ok(path)
-    } else if path.starts_with(base_path) {
-        // Path is absolute and under the base path, make it relative
-        path.strip_prefix(base_path)
-            .map(|p| p.to_path_buf())
-            .map_err(|_| "Failed to strip prefix from path")
-    } else {
-        // Path is absolute but not under the base path
-        Err("Absolute path must be a child of the ingot base path")
-    }
-}
-
-pub fn builtin_core(db: &dyn InputDb) -> InputIngot {
-    // Use a virtual path that doesn't depend on the filesystem
-    let ingot_path = Utf8PathBuf::from("/virtual/core");
-
-    let builder = IngotBuilder::new(db, ingot_path)
-        .kind(IngotKind::Core)
-        .version(Version::new(0, 0, 0));
-
-    let files = Core::iter()
-        .filter(|file| file.ends_with(".fe"))
-        .filter_map(|file| {
-            Core::get(&file).map(|content| {
-                let contents = String::from_utf8(content.data.into_owned()).unwrap();
-                // Store paths relative to the ingot root
-                (file.as_ref().to_string(), contents)
-            })
-        });
-
-    builder.files_from_contents(files).build()
+    files
 }

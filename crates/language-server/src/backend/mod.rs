@@ -4,8 +4,6 @@ use async_lsp::ClientSocket;
 use db::LanguageServerDatabase;
 use workspace::Workspace;
 
-// use tower_lsp::Client;
-
 pub struct Backend {
     pub(super) client: ClientSocket,
     pub(super) db: LanguageServerDatabase,

@@ -20,3 +20,6 @@ parser.workspace = true
 ordermap = "0.5.5"
 rustc-hash.workspace = true
 blart = "0.3.0"
+imbl = "5.0.0"
+bimap = "0.6.3"
+url = "2.5.4"

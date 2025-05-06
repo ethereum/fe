@@ -1,5 +1,6 @@
 use url::Url;
 
+#[derive(Debug)]
 pub enum UrlExtError {
     DirectoryRangeError,
 }
@@ -51,34 +52,39 @@ impl UrlExt for Url {
     fn directory_range(&self) -> Result<(Url, Url), UrlExtError> {
         let left = self.directory().ok_or(UrlExtError::DirectoryRangeError)?;
         let mut right = left.clone();
-        let mut segments = left
-            .path_segments()
-            .ok_or(UrlExtError::DirectoryRangeError)?;
 
-        if let Some(final_segment) = segments.next_back() {
-            // if there's a final segment we aren't at the root level yet
-            let mut right_segments = right
-                .path_segments_mut()
-                .map_err(|_| UrlExtError::DirectoryRangeError)?;
-            let incremented_final_segment = increment_string(final_segment);
-            right_segments
-                .pop()
-                .push(incremented_final_segment.as_str());
-            drop(right_segments);
-            return Ok((left, right));
-        } else if let Some(mut host) = right.host().map(|h| h.to_string()) {
-            // we must have been at the root level...
-            // so we'll need to increment the last character of the host
-            if let Some(last) = host.to_string().pop() {
-                host.push((last as u8 + 1) as char);
-            }
-            match right.set_host(Some(host.as_str())) {
-                Ok(_) => return Ok((left, right)),
-                Err(_) => return Err(UrlExtError::DirectoryRangeError),
+        // If at root level
+        if left.path() == "/" {
+            // Increment the host
+            if let Some(mut host) = right.host().map(|h| h.to_string()) {
+                if let Some(last) = host.pop() {
+                    host.push((last as u8 + 1) as char);
+                }
+                right
+                    .set_host(Some(&host))
+                    .map_err(|_| UrlExtError::DirectoryRangeError)?;
+            } else {
+                return Err(UrlExtError::DirectoryRangeError);
             }
         } else {
-            Err(UrlExtError::DirectoryRangeError)
+            // For a directory URL like "https://example.com/foo/bar/"
+            // We want to increment "bar" to "bas"
+            let path = left.path();
+
+            // Find the last segment by looking for the last '/' that isn't at the end
+            if let Some(last_slash_pos) = path[..path.len() - 1].rfind('/') {
+                let segment_to_increment = &path[last_slash_pos + 1..path.len() - 1];
+                let incremented = increment_string(segment_to_increment);
+
+                // Build new path
+                let new_path = format!("{}{}/", &path[..last_slash_pos + 1], incremented);
+                right.set_path(&new_path);
+            } else {
+                return Err(UrlExtError::DirectoryRangeError);
+            }
         }
+
+        Ok((left, right))
     }
 }
 
@@ -130,5 +136,52 @@ mod tests {
             "Parent should be `None` but instead we got {:?}",
             parent
         );
+    }
+
+    #[test]
+    fn test_increment_string() {
+        assert_eq!(increment_string("a"), "b");
+        assert_eq!(increment_string("z"), "{");
+        assert_eq!(increment_string("9"), ":");
+        assert_eq!(increment_string("foo"), "fop");
+        assert_eq!(increment_string("bar"), "bas");
+        assert_eq!(increment_string(""), "");
+    }
+
+    #[test]
+    fn test_directory_range_basic() {
+        let url = Url::parse("https://example.com/foo/bar/").unwrap();
+        let (left, right) = url.directory_range().unwrap();
+        assert_eq!(left.as_str(), "https://example.com/foo/bar/");
+        assert_eq!(right.as_str(), "https://example.com/foo/bas/");
+
+        // Test with nested directory
+        let url = Url::parse("https://example.com/foo/bar/baz/").unwrap();
+        let (left, right) = url.directory_range().unwrap();
+        assert_eq!(left.as_str(), "https://example.com/foo/bar/baz/");
+        assert_eq!(right.as_str(), "https://example.com/foo/bar/bba/");
+    }
+
+    #[test]
+    fn test_directory_range_root() {
+        let url = Url::parse("https://example.com/").unwrap();
+        let (left, right) = url.directory_range().unwrap();
+        assert_eq!(left.as_str(), "https://example.com/");
+        assert_eq!(right.as_str(), "https://example.con/");
+    }
+
+    #[test]
+    fn test_directory_range_non_directory() {
+        let url = Url::parse("https://example.com/foo/bar").unwrap();
+        let (left, right) = url.directory_range().unwrap();
+        assert_eq!(left.as_str(), "https://example.com/foo/");
+        assert_eq!(right.as_str(), "https://example.com/fop/");
+    }
+
+    #[test]
+    fn test_directory_range_error() {
+        let url = Url::parse("data:text/plain,Hello").unwrap();
+        let result = url.directory_range();
+        assert!(result.is_err());
     }
 }
