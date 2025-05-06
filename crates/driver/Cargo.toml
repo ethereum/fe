@@ -18,3 +18,4 @@ common.workspace = true
 hir.workspace = true
 hir-analysis.workspace = true
 resolver.workspace = true
+indexmap = "2.9"

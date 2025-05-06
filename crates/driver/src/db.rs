@@ -17,6 +17,7 @@ use hir_analysis::{
         ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
     },
 };
+use resolver::ResolutionHandler;
 
 use crate::diagnostics::ToCsDiag;
 
