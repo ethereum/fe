@@ -1,5 +1,5 @@
 use camino::Utf8Path;
-use common::{indexmap::IndexMap, InputFile, InputIngot};
+use common::{indexmap::IndexMap, File};
 use cranelift_entity::{entity_impl, EntityRef, PrimaryMap};
 use salsa::Update;
 
@@ -256,7 +256,7 @@ impl<'db> ModuleTreeBuilder<'db> {
         }
     }
 
-    fn parent_module(&self, file: InputFile) -> Option<ModuleTreeNodeId> {
+    fn parent_module(&self, file: File) -> Option<ModuleTreeNodeId> {
         let file_path = file.path(self.db);
         let file_dir = file_path.parent()?;
         let parent_dir = file_dir.parent()?;

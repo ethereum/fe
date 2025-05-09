@@ -12,7 +12,7 @@ use common::{
     diagnostics::Span,
     indexmap::{IndexMap, IndexSet},
     input::{IngotKind, Version},
-    InputFile, InputIngot,
+    File, InputIngot,
 };
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
@@ -47,7 +47,7 @@ impl salsa::Database for HirAnalysisTestDb {
 // https://github.com/rust-lang/rust/issues/46379
 #[allow(dead_code)]
 impl HirAnalysisTestDb {
-    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> (InputIngot, InputFile) {
+    pub fn new_stand_alone(&mut self, file_name: &str, text: &str) -> (InputIngot, File) {
         let kind = IngotKind::StandAlone;
         let version = Version::new(0, 0, 1);
         let ingot = InputIngot::new(
@@ -64,11 +64,7 @@ impl HirAnalysisTestDb {
         (ingot, root)
     }
 
-    pub fn top_mod(
-        &self,
-        ingot: InputIngot,
-        input: InputFile,
-    ) -> (TopLevelMod, HirPropertyFormatter) {
+    pub fn top_mod(&self, ingot: InputIngot, input: File) -> (TopLevelMod, HirPropertyFormatter) {
         let mut prop_formatter = HirPropertyFormatter::default();
         let top_mod = self.register_file(&mut prop_formatter, ingot, input);
         (top_mod, prop_formatter)
@@ -104,7 +100,7 @@ impl HirAnalysisTestDb {
         &'db self,
         prop_formatter: &mut HirPropertyFormatter<'db>,
         ingot: InputIngot,
-        input_file: InputFile,
+        input_file: File,
     ) -> TopLevelMod<'db> {
         let top_mod = lower::map_file_to_mod(self, ingot, input_file);
         let path = input_file.path(self);

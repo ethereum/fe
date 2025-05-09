@@ -1,6 +1,6 @@
 use anyhow::Error;
 use async_lsp::lsp_types::Hover;
-use common::{InputFile, InputIngot};
+use common::{File, InputIngot};
 use hir::lower::map_file_to_mod;
 use tracing::info;
 
@@ -13,7 +13,7 @@ use crate::{backend::db::LanguageServerDb, util::to_offset_from_position};
 pub fn hover_helper(
     db: &dyn LanguageServerDb,
     ingot: InputIngot,
-    file: InputFile,
+    file: File,
     params: async_lsp::lsp_types::HoverParams,
 ) -> Result<Option<Hover>, Error> {
     info!("handling hover");

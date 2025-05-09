@@ -1,11 +1,10 @@
 pub mod core;
-// pub mod diagnostics;
+pub mod diagnostics;
+pub mod file;
 pub mod indexmap;
-// pub mod ingot;
-// pub mod input;
-// pub mod workspace;
-// pub use input::InputFile;
+pub mod input;
 pub mod urlext;
+pub use crate::file::IndexedFile as File;
 
 #[derive(Embed)]
 #[folder = "../../library/core"]

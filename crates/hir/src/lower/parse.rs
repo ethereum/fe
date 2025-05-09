@@ -1,4 +1,4 @@
-use common::InputFile;
+use common::File;
 use parser::GreenNode;
 use salsa::Accumulator;
 
@@ -30,6 +30,6 @@ impl ParseErrorAccumulator {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 
 pub struct ParserError {
-    pub file: InputFile,
+    pub file: File,
     pub error: parser::ParseError,
 }

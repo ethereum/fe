@@ -3,7 +3,7 @@ use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
 };
-use common::{diagnostics::CompleteDiagnostic, InputFile, InputIngot};
+use common::{diagnostics::CompleteDiagnostic, File, InputIngot};
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
@@ -65,7 +65,7 @@ impl DriverDataBase {
         DiagnosticsCollection(pass_manager.run_on_module_tree(tree))
     }
 
-    pub fn top_mod(&self, ingot: InputIngot, input: InputFile) -> TopLevelMod {
+    pub fn top_mod(&self, ingot: InputIngot, input: File) -> TopLevelMod {
         map_file_to_mod(self, ingot, input)
     }
 }

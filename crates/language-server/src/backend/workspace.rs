@@ -7,7 +7,7 @@ use common::{
     indexmap::IndexMap,
     ingot::builtin_core,
     input::{IngotDependency, IngotKind, Version},
-    InputFile, InputIngot,
+    File, InputIngot,
 };
 
 use patricia_tree::StringPatriciaMap;
@@ -27,13 +27,13 @@ fn ingot_directory_key(path: String) -> String {
 }
 
 pub trait IngotFileContext {
-    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)>;
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, File)>;
 
     fn touch_input_for_file_path(
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<(InputIngot, InputFile)>;
+    ) -> Option<(InputIngot, File)>;
 
     fn get_ingot_for_file_path(&self, path: &str) -> Option<InputIngot>;
 
@@ -52,7 +52,7 @@ pub trait IngotFileContext {
 
 pub struct LocalIngotContext {
     pub ingot: InputIngot,
-    pub files: StringPatriciaMap<InputFile>,
+    pub files: StringPatriciaMap<File>,
 }
 
 fn ingot_contains_file(ingot_path: &str, file_path: &str) -> bool {
@@ -107,14 +107,14 @@ impl IngotFileContext for LocalIngotContext {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<(InputIngot, InputFile)> {
+    ) -> Option<(InputIngot, File)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
         let input = self.ingot.touch(db, Utf8PathBuf::from(path));
         self.files.insert(path, input);
         Some((ingot, input))
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, File)> {
         let ingot = self.get_ingot_for_file_path(path)?;
         let file = self.files.get(path).copied()?;
         Some((ingot, file))
@@ -151,7 +151,7 @@ impl IngotFileContext for LocalIngotContext {
 
 pub struct StandaloneIngotContext {
     ingots: StringPatriciaMap<InputIngot>,
-    files: StringPatriciaMap<InputFile>,
+    files: StringPatriciaMap<File>,
 }
 
 impl StandaloneIngotContext {
@@ -168,7 +168,7 @@ impl IngotFileContext for StandaloneIngotContext {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<(InputIngot, InputFile)> {
+    ) -> Option<(InputIngot, File)> {
         let ingot = self.touch_ingot_for_file_path(db, path)?;
 
         let path_buf = Utf8PathBuf::from(path);
@@ -180,7 +180,7 @@ impl IngotFileContext for StandaloneIngotContext {
         Some((ingot, input))
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, File)> {
         let ingot = self.get_ingot_for_file_path(path)?;
         let file = self.files.get(path).copied()?;
         Some((ingot, file))
@@ -255,7 +255,7 @@ impl Workspace {
         }
     }
 
-    pub fn all_files(&self) -> impl Iterator<Item = &InputFile> {
+    pub fn all_files(&self) -> impl Iterator<Item = &File> {
         // Iterate over all files in the ingot contexts
         let ingot_files = self
             .ingot_contexts
@@ -407,7 +407,7 @@ impl IngotFileContext for Workspace {
         &mut self,
         db: &mut LanguageServerDatabase,
         path: &str,
-    ) -> Option<(InputIngot, InputFile)> {
+    ) -> Option<(InputIngot, File)> {
         let ctx = get_containing_ingot_mut(&mut self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             ctx.touch_input_for_file_path(db, path)
@@ -417,7 +417,7 @@ impl IngotFileContext for Workspace {
         }
     }
 
-    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, InputFile)> {
+    fn get_input_for_file_path(&self, path: &str) -> Option<(InputIngot, File)> {
         let ctx = get_containing_ingot(&self.ingot_contexts, path);
         if let Some(ctx) = ctx {
             ctx.get_input_for_file_path(path)

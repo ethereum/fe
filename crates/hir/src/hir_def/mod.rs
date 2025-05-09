@@ -20,7 +20,7 @@ pub(crate) mod module_tree;
 
 pub use attr::*;
 pub use body::*;
-use common::{input::IngotKind, InputIngot};
+use common::input::IngotKind;
 pub use expr::*;
 pub use ident::*;
 pub use item::*;

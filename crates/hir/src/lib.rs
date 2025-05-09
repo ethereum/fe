@@ -43,7 +43,7 @@ mod test_db {
     use common::{
         indexmap::{IndexMap, IndexSet},
         input::{IngotKind, Version},
-        InputFile, InputIngot,
+        File, InputIngot,
     };
     use derive_more::TryIntoError;
     use salsa::Setter;
@@ -65,14 +65,14 @@ mod test_db {
     }
 
     impl TestDb {
-        pub fn parse_source(&self, ingot: InputIngot, file: InputFile) -> &ScopeGraph {
+        pub fn parse_source(&self, ingot: InputIngot, file: File) -> &ScopeGraph {
             let top_mod = map_file_to_mod(self, ingot, file);
             scope_graph(self, top_mod)
         }
 
         /// Parses the given source text and returns the first inner item in the
         /// file.
-        pub fn expect_item<'db, T>(&'db self, ingot: InputIngot, input: InputFile) -> T
+        pub fn expect_item<'db, T>(&'db self, ingot: InputIngot, input: File) -> T
         where
             ItemKind<'db>: TryInto<T, Error = TryIntoError<ItemKind<'db>>>,
         {
@@ -82,7 +82,7 @@ mod test_db {
                 .unwrap()
         }
 
-        pub fn expect_items<'db, T>(&'db self, ingot: InputIngot, input: InputFile) -> Vec<T>
+        pub fn expect_items<'db, T>(&'db self, ingot: InputIngot, input: File) -> Vec<T>
         where
             ItemKind<'db>: TryInto<T, Error = TryIntoError<ItemKind<'db>>>,
         {
@@ -99,7 +99,7 @@ mod test_db {
             &text[range.start().into()..range.end().into()]
         }
 
-        pub fn standalone_file(&mut self, text: &str) -> (InputIngot, InputFile) {
+        pub fn standalone_file(&mut self, text: &str) -> (InputIngot, File) {
             let path = "hir_test";
             let kind = IngotKind::StandAlone;
             let version = Version::new(0, 0, 1);

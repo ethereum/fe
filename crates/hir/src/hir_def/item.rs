@@ -3,7 +3,7 @@
 // that may take many arguments depending on the number of fields in the struct.
 #![allow(clippy::too_many_arguments)]
 
-use common::InputFile;
+use common::File;
 use parser::ast;
 
 use super::{
@@ -366,7 +366,7 @@ pub struct TopLevelMod<'db> {
     pub name: IdentId<'db>,
 
     pub ingot: IngotId<'db>,
-    pub(crate) file: InputFile,
+    pub(crate) file: File,
 }
 
 #[salsa::tracked]

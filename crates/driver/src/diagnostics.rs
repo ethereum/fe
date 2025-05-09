@@ -4,13 +4,13 @@ use camino::Utf8Path;
 use codespan_reporting as cs;
 use common::{
     diagnostics::{LabelStyle, Severity},
-    InputDb, InputFile,
+    File, InputDb,
 };
 use cs::{diagnostic as cs_diag, files as cs_files};
 use hir_analysis::diagnostics::{DiagnosticVoucher, SpannedHirAnalysisDb};
 
 pub trait ToCsDiag {
-    fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile>;
+    fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<File>;
 }
 
 pub trait SpannedInputDb: SpannedHirAnalysisDb + InputDb {}
@@ -20,7 +20,7 @@ impl<T> ToCsDiag for T
 where
     T: for<'db> DiagnosticVoucher<'db>,
 {
-    fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<InputFile> {
+    fn to_cs(&self, db: &dyn SpannedInputDb) -> cs_diag::Diagnostic<File> {
         let complete = self.to_complete(db);
 
         let severity = convert_severity(complete.severity);
@@ -64,14 +64,14 @@ fn convert_severity(severity: Severity) -> cs_diag::Severity {
 }
 
 #[salsa::tracked(return_ref)]
-pub fn file_line_starts(db: &dyn SpannedHirAnalysisDb, file: InputFile) -> Vec<usize> {
+pub fn file_line_starts(db: &dyn SpannedHirAnalysisDb, file: File) -> Vec<usize> {
     cs::files::line_starts(file.text(db)).collect()
 }
 
 pub struct CsDbWrapper<'a>(pub &'a dyn SpannedHirAnalysisDb);
 
 impl<'db> cs_files::Files<'db> for CsDbWrapper<'db> {
-    type FileId = InputFile;
+    type FileId = File;
     type Name = &'db Utf8Path;
     type Source = &'db str;
 
