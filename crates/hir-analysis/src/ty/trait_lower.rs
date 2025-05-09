@@ -10,7 +10,7 @@ use super::{
     func_def::FuncDef,
     trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId, TraitMethod},
     ty_def::{InvalidCause, Kind, TyId},
-    ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamTypeSet},
+    ty_lower::{collect_generic_params, lower_generic_arg_list},
 };
 use crate::{
     name_resolution::{resolve_path, PathRes, PathResError},
@@ -22,7 +22,19 @@ type TraitImplTable<'db> = FxHashMap<TraitDef<'db>, Vec<Binder<Implementor<'db>>
 
 #[salsa::tracked]
 pub(crate) fn lower_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> TraitDef<'db> {
-    TraitBuilder::new(db, trait_).build()
+    let mut methods = IndexMap::<IdentId<'db>, TraitMethod<'db>>::default();
+    for method in trait_.methods(db) {
+        let Some(func) = lower_func(db, method) else {
+            continue;
+        };
+        let name = func.name(db);
+        let trait_method = TraitMethod(func);
+        // We can simply ignore the conflict here because it's already handled by the
+        // name resolution.
+        methods.entry(name).or_insert(trait_method);
+    }
+
+    TraitDef::new(db, trait_, methods)
 }
 
 /// Collect all trait implementors in the ingot.
@@ -79,7 +91,24 @@ pub(crate) fn lower_impl_trait<'db>(
         .params(db)
         .to_vec();
 
-    let implementor = Implementor::new(db, trait_, params, impl_trait);
+    let mut types: IndexMap<_, _> = impl_trait
+        .types(db)
+        .iter()
+        .filter_map(|t| match (t.name.to_opt(), t.ty.to_opt()) {
+            (Some(name), Some(ty)) => Some((name, lower_hir_ty(db, ty, scope))),
+            _ => None,
+        })
+        .collect();
+
+    for t in trait_.def(db).trait_(db).types(db).iter() {
+        let (Some(name), Some(default)) = (t.name.to_opt(), t.default) else {
+            continue;
+        };
+        types
+            .entry(name)
+            .or_insert_with(|| lower_hir_ty(db, default, scope));
+    }
+    let implementor = Implementor::new(db, trait_, params, types, impl_trait);
 
     Some(Binder::bind(implementor))
 }
@@ -101,7 +130,7 @@ pub(crate) fn lower_trait_ref<'db>(
         return Err(TraitRefLowerError::Other);
     };
 
-    let trait_def = match resolve_path(db, path, scope, false) {
+    let trait_def = match resolve_path(db, path, scope, None, false) {
         Ok(PathRes::Trait(t)) => t,
         Ok(res) => return Err(TraitRefLowerError::InvalidDomain(res)),
         Err(e) => return Err(TraitRefLowerError::PathResError(e)),
@@ -208,52 +237,6 @@ pub(crate) enum TraitRefLowerError<'db> {
     /// Other errors, which is reported by another pass. So we don't need to
     /// report this error kind.
     Other,
-}
-
-struct TraitBuilder<'db> {
-    db: &'db dyn HirAnalysisDb,
-    trait_: Trait<'db>,
-    param_set: GenericParamTypeSet<'db>,
-    methods: IndexMap<IdentId<'db>, TraitMethod<'db>>,
-}
-
-impl<'db> TraitBuilder<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
-        let param_set = collect_generic_params(db, trait_.into());
-
-        Self {
-            db,
-            trait_,
-            param_set,
-            methods: IndexMap::default(),
-        }
-    }
-
-    fn build(mut self) -> TraitDef<'db> {
-        self.collect_params();
-        self.collect_methods();
-
-        TraitDef::new(self.db, self.trait_, self.param_set, self.methods)
-    }
-
-    fn collect_params(&mut self) {
-        self.param_set = collect_generic_params(self.db, self.trait_.into());
-    }
-
-    fn collect_methods(&mut self) {
-        let hir_db = self.db;
-        for method in self.trait_.methods(hir_db) {
-            let Some(func) = lower_func(self.db, method) else {
-                continue;
-            };
-
-            let name = func.name(self.db);
-            let trait_method = TraitMethod(func);
-            // We can simply ignore the conflict here because it's already handled by the
-            // name resolution.
-            self.methods.entry(name).or_insert(trait_method);
-        }
-    }
 }
 
 /// Collect all implementors in an ingot.

@@ -98,23 +98,29 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             }
         };
 
-        let res =
-            match resolve_path_with_observer(self.db, path, scope, false, &mut check_visibility) {
-                Ok(res) => res,
+        let res = match resolve_path_with_observer(
+            self.db,
+            path,
+            scope,
+            None,
+            false,
+            &mut check_visibility,
+        ) {
+            Ok(res) => res,
 
-                Err(err) => {
-                    let segment_span = path_span
-                        .segment(err.failed_at.segment_index(self.db))
-                        .ident();
+            Err(err) => {
+                let segment_span = path_span
+                    .segment(err.failed_at.segment_index(self.db))
+                    .ident();
 
-                    if let Some(diag) =
-                        err.into_diag(self.db, path, segment_span.into(), ExpectedPathKind::Type)
-                    {
-                        self.diags.push(diag.into());
-                    }
-                    return;
+                if let Some(diag) =
+                    err.into_diag(self.db, path, segment_span.into(), ExpectedPathKind::Type)
+                {
+                    self.diags.push(diag.into());
                 }
-            };
+                return;
+            }
+        };
 
         if !matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..)) {
             let ident = path.ident(self.db).to_opt().unwrap();
@@ -217,8 +223,6 @@ fn diag_from_invalid_cause<'db>(
             n_given_args,
         }
         .into(),
-
-        InvalidCause::AssocTy => TyLowerDiag::AssocTy(span).into(),
 
         InvalidCause::AliasCycle(cycle) => TyLowerDiag::TypeAliasCycle {
             cycle: cycle.to_vec(),

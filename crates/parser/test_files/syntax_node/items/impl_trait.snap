@@ -1,7 +1,7 @@
 ---
 source: crates/parser/tests/syntax_node.rs
 expression: node
-input_file: crates/parser/test_files/syntax_node/items/impl_trait.fe
+input_file: test_files/syntax_node/items/impl_trait.fe
 ---
 Root@0..334
   ItemList@0..334
@@ -42,7 +42,7 @@ Root@0..334
                         Ident@23..24 "T"
                 Gt@24..25 ">"
         WhiteSpace@25..26 " "
-        ImplTraitItemList@26..67
+        TraitItemList@26..67
           LBrace@26..27 "{"
           Newline@27..28 "\n"
           WhiteSpace@28..32 "    "
@@ -151,7 +151,7 @@ Root@0..334
                     PathSegment@126..129
                       Ident@126..129 "Bar"
         Newline@129..130 "\n"
-        ImplTraitItemList@130..205
+        TraitItemList@130..205
           LBrace@130..131 "{"
           Newline@131..132 "\n"
           WhiteSpace@132..136 "    "
@@ -297,7 +297,7 @@ Root@0..334
                     PathSegment@255..258
                       Ident@255..258 "Bar"
         Newline@258..259 "\n"
-        ImplTraitItemList@259..334
+        TraitItemList@259..334
           LBrace@259..260 "{"
           Newline@260..261 "\n"
           WhiteSpace@261..265 "    "

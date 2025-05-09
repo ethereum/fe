@@ -1,0 +1,8 @@
+trait Abi {
+    type Selector
+}
+
+struct SolAbi {}
+impl Abi for SolAbi {
+    type Selector = [u8; 4]
+}

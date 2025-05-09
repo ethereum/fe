@@ -185,7 +185,7 @@ impl<'db> FuncParamName<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum TypeBound<'db> {
     Trait(TraitRefId<'db>),
     Kind(Partial<KindBound>),
