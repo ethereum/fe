@@ -418,10 +418,6 @@ impl<'db> ExprProp<'db> {
         self.binding
     }
 
-    pub(super) fn swap_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
-        std::mem::replace(&mut self.ty, ty)
-    }
-
     pub(super) fn invalid(db: &'db dyn HirAnalysisDb) -> Self {
         Self {
             ty: TyId::invalid(db, InvalidCause::Other),

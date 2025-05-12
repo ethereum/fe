@@ -59,8 +59,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let typeable = Typeable::Expr(expr, actual);
-        let ty = self.unify_ty(typeable, actual.ty, expected);
-        actual.swap_ty(ty);
+        actual.ty = self.unify_ty(typeable, actual.ty, expected);
         actual
     }
 

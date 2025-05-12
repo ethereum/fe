@@ -156,7 +156,7 @@ impl<'db> TyChecker<'db> {
 
         match t {
             Typeable::Expr(expr, mut typed_expr) => {
-                typed_expr.swap_ty(actual);
+                typed_expr.ty = actual;
                 self.env.type_expr(expr, typed_expr)
             }
             Typeable::Pat(pat) => self.env.type_pat(pat, actual),
