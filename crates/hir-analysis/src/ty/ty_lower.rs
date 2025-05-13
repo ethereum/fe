@@ -545,17 +545,15 @@ pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
         HirKindBound::Mono => Kind::Star,
         HirKindBound::Abs(lhs, rhs) => match (lhs, rhs) {
             (Partial::Present(lhs), Partial::Present(rhs)) => {
-                Kind::Abs(Box::new(lower_kind(lhs)), Box::new(lower_kind(rhs)))
+                Kind::Abs(Box::new((lower_kind(lhs), lower_kind(rhs))))
             }
             (Partial::Present(lhs), Partial::Absent) => {
-                Kind::Abs(Box::new(lower_kind(lhs)), Box::new(Kind::Any))
+                Kind::Abs(Box::new((lower_kind(lhs), Kind::Any)))
             }
             (Partial::Absent, Partial::Present(rhs)) => {
-                Kind::Abs(Box::new(Kind::Any), Box::new(lower_kind(rhs)))
+                Kind::Abs(Box::new((Kind::Any, lower_kind(rhs))))
             }
-            (Partial::Absent, Partial::Absent) => {
-                Kind::Abs(Box::new(Kind::Any), Box::new(Kind::Any))
-            }
+            (Partial::Absent, Partial::Absent) => Kind::Abs(Box::new((Kind::Any, Kind::Any))),
         },
     }
 }

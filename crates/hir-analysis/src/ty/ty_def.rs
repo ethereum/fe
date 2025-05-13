@@ -136,7 +136,7 @@ impl<'db> TyId<'db> {
 
     /// Returns `true` if the type has a `*` kind.
     pub fn has_star_kind(self, db: &dyn HirAnalysisDb) -> bool {
-        !matches!(self.kind(db), Kind::Abs(_, _))
+        !matches!(self.kind(db), Kind::Abs(..))
     }
 
     #[salsa::tracked(return_ref)]
@@ -523,7 +523,7 @@ impl<'db> TyId<'db> {
     pub fn applicable_ty(self, db: &'db dyn HirAnalysisDb) -> Option<ApplicableTyProp<'db>> {
         let applicable_kind = match self.kind(db) {
             Kind::Star => return None,
-            Kind::Abs(arg, _) => *arg.clone(),
+            Kind::Abs(inner) => inner.0.clone(),
             Kind::Any => Kind::Any,
         };
 
@@ -716,7 +716,7 @@ pub enum Kind {
     /// Represents higher kinded types.
     /// e.g.,
     /// `* -> *`, `(* -> *) -> *` or `* -> (* -> *) -> *`
-    Abs(Box<Kind>, Box<Kind>),
+    Abs(Box<(Kind, Kind)>),
 
     /// `Any` kind is set to the type iff the type is `Invalid`.
     Any,
@@ -724,15 +724,13 @@ pub enum Kind {
 
 impl Kind {
     fn abs(lhs: Kind, rhs: Kind) -> Self {
-        Kind::Abs(Box::new(lhs), Box::new(rhs))
+        Kind::Abs(Box::new((lhs, rhs)))
     }
 
     pub fn does_match(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Star, Self::Star) => true,
-            (Self::Abs(lhs1, rhs1), Self::Abs(lhs2, rhs2)) => {
-                lhs1.does_match(lhs2) && rhs1.does_match(rhs2)
-            }
+            (Self::Abs(a), Self::Abs(b)) => a.0.does_match(&b.0) && a.1.does_match(&b.1),
             (Self::Any, _) => true,
             (_, Self::Any) => true,
             _ => false,
@@ -744,7 +742,7 @@ impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Star => write!(f, "*"),
-            Self::Abs(lhs, rhs) => write!(f, "({} -> {})", lhs, rhs),
+            Self::Abs(inner) => write!(f, "({} -> {})", inner.0, inner.1),
             Self::Any => write!(f, "Any"),
         }
     }
@@ -1040,7 +1038,7 @@ impl HasKind for TyData<'_> {
             TyData::TyApp(abs, _) => match abs.kind(db) {
                 // `TyId::app` method handles the kind mismatch, so we don't need to verify it again
                 // here.
-                Kind::Abs(_, ret) => ret.as_ref().clone(),
+                Kind::Abs(inner) => inner.1.clone(),
                 _ => Kind::Any,
             },
 
