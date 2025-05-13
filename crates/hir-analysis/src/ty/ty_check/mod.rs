@@ -10,7 +10,7 @@ pub use env::ExprProp;
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
 use hir::{
-    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, TypeId as HirTyId},
+    hir_def::{Body, Expr, ExprId, Func, LitKind, Partial, Pat, PatId, PathId, TypeId as HirTyId},
     span::{
         expr::LazyExprSpan, pat::LazyPatSpan, path::LazyPathSpan, types::LazyTySpan, DynLazySpan,
     },
@@ -103,6 +103,14 @@ impl<'db> TyChecker<'db> {
 
     fn body(&self) -> Body<'db> {
         self.env.body()
+    }
+
+    fn parent_expr(&self) -> Option<&'db Expr<'db>> {
+        let id = self.env.parent_expr()?;
+        match &self.body().exprs(self.db)[id] {
+            Partial::Present(expr) => Some(expr),
+            Partial::Absent => None,
+        }
     }
 
     fn lit_ty(&mut self, lit: &LitKind<'db>) -> TyId<'db> {

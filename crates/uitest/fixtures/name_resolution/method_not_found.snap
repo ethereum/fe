@@ -3,7 +3,7 @@ source: crates/uitest/tests/name_resolution.rs
 expression: diags
 input_file: fixtures/name_resolution/method_not_found.fe
 ---
-error[8-0029]: no method named `new` found for struct `S`
+error[2-0010]: no method named `new` found for struct `S`
   ┌─ method_not_found.fe:4:8
   │
 4 │     S::new()

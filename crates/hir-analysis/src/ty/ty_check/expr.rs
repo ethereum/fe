@@ -14,8 +14,8 @@ use crate::{
         diagnostics::NameResDiag,
         is_scope_visible_from,
         method_selection::{select_method_candidate, Candidate, MethodSelectionError},
-        resolve_name_res, resolve_query, EarlyNameQueryId, NameDomain, NameResBucket, PathRes,
-        QueryDirective,
+        resolve_name_res, resolve_query, EarlyNameQueryId, ExpectedPathKind, NameDomain,
+        NameResBucket, PathRes, QueryDirective,
     },
     ty::{
         canonical::Canonicalized,
@@ -35,11 +35,9 @@ impl<'db> TyChecker<'db> {
             return typed;
         };
 
+        self.env.enter_expr(expr);
         let mut actual = match expr_data {
-            Expr::Lit(lit) => {
-                let ty = self.lit_ty(lit);
-                ExprProp::new(ty, true)
-            }
+            Expr::Lit(lit) => ExprProp::new(self.lit_ty(lit), true),
             Expr::Block(..) => self.check_block(expr, expr_data, expected),
             Expr::Un(..) => self.check_unary(expr, expr_data),
             Expr::Bin(..) => self.check_binary(expr, expr_data),
@@ -57,6 +55,7 @@ impl<'db> TyChecker<'db> {
             Expr::Assign(..) => self.check_assign(expr, expr_data),
             Expr::AugAssign(..) => self.check_aug_assign(expr, expr_data),
         };
+        self.env.leave_expr();
 
         let typeable = Typeable::Expr(expr, actual);
         actual.ty = self.unify_ty(typeable, actual.ty, expected);
@@ -409,8 +408,27 @@ impl<'db> TyChecker<'db> {
         let res = if path.is_bare_ident(self.db) {
             resolve_ident_expr(self.db, &self.env, *path)
         } else {
-            self.resolve_path(*path, true, span.clone().path())
-                .map_or_else(|_| ResolvedPathInBody::Invalid, ResolvedPathInBody::Reso)
+            match self.resolve_path(*path, true, span.clone().path()) {
+                Ok(r) => ResolvedPathInBody::Reso(r),
+                Err(err) => {
+                    let span = expr
+                        .span(self.body())
+                        .into_path_expr()
+                        .path()
+                        .segment(err.failed_at.segment_index(self.db));
+
+                    let expected_kind = if matches!(self.parent_expr(), Some(Expr::Call(..))) {
+                        ExpectedPathKind::Function
+                    } else {
+                        ExpectedPathKind::Value
+                    };
+
+                    if let Some(diag) = err.into_diag(self.db, *path, span.into(), expected_kind) {
+                        self.push_diag(diag)
+                    }
+                    ResolvedPathInBody::Invalid
+                }
+            }
         };
 
         match res {
@@ -1026,7 +1044,7 @@ fn xxx_err_thing<'db>(
 
         MethodSelectionError::NotFound => {
             let base_ty = receiver.data.base_ty(db);
-            BodyDiag::MethodNotFound {
+            NameResDiag::MethodNotFound {
                 primary: method.span,
                 method_name: method.data,
                 receiver: Either::Left(base_ty),
@@ -1077,15 +1095,14 @@ fn resolve_ident_expr<'db>(
         let bucket = resolve_query(db, query);
 
         let resolved = resolve_bucket(bucket, scope);
-        match resolved {
-            ResolvedPathInBody::Invalid => {
-                if current_idx == 0 {
-                    break;
-                } else {
-                    current_idx -= 1;
-                }
+        if matches!(resolved, ResolvedPathInBody::Invalid) {
+            if current_idx == 0 {
+                break;
+            } else {
+                current_idx -= 1;
             }
-            _ => return resolved,
+        } else {
+            return resolved;
         }
     }
 

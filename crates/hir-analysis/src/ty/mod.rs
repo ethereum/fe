@@ -11,7 +11,8 @@ use trait_def::TraitDef;
 use trait_lower::lower_trait;
 use trait_resolution::constraint::super_trait_cycle;
 use ty_def::{InvalidCause, TyData};
-use ty_lower::{lower_hir_ty, lower_type_alias};
+use ty_error::collect_ty_lower_errors;
+use ty_lower::lower_type_alias;
 
 use self::def_analysis::{
     analyze_adt, analyze_func, analyze_impl, analyze_impl_trait, analyze_trait,
@@ -270,10 +271,11 @@ impl ModuleAnalysisPass for TypeAliasAnalysisPass {
                 cycle_participants.extend(cycle.iter());
             } else if ty.has_invalid(db) {
                 if let Some(hir_ty) = alias.ty(db).to_opt() {
-                    let ty = lower_hir_ty(db, hir_ty, alias.scope());
-                    if let Some(diag) = ty.emit_diag(db, alias.span().ty().into()) {
-                        diags.push(diag.to_voucher());
-                    }
+                    diags.extend(
+                        collect_ty_lower_errors(db, alias.scope(), hir_ty, alias.span().ty())
+                            .into_iter()
+                            .map(|d| d.to_voucher()),
+                    )
                 }
             }
         }

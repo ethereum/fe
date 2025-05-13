@@ -97,7 +97,7 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     let scopes = match resolved {
         Ok(r) => r.as_scope(db).into_iter().collect::<Vec<_>>(),
         Err(err) => match err.kind {
-            PathResErrorKind::NotFound(bucket) => {
+            PathResErrorKind::NotFound { parent: _, bucket } => {
                 bucket.iter_ok().flat_map(|r| r.scope()).collect()
             }
             PathResErrorKind::Ambiguous(vec) => vec.into_iter().flat_map(|r| r.scope()).collect(),

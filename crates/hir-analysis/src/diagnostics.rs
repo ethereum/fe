@@ -184,6 +184,59 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 }
             }
 
+            Self::MethodNotFound {
+                primary,
+                method_name,
+                receiver,
+            } => {
+                let (recv_name, recv_ty, recv_kind) = match receiver {
+                    Either::Left(ty) => (ty.pretty_print(db), Some(ty), ty.kind_name(db)),
+                    Either::Right(trait_) => {
+                        let name = trait_.trait_(db).name(db).unwrap().data(db);
+                        (name, None, "trait".to_string())
+                    }
+                };
+
+                let method_str = method_name.data(db);
+                let message = format!(
+                    "no method named `{}` found for {} `{}`",
+                    method_str, recv_kind, recv_name
+                );
+
+                if let Some(ty) = recv_ty {
+                    if let Some(field_ty) = ty.record_field_ty(db, *method_name) {
+                        return CompleteDiagnostic {
+                            severity: Severity::Error,
+                            message,
+                            sub_diagnostics: vec![SubDiagnostic {
+                                style: LabelStyle::Primary,
+                                message: format!(
+                                    "field `{}` in `{}` has type `{}`",
+                                    method_str,
+                                    recv_name,
+                                    field_ty.pretty_print(db)
+                                ),
+                                span: primary.resolve(db),
+                            }],
+                            notes: vec![],
+                            error_code,
+                        };
+                    }
+                }
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("method not found in `{}`", recv_name),
+                        span: primary.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
             Self::Invisible(prim_span, ident, span) => {
                 let ident = ident.data(db);
 
@@ -311,6 +364,7 @@ impl DiagnosticVoucher for NameResDiag<'_> {
 
             Self::TooManyGenericArgs {
                 span,
+                ty,
                 expected,
                 given,
             } => CompleteDiagnostic {
@@ -318,7 +372,10 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 message: format!("too many generic args; expected {expected}, given {given}"),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected {expected} arguments here, but {given} given"),
+                    message: format!(
+                        "`{}` expects {expected} arguments, but {given} were given",
+                        ty.pretty_print(db)
+                    ),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
@@ -1526,59 +1583,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     severity: Severity::Error,
                     message: "trait is not in the scope".to_string(),
                     sub_diagnostics,
-                    notes: vec![],
-                    error_code,
-                }
-            }
-
-            Self::MethodNotFound {
-                primary,
-                method_name,
-                receiver,
-            } => {
-                let (recv_name, recv_ty, recv_kind) = match receiver {
-                    Either::Left(ty) => (ty.pretty_print(db), Some(ty), ty.kind_name(db)),
-                    Either::Right(trait_) => {
-                        let name = trait_.trait_(db).name(db).unwrap().data(db);
-                        (name, None, "trait".to_string())
-                    }
-                };
-
-                let method_str = method_name.data(db);
-                let message = format!(
-                    "no method named `{}` found for {} `{}`",
-                    method_str, recv_kind, recv_name
-                );
-
-                if let Some(ty) = recv_ty {
-                    if let Some(field_ty) = ty.record_field_ty(db, *method_name) {
-                        return CompleteDiagnostic {
-                            severity: Severity::Error,
-                            message,
-                            sub_diagnostics: vec![SubDiagnostic {
-                                style: LabelStyle::Primary,
-                                message: format!(
-                                    "field `{}` in `{}` has type `{}`",
-                                    method_str,
-                                    recv_name,
-                                    field_ty.pretty_print(db)
-                                ),
-                                span: primary.resolve(db),
-                            }],
-                            notes: vec![],
-                            error_code,
-                        };
-                    }
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message,
-                    sub_diagnostics: vec![SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: format!("method not found in `{}`", recv_name),
-                        span: primary.resolve(db),
-                    }],
                     notes: vec![],
                     error_code,
                 }

@@ -2,6 +2,7 @@ use common::indexmap::IndexSet;
 use hir::hir_def::{scope_graph::ScopeId, IdentId, Trait};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use thin_vec::ThinVec;
 
 use crate::{
     name_resolution::{available_traits_in_scope, is_scope_visible_from},
@@ -349,11 +350,11 @@ impl<'db> MethodSelector<'db> {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum MethodSelectionError<'db> {
-    AmbiguousInherentMethod(Vec<FuncDef<'db>>),
-    AmbiguousTraitMethod(Vec<TraitDef<'db>>),
+    AmbiguousInherentMethod(ThinVec<FuncDef<'db>>),
+    AmbiguousTraitMethod(ThinVec<TraitDef<'db>>),
     NotFound,
     InvisibleInherentMethod(FuncDef<'db>),
-    InvisibleTraitMethod(Vec<Trait<'db>>),
+    InvisibleTraitMethod(ThinVec<Trait<'db>>),
     ReceiverTypeMustBeKnown,
 }
 

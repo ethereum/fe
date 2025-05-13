@@ -3,20 +3,20 @@ source: crates/uitest/tests/ty_check.rs
 expression: diags
 input_file: fixtures/ty_check/generic_arg_mismatch.fe
 ---
-error[3-0016]: too many generic args; expected 1, given 2
+error[2-0009]: too many generic args; expected 1, given 2
   ┌─ generic_arg_mismatch.fe:7:11
   │
 7 │ type O2 = Opt<i32, bool>
-  │           ^^^^^^^^^^^^^^ expected 1 arguments, but 2 were given
+  │           ^^^ `Opt` expects 1 arguments, but 2 were given
 
-error[3-0016]: too many generic args; expected 1, given 2
-  ┌─ generic_arg_mismatch.fe:8:10
+error[2-0009]: too many generic args; expected 1, given 2
+  ┌─ generic_arg_mismatch.fe:8:18
   │
 8 │ type W = Wrapper<Opt<i32, i32>> // TODO: err span is too wide
-  │          ^^^^^^^^^^^^^^^^^^^^^^ expected 1 arguments, but 2 were given
+  │                  ^^^ `Opt` expects 1 arguments, but 2 were given
 
-error[3-0016]: too many generic args; expected 1, given 2
+error[2-0009]: too many generic args; expected 1, given 2
    ┌─ generic_arg_mismatch.fe:15:13
    │
 15 │     let o = Opt<i32, ()>::None
-   │             ^^^^^^^^^^^^ expected 1 arguments, but 2 were given
+   │             ^^^^^^^^^^^^ `Opt` expects 1 arguments, but 2 were given

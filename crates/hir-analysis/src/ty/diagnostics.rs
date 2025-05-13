@@ -19,6 +19,7 @@ use hir::{
 };
 use salsa::Update;
 use smallvec1::SmallVec;
+use thin_vec::ThinVec;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
 pub enum FuncBodyDiag<'db> {
@@ -296,29 +297,23 @@ pub enum BodyDiag<'db> {
     AmbiguousInherentMethodCall {
         primary: DynLazySpan<'db>,
         method_name: IdentId<'db>,
-        candidates: Vec<FuncDef<'db>>,
+        candidates: ThinVec<FuncDef<'db>>,
     },
 
     AmbiguousTrait {
         primary: DynLazySpan<'db>,
         method_name: IdentId<'db>,
-        traits: Vec<Trait<'db>>,
+        traits: ThinVec<Trait<'db>>,
     },
 
     AmbiguousTraitInst {
         primary: DynLazySpan<'db>,
-        cands: Vec<TraitInstId<'db>>,
+        cands: ThinVec<TraitInstId<'db>>,
     },
 
     InvisibleAmbiguousTrait {
         primary: DynLazySpan<'db>,
-        traits: Vec<Trait<'db>>,
-    },
-
-    MethodNotFound {
-        primary: DynLazySpan<'db>,
-        method_name: IdentId<'db>,
-        receiver: Either<TyId<'db>, TraitDef<'db>>,
+        traits: ThinVec<Trait<'db>>,
     },
 
     NotValue {
@@ -449,7 +444,6 @@ impl<'db> BodyDiag<'db> {
             Self::AmbiguousTrait { .. } => 26,
             Self::AmbiguousTraitInst { .. } => 27,
             Self::InvisibleAmbiguousTrait { .. } => 28,
-            Self::MethodNotFound { .. } => 29,
             Self::NotValue { .. } => 30,
             Self::TypeAnnotationNeeded { .. } => 31,
             Self::DuplicatedBinding { .. } => 32,
@@ -541,7 +535,7 @@ pub enum ImplDiag<'db> {
 
     NotAllTraitItemsImplemented {
         primary: DynLazySpan<'db>,
-        not_implemented: Vec<IdentId<'db>>,
+        not_implemented: ThinVec<IdentId<'db>>,
     },
 
     MethodTypeParamNumMismatch {
@@ -583,7 +577,7 @@ pub enum ImplDiag<'db> {
 
     MethodStricterBound {
         span: DynLazySpan<'db>,
-        stricter_bounds: Vec<TraitInstId<'db>>,
+        stricter_bounds: ThinVec<TraitInstId<'db>>,
     },
 
     InvalidSelfType {
