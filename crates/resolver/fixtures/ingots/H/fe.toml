@@ -1,0 +1,6 @@
+[ingot]
+name = "H"
+version = "0.8.0"
+
+[dependencies]
+G = "../G"

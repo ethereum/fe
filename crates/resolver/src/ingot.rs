@@ -1,11 +1,9 @@
-use std::str::FromStr;
+use std::collections::HashMap;
 
 use camino::Utf8PathBuf;
+use common::config::{Config, Dependency, IngotArguments};
 
 use crate::{files::FilesResolver, graph::GraphResolverImpl, ResolutionHandler, Resolver};
-
-#[derive(Clone, Debug)]
-pub struct IngotArguments;
 
 pub type IngotGraphResolver<NH> = GraphResolverImpl<FilesResolver, NH, IngotArguments>;
 
@@ -25,7 +23,9 @@ pub struct UnresolvedDependency;
 pub type BasicIngotGraphResolver = IngotGraphResolver<BasicIngotNodeHandler>;
 
 #[derive(Default)]
-pub struct BasicIngotNodeHandler;
+pub struct BasicIngotNodeHandler {
+    pub configs: HashMap<Utf8PathBuf, Config>,
+}
 
 impl ResolutionHandler<FilesResolver> for BasicIngotNodeHandler {
     type Item = Vec<(Utf8PathBuf, IngotArguments)>;
@@ -33,27 +33,25 @@ impl ResolutionHandler<FilesResolver> for BasicIngotNodeHandler {
     fn handle_resolution(
         &mut self,
         ingot_path: &Utf8PathBuf,
-        files: Vec<(Utf8PathBuf, String)>,
+        mut files: Vec<(Utf8PathBuf, String)>,
     ) -> Self::Item {
-        if let Some((_file_path, content)) = files.first() {
-            if let Ok(toml_content) = toml::from_str::<toml::value::Table>(&content) {
-                if let Some(value) = toml_content.get("dependencies") {
-                    if let Some(table) = value.as_table() {
-                        let mut dependencies = vec![];
-                        for (_alias, value) in table {
-                            if let Some(path_str) = value.as_str() {
-                                if let Ok(path) = Utf8PathBuf::from_str(path_str) {
-                                    dependencies.push((
-                                        ingot_path.join(path).canonicalize_utf8().unwrap(),
-                                        IngotArguments,
-                                    ));
-                                }
-                            }
-                        }
-                        return dependencies;
-                    }
-                }
-            }
+        if let Some((_file_path, content)) = files.pop() {
+            let config = Config::from_string(content);
+            self.configs.insert(ingot_path.clone(), config.clone());
+            return config
+                .dependencies
+                .into_iter()
+                .map(|dependency| match dependency {
+                    Dependency::Path(path) => (
+                        ingot_path.join(path).canonicalize_utf8().unwrap(),
+                        IngotArguments::default(),
+                    ),
+                    Dependency::PathWithArguments { path, arguments } => (
+                        ingot_path.join(path).canonicalize_utf8().unwrap(),
+                        arguments,
+                    ),
+                })
+                .collect();
         }
 
         return vec![];

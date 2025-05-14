@@ -1,7 +1,9 @@
 use std::{hash::Hash, marker::PhantomData, mem::take};
 
 use indexmap::IndexMap;
-use petgraph::graph::{DiGraph, NodeIndex};
+pub use petgraph::graph::{DiGraph, NodeIndex};
+
+pub use petgraph;
 
 use crate::{ResolutionHandler, Resolver};
 
@@ -87,8 +89,7 @@ where
         let mut unresolvable_nodes: IndexMap<Self::Description, Vec<(NodeIndex, E)>> =
             IndexMap::new();
 
-        // Initialize with root
-        unresolved_nodes.entry(root_node.clone()).or_default(); // No back nodes initially
+        unresolved_nodes.entry(root_node.clone()).or_default();
 
         while let Some((unresolved_node_description, back_nodes)) = unresolved_nodes.pop() {
             match self

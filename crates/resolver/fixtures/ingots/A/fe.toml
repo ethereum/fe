@@ -1,7 +1,7 @@
 [ingot]
 name = "A"
-version = "0.1"
+version = "0.1.0"
 
 [dependencies]
-B = "../B"
+B = { path = "../B", version = ".2" }
 C = "../C"
