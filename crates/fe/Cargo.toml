@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 clap.workspace = true
 driver.workspace = true
+common.workspace = true
+resolver.workspace = true
+camino.workspace = true

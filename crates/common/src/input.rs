@@ -74,6 +74,10 @@ impl InputFile {
     pub fn abs_path(&self, db: &dyn InputDb, ingot: InputIngot) -> Utf8PathBuf {
         ingot.path(db).join(self.path(db))
     }
+
+    pub fn parse_config(&self, db: &dyn InputDb) -> IngotConfig {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -120,3 +124,9 @@ impl Ord for IngotDependency {
 }
 
 pub type Version = semver::Version;
+
+struct IngotConfig {
+    pub name: (),
+    pub version: (),
+    pub dependencies: (),
+}

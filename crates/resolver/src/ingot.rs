@@ -1,137 +1,59 @@
-use std::{fmt, fs};
+use std::collections::HashMap;
 
 use camino::Utf8PathBuf;
-use config::{Config, ConfigResolver};
-use source_files::{SourceFiles, SourceFilesResolver};
+use common::config::{Config, Dependency, IngotArguments};
 
-use crate::Resolver;
+use crate::{files::FilesResolver, graph::GraphResolverImpl, ResolutionHandler, Resolver};
 
-pub mod config;
-pub mod source_files;
+pub type IngotGraphResolver<NH> = GraphResolverImpl<FilesResolver, NH, IngotArguments>;
 
-#[derive(Debug)]
-pub enum Ingot {
-    SingleFile {
-        path: Utf8PathBuf,
-        content: String,
-    },
-    Folder {
-        config: Option<Config>,
-        source_files: Option<SourceFiles>,
-    },
+pub fn basic_ingot_graph_resolver() -> IngotGraphResolver<BasicIngotNodeHandler> {
+    GraphResolverImpl::new(
+        FilesResolver::exact_file("fe.toml".into()),
+        BasicIngotNodeHandler::default(),
+    )
 }
 
 #[derive(Debug)]
-pub enum Diagnostic {
-    ConfigError(config::Error),
-    ConfigDiagnostics(Vec<config::Diagnostic>),
-    SourceFilesError(source_files::Error),
-    SourceFilesDiagnostics(Vec<source_files::Diagnostic>),
-}
+pub struct IngotConfigDoesNotExist;
 
 #[derive(Debug)]
-pub enum Error {
-    IngotPathDoesNotExist,
-    SingleFileReadError(std::io::Error),
-}
+pub struct UnresolvedDependency;
+
+pub type BasicIngotGraphResolver = IngotGraphResolver<BasicIngotNodeHandler>;
 
 #[derive(Default)]
-pub struct IngotResolver {
-    diagnostics: Vec<Diagnostic>,
+pub struct BasicIngotNodeHandler {
+    pub configs: HashMap<Utf8PathBuf, Config>,
 }
 
-impl Resolver for IngotResolver {
-    type Description = Utf8PathBuf;
-    type Resource = Ingot;
-    type Error = Error;
-    type Diagnostic = Diagnostic;
+impl ResolutionHandler<FilesResolver> for BasicIngotNodeHandler {
+    type Item = Vec<(Utf8PathBuf, IngotArguments)>;
 
-    fn resolve(&mut self, ingot_path: &Utf8PathBuf) -> Result<Ingot, Error> {
-        if ingot_path.exists() {
-            if ingot_path.is_dir() {
-                let mut config_resolver = ConfigResolver::default();
-                let mut source_files_resolver = SourceFilesResolver::default();
-
-                let config = match config_resolver.resolve(ingot_path) {
-                    Ok(config) => Some(config),
-                    Err(error) => {
-                        self.diagnostics.push(Diagnostic::ConfigError(error));
-                        None
-                    }
-                };
-
-                let source_files = match source_files_resolver.resolve(ingot_path) {
-                    Ok(source_files) => Some(source_files),
-                    Err(error) => {
-                        self.diagnostics.push(Diagnostic::SourceFilesError(error));
-                        None
-                    }
-                };
-
-                let config_diags = config_resolver.take_diagnostics();
-                let source_files_diags = source_files_resolver.take_diagnostics();
-
-                if !config_diags.is_empty() {
-                    self.diagnostics
-                        .push(Diagnostic::ConfigDiagnostics(config_diags));
-                }
-
-                if !source_files_diags.is_empty() {
-                    self.diagnostics
-                        .push(Diagnostic::SourceFilesDiagnostics(source_files_diags));
-                }
-
-                Ok(Ingot::Folder {
-                    config,
-                    source_files,
+    fn handle_resolution(
+        &mut self,
+        ingot_path: &Utf8PathBuf,
+        mut files: Vec<(Utf8PathBuf, String)>,
+    ) -> Self::Item {
+        if let Some((_file_path, content)) = files.pop() {
+            let config = Config::from_string(content);
+            self.configs.insert(ingot_path.clone(), config.clone());
+            return config
+                .dependencies
+                .into_iter()
+                .map(|dependency| match dependency {
+                    Dependency::Path(path) => (
+                        ingot_path.join(path).canonicalize_utf8().unwrap(),
+                        IngotArguments::default(),
+                    ),
+                    Dependency::PathWithArguments { path, arguments } => (
+                        ingot_path.join(path).canonicalize_utf8().unwrap(),
+                        arguments,
+                    ),
                 })
-            } else {
-                match fs::read_to_string(ingot_path) {
-                    Ok(content) => Ok(Ingot::SingleFile {
-                        path: ingot_path.clone(),
-                        content,
-                    }),
-                    Err(error) => Err(Error::SingleFileReadError(error)),
-                }
-            }
-        } else {
-            Err(Error::IngotPathDoesNotExist)
+                .collect();
         }
-    }
 
-    fn take_diagnostics(&mut self) -> Vec<Self::Diagnostic> {
-        std::mem::take(&mut self.diagnostics)
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::IngotPathDoesNotExist => write!(f, "the ingot path does not exist"),
-            Self::SingleFileReadError(error) => write!(f, "single file read error: {error}"),
-        }
-    }
-}
-
-impl fmt::Display for Diagnostic {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ConfigError(error) => write!(f, "config resolution error: {error}"),
-            Self::ConfigDiagnostics(diagnostics) => {
-                writeln!(f, "unable to resolve config file due to the following:")?;
-                for diagnostic in diagnostics {
-                    writeln!(f, " {diagnostic}")?
-                }
-                Ok(())
-            }
-            Self::SourceFilesError(error) => write!(f, "source files resolution error: {error}"),
-            Self::SourceFilesDiagnostics(diagnostics) => {
-                writeln!(f, "unable to resolve source files due to the following:")?;
-                for diagnostic in diagnostics {
-                    writeln!(f, " {diagnostic}")?
-                }
-                Ok(())
-            }
-        }
+        return vec![];
     }
 }

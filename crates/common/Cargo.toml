@@ -15,6 +15,7 @@ salsa.workspace = true
 semver.workspace = true
 smol_str = "0.3.2"
 rust-embed = { version = "8.5.0", features = ["debug-embed"] }
+toml = "0.8"
 
 parser.workspace = true
 ordermap = "0.5.5"

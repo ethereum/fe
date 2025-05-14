@@ -13,6 +13,9 @@ common.workspace = true
 camino.workspace = true
 glob.workspace = true
 semver.workspace = true
-smol_str = "0.1"
+indexmap = "2.9"
+petgraph = "0.8"
+git2 = "0.19"
+dir-test.workspace = true
+test-utils.workspace = true
 toml = "0.8"
-serde = { version = "1", features = ["derive"] }
