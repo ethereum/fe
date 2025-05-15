@@ -1,6 +1,6 @@
 use common::ingot::IngotDescription;
 use hir::{
-    hir_def::{scope_graph::ScopeId, EnumVariant, Func, FuncParamName, IdentId, IngotId, Partial},
+    hir_def::{scope_graph::ScopeId, EnumVariant, Func, FuncParamName, IdentId, Partial},
     span::DynLazySpan,
 };
 

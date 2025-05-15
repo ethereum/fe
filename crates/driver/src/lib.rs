@@ -2,6 +2,7 @@ pub mod db;
 pub mod diagnostics;
 pub mod files;
 use camino::Utf8PathBuf;
+use common::core::HasBuiltinCore;
 use common::ingot::{IngotBaseUrl, IngotIndex};
 use common::InputDb;
 pub use db::DriverDataBase;
@@ -27,7 +28,7 @@ pub fn run(opts: &Options) {
                         config,
                         source_files:
                             Some(SourceFiles {
-                                root: Some(root),
+                                root: Some(_root),
                                 files,
                             }),
                     }) => {
@@ -47,7 +48,7 @@ pub fn run(opts: &Options) {
                             config.expect("config is required"),
                         );
                         for (path, content) in files {
-                            core_base_url.touch_with_initial_content(&mut db, path, Some(content));
+                            core_base_url.touch(&mut db, path, Some(content));
                         }
                         core_base_url
                     }
@@ -69,7 +70,7 @@ pub fn run(opts: &Options) {
                     }
                 }
             } else {
-                db.file_index().builtin_core(&db)
+                db.builtin_core().base(&db)
             };
 
             let local_ingot = match ingot_resolver.resolve(path) {
@@ -98,15 +99,14 @@ pub fn run(opts: &Options) {
                         config.expect("config is required"),
                     );
                     for (path, content) in files {
-                        local_base_url.touch_with_initial_content(&mut db, path, Some(content));
+                        local_base_url.touch(&mut db, path, Some(content));
                     }
                     local_base_url
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
                     let url =
                         Url::from_file_path(&path).expect("Failed to create URL from file path");
-                    db.file_index()
-                        .touch_with_initial_content(&mut db, url.clone(), Some(content));
+                    db.file_index().touch(&mut db, url.clone(), Some(content));
                     db.file_index()
                         .containing_ingot_base(&db, &url)
                         .expect("Failed to find ingot base")

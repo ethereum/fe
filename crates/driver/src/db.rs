@@ -3,16 +3,12 @@ use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
 };
-use common::{diagnostics::CompleteDiagnostic, define_input_db, InputFile, InputIngot};
-use common::{
-    diagnostics::CompleteDiagnostic,
-    file::{File, FileIndex},
-    ingot::{IngotBaseUrl, IngotDescription, IngotIndex, Version},
-    InputDb,
-};
+use common::file::File;
+use common::{define_input_db, diagnostics::CompleteDiagnostic};
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
+    IngotDescription,
 };
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
@@ -42,15 +38,18 @@ impl DriverDataBase {
         DiagnosticsCollection(pass_manager.run_on_module(self, top_mod))
     }
 
-    pub fn run_on_ingot(&self, ingot: InputIngot) -> DiagnosticsCollection {
+    pub fn run_on_ingot<'db>(
+        &'db self,
+        ingot: IngotDescription<'db>,
+    ) -> DiagnosticsCollection<'db> {
         self.run_on_ingot_with_pass_manager(ingot, initialize_analysis_pass())
     }
 
-    pub fn run_on_ingot_with_pass_manager(
-        &self,
-        ingot: InputIngot,
+    pub fn run_on_ingot_with_pass_manager<'db>(
+        &'db self,
+        ingot: IngotDescription<'db>,
         mut pass_manager: AnalysisPassManager,
-    ) -> DiagnosticsCollection {
+    ) -> DiagnosticsCollection<'db> {
         let tree = module_tree(self, ingot);
         DiagnosticsCollection(pass_manager.run_on_module_tree(self, tree))
     }

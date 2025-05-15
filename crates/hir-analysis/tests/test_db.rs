@@ -10,11 +10,8 @@ use codespan_reporting::{
     },
 };
 use common::{
-    define_input_db,
-    diagnostics::Span,
-    indexmap::{IndexMap, IndexSet},
-    input::{IngotKind, Version},
-    InputFile, InputIngot,
+    core::HasBuiltinCore, define_input_db, diagnostics::Span, file::File, indexmap::IndexMap,
+    InputDb,
 };
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
@@ -38,13 +35,6 @@ type CodeSpanFileId = usize;
 
 define_input_db!(HirAnalysisTestDb);
 
-#[salsa::db]
-impl InputDb for HirAnalysisTestDb {
-    fn file_index(&self) -> FileIndex {
-        self.index.clone().expect("File index not initialized")
-    }
-}
-
 // https://github.com/rust-lang/rust/issues/46379
 #[allow(dead_code)]
 impl HirAnalysisTestDb {
@@ -56,8 +46,8 @@ impl HirAnalysisTestDb {
         };
         // Use the index from the database and reinitialize it with core files
         let index = self.file_index();
-        index.initialize_builtin_core(self);
-        index.touch_with_initial_content(
+        self.initialize_builtin_core();
+        index.touch(
             self,
             Url::from_file_path(&file_name)
                 .unwrap_or_else(|()| panic!("Failed to create URL from file path: {}", file_name)),

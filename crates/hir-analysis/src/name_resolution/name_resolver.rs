@@ -8,8 +8,8 @@ use hir::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
         },
-        Enum, EnumVariant, GenericParam, GenericParamOwner, IdentId, ItemKind, Mod, TopLevelMod,
-        Trait, Use,
+        Enum, EnumVariant, GenericParam, GenericParamOwner, HirIngot, IdentId, ItemKind, Mod,
+        TopLevelMod, Trait, Use,
     },
     span::DynLazySpan,
 };

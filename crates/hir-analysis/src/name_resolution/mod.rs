@@ -7,14 +7,7 @@ pub(crate) mod traits_in_scope;
 mod visibility_checker;
 
 use common::ingot::IngotDescription;
-use hir::hir_def::{IngotId, TopLevelMod};
-use hir::{
-    hir_def::{
-        scope_graph::ScopeId, Expr, ExprId, GenericArgListId, ItemKind, Pat, PatId, PathId,
-        TopLevelMod, TraitRefId, TypeId,
-    },
-    visitor::prelude::*,
-};
+use hir::hir_def::TopLevelMod;
 pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
     EarlyNameQueryId, NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind,

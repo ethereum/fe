@@ -65,7 +65,10 @@ macro_rules! impl_input_db {
 #[macro_export]
 macro_rules! impl_db_default {
     ($db_type:ty) => {
-        impl Default for $db_type {
+        impl Default for $db_type
+        where
+            $db_type: $crate::core::HasBuiltinCore,
+        {
             fn default() -> Self {
                 let mut db = Self {
                     storage: salsa::Storage::default(),
@@ -73,6 +76,7 @@ macro_rules! impl_db_default {
                 };
                 let index = $crate::file::FileIndex::default(&db);
                 db.index = Some(index);
+                $crate::core::HasBuiltinCore::initialize_builtin_core(&mut db);
                 db
             }
         }

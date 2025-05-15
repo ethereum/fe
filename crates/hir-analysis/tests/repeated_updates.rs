@@ -29,7 +29,7 @@ fn test_updated() {
 
     for version in versions {
         {
-            let top_mod = map_file_to_mod(&db, ingot);
+            let top_mod = map_file_to_mod(&db, file);
             let mut pass_manager = initialize_pass_manager();
             let _ = pass_manager.run_on_module(&db, top_mod);
         }

@@ -1,5 +1,5 @@
 use camino::Utf8PathBuf;
-use common::{config::Config, ingot::Version};
+use common::{config::IngotMetadata, ingot::Version};
 use serde::Deserialize;
 use smol_str::SmolStr;
 use std::{fmt, fs, mem};
@@ -31,11 +31,11 @@ pub struct ConfigResolver {
 
 impl Resolver for ConfigResolver {
     type Description = Utf8PathBuf;
-    type Resource = Config;
+    type Resource = IngotMetadata;
     type Error = Error;
     type Diagnostic = Diagnostic;
 
-    fn resolve(&mut self, ingot_path: &Utf8PathBuf) -> Result<Config, Error> {
+    fn resolve(&mut self, ingot_path: &Utf8PathBuf) -> Result<IngotMetadata, Error> {
         let config_path = ingot_path.join(FE_CONFIG_SUFFIX);
 
         if config_path.exists() {
@@ -78,7 +78,7 @@ impl Resolver for ConfigResolver {
                 eprintln!("ingot dependencies are not yet supported")
             }
 
-            Ok(Config { name, version })
+            Ok(IngotMetadata { name, version })
         } else {
             Err(Error::ConfigFileDoesNotExist)
         }

@@ -14,12 +14,12 @@ pub static BUILTIN_CORE_BASE_URL: &str = "builtin-core:///";
 pub struct Core;
 
 pub trait HasBuiltinCore: InputDb {
-    fn initialize_builtin_core(&self, db: &mut dyn InputDb);
-    fn builtin_core<'db>(&self, db: &'db dyn InputDb) -> IngotDescription<'db>;
+    fn initialize_builtin_core(&mut self);
+    fn builtin_core<'db>(&'db self) -> IngotDescription<'db>;
 }
 
-impl<T: InputDb> HasBuiltinCore for T {
-    fn initialize_builtin_core(&self, db: &mut dyn InputDb) {
+impl<'db, T: InputDb> HasBuiltinCore for T {
+    fn initialize_builtin_core(&mut self) {
         let base = Url::parse(BUILTIN_CORE_BASE_URL).unwrap();
 
         for (path, contents) in Core::iter().filter_map(|path| {
@@ -29,14 +29,14 @@ impl<T: InputDb> HasBuiltinCore for T {
                 (Utf8PathBuf::from(path.to_string()), contents)
             })
         }) {
-            base.touch(db, path, contents.into());
+            base.touch(self, path, contents.into());
         }
     }
 
-    fn builtin_core<'db>(&self, db: &'db dyn InputDb) -> IngotDescription<'db> {
+    fn builtin_core(&self) -> IngotDescription {
         let core = self
             .file_index()
-            .containing_ingot(db, Url::parse(BUILTIN_CORE_BASE_URL).as_ref().unwrap());
+            .containing_ingot(self, Url::parse(BUILTIN_CORE_BASE_URL).as_ref().unwrap());
         core.expect("Built-in core ingot failed to initialize")
     }
 }

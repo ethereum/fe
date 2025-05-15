@@ -1,6 +1,7 @@
 mod test_db;
 
-use common::ingot::{IngotBaseUrl, IngotIndex};
+use common::core::HasBuiltinCore;
+use common::ingot::IngotIndex;
 use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
@@ -9,11 +10,7 @@ use url::Url;
 #[test]
 fn analyze_corelib() {
     let db = DriverDataBase::default();
-    let core = db
-        .file_index()
-        .builtin_core(&db)
-        .ingot(&db)
-        .expect("core ingot should exist");
+    let core = db.builtin_core();
 
     let core_diags = db.run_on_ingot(core);
     if !(core_diags.is_empty()) {
@@ -32,11 +29,8 @@ fn analyze_corelib() {
 fn corelib_standalone(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Url::from_file_path(fixture.path()).unwrap();
-    db.file_index().touch_with_initial_content(
-        &mut db,
-        path.clone(),
-        Some(fixture.content().to_string()),
-    );
+    db.file_index()
+        .touch(&mut db, path.clone(), Some(fixture.content().to_string()));
 
     let local_diags = db.run_on_ingot(
         db.file_index()
