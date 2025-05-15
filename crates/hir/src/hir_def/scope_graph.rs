@@ -1,13 +1,16 @@
 use std::io;
 
-use common::indexmap::{IndexMap, IndexSet};
+use common::{
+    indexmap::{IndexMap, IndexSet},
+    ingot::IngotDescription,
+};
 use rustc_hash::FxHashSet;
 use salsa::Update;
 
 use super::{
     scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, EnumVariant,
     ExprId, FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl,
-    ImplTrait, IngotId, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind,
+    ImplTrait, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind,
     Visibility,
 };
 use crate::{
@@ -650,8 +653,6 @@ impl<'db> FromScope<'db> for &'db GenericParam<'db> {
 
 #[cfg(test)]
 mod tests {
-
-    use common::file::FileIndex;
 
     use crate::{
         hir_def::{

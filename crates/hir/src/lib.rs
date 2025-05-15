@@ -41,13 +41,7 @@ impl<T> SpannedHirDb for T where T: HirDb {}
 
 #[cfg(test)]
 mod test_db {
-    use common::{
-        define_input_db,
-        file::{File, FileIndex},
-        indexmap::IndexSet,
-        input::{IngotKind, Version},
-        InputDb,
-    };
+    use common::{define_input_db, file::File, InputDb};
     use derive_more::TryIntoError;
     use url::Url;
 
@@ -59,13 +53,6 @@ mod test_db {
 
     // Use the macro to define our test database with FileIndex support
     define_input_db!(TestDb);
-
-    #[salsa::db]
-    impl InputDb for TestDb {
-        fn file_index(&self) -> FileIndex {
-            self.index.clone().expect("File index not initialized")
-        }
-    }
 
     impl TestDb {
         pub fn parse_source(&self, file: File) -> &ScopeGraph {
@@ -103,7 +90,7 @@ mod test_db {
         }
 
         pub fn standalone_file(&mut self, text: &str) -> File {
-            self.file_index().touch_with_initial_content(
+            self.file_index().touch(
                 self,
                 Url::parse("file:///hir_test/test_file.fe").unwrap(),
                 Some(text.into()),

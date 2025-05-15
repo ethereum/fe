@@ -221,8 +221,6 @@ impl ChainInitiator for ExprRoot<'_> {
 #[cfg(test)]
 mod tests {
 
-    use common::file::FileIndex;
-
     use crate::{
         hir_def::{ArithBinOp, Body, Expr},
         test_db::TestDb,

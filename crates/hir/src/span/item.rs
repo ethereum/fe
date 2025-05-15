@@ -349,7 +349,6 @@ define_lazy_span_node!(
 
 #[cfg(test)]
 mod tests {
-    use common::file::FileIndex;
 
     use crate::{
         hir_def::{Enum, Func, Mod, Struct, TypeAlias, Use},

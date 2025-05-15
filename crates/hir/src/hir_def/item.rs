@@ -5,16 +5,13 @@
 
 use std::borrow::Cow;
 
-use common::InputFile;
 use common::{file::File, ingot::IngotDescription};
 use parser::ast;
 
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
-    AttrListId, Body, FuncParamListId, FuncParamName, GenericParam, GenericParamListId, IdentId,
-    IngotId, Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
-    AttrListId, Body, FuncParamListId, FuncParamName, GenericParamListId, HirIngot, IdentId,
-    Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
+    AttrListId, Body, FuncParamListId, FuncParamName, GenericParam, GenericParamListId, HirIngot,
+    IdentId, Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
 };
 use crate::{
     hir_def::TraitRefId,
@@ -375,6 +372,8 @@ pub struct TopLevelMod<'db> {
 #[salsa::tracked]
 impl<'db> TopLevelMod<'db> {
     pub fn span(self) -> LazyTopModSpan<'db> {
+        LazyTopModSpan::new(self)
+    }
     pub fn ingot(self, db: &'db dyn HirDb) -> IngotDescription<'db> {
         self.file(db)
             .containing_ingot(db)

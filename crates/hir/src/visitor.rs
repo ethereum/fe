@@ -5,9 +5,9 @@ use crate::{
         attr, scope_graph::ScopeId, Body, CallArg, Const, Contract, Enum, EnumVariant, Expr,
         ExprId, Field, FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam,
         FuncParamListId, FuncParamName, GenericArg, GenericArgListId, GenericParam,
-        GenericParamListId, IdentId, Impl, ImplTrait, IngotId, ItemKind, KindBound, LitKind,
-        MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait,
-        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind, MatchArm, Mod,
+        Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait, TraitRefId,
+        TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
         UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{
@@ -2233,8 +2233,6 @@ use visit_node_in_body;
 
 #[cfg(test)]
 mod tests {
-
-    use common::file::FileIndex;
 
     use super::*;
     use crate::test_db::TestDb;

@@ -1,9 +1,13 @@
 use camino::Utf8Path;
-use common::{file::File, indexmap::IndexMap, ingot::IngotDescription};
+use common::{
+    file::{File, IngotFileKind},
+    indexmap::IndexMap,
+    ingot::IngotDescription,
+};
 use cranelift_entity::{entity_impl, EntityRef, PrimaryMap};
 use salsa::Update;
 
-use super::{IdentId, IngotId, TopLevelMod};
+use super::{IdentId, TopLevelMod};
 use crate::{lower::map_file_to_mod_impl, HirDb};
 
 /// This tree represents the structure of an ingot.
@@ -58,7 +62,7 @@ pub struct ModuleTree<'db> {
     pub(crate) module_tree: PMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
     pub(crate) mod_map: IndexMap<TopLevelMod<'db>, ModuleTreeNodeId>,
 
-    pub ingot: IngotId<'db>,
+    pub ingot: IngotDescription<'db>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -140,7 +144,10 @@ impl ModuleTree<'_> {
 /// external ingot dependency, and not depends on file contents.
 #[salsa::tracked(return_ref)]
 #[allow(elided_named_lifetimes)]
-pub(crate) fn module_tree_impl(db: &dyn HirDb, ingot: InputIngot) -> ModuleTree<'_> {
+pub(crate) fn module_tree_impl<'a>(
+    db: &'a dyn HirDb,
+    ingot: IngotDescription<'a>,
+) -> ModuleTree<'a> {
     ModuleTreeBuilder::new(db, ingot).build()
 }
 
@@ -177,19 +184,17 @@ entity_impl!(ModuleTreeNodeId);
 
 struct ModuleTreeBuilder<'db> {
     db: &'db dyn HirDb,
-    input_ingot: InputIngot,
-    ingot: IngotId<'db>,
+    ingot: IngotDescription<'db>,
     module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
     mod_map: IndexMap<TopLevelMod<'db>, ModuleTreeNodeId>,
     path_map: IndexMap<&'db Utf8Path, ModuleTreeNodeId>,
 }
 
 impl<'db> ModuleTreeBuilder<'db> {
-    fn new(db: &'db dyn HirDb, ingot: InputIngot) -> Self {
+    fn new(db: &'db dyn HirDb, ingot: IngotDescription<'db>) -> Self {
         Self {
             db,
-            input_ingot: ingot,
-            ingot: IngotId::new(db, ingot),
+            ingot,
             module_tree: PrimaryMap::default(),
             mod_map: IndexMap::default(),
             path_map: IndexMap::default(),
@@ -200,8 +205,12 @@ impl<'db> ModuleTreeBuilder<'db> {
         self.set_modules();
         self.build_tree();
 
-        let root_mod =
-            map_file_to_mod_impl(self.db, self.ingot, self.input_ingot.root_file(self.db));
+        let root_mod = map_file_to_mod_impl(
+            self.db,
+            self.ingot
+                .root_file(self.db)
+                .expect("module needs a root file"),
+        );
         let root = self.mod_map[&root_mod];
         ModuleTree {
             root,
@@ -212,28 +221,63 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn set_modules(&mut self) {
-        for &file in self.input_ingot.files(self.db) {
-            let top_mod = map_file_to_mod_impl(self.db, self.ingot, file);
+        for (_url, file) in self.ingot.files(self.db).iter() {
+            let top_mod = map_file_to_mod_impl(self.db, file);
 
             let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
-            self.path_map.insert(file.path(self.db), module_id);
+            let path = file.path(self.db).as_ref().expect("couldn't get path");
+            // .clone();
+            let path = Utf8Path::new(path);
+            self.path_map.insert(path, module_id);
             self.mod_map.insert(top_mod, module_id);
         }
     }
 
     fn build_tree(&mut self) {
-        let root = self.input_ingot.root_file(self.db);
+        let root = self
+            .ingot
+            .root_file(self.db)
+            .expect("ingot root file is missing");
+        // .unwrap_or_else(|_e| {
+        //     let files_info = self.ingot.files(self.db)
+        //         .iter()
+        //         .map(|(url, file)| {
+        //             let path = file.path(self.db).as_deref().unwrap_or("unknown path".into());
+        //             let kind = file.kind(self.db).map_or_else(|| "unknown kind".to_string(), |k| format!("{:?}", k));
+        //             format!("  - File: {} (path: {}, kind: {})", url, path, kind)
+        //         })
+        //         .collect::<Vec<_>>()
+        //         .join("\n");
 
-        for &child in self.input_ingot.files(self.db) {
+        //     panic!(
+        //         "Root file not found for ingot at: {}\nIngot files:\n{}\n\nMake sure the ingot has a valid root file.",
+        //         self.ingot.base(self.db),
+        //         files_info
+        //     );
+        // });
+
+        for (_url, child) in self.ingot.files(self.db).iter() {
             // Ignore the root file because it has no parent.
             if child == root {
                 continue;
             }
 
-            let root_path = root.path(self.db);
-            let root_mod = map_file_to_mod_impl(self.db, self.ingot, root);
-            let child_path = child.path(self.db);
-            let child_mod = map_file_to_mod_impl(self.db, self.ingot, child);
+            // Skip non-source files (e.g., fe.toml)
+            if let Some(kind) = child.kind(self.db) {
+                if kind != IngotFileKind::Source {
+                    continue;
+                }
+            } else {
+                continue; // Skip files without a recognized kind
+            }
+
+            let root_path = root.path(self.db).as_ref().expect("couldn't get root path");
+            let root_mod = map_file_to_mod_impl(self.db, root);
+            let child_path = child
+                .path(self.db)
+                .as_ref()
+                .expect("couldn't get child path");
+            let child_mod = map_file_to_mod_impl(self.db, child);
 
             // If the file is in the same directory as the root file, the file is a direct
             // child of the root.
@@ -256,8 +300,8 @@ impl<'db> ModuleTreeBuilder<'db> {
         }
     }
 
-    fn parent_module(&self, file: InputFile) -> Option<ModuleTreeNodeId> {
-        let file_path = file.path(self.db);
+    fn parent_module(&self, file: File) -> Option<ModuleTreeNodeId> {
+        let file_path = file.path(self.db).as_ref().expect("File path not found");
         let file_dir = file_path.parent()?;
         let parent_dir = file_dir.parent()?;
 
@@ -275,47 +319,47 @@ impl<'db> ModuleTreeBuilder<'db> {
 
 #[cfg(test)]
 mod tests {
-    use common::input::{IngotKind, Version};
 
-    use super::*;
+    use common::{
+        ingot::{IngotBaseUrl, IngotIndex},
+        InputDb,
+    };
+    use url::Url;
+
     use crate::{lower, test_db::TestDb};
 
     #[test]
     fn module_tree() {
         let mut db = TestDb::default();
 
-        let local_ingot = InputIngot::new(
+        let index = db.file_index();
+        let ingot_base = Url::parse("file:///foo/fargo").unwrap();
+
+        // fe.toml anchors the ingot base
+        ingot_base.touch(&mut db, "fe.toml".into(), None);
+
+        let local_root = IngotBaseUrl::touch(&ingot_base, &mut db, "src/lib.fe".into(), None);
+        let mod1 = IngotBaseUrl::touch(&ingot_base, &mut db, "src/mod1.fe".into(), None);
+        let mod2 = IngotBaseUrl::touch(&ingot_base, &mut db, "src/mod2.fe".into(), None);
+        let foo = IngotBaseUrl::touch(&ingot_base, &mut db, "src/mod1/foo.fe".into(), None);
+        let bar = IngotBaseUrl::touch(&ingot_base, &mut db, "src/mod2/bar.fe".into(), None);
+        let baz = IngotBaseUrl::touch(&ingot_base, &mut db, "src/mod2/baz.fe".into(), None);
+        let _floating =
+            IngotBaseUrl::touch(&ingot_base, &mut db, "src/mod3/floating.fe".into(), None);
+
+        let local_root_mod = lower::map_file_to_mod(&db, local_root);
+        let mod1_mod = lower::map_file_to_mod(&db, mod1);
+        let mod2_mod = lower::map_file_to_mod(&db, mod2);
+        let foo_mod = lower::map_file_to_mod(&db, foo);
+        let bar_mod = lower::map_file_to_mod(&db, bar);
+        let baz_mod = lower::map_file_to_mod(&db, baz);
+
+        let local_tree = lower::module_tree(
             &db,
-            "/foo/fargo".into(),
-            IngotKind::Local,
-            Version::new(0, 0, 1),
-            Default::default(),
-            Default::default(),
-            None,
+            index
+                .containing_ingot(&db, &ingot_base)
+                .expect("Failed to construct ingot"),
         );
-        let local_root = InputFile::new(&db, "src/lib.fe".into(), "".into());
-        let mod1 = InputFile::new(&db, "src/mod1.fe".into(), "".into());
-        let mod2 = InputFile::new(&db, "src/mod2.fe".into(), "".into());
-        let foo = InputFile::new(&db, "src/mod1/foo.fe".into(), "".into());
-        let bar = InputFile::new(&db, "src/mod2/bar.fe".into(), "".into());
-        let baz = InputFile::new(&db, "src/mod2/baz.fe".into(), "".into());
-        let floating = InputFile::new(&db, "src/mod3/floating.fe".into(), "".into());
-        local_ingot.set_root_file(&mut db, local_root);
-        local_ingot.set_files(
-            &mut db,
-            [local_root, mod1, mod2, foo, bar, baz, floating]
-                .into_iter()
-                .collect(),
-        );
-
-        let local_root_mod = lower::map_file_to_mod(&db, local_ingot, local_root);
-        let mod1_mod = lower::map_file_to_mod(&db, local_ingot, mod1);
-        let mod2_mod = lower::map_file_to_mod(&db, local_ingot, mod2);
-        let foo_mod = lower::map_file_to_mod(&db, local_ingot, foo);
-        let bar_mod = lower::map_file_to_mod(&db, local_ingot, bar);
-        let baz_mod = lower::map_file_to_mod(&db, local_ingot, baz);
-
-        let local_tree = lower::module_tree(&db, local_ingot);
         let root_node = local_tree.root_data();
         assert_eq!(root_node.top_mod, local_root_mod);
         assert_eq!(root_node.children.len(), 2);
