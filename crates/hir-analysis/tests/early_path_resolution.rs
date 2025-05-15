@@ -74,7 +74,7 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
-        let prop = match resolve_path(self.db, path, scope, false) {
+        let prop = match resolve_path(self.db, path, scope, None, false) {
             Ok(res) => res.pretty_path(self.db).unwrap(),
             Err(err) => err.print(),
         };

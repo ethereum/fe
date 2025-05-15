@@ -1,4 +1,4 @@
-use super::{Body, GenericArgListId, Partial, PathId};
+use super::{Body, IdentId, Partial, PathId};
 use crate::HirDb;
 
 #[salsa::interned]
@@ -10,13 +10,20 @@ pub struct TypeId<'db> {
 
 impl<'db> TypeId<'db> {
     pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
-        matches!(self.data(db), TypeKind::SelfType(_))
+        if let TypeKind::Path(path) = self.data(db) {
+            (|| Some(path.to_opt()?.as_ident(db)?.data(db) == "Self"))().unwrap_or(false)
+        } else {
+            false
+        }
     }
 
     pub fn fallback_self_ty(db: &'db dyn HirDb) -> Self {
         Self::new(
             db,
-            TypeKind::SelfType(GenericArgListId::new(db, Vec::new(), false)),
+            TypeKind::Path(Partial::Present(PathId::from_ident(
+                db,
+                IdentId::make_self_ty(db),
+            ))),
         )
     }
 
@@ -32,7 +39,6 @@ impl<'db> TypeId<'db> {
                 .to_opt()
                 .map_or_else(|| "<missing>".into(), |p| p.pretty_print(db)),
 
-            TypeKind::SelfType(args) => format!("Self{}", args.pretty_print(db)),
             TypeKind::Tuple(tup) => tup
                 .data(db)
                 .iter()
@@ -49,7 +55,6 @@ impl<'db> TypeId<'db> {
 pub enum TypeKind<'db> {
     Ptr(Partial<TypeId<'db>>),
     Path(Partial<PathId<'db>>),
-    SelfType(GenericArgListId<'db>),
     Tuple(TupleTypeId<'db>),
     /// The first `TypeId` is the element type, the second `Body` is the length.
     Array(Partial<TypeId<'db>>, Partial<Body<'db>>),

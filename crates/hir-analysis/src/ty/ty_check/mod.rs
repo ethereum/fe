@@ -1,7 +1,6 @@
 mod callable;
 mod env;
 mod expr;
-mod method_selection;
 mod pat;
 mod path;
 mod stmt;
@@ -11,7 +10,7 @@ pub use env::ExprProp;
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
 use hir::{
-    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, TypeId as HirTyId},
+    hir_def::{Body, Expr, ExprId, Func, LitKind, Partial, Pat, PatId, PathId, TypeId as HirTyId},
     span::{
         expr::LazyExprSpan, pat::LazyPatSpan, path::LazyPathSpan, types::LazyTySpan, DynLazySpan,
     },
@@ -106,6 +105,14 @@ impl<'db> TyChecker<'db> {
         self.env.body()
     }
 
+    fn parent_expr(&self) -> Option<&'db Expr<'db>> {
+        let id = self.env.parent_expr()?;
+        match &self.body().exprs(self.db)[id] {
+            Partial::Present(expr) => Some(expr),
+            Partial::Absent => None,
+        }
+    }
+
     fn lit_ty(&mut self, lit: &LitKind<'db>) -> TyId<'db> {
         match lit {
             LitKind::Bool(_) => TyId::bool(self.db),
@@ -157,7 +164,7 @@ impl<'db> TyChecker<'db> {
 
         match t {
             Typeable::Expr(expr, mut typed_expr) => {
-                typed_expr.swap_ty(actual);
+                typed_expr.ty = actual;
                 self.env.type_expr(expr, typed_expr)
             }
             Typeable::Pat(pat) => self.env.type_pat(pat, actual),
@@ -236,6 +243,7 @@ impl<'db> TyChecker<'db> {
             self.db,
             path,
             scope,
+            Some(self.env.assumptions()),
             resolve_tail_as_value,
             &mut check_visibility,
         ) {
@@ -311,7 +319,7 @@ impl Typeable<'_> {
 }
 
 impl<'db> TraitMethod<'db> {
-    fn instantiate_with_inst(
+    pub fn instantiate_with_inst(
         self,
         table: &mut UnificationTable<'db>,
         receiver_ty: TyId<'db>,

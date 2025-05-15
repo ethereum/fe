@@ -1,6 +1,7 @@
 pub mod diagnostics;
 
 mod import_resolver;
+pub(crate) mod method_selection;
 mod name_resolver;
 mod path_resolver;
 pub(crate) mod traits_in_scope;
@@ -66,6 +67,7 @@ pub fn resolve_imports<'db>(
 pub enum ExpectedPathKind {
     /// NameDomain::TYPE
     Type,
+    Function,
     /// NameDomain::TYPE
     Trait,
     /// NameDomain::VALUE
@@ -74,6 +76,4 @@ pub enum ExpectedPathKind {
     Record,
     /// NameDomain::VALUE | NameDomain::TYPE
     Pat,
-    /// NameDomain::VALUE | NameDomain::TYPE
-    Expr,
 }

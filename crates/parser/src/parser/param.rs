@@ -165,7 +165,7 @@ impl super::Parse for TypeGenericParamScope {
 }
 
 define_scope! {
-    TypeBoundListScope{disallow_trait_bound: bool},
+    pub TypeBoundListScope{disallow_trait_bound: bool},
     TypeBoundList,
     (Plus)
 }

@@ -10,11 +10,10 @@ use super::{
     const_ty::{ConstTyData, ConstTyId},
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
-use crate::{
-    name_resolution::{resolve_ident_to_bucket, resolve_path, NameDomain, NameResKind, PathRes},
-    ty::binder::Binder,
-    HirAnalysisDb,
+use crate::name_resolution::{
+    resolve_ident_to_bucket, resolve_path, NameDomain, NameResKind, PathRes,
 };
+use crate::{ty::binder::Binder, HirAnalysisDb};
 
 /// Lowers the given HirTy to `TyId`.
 #[salsa::tracked]
@@ -31,15 +30,6 @@ pub fn lower_hir_ty<'db>(
         }
 
         HirTyKind::Path(path) => lower_path(db, scope, *path),
-
-        HirTyKind::SelfType(args) => {
-            let path = PathId::self_ty(db, *args);
-            match resolve_path(db, path, scope, false) {
-                Ok(PathRes::Ty(ty)) => ty,
-                Ok(_) => unreachable!(),
-                Err(_) => TyId::invalid(db, InvalidCause::Other),
-            }
-        }
 
         HirTyKind::Tuple(tuple_id) => {
             let elems = tuple_id.data(db);
@@ -86,7 +76,7 @@ fn lower_path<'db>(
     let Some(path) = path.to_opt() else {
         return TyId::invalid(db, InvalidCause::Other);
     };
-    match resolve_path(db, path, scope, false) {
+    match resolve_path(db, path, scope, None, false) {
         Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => ty,
         _ => TyId::invalid(db, InvalidCause::Other),
     }
@@ -414,23 +404,18 @@ impl<'db> GenericParamCollector<'db> {
             return ParamLoc::NonParam;
         };
 
-        let hir_db = self.db;
-
         let path = match ty.data(self.db) {
             HirTyKind::Path(Partial::Present(path)) => {
-                if path.is_bare_ident(hir_db) {
+                if path.is_bare_ident(self.db)
+                    && path.is_self_ty(self.db)
+                    && matches!(self.owner.into(), ItemKind::Trait(_))
+                {
+                    return ParamLoc::TraitSelf;
+                } else if path.is_bare_ident(self.db) {
                     *path
                 } else {
                     return ParamLoc::NonParam;
                 }
-            }
-
-            HirTyKind::SelfType(args) => {
-                return if matches!(self.owner.into(), ItemKind::Trait(_)) && args.is_empty(hir_db) {
-                    ParamLoc::TraitSelf
-                } else {
-                    ParamLoc::NonParam
-                };
             }
 
             _ => return ParamLoc::NonParam,
@@ -546,17 +531,15 @@ pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
         HirKindBound::Mono => Kind::Star,
         HirKindBound::Abs(lhs, rhs) => match (lhs, rhs) {
             (Partial::Present(lhs), Partial::Present(rhs)) => {
-                Kind::Abs(Box::new(lower_kind(lhs)), Box::new(lower_kind(rhs)))
+                Kind::Abs(Box::new((lower_kind(lhs), lower_kind(rhs))))
             }
             (Partial::Present(lhs), Partial::Absent) => {
-                Kind::Abs(Box::new(lower_kind(lhs)), Box::new(Kind::Any))
+                Kind::Abs(Box::new((lower_kind(lhs), Kind::Any)))
             }
             (Partial::Absent, Partial::Present(rhs)) => {
-                Kind::Abs(Box::new(Kind::Any), Box::new(lower_kind(rhs)))
+                Kind::Abs(Box::new((Kind::Any, lower_kind(rhs))))
             }
-            (Partial::Absent, Partial::Absent) => {
-                Kind::Abs(Box::new(Kind::Any), Box::new(Kind::Any))
-            }
+            (Partial::Absent, Partial::Absent) => Kind::Abs(Box::new((Kind::Any, Kind::Any))),
         },
     }
 }

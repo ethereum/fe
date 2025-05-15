@@ -38,7 +38,7 @@ pub enum UnificationError {
     TypeMismatch,
 }
 
-pub(crate) trait UnificationStore<'db>:
+pub trait UnificationStore<'db>:
     Default
     + ena::unify::UnificationStoreBase<Key = InferenceKey<'db>, Value = InferenceValue<'db>>
     + ena::unify::UnificationStore
@@ -56,7 +56,7 @@ impl<'db, U> UnificationStore<'db> for U where
 }
 
 #[derive(Clone)]
-pub(crate) struct UnificationTableBase<'db, U>
+pub struct UnificationTableBase<'db, U>
 where
     U: ena::unify::UnificationStoreBase,
 {
@@ -115,6 +115,13 @@ where
     /// automatically when unification fails.
     fn unify_ty(&mut self, ty1: TyId<'db>, ty2: TyId<'db>) -> UnificationResult {
         if !ty1.kind(self.db).does_match(ty2.kind(self.db)) {
+            eprintln!(
+                "kind mismatch! {} ({}) vs {} ({})",
+                ty1.pretty_print(self.db),
+                ty1.kind(self.db),
+                ty2.pretty_print(self.db),
+                ty2.kind(self.db),
+            );
             return Err(UnificationError::TypeMismatch);
         }
 
@@ -180,7 +187,7 @@ where
         TyId::ty_var(self.db, sort, kind.clone(), key)
     }
 
-    pub(super) fn new_var_from_param(&mut self, ty: TyId<'db>) -> TyId<'db> {
+    pub fn new_var_from_param(&mut self, ty: TyId<'db>) -> TyId<'db> {
         match ty.data(self.db) {
             TyData::TyParam(param) => {
                 let sort = TyVarSort::General;
@@ -420,7 +427,7 @@ impl UnifyValue for InferenceValue<'_> {
     }
 }
 
-pub(crate) trait Unifiable<'db> {
+pub trait Unifiable<'db> {
     fn unify<U: UnificationStore<'db>>(
         self,
         table: &mut UnificationTableBase<'db, U>,

@@ -12,7 +12,7 @@ use super::{
     binder::Binder,
     canonical::Canonical,
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
-    func_def::FuncDef,
+    func_def::{lower_func, FuncDef},
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         check_trait_inst_wf,
@@ -24,7 +24,10 @@ use super::{
     unify::UnificationTable,
 };
 use crate::{
-    ty::{trait_lower::collect_trait_impls, trait_resolution::constraint::super_trait_cycle},
+    ty::{
+        trait_lower::collect_trait_impls, trait_resolution::constraint::super_trait_cycle,
+        ty_lower::collect_generic_params,
+    },
     HirAnalysisDb,
 };
 
@@ -186,6 +189,9 @@ pub(crate) struct Implementor<'db> {
     #[return_ref]
     pub(crate) params: Vec<TyId<'db>>,
 
+    #[return_ref]
+    pub(crate) types: IndexMap<IdentId<'db>, TyId<'db>>,
+
     /// The original hir.
     pub(crate) hir_impl_trait: ImplTrait<'db>,
 }
@@ -306,15 +312,32 @@ impl<'db> TraitInstId<'db> {
 #[derive(Debug)]
 pub struct TraitDef<'db> {
     pub trait_: Trait<'db>,
-    #[return_ref]
-    pub(crate) param_set: GenericParamTypeSet<'db>,
-    #[return_ref]
-    pub methods: IndexMap<IdentId<'db>, TraitMethod<'db>>,
 }
 
+#[salsa::tracked]
 impl<'db> TraitDef<'db> {
+    pub fn methods(self, db: &'db dyn HirAnalysisDb) -> IndexMap<IdentId<'db>, TraitMethod<'db>> {
+        let mut methods = IndexMap::<IdentId<'db>, TraitMethod<'db>>::default();
+        for method in self.trait_(db).methods(db) {
+            let Some(func) = lower_func(db, method) else {
+                continue;
+            };
+            let name = func.name(db);
+            let trait_method = TraitMethod(func);
+            // We can simply ignore the conflict here because it's already
+            // handled by the def analysis pass
+            methods.entry(name).or_insert(trait_method);
+        }
+        methods
+    }
+
     pub fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
+    }
+
+    #[salsa::tracked(return_ref)]
+    pub fn param_set(self, db: &'db dyn HirAnalysisDb) -> GenericParamTypeSet<'db> {
+        collect_generic_params(db, self.trait_(db).into())
     }
 
     pub fn self_param(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
@@ -346,7 +369,7 @@ impl<'db> TraitDef<'db> {
         self.trait_(db).top_mod(db).ingot(db)
     }
 
-    pub(super) fn super_traits(
+    pub fn super_traits(
         self,
         db: &'db dyn HirAnalysisDb,
     ) -> &'db IndexSet<Binder<TraitInstId<'db>>> {

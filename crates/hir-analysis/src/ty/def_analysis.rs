@@ -457,7 +457,7 @@ fn check_param_defined_in_parent<'db>(
     let parent_scope = scope.parent_item(db)?.scope();
     let path = PathId::from_ident(db, name);
 
-    match resolve_path(db, path, parent_scope, false) {
+    match resolve_path(db, path, parent_scope, None, false) {
         Ok(r @ PathRes::Ty(ty)) if ty.is_param(db) => {
             Some(TyLowerDiag::GenericParamAlreadyDefinedInParent {
                 span,
@@ -1284,7 +1284,7 @@ fn find_const_ty_param<'db>(
     scope: ScopeId<'db>,
 ) -> Option<ConstTyId<'db>> {
     let path = PathId::from_ident(db, ident);
-    let Ok(PathRes::Ty(ty)) = resolve_path(db, path, scope, true) else {
+    let Ok(PathRes::Ty(ty)) = resolve_path(db, path, scope, None, true) else {
         return None;
     };
     match ty.data(db) {

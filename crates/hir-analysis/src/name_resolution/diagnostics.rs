@@ -1,3 +1,4 @@
+use either::Either;
 use hir::{
     hir_def::{IdentId, TopLevelMod},
     span::DynLazySpan,
@@ -6,7 +7,10 @@ use salsa::Update;
 use thin_vec::ThinVec;
 
 use super::NameRes;
-use crate::HirAnalysisDb;
+use crate::{
+    ty::{trait_def::TraitDef, ty_def::TyId},
+    HirAnalysisDb,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum NameResDiag<'db> {
@@ -15,6 +19,12 @@ pub enum NameResDiag<'db> {
 
     /// The name is not found.
     NotFound(DynLazySpan<'db>, IdentId<'db>),
+
+    MethodNotFound {
+        primary: DynLazySpan<'db>,
+        method_name: IdentId<'db>,
+        receiver: Either<TyId<'db>, TraitDef<'db>>,
+    },
 
     /// The resolved name is not visible.
     Invisible(DynLazySpan<'db>, IdentId<'db>, Option<DynLazySpan<'db>>),
@@ -27,6 +37,7 @@ pub enum NameResDiag<'db> {
 
     TooManyGenericArgs {
         span: DynLazySpan<'db>,
+        ty: TyId<'db>,
         expected: u16,
         given: u16,
     },
@@ -54,6 +65,7 @@ impl<'db> NameResDiag<'db> {
                 .min()
                 .unwrap(),
             Self::NotFound(span, _) => span.top_mod(db).unwrap(),
+            Self::MethodNotFound { primary, .. } => primary.top_mod(db).unwrap(),
             Self::Invisible(span, _, _) => span.top_mod(db).unwrap(),
             Self::Ambiguous(span, _, _) => span.top_mod(db).unwrap(),
             Self::InvalidPathSegment(span, _, _) => span.top_mod(db).unwrap(),
@@ -88,6 +100,7 @@ impl<'db> NameResDiag<'db> {
             Self::ExpectedTrait(..) => 7,
             Self::ExpectedValue(..) => 8,
             Self::TooManyGenericArgs { .. } => 9,
+            Self::MethodNotFound { .. } => 10,
         }
     }
 }

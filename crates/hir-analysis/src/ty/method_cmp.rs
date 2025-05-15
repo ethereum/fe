@@ -1,3 +1,5 @@
+use thin_vec::ThinVec;
+
 use super::{
     canonical::Canonical,
     diagnostics::{ImplDiag, TyDiagCollection},
@@ -267,7 +269,7 @@ fn compare_constraints<'db>(
     let impl_m_constraints = collect_func_def_constraints(db, impl_m, false).instantiate_identity();
     let trait_m_constraints =
         collect_func_def_constraints(db, trait_m, false).instantiate(db, map_to_impl);
-    let mut unsatisfied_goals = vec![];
+    let mut unsatisfied_goals = ThinVec::new();
     for &goal in impl_m_constraints.list(db) {
         let canonical_goal = Canonical::new(db, goal);
         let ingot = trait_m.ingot(db);

@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use common::indexmap::IndexSet;
+use common::indexmap::{IndexMap, IndexSet};
 
 use super::{
     trait_def::{Implementor, TraitInstId},
@@ -142,7 +142,13 @@ impl<'db> TyFoldable<'db> for Implementor<'db> {
             .collect::<Vec<_>>();
         let hir_impl_trait = self.hir_impl_trait(db);
 
-        Implementor::new(db, trait_inst, params, hir_impl_trait)
+        let types = self
+            .types(db)
+            .iter()
+            .map(|(ident, ty)| (*ident, ty.fold_with(folder)))
+            .collect::<IndexMap<_, _>>();
+
+        Implementor::new(db, trait_inst, params, types, hir_impl_trait)
     }
 }
 
