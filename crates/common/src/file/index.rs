@@ -102,6 +102,10 @@ impl FileIndex {
         self.set(db, url, input_file)
             .expect("Failed to create file")
     }
+
+    pub fn all_files(&self, db: &dyn InputDb) -> StringTrie<Url, File> {
+        self.files(db)
+    }
 }
 
 #[cfg(test)]
@@ -109,7 +113,7 @@ mod tests {
     use super::*;
 
     use crate::define_input_db;
-    
+
     define_input_db!(TestDatabase);
 
     #[test]

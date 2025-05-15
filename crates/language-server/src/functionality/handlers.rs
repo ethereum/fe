@@ -7,12 +7,11 @@ use async_lsp::{
     },
     LanguageClient, ResponseError,
 };
+use common::ingot::IngotIndex;
+use common::InputDb;
 use rustc_hash::FxHashSet;
-use salsa::Setter;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
-
-use crate::backend::workspace::IngotFileContext;
 
 use tracing::{error, info, warn};
 
@@ -48,15 +47,7 @@ pub enum ChangeKind {
     Delete,
 }
 
-impl Backend {
-    fn update_input_file_text(&mut self, path: &str, contents: String) {
-        let (_ingot, file) = self
-            .workspace
-            .touch_input_for_file_path(&mut self.db, path)
-            .unwrap();
-        file.set_text(&mut self.db).to(contents);
-    }
-}
+// Implementation moved to backend/mod.rs
 
 pub async fn initialize(
     backend: &mut Backend,
@@ -91,7 +82,7 @@ pub async fn initialized(
 ) -> Result<(), ResponseError> {
     info!("language server initialized! recieved notification!");
 
-    backend.workspace.all_files().for_each(|file| {
+    backend.workspace.all_files(&backend.db).for_each(|file| {
         let url = file.url(&backend.db).expect("Failed to get file URL");
         let _ = backend.client.emit(NeedsDiagnostics(url));
     });
@@ -173,12 +164,22 @@ pub async fn handle_file_change(
     match message.kind {
         ChangeKind::Open(contents) => {
             info!("file opened: {:?}", &path);
-            backend.update_input_file_text(path, contents);
+            if let Ok(url) = url::Url::from_file_path(path) {
+                backend
+                    .db
+                    .file_index()
+                    .touch(&mut backend.db, url.clone(), Some(contents));
+            }
         }
         ChangeKind::Create => {
             info!("file created: {:?}", &path);
             let contents = tokio::fs::read_to_string(&path).await.unwrap();
-            backend.update_input_file_text(path, contents)
+            if let Ok(url) = url::Url::from_file_path(path) {
+                backend
+                    .db
+                    .file_index()
+                    .touch(&mut backend.db, url.clone(), Some(contents));
+            }
         }
         ChangeKind::Edit(contents) => {
             info!("file edited: {:?}", &path);
@@ -187,14 +188,18 @@ pub async fn handle_file_change(
             } else {
                 tokio::fs::read_to_string(&path).await.unwrap()
             };
-            backend.update_input_file_text(path, contents);
+            if let Ok(url) = url::Url::from_file_path(path) {
+                backend
+                    .db
+                    .file_index()
+                    .touch(&mut backend.db, url.clone(), Some(contents));
+            }
         }
         ChangeKind::Delete => {
             info!("file deleted: {:?}", path);
-            backend
-                .workspace
-                .remove_input_for_file_path(&mut backend.db, path)
-                .unwrap();
+            if let Ok(url) = url::Url::from_file_path(path) {
+                backend.db.file_index().remove(&mut backend.db, &url);
+            }
         }
     }
 
@@ -211,7 +216,10 @@ pub async fn handle_files_need_diagnostics(
 
     let ingots_need_diagnostics: FxHashSet<_> = need_diagnostics
         .iter()
-        .filter_map(|NeedsDiagnostics(file)| backend.workspace.get_ingot_for_file_path(file.path()))
+        .filter_map(|NeedsDiagnostics(url)| {
+            // url is already a url::Url
+            backend.db.file_index().containing_ingot(&backend.db, &url)
+        })
         .collect();
 
     for ingot in ingots_need_diagnostics {
@@ -240,14 +248,18 @@ pub async fn handle_hover_request(
     backend: &Backend,
     message: HoverParams,
 ) -> Result<Option<Hover>, ResponseError> {
-    let path = message
+    let path_str = message // Renamed to path_str to avoid confusion with Url
         .text_document_position_params
         .text_document
         .uri
         .path();
 
-    let Some((ingot, file)) = backend.workspace.get_input_for_file_path(path) else {
-        warn!("handle_hover_request failed to get file for path: `{path}`");
+    let Ok(url) = url::Url::from_file_path(path_str) else {
+        warn!("handle_hover_request failed to convert path to URL: `{path_str}`");
+        return Ok(None);
+    };
+    let Some(file) = backend.db.file_index().get(&backend.db, &url) else {
+        warn!("handle_hover_request failed to get file for url: `{url}` (original path: `{path_str}`)");
         return Ok(None);
     };
 

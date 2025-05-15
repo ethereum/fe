@@ -2,11 +2,7 @@ use std::ops::Range;
 
 use camino::Utf8Path;
 use codespan_reporting as cs;
-use common::{
-    diagnostics::CompleteDiagnostic,
-    file::File,
-    ingot::{IngotBaseUrl, IngotDescription},
-};
+use common::{diagnostics::CompleteDiagnostic, file::File, ingot::IngotDescription};
 use cs::files as cs_files;
 use hir::lower::map_file_to_mod;
 use hir_analysis::{
@@ -18,7 +14,6 @@ use hir_analysis::{
     },
 };
 use rustc_hash::FxHashMap;
-use url::Url;
 
 use crate::{
     backend::db::{LanguageServerDatabase, LanguageServerDb},
@@ -94,16 +89,16 @@ impl LanguageServerDatabase {
         let mut result =
             FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default(
             );
-        let mut pass_manager = initialize_analysis_pass(self);
+        let mut pass_manager = initialize_analysis_pass();
         let ingot_files = ingot.files(self);
 
         for (url, file) in ingot_files.iter() {
             // initialize an empty diagnostic list for this file
             // (to clear any previous diagnostics)
-            result.entry(url).or_default();
+            result.entry(url.clone()).or_default();
 
             let top_mod = map_file_to_mod(self, file);
-            let diagnostics = pass_manager.run_on_module(top_mod);
+            let diagnostics = pass_manager.run_on_module(self, top_mod);
             let mut finalized_diags: Vec<CompleteDiagnostic> = diagnostics
                 .iter()
                 .map(|d| d.to_complete(self).clone())
@@ -113,7 +108,7 @@ impl LanguageServerDatabase {
                 ord => ord,
             });
             for diag in finalized_diags {
-                let lsp_diags = diag_to_lsp(self, ingot, diag).clone();
+                let lsp_diags = diag_to_lsp(self, diag).clone();
                 for (uri, more_diags) in lsp_diags {
                     let diags = result.entry(uri.clone()).or_insert_with(Vec::new);
                     diags.extend(more_diags);

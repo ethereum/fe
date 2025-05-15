@@ -17,22 +17,8 @@ pub trait InputDb: salsa::Database {
 #[doc(hidden)]
 pub use paste::paste;
 
-/// Macro for implementing the InputDb trait for a Salsa database struct
-///
-/// This assumes the database has a field named `index` of type `Option<FileIndex>`.
-///
-/// # Example
-///
-/// ```
-/// #[derive(Clone)]
-/// #[salsa::db]
-/// pub struct MyDatabase {
-///     storage: salsa::Storage<Self>,
-///     index: Option<FileIndex>,
-/// }
-///
-/// impl_input_db!(MyDatabase);
-/// ```
+// Macro for implementing the InputDb trait for a Salsa database struct
+// This assumes the database has a field named `index` of type `Option<FileIndex>`.
 #[macro_export]
 macro_rules! impl_input_db {
     ($db_type:ty) => {
@@ -45,23 +31,10 @@ macro_rules! impl_input_db {
     };
 }
 
-/// Macro for implementing Default for a Salsa database with FileIndex
-///
-/// This assumes the database has a field named `index` of type `Option<FileIndex>`,
-/// and will initialize it properly.
-///
-/// # Example
-///
-/// ```
-/// #[derive(Clone)]
-/// #[salsa::db]
-/// pub struct MyDatabase {
-///     storage: salsa::Storage<Self>,
-///     index: Option<FileIndex>,
-/// }
-///
-/// impl_db_default!(MyDatabase);
-/// ```
+// Macro for implementing Default for a Salsa database with FileIndex
+
+// This assumes the database has a field named `index` of type `Option<FileIndex>`,
+// and will initialize it properly.
 #[macro_export]
 macro_rules! impl_db_default {
     ($db_type:ty) => {
@@ -83,19 +56,7 @@ macro_rules! impl_db_default {
     };
 }
 
-/// Macro for creating a standard Salsa database with FileIndex support
-///
-/// This creates a struct with:
-/// - A `storage` field for Salsa
-/// - An `index` field for the FileIndex
-/// - Default implementation that initializes the FileIndex
-/// - Implementation of InputDb via impl_input_db!
-///
-/// # Example
-///
-/// ```
-/// define_input_db!(MyDatabase);
-/// ```
+// Macro for creating a standard Salsa database with FileIndex support
 #[macro_export]
 macro_rules! define_input_db {
     ($db_name:ident) => {

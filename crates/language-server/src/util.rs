@@ -3,7 +3,6 @@ use async_lsp::lsp_types::{
 };
 use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
-    ingot::IngotDescription,
     InputDb,
 };
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
@@ -56,12 +55,11 @@ pub fn to_lsp_range_from_span(
 
 pub fn to_lsp_location_from_scope(
     db: &dyn SpannedHirDb,
-    ingot: IngotDescription,
     scope: ScopeId,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
     let lazy_span = scope.name_span(db).ok_or("Failed to get name span")?;
     let span = lazy_span.resolve(db).ok_or("Failed to resolve span")?;
-    to_lsp_location_from_span(db, ingot, span)
+    to_lsp_location_from_span(db, span)
 }
 
 pub fn severity_to_lsp(is_primary: bool, severity: Severity) -> DiagnosticSeverity {
@@ -79,11 +77,10 @@ pub fn severity_to_lsp(is_primary: bool, severity: Severity) -> DiagnosticSeveri
 
 pub fn diag_to_lsp(
     db: &dyn InputDb,
-    ingot: IngotDescription,
     diag: CompleteDiagnostic,
 ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
     let mut result = FxHashMap::default();
-    let Ok(primary_location) = to_lsp_location_from_span(db, ingot, diag.primary_span()) else {
+    let Ok(primary_location) = to_lsp_location_from_span(db, diag.primary_span()) else {
         return result;
     };
 
@@ -105,7 +102,7 @@ pub fn diag_to_lsp(
                 return;
             };
 
-            let location = match to_lsp_location_from_span(db, ingot, span) {
+            let location = match to_lsp_location_from_span(db, span) {
                 Ok(location) => location,
                 Err(e) => {
                     error!(e);
@@ -143,7 +140,6 @@ pub fn diag_to_lsp(
 
 fn to_lsp_location_from_span(
     db: &dyn InputDb,
-    ingot: IngotDescription,
     span: Span,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
     let url = span.file.url(db).expect("Failed to get file URL");

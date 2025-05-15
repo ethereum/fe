@@ -136,15 +136,37 @@ impl IngotIndex for FileIndex {
     /// Recursively search for a local ingot configuration file
     #[salsa::tracked]
     fn containing_ingot_config(self, db: &dyn InputDb, file: Url) -> Option<File> {
-        let dir = file.directory()?;
-        let config = dir.join("fe.toml").ok()?;
+        tracing::debug!(target: "ingot_config", "containing_ingot_config called with file: {}", file);
+        let dir = match file.directory() {
+            Some(d) => d,
+            None => {
+                tracing::debug!(target: "ingot_config", "Could not get directory for: {}", file);
+                return None;
+            }
+        };
+        tracing::debug!(target: "ingot_config", "Search directory: {}", dir);
 
-        if let Some(file) = self.get(db, &config) {
-            return Some(file);
-        } else if let Some(parent) = dir.parent() {
-            self.containing_ingot_config(db, parent)
+        let config_url = match dir.join("fe.toml") {
+            Ok(url) => url,
+            Err(_) => {
+                tracing::debug!(target: "ingot_config", "Could not join 'fe.toml' to dir: {}", dir);
+                return None;
+            }
+        };
+        tracing::debug!(target: "ingot_config", "Looking for config file at: {}", config_url);
+
+        if let Some(file_obj) = self.get(db, &config_url) {
+            tracing::debug!(target: "ingot_config", "Found config file in index: {}", config_url);
+            return Some(file_obj);
         } else {
-            None
+            tracing::debug!(target: "ingot_config", "Config file NOT found in index: {}. Checking parent.", config_url);
+            if let Some(parent_dir_url) = dir.parent() {
+                tracing::debug!(target: "ingot_config", "Recursively calling containing_ingot_config for parent: {}", parent_dir_url);
+                self.containing_ingot_config(db, parent_dir_url)
+            } else {
+                tracing::debug!(target: "ingot_config", "No parent directory for {}, stopping search.", dir);
+                None
+            }
         }
     }
 
