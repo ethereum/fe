@@ -8,7 +8,7 @@ use salsa::Update;
 use super::{
     binder::Binder,
     func_def::FuncDef,
-    trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId, TraitMethod},
+    trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId},
     ty_def::{InvalidCause, Kind, TyId},
     ty_lower::{collect_generic_params, lower_generic_arg_list},
 };
@@ -22,19 +22,7 @@ type TraitImplTable<'db> = FxHashMap<TraitDef<'db>, Vec<Binder<Implementor<'db>>
 
 #[salsa::tracked]
 pub(crate) fn lower_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> TraitDef<'db> {
-    let mut methods = IndexMap::<IdentId<'db>, TraitMethod<'db>>::default();
-    for method in trait_.methods(db) {
-        let Some(func) = lower_func(db, method) else {
-            continue;
-        };
-        let name = func.name(db);
-        let trait_method = TraitMethod(func);
-        // We can simply ignore the conflict here because it's already handled by the
-        // name resolution.
-        methods.entry(name).or_insert(trait_method);
-    }
-
-    TraitDef::new(db, trait_, methods)
+    TraitDef::new(db, trait_)
 }
 
 /// Collect all trait implementors in the ingot.
