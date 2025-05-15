@@ -52,7 +52,7 @@ pub trait HirIngot<'db> {
     fn all_enums(self, db: &'db dyn HirDb) -> &'db Vec<Enum<'db>>;
     fn all_impl_traits(self, db: &'db dyn HirDb) -> &'db Vec<ImplTrait<'db>>;
     fn all_impls(self, db: &'db dyn HirDb) -> &'db Vec<Impl<'db>>;
-    fn is_core(self, db: &'db dyn HirDb) -> bool;
+    fn is_core(&self, db: &'db dyn HirDb) -> bool;
 }
 
 #[salsa::tracked]
@@ -86,15 +86,11 @@ impl<'db> HirIngot<'db> for IngotDescription<'db> {
     ) -> Vec<(IdentId<'db>, IngotDescription<'db>)> {
         self.dependencies(db)
             .iter()
-            .filter_map(
-                |(name, url)| match self.index(db).containing_ingot(db, &url) {
-                    Some(ingot_description) => {
-                        // let ingot = module_tree_impl(db, ingot_description).root_data().top_mod;
-                        Some((IdentId::new(db, name), ingot_description))
-                    }
-                    None => None,
-                },
-            )
+            .filter_map(|(name, url)| {
+                self.index(db)
+                    .containing_ingot(db, url)
+                    .map(|ingot_description| (IdentId::new(db, name), ingot_description))
+            })
             .collect()
     }
 
@@ -108,7 +104,7 @@ impl<'db> HirIngot<'db> for IngotDescription<'db> {
             .iter()
             .flat_map(|top_mod| {
                 let enums = top_mod.all_enums(db);
-                enums.iter().copied().collect::<Vec<_>>()
+                enums.to_vec()
             })
             .collect()
     }
@@ -119,7 +115,7 @@ impl<'db> HirIngot<'db> for IngotDescription<'db> {
             .iter()
             .flat_map(|top_mod| {
                 let impl_traits = top_mod.all_impl_traits(db);
-                impl_traits.iter().copied().collect::<Vec<_>>()
+                impl_traits.to_vec()
             })
             .collect()
     }
@@ -130,12 +126,12 @@ impl<'db> HirIngot<'db> for IngotDescription<'db> {
             .iter()
             .flat_map(|top_mod| {
                 let impls = top_mod.all_impls(db);
-                impls.iter().copied().collect::<Vec<_>>()
+                impls.to_vec()
             })
             .collect()
     }
 
-    fn is_core(self, db: &'db dyn HirDb) -> bool {
+    fn is_core(&self, db: &'db dyn HirDb) -> bool {
         matches!(self.kind(db), IngotKind::Core)
     }
 }

@@ -1,4 +1,4 @@
-use common::{InputDb, define_input_db};
+use common::{define_input_db, InputDb};
 
 use hir::{HirDb, LowerHirDb, SpannedHirDb};
 use hir_analysis::{diagnostics::SpannedHirAnalysisDb, HirAnalysisDb};

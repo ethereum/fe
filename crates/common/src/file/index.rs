@@ -23,9 +23,9 @@ impl FileIndex {
     pub fn default(db: &dyn InputDb) -> Self {
         FileIndex::new(db, Trie::new(), IndexMap::new())
     }
-    pub(crate) fn set<'db>(
+    pub(crate) fn set(
         &self,
-        db: &'db mut dyn InputDb,
+        db: &mut dyn InputDb,
         url: Url,
         file: File,
     ) -> Result<File, InputIndexError> {
@@ -45,14 +45,14 @@ impl FileIndex {
         Ok(file)
     }
 
-    pub fn get<'db>(&self, db: &'db dyn InputDb, url: &Url) -> Option<File> {
-        self.files(db).get(&url).cloned()
+    pub fn get(&self, db: &dyn InputDb, url: &Url) -> Option<File> {
+        self.files(db).get(url).cloned()
     }
 
     pub fn remove(&self, db: &mut dyn InputDb, url: &Url) -> Option<File> {
         if let Some(_file) = self.files(db).get(url) {
             let files = self.files(db);
-            if let (files, Some(file)) = files.remove(&url) {
+            if let (files, Some(file)) = files.remove(url) {
                 self.set_files(db).to(files);
                 let mut paths = self.paths(db);
                 paths.remove(&file);
@@ -83,12 +83,7 @@ impl FileIndex {
         };
 
         // Get the relative path between the base URL and file URL
-        if let Some(relative) = base.make_relative(&file_url) {
-            // Convert the relative URL string to a PathBuf
-            Some(Utf8PathBuf::from(relative))
-        } else {
-            None
-        }
+        base.make_relative(&file_url).map(Utf8PathBuf::from)
     }
 
     pub fn touch(&self, db: &mut dyn InputDb, url: Url, initial_content: Option<String>) -> File {
@@ -163,6 +158,7 @@ mod tests {
         assert_eq!(path.unwrap(), url);
 
         // Test we can look up a cloned file's path
+        #[allow(clippy::clone_on_copy)]
         let cloned_file = file.clone();
         let path = index.get_path(&db, cloned_file);
         assert!(path.is_some());

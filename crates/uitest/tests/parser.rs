@@ -11,7 +11,7 @@ use url::Url;
 )]
 fn run_parser(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
-    let file = db.file_index().touch_with_initial_content(
+    let file = db.file_index().touch(
         &mut db,
         Url::from_file_path(fixture.path()).unwrap(),
         Some(fixture.content().to_string()),
@@ -45,7 +45,7 @@ mod wasm {
     )]
     fn run_parser(fixture: Fixture<&str>) {
         let mut db = DriverDataBase::default();
-        let file = db.file_index().touch_with_initial_content(
+        let file = db.file_index().touch(
             &mut db,
             Url::from_file_path(fixture.path()).unwrap(),
             Some(fixture.content().to_string()),

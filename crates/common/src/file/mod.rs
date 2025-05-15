@@ -31,16 +31,14 @@ impl File {
     pub fn containing_ingot(self, db: &dyn InputDb) -> Option<IngotDescription<'_>> {
         let index = db.file_index();
         self.url(db)
-            .map(|url| index.containing_ingot(db, &url))
-            .flatten()
+            .and_then(|url| index.containing_ingot(db, &url))
     }
 
     #[salsa::tracked(return_ref)]
     pub fn path(self, db: &dyn InputDb) -> Option<Utf8PathBuf> {
         let index = db.file_index();
         self.containing_ingot(db)
-            .map(|ingot| index.get_relative_path(db, ingot.base(db), self))
-            .flatten()
+            .and_then(|ingot| index.get_relative_path(db, ingot.base(db), self))
     }
 
     #[salsa::tracked]

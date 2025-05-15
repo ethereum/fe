@@ -218,7 +218,7 @@ pub async fn handle_files_need_diagnostics(
         .iter()
         .filter_map(|NeedsDiagnostics(url)| {
             // url is already a url::Url
-            backend.db.file_index().containing_ingot(&backend.db, &url)
+            backend.db.file_index().containing_ingot(&backend.db, url)
         })
         .collect();
 

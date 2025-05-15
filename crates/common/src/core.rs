@@ -15,10 +15,10 @@ pub struct Core;
 
 pub trait HasBuiltinCore: InputDb {
     fn initialize_builtin_core(&mut self);
-    fn builtin_core<'db>(&'db self) -> IngotDescription<'db>;
+    fn builtin_core(&self) -> IngotDescription;
 }
 
-impl<'db, T: InputDb> HasBuiltinCore for T {
+impl<T: InputDb> HasBuiltinCore for T {
     fn initialize_builtin_core(&mut self) {
         let base = Url::parse(BUILTIN_CORE_BASE_URL).unwrap();
 

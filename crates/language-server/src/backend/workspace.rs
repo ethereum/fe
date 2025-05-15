@@ -37,7 +37,7 @@ impl Workspace {
         db.file_index()
             .all_files(db)
             .iter()
-            .map(|(_url, file)| file.clone())
+            .map(|(_url, file)| file)
     }
 
     /// Syncs the workspace with the file system
@@ -113,7 +113,7 @@ impl Workspace {
         for url in fe_files {
             if db.file_index().get(db, &url).is_none() {
                 if let Ok(contents) =
-                    std::fs::read_to_string(&url.to_file_path().expect("couldn't read file"))
+                    std::fs::read_to_string(url.to_file_path().expect("couldn't read file"))
                 {
                     db.file_index().touch(db, url, Some(contents));
                 }

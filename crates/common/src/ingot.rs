@@ -125,12 +125,11 @@ impl IngotIndex for FileIndex {
     fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url> {
         self.containing_ingot_config(db, location.clone())
             .map(move |config| {
-                let dir = config
+                config
                     .url(db)
                     .expect("Config file should be indexed")
                     .directory()
-                    .expect("Config URL should have a directory");
-                dir
+                    .expect("Config URL should have a directory")
             })
     }
     /// Recursively search for a local ingot configuration file
@@ -157,7 +156,7 @@ impl IngotIndex for FileIndex {
 
         if let Some(file_obj) = self.get(db, &config_url) {
             tracing::debug!(target: "ingot_config", "Found config file in index: {}", config_url);
-            return Some(file_obj);
+            Some(file_obj)
         } else {
             tracing::debug!(target: "ingot_config", "Config file NOT found in index: {}. Checking parent.", config_url);
             if let Some(parent_dir_url) = dir.parent() {
@@ -261,7 +260,7 @@ mod tests {
     use super::*;
 
     use crate::define_input_db;
-    
+
     define_input_db!(TestDatabase);
     #[test]
     fn test_locate_config() {

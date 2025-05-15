@@ -38,7 +38,7 @@ define_input_db!(HirAnalysisTestDb);
 // https://github.com/rust-lang/rust/issues/46379
 #[allow(dead_code)]
 impl HirAnalysisTestDb {
-    pub fn new_stand_alone<'db>(&'db mut self, file_path: Utf8PathBuf, text: &str) -> File {
+    pub fn new_stand_alone(&mut self, file_path: Utf8PathBuf, text: &str) -> File {
         let file_name = if file_path.is_relative() {
             format!("/{}", file_path)
         } else {
