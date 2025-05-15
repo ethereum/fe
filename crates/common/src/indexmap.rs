@@ -107,7 +107,7 @@ where
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
 pub struct IndexSet<V>(OrderSet<V>);
 
 impl<V> IndexSet<V> {

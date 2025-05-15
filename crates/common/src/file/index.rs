@@ -1,0 +1,193 @@
+use camino::Utf8PathBuf;
+use radix_immutable::{StringPrefixView, StringTrie, Trie};
+use salsa::Setter;
+use url::Url;
+
+use crate::InputDb;
+use crate::{file::File, indexmap::IndexMap};
+
+#[derive(Debug)]
+pub enum InputIndexError {
+    CannotReuseInput,
+}
+
+#[salsa::input]
+#[derive(Debug)]
+pub struct FileIndex {
+    files: StringTrie<Url, File>,
+    paths: IndexMap<File, Url>,
+}
+
+#[salsa::tracked]
+impl FileIndex {
+    pub fn default(db: &dyn InputDb) -> Self {
+        FileIndex::new(db, Trie::new(), IndexMap::new())
+    }
+    pub(crate) fn set<'db>(
+        &self,
+        db: &'db mut dyn InputDb,
+        url: Url,
+        file: File,
+    ) -> Result<File, InputIndexError> {
+        // Check if the file is already associated with another URL
+        let paths = self.paths(db);
+        if let Some(existing_url) = paths.get(&file) {
+            if existing_url != &url {
+                return Err(InputIndexError::CannotReuseInput);
+            }
+        }
+
+        let files = self.files(db);
+        self.set_files(db).to(files.insert(url.clone(), file));
+        let mut paths = self.paths(db);
+        paths.insert(file, url);
+        self.set_paths(db).to(paths);
+        Ok(file)
+    }
+
+    pub fn get<'db>(&self, db: &'db dyn InputDb, url: &Url) -> Option<File> {
+        self.files(db).get(&url).cloned()
+    }
+
+    pub fn remove(&self, db: &mut dyn InputDb, url: &Url) -> Option<File> {
+        if let Some(_file) = self.files(db).get(url) {
+            let files = self.files(db);
+            if let (files, Some(file)) = files.remove(&url) {
+                self.set_files(db).to(files);
+                let mut paths = self.paths(db);
+                paths.remove(&file);
+                Some(file)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    #[salsa::tracked]
+    pub fn items_at_base(self, db: &dyn InputDb, base: Url) -> StringPrefixView<'_, Url, File> {
+        self.files(db).view_subtrie(base)
+    }
+
+    pub fn get_path(&self, db: &dyn InputDb, file: File) -> Option<Url> {
+        self.paths(db).get(&file).cloned()
+    }
+
+    #[salsa::tracked]
+    pub fn get_relative_path(self, db: &dyn InputDb, base: Url, file: File) -> Option<Utf8PathBuf> {
+        // Get the file path
+        let file_url = match self.paths(db).get(&file) {
+            Some(url) => url.clone(),
+            None => return None,
+        };
+
+        // Get the relative path between the base URL and file URL
+        if let Some(relative) = base.make_relative(&file_url) {
+            // Convert the relative URL string to a PathBuf
+            Some(Utf8PathBuf::from(relative))
+        } else {
+            None
+        }
+    }
+
+    pub fn touch(&self, db: &mut dyn InputDb, url: Url, initial_content: Option<String>) -> File {
+        // Check if the file already exists
+        if let Some(file) = self.get(db, &url) {
+            return file;
+        }
+        let initial = initial_content.unwrap_or_default();
+
+        let input_file = File::__new_impl(db, initial);
+        self.set(db, url, input_file)
+            .expect("Failed to create file")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Clone)]
+    #[salsa::db]
+    pub struct TestDatabase {
+        storage: salsa::Storage<Self>,
+        index: Option<FileIndex>,
+    }
+
+    impl Default for TestDatabase {
+        fn default() -> Self {
+            let mut db = Self {
+                storage: salsa::Storage::default(),
+                index: None,
+            };
+            let index = FileIndex::default(&db);
+            db.index = Some(index);
+            db
+        }
+    }
+    #[salsa::db]
+    impl salsa::Database for TestDatabase {
+        fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
+    }
+
+    #[salsa::db]
+    impl InputDb for TestDatabase {
+        fn file_index(&self) -> FileIndex {
+            self.index.clone().expect("File index not initialized")
+        }
+    }
+
+    #[test]
+    fn test_input_index_basic() {
+        let mut db = TestDatabase::default();
+        let index = db.file_index();
+
+        // Create a file and add it to the index
+        let file = File::__new_impl(&db, "test content".to_string());
+        let url = Url::parse("file:///test.fe").unwrap();
+
+        index
+            .set(&mut db, url.clone(), file)
+            .expect("Failed to set file");
+
+        // Test we can look up the file
+        let retrieved_file = index.get(&db, &url);
+        assert!(retrieved_file.is_some());
+        assert_eq!(retrieved_file.unwrap(), file);
+
+        // Test removal
+        let removed_file = index.remove(&mut db, &url);
+        assert!(removed_file.is_some());
+        assert_eq!(removed_file.unwrap(), file);
+
+        // Verify it's gone
+        let retrieved_file = index.get(&db, &url);
+        assert!(retrieved_file.is_none());
+    }
+
+    #[test]
+    fn test_input_index_path() {
+        let mut db = TestDatabase::default();
+        let index = db.file_index();
+
+        // Create a file and add it to the index
+        let file = File::__new_impl(&db, "test content".to_string());
+        let url = Url::parse("file:///test.fe").unwrap();
+
+        index
+            .set(&mut db, url.clone(), file)
+            .expect("Failed to set file");
+
+        // Test we can look up the path
+        let path = index.get_path(&db, file);
+        assert!(path.is_some());
+        assert_eq!(path.unwrap(), url);
+
+        // Test we can look up a cloned file's path
+        let cloned_file = file.clone();
+        let path = index.get_path(&db, cloned_file);
+        assert!(path.is_some());
+        assert_eq!(path.unwrap(), url);
+    }
+}
