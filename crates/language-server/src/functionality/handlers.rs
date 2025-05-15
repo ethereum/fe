@@ -167,7 +167,7 @@ pub async fn handle_file_change(
             if let Ok(url) = url::Url::from_file_path(path) {
                 backend
                     .db
-                    .file_index()
+                    .workspace()
                     .touch(&mut backend.db, url.clone(), Some(contents));
             }
         }
@@ -177,7 +177,7 @@ pub async fn handle_file_change(
             if let Ok(url) = url::Url::from_file_path(path) {
                 backend
                     .db
-                    .file_index()
+                    .workspace()
                     .touch(&mut backend.db, url.clone(), Some(contents));
             }
         }
@@ -191,14 +191,14 @@ pub async fn handle_file_change(
             if let Ok(url) = url::Url::from_file_path(path) {
                 backend
                     .db
-                    .file_index()
+                    .workspace()
                     .touch(&mut backend.db, url.clone(), Some(contents));
             }
         }
         ChangeKind::Delete => {
             info!("file deleted: {:?}", path);
             if let Ok(url) = url::Url::from_file_path(path) {
-                backend.db.file_index().remove(&mut backend.db, &url);
+                backend.db.workspace().remove(&mut backend.db, &url);
             }
         }
     }
@@ -218,7 +218,7 @@ pub async fn handle_files_need_diagnostics(
         .iter()
         .filter_map(|NeedsDiagnostics(url)| {
             // url is already a url::Url
-            backend.db.file_index().containing_ingot(&backend.db, url)
+            backend.db.workspace().containing_ingot(&backend.db, url)
         })
         .collect();
 
@@ -258,7 +258,7 @@ pub async fn handle_hover_request(
         warn!("handle_hover_request failed to convert path to URL: `{path_str}`");
         return Ok(None);
     };
-    let Some(file) = backend.db.file_index().get(&backend.db, &url) else {
+    let Some(file) = backend.db.workspace().get(&backend.db, &url) else {
         warn!("handle_hover_request failed to get file for url: `{url}` (original path: `{path_str}`)");
         return Ok(None);
     };

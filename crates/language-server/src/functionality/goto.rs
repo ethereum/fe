@@ -128,7 +128,7 @@ pub async fn handle_goto_definition(
     })?;
     let file = backend
         .db
-        .file_index()
+        .workspace()
         .get(&backend.db, &url)
         .ok_or_else(|| {
             ResponseError::new(
@@ -280,27 +280,27 @@ mod tests {
         // Touch fe.toml file to create a local ingot
         let fe_toml_path = ingot_base_dir.join("fe.toml");
         let fe_toml_url = Url::from_file_path(fe_toml_path).unwrap();
-        db.file_index()
+        db.workspace()
             .touch(&mut db, fe_toml_url, Some("".to_string()));
 
         // Now touch the Fe source file
         let fe_source_path = fixture.path();
         let file_url = Url::from_file_path(fe_source_path).unwrap();
-        let _file = db.file_index().touch(
+        let _file = db.workspace().touch(
             &mut db,
             file_url.clone(),
             Some(fixture.content().to_string()),
         );
 
         // Get the containing ingot - should be Local now
-        let ingot = db.file_index().containing_ingot(&db, &file_url).unwrap();
+        let ingot = db.workspace().containing_ingot(&db, &file_url).unwrap();
         assert_eq!(ingot.kind(&db), IngotKind::Local);
 
         // Introduce a new scope to limit the lifetime of `top_mod`
         {
             // Get the file directly from the file index
             let file_url = Url::from_file_path(fe_source_path).unwrap();
-            let file = db.file_index().get(&db, &file_url).unwrap();
+            let file = db.workspace().get(&db, &file_url).unwrap();
             let top_mod = map_file_to_mod(&db, file);
 
             let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
@@ -309,7 +309,7 @@ mod tests {
 
         // Get the containing ingot for the file path
         let file_url = Url::from_file_path(fixture.path()).unwrap();
-        let ingot = db.file_index().containing_ingot(&db, &file_url);
+        let ingot = db.workspace().containing_ingot(&db, &file_url);
         assert_eq!(ingot.unwrap().kind(&db), IngotKind::Local);
     }
 
@@ -319,7 +319,7 @@ mod tests {
     )]
     fn test_goto_cursor_target(fixture: Fixture<&str>) {
         let mut db = LanguageServerDatabase::default(); // Changed to mut
-        let file = db.file_index().touch(
+        let file = db.workspace().touch(
             &mut db,
             Url::from_file_path(fixture.path()).unwrap(),
             Some(fixture.content().to_string()),
@@ -337,7 +337,7 @@ mod tests {
     fn test_find_path_surrounding_cursor(fixture: Fixture<&str>) {
         let mut db = LanguageServerDatabase::default(); // Changed to mut
 
-        let file = db.file_index().touch(
+        let file = db.workspace().touch(
             &mut db,
             Url::from_file_path(fixture.path()).unwrap(),
             Some(fixture.content().to_string()),

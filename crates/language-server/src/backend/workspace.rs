@@ -34,10 +34,7 @@ impl Workspace {
         &self,
         db: &'db dyn InputDb,
     ) -> impl Iterator<Item = common::file::File> + 'db {
-        db.file_index()
-            .all_files(db)
-            .iter()
-            .map(|(_url, file)| file)
+        db.workspace().all_files(db).iter().map(|(_url, file)| file)
     }
 
     /// Syncs the workspace with the file system
@@ -75,7 +72,7 @@ impl Workspace {
             .filter_map(Result::ok);
 
         for path in config_paths {
-            db.file_index().touch(db, path, None);
+            db.workspace().touch(db, path, None);
         }
         Ok(())
     }
@@ -95,7 +92,7 @@ impl Workspace {
         // Get ingot URL and descriptor
         let ingot_url =
             Url::from_file_path(ingot_root).map_err(|_| anyhow::anyhow!("Invalid URL"))?;
-        let ingot = match db.file_index().containing_ingot(db, &ingot_url) {
+        let ingot = match db.workspace().containing_ingot(db, &ingot_url) {
             Some(ingot) => ingot,
             None => return Ok(()),
         };
@@ -105,17 +102,17 @@ impl Workspace {
 
         for url in existing_files {
             if !fe_files.contains(&url) {
-                db.file_index().remove(db, &url);
+                db.workspace().remove(db, &url);
             }
         }
 
         // Add new files
         for url in fe_files {
-            if db.file_index().get(db, &url).is_none() {
+            if db.workspace().get(db, &url).is_none() {
                 if let Ok(contents) =
                     std::fs::read_to_string(url.to_file_path().expect("couldn't read file"))
                 {
-                    db.file_index().touch(db, url, Some(contents));
+                    db.workspace().touch(db, url, Some(contents));
                 }
             }
         }
@@ -196,8 +193,8 @@ mod tests {
         let ingot1_url = Url::from_file_path(ingot1_path.parent().unwrap()).unwrap();
         let ingot2_url = Url::from_file_path(ingot2_path.parent().unwrap()).unwrap();
 
-        let ingot1_desc = db.file_index().containing_ingot(&db, &ingot1_url);
-        let ingot2_desc = db.file_index().containing_ingot(&db, &ingot2_url);
+        let ingot1_desc = db.workspace().containing_ingot(&db, &ingot1_url);
+        let ingot2_desc = db.workspace().containing_ingot(&db, &ingot2_url);
 
         assert!(ingot1_desc.is_some(), "Ingot1 should be discovered");
         assert!(ingot2_desc.is_some(), "Ingot2 should be discovered");
@@ -230,14 +227,14 @@ mod tests {
         let config1_url = Url::from_file_path(&ingot1_path).unwrap();
         let config2_url = Url::from_file_path(&ingot2_path).unwrap();
 
-        db.file_index().touch(&mut db, config1_url, None);
-        db.file_index().touch(&mut db, config2_url, None);
+        db.workspace().touch(&mut db, config1_url, None);
+        db.workspace().touch(&mut db, config2_url, None);
 
         let main_url = Url::from_file_path(&main_path).unwrap();
         let lib_url = Url::from_file_path(&lib_path).unwrap();
 
-        let main_file = db.file_index().get(&db, &main_url);
-        let lib_file = db.file_index().get(&db, &lib_url);
+        let main_file = db.workspace().get(&db, &main_url);
+        let lib_file = db.workspace().get(&db, &lib_url);
 
         assert!(main_file.is_some(), "main.fe should be discovered");
         assert!(lib_file.is_some(), "lib.fe should be discovered");
@@ -273,18 +270,18 @@ mod tests {
 
         let mut db = LanguageServerDatabase::default();
 
-        // Touch the file directly using FileIndex
+        // Touch the file directly using Workspace
         let file_url = Url::from_file_path(&file_path).unwrap();
         // Read the actual file content from disk
         let file_content = std::fs::read_to_string(&file_path).unwrap();
         let file = db
-            .file_index()
+            .workspace()
             .touch(&mut db, file_url.clone(), Some(file_content));
         assert!(file.text(&db).contains("contract Standalone"));
 
         // Get the ingot for the file
         let ingot = db
-            .file_index()
+            .workspace()
             .containing_ingot(&db, &file_url)
             .expect("Ingot should be created for standalone file");
         assert_eq!(ingot.kind(&db), IngotKind::StandAlone);
@@ -308,11 +305,11 @@ mod tests {
 
         // Remove the file
         let main_url_to_remove = Url::from_file_path(&main_path).unwrap();
-        db.file_index().remove(&mut db, &main_url_to_remove);
+        db.workspace().remove(&mut db, &main_url_to_remove);
 
         // Verify the file is gone
         let main_url = Url::from_file_path(&main_path).unwrap();
-        let main_file = db.file_index().get(&db, &main_url);
+        let main_file = db.workspace().get(&db, &main_url);
         assert!(main_file.is_none(), "File should be removed");
     }
 }

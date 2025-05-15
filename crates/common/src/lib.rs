@@ -6,34 +6,34 @@ pub mod indexmap;
 pub mod ingot;
 pub mod urlext;
 
-use file::FileIndex;
+use file::Workspace;
 
 #[salsa::db]
 // Each database must implement InputDb explicitly with its own storage mechanism
 pub trait InputDb: salsa::Database {
-    fn file_index(&self) -> FileIndex;
+    fn workspace(&self) -> Workspace;
 }
 
 #[doc(hidden)]
 pub use paste::paste;
 
 // Macro for implementing the InputDb trait for a Salsa database struct
-// This assumes the database has a field named `index` of type `Option<FileIndex>`.
+// This assumes the database has a field named `index` of type `Option<Workspace>`.
 #[macro_export]
 macro_rules! impl_input_db {
     ($db_type:ty) => {
         #[salsa::db]
         impl $crate::InputDb for $db_type {
-            fn file_index(&self) -> $crate::file::FileIndex {
-                self.index.clone().expect("FileIndex not initialized")
+            fn workspace(&self) -> $crate::file::Workspace {
+                self.index.clone().expect("Workspace not initialized")
             }
         }
     };
 }
 
-// Macro for implementing Default for a Salsa database with FileIndex
+// Macro for implementing Default for a Salsa database with Workspace
 
-// This assumes the database has a field named `index` of type `Option<FileIndex>`,
+// This assumes the database has a field named `index` of type `Option<Workspace>`,
 // and will initialize it properly.
 #[macro_export]
 macro_rules! impl_db_default {
@@ -47,7 +47,7 @@ macro_rules! impl_db_default {
                     storage: salsa::Storage::default(),
                     index: None,
                 };
-                let index = $crate::file::FileIndex::default(&db);
+                let index = $crate::file::Workspace::default(&db);
                 db.index = Some(index);
                 $crate::core::HasBuiltinCore::initialize_builtin_core(&mut db);
                 db
@@ -56,7 +56,7 @@ macro_rules! impl_db_default {
     };
 }
 
-// Macro for creating a standard Salsa database with FileIndex support
+// Macro for creating a standard Salsa database with Workspace support
 #[macro_export]
 macro_rules! define_input_db {
     ($db_name:ident) => {
@@ -64,7 +64,7 @@ macro_rules! define_input_db {
         #[salsa::db]
         pub struct $db_name {
             storage: salsa::Storage<Self>,
-            index: Option<$crate::file::FileIndex>,
+            index: Option<$crate::file::Workspace>,
         }
 
         #[salsa::db]

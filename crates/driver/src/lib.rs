@@ -42,7 +42,7 @@ pub fn run(opts: &Options) {
                             }
                             std::process::exit(2)
                         }
-                        let index = db.file_index();
+                        let index = db.workspace();
                         index.touch_ingot(
                             &mut db,
                             &core_base_url,
@@ -92,7 +92,7 @@ pub fn run(opts: &Options) {
                         std::process::exit(2)
                     }
                     let local_base_url = Url::from_file_path_lossy(&_root);
-                    let index = db.file_index();
+                    let index = db.workspace();
                     index.touch_ingot(
                         &mut db,
                         &local_base_url,
@@ -105,8 +105,8 @@ pub fn run(opts: &Options) {
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
                     let url = Url::from_file_path_lossy(&path);
-                    db.file_index().touch(&mut db, url.clone(), Some(content));
-                    db.file_index()
+                    db.workspace().touch(&mut db, url.clone(), Some(content));
+                    db.workspace()
                         .containing_ingot_base(&db, &url)
                         .expect("Failed to find ingot base")
                 }

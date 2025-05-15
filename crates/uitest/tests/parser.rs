@@ -11,7 +11,7 @@ use test_utils::url_utils::UrlExt;
 )]
 fn run_parser(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
-    let file = db.file_index().touch(
+    let file = db.workspace().touch(
         &mut db,
         url::Url::from_file_path_lossy(fixture.path()),
         Some(fixture.content().to_string()),
@@ -45,7 +45,7 @@ mod wasm {
     )]
     fn run_parser(fixture: Fixture<&str>) {
         let mut db = DriverDataBase::default();
-        let file = db.file_index().touch(
+        let file = db.workspace().touch(
             &mut db,
             url::Url::from_file_path_lossy(fixture.path()),
             Some(fixture.content().to_string()),

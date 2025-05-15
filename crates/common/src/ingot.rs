@@ -6,7 +6,7 @@ use url::Url;
 use crate::config::IngotMetadata;
 // use crate::config::IngotManifest;
 use crate::core::BUILTIN_CORE_BASE_URL;
-use crate::file::{File, FileIndex};
+use crate::file::{File, Workspace};
 use crate::urlext::UrlExt;
 use crate::InputDb;
 
@@ -48,10 +48,10 @@ impl IngotBaseUrl for Url {
             .expect("failed to parse directory")
             .join(path.as_str())
             .expect("failed to parse path");
-        db.file_index().touch(db, path, initial_content)
+        db.workspace().touch(db, path, initial_content)
     }
     fn ingot<'db>(&self, db: &'db dyn InputDb) -> Option<Ingot<'db>> {
-        db.file_index().containing_ingot(db, self)
+        db.workspace().containing_ingot(db, self)
     }
 }
 
@@ -60,7 +60,7 @@ impl IngotBaseUrl for Url {
 pub struct Ingot<'db> {
     pub base: Url,
     pub standalone_file: Option<File>,
-    pub index: FileIndex,
+    pub index: Workspace,
     pub version: Version,
     pub kind: IngotKind,
     pub dependencies: Vec<(String, Url)>,
@@ -116,7 +116,7 @@ pub trait IngotIndex {
 
 pub type Version = serde_semver::semver::Version;
 #[salsa::tracked]
-impl IngotIndex for FileIndex {
+impl IngotIndex for Workspace {
     fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url> {
         self.containing_ingot_config(db, location.clone())
             .map(move |config| {
@@ -198,7 +198,7 @@ struct IngotConfig {
 #[salsa::tracked]
 fn containing_ingot_impl<'db>(
     db: &'db dyn InputDb,
-    index: FileIndex,
+    index: Workspace,
     location: Url,
 ) -> Option<Ingot<'db>> {
     let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
@@ -256,7 +256,7 @@ mod tests {
     #[test]
     fn test_locate_config() {
         let mut db = TestDatabase::default();
-        let index = db.file_index();
+        let index = db.workspace();
 
         // Create our test files - a library file, a config file, and a standalone file
         let url_lib = Url::parse("file:///foo/src/lib.fe").unwrap();

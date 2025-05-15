@@ -6,7 +6,7 @@ pub mod lower;
 pub mod span;
 pub mod visitor;
 
-pub use common::{file::File, file::FileIndex, ingot::Ingot};
+pub use common::{file::File, file::Workspace, ingot::Ingot};
 #[salsa::db]
 pub trait HirDb: salsa::Database + InputDb {}
 
@@ -51,7 +51,7 @@ mod test_db {
         span::LazySpan,
     };
 
-    // Use the macro to define our test database with FileIndex support
+    // Use the macro to define our test database with Workspace support
     define_input_db!(TestDb);
 
     impl TestDb {
@@ -90,7 +90,7 @@ mod test_db {
         }
 
         pub fn standalone_file(&mut self, text: &str) -> File {
-            self.file_index().touch(
+            self.workspace().touch(
                 self,
                 Url::parse("file:///hir_test/test_file.fe").unwrap(),
                 Some(text.into()),

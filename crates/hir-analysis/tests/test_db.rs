@@ -45,7 +45,7 @@ impl HirAnalysisTestDb {
             file_path.to_string()
         };
         // Use the index from the database and reinitialize it with core files
-        let index = self.file_index();
+        let index = self.workspace();
         self.initialize_builtin_core();
         index.touch(
             self,

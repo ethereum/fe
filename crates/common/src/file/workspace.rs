@@ -13,15 +13,15 @@ pub enum InputIndexError {
 
 #[salsa::input]
 #[derive(Debug)]
-pub struct FileIndex {
+pub struct Workspace {
     files: StringTrie<Url, File>,
     paths: IndexMap<File, Url>,
 }
 
 #[salsa::tracked]
-impl FileIndex {
+impl Workspace {
     pub fn default(db: &dyn InputDb) -> Self {
-        FileIndex::new(db, Trie::new(), IndexMap::new())
+        Workspace::new(db, Trie::new(), IndexMap::new())
     }
     pub(crate) fn set(
         &self,
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_input_index_basic() {
         let mut db = TestDatabase::default();
-        let index = db.file_index();
+        let index = db.workspace();
 
         // Create a file and add it to the index
         let file = File::__new_impl(&db, "test content".to_string());
@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn test_input_index_path() {
         let mut db = TestDatabase::default();
-        let index = db.file_index();
+        let index = db.workspace();
 
         // Create a file and add it to the index
         let file = File::__new_impl(&db, "test content".to_string());

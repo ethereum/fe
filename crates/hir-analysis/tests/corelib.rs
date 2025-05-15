@@ -29,11 +29,11 @@ fn analyze_corelib() {
 fn corelib_standalone(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = url::Url::from_file_path_lossy(fixture.path());
-    db.file_index()
+    db.workspace()
         .touch(&mut db, path.clone(), Some(fixture.content().to_string()));
 
     let local_diags = db.run_on_ingot(
-        db.file_index()
+        db.workspace()
             .containing_ingot(&db, &path)
             .expect("Failed to find containing ingot"),
     );

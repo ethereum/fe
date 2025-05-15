@@ -312,7 +312,7 @@ mod tests {
     fn module_tree() {
         let mut db = TestDb::default();
 
-        let index = db.file_index();
+        let index = db.workspace();
         let ingot_base = Url::parse("file:///foo/fargo").unwrap();
 
         // fe.toml anchors the ingot base

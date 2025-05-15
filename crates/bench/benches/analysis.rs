@@ -35,7 +35,7 @@ fn diagnostics(c: &mut Criterion) {
             let mut db = DriverDataBase::default();
             for (path, content) in &files {
                 let ingot = db
-                    .file_index()
+                    .workspace()
                     .touch(
                         &mut db,
                         Url::from_file_path(path).unwrap(),
