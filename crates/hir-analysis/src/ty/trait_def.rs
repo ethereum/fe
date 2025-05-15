@@ -33,10 +33,7 @@ use crate::{
 
 /// Returns [`TraitEnv`] for the given ingot.
 #[salsa::tracked(return_ref)]
-pub(crate) fn ingot_trait_env<'db>(
-    db: &'db dyn HirAnalysisDb,
-    ingot: Ingot<'db>,
-) -> TraitEnv<'db> {
+pub(crate) fn ingot_trait_env<'db>(db: &'db dyn HirAnalysisDb, ingot: Ingot<'db>) -> TraitEnv<'db> {
     TraitEnv::collect(db, ingot)
 }
 
