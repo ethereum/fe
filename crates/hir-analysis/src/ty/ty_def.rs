@@ -5,7 +5,7 @@ use std::fmt;
 use bitflags::bitflags;
 use common::{
     indexmap::IndexSet,
-    ingot::{IngotDescription, IngotKind},
+    ingot::{Ingot, IngotKind},
 };
 use hir::{
     hir_def::{
@@ -105,7 +105,7 @@ impl<'db> TyId<'db> {
     }
 
     /// Returns `IngotDescription` that declares the type.
-    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Option<IngotDescription<'db>> {
+    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Option<Ingot<'db>> {
         match self.data(db) {
             TyData::TyBase(TyBase::Adt(adt)) => adt.ingot(db).into(),
             TyData::TyBase(TyBase::Func(def)) => def.ingot(db).into(),
@@ -155,7 +155,7 @@ impl<'db> TyId<'db> {
         }
     }
 
-    pub fn is_inherent_impl_allowed(self, db: &dyn HirAnalysisDb, ingot: IngotDescription) -> bool {
+    pub fn is_inherent_impl_allowed(self, db: &dyn HirAnalysisDb, ingot: Ingot) -> bool {
         if self.is_param(db) {
             return false;
         };
@@ -354,7 +354,7 @@ impl<'db> TyId<'db> {
     pub(super) fn emit_wf_diag(
         self,
         db: &'db dyn HirAnalysisDb,
-        ingot: IngotDescription<'db>,
+        ingot: Ingot<'db>,
         assumptions: PredicateListId<'db>,
         span: DynLazySpan<'db>,
     ) -> Option<TyDiagCollection<'db>> {

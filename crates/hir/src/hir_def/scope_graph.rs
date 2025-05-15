@@ -2,7 +2,7 @@ use std::io;
 
 use common::{
     indexmap::{IndexMap, IndexSet},
-    ingot::IngotDescription,
+    ingot::Ingot,
 };
 use rustc_hash::FxHashSet;
 use salsa::Update;
@@ -202,7 +202,7 @@ impl<'db> ScopeId<'db> {
     }
 
     /// Return the `IngotDescription` containing the scope.
-    pub fn ingot(self, db: &'db dyn HirDb) -> IngotDescription<'db> {
+    pub fn ingot(self, db: &'db dyn HirDb) -> Ingot<'db> {
         self.top_mod(db).ingot(db)
     }
 

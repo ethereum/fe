@@ -20,7 +20,7 @@ pub(crate) mod module_tree;
 
 pub use attr::*;
 pub use body::*;
-use common::ingot::{IngotDescription, IngotIndex, IngotKind};
+use common::ingot::{Ingot, IngotIndex, IngotKind};
 pub use expr::*;
 pub use ident::*;
 pub use item::*;
@@ -45,10 +45,7 @@ pub trait HirIngot<'db> {
     fn module_tree(self, db: &'db dyn HirDb) -> &'db ModuleTree<'db>;
     fn all_modules(self, db: &'db dyn HirDb) -> &'db Vec<TopLevelMod<'db>>;
     fn root_mod(self, db: &'db dyn HirDb) -> TopLevelMod<'db>;
-    fn resolved_external_ingots(
-        self,
-        db: &'db dyn HirDb,
-    ) -> &'db Vec<(IdentId<'db>, IngotDescription<'db>)>;
+    fn resolved_external_ingots(self, db: &'db dyn HirDb) -> &'db Vec<(IdentId<'db>, Ingot<'db>)>;
     fn all_enums(self, db: &'db dyn HirDb) -> &'db Vec<Enum<'db>>;
     fn all_impl_traits(self, db: &'db dyn HirDb) -> &'db Vec<ImplTrait<'db>>;
     fn all_impls(self, db: &'db dyn HirDb) -> &'db Vec<Impl<'db>>;
@@ -56,7 +53,7 @@ pub trait HirIngot<'db> {
 }
 
 #[salsa::tracked]
-impl<'db> HirIngot<'db> for IngotDescription<'db> {
+impl<'db> HirIngot<'db> for Ingot<'db> {
     /// Returns a module tree of the given ingot. The resulted tree only includes
     /// top level modules. This function only depends on an ingot structure and
     /// external ingot dependency, and not depends on file contents.
@@ -80,10 +77,7 @@ impl<'db> HirIngot<'db> for IngotDescription<'db> {
     // The reason why this function is not a public API is that we want to prohibit users of `HirDb` to
     // access `InputIngot` directly.
     #[salsa::tracked(return_ref)]
-    fn resolved_external_ingots(
-        self,
-        db: &'db dyn HirDb,
-    ) -> Vec<(IdentId<'db>, IngotDescription<'db>)> {
+    fn resolved_external_ingots(self, db: &'db dyn HirDb) -> Vec<(IdentId<'db>, Ingot<'db>)> {
         self.dependencies(db)
             .iter()
             .filter_map(|(name, url)| {

@@ -2008,7 +2008,7 @@ where
         self.db
     }
 
-    pub fn ingot(&self) -> IngotDescription<'db> {
+    pub fn ingot(&self) -> Ingot<'db> {
         self.scope().ingot(self.db)
     }
 
@@ -2228,7 +2228,7 @@ macro_rules! visit_node_in_body {
         }
     }
 }
-use common::ingot::IngotDescription;
+use common::ingot::Ingot;
 use visit_node_in_body;
 
 #[cfg(test)]

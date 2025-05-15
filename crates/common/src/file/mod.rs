@@ -5,7 +5,7 @@ pub use index::FileIndex;
 use url::Url;
 
 use crate::{
-    ingot::{IngotDescription, IngotIndex},
+    ingot::{Ingot, IngotIndex},
     InputDb,
 };
 
@@ -28,7 +28,7 @@ pub enum IngotFileKind {
 #[salsa::tracked]
 impl File {
     #[salsa::tracked]
-    pub fn containing_ingot(self, db: &dyn InputDb) -> Option<IngotDescription<'_>> {
+    pub fn containing_ingot(self, db: &dyn InputDb) -> Option<Ingot<'_>> {
         let index = db.file_index();
         self.url(db)
             .and_then(|url| index.containing_ingot(db, &url))

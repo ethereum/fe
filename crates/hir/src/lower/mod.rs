@@ -1,4 +1,4 @@
-use common::{file::File, ingot::IngotDescription};
+use common::{file::File, ingot::Ingot};
 use num_bigint::BigUint;
 use num_traits::Num;
 use parser::{
@@ -47,10 +47,7 @@ pub fn scope_graph<'db>(
 }
 
 /// Returns the ingot module tree of the given ingot.
-pub fn module_tree<'db>(
-    db: &'db dyn LowerHirDb,
-    ingot: IngotDescription<'db>,
-) -> &'db ModuleTree<'db> {
+pub fn module_tree<'db>(db: &'db dyn LowerHirDb, ingot: Ingot<'db>) -> &'db ModuleTree<'db> {
     module_tree_impl(db, ingot)
 }
 

@@ -2,7 +2,7 @@ use camino::Utf8Path;
 use common::{
     file::{File, IngotFileKind},
     indexmap::IndexMap,
-    ingot::IngotDescription,
+    ingot::Ingot,
 };
 use cranelift_entity::{entity_impl, EntityRef, PrimaryMap};
 use salsa::Update;
@@ -62,7 +62,7 @@ pub struct ModuleTree<'db> {
     pub(crate) module_tree: PMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
     pub(crate) mod_map: IndexMap<TopLevelMod<'db>, ModuleTreeNodeId>,
 
-    pub ingot: IngotDescription<'db>,
+    pub ingot: Ingot<'db>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -144,10 +144,7 @@ impl ModuleTree<'_> {
 /// external ingot dependency, and not depends on file contents.
 #[salsa::tracked(return_ref)]
 #[allow(elided_named_lifetimes)]
-pub(crate) fn module_tree_impl<'a>(
-    db: &'a dyn HirDb,
-    ingot: IngotDescription<'a>,
-) -> ModuleTree<'a> {
+pub(crate) fn module_tree_impl<'a>(db: &'a dyn HirDb, ingot: Ingot<'a>) -> ModuleTree<'a> {
     ModuleTreeBuilder::new(db, ingot).build()
 }
 
@@ -184,14 +181,14 @@ entity_impl!(ModuleTreeNodeId);
 
 struct ModuleTreeBuilder<'db> {
     db: &'db dyn HirDb,
-    ingot: IngotDescription<'db>,
+    ingot: Ingot<'db>,
     module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
     mod_map: IndexMap<TopLevelMod<'db>, ModuleTreeNodeId>,
     path_map: IndexMap<&'db Utf8Path, ModuleTreeNodeId>,
 }
 
 impl<'db> ModuleTreeBuilder<'db> {
-    fn new(db: &'db dyn HirDb, ingot: IngotDescription<'db>) -> Self {
+    fn new(db: &'db dyn HirDb, ingot: Ingot<'db>) -> Self {
         Self {
             db,
             ingot,

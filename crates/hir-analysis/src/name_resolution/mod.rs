@@ -6,7 +6,7 @@ mod path_resolver;
 pub(crate) mod traits_in_scope;
 mod visibility_checker;
 
-use common::ingot::IngotDescription;
+use common::ingot::Ingot;
 use hir::hir_def::TopLevelMod;
 pub use import_resolver::ResolvedImports;
 pub use name_resolver::{
@@ -56,7 +56,7 @@ impl ModuleAnalysisPass for ImportAnalysisPass {
 #[salsa::tracked(return_ref, cycle_fn=resolve_imports_cycle_recover, cycle_initial=resolve_imports_cycle_initial)]
 pub fn resolve_imports<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotDescription<'db>,
+    ingot: Ingot<'db>,
 ) -> (Vec<NameResDiag<'db>>, ResolvedImports<'db>) {
     let resolver = import_resolver::ImportResolver::new(db, ingot);
     let (imports, diags) = resolver.resolve_imports();
@@ -66,7 +66,7 @@ fn resolve_imports_cycle_recover<'db>(
     db: &'db dyn HirAnalysisDb,
     _value: &(Vec<NameResDiag<'db>>, ResolvedImports<'db>),
     count: u32,
-    ingot: IngotDescription<'db>,
+    ingot: Ingot<'db>,
 ) -> salsa::CycleRecoveryAction<(Vec<NameResDiag<'db>>, ResolvedImports<'db>)> {
     // Log cycle information for debugging
     eprintln!(
@@ -83,7 +83,7 @@ fn resolve_imports_cycle_recover<'db>(
 
 fn resolve_imports_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotDescription<'db>,
+    ingot: Ingot<'db>,
 ) -> (Vec<NameResDiag<'db>>, ResolvedImports<'db>) {
     // Log initial cycle value creation for debugging
     eprintln!(

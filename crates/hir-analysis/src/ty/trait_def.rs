@@ -2,7 +2,7 @@
 
 use common::{
     indexmap::{IndexMap, IndexSet},
-    ingot::IngotDescription,
+    ingot::Ingot,
 };
 use hir::{
     hir_def::{HirIngot, IdentId, ImplTrait, Trait},
@@ -35,7 +35,7 @@ use crate::{
 #[salsa::tracked(return_ref)]
 pub(crate) fn ingot_trait_env<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotDescription<'db>,
+    ingot: Ingot<'db>,
 ) -> TraitEnv<'db> {
     TraitEnv::collect(db, ingot)
 }
@@ -44,7 +44,7 @@ pub(crate) fn ingot_trait_env<'db>(
 #[salsa::tracked(return_ref)]
 pub(crate) fn impls_for_trait<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotDescription<'db>,
+    ingot: Ingot<'db>,
     trait_: Canonical<TraitInstId<'db>>,
 ) -> Vec<Binder<Implementor<'db>>> {
     let mut table = UnificationTable::new(db);
@@ -72,7 +72,7 @@ pub(crate) fn impls_for_trait<'db>(
 #[salsa::tracked(return_ref)]
 pub(crate) fn impls_for_ty<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotDescription<'db>,
+    ingot: Ingot<'db>,
     ty: Canonical<TyId<'db>>,
 ) -> Vec<Binder<Implementor<'db>>> {
     let mut table = UnificationTable::new(db);
@@ -123,11 +123,11 @@ pub(crate) struct TraitEnv<'db> {
     /// This maintains a mapping from the base type to the implementors.
     ty_to_implementors: FxHashMap<Binder<TyId<'db>>, Vec<Binder<Implementor<'db>>>>,
 
-    ingot: IngotDescription<'db>,
+    ingot: Ingot<'db>,
 }
 
 impl<'db> TraitEnv<'db> {
-    fn collect(db: &'db dyn HirAnalysisDb, ingot: IngotDescription<'db>) -> Self {
+    fn collect(db: &'db dyn HirAnalysisDb, ingot: Ingot<'db>) -> Self {
         let mut impls: FxHashMap<_, Vec<Binder<Implementor>>> = FxHashMap::default();
         let mut hir_to_implementor: FxHashMap<ImplTrait, Binder<Implementor>> =
             FxHashMap::default();
@@ -276,14 +276,14 @@ impl<'db> TraitInstId<'db> {
         self.args(db)[0]
     }
 
-    pub(super) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotDescription<'db> {
+    pub(super) fn ingot(self, db: &'db dyn HirAnalysisDb) -> Ingot<'db> {
         self.def(db).ingot(db)
     }
 
     pub(super) fn emit_sat_diag(
         self,
         db: &'db dyn HirAnalysisDb,
-        ingot: IngotDescription<'db>,
+        ingot: Ingot<'db>,
         assumptions: PredicateListId<'db>,
         span: DynLazySpan<'db>,
     ) -> Option<TyDiagCollection<'db>> {
@@ -345,7 +345,7 @@ impl<'db> TraitDef<'db> {
     }
 
     /// Returns `ingot` in which this trait is defined.
-    pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotDescription<'db> {
+    pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> Ingot<'db> {
         self.trait_(db).top_mod(db).ingot(db)
     }
 

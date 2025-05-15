@@ -1,4 +1,4 @@
-use common::ingot::IngotDescription;
+use common::ingot::Ingot;
 use hir::{
     hir_def::{
         scope_graph::ScopeId, Contract, Enum, FieldDefListId, GenericParamOwner, IdentId, ItemKind,
@@ -131,7 +131,7 @@ impl<'db> AdtDef<'db> {
         }
     }
 
-    pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotDescription<'db> {
+    pub(crate) fn ingot(self, db: &'db dyn HirAnalysisDb) -> Ingot<'db> {
         match self.adt_ref(db) {
             AdtRef::Enum(e) => e.top_mod(db).ingot(db),
             AdtRef::Struct(s) => s.top_mod(db).ingot(db),

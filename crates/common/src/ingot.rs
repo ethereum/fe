@@ -26,7 +26,6 @@ pub enum IngotKind {
     Core,
 }
 
-// #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub trait IngotBaseUrl {
     fn touch(
         &self,
@@ -34,7 +33,7 @@ pub trait IngotBaseUrl {
         path: Utf8PathBuf,
         initial_content: Option<String>,
     ) -> File;
-    fn ingot<'db>(&self, db: &'db dyn InputDb) -> Option<IngotDescription<'db>>;
+    fn ingot<'db>(&self, db: &'db dyn InputDb) -> Option<Ingot<'db>>;
 }
 
 impl IngotBaseUrl for Url {
@@ -51,14 +50,14 @@ impl IngotBaseUrl for Url {
             .expect("failed to parse path");
         db.file_index().touch(db, path, initial_content)
     }
-    fn ingot<'db>(&self, db: &'db dyn InputDb) -> Option<IngotDescription<'db>> {
+    fn ingot<'db>(&self, db: &'db dyn InputDb) -> Option<Ingot<'db>> {
         db.file_index().containing_ingot(db, self)
     }
 }
 
 #[salsa::tracked]
 #[derive(Debug)]
-pub struct IngotDescription<'db> {
+pub struct Ingot<'db> {
     pub base: Url,
     pub standalone_file: Option<File>,
     pub index: FileIndex,
@@ -72,7 +71,7 @@ pub enum IngotError {
     RootFileNotFound,
 }
 
-impl IngotDescription<'_> {
+impl Ingot<'_> {
     pub fn root_file(&self, db: &dyn InputDb) -> Result<File, IngotError> {
         if let Some(root_file) = self.standalone_file(db) {
             Ok(root_file)
@@ -106,17 +105,13 @@ impl IngotDescription<'_> {
 pub trait IngotIndex {
     fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url>;
     fn containing_ingot_config(self, db: &dyn InputDb, location: Url) -> Option<File>;
-    fn containing_ingot<'db>(
-        self,
-        db: &'db dyn InputDb,
-        location: &Url,
-    ) -> Option<IngotDescription<'db>>;
+    fn containing_ingot<'db>(self, db: &'db dyn InputDb, location: &Url) -> Option<Ingot<'db>>;
     fn touch_ingot<'db>(
         self,
         db: &'db mut dyn InputDb,
         base_url: &Url,
         initial_config: IngotMetadata,
-    ) -> Option<IngotDescription<'db>>;
+    ) -> Option<Ingot<'db>>;
 }
 
 pub type Version = serde_semver::semver::Version;
@@ -169,11 +164,7 @@ impl IngotIndex for FileIndex {
         }
     }
 
-    fn containing_ingot<'db>(
-        self,
-        db: &'db dyn InputDb,
-        location: &Url,
-    ) -> Option<IngotDescription<'db>> {
+    fn containing_ingot<'db>(self, db: &'db dyn InputDb, location: &Url) -> Option<Ingot<'db>> {
         containing_ingot_impl(db, self, location.clone())
     }
 
@@ -182,7 +173,7 @@ impl IngotIndex for FileIndex {
         db: &'db mut dyn InputDb,
         base_url: &Url,
         config: IngotMetadata,
-    ) -> Option<IngotDescription<'db>> {
+    ) -> Option<Ingot<'db>> {
         let base_dir = base_url
             .directory()
             .expect("Base URL should have a directory");
@@ -209,7 +200,7 @@ fn containing_ingot_impl<'db>(
     db: &'db dyn InputDb,
     index: FileIndex,
     location: Url,
-) -> Option<IngotDescription<'db>> {
+) -> Option<Ingot<'db>> {
     let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
     let is_core = location.scheme().contains("core");
     let dependencies = if is_core {
@@ -219,7 +210,7 @@ fn containing_ingot_impl<'db>(
     };
 
     match index.containing_ingot_base(db, &location) {
-        Some(ingot_url) => Some(IngotDescription::new(
+        Some(ingot_url) => Some(Ingot::new(
             db,
             ingot_url,
             None,
@@ -240,7 +231,7 @@ fn containing_ingot_impl<'db>(
             } else {
                 None
             };
-            Some(IngotDescription::new(
+            Some(Ingot::new(
                 db,
                 base,
                 specific_root_file,

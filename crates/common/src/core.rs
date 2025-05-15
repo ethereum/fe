@@ -3,7 +3,7 @@ use rust_embed::Embed;
 use url::Url;
 
 use crate::{
-    ingot::{IngotBaseUrl, IngotDescription, IngotIndex},
+    ingot::{Ingot, IngotBaseUrl, IngotIndex},
     InputDb,
 };
 
@@ -15,7 +15,7 @@ pub struct Core;
 
 pub trait HasBuiltinCore: InputDb {
     fn initialize_builtin_core(&mut self);
-    fn builtin_core(&self) -> IngotDescription;
+    fn builtin_core(&self) -> Ingot;
 }
 
 impl<T: InputDb> HasBuiltinCore for T {
@@ -33,7 +33,7 @@ impl<T: InputDb> HasBuiltinCore for T {
         }
     }
 
-    fn builtin_core(&self) -> IngotDescription {
+    fn builtin_core(&self) -> Ingot {
         let core = self
             .file_index()
             .containing_ingot(self, Url::parse(BUILTIN_CORE_BASE_URL).as_ref().unwrap());

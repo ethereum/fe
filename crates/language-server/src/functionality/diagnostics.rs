@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use camino::Utf8Path;
 use codespan_reporting as cs;
-use common::{diagnostics::CompleteDiagnostic, file::File, ingot::IngotDescription};
+use common::{diagnostics::CompleteDiagnostic, file::File, ingot::Ingot};
 use cs::files as cs_files;
 use hir::lower::map_file_to_mod;
 use hir_analysis::{
@@ -84,7 +84,7 @@ impl<'a> cs_files::Files<'a> for LanguageServerDatabase {
 impl LanguageServerDatabase {
     pub fn diagnostics_for_ingot(
         &self,
-        ingot: IngotDescription,
+        ingot: Ingot,
     ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
         let mut result =
             FxHashMap::<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>>::default(

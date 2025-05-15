@@ -8,7 +8,7 @@ use common::{define_input_db, diagnostics::CompleteDiagnostic};
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
-    IngotDescription,
+    Ingot,
 };
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
@@ -38,16 +38,13 @@ impl DriverDataBase {
         DiagnosticsCollection(pass_manager.run_on_module(self, top_mod))
     }
 
-    pub fn run_on_ingot<'db>(
-        &'db self,
-        ingot: IngotDescription<'db>,
-    ) -> DiagnosticsCollection<'db> {
+    pub fn run_on_ingot<'db>(&'db self, ingot: Ingot<'db>) -> DiagnosticsCollection<'db> {
         self.run_on_ingot_with_pass_manager(ingot, initialize_analysis_pass())
     }
 
     pub fn run_on_ingot_with_pass_manager<'db>(
         &'db self,
-        ingot: IngotDescription<'db>,
+        ingot: Ingot<'db>,
         mut pass_manager: AnalysisPassManager,
     ) -> DiagnosticsCollection<'db> {
         let tree = module_tree(self, ingot);

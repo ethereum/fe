@@ -6,7 +6,7 @@ pub mod lower;
 pub mod span;
 pub mod visitor;
 
-pub use common::{file::File, file::FileIndex, ingot::IngotDescription};
+pub use common::{file::File, file::FileIndex, ingot::Ingot};
 #[salsa::db]
 pub trait HirDb: salsa::Database + InputDb {}
 

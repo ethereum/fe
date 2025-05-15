@@ -5,7 +5,7 @@
 
 use std::borrow::Cow;
 
-use common::{file::File, ingot::IngotDescription};
+use common::{file::File, ingot::Ingot};
 use parser::ast;
 
 use super::{
@@ -374,7 +374,7 @@ impl<'db> TopLevelMod<'db> {
     pub fn span(self) -> LazyTopModSpan<'db> {
         LazyTopModSpan::new(self)
     }
-    pub fn ingot(self, db: &'db dyn HirDb) -> IngotDescription<'db> {
+    pub fn ingot(self, db: &'db dyn HirDb) -> Ingot<'db> {
         self.file(db)
             .containing_ingot(db)
             .expect("top level mod should have an ingot")
