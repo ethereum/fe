@@ -5,7 +5,7 @@ use common::ingot::IngotIndex;
 use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
-use url::Url;
+use test_utils::url_utils::UrlExt;
 
 #[test]
 fn analyze_corelib() {
@@ -28,7 +28,7 @@ fn analyze_corelib() {
 )]
 fn corelib_standalone(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
-    let path = Url::from_file_path(fixture.path()).unwrap();
+    let path = url::Url::from_file_path_lossy(fixture.path());
     db.file_index()
         .touch(&mut db, path.clone(), Some(fixture.content().to_string()));
 

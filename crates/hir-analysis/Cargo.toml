@@ -32,3 +32,4 @@ codespan-reporting.workspace = true
 dir-test.workspace = true
 # TODO move cs diagnostics utils
 driver.workspace = true
+test-utils.workspace = true

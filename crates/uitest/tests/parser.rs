@@ -3,7 +3,7 @@ use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use hir_analysis::analysis_pass::{AnalysisPassManager, ParsingPass};
 use test_utils::snap_test;
-use url::Url;
+use test_utils::url_utils::UrlExt;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/fixtures/parser",
@@ -13,7 +13,7 @@ fn run_parser(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.file_index().touch(
         &mut db,
-        Url::from_file_path(fixture.path()).unwrap(),
+        url::Url::from_file_path_lossy(fixture.path()),
         Some(fixture.content().to_string()),
     );
 
@@ -47,7 +47,7 @@ mod wasm {
         let mut db = DriverDataBase::default();
         let file = db.file_index().touch(
             &mut db,
-            Url::from_file_path(fixture.path()).unwrap(),
+            url::Url::from_file_path_lossy(fixture.path()),
             Some(fixture.content().to_string()),
         );
 

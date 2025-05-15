@@ -852,6 +852,7 @@ dependencies = [
  "fe-hir",
  "fe-hir-analysis",
  "fe-resolver",
+ "fe-test-utils",
  "salsa",
  "smol_str",
  "url",
@@ -974,10 +975,12 @@ dependencies = [
 name = "fe-test-utils"
 version = "0.1.0"
 dependencies = [
+ "camino",
  "insta",
  "tracing",
  "tracing-subscriber",
  "tracing-tree",
+ "url",
 ]
 
 [[package]]

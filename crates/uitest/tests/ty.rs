@@ -2,6 +2,7 @@ use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
+use test_utils::url_utils::UrlExt;
 use url::Url;
 
 #[dir_test(
@@ -12,7 +13,7 @@ fn run_ty_def(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.file_index().touch(
         &mut db,
-        Url::from_file_path(fixture.path()).unwrap(),
+        url::Url::from_file_path_lossy(fixture.path()),
         Some(fixture.content().to_string()),
     );
 
@@ -31,7 +32,7 @@ fn run_const_ty(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.file_index().touch(
         &mut db,
-        Url::from_file_path(fixture.path()).unwrap(),
+        url::Url::from_file_path_lossy(fixture.path()),
         Some(fixture.content().to_string()),
     );
 
@@ -101,7 +102,7 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let file = db.file_index().touch(
                 &mut db,
-                Url::from_file_path(fixture.path()).unwrap(),
+                url::Url::from_file_path_lossy(fixture.path()),
                 Some(fixture.content().to_string()),
             );
 
@@ -125,7 +126,7 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let file = db.file_index().touch(
                 &mut db,
-                Url::from_file_path(fixture.path()).unwrap(),
+                url::Url::from_file_path_lossy(fixture.path()),
                 Some(fixture.content().to_string()),
             );
 
@@ -149,7 +150,7 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let file = db.file_index().touch(
                 &mut db,
-                Url::from_file_path(fixture.path()).unwrap(),
+                url::Url::from_file_path_lossy(fixture.path()),
                 Some(fixture.content().to_string()),
             );
 
@@ -173,7 +174,7 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let file = db.file_index().touch(
                 &mut db,
-                Url::from_file_path(fixture.path()).unwrap(),
+                url::Url::from_file_path_lossy(fixture.path()),
                 Some(fixture.content().to_string()),
             );
 

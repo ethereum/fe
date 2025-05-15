@@ -29,7 +29,7 @@ use hir::{
     SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
-use url::Url;
+use test_utils::url_utils::UrlExt;
 
 type CodeSpanFileId = usize;
 
@@ -49,8 +49,7 @@ impl HirAnalysisTestDb {
         self.initialize_builtin_core();
         index.touch(
             self,
-            Url::from_file_path(&file_name)
-                .unwrap_or_else(|()| panic!("Failed to create URL from file path: {}", file_name)),
+            url::Url::from_file_path_lossy(&file_name),
             Some(text.to_string()),
         )
     }

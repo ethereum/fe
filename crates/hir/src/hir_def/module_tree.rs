@@ -238,23 +238,6 @@ impl<'db> ModuleTreeBuilder<'db> {
             .ingot
             .root_file(self.db)
             .expect("ingot root file is missing");
-        // .unwrap_or_else(|_e| {
-        //     let files_info = self.ingot.files(self.db)
-        //         .iter()
-        //         .map(|(url, file)| {
-        //             let path = file.path(self.db).as_deref().unwrap_or("unknown path".into());
-        //             let kind = file.kind(self.db).map_or_else(|| "unknown kind".to_string(), |k| format!("{:?}", k));
-        //             format!("  - File: {} (path: {}, kind: {})", url, path, kind)
-        //         })
-        //         .collect::<Vec<_>>()
-        //         .join("\n");
-
-        //     panic!(
-        //         "Root file not found for ingot at: {}\nIngot files:\n{}\n\nMake sure the ingot has a valid root file.",
-        //         self.ingot.base(self.db),
-        //         files_info
-        //     );
-        // });
 
         for (_url, child) in self.ingot.files(self.db).iter() {
             // Ignore the root file because it has no parent.

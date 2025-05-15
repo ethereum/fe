@@ -2,7 +2,7 @@ use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
-use url::Url;
+use test_utils::url_utils::UrlExt;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/fixtures/name_resolution",
@@ -12,7 +12,7 @@ fn run_name_resolution(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.file_index().touch(
         &mut db,
-        Url::from_file_path(fixture.path()).unwrap(),
+        url::Url::from_file_path_lossy(fixture.path()),
         Some(fixture.content().to_string()),
     );
 
@@ -37,15 +37,14 @@ mod wasm {
         #[wasm_bindgen_test]
     )]
     fn run_name_resolution(fixture: Fixture<&str>) {
-        let db = DriverDataBase::default();
-        let path = Utf8Path::new(fixture.path());
+        let mut db = DriverDataBase::default();
+        let file = db.file_index().touch(
+            &mut db,
+            url::Url::from_file_path_lossy(fixture.path()),
+            Some(fixture.content().to_string()),
+        );
 
-        let core = builtin_core(&db);
-        let ingot = IngotBuilder::standalone(&db, path, fixture.content().to_string())
-            .with_core_ingot(core)
-            .build();
-        let file = ingot.root_file(&db);
-        let top_mod = db.top_mod(ingot, file);
+        let top_mod = db.top_mod(file);
         db.run_on_top_mod(top_mod);
     }
 }

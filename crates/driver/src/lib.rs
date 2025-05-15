@@ -6,6 +6,7 @@ use common::core::HasBuiltinCore;
 use common::ingot::{IngotBaseUrl, IngotIndex};
 use common::InputDb;
 pub use db::DriverDataBase;
+use test_utils::url_utils::UrlExt;
 
 use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;
@@ -90,8 +91,7 @@ pub fn run(opts: &Options) {
                         }
                         std::process::exit(2)
                     }
-                    let local_base_url =
-                        Url::from_file_path(&_root).expect("Failed to create URL from file path");
+                    let local_base_url = Url::from_file_path_lossy(&_root);
                     let index = db.file_index();
                     index.touch_ingot(
                         &mut db,
@@ -104,8 +104,7 @@ pub fn run(opts: &Options) {
                     local_base_url
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
-                    let url =
-                        Url::from_file_path(&path).expect("Failed to create URL from file path");
+                    let url = Url::from_file_path_lossy(&path);
                     db.file_index().touch(&mut db, url.clone(), Some(content));
                     db.file_index()
                         .containing_ingot_base(&db, &url)
