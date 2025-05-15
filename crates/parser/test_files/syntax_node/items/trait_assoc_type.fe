@@ -9,6 +9,8 @@ impl Abi for SolAbi {
 
 trait State {
     type Ptr: * -> *
+
+    fn make_ptr<T>(_ pos: usize) -> Self::Ptr<T>
 }
 struct MemPtr<T> {
     pos: usize
@@ -20,4 +22,8 @@ struct StoragePtr<T> {
 struct MyStorageThing {}
 impl State for MyStorageThing {
     type Ptr = StoragePtr
+
+    fn make_ptr<T>(_ pos: usize) -> Self::Ptr<T> {
+        Self::Ptr<T> { pos }
+    }
 }

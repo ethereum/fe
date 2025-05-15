@@ -39,7 +39,15 @@ impl PathSegment {
     }
     /// Returns the identifier of the segment.
     pub fn ident(&self) -> Option<SyntaxToken> {
-        support::token(self.syntax(), SK::Ident)
+        let token = self.syntax().first_child_or_token()?.into_token()?;
+        if matches!(
+            token.kind(),
+            SK::IngotKw | SK::SuperKw | SK::SelfTypeKw | SK::SelfKw | SK::Ident
+        ) {
+            Some(token)
+        } else {
+            None
+        }
     }
 
     /// Returns `true` if the segment  is a `self` keyword.
@@ -103,7 +111,9 @@ mod tests {
         let path = parse_path(source);
         let mut segments = path.segments();
 
-        assert!(segments.next().unwrap().is_self_ty());
+        let self_ = segments.next().unwrap();
+        assert!(self_.is_self_ty());
+        assert_eq!(self_.ident().unwrap().text(), "Self");
         assert_eq!(segments.next().unwrap().ident().unwrap().text(), "Dep");
         assert!(segments.next().is_none());
     }

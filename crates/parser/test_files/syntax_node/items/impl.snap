@@ -1,7 +1,7 @@
 ---
 source: crates/parser/tests/syntax_node.rs
 expression: node
-input_file: crates/parser/test_files/syntax_node/items/impl.fe
+input_file: test_files/syntax_node/items/impl.fe
 ---
 Root@0..272
   ItemList@0..272
@@ -59,14 +59,18 @@ Root@0..272
                 Ident@48..51 "rhs"
                 Colon@51..52 ":"
                 WhiteSpace@52..53 " "
-                SelfType@53..57
-                  SelfTypeKw@53..57 "Self"
+                PathType@53..57
+                  Path@53..57
+                    PathSegment@53..57
+                      SelfTypeKw@53..57 "Self"
               RParen@57..58 ")"
             WhiteSpace@58..59 " "
             Arrow@59..61 "->"
             WhiteSpace@61..62 " "
-            SelfType@62..66
-              SelfTypeKw@62..66 "Self"
+            PathType@62..66
+              Path@62..66
+                PathSegment@62..66
+                  SelfTypeKw@62..66 "Self"
             WhiteSpace@66..67 " "
             BlockExpr@67..135
               LBrace@67..68 "{"

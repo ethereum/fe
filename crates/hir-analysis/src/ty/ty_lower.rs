@@ -31,15 +31,6 @@ pub fn lower_hir_ty<'db>(
 
         HirTyKind::Path(path) => lower_path(db, scope, *path),
 
-        HirTyKind::SelfType(args) => {
-            let path = PathId::self_ty(db, *args);
-            match resolve_path(db, path, scope, None, false) {
-                Ok(PathRes::Ty(ty)) => ty,
-                Ok(_) => unreachable!(),
-                Err(_) => TyId::invalid(db, InvalidCause::Other),
-            }
-        }
-
         HirTyKind::Tuple(tuple_id) => {
             let elems = tuple_id.data(db);
             let len = elems.len();
@@ -413,23 +404,18 @@ impl<'db> GenericParamCollector<'db> {
             return ParamLoc::NonParam;
         };
 
-        let hir_db = self.db;
-
         let path = match ty.data(self.db) {
             HirTyKind::Path(Partial::Present(path)) => {
-                if path.is_bare_ident(hir_db) {
+                if path.is_bare_ident(self.db)
+                    && path.is_self_ty(self.db)
+                    && matches!(self.owner.into(), ItemKind::Trait(_))
+                {
+                    return ParamLoc::TraitSelf;
+                } else if path.is_bare_ident(self.db) {
                     *path
                 } else {
                     return ParamLoc::NonParam;
                 }
-            }
-
-            HirTyKind::SelfType(args) => {
-                return if matches!(self.owner.into(), ItemKind::Trait(_)) && args.is_empty(hir_db) {
-                    ParamLoc::TraitSelf
-                } else {
-                    ParamLoc::NonParam
-                };
             }
 
             _ => return ParamLoc::NonParam,

@@ -1791,18 +1791,6 @@ pub fn walk_type<'db, V>(
             },
         ),
 
-        TypeKind::SelfType(generic_args) => ctxt.with_new_ctxt(
-            |span| span.into_self_type(),
-            |ctxt| {
-                ctxt.with_new_ctxt(
-                    |span| span.generic_args(),
-                    |ctxt| {
-                        visitor.visit_generic_arg_list(ctxt, *generic_args);
-                    },
-                );
-            },
-        ),
-
         TypeKind::Never => {}
     }
 }

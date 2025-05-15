@@ -1,9 +1,7 @@
-use parser::ast::{self, prelude::*};
+use parser::ast;
 
 use super::FileLowerCtxt;
-use crate::hir_def::{
-    Body, GenericArgListId, Partial, PathId, TraitRefId, TupleTypeId, TypeId, TypeKind,
-};
+use crate::hir_def::{Body, Partial, PathId, TraitRefId, TupleTypeId, TypeId, TypeKind};
 
 impl<'db> TypeId<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::Type) -> Self {
@@ -16,11 +14,6 @@ impl<'db> TypeId<'db> {
             ast::TypeKind::Path(ty) => {
                 let path = PathId::lower_ast_partial(ctxt, ty.path());
                 TypeKind::Path(path)
-            }
-
-            ast::TypeKind::SelfType(ty) => {
-                let generic_args = GenericArgListId::lower_ast_opt(ctxt, ty.generic_args());
-                TypeKind::SelfType(generic_args)
             }
 
             ast::TypeKind::Tuple(ty) => TypeKind::Tuple(TupleTypeId::lower_ast(ctxt, ty)),
