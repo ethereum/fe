@@ -25,11 +25,11 @@ fn test_updated() {
            fn foo() {}"#,
     ];
 
-    let (ingot, file) = db.new_stand_alone(file_name, versions[0]);
+    let file = db.new_stand_alone(file_name.into(), versions[0]);
 
     for version in versions {
         {
-            let top_mod = map_file_to_mod(&db, ingot, file);
+            let top_mod = map_file_to_mod(&db, file);
             let mut pass_manager = initialize_pass_manager();
             let _ = pass_manager.run_on_module(&db, top_mod);
         }

@@ -1,4 +1,4 @@
-use common::InputFile;
+use common::file::File;
 use parser::GreenNode;
 use salsa::Accumulator;
 
@@ -19,6 +19,6 @@ pub fn parse_file_impl<'db>(db: &'db dyn HirDb, top_mod: TopLevelMod<'db>) -> Gr
 #[salsa::accumulator]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParserError {
-    pub file: InputFile,
+    pub file: File,
     pub error: parser::ParseError,
 }

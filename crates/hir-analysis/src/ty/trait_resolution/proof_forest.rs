@@ -3,9 +3,8 @@
 
 use std::collections::BinaryHeap;
 
-use common::indexmap::IndexSet;
+use common::{indexmap::IndexSet, ingot::Ingot};
 use cranelift_entity::{entity_impl, PrimaryMap};
-use hir::hir_def::IngotId;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{GoalSatisfiability, PredicateListId};
@@ -45,7 +44,7 @@ type Solution<'db> = crate::ty::canonical::Solution<TraitInstId<'db>>;
 /// consumer nodes to keep track of the solving process, and a mapping from
 /// goals to generator nodes to avoid redundant computations.
 pub(super) struct ProofForest<'db> {
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
 
     /// The root generator node.
     root: GeneratorNode,
@@ -116,7 +115,7 @@ impl<'db> ProofForest<'db> {
     /// assumptions.
     pub(super) fn new(
         db: &'db dyn HirAnalysisDb,
-        ingot: IngotId<'db>,
+        ingot: Ingot<'db>,
         goal: Goal<'db>,
         assumptions: PredicateListId<'db>,
     ) -> Self {
@@ -282,7 +281,7 @@ entity_impl!(GeneratorNode);
 impl<'db> GeneratorNodeData<'db> {
     fn new(
         db: &'db dyn HirAnalysisDb,
-        ingot: IngotId<'db>,
+        ingot: Ingot<'db>,
         goal: Goal<'db>,
         assumptions: PredicateListId<'db>,
     ) -> Self {

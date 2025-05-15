@@ -13,6 +13,7 @@ driver.workspace = true
 parser.workspace = true
 common.workspace = true
 camino.workspace = true
+url.workspace = true
 
 [[bench]]
 name = "analysis"

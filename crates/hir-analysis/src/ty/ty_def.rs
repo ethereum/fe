@@ -3,12 +3,15 @@
 use std::fmt;
 
 use bitflags::bitflags;
-use common::{indexmap::IndexSet, input::IngotKind};
+use common::{
+    indexmap::IndexSet,
+    ingot::{Ingot, IngotKind},
+};
 use hir::{
     hir_def::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Body, Enum, GenericParamOwner, IdentId, IngotId, IntegerId, TypeAlias as HirTypeAlias,
+        Body, Enum, GenericParamOwner, IdentId, IntegerId, TypeAlias as HirTypeAlias,
     },
     span::DynLazySpan,
 };
@@ -101,8 +104,8 @@ impl<'db> TyId<'db> {
         matches!(self.data(db), TyData::Never)
     }
 
-    /// Returns `IngotId` that declares the type.
-    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Option<IngotId<'db>> {
+    /// Returns `IngotDescription` that declares the type.
+    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Option<Ingot<'db>> {
         match self.data(db) {
             TyData::TyBase(TyBase::Adt(adt)) => adt.ingot(db).into(),
             TyData::TyBase(TyBase::Func(def)) => def.ingot(db).into(),
@@ -152,7 +155,7 @@ impl<'db> TyId<'db> {
         }
     }
 
-    pub fn is_inherent_impl_allowed(self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {
+    pub fn is_inherent_impl_allowed(self, db: &dyn HirAnalysisDb, ingot: Ingot) -> bool {
         if self.is_param(db) {
             return false;
         };
@@ -351,7 +354,7 @@ impl<'db> TyId<'db> {
     pub(super) fn emit_wf_diag(
         self,
         db: &'db dyn HirAnalysisDb,
-        ingot: IngotId<'db>,
+        ingot: Ingot<'db>,
         assumptions: PredicateListId<'db>,
         span: DynLazySpan<'db>,
     ) -> Option<TyDiagCollection<'db>> {

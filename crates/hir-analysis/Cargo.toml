@@ -24,6 +24,7 @@ thin-vec.workspace = true
 common.workspace = true
 test-utils.workspace = true
 hir.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 camino.workspace = true
@@ -31,3 +32,4 @@ codespan-reporting.workspace = true
 dir-test.workspace = true
 # TODO move cs diagnostics utils
 driver.workspace = true
+test-utils.workspace = true

@@ -5,7 +5,7 @@ use crate::{
     hir_def::{
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
         Body, Enum, EnumVariant, ExprId, FieldDefListId, FieldParent, FuncParamListId,
-        FuncParamName, GenericParamListId, ItemKind, TopLevelMod, TrackedItemId,
+        FuncParamName, GenericParamListId, HirIngot, ItemKind, TopLevelMod, TrackedItemId,
         TrackedItemVariant, Use, VariantDefListId, VariantKind, Visibility,
     },
     HirDb,

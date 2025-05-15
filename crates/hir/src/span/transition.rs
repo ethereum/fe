@@ -1,6 +1,6 @@
 use common::{
     diagnostics::{Span, SpanKind},
-    InputFile,
+    file::File,
 };
 use parser::{
     ast::prelude::*, syntax_node::NodeOrToken, FeLang, SyntaxNode, SyntaxToken, TextRange,
@@ -113,12 +113,12 @@ pub(crate) enum ChainRoot<'db> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ResolvedOrigin {
-    pub(crate) file: InputFile,
+    pub(crate) file: File,
     pub(crate) kind: ResolvedOriginKind,
 }
 
 impl ResolvedOrigin {
-    pub(crate) fn new(file: InputFile, kind: ResolvedOriginKind) -> Self {
+    pub(crate) fn new(file: File, kind: ResolvedOriginKind) -> Self {
         Self { file, kind }
     }
 
@@ -407,7 +407,7 @@ macro_rules! define_lazy_span_node {
 }
 
 impl DesugaredOrigin {
-    fn resolve(self, _db: &dyn SpannedHirDb, root: SyntaxNode, file: InputFile) -> Span {
+    fn resolve(self, _db: &dyn SpannedHirDb, root: SyntaxNode, file: File) -> Span {
         let range = match self {
             Self::Use(UseDesugared {
                 root: use_root,

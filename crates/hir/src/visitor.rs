@@ -5,9 +5,9 @@ use crate::{
         attr, scope_graph::ScopeId, Body, CallArg, Const, Contract, Enum, EnumVariant, Expr,
         ExprId, Field, FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam,
         FuncParamListId, FuncParamName, GenericArg, GenericArgListId, GenericParam,
-        GenericParamListId, IdentId, Impl, ImplTrait, IngotId, ItemKind, KindBound, LitKind,
-        MatchArm, Mod, Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait,
-        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind, MatchArm, Mod,
+        Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait, TraitRefId,
+        TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
         UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{
@@ -2008,7 +2008,7 @@ where
         self.db
     }
 
-    pub fn ingot(&self) -> IngotId<'db> {
+    pub fn ingot(&self) -> Ingot<'db> {
         self.scope().ingot(self.db)
     }
 
@@ -2228,6 +2228,7 @@ macro_rules! visit_node_in_body {
         }
     }
 }
+use common::ingot::Ingot;
 use visit_node_in_body;
 
 #[cfg(test)]
@@ -2277,9 +2278,9 @@ mod tests {
                 42
             }"#;
 
-        let (ingot, file) = db.standalone_file(text);
+        let file = db.standalone_file(text);
 
-        let func = db.expect_item::<Func>(ingot, file);
+        let func = db.expect_item::<Func>(file);
         let top_mod = func.top_mod(&db);
 
         let mut visitor = MyVisitor {

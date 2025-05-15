@@ -1,7 +1,8 @@
 use std::{fmt, fs};
 
 use camino::Utf8PathBuf;
-use config::{Config, ConfigResolver};
+use common::config::IngotMetadata;
+use config::ConfigResolver;
 use source_files::{SourceFiles, SourceFilesResolver};
 
 use crate::Resolver;
@@ -16,7 +17,7 @@ pub enum Ingot {
         content: String,
     },
     Folder {
-        config: Option<Config>,
+        config: Option<IngotMetadata>,
         source_files: Option<SourceFiles>,
     },
 }

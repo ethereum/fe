@@ -1,5 +1,5 @@
-use common::indexmap::IndexSet;
-use hir::hir_def::IngotId;
+use common::{indexmap::IndexSet, ingot::Ingot};
+
 use salsa::Update;
 
 use super::{
@@ -25,7 +25,7 @@ mod proof_forest;
 #[salsa::tracked(return_ref)]
 pub fn is_goal_satisfiable<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
     goal: Canonical<TraitInstId<'db>>,
     assumptions: PredicateListId<'db>,
 ) -> GoalSatisfiability<'db> {
@@ -42,7 +42,7 @@ pub fn is_goal_satisfiable<'db>(
 #[salsa::tracked]
 pub(crate) fn check_ty_wf<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
     ty: TyId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> WellFormedness<'db> {
@@ -93,7 +93,7 @@ impl WellFormedness<'_> {
 #[salsa::tracked]
 pub(crate) fn check_trait_inst_wf<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
     trait_inst: TraitInstId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> WellFormedness<'db> {
