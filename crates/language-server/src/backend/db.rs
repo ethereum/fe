@@ -1,4 +1,4 @@
-use common::InputDb;
+use common::{InputDb, define_input_db};
 
 use hir::{HirDb, LowerHirDb, SpannedHirDb};
 use hir_analysis::{diagnostics::SpannedHirAnalysisDb, HirAnalysisDb};
@@ -23,13 +23,4 @@ impl<DB> LanguageServerDb for DB where
 {
 }
 
-#[salsa::db]
-#[derive(Default, Clone)]
-pub struct LanguageServerDatabase {
-    storage: salsa::Storage<Self>,
-}
-
-#[salsa::db]
-impl salsa::Database for LanguageServerDatabase {
-    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-}
+define_input_db!(LanguageServerDatabase);

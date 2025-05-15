@@ -108,35 +108,9 @@ impl FileIndex {
 mod tests {
     use super::*;
 
-    #[derive(Clone)]
-    #[salsa::db]
-    pub struct TestDatabase {
-        storage: salsa::Storage<Self>,
-        index: Option<FileIndex>,
-    }
-
-    impl Default for TestDatabase {
-        fn default() -> Self {
-            let mut db = Self {
-                storage: salsa::Storage::default(),
-                index: None,
-            };
-            let index = FileIndex::default(&db);
-            db.index = Some(index);
-            db
-        }
-    }
-    #[salsa::db]
-    impl salsa::Database for TestDatabase {
-        fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-    }
-
-    #[salsa::db]
-    impl InputDb for TestDatabase {
-        fn file_index(&self) -> FileIndex {
-            self.index.clone().expect("File index not initialized")
-        }
-    }
+    use crate::define_input_db;
+    
+    define_input_db!(TestDatabase);
 
     #[test]
     fn test_input_index_basic() {

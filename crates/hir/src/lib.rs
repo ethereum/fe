@@ -41,6 +41,7 @@ impl<T> SpannedHirDb for T where T: HirDb {}
 #[cfg(test)]
 mod test_db {
     use common::{
+        define_input_db,
         indexmap::IndexSet,
         input::{IngotKind, Version},
         InputFile, InputIngot,
@@ -53,15 +54,8 @@ mod test_db {
         span::LazySpan,
     };
 
-    #[derive(Clone, Default)]
-    #[salsa::db]
-    pub(crate) struct TestDb {
-        storage: salsa::Storage<Self>,
-    }
-    #[salsa::db]
-    impl salsa::Database for TestDb {
-        fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-    }
+    // Use the macro to define our test database with FileIndex support
+    define_input_db!(TestDb);
 
     impl TestDb {
         pub fn parse_source(&self, ingot: InputIngot, file: InputFile) -> &ScopeGraph {

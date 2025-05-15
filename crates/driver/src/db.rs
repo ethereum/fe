@@ -3,7 +3,7 @@ use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
 };
-use common::{diagnostics::CompleteDiagnostic, InputFile, InputIngot};
+use common::{diagnostics::CompleteDiagnostic, define_input_db, InputFile, InputIngot};
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
@@ -20,15 +20,7 @@ use hir_analysis::{
 
 use crate::diagnostics::ToCsDiag;
 
-#[derive(Default, Clone)]
-#[salsa::db]
-pub struct DriverDataBase {
-    storage: salsa::Storage<Self>,
-}
-#[salsa::db]
-impl salsa::Database for DriverDataBase {
-    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-}
+define_input_db!(DriverDataBase);
 
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.

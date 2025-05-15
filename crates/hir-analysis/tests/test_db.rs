@@ -12,7 +12,7 @@ use common::{
     diagnostics::Span,
     indexmap::{IndexMap, IndexSet},
     input::{IngotKind, Version},
-    InputFile, InputIngot,
+    define_input_db, InputFile, InputIngot,
 };
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
@@ -33,15 +33,7 @@ use rustc_hash::FxHashMap;
 
 type CodeSpanFileId = usize;
 
-#[derive(Default, Clone)]
-#[salsa::db]
-pub struct HirAnalysisTestDb {
-    storage: salsa::Storage<Self>,
-}
-#[salsa::db]
-impl salsa::Database for HirAnalysisTestDb {
-    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-}
+define_input_db!(HirAnalysisTestDb);
 
 // https://github.com/rust-lang/rust/issues/46379
 #[allow(dead_code)]
