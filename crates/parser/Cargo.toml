@@ -16,6 +16,7 @@ rowan = "0.16.1"
 rustc-hash.workspace = true
 smallvec.workspace = true
 unwrap-infallible = "0.1.5"
+tracing.workspace = true
 
 [dev-dependencies]
 dir-test.workspace = true

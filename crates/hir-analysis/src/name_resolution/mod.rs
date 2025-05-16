@@ -17,6 +17,7 @@ pub use path_resolver::{
     resolve_ident_to_bucket, resolve_name_res, resolve_path, resolve_path_with_observer, PathRes,
     PathResError, PathResErrorKind, ResolvedVariant,
 };
+use tracing::debug;
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
@@ -69,7 +70,7 @@ fn resolve_imports_cycle_recover<'db>(
     ingot: Ingot<'db>,
 ) -> salsa::CycleRecoveryAction<(Vec<NameResDiag<'db>>, ResolvedImports<'db>)> {
     // Log cycle information for debugging
-    eprintln!(
+    debug!(
         "[CYCLE DETECTED] resolve_imports cycle detected for ingot '{}' (kind={:?}), iteration #{}",
         ingot.base(db),
         ingot.kind(db),
@@ -86,7 +87,7 @@ fn resolve_imports_cycle_initial<'db>(
     ingot: Ingot<'db>,
 ) -> (Vec<NameResDiag<'db>>, ResolvedImports<'db>) {
     // Log initial cycle value creation for debugging
-    eprintln!(
+    debug!(
         "[CYCLE INITIAL] Creating initial value for resolve_imports cycle in ingot '{}' (kind={:?})",
         ingot.base(db),
         ingot.kind(db)
