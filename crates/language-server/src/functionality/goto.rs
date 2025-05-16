@@ -8,6 +8,7 @@ use hir::{
     SpannedHirDb,
 };
 use hir_analysis::name_resolution::{resolve_path, PathResErrorKind};
+use tracing::error;
 
 use crate::{
     backend::{db::LanguageServerDb, Backend},
@@ -159,7 +160,7 @@ pub async fn handle_goto_definition(
     let response = match result {
         Ok(response) => response,
         Err(e) => {
-            eprintln!("Error handling goto definition: {:?}", e);
+            error!("Error handling goto definition: {:?}", e);
             None
         }
     };
@@ -214,7 +215,7 @@ mod tests {
         cursors.sort();
         cursors.dedup();
 
-        eprintln!("Found cursors: {:?}", cursors);
+        error!("Found cursors: {:?}", cursors);
         cursors
     }
 
