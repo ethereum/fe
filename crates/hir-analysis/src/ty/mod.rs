@@ -28,8 +28,7 @@ pub mod func_def;
 pub mod method_table;
 pub mod trait_def;
 pub mod trait_lower;
-pub mod trait_resolution;
-pub mod pattern;
+pub mod trait_resolution; // This line was previously 'pub mod name_resolution;'
 pub mod pattern_analysis;
 pub mod ty_check;
 pub mod ty_def;

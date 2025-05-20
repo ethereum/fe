@@ -27,7 +27,12 @@ impl<'db> TyChecker<'db> {
                 self.unify_ty(pat, ty_var, expected)
             }
 
-            Pat::Rest => unreachable!(),
+            Pat::Rest => {
+                // Rest patterns match anything but don't bind.
+                // Rest patterns should have the same type as their containing pattern type (tuple, variant, etc.)
+                // This ensures proper handling in tuple/variant patterns where '..' is used.
+                self.unify_ty(pat, expected, expected) // Explicitly unify with expected type
+            }
             Pat::Lit(..) => self.check_lit_pat(pat, pat_data),
             Pat::Tuple(..) => self.check_tuple_pat(pat, pat_data, expected),
             Pat::Path(..) => self.check_path_pat(pat, pat_data),
@@ -306,14 +311,7 @@ impl<'db> TyChecker<'db> {
                 break;
             }
 
-            if elems[arg_idx].is_rest(self.db, self.body()) {
-                arg_idx += 1;
-                continue;
-            }
-
-            if rest_range.contains(&i) {
-                continue;
-            }
+            let current_pat_id = elems[arg_idx];
             let elem_ty = match hir_ty.to_opt() {
                 Some(ty) => {
                     let ty = lower_hir_ty(self.db, ty, variant.enum_(self.db).scope());
@@ -322,8 +320,27 @@ impl<'db> TyChecker<'db> {
                 _ => TyId::invalid(self.db, InvalidCause::Other),
             };
 
-            self.check_pat(elems[arg_idx], elem_ty);
-            arg_idx += 1;
+            // Call check_pat for the current source pattern element (current_pat_id).
+            // If current_pat_id is Pat::Rest, its type will be unified with elem_ty (the type of the variant field it starts covering).
+            // If the current variant field 'i' is covered by rest_range (meaning '..' covers it),
+            // but current_pat_id is *not* Pat::Rest, it means this current_pat_id is for a field *after* the '..'.
+            // In that case, we only proceed to check_pat if 'i' is NOT in rest_range.
+            if current_pat_id.is_rest(self.db, self.body()) {
+                // For rest patterns, use the variant's type
+                self.check_pat(current_pat_id, variant.ty);
+                // The '..' pattern from the source is consumed.
+                // Subsequent iterations of the outer loop will skip variant fields covered by `rest_range`.
+                arg_idx += 1; 
+            } else if !rest_range.contains(&i) {
+                // This is an explicit pattern from the source (not '..'),
+                // and it corresponds to a variant field not covered by any '..'.
+                self.check_pat(current_pat_id, elem_ty);
+                arg_idx += 1;
+            }
+            // If rest_range.contains(&i) and current_pat_id is not Pat::Rest,
+            // it means this variant field `i` is covered by a `..` that has already been processed (or will be).
+            // We do nothing for this `elem_ty` and `current_pat_id` pair, and `arg_idx` is not incremented,
+            // allowing `current_pat_id` to be matched against a subsequent variant field.
         }
 
         variant.ty

@@ -811,7 +811,7 @@ impl<'db> TyChecker<'db> {
         ExprProp::new(ty, true)
     }
 
-    fn check_match(&mut self, _expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
+    fn check_match(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
         let Expr::Match(scrutinee, arms) = expr_data else {
             unreachable!()
         };
@@ -824,15 +824,69 @@ impl<'db> TyChecker<'db> {
         };
 
         let mut match_ty = self.fresh_ty();
-        for arm in arms {
+        // Store cloned HirPat data and the original PatId for diagnostics.
+        let mut hir_pats_with_ids: Vec<(hir::hir_def::Pat<'db>, hir::hir_def::PatId)> =
+            Vec::with_capacity(arms.len());
+
+        // First loop: Type check patterns, collect HIR patterns for analysis, and type check arm bodies.
+        for arm in arms.iter() {
             self.check_pat(arm.pat, scrutinee_ty);
+
+            let pat_data_partial = arm.pat.data(self.db, self.body());
+            if let Partial::Present(actual_pat_data) = pat_data_partial {
+                // Clone the Pat data for ownership in the vector.
+                hir_pats_with_ids.push((actual_pat_data.clone(), arm.pat));
+            }
+            // If pat_data is Partial::Absent, check_pat should have already emitted an error.
+            // We only include valid patterns in the exhaustiveness/reachability analysis.
 
             self.env.enter_scope(arm.body);
             self.env.flush_pending_bindings();
-
             match_ty = self.check_expr(arm.body, match_ty).ty;
-
             self.env.leave_scope();
+        }
+
+        let analyzer = crate::ty::pattern_analysis::PatternAnalyzer::new(self.db);
+
+        // Perform reachability analysis.
+        if hir_pats_with_ids.len() > 1 {
+            for i in 1..hir_pats_with_ids.len() {
+                let (current_hir_pat, current_pat_id) = &hir_pats_with_ids[i];
+                // Collect references to the Pat data for the slice.
+                let previous_hir_pats_slice: Vec<hir::hir_def::Pat<'db>> = hir_pats_with_ids[0..i]
+                    .iter()
+                    .map(|(p, _id)| p.clone()) // Clone to create owned values for the new Vec
+                    .collect();
+
+                if !analyzer.check_reachability(
+                    current_hir_pat, // Pass reference to current_hir_pat
+                    &previous_hir_pats_slice, // Pass slice of owned HirPat
+                    self.body(),
+                ) {
+                    let diag = crate::ty::diagnostics::BodyDiag::UnreachablePattern {
+                        primary: current_pat_id.span(self.body()).into(),
+                    };
+                    self.push_diag(diag);
+                }
+            }
+        }
+
+        // Perform exhaustiveness analysis.
+        // Collect owned HirPat data for the slice.
+        let collected_hir_pats: Vec<hir::hir_def::Pat<'db>> =
+            hir_pats_with_ids.iter().map(|(p, _id)| p.clone()).collect();
+
+        if let Err(missing_patterns) = analyzer.check_exhaustiveness(
+            scrutinee_ty,
+            &collected_hir_pats, // Pass slice of owned HirPat
+            self.body(),
+        ) {
+            let diag = crate::ty::diagnostics::BodyDiag::NonExhaustiveMatch {
+                primary: expr.span(self.body()).into(),
+                scrutinee_ty,
+                missing_patterns,
+            };
+            self.push_diag(diag);
         }
 
         ExprProp::new(match_ty, true)

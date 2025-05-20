@@ -160,6 +160,8 @@ impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
 pub enum RecordLike<'db> {
     Type(TyId<'db>),
     Variant(ResolvedVariant<'db>),
+    #[doc(hidden)] // Used for simplified pattern analysis
+    Dummy(IdentId<'db>),
 }
 
 /// Enum that can represent different types of tuples (tuple types or tuple variants)
@@ -172,14 +174,13 @@ pub enum TupleLike<'db> {
 impl<'db> RecordLike<'db> {
     pub fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool {
         match self {
-            RecordLike::Type(ty) => {
-                ty.adt_ref(db).map_or(false, |adt_ref| {
-                    matches!(adt_ref, AdtRef::Struct(_) | AdtRef::Contract(_))
-                })
-            }
+            RecordLike::Type(ty) => ty.adt_ref(db).map_or(false, |adt_ref| {
+                matches!(adt_ref, AdtRef::Struct(_) | AdtRef::Contract(_))
+            }),
             RecordLike::Variant(variant) => {
                 matches!(variant.kind(db), HirVariantKind::Record(..))
             }
+            RecordLike::Dummy(_) => true, // Treat dummy as a record for analysis purposes
         }
     }
 
@@ -219,13 +220,14 @@ impl<'db> RecordLike<'db> {
                 let field_idx = hir_field_list_id.field_idx(db, name)?;
                 let args = variant.ty.generic_args(db);
                 let field_ty = adt_field_list_ref.ty(db, field_idx).instantiate(db, args);
-                
+
                 if field_ty.is_star_kind(db) {
                     Some(field_ty)
                 } else {
                     Some(TyId::invalid(db, InvalidCause::Other))
                 }
             }
+            RecordLike::Dummy(_) => None,
         }
     }
 
@@ -251,6 +253,7 @@ impl<'db> RecordLike<'db> {
                     _ => None,
                 }
             }
+            RecordLike::Dummy(_) => None,
         }
     }
 
@@ -284,6 +287,7 @@ impl<'db> RecordLike<'db> {
                 let parent = FieldParent::Variant(variant.variant);
                 Some(ScopeId::Field(parent, field_idx as u16))
             }
+            RecordLike::Dummy(_) => None,
         }
     }
 
@@ -315,17 +319,18 @@ impl<'db> RecordLike<'db> {
                     .filter_map(|field| field.name.to_opt())
                     .collect()
             }
+            RecordLike::Dummy(_) => Vec::default(),
         }
     }
 
     pub fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
         match self {
             RecordLike::Type(ty) => {
-                 if ty.adt_ref(db).is_some() {
+                if ty.adt_ref(db).is_some() {
                     let AdtRef::Struct(s) = ty.adt_ref(db)? else {
                         return None;
                     };
-        
+
                     let name = s.name(db).unwrap().data(db);
                     let init_args = s.format_initializer_args(db);
                     Some(format!("{}{}", name, init_args))
@@ -338,6 +343,7 @@ impl<'db> RecordLike<'db> {
                 let path = variant.path.pretty_print(db);
                 Some(format!("{}{}", path, expected_sub_pat))
             }
+            RecordLike::Dummy(_) => None,
         }
     }
 
@@ -352,17 +358,16 @@ impl<'db> RecordLike<'db> {
                     ty.pretty_print(db).to_string()
                 }
             }
-            RecordLike::Variant(variant) => {
-                match variant.kind(db) {
-                    HirVariantKind::Unit => "unit variant",
-                    HirVariantKind::Tuple(_) => "tuple variant",
-                    HirVariantKind::Record(_) => "record variant",
-                }
-                .to_string()
+            RecordLike::Variant(variant) => match variant.kind(db) {
+                HirVariantKind::Unit => "unit variant",
+                HirVariantKind::Tuple(_) => "tuple variant",
+                HirVariantKind::Record(_) => "record variant",
             }
+            .to_string(),
+            RecordLike::Dummy(_) => "dummy".to_string(),
         }
     }
-    
+
     pub fn from_ty(ty: TyId<'db>) -> Self {
         RecordLike::Type(ty)
     }

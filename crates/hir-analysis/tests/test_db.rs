@@ -176,7 +176,7 @@ impl Default for HirPropertyFormatter<'_> {
     }
 }
 
-fn initialize_analysis_pass() -> AnalysisPassManager {
+pub(crate) fn initialize_analysis_pass() -> AnalysisPassManager {
     let mut pass_manager = AnalysisPassManager::new();
     pass_manager.add_module_pass(Box::new(ParsingPass {}));
     pass_manager.add_module_pass(Box::new(DefConflictAnalysisPass {}));
