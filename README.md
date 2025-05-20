@@ -13,7 +13,7 @@ Fe is a statically typed language for the Ethereum Virtual Machine (EVM). The sy
 - Twitter: [@official_fe](https://twitter.com/official_fe)
 - Chat:
   - We've recently moved to [Zulip](https://fe-lang.zulipchat.com/join/dqvssgylulrmjmp2dx7vcbrq/)
-  - The [Discord](https://discord.gg/ywpkAXFjZH) server is still live, but our preference is zulip.
+  - The [Discord](https://discord.com/invite/ywpkAXFjZH) server is still live, but our preference is zulip.
 
 ## License
 
