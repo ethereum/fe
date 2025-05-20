@@ -1549,7 +1549,17 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 receiver,
             } => {
                 let (recv_name, recv_ty, recv_kind) = match receiver {
-                    Either::Left(ty) => (ty.pretty_print(db), Some(ty), ty.kind_name(db)),
+                    Either::Left(ty) => {
+                        // Get type information
+                        let kind_name = if let Some(adt_ref) = ty.adt_ref(db) {
+                            adt_ref.kind_name().to_string()
+                        } else if ty.is_func(db) {
+                            "fn".to_string()
+                        } else {
+                            ty.pretty_print(db).to_string()
+                        };
+                        (ty.pretty_print(db), Some(ty), kind_name)
+                    }
                     Either::Right(trait_) => {
                         let name = trait_.trait_(db).name(db).unwrap().data(db);
                         (name, None, "trait".to_string())
@@ -1563,7 +1573,9 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 );
 
                 if let Some(ty) = recv_ty {
-                    if let Some(field_ty) = ty.record_field_ty(db, *method_name) {
+                    if let Some(field_ty) =
+                        RecordLike::from_ty(*ty).record_field_ty(db, *method_name)
+                    {
                         return CompleteDiagnostic {
                             severity: Severity::Error,
                             message,
@@ -1640,6 +1652,50 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     message: "type annotation is needed".to_string(),
                     sub_diagnostics,
                     notes: vec![],
+                    error_code,
+                }
+            }
+            BodyDiag::NonExhaustiveMatch {
+                primary,
+                scrutinee_ty,
+                missing_patterns,
+            } => {
+                let sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "match expression does not cover all possible values".to_string(),
+                    span: primary.resolve(db),
+                }];
+                let notes = if !missing_patterns.is_empty() {
+                    vec![format!(
+                        "the following patterns are not covered: {}",
+                        missing_patterns.join(", ")
+                    )]
+                } else {
+                    vec![]
+                };
+                CompleteDiagnostic {
+                    severity,
+                    message: format!(
+                        "non-exhaustive patterns: type `{}` is not covered",
+                        scrutinee_ty.pretty_print(db)
+                    ),
+                    sub_diagnostics,
+                    notes,
+                    error_code,
+                }
+            }
+            BodyDiag::UnreachablePattern { primary } => {
+                let sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this pattern is unreachable".to_string(),
+                    span: primary.resolve(db),
+                }];
+                let notes = vec!["previous patterns already cover all possible values".to_string()];
+                CompleteDiagnostic {
+                    severity,
+                    message: "unreachable pattern".to_string(),
+                    sub_diagnostics,
+                    notes,
                     error_code,
                 }
             }

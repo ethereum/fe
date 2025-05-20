@@ -28,6 +28,7 @@ hir.workspace = true
 url.workspace = true
 
 [dev-dependencies]
+ascii_tree = "0.1"
 camino.workspace = true
 codespan-reporting.workspace = true
 dir-test.workspace = true
