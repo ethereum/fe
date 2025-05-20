@@ -1655,6 +1655,41 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     error_code,
                 }
             }
+            BodyDiag::NonExhaustiveMatch { primary, scrutinee_ty, missing_patterns } => {
+                let sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "match expression does not cover all possible values".to_string(),
+                    span: primary.resolve(db),
+                }];
+                let notes = if !missing_patterns.is_empty() {
+                    vec![format!("the following patterns are not covered: {}", missing_patterns.join(", "))]
+                } else {
+                    vec![]
+                };
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("non-exhaustive patterns: type `{}` is not covered",
+                                    scrutinee_ty.pretty_print(db)),
+                    sub_diagnostics,
+                    notes,
+                    error_code,
+                }
+            }
+            BodyDiag::UnreachablePattern { primary } => {
+                let sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "this pattern is unreachable".to_string(),
+                    span: primary.resolve(db),
+                }];
+                let notes = vec!["previous patterns already cover all possible values".to_string()];
+                CompleteDiagnostic {
+                    severity,
+                    message: "unreachable pattern".to_string(),
+                    sub_diagnostics,
+                    notes,
+                    error_code,
+                }
+            }
         }
     }
 }

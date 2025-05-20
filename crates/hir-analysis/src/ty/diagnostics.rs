@@ -333,6 +333,15 @@ pub enum BodyDiag<'db> {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
     },
+
+    NonExhaustiveMatch {
+        primary: DynLazySpan<'db>,
+        scrutinee_ty: TyId<'db>,
+        missing_patterns: Vec<String>, // Text representation of missing patterns
+    },
+    UnreachablePattern {
+        primary: DynLazySpan<'db>,
+    },
 }
 
 impl<'db> BodyDiag<'db> {
@@ -452,6 +461,8 @@ impl<'db> BodyDiag<'db> {
             Self::TypeAnnotationNeeded { .. } => 31,
             Self::DuplicatedBinding { .. } => 32,
             Self::NotAMethod { .. } => 33,
+            Self::NonExhaustiveMatch { .. } => 34,
+            Self::UnreachablePattern { .. } => 35,
         }
     }
 }
