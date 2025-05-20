@@ -1,6 +1,5 @@
 ---
 source: crates/hir-analysis/tests/ty_check.rs
-assertion_line: 48
 expression: res
 input_file: test_files/ty_check/pat/match_stmt.fe
 ---

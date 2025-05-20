@@ -1,5 +1,4 @@
 use crate::ty::ty_check::{RecordLike, TupleLike};
-use crate::HirAnalysisDb;
 use hir::hir_def::IdentId;
 
 /// Represents a pattern in Fe
@@ -97,17 +96,5 @@ impl<'db> Pattern<'db> {
     /// Check if this pattern is a wildcard
     pub fn is_wildcard(&self) -> bool {
         matches!(self, Pattern::Wildcard)
-    }
-
-    /// Check if this pattern is irrefutable (always matches)
-    pub fn is_irrefutable(&self, _db: &'db dyn HirAnalysisDb) -> bool {
-        match self {
-            Pattern::Wildcard | Pattern::Binding(_) | Pattern::Rest => true,
-            Pattern::Or(patterns) => patterns.iter().any(|p| p.is_irrefutable(_db)),
-            // Record and tuple patterns with rest are irrefutable
-            Pattern::Record { rest, .. } => *rest,
-            // Other patterns are refutable
-            _ => false,
-        }
     }
 }

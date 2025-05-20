@@ -157,21 +157,19 @@ impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
 
 /// Enum that can represent different types of records (structs or variants)
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum RecordLike<'db> {
+pub enum RecordLike<'db> {
     Type(TyId<'db>),
     Variant(ResolvedVariant<'db>),
 }
 
 /// Enum that can represent different types of tuples (tuple types or tuple variants)
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) enum TupleLike<'db> {
+pub enum TupleLike<'db> {
     Type(TyId<'db>),
     Variant(ResolvedVariant<'db>),
 }
 
 impl<'db> RecordLike<'db> {
-    /// Create a RecordLike from a type that implements the RecordLikeTrait
-
     pub fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool {
         match self {
             RecordLike::Type(ty) => {
@@ -372,50 +370,10 @@ impl<'db> RecordLike<'db> {
     pub fn from_variant(variant: ResolvedVariant<'db>) -> Self {
         RecordLike::Variant(variant.clone())
     }
-
-    pub fn from_path_res(res: PathRes<'db>) -> Option<Self> {
-        match res {
-            PathRes::Ty(ty) => Some(RecordLike::Type(ty)),
-            PathRes::EnumVariant(variant) => Some(RecordLike::Variant(variant)),
-            _ => None,
-        }
-    }
 }
 
 impl<'db> TupleLike<'db> {
-    pub fn is_tuple(&self, db: &'db dyn HirAnalysisDb) -> bool {
-        match self {
-            TupleLike::Type(ty) => ty.is_tuple(db),
-            TupleLike::Variant(variant) => matches!(variant.kind(db), HirVariantKind::Tuple(..)),
-        }
-    }
-
-    pub fn tuple_element_ty(&self, db: &'db dyn HirAnalysisDb, index: usize) -> Option<TyId<'db>> {
-        match self {
-            TupleLike::Type(_) => {
-                // Get tuple element type
-                // Note: This implementation depends on TyId methods
-                None // TODO: Implement tuple element access
-            }
-            TupleLike::Variant(variant) => {
-                if let HirVariantKind::Tuple(tuple_fields) = variant.kind(db) {
-                    let args = variant.ty.generic_args(db);
-                    let adt_def = variant.ty.adt_def(db)?;
-                    let field_list = &adt_def.fields(db)[variant.variant.idx as usize];
-
-                    if index < tuple_fields.data(db).len() {
-                        let field_ty = field_list.ty(db, index).instantiate(db, args);
-                        Some(field_ty)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-        }
-    }
-
+    #[allow(dead_code)]
     pub fn arity(&self, db: &'db dyn HirAnalysisDb) -> usize {
         match self {
             TupleLike::Type(_) => {
@@ -433,14 +391,3 @@ impl<'db> TupleLike<'db> {
         }
     }
 }
-
-
-
-// This impl block was a duplicate and has been removed.
-// The methods from_ty, from_variant, and from_path_res
-// should be part of the main impl TupleLike<'db> block.
-// It seems they are already present there from the earlier read_file output,
-// so I am only removing this duplicate block.
-// If they are not, a separate edit will be needed to move them.
-
-

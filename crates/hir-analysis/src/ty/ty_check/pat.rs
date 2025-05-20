@@ -5,14 +5,13 @@ use hir::hir_def::{Partial, Pat, PatId, VariantKind};
 
 use super::{env::LocalBinding, path::RecordInitChecker, RecordLike, TyChecker};
 use crate::{
-    name_resolution::{diagnostics::NameResDiag, is_scope_visible_from, PathRes},
+    name_resolution::PathRes,
     ty::{
         binder::Binder,
         diagnostics::BodyDiag,
         ty_def::{InvalidCause, Kind, TyId, TyVarSort},
         ty_lower::lower_hir_ty,
     },
-    HirAnalysisDb,
 };
 
 impl<'db> TyChecker<'db> {
@@ -373,16 +372,6 @@ impl<'db> TyChecker<'db> {
                         self.check_record_pat_fields(record_like, pat);
                     }
                     ty
-                }
-
-                PathRes::EnumVariant(variant) => {
-                    let diag = BodyDiag::record_expected(
-                        self.db,
-                        pat.span(self.body()).into(),
-                        Some(RecordLike::Variant(variant)),
-                    );
-                    self.push_diag(diag);
-                    TyId::invalid(self.db, InvalidCause::Other)
                 }
 
                 PathRes::Mod(scope) => {
