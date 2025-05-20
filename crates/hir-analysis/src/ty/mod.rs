@@ -29,6 +29,8 @@ pub mod method_table;
 pub mod trait_def;
 pub mod trait_lower;
 pub mod trait_resolution;
+pub mod pattern;
+pub mod pattern_analysis;
 pub mod ty_check;
 pub mod ty_def;
 pub mod ty_error;

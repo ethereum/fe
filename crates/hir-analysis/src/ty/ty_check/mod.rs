@@ -17,7 +17,7 @@ use hir::{
     },
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
-pub(crate) use path::RecordLike;
+pub(crate) use self::path::{RecordLike, TupleLike};
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
