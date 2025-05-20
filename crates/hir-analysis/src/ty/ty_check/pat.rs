@@ -27,7 +27,12 @@ impl<'db> TyChecker<'db> {
                 self.unify_ty(pat, ty_var, expected)
             }
 
-            Pat::Rest => unreachable!(),
+            Pat::Rest => {
+                // Rest patterns match anything but don't bind.
+                // Rest patterns should have the same type as their containing pattern type (tuple, variant, etc.)
+                // This ensures proper handling in tuple/variant patterns where '..' is used.
+                self.unify_ty(pat, expected, expected) // Explicitly unify with expected type
+            }
             Pat::Lit(..) => self.check_lit_pat(pat, pat_data),
             Pat::Tuple(..) => self.check_tuple_pat(pat, pat_data, expected),
             Pat::Path(..) => self.check_path_pat(pat, pat_data),
@@ -116,20 +121,29 @@ impl<'db> TyChecker<'db> {
 
         if path.is_bare_ident(self.db) {
             match res {
-                Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) if ty.is_record(self.db) => {
-                    let diag =
-                        BodyDiag::unit_variant_expected(self.db, pat.span(self.body()).into(), ty);
-                    self.push_diag(diag);
-                    TyId::invalid(self.db, InvalidCause::Other)
+                Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) => {
+                    let record_like = RecordLike::from_ty(ty);
+                    if record_like.is_record(self.db) {
+                        let diag = BodyDiag::unit_variant_expected(
+                            self.db,
+                            pat.span(self.body()).into(),
+                            record_like,
+                        );
+                        self.push_diag(diag);
+                        TyId::invalid(self.db, InvalidCause::Other)
+                    } else {
+                        ty
+                    }
                 }
                 Ok(PathRes::EnumVariant(variant)) => {
                     if matches!(variant.kind(self.db), VariantKind::Unit) {
                         self.table.instantiate_to_term(variant.ty)
                     } else {
+                        let record_like = RecordLike::from_variant(variant);
                         let diag = BodyDiag::unit_variant_expected(
                             self.db,
                             pat.span(self.body()).into(),
-                            variant,
+                            record_like,
                         );
 
                         self.push_diag(diag);
@@ -161,10 +175,18 @@ impl<'db> TyChecker<'db> {
                     | PathRes::Func(ty)
                     | PathRes::Const(ty),
                 ) => {
-                    let diag =
-                        BodyDiag::unit_variant_expected(self.db, pat.span(self.body()).into(), ty);
-                    self.push_diag(diag);
-                    TyId::invalid(self.db, InvalidCause::Other)
+                    let record_like = RecordLike::from_ty(ty);
+                    if record_like.is_record(self.db) {
+                        let diag = BodyDiag::unit_variant_expected(
+                            self.db,
+                            pat.span(self.body()).into(),
+                            record_like,
+                        );
+                        self.push_diag(diag);
+                        TyId::invalid(self.db, InvalidCause::Other)
+                    } else {
+                        ty
+                    }
                 }
                 Ok(PathRes::Trait(trait_)) => {
                     let diag = BodyDiag::NotValue {
@@ -178,10 +200,11 @@ impl<'db> TyChecker<'db> {
                     if matches!(variant.kind(self.db), VariantKind::Unit) {
                         self.table.instantiate_to_term(variant.ty)
                     } else {
+                        let record_like = RecordLike::from_variant(variant);
                         let diag = BodyDiag::unit_variant_expected(
                             self.db,
                             pat.span(self.body()).into(),
-                            variant,
+                            record_like,
                         );
 
                         self.push_diag(diag);
@@ -222,7 +245,7 @@ impl<'db> TyChecker<'db> {
                     let diag = BodyDiag::tuple_variant_expected(
                         self.db,
                         pat.span(self.body()).into(),
-                        Some(ty),
+                        Some(RecordLike::Type(ty)),
                     );
                     self.push_diag(diag);
                     return TyId::invalid(self.db, InvalidCause::Other);
@@ -243,7 +266,7 @@ impl<'db> TyChecker<'db> {
                         let diag = BodyDiag::tuple_variant_expected(
                             self.db,
                             pat.span(self.body()).into(),
-                            Some(variant),
+                            Some(RecordLike::Variant(variant)),
                         );
                         self.push_diag(diag);
                         return TyId::invalid(self.db, InvalidCause::Other);
@@ -260,7 +283,7 @@ impl<'db> TyChecker<'db> {
                 }
 
                 PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..) => {
-                    let diag = BodyDiag::tuple_variant_expected::<TyId>(self.db, span.into(), None);
+                    let diag = BodyDiag::tuple_variant_expected(self.db, span.into(), None);
                     self.push_diag(diag);
                     return TyId::invalid(self.db, InvalidCause::Other);
                 }
@@ -288,14 +311,7 @@ impl<'db> TyChecker<'db> {
                 break;
             }
 
-            if elems[arg_idx].is_rest(self.db, self.body()) {
-                arg_idx += 1;
-                continue;
-            }
-
-            if rest_range.contains(&i) {
-                continue;
-            }
+            let current_pat_id = elems[arg_idx];
             let elem_ty = match hir_ty.to_opt() {
                 Some(ty) => {
                     let ty = lower_hir_ty(self.db, ty, variant.enum_(self.db).scope());
@@ -304,8 +320,27 @@ impl<'db> TyChecker<'db> {
                 _ => TyId::invalid(self.db, InvalidCause::Other),
             };
 
-            self.check_pat(elems[arg_idx], elem_ty);
-            arg_idx += 1;
+            // Call check_pat for the current source pattern element (current_pat_id).
+            // If current_pat_id is Pat::Rest, its type will be unified with elem_ty (the type of the variant field it starts covering).
+            // If the current variant field 'i' is covered by rest_range (meaning '..' covers it),
+            // but current_pat_id is *not* Pat::Rest, it means this current_pat_id is for a field *after* the '..'.
+            // In that case, we only proceed to check_pat if 'i' is NOT in rest_range.
+            if current_pat_id.is_rest(self.db, self.body()) {
+                // For rest patterns, use the variant's type
+                self.check_pat(current_pat_id, variant.ty);
+                // The '..' pattern from the source is consumed.
+                // Subsequent iterations of the outer loop will skip variant fields covered by `rest_range`.
+                arg_idx += 1;
+            } else if !rest_range.contains(&i) {
+                // This is an explicit pattern from the source (not '..'),
+                // and it corresponds to a variant field not covered by any '..'.
+                self.check_pat(current_pat_id, elem_ty);
+                arg_idx += 1;
+            }
+            // If rest_range.contains(&i) and current_pat_id is not Pat::Rest,
+            // it means this variant field `i` is covered by a `..` that has already been processed (or will be).
+            // We do nothing for this `elem_ty` and `current_pat_id` pair, and `arg_idx` is not incremented,
+            // allowing `current_pat_id` to be matched against a subsequent variant field.
         }
 
         variant.ty
@@ -320,8 +355,10 @@ impl<'db> TyChecker<'db> {
 
         match self.resolve_path(*path, true, span.clone().path()) {
             Ok(reso) => match reso {
-                PathRes::Ty(ty) | PathRes::TyAlias(_, ty) if ty.is_record(self.db) => {
-                    self.check_record_pat_fields(ty, pat);
+                PathRes::Ty(ty) | PathRes::TyAlias(_, ty)
+                    if RecordLike::from_ty(ty).is_record(self.db) =>
+                {
+                    self.check_record_pat_fields(RecordLike::from_ty(ty), pat);
                     ty
                 }
 
@@ -329,8 +366,11 @@ impl<'db> TyChecker<'db> {
                 | PathRes::TyAlias(_, ty)
                 | PathRes::Func(ty)
                 | PathRes::Const(ty) => {
-                    let diag =
-                        BodyDiag::record_expected(self.db, pat.span(self.body()).into(), Some(ty));
+                    let diag = BodyDiag::record_expected(
+                        self.db,
+                        pat.span(self.body()).into(),
+                        Some(RecordLike::Type(ty)),
+                    );
                     self.push_diag(diag);
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
@@ -344,20 +384,13 @@ impl<'db> TyChecker<'db> {
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
 
-                PathRes::EnumVariant(variant) if variant.is_record(self.db) => {
-                    let ty = variant.ty;
-                    self.check_record_pat_fields(variant, pat);
-                    ty
-                }
-
                 PathRes::EnumVariant(variant) => {
-                    let diag = BodyDiag::record_expected(
-                        self.db,
-                        pat.span(self.body()).into(),
-                        Some(variant),
-                    );
-                    self.push_diag(diag);
-                    TyId::invalid(self.db, InvalidCause::Other)
+                    let ty = variant.ty;
+                    let record_like = RecordLike::from_variant(variant);
+                    if record_like.is_record(self.db) {
+                        self.check_record_pat_fields(record_like, pat);
+                    }
+                    ty
                 }
 
                 PathRes::Mod(scope) => {
@@ -370,11 +403,8 @@ impl<'db> TyChecker<'db> {
                 }
 
                 PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..) => {
-                    let diag = BodyDiag::record_expected::<TyId>(
-                        self.db,
-                        pat.span(self.body()).into(),
-                        None,
-                    );
+                    let diag =
+                        BodyDiag::record_expected(self.db, pat.span(self.body()).into(), None);
                     self.push_diag(diag);
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
@@ -383,10 +413,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_record_pat_fields<T>(&mut self, record_like: T, pat: PatId)
-    where
-        T: RecordLike<'db>,
-    {
+    fn check_record_pat_fields(&mut self, record_like: RecordLike<'db>, pat: PatId) {
         let Partial::Present(Pat::Record(_, fields)) = pat.data(self.db, self.body()) else {
             unreachable!()
         };

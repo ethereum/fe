@@ -1,0 +1,30 @@
+---
+source: crates/hir-analysis/tests/decision_tree.rs
+expression: res
+input_file: test_files/decision_trees/boolean_tuple.fe
+---
+note: 
+  ┌─ boolean_tuple.fe:2:5
+  │  
+2 │ ╭     match t {
+3 │ │         (true, true) => 3
+4 │ │         (true, false) => 2
+5 │ │         (false, true) => 1
+6 │ │         (false, false) => 0
+7 │ │     }
+  │ ╰─────^ Decision Tree for test_boolean_tuple:
+ Switch on expr
+ └─ tuple() =>
+    └─ Switch on expr
+       ├─ true =>
+       │  └─ Switch on expr
+       │     ├─ true =>
+       │     │  └─ Execute arm #0
+       │     └─ false =>
+       │        └─ Execute arm #1
+       └─ false =>
+          └─ Switch on expr
+             ├─ true =>
+             │  └─ Execute arm #2
+             └─ false =>
+                └─ Execute arm #3

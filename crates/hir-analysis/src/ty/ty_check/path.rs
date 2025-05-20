@@ -39,27 +39,25 @@ pub(super) enum ResolvedPathInBody<'db> {
     Reso(PathRes<'db>),
     Binding(LocalBinding<'db>),
     NewBinding(IdentId<'db>),
-    #[allow(dead_code)] // TODO: we might be failing to report some errors
+
+    #[allow(dead_code)]
     Diag(FuncBodyDiag<'db>),
     Invalid,
 }
 
-pub(super) struct RecordInitChecker<'tc, 'db, 'a, T> {
+pub(super) struct RecordInitChecker<'tc, 'db, 'a> {
     pub(super) tc: &'tc mut TyChecker<'db>,
-    data: &'a T,
+    data: &'a RecordLike<'db>,
     already_given: FxHashMap<IdentId<'db>, DynLazySpan<'db>>,
     invalid_field_given: bool,
 }
 
-impl<'tc, 'db, 'a, T> RecordInitChecker<'tc, 'db, 'a, T>
-where
-    T: RecordLike<'db>,
-{
+impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
     /// Create a new `RecordInitChecker` for the given record path.
     ///
     /// ## Panics
     /// Panics if the given `data` is not a record.
-    pub(super) fn new(tc: &'tc mut TyChecker<'db>, data: &'a T) -> Self {
+    pub(super) fn new(tc: &'tc mut TyChecker<'db>, data: &'a RecordLike<'db>) -> Self {
         assert!(data.is_record(tc.db));
 
         Self {
@@ -158,194 +156,208 @@ where
     }
 }
 
-pub(crate) trait RecordLike<'db> {
-    fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool;
+/// Enum that can represent different types of records (structs or variants)
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RecordLike<'db> {
+    Type(TyId<'db>),
+    Variant(ResolvedVariant<'db>),
+}
 
-    fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>>;
+impl<'db> RecordLike<'db> {
+    pub fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool {
+        match self {
+            RecordLike::Type(ty) => ty
+                .adt_ref(db)
+                .is_some_and(|adt_ref| matches!(adt_ref, AdtRef::Struct(_) | AdtRef::Contract(_))),
+            RecordLike::Variant(variant) => {
+                matches!(variant.kind(db), HirVariantKind::Record(..))
+            }
+        }
+    }
 
-    fn record_field_list(
+    pub fn record_field_ty(
         &self,
         db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)>;
+        name: IdentId<'db>,
+    ) -> Option<TyId<'db>> {
+        match self {
+            RecordLike::Type(ty) => {
+                let adt_def = ty.adt_def(db)?;
+                let (hir_field_list_id, adt_field_list_ref) = match adt_def.adt_ref(db) {
+                    AdtRef::Struct(s) => Some((s.fields(db), &adt_def.fields(db)[0])),
+                    AdtRef::Contract(c) => Some((c.fields(db), &adt_def.fields(db)[0])),
+                    _ => None,
+                }?;
 
-    fn record_field_idx(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<usize> {
+                let field_idx = hir_field_list_id.field_idx(db, name)?;
+                let args = ty.generic_args(db);
+                let field_ty = adt_field_list_ref.ty(db, field_idx).instantiate(db, args);
+
+                if field_ty.is_star_kind(db) {
+                    Some(field_ty)
+                } else {
+                    Some(TyId::invalid(db, InvalidCause::Other))
+                }
+            }
+            RecordLike::Variant(variant) => {
+                let adt_def = variant.ty.adt_def(db)?;
+                let (hir_field_list_id, adt_field_list_ref) = match variant.kind(db) {
+                    HirVariantKind::Record(fields_id) => {
+                        Some((fields_id, &adt_def.fields(db)[variant.variant.idx as usize]))
+                    }
+                    _ => None,
+                }?;
+
+                let field_idx = hir_field_list_id.field_idx(db, name)?;
+                let args = variant.ty.generic_args(db);
+                let field_ty = adt_field_list_ref.ty(db, field_idx).instantiate(db, args);
+
+                if field_ty.is_star_kind(db) {
+                    Some(field_ty)
+                } else {
+                    Some(TyId::invalid(db, InvalidCause::Other))
+                }
+            }
+        }
+    }
+
+    pub fn record_field_list(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)> {
+        match self {
+            RecordLike::Type(ty) => {
+                let adt_def = ty.adt_def(db)?;
+                match adt_def.adt_ref(db) {
+                    AdtRef::Struct(s) => Some((s.fields(db), &adt_def.fields(db)[0])),
+                    AdtRef::Contract(c) => Some((c.fields(db), &adt_def.fields(db)[0])),
+                    _ => None,
+                }
+            }
+            RecordLike::Variant(variant) => {
+                let adt_def = variant.ty.adt_def(db)?;
+                match variant.kind(db) {
+                    HirVariantKind::Record(fields_id) => {
+                        Some((fields_id, &adt_def.fields(db)[variant.variant.idx as usize]))
+                    }
+                    _ => None,
+                }
+            }
+        }
+    }
+
+    pub fn record_field_idx(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        name: IdentId<'db>,
+    ) -> Option<usize> {
         let (hir_field_list, _) = self.record_field_list(db)?;
         hir_field_list.field_idx(db, name)
     }
 
-    fn record_field_scope(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-        name: IdentId<'db>,
-    ) -> Option<ScopeId<'db>>;
-
-    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>>;
-
-    fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String>;
-
-    fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String;
-}
-
-impl<'db> RecordLike<'db> for TyId<'db> {
-    fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool {
-        let Some(adt_ref) = self.adt_ref(db) else {
-            return false;
-        };
-
-        matches!(adt_ref, AdtRef::Struct(..))
-    }
-
-    fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
-        let args = self.generic_args(db);
-        let (hir_field_list, field_list) = self.record_field_list(db)?;
-
-        let field_idx = hir_field_list.field_idx(db, name)?;
-        let field_ty = field_list.ty(db, field_idx).instantiate(db, args);
-
-        if field_ty.is_star_kind(db) {
-            field_ty
-        } else {
-            TyId::invalid(db, InvalidCause::Other)
-        }
-        .into()
-    }
-
-    fn record_field_list(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)> {
-        let adt_def = self.adt_def(db)?;
-        match adt_def.adt_ref(db) {
-            AdtRef::Struct(s) => (s.fields(db), &adt_def.fields(db)[0]).into(),
-            AdtRef::Contract(c) => (c.fields(db), &adt_def.fields(db)[0]).into(),
-
-            _ => None,
-        }
-    }
-
-    fn record_field_scope(
+    pub fn record_field_scope(
         &self,
         db: &'db dyn HirAnalysisDb,
         name: IdentId<'db>,
     ) -> Option<ScopeId<'db>> {
-        let field_idx = self.record_field_idx(db, name)?;
-        let adt_ref = self.adt_ref(db)?;
-        let parent = match adt_ref {
-            AdtRef::Struct(s) => FieldParent::Struct(s),
-            AdtRef::Contract(c) => FieldParent::Contract(c),
-            _ => return None,
-        };
-        Some(ScopeId::Field(parent, field_idx as u16))
-    }
-
-    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
-        let Some(adt_ref) = self.adt_ref(db) else {
-            return Vec::default();
-        };
-        let fields = match adt_ref {
-            AdtRef::Struct(s) => s.fields(db),
-            AdtRef::Contract(c) => c.fields(db),
-
-            _ => return Vec::default(),
-        };
-
-        fields
-            .data(db)
-            .iter()
-            .filter_map(|field| field.name.to_opt())
-            .collect()
-    }
-
-    fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String {
-        if let Some(adt_ref) = self.adt_ref(db) {
-            adt_ref.kind_name().to_string()
-        } else if self.is_func(db) {
-            "fn".to_string()
-        } else {
-            self.pretty_print(db).to_string()
+        match self {
+            RecordLike::Type(ty) => {
+                let field_idx = RecordLike::Type(*ty).record_field_idx(db, name)?;
+                let adt_ref = ty.adt_ref(db)?;
+                let parent = match adt_ref {
+                    AdtRef::Struct(s) => FieldParent::Struct(s),
+                    AdtRef::Contract(c) => FieldParent::Contract(c),
+                    _ => return None,
+                };
+                Some(ScopeId::Field(parent, field_idx as u16))
+            }
+            RecordLike::Variant(variant) => {
+                let field_idx = RecordLike::Variant(variant.clone()).record_field_idx(db, name)?;
+                let parent = FieldParent::Variant(variant.variant);
+                Some(ScopeId::Field(parent, field_idx as u16))
+            }
         }
     }
 
-    fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
-        if self.adt_ref(db).is_some() {
-            let AdtRef::Struct(s) = self.adt_ref(db)? else {
-                return None;
-            };
-
-            let name = s.name(db).unwrap().data(db);
-            let init_args = s.format_initializer_args(db);
-            Some(format!("{}{}", name, init_args))
-        } else {
-            None
-        }
-    }
-}
-
-impl<'db> RecordLike<'db> for ResolvedVariant<'db> {
-    fn is_record(&self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.kind(db), HirVariantKind::Record(..))
-    }
-
-    fn record_field_ty(&self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
-        let args = self.ty.generic_args(db);
-
-        let (hir_field_list, field_list) = self.record_field_list(db)?;
-        let field_idx = hir_field_list.field_idx(db, name)?;
-
-        Some(field_list.ty(db, field_idx).instantiate(db, args))
-    }
-
-    fn record_field_list(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Option<(HirFieldDefListId<'db>, &'db AdtField<'db>)> {
-        match self.kind(db) {
-            HirVariantKind::Record(fields) => (
-                fields,
-                &self.ty.adt_def(db).unwrap().fields(db)[self.variant.idx as usize],
-            )
-                .into(),
-
-            _ => None,
+    pub fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
+        match self {
+            RecordLike::Type(ty) => {
+                let Some(adt_ref) = ty.adt_ref(db) else {
+                    return Vec::default();
+                };
+                let fields = match adt_ref {
+                    AdtRef::Struct(s) => s.fields(db),
+                    AdtRef::Contract(c) => c.fields(db),
+                    _ => return Vec::default(),
+                };
+                fields
+                    .data(db)
+                    .iter()
+                    .filter_map(|field| field.name.to_opt())
+                    .collect()
+            }
+            RecordLike::Variant(variant) => {
+                let fields = match variant.kind(db) {
+                    HirVariantKind::Record(fields) => fields,
+                    _ => return Vec::default(),
+                };
+                fields
+                    .data(db)
+                    .iter()
+                    .filter_map(|field| field.name.to_opt())
+                    .collect()
+            }
         }
     }
 
-    fn record_field_scope(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-        name: IdentId<'db>,
-    ) -> Option<ScopeId<'db>> {
-        let field_idx = self.record_field_idx(db, name)?;
-        let parent = FieldParent::Variant(self.variant);
-        Some(ScopeId::Field(parent, field_idx as u16))
-    }
+    pub fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
+        match self {
+            RecordLike::Type(ty) => {
+                if ty.adt_ref(db).is_some() {
+                    let AdtRef::Struct(s) = ty.adt_ref(db)? else {
+                        return None;
+                    };
 
-    fn record_labels(&self, db: &'db dyn HirAnalysisDb) -> Vec<IdentId<'db>> {
-        let fields = match self.kind(db) {
-            HirVariantKind::Record(fields) => fields,
-            _ => return Vec::default(),
-        };
-
-        fields
-            .data(db)
-            .iter()
-            .filter_map(|field| field.name.to_opt())
-            .collect()
-    }
-
-    fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String {
-        match self.kind(db) {
-            HirVariantKind::Unit => "unit variant",
-            HirVariantKind::Tuple(_) => "tuple variant",
-            HirVariantKind::Record(_) => "record variant",
+                    let name = s.name(db).unwrap().data(db);
+                    let init_args = s.format_initializer_args(db);
+                    Some(format!("{}{}", name, init_args))
+                } else {
+                    None
+                }
+            }
+            RecordLike::Variant(variant) => {
+                let expected_sub_pat = variant.variant.def(db).format_initializer_args(db);
+                let path = variant.path.pretty_print(db);
+                Some(format!("{}{}", path, expected_sub_pat))
+            }
         }
-        .to_string()
     }
 
-    fn initializer_hint(&self, db: &'db dyn HirAnalysisDb) -> Option<String> {
-        let expected_sub_pat = self.variant.def(db).format_initializer_args(db);
+    pub fn kind_name(&self, db: &'db dyn HirAnalysisDb) -> String {
+        match self {
+            RecordLike::Type(ty) => {
+                if let Some(adt_ref) = ty.adt_ref(db) {
+                    adt_ref.kind_name().to_string()
+                } else if ty.is_func(db) {
+                    "fn".to_string()
+                } else {
+                    ty.pretty_print(db).to_string()
+                }
+            }
+            RecordLike::Variant(variant) => match variant.kind(db) {
+                HirVariantKind::Unit => "unit variant",
+                HirVariantKind::Tuple(_) => "tuple variant",
+                HirVariantKind::Record(_) => "record variant",
+            }
+            .to_string(),
+        }
+    }
 
-        let path = self.path.pretty_print(db);
-        Some(format!("{}{}", path, expected_sub_pat))
+    pub fn from_ty(ty: TyId<'db>) -> Self {
+        RecordLike::Type(ty)
+    }
+
+    pub fn from_variant(variant: ResolvedVariant<'db>) -> Self {
+        RecordLike::Variant(variant.clone())
     }
 }
