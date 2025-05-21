@@ -533,9 +533,14 @@ impl<'db> SimplifiedPattern<'db> {
 
         match self {
             SimplifiedPattern::Wildcard { .. } => {
-                // Specialize for the default case and check if it's empty
+                // For wildcard patterns in match expressions like "_",
+                // we need to check if there are any values not covered by previous patterns.
+                // A wildcard is useful if there are still uncovered patterns.
+                
+                // Check if any rows in the matrix have patterns that are not yet matched
+                // Using specialize_default which handles wildcards better
                 let specialized = matrix.specialize_default();
-                !specialized.is_empty()
+                specialized.is_empty()
             }
 
             SimplifiedPattern::Constructor {
