@@ -1,5 +1,5 @@
 use crate::name_resolution::{resolve_path, PathRes, ResolvedVariant};
-use crate::ty::adt_def::{lower_adt, AdtDef, AdtRef};
+use crate::ty::adt_def::{lower_adt, AdtRef};
 // use crate::ty::pattern::Pattern; // TODO: Remove this import once Pattern type is fully deprecated
 use crate::ty::ty_check::RecordLike;
 use crate::ty::ty_def::TyId;
@@ -536,11 +536,34 @@ impl<'db> SimplifiedPattern<'db> {
                 // For wildcard patterns in match expressions like "_",
                 // we need to check if there are any values not covered by previous patterns.
                 // A wildcard is useful if there are still uncovered patterns.
+        
+                // For a wildcard pattern, we need to check if there are still values not covered
+                // by the previous patterns. If all values are covered, the wildcard is not useful.
+                // 
+                // We need to check if there are any patterns that are not covered by
+                // any of the previous patterns. If all possible patterns are covered,
+                // then our wildcard is unreachable.
+                //
+                // A wildcard pattern is useful if not all possible values are covered by previous
+                // patterns. The check should be based on the matrix as a whole, not just the 
+                // specialization for the default case.
                 
-                // Check if any rows in the matrix have patterns that are not yet matched
-                // Using specialize_default which handles wildcards better
-                let specialized = matrix.specialize_default();
-                specialized.is_empty()
+                // Check if the matrix contains a row with a wildcard in first position
+                let has_wildcard = matrix.rows.iter().any(|row| {
+                    if let Some(first) = row.patterns.first() {
+                        matches!(first, SimplifiedPattern::Wildcard { .. }) ||
+                        if let SimplifiedPattern::Or(pats) = first {
+                            pats.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                });
+
+                // If there's already a wildcard pattern, our wildcard isn't useful
+                !has_wildcard
             }
 
             SimplifiedPattern::Constructor {
@@ -552,7 +575,7 @@ impl<'db> SimplifiedPattern<'db> {
                 let specialized = matrix.specialize(constructor, db);
 
                 if specialized.is_empty() {
-                    // No row specializes to this constructor
+                    // No row specializes to this constructor, so it's useful
                     return true;
                 }
 
@@ -561,21 +584,32 @@ impl<'db> SimplifiedPattern<'db> {
                     return false; // No subpatterns, so covered by previous patterns
                 }
 
+                // For tuples and records with subpatterns, we need to check each subpattern
                 // Check recursively for subpatterns
-                let mut matrix_patterns = Vec::new();
-                for row in &specialized.rows {
-                    if let Some(pattern) = row.patterns.first() {
-                        if let SimplifiedPattern::Constructor {
-                            subpatterns: sub, ..
-                        } = pattern
-                        {
-                            matrix_patterns.extend(sub.clone());
+                let mut all_subpatterns_useful = true;
+                
+                for (i, subpattern) in subpatterns.iter().enumerate() {
+                    let mut matrix_patterns = Vec::new();
+                    for row in &specialized.rows {
+                        if let Some(pattern) = row.patterns.first() {
+                            if let SimplifiedPattern::Constructor {
+                                subpatterns: sub, ..
+                            } = pattern
+                            {
+                                if i < sub.len() {
+                                    matrix_patterns.push(sub[i].clone());
+                                }
+                            }
                         }
                     }
+                    
+                    if !subpattern.is_useful_after(&matrix_patterns, db) {
+                        all_subpatterns_useful = false;
+                        break;
+                    }
                 }
-
-                // Recursive check for subpatterns
-                subpatterns[0].is_useful_after(&matrix_patterns, db)
+                
+                all_subpatterns_useful
             }
 
             SimplifiedPattern::Or(subpatterns) => {
@@ -772,6 +806,22 @@ impl<'db> PatternMatrix<'db> {
             return Vec::new(); // All patterns covered
         }
 
+        // Check for wildcard patterns that cover everything
+        for row in &self.rows {
+            if let Some(first_pat) = row.patterns.first() {
+                if matches!(first_pat, SimplifiedPattern::Wildcard { .. }) {
+                    return Vec::new(); // Wildcard found, all patterns are covered
+                }
+                
+                // Also check OR patterns that may contain wildcards
+                if let SimplifiedPattern::Or(patterns) = first_pat {
+                    if patterns.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
+                        return Vec::new(); // Wildcard in OR pattern, all patterns are covered
+                    }
+                }
+            }
+        }
+
         // Handle specific types
         if ty.is_bool(db) {
             return self.find_missing_bool_patterns(db);
@@ -781,17 +831,6 @@ impl<'db> PatternMatrix<'db> {
             if let AdtRef::Enum(enum_def) = adt_def.adt_ref(db) {
                 return self.find_missing_enum_patterns(enum_def, db, ty);
             }
-        }
-
-        // Default case: if any pattern is a wildcard, consider it exhaustive
-        if self.rows.iter().any(|row| {
-            if let Some(first_pat) = row.patterns.first() {
-                matches!(first_pat, SimplifiedPattern::Wildcard { .. })
-            } else {
-                false
-            }
-        }) {
-            return Vec::new();
         }
 
         // If no specific handler, assume not exhaustive
@@ -857,6 +896,22 @@ impl<'db> PatternMatrix<'db> {
         let variants_data = variants_list.data(db);
         let mut missing_variants = Vec::new();
 
+        // First, check if we have a wildcard pattern that covers everything
+        for row in &self.rows {
+            if let Some(pat) = row.patterns.first() {
+                if matches!(pat, SimplifiedPattern::Wildcard { .. }) {
+                    return Vec::new();  // Wildcard covers all variants
+                }
+                
+                // Check for wildcards in OR patterns
+                if let SimplifiedPattern::Or(patterns) = pat {
+                    if patterns.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
+                        return Vec::new();  // Wildcard in OR pattern covers all variants
+                    }
+                }
+            }
+        }
+
         // Check which variants are covered
         'variant_loop: for (idx, variant_def) in variants_data.iter().enumerate() {
             let enum_variant = hir::hir_def::item::EnumVariant::new(enum_def, idx);
@@ -865,10 +920,6 @@ impl<'db> PatternMatrix<'db> {
             for row in &self.rows {
                 if let Some(pat) = row.patterns.first() {
                     match pat {
-                        SimplifiedPattern::Wildcard { .. } => {
-                            // Wildcard covers all variants
-                            return Vec::new();
-                        }
                         SimplifiedPattern::Constructor {
                             constructor: Constructor::Record(record),
                             ..
@@ -896,9 +947,6 @@ impl<'db> PatternMatrix<'db> {
                                             continue 'variant_loop;
                                         }
                                     }
-                                } else if let SimplifiedPattern::Wildcard { .. } = or_pat {
-                                    // Wildcard in Or covers all variants
-                                    return Vec::new();
                                 }
                             }
                         }
@@ -990,6 +1038,23 @@ impl<'db> PatternAnalyzer<'db> {
         hir_pats: &[HirPat<'db>],
         body: HirBody<'db>,
     ) -> Result<(), Vec<String>> {
+        // Check for wildcard patterns that cover everything
+        for pat_id in hir_pats {
+            if matches!(pat_id, &HirPat::WildCard) || matches!(pat_id, &HirPat::Rest) {
+                return Ok(());  // Wildcard pattern found, match is exhaustive
+            }
+            
+            // Also check for OR patterns containing wildcards
+            if let HirPat::Or(left_id, right_id) = pat_id {
+                let left_pat_data = left_id.data(self.db, body);
+                let right_pat_data = right_id.data(self.db, body);
+                if matches!(left_pat_data, &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)) ||
+                   matches!(right_pat_data, &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)) {
+                    return Ok(());
+                }
+            }
+        }
+        
         let simplified_patterns: Vec<_> = hir_pats
             .iter()
             .map(|p| SimplifiedPattern::from_hir_pat(p, self.db, body))
@@ -1039,6 +1104,23 @@ impl<'db> PatternAnalyzer<'db> {
         previous_hir_pats: &[HirPat<'db>],
         body: HirBody<'db>,
     ) -> bool {
+        // Special case: if any previous pattern is a wildcard, no subsequent pattern can be reached
+        for prev_pat in previous_hir_pats {
+            if matches!(prev_pat, &HirPat::WildCard) || matches!(prev_pat, &HirPat::Rest) {
+                return false;  // If a previous pattern is a wildcard, nothing after it is reachable
+            }
+            
+            // Also check for OR patterns containing wildcards
+            if let HirPat::Or(left_id, right_id) = prev_pat {
+                let left_pat_data = left_id.data(self.db, body);
+                let right_pat_data = right_id.data(self.db, body);
+                if matches!(left_pat_data, &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)) ||
+                   matches!(right_pat_data, &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)) {
+                    return false;
+                }
+            }
+        }
+        
         let simplified = SimplifiedPattern::from_hir_pat(hir_pat, self.db, body);
         let previous_simplified: Vec<_> = previous_hir_pats
             .iter()
