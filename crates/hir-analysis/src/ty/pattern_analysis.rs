@@ -9,6 +9,8 @@ use hir::hir_def::{
     Body as HirBody, GenericArgListId, IdentId, LitKind, Partial, Pat as HirPat, PathId,
     VariantKind,
 };
+use crate::ty::AdtRef as HirAdtRef;
+use rustc_hash::FxHashMap;
 // EnumVariant itself serves as a key for covered_variants
 
 /// Simplified pattern representation for analysis
@@ -231,45 +233,100 @@ impl<'db> SimplifiedPattern<'db> {
                 }
             }
             HirPat::Record(path_id_partial, fields_vec) => {
-                // For now, use a dummy RecordLike based on the path's first identifier if available.
-                // A more complete implementation would resolve the path to a struct/enum variant.
-                let record_like = if let Partial::Present(path_id) = path_id_partial {
-                    if let Partial::Present(ident) = path_id.ident(db) {
-                        RecordLike::Dummy(ident)
-                    } else {
-                        // Fallback if ident is not present in path
-                        RecordLike::Dummy(hir::hir_def::IdentId::new(
-                            db,
-                            "_AnonymousRecord".to_string(),
-                        ))
+                if let Partial::Present(path_id) = path_id_partial {
+                    let scope = body.scope();
+                    match resolve_path(db, *path_id, scope, true /* resolve_tail_as_value */) {
+                        Ok(PathRes::EnumVariant(resolved_variant)) => {
+                            match resolved_variant.variant.kind(db) {
+                                hir::hir_def::VariantKind::Record(_) => {
+                                    let record_like_constructor = RecordLike::Variant(resolved_variant.clone());
+                                    let resolved_ty = resolved_variant.ty;
+                                    
+                                    let canonical_field_names = record_like_constructor.record_labels(db);
+                                    let mut subpatterns = vec![SimplifiedPattern::Wildcard { binding: None }; canonical_field_names.len()];
+                                    
+                                    let mut has_rest_pattern = false;
+                                    let mut provided_field_pats = FxHashMap::default();
+                                    for hir_field_pat_entry in fields_vec {
+                                        if hir_field_pat_entry.pat.is_rest(db, body) {
+                                            has_rest_pattern = true;
+                                            // Note: Fe syntax might only allow one '..'
+                                        } else if let Partial::Present(label) = hir_field_pat_entry.label {
+                                            provided_field_pats.insert(label, hir_field_pat_entry.pat);
+                                        } else {
+                                            // unlabeled field in record pattern - this should ideally be a parse error or handled by type checker.
+                                            // For robustness in pattern analysis, we might ignore or treat as error.
+                                        }
+                                    }
+
+                                    for (idx, canonical_name) in canonical_field_names.iter().enumerate() {
+                                        if let Some(pat_id) = provided_field_pats.get(canonical_name) {
+                                            if let Partial::Present(pat_actual_data) = pat_id.data(db, body) {
+                                                subpatterns[idx] = SimplifiedPattern::from_hir_pat(pat_actual_data, db, body);
+                                            }
+                                        } else if !has_rest_pattern {
+                                            // Missing field, and no '..' found. It's already a wildcard.
+                                            // The type checker should ideally report an error for this.
+                                        }
+                                    }
+                                    // TODO: Add check for fields in provided_field_pats that are not in canonical_field_names (extra fields error).
+
+                                    SimplifiedPattern::Constructor {
+                                        constructor: Constructor::Record(record_like_constructor),
+                                        subpatterns,
+                                        ty: resolved_ty,
+                                    }
+                                }
+                                _ => SimplifiedPattern::Wildcard { binding: None }, // Path is enum variant, but not record kind. Error.
+                            }
+                        }
+                        Ok(PathRes::Ty(struct_ty_id)) => {
+                             if let Some(adt_ref) = struct_ty_id.adt_ref(db) {
+                                match adt_ref {
+                                    HirAdtRef::Struct(_) | HirAdtRef::Contract(_) => {
+                                        let record_like_constructor = RecordLike::Type(struct_ty_id);
+                                        let resolved_ty = struct_ty_id;
+
+                                        let canonical_field_names = record_like_constructor.record_labels(db);
+                                        let mut subpatterns = vec![SimplifiedPattern::Wildcard { binding: None }; canonical_field_names.len()];
+
+                                        let mut has_rest_pattern = false;
+                                        let mut provided_field_pats = FxHashMap::default();
+                                         for hir_field_pat_entry in fields_vec {
+                                            if hir_field_pat_entry.pat.is_rest(db, body) {
+                                                has_rest_pattern = true;
+                                            } else if let Partial::Present(label) = hir_field_pat_entry.label {
+                                                provided_field_pats.insert(label, hir_field_pat_entry.pat);
+                                            }
+                                        }
+
+                                        for (idx, canonical_name) in canonical_field_names.iter().enumerate() {
+                                            if let Some(pat_id) = provided_field_pats.get(canonical_name) {
+                                               if let Partial::Present(pat_actual_data) = pat_id.data(db, body) {
+                                                    subpatterns[idx] = SimplifiedPattern::from_hir_pat(pat_actual_data, db, body);
+                                                }
+                                            } else if !has_rest_pattern {
+                                                // Missing field
+                                            }
+                                        }
+                                        // TODO: Add check for extra fields.
+
+                                        SimplifiedPattern::Constructor {
+                                            constructor: Constructor::Record(record_like_constructor),
+                                            subpatterns,
+                                            ty: resolved_ty,
+                                        }
+                                    }
+                                    _ => SimplifiedPattern::Wildcard { binding: None }, // Path is a type, but not struct/contract. Error.
+                                }
+                            } else {
+                                SimplifiedPattern::Wildcard { binding: None } // Path is a type, but not an ADT we can match fields on. Error.
+                            }
+                        }
+                        _ => SimplifiedPattern::Wildcard { binding: None }, // Path didn't resolve to a suitable record constructor. Error.
                     }
                 } else {
-                    // Fallback if path is not present
-                    RecordLike::Dummy(hir::hir_def::IdentId::new(
-                        db,
-                        "_AnonymousRecord".to_string(),
-                    ))
-                };
-
-                let subpatterns: Vec<SimplifiedPattern> = fields_vec
-                    .iter()
-                    .map(|field_pat_entry| {
-                        // field_pat_entry is RecordPatField { label, pat }
-                        // We primarily care about the pattern for the field.
-                        let pat_partial_data = field_pat_entry.pat.data(db, body);
-                        match pat_partial_data {
-                            Partial::Present(pat_actual_data) => {
-                                SimplifiedPattern::from_hir_pat(pat_actual_data, db, body)
-                            }
-                            Partial::Absent => SimplifiedPattern::Wildcard { binding: None }, // Or handle error
-                        }
-                    })
-                    .collect();
-
-                SimplifiedPattern::Constructor {
-                    constructor: Constructor::Record(record_like),
-                    subpatterns,
-                    ty: TyId::never(db) // Placeholder - will be properly inferred later
+                    SimplifiedPattern::Wildcard { binding: None } // Path is syntactically absent
                 }
             }
             HirPat::Or(lhs_pat_id, rhs_pat_id) => {
