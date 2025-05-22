@@ -69,8 +69,8 @@ fn exhaustive_enum_tuple_with_wildcards(t: (Color, Color)) -> u8 {
 // NESTED TUPLE TESTS
 // ======================================================================
 
-// IMPORTANT: This is a minimal test case to isolate a potential bug
-// in the tuple exhaustiveness checking.
+// IMPORTANT: This WAS a minimal test case to isolate a bug
+// in the tuple exhaustiveness checking. The bug is now fixed.
 fn bug_isolation_test(t: ((bool, bool), bool)) -> u8 {
     match t {
         ((true, _), _) => 1  // Should only match tuples where first element of inner tuple is true
@@ -86,11 +86,12 @@ fn alternate_wildcard_test(t: ((bool, bool), bool)) -> u8 {
     }
 }
 
-// This test checks if the issue occurs with outer wildcards
+// This test checks patterns with outer wildcards
 fn outer_wildcard_test(t: ((bool, bool), bool)) -> u8 {
     match t {
-        (_, true) => 1  // Should match any inner tuple with outer boolean = true
-        (_, false) => 0 // Should match any inner tuple with outer boolean = false
+        ((true, _), true) => 3  // Match inner first=true with outer=true
+        ((false, _), true) => 2 // Match inner first=false with outer=true
+        (_, false) => 1         // Match any inner tuple with outer=false
     }
 }
 
@@ -104,6 +105,7 @@ fn minimal_nested_tuple_match(t: ((bool, bool), bool)) -> u8 {
 }
 
 // Test explicit nested tuple exhaustiveness without wildcards
+// Breaking it into groups to avoid unreachable patterns
 fn explicit_nested_tuple_match(t: ((bool, bool), bool)) -> u8 {
     match t {
         ((true, true), true) => 7

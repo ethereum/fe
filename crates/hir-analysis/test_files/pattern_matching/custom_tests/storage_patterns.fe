@@ -57,12 +57,6 @@ fn match_tuple_values(x: u8, y: u8) -> u8 {
         (val, 1) => {
             return val
         }
-        (a, b) => {
-            return a + b
-        }
-        _ => {
-            return 0
-        }
     }
 }
 
@@ -81,9 +75,6 @@ fn match_boolean_values(b1: bool, b2: bool) -> u8 {
         }
         (false, false) => {
             return 0
-        }
-        _ => {
-            return 0 // This should never happen with boolean values
         }
     }
 }
