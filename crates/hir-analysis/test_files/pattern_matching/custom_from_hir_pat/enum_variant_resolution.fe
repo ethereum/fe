@@ -1,0 +1,33 @@
+enum TestEnum {
+    VariantA,
+    VariantB
+}
+
+// Test case 1: Matching an enum variant brought into scope with 'use'
+fn match_variant_via_use(val: TestEnum) -> u8 {
+    use TestEnum::*;
+    match val {
+        VariantA => 1, // We want to check how 'VariantA' here is simplified
+        VariantB => 2
+    }
+}
+
+// Test case 2: Matching an enum variant using its full path
+fn match_variant_direct_path(val: TestEnum) -> u8 {
+    match val {
+        TestEnum::VariantA => 1, // We want to check how 'TestEnum::VariantA' is simplified
+        TestEnum::VariantB => 2
+    }
+}
+
+// Test case 3: Similar to ret.fe to see if Tag1 becomes a wildcard
+enum Tag { TagX, TagY, TagZ }
+
+fn match_tag_via_use(tag_val: Tag) -> u8 {
+    use Tag::*;
+    match tag_val {
+        TagX => 10, // Check 'TagX'
+        TagY => 20,
+        TagZ => 30
+    }
+}

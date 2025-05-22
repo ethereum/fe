@@ -1,0 +1,43 @@
+enum MySimpleEnum {
+    VariantA,
+    VariantB,
+    VariantC,
+}
+
+fn test_simple_constructor_then_wildcard(val: MySimpleEnum) -> u8 {
+    match val {
+        MySimpleEnum::VariantA => 1
+        _ => 2 // This wildcard should be reachable
+    }
+}
+
+enum MyTupleEnum {
+    TupleVariant(u8, u8),
+    OtherVariant,
+}
+
+fn test_tuple_constructor_then_wildcard(val: MyTupleEnum) -> u8 {
+    match val {
+        MyTupleEnum::TupleVariant(_, _) => 1
+        _ => 2 // This wildcard should be reachable
+    }
+}
+
+struct MyStruct {
+    x: u8,
+    y: u8,
+}
+
+fn test_struct_constructor_then_wildcard(val: MyStruct) -> u8 {
+    match val {
+        MyStruct { x: 1, y: _ } => 10 // Specific struct pattern
+        _ => 20 // This wildcard should be reachable
+    }
+}
+
+// fn test_struct_constructor_full_wildcard_then_wildcard(val: MyStruct) -> u8 {
+//     match val {
+//         MyStruct { .. } => 15, // This is effectively a wildcard for MyStruct type
+//         _ => 25,               // This wildcard should be UNREACHABLE if MyStruct { .. } is truly exhaustive for the type
+//     }
+// }
