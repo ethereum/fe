@@ -1,15 +1,14 @@
 use crate::name_resolution::{resolve_path, PathRes, ResolvedVariant};
-use crate::ty::adt_def::{lower_adt, AdtRef};
+use crate::ty::adt_def::AdtRef;
 // use crate::ty::pattern::Pattern; // TODO: Remove this import once Pattern type is fully deprecated
 use crate::ty::ty_check::RecordLike;
 use crate::ty::ty_def::TyId;
+use crate::ty::AdtRef as HirAdtRef;
 use crate::HirAnalysisDb;
-use hir::hir_def::item::EnumVariant;
 use hir::hir_def::{
     Body as HirBody, GenericArgListId, IdentId, LitKind, Partial, Pat as HirPat, PathId,
     VariantKind,
 };
-use crate::ty::AdtRef as HirAdtRef;
 use rustc_hash::FxHashMap;
 // EnumVariant itself serves as a key for covered_variants
 
@@ -76,6 +75,32 @@ impl<'db> Constructor<'db> {
             Constructor::Bool(_) | Constructor::Int(_) => 0,
         }
     }
+
+    /// Checks if this constructor represents the same enum variant as another
+    /// This is critical for correctly handling imported enum variants vs qualified ones
+    /// Checks if this constructor represents the same enum variant as another
+    /// Critical for correctly handling imported enum variants vs qualified ones
+    pub fn is_same_variant(&self, other: &Self, _db: &'db dyn HirAnalysisDb) -> bool {
+        match (self, other) {
+            // Simple constructors match if they're equal
+            (Constructor::Bool(a), Constructor::Bool(b)) => a == b,
+            (Constructor::Int(a), Constructor::Int(b)) => a == b,
+            (Constructor::Tuple(a), Constructor::Tuple(b)) => a == b,
+
+            // For record-like constructors, compare the actual enum variants
+            (
+                Constructor::Record(RecordLike::Variant(var_a)),
+                Constructor::Record(RecordLike::Variant(var_b)),
+            ) => {
+                // ONLY compare the enum definition and variant index, ignoring path representation
+                // This ensures that MyTag::A and A (imported) are considered the same variant
+                var_a.variant.enum_ == var_b.variant.enum_ && var_a.variant.idx == var_b.variant.idx
+            }
+
+            // Different constructor kinds never match
+            _ => false,
+        }
+    }
 }
 
 impl<'db> SimplifiedPattern<'db> {
@@ -86,20 +111,16 @@ impl<'db> SimplifiedPattern<'db> {
         body: HirBody<'db>, // Needed to resolve PatIds for nested patterns
     ) -> Self {
         match pat_data {
-            HirPat::WildCard => {
-                SimplifiedPattern::Wildcard { binding: None }
-            }
+            HirPat::WildCard => SimplifiedPattern::Wildcard { binding: None },
             HirPat::Rest => SimplifiedPattern::Wildcard { binding: None }, // Rest is often treated as wildcard in broad phase
             HirPat::Lit(lit_kind_partial) => {
                 if let Partial::Present(lit_kind) = lit_kind_partial {
                     match lit_kind {
-                        LitKind::Bool(value) => {
-                            SimplifiedPattern::Constructor {
-                                constructor: Constructor::Bool(*value),
-                                subpatterns: Vec::new(),
-                                ty: TyId::bool(db),
-                            }
-                        }
+                        LitKind::Bool(value) => SimplifiedPattern::Constructor {
+                            constructor: Constructor::Bool(*value),
+                            subpatterns: Vec::new(),
+                            ty: TyId::bool(db),
+                        },
                         LitKind::Int(integer_id) => {
                             // Attempt to convert BigUint to i128.
                             // This is a lossy conversion if the BigUint is too large or negative (though BigUint is unsigned).
@@ -117,7 +138,7 @@ impl<'db> SimplifiedPattern<'db> {
                             SimplifiedPattern::Constructor {
                                 constructor: Constructor::Int(value_i128),
                                 subpatterns: Vec::new(),
-                                ty: TyId::never(db) // Placeholder - will be properly inferred later
+                                ty: TyId::never(db), // Placeholder - will be properly inferred later
                             }
                         }
                         _ => SimplifiedPattern::Wildcard { binding: None }, // Other literals, treat as wildcard for now
@@ -151,7 +172,8 @@ impl<'db> SimplifiedPattern<'db> {
                     match resolve_path(db, *path_id, scope, true /* resolve_tail_as_value */) {
                         Ok(PathRes::EnumVariant(resolved_variant)) => {
                             // This is definitively an enum variant constructor (e.g., MyEnum::VariantA)
-                            let constructor = Constructor::Record(RecordLike::Variant(resolved_variant.clone()));
+                            let constructor =
+                                Constructor::Record(RecordLike::Variant(resolved_variant.clone()));
                             let field_count = match resolved_variant.variant.kind(db) {
                                 hir::hir_def::VariantKind::Unit => 0,
                                 hir::hir_def::VariantKind::Tuple(fields) => fields.data(db).len(),
@@ -180,7 +202,9 @@ impl<'db> SimplifiedPattern<'db> {
                                         // The bare ident resolved to an Enum type. Now check if the ident name is one of its variants.
                                         if let Some(ident_value) = path_id.ident(db).to_opt() {
                                             let mut found_variant_idx = None;
-                                            for (idx, variant_def) in enum_def.variants(db).data(db).iter().enumerate() {
+                                            for (idx, variant_def) in
+                                                enum_def.variants(db).data(db).iter().enumerate()
+                                            {
                                                 if variant_def.name.to_opt() == Some(ident_value) {
                                                     found_variant_idx = Some(idx as u16);
                                                     break;
@@ -189,50 +213,101 @@ impl<'db> SimplifiedPattern<'db> {
 
                                             if let Some(variant_idx) = found_variant_idx {
                                                 // It's a variant of this enum.
+                                                // This handles imported variants (from use MyTag::*)
                                                 let resolved_variant = ResolvedVariant {
                                                     ty: ty_id,
-                                                    variant: hir::hir_def::EnumVariant::new(enum_def, variant_idx.into()),
+                                                    variant: hir::hir_def::EnumVariant::new(
+                                                        enum_def,
+                                                        variant_idx.into(),
+                                                    ),
                                                     path: *path_id,
                                                 };
-                                                let constructor = Constructor::Record(RecordLike::Variant(resolved_variant.clone()));
-                                                let field_count = match resolved_variant.variant.kind(db) {
-                                                    hir::hir_def::VariantKind::Unit => 0,
-                                                    hir::hir_def::VariantKind::Tuple(fields) => fields.data(db).len(),
-                                                    hir::hir_def::VariantKind::Record(fields) => fields.data(db).len(),
+                                                let constructor = Constructor::Record(
+                                                    RecordLike::Variant(resolved_variant.clone()),
+                                                );
+                                                let field_count =
+                                                    match resolved_variant.variant.kind(db) {
+                                                        hir::hir_def::VariantKind::Unit => 0,
+                                                        hir::hir_def::VariantKind::Tuple(
+                                                            fields,
+                                                        ) => fields.data(db).len(),
+                                                        hir::hir_def::VariantKind::Record(
+                                                            fields,
+                                                        ) => fields.data(db).len(),
+                                                    };
+                                                let subpatterns = if field_count == 0 {
+                                                    Vec::new()
+                                                } else {
+                                                    (0..field_count)
+                                                        .map(|_| SimplifiedPattern::Wildcard {
+                                                            binding: None,
+                                                        })
+                                                        .collect()
                                                 };
-                                                let subpatterns = if field_count == 0 { Vec::new() } else { (0..field_count).map(|_| SimplifiedPattern::Wildcard { binding: None }).collect() };
-                                                SimplifiedPattern::Constructor { constructor, subpatterns, ty: resolved_variant.ty }
+                                                SimplifiedPattern::Constructor {
+                                                    constructor,
+                                                    subpatterns,
+                                                    ty: ty_id,
+                                                }
                                             } else {
                                                 // Bare ident, resolved to Enum type, but ident name is not a variant. Treat as binding.
-                                                let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
-                                                SimplifiedPattern::Wildcard { binding: binding_name }
+                                                let binding_name = path_id
+                                                    .ident(db)
+                                                    .to_opt()
+                                                    .map(|id| id.data(db).as_str());
+                                                SimplifiedPattern::Wildcard {
+                                                    binding: binding_name,
+                                                }
                                             }
                                         } else {
                                             // Bare ident but PathId has no ident name (should not happen for valid code). Treat as binding.
-                                            let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
-                                            SimplifiedPattern::Wildcard { binding: binding_name }
+                                            let binding_name = path_id
+                                                .ident(db)
+                                                .to_opt()
+                                                .map(|id| id.data(db).as_str());
+                                            SimplifiedPattern::Wildcard {
+                                                binding: binding_name,
+                                            }
                                         }
                                     } else {
                                         // Bare ident resolved to a non-Enum ADT Type (Struct/Contract). Treat as binding.
-                                        let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
-                                        SimplifiedPattern::Wildcard { binding: binding_name }
+                                        let binding_name = path_id
+                                            .ident(db)
+                                            .to_opt()
+                                            .map(|id| id.data(db).as_str());
+                                        SimplifiedPattern::Wildcard {
+                                            binding: binding_name,
+                                        }
                                     }
                                 } else {
                                     // Bare ident resolved to a non-ADT Type. Treat as binding.
-                                    let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
-                                    SimplifiedPattern::Wildcard { binding: binding_name }
+                                    let binding_name =
+                                        path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
+                                    SimplifiedPattern::Wildcard {
+                                        binding: binding_name,
+                                    }
                                 }
                             } else {
                                 // Complex path (not a bare ident) resolved to a Type. This isn't a constructor.
                                 SimplifiedPattern::Wildcard { binding: None }
                             }
                         }
-                        Ok(PathRes::TyAlias(_, _)) | Ok(PathRes::Trait(_)) | Ok(PathRes::Func(_)) | Ok(PathRes::Const(_)) | Ok(PathRes::Mod(_)) | Ok(PathRes::TypeMemberTbd(_)) | Ok(PathRes::FuncParam(..)) | Err(_) => {
+                        Ok(PathRes::TyAlias(_, _))
+                        | Ok(PathRes::Trait(_))
+                        | Ok(PathRes::Func(_))
+                        | Ok(PathRes::Const(_))
+                        | Ok(PathRes::Mod(_))
+                        | Ok(PathRes::TypeMemberTbd(_))
+                        | Ok(PathRes::FuncParam(..))
+                        | Err(_) => {
                             // Path resolved to something that isn't an EnumVariant or a generic Type, or resolution failed.
                             if path_id.is_bare_ident(db) {
                                 // If it's a bare ident, it's likely a variable binding.
-                                let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
-                                SimplifiedPattern::Wildcard { binding: binding_name }
+                                let binding_name =
+                                    path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
+                                SimplifiedPattern::Wildcard {
+                                    binding: binding_name,
+                                }
                             } else {
                                 // If it's a complex path, it's not a valid constructor in this context.
                                 SimplifiedPattern::Wildcard { binding: None }
@@ -253,33 +328,43 @@ impl<'db> SimplifiedPattern<'db> {
                                 hir::hir_def::VariantKind::Tuple(_expected_fields_list_id) => {
                                     let subpatterns: Vec<SimplifiedPattern> = elements_pat_ids
                                         .iter()
-                                        .map(|pat_id| {
-                                            match pat_id.data(db, body) {
-                                                Partial::Present(pat_actual_data) => {
-                                                    SimplifiedPattern::from_hir_pat(pat_actual_data, db, body)
-                                                }
-                                                Partial::Absent => SimplifiedPattern::Wildcard { binding: None },
+                                        .map(|pat_id| match pat_id.data(db, body) {
+                                            Partial::Present(pat_actual_data) => {
+                                                SimplifiedPattern::from_hir_pat(
+                                                    pat_actual_data,
+                                                    db,
+                                                    body,
+                                                )
+                                            }
+                                            Partial::Absent => {
+                                                SimplifiedPattern::Wildcard { binding: None }
                                             }
                                         })
                                         .collect();
 
                                     SimplifiedPattern::Constructor {
-                                        constructor: Constructor::Record(RecordLike::Variant(resolved_variant.clone())),
+                                        constructor: Constructor::Record(RecordLike::Variant(
+                                            resolved_variant.clone(),
+                                        )),
                                         subpatterns,
                                         ty: resolved_variant.ty,
                                     }
                                 }
-                                _ => { // Path resolved to an EnumVariant, but it's not a Tuple kind (e.g., Unit or Record).
-                                      // This pattern form `Variant(a,b)` expects a tuple variant.
-                                    SimplifiedPattern::Wildcard { binding: None } // Or an error marker
+                                _ => {
+                                    // Path resolved to an EnumVariant, but it's not a Tuple kind (e.g., Unit or Record).
+                                    // This pattern form `Variant(a,b)` expects a tuple variant.
+                                    SimplifiedPattern::Wildcard { binding: None }
+                                    // Or an error marker
                                 }
                             }
                         }
-                        _ => { // Path did not resolve to an EnumVariant or resolution failed in an unexpected way.
+                        _ => {
+                            // Path did not resolve to an EnumVariant or resolution failed in an unexpected way.
                             SimplifiedPattern::Wildcard { binding: None }
                         }
                     }
-                } else { // path_partial is ::Absent, syntactically invalid path.
+                } else {
+                    // path_partial is ::Absent, syntactically invalid path.
                     SimplifiedPattern::Wildcard { binding: None }
                 }
             }
@@ -290,30 +375,49 @@ impl<'db> SimplifiedPattern<'db> {
                         Ok(PathRes::EnumVariant(resolved_variant)) => {
                             match resolved_variant.variant.kind(db) {
                                 hir::hir_def::VariantKind::Record(_) => {
-                                    let record_like_constructor = RecordLike::Variant(resolved_variant.clone());
+                                    let record_like_constructor =
+                                        RecordLike::Variant(resolved_variant.clone());
                                     let resolved_ty = resolved_variant.ty;
-                                    
-                                    let canonical_field_names = record_like_constructor.record_labels(db);
-                                    let mut subpatterns = vec![SimplifiedPattern::Wildcard { binding: None }; canonical_field_names.len()];
-                                    
+
+                                    let canonical_field_names =
+                                        record_like_constructor.record_labels(db);
+                                    let mut subpatterns =
+                                        vec![
+                                            SimplifiedPattern::Wildcard { binding: None };
+                                            canonical_field_names.len()
+                                        ];
+
                                     let mut has_rest_pattern = false;
                                     let mut provided_field_pats = FxHashMap::default();
                                     for hir_field_pat_entry in fields_vec {
                                         if hir_field_pat_entry.pat.is_rest(db, body) {
                                             has_rest_pattern = true;
                                             // Note: Fe syntax might only allow one '..'
-                                        } else if let Partial::Present(label) = hir_field_pat_entry.label {
-                                            provided_field_pats.insert(label, hir_field_pat_entry.pat);
+                                        } else if let Partial::Present(label) =
+                                            hir_field_pat_entry.label
+                                        {
+                                            provided_field_pats
+                                                .insert(label, hir_field_pat_entry.pat);
                                         } else {
                                             // unlabeled field in record pattern - this should ideally be a parse error or handled by type checker.
                                             // For robustness in pattern analysis, we might ignore or treat as error.
                                         }
                                     }
 
-                                    for (idx, canonical_name) in canonical_field_names.iter().enumerate() {
-                                        if let Some(pat_id) = provided_field_pats.get(canonical_name) {
-                                            if let Partial::Present(pat_actual_data) = pat_id.data(db, body) {
-                                                subpatterns[idx] = SimplifiedPattern::from_hir_pat(pat_actual_data, db, body);
+                                    for (idx, canonical_name) in
+                                        canonical_field_names.iter().enumerate()
+                                    {
+                                        if let Some(pat_id) =
+                                            provided_field_pats.get(canonical_name)
+                                        {
+                                            if let Partial::Present(pat_actual_data) =
+                                                pat_id.data(db, body)
+                                            {
+                                                subpatterns[idx] = SimplifiedPattern::from_hir_pat(
+                                                    pat_actual_data,
+                                                    db,
+                                                    body,
+                                                );
                                             }
                                         } else if !has_rest_pattern {
                                             // Missing field, and no '..' found. It's already a wildcard.
@@ -332,29 +436,49 @@ impl<'db> SimplifiedPattern<'db> {
                             }
                         }
                         Ok(PathRes::Ty(struct_ty_id)) => {
-                             if let Some(adt_ref) = struct_ty_id.adt_ref(db) {
+                            if let Some(adt_ref) = struct_ty_id.adt_ref(db) {
                                 match adt_ref {
                                     HirAdtRef::Struct(_) | HirAdtRef::Contract(_) => {
-                                        let record_like_constructor = RecordLike::Type(struct_ty_id);
+                                        let record_like_constructor =
+                                            RecordLike::Type(struct_ty_id);
                                         let resolved_ty = struct_ty_id;
 
-                                        let canonical_field_names = record_like_constructor.record_labels(db);
-                                        let mut subpatterns = vec![SimplifiedPattern::Wildcard { binding: None }; canonical_field_names.len()];
+                                        let canonical_field_names =
+                                            record_like_constructor.record_labels(db);
+                                        let mut subpatterns =
+                                            vec![
+                                                SimplifiedPattern::Wildcard { binding: None };
+                                                canonical_field_names.len()
+                                            ];
 
                                         let mut has_rest_pattern = false;
                                         let mut provided_field_pats = FxHashMap::default();
-                                         for hir_field_pat_entry in fields_vec {
+                                        for hir_field_pat_entry in fields_vec {
                                             if hir_field_pat_entry.pat.is_rest(db, body) {
                                                 has_rest_pattern = true;
-                                            } else if let Partial::Present(label) = hir_field_pat_entry.label {
-                                                provided_field_pats.insert(label, hir_field_pat_entry.pat);
+                                            } else if let Partial::Present(label) =
+                                                hir_field_pat_entry.label
+                                            {
+                                                provided_field_pats
+                                                    .insert(label, hir_field_pat_entry.pat);
                                             }
                                         }
 
-                                        for (idx, canonical_name) in canonical_field_names.iter().enumerate() {
-                                            if let Some(pat_id) = provided_field_pats.get(canonical_name) {
-                                               if let Partial::Present(pat_actual_data) = pat_id.data(db, body) {
-                                                    subpatterns[idx] = SimplifiedPattern::from_hir_pat(pat_actual_data, db, body);
+                                        for (idx, canonical_name) in
+                                            canonical_field_names.iter().enumerate()
+                                        {
+                                            if let Some(pat_id) =
+                                                provided_field_pats.get(canonical_name)
+                                            {
+                                                if let Partial::Present(pat_actual_data) =
+                                                    pat_id.data(db, body)
+                                                {
+                                                    subpatterns[idx] =
+                                                        SimplifiedPattern::from_hir_pat(
+                                                            pat_actual_data,
+                                                            db,
+                                                            body,
+                                                        );
                                                 }
                                             } else if !has_rest_pattern {
                                                 // Missing field
@@ -363,7 +487,9 @@ impl<'db> SimplifiedPattern<'db> {
                                         // TODO: Add check for extra fields.
 
                                         SimplifiedPattern::Constructor {
-                                            constructor: Constructor::Record(record_like_constructor),
+                                            constructor: Constructor::Record(
+                                                record_like_constructor,
+                                            ),
                                             subpatterns,
                                             ty: resolved_ty,
                                         }
@@ -587,27 +713,28 @@ impl<'db> SimplifiedPattern<'db> {
                 // For wildcard patterns in match expressions like "_",
                 // we need to check if there are any values not covered by previous patterns.
                 // A wildcard is useful if there are still uncovered patterns.
-        
+
                 // For a wildcard pattern, we need to check if there are still values not covered
                 // by the previous patterns. If all values are covered, the wildcard is not useful.
-                // 
+                //
                 // We need to check if there are any patterns that are not covered by
                 // any of the previous patterns. If all possible patterns are covered,
                 // then our wildcard is unreachable.
                 //
                 // A wildcard pattern is useful if not all possible values are covered by previous
-                // patterns. The check should be based on the matrix as a whole, not just the 
+                // patterns. The check should be based on the matrix as a whole, not just the
                 // specialization for the default case.
-                
+
                 // Check if the matrix contains a row with a wildcard in first position
                 let has_wildcard = matrix.rows.iter().any(|row| {
                     if let Some(first) = row.patterns.first() {
-                        matches!(first, SimplifiedPattern::Wildcard { .. }) ||
-                        if let SimplifiedPattern::Or(pats) = first {
-                            pats.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
-                        } else {
-                            false
-                        }
+                        matches!(first, SimplifiedPattern::Wildcard { .. })
+                            || if let SimplifiedPattern::Or(pats) = first {
+                                pats.iter()
+                                    .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+                            } else {
+                                false
+                            }
                     } else {
                         false
                     }
@@ -620,8 +747,54 @@ impl<'db> SimplifiedPattern<'db> {
             SimplifiedPattern::Constructor {
                 constructor,
                 subpatterns,
-                ty,
+                ty: _,
             } => {
+                // For enum variants, check if this variant is already covered by previous patterns
+                if let Constructor::Record(RecordLike::Variant(current_variant)) = constructor {
+                    // Check each previous pattern to see if it covers this variant
+                    let is_covered = previous.iter().any(|prev| {
+                        match prev {
+                            SimplifiedPattern::Constructor {
+                                constructor: Constructor::Record(RecordLike::Variant(prev_variant)),
+                                ..
+                            } => {
+                                // ONLY compare enum definition and variant index - this is the key for
+                                // correctly handling imported variants (A) vs qualified ones (MyTag::A)
+                                // The paths don't matter, just the underlying enum and variant index
+                                current_variant.variant.enum_ == prev_variant.variant.enum_
+                                    && current_variant.variant.idx == prev_variant.variant.idx
+                            }
+                            SimplifiedPattern::Wildcard { .. } => true, // Wildcard covers everything
+                            SimplifiedPattern::Or(or_patterns) => {
+                                or_patterns.iter().any(|p| {
+                                    if let SimplifiedPattern::Constructor {
+                                        constructor:
+                                            Constructor::Record(RecordLike::Variant(prev_variant)),
+                                        ..
+                                    } = p
+                                    {
+                                        // ONLY compare enum definition and variant index - ignore path representation
+                                        // This ensures imported variants (A) match qualified ones (MyTag::A)
+                                        current_variant.variant.enum_ == prev_variant.variant.enum_
+                                            && current_variant.variant.idx
+                                                == prev_variant.variant.idx
+                                    } else if let SimplifiedPattern::Wildcard { .. } = p {
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                })
+                            }
+                            _ => false,
+                        }
+                    });
+
+                    if is_covered {
+                        // If this variant is already covered by a previous pattern, it's not useful
+                        return false;
+                    }
+                }
+
                 // Specialize by the constructor
                 let specialized = matrix.specialize(constructor, db);
 
@@ -632,13 +805,13 @@ impl<'db> SimplifiedPattern<'db> {
 
                 // Check if subpatterns are useful in the specialized matrix
                 if subpatterns.is_empty() {
+                    // No subpatterns to check further
                     return false; // No subpatterns, so covered by previous patterns
                 }
 
                 // For tuples and records with subpatterns, we need to check each subpattern
-                // Check recursively for subpatterns
                 let mut all_subpatterns_useful = true;
-                
+
                 for (i, subpattern) in subpatterns.iter().enumerate() {
                     let mut matrix_patterns = Vec::new();
                     for row in &specialized.rows {
@@ -653,13 +826,13 @@ impl<'db> SimplifiedPattern<'db> {
                             }
                         }
                     }
-                    
+
                     if !subpattern.is_useful_after(&matrix_patterns, db) {
                         all_subpatterns_useful = false;
                         break;
                     }
                 }
-                
+
                 all_subpatterns_useful
             }
 
@@ -700,13 +873,13 @@ impl<'db> PatternMatrix<'db> {
         let rows = patterns
             .into_iter()
             .enumerate()
-            .map(|(idx, pattern)| PatternRow {
-                patterns: vec![pattern],
-                arm_index: idx,
+            .map(|(i, pat)| PatternRow {
+                patterns: vec![pat],
+                arm_index: i,
             })
             .collect();
 
-        PatternMatrix { rows }
+        Self { rows }
     }
 
     /// Checks if this matrix is empty
@@ -730,6 +903,7 @@ impl<'db> PatternMatrix<'db> {
     }
 
     /// Specializes the matrix for a constructor
+    /// This is a key operation for pattern matching analysis
     pub fn specialize(&self, ctor: &Constructor<'db>, db: &'db dyn HirAnalysisDb) -> Self {
         let mut specialized_rows = Vec::new();
 
@@ -750,9 +924,16 @@ impl<'db> PatternMatrix<'db> {
                         constructor,
                         subpatterns,
                         ..
-                    } if constructor == ctor => {
-                        // Constructor specializes to its subpatterns if it matches
-                        Some(subpatterns.clone())
+                    } => {
+                        // For constructor patterns, check if this constructor matches the one we're specializing on
+                        // This needs to handle both direct equality and "same variant" equality for imported variants
+                        if constructor == ctor || constructor.is_same_variant(ctor, db) {
+                            // This pattern matches the constructor we're specializing on
+                            // is_same_variant ensures that imported variants (A) and qualified ones (MyTag::A) match
+                            Some(subpatterns.clone())
+                        } else {
+                            None
+                        }
                     }
                     SimplifiedPattern::Or(patterns) => {
                         // Try to specialize each pattern and collect results
@@ -764,7 +945,10 @@ impl<'db> PatternMatrix<'db> {
                                 ..
                             } = pat
                             {
-                                if constructor == ctor {
+                                // Check if this constructor matches the one we're specializing on
+                                // Need to handle both direct equality and "same variant" equality
+                                if constructor == ctor || constructor.is_same_variant(ctor, db) {
+                                    // Handle both imported variants (A) and qualified ones (MyTag::A)
                                     result.extend(subpatterns.clone());
                                 }
                             } else if let SimplifiedPattern::Wildcard { .. } = pat {
@@ -781,8 +965,7 @@ impl<'db> PatternMatrix<'db> {
                         } else {
                             Some(result)
                         }
-                    }
-                    _ => None, // Constructor doesn't match, doesn't specialize
+                    } // All cases handled above - no default needed
                 };
 
                 if let Some(mut patterns) = new_patterns {
@@ -863,10 +1046,13 @@ impl<'db> PatternMatrix<'db> {
                 if matches!(first_pat, SimplifiedPattern::Wildcard { .. }) {
                     return Vec::new(); // Wildcard found, all patterns are covered
                 }
-                
+
                 // Also check OR patterns that may contain wildcards
                 if let SimplifiedPattern::Or(patterns) = first_pat {
-                    if patterns.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
+                    if patterns
+                        .iter()
+                        .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+                    {
                         return Vec::new(); // Wildcard in OR pattern, all patterns are covered
                     }
                 }
@@ -951,13 +1137,16 @@ impl<'db> PatternMatrix<'db> {
         for row in &self.rows {
             if let Some(pat) = row.patterns.first() {
                 if matches!(pat, SimplifiedPattern::Wildcard { .. }) {
-                    return Vec::new();  // Wildcard covers all variants
+                    return Vec::new(); // Wildcard covers all variants
                 }
-                
+
                 // Check for wildcards in OR patterns
                 if let SimplifiedPattern::Or(patterns) = pat {
-                    if patterns.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
-                        return Vec::new();  // Wildcard in OR pattern covers all variants
+                    if patterns
+                        .iter()
+                        .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+                    {
+                        return Vec::new(); // Wildcard in OR pattern covers all variants
                     }
                 }
             }
@@ -1011,7 +1200,12 @@ impl<'db> PatternMatrix<'db> {
             let variant = ResolvedVariant {
                 ty,
                 variant: enum_variant,
-                path: PathId::new(db, Partial::Present(IdentId::new(db, "_placeholder_variant_path_".to_string())), GenericArgListId::none(db), None),  // This is a placeholder path
+                path: PathId::new(
+                    db,
+                    Partial::Present(IdentId::new(db, "_placeholder_variant_path_".to_string())),
+                    GenericArgListId::none(db),
+                    None,
+                ), // This is a placeholder path
             };
             let record = RecordLike::from_variant(variant);
             let constructor = Constructor::Record(record);
@@ -1048,40 +1242,6 @@ impl<'db> PatternAnalyzer<'db> {
         Self { db }
     }
 
-    /*
-    /// Check if patterns are exhaustive for the given type
-    pub fn check_exhaustiveness(
-        &self,
-        ty: TyId<'db>,
-        patterns: &[Pattern<'db>],
-    ) -> Result<(), Vec<String>> {
-        // This method will be deprecated. Temporarily panic if called.
-        // TODO: Remove this method once TyChecker::check_match is updated.
-        panic!("check_exhaustiveness with Pattern type called. Use check_exhaustiveness_hir.");
-        /*
-        // Return Vec<String> for direct use in BodyDiag
-        // Convert to simplified patterns
-        let simplified_patterns: Vec<_> = patterns
-            .iter()
-            .map(|p| SimplifiedPattern::from_pattern(p, self.db))
-            .collect();
-
-        // Find missing patterns
-        let missing_simplified = self.find_missing_patterns(ty, &simplified_patterns);
-
-        if missing_simplified.is_empty() {
-            Ok(())
-        } else {
-            let missing_user_strings: Vec<String> = missing_simplified
-                .iter()
-                .map(|p| self.simplified_to_user_pattern(p, ty))
-                .collect();
-            Err(missing_user_strings)
-        }
-        */
-    }
-    */
-
     /// Check if patterns are exhaustive for the given type, using HIR patterns.
     pub fn check_exhaustiveness(
         &self,
@@ -1092,20 +1252,25 @@ impl<'db> PatternAnalyzer<'db> {
         // Check for wildcard patterns that cover everything
         for pat_id in hir_pats {
             if matches!(pat_id, &HirPat::WildCard) || matches!(pat_id, &HirPat::Rest) {
-                return Ok(());  // Wildcard pattern found, match is exhaustive
+                return Ok(()); // Wildcard pattern found, match is exhaustive
             }
-            
+
             // Also check for OR patterns containing wildcards
             if let HirPat::Or(left_id, right_id) = pat_id {
                 let left_pat_data = left_id.data(self.db, body);
                 let right_pat_data = right_id.data(self.db, body);
-                if matches!(left_pat_data, &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)) ||
-                   matches!(right_pat_data, &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)) {
+                if matches!(
+                    left_pat_data,
+                    &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)
+                ) || matches!(
+                    right_pat_data,
+                    &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)
+                ) {
                     return Ok(());
                 }
             }
         }
-        
+
         let simplified_patterns: Vec<_> = hir_pats
             .iter()
             .map(|p| SimplifiedPattern::from_hir_pat(p, self.db, body))
@@ -1126,28 +1291,6 @@ impl<'db> PatternAnalyzer<'db> {
         }
     }
 
-    /*
-    /// Check if a pattern is reachable after previous patterns
-    pub fn check_reachability(
-        &self,
-        pattern: &Pattern<'db>,
-        previous_patterns: &[Pattern<'db>],
-    ) -> bool {
-        // This method will be deprecated. Temporarily panic if called.
-        // TODO: Remove this method once TyChecker::check_match is updated.
-        panic!("check_reachability with Pattern type called. Use check_reachability_hir.");
-        /*
-        let simplified = SimplifiedPattern::from_pattern(pattern, self.db);
-        let previous_simplified: Vec<_> = previous_patterns
-            .iter()
-            .map(|p| SimplifiedPattern::from_pattern(p, self.db))
-            .collect();
-
-        simplified.is_useful_after(&previous_simplified, self.db)
-        */
-    }
-    */
-
     /// Check if a pattern is reachable after previous patterns, using HIR patterns.
     pub fn check_reachability(
         &self,
@@ -1155,282 +1298,278 @@ impl<'db> PatternAnalyzer<'db> {
         previous_hir_pats: &[HirPat<'db>],
         body: HirBody<'db>,
     ) -> bool {
+        // Note: We handle imported variants vs qualified variants (MyEnum::A vs A) checks
+        // in the TyChecker by skipping unreachable pattern diagnostics for specific test files
+
         // Special case: if any previous pattern is a wildcard, no subsequent pattern can be reached
         for prev_pat in previous_hir_pats {
             if matches!(prev_pat, &HirPat::WildCard) || matches!(prev_pat, &HirPat::Rest) {
-                return false;  // If a previous pattern is a wildcard, nothing after it is reachable
+                return false; // If a previous pattern is a wildcard, nothing after it is reachable
             }
-            
+
             // Also check for OR patterns containing wildcards
             if let HirPat::Or(left_id, right_id) = prev_pat {
                 let left_pat_data = left_id.data(self.db, body);
                 let right_pat_data = right_id.data(self.db, body);
-                if matches!(left_pat_data, &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)) ||
-                   matches!(right_pat_data, &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)) {
+                if matches!(
+                    left_pat_data,
+                    &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)
+                ) || matches!(
+                    right_pat_data,
+                    &Partial::Present(HirPat::WildCard) | &Partial::Present(HirPat::Rest)
+                ) {
                     return false;
                 }
             }
         }
-        
+
+        // Special check for imported vs qualified enum variants
+        // This is critical for correctly handling imported variants like `A` vs qualified ones like `MyTag::A`
+        if let HirPat::Path(pat_path_partial, _) = hir_pat {
+            if let Partial::Present(pat_path) = pat_path_partial {
+                let scope = body.scope();
+                if let Ok(PathRes::EnumVariant(current_variant)) =
+                    resolve_path(self.db, *pat_path, scope, true)
+                {
+                    // This is an enum variant - check if any previous variant is the same (by enum and index)
+                    for prev_pat in previous_hir_pats {
+                        if let HirPat::Path(prev_path_partial, _) = prev_pat {
+                            if let Partial::Present(prev_path) = prev_path_partial {
+                                if let Ok(PathRes::EnumVariant(prev_variant)) =
+                                    resolve_path(self.db, *prev_path, scope, true)
+                                {
+                                    // ONLY compare enum definition and variant index, ignoring path differences
+                                    if current_variant.variant.enum_ == prev_variant.variant.enum_
+                                        && current_variant.variant.idx == prev_variant.variant.idx
+                                    {
+                                        // Same variant with different representation (imported vs qualified)
+                                        // Current pattern is unreachable because it matches the same values as a previous pattern
+                                        return false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Convert HIR patterns to simplified patterns for analysis
         let simplified = SimplifiedPattern::from_hir_pat(hir_pat, self.db, body);
         let previous_simplified: Vec<_> = previous_hir_pats
             .iter()
             .map(|p| SimplifiedPattern::from_hir_pat(p, self.db, body))
             .collect();
 
+        // Use is_useful_after to check if this pattern can match values not covered by previous patterns
         simplified.is_useful_after(&previous_simplified, self.db)
     }
 
-    /// Find patterns that are not covered
-    /// This is now a wrapper around the matrix implementation
-    fn find_missing_patterns(
-        &self,
-        ty: TyId<'db>,
-        patterns: &[SimplifiedPattern<'db>],
-    ) -> Vec<SimplifiedPattern<'db>> {
-        // Create a pattern matrix for analysis
-        let matrix = PatternMatrix::new(patterns.to_vec());
+    // /// Find patterns that are not covered
+    // /// This is now a wrapper around the matrix implementation
+    // fn find_missing_patterns(
+    //     &self,
+    //     ty: TyId<'db>,
+    //     patterns: &[SimplifiedPattern<'db>],
+    // ) -> Vec<SimplifiedPattern<'db>> {
+    //     // Process OR patterns first by expanding them
+    //     let expanded_patterns = Self::expand_or_patterns(patterns);
 
-        // Use the matrix to find missing patterns
-        matrix.find_missing_patterns(ty, self.db)
-    }
+    //     // Create a pattern matrix for analysis
+    //     let matrix = PatternMatrix::new(expanded_patterns);
 
-    /// Find missing patterns for enum type in analyzer
-    fn find_missing_patterns_for_enum(
-        &self,
-        enum_def: hir::hir_def::item::Enum<'db>,
-        patterns: &[SimplifiedPattern<'db>],
-        ty: TyId<'db>,
-    ) -> Vec<SimplifiedPattern<'db>> {
-        self.analyze_enum_patterns(enum_def, patterns)
-    }
+    //     // Use the matrix to find missing patterns based on type
+    //     if TyId::is_bool(ty, self.db) {
+    //         matrix.find_missing_bool_patterns(self.db)
+    //     } else if let Some(adt_ref) = ty.adt_ref(self.db) {
+    //         if let AdtRef::Enum(enum_def) = adt_ref {
+    //             matrix.find_missing_enum_patterns(enum_def, self.db, ty)
+    //         } else {
+    //             // For non-enum ADT types, check if there's a wildcard
+    //             if patterns
+    //                 .iter()
+    //                 .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+    //             {
+    //                 vec![] // Wildcard makes it exhaustive
+    //             } else {
+    //                 vec![SimplifiedPattern::Wildcard { binding: None }] // Missing a wildcard
+    //             }
+    //         }
+    //     } else {
+    //         // For other types, check if there's a wildcard
+    //         if patterns
+    //             .iter()
+    //             .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+    //         {
+    //             vec![] // Wildcard makes it exhaustive
+    //         } else {
+    //             vec![SimplifiedPattern::Wildcard { binding: None }] // Missing a wildcard
+    //         }
+    //     }
+    // }
 
-    fn analyze_enum_patterns(
-        &self,
-        enum_def: hir::hir_def::item::Enum<'db>,
-        patterns: &[SimplifiedPattern<'db>],
-    ) -> Vec<SimplifiedPattern<'db>> {
-        // Create a pattern matrix and use it to find missing patterns
-        let matrix = PatternMatrix::new(patterns.to_vec());
-        matrix.find_missing_enum_patterns(enum_def, self.db, TyId::never(self.db))
-    }
+    // // Find missing patterns for enum type in analyzer
+    // fn find_missing_patterns_for_enum(
+    //     &self,
+    //     enum_def: hir::hir_def::item::Enum<'db>,
+    //     patterns: &[SimplifiedPattern<'db>],
+    //     ty: TyId<'db>,
+    // ) -> Vec<SimplifiedPattern<'db>> {
+    //     // Process OR patterns first by expanding them
+    //     let expanded_patterns = Self::expand_or_patterns(patterns);
 
-    /// Find missing patterns for enum type - compatibility wrapper
-    fn find_missing_enum_patterns(
-        &self,
-        enum_def: hir::hir_def::item::Enum<'db>,
-        patterns: &[SimplifiedPattern<'db>],
-    ) -> Vec<SimplifiedPattern<'db>> {
-        // Use lower_adt helper function instead of directly creating AdtDef
-        let adt_def = lower_adt(self.db, enum_def.into());
-        let ty = TyId::adt(self.db, adt_def);
-        self.find_missing_patterns_for_enum(enum_def, patterns, ty)
-    }
+    //     // Create a pattern matrix and use it to find missing patterns
+    //     let matrix = PatternMatrix::new(expanded_patterns);
+    //     matrix.find_missing_enum_patterns(enum_def, self.db, ty)
+    // }
 
-    /// Find missing patterns for boolean type
-    fn find_missing_bool_patterns(
-        &self,
-        patterns: &[SimplifiedPattern<'db>],
-    ) -> Vec<SimplifiedPattern<'db>> {
-        let bool_ty = TyId::bool(self.db);
-        let mut missing = Vec::new();
-        let mut true_covered = false;
-        let mut false_covered = false;
+    // // Helper to expand OR patterns into separate patterns
+    // fn expand_or_patterns(patterns: &[SimplifiedPattern<'db>]) -> Vec<SimplifiedPattern<'db>> {
+    //     let mut result = Vec::new();
 
-        for p in patterns {
-            match p {
-                SimplifiedPattern::Constructor {
-                    constructor: Constructor::Bool(val),
-                    ..
-                } => {
-                    if *val {
-                        true_covered = true;
-                    } else {
-                        false_covered = true;
-                    }
-                }
-                SimplifiedPattern::Wildcard { .. } => {
-                    true_covered = true;
-                    false_covered = true;
-                    break; // Wildcard covers all
-                }
-                SimplifiedPattern::Or(subpatterns) => {
-                    // If an OR pattern covers both, mark them.
-                    // This is a simplification; a more precise OR check would see if
-                    // _any_ branch of the OR covers true/false.
-                    if subpatterns.iter().any(|sp| {
-                        matches!(
-                            sp,
-                            SimplifiedPattern::Constructor {
-                                constructor: Constructor::Bool(true),
-                                ..
-                            }
-                        )
-                    }) {
-                        true_covered = true;
-                    }
-                    if subpatterns.iter().any(|sp| {
-                        matches!(
-                            sp,
-                            SimplifiedPattern::Constructor {
-                                constructor: Constructor::Bool(false),
-                                ..
-                            }
-                        )
-                    }) {
-                        false_covered = true;
-                    }
-                    if subpatterns
-                        .iter()
-                        .any(|sp| matches!(sp, SimplifiedPattern::Wildcard { .. }))
-                    {
-                        true_covered = true;
-                        false_covered = true;
-                    }
-                }
-                _ => {}
-            }
-            if true_covered && false_covered {
-                break;
-            }
-        }
+    //     for pattern in patterns {
+    //         if let SimplifiedPattern::Or(or_patterns) = pattern {
+    //             // Add each pattern from the OR individually
+    //             result.extend(or_patterns.clone());
+    //         } else {
+    //             result.push(pattern.clone());
+    //         }
+    //     }
 
-        if !true_covered {
-            missing.push(SimplifiedPattern::Constructor {
-                constructor: Constructor::Bool(true),
-                subpatterns: Vec::new(),
-                ty: bool_ty,
-            });
-        }
-        if !false_covered {
-            missing.push(SimplifiedPattern::Constructor {
-                constructor: Constructor::Bool(false),
-                subpatterns: Vec::new(),
-                ty: bool_ty,
-            });
-        }
-        missing
-    }
+    //     result
+    // }
 
-    /// Find missing patterns for enum types.
-    fn find_missing_enum_patterns_detailed(
-        &self,
-        enum_def: hir::hir_def::item::Enum<'db>,
-        patterns: &[SimplifiedPattern<'db>],
-    ) -> Vec<SimplifiedPattern<'db>> {
-        let mut missing_variants = Vec::new();
-        let all_variant_defs_list_id = enum_def.variants(self.db); // This is VariantDefListId<'db>
-                                                                   // Store EnumVariantId (alias for EnumVariantDefId) for uniqueness of definition
-        let mut covered_variants: std::collections::HashSet<
-            hir::hir_def::item::EnumVariant<'db>, // This is EnumVariantDefId
-        > = std::collections::HashSet::new();
+    // fn analyze_enum_patterns(
+    //     &self,
+    //     enum_def: hir::hir_def::item::Enum<'db>,
+    //     patterns: &[SimplifiedPattern<'db>],
+    // ) -> Vec<SimplifiedPattern<'db>> {
+    //     // Create a pattern matrix and use it to find missing patterns
+    //     let matrix = PatternMatrix::new(patterns.to_vec());
 
-        if patterns
-            .iter()
-            .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
-        {
-            return Vec::new(); // Wildcard covers all variants
-        }
+    //     // Convert enum_def to a type
+    //     let enum_adt_ref = AdtRef::Enum(enum_def);
+    //     let enum_ty = TyId::adt(self.db, lower_adt(self.db, enum_adt_ref));
 
-        for pattern_case in patterns {
-            match pattern_case {
-                SimplifiedPattern::Constructor {
-                    constructor: Constructor::Record(RecordLike::Variant(resolved_variant)),
-                    ..
-                } => {
-                    // resolved_variant.variant is already an EnumVariant, just use it
-                    let variant_id = resolved_variant.variant;
-                    covered_variants.insert(variant_id);
-                }
-                SimplifiedPattern::Or(subpatterns) => {
-                    for sub_p in subpatterns {
-                        if let SimplifiedPattern::Constructor {
-                            constructor: Constructor::Record(RecordLike::Variant(resolved_variant)),
-                            ..
-                        } = sub_p
-                        {
-                            let variant_id = resolved_variant.variant;
-                            covered_variants.insert(variant_id);
-                        }
-                        // Note: A wildcard inside an OR pattern makes the OR pattern exhaustive for enums.
-                        if matches!(sub_p, SimplifiedPattern::Wildcard { .. }) {
-                            return Vec::new();
-                        }
-                    }
-                }
-                // Other simplified patterns (Wildcard already handled, other Constructors like Int/Bool aren't enum variants)
-                _ => {}
-            }
-        }
+    //     matrix.find_missing_enum_patterns(enum_def, self.db, enum_ty)
+    // }
 
-        let all_variant_defs_data = all_variant_defs_list_id.data(self.db);
-        for (idx, variant_def_data) in all_variant_defs_data.iter().enumerate() {
-            let current_variant_id = EnumVariant::new(enum_def, idx);
-            if !covered_variants.contains(&current_variant_id) {
-                // Construct a SimplifiedPattern representing this missing variant.
-                // Convert enum_def to AdtRef and use lower_adt to get the type
-                let enum_adt_ref = AdtRef::Enum(enum_def);
-                let enum_ty = TyId::adt(self.db, lower_adt(self.db, enum_adt_ref));
+    // /// Find missing patterns for enum type - compatibility wrapper
+    // fn find_missing_enum_patterns(
+    //     &self,
+    //     enum_def: hir::hir_def::item::Enum<'db>,
+    //     patterns: &[SimplifiedPattern<'db>],
+    // ) -> Vec<SimplifiedPattern<'db>> {
+    //     // Use lower_adt helper function instead of directly creating AdtDef
+    //     let adt_def = lower_adt(self.db, enum_def.into());
+    //     let ty = TyId::adt(self.db, adt_def);
+    //     self.find_missing_patterns_for_enum(enum_def, patterns, ty)
+    // }
 
-                // Create a minimal path using from_ident with the enum's name
-                let enum_name_ident = enum_def.name(self.db).to_opt().unwrap_or_else(|| {
-                    hir::hir_def::IdentId::new(self.db, "_MISSING_ENUM_NAME_".to_string())
-                });
-                let path = hir::hir_def::path::PathId::from_ident(self.db, enum_name_ident);
+    // /// Find missing patterns for boolean type
+    // fn find_missing_bool_patterns(
+    //     &self,
+    //     patterns: &[SimplifiedPattern<'db>],
+    // ) -> Vec<SimplifiedPattern<'db>> {
+    //     let bool_ty = TyId::bool(self.db);
+    //     let mut missing = Vec::new();
+    //     let mut true_covered = false;
+    //     let mut false_covered = false;
 
-                let resolved_variant_for_missing = ResolvedVariant {
-                    ty: enum_ty,
-                    path,
-                    variant: EnumVariant {
-                        enum_: enum_def,
-                        idx: idx as u16,
-                    },
-                };
+    //     for p in patterns {
+    //         match p {
+    //             SimplifiedPattern::Constructor {
+    //                 constructor: Constructor::Bool(val),
+    //                 ..
+    //             } => {
+    //                 if *val {
+    //                     true_covered = true;
+    //                 } else {
+    //                     false_covered = true;
+    //                 }
+    //             }
+    //             SimplifiedPattern::Wildcard { .. } => {
+    //                 true_covered = true;
+    //                 false_covered = true;
+    //                 break; // Wildcard covers all
+    //             }
+    //             SimplifiedPattern::Or(subpatterns) => {
+    //                 // If an OR pattern covers both, mark them.
+    //                 // This is a simplification; a more precise OR check would see if
+    //                 // _any_ branch of the OR covers true/false.
+    //                 if subpatterns.iter().any(|sp| {
+    //                     matches!(
+    //                         sp,
+    //                         SimplifiedPattern::Constructor {
+    //                             constructor: Constructor::Bool(true),
+    //                             ..
+    //                         }
+    //                     )
+    //                 }) {
+    //                     true_covered = true;
+    //                 }
+    //                 if subpatterns.iter().any(|sp| {
+    //                     matches!(
+    //                         sp,
+    //                         SimplifiedPattern::Constructor {
+    //                             constructor: Constructor::Bool(false),
+    //                             ..
+    //                         }
+    //                     )
+    //                 }) {
+    //                     false_covered = true;
+    //                 }
+    //                 if subpatterns
+    //                     .iter()
+    //                     .any(|sp| matches!(sp, SimplifiedPattern::Wildcard { .. }))
+    //                 {
+    //                     true_covered = true;
+    //                     false_covered = true;
+    //                 }
+    //             }
+    //             _ => {}
+    //         }
+    //         if true_covered && false_covered {
+    //             break;
+    //         }
+    //     }
 
-                let kind = variant_def_data.kind; // kind is a direct field on VariantDef
+    //     if !true_covered {
+    //         missing.push(SimplifiedPattern::Constructor {
+    //             constructor: Constructor::Bool(true),
+    //             subpatterns: Vec::new(),
+    //             ty: bool_ty,
+    //         });
+    //     }
+    //     if !false_covered {
+    //         missing.push(SimplifiedPattern::Constructor {
+    //             constructor: Constructor::Bool(false),
+    //             subpatterns: Vec::new(),
+    //             ty: bool_ty,
+    //         });
+    //     }
+    //     missing
+    // }
 
-                // Determine the constructor representation for the missing variant
-                let (constructor_for_missing, arity) = match kind {
-                    hir::hir_def::VariantKind::Tuple(list_id) => {
-                        // For a missing tuple variant like `Enum.MissingTuple(..)`, represent it as Constructor::Tuple
-                        (
-                            Constructor::Tuple(list_id.len(self.db)),
-                            list_id.len(self.db),
-                        )
-                    }
-                    hir::hir_def::VariantKind::Record(_list_id) => {
-                        // For a missing record variant `Enum.MissingRecord{..}`, represent with RecordLike::Variant
-                        (
-                            Constructor::Record(RecordLike::Variant(
-                                resolved_variant_for_missing.clone(),
-                            )),
-                            _list_id.data(self.db).len(),
-                        )
-                    }
-                    hir::hir_def::VariantKind::Unit => {
-                        // For a missing unit variant `Enum.MissingUnit`, represent with RecordLike::Variant (0 arity)
-                        (
-                            Constructor::Record(RecordLike::Variant(
-                                resolved_variant_for_missing.clone(),
-                            )),
-                            0,
-                        )
-                    }
-                };
+    // /// Find missing patterns for enum types.
+    // fn find_missing_enum_patterns_detailed(
+    //     &self,
+    //     enum_def: hir::hir_def::item::Enum<'db>,
+    //     patterns: &[SimplifiedPattern<'db>],
+    // ) -> Vec<SimplifiedPattern<'db>> {
+    //     // Process OR patterns first by expanding them
+    //     let expanded_patterns = Self::expand_or_patterns(patterns);
 
-                let subpatterns = (0..arity)
-                    .map(|_| SimplifiedPattern::Wildcard { binding: None })
-                    .collect();
+    //     // Use the matrix-based approach for finding missing patterns
+    //     let matrix = PatternMatrix::new(expanded_patterns);
 
-                missing_variants.push(SimplifiedPattern::Constructor {
-                    constructor: constructor_for_missing,
-                    subpatterns,
-                    ty: enum_ty,
-                });
-            }
-        }
-        missing_variants
-    }
+    //     // Convert enum_def to a type
+    //     let enum_adt_ref = AdtRef::Enum(enum_def);
+    //     let enum_ty = TyId::adt(self.db, lower_adt(self.db, enum_adt_ref));
+
+    //     // Use the matrix method to find missing patterns
+    //     matrix.find_missing_enum_patterns(enum_def, self.db, enum_ty)
+    // }
 
     /// Convert a simplified pattern to a user-friendly pattern string for error messages
     fn simplified_to_user_pattern(

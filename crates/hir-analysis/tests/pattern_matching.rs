@@ -2,14 +2,6 @@ mod test_db;
 use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
-use fe_hir_analysis::{
-    analysis_pass::{AnalysisPassManager, ParsingPass},
-    name_resolution::ImportAnalysisPass,
-    ty::{
-        AdtDefAnalysisPass, BodyAnalysisPass, DefConflictAnalysisPass, FuncAnalysisPass,
-        ImplAnalysisPass, ImplTraitAnalysisPass, TraitAnalysisPass, TypeAliasAnalysisPass,
-    },
-};
 use test_db::initialize_analysis_pass;
 use test_db::HirAnalysisTestDb;
 

@@ -1,4 +1,4 @@
-// fe/crates/hir-analysis/test_files/ty_check/pat/match_stmt.fe
+// fe/crates/hir-analysis/test_files/ty_check/pat/match_stmt_clean.fe
 
 enum Color {
     Red,
@@ -72,34 +72,5 @@ fn test_match_bool_literal(val: bool) -> u8 {
     match val {
         true => { return 1 }
         false => { return 0 }
-    }
-}
-
-// Test for exhaustiveness (this should ideally produce a compiler error)
-// We'll see how the snapshot testing handles expected errors.
-fn test_non_exhaustive_match(c: Color) -> u8 {
-    match c {
-        Color::Red => {
-            return 1
-        }
-        Color::Rgb(..) => { // Using .. to match any Rgb variant
-            return 2
-        }
-        // Missing Green and Blue
-    }
-}
-
-// Test for reachability (this should ideally produce a compiler error)
-fn test_unreachable_pattern(c: Color) -> u8 {
-    match c {
-        _ => { // This wildcard makes subsequent arms unreachable
-            return 0
-        }
-        Color::Red => {
-            return 1
-        }
-        Color::Rgb(..) => {
-            return 2
-        }
     }
 }
