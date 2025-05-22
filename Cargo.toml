@@ -34,6 +34,7 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 tracing-tree = "0.4.0"
 wasm-bindgen-test = "0.3"
+semver = "1.0.26"
 
 [profile.dev]
 # Set to 0 to make the build faster and debugging more difficult.

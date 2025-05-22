@@ -9,10 +9,13 @@ description = "Resolver lib for Fe."
 
 [dependencies]
 common.workspace = true
-
+smol_str.workspace = true
 camino.workspace = true
 glob.workspace = true
-serde-semver.workspace = true
+semver.workspace = true
+indexmap = "2.9"
+petgraph = "0.8"
+git2 = "0.19"
+dir-test.workspace = true
+test-utils.workspace = true
 toml = "0.8"
-serde = { version = "1", features = ["derive"] }
-smol_str.workspace = true
