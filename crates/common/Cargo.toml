@@ -6,8 +6,6 @@ license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 description = "Provides HIR definition and lowering for Fe lang."
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 camino.workspace = true
 paste.workspace = true
@@ -24,11 +22,4 @@ parser.workspace = true
 url.workspace = true
 ordermap = "0.5.5"
 rustc-hash.workspace = true
-# blart = "0.3.0"
-# imbl = "5.0.0"
-# bimap = "0.6.3"
-# patricia_tree = "0.9.0"
-# pour = "0.2.1"
-# qp-trie = "0.8.2"
 radix_immutable = { version = "0.0.1", git = "https://github.com/micahscopes/radix_immutable.git" }
-imbl = "5.0.0"

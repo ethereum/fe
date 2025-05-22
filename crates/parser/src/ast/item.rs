@@ -461,6 +461,7 @@ pub enum ItemKind {
 #[cfg(test)]
 mod tests {
     use derive_more::TryIntoError;
+    use tracing::error;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
@@ -480,7 +481,7 @@ mod tests {
         let _ = parser.parse(ItemListScope::default());
         let (node, errs) = parser.finish_to_node();
         for e in errs {
-            eprintln!("{:?}", e);
+            error!("{:?}", e);
         }
         let item_list = ItemList::cast(node).unwrap();
         let mut items = item_list.into_iter().collect::<Vec<_>>();
