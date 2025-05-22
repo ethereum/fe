@@ -101,7 +101,7 @@ fn match_mixed_styles(tag: Tag, color: Color) -> u8 {
         Tag::Tag3 => {
             30
         }
-    };
+    }
     
     let color_val = match color {
         Red => {
@@ -116,7 +116,7 @@ fn match_mixed_styles(tag: Tag, color: Color) -> u8 {
         Rgb(r, g, b) => {
             r + g + b
         }
-    };
+    }
     
     return result + color_val
 }
@@ -166,7 +166,7 @@ fn match_or_patterns(tag: Tag, color: Color) -> bool {
         Tag3 => {
             false
         }
-    };
+    }
     
     let is_color_primary = match color {
         Red | Green | Blue => {
@@ -175,7 +175,7 @@ fn match_or_patterns(tag: Tag, color: Color) -> bool {
         Rgb(_, _, _) => {
             false
         }
-    };
+    }
     
     return is_tag_special && is_color_primary
 }

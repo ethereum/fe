@@ -150,18 +150,16 @@ impl<'db> SimplifiedPattern<'db> {
                     let scope = body.scope();
                     match resolve_path(db, *path_id, scope, true /* resolve_tail_as_value */) {
                         Ok(PathRes::EnumVariant(resolved_variant)) => {
+                            // This is definitively an enum variant constructor (e.g., MyEnum::VariantA)
                             let constructor = Constructor::Record(RecordLike::Variant(resolved_variant.clone()));
-                            // Determine field_count based on the actual variant kind
                             let field_count = match resolved_variant.variant.kind(db) {
                                 hir::hir_def::VariantKind::Unit => 0,
                                 hir::hir_def::VariantKind::Tuple(fields) => fields.data(db).len(),
                                 hir::hir_def::VariantKind::Record(fields) => fields.data(db).len(),
                             };
-
                             let subpatterns = if field_count == 0 {
                                 Vec::new()
                             } else {
-                                // If a non-unit variant is matched by path only, treat fields as wildcards
                                 (0..field_count)
                                     .map(|_| SimplifiedPattern::Wildcard { binding: None })
                                     .collect()
@@ -172,25 +170,78 @@ impl<'db> SimplifiedPattern<'db> {
                                 ty: resolved_variant.ty,
                             }
                         }
-                        Ok(PathRes::Ty(_ty_id)) if !path_id.is_bare_ident(db) => {
-                            // Complex path resolving to a Type, not a variant constructor.
-                            // Treat as wildcard or error. For now, wildcard.
-                            SimplifiedPattern::Wildcard { binding: None }
+                        Ok(PathRes::Ty(ty_id)) => {
+                            // Path resolved to a Type.
+                            // If it's a bare ident, it could be an imported enum variant (e.g. `VariantA` after `use MyEnum::*`)
+                            // or a binding that shadows a type name.
+                            if path_id.is_bare_ident(db) {
+                                if let Some(adt_ref) = ty_id.adt_ref(db) {
+                                    if let HirAdtRef::Enum(enum_def) = adt_ref {
+                                        // The bare ident resolved to an Enum type. Now check if the ident name is one of its variants.
+                                        if let Some(ident_value) = path_id.ident(db).to_opt() {
+                                            let mut found_variant_idx = None;
+                                            for (idx, variant_def) in enum_def.variants(db).data(db).iter().enumerate() {
+                                                if variant_def.name.to_opt() == Some(ident_value) {
+                                                    found_variant_idx = Some(idx as u16);
+                                                    break;
+                                                }
+                                            }
+
+                                            if let Some(variant_idx) = found_variant_idx {
+                                                // It's a variant of this enum.
+                                                let resolved_variant = ResolvedVariant {
+                                                    ty: ty_id,
+                                                    variant: hir::hir_def::EnumVariant::new(enum_def, variant_idx.into()),
+                                                    path: *path_id,
+                                                };
+                                                let constructor = Constructor::Record(RecordLike::Variant(resolved_variant.clone()));
+                                                let field_count = match resolved_variant.variant.kind(db) {
+                                                    hir::hir_def::VariantKind::Unit => 0,
+                                                    hir::hir_def::VariantKind::Tuple(fields) => fields.data(db).len(),
+                                                    hir::hir_def::VariantKind::Record(fields) => fields.data(db).len(),
+                                                };
+                                                let subpatterns = if field_count == 0 { Vec::new() } else { (0..field_count).map(|_| SimplifiedPattern::Wildcard { binding: None }).collect() };
+                                                SimplifiedPattern::Constructor { constructor, subpatterns, ty: resolved_variant.ty }
+                                            } else {
+                                                // Bare ident, resolved to Enum type, but ident name is not a variant. Treat as binding.
+                                                let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
+                                                SimplifiedPattern::Wildcard { binding: binding_name }
+                                            }
+                                        } else {
+                                            // Bare ident but PathId has no ident name (should not happen for valid code). Treat as binding.
+                                            let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
+                                            SimplifiedPattern::Wildcard { binding: binding_name }
+                                        }
+                                    } else {
+                                        // Bare ident resolved to a non-Enum ADT Type (Struct/Contract). Treat as binding.
+                                        let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
+                                        SimplifiedPattern::Wildcard { binding: binding_name }
+                                    }
+                                } else {
+                                    // Bare ident resolved to a non-ADT Type. Treat as binding.
+                                    let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
+                                    SimplifiedPattern::Wildcard { binding: binding_name }
+                                }
+                            } else {
+                                // Complex path (not a bare ident) resolved to a Type. This isn't a constructor.
+                                SimplifiedPattern::Wildcard { binding: None }
+                            }
                         }
-                         // Bare ident might be a const, a new binding, or a struct type used as pattern (less common).
-                        _ if path_id.is_bare_ident(db) => {
-                            // If resolve_path failed or resolved to something not an EnumVariant constructor,
-                            // and it's a bare ident, it's likely a variable binding.
-                            // Note: `is_mut_binding` could be used here if `SimplifiedPattern::Wildcard` stored mutability.
-                            let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
-                            SimplifiedPattern::Wildcard { binding: binding_name }
-                        }
-                        _ => { // Unresolved complex path, or resolved to something not usable as a path pattern constructor
-                            SimplifiedPattern::Wildcard { binding: None }
+                        Ok(PathRes::TyAlias(_, _)) | Ok(PathRes::Trait(_)) | Ok(PathRes::Func(_)) | Ok(PathRes::Const(_)) | Ok(PathRes::Mod(_)) | Ok(PathRes::TypeMemberTbd(_)) | Ok(PathRes::FuncParam(..)) | Err(_) => {
+                            // Path resolved to something that isn't an EnumVariant or a generic Type, or resolution failed.
+                            if path_id.is_bare_ident(db) {
+                                // If it's a bare ident, it's likely a variable binding.
+                                let binding_name = path_id.ident(db).to_opt().map(|id| id.data(db).as_str());
+                                SimplifiedPattern::Wildcard { binding: binding_name }
+                            } else {
+                                // If it's a complex path, it's not a valid constructor in this context.
+                                SimplifiedPattern::Wildcard { binding: None }
+                            }
                         }
                     }
                 } else {
-                    SimplifiedPattern::Wildcard { binding: None } // Path is syntactically absent
+                    // path_partial is ::Absent (syntactically invalid path in HIR Pat::Path)
+                    SimplifiedPattern::Wildcard { binding: None }
                 }
             }
             HirPat::PathTuple(path_partial, elements_pat_ids) => {
