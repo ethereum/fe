@@ -61,3 +61,16 @@ fn unreachable_patterns(fixture: Fixture<&str>) {
         "Expected unreachable pattern errors but found none"
     );
 }
+
+#[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/test_files/pattern_matching",
+    glob: "custom_tests/*.fe"
+)]
+fn custom_pattern_tests(fixture: Fixture<&str>) {
+    let mut db = HirAnalysisTestDb::default();
+    let path = Path::new(fixture.path());
+    let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
+    let file = db.new_stand_alone(file_name.into(), fixture.content());
+    let (top_mod, _) = db.top_mod(file);
+    db.assert_no_diags(top_mod);
+}

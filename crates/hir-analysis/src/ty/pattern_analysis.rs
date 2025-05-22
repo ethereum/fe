@@ -1064,6 +1064,10 @@ impl<'db> PatternMatrix<'db> {
             return self.find_missing_bool_patterns(db);
         }
 
+        if ty.is_tuple(db) {
+            return self.find_missing_tuple_patterns(ty, db);
+        }
+
         if let Some(adt_def) = ty.adt_def(db) {
             if let AdtRef::Enum(enum_def) = adt_def.adt_ref(db) {
                 return self.find_missing_enum_patterns(enum_def, db, ty);
@@ -1074,6 +1078,103 @@ impl<'db> PatternMatrix<'db> {
         vec![SimplifiedPattern::Wildcard { binding: None }]
     }
 
+    /// Find missing patterns for tuple types
+    fn find_missing_tuple_patterns(
+        &self,
+        ty: TyId<'db>,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Vec<SimplifiedPattern<'db>> {
+        // Get tuple elements
+        let (_, tuple_elems) = ty.decompose_ty_app(db);
+        
+        // Check if we have any completely covered cases from wildcards
+        for row in &self.rows {
+            if let Some(SimplifiedPattern::Wildcard { .. }) = row.patterns.first() {
+                return Vec::new(); // All patterns covered by a wildcard
+            }
+        }
+        
+        // Check if we have any tuple constructors with the right arity
+        let mut has_tuple_patterns = false;
+        for row in &self.rows {
+            if let Some(SimplifiedPattern::Constructor {
+                constructor: Constructor::Tuple(n),
+                ..
+            }) = row.patterns.first()
+            {
+                if *n == tuple_elems.len() {
+                    has_tuple_patterns = true;
+                    break;
+                }
+            }
+        }
+        
+        // If no tuple patterns of the right arity, the entire space is uncovered
+        if !has_tuple_patterns {
+            return vec![SimplifiedPattern::Wildcard { binding: None }];
+        }
+        
+        // Check each element for missing patterns
+        for i in 0..tuple_elems.len() {
+            let specialized = self.specialize_tuple_element(i, tuple_elems.len());
+            if specialized.rows.is_empty() {
+                continue;
+            }
+            
+            // Check if this element has missing patterns
+            let missing = specialized.find_missing_patterns(tuple_elems[i], db);
+            if !missing.is_empty() {
+                // If any element has missing patterns, the whole tuple pattern is not exhaustive
+                return vec![SimplifiedPattern::Wildcard { binding: None }];
+            }
+        }
+        
+        // All elements are covered, so the tuple pattern is exhaustive
+        Vec::new()
+    }
+    
+    /// Create a specialized matrix for a specific tuple element
+    fn specialize_tuple_element(
+        &self,
+        element_idx: usize,
+        arity: usize,
+    ) -> PatternMatrix<'db> {
+        let mut specialized_rows = Vec::new();
+        
+        for row in &self.rows {
+            if let Some(SimplifiedPattern::Constructor {
+                constructor: Constructor::Tuple(n),
+                subpatterns,
+                ..
+            }) = row.patterns.first() {
+                if *n == arity && element_idx < subpatterns.len() {
+                    // Take the pattern at the specified element index
+                    let element_pattern = &subpatterns[element_idx];
+                    
+                    // Create a new row with just this element's pattern
+                    let mut new_patterns = vec![element_pattern.clone()];
+                    new_patterns.extend_from_slice(&row.patterns[1..]);
+                    
+                    specialized_rows.push(PatternRow {
+                        patterns: new_patterns,
+                        arm_index: row.arm_index,
+                    });
+                }
+            } else if let Some(SimplifiedPattern::Wildcard { .. }) = row.patterns.first() {
+                // For wildcard patterns, add a wildcard for this element
+                let mut new_patterns = vec![SimplifiedPattern::Wildcard { binding: None }];
+                new_patterns.extend_from_slice(&row.patterns[1..]);
+                
+                specialized_rows.push(PatternRow {
+                    patterns: new_patterns,
+                    arm_index: row.arm_index,
+                });
+            }
+        }
+        
+        PatternMatrix { rows: specialized_rows }
+    }
+    
     /// Find missing patterns for boolean type
     fn find_missing_bool_patterns(
         &self,
@@ -1123,6 +1224,8 @@ impl<'db> PatternMatrix<'db> {
     }
 
     /// Find missing patterns for enum type
+
+
     fn find_missing_enum_patterns(
         &self,
         enum_def: hir::hir_def::item::Enum<'db>,

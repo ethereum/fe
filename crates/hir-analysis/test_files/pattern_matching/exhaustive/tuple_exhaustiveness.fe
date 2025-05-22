@@ -1,0 +1,170 @@
+enum Color {
+    Red,
+    Green,
+    Blue
+}
+
+// ======================================================================
+// SIMPLE TUPLE EXHAUSTIVENESS TESTS
+// ======================================================================
+
+// Test tuple exhaustiveness with simple types - no unreachable patterns
+fn exhaustive_tuple_match(t: (u8, u8)) -> u8 {
+    match t {
+        (0, 0) => 0  // Specific case
+        (0, _) => 1  // All tuples with first element 0 (except the one above)
+        (_, 0) => 2  // All tuples with second element 0 (not covered above)
+        (_, _) => 3  // All other tuples
+    }
+}
+
+// Test boolean tuple exhaustiveness with all combinations
+fn exhaustive_bool_tuple(t: (bool, bool)) -> u8 {
+    match t {
+        (true, true) => 3
+        (true, false) => 2
+        (false, true) => 1
+        (false, false) => 0
+    }
+}
+
+// Test boolean tuple with OR patterns - good for common logic
+fn exhaustive_bool_tuple_with_or(t: (bool, bool)) -> u8 {
+    match t {
+        (true, true) => 2
+        (true, false) | (false, true) => 1  // Both patterns with exactly one true
+        (false, false) => 0
+    }
+}
+
+// ======================================================================
+// ENUM TUPLE EXHAUSTIVENESS TESTS
+// ======================================================================
+
+// Test enum tuple exhaustiveness - example of proper complete matching
+fn exhaustive_enum_tuple(t: (Color, Color)) -> u8 {
+    match t {
+        (Color::Red, Color::Red) => 0
+        (Color::Red, Color::Green) => 1
+        (Color::Red, Color::Blue) => 2
+        (Color::Green, Color::Red) => 3
+        (Color::Green, Color::Green) => 4
+        (Color::Green, Color::Blue) => 5
+        (Color::Blue, Color::Red) => 6
+        (Color::Blue, Color::Green) => 7
+        (Color::Blue, Color::Blue) => 8
+    }
+}
+
+// Test enum tuple with wildcards - minimal number of patterns needed
+fn exhaustive_enum_tuple_with_wildcards(t: (Color, Color)) -> u8 {
+    match t {
+        (Color::Red, _) => 0   // All combinations with Red first
+        (Color::Green, _) => 1 // All combinations with Green first
+        (Color::Blue, _) => 2  // All combinations with Blue first
+    }
+}
+
+// ======================================================================
+// NESTED TUPLE TESTS
+// ======================================================================
+
+// IMPORTANT: This is a minimal test case to isolate a potential bug
+// in the tuple exhaustiveness checking.
+fn bug_isolation_test(t: ((bool, bool), bool)) -> u8 {
+    match t {
+        ((true, _), _) => 1  // Should only match tuples where first element of inner tuple is true
+        ((false, _), _) => 0 // Should match remaining tuples - MAY BE INCORRECTLY MARKED UNREACHABLE
+    }
+}
+
+// This test checks if the issue occurs with wildcards in different positions
+fn alternate_wildcard_test(t: ((bool, bool), bool)) -> u8 {
+    match t {
+        ((_, true), _) => 1  // Should only match tuples where second element of inner tuple is true
+        ((_, false), _) => 0 // Should match remaining tuples
+    }
+}
+
+// This test checks if the issue occurs with outer wildcards
+fn outer_wildcard_test(t: ((bool, bool), bool)) -> u8 {
+    match t {
+        (_, true) => 1  // Should match any inner tuple with outer boolean = true
+        (_, false) => 0 // Should match any inner tuple with outer boolean = false
+    }
+}
+
+// Test minimal patterns needed for exhaustiveness with nested tuples
+// POTENTIALLY BUGGY: The second pattern may be incorrectly marked as unreachable
+fn minimal_nested_tuple_match(t: ((bool, bool), bool)) -> u8 {
+    match t {
+        ((true, _), _) => 1  // All cases with true in first position
+        ((false, _), _) => 0 // This should match all remaining cases but may be marked unreachable
+    }
+}
+
+// Test explicit nested tuple exhaustiveness without wildcards
+fn explicit_nested_tuple_match(t: ((bool, bool), bool)) -> u8 {
+    match t {
+        ((true, true), true) => 7
+        ((true, true), false) => 6
+        ((true, false), true) => 5
+        ((true, false), false) => 4
+        ((false, true), true) => 3
+        ((false, true), false) => 2
+        ((false, false), true) => 1
+        ((false, false), false) => 0
+    }
+}
+
+// Test nested tuple with first-level wildcards
+fn nested_tuple_first_level(t: ((bool, bool), bool)) -> u8 {
+    match t {
+        (_, true) => 1
+        (_, false) => 0
+    }
+}
+
+// Test deliberate non-exhaustive nested tuple matching
+// This should correctly be identified as non-exhaustive
+fn non_exhaustive_nested_tuple(t: ((bool, bool), bool)) -> u8 {
+    match t {
+        ((true, _), _) => 3  // Covers half of all possible cases
+        // Missing all ((false, _), _) cases
+    }
+}
+
+// ======================================================================
+// MIXED TYPE AND COMPLEX TUPLE TESTS
+// ======================================================================
+
+// Test mixed types with optimal pattern matching using wildcards
+// This tests simple tuple wildcard patterns (should work correctly)
+fn exhaustive_mixed_tuple(t: (bool, Color)) -> u8 {
+    match t {
+        (true, _) => 1  // All cases with true 
+        (false, _) => 0 // All cases with false
+    }
+}
+
+// Test mixed types with fully enumerated patterns
+fn exhaustive_mixed_tuple_expanded(t: (bool, Color)) -> u8 {
+    match t {
+        (true, Color::Red) => 5
+        (true, Color::Green) => 4
+        (true, Color::Blue) => 3
+        (false, Color::Red) => 2
+        (false, Color::Green) => 1
+        (false, Color::Blue) => 0
+    }
+}
+
+// Test large tuple with a non-exhaustive pattern set
+fn large_tuple_non_exhaustive(t: (u8, u8, u8, u8)) -> u8 {
+    match t {
+        (0, _, _, _) => 1  // Match first element
+        (_, 0, _, _) => 2  // Match second element
+        (_, _, 0, _) => 3  // Match third element
+        // Missing patterns for when all first three elements are non-zero
+    }
+}
