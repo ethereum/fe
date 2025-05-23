@@ -1,15 +1,13 @@
-use crate::name_resolution::{resolve_path, PathRes, ResolvedVariant};
+use crate::name_resolution::ResolvedVariant;
 use crate::ty::adt_def::AdtRef;
 // use crate::ty::pattern::Pattern; // TODO: Remove this import once Pattern type is fully deprecated
 use crate::ty::ty_check::RecordLike;
 use crate::ty::ty_def::TyId;
-use crate::ty::AdtRef as HirAdtRef;
 use crate::HirAnalysisDb;
 use hir::hir_def::{
-    Body as HirBody, GenericArgListId, IdentId, LitKind, Partial, Pat as HirPat, PathId,
+    GenericArgListId, IdentId, Partial, PathId,
     VariantKind,
 };
-use rustc_hash::FxHashMap;
 
 /// Simplified pattern representation for analysis
 /// Based on "Warnings for pattern matching" paper
@@ -121,38 +119,17 @@ impl<'db> SimplifiedPattern<'db> {
 
         match self {
             SimplifiedPattern::Wildcard { .. } => {
-                // For wildcard patterns in match expressions like "_",
-                // we need to check if there are any values not covered by previous patterns.
-                // A wildcard is useful if there are still uncovered patterns.
-
-                // For a wildcard pattern, we need to check if there are still values not covered
-                // by the previous patterns. If all values are covered, the wildcard is not useful.
-                //
-                // We need to check if there are any patterns that are not covered by
-                // any of the previous patterns. If all possible patterns are covered,
-                // then our wildcard is unreachable.
-                //
-                // A wildcard pattern is useful if not all possible values are covered by previous
-                // patterns. The check should be based on the matrix as a whole, not just the
-                // specialization for the default case.
-
-                // Check if the matrix contains a row with a wildcard in first position
-                let has_wildcard = matrix.rows.iter().any(|row| {
-                    if let Some(first) = row.patterns.first() {
-                        matches!(first, SimplifiedPattern::Wildcard { .. })
-                            || if let SimplifiedPattern::Or(pats) = first {
-                                pats.iter()
-                                    .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
-                            } else {
-                                false
-                            }
-                    } else {
-                        false
-                    }
-                });
-
-                // If there's already a wildcard pattern, our wildcard isn't useful
-                !has_wildcard
+                // For wildcard patterns, use the default case specialization.
+                // A wildcard is useful if there are values that are not covered by 
+                // any constructor patterns in the matrix.
+                
+                // Use default case specialization to check if there are existing wildcards
+                let default_matrix = matrix.d_specialize();
+                
+                // If the default matrix is empty, there are no wildcards in the previous patterns,
+                // so our wildcard is useful. If it's non-empty, there are existing wildcards
+                // that might already cover the cases our wildcard would cover.
+                default_matrix.is_empty()
             }
 
             SimplifiedPattern::Constructor {
@@ -207,7 +184,7 @@ impl<'db> SimplifiedPattern<'db> {
                 }
 
                 // Specialize by the constructor
-                let specialized = matrix.specialize(constructor, db);
+                let specialized = matrix.phi_specialize(constructor, db); // P_c
 
                 if specialized.is_empty() {
                     // No row specializes to this constructor, so it's useful
@@ -220,54 +197,12 @@ impl<'db> SimplifiedPattern<'db> {
                     return false; // No subpatterns, so covered by previous patterns
                 }
 
-                // For tuples and records with subpatterns, we need to check each subpattern
-                let mut all_subpatterns_useful = true;
-
-                for (i, subpattern) in subpatterns.iter().enumerate() {
-                    let mut matrix_patterns = Vec::new();
-                    for row in &specialized.rows {
-                        if let Some(pattern) = row.patterns.first() {
-                            match pattern {
-                                SimplifiedPattern::Constructor {
-                                    subpatterns: sub, ..
-                                } => {
-                                    if i < sub.len() {
-                                        matrix_patterns.push(sub[i].clone());
-                                    }
-                                }
-                                SimplifiedPattern::Wildcard { .. } => {
-                                    // Wildcard can match anything at this position
-                                    matrix_patterns.push(SimplifiedPattern::Wildcard { binding: None });
-                                }
-                                SimplifiedPattern::Or(patterns) => {
-                                    for or_pat in patterns {
-                                        if let SimplifiedPattern::Constructor {
-                                            subpatterns: sub, ..
-                                        } = or_pat
-                                        {
-                                            if i < sub.len() {
-                                                matrix_patterns.push(sub[i].clone());
-                                            }
-                                        } else if let SimplifiedPattern::Wildcard { .. } = or_pat {
-                                            matrix_patterns.push(SimplifiedPattern::Wildcard { binding: None });
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if !subpattern.is_useful_after(&matrix_patterns, db) {
-                        all_subpatterns_useful = false;
-                        break;
-                    }
-                }
-
-                all_subpatterns_useful
+                // For tuples and records with subpatterns, check usefulness recursively.
+                return is_subpattern_vector_useful(subpatterns, &specialized, db);
             }
 
             SimplifiedPattern::Or(subpatterns) => {
-                // Check if any subpattern is useful
+                // An Or pattern is useful if any of its constituent patterns are useful.
                 subpatterns.iter().any(|p| p.is_useful_after(previous, db))
             }
         }
@@ -277,10 +212,214 @@ impl<'db> SimplifiedPattern<'db> {
     pub fn is_irrefutable(&self) -> bool {
         match self {
             SimplifiedPattern::Wildcard { .. } => true,
-            SimplifiedPattern::Or(patterns) => patterns.iter().any(|p| p.is_irrefutable()),
-            SimplifiedPattern::Constructor { .. } => false,
+            SimplifiedPattern::Or(patterns) => {
+                // An Or pattern is irrefutable if any of its subpatterns are irrefutable
+                // AND those irrefutable subpatterns cover all possibilities among themselves.
+                // This is complex. A simpler, common definition is if *any* subpattern is irrefutable.
+                // However, for correctness in `is_subpattern_vector_useful`, if an Or pattern `q_head`
+                // is irrefutable, it means it covers all values of its type.
+                // E.g. `Some(_) | None` is irrefutable for Option. `true | false` for bool.
+                // For now, let's use: an Or pattern is irrefutable if any of its branches is.
+                // This might not be fully correct for all `is_irrefutable` uses but sufficient for `is_subpattern_vector_useful`'s branching.
+                // If one branch `p_i` of an Or pattern `p1 | ... | pn` is irrefutable,
+                // then the Or pattern itself is irrefutable.
+                patterns.iter().any(|p| p.is_irrefutable())
+            }
+            SimplifiedPattern::Constructor {
+                constructor,
+                subpatterns,
+                ty: _,
+            } => {
+                // A constructor pattern is irrefutable if it's the *only* constructor for its type
+                // (e.g., a tuple, or a struct, or an enum with a single variant) AND all its subpatterns are irrefutable.
+                // This requires DB access to check type information (e.g. enum variants).
+                // Simplified: Tuples are irrefutable if their subpatterns are. Records/Structs too.
+                // Single-variant enums too. Multi-variant enums are not.
+                // This is a placeholder. True irrefutability check needs more type info.
+                // For the purpose of the algorithm, if it's a tuple, it's irrefutable if subpatterns are.
+                match constructor {
+                    Constructor::Tuple(_) => subpatterns.iter().all(|sp| sp.is_irrefutable()),
+                    // Other constructors (Record, Bool, Int) are typically not irrefutable unless they are the sole variant of an enum
+                    // or the only possible value of a type, which is hard to determine without full type info here.
+                    // For the algorithm, we mostly care about `_` and tuples.
+                    _ => false,
+                }
+            }
         }
     }
+}
+
+/// Helper function for `SimplifiedPattern::is_useful_after` to handle constructor subpatterns.
+/// Implements the `U( (q1,...,qk), P )` logic from the paper.
+/// `subpatterns` is `(q1,...,qk)`
+/// `matrix` is `P_c` (matrix P specialized by the constructor c)
+fn is_subpattern_vector_useful<'db>(
+    subpatterns: &[SimplifiedPattern<'db>],
+    matrix: &PatternMatrix<'db>,
+    db: &'db dyn HirAnalysisDb,
+) -> bool {
+    if subpatterns.is_empty() {
+        // No more subpatterns in the candidate pattern `q`.
+        // If `matrix` (P_c) is also empty, it means `q = c()` was useful.
+        // If `matrix` is not empty, it means `q = c()` was covered by a `c()` in P.
+        // This case is typically handled by the caller:
+        // `if subpatterns.is_empty() { return false; } // Executed if specialized (matrix) was NOT empty.`
+        // So, if we reach here, it means the arity of `c` was 0, and `matrix` (P_c) must have been empty
+        // for `is_useful_after` to not return `true` via `specialized.is_empty()`.
+        // Thus, if `subpatterns` is empty, it means `c()` was useful if `P_c` was empty.
+        // If `P_c` was not empty, the caller returns `false`.
+        // This function should only be called if `subpatterns` is not empty initially by `is_useful_after`.
+        // If recursion leads to empty subpatterns, it means all prior subpatterns were irrefutable and covered.
+        return false; // All subpatterns processed and found to be covered by irrefutability.
+    }
+
+    let q_head = &subpatterns[0];
+    let q_tail = &subpatterns[1..];
+
+    // 1. Check if q_head is useful w.r.t. the first column of `matrix`.
+    let first_column_of_matrix: Vec<SimplifiedPattern<'db>> = matrix
+        .rows
+        .iter()
+        .filter_map(|row| row.patterns.first().cloned())
+        .collect();
+
+    if q_head.is_useful_after(&first_column_of_matrix, db) {
+        return true;
+    }
+
+    // 2. If not, and q_head is irrefutable, then compute D(q_head, matrix) and recurse.
+    if q_head.is_irrefutable() {
+        let mut next_matrix_rows: Vec<PatternRow<'db>> = Vec::new();
+        for prev_row in &matrix.rows {
+            if prev_row.patterns.is_empty() {
+                continue;
+            } // Should not happen
+
+            let p_head = &prev_row.patterns[0];
+            let p_tail = &prev_row.patterns[1..];
+
+            match q_head {
+                SimplifiedPattern::Wildcard { .. } => {
+                    // D(_, prev_row) = p_tail
+                    next_matrix_rows.push(PatternRow {
+                        patterns: p_tail.to_vec(),
+                        arm_index: prev_row.arm_index,
+                    });
+                }
+                SimplifiedPattern::Constructor {
+                    constructor: c_q,
+                    subpatterns: _s_q_sub,
+                    ..
+                } => {
+                    match p_head {
+                        SimplifiedPattern::Constructor {
+                            constructor: c_p,
+                            subpatterns: s_p_sub,
+                            ..
+                        } if c_q.is_same_variant(c_p, db) || c_q == c_p => {
+                            // D(C(qs), row C(ps)|pt) = ps|pt
+                            let mut new_patterns = s_p_sub.clone();
+                            new_patterns.extend_from_slice(p_tail);
+                            next_matrix_rows.push(PatternRow {
+                                patterns: new_patterns,
+                                arm_index: prev_row.arm_index,
+                            });
+                        }
+                        SimplifiedPattern::Wildcard { .. } => {
+                            // D(C(qs), row _|pt)
+                            // If p_head is wildcard, it is specialized by c_q.
+                            // The "fields" of this specialized wildcard are then taken.
+                            // These are effectively wildcards for each field of c_q.
+                            let field_count = c_q.field_count(db);
+                            let mut new_head_patterns = Vec::with_capacity(field_count);
+                            for _ in 0..field_count {
+                                new_head_patterns
+                                    .push(SimplifiedPattern::Wildcard { binding: None });
+                            }
+
+                            let mut new_patterns = new_head_patterns;
+                            new_patterns.extend_from_slice(p_tail);
+                            next_matrix_rows.push(PatternRow {
+                                patterns: new_patterns,
+                                arm_index: prev_row.arm_index,
+                            });
+                        }
+                        SimplifiedPattern::Or(p_head_ors) => {
+                            // If p_head is Or, and q_head (irrefutable constructor) covers it,
+                            // then p_head must effectively be irrefutable too (e.g. contain wildcard or all variants).
+                            // We need to see which branch of p_head_ors is compatible.
+                            // This part is complex because one row in `matrix` might lead to multiple effective rows for `next_matrix`.
+                            // For now, if *any* branch of p_head_ors is compatible as a wildcard or matching constructor,
+                            // we form the next row based on that. This simplification might not be fully correct if multiple branches are compatible.
+                            // A more robust approach might involve expanding Or patterns in the matrix rows earlier.
+                            let mut _row_added = false;
+                            for p_or_alt in p_head_ors {
+                                if matches!(p_or_alt, SimplifiedPattern::Wildcard { .. }) {
+                                    let field_count = c_q.field_count(db);
+                                    let mut new_head_patterns = Vec::with_capacity(field_count);
+                                    for _ in 0..field_count {
+                                        new_head_patterns
+                                            .push(SimplifiedPattern::Wildcard { binding: None });
+                                    }
+                                    let mut new_patterns = new_head_patterns;
+                                    new_patterns.extend_from_slice(p_tail);
+                                    next_matrix_rows.push(PatternRow {
+                                        patterns: new_patterns,
+                                        arm_index: prev_row.arm_index,
+                                    });
+                                    _row_added = true;
+                                    break; // Assume wildcard branch is dominant for deriving next matrix row
+                                } else if let SimplifiedPattern::Constructor {
+                                    constructor: c_p_alt,
+                                    subpatterns: s_p_alt_sub,
+                                    ..
+                                } = p_or_alt
+                                {
+                                    if c_q.is_same_variant(c_p_alt, db) || c_q == c_p_alt {
+                                        let mut new_patterns = s_p_alt_sub.clone();
+                                        new_patterns.extend_from_slice(p_tail);
+                                        next_matrix_rows.push(PatternRow {
+                                            patterns: new_patterns,
+                                            arm_index: prev_row.arm_index,
+                                        });
+                                        _row_added = true;
+                                        // If multiple Or branches match, this could add multiple rows to next_matrix_rows for prev_row.
+                                        // The paper's D operator is defined on a matrix P, not row-by-row with expansion.
+                                    }
+                                }
+                            }
+                            // If no compatible branch found, this row from `matrix` is incompatible.
+                        }
+                        _ => { /* p_head is a non-matching constructor; row is incompatible, skip */
+                        }
+                    }
+                }
+                SimplifiedPattern::Or(_q_head_ors) => {
+                    // q_head should not be an Or pattern if `is_irrefutable` is true for it,
+                    // unless the Or itself is irrefutable (e.g. `true | false`).
+                    // The usefulness check for Or(q_subs) in `is_useful_after` already iterates `q_subs`.
+                    // So `q_head` reaching here as Or and irrefutable implies a complex scenario.
+                    // For now, assume this case is handled by `is_useful_after` for `Or`.
+                    return false;
+                }
+            }
+        }
+        let next_matrix = PatternMatrix {
+            rows: next_matrix_rows,
+        };
+        return is_subpattern_vector_useful(q_tail, &next_matrix, db);
+    }
+
+    // 3. q_head is refutable but not useful against the first column.
+    // This means q_head's constructor might still be useful in combination with its subpatterns.
+    // Specialize the matrix by q_head's constructor and check the full subpattern vector.
+    if let SimplifiedPattern::Constructor { constructor: q_constructor, .. } = q_head {
+        let specialized_matrix = matrix.phi_specialize(q_constructor, db);
+        return is_subpattern_vector_useful(subpatterns, &specialized_matrix, db);
+    }
+    
+    // q_head is neither useful, irrefutable, nor a constructor
+    false
 }
 
 /// A matrix of patterns for analysis
@@ -290,6 +429,7 @@ pub struct PatternMatrix<'db> {
 }
 
 /// A row in the pattern matrix
+#[derive(Clone)]
 pub struct PatternRow<'db> {
     /// The patterns in this row
     patterns: Vec<SimplifiedPattern<'db>>,
@@ -323,136 +463,180 @@ impl<'db> PatternMatrix<'db> {
             return true; // First row is always useful
         }
 
-        let current_pattern = &self.rows[row_index].patterns[0];
-        let previous_patterns: Vec<_> = self.rows[0..row_index]
-            .iter()
-            .map(|row| row.patterns[0].clone())
-            .collect();
+        let previous_matrix = PatternMatrix {
+            rows: self.rows[0..row_index].to_vec(),
+        };
+        // The current row_to_check itself is not part of the `self` in `is_useful_recursive`
+        // `is_useful_recursive` checks if `current_row_patterns` is useful against `self` (which is previous_matrix)
+        Self::is_useful_recursive(
+            &previous_matrix,
+            &self.rows[row_index].patterns,
+            db,
+        )
+    }
 
-        current_pattern.is_useful_after(&previous_patterns, db)
+    /// Implements the core recursive usefulness check based on the reference implementation's
+    /// `PatternMatrix::is_pattern_useful(db, pat_vec: &PatternRowVec)`.
+    /// Checks if `current_row_patterns` (Q_row) is useful with respect to `self` (P_prev).
+    fn is_useful_recursive(
+        p_prev: &PatternMatrix<'db>,    // Matrix P (previous patterns)
+        q_current_row_patterns: &[SimplifiedPattern<'db>], // PatternRowVec Q (current pattern row)
+        db: &'db dyn HirAnalysisDb,
+    ) -> bool {
+        if p_prev.is_empty() {
+            return true; // Rule 1: Q is useful if P is empty
+        }
+
+        // If Q_current_row_patterns is empty, it means we are checking an empty pattern list (e.g. from a 0-arity constructor)
+        // If P_prev is not empty at this point, then Q (empty) is covered by P_prev.
+        if q_current_row_patterns.is_empty() {
+            return false; // Rule 2: An empty pattern list is not useful against a non-empty matrix P.
+        }
+
+        let q_head = &q_current_row_patterns[0];
+        let q_tail = &q_current_row_patterns[1..];
+
+        match q_head {
+            SimplifiedPattern::Wildcard { .. } => {
+                // Rule Wildcard: U( (_ | Q_t), P ) = U( Q_t, D(P) )
+                let p_next = p_prev.d_specialize(); // D(P)
+                // Q_t is just q_tail for wildcard head
+                Self::is_useful_recursive(&p_next, q_tail, db)
+            }
+            SimplifiedPattern::Constructor { constructor: c_q, subpatterns: s_q, .. } => {
+                // Rule Constructor: U( (c(s_q) | Q_t), P ) = U( (s_q | Q_t), S(c,P) )
+                let p_next = p_prev.phi_specialize(c_q, db); // S(c,P)
+                
+                let mut q_next_patterns = s_q.clone();
+                q_next_patterns.extend_from_slice(q_tail);
+                
+                Self::is_useful_recursive(&p_next, &q_next_patterns, db)
+            }
+            SimplifiedPattern::Or(q_subs) => {
+                // Rule Or: U( (q_a | q_b | Q_t), P ) = U( (q_a | Q_t), P ) || U( (q_b | Q_t), P )
+                // The reference implementation's `is_pattern_useful` for Or is:
+                // `pats.iter().any(|pat_prime| self.is_pattern_useful(db, &PatternRowVec::new(vec![pat_prime.clone()])))`
+                // This seems to check if any q_sub alone is useful against P.
+                // This is equivalent to: U(q_a, P) || U(q_b, P) if Q_t is empty.
+                // If Q_t is not empty, it should be: U([q_sub | q_tail], P_prev)
+                q_subs.iter().any(|q_sub| {
+                    let mut next_q_row_patterns = vec![q_sub.clone()];
+                    next_q_row_patterns.extend_from_slice(q_tail);
+                    Self::is_useful_recursive(p_prev, &next_q_row_patterns, db)
+                })
+            }
+        }
     }
 
     /// Specializes the matrix for a constructor
     /// This is a key operation for pattern matching analysis
-    pub fn specialize(&self, ctor: &Constructor<'db>, db: &'db dyn HirAnalysisDb) -> Self {
-        let mut specialized_rows = Vec::new();
-
+    pub fn phi_specialize(&self, ctor_to_specialize_by: &Constructor<'db>, db: &'db dyn HirAnalysisDb) -> Self {
+        let mut result_rows = Vec::new();
         for row in &self.rows {
-            if let Some(first_pat) = row.patterns.first() {
-                let new_patterns = match first_pat {
-                    SimplifiedPattern::Wildcard { binding: _ } => {
-                        // Wildcard specializes to wildcard patterns for each field
-                        let field_count = ctor.field_count(db);
+            if row.patterns.is_empty() {
+                continue;
+            }
+            let first_pat = &row.patterns[0];
+            let remaining_pats = &row.patterns[1..];
 
-                        let mut wildcard_patterns = Vec::with_capacity(field_count);
-                        for _ in 0..field_count {
-                            wildcard_patterns.push(SimplifiedPattern::Wildcard { binding: None });
-                        }
-                        Some(wildcard_patterns)
+            match first_pat {
+                SimplifiedPattern::Wildcard { .. } => {
+                    let field_count = ctor_to_specialize_by.field_count(db);
+                    let mut new_head_patterns = Vec::with_capacity(field_count);
+                    for _ in 0..field_count {
+                        new_head_patterns.push(SimplifiedPattern::Wildcard { binding: None });
                     }
-                    SimplifiedPattern::Constructor {
-                        constructor,
-                        subpatterns,
-                        ..
-                    } => {
-                        // For constructor patterns, check if this constructor matches the one we're specializing on
-                        // This needs to handle both direct equality and "same variant" equality for imported variants
-                        if constructor == ctor || constructor.is_same_variant(ctor, db) {
-                            // This pattern matches the constructor we're specializing on
-                            // is_same_variant ensures that imported variants (A) and qualified ones (MyTag::A) match
-                            Some(subpatterns.clone())
-                        } else {
-                            None
-                        }
-                    }
-                    SimplifiedPattern::Or(patterns) => {
-                        // Try to specialize each pattern and collect results
-                        let mut result = Vec::new();
-                        for pat in patterns {
-                            if let SimplifiedPattern::Constructor {
-                                constructor,
-                                subpatterns,
-                                ..
-                            } = pat
-                            {
-                                // Check if this constructor matches the one we're specializing on
-                                // Need to handle both direct equality and "same variant" equality
-                                if constructor == ctor || constructor.is_same_variant(ctor, db) {
-                                    // Handle both imported variants (A) and qualified ones (MyTag::A)
-                                    result.extend(subpatterns.clone());
-                                }
-                            } else if let SimplifiedPattern::Wildcard { .. } = pat {
-                                // Wildcard specializes to wildcards for each field
-                                let field_count = ctor.field_count(db);
-
-                                for _ in 0..field_count {
-                                    result.push(SimplifiedPattern::Wildcard { binding: None });
-                                }
-                            }
-                        }
-                        if result.is_empty() {
-                            None
-                        } else {
-                            Some(result)
-                        }
-                    } // All cases handled above - no default needed
-                };
-
-                if let Some(mut patterns) = new_patterns {
-                    // Add remaining patterns from the row
-                    patterns.extend_from_slice(&row.patterns[1..]);
-
-                    specialized_rows.push(PatternRow {
-                        patterns,
+                    let mut final_patterns = new_head_patterns;
+                    final_patterns.extend_from_slice(remaining_pats);
+                    result_rows.push(PatternRow {
+                        patterns: final_patterns,
                         arm_index: row.arm_index,
                     });
                 }
-            }
-        }
-
-        PatternMatrix {
-            rows: specialized_rows,
-        }
-    }
-
-    /// Specializes the matrix for the default case
-    pub fn specialize_default(&self) -> Self {
-        let mut specialized_rows = Vec::new();
-
-        for row in &self.rows {
-            if let Some(first_pat) = row.patterns.first() {
-                match first_pat {
-                    SimplifiedPattern::Wildcard { .. } => {
-                        // Wildcard specializes for default case
-                        let new_patterns = row.patterns[1..].to_vec();
-
-                        specialized_rows.push(PatternRow {
-                            patterns: new_patterns,
+                SimplifiedPattern::Constructor { constructor: c_pat, subpatterns: s_pat, .. } => {
+                    if c_pat == ctor_to_specialize_by || c_pat.is_same_variant(ctor_to_specialize_by, db) {
+                        let mut final_patterns = s_pat.clone();
+                        final_patterns.extend_from_slice(remaining_pats);
+                        result_rows.push(PatternRow {
+                            patterns: final_patterns,
                             arm_index: row.arm_index,
                         });
                     }
-                    SimplifiedPattern::Or(patterns) => {
-                        // Check if any pattern in Or is a wildcard
-                        if patterns
-                            .iter()
-                            .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
-                        {
-                            let new_patterns = row.patterns[1..].to_vec();
-
-                            specialized_rows.push(PatternRow {
-                                patterns: new_patterns,
-                                arm_index: row.arm_index,
-                            });
+                    // If constructors don't match, this row does not contribute to the specialized matrix.
+                }
+                SimplifiedPattern::Or(or_subpatterns) => {
+                    for or_pat_component in or_subpatterns {
+                        // Treat each component of the Or as if it were the first_pat itself
+                        // This means an Or pattern in one row can lead to multiple rows in the specialized matrix
+                        match or_pat_component {
+                            SimplifiedPattern::Wildcard { .. } => {
+                                let field_count = ctor_to_specialize_by.field_count(db);
+                                let mut new_head_patterns = Vec::with_capacity(field_count);
+                                for _ in 0..field_count {
+                                    new_head_patterns.push(SimplifiedPattern::Wildcard { binding: None });
+                                }
+                                let mut final_patterns = new_head_patterns;
+                                final_patterns.extend_from_slice(remaining_pats);
+                                result_rows.push(PatternRow {
+                                    patterns: final_patterns,
+                                    arm_index: row.arm_index, // Same arm_index because it's from the same original row
+                                });
+                            }
+                            SimplifiedPattern::Constructor { constructor: c_or_comp, subpatterns: s_or_comp, .. } => {
+                                if c_or_comp == ctor_to_specialize_by || c_or_comp.is_same_variant(ctor_to_specialize_by, db) {
+                                    let mut final_patterns = s_or_comp.clone();
+                                    final_patterns.extend_from_slice(remaining_pats);
+                                    result_rows.push(PatternRow {
+                                        patterns: final_patterns,
+                                        arm_index: row.arm_index,
+                                    });
+                                }
+                            }
+                            SimplifiedPattern::Or(_) => {
+                                // Or patterns nested within Or patterns are typically expanded/flattened earlier
+                                // or represent an invalid state. For robustness, treat as non-matching or log error.
+                                // Here, we'll skip, as it shouldn't contribute if not a wildcard or matching constructor.
+                            }
                         }
                     }
-                    _ => {} // Constructors don't specialize for default case
                 }
             }
         }
+        PatternMatrix { rows: result_rows }
+    }
 
-        PatternMatrix {
-            rows: specialized_rows,
+    /// Specializes the matrix for the default case (wildcard matching)
+    pub fn d_specialize(&self) -> Self {
+        let mut result_rows = Vec::new();
+        for row in &self.rows {
+            if row.patterns.is_empty() {
+                continue;
+            }
+            let first_pat = &row.patterns[0];
+            let remaining_pats = &row.patterns[1..];
+
+            match first_pat {
+                SimplifiedPattern::Wildcard { .. } => {
+                    result_rows.push(PatternRow {
+                        patterns: remaining_pats.to_vec(),
+                        arm_index: row.arm_index,
+                    });
+                }
+                SimplifiedPattern::Or(or_subpatterns) => {
+                    // If any component of the Or is a wildcard, the whole Or pattern matches the default case
+                    if or_subpatterns.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
+                        result_rows.push(PatternRow {
+                            patterns: remaining_pats.to_vec(),
+                            arm_index: row.arm_index,
+                        });
+                    }
+                }
+                SimplifiedPattern::Constructor { .. } => {
+                    // Constructors do not match the default case, so this row is dropped.
+                }
+            }
         }
+        PatternMatrix { rows: result_rows }
     }
     /// Checks if this matrix is empty
 
@@ -516,28 +700,34 @@ impl<'db> PatternMatrix<'db> {
     ) -> Vec<SimplifiedPattern<'db>> {
         // Get tuple elements
         let (_, tuple_elems) = ty.decompose_ty_app(db);
-        
+
         // Check if we have any completely covered cases from wildcards
         for row in &self.rows {
             if let Some(SimplifiedPattern::Wildcard { .. }) = row.patterns.first() {
                 return Vec::new(); // All patterns covered by a wildcard
             }
-            
+
             // Also check Or patterns that might contain wildcards
             if let Some(SimplifiedPattern::Or(patterns)) = row.patterns.first() {
-                if patterns.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
+                if patterns
+                    .iter()
+                    .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+                {
                     return Vec::new(); // All patterns covered by a wildcard
                 }
             }
-            
+
             // Also check Or patterns that might contain wildcards
             if let Some(SimplifiedPattern::Or(patterns)) = row.patterns.first() {
-                if patterns.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
+                if patterns
+                    .iter()
+                    .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+                {
                     return Vec::new(); // All patterns covered by a wildcard
                 }
             }
         }
-        
+
         // Check if we have any tuple constructors with the right arity
         let mut has_tuple_patterns = false;
         for row in &self.rows {
@@ -567,27 +757,28 @@ impl<'db> PatternMatrix<'db> {
                 }
             }
         }
-        
+
         // If no tuple patterns of the right arity, the entire space is uncovered
         if !has_tuple_patterns {
             return vec![SimplifiedPattern::Wildcard { binding: None }];
         }
-        
+
         // Check each element for missing patterns
         let mut missing_patterns = Vec::new();
-        
+
         for i in 0..tuple_elems.len() {
             let specialized = self.specialize_tuple_element(i, tuple_elems.len());
             if specialized.rows.is_empty() {
                 // This element is completely uncovered
-                let mut subpatterns = vec![SimplifiedPattern::Wildcard { binding: None }; tuple_elems.len()];
-                
+                let subpatterns =
+                    vec![SimplifiedPattern::Wildcard { binding: None }; tuple_elems.len()];
+
                 // For the uncovered element, use the missing patterns
                 let element_missing = vec![SimplifiedPattern::Wildcard { binding: None }];
                 for missing_elem in element_missing {
                     let mut specific_subpatterns = subpatterns.clone();
                     specific_subpatterns[i] = missing_elem;
-                    
+
                     missing_patterns.push(SimplifiedPattern::Constructor {
                         constructor: Constructor::Tuple(tuple_elems.len()),
                         subpatterns: specific_subpatterns,
@@ -600,9 +791,10 @@ impl<'db> PatternMatrix<'db> {
                 if !element_missing.is_empty() {
                     // Build tuple patterns with the missing element patterns
                     for missing_elem in element_missing {
-                        let mut subpatterns = vec![SimplifiedPattern::Wildcard { binding: None }; tuple_elems.len()];
+                        let mut subpatterns =
+                            vec![SimplifiedPattern::Wildcard { binding: None }; tuple_elems.len()];
                         subpatterns[i] = missing_elem;
-                        
+
                         missing_patterns.push(SimplifiedPattern::Constructor {
                             constructor: Constructor::Tuple(tuple_elems.len()),
                             subpatterns,
@@ -612,7 +804,7 @@ impl<'db> PatternMatrix<'db> {
                 }
             }
         }
-        
+
         if missing_patterns.is_empty() {
             // All elements are covered, so the tuple pattern is exhaustive
             Vec::new()
@@ -621,29 +813,26 @@ impl<'db> PatternMatrix<'db> {
             missing_patterns
         }
     }
-    
+
     /// Create a specialized matrix for a specific tuple element
-    fn specialize_tuple_element(
-        &self,
-        element_idx: usize,
-        arity: usize,
-    ) -> PatternMatrix<'db> {
+    fn specialize_tuple_element(&self, element_idx: usize, arity: usize) -> PatternMatrix<'db> {
         let mut specialized_rows = Vec::new();
-        
+
         for row in &self.rows {
             if let Some(SimplifiedPattern::Constructor {
                 constructor: Constructor::Tuple(n),
                 subpatterns,
                 ..
-            }) = row.patterns.first() {
+            }) = row.patterns.first()
+            {
                 if *n == arity && element_idx < subpatterns.len() {
                     // Take the pattern at the specified element index
                     let element_pattern = &subpatterns[element_idx];
-                    
+
                     // Create a new row with just this element's pattern
                     let mut new_patterns = vec![element_pattern.clone()];
                     new_patterns.extend_from_slice(&row.patterns[1..]);
-                    
+
                     specialized_rows.push(PatternRow {
                         patterns: new_patterns,
                         arm_index: row.arm_index,
@@ -653,7 +842,7 @@ impl<'db> PatternMatrix<'db> {
                 // For wildcard patterns, add a wildcard for this element
                 let mut new_patterns = vec![SimplifiedPattern::Wildcard { binding: None }];
                 new_patterns.extend_from_slice(&row.patterns[1..]);
-                
+
                 specialized_rows.push(PatternRow {
                     patterns: new_patterns,
                     arm_index: row.arm_index,
@@ -671,7 +860,7 @@ impl<'db> PatternMatrix<'db> {
                             let element_pattern = &subpatterns[element_idx];
                             let mut new_patterns = vec![element_pattern.clone()];
                             new_patterns.extend_from_slice(&row.patterns[1..]);
-                            
+
                             specialized_rows.push(PatternRow {
                                 patterns: new_patterns,
                                 arm_index: row.arm_index,
@@ -680,7 +869,7 @@ impl<'db> PatternMatrix<'db> {
                     } else if let SimplifiedPattern::Wildcard { .. } = pattern {
                         let mut new_patterns = vec![SimplifiedPattern::Wildcard { binding: None }];
                         new_patterns.extend_from_slice(&row.patterns[1..]);
-                        
+
                         specialized_rows.push(PatternRow {
                             patterns: new_patterns,
                             arm_index: row.arm_index,
@@ -689,10 +878,12 @@ impl<'db> PatternMatrix<'db> {
                 }
             }
         }
-        
-        PatternMatrix { rows: specialized_rows }
+
+        PatternMatrix {
+            rows: specialized_rows,
+        }
     }
-    
+
     /// Find missing patterns for boolean type
     fn find_missing_bool_patterns(
         &self,
@@ -742,7 +933,6 @@ impl<'db> PatternMatrix<'db> {
     }
 
     /// Find missing patterns for enum type
-
 
     fn find_missing_enum_patterns(
         &self,

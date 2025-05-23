@@ -1,20 +1,15 @@
 // This file will contain compiler-specific integration logic for pattern analysis.
 
 use crate::name_resolution::{resolve_path, PathRes, ResolvedVariant};
-use crate::ty::adt_def::AdtRef;
 use crate::ty::ty_check::RecordLike;
 use crate::ty::ty_def::TyId;
 use crate::ty::AdtRef as HirAdtRef; // Used by from_hir_pat
 use crate::HirAnalysisDb;
 use hir::hir_def::{
-    Body as HirBody, // Renamed to avoid conflict with hir_def::Body
-    GenericArgListId,
-    IdentId,
+    Body as HirBody,
     LitKind,
     Partial,
-    Pat as HirPat, // Renamed to avoid conflict
-    PathId,
-    VariantKind,
+    Pat as HirPat,
 };
 use rustc_hash::FxHashMap;
 
