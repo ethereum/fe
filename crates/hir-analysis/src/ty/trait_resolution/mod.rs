@@ -1,4 +1,5 @@
 use common::indexmap::IndexSet;
+use constraint::collect_constraints;
 use hir::hir_def::IngotId;
 use salsa::Update;
 
@@ -9,10 +10,7 @@ use super::{
 };
 use crate::{
     ty::{
-        trait_resolution::{
-            constraint::{collect_trait_constraints, ty_constraints},
-            proof_forest::ProofForest,
-        },
+        trait_resolution::{constraint::ty_constraints, proof_forest::ProofForest},
         unify::UnificationTable,
         visitor::collect_flags,
     },
@@ -97,8 +95,8 @@ pub(crate) fn check_trait_inst_wf<'db>(
     trait_inst: TraitInstId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> WellFormedness<'db> {
-    let constraints =
-        collect_trait_constraints(db, trait_inst.def(db)).instantiate(db, trait_inst.args(db));
+    let constraints = collect_constraints(db, trait_inst.def(db).trait_(db).into())
+        .instantiate(db, trait_inst.args(db));
 
     for &goal in constraints.list(db) {
         let mut table = UnificationTable::new(db);

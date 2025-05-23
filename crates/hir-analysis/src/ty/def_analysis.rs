@@ -25,9 +25,7 @@ use super::{
     trait_def::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     trait_resolution::{
-        constraint::{
-            collect_adt_constraints, collect_func_def_constraints, collect_impl_block_constraints,
-        },
+        constraint::{collect_adt_constraints, collect_constraints, collect_func_def_constraints},
         PredicateListId,
     },
     ty_def::{InvalidCause, TyData, TyId},
@@ -45,8 +43,7 @@ use crate::{
         trait_def::{does_impl_trait_conflict, TraitInstId},
         trait_lower::lower_impl_trait,
         trait_resolution::{
-            constraint::{collect_trait_constraints, super_trait_cycle},
-            is_goal_satisfiable, GoalSatisfiability,
+            constraint::super_trait_cycle, is_goal_satisfiable, GoalSatisfiability,
         },
         ty_lower::lower_hir_ty,
         visitor::TyVisitable,
@@ -238,7 +235,7 @@ impl<'db> DefAnalyzer<'db> {
 
     fn for_trait(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
         let def = lower_trait(db, trait_);
-        let assumptions = collect_trait_constraints(db, def).instantiate_identity();
+        let assumptions = collect_constraints(db, trait_.into()).instantiate_identity();
         Self {
             db,
             def: def.into(),
@@ -250,7 +247,7 @@ impl<'db> DefAnalyzer<'db> {
     }
 
     fn for_impl(db: &'db dyn HirAnalysisDb, impl_: HirImpl<'db>, ty: TyId<'db>) -> Self {
-        let assumptions = collect_impl_block_constraints(db, impl_).instantiate_identity();
+        let assumptions = collect_constraints(db, impl_.into()).instantiate_identity();
         let def = DefKind::Impl(impl_);
         Self {
             db,
@@ -1164,7 +1161,7 @@ fn analyze_impl_trait_specific_error<'db>(
 
     let trait_def = trait_inst.def(db);
     let trait_constraints =
-        collect_trait_constraints(db, trait_def).instantiate(db, trait_inst.args(db));
+        collect_constraints(db, trait_def.trait_(db).into()).instantiate(db, trait_inst.args(db));
     let assumptions = implementor.instantiate_identity().constraints(db);
 
     let mut is_satisfied = |goal: TraitInstId<'db>, span: DynLazySpan<'db>| {

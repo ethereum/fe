@@ -16,7 +16,7 @@ use super::{
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         check_trait_inst_wf,
-        constraint::{collect_implementor_constraints, collect_super_traits},
+        constraint::{collect_constraints, collect_super_traits},
         PredicateListId, WellFormedness,
     },
     ty_def::{Kind, TyId},
@@ -214,7 +214,7 @@ impl<'db> Implementor<'db> {
     /// Returns the constraints that the implementor requires when the
     /// implementation is selected.
     pub(super) fn constraints(self, db: &'db dyn HirAnalysisDb) -> PredicateListId<'db> {
-        collect_implementor_constraints(db, self).instantiate(db, self.params(db))
+        collect_constraints(db, self.hir_impl_trait(db).into()).instantiate(db, self.params(db))
     }
 
     pub(super) fn methods(
