@@ -49,7 +49,7 @@ impl HirAnalysisTestDb {
         self.initialize_builtin_core();
         index.touch(
             self,
-            url::Url::from_file_path_lossy(&file_name),
+            url::Url::from_file_path(&file_name).expect("Failed to create URL from file path"),
             Some(text.to_string()),
         )
     }

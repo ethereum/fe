@@ -40,13 +40,19 @@ impl IngotBaseUrl for Url {
     fn touch(
         &self,
         db: &mut dyn InputDb,
-        path: Utf8PathBuf,
+        relative_path: Utf8PathBuf,
         initial_content: Option<String>,
     ) -> File {
+        if relative_path.is_absolute() {
+            panic!(
+                "Expected relative path, got absolute path: {}",
+                relative_path
+            );
+        }
         let path = self
             .directory()
             .expect("failed to parse directory")
-            .join(path.as_str())
+            .join(relative_path.as_str())
             .expect("failed to parse path");
         db.workspace().touch(db, path, initial_content)
     }

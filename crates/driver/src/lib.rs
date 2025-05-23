@@ -4,9 +4,9 @@ pub mod files;
 use camino::Utf8PathBuf;
 use common::core::HasBuiltinCore;
 use common::ingot::{IngotBaseUrl, IngotIndex};
+use common::urlext::UrlExt;
 use common::InputDb;
 pub use db::DriverDataBase;
-use test_utils::url_utils::UrlExt;
 
 use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;
@@ -20,6 +20,11 @@ pub fn run(opts: &Options) {
     match &opts.command {
         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
+            let base_url = Url::from_directory_path(path).expect("failed to parse base URL");
+            // Url::from_file_path(path.canonicalize().expect("Failed to canonicalize path"))
+            //     .expect("Failed to parse base URL")
+            //     .as_directory()
+            //     .expect("Failed to convert to directory");
             let mut db = DriverDataBase::default();
             let mut ingot_resolver = IngotResolver::default();
 
@@ -49,7 +54,14 @@ pub fn run(opts: &Options) {
                             config.expect("config is required"),
                         );
                         for (path, content) in files {
-                            core_base_url.touch(&mut db, path, Some(content));
+                            index.touch(
+                                &mut db,
+                                Url::from_file_path(
+                                    path.canonicalize().expect("Failed to canonicalize path"),
+                                )
+                                .expect("Failed to create URL"),
+                                Some(content),
+                            );
                         }
                         core_base_url
                     }
@@ -79,7 +91,7 @@ pub fn run(opts: &Options) {
                     config,
                     source_files:
                         Some(SourceFiles {
-                            root: Some(_root),
+                            root: Some(root),
                             files,
                         }),
                 }) => {
@@ -91,34 +103,39 @@ pub fn run(opts: &Options) {
                         }
                         std::process::exit(2)
                     }
-                    let local_base_url = Url::from_file_path_lossy(&_root);
+                    eprintln!("local_base_url: {}", base_url);
                     let index = db.workspace();
-                    index.touch_ingot(
-                        &mut db,
-                        &local_base_url,
-                        config.expect("config is required"),
-                    );
+                    index.touch_ingot(&mut db, &base_url, config.expect("config is required"));
                     for (path, content) in files {
-                        local_base_url.touch(&mut db, path, Some(content));
+                        eprintln!("touching {}", path);
+                        // local_base_url.touch(&mut db, path, Some(content));
+                        index.touch(
+                            &mut db,
+                            Url::from_file_path(
+                                path.canonicalize().expect("Failed to canonicalize path"),
+                            )
+                            .expect("Failed to create URL"),
+                            Some(content),
+                        );
                     }
-                    local_base_url
+                    base_url
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
-                    let url = Url::from_file_path_lossy(&path);
+                    let url = Url::from_file_path(&path.canonicalize_utf8().unwrap()).unwrap();
                     db.workspace().touch(&mut db, url.clone(), Some(content));
                     db.workspace()
                         .containing_ingot_base(&db, &url)
                         .expect("Failed to find ingot base")
                 }
                 Ok(_) => {
-                    eprintln!("an error was encountered while resolving `{path}`");
+                    eprintln!("an error was encountered while resolving `{base_url}`");
                     for diagnostic in ingot_resolver.take_diagnostics() {
                         eprintln!("{diagnostic}")
                     }
                     std::process::exit(2)
                 }
                 Err(error) => {
-                    eprintln!("an error was encountered while resolving `{path}`");
+                    eprintln!("an error was encountered while resolving `{base_url}`");
                     eprintln!("{error}");
                     std::process::exit(2)
                 }

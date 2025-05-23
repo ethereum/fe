@@ -13,7 +13,7 @@ fn run_parser(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.workspace().touch(
         &mut db,
-        url::Url::from_file_path_lossy(fixture.path()),
+        url::Url::from_file_path(fixture.path()).expect("path should be absolute"),
         Some(fixture.content().to_string()),
     );
 

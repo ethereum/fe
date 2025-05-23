@@ -3,11 +3,13 @@ use url::Url;
 #[derive(Debug)]
 pub enum UrlExtError {
     DirectoryRangeError,
+    AsDirectoryError,
 }
 
 pub trait UrlExt {
     fn parent(&self) -> Option<Url>;
     fn directory(&self) -> Option<Url>;
+    // fn as_directory(&self) -> Result<Url, UrlExtError>;
 }
 
 impl UrlExt for Url {
@@ -28,6 +30,17 @@ impl UrlExt for Url {
 
         Some(url)
     }
+
+    // fn as_directory(&self) -> Result<Url, UrlExtError> {
+    //     let str_url = self.to_string();
+    //     if str_url.ends_with('/') {
+    //         Ok(self.clone())
+    //     } else {
+    //         Ok(Url::fromstr_url
+    //             .join("/")
+    //             .expect("failed to turn this into a directory"))
+    //     }
+    // }
 
     fn parent(&self) -> Option<Url> {
         let directory = self.directory()?;

@@ -231,10 +231,14 @@ impl<'db> ModuleTreeBuilder<'db> {
     }
 
     fn build_tree(&mut self) {
-        let root = self
-            .ingot
-            .root_file(self.db)
-            .expect("ingot root file is missing");
+        let root = self.ingot.root_file(self.db).unwrap_or_else(|_| {
+            eprintln!("ingot root file is missing");
+            eprintln!("Files in ingot:");
+            for (url, file) in self.ingot.files(self.db).iter() {
+                eprintln!("  {}: {:?}", url, file.path(self.db));
+            }
+            panic!("ingot root file is missing");
+        });
 
         for (_url, child) in self.ingot.files(self.db).iter() {
             // Ignore the root file because it has no parent.
