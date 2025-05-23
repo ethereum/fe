@@ -4,48 +4,95 @@ use crate::ty::adt_def::AdtRef;
 use crate::ty::ty_check::RecordLike;
 use crate::ty::ty_def::TyId;
 use crate::HirAnalysisDb;
-use hir::hir_def::{
-    GenericArgListId, IdentId, Partial, PathId,
-    VariantKind,
-};
+use hir::hir_def::{GenericArgListId, IdentId, Partial, PathId, VariantKind};
+
+// Type aliases for better readability
+/// A collection of pattern rows forming the complete pattern matrix
+
+/// The index of a match arm in the original source code
+pub type MatchArmIndex = usize;
 
 /// Simplified pattern representation for analysis
-/// Based on "Warnings for pattern matching" paper
+///
+/// This is the core abstraction that converts Fe's HIR patterns into a simpler
+/// representation suitable for the pattern matching algorithm. Each pattern is
+/// either a wildcard (matches anything), an OR of alternatives, or a constructor
+/// with sub-patterns.
+///
+/// Based on "Warnings for pattern matching" paper by Luc Maranget.
 #[derive(Clone, Debug)]
 pub enum SimplifiedPattern<'db> {
-    /// Wildcard pattern that matches anything
+    /// Wildcard pattern that matches any value
+    ///
+    /// Examples: `_`, `x`, `mut y`
+    /// In the algorithm, wildcards are handled by the δ (delta) specialization operation.
     Wildcard {
-        /// Optional binding name
+        /// Optional binding name for the matched value
         binding: Option<&'db str>,
     },
 
-    /// Or pattern for alternatives
+    /// OR pattern representing multiple alternatives
+    ///
+    /// Example: `A | B | C` becomes `Or([A, B, C])`
+    /// The algorithm checks each alternative separately for usefulness.
     Or(Vec<SimplifiedPattern<'db>>),
 
-    /// Constructor pattern with subpatterns
+    /// Constructor pattern with sub-patterns
+    ///
+    /// Examples:
+    /// - `Some(x)` → Constructor { constructor: Variant(Some), subpatterns: [Wildcard] }
+    /// - `(a, b)` → Constructor { constructor: Tuple(2), subpatterns: [a, b] }
+    /// - `true` → Constructor { constructor: Bool(true), subpatterns: [] }
+    ///
+    /// In the algorithm, constructors are handled by the φ (phi) specialization operation.
     Constructor {
-        /// The constructor (record, tuple, literal, etc.)
+        /// The constructor that creates this pattern (tuple, record, literal, etc.)
         constructor: Constructor<'db>,
-        /// Subpatterns for the constructor's fields
+        /// Sub-patterns for the constructor's fields/elements
         subpatterns: Vec<SimplifiedPattern<'db>>,
-        /// The type of this pattern
+        /// The type of values this pattern matches
         ty: TyId<'db>,
     },
 }
 
-/// Represents a constructor in the simplified pattern
+/// Represents a constructor in pattern matching
+///
+/// Constructors are the "shape" of data that patterns match against. Each constructor
+/// defines how many sub-patterns it expects and what values it can match.
+///
+/// This is a key concept in the pattern matching algorithm - patterns with the same
+/// constructor are grouped together during specialization.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Constructor<'db> {
     /// Record constructor (struct or enum variant)
+    ///
+    /// Examples:
+    /// - `Point { x, y }` (struct)
+    /// - `Some(value)` (enum variant)
+    /// - `Color::Red` (unit variant)
     Record(RecordLike<'db>),
 
-    /// Tuple constructor with arity
+    /// Tuple constructor with specific arity (number of elements)
+    ///
+    /// Examples:
+    /// - `(a, b)` → Tuple(2)
+    /// - `(x, y, z)` → Tuple(3)
+    /// - `()` → Tuple(0)
     Tuple(usize),
 
-    /// Boolean literal
+    /// Boolean literal constructor
+    ///
+    /// Examples:
+    /// - `true` → Bool(true)
+    /// - `false` → Bool(false)
     Bool(bool),
 
-    /// Integer literal
+    /// Integer literal constructor
+    ///
+    /// Examples:
+    /// - `42` → Int(42)
+    /// - `-1` → Int(-1)
+    /// - `0` → Int(0)
     Int(i128),
 }
 
@@ -114,18 +161,18 @@ impl<'db> SimplifiedPattern<'db> {
             return true;
         }
 
-        // Create a matrix from the previous patterns
+        // Create a matrix from the previous patterns (what might shadow our pattern)
         let matrix = PatternMatrix::new(previous.to_vec());
 
         match self {
             SimplifiedPattern::Wildcard { .. } => {
                 // For wildcard patterns, use the default case specialization.
-                // A wildcard is useful if there are values that are not covered by 
+                // A wildcard is useful if there are values that are not covered by
                 // any constructor patterns in the matrix.
-                
+
                 // Use default case specialization to check if there are existing wildcards
                 let default_matrix = matrix.d_specialize();
-                
+
                 // If the default matrix is empty, there are no wildcards in the previous patterns,
                 // so our wildcard is useful. If it's non-empty, there are existing wildcards
                 // that might already cover the cases our wildcard would cover.
@@ -289,7 +336,7 @@ fn is_subpattern_vector_useful<'db>(
 
     // 2. If not, and q_head is irrefutable, then compute D(q_head, matrix) and recurse.
     if q_head.is_irrefutable() {
-        let mut next_matrix_rows: Vec<PatternRow<'db>> = Vec::new();
+        let mut next_matrix_rows: Vec<PatternRowWithMetadata<'db>> = Vec::new();
         for prev_row in &matrix.rows {
             if prev_row.patterns.is_empty() {
                 continue;
@@ -301,7 +348,7 @@ fn is_subpattern_vector_useful<'db>(
             match q_head {
                 SimplifiedPattern::Wildcard { .. } => {
                     // D(_, prev_row) = p_tail
-                    next_matrix_rows.push(PatternRow {
+                    next_matrix_rows.push(PatternRowWithMetadata {
                         patterns: p_tail.to_vec(),
                         arm_index: prev_row.arm_index,
                     });
@@ -320,7 +367,7 @@ fn is_subpattern_vector_useful<'db>(
                             // D(C(qs), row C(ps)|pt) = ps|pt
                             let mut new_patterns = s_p_sub.clone();
                             new_patterns.extend_from_slice(p_tail);
-                            next_matrix_rows.push(PatternRow {
+                            next_matrix_rows.push(PatternRowWithMetadata {
                                 patterns: new_patterns,
                                 arm_index: prev_row.arm_index,
                             });
@@ -339,7 +386,7 @@ fn is_subpattern_vector_useful<'db>(
 
                             let mut new_patterns = new_head_patterns;
                             new_patterns.extend_from_slice(p_tail);
-                            next_matrix_rows.push(PatternRow {
+                            next_matrix_rows.push(PatternRowWithMetadata {
                                 patterns: new_patterns,
                                 arm_index: prev_row.arm_index,
                             });
@@ -363,7 +410,7 @@ fn is_subpattern_vector_useful<'db>(
                                     }
                                     let mut new_patterns = new_head_patterns;
                                     new_patterns.extend_from_slice(p_tail);
-                                    next_matrix_rows.push(PatternRow {
+                                    next_matrix_rows.push(PatternRowWithMetadata {
                                         patterns: new_patterns,
                                         arm_index: prev_row.arm_index,
                                     });
@@ -378,7 +425,7 @@ fn is_subpattern_vector_useful<'db>(
                                     if c_q.is_same_variant(c_p_alt, db) || c_q == c_p_alt {
                                         let mut new_patterns = s_p_alt_sub.clone();
                                         new_patterns.extend_from_slice(p_tail);
-                                        next_matrix_rows.push(PatternRow {
+                                        next_matrix_rows.push(PatternRowWithMetadata {
                                             patterns: new_patterns,
                                             arm_index: prev_row.arm_index,
                                         });
@@ -413,37 +460,68 @@ fn is_subpattern_vector_useful<'db>(
     // 3. q_head is refutable but not useful against the first column.
     // This means q_head's constructor might still be useful in combination with its subpatterns.
     // Specialize the matrix by q_head's constructor and check the full subpattern vector.
-    if let SimplifiedPattern::Constructor { constructor: q_constructor, .. } = q_head {
+    if let SimplifiedPattern::Constructor {
+        constructor: q_constructor,
+        ..
+    } = q_head
+    {
         let specialized_matrix = matrix.phi_specialize(q_constructor, db);
         return is_subpattern_vector_useful(subpatterns, &specialized_matrix, db);
     }
-    
+
     // q_head is neither useful, irrefutable, nor a constructor
     false
 }
 
-/// A matrix of patterns for analysis
+/// Pattern matrix for exhaustiveness and reachability analysis
+///
+/// The pattern matrix is the core data structure of the pattern matching algorithm.
+/// It represents a 2D matrix where:
+/// - Each row corresponds to one match arm in the source code
+/// - Each column corresponds to one "position" in the pattern (e.g., tuple elements)
+///
+/// The algorithm works by systematically "specializing" this matrix for different
+/// constructors, reducing the problem size until a definitive answer is reached.
+///
+/// Example for `match (x, y) { (0, _) => ..., (_, 1) => ..., (2, 2) => ... }`:
+/// ```text
+/// Row 0: [Int(0), Wildcard]
+/// Row 1: [Wildcard, Int(1)]
+/// Row 2: [Int(2), Int(2)]
+/// ```
 pub struct PatternMatrix<'db> {
-    /// Rows of patterns
-    rows: Vec<PatternRow<'db>>,
+    /// The rows of the pattern matrix, each representing one match arm
+    rows: Vec<PatternRowWithMetadata<'db>>,
 }
 
-/// A row in the pattern matrix
+/// A single row in the pattern matrix with metadata
+///
+/// Each row represents one match arm from the original source code, along with
+/// metadata needed for error reporting and analysis.
 #[derive(Clone)]
-pub struct PatternRow<'db> {
-    /// The patterns in this row
+pub struct PatternRowWithMetadata<'db> {
+    /// The patterns in this row (one pattern per "column" in the matrix)
     patterns: Vec<SimplifiedPattern<'db>>,
-    /// The index of the match arm this row corresponds to
-    arm_index: usize,
+    /// The index of the match arm this row corresponds to in the original source
+    arm_index: MatchArmIndex,
 }
 
 impl<'db> PatternMatrix<'db> {
     /// Creates a new pattern matrix from a list of patterns
+    ///
+    /// This is typically called with the patterns from all match arms in a single
+    /// match expression. Each pattern becomes one row in the matrix.
+    ///
+    /// # Arguments
+    /// * `patterns` - List of simplified patterns, one per match arm
+    ///
+    /// # Returns
+    /// A new pattern matrix ready for analysis
     pub fn new(patterns: Vec<SimplifiedPattern<'db>>) -> Self {
         let rows = patterns
             .into_iter()
             .enumerate()
-            .map(|(i, pat)| PatternRow {
+            .map(|(i, pat)| PatternRowWithMetadata {
                 patterns: vec![pat],
                 arm_index: i,
             })
@@ -457,59 +535,98 @@ impl<'db> PatternMatrix<'db> {
         self.rows.is_empty()
     }
 
-    /// Check if a specific row is useful (not shadowed by previous rows)
+    /// Check if a specific row is useful (reachable/not shadowed by previous rows)
+    ///
+    /// A row is "useful" if there exists at least one input value that:
+    /// 1. Matches the pattern in this row
+    /// 2. Does NOT match any of the patterns in previous rows
+    ///
+    /// This is the core operation for reachability analysis.
+    ///
+    /// # Arguments
+    /// * `row_index` - Index of the row to check (0-based)
+    /// * `db` - Database for type information
+    ///
+    /// # Returns
+    /// `true` if the row is useful (reachable), `false` if it's unreachable
     pub fn is_row_useful(&self, row_index: usize, db: &'db dyn HirAnalysisDb) -> bool {
         if row_index == 0 {
-            return true; // First row is always useful
+            return true; // First row is always useful (nothing can shadow it)
         }
 
+        // Create a matrix containing only the previous rows
         let previous_matrix = PatternMatrix {
             rows: self.rows[0..row_index].to_vec(),
         };
-        // The current row_to_check itself is not part of the `self` in `is_useful_recursive`
-        // `is_useful_recursive` checks if `current_row_patterns` is useful against `self` (which is previous_matrix)
-        Self::is_useful_recursive(
-            &previous_matrix,
-            &self.rows[row_index].patterns,
-            db,
-        )
+
+        // Check if the current row is useful against all previous rows
+        // This implements: U(P_previous, q_current) where P is previous patterns, q is current pattern
+        Self::is_useful_recursive(&previous_matrix, &self.rows[row_index].patterns, db)
     }
 
-    /// Implements the core recursive usefulness check based on the reference implementation's
-    /// `PatternMatrix::is_pattern_useful(db, pat_vec: &PatternRowVec)`.
-    /// Checks if `current_row_patterns` (Q_row) is useful with respect to `self` (P_prev).
+    /// Core recursive usefulness algorithm
+    ///
+    /// This implements the heart of the pattern matching algorithm from Maranget's paper.
+    /// The algorithm answers: "Is pattern Q useful with respect to matrix P?"
+    ///
+    /// # Algorithm Overview
+    ///
+    /// The usefulness check U(P, Q) works as follows:
+    /// 1. **Base cases:**
+    ///    - If P is empty, then Q is useful (no previous patterns to shadow it)
+    ///    - If Q is empty, then Q is not useful (empty pattern can't match anything new)
+    ///
+    /// 2. **Recursive cases:** Based on the first pattern in Q:
+    ///    - **Wildcard:** Use δ-specialization (handle all constructors)
+    ///    - **Constructor:** Use φ-specialization (specialize for this constructor)
+    ///    - **OR pattern:** Check if any alternative is useful
+    ///
+    /// # Arguments
+    /// * `p_prev` - Matrix P of previous patterns (what might shadow Q)
+    /// * `q_current_row_patterns` - Pattern row Q to check for usefulness
+    /// * `db` - Database for type and constructor information
+    ///
+    /// # Returns
+    /// `true` if Q is useful (can match values not matched by P), `false` otherwise
     fn is_useful_recursive(
-        p_prev: &PatternMatrix<'db>,    // Matrix P (previous patterns)
-        q_current_row_patterns: &[SimplifiedPattern<'db>], // PatternRowVec Q (current pattern row)
+        p_prev: &PatternMatrix<'db>, // Matrix P (previous patterns that might shadow)
+        q_current_row_patterns: &[SimplifiedPattern<'db>], // Pattern row Q (candidate pattern)
         db: &'db dyn HirAnalysisDb,
     ) -> bool {
+        // Base case 1: No previous patterns means Q is definitely useful
         if p_prev.is_empty() {
-            return true; // Rule 1: Q is useful if P is empty
+            return true; // Rule 1: U(∅, Q) = true
         }
 
-        // If Q_current_row_patterns is empty, it means we are checking an empty pattern list (e.g. from a 0-arity constructor)
-        // If P_prev is not empty at this point, then Q (empty) is covered by P_prev.
+        // Base case 2: Empty pattern row cannot be useful against non-empty matrix
+        // This happens when we've specialized down to 0-arity constructors
         if q_current_row_patterns.is_empty() {
-            return false; // Rule 2: An empty pattern list is not useful against a non-empty matrix P.
+            return false; // Rule 2: U(P, ∅) = false when P ≠ ∅
         }
 
+        // Recursive case: examine the first pattern in Q
         let q_head = &q_current_row_patterns[0];
         let q_tail = &q_current_row_patterns[1..];
 
         match q_head {
+            // Case 1: Q starts with a wildcard → use δ-specialization
             SimplifiedPattern::Wildcard { .. } => {
                 // Rule Wildcard: U( (_ | Q_t), P ) = U( Q_t, D(P) )
                 let p_next = p_prev.d_specialize(); // D(P)
-                // Q_t is just q_tail for wildcard head
+                                                    // Q_t is just q_tail for wildcard head
                 Self::is_useful_recursive(&p_next, q_tail, db)
             }
-            SimplifiedPattern::Constructor { constructor: c_q, subpatterns: s_q, .. } => {
+            SimplifiedPattern::Constructor {
+                constructor: c_q,
+                subpatterns: s_q,
+                ..
+            } => {
                 // Rule Constructor: U( (c(s_q) | Q_t), P ) = U( (s_q | Q_t), S(c,P) )
                 let p_next = p_prev.phi_specialize(c_q, db); // S(c,P)
-                
+
                 let mut q_next_patterns = s_q.clone();
                 q_next_patterns.extend_from_slice(q_tail);
-                
+
                 Self::is_useful_recursive(&p_next, &q_next_patterns, db)
             }
             SimplifiedPattern::Or(q_subs) => {
@@ -528,10 +645,52 @@ impl<'db> PatternMatrix<'db> {
         }
     }
 
-    /// Specializes the matrix for a constructor
-    /// This is a key operation for pattern matching analysis
-    pub fn phi_specialize(&self, ctor_to_specialize_by: &Constructor<'db>, db: &'db dyn HirAnalysisDb) -> Self {
+    /// Specializes the matrix for a constructor (φ-specialization)
+    ///
+    /// This is the φ (phi) operation from Maranget's algorithm. It transforms the pattern
+    /// matrix by keeping only rows that can match the given constructor and "unpeeling"
+    /// one layer of pattern structure.
+    ///
+    /// # How φ-specialization works:
+    ///
+    /// For a constructor C and matrix P, φ(C, P) produces a new matrix where:
+    /// 1. Rows starting with constructor C get their sub-patterns extracted
+    /// 2. Rows starting with wildcards get expanded with C's arity
+    /// 3. Rows starting with incompatible constructors are removed
+    /// 4. OR patterns are expanded to check each alternative
+    ///
+    /// # Example:
+    ///
+    /// Original matrix for `match (x, y)`:
+    /// ```text
+    /// Row 0: [Tuple(2) [Int(0), Wildcard], ...]  // (0, _)
+    /// Row 1: [Wildcard, ...]                     // _
+    /// Row 2: [Tuple(2) [Int(1), Int(2)], ...]    // (1, 2)
+    /// ```
+    ///
+    /// After φ(Tuple(2), P):
+    /// ```text
+    /// Row 0: [Int(0), Wildcard, ...]             // From (0, _) → 0, _
+    /// Row 1: [Wildcard, Wildcard, ...]           // From _ → _, _
+    /// Row 2: [Int(1), Int(2), ...]               // From (1, 2) → 1, 2
+    /// ```
+    ///
+    /// # Arguments
+    /// * `ctor_to_specialize_by` - The constructor to specialize for
+    /// * `db` - Database for type information
+    ///
+    /// # Returns
+    /// A new specialized matrix
+    pub fn phi_specialize(
+        &self,
+        ctor_to_specialize_by: &Constructor<'db>,
+        db: &'db dyn HirAnalysisDb,
+    ) -> Self {
         let mut result_rows = Vec::new();
+
+        // Process each row, keeping only those that start with wildcards or OR patterns
+
+        // Process each row in the matrix
         for row in &self.rows {
             if row.patterns.is_empty() {
                 continue;
@@ -548,16 +707,22 @@ impl<'db> PatternMatrix<'db> {
                     }
                     let mut final_patterns = new_head_patterns;
                     final_patterns.extend_from_slice(remaining_pats);
-                    result_rows.push(PatternRow {
+                    result_rows.push(PatternRowWithMetadata {
                         patterns: final_patterns,
                         arm_index: row.arm_index,
                     });
                 }
-                SimplifiedPattern::Constructor { constructor: c_pat, subpatterns: s_pat, .. } => {
-                    if c_pat == ctor_to_specialize_by || c_pat.is_same_variant(ctor_to_specialize_by, db) {
+                SimplifiedPattern::Constructor {
+                    constructor: c_pat,
+                    subpatterns: s_pat,
+                    ..
+                } => {
+                    if c_pat == ctor_to_specialize_by
+                        || c_pat.is_same_variant(ctor_to_specialize_by, db)
+                    {
                         let mut final_patterns = s_pat.clone();
                         final_patterns.extend_from_slice(remaining_pats);
-                        result_rows.push(PatternRow {
+                        result_rows.push(PatternRowWithMetadata {
                             patterns: final_patterns,
                             arm_index: row.arm_index,
                         });
@@ -573,20 +738,27 @@ impl<'db> PatternMatrix<'db> {
                                 let field_count = ctor_to_specialize_by.field_count(db);
                                 let mut new_head_patterns = Vec::with_capacity(field_count);
                                 for _ in 0..field_count {
-                                    new_head_patterns.push(SimplifiedPattern::Wildcard { binding: None });
+                                    new_head_patterns
+                                        .push(SimplifiedPattern::Wildcard { binding: None });
                                 }
                                 let mut final_patterns = new_head_patterns;
                                 final_patterns.extend_from_slice(remaining_pats);
-                                result_rows.push(PatternRow {
+                                result_rows.push(PatternRowWithMetadata {
                                     patterns: final_patterns,
                                     arm_index: row.arm_index, // Same arm_index because it's from the same original row
                                 });
                             }
-                            SimplifiedPattern::Constructor { constructor: c_or_comp, subpatterns: s_or_comp, .. } => {
-                                if c_or_comp == ctor_to_specialize_by || c_or_comp.is_same_variant(ctor_to_specialize_by, db) {
+                            SimplifiedPattern::Constructor {
+                                constructor: c_or_comp,
+                                subpatterns: s_or_comp,
+                                ..
+                            } => {
+                                if c_or_comp == ctor_to_specialize_by
+                                    || c_or_comp.is_same_variant(ctor_to_specialize_by, db)
+                                {
                                     let mut final_patterns = s_or_comp.clone();
                                     final_patterns.extend_from_slice(remaining_pats);
-                                    result_rows.push(PatternRow {
+                                    result_rows.push(PatternRowWithMetadata {
                                         patterns: final_patterns,
                                         arm_index: row.arm_index,
                                     });
@@ -617,15 +789,18 @@ impl<'db> PatternMatrix<'db> {
 
             match first_pat {
                 SimplifiedPattern::Wildcard { .. } => {
-                    result_rows.push(PatternRow {
+                    result_rows.push(PatternRowWithMetadata {
                         patterns: remaining_pats.to_vec(),
                         arm_index: row.arm_index,
                     });
                 }
                 SimplifiedPattern::Or(or_subpatterns) => {
                     // If any component of the Or is a wildcard, the whole Or pattern matches the default case
-                    if or_subpatterns.iter().any(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
-                        result_rows.push(PatternRow {
+                    if or_subpatterns
+                        .iter()
+                        .any(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+                    {
+                        result_rows.push(PatternRowWithMetadata {
                             patterns: remaining_pats.to_vec(),
                             arm_index: row.arm_index,
                         });
@@ -833,7 +1008,7 @@ impl<'db> PatternMatrix<'db> {
                     let mut new_patterns = vec![element_pattern.clone()];
                     new_patterns.extend_from_slice(&row.patterns[1..]);
 
-                    specialized_rows.push(PatternRow {
+                    specialized_rows.push(PatternRowWithMetadata {
                         patterns: new_patterns,
                         arm_index: row.arm_index,
                     });
@@ -843,7 +1018,7 @@ impl<'db> PatternMatrix<'db> {
                 let mut new_patterns = vec![SimplifiedPattern::Wildcard { binding: None }];
                 new_patterns.extend_from_slice(&row.patterns[1..]);
 
-                specialized_rows.push(PatternRow {
+                specialized_rows.push(PatternRowWithMetadata {
                     patterns: new_patterns,
                     arm_index: row.arm_index,
                 });
@@ -861,7 +1036,7 @@ impl<'db> PatternMatrix<'db> {
                             let mut new_patterns = vec![element_pattern.clone()];
                             new_patterns.extend_from_slice(&row.patterns[1..]);
 
-                            specialized_rows.push(PatternRow {
+                            specialized_rows.push(PatternRowWithMetadata {
                                 patterns: new_patterns,
                                 arm_index: row.arm_index,
                             });
@@ -870,7 +1045,7 @@ impl<'db> PatternMatrix<'db> {
                         let mut new_patterns = vec![SimplifiedPattern::Wildcard { binding: None }];
                         new_patterns.extend_from_slice(&row.patterns[1..]);
 
-                        specialized_rows.push(PatternRow {
+                        specialized_rows.push(PatternRowWithMetadata {
                             patterns: new_patterns,
                             arm_index: row.arm_index,
                         });
@@ -1043,5 +1218,3 @@ impl<'db> PatternMatrix<'db> {
         missing_variants
     }
 }
-
-
