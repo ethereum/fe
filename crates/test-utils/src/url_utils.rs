@@ -10,9 +10,6 @@ pub trait UrlExt {
     /// but implemented manually for WASM targets where the original is unavailable.
     fn from_file_path<P: AsRef<Path>>(path: P) -> Result<Url, ()>;
 
-    /// Creates a URL from a file path with full error handling
-    fn from_file_path_lossy<P: AsRef<Path>>(path: P) -> Url;
-
     /// Converts a URL to a file path
     fn to_file_path(&self) -> Result<PathBuf, ()>;
 }
@@ -36,10 +33,6 @@ impl UrlExt for Url {
             };
             Ok(Url::parse(&url_str).map_err(|_| ())?)
         }
-    }
-
-    fn from_file_path_lossy<P: AsRef<Path>>(path: P) -> Url {
-        Self::from_file_path(path).expect("Failed to create URL from file path")
     }
 
     fn to_file_path(&self) -> Result<PathBuf, ()> {
