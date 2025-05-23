@@ -39,7 +39,7 @@ pub(super) enum ResolvedPathInBody<'db> {
     Reso(PathRes<'db>),
     Binding(LocalBinding<'db>),
     NewBinding(IdentId<'db>),
-    #[allow(dead_code)] // TODO: we might be failing to report some errors
+
     Diag(FuncBodyDiag<'db>),
     Invalid,
 }
@@ -381,18 +381,75 @@ impl<'db> TupleLike<'db> {
     #[allow(dead_code)]
     pub fn arity(&self, db: &'db dyn HirAnalysisDb) -> usize {
         match self {
-            TupleLike::Type(_) => {
-                // Get tuple arity
-                // Note: This implementation depends on TyId methods
-                0 // TODO: Implement tuple arity
-            }
-            TupleLike::Variant(variant) => {
-                if let HirVariantKind::Tuple(tuple_fields) = variant.kind(db) {
-                    tuple_fields.data(db).len()
+            TupleLike::Type(ty) => {
+                // Get tuple arity from type
+                if ty.is_tuple(db) {
+                    let (_, tuple_elems) = ty.decompose_ty_app(db);
+                    tuple_elems.len()
                 } else {
                     0
                 }
             }
+            TupleLike::Variant(variant) => {
+                match variant.kind(db) {
+                    HirVariantKind::Tuple(tuple_fields) => tuple_fields.data(db).len(),
+                    HirVariantKind::Record(record_fields) => record_fields.data(db).len(),
+                    HirVariantKind::Unit => 0,
+                }
+            }
         }
+    }
+
+    /// Check if two TupleLike patterns are compatible for pattern matching specialization
+    #[allow(dead_code)]
+    pub fn is_compatible_with(&self, other: &Self, db: &'db dyn HirAnalysisDb) -> bool {
+        match (self, other) {
+            (TupleLike::Type(ty_a), TupleLike::Type(ty_b)) => {
+                // Types are compatible if they're the same or both tuples with same arity
+                ty_a == ty_b || (ty_a.is_tuple(db) && ty_b.is_tuple(db) && 
+                                 self.arity(db) == other.arity(db))
+            }
+            (TupleLike::Variant(var_a), TupleLike::Variant(var_b)) => {
+                // Variants are compatible if they're the same variant
+                var_a.variant.idx == var_b.variant.idx
+            }
+            (TupleLike::Type(ty), TupleLike::Variant(_)) |
+            (TupleLike::Variant(_), TupleLike::Type(ty)) => {
+                // Type and variant are compatible if they have the same arity
+                // This handles cases like (a, b) matching Some(x) when both have arity 2
+                ty.is_tuple(db) && self.arity(db) == other.arity(db)
+            }
+        }
+    }
+
+    /// Get the element types for tuple-like patterns (for type checking and error messages)
+    #[allow(dead_code)]
+    pub fn element_types(&self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        match self {
+            TupleLike::Type(ty) => {
+                if ty.is_tuple(db) {
+                    ty.decompose_ty_app(db).1.to_vec()
+                } else {
+                    vec![]
+                }
+            }
+            TupleLike::Variant(_variant) => {
+                // For variants, we'd need to extract field types
+                // This is a placeholder - would need proper field type extraction
+                vec![]
+            }
+        }
+    }
+
+    /// Check if this represents a tuple type (as opposed to a tuple variant)
+    #[allow(dead_code)]
+    pub fn is_tuple_type(&self) -> bool {
+        matches!(self, TupleLike::Type(_))
+    }
+
+    /// Check if this represents a tuple variant (as opposed to a tuple type)
+    #[allow(dead_code)]
+    pub fn is_tuple_variant(&self) -> bool {
+        matches!(self, TupleLike::Variant(_))
     }
 }

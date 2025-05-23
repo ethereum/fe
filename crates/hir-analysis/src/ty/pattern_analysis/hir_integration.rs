@@ -1,7 +1,7 @@
 // This file will contain compiler-specific integration logic for pattern analysis.
 
 use crate::name_resolution::{resolve_path, PathRes, ResolvedVariant};
-use crate::ty::ty_check::RecordLike;
+use crate::ty::ty_check::{RecordLike, TupleLike};
 use crate::ty::ty_def::TyId;
 use crate::ty::AdtRef as HirAdtRef; // Used by from_hir_pat
 use crate::HirAnalysisDb;
@@ -197,6 +197,38 @@ impl<'db> PatternAnalyzer<'db> {
                         s.push(')');
                         s
                     }
+                    Constructor::TupleLike(tuple_like) => {
+                        match tuple_like {
+                            TupleLike::Type(_) => {
+                                // Display as tuple
+                                let mut s = "(".to_string();
+                                for i in 0..subpatterns.len() {
+                                    s.push_str(&self.simplified_to_user_pattern(
+                                        &subpatterns[i],
+                                        _original_scrutinee_ty,
+                                    ));
+                                    if i < subpatterns.len() - 1 {
+                                        s.push_str(", ");
+                                    }
+                                }
+                                s.push(')');
+                                s
+                            }
+                            TupleLike::Variant(variant) => {
+                                // Display as variant
+                                let variant_def_data = variant.variant.def(self.db);
+                                let variant_name = variant_def_data.name.to_opt().map_or_else(
+                                    || "_MISSING_VARIANT_NAME_".to_string(),
+                                    |id| id.data(self.db).to_string(),
+                                );
+                                if subpatterns.is_empty() {
+                                    variant_name
+                                } else {
+                                    format!("{}(..)", variant_name)
+                                }
+                            }
+                        }
+                    }
                     Constructor::Record(RecordLike::Variant(variant)) => {
                         // Attempt to get the name of the variant for a more user-friendly display
                         // variant is ResolvedVariant. variant.variant is EnumVariant.
@@ -306,7 +338,7 @@ impl<'db> SimplifiedPattern<'db> {
                 SimplifiedPattern::Constructor {
                     constructor: Constructor::Tuple(subpatterns.len()),
                     subpatterns: subpatterns.clone(),
-                    ty: TyId::tuple(db, subpatterns.len()), // Create a tuple type with correct arity
+                    ty: TyId::tuple(db, subpatterns.len()),
                 }
             }
             HirPat::Path(path_partial, _is_mut_binding) => {
@@ -315,8 +347,12 @@ impl<'db> SimplifiedPattern<'db> {
                     match resolve_path(db, *path_id, scope, true /* resolve_tail_as_value */) {
                         Ok(PathRes::EnumVariant(resolved_variant)) => {
                             // This is definitively an enum variant constructor (e.g., MyEnum::VariantA)
-                            let constructor =
-                                Constructor::Record(RecordLike::Variant(resolved_variant.clone()));
+                            let constructor = match resolved_variant.variant.kind(db) {
+                                hir::hir_def::VariantKind::Tuple(_) => {
+                                    Constructor::TupleLike(TupleLike::Variant(resolved_variant.clone()))
+                                }
+                                _ => Constructor::Record(RecordLike::Variant(resolved_variant.clone())),
+                            };
                             let field_count = match resolved_variant.variant.kind(db) {
                                 hir::hir_def::VariantKind::Unit => 0,
                                 hir::hir_def::VariantKind::Tuple(fields) => fields.data(db).len(),
@@ -365,9 +401,12 @@ impl<'db> SimplifiedPattern<'db> {
                                                     ),
                                                     path: *path_id,
                                                 };
-                                                let constructor = Constructor::Record(
-                                                    RecordLike::Variant(resolved_variant.clone()),
-                                                );
+                                                let constructor = match resolved_variant.variant.kind(db) {
+                                                    hir::hir_def::VariantKind::Tuple(_) => {
+                                                        Constructor::TupleLike(TupleLike::Variant(resolved_variant.clone()))
+                                                    }
+                                                    _ => Constructor::Record(RecordLike::Variant(resolved_variant.clone())),
+                                                };
                                                 let field_count =
                                                     match resolved_variant.variant.kind(db) {
                                                         hir::hir_def::VariantKind::Unit => 0,
@@ -486,9 +525,12 @@ impl<'db> SimplifiedPattern<'db> {
                                         .collect();
 
                                     SimplifiedPattern::Constructor {
-                                        constructor: Constructor::Record(RecordLike::Variant(
-                                            resolved_variant.clone(),
-                                        )),
+                                        constructor: match resolved_variant.variant.kind(db) {
+                                            hir::hir_def::VariantKind::Tuple(_) => {
+                                                Constructor::TupleLike(TupleLike::Variant(resolved_variant.clone()))
+                                            }
+                                            _ => Constructor::Record(RecordLike::Variant(resolved_variant.clone())),
+                                        },
                                         subpatterns,
                                         ty: resolved_variant.ty,
                                     }
