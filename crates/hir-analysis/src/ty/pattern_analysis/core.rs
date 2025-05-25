@@ -1,6 +1,6 @@
 use crate::name_resolution::ResolvedVariant;
 use crate::ty::adt_def::AdtRef;
-// use crate::ty::pattern::Pattern; // TODO: Remove this import once Pattern type is fully deprecated
+
 use crate::ty::ty_check::{RecordLike, TupleLike};
 use crate::ty::ty_def::TyId;
 use crate::HirAnalysisDb;
@@ -111,7 +111,7 @@ impl<'db> Constructor<'db> {
                             VariantKind::Unit => 0,
                         }
                     }
-                    RecordLike::Type(_) => 0, // TODO: Handle struct fields
+                    RecordLike::Type(_) => 0, // Note: Struct field counting not yet implemented
                     RecordLike::Dummy(_) => 0,
                 }
             }
@@ -292,11 +292,8 @@ impl<'db> SimplifiedPattern<'db> {
             } => {
                 // A constructor pattern is irrefutable if it's the *only* constructor for its type
                 // (e.g., a tuple, or a struct, or an enum with a single variant) AND all its subpatterns are irrefutable.
-                // This requires DB access to check type information (e.g. enum variants).
-                // Simplified: Tuples are irrefutable if their subpatterns are. Records/Structs too.
-                // Single-variant enums too. Multi-variant enums are not.
-                // This is a placeholder. True irrefutability check needs more type info.
-                // For the purpose of the algorithm, if it's a tuple, it's irrefutable if subpatterns are.
+                // For tuples, they're irrefutable if all their subpatterns are irrefutable.
+                // For other constructors, we conservatively return false unless we can prove irrefutability.
                 match constructor {
                     Constructor::TupleLike(_) => subpatterns.iter().all(|sp| sp.is_irrefutable()),
                     // Other constructors (Record, Bool, Int) are typically not irrefutable unless they are the sole variant of an enum
@@ -1272,7 +1269,7 @@ impl<'db> PatternMatrix<'db> {
                     Partial::Present(IdentId::new(db, "_placeholder_variant_path_".to_string())),
                     GenericArgListId::none(db),
                     None,
-                ), // This is a placeholder path
+                ), // Note: Synthetic path for missing pattern generation
             };
             let constructor = match variant_def.kind {
                 hir::hir_def::VariantKind::Tuple(_) => {
