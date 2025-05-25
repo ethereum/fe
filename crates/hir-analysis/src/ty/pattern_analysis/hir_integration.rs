@@ -303,11 +303,10 @@ impl<'db> SimplifiedPattern<'db> {
                             // A more robust solution might involve changing Constructor::Int or using a hash.
                             let value_biguint = integer_id.data(db);
                             let value_i128 = value_biguint.try_into().unwrap_or_else(|_| {
-                                // Placeholder for values that don't fit in i128.
-                                // This could be a specific large value, or we could introduce
-                                // a distinct constructor variant for "large integer".
-                                // For now, using i128::MAX as a stand-in.
-                                // This means all integers too large for i128 will be treated as the same pattern.
+                                // TODO: Large integer literals in patterns are not fully supported
+                                // All large integers are currently mapped to i128::MAX, which means
+                                // different large integer literals may be treated as the same pattern
+                                eprintln!("Warning: Large integer literal in pattern mapped to i128::MAX: {}", value_biguint);
                                 i128::MAX
                             });
                             SimplifiedPattern::Constructor {
@@ -316,7 +315,11 @@ impl<'db> SimplifiedPattern<'db> {
                                 ty: TyId::never(db), // Placeholder - will be properly inferred later
                             }
                         }
-                        _ => SimplifiedPattern::Wildcard { binding: None }, // Other literals, treat as wildcard for now
+                        LitKind::String(_) => {
+                            // String literals are not yet supported in pattern matching
+                            // TODO: Implement string literal pattern matching
+                            SimplifiedPattern::Wildcard { binding: None }
+                        }
                     }
                 } else {
                     SimplifiedPattern::Wildcard { binding: None }

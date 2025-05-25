@@ -378,7 +378,6 @@ impl<'db> RecordLike<'db> {
 }
 
 impl<'db> TupleLike<'db> {
-    #[allow(dead_code)]
     pub fn arity(&self, db: &'db dyn HirAnalysisDb) -> usize {
         match self {
             TupleLike::Type(ty) => {
@@ -401,7 +400,6 @@ impl<'db> TupleLike<'db> {
     }
 
     /// Check if two TupleLike patterns are compatible for pattern matching specialization
-    #[allow(dead_code)]
     pub fn is_compatible_with(&self, other: &Self, db: &'db dyn HirAnalysisDb) -> bool {
         match (self, other) {
             (TupleLike::Type(ty_a), TupleLike::Type(ty_b)) => {
@@ -422,34 +420,5 @@ impl<'db> TupleLike<'db> {
         }
     }
 
-    /// Get the element types for tuple-like patterns (for type checking and error messages)
-    #[allow(dead_code)]
-    pub fn element_types(&self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
-        match self {
-            TupleLike::Type(ty) => {
-                if ty.is_tuple(db) {
-                    ty.decompose_ty_app(db).1.to_vec()
-                } else {
-                    vec![]
-                }
-            }
-            TupleLike::Variant(_variant) => {
-                // For variants, we'd need to extract field types
-                // This is a placeholder - would need proper field type extraction
-                vec![]
-            }
-        }
-    }
 
-    /// Check if this represents a tuple type (as opposed to a tuple variant)
-    #[allow(dead_code)]
-    pub fn is_tuple_type(&self) -> bool {
-        matches!(self, TupleLike::Type(_))
-    }
-
-    /// Check if this represents a tuple variant (as opposed to a tuple type)
-    #[allow(dead_code)]
-    pub fn is_tuple_variant(&self) -> bool {
-        matches!(self, TupleLike::Variant(_))
-    }
 }
