@@ -1,5 +1,6 @@
 use camino::Utf8PathBuf;
 use radix_immutable::StringPrefixView;
+use salsa::tracked;
 use serde::Serialize;
 use url::Url;
 
@@ -66,9 +67,11 @@ impl IngotBaseUrl for Url {
 pub struct Ingot<'db> {
     pub base: Url,
     pub standalone_file: Option<File>,
+    #[tracked]
     pub index: Workspace,
     pub version: Version,
     pub kind: IngotKind,
+    #[tracked]
     pub dependencies: Vec<(String, Url)>,
 }
 

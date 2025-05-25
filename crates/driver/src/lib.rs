@@ -20,7 +20,8 @@ pub fn run(opts: &Options) {
     match &opts.command {
         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
-            let base_url = Url::from_directory_path(path).expect("failed to parse base URL");
+            let base_url = Url::from_directory_path(path.canonicalize_utf8().unwrap())
+                .expect("failed to parse base URL");
             // Url::from_file_path(path.canonicalize().expect("Failed to canonicalize path"))
             //     .expect("Failed to parse base URL")
             //     .as_directory()
