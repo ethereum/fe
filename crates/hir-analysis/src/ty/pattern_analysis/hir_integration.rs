@@ -176,8 +176,11 @@ impl<'db> PatternAnalyzer<'db> {
                 ty: _,
             } => {
                 match constructor {
-                    Constructor::Bool(val) => val.to_string(),
-                    Constructor::Int(val) => val.to_string(),
+                    Constructor::Literal(lit_kind, _) => match lit_kind {
+                        LitKind::Bool(lit_bool) => lit_bool.to_string(),
+                        LitKind::Int(lit_int) => lit_int.data(self.db).to_string(),
+                        LitKind::String(lit_string) => format!("\"{}\"", lit_string.data(self.db)),
+                    },
 
                     Constructor::TupleLike(tuple_like) => {
                         match tuple_like {
@@ -273,8 +276,8 @@ impl<'db> SimplifiedPattern<'db> {
             HirPat::Lit(lit_kind_partial) => {
                 if let Partial::Present(lit_kind) = lit_kind_partial {
                     match lit_kind {
-                        LitKind::Bool(value) => SimplifiedPattern::Constructor {
-                            constructor: Constructor::Bool(*value),
+                        LitKind::Bool(lit_bool) => SimplifiedPattern::Constructor {
+                            constructor: Constructor::Literal(LitKind::Bool(*lit_bool), TyId::bool(db)),
                             subpatterns: Vec::new(),
                             ty: TyId::bool(db),
                         },
@@ -284,23 +287,27 @@ impl<'db> SimplifiedPattern<'db> {
                             // For pattern matching, distinct large literals might not be distinguishable with this approach.
                             // A more robust solution might involve changing Constructor::Int or using a hash.
                             let value_biguint = integer_id.data(db);
-                            let value_i128 = value_biguint.try_into().unwrap_or_else(|_| {
+                            let _value_i128 = value_biguint.try_into().unwrap_or_else(|_| {
                                 // Note: Large integer literals (>i128::MAX) are mapped to i128::MAX
                                 // This means extremely large integers may be treated as equivalent in patterns
                                 // This is a known limitation for edge cases with very large integer literals
                                 eprintln!("Warning: Large integer literal in pattern mapped to i128::MAX: {}", value_biguint);
                                 i128::MAX
                             });
+                            let u256_ty = TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256)));
                             SimplifiedPattern::Constructor {
-                                constructor: Constructor::Int(value_i128),
+                                constructor: Constructor::Literal(LitKind::Int(*integer_id), u256_ty),
                                 subpatterns: Vec::new(),
-                                ty: TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256))),
+                                ty: u256_ty,
                             }
                         }
-                        LitKind::String(_) => {
-                            // Note: String literal patterns are not currently supported
-                            // String patterns fall back to wildcard matching
-                            SimplifiedPattern::Wildcard { binding: None }
+                        LitKind::String(lit_string) => {
+                            let string_ty = TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::String)));
+                            SimplifiedPattern::Constructor {
+                                constructor: Constructor::Literal(LitKind::String(*lit_string), string_ty),
+                                subpatterns: Vec::new(),
+                                ty: string_ty,
+                            }
                         }
                     }
                 } else {

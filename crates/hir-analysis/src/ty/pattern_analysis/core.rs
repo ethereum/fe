@@ -5,6 +5,7 @@ use crate::ty::ty_check::{RecordLike, TupleLike};
 use crate::ty::ty_def::TyId;
 use crate::HirAnalysisDb;
 use hir::hir_def::{GenericArgListId, IdentId, Partial, PathId, VariantKind};
+use hir::hir_def::LitKind;
 
 // Type aliases for better readability
 /// A collection of pattern rows forming the complete pattern matrix
@@ -80,20 +81,13 @@ pub enum Constructor<'db> {
     /// - `Point(x, y)` → TupleLike(TupleLike::Type(point_ty))
     TupleLike(TupleLike<'db>),
 
-    /// Boolean literal constructor
+    /// Literal constructor (bool, int, string, etc.)
     ///
     /// Examples:
-    /// - `true` → Bool(true)
-    /// - `false` → Bool(false)
-    Bool(bool),
-
-    /// Integer literal constructor
-    ///
-    /// Examples:
-    /// - `42` → Int(42)
-    /// - `-1` → Int(-1)
-    /// - `0` → Int(0)
-    Int(i128),
+    /// - `true` → Literal(LitKind::Bool(true), bool_ty)
+    /// - `42` → Literal(LitKind::Int(42), int_ty)
+    /// - `"hello"` → Literal(LitKind::String("hello"), string_ty)
+    Literal(LitKind<'db>, TyId<'db>),
 }
 
 impl<'db> Constructor<'db> {
@@ -116,7 +110,7 @@ impl<'db> Constructor<'db> {
                 }
             }
             Constructor::TupleLike(tuple_like) => tuple_like.arity(db),
-            Constructor::Bool(_) | Constructor::Int(_) => 0,
+            Constructor::Literal(_, _) => 0,
         }
     }
 
@@ -126,9 +120,10 @@ impl<'db> Constructor<'db> {
     /// Critical for correctly handling imported enum variants vs qualified ones
     pub fn is_same_variant(&self, other: &Self, db: &'db dyn HirAnalysisDb) -> bool {
         match (self, other) {
-            // Simple constructors match if they're equal
-            (Constructor::Bool(a), Constructor::Bool(b)) => a == b,
-            (Constructor::Int(a), Constructor::Int(b)) => a == b,
+            // Literal constructors match if both kind and type are equal
+            (Constructor::Literal(lit_a, ty_a), Constructor::Literal(lit_b, ty_b)) => {
+                lit_a == lit_b && ty_a == ty_b
+            }
 
             // TupleLike constructors use unified compatibility check
             (Constructor::TupleLike(a), Constructor::TupleLike(b)) => a.is_compatible_with(b, db),
@@ -296,7 +291,7 @@ impl<'db> SimplifiedPattern<'db> {
                 // For other constructors, we conservatively return false unless we can prove irrefutability.
                 match constructor {
                     Constructor::TupleLike(_) => subpatterns.iter().all(|sp| sp.is_irrefutable()),
-                    // Other constructors (Record, Bool, Int) are typically not irrefutable unless they are the sole variant of an enum
+                    // Other constructors (Record, Literal) are typically not irrefutable unless they are the sole variant of an enum
                     // or the only possible value of a type, which is hard to determine without full type info here.
                     // For the algorithm, we mostly care about `_` and tuples.
                     _ => false,
@@ -1124,8 +1119,8 @@ impl<'db> PatternMatrix<'db> {
 
         for row in &self.rows {
             if let Some(SimplifiedPattern::Constructor { constructor, .. }) = row.patterns.first() {
-                if let Constructor::Bool(value) = constructor {
-                    if *value {
+                if let Constructor::Literal(LitKind::Bool(lit_bool), _) = constructor {
+                    if *lit_bool {
                         has_true = true;
                     } else {
                         has_false = true;
@@ -1144,7 +1139,7 @@ impl<'db> PatternMatrix<'db> {
         let bool_ty = TyId::bool(db);
         if !has_true {
             missing.push(SimplifiedPattern::Constructor {
-                constructor: Constructor::Bool(true),
+                constructor: Constructor::Literal(LitKind::Bool(true), bool_ty),
                 subpatterns: Vec::new(),
                 ty: bool_ty,
             });
@@ -1152,7 +1147,7 @@ impl<'db> PatternMatrix<'db> {
 
         if !has_false {
             missing.push(SimplifiedPattern::Constructor {
-                constructor: Constructor::Bool(false),
+                constructor: Constructor::Literal(LitKind::Bool(false), bool_ty),
                 subpatterns: Vec::new(),
                 ty: bool_ty,
             });
