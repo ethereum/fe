@@ -179,24 +179,7 @@ impl<'db> PatternAnalyzer<'db> {
                 match constructor {
                     Constructor::Bool(val) => val.to_string(),
                     Constructor::Int(val) => val.to_string(),
-                    Constructor::Tuple(arity) => {
-                        let mut s = "(".to_string();
-                        for i in 0..*arity {
-                            if i < subpatterns.len() {
-                                s.push_str(&self.simplified_to_user_pattern(
-                                    &subpatterns[i],
-                                    _original_scrutinee_ty,
-                                ));
-                            } else {
-                                s.push('_');
-                            }
-                            if i < arity - 1 {
-                                s.push_str(", ");
-                            }
-                        }
-                        s.push(')');
-                        s
-                    }
+
                     Constructor::TupleLike(tuple_like) => {
                         match tuple_like {
                             TupleLike::Type(_) => {
@@ -338,10 +321,17 @@ impl<'db> SimplifiedPattern<'db> {
                         }
                     })
                     .collect();
+                let element_types: Vec<TyId<'db>> = subpatterns.iter().map(|sp| {
+                    match sp {
+                        SimplifiedPattern::Constructor { ty, .. } => *ty,
+                        _ => TyId::never(db), // fallback for non-constructor patterns
+                    }
+                }).collect();
+                let ty = TyId::tuple_with_elems(db, &element_types);
                 SimplifiedPattern::Constructor {
-                    constructor: Constructor::Tuple(subpatterns.len()),
+                    constructor: Constructor::TupleLike(TupleLike::Type(ty)),
                     subpatterns: subpatterns.clone(),
-                    ty: TyId::tuple(db, subpatterns.len()),
+                    ty,
                 }
             }
             HirPat::Path(path_partial, _is_mut_binding) => {

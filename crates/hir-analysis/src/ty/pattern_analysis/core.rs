@@ -80,14 +80,6 @@ pub enum Constructor<'db> {
     /// - `Point(x, y)` → TupleLike(TupleLike::Type(point_ty))
     TupleLike(TupleLike<'db>),
 
-    /// Tuple constructor with specific arity (number of elements)
-    ///
-    /// Examples:
-    /// - `(a, b)` → Tuple(2)
-    /// - `(x, y, z)` → Tuple(3)
-    /// - `()` → Tuple(0)
-    Tuple(usize),
-
     /// Boolean literal constructor
     ///
     /// Examples:
@@ -124,7 +116,6 @@ impl<'db> Constructor<'db> {
                 }
             }
             Constructor::TupleLike(tuple_like) => tuple_like.arity(db),
-            Constructor::Tuple(arity) => *arity,
             Constructor::Bool(_) | Constructor::Int(_) => 0,
         }
     }
@@ -138,16 +129,9 @@ impl<'db> Constructor<'db> {
             // Simple constructors match if they're equal
             (Constructor::Bool(a), Constructor::Bool(b)) => a == b,
             (Constructor::Int(a), Constructor::Int(b)) => a == b,
-            (Constructor::Tuple(a), Constructor::Tuple(b)) => a == b,
 
             // TupleLike constructors use unified compatibility check
             (Constructor::TupleLike(a), Constructor::TupleLike(b)) => a.is_compatible_with(b, db),
-
-            // Cross-compatibility: TupleLike with old Tuple constructor
-            (Constructor::TupleLike(tuple_like), Constructor::Tuple(arity)) |
-            (Constructor::Tuple(arity), Constructor::TupleLike(tuple_like)) => {
-                tuple_like.arity(db) == *arity
-            }
 
             // For record-like constructors, compare the actual enum variants
             (
@@ -173,13 +157,7 @@ impl<'db> Constructor<'db> {
         Constructor::TupleLike(TupleLike::Variant(variant))
     }
 
-    /// Convert a legacy Tuple constructor to TupleLike (for migration)
-    pub fn upgrade_tuple_to_tuple_like(&self, ty: TyId<'db>) -> Option<Self> {
-        match self {
-            Constructor::Tuple(_arity) => Some(Constructor::TupleLike(TupleLike::Type(ty))),
-            _ => None,
-        }
-    }
+
 }
 
 impl<'db> SimplifiedPattern<'db> {
@@ -320,7 +298,7 @@ impl<'db> SimplifiedPattern<'db> {
                 // This is a placeholder. True irrefutability check needs more type info.
                 // For the purpose of the algorithm, if it's a tuple, it's irrefutable if subpatterns are.
                 match constructor {
-                    Constructor::Tuple(_) => subpatterns.iter().all(|sp| sp.is_irrefutable()),
+                    Constructor::TupleLike(_) => subpatterns.iter().all(|sp| sp.is_irrefutable()),
                     // Other constructors (Record, Bool, Int) are typically not irrefutable unless they are the sole variant of an enum
                     // or the only possible value of a type, which is hard to determine without full type info here.
                     // For the algorithm, we mostly care about `_` and tuples.
@@ -920,7 +898,6 @@ impl<'db> PatternMatrix<'db> {
             // Check for tuple patterns with all wildcard subpatterns (e.g., (_, _))
             if let Some(SimplifiedPattern::Constructor { constructor, subpatterns, .. }) = row.patterns.first() {
                 let pattern_arity = match constructor {
-                    Constructor::Tuple(n) => Some(*n),
                     Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                     _ => None,
                 };
@@ -946,7 +923,6 @@ impl<'db> PatternMatrix<'db> {
                 if patterns.iter().any(|p| {
                     if let SimplifiedPattern::Constructor { constructor, subpatterns, .. } = p {
                         let pattern_arity = match constructor {
-                            Constructor::Tuple(n) => Some(*n),
                             Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                             _ => None,
                         };
@@ -975,7 +951,6 @@ impl<'db> PatternMatrix<'db> {
             }) = row.patterns.first()
             {
                 let arity = match constructor {
-                    Constructor::Tuple(n) => Some(*n),
                     Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                     _ => None,
                 };
@@ -993,7 +968,6 @@ impl<'db> PatternMatrix<'db> {
                     } = p
                     {
                         let arity = match constructor {
-                            Constructor::Tuple(n) => Some(*n),
                             Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                             _ => None,
                         };
@@ -1030,7 +1004,7 @@ impl<'db> PatternMatrix<'db> {
                     specific_subpatterns[i] = missing_elem;
 
                     missing_patterns.push(SimplifiedPattern::Constructor {
-                        constructor: Constructor::Tuple(tuple_elems.len()),
+                        constructor: Constructor::TupleLike(TupleLike::Type(ty)),
                         subpatterns: specific_subpatterns,
                         ty,
                     });
@@ -1076,7 +1050,6 @@ impl<'db> PatternMatrix<'db> {
             }) = row.patterns.first()
             {
                 let pattern_arity = match constructor {
-                    Constructor::Tuple(n) => Some(*n),
                     Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                     _ => None,
                 };
@@ -1112,7 +1085,6 @@ impl<'db> PatternMatrix<'db> {
                     } = pattern
                     {
                         let pattern_arity = match constructor {
-                            Constructor::Tuple(n) => Some(*n),
                             Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                             _ => None,
                         };
