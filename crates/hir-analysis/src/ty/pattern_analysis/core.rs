@@ -91,7 +91,7 @@ pub enum Constructor<'db> {
 
 impl<'db> Constructor<'db> {
     /// Returns the number of fields for this constructor
-    fn field_count(&self, db: &'db dyn HirAnalysisDb) -> usize {
+    pub fn field_count(&self, db: &'db dyn HirAnalysisDb) -> usize {
         match self {
             Constructor::Record(record) => {
                 // We don't have direct access to fields via RecordLike
@@ -511,6 +511,7 @@ fn is_subpattern_vector_useful<'db>(
 /// Row 1: [Wildcard, Int(1)]
 /// Row 2: [Int(2), Int(2)]
 /// ```
+#[derive(Clone, Debug)]
 pub struct PatternMatrix<'db> {
     /// The rows of the pattern matrix, each representing one match arm
     rows: Vec<PatternRowWithMetadata<'db>>,
@@ -520,12 +521,12 @@ pub struct PatternMatrix<'db> {
 ///
 /// Each row represents one match arm from the original source code, along with
 /// metadata needed for error reporting and analysis.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PatternRowWithMetadata<'db> {
     /// The patterns in this row (one pattern per "column" in the matrix)
-    patterns: Vec<SimplifiedPattern<'db>>,
+    pub patterns: Vec<SimplifiedPattern<'db>>,
     /// The index of the match arm this row corresponds to in the original source
-    arm_index: MatchArmIndex,
+    pub arm_index: MatchArmIndex,
 }
 
 impl<'db> PatternMatrix<'db> {
@@ -552,9 +553,63 @@ impl<'db> PatternMatrix<'db> {
         Self { rows }
     }
 
+    /// Creates a new pattern matrix from existing rows
+    ///
+    /// This is used internally when creating specialized matrices during
+    /// decision tree construction.
+    ///
+    /// # Arguments
+    /// * `rows` - Pre-constructed rows with metadata
+    ///
+    /// # Returns
+    /// A new pattern matrix with the given rows
+    pub fn from_rows(rows: Vec<PatternRowWithMetadata<'db>>) -> Self {
+        Self { rows }
+    }
+
     /// Checks if this matrix is empty
     pub fn is_empty(&self) -> bool {
         self.rows.is_empty()
+    }
+
+    /// Gets a reference to the rows in this matrix
+    pub fn rows(&self) -> &[PatternRowWithMetadata<'db>] {
+        &self.rows
+    }
+
+    /// Gets the number of rows in this matrix
+    pub fn row_count(&self) -> usize {
+        self.rows.len()
+    }
+
+    /// Gets the number of columns in this matrix
+    pub fn column_count(&self) -> usize {
+        if self.rows.is_empty() {
+            0
+        } else {
+            self.rows[0].patterns.len()
+        }
+    }
+
+    /// Gets a specific pattern at the given row and column
+    pub fn get_pattern(&self, row: usize, col: usize) -> Option<&SimplifiedPattern<'db>> {
+        self.rows.get(row)?.patterns.get(col)
+    }
+
+    /// Checks if the first row contains only wildcard patterns
+    pub fn first_row_all_wildcards(&self) -> bool {
+        if self.rows.is_empty() {
+            return false;
+        }
+        self.rows[0]
+            .patterns
+            .iter()
+            .all(|pat| matches!(pat, SimplifiedPattern::Wildcard { .. }))
+    }
+
+    /// Gets the arm index for a specific row
+    pub fn get_arm_index(&self, row: usize) -> Option<MatchArmIndex> {
+        self.rows.get(row).map(|r| r.arm_index)
     }
 
     /// Check if a specific row is useful (reachable/not shadowed by previous rows)

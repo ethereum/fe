@@ -73,5 +73,5 @@
 mod core;
 mod hir_integration;
 
-pub use self::core::{Constructor, PatternMatrix, SimplifiedPattern};
+pub use self::core::{Constructor, MatchArmIndex, PatternMatrix, PatternRowWithMetadata, SimplifiedPattern};
 pub use self::hir_integration::PatternAnalyzer;
