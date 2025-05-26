@@ -125,8 +125,9 @@ pub fn run(opts: &Options) {
                     let url = Url::from_file_path(&path.canonicalize_utf8().unwrap()).unwrap();
                     db.workspace().touch(&mut db, url.clone(), Some(content));
                     db.workspace()
-                        .containing_ingot_base(&db, &url)
-                        .expect("Failed to find ingot base")
+                        .containing_ingot(&db, &url)
+                        .expect("Failed to find ingot")
+                        .base(&db)
                 }
                 Ok(_) => {
                     eprintln!("an error was encountered while resolving `{base_url}`");

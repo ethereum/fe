@@ -219,14 +219,17 @@ impl<'db> ModuleTreeBuilder<'db> {
 
     fn set_modules(&mut self) {
         for (_url, file) in self.ingot.files(self.db).iter() {
-            let top_mod = map_file_to_mod_impl(self.db, file);
+            // Only process source files, skip config files like fe.toml
+            if let Some(IngotFileKind::Source) = file.kind(self.db) {
+                let top_mod = map_file_to_mod_impl(self.db, file);
 
-            let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
-            let path = file.path(self.db).as_ref().expect("couldn't get path");
-            // .clone();
-            let path = Utf8Path::new(path);
-            self.path_map.insert(path, module_id);
-            self.mod_map.insert(top_mod, module_id);
+                let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
+                let path = file.path(self.db).as_ref().expect("couldn't get path");
+                // .clone();
+                let path = Utf8Path::new(path);
+                self.path_map.insert(path, module_id);
+                self.mod_map.insert(top_mod, module_id);
+            }
         }
     }
 

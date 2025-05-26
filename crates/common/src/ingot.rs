@@ -1,6 +1,5 @@
 use camino::Utf8PathBuf;
 use radix_immutable::StringPrefixView;
-use salsa::tracked;
 use serde::Serialize;
 use url::Url;
 
@@ -112,7 +111,6 @@ impl Ingot<'_> {
 }
 
 pub trait IngotIndex {
-    fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url>;
     fn containing_ingot_config(self, db: &dyn InputDb, location: Url) -> Option<File>;
     fn containing_ingot<'db>(self, db: &'db dyn InputDb, location: &Url) -> Option<Ingot<'db>>;
     fn touch_ingot<'db>(
@@ -126,16 +124,6 @@ pub trait IngotIndex {
 pub type Version = serde_semver::semver::Version;
 #[salsa::tracked]
 impl IngotIndex for Workspace {
-    fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url> {
-        self.containing_ingot_config(db, location.clone())
-            .map(move |config| {
-                config
-                    .url(db)
-                    .expect("Config file should be indexed")
-                    .directory()
-                    .expect("Config URL should have a directory")
-            })
-    }
     /// Recursively search for a local ingot configuration file
     #[salsa::tracked]
     fn containing_ingot_config(self, db: &dyn InputDb, file: Url) -> Option<File> {
@@ -204,52 +192,83 @@ struct IngotConfig {
     ingot: IngotMetadata,
 }
 
+/// Private helper to create canonical ingots for regular projects
 #[salsa::tracked]
-fn containing_ingot_impl<'db>(
+fn canonical_ingot<'db>(
     db: &'db dyn InputDb,
     index: Workspace,
-    location: Url,
-) -> Option<Ingot<'db>> {
+    base_url: Url,
+) -> Ingot<'db> {
     let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
-    let is_core = location.scheme().contains("core");
+    let is_core = base_url.scheme().contains("core");
     let dependencies = if is_core {
         vec![]
     } else {
         vec![("core".into(), core_url)]
     };
 
-    match index.containing_ingot_base(db, &location) {
-        Some(ingot_url) => Some(Ingot::new(
-            db,
-            ingot_url,
-            None,
-            index,
-            Version::new(1, 0, 0),
-            if is_core {
-                IngotKind::Core
-            } else {
-                IngotKind::Local
-            },
-            dependencies,
-        )),
-        None => {
-            // Make a standalone ingot if no base is found
-            let base = location.directory().unwrap_or_else(|| location.clone());
-            let specific_root_file = if location.path().ends_with(".fe") {
-                index.get(db, &location)
-            } else {
-                None
-            };
-            Some(Ingot::new(
-                db,
-                base,
-                specific_root_file,
-                index,
-                Version::new(0, 0, 0),
-                IngotKind::StandAlone,
-                dependencies,
-            ))
-        }
+    Ingot::new(
+        db,
+        base_url,
+        None,
+        index,
+        Version::new(1, 0, 0),
+        if is_core {
+            IngotKind::Core
+        } else {
+            IngotKind::Local
+        },
+        dependencies,
+    )
+}
+
+/// Private helper to create canonical standalone ingots
+#[salsa::tracked]
+fn canonical_standalone_ingot<'db>(
+    db: &'db dyn InputDb,
+    index: Workspace,
+    base_url: Url,
+    root_file: Option<File>,
+) -> Ingot<'db> {
+    let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
+    let dependencies = vec![("core".into(), core_url)];
+
+    Ingot::new(
+        db,
+        base_url,
+        root_file,
+        index,
+        Version::new(0, 0, 0),
+        IngotKind::StandAlone,
+        dependencies,
+    )
+}
+
+/// Private implementation for containing_ingot that optimizes config file lookup
+#[salsa::tracked]
+fn containing_ingot_impl<'db>(
+    db: &'db dyn InputDb,
+    index: Workspace,
+    location: Url,
+) -> Option<Ingot<'db>> {
+    // Try to find a config file to determine if this is part of a structured ingot
+    if let Some(config_file) = index.containing_ingot_config(db, location.clone()) {
+        // Extract base URL from config file location
+        let base_url = config_file
+            .url(db)
+            .expect("Config file should be indexed")
+            .directory()
+            .expect("Config URL should have a directory");
+        Some(canonical_ingot(db, index, base_url))
+    } else {
+        // Make a standalone ingot if no config is found
+        let base = location.directory().unwrap_or_else(|| location.clone());
+        let specific_root_file = if location.path().ends_with(".fe") {
+            index.get(db, &location)
+        } else {
+            None
+        };
+        Some(canonical_standalone_ingot(db, index, base, specific_root_file))
     }
 }
 
