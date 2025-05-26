@@ -29,7 +29,6 @@ use hir::{
     SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
-use test_utils::url_utils::UrlExt;
 
 type CodeSpanFileId = usize;
 

@@ -168,7 +168,7 @@ pub async fn handle_goto_definition(
 // }
 #[cfg(test)]
 mod tests {
-    use common::ingot::{IngotIndex, IngotKind};
+    use common::ingot::IngotKind;
     use dir_test::{dir_test, Fixture};
     use std::collections::BTreeMap;
     use test_utils::snap_test;

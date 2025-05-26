@@ -3,7 +3,6 @@ use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use hir_analysis::analysis_pass::{AnalysisPassManager, ParsingPass};
 use test_utils::snap_test;
-use test_utils::url_utils::UrlExt;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/fixtures/parser",

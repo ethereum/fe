@@ -3,8 +3,8 @@ pub mod diagnostics;
 pub mod files;
 use camino::Utf8PathBuf;
 use common::core::HasBuiltinCore;
-use common::ingot::{IngotBaseUrl, IngotIndex};
-use common::urlext::UrlExt;
+use common::ingot::IngotBaseUrl;
+
 use common::InputDb;
 pub use db::DriverDataBase;
 
@@ -22,10 +22,6 @@ pub fn run(opts: &Options) {
         Command::Check { path, core } => {
             let base_url = Url::from_directory_path(path.canonicalize_utf8().unwrap())
                 .expect("failed to parse base URL");
-            // Url::from_file_path(path.canonicalize().expect("Failed to canonicalize path"))
-            //     .expect("Failed to parse base URL")
-            //     .as_directory()
-            //     .expect("Failed to convert to directory");
             let mut db = DriverDataBase::default();
             let mut ingot_resolver = IngotResolver::default();
 
@@ -92,7 +88,7 @@ pub fn run(opts: &Options) {
                     config,
                     source_files:
                         Some(SourceFiles {
-                            root: Some(root),
+                            root: Some(_root),
                             files,
                         }),
                 }) => {
@@ -104,12 +100,9 @@ pub fn run(opts: &Options) {
                         }
                         std::process::exit(2)
                     }
-                    eprintln!("local_base_url: {}", base_url);
                     let index = db.workspace();
                     index.touch_ingot(&mut db, &base_url, config.expect("config is required"));
                     for (path, content) in files {
-                        eprintln!("touching {}", path);
-                        // local_base_url.touch(&mut db, path, Some(content));
                         index.touch(
                             &mut db,
                             Url::from_file_path(
@@ -122,7 +115,7 @@ pub fn run(opts: &Options) {
                     base_url
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
-                    let url = Url::from_file_path(&path.canonicalize_utf8().unwrap()).unwrap();
+                    let url = Url::from_file_path(path.canonicalize_utf8().unwrap()).unwrap();
                     db.workspace().touch(&mut db, url.clone(), Some(content));
                     db.workspace()
                         .containing_ingot(&db, &url)

@@ -307,10 +307,7 @@ impl<'db> ModuleTreeBuilder<'db> {
 #[cfg(test)]
 mod tests {
 
-    use common::{
-        ingot::{IngotBaseUrl, IngotIndex},
-        InputDb,
-    };
+    use common::{ingot::IngotBaseUrl, InputDb};
     use url::Url;
 
     use crate::{lower, test_db::TestDb};

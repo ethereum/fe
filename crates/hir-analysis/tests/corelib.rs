@@ -1,11 +1,13 @@
 mod test_db;
 
+use std::path::Path;
+
 use common::core::HasBuiltinCore;
-use common::ingot::IngotIndex;
+
 use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
-use test_utils::url_utils::UrlExt;
+
 use url::Url;
 
 #[test]
@@ -29,13 +31,14 @@ fn analyze_corelib() {
 )]
 fn corelib_standalone(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
-    let path = Url::from_file_path(&path.canonicalize_utf8().unwrap()).unwrap();
+    let path = Path::new(fixture.path()).canonicalize().unwrap();
+    let url = Url::from_file_path(path).unwrap();
     db.workspace()
-        .touch(&mut db, path.clone(), Some(fixture.content().to_string()));
+        .touch(&mut db, url.clone(), Some(fixture.content().to_string()));
 
     let local_diags = db.run_on_ingot(
         db.workspace()
-            .containing_ingot(&db, &path)
+            .containing_ingot(&db, &url)
             .expect("Failed to find containing ingot"),
     );
     if !local_diags.is_empty() {

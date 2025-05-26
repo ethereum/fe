@@ -2,7 +2,7 @@ use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
-use test_utils::url_utils::UrlExt;
+
 use url::Url;
 
 #[dir_test(

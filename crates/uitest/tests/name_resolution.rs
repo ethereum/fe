@@ -2,7 +2,6 @@ use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
-use test_utils::url_utils::UrlExt;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/fixtures/name_resolution",
