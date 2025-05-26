@@ -539,7 +539,7 @@ impl<'db> TyChecker<'db> {
             }
 
             PathRes::EnumVariant(variant) => {
-                let ty = variant.ty.clone();
+                let ty = variant.ty;
                 let record_like = RecordLike::from_variant(variant);
                 if record_like.is_record(self.db) {
                     self.check_record_init_fields(&record_like, expr);
@@ -859,7 +859,7 @@ impl<'db> TyChecker<'db> {
                     .collect();
 
                 if !analyzer.check_reachability(
-                    current_hir_pat, // Pass reference to current_hir_pat
+                    current_hir_pat,          // Pass reference to current_hir_pat
                     &previous_hir_pats_slice, // Pass slice of owned HirPat
                     self.body(),
                 ) {

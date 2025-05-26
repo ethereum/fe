@@ -40,6 +40,7 @@ pub(super) enum ResolvedPathInBody<'db> {
     Binding(LocalBinding<'db>),
     NewBinding(IdentId<'db>),
 
+    #[allow(dead_code)]
     Diag(FuncBodyDiag<'db>),
     Invalid,
 }
@@ -174,9 +175,9 @@ pub enum TupleLike<'db> {
 impl<'db> RecordLike<'db> {
     pub fn is_record(&self, db: &'db dyn HirAnalysisDb) -> bool {
         match self {
-            RecordLike::Type(ty) => ty.adt_ref(db).map_or(false, |adt_ref| {
-                matches!(adt_ref, AdtRef::Struct(_) | AdtRef::Contract(_))
-            }),
+            RecordLike::Type(ty) => ty
+                .adt_ref(db)
+                .is_some_and(|adt_ref| matches!(adt_ref, AdtRef::Struct(_) | AdtRef::Contract(_))),
             RecordLike::Variant(variant) => {
                 matches!(variant.kind(db), HirVariantKind::Record(..))
             }
@@ -389,13 +390,11 @@ impl<'db> TupleLike<'db> {
                     0
                 }
             }
-            TupleLike::Variant(variant) => {
-                match variant.kind(db) {
-                    HirVariantKind::Tuple(tuple_fields) => tuple_fields.data(db).len(),
-                    HirVariantKind::Record(record_fields) => record_fields.data(db).len(),
-                    HirVariantKind::Unit => 0,
-                }
-            }
+            TupleLike::Variant(variant) => match variant.kind(db) {
+                HirVariantKind::Tuple(tuple_fields) => tuple_fields.data(db).len(),
+                HirVariantKind::Record(record_fields) => record_fields.data(db).len(),
+                HirVariantKind::Unit => 0,
+            },
         }
     }
 
@@ -404,21 +403,19 @@ impl<'db> TupleLike<'db> {
         match (self, other) {
             (TupleLike::Type(ty_a), TupleLike::Type(ty_b)) => {
                 // Types are compatible if they're the same or both tuples with same arity
-                ty_a == ty_b || (ty_a.is_tuple(db) && ty_b.is_tuple(db) && 
-                                 self.arity(db) == other.arity(db))
+                ty_a == ty_b
+                    || (ty_a.is_tuple(db) && ty_b.is_tuple(db) && self.arity(db) == other.arity(db))
             }
             (TupleLike::Variant(var_a), TupleLike::Variant(var_b)) => {
                 // Variants are compatible if they're the same variant
                 var_a.variant.idx == var_b.variant.idx
             }
-            (TupleLike::Type(ty), TupleLike::Variant(_)) |
-            (TupleLike::Variant(_), TupleLike::Type(ty)) => {
+            (TupleLike::Type(ty), TupleLike::Variant(_))
+            | (TupleLike::Variant(_), TupleLike::Type(ty)) => {
                 // Type and variant are compatible if they have the same arity
                 // This handles cases like (a, b) matching Some(x) when both have arity 2
                 ty.is_tuple(db) && self.arity(db) == other.arity(db)
             }
         }
     }
-
-
 }

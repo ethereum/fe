@@ -2,15 +2,10 @@
 
 use crate::name_resolution::{resolve_path, PathRes, ResolvedVariant};
 use crate::ty::ty_check::{RecordLike, TupleLike};
-use crate::ty::ty_def::{TyId, TyData, TyBase, PrimTy};
+use crate::ty::ty_def::{PrimTy, TyBase, TyData, TyId};
 use crate::ty::AdtRef as HirAdtRef; // Used by from_hir_pat
 use crate::HirAnalysisDb;
-use hir::hir_def::{
-    Body as HirBody,
-    LitKind,
-    Partial,
-    Pat as HirPat,
-};
+use hir::hir_def::{Body as HirBody, LitKind, Partial, Pat as HirPat};
 use rustc_hash::FxHashMap;
 
 use super::core::{Constructor, PatternMatrix, SimplifiedPattern};
@@ -108,28 +103,24 @@ impl<'db> PatternAnalyzer<'db> {
 
         // Special check for imported vs qualified enum variants
         // This is critical for correctly handling imported variants like `A` vs qualified ones like `MyTag::A`
-        if let HirPat::Path(pat_path_partial, _) = hir_pat {
-            if let Partial::Present(pat_path) = pat_path_partial {
-                let scope = body.scope();
-                if let Ok(PathRes::EnumVariant(current_variant)) =
-                    resolve_path(self.db, *pat_path, scope, true)
-                {
-                    // This is an enum variant - check if any previous variant is the same (by enum and index)
-                    for prev_pat in previous_hir_pats {
-                        if let HirPat::Path(prev_path_partial, _) = prev_pat {
-                            if let Partial::Present(prev_path) = prev_path_partial {
-                                if let Ok(PathRes::EnumVariant(prev_variant)) =
-                                    resolve_path(self.db, *prev_path, scope, true)
-                                {
-                                    // ONLY compare enum definition and variant index, ignoring path differences
-                                    if current_variant.variant.enum_ == prev_variant.variant.enum_
-                                        && current_variant.variant.idx == prev_variant.variant.idx
-                                    {
-                                        // Same variant with different representation (imported vs qualified)
-                                        // Current pattern is unreachable because it matches the same values as a previous pattern
-                                        return false;
-                                    }
-                                }
+        if let HirPat::Path(Partial::Present(pat_path), _) = hir_pat {
+            let scope = body.scope();
+            if let Ok(PathRes::EnumVariant(current_variant)) =
+                resolve_path(self.db, *pat_path, scope, true)
+            {
+                // This is an enum variant - check if any previous variant is the same (by enum and index)
+                for prev_pat in previous_hir_pats {
+                    if let HirPat::Path(Partial::Present(prev_path), _) = prev_pat {
+                        if let Ok(PathRes::EnumVariant(prev_variant)) =
+                            resolve_path(self.db, *prev_path, scope, true)
+                        {
+                            // ONLY compare enum definition and variant index, ignoring path differences
+                            if current_variant.variant.enum_ == prev_variant.variant.enum_
+                                && current_variant.variant.idx == prev_variant.variant.idx
+                            {
+                                // Same variant with different representation (imported vs qualified)
+                                // Current pattern is unreachable because it matches the same values as a previous pattern
+                                return false;
                             }
                         }
                     }
@@ -277,7 +268,10 @@ impl<'db> SimplifiedPattern<'db> {
                 if let Partial::Present(lit_kind) = lit_kind_partial {
                     match lit_kind {
                         LitKind::Bool(lit_bool) => SimplifiedPattern::Constructor {
-                            constructor: Constructor::Literal(LitKind::Bool(*lit_bool), TyId::bool(db)),
+                            constructor: Constructor::Literal(
+                                LitKind::Bool(*lit_bool),
+                                TyId::bool(db),
+                            ),
                             subpatterns: Vec::new(),
                             ty: TyId::bool(db),
                         },
@@ -296,15 +290,22 @@ impl<'db> SimplifiedPattern<'db> {
                             });
                             let u256_ty = TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256)));
                             SimplifiedPattern::Constructor {
-                                constructor: Constructor::Literal(LitKind::Int(*integer_id), u256_ty),
+                                constructor: Constructor::Literal(
+                                    LitKind::Int(*integer_id),
+                                    u256_ty,
+                                ),
                                 subpatterns: Vec::new(),
                                 ty: u256_ty,
                             }
                         }
                         LitKind::String(lit_string) => {
-                            let string_ty = TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::String)));
+                            let string_ty =
+                                TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::String)));
                             SimplifiedPattern::Constructor {
-                                constructor: Constructor::Literal(LitKind::String(*lit_string), string_ty),
+                                constructor: Constructor::Literal(
+                                    LitKind::String(*lit_string),
+                                    string_ty,
+                                ),
                                 subpatterns: Vec::new(),
                                 ty: string_ty,
                             }
@@ -327,12 +328,15 @@ impl<'db> SimplifiedPattern<'db> {
                         }
                     })
                     .collect();
-                let element_types: Vec<TyId<'db>> = subpatterns.iter().map(|sp| {
-                    match sp {
-                        SimplifiedPattern::Constructor { ty, .. } => *ty,
-                        _ => TyId::never(db), // fallback for non-constructor patterns
-                    }
-                }).collect();
+                let element_types: Vec<TyId<'db>> = subpatterns
+                    .iter()
+                    .map(|sp| {
+                        match sp {
+                            SimplifiedPattern::Constructor { ty, .. } => *ty,
+                            _ => TyId::never(db), // fallback for non-constructor patterns
+                        }
+                    })
+                    .collect();
                 let ty = TyId::tuple_with_elems(db, &element_types);
                 SimplifiedPattern::Constructor {
                     constructor: Constructor::TupleLike(TupleLike::Type(ty)),
@@ -347,10 +351,12 @@ impl<'db> SimplifiedPattern<'db> {
                         Ok(PathRes::EnumVariant(resolved_variant)) => {
                             // This is definitively an enum variant constructor (e.g., MyEnum::VariantA)
                             let constructor = match resolved_variant.variant.kind(db) {
-                                hir::hir_def::VariantKind::Tuple(_) => {
-                                    Constructor::TupleLike(TupleLike::Variant(resolved_variant.clone()))
-                                }
-                                _ => Constructor::Record(RecordLike::Variant(resolved_variant.clone())),
+                                hir::hir_def::VariantKind::Tuple(_) => Constructor::TupleLike(
+                                    TupleLike::Variant(resolved_variant.clone()),
+                                ),
+                                _ => Constructor::Record(RecordLike::Variant(
+                                    resolved_variant.clone(),
+                                )),
                             };
                             let field_count = match resolved_variant.variant.kind(db) {
                                 hir::hir_def::VariantKind::Unit => 0,
@@ -400,11 +406,18 @@ impl<'db> SimplifiedPattern<'db> {
                                                     ),
                                                     path: *path_id,
                                                 };
-                                                let constructor = match resolved_variant.variant.kind(db) {
+                                                let constructor = match resolved_variant
+                                                    .variant
+                                                    .kind(db)
+                                                {
                                                     hir::hir_def::VariantKind::Tuple(_) => {
-                                                        Constructor::TupleLike(TupleLike::Variant(resolved_variant.clone()))
+                                                        Constructor::TupleLike(TupleLike::Variant(
+                                                            resolved_variant.clone(),
+                                                        ))
                                                     }
-                                                    _ => Constructor::Record(RecordLike::Variant(resolved_variant.clone())),
+                                                    _ => Constructor::Record(RecordLike::Variant(
+                                                        resolved_variant.clone(),
+                                                    )),
                                                 };
                                                 let field_count =
                                                     match resolved_variant.variant.kind(db) {
@@ -526,9 +539,13 @@ impl<'db> SimplifiedPattern<'db> {
                                     SimplifiedPattern::Constructor {
                                         constructor: match resolved_variant.variant.kind(db) {
                                             hir::hir_def::VariantKind::Tuple(_) => {
-                                                Constructor::TupleLike(TupleLike::Variant(resolved_variant.clone()))
+                                                Constructor::TupleLike(TupleLike::Variant(
+                                                    resolved_variant.clone(),
+                                                ))
                                             }
-                                            _ => Constructor::Record(RecordLike::Variant(resolved_variant.clone())),
+                                            _ => Constructor::Record(RecordLike::Variant(
+                                                resolved_variant.clone(),
+                                            )),
                                         },
                                         subpatterns,
                                         ty: resolved_variant.ty,

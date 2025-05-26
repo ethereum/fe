@@ -4,12 +4,11 @@ use crate::ty::adt_def::AdtRef;
 use crate::ty::ty_check::{RecordLike, TupleLike};
 use crate::ty::ty_def::TyId;
 use crate::HirAnalysisDb;
-use hir::hir_def::{GenericArgListId, IdentId, Partial, PathId, VariantKind};
 use hir::hir_def::LitKind;
+use hir::hir_def::{GenericArgListId, IdentId, Partial, PathId, VariantKind};
 
 // Type aliases for better readability
 /// A collection of pattern rows forming the complete pattern matrix
-
 /// The index of a match arm in the original source code
 pub type MatchArmIndex = usize;
 
@@ -151,8 +150,6 @@ impl<'db> Constructor<'db> {
     pub fn tuple_like_from_variant(variant: ResolvedVariant<'db>) -> Self {
         Constructor::TupleLike(TupleLike::Variant(variant))
     }
-
-
 }
 
 impl<'db> SimplifiedPattern<'db> {
@@ -221,10 +218,8 @@ impl<'db> SimplifiedPattern<'db> {
                                         current_variant.variant.enum_ == prev_variant.variant.enum_
                                             && current_variant.variant.idx
                                                 == prev_variant.variant.idx
-                                    } else if let SimplifiedPattern::Wildcard { .. } = p {
-                                        true
                                     } else {
-                                        false
+                                        matches!(p, SimplifiedPattern::Wildcard { .. })
                                     }
                                 })
                             }
@@ -253,7 +248,7 @@ impl<'db> SimplifiedPattern<'db> {
                 }
 
                 // For tuples and records with subpatterns, check usefulness recursively.
-                return is_subpattern_vector_useful(subpatterns, &specialized, db);
+                is_subpattern_vector_useful(subpatterns, &specialized, db)
             }
 
             SimplifiedPattern::Or(subpatterns) => {
@@ -819,7 +814,6 @@ impl<'db> PatternMatrix<'db> {
         PatternMatrix { rows: result_rows }
     }
     /// Checks if this matrix is empty
-
     /// Finds missing patterns for a type
     pub fn find_missing_patterns(
         &self,
@@ -888,15 +882,23 @@ impl<'db> PatternMatrix<'db> {
             }
 
             // Check for tuple patterns with all wildcard subpatterns (e.g., (_, _))
-            if let Some(SimplifiedPattern::Constructor { constructor, subpatterns, .. }) = row.patterns.first() {
+            if let Some(SimplifiedPattern::Constructor {
+                constructor,
+                subpatterns,
+                ..
+            }) = row.patterns.first()
+            {
                 let pattern_arity = match constructor {
                     Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                     _ => None,
                 };
                 if let Some(arity) = pattern_arity {
-                    if arity == tuple_elems.len() && 
-                       subpatterns.len() == arity &&
-                       subpatterns.iter().all(|p| matches!(p, SimplifiedPattern::Wildcard { .. })) {
+                    if arity == tuple_elems.len()
+                        && subpatterns.len() == arity
+                        && subpatterns
+                            .iter()
+                            .all(|p| matches!(p, SimplifiedPattern::Wildcard { .. }))
+                    {
                         return Vec::new(); // All patterns covered by tuple wildcard pattern
                     }
                 }
@@ -910,18 +912,25 @@ impl<'db> PatternMatrix<'db> {
                 {
                     return Vec::new(); // All patterns covered by a wildcard
                 }
-                
+
                 // Check Or patterns for tuple wildcards too
                 if patterns.iter().any(|p| {
-                    if let SimplifiedPattern::Constructor { constructor, subpatterns, .. } = p {
+                    if let SimplifiedPattern::Constructor {
+                        constructor,
+                        subpatterns,
+                        ..
+                    } = p
+                    {
                         let pattern_arity = match constructor {
                             Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                             _ => None,
                         };
                         if let Some(arity) = pattern_arity {
-                            arity == tuple_elems.len() && 
-                            subpatterns.len() == arity &&
-                            subpatterns.iter().all(|sp| matches!(sp, SimplifiedPattern::Wildcard { .. }))
+                            arity == tuple_elems.len()
+                                && subpatterns.len() == arity
+                                && subpatterns
+                                    .iter()
+                                    .all(|sp| matches!(sp, SimplifiedPattern::Wildcard { .. }))
                         } else {
                             false
                         }
@@ -937,11 +946,7 @@ impl<'db> PatternMatrix<'db> {
         // Check if we have any tuple constructors with the right arity
         let mut has_tuple_patterns = false;
         for row in &self.rows {
-            if let Some(SimplifiedPattern::Constructor {
-                constructor,
-                ..
-            }) = row.patterns.first()
-            {
+            if let Some(SimplifiedPattern::Constructor { constructor, .. }) = row.patterns.first() {
                 let arity = match constructor {
                     Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                     _ => None,
@@ -954,11 +959,7 @@ impl<'db> PatternMatrix<'db> {
                 }
             } else if let Some(SimplifiedPattern::Or(patterns)) = row.patterns.first() {
                 if patterns.iter().any(|p| {
-                    if let SimplifiedPattern::Constructor {
-                        constructor,
-                        ..
-                    } = p
-                    {
+                    if let SimplifiedPattern::Constructor { constructor, .. } = p {
                         let arity = match constructor {
                             Constructor::TupleLike(tuple_like) => Some(tuple_like.arity(db)),
                             _ => None,
@@ -1031,7 +1032,12 @@ impl<'db> PatternMatrix<'db> {
     }
 
     /// Create a specialized matrix for a specific tuple element
-    fn specialize_tuple_element(&self, element_idx: usize, arity: usize, db: &'db dyn HirAnalysisDb) -> PatternMatrix<'db> {
+    fn specialize_tuple_element(
+        &self,
+        element_idx: usize,
+        arity: usize,
+        db: &'db dyn HirAnalysisDb,
+    ) -> PatternMatrix<'db> {
         let mut specialized_rows = Vec::new();
 
         for row in &self.rows {
@@ -1157,7 +1163,6 @@ impl<'db> PatternMatrix<'db> {
     }
 
     /// Find missing patterns for enum type
-
     fn find_missing_enum_patterns(
         &self,
         enum_def: hir::hir_def::item::Enum<'db>,
@@ -1196,27 +1201,24 @@ impl<'db> PatternMatrix<'db> {
                 if let Some(pat) = row.patterns.first() {
                     match pat {
                         SimplifiedPattern::Constructor {
-                            constructor: Constructor::Record(record),
+                            constructor: Constructor::Record(RecordLike::Variant(resolved_variant)),
                             ..
                         } => {
                             // Compare the variant with record
-                            if let RecordLike::Variant(resolved_variant) = record {
-                                if resolved_variant.variant.idx == enum_variant.idx {
-                                    // This variant is covered
-                                    continue 'variant_loop;
-                                }
+                            if resolved_variant.variant.idx == enum_variant.idx {
+                                // This variant is covered
+                                continue 'variant_loop;
                             }
                         }
                         SimplifiedPattern::Constructor {
-                            constructor: Constructor::TupleLike(tuple_like),
+                            constructor:
+                                Constructor::TupleLike(TupleLike::Variant(resolved_variant)),
                             ..
                         } => {
                             // Compare the variant with TupleLike variant
-                            if let TupleLike::Variant(resolved_variant) = tuple_like {
-                                if resolved_variant.variant.idx == enum_variant.idx {
-                                    // This variant is covered
-                                    continue 'variant_loop;
-                                }
+                            if resolved_variant.variant.idx == enum_variant.idx {
+                                // This variant is covered
+                                continue 'variant_loop;
                             }
                         }
                         SimplifiedPattern::Or(patterns) => {
@@ -1235,16 +1237,15 @@ impl<'db> PatternMatrix<'db> {
                                         }
                                     }
                                 } else if let SimplifiedPattern::Constructor {
-                                    constructor: Constructor::TupleLike(tuple_like),
+                                    constructor:
+                                        Constructor::TupleLike(TupleLike::Variant(resolved_variant)),
                                     ..
                                 } = or_pat
                                 {
                                     // Compare the variant with TupleLike variant
-                                    if let TupleLike::Variant(resolved_variant) = tuple_like {
-                                        if resolved_variant.variant.idx == enum_variant.idx {
-                                            // This variant is covered
-                                            continue 'variant_loop;
-                                        }
+                                    if resolved_variant.variant.idx == enum_variant.idx {
+                                        // This variant is covered
+                                        continue 'variant_loop;
                                     }
                                 }
                             }

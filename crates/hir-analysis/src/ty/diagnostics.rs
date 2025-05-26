@@ -349,8 +349,7 @@ impl<'db> BodyDiag<'db> {
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
         record_like: RecordLike<'db>,
-    ) -> Self
-    {
+    ) -> Self {
         let kind_name = record_like.kind_name(db);
         let hint = record_like.initializer_hint(db);
 
@@ -365,8 +364,7 @@ impl<'db> BodyDiag<'db> {
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
         record_like: Option<RecordLike<'db>>,
-    ) -> Self
-    {
+    ) -> Self {
         let (kind_name, hint) = if let Some(record_like) = record_like {
             (
                 Some(record_like.kind_name(db)),
@@ -387,8 +385,7 @@ impl<'db> BodyDiag<'db> {
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
         record_like: Option<RecordLike<'db>>,
-    ) -> Self
-    {
+    ) -> Self {
         let (kind_name, hint) = if let Some(record_like) = record_like {
             (
                 Some(record_like.kind_name(db)),

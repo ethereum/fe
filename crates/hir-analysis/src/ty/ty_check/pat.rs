@@ -330,7 +330,7 @@ impl<'db> TyChecker<'db> {
                 self.check_pat(current_pat_id, variant.ty);
                 // The '..' pattern from the source is consumed.
                 // Subsequent iterations of the outer loop will skip variant fields covered by `rest_range`.
-                arg_idx += 1; 
+                arg_idx += 1;
             } else if !rest_range.contains(&i) {
                 // This is an explicit pattern from the source (not '..'),
                 // and it corresponds to a variant field not covered by any '..'.
@@ -355,7 +355,9 @@ impl<'db> TyChecker<'db> {
 
         match self.resolve_path(*path, true, span.clone().path()) {
             Ok(reso) => match reso {
-                PathRes::Ty(ty) | PathRes::TyAlias(_, ty) if RecordLike::from_ty(ty).is_record(self.db) => {
+                PathRes::Ty(ty) | PathRes::TyAlias(_, ty)
+                    if RecordLike::from_ty(ty).is_record(self.db) =>
+                {
                     self.check_record_pat_fields(RecordLike::from_ty(ty), pat);
                     ty
                 }
