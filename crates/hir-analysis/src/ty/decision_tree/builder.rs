@@ -4,8 +4,8 @@ use rustc_hash::FxHashMap;
 
 use super::types::{Case, DecisionTree, LeafNode, Occurrence, SwitchNode};
 use crate::{
-    HirAnalysisDb,
     ty::pattern_analysis::{Constructor, PatternMatrix, PatternRowWithMetadata, SimplifiedPattern},
+    HirAnalysisDb,
 };
 
 /// Main entry point for building decision trees from pattern matrices
@@ -120,24 +120,24 @@ enum ColumnHeuristic {
 impl ColumnHeuristic {
     fn score<'db>(
         self,
-        _db: &'db dyn HirAnalysisDb,
+        db: &'db dyn HirAnalysisDb,
         matrix: &WorkingMatrix<'db>,
         col: usize,
     ) -> i32 {
         match self {
             ColumnHeuristic::Arity => {
                 // Score = sum of negative arities of constructors in this column
-                let constructors = matrix.constructors_in_column(col, _db);
+                let constructors = matrix.constructors_in_column(col);
                 constructors
                     .iter()
-                    .map(|ctor| -(ctor.field_count(_db) as i32))
+                    .map(|ctor| -(ctor.field_count(db) as i32))
                     .sum()
             }
             ColumnHeuristic::SmallBranching => {
                 // Score = negative number of constructors
-                let constructors = matrix.constructors_in_column(col, _db);
+                let constructors = matrix.constructors_in_column(col);
                 let count = constructors.len() as i32;
-                let is_complete = matrix.is_constructor_set_complete(col, _db);
+                let is_complete = matrix.is_constructor_set_complete(col);
                 if is_complete {
                     -count
                 } else {
@@ -184,7 +184,10 @@ impl DecisionTreeBuilder {
     ) -> DecisionTree<'db> {
         // Base case: if first row is all wildcards, we have a leaf
         if matrix.first_row_all_wildcards() {
-            let arm_idx = matrix.matrix.get_arm_index(0).expect("First row should exist");
+            let arm_idx = matrix
+                .matrix
+                .get_arm_index(0)
+                .expect("First row should exist");
             let bindings = matrix.extract_bindings_for_first_row();
             return DecisionTree::Leaf(LeafNode::with_bindings(arm_idx, bindings));
         }
@@ -194,7 +197,7 @@ impl DecisionTreeBuilder {
         matrix.move_column_to_front(col);
 
         let occurrence = matrix.occurrences[0].clone();
-        let constructors = matrix.constructors_in_column(0, db);
+        let constructors = matrix.constructors_in_column(0);
 
         let mut switch_arms = Vec::new();
 
@@ -208,7 +211,7 @@ impl DecisionTreeBuilder {
         }
 
         // Add default branch if constructor set is incomplete
-        if !matrix.is_constructor_set_complete(0, db) {
+        if !matrix.is_constructor_set_complete(0) {
             let default_matrix = matrix.specialize_for_default(db);
             if !default_matrix.is_empty() {
                 let subtree = self.build_recursive(db, default_matrix);
@@ -238,11 +241,11 @@ impl<'db> WorkingMatrix<'db> {
     fn new(matrix: PatternMatrix<'db>, occurrences: Vec<Occurrence>) -> Self {
         // Initialize empty bindings for each row
         let bindings = vec![FxHashMap::default(); matrix.row_count()];
-        
-        Self { 
-            matrix, 
-            occurrences, 
-            bindings 
+
+        Self {
+            matrix,
+            occurrences,
+            bindings,
         }
     }
 
@@ -258,13 +261,9 @@ impl<'db> WorkingMatrix<'db> {
         self.matrix.first_row_all_wildcards()
     }
 
-    fn constructors_in_column(
-        &self,
-        col: usize,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Vec<Constructor<'db>> {
+    fn constructors_in_column(&self, col: usize) -> Vec<Constructor<'db>> {
         let mut constructors = Vec::new();
-        
+
         for row_idx in 0..self.matrix.row_count() {
             if let Some(pattern) = self.matrix.get_pattern(row_idx, col) {
                 match pattern {
@@ -288,15 +287,15 @@ impl<'db> WorkingMatrix<'db> {
                 }
             }
         }
-        
+
         constructors
     }
 
-    fn is_constructor_set_complete(&self, col: usize, _db: &'db dyn HirAnalysisDb) -> bool {
+    fn is_constructor_set_complete(&self, col: usize) -> bool {
         // This is a simplified check - in a full implementation, you'd need
         // to get the complete set of constructors for the type and compare
-        let constructors = self.constructors_in_column(col, _db);
-        
+        let constructors = self.constructors_in_column(col);
+
         if constructors.is_empty() {
             return false;
         }
@@ -412,7 +411,8 @@ impl<'db> WorkingMatrix<'db> {
                             SimplifiedPattern::Wildcard { binding } => {
                                 let mut new_patterns = Vec::new();
                                 for _ in 0..arity {
-                                    new_patterns.push(SimplifiedPattern::Wildcard { binding: None });
+                                    new_patterns
+                                        .push(SimplifiedPattern::Wildcard { binding: None });
                                 }
                                 new_patterns.extend_from_slice(rest_patterns);
 
@@ -435,7 +435,9 @@ impl<'db> WorkingMatrix<'db> {
                                 subpatterns: or_subpatterns,
                                 ..
                             } => {
-                                if or_ctor == constructor || or_ctor.is_same_variant(constructor, db) {
+                                if or_ctor == constructor
+                                    || or_ctor.is_same_variant(constructor, db)
+                                {
                                     let mut new_patterns = or_subpatterns.clone();
                                     new_patterns.extend_from_slice(rest_patterns);
 
@@ -530,17 +532,12 @@ impl<'db> WorkingMatrix<'db> {
 
         // Add bindings from remaining wildcard patterns in first row
         for col in 0..self.matrix.column_count() {
-            if let Some(pattern) = self.matrix.get_pattern(0, col) {
-                if let SimplifiedPattern::Wildcard {
-                    binding: Some(name),
-                } = pattern
-                {
-                    if let Some(arm_index) = self.matrix.get_arm_index(0) {
-                        bindings.insert(
-                            (name.to_string(), arm_index),
-                            self.occurrences[col].clone(),
-                        );
-                    }
+            if let Some(SimplifiedPattern::Wildcard {
+                binding: Some(name),
+            }) = self.matrix.get_pattern(0, col)
+            {
+                if let Some(arm_index) = self.matrix.get_arm_index(0) {
+                    bindings.insert((name.to_string(), arm_index), self.occurrences[col].clone());
                 }
             }
         }

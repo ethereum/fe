@@ -52,8 +52,8 @@
 //! ```
 
 mod builder;
-mod types;
 mod tests;
+mod types;
 
 pub use self::builder::{build_decision_tree, ColumnSelectionPolicy};
 pub use self::types::{Case, DecisionTree, LeafNode, Occurrence, SwitchNode};
