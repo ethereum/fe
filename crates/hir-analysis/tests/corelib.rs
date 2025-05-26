@@ -2,7 +2,7 @@ mod test_db;
 
 use std::path::Path;
 
-use common::core::HasBuiltinCore;
+use common::{core::HasBuiltinCore, urlext::UrlExt};
 
 use common::InputDb;
 use dir_test::{dir_test, Fixture};
@@ -32,7 +32,7 @@ fn analyze_corelib() {
 fn corelib_standalone(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let path = Path::new(fixture.path()).canonicalize().unwrap();
-    let url = Url::from_file_path(path).unwrap();
+    let url = <Url as UrlExt>::from_file_path(path).unwrap();
     db.workspace()
         .touch(&mut db, url.clone(), Some(fixture.content().to_string()));
 

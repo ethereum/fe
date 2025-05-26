@@ -4,12 +4,14 @@ use url::Url;
 pub enum UrlExtError {
     DirectoryRangeError,
     AsDirectoryError,
+    PathConversionError,
 }
 
 pub trait UrlExt {
     fn parent(&self) -> Option<Url>;
     fn directory(&self) -> Option<Url>;
-    // fn as_directory(&self) -> Result<Url, UrlExtError>;
+    fn from_file_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, UrlExtError>;
+    fn from_directory_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, UrlExtError>;
 }
 
 impl UrlExt for Url {
@@ -31,17 +33,6 @@ impl UrlExt for Url {
         Some(url)
     }
 
-    // fn as_directory(&self) -> Result<Url, UrlExtError> {
-    //     let str_url = self.to_string();
-    //     if str_url.ends_with('/') {
-    //         Ok(self.clone())
-    //     } else {
-    //         Ok(Url::fromstr_url
-    //             .join("/")
-    //             .expect("failed to turn this into a directory"))
-    //     }
-    // }
-
     fn parent(&self) -> Option<Url> {
         let directory = self.directory()?;
 
@@ -60,6 +51,46 @@ impl UrlExt for Url {
             }
             return Some(parent);
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn from_file_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, UrlExtError> {
+        let path_str = path.as_ref().to_string_lossy();
+        let url_str = if path_str.starts_with('/') {
+            format!("file://{}", path_str)
+        } else {
+            format!("file:///{}", path_str)
+        };
+        Url::parse(&url_str).map_err(|_| UrlExtError::PathConversionError)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn from_file_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, UrlExtError> {
+        Url::from_file_path(path).map_err(|_| UrlExtError::PathConversionError)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn from_directory_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, UrlExtError> {
+        let path_str = path.as_ref().to_string_lossy();
+        let url_str = if path_str.starts_with('/') {
+            if path_str.ends_with('/') {
+                format!("file://{}", path_str)
+            } else {
+                format!("file://{}/", path_str)
+            }
+        } else {
+            if path_str.ends_with('/') {
+                format!("file:///{}", path_str)
+            } else {
+                format!("file:///{}/", path_str)
+            }
+        };
+        Url::parse(&url_str).map_err(|_| UrlExtError::PathConversionError)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn from_directory_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, UrlExtError> {
+        Url::from_directory_path(path).map_err(|_| UrlExtError::PathConversionError)
     }
 }
 

@@ -11,7 +11,7 @@ use codespan_reporting::{
 };
 use common::{
     core::HasBuiltinCore, define_input_db, diagnostics::Span, file::File, indexmap::IndexMap,
-    InputDb,
+    urlext::UrlExt, InputDb,
 };
 use driver::diagnostics::{CsDbWrapper, ToCsDiag};
 use fe_hir_analysis::{
@@ -29,6 +29,7 @@ use hir::{
     SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
+use url::Url;
 
 type CodeSpanFileId = usize;
 
@@ -48,7 +49,8 @@ impl HirAnalysisTestDb {
         self.initialize_builtin_core();
         index.touch(
             self,
-            url::Url::from_file_path(&file_name).expect("Failed to create URL from file path"),
+            <Url as UrlExt>::from_file_path(&file_name)
+                .expect("Failed to create URL from file path"),
             Some(text.to_string()),
         )
     }
