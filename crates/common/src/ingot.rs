@@ -184,7 +184,7 @@ struct IngotConfig {
 
 /// Private helper to create canonical ingots for regular projects
 #[salsa::tracked]
-pub(super) fn canonical_ingot<'db>(
+pub(super) fn ingot_at_base_url<'db>(
     db: &'db dyn InputDb,
     index: Workspace,
     base_url: Url,
@@ -214,7 +214,7 @@ pub(super) fn canonical_ingot<'db>(
 
 /// Private helper to create canonical standalone ingots
 #[salsa::tracked]
-pub(super) fn canonical_standalone_ingot<'db>(
+pub(super) fn standalone_ingot<'db>(
     db: &'db dyn InputDb,
     index: Workspace,
     base_url: Url,
@@ -249,7 +249,7 @@ pub(super) fn containing_ingot_impl<'db>(
             .expect("Config file should be indexed")
             .directory()
             .expect("Config URL should have a directory");
-        Some(canonical_ingot(db, index, base_url))
+        Some(ingot_at_base_url(db, index, base_url))
     } else {
         // Make a standalone ingot if no config is found
         let base = location.directory().unwrap_or_else(|| location.clone());
@@ -258,12 +258,7 @@ pub(super) fn containing_ingot_impl<'db>(
         } else {
             None
         };
-        Some(canonical_standalone_ingot(
-            db,
-            index,
-            base,
-            specific_root_file,
-        ))
+        Some(standalone_ingot(db, index, base, specific_root_file))
     }
 }
 
