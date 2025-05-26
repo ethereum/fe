@@ -238,7 +238,8 @@ impl<'db> SimplifiedPattern<'db> {
                     let is_covered = previous.iter().any(|prev| {
                         match prev {
                             SimplifiedPattern::Constructor {
-                                constructor: Constructor::TupleLike(TupleLike::Variant(prev_variant)),
+                                constructor:
+                                    Constructor::TupleLike(TupleLike::Variant(prev_variant)),
                                 ..
                             } => {
                                 current_variant.variant.enum_ == prev_variant.variant.enum_

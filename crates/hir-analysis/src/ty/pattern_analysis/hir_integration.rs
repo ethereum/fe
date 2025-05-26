@@ -5,7 +5,7 @@ use crate::ty::ty_check::{RecordLike, TupleLike};
 use crate::ty::ty_def::{PrimTy, TyBase, TyData, TyId};
 use crate::ty::AdtRef as HirAdtRef; // Used by from_hir_pat
 use crate::HirAnalysisDb;
-use hir::hir_def::{Body as HirBody, LitKind, Partial, Pat as HirPat, scope_graph::ScopeId};
+use hir::hir_def::{scope_graph::ScopeId, Body as HirBody, LitKind, Partial, Pat as HirPat};
 use rustc_hash::FxHashMap;
 
 use super::core::{Constructor, PatternMatrix, SimplifiedPattern};
@@ -78,7 +78,6 @@ impl<'db> PatternAnalyzer<'db> {
         body: HirBody<'db>,
         scope: ScopeId<'db>,
     ) -> bool {
-
         // Note: We handle imported variants vs qualified variants (MyEnum::A vs A) checks
         // in the TyChecker by skipping unreachable pattern diagnostics for specific test files
 
@@ -140,8 +139,6 @@ impl<'db> PatternAnalyzer<'db> {
         // Use is_useful_after to check if this pattern can match values not covered by previous patterns
         simplified.is_useful_after(&previous_simplified, self.db)
     }
-
-
 
     /// Convert a simplified pattern to a user-friendly pattern string for error messages
     fn simplified_to_user_pattern(
@@ -263,7 +260,7 @@ impl<'db> SimplifiedPattern<'db> {
     pub fn from_hir_pat(
         pat_data: &HirPat<'db>,
         db: &'db dyn HirAnalysisDb,
-        body: HirBody<'db>, // Needed to resolve PatIds for nested patterns
+        body: HirBody<'db>,  // Needed to resolve PatIds for nested patterns
         scope: ScopeId<'db>, // The scope to use for path resolution
     ) -> Self {
         match pat_data {
@@ -568,39 +565,44 @@ impl<'db> SimplifiedPattern<'db> {
                             if !path_id.is_bare_ident(db) {
                                 return SimplifiedPattern::Wildcard { binding: None };
                             }
-                            
+
                             let Some(adt_ref) = ty_id.adt_ref(db) else {
                                 return SimplifiedPattern::Wildcard { binding: None };
                             };
-                            
+
                             let HirAdtRef::Enum(enum_def) = adt_ref else {
                                 return SimplifiedPattern::Wildcard { binding: None };
                             };
-                            
+
                             let Some(ident_value) = path_id.ident(db).to_opt() else {
                                 return SimplifiedPattern::Wildcard { binding: None };
                             };
-                            
+
                             // Find the variant by name
                             let mut found_variant_idx = None;
-                            for (idx, variant_def) in enum_def.variants(db).data(db).iter().enumerate() {
+                            for (idx, variant_def) in
+                                enum_def.variants(db).data(db).iter().enumerate()
+                            {
                                 if variant_def.name.to_opt() == Some(ident_value) {
                                     found_variant_idx = Some(idx as u16);
                                     break;
                                 }
                             }
-                            
+
                             let Some(variant_idx) = found_variant_idx else {
                                 return SimplifiedPattern::Wildcard { binding: None };
                             };
-                            
+
                             // Create the resolved variant
                             let resolved_variant = ResolvedVariant {
                                 ty: ty_id,
-                                variant: hir::hir_def::EnumVariant::new(enum_def, variant_idx.into()),
+                                variant: hir::hir_def::EnumVariant::new(
+                                    enum_def,
+                                    variant_idx.into(),
+                                ),
                                 path: *path_id,
                             };
-                            
+
                             // Check if it's a tuple variant
                             match resolved_variant.variant.kind(db) {
                                 hir::hir_def::VariantKind::Tuple(_) => {
@@ -629,7 +631,7 @@ impl<'db> SimplifiedPattern<'db> {
                                         ty: resolved_variant.ty,
                                     }
                                 }
-                                _ => SimplifiedPattern::Wildcard { binding: None }
+                                _ => SimplifiedPattern::Wildcard { binding: None },
                             }
                         }
                         _ => {
@@ -745,16 +747,16 @@ impl<'db> SimplifiedPattern<'db> {
                                                 provided_field_pats.get(canonical_name)
                                             {
                                                 if let Partial::Present(pat_actual_data) =
-                                                pat_id.data(db, body)
-                                            {
-                                                subpatterns[idx] =
-                                                    SimplifiedPattern::from_hir_pat(
-                                                        pat_actual_data,
-                                                        db,
-                                                        body,
-                                                        scope,
-                                                    );
-                                            }
+                                                    pat_id.data(db, body)
+                                                {
+                                                    subpatterns[idx] =
+                                                        SimplifiedPattern::from_hir_pat(
+                                                            pat_actual_data,
+                                                            db,
+                                                            body,
+                                                            scope,
+                                                        );
+                                                }
                                             } else if !has_rest_pattern {
                                                 // Missing field
                                             }
@@ -794,7 +796,7 @@ impl<'db> SimplifiedPattern<'db> {
                     }
                     Partial::Absent => SimplifiedPattern::Wildcard { binding: None }, // Or handle error
                 };
-                
+
                 // Flatten OR patterns: Red | Green | Blue -> Or([Red, Green, Blue])
                 let mut patterns = Vec::new();
                 match lhs_simplified_pat {
@@ -802,7 +804,7 @@ impl<'db> SimplifiedPattern<'db> {
                     other => patterns.push(other),
                 }
                 match rhs_simplified_pat {
-                    SimplifiedPattern::Or(rhs) => patterns.extend(rhs), 
+                    SimplifiedPattern::Or(rhs) => patterns.extend(rhs),
                     other => patterns.push(other),
                 }
                 SimplifiedPattern::Or(patterns)
