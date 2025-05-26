@@ -25,11 +25,17 @@ pub enum DecisionTree<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Occurrence(pub Vec<usize>);
 
+impl Default for Occurrence {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Occurrence {
     pub fn new() -> Self {
         Self(vec![])
     }
-    
+
     pub fn child(&self, index: usize) -> Self {
         let mut path = self.0.clone();
         path.push(index);
@@ -53,40 +59,51 @@ fn build_decision_tree_with_arms<'db>(
     if matrix.nrows() == 0 {
         panic!("Cannot build decision tree from empty matrix");
     }
-    
+
     if matrix.ncols() == 0 || is_all_wildcards(matrix, 0) {
         return DecisionTree::Leaf {
             arm_index: arm_indices[0],
             bindings: vec![],
         };
     }
-    
+
     // For now, always select column 0
     let occurrence = Occurrence::new();
     let ty = matrix.first_column_ty();
     let sigma_set = matrix.sigma_set();
-    
+
     let mut branches = vec![];
     for ctor in sigma_set.into_iter() {
-        let (specialized_matrix, specialized_arms) = specialize_matrix_with_arms(db, matrix, &arm_indices, ctor, true);
+        let (specialized_matrix, specialized_arms) =
+            specialize_matrix_with_arms(db, matrix, &arm_indices, ctor, true);
         if specialized_matrix.nrows() > 0 {
             let subtree = build_decision_tree_with_arms(db, &specialized_matrix, specialized_arms);
             branches.push((ctor, subtree));
         }
     }
-    
+
     let sigma_set = matrix.sigma_set(); // Recreate since we consumed it
     let default = if !sigma_set.is_complete(db, ty) {
-        let (specialized_matrix, specialized_arms) = specialize_matrix_with_arms(db, matrix, &arm_indices, ConstructorKind::Tuple(ty), false);
+        let (specialized_matrix, specialized_arms) = specialize_matrix_with_arms(
+            db,
+            matrix,
+            &arm_indices,
+            ConstructorKind::Tuple(ty),
+            false,
+        );
         if specialized_matrix.nrows() > 0 {
-            Some(Box::new(build_decision_tree_with_arms(db, &specialized_matrix, specialized_arms)))
+            Some(Box::new(build_decision_tree_with_arms(
+                db,
+                &specialized_matrix,
+                specialized_arms,
+            )))
         } else {
             None
         }
     } else {
         None
     };
-    
+
     DecisionTree::Switch {
         occurrence,
         branches,
@@ -103,29 +120,29 @@ fn specialize_matrix_with_arms<'db>(
 ) -> (PatternMatrix<'db>, Vec<usize>) {
     let mut new_rows = Vec::new();
     let mut new_arms = Vec::new();
-    
+
     for (row_idx, row) in matrix.rows.iter().enumerate() {
         let specialized_rows = if is_constructor {
             row.phi_specialize(db, ctor)
         } else {
             row.d_specialize(db)
         };
-        
+
         for specialized_row in specialized_rows {
             new_rows.push(specialized_row);
             new_arms.push(arm_indices[row_idx]);
         }
     }
-    
+
     (PatternMatrix::new(new_rows), new_arms)
 }
 
 /// Check if the first row is all wildcards
-fn is_all_wildcards<'db>(matrix: &PatternMatrix<'db>, row: usize) -> bool {
+fn is_all_wildcards(matrix: &PatternMatrix<'_>, row: usize) -> bool {
     if row >= matrix.nrows() {
         return false;
     }
-    
+
     matrix.rows[row].inner.iter().all(|pat| pat.is_wildcard())
 }
 
@@ -137,10 +154,10 @@ mod tests {
     fn test_occurrence_creation() {
         let occ = Occurrence::new();
         assert_eq!(occ.0, vec![]);
-        
+
         let child = occ.child(0);
         assert_eq!(child.0, vec![0]);
-        
+
         let grandchild = child.child(1);
         assert_eq!(grandchild.0, vec![0, 1]);
     }
@@ -151,7 +168,7 @@ mod tests {
         let tuple_first = root.child(0);
         let tuple_second = root.child(1);
         let nested = tuple_first.child(0).child(1);
-        
+
         assert_eq!(root.0, vec![]);
         assert_eq!(tuple_first.0, vec![0]);
         assert_eq!(tuple_second.0, vec![1]);
@@ -164,9 +181,12 @@ mod tests {
             arm_index: 0,
             bindings: vec![("x".to_string(), Occurrence::new())],
         };
-        
+
         match leaf {
-            DecisionTree::Leaf { arm_index, bindings } => {
+            DecisionTree::Leaf {
+                arm_index,
+                bindings,
+            } => {
                 assert_eq!(arm_index, 0);
                 assert_eq!(bindings.len(), 1);
                 assert_eq!(bindings[0].0, "x");
@@ -182,15 +202,19 @@ mod tests {
             arm_index: 0,
             bindings: vec![],
         };
-        
+
         let switch = DecisionTree::Switch {
             occurrence: Occurrence::new(),
             branches: vec![],
             default: Some(Box::new(leaf)),
         };
-        
+
         match switch {
-            DecisionTree::Switch { occurrence, branches, default } => {
+            DecisionTree::Switch {
+                occurrence,
+                branches,
+                default,
+            } => {
                 assert_eq!(occurrence, Occurrence::new());
                 assert_eq!(branches.len(), 0);
                 assert!(default.is_some());
@@ -201,27 +225,26 @@ mod tests {
 
     #[test]
     fn test_is_all_wildcards_helper() {
-        use crate::ty::pattern_analysis::{PatternMatrix, PatternRowVec, SimplifiedPattern, SimplifiedPatternKind};
-        use crate::ty::ty_def::TyId;
-        
+        use crate::ty::pattern_analysis::PatternMatrix;
+
         // Test with empty matrix
         let empty_matrix = PatternMatrix::new(vec![]);
         assert!(!is_all_wildcards(&empty_matrix, 0));
         assert!(!is_all_wildcards(&empty_matrix, 1));
-        
+
         // Test with wildcard pattern - we can't easily create a TyId without a db,
         // so this test shows the intended structure
     }
 
     // Helper to create a mock database for testing
     // For now, we'll create minimal tests that don't require full pattern matrices
-    
+
     #[test]
     fn test_decision_tree_api_coverage() {
         // Test that our decision tree structures work as expected
         let occurrence = Occurrence::new();
         let child_occurrence = occurrence.child(0);
-        
+
         // Test leaf creation with bindings
         let leaf = DecisionTree::Leaf {
             arm_index: 1,
@@ -230,27 +253,36 @@ mod tests {
                 ("y".to_string(), child_occurrence),
             ],
         };
-        
-        if let DecisionTree::Leaf { arm_index, bindings } = leaf {
+
+        if let DecisionTree::Leaf {
+            arm_index,
+            bindings,
+        } = leaf
+        {
             assert_eq!(arm_index, 1);
             assert_eq!(bindings.len(), 2);
         } else {
             panic!("Expected leaf");
         }
-        
+
         // Test switch creation with multiple branches
         let branch_leaf = DecisionTree::Leaf {
             arm_index: 0,
             bindings: vec![],
         };
-        
+
         let switch = DecisionTree::Switch {
             occurrence: Occurrence::new(),
             branches: vec![], // We can't easily create ConstructorKind without full setup
             default: Some(Box::new(branch_leaf)),
         };
-        
-        if let DecisionTree::Switch { occurrence, branches, default } = switch {
+
+        if let DecisionTree::Switch {
+            occurrence,
+            branches,
+            default,
+        } = switch
+        {
             assert_eq!(occurrence, Occurrence::new());
             assert_eq!(branches.len(), 0);
             assert!(default.is_some());
@@ -264,16 +296,16 @@ mod tests {
         // Test building complex occurrence paths
         let root = Occurrence::new();
         assert_eq!(root.0, vec![]);
-        
+
         // Simulate accessing tuple.0.field.1
         let tuple_field = root.child(0);
         let nested_field = tuple_field.child(2);
         let final_access = nested_field.child(1);
-        
+
         assert_eq!(tuple_field.0, vec![0]);
         assert_eq!(nested_field.0, vec![0, 2]);
         assert_eq!(final_access.0, vec![0, 2, 1]);
-        
+
         // Test that different paths are independent
         let other_path = root.child(1).child(0);
         assert_eq!(other_path.0, vec![1, 0]);
@@ -287,23 +319,35 @@ mod tests {
             arm_index: 2,
             bindings: vec![("inner".to_string(), Occurrence::new().child(1))],
         };
-        
+
         let outer_switch = DecisionTree::Switch {
             occurrence: Occurrence::new(),
-            branches: vec![], 
+            branches: vec![],
             default: Some(Box::new(inner_leaf)),
         };
-        
+
         let root_switch = DecisionTree::Switch {
             occurrence: Occurrence::new(),
             branches: vec![],
             default: Some(Box::new(outer_switch)),
         };
-        
+
         // Verify nested structure
-        if let DecisionTree::Switch { default: Some(inner), .. } = root_switch {
-            if let DecisionTree::Switch { default: Some(leaf), .. } = *inner {
-                if let DecisionTree::Leaf { arm_index, bindings } = *leaf {
+        if let DecisionTree::Switch {
+            default: Some(inner),
+            ..
+        } = root_switch
+        {
+            if let DecisionTree::Switch {
+                default: Some(leaf),
+                ..
+            } = *inner
+            {
+                if let DecisionTree::Leaf {
+                    arm_index,
+                    bindings,
+                } = *leaf
+                {
                     assert_eq!(arm_index, 2);
                     assert_eq!(bindings.len(), 1);
                 } else {
