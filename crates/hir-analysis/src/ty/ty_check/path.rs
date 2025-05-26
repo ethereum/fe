@@ -407,8 +407,8 @@ impl<'db> TupleLike<'db> {
                     || (ty_a.is_tuple(db) && ty_b.is_tuple(db) && self.arity(db) == other.arity(db))
             }
             (TupleLike::Variant(var_a), TupleLike::Variant(var_b)) => {
-                // Variants are compatible if they're the same variant
-                var_a.variant.idx == var_b.variant.idx
+                // Variants are compatible if they're the same variant from the same enum
+                var_a.variant.enum_ == var_b.variant.enum_ && var_a.variant.idx == var_b.variant.idx
             }
             (TupleLike::Type(ty), TupleLike::Variant(_))
             | (TupleLike::Variant(_), TupleLike::Type(ty)) => {

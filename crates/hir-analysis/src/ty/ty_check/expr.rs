@@ -862,6 +862,7 @@ impl<'db> TyChecker<'db> {
                     current_hir_pat,          // Pass reference to current_hir_pat
                     &previous_hir_pats_slice, // Pass slice of owned HirPat
                     self.body(),
+                    self.env.scope(),
                 ) {
                     let diag = crate::ty::diagnostics::BodyDiag::UnreachablePattern {
                         primary: current_pat_id.span(self.body()).into(),
@@ -880,6 +881,7 @@ impl<'db> TyChecker<'db> {
             scrutinee_ty,
             &collected_hir_pats, // Pass slice of owned HirPat
             self.body(),
+            self.env.scope(),
         ) {
             let diag = crate::ty::diagnostics::BodyDiag::NonExhaustiveMatch {
                 primary: expr.span(self.body()).into(),

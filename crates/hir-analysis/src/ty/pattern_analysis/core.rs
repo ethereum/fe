@@ -132,8 +132,8 @@ impl<'db> Constructor<'db> {
                 Constructor::Record(RecordLike::Variant(var_a)),
                 Constructor::Record(RecordLike::Variant(var_b)),
             ) => {
-                // Check if they refer to the same enum variant
-                var_a.variant.idx == var_b.variant.idx
+                // Check if they refer to the same enum variant from the same enum
+                var_a.variant.enum_ == var_b.variant.enum_ && var_a.variant.idx == var_b.variant.idx
             }
 
             // Everything else is not the same
@@ -229,6 +229,27 @@ impl<'db> SimplifiedPattern<'db> {
 
                     if is_covered {
                         // If this variant is already covered by a previous pattern, it's not useful
+                        return false;
+                    }
+                }
+
+                if let Constructor::TupleLike(TupleLike::Variant(current_variant)) = constructor {
+                    // Check each previous pattern to see if it covers this variant
+                    let is_covered = previous.iter().any(|prev| {
+                        match prev {
+                            SimplifiedPattern::Constructor {
+                                constructor: Constructor::TupleLike(TupleLike::Variant(prev_variant)),
+                                ..
+                            } => {
+                                current_variant.variant.enum_ == prev_variant.variant.enum_
+                                    && current_variant.variant.idx == prev_variant.variant.idx
+                            }
+                            SimplifiedPattern::Wildcard { .. } => true, // Wildcard covers everything
+                            _ => false,
+                        }
+                    });
+
+                    if is_covered {
                         return false;
                     }
                 }
