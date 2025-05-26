@@ -1,55 +1,41 @@
-use std::path::{Path, PathBuf};
+#[cfg(target_arch = "wasm32")]
+use std::path::Path;
+#[cfg(target_arch = "wasm32")]
 use url::Url;
 
-/// Extension trait for URL to provide cross-platform compatibility
-#[allow(clippy::result_unit_err)]
+#[cfg(target_arch = "wasm32")]
 pub trait UrlExt {
-    /// Create a URL from a file path.
-    ///
-    /// This is the native `Url::from_file_path` function on native platforms,
-    /// but implemented manually for WASM targets where the original is unavailable.
     fn from_file_path<P: AsRef<Path>>(path: P) -> Result<Url, ()>;
-
-    /// Converts a URL to a file path
-    fn to_file_path(&self) -> Result<PathBuf, ()>;
+    fn from_directory_path<P: AsRef<Path>>(path: P) -> Result<Url, ()>;
 }
 
+#[cfg(target_arch = "wasm32")]
 impl UrlExt for Url {
     fn from_file_path<P: AsRef<Path>>(path: P) -> Result<Url, ()> {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            Url::from_file_path(path)
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            let path = path.as_ref();
-            // For WASM, we need to manually construct the URL
-            let path_str = path.to_string_lossy();
-            let url_str = if path_str.starts_with('/') {
-                format!("file://{}", path_str)
-            } else {
-                format!("file:///{}", path_str)
-            };
-            Ok(Url::parse(&url_str).map_err(|_| ())?)
-        }
+        let path_str = path.as_ref().to_string_lossy();
+        let url_str = if path_str.starts_with('/') {
+            format!("file://{}", path_str)
+        } else {
+            format!("file:///{}", path_str)
+        };
+        Url::parse(&url_str).map_err(|_| ())
     }
 
-    fn to_file_path(&self) -> Result<PathBuf, ()> {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            url::Url::to_file_path(self)
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            // Basic implementation for WASM - extract path from URL
-            if self.scheme() != "file" {
-                return Err(());
+    fn from_directory_path<P: AsRef<Path>>(path: P) -> Result<Url, ()> {
+        let path_str = path.as_ref().to_string_lossy();
+        let url_str = if path_str.starts_with('/') {
+            if path_str.ends_with('/') {
+                format!("file://{}", path_str)
+            } else {
+                format!("file://{}/", path_str)
             }
-
-            let path = self.path();
-            Ok(PathBuf::from(path))
-        }
+        } else {
+            if path_str.ends_with('/') {
+                format!("file:///{}", path_str)
+            } else {
+                format!("file:///{}/", path_str)
+            }
+        };
+        Url::parse(&url_str).map_err(|_| ())
     }
 }

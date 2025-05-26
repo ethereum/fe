@@ -8,6 +8,9 @@ use common::ingot::IngotBaseUrl;
 use common::InputDb;
 pub use db::DriverDataBase;
 
+#[cfg(target_arch = "wasm32")]
+use test_utils::url_utils::UrlExt;
+
 use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;
 use resolver::{

@@ -4,6 +4,9 @@ use driver::DriverDataBase;
 use hir_analysis::analysis_pass::{AnalysisPassManager, ParsingPass};
 use test_utils::snap_test;
 
+#[cfg(target_arch = "wasm32")]
+use test_utils::url_utils::UrlExt;
+
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/fixtures/parser",
     glob: "*.fe"
@@ -32,6 +35,8 @@ fn init_parser_pass() -> AnalysisPassManager {
 #[cfg(target_family = "wasm")]
 mod wasm {
     use super::*;
+    use test_utils::url_utils::UrlExt;
+    use url::Url;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     #[dir_test(
@@ -46,7 +51,7 @@ mod wasm {
         let mut db = DriverDataBase::default();
         let file = db.workspace().touch(
             &mut db,
-            url::Url::from_file_path_lossy(fixture.path()),
+            <Url as UrlExt>::from_file_path(fixture.path()).unwrap(),
             Some(fixture.content().to_string()),
         );
 
