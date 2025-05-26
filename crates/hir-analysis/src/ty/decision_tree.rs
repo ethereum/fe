@@ -1,23 +1,53 @@
 //! Decision tree generation for efficient pattern matching compilation
 //! Based on "Compiling pattern matching to good decision trees"
 
-use super::pattern_analysis::{ConstructorKind, PatternMatrix};
+use super::pattern_analysis::{
+    ConstructorKind, PatternMatrix, PatternRowVec, SigmaSet, SimplifiedPattern,
+};
+use crate::ty::ty_def::TyId;
 use crate::HirAnalysisDb;
+use indexmap::IndexMap;
+use smol_str::SmolStr;
 
 /// A decision tree for pattern matching compilation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecisionTree<'db> {
     /// Leaf node - execute this match arm
-    Leaf {
-        arm_index: usize,
-        bindings: Vec<(String, Occurrence)>,
-    },
+    Leaf(LeafNode),
     /// Switch node - test a value and branch
-    Switch {
-        occurrence: Occurrence,
-        branches: Vec<(ConstructorKind<'db>, DecisionTree<'db>)>,
-        default: Option<Box<DecisionTree<'db>>>,
-    },
+    Switch(SwitchNode<'db>),
+}
+
+/// A leaf node in the decision tree
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LeafNode {
+    pub arm_index: usize,
+    pub bindings: IndexMap<(SmolStr, usize), Occurrence>,
+}
+
+impl LeafNode {
+    fn new(arm: SimplifiedArm<'_>, occurrences: &[Occurrence]) -> Self {
+        let arm_index = arm.body;
+        let bindings = arm.finalize_binds(occurrences);
+        Self {
+            arm_index,
+            bindings,
+        }
+    }
+}
+
+/// A switch node in the decision tree
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SwitchNode<'db> {
+    pub occurrence: Occurrence,
+    pub arms: Vec<(Case<'db>, DecisionTree<'db>)>,
+}
+
+/// A case in a switch node
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Case<'db> {
+    Constructor(ConstructorKind<'db>),
+    Default,
 }
 
 /// Represents a path to a value in the matched expression
@@ -25,108 +55,578 @@ pub enum DecisionTree<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Occurrence(pub Vec<usize>);
 
+impl Default for Occurrence {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Occurrence {
     pub fn new() -> Self {
         Self(vec![])
     }
-    
+
     pub fn child(&self, index: usize) -> Self {
         let mut path = self.0.clone();
         path.push(index);
         Self(path)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &usize> {
+        self.0.iter()
+    }
+
+    pub fn parent(&self) -> Option<Occurrence> {
+        if self.0.is_empty() {
+            None
+        } else {
+            let mut parent_path = self.0.clone();
+            parent_path.pop();
+            Some(Self(parent_path))
+        }
+    }
+
+    pub fn last_index(&self) -> Option<usize> {
+        self.0.last().copied()
+    }
 }
 
-/// Build a decision tree from a pattern matrix with arm tracking
+/// Column selection policy for decision tree optimization
+#[derive(Debug, Clone, Default)]
+pub struct ColumnSelectionPolicy(Vec<ColumnScoringFunction>);
+
+impl ColumnSelectionPolicy {
+    /// The score of column i is the sum of the negation of the arities of
+    /// constructors in sigma(i).
+    pub fn arity(&mut self) -> &mut Self {
+        self.add_heuristic(ColumnScoringFunction::Arity)
+    }
+
+    /// The score is the negation of the cardinal of sigma(i), C(Sigma(i)).
+    /// If sigma(i) is NOT complete, the resulting score is C(Sigma(i)) - 1.
+    pub fn small_branching(&mut self) -> &mut Self {
+        self.add_heuristic(ColumnScoringFunction::SmallBranching)
+    }
+
+    /// The score is the number of needed rows of column i in the necessity
+    /// matrix.
+    pub fn needed_column(&mut self) -> &mut Self {
+        self.add_heuristic(ColumnScoringFunction::NeededColumn)
+    }
+
+    /// The score is the larger row index j such that column i is needed for all
+    /// rows j′; 1 ≤ j′ ≤ j.
+    pub fn needed_prefix(&mut self) -> &mut Self {
+        self.add_heuristic(ColumnScoringFunction::NeededPrefix)
+    }
+
+    fn add_heuristic(&mut self, heuristic: ColumnScoringFunction) -> &mut Self {
+        self.0.push(heuristic);
+        self
+    }
+
+    fn select_column<'db>(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        matrix: &SimplifiedArmMatrix<'db>,
+    ) -> usize {
+        if self.0.is_empty() {
+            // Default heuristic: select first column with constructors
+            for col in 0..matrix.ncols() {
+                if !is_column_all_wildcards_simplified(matrix, col) {
+                    return col;
+                }
+            }
+            return 0;
+        }
+
+        let mut candidates: Vec<_> = (0..matrix.ncols()).collect();
+
+        for scoring_fn in &self.0 {
+            let mut max_score = i32::MIN;
+            for col in std::mem::take(&mut candidates) {
+                let score = scoring_fn.score(db, matrix, col);
+                match score.cmp(&max_score) {
+                    std::cmp::Ordering::Less => {}
+                    std::cmp::Ordering::Equal => {
+                        candidates.push(col);
+                    }
+                    std::cmp::Ordering::Greater => {
+                        candidates = vec![col];
+                        max_score = score;
+                    }
+                }
+            }
+
+            if candidates.len() == 1 {
+                break;
+            }
+        }
+
+        candidates.into_iter().next().unwrap_or(0)
+    }
+}
+
+/// Column scoring functions for decision tree optimization
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ColumnScoringFunction {
+    /// The score of column i is the sum of the negation of the arities of
+    /// constructors in sigma(i).
+    Arity,
+    /// The score is the negation of the cardinal of sigma(i), C(Sigma(i)).
+    /// If sigma(i) is NOT complete, the resulting score is C(Sigma(i)) - 1.
+    SmallBranching,
+    /// The score is the number of needed rows of column i in the necessity
+    /// matrix.
+    NeededColumn,
+    /// The score is the larger row index j such that column i is needed for all
+    /// rows j′; 1 ≤ j′ ≤ j.
+    NeededPrefix,
+}
+
+impl ColumnScoringFunction {
+    fn score<'db>(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        matrix: &SimplifiedArmMatrix<'db>,
+        col: usize,
+    ) -> i32 {
+        match self {
+            ColumnScoringFunction::Arity => {
+                let sigma_set = matrix.sigma_set(col);
+                -sigma_set
+                    .into_iter()
+                    .map(|ctor| ctor.arity(db) as i32)
+                    .sum::<i32>()
+            }
+            ColumnScoringFunction::SmallBranching => {
+                let sigma_set = matrix.sigma_set(col);
+                let ty = matrix.first_column_ty();
+                let is_complete = sigma_set.is_complete(db, ty);
+                let cardinal = sigma_set.into_iter().count() as i32;
+                if is_complete {
+                    -cardinal
+                } else {
+                    -(cardinal + 1)
+                }
+            }
+            ColumnScoringFunction::NeededColumn => {
+                matrix.necessity_matrix(db).compute_needed_column_score(col)
+            }
+            ColumnScoringFunction::NeededPrefix => {
+                matrix.necessity_matrix(db).compute_needed_prefix_score(col)
+            }
+        }
+    }
+}
+
+/// Build a decision tree from a pattern matrix with default policy
 pub fn build_decision_tree<'db>(
     db: &'db dyn HirAnalysisDb,
     matrix: &PatternMatrix<'db>,
 ) -> DecisionTree<'db> {
-    build_decision_tree_with_arms(db, matrix, (0..matrix.nrows()).collect())
+    let policy = ColumnSelectionPolicy::default();
+    build_decision_tree_with_policy(db, matrix, policy)
 }
 
-fn build_decision_tree_with_arms<'db>(
+/// Build a decision tree from a pattern matrix with a specific column selection policy
+pub fn build_decision_tree_with_policy<'db>(
     db: &'db dyn HirAnalysisDb,
     matrix: &PatternMatrix<'db>,
-    arm_indices: Vec<usize>,
+    policy: ColumnSelectionPolicy,
 ) -> DecisionTree<'db> {
-    if matrix.nrows() == 0 {
-        panic!("Cannot build decision tree from empty matrix");
-    }
-    
-    if matrix.ncols() == 0 || is_all_wildcards(matrix, 0) {
-        return DecisionTree::Leaf {
-            arm_index: arm_indices[0],
-            bindings: vec![],
-        };
-    }
-    
-    // For now, always select column 0
-    let occurrence = Occurrence::new();
-    let ty = matrix.first_column_ty();
-    let sigma_set = matrix.sigma_set();
-    
-    let mut branches = vec![];
-    for ctor in sigma_set.into_iter() {
-        let (specialized_matrix, specialized_arms) = specialize_matrix_with_arms(db, matrix, &arm_indices, ctor, true);
-        if specialized_matrix.nrows() > 0 {
-            let subtree = build_decision_tree_with_arms(db, &specialized_matrix, specialized_arms);
-            branches.push((ctor, subtree));
-        }
-    }
-    
-    let sigma_set = matrix.sigma_set(); // Recreate since we consumed it
-    let default = if !sigma_set.is_complete(db, ty) {
-        let (specialized_matrix, specialized_arms) = specialize_matrix_with_arms(db, matrix, &arm_indices, ConstructorKind::Tuple(ty), false);
-        if specialized_matrix.nrows() > 0 {
-            Some(Box::new(build_decision_tree_with_arms(db, &specialized_matrix, specialized_arms)))
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-    
-    DecisionTree::Switch {
-        occurrence,
-        branches,
-        default,
-    }
+    let simplified_matrix = SimplifiedArmMatrix::new(matrix);
+    DecisionTreeBuilder::new(policy).build(db, simplified_matrix)
 }
 
-fn specialize_matrix_with_arms<'db>(
+/// Create a default optimized column selection policy
+pub fn default_optimized_policy() -> ColumnSelectionPolicy {
+    let mut policy = ColumnSelectionPolicy::default();
+    policy.arity().small_branching();
+    policy
+}
+
+/// Build a decision tree from a pattern matrix with optimized column selection
+pub fn build_optimized_decision_tree<'db>(
     db: &'db dyn HirAnalysisDb,
     matrix: &PatternMatrix<'db>,
-    arm_indices: &[usize],
-    ctor: ConstructorKind<'db>,
-    is_constructor: bool,
-) -> (PatternMatrix<'db>, Vec<usize>) {
-    let mut new_rows = Vec::new();
-    let mut new_arms = Vec::new();
-    
-    for (row_idx, row) in matrix.rows.iter().enumerate() {
-        let specialized_rows = if is_constructor {
-            row.phi_specialize(db, ctor)
-        } else {
-            row.d_specialize(db)
-        };
-        
-        for specialized_row in specialized_rows {
-            new_rows.push(specialized_row);
-            new_arms.push(arm_indices[row_idx]);
-        }
-    }
-    
-    (PatternMatrix::new(new_rows), new_arms)
+) -> DecisionTree<'db> {
+    let policy = default_optimized_policy();
+    build_decision_tree_with_policy(db, matrix, policy)
 }
 
-/// Check if the first row is all wildcards
-fn is_all_wildcards<'db>(matrix: &PatternMatrix<'db>, row: usize) -> bool {
-    if row >= matrix.nrows() {
+/// Decision tree builder with configurable policy
+struct DecisionTreeBuilder {
+    policy: ColumnSelectionPolicy,
+}
+
+impl DecisionTreeBuilder {
+    fn new(policy: ColumnSelectionPolicy) -> Self {
+        DecisionTreeBuilder { policy }
+    }
+
+    fn build<'db>(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        mut matrix: SimplifiedArmMatrix<'db>,
+    ) -> DecisionTree<'db> {
+        if matrix.nrows() == 0 {
+            panic!("Cannot build decision tree from empty matrix");
+        }
+
+        if matrix.is_first_arm_satisfied() {
+            matrix.arms.truncate(1);
+            return DecisionTree::Leaf(LeafNode::new(
+                matrix.arms.pop().unwrap(),
+                &matrix.occurrences,
+            ));
+        }
+
+        let col = self.policy.select_column(db, &matrix);
+        matrix.swap(col);
+
+        let mut switch_arms = vec![];
+        let occurrence = &matrix.occurrences[0];
+        let sigma_set = matrix.sigma_set(0);
+        let ty = matrix.first_column_ty();
+        let is_complete = sigma_set.is_complete(db, ty);
+        let constructors: Vec<_> = sigma_set.into_iter().collect();
+
+        for ctor in constructors {
+            let specialized_matrix = matrix.phi_specialize(db, ctor, occurrence);
+            let subtree = self.build(db, specialized_matrix);
+            switch_arms.push((Case::Constructor(ctor), subtree));
+        }
+
+        if !is_complete {
+            let specialized_matrix = matrix.d_specialize(db, occurrence);
+            let subtree = self.build(db, specialized_matrix);
+            switch_arms.push((Case::Default, subtree));
+        }
+
+        DecisionTree::Switch(SwitchNode {
+            occurrence: occurrence.clone(),
+            arms: switch_arms,
+        })
+    }
+}
+
+/// Simplified arm representation for efficient processing
+#[derive(Clone, Debug)]
+struct SimplifiedArm<'db> {
+    pat_vec: PatternRowVec<'db>,
+    body: usize,
+    binds: IndexMap<(SmolStr, usize), Occurrence>,
+}
+
+impl<'db> SimplifiedArm<'db> {
+    fn new(pat_vec: &PatternRowVec<'db>, body: usize) -> Self {
+        let generalized_patterns = pat_vec.inner.iter().map(generalize_pattern).collect();
+        let pat_vec = PatternRowVec::new(generalized_patterns);
+        Self {
+            pat_vec,
+            body,
+            binds: IndexMap::new(),
+        }
+    }
+
+    fn finalize_binds(&self, occurrences: &[Occurrence]) -> IndexMap<(SmolStr, usize), Occurrence> {
+        use super::pattern_analysis::SimplifiedPatternKind;
+
+        let mut binds = self.binds.clone();
+
+        // Extract bindings from current patterns
+        for (pat, occurrence) in self.pat_vec.inner.iter().zip(occurrences.iter()) {
+            if let SimplifiedPatternKind::WildCard(Some((name, arm_idx))) = &pat.kind {
+                let key = (SmolStr::new(name), *arm_idx);
+                binds.entry(key).or_insert_with(|| occurrence.clone());
+            }
+        }
+
+        binds
+    }
+}
+
+/// Simplified arm matrix for efficient decision tree construction
+#[derive(Clone, Debug)]
+struct SimplifiedArmMatrix<'db> {
+    arms: Vec<SimplifiedArm<'db>>,
+    occurrences: Vec<Occurrence>,
+}
+
+impl<'db> SimplifiedArmMatrix<'db> {
+    fn new(matrix: &PatternMatrix<'db>) -> Self {
+        let cols = matrix.ncols();
+        let arms: Vec<_> = matrix
+            .rows
+            .iter()
+            .enumerate()
+            .map(|(body, pat)| SimplifiedArm::new(pat, body))
+            .collect();
+        let occurrences = vec![Occurrence::new(); cols];
+
+        SimplifiedArmMatrix { arms, occurrences }
+    }
+
+    fn nrows(&self) -> usize {
+        self.arms.len()
+    }
+
+    fn ncols(&self) -> usize {
+        if self.arms.is_empty() {
+            0
+        } else {
+            self.arms[0].pat_vec.inner.len()
+        }
+    }
+
+    fn sigma_set(&self, col: usize) -> SigmaSet<'db> {
+        SigmaSet::from_rows(self.arms.iter().map(|arm| &arm.pat_vec), col)
+    }
+
+    fn first_column_ty(&self) -> TyId<'db> {
+        if self.arms.is_empty() {
+            panic!("Cannot get first column type from empty matrix");
+        }
+        self.arms[0].pat_vec.inner[0].ty
+    }
+
+    fn is_first_arm_satisfied(&self) -> bool {
+        if self.arms.is_empty() {
+            return false;
+        }
+        self.arms[0]
+            .pat_vec
+            .inner
+            .iter()
+            .all(SimplifiedPattern::is_wildcard)
+    }
+
+    fn swap(&mut self, col: usize) {
+        if col == 0 {
+            return;
+        }
+
+        // Swap column col with column 0 in all arms
+        for arm in &mut self.arms {
+            arm.pat_vec.inner.swap(0, col);
+        }
+
+        // Swap occurrences
+        self.occurrences.swap(0, col);
+    }
+
+    fn phi_specialize(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        ctor: ConstructorKind<'db>,
+        occurrence: &Occurrence,
+    ) -> Self {
+        let mut new_arms = Vec::new();
+        let arity = ctor.arity(db);
+
+        for arm in &self.arms {
+            let specialized_rows = arm.pat_vec.phi_specialize(db, ctor);
+            for specialized_row in specialized_rows {
+                let mut new_arm = SimplifiedArm::new(&specialized_row, arm.body);
+                new_arm.binds = arm.binds.clone();
+                new_arms.push(new_arm);
+            }
+        }
+
+        // Update occurrences: remove first column, add constructor fields
+        let mut new_occurrences = self.occurrences[1..].to_vec();
+        for i in 0..arity {
+            new_occurrences.insert(i, occurrence.child(i));
+        }
+
+        SimplifiedArmMatrix {
+            arms: new_arms,
+            occurrences: new_occurrences,
+        }
+    }
+
+    fn d_specialize(&self, db: &'db dyn HirAnalysisDb, _occurrence: &Occurrence) -> Self {
+        let mut new_arms = Vec::new();
+
+        for arm in &self.arms {
+            let specialized_rows = arm.pat_vec.d_specialize(db);
+            for specialized_row in specialized_rows {
+                let mut new_arm = SimplifiedArm::new(&specialized_row, arm.body);
+                new_arm.binds = arm.binds.clone();
+                new_arms.push(new_arm);
+            }
+        }
+
+        // Remove first column from occurrences
+        let new_occurrences = self.occurrences[1..].to_vec();
+
+        SimplifiedArmMatrix {
+            arms: new_arms,
+            occurrences: new_occurrences,
+        }
+    }
+
+    fn necessity_matrix(&self, db: &'db dyn HirAnalysisDb) -> NecessityMatrix {
+        NecessityMatrix::from_matrix(db, self)
+    }
+}
+
+/// Necessity matrix for pattern analysis optimization
+struct NecessityMatrix {
+    data: Vec<bool>,
+    ncol: usize,
+    nrow: usize,
+}
+
+impl NecessityMatrix {
+    fn new(ncol: usize, nrow: usize) -> Self {
+        let data = vec![false; ncol * nrow];
+        Self { data, ncol, nrow }
+    }
+
+    fn from_matrix<'db>(db: &'db dyn HirAnalysisDb, matrix: &SimplifiedArmMatrix<'db>) -> Self {
+        let ncol = matrix.ncols();
+        let nrow = matrix.nrows();
+        let mut necessity_mat = Self::new(ncol, nrow);
+        necessity_mat.compute(db, matrix);
+        necessity_mat
+    }
+
+    fn compute<'db>(&mut self, db: &'db dyn HirAnalysisDb, matrix: &SimplifiedArmMatrix<'db>) {
+        for i in 0..self.nrow {
+            for j in 0..self.ncol {
+                let pos = self.pos(i, j);
+                let is_needed = self.is_needed(db, matrix, i, j);
+                self.data[pos] = is_needed;
+            }
+        }
+    }
+
+    fn is_needed<'db>(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        matrix: &SimplifiedArmMatrix<'db>,
+        row: usize,
+        col: usize,
+    ) -> bool {
+        if row >= matrix.nrows() || col >= matrix.ncols() {
+            return false;
+        }
+
+        let current_pattern = &matrix.arms[row].pat_vec.inner[col];
+
+        // Check if this column is needed to distinguish this row from previous rows
+        for prev_row in 0..row {
+            let prev_pattern = &matrix.arms[prev_row].pat_vec.inner[col];
+
+            if !patterns_compatible(db, current_pattern, prev_pattern) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn compute_needed_column_score(&self, col: usize) -> i32 {
+        let mut num = 0;
+        for i in 0..self.nrow {
+            if self.data[self.pos(i, col)] {
+                num += 1;
+            }
+        }
+        num
+    }
+
+    fn compute_needed_prefix_score(&self, col: usize) -> i32 {
+        let mut current_row = 0;
+        for i in 0..self.nrow {
+            if self.data[self.pos(i, col)] {
+                current_row += 1;
+            } else {
+                return current_row;
+            }
+        }
+        current_row
+    }
+
+    fn pos(&self, row: usize, col: usize) -> usize {
+        self.ncol * row + col
+    }
+}
+
+/// Check if the specified column has all wildcards in simplified matrix
+fn is_column_all_wildcards_simplified(matrix: &SimplifiedArmMatrix<'_>, col: usize) -> bool {
+    if matrix.nrows() == 0 || col >= matrix.ncols() {
         return false;
     }
-    
-    matrix.rows[row].inner.iter().all(|pat| pat.is_wildcard())
+
+    matrix.arms.iter().all(|arm| {
+        arm.pat_vec
+            .inner
+            .get(col)
+            .is_none_or(|pat| pat.is_wildcard())
+    })
+}
+
+/// Generalize a pattern by removing bindings from constructors
+fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'db> {
+    use super::pattern_analysis::SimplifiedPatternKind;
+
+    match &pat.kind {
+        SimplifiedPatternKind::WildCard(_) => pat.clone(),
+
+        SimplifiedPatternKind::Constructor { kind, fields } => {
+            let fields = fields.iter().map(generalize_pattern).collect();
+            let kind = SimplifiedPatternKind::Constructor {
+                kind: *kind,
+                fields,
+            };
+            SimplifiedPattern::new(kind, pat.ty)
+        }
+
+        SimplifiedPatternKind::Or(pats) => {
+            let mut gen_pats = vec![];
+            for pat in pats {
+                let gen_pat = generalize_pattern(pat);
+                if gen_pat.is_wildcard() {
+                    gen_pats.push(gen_pat);
+                    break;
+                } else {
+                    gen_pats.push(gen_pat);
+                }
+            }
+
+            if gen_pats.len() == 1 {
+                gen_pats.into_iter().next().unwrap()
+            } else {
+                SimplifiedPattern::or(gen_pats)
+            }
+        }
+    }
+}
+
+/// Check if two patterns are compatible (could match the same value)
+fn patterns_compatible<'db>(
+    _db: &'db dyn HirAnalysisDb,
+    pat1: &SimplifiedPattern<'db>,
+    pat2: &SimplifiedPattern<'db>,
+) -> bool {
+    use super::pattern_analysis::SimplifiedPatternKind;
+
+    match (&pat1.kind, &pat2.kind) {
+        // Wildcards are compatible with everything
+        (SimplifiedPatternKind::WildCard(_), _) | (_, SimplifiedPatternKind::WildCard(_)) => true,
+
+        // Constructors are compatible if they're the same constructor
+        (
+            SimplifiedPatternKind::Constructor { kind: k1, .. },
+            SimplifiedPatternKind::Constructor { kind: k2, .. },
+        ) => k1 == k2,
+
+        // Or patterns need more complex analysis, for now assume compatible
+        (SimplifiedPatternKind::Or(_), _) | (_, SimplifiedPatternKind::Or(_)) => true,
+    }
 }
 
 #[cfg(test)]
@@ -137,10 +637,10 @@ mod tests {
     fn test_occurrence_creation() {
         let occ = Occurrence::new();
         assert_eq!(occ.0, vec![]);
-        
+
         let child = occ.child(0);
         assert_eq!(child.0, vec![0]);
-        
+
         let grandchild = child.child(1);
         assert_eq!(grandchild.0, vec![0, 1]);
     }
@@ -151,7 +651,7 @@ mod tests {
         let tuple_first = root.child(0);
         let tuple_second = root.child(1);
         let nested = tuple_first.child(0).child(1);
-        
+
         assert_eq!(root.0, vec![]);
         assert_eq!(tuple_first.0, vec![0]);
         assert_eq!(tuple_second.0, vec![1]);
@@ -160,17 +660,20 @@ mod tests {
 
     #[test]
     fn test_decision_tree_leaf_creation() {
-        let leaf = DecisionTree::Leaf {
+        let mut bindings = IndexMap::new();
+        bindings.insert(("x".into(), 0), Occurrence::new());
+
+        let leaf = DecisionTree::Leaf(LeafNode {
             arm_index: 0,
-            bindings: vec![("x".to_string(), Occurrence::new())],
-        };
-        
+            bindings,
+        });
+
         match leaf {
-            DecisionTree::Leaf { arm_index, bindings } => {
-                assert_eq!(arm_index, 0);
-                assert_eq!(bindings.len(), 1);
-                assert_eq!(bindings[0].0, "x");
-                assert_eq!(bindings[0].1, Occurrence::new());
+            DecisionTree::Leaf(leaf_node) => {
+                assert_eq!(leaf_node.arm_index, 0);
+                assert_eq!(leaf_node.bindings.len(), 1);
+                assert!(leaf_node.bindings.contains_key(&("x".into(), 0)));
+                assert_eq!(leaf_node.bindings[&("x".into(), 0)], Occurrence::new());
             }
             _ => panic!("Expected leaf node"),
         }
@@ -178,22 +681,21 @@ mod tests {
 
     #[test]
     fn test_decision_tree_switch_creation() {
-        let leaf = DecisionTree::Leaf {
+        let leaf = DecisionTree::Leaf(LeafNode {
             arm_index: 0,
-            bindings: vec![],
-        };
-        
-        let switch = DecisionTree::Switch {
+            bindings: IndexMap::new(),
+        });
+
+        let switch = DecisionTree::Switch(SwitchNode {
             occurrence: Occurrence::new(),
-            branches: vec![],
-            default: Some(Box::new(leaf)),
-        };
-        
+            arms: vec![(Case::Default, leaf)],
+        });
+
         match switch {
-            DecisionTree::Switch { occurrence, branches, default } => {
-                assert_eq!(occurrence, Occurrence::new());
-                assert_eq!(branches.len(), 0);
-                assert!(default.is_some());
+            DecisionTree::Switch(switch_node) => {
+                assert_eq!(switch_node.occurrence, Occurrence::new());
+                assert_eq!(switch_node.arms.len(), 1);
+                assert!(matches!(switch_node.arms[0].0, Case::Default));
             }
             _ => panic!("Expected switch node"),
         }
@@ -201,59 +703,56 @@ mod tests {
 
     #[test]
     fn test_is_all_wildcards_helper() {
-        use crate::ty::pattern_analysis::{PatternMatrix, PatternRowVec, SimplifiedPattern, SimplifiedPatternKind};
-        use crate::ty::ty_def::TyId;
-        
+        use crate::ty::pattern_analysis::PatternMatrix;
+
         // Test with empty matrix
         let empty_matrix = PatternMatrix::new(vec![]);
-        assert!(!is_all_wildcards(&empty_matrix, 0));
-        assert!(!is_all_wildcards(&empty_matrix, 1));
-        
-        // Test with wildcard pattern - we can't easily create a TyId without a db,
-        // so this test shows the intended structure
+        let simplified_matrix = SimplifiedArmMatrix::new(&empty_matrix);
+        assert!(!is_column_all_wildcards_simplified(&simplified_matrix, 0));
+        assert!(!is_column_all_wildcards_simplified(&simplified_matrix, 1));
     }
 
     // Helper to create a mock database for testing
     // For now, we'll create minimal tests that don't require full pattern matrices
-    
+
     #[test]
     fn test_decision_tree_api_coverage() {
         // Test that our decision tree structures work as expected
         let occurrence = Occurrence::new();
         let child_occurrence = occurrence.child(0);
-        
+
         // Test leaf creation with bindings
-        let leaf = DecisionTree::Leaf {
+        let mut bindings = IndexMap::new();
+        bindings.insert(("x".into(), 0), occurrence.clone());
+        bindings.insert(("y".into(), 1), child_occurrence);
+
+        let leaf = DecisionTree::Leaf(LeafNode {
             arm_index: 1,
-            bindings: vec![
-                ("x".to_string(), occurrence.clone()),
-                ("y".to_string(), child_occurrence),
-            ],
-        };
-        
-        if let DecisionTree::Leaf { arm_index, bindings } = leaf {
-            assert_eq!(arm_index, 1);
-            assert_eq!(bindings.len(), 2);
+            bindings,
+        });
+
+        if let DecisionTree::Leaf(leaf_node) = leaf {
+            assert_eq!(leaf_node.arm_index, 1);
+            assert_eq!(leaf_node.bindings.len(), 2);
         } else {
             panic!("Expected leaf");
         }
-        
+
         // Test switch creation with multiple branches
-        let branch_leaf = DecisionTree::Leaf {
+        let branch_leaf = DecisionTree::Leaf(LeafNode {
             arm_index: 0,
-            bindings: vec![],
-        };
-        
-        let switch = DecisionTree::Switch {
+            bindings: IndexMap::new(),
+        });
+
+        let switch = DecisionTree::Switch(SwitchNode {
             occurrence: Occurrence::new(),
-            branches: vec![], // We can't easily create ConstructorKind without full setup
-            default: Some(Box::new(branch_leaf)),
-        };
-        
-        if let DecisionTree::Switch { occurrence, branches, default } = switch {
-            assert_eq!(occurrence, Occurrence::new());
-            assert_eq!(branches.len(), 0);
-            assert!(default.is_some());
+            arms: vec![(Case::Default, branch_leaf)],
+        });
+
+        if let DecisionTree::Switch(switch_node) = switch {
+            assert_eq!(switch_node.occurrence, Occurrence::new());
+            assert_eq!(switch_node.arms.len(), 1);
+            assert!(matches!(switch_node.arms[0].0, Case::Default));
         } else {
             panic!("Expected switch");
         }
@@ -264,16 +763,16 @@ mod tests {
         // Test building complex occurrence paths
         let root = Occurrence::new();
         assert_eq!(root.0, vec![]);
-        
+
         // Simulate accessing tuple.0.field.1
         let tuple_field = root.child(0);
         let nested_field = tuple_field.child(2);
         let final_access = nested_field.child(1);
-        
+
         assert_eq!(tuple_field.0, vec![0]);
         assert_eq!(nested_field.0, vec![0, 2]);
         assert_eq!(final_access.0, vec![0, 2, 1]);
-        
+
         // Test that different paths are independent
         let other_path = root.child(1).child(0);
         assert_eq!(other_path.0, vec![1, 0]);
@@ -283,29 +782,32 @@ mod tests {
     #[test]
     fn test_decision_tree_nesting() {
         // Test creating nested decision trees
-        let inner_leaf = DecisionTree::Leaf {
+        let mut inner_bindings = IndexMap::new();
+        inner_bindings.insert(("inner".into(), 0), Occurrence::new().child(1));
+
+        let inner_leaf = DecisionTree::Leaf(LeafNode {
             arm_index: 2,
-            bindings: vec![("inner".to_string(), Occurrence::new().child(1))],
-        };
-        
-        let outer_switch = DecisionTree::Switch {
+            bindings: inner_bindings,
+        });
+
+        let outer_switch = DecisionTree::Switch(SwitchNode {
             occurrence: Occurrence::new(),
-            branches: vec![], 
-            default: Some(Box::new(inner_leaf)),
-        };
-        
-        let root_switch = DecisionTree::Switch {
+            arms: vec![(Case::Default, inner_leaf)],
+        });
+
+        let root_switch = DecisionTree::Switch(SwitchNode {
             occurrence: Occurrence::new(),
-            branches: vec![],
-            default: Some(Box::new(outer_switch)),
-        };
-        
+            arms: vec![(Case::Default, outer_switch)],
+        });
+
         // Verify nested structure
-        if let DecisionTree::Switch { default: Some(inner), .. } = root_switch {
-            if let DecisionTree::Switch { default: Some(leaf), .. } = *inner {
-                if let DecisionTree::Leaf { arm_index, bindings } = *leaf {
-                    assert_eq!(arm_index, 2);
-                    assert_eq!(bindings.len(), 1);
+        if let DecisionTree::Switch(root_node) = root_switch {
+            assert_eq!(root_node.arms.len(), 1);
+            if let (Case::Default, DecisionTree::Switch(inner_node)) = &root_node.arms[0] {
+                assert_eq!(inner_node.arms.len(), 1);
+                if let (Case::Default, DecisionTree::Leaf(leaf_node)) = &inner_node.arms[0] {
+                    assert_eq!(leaf_node.arm_index, 2);
+                    assert_eq!(leaf_node.bindings.len(), 1);
                 } else {
                     panic!("Expected inner leaf");
                 }

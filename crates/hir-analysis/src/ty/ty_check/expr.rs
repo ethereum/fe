@@ -857,7 +857,7 @@ impl<'db> TyChecker<'db> {
             self.body(),
             self.env.scope(),
         );
-        
+
         for (i, is_reachable) in reachability.iter().enumerate() {
             if !is_reachable {
                 let (_current_hir_pat, current_pat_id) = &hir_pats_with_ids[i];

@@ -1,12 +1,12 @@
 mod test_db;
 use std::path::Path;
 
+use ascii_tree::{write_tree, Tree};
 use dir_test::{dir_test, Fixture};
 use fe_hir_analysis::ty::{
     decision_tree::{build_decision_tree, DecisionTree, Occurrence},
-    pattern_analysis::{PatternMatrix, ConstructorKind},
+    pattern_analysis::{ConstructorKind, PatternMatrix},
 };
-use ascii_tree::{write_tree, Tree};
 use hir::hir_def::LitKind;
 use hir::{
     hir_def::{Expr, ExprId},
@@ -30,35 +30,36 @@ fn convert_to_ascii_tree<'db>(
     tree: &DecisionTree<'db>,
 ) -> Tree {
     match tree {
-        DecisionTree::Leaf { arm_index, bindings } => {
+        DecisionTree::Leaf(leaf_node) => {
             let mut lines = vec![];
-            
+
             // Add arm content with simple, robust format
-            lines.push(format!("Execute arm #{}", arm_index));
-            
+            lines.push(format!("Execute arm #{}", leaf_node.arm_index));
+
             // Add bindings if present
-            for (name, occurrence) in bindings {
+            for ((name, _idx), occurrence) in &leaf_node.bindings {
                 lines.push(format!("  {} ← {}", name, render_occurrence(occurrence)));
             }
-            
+
             Tree::Leaf(lines)
         }
-        
-        DecisionTree::Switch { occurrence, branches, default } => {
+
+        DecisionTree::Switch(switch_node) => {
             let mut children = Vec::new();
-            
-            for (ctor, subtree) in branches {
-                let label = format!("{} =>", render_constructor(db, ctor));
+
+            for (case, subtree) in &switch_node.arms {
+                let label = match case {
+                    fe_hir_analysis::ty::decision_tree::Case::Constructor(ctor) => {
+                        format!("{} =>", render_constructor(db, ctor))
+                    }
+                    fe_hir_analysis::ty::decision_tree::Case::Default => "_ =>".to_string(),
+                };
                 children.push(Tree::Node(label, vec![convert_to_ascii_tree(db, subtree)]));
             }
-            
-            if let Some(default_tree) = default {
-                children.push(Tree::Node("_ =>".to_string(), vec![convert_to_ascii_tree(db, default_tree)]));
-            }
-            
+
             Tree::Node(
-                format!("Switch on {}", render_occurrence(occurrence)),
-                children
+                format!("Switch on {}", render_occurrence(&switch_node.occurrence)),
+                children,
             )
         }
     }
@@ -77,23 +78,22 @@ fn render_occurrence(occurrence: &Occurrence) -> String {
     }
 }
 
-fn render_constructor<'db>(db: &'db dyn fe_hir_analysis::HirAnalysisDb, ctor: &ConstructorKind<'db>) -> String {
+fn render_constructor<'db>(
+    db: &'db dyn fe_hir_analysis::HirAnalysisDb,
+    ctor: &ConstructorKind<'db>,
+) -> String {
     match ctor {
         ConstructorKind::EnumVariant(variant) => {
             let variant_name = variant.variant.name(db).unwrap_or("unknown");
             variant_name.to_string()
         }
         ConstructorKind::Tuple(_) => "tuple()".to_string(),
-        ConstructorKind::Literal(lit, _) => {
-            match lit {
-                LitKind::Bool(b) => b.to_string(),
-                _ => format!("{:?}", lit),
-            }
+        ConstructorKind::Literal(lit, _) => match lit {
+            LitKind::Bool(b) => b.to_string(),
+            _ => format!("{:?}", lit),
         },
     }
 }
-
-
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/decision_trees",
@@ -133,7 +133,10 @@ impl<'db> Visitor<'db> for DecisionTreeVisitor<'db, '_> {
         ctxt: &mut VisitorCtxt<'db, hir::span::item::LazyFuncSpan<'db>>,
         func: hir::hir_def::Func<'db>,
     ) {
-        self.current_func = func.name(self.db).to_opt().map(|n| n.data(self.db).to_string());
+        self.current_func = func
+            .name(self.db)
+            .to_opt()
+            .map(|n| n.data(self.db).to_string());
         walk_func(self, ctxt, func);
         self.current_func = None;
     }
@@ -147,35 +150,29 @@ impl<'db> Visitor<'db> for DecisionTreeVisitor<'db, '_> {
         if let Expr::Match(_scrutinee, arms) = expr {
             if let Some(arms) = arms.clone().to_opt() {
                 let body = ctxt.body();
-                let patterns: Vec<_> = arms.iter()
+                let patterns: Vec<_> = arms
+                    .iter()
                     .filter_map(|arm| arm.pat.data(self.db, body).clone().to_opt())
                     .collect();
-                
+
                 if !patterns.is_empty() {
-                    let matrix = PatternMatrix::from_hir_patterns(
-                        self.db,
-                        &patterns,
-                        body,
-                        body.scope(),
-                    );
-                    
+                    let matrix =
+                        PatternMatrix::from_hir_patterns(self.db, &patterns, body, body.scope());
+
                     let tree = build_decision_tree(self.db, &matrix);
                     let visualization = render_decision_tree(self.db, &tree);
-                    
+
                     let func_name = self.current_func.as_deref().unwrap_or("unknown");
                     let prop = format!("Decision Tree for {}:\n{}", func_name, visualization);
-                    
+
                     if let Some(span) = ctxt.span() {
-                        self.prop_formatter.push_prop(
-                            self.top_mod,
-                            span.into(),
-                            prop,
-                        );
+                        self.prop_formatter
+                            .push_prop(self.top_mod, span.into(), prop);
                     }
                 }
             }
         }
-        
+
         walk_expr(self, ctxt, expr_id);
     }
 }

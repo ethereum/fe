@@ -272,7 +272,7 @@ impl<'db> RecordLike<'db> {
                 Some(ScopeId::Field(parent, field_idx as u16))
             }
             RecordLike::Variant(variant) => {
-                let field_idx = RecordLike::Variant(variant.clone()).record_field_idx(db, name)?;
+                let field_idx = RecordLike::Variant(*variant).record_field_idx(db, name)?;
                 let parent = FieldParent::Variant(variant.variant);
                 Some(ScopeId::Field(parent, field_idx as u16))
             }
@@ -358,6 +358,6 @@ impl<'db> RecordLike<'db> {
     }
 
     pub fn from_variant(variant: ResolvedVariant<'db>) -> Self {
-        RecordLike::Variant(variant.clone())
+        RecordLike::Variant(variant)
     }
 }
