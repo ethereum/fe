@@ -3,7 +3,7 @@ use rust_embed::Embed;
 use url::Url;
 
 use crate::{
-    ingot::{Ingot, IngotBaseUrl, IngotIndex},
+    ingot::{Ingot, IngotBaseUrl},
     InputDb,
 };
 

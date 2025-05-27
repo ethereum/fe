@@ -2,6 +2,9 @@ use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
+use url::Url;
+
+#[cfg(target_arch = "wasm32")]
 use test_utils::url_utils::UrlExt;
 
 #[dir_test(
@@ -12,7 +15,7 @@ fn run_name_resolution(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.workspace().touch(
         &mut db,
-        url::Url::from_file_path_lossy(fixture.path()),
+        Url::from_file_path(fixture.path()).expect("path should be absolute"),
         Some(fixture.content().to_string()),
     );
 
@@ -40,7 +43,7 @@ mod wasm {
         let mut db = DriverDataBase::default();
         let file = db.workspace().touch(
             &mut db,
-            url::Url::from_file_path_lossy(fixture.path()),
+            Url::from_file_path(fixture.path()).unwrap_or_else(|_| Url::parse("file:///").unwrap()),
             Some(fixture.content().to_string()),
         );
 

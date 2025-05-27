@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Result;
-use common::{ingot::IngotIndex, InputDb};
+use common::InputDb;
 use tracing::info;
 use url::Url;
 

@@ -7,7 +7,7 @@ use async_lsp::{
     },
     LanguageClient, ResponseError,
 };
-use common::ingot::IngotIndex;
+
 use common::InputDb;
 use rustc_hash::FxHashSet;
 

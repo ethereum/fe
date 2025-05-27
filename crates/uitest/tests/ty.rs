@@ -2,7 +2,10 @@ use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
+
+#[cfg(target_arch = "wasm32")]
 use test_utils::url_utils::UrlExt;
+
 use url::Url;
 
 #[dir_test(
@@ -13,7 +16,7 @@ fn run_ty_def(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.workspace().touch(
         &mut db,
-        url::Url::from_file_path_lossy(fixture.path()),
+        url::Url::from_file_path(fixture.path()).expect("path should be absolute"),
         Some(fixture.content().to_string()),
     );
 
@@ -32,7 +35,7 @@ fn run_const_ty(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.workspace().touch(
         &mut db,
-        url::Url::from_file_path_lossy(fixture.path()),
+        url::Url::from_file_path(fixture.path()).expect("path should be absolute"),
         Some(fixture.content().to_string()),
     );
 
@@ -84,12 +87,13 @@ fn run_trait_impl(fixture: Fixture<&str>) {
 #[cfg(target_family = "wasm")]
 mod wasm {
     use super::*;
+    use url::Url;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     mod def {
         use super::*;
+        use test_utils::url_utils::UrlExt;
 
-        // TODO: we opt out the tests for type/alias/trait-infinite recursion checks. See https://github.com/ethereum/fe/issues/939 for more details.
         #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/fixtures/ty/def",
         glob: "*[!_cycle].fe",
@@ -102,7 +106,7 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let file = db.workspace().touch(
                 &mut db,
-                url::Url::from_file_path_lossy(fixture.path()),
+                <Url as UrlExt>::from_file_path_lossy(fixture.path()),
                 Some(fixture.content().to_string()),
             );
 
@@ -113,6 +117,7 @@ mod wasm {
 
     mod const_ty {
         use super::*;
+        use test_utils::url_utils::UrlExt;
 
         #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/fixtures/ty/const_ty",
@@ -126,7 +131,7 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let file = db.workspace().touch(
                 &mut db,
-                url::Url::from_file_path_lossy(fixture.path()),
+                <Url as UrlExt>::from_file_path_lossy(fixture.path()),
                 Some(fixture.content().to_string()),
             );
 
@@ -137,6 +142,7 @@ mod wasm {
 
     mod trait_bound {
         use super::*;
+        use test_utils::url_utils::UrlExt;
 
         #[dir_test(
         dir: "$CARGO_MANIFEST_DIR/fixtures/ty/trait_bound",
@@ -150,7 +156,7 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let file = db.workspace().touch(
                 &mut db,
-                url::Url::from_file_path_lossy(fixture.path()),
+                <Url as UrlExt>::from_file_path_lossy(fixture.path()),
                 Some(fixture.content().to_string()),
             );
 
@@ -160,6 +166,9 @@ mod wasm {
     }
 
     mod trait_impl {
+        use test_utils::url_utils::UrlExt;
+        use url::Url;
+
         use super::*;
 
         #[dir_test(
@@ -174,7 +183,7 @@ mod wasm {
             let mut db = DriverDataBase::default();
             let file = db.workspace().touch(
                 &mut db,
-                url::Url::from_file_path_lossy(fixture.path()),
+                <Url as UrlExt>::from_file_path_lossy(fixture.path()),
                 Some(fixture.content().to_string()),
             );
 

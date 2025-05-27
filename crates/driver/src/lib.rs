@@ -3,10 +3,10 @@ pub mod diagnostics;
 pub mod files;
 use camino::Utf8PathBuf;
 use common::core::HasBuiltinCore;
-use common::ingot::{IngotBaseUrl, IngotIndex};
+use common::ingot::IngotBaseUrl;
+
 use common::InputDb;
 pub use db::DriverDataBase;
-use test_utils::url_utils::UrlExt;
 
 use clap::{Parser, Subcommand};
 use hir::hir_def::TopLevelMod;
@@ -20,6 +20,8 @@ pub fn run(opts: &Options) {
     match &opts.command {
         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
+            let base_url = url_from_directory_path(path.canonicalize_utf8().unwrap())
+                .expect("failed to parse base URL");
             let mut db = DriverDataBase::default();
             let mut ingot_resolver = IngotResolver::default();
 
@@ -49,7 +51,14 @@ pub fn run(opts: &Options) {
                             config.expect("config is required"),
                         );
                         for (path, content) in files {
-                            core_base_url.touch(&mut db, path, Some(content));
+                            index.touch(
+                                &mut db,
+                                url_from_file_path(
+                                    path.canonicalize().expect("Failed to canonicalize path"),
+                                )
+                                .expect("Failed to create URL"),
+                                Some(content),
+                            );
                         }
                         core_base_url
                     }
@@ -91,34 +100,37 @@ pub fn run(opts: &Options) {
                         }
                         std::process::exit(2)
                     }
-                    let local_base_url = Url::from_file_path_lossy(&_root);
                     let index = db.workspace();
-                    index.touch_ingot(
-                        &mut db,
-                        &local_base_url,
-                        config.expect("config is required"),
-                    );
+                    index.touch_ingot(&mut db, &base_url, config.expect("config is required"));
                     for (path, content) in files {
-                        local_base_url.touch(&mut db, path, Some(content));
+                        index.touch(
+                            &mut db,
+                            url_from_file_path(
+                                path.canonicalize().expect("Failed to canonicalize path"),
+                            )
+                            .expect("Failed to create URL"),
+                            Some(content),
+                        );
                     }
-                    local_base_url
+                    base_url
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
-                    let url = Url::from_file_path_lossy(&path);
+                    let url = url_from_file_path(path.canonicalize_utf8().unwrap()).unwrap();
                     db.workspace().touch(&mut db, url.clone(), Some(content));
                     db.workspace()
-                        .containing_ingot_base(&db, &url)
-                        .expect("Failed to find ingot base")
+                        .containing_ingot(&db, &url)
+                        .expect("Failed to find ingot")
+                        .base(&db)
                 }
                 Ok(_) => {
-                    eprintln!("an error was encountered while resolving `{path}`");
+                    eprintln!("an error was encountered while resolving `{base_url}`");
                     for diagnostic in ingot_resolver.take_diagnostics() {
                         eprintln!("{diagnostic}")
                     }
                     std::process::exit(2)
                 }
                 Err(error) => {
-                    eprintln!("an error was encountered while resolving `{path}`");
+                    eprintln!("an error was encountered while resolving `{base_url}`");
                     eprintln!("{error}");
                     std::process::exit(2)
                 }
@@ -162,4 +174,50 @@ fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
     let mut s = vec![];
     top_mod.scope_graph(db).write_as_dot(db, &mut s).unwrap();
     String::from_utf8(s).unwrap()
+}
+
+// Maybe the driver should eventually only support WASI?
+
+fn url_from_file_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, ()> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Url::from_file_path(path)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        let path_str = path.as_ref().to_string_lossy();
+        let url_str = if path_str.starts_with('/') {
+            format!("file://{}", path_str)
+        } else {
+            format!("file:///{}", path_str)
+        };
+        Url::parse(&url_str).map_err(|_| ())
+    }
+}
+
+fn url_from_directory_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, ()> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        Url::from_directory_path(path)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        let path_str = path.as_ref().to_string_lossy();
+        let url_str = if path_str.starts_with('/') {
+            if path_str.ends_with('/') {
+                format!("file://{}", path_str)
+            } else {
+                format!("file://{}/", path_str)
+            }
+        } else {
+            if path_str.ends_with('/') {
+                format!("file:///{}", path_str)
+            } else {
+                format!("file:///{}/", path_str)
+            }
+        };
+        Url::parse(&url_str).map_err(|_| ())
+    }
 }

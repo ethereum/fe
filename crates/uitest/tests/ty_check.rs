@@ -2,7 +2,10 @@ use common::InputDb;
 use dir_test::{dir_test, Fixture};
 use driver::DriverDataBase;
 use test_utils::snap_test;
+
+#[cfg(target_arch = "wasm32")]
 use test_utils::url_utils::UrlExt;
+
 use url::Url;
 
 #[dir_test(
@@ -13,7 +16,7 @@ fn run_ty_check(fixture: Fixture<&str>) {
     let mut db = DriverDataBase::default();
     let file = db.workspace().touch(
         &mut db,
-        Url::from_file_path_lossy(fixture.path()),
+        Url::from_file_path(fixture.path()).expect("path should be absolute"),
         Some(fixture.content().to_string()),
     );
 
@@ -27,6 +30,8 @@ fn run_ty_check(fixture: Fixture<&str>) {
 #[cfg(target_family = "wasm")]
 mod wasm {
     use super::*;
+    use test_utils::url_utils::UrlExt;
+    use url::Url;
     use wasm_bindgen_test::wasm_bindgen_test;
 
     #[dir_test(
@@ -41,7 +46,7 @@ mod wasm {
         let mut db = DriverDataBase::default();
         let file = db.workspace().touch(
             &mut db,
-            Url::from_file_path_lossy(fixture.path()),
+            <Url as UrlExt>::from_file_path_lossy(fixture.path()),
             Some(fixture.content().to_string()),
         );
 

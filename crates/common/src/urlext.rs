@@ -3,6 +3,7 @@ use url::Url;
 #[derive(Debug)]
 pub enum UrlExtError {
     DirectoryRangeError,
+    AsDirectoryError,
 }
 
 pub trait UrlExt {

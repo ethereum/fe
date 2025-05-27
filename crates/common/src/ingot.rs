@@ -40,13 +40,19 @@ impl IngotBaseUrl for Url {
     fn touch(
         &self,
         db: &mut dyn InputDb,
-        path: Utf8PathBuf,
+        relative_path: Utf8PathBuf,
         initial_content: Option<String>,
     ) -> File {
+        if relative_path.is_absolute() {
+            panic!(
+                "Expected relative path, got absolute path: {}",
+                relative_path
+            );
+        }
         let path = self
             .directory()
             .expect("failed to parse directory")
-            .join(path.as_str())
+            .join(relative_path.as_str())
             .expect("failed to parse path");
         db.workspace().touch(db, path, initial_content)
     }
@@ -60,9 +66,11 @@ impl IngotBaseUrl for Url {
 pub struct Ingot<'db> {
     pub base: Url,
     pub standalone_file: Option<File>,
+    #[tracked]
     pub index: Workspace,
     pub version: Version,
     pub kind: IngotKind,
+    #[tracked]
     pub dependencies: Vec<(String, Url)>,
 }
 
@@ -71,7 +79,8 @@ pub enum IngotError {
     RootFileNotFound,
 }
 
-impl Ingot<'_> {
+#[salsa::tracked]
+impl<'db> Ingot<'db> {
     pub fn root_file(&self, db: &dyn InputDb) -> Result<File, IngotError> {
         if let Some(root_file) = self.standalone_file(db) {
             Ok(root_file)
@@ -80,16 +89,17 @@ impl Ingot<'_> {
                 .base(db)
                 .join("src/lib.fe")
                 .expect("failed to join path");
-            self.index(db)
+            db.workspace()
                 .get(db, &path)
                 .ok_or(IngotError::RootFileNotFound)
         }
     }
 
-    pub fn files(&self, db: &dyn InputDb) -> StringPrefixView<Url, File> {
+    #[salsa::tracked]
+    pub fn files(self, db: &'db dyn InputDb) -> StringPrefixView<'db, Url, File> {
         if let Some(standalone_file) = self.standalone_file(db) {
             // For standalone ingots, use the standalone file URL as the base
-            self.index(db).items_at_base(
+            db.workspace().items_at_base(
                 db,
                 standalone_file
                     .url(db)
@@ -97,39 +107,18 @@ impl Ingot<'_> {
             )
         } else {
             // For regular ingots, use the ingot base URL
-            self.index(db).items_at_base(db, self.base(db))
+            db.workspace().items_at_base(db, self.base(db))
         }
     }
 }
 
-pub trait IngotIndex {
-    fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url>;
-    fn containing_ingot_config(self, db: &dyn InputDb, location: Url) -> Option<File>;
-    fn containing_ingot<'db>(self, db: &'db dyn InputDb, location: &Url) -> Option<Ingot<'db>>;
-    fn touch_ingot<'db>(
-        self,
-        db: &'db mut dyn InputDb,
-        base_url: &Url,
-        initial_config: IngotMetadata,
-    ) -> Option<Ingot<'db>>;
-}
-
 pub type Version = serde_semver::semver::Version;
+
 #[salsa::tracked]
-impl IngotIndex for Workspace {
-    fn containing_ingot_base(&self, db: &dyn InputDb, location: &Url) -> Option<Url> {
-        self.containing_ingot_config(db, location.clone())
-            .map(move |config| {
-                config
-                    .url(db)
-                    .expect("Config file should be indexed")
-                    .directory()
-                    .expect("Config URL should have a directory")
-            })
-    }
+impl Workspace {
     /// Recursively search for a local ingot configuration file
     #[salsa::tracked]
-    fn containing_ingot_config(self, db: &dyn InputDb, file: Url) -> Option<File> {
+    pub fn containing_ingot_config(self, db: &dyn InputDb, file: Url) -> Option<File> {
         tracing::debug!(target: "ingot_config", "containing_ingot_config called with file: {}", file);
         let dir = match file.directory() {
             Some(d) => d,
@@ -164,11 +153,11 @@ impl IngotIndex for Workspace {
         }
     }
 
-    fn containing_ingot<'db>(self, db: &'db dyn InputDb, location: &Url) -> Option<Ingot<'db>> {
+    pub fn containing_ingot<'db>(self, db: &'db dyn InputDb, location: &Url) -> Option<Ingot<'db>> {
         containing_ingot_impl(db, self, location.clone())
     }
 
-    fn touch_ingot<'db>(
+    pub fn touch_ingot<'db>(
         self,
         db: &'db mut dyn InputDb,
         base_url: &Url,
@@ -195,52 +184,93 @@ struct IngotConfig {
     ingot: IngotMetadata,
 }
 
+/// Private helper to create canonical ingots for regular projects
 #[salsa::tracked]
-fn containing_ingot_impl<'db>(
+pub(super) fn ingot_at_base_url<'db>(
     db: &'db dyn InputDb,
     index: Workspace,
-    location: Url,
-) -> Option<Ingot<'db>> {
+    base_url: Url,
+) -> Ingot<'db> {
     let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
-    let is_core = location.scheme().contains("core");
+    let is_core = base_url.scheme().contains("core");
     let dependencies = if is_core {
         vec![]
     } else {
         vec![("core".into(), core_url)]
     };
 
-    match index.containing_ingot_base(db, &location) {
-        Some(ingot_url) => Some(Ingot::new(
-            db,
-            ingot_url,
-            None,
-            index,
-            Version::new(1, 0, 0),
-            if is_core {
-                IngotKind::Core
-            } else {
-                IngotKind::Local
-            },
-            dependencies,
-        )),
-        None => {
-            // Make a standalone ingot if no base is found
-            let base = location.directory().unwrap_or_else(|| location.clone());
-            let specific_root_file = if location.path().ends_with(".fe") {
-                index.get(db, &location)
-            } else {
-                None
-            };
-            Some(Ingot::new(
-                db,
-                base,
-                specific_root_file,
-                index,
-                Version::new(0, 0, 0),
-                IngotKind::StandAlone,
-                dependencies,
-            ))
-        }
+    let ingot = Ingot::new(
+        db,
+        base_url,
+        None,
+        index,
+        Version::new(1, 0, 0),
+        if is_core {
+            IngotKind::Core
+        } else {
+            IngotKind::Local
+        },
+        dependencies,
+    );
+
+    // this is a sad necessity :(( for now
+    let _ = ingot.files(db);
+
+    ingot
+}
+
+/// Private helper to create canonical standalone ingots
+#[salsa::tracked]
+pub(super) fn standalone_ingot<'db>(
+    db: &'db dyn InputDb,
+    index: Workspace,
+    base_url: Url,
+    root_file: Option<File>,
+) -> Ingot<'db> {
+    let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
+    let dependencies = vec![("core".into(), core_url)];
+
+    let ingot = Ingot::new(
+        db,
+        base_url,
+        root_file,
+        index,
+        Version::new(0, 0, 0),
+        IngotKind::StandAlone,
+        dependencies,
+    );
+
+    // this is a sad necessity :(( for now
+    let _ = ingot.files(db);
+
+    ingot
+}
+
+/// Private implementation for containing_ingot that optimizes config file lookup
+#[salsa::tracked]
+pub(super) fn containing_ingot_impl<'db>(
+    db: &'db dyn InputDb,
+    index: Workspace,
+    location: Url,
+) -> Option<Ingot<'db>> {
+    // Try to find a config file to determine if this is part of a structured ingot
+    if let Some(config_file) = index.containing_ingot_config(db, location.clone()) {
+        // Extract base URL from config file location
+        let base_url = config_file
+            .url(db)
+            .expect("Config file should be indexed")
+            .directory()
+            .expect("Config URL should have a directory");
+        Some(ingot_at_base_url(db, index, base_url))
+    } else {
+        // Make a standalone ingot if no config is found
+        let base = location.directory().unwrap_or_else(|| location.clone());
+        let specific_root_file = if location.path().ends_with(".fe") {
+            index.get(db, &location)
+        } else {
+            None
+        };
+        Some(standalone_ingot(db, index, base, specific_root_file))
     }
 }
 
@@ -253,6 +283,7 @@ mod tests {
     use crate::define_input_db;
 
     define_input_db!(TestDatabase);
+
     #[test]
     fn test_locate_config() {
         let mut db = TestDatabase::default();
@@ -288,5 +319,193 @@ mod tests {
         // Test that standalone file without a config returns None
         let no_config = index.containing_ingot_config(&db, url_standalone);
         assert!(no_config.is_none());
+    }
+
+    #[test]
+    fn test_same_ingot_for_nested_paths() {
+        let mut db = TestDatabase::default();
+        let index = db.workspace();
+
+        // Create an ingot structure
+        let url_config = Url::parse("file:///project/fe.toml").unwrap();
+        let config = File::__new_impl(&db, "[ingot]\nname = \"test\"".to_string());
+
+        let url_lib = Url::parse("file:///project/src/lib.fe").unwrap();
+        let lib = File::__new_impl(&db, "pub fn main() {}".to_string());
+
+        let url_mod = Url::parse("file:///project/src/module.fe").unwrap();
+        let module = File::__new_impl(&db, "pub fn helper() {}".to_string());
+
+        let url_nested = Url::parse("file:///project/src/nested/deep.fe").unwrap();
+        let nested = File::__new_impl(&db, "pub fn deep_fn() {}".to_string());
+
+        // Add all files to the index
+        index
+            .set(&mut db, url_config.clone(), config)
+            .expect("Failed to set config file");
+        index
+            .set(&mut db, url_lib.clone(), lib)
+            .expect("Failed to set lib file");
+        index
+            .set(&mut db, url_mod.clone(), module)
+            .expect("Failed to set module file");
+        index
+            .set(&mut db, url_nested.clone(), nested)
+            .expect("Failed to set nested file");
+
+        // Get ingots for different files in the same project
+        let ingot_lib = index.containing_ingot(&db, &url_lib);
+        let ingot_mod = index.containing_ingot(&db, &url_mod);
+        let ingot_nested = index.containing_ingot(&db, &url_nested);
+
+        // All should return Some
+        assert!(ingot_lib.is_some());
+        assert!(ingot_mod.is_some());
+        assert!(ingot_nested.is_some());
+
+        let ingot_lib = ingot_lib.unwrap();
+        let ingot_mod = ingot_mod.unwrap();
+        let ingot_nested = ingot_nested.unwrap();
+
+        // Critical test: All files in the same logical ingot should return the SAME Salsa instance
+        // This ensures we don't have infinite loops due to different ingot IDs
+        assert_eq!(
+            ingot_lib, ingot_mod,
+            "lib.fe and module.fe should have the same ingot"
+        );
+        assert_eq!(
+            ingot_lib, ingot_nested,
+            "lib.fe and nested/deep.fe should have the same ingot"
+        );
+        assert_eq!(
+            ingot_mod, ingot_nested,
+            "module.fe and nested/deep.fe should have the same ingot"
+        );
+
+        // Verify they all have the same base URL
+        assert_eq!(ingot_lib.base(&db), ingot_mod.base(&db));
+        assert_eq!(ingot_lib.base(&db), ingot_nested.base(&db));
+
+        let expected_base = Url::parse("file:///project/").unwrap();
+        assert_eq!(ingot_lib.base(&db), expected_base);
+    }
+
+    #[test]
+    fn test_ingot_files_updates_when_new_files_added() {
+        let mut db = TestDatabase::default();
+        let index = db.workspace();
+
+        // Create initial files for an ingot
+        let config_url = Url::parse("file:///project/fe.toml").unwrap();
+        let config_file = File::__new_impl(&db, "[ingot]\nname = \"test\"".to_string());
+
+        let lib_url = Url::parse("file:///project/src/lib.fe").unwrap();
+        let lib_file = File::__new_impl(&db, "pub use S".to_string());
+
+        // Add initial files to the index
+        index
+            .set(&mut db, config_url.clone(), config_file)
+            .expect("Failed to set config file");
+        index
+            .set(&mut db, lib_url.clone(), lib_file)
+            .expect("Failed to set lib file");
+
+        // Get the ingot and its initial files, then drop the reference
+        let initial_count = {
+            let ingot = index
+                .containing_ingot(&db, &lib_url)
+                .expect("Should find ingot");
+            let initial_files = ingot.files(&db);
+            initial_files.iter().count()
+        };
+
+        // Should have 2 files initially (config + lib)
+        assert_eq!(initial_count, 2, "Should have 2 initial files");
+
+        // Add a new source file to the same ingot
+        let mod_url = Url::parse("file:///project/src/module.fe").unwrap();
+        let mod_file = File::__new_impl(&db, "pub struct NewStruct;".to_string());
+
+        index
+            .set(&mut db, mod_url.clone(), mod_file)
+            .expect("Failed to set module file");
+
+        // Get the updated files list - this tests that Salsa correctly invalidates
+        // and recomputes the files list when new files are added
+        let ingot = index
+            .containing_ingot(&db, &lib_url)
+            .expect("Should find ingot");
+        let updated_files = ingot.files(&db);
+        let updated_count = updated_files.iter().count();
+
+        // Should now have 3 files (config + lib + module)
+        assert_eq!(updated_count, 3, "Should have 3 files after adding module");
+
+        // Verify the new file is in the list
+        let file_urls: Vec<Url> = updated_files.iter().map(|(url, _)| url).collect();
+        assert!(
+            file_urls.contains(&mod_url),
+            "New module file should be in the files list"
+        );
+        assert!(
+            file_urls.contains(&lib_url),
+            "Original lib file should still be in the files list"
+        );
+        assert!(
+            file_urls.contains(&config_url),
+            "Config file should still be in the files list"
+        );
+    }
+
+    #[test]
+    fn test_file_containing_ingot_establishes_dependency() {
+        let mut db = TestDatabase::default();
+        let index = db.workspace();
+
+        // Create a regular ingot with config file
+        let config_url = Url::parse("file:///project/fe.toml").unwrap();
+        let config_file = File::__new_impl(&db, "[ingot]\nname = \"test\"".to_string());
+
+        let main_url = Url::parse("file:///project/src/main.fe").unwrap();
+        let main_file = File::__new_impl(&db, "use foo::*\npub use S".to_string());
+
+        index
+            .set(&mut db, config_url.clone(), config_file)
+            .expect("Failed to set config file");
+        index
+            .set(&mut db, main_url.clone(), main_file)
+            .expect("Failed to set main file");
+
+        // Call containing_ingot, which should trigger the side effect of calling ingot.files()
+        let ingot_option = main_file.containing_ingot(&db);
+        assert!(ingot_option.is_some(), "Should find ingot for main file");
+
+        // Drop the ingot reference before mutating the database
+        let _ = ingot_option;
+
+        // Add another file to the same ingot
+        let other_url = Url::parse("file:///project/src/other.fe").unwrap();
+        let other_file = File::__new_impl(&db, "pub struct OtherStruct;".to_string());
+
+        index
+            .set(&mut db, other_url.clone(), other_file)
+            .expect("Failed to set other file");
+
+        // Get the ingot again and check that the dependency established by the containing_ingot
+        // call ensures the files list is correctly updated
+        let ingot = main_file.containing_ingot(&db).expect("Should find ingot");
+        let files = ingot.files(&db);
+        let file_count = files.iter().count();
+
+        // Should have all files now (config + main + other)
+        assert_eq!(file_count, 3, "Should have 3 files in the ingot");
+
+        let file_urls: Vec<Url> = files.iter().map(|(url, _)| url).collect();
+        assert!(
+            file_urls.contains(&config_url),
+            "Should contain config file"
+        );
+        assert!(file_urls.contains(&main_url), "Should contain main file");
+        assert!(file_urls.contains(&other_url), "Should contain other file");
     }
 }

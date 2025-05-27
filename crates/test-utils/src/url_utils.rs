@@ -34,7 +34,7 @@ impl UrlExt for Url {
             } else {
                 format!("file:///{}", path_str)
             };
-            Ok(Url::parse(&url_str).map_err(|_| ())?)
+            Url::parse(&url_str).map_err(|_| ())
         }
     }
 
