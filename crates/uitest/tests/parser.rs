@@ -51,7 +51,7 @@ mod wasm {
         let mut db = DriverDataBase::default();
         let file = db.workspace().touch(
             &mut db,
-            <Url as UrlExt>::from_file_path(fixture.path()).unwrap(),
+            <Url as UrlExt>::from_file_path_lossy(fixture.path()),
             Some(fixture.content().to_string()),
         );
 
