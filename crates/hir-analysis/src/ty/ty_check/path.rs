@@ -157,7 +157,7 @@ impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
 }
 
 /// Enum that can represent different types of records (structs or variants)
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RecordLike<'db> {
     Type(TyId<'db>),
     Variant(ResolvedVariant<'db>),
@@ -359,5 +359,97 @@ impl<'db> RecordLike<'db> {
 
     pub fn from_variant(variant: ResolvedVariant<'db>) -> Self {
         RecordLike::Variant(variant)
+    }
+}
+
+/// Abstraction for tuple-like constructors (pure tuples, tuple structs, tuple variants)
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TupleLike<'db> {
+    Type(TyId<'db>),
+    Variant(ResolvedVariant<'db>),
+}
+
+impl<'db> TupleLike<'db> {
+    pub fn tuple_field_types(&self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        match self {
+            TupleLike::Type(ty) => {
+                if ty.is_tuple(db) {
+                    let (_, elems) = ty.decompose_ty_app(db);
+                    elems.to_vec()
+                } else if let Some(adt_def) = ty.adt_def(db) {
+                    // Handle tuple structs
+                    if let AdtRef::Struct(struct_def) = adt_def.adt_ref(db) {
+                        let fields = struct_def.fields(db);
+                        let args = ty.generic_args(db);
+                        (0..fields.data(db).len())
+                            .map(|idx| adt_def.fields(db)[0].ty(db, idx).instantiate(db, args))
+                            .collect()
+                    } else {
+                        vec![]
+                    }
+                } else {
+                    vec![]
+                }
+            }
+            TupleLike::Variant(variant) => {
+                match variant.variant.kind(db) {
+                    HirVariantKind::Unit => {
+                        vec![]
+                    }
+                    HirVariantKind::Tuple(fields) => {
+                        let adt_def = variant.ty.adt_def(db).unwrap();
+                        let args = variant.ty.generic_args(db);
+
+                        // Workaround for type system bug: when concrete types are stored as TyBase,
+                        // generic_args() returns empty slice instead of concrete arguments
+                        if args.is_empty() {
+                            // Check if this enum has generic parameters
+                            let enum_def = variant.variant.enum_;
+                            if !enum_def.generic_params(db).data(db).is_empty() {
+                                // This enum has generic params but we got empty args - this is the bug
+                                // Get field types directly from the concrete ADT definition
+                                // Since variant.ty is the concrete type (e.g., Option<i32>),
+                                // adt_def should be the concrete ADT definition with instantiated field types
+                                return (0..fields.data(db).len())
+                                    .map(|idx| {
+                                        // Get the field type directly from the concrete ADT definition
+                                        // This bypasses the need for generic instantiation
+                                        let field_list = adt_def.fields(db);
+                                        let variant_fields =
+                                            &field_list[variant.variant.idx as usize];
+                                        // For concrete types, the field types should already be concrete
+                                        *variant_fields.ty(db, idx).skip_binder()
+                                    })
+                                    .collect();
+                            }
+                        }
+
+                        // Normal case: instantiate with the available args
+                        (0..fields.data(db).len())
+                            .map(|idx| {
+                                adt_def.fields(db)[variant.variant.idx as usize]
+                                    .ty(db, idx)
+                                    .instantiate(db, args)
+                            })
+                            .collect()
+                    }
+                    HirVariantKind::Record(_) => {
+                        vec![] // Record variants are not tuple-like
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn tuple_arity(&self, db: &'db dyn HirAnalysisDb) -> usize {
+        self.tuple_field_types(db).len()
+    }
+
+    pub fn from_ty(ty: TyId<'db>) -> Self {
+        TupleLike::Type(ty)
+    }
+
+    pub fn from_variant(variant: ResolvedVariant<'db>) -> Self {
+        TupleLike::Variant(variant)
     }
 }

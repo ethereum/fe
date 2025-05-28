@@ -170,10 +170,7 @@ impl<'db> TyId<'db> {
     /// Decompose type application into the base type and type arguments, this
     /// doesn't perform deconstruction recursively. e.g.,
     /// `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
-    pub(super) fn decompose_ty_app(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> (TyId<'db>, &'db [TyId<'db>]) {
+    pub fn decompose_ty_app(self, db: &'db dyn HirAnalysisDb) -> (TyId<'db>, &'db [TyId<'db>]) {
         let (base, args) = decompose_ty_app(db, self);
         (*base, args)
     }
@@ -251,7 +248,7 @@ impl<'db> TyId<'db> {
         matches!(self.base_ty(db).data(db), TyData::ConstTy(_))
     }
 
-    pub(crate) fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
+    pub fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
         matches!(
             self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))

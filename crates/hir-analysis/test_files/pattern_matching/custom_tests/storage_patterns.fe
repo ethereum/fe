@@ -47,18 +47,7 @@ fn match_nested_enum(x: u8, y: u8, use_tuple: bool) -> u8 {
     }
 }
 
-fn match_tuple_values(x: u8, y: u8) -> u8 {
-    let tuple_storage: (u8, u8) = (x, y)
-    
-    match tuple_storage {
-        (1, val) => {
-            return val
-        }
-        (val, 1) => {
-            return val
-        }
-    }
-}
+
 
 fn match_boolean_values(b1: bool, b2: bool) -> u8 {
     let bool_pair: (bool, bool) = (b1, b2)

@@ -6,6 +6,8 @@ use dir_test::{dir_test, Fixture};
 use fe_hir_analysis::ty::{
     decision_tree::{build_decision_tree, DecisionTree, Occurrence},
     pattern_analysis::{ConstructorKind, PatternMatrix},
+    ty_check::{RecordLike, TupleLike},
+    ty_def::{TyData, TyId},
 };
 use hir::hir_def::LitKind;
 use hir::{
@@ -83,11 +85,16 @@ fn render_constructor<'db>(
     ctor: &ConstructorKind<'db>,
 ) -> String {
     match ctor {
-        ConstructorKind::EnumVariant(variant) => {
+        ConstructorKind::TupleLike(TupleLike::Variant(variant)) => {
             let variant_name = variant.variant.name(db).unwrap_or("unknown");
             variant_name.to_string()
         }
-        ConstructorKind::Tuple(_) => "tuple()".to_string(),
+        ConstructorKind::RecordLike(RecordLike::Variant(variant)) => {
+            let variant_name = variant.variant.name(db).unwrap_or("unknown");
+            variant_name.to_string()
+        }
+        ConstructorKind::TupleLike(TupleLike::Type(_)) => "tuple()".to_string(),
+        ConstructorKind::RecordLike(RecordLike::Type(_)) => "record{}".to_string(),
         ConstructorKind::Literal(lit, _) => match lit {
             LitKind::Bool(b) => b.to_string(),
             _ => format!("{:?}", lit),
@@ -156,8 +163,13 @@ impl<'db> Visitor<'db> for DecisionTreeVisitor<'db, '_> {
                     .collect();
 
                 if !patterns.is_empty() {
-                    let matrix =
-                        PatternMatrix::from_hir_patterns(self.db, &patterns, body, body.scope());
+                    let matrix = PatternMatrix::from_hir_patterns(
+                        self.db,
+                        &patterns,
+                        body,
+                        body.scope(),
+                        TyId::new(self.db, TyData::Never),
+                    );
 
                     let tree = build_decision_tree(self.db, &matrix);
                     let visualization = render_decision_tree(self.db, &tree);

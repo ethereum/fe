@@ -50,18 +50,4 @@ note:
    │ ╰─────^ Decision Tree for test_nested_bindings:
  Switch on expr
  └─ tuple() =>
-    └─ Switch on expr.0
-       ├─ Rgb =>
-       │  └─ Switch on expr.1
-       │     ├─ Coordinate =>
-       │     │  └─ Execute arm #0
-       │     │       x ← expr.1.0
-       │     │       r ← expr.0.0
-       │     └─ _ =>
-       │        └─ Execute arm #2
-       └─ Simple =>
-          └─ Switch on expr.1
-             ├─ Origin =>
-             │  └─ Execute arm #1
-             └─ _ =>
-                └─ Execute arm #2
+    └─ Execute arm #0
