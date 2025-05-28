@@ -856,6 +856,7 @@ impl<'db> TyChecker<'db> {
             &collected_hir_pats,
             self.body(),
             self.env.scope(),
+            scrutinee_ty,
         );
 
         for (i, is_reachable) in reachability.iter().enumerate() {
@@ -874,6 +875,7 @@ impl<'db> TyChecker<'db> {
             &collected_hir_pats,
             self.body(),
             self.env.scope(),
+            scrutinee_ty,
         ) {
             let diag = crate::ty::diagnostics::BodyDiag::NonExhaustiveMatch {
                 primary: expr.span(self.body()).into(),

@@ -2,11 +2,15 @@
 //! Based on "Warnings for pattern matching" by Luc Maranget
 
 use crate::name_resolution::{resolve_path, PathRes, ResolvedVariant};
-use crate::ty::ty_def::{PrimTy, TyBase, TyData, TyId};
+use crate::ty::ty_check::{RecordLike, TupleLike};
+use crate::ty::ty_def::TyId;
 use crate::ty::AdtRef;
 use crate::HirAnalysisDb;
 use common::indexmap::IndexSet;
-use hir::hir_def::{scope_graph::ScopeId, Body as HirBody, LitKind, Partial, Pat as HirPat};
+use hir::hir_def::{
+    scope_graph::ScopeId, Body as HirBody, LitKind, Partial, Pat as HirPat, PatId, PathId,
+    RecordPatField, VariantKind,
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternMatrix<'db> {
@@ -23,13 +27,14 @@ impl<'db> PatternMatrix<'db> {
         patterns: &[HirPat<'db>],
         body: HirBody<'db>,
         scope: ScopeId<'db>,
+        ty: TyId<'db>,
     ) -> Self {
         let rows = patterns
             .iter()
             .enumerate()
             .map(|(i, pat)| {
                 PatternRowVec::new(vec![SimplifiedPattern::from_hir_pat(
-                    pat, db, body, scope, i,
+                    pat, db, body, scope, i, ty,
                 )])
             })
             .collect();
@@ -41,8 +46,8 @@ impl<'db> PatternMatrix<'db> {
         db: &'db dyn HirAnalysisDb,
     ) -> Option<Vec<SimplifiedPattern<'db>>> {
         if self.nrows() == 0 {
-            let ty = TyId::never(db);
-            return Some(vec![SimplifiedPattern::wildcard(None, ty)]);
+            // Non Exhaustive!
+            return Some(vec![]);
         }
         if self.ncols() == 0 {
             return None;
@@ -51,74 +56,100 @@ impl<'db> PatternMatrix<'db> {
         let ty = self.first_column_ty();
         let sigma_set = self.sigma_set();
 
-        // Check if we have any patterns that cover everything
-        for row in &self.rows {
-            if let Some(pattern) = row.head() {
-                match &pattern.kind {
-                    SimplifiedPatternKind::WildCard(_) => {
-                        return None; // Wildcard covers everything
-                    }
-                    SimplifiedPatternKind::Constructor {
-                        kind: ConstructorKind::Tuple(_),
-                        fields,
-                    } => {
-                        // Tuple with all wildcards covers everything for tuples
-                        if ty.is_tuple(db)
-                            && fields
-                                .iter()
-                                .all(|f| matches!(f.kind, SimplifiedPatternKind::WildCard(_)))
-                        {
-                            return None;
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-
-        if sigma_set.is_complete(db, ty) || sigma_set.0.is_empty() {
+        if sigma_set.is_complete(db, ty) {
             for ctor in sigma_set.into_iter() {
-                match self.phi_specialize(db, ctor).find_missing_patterns(db) {
+                match self
+                    .phi_specialize(db, ctor.clone())
+                    .find_missing_patterns(db)
+                {
                     Some(vec) if vec.is_empty() => {
-                        let pat = SimplifiedPattern::constructor_with_wildcards(db, ctor, ty);
+                        let pat_kind = SimplifiedPatternKind::Constructor {
+                            kind: ctor.clone(),
+                            fields: vec![],
+                        };
+                        let pat = SimplifiedPattern::new(pat_kind, ty);
+
                         return Some(vec![pat]);
                     }
+
                     Some(mut vec) => {
                         let field_num = ctor.arity(db);
-                        if vec.len() >= field_num {
-                            let rem = vec.split_off(field_num);
-                            let pat = SimplifiedPattern::constructor(ctor, vec, ty);
-                            let mut result = vec![pat];
-                            result.extend_from_slice(&rem);
-                            return Some(result);
+                        // For infinite types or mismatched patterns, generate wildcards
+                        if vec.len() < field_num {
+                            let field_types = ctor.field_types(db);
+                            let mut fields = Vec::with_capacity(field_num);
+                            for &field_ty in &field_types {
+                                fields.push(SimplifiedPattern::wildcard(None, field_ty));
+                            }
+                            let pat_kind = SimplifiedPatternKind::Constructor {
+                                kind: ctor.clone(),
+                                fields,
+                            };
+                            // Use the constructor's type instead of the potentially wrong ty parameter
+                            let constructor_ty = match ctor {
+                                ConstructorKind::TupleLike(TupleLike::Type(tuple_ty)) => tuple_ty,
+                                ConstructorKind::TupleLike(TupleLike::Variant(variant)) => {
+                                    variant.ty
+                                }
+                                ConstructorKind::RecordLike(RecordLike::Type(record_ty)) => {
+                                    record_ty
+                                }
+                                ConstructorKind::RecordLike(RecordLike::Variant(variant)) => {
+                                    variant.ty
+                                }
+                                _ => ty, // For literal constructors, use the original ty
+                            };
+                            let pat = SimplifiedPattern::new(pat_kind, constructor_ty);
+                            return Some(vec![pat]);
                         }
+                        debug_assert!(vec.len() >= field_num);
+                        let rem = vec.split_off(field_num);
+                        let pat_kind = SimplifiedPatternKind::Constructor {
+                            kind: ctor.clone(),
+                            fields: vec,
+                        };
+                        let pat = SimplifiedPattern::new(pat_kind, ty);
+
+                        let mut result = vec![pat];
+                        result.extend_from_slice(&rem);
+                        return Some(result);
                     }
+
                     None => {}
                 }
             }
+
             None
         } else {
-            // Check default case specialization
-            let default_specialized = self.d_specialize(db);
-            if default_specialized.rows.is_empty() {
-                // No wildcard patterns - missing constructor coverage
-                let complete_sigma = SigmaSet::complete_sigma(db, ty);
-                let missing_ctors = complete_sigma.difference(&sigma_set);
-                if missing_ctors.is_empty() {
-                    None // All constructors covered
+            self.d_specialize(db).find_missing_patterns(db).map(|vec| {
+                let sigma_set = self.sigma_set();
+                let kind = if sigma_set.is_empty() {
+                    SimplifiedPatternKind::WildCard(None)
                 } else {
-                    let missing_patterns: Vec<_> = missing_ctors
-                        .into_iter()
-                        .map(|ctor| SimplifiedPattern::constructor_with_wildcards(db, ctor, ty))
-                        .collect();
-                    Some(missing_patterns)
-                }
-            } else {
-                // We have wildcard patterns - check if they're exhaustive
-                default_specialized
-                    .find_missing_patterns(db)
-                    .filter(|missing| !missing.is_empty())
-            }
+                    let complete_sigma = SigmaSet::complete_sigma(db, ty);
+                    if complete_sigma.is_empty() {
+                        // Infinite type - can't enumerate all constructors, so use wildcard
+                        SimplifiedPatternKind::WildCard(None)
+                    } else {
+                        let difference = complete_sigma.difference(&sigma_set);
+                        SimplifiedPatternKind::Or(
+                            difference
+                                .into_iter()
+                                .map(|ctor| {
+                                    let kind =
+                                        SimplifiedPatternKind::ctor_with_wild_card_fields(db, ctor);
+                                    SimplifiedPattern::new(kind, ty)
+                                })
+                                .collect(),
+                        )
+                    }
+                };
+
+                let mut result = vec![SimplifiedPattern::new(kind, ty)];
+                result.extend_from_slice(&vec);
+
+                result
+            })
         }
     }
 
@@ -151,8 +182,8 @@ impl<'db> PatternMatrix<'db> {
                 .is_pattern_useful(db, &pat_vec.d_specialize(db)[0]),
 
             SimplifiedPatternKind::Constructor { kind, .. } => self
-                .phi_specialize(db, *kind)
-                .is_pattern_useful(db, &pat_vec.phi_specialize(db, *kind)[0]),
+                .phi_specialize(db, kind.clone())
+                .is_pattern_useful(db, &pat_vec.phi_specialize(db, kind.clone())[0]),
 
             SimplifiedPatternKind::Or(pats) => pats
                 .iter()
@@ -164,7 +195,7 @@ impl<'db> PatternMatrix<'db> {
         let rows = self
             .rows
             .iter()
-            .flat_map(|row| row.phi_specialize(db, ctor))
+            .flat_map(|row| row.phi_specialize(db, ctor.clone()))
             .collect();
         PatternMatrix { rows }
     }
@@ -244,7 +275,7 @@ impl<'db> PatternRowVec<'db> {
             }
 
             SimplifiedPatternKind::Constructor { kind, fields } => {
-                if *kind == ctor || self.constructors_compatible(*kind, ctor, db) {
+                if *kind == ctor {
                     let mut inner = Vec::with_capacity(self.inner.len() + ctor_fields.len() - 1);
                     inner.extend_from_slice(fields);
                     inner.extend_from_slice(&self.inner[1..]);
@@ -261,39 +292,10 @@ impl<'db> PatternRowVec<'db> {
                     tmp_inner.push(pat.clone());
                     tmp_inner.extend_from_slice(&self.inner[1..]);
                     let tmp = PatternRowVec::new(tmp_inner);
-                    result.extend(tmp.phi_specialize(db, ctor));
+                    result.extend(tmp.phi_specialize(db, ctor.clone()));
                 }
                 result
             }
-        }
-    }
-
-    fn constructors_compatible(
-        &self,
-        a: ConstructorKind<'db>,
-        b: ConstructorKind<'db>,
-        db: &'db dyn HirAnalysisDb,
-    ) -> bool {
-        match (a, b) {
-            // Tuples are compatible if they have the same arity
-            (ConstructorKind::Tuple(ty_a), ConstructorKind::Tuple(ty_b)) => {
-                if ty_a.is_tuple(db) && ty_b.is_tuple(db) {
-                    let (_, elems_a) = ty_a.decompose_ty_app(db);
-                    let (_, elems_b) = ty_b.decompose_ty_app(db);
-                    elems_a.len() == elems_b.len()
-                } else {
-                    false
-                }
-            }
-            // Enum variants are compatible if they're the same variant
-            (ConstructorKind::EnumVariant(var_a), ConstructorKind::EnumVariant(var_b)) => {
-                var_a.variant.enum_ == var_b.variant.enum_ && var_a.variant.idx == var_b.variant.idx
-            }
-            // Literals are compatible if they're exactly the same
-            (ConstructorKind::Literal(lit_a, _), ConstructorKind::Literal(lit_b, _)) => {
-                lit_a == lit_b
-            }
-            _ => false,
         }
     }
 
@@ -368,263 +370,333 @@ impl<'db> SimplifiedPattern<'db> {
         matches!(self.kind, SimplifiedPatternKind::WildCard(_))
     }
 
-    pub fn constructor_with_wildcards(
-        db: &'db dyn HirAnalysisDb,
-        ctor: ConstructorKind<'db>,
-        ty: TyId<'db>,
-    ) -> Self {
-        let fields = ctor
-            .field_types(db)
-            .into_iter()
-            .map(|field_ty| SimplifiedPattern::wildcard(None, field_ty))
-            .collect();
-        Self::constructor(ctor, fields, ty)
-    }
-
-    pub fn or(patterns: Vec<SimplifiedPattern<'db>>) -> Self {
-        let ty = patterns
-            .first()
-            .map(|p| p.ty)
-            .unwrap_or_else(|| panic!("Cannot create OR pattern with no alternatives"));
-        Self::new(SimplifiedPatternKind::Or(patterns), ty)
-    }
-
     pub fn from_hir_pat(
         pat: &HirPat<'db>,
         db: &'db dyn HirAnalysisDb,
         body: HirBody<'db>,
         scope: ScopeId<'db>,
         arm_idx: usize,
+        expected_ty: TyId<'db>,
     ) -> Self {
         match pat {
-            HirPat::WildCard | HirPat::Rest => {
-                let ty = TyId::never(db);
-                SimplifiedPattern::wildcard(None, ty)
-            }
+            HirPat::WildCard | HirPat::Rest => SimplifiedPattern::wildcard(None, expected_ty),
 
-            HirPat::Lit(lit_partial) => {
-                if let Partial::Present(lit_kind) = lit_partial {
-                    let ty = match lit_kind {
-                        LitKind::Bool(_) => TyId::bool(db),
-                        LitKind::Int(_) => {
-                            TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::U256)))
-                        }
-                        LitKind::String(_) => {
-                            TyId::new(db, TyData::TyBase(TyBase::Prim(PrimTy::String)))
-                        }
-                    };
-                    let ctor = ConstructorKind::Literal(*lit_kind, ty);
-                    SimplifiedPattern::constructor(ctor, vec![], ty)
-                } else {
-                    let ty = TyId::never(db);
-                    SimplifiedPattern::wildcard(None, ty)
-                }
-            }
+            HirPat::Lit(lit_partial) => Self::from_literal_pat(lit_partial, expected_ty),
 
             HirPat::Path(path_partial, _) => {
-                if let Partial::Present(path_id) = path_partial {
-                    match resolve_path(db, *path_id, scope, true) {
-                        Ok(PathRes::EnumVariant(variant)) => {
-                            let ctor = ConstructorKind::EnumVariant(variant);
-                            SimplifiedPattern::constructor(ctor, vec![], variant.ty)
-                        }
-                        Ok(PathRes::Ty(ty_id)) => {
-                            // Check if this is an imported enum variant
-                            if path_id.is_bare_ident(db) {
-                                if let Some(adt_def) = ty_id.adt_def(db) {
-                                    if let AdtRef::Enum(enum_def) = adt_def.adt_ref(db) {
-                                        if let Some(ident_value) = path_id.ident(db).to_opt() {
-                                            // Look for variant with this name
-                                            for (idx, variant_def) in
-                                                enum_def.variants(db).data(db).iter().enumerate()
-                                            {
-                                                if variant_def.name.to_opt() == Some(ident_value) {
-                                                    let resolved_variant = ResolvedVariant {
-                                                        ty: ty_id,
-                                                        variant: hir::hir_def::EnumVariant::new(
-                                                            enum_def, idx,
-                                                        ),
-                                                        path: *path_id,
-                                                    };
-                                                    let ctor = ConstructorKind::EnumVariant(
-                                                        resolved_variant,
-                                                    );
-                                                    return SimplifiedPattern::constructor(
-                                                        ctor,
-                                                        vec![],
-                                                        ty_id,
-                                                    );
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            // Not an enum variant, treat as binding
-                            let binding_name = path_id
-                                .ident(db)
-                                .to_opt()
-                                .map(|id| (id.data(db).to_string(), arm_idx));
-                            let ty = TyId::never(db);
-                            SimplifiedPattern::wildcard(binding_name, ty)
-                        }
-                        _ => {
-                            let binding_name = path_id
-                                .ident(db)
-                                .to_opt()
-                                .map(|id| (id.data(db).to_string(), arm_idx));
-                            let ty = TyId::never(db);
-                            SimplifiedPattern::wildcard(binding_name, ty)
-                        }
-                    }
-                } else {
-                    let ty = TyId::never(db);
-                    SimplifiedPattern::wildcard(None, ty)
-                }
+                Self::from_path_pat(path_partial, db, scope, arm_idx, expected_ty)
             }
 
             HirPat::Tuple(elements) => {
-                let subpatterns: Vec<_> = elements
-                    .iter()
-                    .map(|pat_id| match pat_id.data(db, body) {
-                        Partial::Present(pat_data) => {
-                            SimplifiedPattern::from_hir_pat(pat_data, db, body, scope, arm_idx)
-                        }
-                        Partial::Absent => {
-                            let ty = TyId::never(db);
-                            SimplifiedPattern::wildcard(None, ty)
-                        }
-                    })
-                    .collect();
-
-                // For tuple patterns, we need to handle the case where the expected type
-                // might already be known, but for now use the subpattern types
-                let element_types: Vec<_> = subpatterns.iter().map(|p| p.ty).collect();
-                let tuple_ty = if element_types.iter().any(|ty| *ty == TyId::never(db)) {
-                    // If we have any never types, create a generic tuple
-                    TyId::tuple(db, elements.len())
-                } else {
-                    TyId::tuple_with_elems(db, &element_types)
-                };
-                let ctor = ConstructorKind::Tuple(tuple_ty);
-                SimplifiedPattern::constructor(ctor, subpatterns, tuple_ty)
+                Self::from_tuple_pat(elements, db, body, scope, arm_idx, expected_ty)
             }
 
-            HirPat::PathTuple(path_partial, elements) => {
-                if let Partial::Present(path_id) = path_partial {
-                    match resolve_path(db, *path_id, scope, true) {
-                        Ok(PathRes::EnumVariant(variant)) => {
-                            let subpatterns: Vec<_> = elements
-                                .iter()
-                                .map(|pat_id| match pat_id.data(db, body) {
-                                    Partial::Present(pat_data) => SimplifiedPattern::from_hir_pat(
-                                        pat_data, db, body, scope, arm_idx,
-                                    ),
-                                    Partial::Absent => {
-                                        let ty = TyId::never(db);
-                                        SimplifiedPattern::wildcard(None, ty)
-                                    }
-                                })
-                                .collect();
-
-                            let ctor = ConstructorKind::EnumVariant(variant);
-                            SimplifiedPattern::constructor(ctor, subpatterns, variant.ty)
-                        }
-                        _ => {
-                            let ty = TyId::never(db);
-                            SimplifiedPattern::wildcard(None, ty)
-                        }
-                    }
-                } else {
-                    let ty = TyId::never(db);
-                    SimplifiedPattern::wildcard(None, ty)
-                }
-            }
+            HirPat::PathTuple(path_partial, elements) => Self::from_path_tuple_pat(
+                path_partial,
+                elements,
+                db,
+                body,
+                scope,
+                arm_idx,
+                expected_ty,
+            ),
 
             HirPat::Record(path_partial, fields) => {
-                if let Partial::Present(path_id) = path_partial {
-                    match resolve_path(db, *path_id, scope, true) {
-                        Ok(PathRes::EnumVariant(variant)) => {
-                            // This is a record enum variant pattern like E::Var { x, .. }
-                            let subpatterns: Vec<_> = fields
-                                .iter()
-                                .map(|field_pat| match field_pat.pat.data(db, body) {
-                                    Partial::Present(pat_data) => SimplifiedPattern::from_hir_pat(
-                                        pat_data, db, body, scope, arm_idx,
-                                    ),
-                                    Partial::Absent => {
-                                        let ty = TyId::never(db);
-                                        SimplifiedPattern::wildcard(None, ty)
-                                    }
-                                })
-                                .collect();
-
-                            let ctor = ConstructorKind::EnumVariant(variant);
-                            SimplifiedPattern::constructor(ctor, subpatterns, variant.ty)
-                        }
-                        Ok(PathRes::Ty(struct_ty)) => {
-                            // This is a struct pattern
-                            let subpatterns: Vec<_> = fields
-                                .iter()
-                                .map(|field_pat| match field_pat.pat.data(db, body) {
-                                    Partial::Present(pat_data) => SimplifiedPattern::from_hir_pat(
-                                        pat_data, db, body, scope, arm_idx,
-                                    ),
-                                    Partial::Absent => {
-                                        let ty = TyId::never(db);
-                                        SimplifiedPattern::wildcard(None, ty)
-                                    }
-                                })
-                                .collect();
-
-                            // For structs, we'll use a tuple constructor for now (simplified)
-                            let ctor = ConstructorKind::Tuple(struct_ty);
-                            SimplifiedPattern::constructor(ctor, subpatterns, struct_ty)
-                        }
-                        _ => {
-                            let ty = TyId::never(db);
-                            SimplifiedPattern::wildcard(None, ty)
-                        }
-                    }
-                } else {
-                    let ty = TyId::never(db);
-                    SimplifiedPattern::wildcard(None, ty)
-                }
+                Self::from_record_pat(path_partial, fields, db, body, scope, arm_idx, expected_ty)
             }
 
             HirPat::Or(left, right) => {
-                let left_pat = match left.data(db, body) {
-                    Partial::Present(pat_data) => {
-                        SimplifiedPattern::from_hir_pat(pat_data, db, body, scope, arm_idx)
-                    }
-                    Partial::Absent => {
-                        let ty = TyId::never(db);
-                        SimplifiedPattern::wildcard(None, ty)
-                    }
-                };
-                let right_pat = match right.data(db, body) {
-                    Partial::Present(pat_data) => {
-                        SimplifiedPattern::from_hir_pat(pat_data, db, body, scope, arm_idx)
-                    }
-                    Partial::Absent => {
-                        let ty = TyId::never(db);
-                        SimplifiedPattern::wildcard(None, ty)
-                    }
-                };
-
-                let mut patterns = Vec::new();
-                match left_pat.kind {
-                    SimplifiedPatternKind::Or(pats) => patterns.extend(pats),
-                    _ => patterns.push(left_pat),
-                }
-                match right_pat.kind {
-                    SimplifiedPatternKind::Or(pats) => patterns.extend(pats),
-                    _ => patterns.push(right_pat),
-                }
-
-                SimplifiedPattern::or(patterns)
+                Self::from_or_pat(left, right, db, body, scope, arm_idx, expected_ty)
             }
         }
+    }
+
+    /// Unified constructor resolution from path for enum variants
+    fn resolve_path_constructor(
+        path_partial: &Partial<PathId<'db>>,
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        expected_ty: TyId<'db>,
+    ) -> Option<(ConstructorKind<'db>, TyId<'db>)> {
+        let Partial::Present(path_id) = path_partial else {
+            return None;
+        };
+
+        match resolve_path(db, *path_id, scope, true) {
+            Ok(PathRes::EnumVariant(variant)) => {
+                let ctor = Self::variant_to_constructor(variant, db);
+                Some((ctor, variant.ty))
+            }
+            Ok(PathRes::Ty(ty_id)) => {
+                // Check if this is an imported enum variant
+                if let Some(variant) =
+                    Self::try_resolve_enum_variant_from_ty(path_id, ty_id, db, expected_ty)
+                {
+                    let ctor = Self::variant_to_constructor(variant, db);
+                    Some((ctor, expected_ty))
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    /// Constructor resolution specifically for record patterns (handles both enum variants and struct types)
+    fn resolve_record_constructor(
+        path_partial: &Partial<PathId<'db>>,
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+    ) -> Option<(ConstructorKind<'db>, TyId<'db>)> {
+        let Partial::Present(path_id) = path_partial else {
+            return None;
+        };
+
+        match resolve_path(db, *path_id, scope, true) {
+            Ok(PathRes::EnumVariant(variant)) => {
+                let ctor = ConstructorKind::RecordLike(RecordLike::Variant(variant));
+                Some((ctor, variant.ty))
+            }
+            Ok(PathRes::Ty(struct_ty)) => {
+                // Handle struct types in record patterns
+                let ctor = ConstructorKind::RecordLike(RecordLike::Type(struct_ty));
+                Some((ctor, struct_ty))
+            }
+            _ => None,
+        }
+    }
+
+    /// Unified subpattern collection from pattern list
+    fn collect_subpatterns_from_elements(
+        elements: &[PatId],
+        field_types: &[TyId<'db>],
+        db: &'db dyn HirAnalysisDb,
+        body: HirBody<'db>,
+        scope: ScopeId<'db>,
+        arm_idx: usize,
+    ) -> Vec<SimplifiedPattern<'db>> {
+        elements
+            .iter()
+            .zip(field_types.iter())
+            .map(|(pat_id, &field_ty)| match pat_id.data(db, body) {
+                Partial::Present(pat_data) => {
+                    SimplifiedPattern::from_hir_pat(pat_data, db, body, scope, arm_idx, field_ty)
+                }
+                Partial::Absent => SimplifiedPattern::wildcard(None, field_ty),
+            })
+            .collect()
+    }
+
+    fn from_literal_pat(lit_partial: &Partial<LitKind<'db>>, expected_ty: TyId<'db>) -> Self {
+        if let Partial::Present(lit_kind) = lit_partial {
+            let ctor = ConstructorKind::Literal(*lit_kind, expected_ty);
+            SimplifiedPattern::constructor(ctor, vec![], expected_ty)
+        } else {
+            SimplifiedPattern::wildcard(None, expected_ty)
+        }
+    }
+
+    fn from_path_pat(
+        path_partial: &Partial<PathId<'db>>,
+        db: &'db dyn HirAnalysisDb,
+        scope: ScopeId<'db>,
+        arm_idx: usize,
+        expected_ty: TyId<'db>,
+    ) -> Self {
+        if let Some((ctor, ctor_ty)) =
+            Self::resolve_path_constructor(path_partial, db, scope, expected_ty)
+        {
+            SimplifiedPattern::constructor(ctor, vec![], ctor_ty)
+        } else if let Partial::Present(path_id) = path_partial {
+            let binding_name = path_id
+                .ident(db)
+                .to_opt()
+                .map(|ident| (ident.data(db).to_string(), arm_idx));
+            SimplifiedPattern::wildcard(binding_name, expected_ty)
+        } else {
+            SimplifiedPattern::wildcard(None, expected_ty)
+        }
+    }
+
+    fn from_tuple_pat(
+        elements: &[PatId],
+        db: &'db dyn HirAnalysisDb,
+        body: HirBody<'db>,
+        scope: ScopeId<'db>,
+        arm_idx: usize,
+        expected_ty: TyId<'db>,
+    ) -> Self {
+        let field_types = if expected_ty.is_tuple(db) {
+            let (_, elems) = expected_ty.decompose_ty_app(db);
+            elems.to_vec()
+        } else {
+            vec![expected_ty; elements.len()] // Fallback for non-tuple types
+        };
+
+        let subpatterns = Self::collect_subpatterns_from_elements(
+            elements,
+            &field_types,
+            db,
+            body,
+            scope,
+            arm_idx,
+        );
+
+        let ctor = ConstructorKind::TupleLike(TupleLike::Type(expected_ty));
+        SimplifiedPattern::constructor(ctor, subpatterns, expected_ty)
+    }
+
+    fn from_path_tuple_pat(
+        path_partial: &Partial<PathId<'db>>,
+        elements: &[PatId],
+        db: &'db dyn HirAnalysisDb,
+        body: HirBody<'db>,
+        scope: ScopeId<'db>,
+        arm_idx: usize,
+        expected_ty: TyId<'db>,
+    ) -> Self {
+        if let Some((ctor, ctor_ty)) =
+            Self::resolve_path_constructor(path_partial, db, scope, expected_ty)
+        {
+            let field_types = ctor.field_types(db);
+            let subpatterns = Self::collect_subpatterns_from_elements(
+                elements,
+                &field_types,
+                db,
+                body,
+                scope,
+                arm_idx,
+            );
+            SimplifiedPattern::constructor(ctor, subpatterns, ctor_ty)
+        } else {
+            SimplifiedPattern::wildcard(None, expected_ty)
+        }
+    }
+
+    fn from_record_pat(
+        path_partial: &Partial<PathId<'db>>,
+        fields: &[RecordPatField<'db>],
+        db: &'db dyn HirAnalysisDb,
+        body: HirBody<'db>,
+        scope: ScopeId<'db>,
+        arm_idx: usize,
+        expected_ty: TyId<'db>,
+    ) -> Self {
+        if let Some((ctor, ctor_ty)) = Self::resolve_record_constructor(path_partial, db, scope) {
+            let subpatterns =
+                Self::collect_record_subpatterns(&ctor, fields, db, body, scope, arm_idx);
+            SimplifiedPattern::constructor(ctor, subpatterns, ctor_ty)
+        } else {
+            SimplifiedPattern::wildcard(None, expected_ty)
+        }
+    }
+
+    fn from_or_pat(
+        left: &PatId,
+        right: &PatId,
+        db: &'db dyn HirAnalysisDb,
+        body: HirBody<'db>,
+        scope: ScopeId<'db>,
+        arm_idx: usize,
+        expected_ty: TyId<'db>,
+    ) -> Self {
+        let left_pat = match left.data(db, body) {
+            Partial::Present(pat_data) => {
+                SimplifiedPattern::from_hir_pat(pat_data, db, body, scope, arm_idx, expected_ty)
+            }
+            Partial::Absent => SimplifiedPattern::wildcard(None, expected_ty),
+        };
+        let right_pat = match right.data(db, body) {
+            Partial::Present(pat_data) => {
+                SimplifiedPattern::from_hir_pat(pat_data, db, body, scope, arm_idx, expected_ty)
+            }
+            Partial::Absent => SimplifiedPattern::wildcard(None, expected_ty),
+        };
+
+        let mut patterns = Vec::new();
+        match left_pat.kind {
+            SimplifiedPatternKind::Or(pats) => patterns.extend(pats),
+            _ => patterns.push(left_pat),
+        }
+        match right_pat.kind {
+            SimplifiedPatternKind::Or(pats) => patterns.extend(pats),
+            _ => patterns.push(right_pat),
+        }
+
+        let ty = patterns
+            .first()
+            .map(|p| p.ty)
+            .unwrap_or_else(|| panic!("Cannot create OR pattern with no alternatives"));
+        SimplifiedPattern::new(SimplifiedPatternKind::Or(patterns), ty)
+    }
+
+    fn variant_to_constructor(
+        variant: ResolvedVariant<'db>,
+        db: &'db dyn HirAnalysisDb,
+    ) -> ConstructorKind<'db> {
+        match variant.variant.kind(db) {
+            VariantKind::Unit | VariantKind::Tuple(_) => {
+                ConstructorKind::TupleLike(TupleLike::Variant(variant))
+            }
+            VariantKind::Record(_) => ConstructorKind::RecordLike(RecordLike::Variant(variant)),
+        }
+    }
+
+    fn try_resolve_enum_variant_from_ty(
+        path_id: &PathId<'db>,
+        ty_id: TyId<'db>,
+        db: &'db dyn HirAnalysisDb,
+        expected_ty: TyId<'db>,
+    ) -> Option<ResolvedVariant<'db>> {
+        if !path_id.is_bare_ident(db) {
+            return None;
+        }
+
+        let adt_def = ty_id.adt_def(db)?;
+        let AdtRef::Enum(enum_def) = adt_def.adt_ref(db) else {
+            return None;
+        };
+
+        let ident_value = path_id.ident(db).to_opt()?;
+
+        // Look for variant with this name
+        for (idx, variant_def) in enum_def.variants(db).data(db).iter().enumerate() {
+            if variant_def.name.to_opt() == Some(ident_value) {
+                return Some(ResolvedVariant {
+                    ty: expected_ty,
+                    variant: hir::hir_def::EnumVariant {
+                        enum_: enum_def,
+                        idx: idx as u16,
+                    },
+                    path: *path_id,
+                });
+            }
+        }
+
+        None
+    }
+
+    fn collect_record_subpatterns(
+        ctor: &ConstructorKind<'db>,
+        fields: &[RecordPatField<'db>],
+        db: &'db dyn HirAnalysisDb,
+        body: HirBody<'db>,
+        scope: ScopeId<'db>,
+        arm_idx: usize,
+    ) -> Vec<SimplifiedPattern<'db>> {
+        let field_types = ctor.field_types(db);
+        fields
+            .iter()
+            .zip(field_types.iter())
+            .map(
+                |(field_pat, &field_ty)| match field_pat.pat.data(db, body) {
+                    Partial::Present(pat_data) => SimplifiedPattern::from_hir_pat(
+                        pat_data, db, body, scope, arm_idx, field_ty,
+                    ),
+                    Partial::Absent => SimplifiedPattern::wildcard(None, field_ty),
+                },
+            )
+            .collect()
     }
 }
 
@@ -642,7 +714,7 @@ impl<'db> SimplifiedPatternKind<'db> {
     fn collect_ctors(&self) -> Vec<ConstructorKind<'db>> {
         match self {
             Self::WildCard(_) => vec![],
-            Self::Constructor { kind, .. } => vec![*kind],
+            Self::Constructor { kind, .. } => vec![kind.clone()],
             Self::Or(pats) => {
                 let mut ctors = vec![];
                 for pat in pats {
@@ -652,41 +724,49 @@ impl<'db> SimplifiedPatternKind<'db> {
             }
         }
     }
+
+    pub fn ctor_with_wild_card_fields(
+        db: &'db dyn HirAnalysisDb,
+        kind: ConstructorKind<'db>,
+    ) -> Self {
+        let fields = kind
+            .field_types(db)
+            .into_iter()
+            .map(|ty| SimplifiedPattern::wildcard(None, ty))
+            .collect();
+        Self::Constructor { kind, fields }
+    }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Copy)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ConstructorKind<'db> {
-    EnumVariant(ResolvedVariant<'db>),
-    Tuple(TyId<'db>),
+    TupleLike(TupleLike<'db>),
+    RecordLike(RecordLike<'db>),
     Literal(LitKind<'db>, TyId<'db>),
 }
 
 impl<'db> ConstructorKind<'db> {
     pub fn field_types(&self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
         match self {
-            Self::EnumVariant(variant) => match variant.variant.kind(db) {
-                hir::hir_def::VariantKind::Unit => vec![],
-                hir::hir_def::VariantKind::Tuple(fields) => {
-                    vec![TyId::never(db); fields.data(db).len()]
-                }
-                hir::hir_def::VariantKind::Record(fields) => {
-                    vec![TyId::never(db); fields.data(db).len()]
-                }
-            },
-            Self::Tuple(ty) => {
-                if ty.is_tuple(db) {
-                    let (_, elems) = ty.decompose_ty_app(db);
-                    elems.to_vec()
-                } else {
-                    vec![]
-                }
+            Self::TupleLike(tuple_like) => tuple_like.tuple_field_types(db),
+            Self::RecordLike(record_like) => {
+                // For record-like, get field types in order
+                let labels = record_like.record_labels(db);
+                labels
+                    .into_iter()
+                    .filter_map(|label| record_like.record_field_ty(db, label))
+                    .collect()
             }
             Self::Literal(_, _) => vec![],
         }
     }
 
     pub fn arity(&self, db: &'db dyn HirAnalysisDb) -> usize {
-        self.field_types(db).len()
+        match self {
+            Self::TupleLike(tuple_like) => tuple_like.tuple_arity(db),
+            Self::RecordLike(record_like) => record_like.record_labels(db).len(),
+            Self::Literal(_, _) => 0,
+        }
     }
 }
 
@@ -714,7 +794,7 @@ impl<'db> SigmaSet<'db> {
             ctors.insert(ConstructorKind::Literal(LitKind::Bool(true), ty));
             ctors.insert(ConstructorKind::Literal(LitKind::Bool(false), ty));
         } else if ty.is_tuple(db) {
-            ctors.insert(ConstructorKind::Tuple(ty));
+            ctors.insert(ConstructorKind::TupleLike(TupleLike::Type(ty)));
         } else if let Some(adt_def) = ty.adt_def(db) {
             if let AdtRef::Enum(enum_def) = adt_def.adt_ref(db) {
                 let variants_list = enum_def.variants(db);
@@ -732,17 +812,40 @@ impl<'db> SigmaSet<'db> {
                             None,
                         ),
                     };
-                    ctors.insert(ConstructorKind::EnumVariant(variant));
+                    let ctor = match variant.variant.kind(db) {
+                        VariantKind::Unit => {
+                            ConstructorKind::TupleLike(TupleLike::Variant(variant))
+                        }
+                        VariantKind::Tuple(_) => {
+                            ConstructorKind::TupleLike(TupleLike::Variant(variant))
+                        }
+                        VariantKind::Record(_) => {
+                            ConstructorKind::RecordLike(RecordLike::Variant(variant))
+                        }
+                    };
+                    ctors.insert(ctor);
                 }
+            } else if let AdtRef::Struct(_struct_def) = adt_def.adt_ref(db) {
+                ctors.insert(ConstructorKind::TupleLike(TupleLike::Type(ty)));
             }
         }
 
         Self(ctors)
     }
 
-    pub fn is_complete(&self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
-        let complete_set = Self::complete_sigma(db, ty);
-        self.0.len() == complete_set.0.len()
+    pub fn is_complete(&self, db: &'db dyn HirAnalysisDb, _ty: TyId<'db>) -> bool {
+        match self.0.first() {
+            Some(ctor) => {
+                let expected = ctor_variant_num(db, ctor.clone());
+                debug_assert!(self.0.len() <= expected);
+                self.0.len() == expected
+            }
+            None => false,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -750,7 +853,7 @@ impl<'db> SigmaSet<'db> {
     }
 
     pub fn difference(&self, other: &Self) -> Vec<ConstructorKind<'db>> {
-        self.0.difference(&other.0).copied().collect()
+        self.0.difference(&other.0).cloned().collect()
     }
 }
 
@@ -769,8 +872,9 @@ pub fn check_exhaustiveness<'db>(
     patterns: &[HirPat<'db>],
     body: HirBody<'db>,
     scope: ScopeId<'db>,
+    ty: TyId<'db>,
 ) -> Result<(), Vec<String>> {
-    let matrix = PatternMatrix::from_hir_patterns(db, patterns, body, scope);
+    let matrix = PatternMatrix::from_hir_patterns(db, patterns, body, scope, ty);
     match matrix.find_missing_patterns(db) {
         Some(missing) => {
             let missing_strings = missing
@@ -788,11 +892,28 @@ pub fn check_reachability<'db>(
     patterns: &[HirPat<'db>],
     body: HirBody<'db>,
     scope: ScopeId<'db>,
+    ty: TyId<'db>,
 ) -> Vec<bool> {
-    let matrix = PatternMatrix::from_hir_patterns(db, patterns, body, scope);
+    let matrix = PatternMatrix::from_hir_patterns(db, patterns, body, scope, ty);
     (0..patterns.len())
         .map(|i| matrix.is_row_useful(db, i))
         .collect()
+}
+
+fn ctor_variant_num(db: &dyn HirAnalysisDb, ctor: ConstructorKind<'_>) -> usize {
+    match ctor {
+        ConstructorKind::TupleLike(TupleLike::Variant(variant)) => {
+            variant.variant.enum_.variants(db).data(db).len()
+        }
+        ConstructorKind::RecordLike(RecordLike::Variant(variant)) => {
+            variant.variant.enum_.variants(db).data(db).len()
+        }
+        ConstructorKind::TupleLike(TupleLike::Type(_)) => 1,
+        ConstructorKind::RecordLike(RecordLike::Type(_)) => 1,
+        ConstructorKind::Literal(LitKind::Bool(_), _) => 2,
+        ConstructorKind::Literal(LitKind::Int(_), _) => usize::MAX, // Infinite possibilities
+        ConstructorKind::Literal(LitKind::String(_), _) => usize::MAX, // Infinite possibilities
+    }
 }
 
 fn display_missing_pattern(pattern: &SimplifiedPattern<'_>) -> String {
@@ -801,7 +922,7 @@ fn display_missing_pattern(pattern: &SimplifiedPattern<'_>) -> String {
 
         SimplifiedPatternKind::Constructor { kind, fields, .. } => {
             match kind {
-                ConstructorKind::EnumVariant(_variant) => {
+                ConstructorKind::TupleLike(TupleLike::Variant(_variant)) => {
                     // Try to get a reasonable name for the variant
                     if fields.is_empty() {
                         "variant".to_string()
@@ -809,13 +930,28 @@ fn display_missing_pattern(pattern: &SimplifiedPattern<'_>) -> String {
                         "variant(..)".to_string()
                     }
                 }
-                ConstructorKind::Tuple(_) => {
+                ConstructorKind::RecordLike(RecordLike::Variant(_variant)) => {
+                    // Try to get a reasonable name for the record variant
+                    if fields.is_empty() {
+                        "variant".to_string()
+                    } else {
+                        "variant { .. }".to_string()
+                    }
+                }
+                ConstructorKind::TupleLike(TupleLike::Type(_)) => {
                     if fields.is_empty() {
                         "()".to_string()
                     } else {
                         let parts: Vec<String> =
                             fields.iter().map(display_missing_pattern).collect();
                         format!("({})", parts.join(", "))
+                    }
+                }
+                ConstructorKind::RecordLike(RecordLike::Type(_)) => {
+                    if fields.is_empty() {
+                        "{}".to_string()
+                    } else {
+                        "{ .. }".to_string()
                     }
                 }
                 ConstructorKind::Literal(lit, _) => match lit {
@@ -827,8 +963,12 @@ fn display_missing_pattern(pattern: &SimplifiedPattern<'_>) -> String {
         }
 
         SimplifiedPatternKind::Or(patterns) => {
-            let parts: Vec<String> = patterns.iter().map(display_missing_pattern).collect();
-            parts.join(" | ")
+            if patterns.is_empty() {
+                "_".to_string()
+            } else {
+                let parts: Vec<String> = patterns.iter().map(display_missing_pattern).collect();
+                parts.join(" | ")
+            }
         }
     }
 }

@@ -1,0 +1,231 @@
+// Edge case tests for special enum scenarios
+
+// ======================================================================
+// SINGLE-VARIANT ENUMS
+// ======================================================================
+
+enum SingleVariant {
+    OnlyOne
+}
+
+enum SingleVariantWithData {
+    OnlyChoice(u8)
+}
+
+enum SingleVariantTuple {
+    OnlyTuple(u8, bool)
+}
+
+// Test exhaustiveness with single variant enum
+fn test_single_variant_exhaustive(sv: SingleVariant) -> u8 {
+    match sv {
+        SingleVariant::OnlyOne => 42
+    }
+}
+
+// Test that wildcard with single variant should be unreachable
+fn test_single_variant_with_wildcard(sv: SingleVariant) -> u8 {
+    match sv {
+        SingleVariant::OnlyOne => 1
+        _ => 2  // This should be unreachable
+    }
+}
+
+// Test single variant with data
+fn test_single_variant_data_exhaustive(svd: SingleVariantWithData) -> u8 {
+    match svd {
+        SingleVariantWithData::OnlyChoice(x) => x
+    }
+}
+
+// Test single variant with data and wildcard (should be unreachable)
+fn test_single_variant_data_with_wildcard(svd: SingleVariantWithData) -> u8 {
+    match svd {
+        SingleVariantWithData::OnlyChoice(x) => x
+        _ => 0  // This should be unreachable
+    }
+}
+
+// Test single variant tuple
+fn test_single_variant_tuple_exhaustive(svt: SingleVariantTuple) -> u8 {
+    match svt {
+        SingleVariantTuple::OnlyTuple(x, true) => x
+        SingleVariantTuple::OnlyTuple(x, false) => x + 1
+    }
+}
+
+// Test single variant in complex patterns
+fn test_single_variant_in_tuple(data: (SingleVariant, u8)) -> u8 {
+    match data {
+        (SingleVariant::OnlyOne, 0) => 10
+        (SingleVariant::OnlyOne, 1) => 11
+        (SingleVariant::OnlyOne, _) => 12
+    }
+}
+
+// Test nested single variants
+fn test_nested_single_variants(data: (SingleVariant, SingleVariantWithData)) -> u8 {
+    match data {
+        (SingleVariant::OnlyOne, SingleVariantWithData::OnlyChoice(x)) => x
+    }
+}
+
+// ======================================================================
+// UNIT ENUMS (enums with only unit variants)
+// ======================================================================
+
+enum UnitOnly {
+    First,
+    Second
+}
+
+// Test unit enum exhaustiveness
+fn test_unit_enum_exhaustive(unit: UnitOnly) -> u8 {
+    match unit {
+        UnitOnly::First => 1
+        UnitOnly::Second => 2
+    }
+}
+
+// Test unit enum with wildcard (should detect last case as unreachable)
+fn test_unit_enum_with_unreachable_wildcard(unit: UnitOnly) -> u8 {
+    match unit {
+        UnitOnly::First => 1
+        UnitOnly::Second => 2
+        _ => 3  // This should be unreachable
+    }
+}
+
+// ======================================================================
+// LARGE ENUMS (stress testing)
+// ======================================================================
+
+enum LargeEnum {
+    Variant1,
+    Variant2,
+    Variant3,
+    Variant4,
+    Variant5,
+    Variant6,
+    Variant7,
+    Variant8,
+    Variant9,
+    Variant10,
+    Variant11,
+    Variant12,
+    Variant13,
+    Variant14,
+    Variant15
+}
+
+// Test exhaustive matching on large enum
+fn test_large_enum_exhaustive(large: LargeEnum) -> u8 {
+    match large {
+        LargeEnum::Variant1 => 1
+        LargeEnum::Variant2 => 2
+        LargeEnum::Variant3 => 3
+        LargeEnum::Variant4 => 4
+        LargeEnum::Variant5 => 5
+        LargeEnum::Variant6 => 6
+        LargeEnum::Variant7 => 7
+        LargeEnum::Variant8 => 8
+        LargeEnum::Variant9 => 9
+        LargeEnum::Variant10 => 10
+        LargeEnum::Variant11 => 11
+        LargeEnum::Variant12 => 12
+        LargeEnum::Variant13 => 13
+        LargeEnum::Variant14 => 14
+        LargeEnum::Variant15 => 15
+    }
+}
+
+// Test large enum with wildcard
+fn test_large_enum_with_wildcard(large: LargeEnum) -> u8 {
+    match large {
+        LargeEnum::Variant1 => 1
+        LargeEnum::Variant2 => 2
+        LargeEnum::Variant3 => 3
+        _ => 0  // Covers remaining 12 variants
+    }
+}
+
+// Test large enum with or-patterns
+fn test_large_enum_with_or_patterns(large: LargeEnum) -> u8 {
+    match large {
+        LargeEnum::Variant1 | LargeEnum::Variant2 | LargeEnum::Variant3 => 10
+        LargeEnum::Variant4 | LargeEnum::Variant5 | LargeEnum::Variant6 => 20
+        LargeEnum::Variant7 | LargeEnum::Variant8 | LargeEnum::Variant9 => 30
+        _ => 40  // Remaining variants
+    }
+}
+
+// ======================================================================
+// ENUMS WITH MIXED VARIANT TYPES
+// ======================================================================
+
+enum MixedVariants {
+    Unit,
+    Tuple(u8),
+    TupleMulti(u8, bool),
+    TupleTriple(u8, bool, u8)
+}
+
+// Test mixed variant types exhaustively
+fn test_mixed_variants_exhaustive(mixed: MixedVariants) -> u8 {
+    match mixed {
+        MixedVariants::Unit => 0
+        MixedVariants::Tuple(x) => x
+        MixedVariants::TupleMulti(x, true) => x + 10
+        MixedVariants::TupleMulti(x, false) => x + 20
+        MixedVariants::TupleTriple(x, _, z) => x + z
+    }
+}
+
+// Test mixed variants with partial patterns
+fn test_mixed_variants_partial(mixed: MixedVariants) -> u8 {
+    match mixed {
+        MixedVariants::Unit => 1
+        MixedVariants::Tuple(0) => 2
+        MixedVariants::TupleMulti(_, true) => 3
+        _ => 0  // All other cases
+    }
+}
+
+// ======================================================================
+// DEEPLY NESTED ENUM PATTERNS
+// ======================================================================
+
+enum NestedContainer {
+    Simple(SingleVariant),
+    Complex(MixedVariants),
+    Double(SingleVariant, MixedVariants),
+    Empty
+}
+
+// Test deeply nested enum patterns
+fn test_deeply_nested_enums(nested: NestedContainer) -> u8 {
+    match nested {
+        NestedContainer::Simple(SingleVariant::OnlyOne) => 10
+        NestedContainer::Complex(MixedVariants::Unit) => 20
+        NestedContainer::Complex(MixedVariants::Tuple(x)) => x + 30
+        NestedContainer::Double(SingleVariant::OnlyOne, MixedVariants::Unit) => 40
+        NestedContainer::Double(SingleVariant::OnlyOne, MixedVariants::Tuple(x)) => x + 50
+        NestedContainer::Empty => 0
+        _ => 1  // Any remaining complex patterns
+    }
+}
+
+// Test nested enums in tuples
+fn test_nested_enums_in_tuples(data: (NestedContainer, SingleVariant)) -> u8 {
+    match data {
+        (NestedContainer::Empty, SingleVariant::OnlyOne) => 100
+        (NestedContainer::Simple(_), SingleVariant::OnlyOne) => 200
+        (NestedContainer::Complex(MixedVariants::Unit), SingleVariant::OnlyOne) => 300
+        _ => 1
+    }
+}
+
+// ======================================================================
+// ENUM EXHAUSTIVENESS EDGE CASES
+// ======================================================================
+

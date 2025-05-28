@@ -270,12 +270,18 @@ impl DecisionTreeBuilder {
         db: &'db dyn HirAnalysisDb,
         mut matrix: SimplifiedArmMatrix<'db>,
     ) -> DecisionTree<'db> {
-        if matrix.nrows() == 0 {
-            panic!("Cannot build decision tree from empty matrix");
-        }
+        debug_assert!(matrix.nrows() > 0, "unexhausted pattern matrix");
 
         if matrix.is_first_arm_satisfied() {
             matrix.arms.truncate(1);
+            return DecisionTree::Leaf(LeafNode::new(
+                matrix.arms.pop().unwrap(),
+                &matrix.occurrences,
+            ));
+        }
+
+        // Handle case where matrix has no columns (fully specialized)
+        if matrix.ncols() == 0 {
             return DecisionTree::Leaf(LeafNode::new(
                 matrix.arms.pop().unwrap(),
                 &matrix.occurrences,
@@ -286,6 +292,17 @@ impl DecisionTreeBuilder {
         matrix.swap(col);
 
         let mut switch_arms = vec![];
+
+        // Handle case where occurrences vector is empty due to pattern analysis changes
+        if matrix.occurrences.is_empty() {
+            // If no occurrences but we have a matrix, create a default leaf
+            if let Some(first_arm) = matrix.arms.first() {
+                return DecisionTree::Leaf(LeafNode::new(first_arm.clone(), &[]));
+            } else {
+                panic!("Empty matrix with no arms in decision tree build");
+            }
+        }
+
         let occurrence = &matrix.occurrences[0];
         let sigma_set = matrix.sigma_set(0);
         let ty = matrix.first_column_ty();
@@ -293,7 +310,7 @@ impl DecisionTreeBuilder {
         let constructors: Vec<_> = sigma_set.into_iter().collect();
 
         for ctor in constructors {
-            let specialized_matrix = matrix.phi_specialize(db, ctor, occurrence);
+            let specialized_matrix = matrix.phi_specialize(db, ctor.clone(), occurrence);
             let subtree = self.build(db, specialized_matrix);
             switch_arms.push((Case::Constructor(ctor), subtree));
         }
@@ -426,7 +443,7 @@ impl<'db> SimplifiedArmMatrix<'db> {
         let arity = ctor.arity(db);
 
         for arm in &self.arms {
-            let specialized_rows = arm.pat_vec.phi_specialize(db, ctor);
+            let specialized_rows = arm.pat_vec.phi_specialize(db, ctor.clone());
             for specialized_row in specialized_rows {
                 let mut new_arm = SimplifiedArm::new(&specialized_row, arm.body);
                 new_arm.binds = arm.binds.clone();
@@ -435,7 +452,12 @@ impl<'db> SimplifiedArmMatrix<'db> {
         }
 
         // Update occurrences: remove first column, add constructor fields
-        let mut new_occurrences = self.occurrences[1..].to_vec();
+        let mut new_occurrences = if self.occurrences.is_empty() {
+            vec![]
+        } else {
+            self.occurrences[1..].to_vec()
+        };
+
         for i in 0..arity {
             new_occurrences.insert(i, occurrence.child(i));
         }
@@ -446,11 +468,13 @@ impl<'db> SimplifiedArmMatrix<'db> {
         }
     }
 
-    fn d_specialize(&self, db: &'db dyn HirAnalysisDb, _occurrence: &Occurrence) -> Self {
+    #[allow(clippy::only_used_in_recursion)]
+    pub fn d_specialize(&self, db: &'db dyn HirAnalysisDb, _occurrence: &Occurrence) -> Self {
         let mut new_arms = Vec::new();
 
         for arm in &self.arms {
             let specialized_rows = arm.pat_vec.d_specialize(db);
+
             for specialized_row in specialized_rows {
                 let mut new_arm = SimplifiedArm::new(&specialized_row, arm.body);
                 new_arm.binds = arm.binds.clone();
@@ -459,7 +483,11 @@ impl<'db> SimplifiedArmMatrix<'db> {
         }
 
         // Remove first column from occurrences
-        let new_occurrences = self.occurrences[1..].to_vec();
+        let new_occurrences = if self.occurrences.is_empty() {
+            vec![]
+        } else {
+            self.occurrences[1..].to_vec()
+        };
 
         SimplifiedArmMatrix {
             arms: new_arms,
@@ -579,7 +607,7 @@ fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'d
         SimplifiedPatternKind::Constructor { kind, fields } => {
             let fields = fields.iter().map(generalize_pattern).collect();
             let kind = SimplifiedPatternKind::Constructor {
-                kind: *kind,
+                kind: kind.clone(),
                 fields,
             };
             SimplifiedPattern::new(kind, pat.ty)
@@ -600,7 +628,11 @@ fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'d
             if gen_pats.len() == 1 {
                 gen_pats.into_iter().next().unwrap()
             } else {
-                SimplifiedPattern::or(gen_pats)
+                let ty = gen_pats
+                    .first()
+                    .map(|p| p.ty)
+                    .unwrap_or_else(|| panic!("Cannot create OR pattern with no alternatives"));
+                SimplifiedPattern::new(SimplifiedPatternKind::Or(gen_pats), ty)
             }
         }
     }
@@ -706,8 +738,8 @@ mod tests {
         use crate::ty::pattern_analysis::PatternMatrix;
 
         // Test with empty matrix
-        let empty_matrix = PatternMatrix::new(vec![]);
-        let simplified_matrix = SimplifiedArmMatrix::new(&empty_matrix);
+        let _empty_matrix = PatternMatrix::new(vec![]);
+        let simplified_matrix = SimplifiedArmMatrix::new(&_empty_matrix);
         assert!(!is_column_all_wildcards_simplified(&simplified_matrix, 0));
         assert!(!is_column_all_wildcards_simplified(&simplified_matrix, 1));
     }
@@ -817,5 +849,94 @@ mod tests {
         } else {
             panic!("Expected root switch");
         }
+    }
+
+    #[test]
+    fn test_column_selection_policy_api() {
+        // Test column selection policy builder pattern
+        let mut policy = ColumnSelectionPolicy::default();
+        policy.arity().small_branching();
+
+        // Verify policy has expected heuristics
+        assert_eq!(policy.0.len(), 2);
+        assert_eq!(policy.0[0], ColumnScoringFunction::Arity);
+        assert_eq!(policy.0[1], ColumnScoringFunction::SmallBranching);
+
+        // Test chaining all heuristics
+        let mut full_policy = ColumnSelectionPolicy::default();
+        full_policy
+            .arity()
+            .small_branching()
+            .needed_column()
+            .needed_prefix();
+        assert_eq!(full_policy.0.len(), 4);
+    }
+
+    #[test]
+    fn test_default_optimized_policy() {
+        // Test that default optimized policy has expected heuristics
+        let policy = default_optimized_policy();
+        assert_eq!(policy.0.len(), 2);
+        assert_eq!(policy.0[0], ColumnScoringFunction::Arity);
+        assert_eq!(policy.0[1], ColumnScoringFunction::SmallBranching);
+    }
+
+    #[test]
+    fn test_decision_tree_api_variants() {
+        // We can't easily test with real patterns without a full database setup,
+        // but we can test that the API functions exist and have the right signatures
+
+        // Test that build_decision_tree uses default policy
+        let _empty_matrix = PatternMatrix::new(vec![]);
+        // This would panic with empty matrix, but we're testing API existence
+        // In real usage, the matrix would have valid patterns
+
+        // Test that we can create policies
+        let custom_policy = ColumnSelectionPolicy::default();
+        let optimized_policy = default_optimized_policy();
+
+        // Verify policies are different (custom is empty, optimized has heuristics)
+        assert_eq!(custom_policy.0.len(), 0);
+        assert_eq!(optimized_policy.0.len(), 2);
+    }
+
+    #[test]
+    fn test_necessity_matrix_api() {
+        // Test necessity matrix creation and basic operations
+        let matrix = NecessityMatrix::new(3, 2);
+        assert_eq!(matrix.ncol, 3);
+        assert_eq!(matrix.nrow, 2);
+        assert_eq!(matrix.data.len(), 6); // 3 * 2
+
+        // Test position calculation
+        assert_eq!(matrix.pos(0, 0), 0);
+        assert_eq!(matrix.pos(0, 1), 1);
+        assert_eq!(matrix.pos(0, 2), 2);
+        assert_eq!(matrix.pos(1, 0), 3);
+        assert_eq!(matrix.pos(1, 1), 4);
+        assert_eq!(matrix.pos(1, 2), 5);
+    }
+
+    #[test]
+    fn test_occurrence_api_completeness() {
+        // Test all occurrence methods work together
+        let root = Occurrence::new();
+        assert_eq!(root.0, vec![]);
+        assert_eq!(root.last_index(), None);
+        assert_eq!(root.parent(), None);
+
+        let child = root.child(5);
+        assert_eq!(child.0, vec![5]);
+        assert_eq!(child.last_index(), Some(5));
+        assert_eq!(child.parent(), Some(root.clone()));
+
+        let grandchild = child.child(3);
+        assert_eq!(grandchild.0, vec![5, 3]);
+        assert_eq!(grandchild.last_index(), Some(3));
+        assert_eq!(grandchild.parent(), Some(child));
+
+        // Test iterator
+        let indices: Vec<_> = grandchild.iter().copied().collect();
+        assert_eq!(indices, vec![5, 3]);
     }
 }

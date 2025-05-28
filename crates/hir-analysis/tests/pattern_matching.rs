@@ -1,9 +1,14 @@
 mod test_db;
 use std::path::Path;
 
+use codespan_reporting::term::{
+    self,
+    termcolor::{BufferWriter, ColorChoice},
+};
 use dir_test::{dir_test, Fixture};
-use test_db::initialize_analysis_pass;
-use test_db::HirAnalysisTestDb;
+use driver::diagnostics::{CsDbWrapper, ToCsDiag};
+use test_db::{initialize_analysis_pass, HirAnalysisTestDb};
+use test_utils::snap_test;
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/pattern_matching",
@@ -15,7 +20,43 @@ fn exhaustive_matches(fixture: Fixture<&str>) {
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
     let file = db.new_stand_alone(file_name.into(), fixture.content());
     let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
+
+    // Exhaustive tests should have no diagnostics
+    let mut manager = initialize_analysis_pass();
+    let diags = manager.run_on_module(&db, top_mod);
+
+    if !diags.is_empty() {
+        // Format diagnostics using codespan with arrow indicators
+        let writer = BufferWriter::stderr(ColorChoice::Never);
+        let mut buffer = writer.buffer();
+        let config = term::Config::default();
+
+        let mut complete_diags: Vec<_> = diags.iter().map(|d| d.to_complete(&db)).collect();
+        complete_diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+            ord => ord,
+        });
+
+        let mut diagnostic_output = format!(
+            "Exhaustive test file {} has {} diagnostic(s):\n\n",
+            file_name,
+            diags.len()
+        );
+
+        for diag in complete_diags {
+            let cs_diag = &diag.to_cs(&db);
+            term::emit(&mut buffer, &config, &CsDbWrapper(&db), cs_diag).unwrap();
+        }
+
+        diagnostic_output.push_str(std::str::from_utf8(buffer.as_slice()).unwrap());
+        snap_test!(diagnostic_output, fixture.path());
+
+        panic!(
+            "Exhaustive test file {} should have no diagnostics but found {} diagnostic(s)",
+            file_name,
+            diags.len()
+        );
+    }
 }
 
 #[dir_test(
@@ -36,8 +77,34 @@ fn non_exhaustive_matches(fixture: Fixture<&str>) {
     // Verify we have at least one diagnosis
     assert!(
         !diags.is_empty(),
-        "Expected pattern matching errors but found none"
+        "Expected pattern matching errors but found none in file: {}",
+        file_name
     );
+
+    // Format diagnostics using codespan with arrow indicators
+    let writer = BufferWriter::stderr(ColorChoice::Never);
+    let mut buffer = writer.buffer();
+    let config = term::Config::default();
+
+    let mut complete_diags: Vec<_> = diags.iter().map(|d| d.to_complete(&db)).collect();
+    complete_diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+        std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+        ord => ord,
+    });
+
+    let mut diagnostic_output = format!(
+        "Non-exhaustive test file {} has {} diagnostic(s):\n\n",
+        file_name,
+        diags.len()
+    );
+
+    for diag in complete_diags {
+        let cs_diag = &diag.to_cs(&db);
+        term::emit(&mut buffer, &config, &CsDbWrapper(&db), cs_diag).unwrap();
+    }
+
+    diagnostic_output.push_str(std::str::from_utf8(buffer.as_slice()).unwrap());
+    snap_test!(diagnostic_output, fixture.path());
 }
 
 #[dir_test(
@@ -58,8 +125,34 @@ fn unreachable_patterns(fixture: Fixture<&str>) {
     // Verify we have at least one diagnosis
     assert!(
         !diags.is_empty(),
-        "Expected unreachable pattern errors but found none"
+        "Expected unreachable pattern errors but found none in file: {}",
+        file_name
     );
+
+    // Format diagnostics using codespan with arrow indicators
+    let writer = BufferWriter::stderr(ColorChoice::Never);
+    let mut buffer = writer.buffer();
+    let config = term::Config::default();
+
+    let mut complete_diags: Vec<_> = diags.iter().map(|d| d.to_complete(&db)).collect();
+    complete_diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+        std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+        ord => ord,
+    });
+
+    let mut diagnostic_output = format!(
+        "Unreachable test file {} has {} diagnostic(s):\n\n",
+        file_name,
+        diags.len()
+    );
+
+    for diag in complete_diags {
+        let cs_diag = &diag.to_cs(&db);
+        term::emit(&mut buffer, &config, &CsDbWrapper(&db), cs_diag).unwrap();
+    }
+
+    diagnostic_output.push_str(std::str::from_utf8(buffer.as_slice()).unwrap());
+    snap_test!(diagnostic_output, fixture.path());
 }
 
 #[dir_test(
@@ -72,5 +165,139 @@ fn custom_pattern_tests(fixture: Fixture<&str>) {
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
     let file = db.new_stand_alone(file_name.into(), fixture.content());
     let (top_mod, _) = db.top_mod(file);
-    db.assert_no_diags(top_mod);
+
+    // Custom tests should have no diagnostics
+    let mut manager = initialize_analysis_pass();
+    let diags = manager.run_on_module(&db, top_mod);
+
+    if !diags.is_empty() {
+        // Format diagnostics using codespan with arrow indicators
+        let writer = BufferWriter::stderr(ColorChoice::Never);
+        let mut buffer = writer.buffer();
+        let config = term::Config::default();
+
+        let mut complete_diags: Vec<_> = diags.iter().map(|d| d.to_complete(&db)).collect();
+        complete_diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+            ord => ord,
+        });
+
+        let mut diagnostic_output = format!(
+            "Custom test file {} has {} diagnostic(s):\n\n",
+            file_name,
+            diags.len()
+        );
+
+        for diag in complete_diags {
+            let cs_diag = &diag.to_cs(&db);
+            term::emit(&mut buffer, &config, &CsDbWrapper(&db), cs_diag).unwrap();
+        }
+
+        diagnostic_output.push_str(std::str::from_utf8(buffer.as_slice()).unwrap());
+        snap_test!(diagnostic_output, fixture.path());
+
+        panic!(
+            "Custom test file {} should have no diagnostics but found {} diagnostic(s)",
+            file_name,
+            diags.len()
+        );
+    }
+}
+
+#[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/test_files/pattern_matching",
+    glob: "edge_cases/*.fe"
+)]
+fn edge_case_pattern_tests(fixture: Fixture<&str>) {
+    let mut db = HirAnalysisTestDb::default();
+    let path = Path::new(fixture.path());
+    let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
+    let file = db.new_stand_alone(file_name.into(), fixture.content());
+    let (top_mod, _) = db.top_mod(file);
+
+    // Edge case tests should have no diagnostics (they test correct behavior)
+    let mut manager = initialize_analysis_pass();
+    let diags = manager.run_on_module(&db, top_mod);
+
+    if !diags.is_empty() {
+        // Format diagnostics using codespan with arrow indicators
+        let writer = BufferWriter::stderr(ColorChoice::Never);
+        let mut buffer = writer.buffer();
+        let config = term::Config::default();
+
+        let mut complete_diags: Vec<_> = diags.iter().map(|d| d.to_complete(&db)).collect();
+        complete_diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+            ord => ord,
+        });
+
+        let mut diagnostic_output = format!(
+            "Edge case test file {} has {} diagnostic(s):\n\n",
+            file_name,
+            diags.len()
+        );
+
+        for diag in complete_diags {
+            let cs_diag = &diag.to_cs(&db);
+            term::emit(&mut buffer, &config, &CsDbWrapper(&db), cs_diag).unwrap();
+        }
+
+        diagnostic_output.push_str(std::str::from_utf8(buffer.as_slice()).unwrap());
+        snap_test!(diagnostic_output, fixture.path());
+
+        panic!(
+            "Edge case test file {} should have no diagnostics but found {} diagnostic(s)",
+            file_name,
+            diags.len()
+        );
+    }
+}
+
+#[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/test_files/pattern_matching",
+    glob: "stress_tests/*.fe"
+)]
+fn stress_pattern_tests(fixture: Fixture<&str>) {
+    let mut db = HirAnalysisTestDb::default();
+    let path = Path::new(fixture.path());
+    let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
+    let file = db.new_stand_alone(file_name.into(), fixture.content());
+    let (top_mod, _) = db.top_mod(file);
+
+    // Stress tests should have no diagnostics (they test performance and correctness)
+    let mut manager = initialize_analysis_pass();
+    let diags = manager.run_on_module(&db, top_mod);
+
+    if !diags.is_empty() {
+        // Format diagnostics using codespan with arrow indicators
+        let writer = BufferWriter::stderr(ColorChoice::Never);
+        let mut buffer = writer.buffer();
+        let config = term::Config::default();
+
+        let mut complete_diags: Vec<_> = diags.iter().map(|d| d.to_complete(&db)).collect();
+        complete_diags.sort_by(|lhs, rhs| match lhs.error_code.cmp(&rhs.error_code) {
+            std::cmp::Ordering::Equal => lhs.primary_span().cmp(&rhs.primary_span()),
+            ord => ord,
+        });
+
+        let mut diagnostic_output = format!(
+            "Stress test file {} has {} diagnostic(s):\n\n",
+            file_name,
+            diags.len()
+        );
+
+        for diag in complete_diags {
+            let cs_diag = &diag.to_cs(&db);
+            term::emit(&mut buffer, &config, &CsDbWrapper(&db), cs_diag).unwrap();
+        }
+
+        diagnostic_output.push_str(std::str::from_utf8(buffer.as_slice()).unwrap());
+        snap_test!(diagnostic_output, fixture.path());
+
+        panic!(
+            "Stress test file {} should have no diagnostics but found {} diagnostic(s)",
+            file_name,
+            diags.len()
+        );
+    }
 }
