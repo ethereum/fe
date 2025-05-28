@@ -14,8 +14,12 @@ note:
  Switch on expr
  ├─ Rgb =>
  │  └─ Execute arm #0
+ │       r ← expr.0
+ │       g ← expr.1
+ │       b ← expr.2
  └─ Simple =>
     └─ Execute arm #1
+         value ← expr.0
 
 
 note: 
@@ -31,6 +35,8 @@ note:
  │  └─ Execute arm #0
  └─ Coordinate =>
     └─ Execute arm #1
+         x ← expr.0
+         y ← expr.1
 
 
 note: 
@@ -44,8 +50,18 @@ note:
    │ ╰─────^ Decision Tree for test_nested_bindings:
  Switch on expr
  └─ tuple() =>
-    └─ Switch on expr
+    └─ Switch on expr.0
        ├─ Rgb =>
-       │  └─ Switch on expr
+       │  └─ Switch on expr.1
+       │     ├─ Coordinate =>
+       │     │  └─ Execute arm #0
+       │     │       x ← expr.1.0
+       │     │       r ← expr.0.0
+       │     └─ _ =>
+       │        └─ Execute arm #2
        └─ Simple =>
-          └─ Switch on expr
+          └─ Switch on expr.1
+             ├─ Origin =>
+             │  └─ Execute arm #1
+             └─ _ =>
+                └─ Execute arm #2

@@ -825,7 +825,7 @@ dependencies = [
  "salsa",
  "serde",
  "serde-semver",
- "smol_str",
+ "smol_str 0.1.24",
  "thiserror 1.0.69",
  "toml",
  "tracing",
@@ -845,7 +845,7 @@ dependencies = [
  "fe-resolver",
  "fe-test-utils",
  "salsa",
- "smol_str",
+ "smol_str 0.1.24",
  "url",
 ]
 
@@ -887,12 +887,14 @@ dependencies = [
  "fe-hir",
  "fe-test-utils",
  "if_chain",
+ "indexmap",
  "itertools 0.14.0",
  "num-bigint",
  "rustc-hash 2.1.1",
  "salsa",
  "smallvec 1.15.0",
  "smallvec 2.0.0-alpha.11",
+ "smol_str 0.2.2",
  "thin-vec",
  "tracing",
  "url",
@@ -961,7 +963,7 @@ dependencies = [
  "glob",
  "serde",
  "serde-semver",
- "smol_str",
+ "smol_str 0.1.24",
  "toml",
 ]
 
@@ -2224,6 +2226,15 @@ name = "smol_str"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fad6c857cbab2627dcf01ec85a623ca4e7dcb5691cbaa3d7fb7653671f0d09c9"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "smol_str"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd538fb6910ac1099850255cf94a94df6551fbdd602454387d0adb2d1ca6dead"
 dependencies = [
  "serde",
 ]

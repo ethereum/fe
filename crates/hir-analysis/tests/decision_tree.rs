@@ -30,44 +30,35 @@ fn convert_to_ascii_tree<'db>(
     tree: &DecisionTree<'db>,
 ) -> Tree {
     match tree {
-        DecisionTree::Leaf {
-            arm_index,
-            bindings,
-        } => {
+        DecisionTree::Leaf(leaf_node) => {
             let mut lines = vec![];
 
             // Add arm content with simple, robust format
-            lines.push(format!("Execute arm #{}", arm_index));
+            lines.push(format!("Execute arm #{}", leaf_node.arm_index));
 
             // Add bindings if present
-            for (name, occurrence) in bindings {
+            for ((name, _idx), occurrence) in &leaf_node.bindings {
                 lines.push(format!("  {} ← {}", name, render_occurrence(occurrence)));
             }
 
             Tree::Leaf(lines)
         }
 
-        DecisionTree::Switch {
-            occurrence,
-            branches,
-            default,
-        } => {
+        DecisionTree::Switch(switch_node) => {
             let mut children = Vec::new();
 
-            for (ctor, subtree) in branches {
-                let label = format!("{} =>", render_constructor(db, ctor));
+            for (case, subtree) in &switch_node.arms {
+                let label = match case {
+                    fe_hir_analysis::ty::decision_tree::Case::Constructor(ctor) => {
+                        format!("{} =>", render_constructor(db, ctor))
+                    }
+                    fe_hir_analysis::ty::decision_tree::Case::Default => "_ =>".to_string(),
+                };
                 children.push(Tree::Node(label, vec![convert_to_ascii_tree(db, subtree)]));
             }
 
-            if let Some(default_tree) = default {
-                children.push(Tree::Node(
-                    "_ =>".to_string(),
-                    vec![convert_to_ascii_tree(db, default_tree)],
-                ));
-            }
-
             Tree::Node(
-                format!("Switch on {}", render_occurrence(occurrence)),
+                format!("Switch on {}", render_occurrence(&switch_node.occurrence)),
                 children,
             )
         }

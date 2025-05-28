@@ -15,15 +15,15 @@ note:
   │ ╰─────^ Decision Tree for test_boolean_tuple:
  Switch on expr
  └─ tuple() =>
-    └─ Switch on expr
+    └─ Switch on expr.0
        ├─ true =>
-       │  └─ Switch on expr
+       │  └─ Switch on expr.1
        │     ├─ true =>
        │     │  └─ Execute arm #0
        │     └─ false =>
        │        └─ Execute arm #1
        └─ false =>
-          └─ Switch on expr
+          └─ Switch on expr.1
              ├─ true =>
              │  └─ Execute arm #2
              └─ false =>
