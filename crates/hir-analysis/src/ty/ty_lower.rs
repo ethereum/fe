@@ -348,6 +348,21 @@ impl<'db> GenericParamCollector<'db> {
         }
     }
 
+    fn collect_associated_types(&mut self) {
+        let GenericParamOwner::Trait(trait_item) = self.owner else {
+            return;
+        };
+
+        let associated_types = trait_item.types(self.db);
+
+        for (idx, assoc_ty) in associated_types.iter().enumerate() {
+            let param_idx = idx + self.params.len();
+            let kind = self.extract_kind(assoc_ty.bounds.as_slice());
+            self.params
+                .push(TyParamPrecursor::assoc_type(assoc_ty.name, param_idx, kind));
+        }
+    }
+
     fn collect_kind_in_where_clause(&mut self) {
         let Some(where_clause_owner) = self.owner.where_clause_owner() else {
             return;
@@ -358,7 +373,7 @@ impl<'db> GenericParamCollector<'db> {
         for pred in where_clause.data(hir_db) {
             match self.param_idx_from_ty(pred.ty.to_opt()) {
                 ParamLoc::Idx(idx) => {
-                    if self.params[idx].kind.is_none() && !self.params[idx].is_const_ty {
+                    if self.params[idx].kind.is_none() && !self.params[idx].is_const_ty() {
                         self.params[idx].kind = self.extract_kind(pred.bounds.as_slice());
                     }
                 }
@@ -379,6 +394,7 @@ impl<'db> GenericParamCollector<'db> {
 
     fn finalize(mut self) -> GenericParamTypeSet<'db> {
         self.collect_generic_params();
+        self.collect_associated_types();
         self.collect_kind_in_where_clause();
 
         GenericParamTypeSet::new(
@@ -453,8 +469,15 @@ pub struct TyParamPrecursor<'db> {
     name: Partial<IdentId<'db>>,
     original_idx: Option<usize>,
     kind: Option<Kind>,
-    const_ty_ty: Option<HirTyId<'db>>,
-    is_const_ty: bool,
+    variant: Variant<'db>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Variant<'db> {
+    TraitSelf,
+    Normal,
+    Const(Option<HirTyId<'db>>),
+    AssocTy,
 }
 
 impl<'db> TyParamPrecursor<'db> {
@@ -470,24 +493,27 @@ impl<'db> TyParamPrecursor<'db> {
 
         let kind = self.kind.clone().unwrap_or(Kind::Star);
 
-        if self.original_idx.is_none() {
-            let param = TyParam::trait_self(db, kind, scope);
-            return TyId::new(db, TyData::TyParam(param));
+        match self.variant {
+            Variant::TraitSelf => {
+                let param = TyParam::trait_self(db, kind, scope);
+                TyId::new(db, TyData::TyParam(param))
+            }
+            Variant::Normal => {
+                let param = TyParam::normal_param(name, lowered_idx, kind, scope);
+                TyId::new(db, TyData::TyParam(param))
+            }
+            Variant::Const(Some(ty)) => {
+                let param = TyParam::normal_param(name, lowered_idx, kind, scope);
+                let ty = lower_const_ty_ty(db, scope, ty);
+                let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, ty));
+                TyId::new(db, TyData::ConstTy(const_ty))
+            }
+            Variant::Const(None) => TyId::invalid(db, InvalidCause::Other),
+            Variant::AssocTy => {
+                let param = TyParam::assoc_type(name, lowered_idx, kind, scope);
+                TyId::new(db, TyData::TyParam(param))
+            }
         }
-
-        let param = TyParam::normal_param(name, lowered_idx, kind, scope);
-
-        if !self.is_const_ty {
-            return TyId::new(db, TyData::TyParam(param));
-        }
-
-        let const_ty_ty = match self.const_ty_ty {
-            Some(ty) => lower_const_ty_ty(db, scope, ty),
-            None => TyId::invalid(db, InvalidCause::Other),
-        };
-
-        let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, const_ty_ty));
-        TyId::new(db, TyData::ConstTy(const_ty))
     }
 
     fn ty_param(name: Partial<IdentId<'db>>, idx: usize, kind: Option<Kind>) -> Self {
@@ -495,8 +521,7 @@ impl<'db> TyParamPrecursor<'db> {
             name,
             original_idx: idx.into(),
             kind,
-            const_ty_ty: None,
-            is_const_ty: false,
+            variant: Variant::Normal,
         }
     }
 
@@ -505,8 +530,16 @@ impl<'db> TyParamPrecursor<'db> {
             name,
             original_idx: idx.into(),
             kind: None,
-            const_ty_ty: ty,
-            is_const_ty: true,
+            variant: Variant::Const(ty),
+        }
+    }
+
+    fn assoc_type(name: Partial<IdentId<'db>>, idx: usize, kind: Option<Kind>) -> Self {
+        Self {
+            name,
+            original_idx: idx.into(),
+            kind,
+            variant: Variant::AssocTy,
         }
     }
 
@@ -516,13 +549,16 @@ impl<'db> TyParamPrecursor<'db> {
             name,
             original_idx: None,
             kind,
-            const_ty_ty: None,
-            is_const_ty: false,
+            variant: Variant::TraitSelf,
         }
     }
 
     fn is_trait_self(&self) -> bool {
         self.original_idx.is_none()
+    }
+
+    fn is_const_ty(&self) -> bool {
+        matches!(self.variant, Variant::Const(_))
     }
 }
 

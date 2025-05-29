@@ -248,7 +248,7 @@ fn collect_constraints_from_where_clause<'db>(
     }
 }
 
-fn add_bounds_to_constraint_set<'db>(
+pub(crate) fn add_bounds_to_constraint_set<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     bound_ty: TyId<'db>,

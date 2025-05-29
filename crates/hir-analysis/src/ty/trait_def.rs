@@ -2,7 +2,7 @@
 
 use common::indexmap::{IndexMap, IndexSet};
 use hir::{
-    hir_def::{IdentId, ImplTrait, IngotId, Trait},
+    hir_def::{scope_graph::ScopeId, IdentId, ImplTrait, IngotId, Trait},
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
@@ -20,7 +20,7 @@ use super::{
         PredicateListId, WellFormedness,
     },
     ty_def::{Kind, TyId},
-    ty_lower::GenericParamTypeSet,
+    ty_lower::{lower_hir_ty, GenericParamTypeSet},
     unify::UnificationTable,
 };
 use crate::{
@@ -331,6 +331,47 @@ impl<'db> TraitDef<'db> {
         methods
     }
 
+    pub fn assoc_types(
+        self,
+        db: &'db dyn HirAnalysisDb,
+    ) -> IndexMap<IdentId<'db>, TraitTypeDecl<'db>> {
+        let trait_scope = ScopeId::Item(self.trait_(db).into());
+        let mut types = IndexMap::default();
+
+        for (_idx, type_) in self.trait_(db).types(db).iter().enumerate() {
+            let Some(name) = type_.name.to_opt() else {
+                continue;
+            };
+            let default_ty = type_
+                .default
+                .map(|t| Binder::bind(lower_hir_ty(db, t, trait_scope)));
+
+            // let kind = Kind::Star; // xxx
+            // let assoc_ty = TyParam::assoc_type(name, idx, kind, trait_scope).ty(db);
+            // let mut bounds = IndexSet::new();
+            // add_bounds_to_constraint_set(db, trait_scope, assoc_ty, &type_.bounds, &mut bounds);
+            // let bounds = bounds.into_iter().collect();
+
+            // We can simply ignore the conflict here because it's already
+            // handled by the def analysis pass
+            types
+                .entry(name)
+                .or_insert(TraitTypeDecl { name, default_ty });
+        }
+        types
+    }
+
+    // pub fn assoc_type_bounds(
+    //     self,
+    //     db: &'db dyn HirAnalysisDb,
+    //     ty: TraitTypeDecl<'db>,
+    // ) -> Vec<TraitInstId<'db>> {
+    //     let mut bounds = IndexSet::new();
+    //     let hir = self.trait_(db).types(db)[ty.idx as usize];
+    //     add_bounds_to_constraint_set(db, scope, bound_ty, bounds, set);
+    //     bounds
+    // }
+
     pub fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
     }
@@ -347,6 +388,11 @@ impl<'db> TraitDef<'db> {
     pub fn original_params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).explicit_params(db)
     }
+}
+
+pub struct TraitTypeDecl<'db> {
+    name: IdentId<'db>,
+    default_ty: Option<Binder<TyId<'db>>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, salsa::Update)]

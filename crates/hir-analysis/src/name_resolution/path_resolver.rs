@@ -659,6 +659,11 @@ pub fn resolve_name_res<'db>(
                 PathRes::Ty(ty)
             }
 
+            ScopeId::TraitType(t, idx) => {
+                let _ty = &t.types(db)[idx as usize];
+                todo!() // xxx
+            }
+
             ScopeId::Variant(var) => {
                 let enum_ty = if let Some(ty) = parent_ty {
                     ty
