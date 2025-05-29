@@ -180,6 +180,7 @@ define_lazy_span_node!(
         (super_traits, super_trait_list, LazySuperTraitListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
+        (item_list, item_list, LazyTraitItemListSpan),
     }
 );
 impl<'db> LazyTraitSpan<'db> {
@@ -193,6 +194,25 @@ define_lazy_span_node!(
     ast::SuperTraitList,
     @idx {
         (super_trait, LazyTraitRefSpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyTraitItemListSpan,
+    ast::TraitItemList,
+    @idx {
+        (assoc_type, LazyTraitTypeSpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyTraitTypeSpan,
+    ast::TraitTypeItem,
+    @node {
+// xxx
+//        (attributes, attr_list, LazyAttrListSpan),
+//        (generic_params, generic_params, LazyGenericParamListSpan),
+//        (where_clause, where_clause, LazyWhereClauseSpan),
     }
 );
 

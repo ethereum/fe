@@ -237,7 +237,7 @@ impl<'db> TyId<'db> {
     }
 
     pub(crate) fn is_trait_self(self, db: &dyn HirAnalysisDb) -> bool {
-        matches!(self.base_ty(db).data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self)
+        matches!(self.base_ty(db).data(db), TyData::TyParam(ty_param) if ty_param.is_trait_self())
     }
 
     pub(crate) fn is_ty_var(self, db: &dyn HirAnalysisDb) -> bool {
@@ -822,13 +822,21 @@ pub struct TyParam<'db> {
     // The `foo`'s type parameter list is lowered to [`T`, `U`, `V`], so the index of `V` is 2.
     pub idx: usize,
     pub kind: Kind,
-    pub is_trait_self: bool,
+    variant: Variant,
     pub owner: ScopeId<'db>,
 }
 
 impl<'db> TyParam<'db> {
+    pub fn ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
+        TyId::new(db, TyData::TyParam(self))
+    }
+
     pub(super) fn pretty_print(&self, db: &dyn HirAnalysisDb) -> String {
         self.name.data(db).to_string()
+    }
+
+    pub fn is_trait_self(&self) -> bool {
+        matches!(self.variant, Variant::TraitSelf)
     }
 
     pub(super) fn normal_param(
@@ -841,7 +849,22 @@ impl<'db> TyParam<'db> {
             name,
             idx,
             kind,
-            is_trait_self: false,
+            variant: Variant::Normal,
+            owner: scope,
+        }
+    }
+
+    pub(super) fn assoc_type(
+        name: IdentId<'db>,
+        idx: usize,
+        kind: Kind,
+        scope: ScopeId<'db>,
+    ) -> Self {
+        Self {
+            name,
+            idx,
+            kind,
+            variant: Variant::AssocTy,
             owner: scope,
         }
     }
@@ -851,7 +874,7 @@ impl<'db> TyParam<'db> {
             name: IdentId::make_self_ty(db),
             idx: 0,
             kind,
-            is_trait_self: true,
+            variant: Variant::TraitSelf,
             owner: scope,
         }
     }
@@ -866,12 +889,19 @@ impl<'db> TyParam<'db> {
     }
 
     pub fn scope(&self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
-        if self.is_trait_self {
+        if self.is_trait_self() {
             self.owner
         } else {
             ScopeId::GenericParam(self.owner.item(), self.original_idx(db) as u16)
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum Variant {
+    Normal,
+    TraitSelf,
+    AssocTy,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, Update)]

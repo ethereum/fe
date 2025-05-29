@@ -830,6 +830,8 @@ impl<'db> Impl<'db> {
         })
     }
 
+    // xxx TODO pub fn types(self, db: &'db dyn HirDb)
+
     pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }

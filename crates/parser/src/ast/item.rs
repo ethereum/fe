@@ -193,7 +193,6 @@ impl Trait {
 
     /// Returns the trait's item list.
     /// `{ .. }` in `trait Foo<..> where .. { .. }`
-    /// NOTE: Currently only supports `fn` items.
     pub fn item_list(&self) -> Option<TraitItemList> {
         support::child(self.syntax())
     }
@@ -303,7 +302,6 @@ impl ImplTrait {
 
     /// Returns the trait impl item list.
     /// `{ .. }` in `impl<T> Foo for Bar<T> { .. }`
-    /// NOTE: Currently only supports `fn` items.
     pub fn item_list(&self) -> Option<TraitItemList> {
         support::child(self.syntax())
     }
@@ -449,7 +447,7 @@ ast_node! {
 ast_node! {
     pub struct ImplItemList,
     SK::ImplItemList,
-    IntoIterator<Item=Func>,
+    IntoIterator<Item=Func>, // xxx ImplTraitItem
 }
 
 ast_node! {
