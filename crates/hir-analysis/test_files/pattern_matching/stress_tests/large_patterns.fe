@@ -272,3 +272,101 @@ fn test_mixed_pattern_types_stress(
         _ => 1
     }
 }
+
+// ======================================================================
+// MIXED RECORDLIKE AND TUPLELIKE PATTERN STRESS TESTS
+// ======================================================================
+
+struct Point {
+    x: u8,
+    y: u8,
+}
+
+struct Rectangle {
+    top_left: Point,
+    bottom_right: Point,
+}
+
+struct ComplexData {
+    id: u8,
+    coords: (u8, u8),
+    metadata: VeryLargeEnum,
+}
+
+enum ShapeVariant {
+    Circle(Point, u8),
+    Rect(Rectangle),
+    Line(Point, Point),
+    Polygon(ComplexData),
+}
+
+// Test struct patterns mixed with tuple patterns
+fn test_struct_tuple_mix(data: (Point, (u8, bool), ComplexData)) -> u8 {
+    match data {
+        (Point { x: 0, y: 0 }, (_, true), ComplexData { id: 1, coords: (a, b), metadata: VeryLargeEnum::Variant1 }) => a + b + 100
+        (Point { x: 1, y: _ }, (val, false), ComplexData { id, coords: (0, _), metadata: _ }) => val + id + 50
+        (Point { x: _, y: 1 }, (0 | 1, _), ComplexData { id: _, coords: _, metadata: VeryLargeEnum::Variant2 | VeryLargeEnum::Variant3 }) => 75
+        (Point { x, y }, _, ComplexData { id: 0, coords: (x_coord, y_coord), metadata: _ }) => x + y + x_coord + y_coord
+        _ => 1
+    }
+}
+
+// Test nested struct patterns with tuples
+fn test_nested_struct_patterns(rect: Rectangle, data: (ShapeVariant, (bool, u8))) -> u8 {
+    match (rect, data) {
+        (Rectangle { top_left: Point { x: 0, y: 0 }, bottom_right: Point { x: 10, y: 10 } }, (ShapeVariant::Circle(Point { x: 5, y: 5 }, radius), (true, _))) => radius + 200
+        (Rectangle { top_left: Point { x, y }, bottom_right: _ }, (ShapeVariant::Rect(Rectangle { top_left: Point { x: inner_x, y: inner_y }, bottom_right: _ }), (false, val))) => x + y + inner_x + inner_y + val
+        (Rectangle { top_left: _, bottom_right: Point { x: bx, y: by } }, (ShapeVariant::Line(Point { x: x1, y: y1 }, Point { x: x2, y: y2 }), (_, count))) => bx + by + x1 + y1 + x2 + y2 + count
+        (Rectangle { top_left: Point { x: tx, y: ty }, bottom_right: Point { x: bx, y: by } }, (ShapeVariant::Polygon(ComplexData { id, coords: (cx, cy), metadata: _ }), _)) => tx + ty + bx + by + id + cx + cy
+        _ => 0
+    }
+}
+
+// Test or-patterns mixing struct and tuple patterns
+fn test_or_patterns_struct_tuple_mix(input: (VeryLargeEnum, Point, (u8, u8))) -> u8 {
+    match input {
+        (VeryLargeEnum::Variant1 | VeryLargeEnum::Variant2, Point { x: 0, y: _ } | Point { x: _, y: 0 }, (a, b)) => a + b + 10
+        (VeryLargeEnum::Variant3 | VeryLargeEnum::Variant4 | VeryLargeEnum::Variant5, Point { x: 1, y: 1 }, (0, _) | (_, 0)) => 20
+        (VeryLargeEnum::Variant6 | VeryLargeEnum::Variant7, Point { x, y }, (1, 1) | (2, 2)) => x + y + 30
+        _ => 1
+    }
+}
+
+// Test complex nesting of records and tuples
+fn test_complex_record_tuple_nesting(
+    data: (
+        ComplexData,
+        (Rectangle, (ShapeVariant, bool)),
+        Point
+    )
+) -> u8 {
+    match data {
+        (ComplexData { id: 0, coords: (0, 0), metadata: VeryLargeEnum::Variant1 }, (Rectangle { top_left: Point { x: 1, y: 1 }, bottom_right: _ }, (ShapeVariant::Circle(_, _), true)), Point { x: target_x, y: target_y }) => target_x + target_y + 100
+        (ComplexData { id, coords: (cx, cy), metadata: VeryLargeEnum::Variant2 | VeryLargeEnum::Variant3 }, (Rectangle { top_left: _, bottom_right: Point { x: br_x, y: br_y } }, (ShapeVariant::Rect(_), false)), Point { x: 0, y: 0 }) => id + cx + cy + br_x + br_y + 50
+        (ComplexData { id: _, coords: _, metadata: _ }, (Rectangle { top_left: Point { x: tl_x, y: tl_y }, bottom_right: Point { x: br_x, y: br_y } }, (ShapeVariant::Polygon(ComplexData { id: inner_id, coords: (inner_cx, inner_cy), metadata: _ }), _)), Point { x, y }) => tl_x + tl_y + br_x + br_y + inner_id + inner_cx + inner_cy + x + y
+        
+        _ => 1
+    }
+}
+
+// Test struct patterns with rest syntax and wildcards
+fn test_struct_rest_patterns(shapes: (ShapeVariant, ShapeVariant, ComplexData)) -> u8 {
+    match shapes {
+        (ShapeVariant::Circle(Point { x: 0, .. }, _), ShapeVariant::Rect(Rectangle { top_left: Point { y: 0, .. }, .. }), ComplexData { id: 1, .. }) => 100
+        (ShapeVariant::Line(Point { x, .. }, Point { y, .. }), ShapeVariant::Polygon(ComplexData { coords: (a, b), .. }), ComplexData { metadata: VeryLargeEnum::Variant1, .. }) => x + y + a + b + 50
+        (ShapeVariant::Rect(Rectangle { bottom_right: Point { x: bx, .. }, .. }), _, ComplexData { id, coords: (cx, cy), .. }) => bx + id + cx + cy + 25
+        _ => 1
+    }
+}
+
+// Test exhaustive patterns with mixed record and tuple types
+fn test_exhaustive_mixed_patterns(simple_data: (Point, bool)) -> u8 {
+    match simple_data {
+        (Point { x: 0, y: 0 }, true) => 4
+        (Point { x: 0, y: 0 }, false) => 3
+        (Point { x: 0, y: _ }, true) => 2
+        (Point { x: 0, y: _ }, false) => 1
+        (Point { x: _, y: _ }, true) => 1
+        (Point { x: _, y: _ }, false) => 0
+    }
+}
