@@ -336,27 +336,50 @@ impl super::Parse for GenericArgScope {
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        match parser.current_kind() {
-            Some(SyntaxKind::LBrace) => {
-                self.set_kind(SyntaxKind::ConstGenericArg);
-                parser.parse(BlockExprScope::default())?;
+        
+        // Check if this is an associated type argument (Ident = Type)
+        let is_assoc_type = parser.dry_run(|parser| {
+            parser.current_kind() == Some(SyntaxKind::Ident) && {
+                parser.bump();
+                parser.current_kind() == Some(SyntaxKind::Eq)
             }
+        });
 
-            Some(kind) if kind.is_literal_leaf() => {
-                self.set_kind(SyntaxKind::ConstGenericArg);
-                parser.parse(LitExprScope::default()).unwrap_infallible();
-            }
+        if is_assoc_type {
+            self.set_kind(SyntaxKind::AssocTypeGenericArg);
+            // Parse the identifier name
+            parser.bump_expected(SyntaxKind::Ident);
+            
+            // Parse the equals sign
+            parser.bump_expected(SyntaxKind::Eq);
+            
+            // Parse the type
+            parse_type(parser, None)?;
+        } else {
+            match parser.current_kind() {
+                Some(SyntaxKind::LBrace) => {
+                    self.set_kind(SyntaxKind::ConstGenericArg);
+                    parser.parse(BlockExprScope::default())?;
+                }
 
-            _ => {
-                parse_type(parser, None)?;
-                if parser.current_kind() == Some(SyntaxKind::Colon) {
-                    parser.error_and_recover("type bounds are not allowed here")?;
+                Some(kind) if kind.is_literal_leaf() => {
+                    self.set_kind(SyntaxKind::ConstGenericArg);
+                    parser.parse(LitExprScope::default()).unwrap_infallible();
+                }
+
+                _ => {
+                    parse_type(parser, None)?;
+                    if parser.current_kind() == Some(SyntaxKind::Colon) {
+                        parser.error_and_recover("type bounds are not allowed here")?;
+                    }
                 }
             }
         }
         Ok(())
     }
 }
+
+
 
 define_scope! { pub(crate) CallArgListScope, CallArgList, (RParen, Comma) }
 impl super::Parse for CallArgListScope {

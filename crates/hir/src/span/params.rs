@@ -96,11 +96,26 @@ impl<'db> LazyGenericArgSpan<'db> {
     pub fn into_type_arg(self) -> LazyTypeGenericArgSpan<'db> {
         LazyTypeGenericArgSpan(self.0)
     }
+
+    pub fn into_assoc_type_arg(self) -> LazyAssocTypeGenericArgSpan<'db> {
+        LazyAssocTypeGenericArgSpan(self.0)
+    }
 }
 
 define_lazy_span_node!(
     LazyTypeGenericArgSpan,
     ast::TypeGenericArg,
+    @node {
+        (ty, ty, LazyTySpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyAssocTypeGenericArgSpan,
+    ast::AssocTypeGenericArg,
+    @token {
+        (name, name),
+    }
     @node {
         (ty, ty, LazyTySpan),
     }

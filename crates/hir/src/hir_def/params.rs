@@ -36,6 +36,13 @@ impl<'db> GenericArgListId<'db> {
                             t.ty.to_opt()
                                 .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db))
                         }
+                        GenericArg::AssocType(a) => {
+                            let name = a.name.to_opt()
+                                .map_or_else(|| "<missing>".into(), |n| n.data(db).to_string());
+                            let ty = a.ty.to_opt()
+                                .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db));
+                            format!("{} = {}", name, ty)
+                        }
                     })
                     .collect::<Vec<_>>()
                     .join(", ")
@@ -102,6 +109,7 @@ pub struct ConstGenericParam<'db> {
 pub enum GenericArg<'db> {
     Type(TypeGenericArg<'db>),
     Const(ConstGenericArg<'db>),
+    AssocType(AssocTypeGenericArg<'db>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -112,6 +120,12 @@ pub struct TypeGenericArg<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ConstGenericArg<'db> {
     pub body: Partial<Body<'db>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AssocTypeGenericArg<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub ty: Partial<TypeId<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

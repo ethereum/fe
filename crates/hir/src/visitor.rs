@@ -1467,6 +1467,17 @@ pub fn walk_generic_arg<'db, V>(
                 visitor.visit_body(&mut VisitorCtxt::with_body(ctxt.db, body), body);
             }
         }
+
+        GenericArg::AssocType(assoc_type_arg) => {
+            if let Some(ty) = assoc_type_arg.ty.to_opt() {
+                ctxt.with_new_ctxt(
+                    |span| span.into_assoc_type_arg().ty(),
+                    |ctxt| {
+                        visitor.visit_ty(ctxt, ty);
+                    },
+                )
+            }
+        }
     }
 }
 

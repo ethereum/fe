@@ -260,6 +260,8 @@ pub enum SyntaxKind {
     TypeGenericArg,
     /// `1`
     ConstGenericArg,
+    /// `Output = u64`
+    AssocTypeGenericArg,
     /// `FOO::Bar`
     PathExpr,
     /// `Foo { x: 1, y: "String"` }`
@@ -625,6 +627,7 @@ impl SyntaxKind {
             SyntaxKind::GenericArgList => "generic type argument list",
             SyntaxKind::TypeGenericArg => "generic type argument",
             SyntaxKind::ConstGenericArg => "generic const argument",
+            SyntaxKind::AssocTypeGenericArg => "associated type argument",
             SyntaxKind::PathExpr => "path",
             SyntaxKind::RecordInitExpr => "record initialization expression",
             SyntaxKind::RecordFieldList => "record field list",

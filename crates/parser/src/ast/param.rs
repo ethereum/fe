@@ -190,8 +190,9 @@ ast_node! {
     /// `T: Trait`
     /// `{expr}`
     /// `lit`
+    /// `Output = u64`
     pub struct GenericArg,
-    SK::TypeGenericArg | SK::ConstGenericArg,
+    SK::TypeGenericArg | SK::ConstGenericArg | SK::AssocTypeGenericArg,
 }
 impl GenericArg {
     pub fn kind(&self) -> GenericArgKind {
@@ -201,6 +202,9 @@ impl GenericArg {
             }
             SK::ConstGenericArg => {
                 GenericArgKind::Const(AstNode::cast(self.syntax().clone()).unwrap())
+            }
+            SK::AssocTypeGenericArg => {
+                GenericArgKind::AssocType(AstNode::cast(self.syntax().clone()).unwrap())
             }
             _ => unreachable!(),
         }
@@ -223,6 +227,20 @@ ast_node! {
 }
 impl ConstGenericArg {
     pub fn expr(&self) -> Option<super::Expr> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    pub struct AssocTypeGenericArg,
+    SK::AssocTypeGenericArg,
+}
+impl AssocTypeGenericArg {
+    pub fn name(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
+    }
+
+    pub fn ty(&self) -> Option<super::Type> {
         support::child(self.syntax())
     }
 }
@@ -259,10 +277,12 @@ impl WherePredicate {
 /// A generic argument kind.
 /// `Type` is either `Type` or `T: Trait`.
 /// `Const` is either `{expr}` or `lit`.
+/// `AssocType` is `Output = u64`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum GenericArgKind {
     Type(TypeGenericArg),
     Const(ConstGenericArg),
+    AssocType(AssocTypeGenericArg),
 }
 
 ast_node! {
@@ -543,6 +563,23 @@ mod tests {
             panic!("expected const arg");
         };
         assert!(a2.expr().is_some());
+    }
+
+    #[test]
+    #[wasm_bindgen_test]
+    fn generic_arg_with_assoc_type() {
+        let source = r#"<T, Output = u64>"#;
+        let ga = parse_generic_arg(source);
+        let mut args = ga.into_iter();
+
+        let GenericArgKind::Type(_) = args.next().unwrap().kind() else {
+            panic!("expected type arg");
+        };
+        let GenericArgKind::AssocType(a2) = args.next().unwrap().kind() else {
+            panic!("expected associated type arg");
+        };
+        assert_eq!(a2.name().unwrap().text(), "Output");
+        assert!(a2.ty().is_some());
     }
 
     #[test]
