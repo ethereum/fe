@@ -743,9 +743,6 @@ mod tests {
         assert!(!is_column_all_wildcards_simplified(&simplified_matrix, 1));
     }
 
-    // Helper to create a mock database for testing
-    // For now, we'll create minimal tests that don't require full pattern matrices
-
     #[test]
     fn test_decision_tree_api_coverage() {
         // Test that our decision tree structures work as expected

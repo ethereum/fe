@@ -110,7 +110,7 @@ impl<'db> SimplifiedPattern<'db> {
 
             HirPat::Record(path_partial, fields) => {
                 if let Some((ctor, ctor_ty)) =
-                    Self::resolve_constructor(path_partial, db, scope, None)
+                    Self::resolve_constructor(path_partial, db, scope, Some(expected_ty))
                 {
                     Self::from_constructor_pattern(
                         ctor,
@@ -217,20 +217,6 @@ impl<'db> SimplifiedPattern<'db> {
         db: &'db dyn HirAnalysisDb,
         expected_ty: TyId<'db>,
     ) -> Option<ResolvedVariant<'db>> {
-        // DEBUG: Log the expected type information
-        eprintln!(
-            "DEBUG: try_resolve_enum_variant_from_ty - expected_ty: {:?}",
-            expected_ty.pretty_print(db)
-        );
-        eprintln!(
-            "DEBUG: expected_ty generic_args: {:?}",
-            expected_ty
-                .generic_args(db)
-                .iter()
-                .map(|t| t.pretty_print(db))
-                .collect::<Vec<_>>()
-        );
-
         // Check if the expected type is an enum and this path could be a variant
         let expected_enum = expected_ty.as_enum(db)?;
         let variants = expected_enum.variants(db);
@@ -320,7 +306,6 @@ impl<'db> ConstructorKind<'db> {
     pub fn field_types(&self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
         match self {
             Self::Variant(variant, ty) => {
-                // DEBUG: Loget field types from the ADT definition
                 if let Some(adt_def) = ty.adt_def(db) {
                     let args = ty.generic_args(db);
 
@@ -328,7 +313,6 @@ impl<'db> ConstructorKind<'db> {
                         .fields(db)
                         .get(variant.idx as usize)
                         .map(|field_list| {
-                            // Normal case: instantiate with the available args
                             field_list
                                 .iter_types(db)
                                 .map(|binder| binder.instantiate(db, args))
