@@ -6,7 +6,7 @@ use dir_test::{dir_test, Fixture};
 use fe_hir_analysis::ty::{
     decision_tree::{build_decision_tree, DecisionTree, Occurrence},
     pattern_analysis::{ConstructorKind, PatternMatrix},
-    ty_check::{RecordLike, TupleLike},
+    ty_check::{check_func_body, RecordLike, TupleLike, TypedBody},
     ty_def::{TyData, TyId},
 };
 use hir::hir_def::LitKind;
@@ -120,6 +120,7 @@ fn decision_tree_generation(fixture: Fixture<&str>) {
         top_mod,
         prop_formatter: &mut prop_formatter,
         current_func: None,
+        typed_body: None,
     }
     .visit_top_mod(&mut ctxt, top_mod);
 
@@ -132,6 +133,7 @@ struct DecisionTreeVisitor<'db, 'a> {
     top_mod: hir::hir_def::TopLevelMod<'db>,
     prop_formatter: &'a mut HirPropertyFormatter<'db>,
     current_func: Option<String>,
+    typed_body: Option<TypedBody<'db>>,
 }
 
 impl<'db> Visitor<'db> for DecisionTreeVisitor<'db, '_> {
@@ -143,8 +145,16 @@ impl<'db> Visitor<'db> for DecisionTreeVisitor<'db, '_> {
         self.current_func = func
             .name(self.db)
             .to_opt()
-            .map(|n| n.data(self.db).to_string());
+            .map(|name| name.data(self.db).to_string());
+
+        // Get the typed body for this function
+        let (_diags, typed_body) = check_func_body(self.db, func);
+        self.typed_body = Some(typed_body.clone());
+
         walk_func(self, ctxt, func);
+
+        // Clear typed body and current func after processing function
+        self.typed_body = None;
         self.current_func = None;
     }
 
@@ -163,12 +173,19 @@ impl<'db> Visitor<'db> for DecisionTreeVisitor<'db, '_> {
                     .collect();
 
                 if !patterns.is_empty() {
+                    // Get the actual scrutinee type from the typed body
+                    let scrutinee_ty = if let Some(ref typed_body) = self.typed_body {
+                        typed_body.expr_ty(self.db, *_scrutinee)
+                    } else {
+                        TyId::new(self.db, TyData::Never)
+                    };
+
                     let matrix = PatternMatrix::from_hir_patterns(
                         self.db,
                         &patterns,
                         body,
                         body.scope(),
-                        TyId::new(self.db, TyData::Never),
+                        scrutinee_ty,
                     );
 
                     let tree = build_decision_tree(self.db, &matrix);
