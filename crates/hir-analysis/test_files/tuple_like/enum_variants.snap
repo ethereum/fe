@@ -11,7 +11,7 @@ note:
 3 │ │     Green, 
 4 │ │     Blue
 5 │ │ }
-  │ ╰─^ TupleLike enum variant 'Color::Blue': unit variant (arity: 0)
+  │ ╰─^ Tuple enum variant 'Color::Blue': unit variant (arity: 0)
 
 note: 
    ┌─ enum_variants.fe:7:1
@@ -21,7 +21,7 @@ note:
  9 │ │     Rectangle(u8, u8),
 10 │ │     Triangle(u8, u8, u8)
 11 │ │ }
-   │ ╰─^ TupleLike enum variant 'Shape::Triangle': tuple variant (arity: 3)
+   │ ╰─^ Tuple enum variant 'Shape::Triangle': tuple variant (arity: 3)
 
 note: 
    ┌─ enum_variants.fe:13:1
@@ -41,7 +41,7 @@ note:
 21 │ │     Complex(Shape),
 22 │ │     Paired(Color, Shape)
 23 │ │ }
-   │ ╰─^ TupleLike enum variant 'Nested::Paired': tuple variant (arity: 2)
+   │ ╰─^ Tuple enum variant 'Nested::Paired': tuple variant (arity: 2)
 
 note: 
    ┌─ enum_variants.fe:60:1
@@ -53,4 +53,4 @@ note:
 64 │ │     let nested = Nested::Paired(Color::Blue, Shape::Rectangle(3, 4))
 65 │ │     return (color, shape, mixed, nested)
 66 │ │ }
-   │ ╰─^ TupleLike return type in 'create_variants': 4-tuple (arity: 4, 4 field types)
+   │ ╰─^ Tuple return type in 'create_variants': 4-tuple (arity: 4, 4 field types)

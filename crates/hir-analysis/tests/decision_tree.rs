@@ -5,8 +5,9 @@ use ascii_tree::{write_tree, Tree};
 use dir_test::{dir_test, Fixture};
 use fe_hir_analysis::ty::{
     decision_tree::{build_decision_tree, DecisionTree, Occurrence},
-    pattern_analysis::{ConstructorKind, PatternMatrix},
-    ty_check::{check_func_body, RecordLike, TupleLike, TypedBody},
+    pattern_analysis::PatternMatrix,
+    simplified_pattern::ConstructorKind,
+    ty_check::{check_func_body, TypedBody},
     ty_def::{TyData, TyId},
 };
 use hir::hir_def::LitKind;
@@ -85,16 +86,17 @@ fn render_constructor<'db>(
     ctor: &ConstructorKind<'db>,
 ) -> String {
     match ctor {
-        ConstructorKind::TupleLike(TupleLike::Variant(variant)) => {
-            let variant_name = variant.variant.name(db).unwrap_or("unknown");
+        ConstructorKind::Variant(variant_kind, _) => {
+            let variant_name = variant_kind.name(db).unwrap_or("unknown");
             variant_name.to_string()
         }
-        ConstructorKind::RecordLike(RecordLike::Variant(variant)) => {
-            let variant_name = variant.variant.name(db).unwrap_or("unknown");
-            variant_name.to_string()
+        ConstructorKind::Type(ty) => {
+            if ty.is_tuple(db) {
+                "tuple()".to_string()
+            } else {
+                "record{}".to_string()
+            }
         }
-        ConstructorKind::TupleLike(TupleLike::Type(_)) => "tuple()".to_string(),
-        ConstructorKind::RecordLike(RecordLike::Type(_)) => "record{}".to_string(),
         ConstructorKind::Literal(lit, _) => match lit {
             LitKind::Bool(b) => b.to_string(),
             _ => format!("{:?}", lit),

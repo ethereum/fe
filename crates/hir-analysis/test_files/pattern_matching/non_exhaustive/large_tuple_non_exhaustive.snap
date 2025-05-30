@@ -17,7 +17,7 @@ error[8-0034]: non-exhaustive patterns: type `(u8, u8, u8, u8)` is not covered
 10 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: (_, _, _, _)
+   = Not covered: `(_, _, _, _)`
 
 error[8-0034]: non-exhaustive patterns: type `(u8, u8)` is not covered
    ┌─ large_tuple_non_exhaustive.fe:18:5
@@ -31,4 +31,4 @@ error[8-0034]: non-exhaustive patterns: type `(u8, u8)` is not covered
 25 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: (_, _)
+   = Not covered: `(_, _)`

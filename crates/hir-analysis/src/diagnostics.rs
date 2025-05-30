@@ -1666,10 +1666,12 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }];
                 let notes = if !missing_patterns.is_empty() {
-                    vec![format!(
-                        "the following patterns are not covered: {}",
-                        missing_patterns.join(", ")
-                    )]
+                    let message = if missing_patterns.len() == 1 {
+                        format!("Not covered: `{}`", missing_patterns[0])
+                    } else {
+                        format!("Not covered: `{}`", missing_patterns.join("`, `"))
+                    };
+                    vec![message]
                 } else {
                     vec![]
                 };

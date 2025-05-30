@@ -14,7 +14,7 @@ error[8-0034]: non-exhaustive patterns: type `((bool, bool), bool)` is not cover
 13 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: (_, _)
+   = Not covered: `(_, _)`
 
 error[8-0034]: non-exhaustive patterns: type `((bool, bool), bool)` is not covered
    ┌─ nested_tuple_non_exhaustive.fe:18:5
@@ -27,7 +27,7 @@ error[8-0034]: non-exhaustive patterns: type `((bool, bool), bool)` is not cover
 23 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: (_, _)
+   = Not covered: `(_, _)`
 
 error[8-0034]: non-exhaustive patterns: type `((bool, bool), bool)` is not covered
    ┌─ nested_tuple_non_exhaustive.fe:28:5
@@ -38,7 +38,7 @@ error[8-0034]: non-exhaustive patterns: type `((bool, bool), bool)` is not cover
 31 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: ((_, _), false)
+   = Not covered: `((_, _), false)`
 
 error[8-0034]: non-exhaustive patterns: type `((Color, bool), Color)` is not covered
    ┌─ nested_tuple_non_exhaustive.fe:36:5
@@ -50,7 +50,7 @@ error[8-0034]: non-exhaustive patterns: type `((Color, bool), Color)` is not cov
 40 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: (_, _)
+   = Not covered: `(_, _)`
 
 error[8-0034]: non-exhaustive patterns: type `(((bool, bool), bool), bool)` is not covered
    ┌─ nested_tuple_non_exhaustive.fe:45:5
@@ -63,7 +63,7 @@ error[8-0034]: non-exhaustive patterns: type `(((bool, bool), bool), bool)` is n
 50 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: (_, _)
+   = Not covered: `(_, _)`
 
 error[8-0034]: non-exhaustive patterns: type `((bool, Color), bool)` is not covered
    ┌─ nested_tuple_non_exhaustive.fe:55:5
@@ -77,7 +77,7 @@ error[8-0034]: non-exhaustive patterns: type `((bool, Color), bool)` is not cove
 61 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: (_, _)
+   = Not covered: `(_, _)`
 
 error[8-0034]: non-exhaustive patterns: type `((u8, u8), bool)` is not covered
    ┌─ nested_tuple_non_exhaustive.fe:66:5
@@ -91,4 +91,4 @@ error[8-0034]: non-exhaustive patterns: type `((u8, u8), bool)` is not covered
 72 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: (_, _)
+   = Not covered: `(_, _)`

@@ -17,4 +17,4 @@ error[8-0034]: non-exhaustive patterns: type `Color` is not covered
 21 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = the following patterns are not covered: variant | variant | variant | variant(..)
+   = Not covered: `Color::Green | Color::Blue`
