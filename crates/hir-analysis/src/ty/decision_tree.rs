@@ -1,9 +1,8 @@
 //! Decision tree generation for efficient pattern matching compilation
 //! Based on "Compiling pattern matching to good decision trees"
 
-use super::pattern_analysis::{
-    ConstructorKind, PatternMatrix, PatternRowVec, SigmaSet, SimplifiedPattern,
-};
+use super::pattern_analysis::{PatternMatrix, PatternRowVec, SigmaSet};
+use super::simplified_pattern::{ConstructorKind, SimplifiedPattern};
 use crate::ty::ty_def::TyId;
 use crate::HirAnalysisDb;
 use indexmap::IndexMap;
@@ -348,7 +347,7 @@ impl<'db> SimplifiedArm<'db> {
     }
 
     fn finalize_binds(&self, occurrences: &[Occurrence]) -> IndexMap<(SmolStr, usize), Occurrence> {
-        use super::pattern_analysis::SimplifiedPatternKind;
+        use super::simplified_pattern::SimplifiedPatternKind;
 
         let mut binds = self.binds.clone();
 
@@ -599,7 +598,7 @@ fn is_column_all_wildcards_simplified(matrix: &SimplifiedArmMatrix<'_>, col: usi
 
 /// Generalize a pattern by removing bindings from constructors
 fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'db> {
-    use super::pattern_analysis::SimplifiedPatternKind;
+    use crate::ty::simplified_pattern::SimplifiedPatternKind;
 
     match &pat.kind {
         SimplifiedPatternKind::WildCard(_) => pat.clone(),
@@ -644,7 +643,7 @@ fn patterns_compatible<'db>(
     pat1: &SimplifiedPattern<'db>,
     pat2: &SimplifiedPattern<'db>,
 ) -> bool {
-    use super::pattern_analysis::SimplifiedPatternKind;
+    use crate::ty::simplified_pattern::SimplifiedPatternKind;
 
     match (&pat1.kind, &pat2.kind) {
         // Wildcards are compatible with everything

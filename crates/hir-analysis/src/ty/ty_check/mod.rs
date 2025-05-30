@@ -6,7 +6,7 @@ mod pat;
 mod path;
 mod stmt;
 
-pub use self::path::{RecordLike, TupleLike};
+pub use self::path::RecordLike;
 pub use callable::Callable;
 pub use env::ExprProp;
 use env::TyCheckEnv;

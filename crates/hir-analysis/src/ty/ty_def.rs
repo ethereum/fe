@@ -581,6 +581,41 @@ impl<'db> TyId<'db> {
             const_ty,
         })
     }
+
+    /// Returns the number of fields for tuple types and structs
+    pub fn field_count(self, db: &'db dyn HirAnalysisDb) -> usize {
+        if self.is_tuple(db) {
+            let (_, elems) = self.decompose_ty_app(db);
+            elems.len()
+        } else if let Some(adt_def) = self.adt_def(db) {
+            match adt_def.adt_ref(db) {
+                AdtRef::Struct(_) => adt_def.fields(db)[0].num_types(),
+                _ => 0,
+            }
+        } else {
+            0
+        }
+    }
+
+    /// Returns the field types for tuple types and structs
+    pub fn field_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        if self.is_tuple(db) {
+            let (_, elems) = self.decompose_ty_app(db);
+            elems.to_vec()
+        } else if let Some(adt_def) = self.adt_def(db) {
+            match adt_def.adt_ref(db) {
+                AdtRef::Struct(_) => {
+                    let args = self.generic_args(db);
+                    (0..adt_def.fields(db)[0].num_types())
+                        .map(|idx| adt_def.fields(db)[0].ty(db, idx).instantiate(db, args))
+                        .collect()
+                }
+                _ => vec![],
+            }
+        } else {
+            vec![]
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

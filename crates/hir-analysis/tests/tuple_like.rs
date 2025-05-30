@@ -2,7 +2,7 @@ mod test_db;
 
 use dir_test::{dir_test, Fixture};
 use fe_hir_analysis::name_resolution::ResolvedVariant;
-use fe_hir_analysis::ty::ty_check::TupleLike;
+
 use hir::{
     hir_def::{EnumVariant, Func, ItemKind, VariantKind},
     visitor::{walk_func, walk_item, Visitor, VisitorCtxt},
@@ -52,9 +52,8 @@ impl<'db> Visitor<'db> for TupleLikeAnalyzer<'db, '_> {
             let ret_ty =
                 fe_hir_analysis::ty::ty_lower::lower_hir_ty(self.db, ret_ty_id, func.scope());
 
-            let tuple_like = TupleLike::from_ty(ret_ty);
-            let arity = tuple_like.tuple_arity(self.db);
-            let field_types = tuple_like.tuple_field_types(self.db);
+            let arity = ret_ty.field_count(self.db);
+            let field_types = ret_ty.field_types(self.db);
 
             // Only annotate if it's actually tuple-like or interesting
             if arity > 0 || self.is_likely_tuple_type(ret_ty) {
@@ -62,30 +61,27 @@ impl<'db> Visitor<'db> for TupleLikeAnalyzer<'db, '_> {
                     .name(self.db)
                     .to_opt()
                     .map(|n| n.data(self.db).to_string())
-                    .unwrap_or_else(|| "unknown".to_string());
+                    .unwrap_or_else(|| "anonymous".to_string());
 
                 let annotation = match arity {
-                    0 => format!(
-                        "TupleLike return type in '{}': unit type (arity: 0)",
-                        func_name
-                    ),
+                    0 => format!("Tuple return type in '{}': unit type (arity: 0)", func_name),
                     1 => format!(
-                        "TupleLike return type in '{}': single element (arity: 1, {} field types)",
+                        "Tuple return type in '{}': single element (arity: 1, {} field types)",
                         func_name,
                         field_types.len()
                     ),
                     2 => format!(
-                        "TupleLike return type in '{}': pair (arity: 2, {} field types)",
+                        "Tuple return type in '{}': pair (arity: 2, {} field types)",
                         func_name,
                         field_types.len()
                     ),
                     3 => format!(
-                        "TupleLike return type in '{}': triple (arity: 3, {} field types)",
+                        "Tuple return type in '{}': triple (arity: 3, {} field types)",
                         func_name,
                         field_types.len()
                     ),
                     n => format!(
-                        "TupleLike return type in '{}': {}-tuple (arity: {}, {} field types)",
+                        "Tuple return type in '{}': {}-tuple (arity: {}, {} field types)",
                         func_name,
                         n,
                         n,
@@ -147,7 +143,7 @@ impl<'db> Visitor<'db> for TupleLikeAnalyzer<'db, '_> {
                     VariantKind::Unit => {
                         // Unit variants are tuple-like with arity 0
                         let annotation = format!(
-                            "TupleLike enum variant '{}::{}': unit variant (arity: 0)",
+                            "Tuple enum variant '{}::{}': unit variant (arity: 0)",
                             enum_name, variant_name
                         );
                         if let Some(span) = ctxt.span() {
@@ -159,7 +155,7 @@ impl<'db> Visitor<'db> for TupleLikeAnalyzer<'db, '_> {
                         // Tuple variants are tuple-like with arity = number of fields
                         let field_count = fields.data(self.db).len();
                         let annotation = format!(
-                            "TupleLike enum variant '{}::{}': tuple variant (arity: {})",
+                            "Tuple enum variant '{}::{}': tuple variant (arity: {})",
                             enum_name, variant_name, field_count
                         );
                         if let Some(span) = ctxt.span() {
@@ -167,18 +163,17 @@ impl<'db> Visitor<'db> for TupleLikeAnalyzer<'db, '_> {
                                 .push_prop(self.top_mod, span.into(), annotation);
                         }
 
-                        // Test actual TupleLike construction if we can create a resolved variant
+                        // Test actual tuple field access if we can create a resolved variant
                         if let Ok(resolved_variant) =
                             self.try_create_resolved_variant(enum_def, variant)
                         {
-                            let tuple_like = TupleLike::Variant(resolved_variant);
-                            let actual_arity = tuple_like.tuple_arity(self.db);
-                            let actual_field_types = tuple_like.tuple_field_types(self.db);
+                            let actual_arity = resolved_variant.field_count(self.db);
+                            let actual_field_types = resolved_variant.field_types(self.db);
 
                             if actual_arity != field_count
                                 || actual_field_types.len() != field_count
                             {
-                                let consistency_msg = format!("TupleLike validation for '{}::{}': expected arity {}, got arity {}, field_types.len() {}", 
+                                let consistency_msg = format!("Tuple validation for '{}::{}': expected arity {}, got arity {}, field_types.len() {}", 
                                                              enum_name, variant_name, field_count, actual_arity, actual_field_types.len());
                                 if let Some(span) = ctxt.span() {
                                     self.prop_formatter.push_prop(
@@ -234,41 +229,35 @@ mod unit_tests {
     use fe_hir_analysis::ty::ty_def::{InvalidCause, TyId};
 
     #[test]
-    fn test_tuple_like_constructors() {
+    fn test_tuple_field_access() {
         let db = HirAnalysisTestDb::default();
 
         // Test with a basic invalid type (safest to use)
         let dummy_ty = TyId::invalid(&db, InvalidCause::Other);
 
-        // Test both constructor methods
-        let from_ty = TupleLike::from_ty(dummy_ty);
-        let direct = TupleLike::Type(dummy_ty);
+        // Test field access methods
+        let arity = dummy_ty.field_count(&db);
+        let field_types = dummy_ty.field_types(&db);
 
-        assert_eq!(from_ty, direct);
-        assert_eq!(from_ty.tuple_arity(&db), direct.tuple_arity(&db));
-        assert_eq!(
-            from_ty.tuple_field_types(&db),
-            direct.tuple_field_types(&db)
-        );
+        // Basic assertions
+        assert_eq!(arity, 0); // Invalid types have no fields
+        assert_eq!(field_types.len(), 0);
     }
 
     #[test]
-    fn test_tuple_like_basic_api() {
+    fn test_tuple_basic_api() {
         let db = HirAnalysisTestDb::default();
 
         // Test with a basic type
         let dummy_ty = TyId::invalid(&db, InvalidCause::Other);
-        let tuple_like = TupleLike::from_ty(dummy_ty);
 
         // Basic API should work without errors
-        let arity = tuple_like.tuple_arity(&db);
-        let field_types = tuple_like.tuple_field_types(&db);
+        let arity = dummy_ty.field_count(&db);
+        let field_types = dummy_ty.field_types(&db);
 
-        // Field types length should match arity
-        assert_eq!(field_types.len(), arity);
-
-        // For invalid/non-tuple types, should return empty results
+        // Expect 0 arity and empty field types for invalid type
         assert_eq!(arity, 0);
+        assert_eq!(field_types.len(), 0);
         assert!(field_types.is_empty());
     }
 }

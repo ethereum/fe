@@ -9,7 +9,7 @@ note:
 5 │ ╭ fn test_pair_tuple() -> (u8, bool) {
 6 │ │     return (42, true)
 7 │ │ }
-  │ ╰─^ TupleLike return type in 'test_pair_tuple': pair (arity: 2, 2 field types)
+  │ ╰─^ Tuple return type in 'test_pair_tuple': pair (arity: 2, 2 field types)
 
 note: 
    ┌─ simple_tuple.fe:9:1
@@ -17,7 +17,7 @@ note:
  9 │ ╭ fn test_triple_tuple() -> (u8, bool, u256) {
 10 │ │     return (1, false, 100)
 11 │ │ }
-   │ ╰─^ TupleLike return type in 'test_triple_tuple': triple (arity: 3, 3 field types)
+   │ ╰─^ Tuple return type in 'test_triple_tuple': triple (arity: 3, 3 field types)
 
 note: 
    ┌─ simple_tuple.fe:13:1
@@ -26,4 +26,4 @@ note:
 14 │ │     let inner: (u8, bool) = (5, true)
 15 │ │     return (inner, 200)
 16 │ │ }
-   │ ╰─^ TupleLike return type in 'test_nested_tuple': pair (arity: 2, 2 field types)
+   │ ╰─^ Tuple return type in 'test_nested_tuple': pair (arity: 2, 2 field types)

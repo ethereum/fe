@@ -29,6 +29,7 @@ pub mod fold;
 pub mod func_def;
 pub mod method_table;
 pub mod pattern_analysis;
+pub mod simplified_pattern;
 pub mod trait_def;
 pub mod trait_lower;
 pub mod trait_resolution; // This line was previously 'pub mod name_resolution;'

@@ -334,6 +334,48 @@ impl<'db> ResolvedVariant<'db> {
         Some(ty)
     }
 
+    pub fn field_count(&self, db: &'db dyn HirAnalysisDb) -> usize {
+        match self.variant.kind(db) {
+            VariantKind::Unit => 0,
+            VariantKind::Tuple(fields) => fields.data(db).len(),
+            VariantKind::Record(fields) => fields.data(db).len(),
+        }
+    }
+
+    pub fn field_types(&self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        let adt_def = self.ty.adt_def(db).unwrap();
+        let args = self.ty.generic_args(db);
+
+        // Workaround for type system bug: when concrete types are stored as TyBase,
+        // generic_args() returns empty slice instead of concrete arguments
+        if args.is_empty() {
+            // Check if this enum has generic parameters
+            let enum_def = self.variant.enum_;
+            if !enum_def.generic_params(db).data(db).is_empty() {
+                // This enum has generic params but we got empty args - this is the bug
+                // Get field types directly from the concrete ADT definition
+                // Since self.ty is the concrete type (e.g., Option<i32>),
+                // adt_def should be the concrete ADT definition with instantiated field types
+                return (0..self.field_count(db))
+                    .map(|idx| {
+                        // Get the field type directly from the concrete ADT definition
+                        // This bypasses the need for generic instantiation
+                        let field_list = adt_def.fields(db);
+                        let variant_fields = &field_list[self.variant.idx as usize];
+                        // For concrete types, the field types should already be concrete
+                        *variant_fields.ty(db, idx).skip_binder()
+                    })
+                    .collect();
+            }
+        }
+
+        // Normal case: instantiate with the available args
+        let variant_fields = &adt_def.fields(db)[self.variant.idx as usize];
+        (0..self.field_count(db))
+            .map(|idx| variant_fields.ty(db, idx).instantiate(db, args))
+            .collect()
+    }
+
     pub fn to_funcdef(&self, db: &'db dyn HirAnalysisDb) -> Option<FuncDef<'db>> {
         if !matches!(self.variant.kind(db), VariantKind::Tuple(_)) {
             return None;
