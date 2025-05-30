@@ -645,7 +645,7 @@ pub fn resolve_name_res<'db>(
                         let ty = TyId::foldl(db, ty, args);
                         PathRes::Ty(ty)
                     } else {
-                        PathRes::Trait(lower_trait(db, t))
+                        PathRes::Trait(lower_trait(db, t)) // xxx TraitInstId
                     }
                 }
 

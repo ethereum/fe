@@ -209,32 +209,6 @@ impl<'db> TyAlias<'db> {
     }
 }
 
-pub(super) fn lower_generic_arg<'db>(
-    db: &'db dyn HirAnalysisDb,
-    arg: &GenericArg<'db>,
-    scope: ScopeId<'db>,
-) -> TyId<'db> {
-    match arg {
-        GenericArg::Type(ty_arg) => ty_arg
-            .ty
-            .to_opt()
-            .map(|ty| lower_hir_ty(db, ty, scope))
-            .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
-
-        GenericArg::Const(const_arg) => {
-            let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
-            TyId::const_ty(db, const_ty)
-        }
-
-        GenericArg::AssocType(_assoc_type_arg) => {
-            // Associated type arguments are constraints, not regular type arguments
-            // For now, treat them as invalid types since proper constraint handling
-            // requires more complex implementation
-            TyId::invalid(db, InvalidCause::Other)
-        }
-    }
-}
-
 pub(crate) fn lower_generic_arg_list<'db>(
     db: &'db dyn HirAnalysisDb,
     args: GenericArgListId<'db>,
@@ -242,7 +216,23 @@ pub(crate) fn lower_generic_arg_list<'db>(
 ) -> Vec<TyId<'db>> {
     args.data(db)
         .iter()
-        .map(|arg| lower_generic_arg(db, arg, scope))
+        .map(|arg| match arg {
+            GenericArg::Type(ty_arg) => ty_arg
+                .ty
+                .to_opt()
+                .map(|ty| lower_hir_ty(db, ty, scope))
+                .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
+
+            GenericArg::Const(const_arg) => {
+                let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
+                TyId::const_ty(db, const_ty)
+            }
+
+            GenericArg::AssocType(_assoc_type_arg) => {
+                // xxx
+                TyId::invalid(db, InvalidCause::Other)
+            }
+        })
         .collect()
 }
 
