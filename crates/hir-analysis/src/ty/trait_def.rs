@@ -2,7 +2,7 @@
 
 use common::indexmap::{IndexMap, IndexSet};
 use hir::{
-    hir_def::{scope_graph::ScopeId, IdentId, ImplTrait, IngotId, Trait, TraitType},
+    hir_def::{scope_graph::ScopeId, IdentId, ImplTrait, IngotId, Trait},
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
@@ -16,10 +16,10 @@ use super::{
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         check_trait_inst_wf,
-        constraint::{add_bounds_to_constraint_set, collect_constraints, collect_super_traits},
+        constraint::{collect_constraints, collect_super_traits},
         PredicateListId, WellFormedness,
     },
-    ty_def::{Kind, TyId, TyParam},
+    ty_def::{Kind, TyId},
     ty_lower::{lower_hir_ty, GenericParamTypeSet},
     unify::UnificationTable,
 };

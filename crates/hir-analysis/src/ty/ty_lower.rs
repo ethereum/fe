@@ -348,6 +348,21 @@ impl<'db> GenericParamCollector<'db> {
         }
     }
 
+    fn collect_associated_types(&mut self) {
+        let GenericParamOwner::Trait(trait_item) = self.owner else {
+            return;
+        };
+
+        let associated_types = trait_item.types(self.db);
+
+        for (idx, assoc_ty) in associated_types.iter().enumerate() {
+            let param_idx = idx + self.params.len();
+            let kind = self.extract_kind(assoc_ty.bounds.as_slice());
+            self.params
+                .push(TyParamPrecursor::assoc_type(assoc_ty.name, param_idx, kind));
+        }
+    }
+
     fn collect_kind_in_where_clause(&mut self) {
         let Some(where_clause_owner) = self.owner.where_clause_owner() else {
             return;
@@ -379,6 +394,7 @@ impl<'db> GenericParamCollector<'db> {
 
     fn finalize(mut self) -> GenericParamTypeSet<'db> {
         self.collect_generic_params();
+        self.collect_associated_types();
         self.collect_kind_in_where_clause();
 
         GenericParamTypeSet::new(
@@ -493,7 +509,10 @@ impl<'db> TyParamPrecursor<'db> {
                 TyId::new(db, TyData::ConstTy(const_ty))
             }
             Variant::Const(None) => TyId::invalid(db, InvalidCause::Other),
-            Variant::AssocTy => todo!(), // xxx
+            Variant::AssocTy => {
+                let param = TyParam::assoc_type(name, lowered_idx, kind, scope);
+                TyId::new(db, TyData::TyParam(param))
+            }
         }
     }
 
@@ -512,6 +531,15 @@ impl<'db> TyParamPrecursor<'db> {
             original_idx: idx.into(),
             kind: None,
             variant: Variant::Const(ty),
+        }
+    }
+
+    fn assoc_type(name: Partial<IdentId<'db>>, idx: usize, kind: Option<Kind>) -> Self {
+        Self {
+            name,
+            original_idx: idx.into(),
+            kind,
+            variant: Variant::AssocTy,
         }
     }
 
