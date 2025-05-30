@@ -3,70 +3,97 @@ source: crates/hir-analysis/tests/pattern_matching.rs
 expression: diagnostic_output
 input_file: test_files/pattern_matching/misc_tests/bindings.fe
 ---
-Misc test file bindings.fe has 8 diagnostic(s):
+Misc test file bindings.fe has 11 diagnostic(s):
 
 error[8-0014]: type must be known here
-   ┌─ bindings.fe:30:47
+   ┌─ bindings.fe:35:47
    │
-30 │         (Option::Some(a), Option::Some(b)) => a + b
+35 │         (Option::Some(a), Option::Some(b)) => a + b
    │                                               ^ type must be known here
 
 error[8-0014]: type must be known here
-   ┌─ bindings.fe:48:47
+   ┌─ bindings.fe:53:47
    │
-48 │         (Option::Some(a), Option::Some(b)) => a + b
+53 │         (Option::Some(a), Option::Some(b)) => a + b
    │                                               ^ type must be known here
+
+error[8-0024]: argument label mismatch
+    ┌─ bindings.fe:200:26
+    │
+194 │ fn identity<T>(value: T) -> T {
+    │    -------- function defined here
+    ·
+200 │     let value = identity(Option::None)
+    │                          ^^^^^^^^^^^^ expected `value` label
 
 error[8-0031]: type annotation is needed
-   ┌─ bindings.fe:32:10
+   ┌─ bindings.fe:37:10
    │
-32 │         (Option::None, Option::Some(b)) => b      // Does 'b' bind correctly?
+37 │         (Option::None, Option::Some(b)) => b      // Does 'b' bind correctly?
    │          ^^^^^^^^^^^^
    │          │
    │          type annotation is needed
    │          consider giving `: Option<_>` here
 
 error[8-0031]: type annotation is needed
-   ┌─ bindings.fe:33:10
+   ┌─ bindings.fe:38:10
    │
-33 │         (Option::None, Option::None) => 0
+38 │         (Option::None, Option::None) => 0
    │          ^^^^^^^^^^^^
    │          │
    │          type annotation is needed
    │          consider giving `: Option<_>` here
 
 error[8-0031]: type annotation is needed
-   ┌─ bindings.fe:33:24
+   ┌─ bindings.fe:38:24
    │
-33 │         (Option::None, Option::None) => 0
+38 │         (Option::None, Option::None) => 0
    │                        ^^^^^^^^^^^^
    │                        │
    │                        type annotation is needed
    │                        consider giving `: Option<_>` here
 
 error[8-0031]: type annotation is needed
-   ┌─ bindings.fe:50:10
+   ┌─ bindings.fe:55:10
    │
-50 │         (Option::None, Option::Some(b)) => b      // Does 'b' bind when first type unknown?
+55 │         (Option::None, Option::Some(b)) => b      // Does 'b' bind when first type unknown?
    │          ^^^^^^^^^^^^
    │          │
    │          type annotation is needed
    │          consider giving `: Option<_>` here
 
 error[8-0031]: type annotation is needed
-   ┌─ bindings.fe:51:10
+   ┌─ bindings.fe:56:10
    │
-51 │         (Option::None, Option::None) => 0
+56 │         (Option::None, Option::None) => 0
    │          ^^^^^^^^^^^^
    │          │
    │          type annotation is needed
    │          consider giving `: Option<_>` here
 
 error[8-0031]: type annotation is needed
-   ┌─ bindings.fe:51:24
+   ┌─ bindings.fe:56:24
    │
-51 │         (Option::None, Option::None) => 0
+56 │         (Option::None, Option::None) => 0
    │                        ^^^^^^^^^^^^
    │                        │
    │                        type annotation is needed
    │                        consider giving `: Option<_>` here
+
+error[8-0031]: type annotation is needed
+    ┌─ bindings.fe:185:9
+    │
+185 │     let result = Result::Ok(100)
+    │         ^^^^^^
+    │         │
+    │         type annotation is needed
+    │         consider giving `: Result<i32, _>` here
+
+error[8-0031]: type annotation is needed
+    ┌─ bindings.fe:211:9
+    │
+211 │     let outer = Result::Ok(Option::None)
+    │         ^^^^^
+    │         │
+    │         type annotation is needed
+    │         consider giving `: Result<Option<i32>, _>` here

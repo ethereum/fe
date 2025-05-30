@@ -233,41 +233,14 @@ note:
 
 
 note: 
-   ┌─ tuple_decomposition_correctness.fe:90:5
+   ┌─ tuple_decomposition_correctness.fe:92:5
    │  
-90 │ ╭     match t {
-91 │ │         (true, true) => 3
-92 │ │         (true, false) => 2
-93 │ │         (false, true) => 1
-94 │ │         (false, false) => 0
-95 │ │     }
-   │ ╰─────^ Decision Tree for test_complete_tuple_decomposition:
- Switch on expr
- └─ tuple() =>
-    └─ Switch on expr.0
-       ├─ true =>
-       │  └─ Switch on expr.1
-       │     ├─ true =>
-       │     │  └─ Execute arm #0
-       │     └─ false =>
-       │        └─ Execute arm #1
-       └─ false =>
-          └─ Switch on expr.1
-             ├─ true =>
-             │  └─ Execute arm #2
-             └─ false =>
-                └─ Execute arm #3
-
-
-note: 
-    ┌─ tuple_decomposition_correctness.fe:100:5
-    │  
-100 │ ╭     match t {
-101 │ │         (true, true | false, true) => 2
-102 │ │         (false | true, false, false) => 1
-103 │ │         _ => 0
-104 │ │     }
-    │ ╰─────^ Decision Tree for test_tuple_with_or_patterns:
+92 │ ╭     match t {
+93 │ │         (true, true | false, true) => 2
+94 │ │         (false | true, false, false) => 1
+95 │ │         _ => 0
+96 │ │     }
+   │ ╰─────^ Decision Tree for test_tuple_with_or_patterns:
  Switch on expr
  └─ tuple() =>
     └─ Switch on expr.0
@@ -298,12 +271,12 @@ note:
 
 
 note: 
-    ┌─ tuple_decomposition_correctness.fe:109:5
+    ┌─ tuple_decomposition_correctness.fe:101:5
     │  
-109 │ ╭     match t {
-110 │ │         (true,) => 1
-111 │ │         (false,) => 0
-112 │ │     }
+101 │ ╭     match t {
+102 │ │         (true,) => 1
+103 │ │         (false,) => 0
+104 │ │     }
     │ ╰─────^ Decision Tree for test_single_element_tuple:
  Switch on expr
  └─ tuple() =>
