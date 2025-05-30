@@ -190,8 +190,9 @@ impl<'db> SimplifiedPattern<'db> {
 
         match resolve_path(db, *path_id, scope, true) {
             Ok(PathRes::EnumVariant(variant)) => {
-                let ctor = ConstructorKind::Variant(variant.variant, variant.ty);
-                Some((ctor, variant.ty))
+                let ty = expected_ty.unwrap_or(variant.ty);
+                let ctor = ConstructorKind::Variant(variant.variant, ty);
+                Some((ctor, ty))
             }
             Ok(PathRes::Ty(ty_id)) => {
                 // For type paths, check if this is an imported enum variant
@@ -199,7 +200,7 @@ impl<'db> SimplifiedPattern<'db> {
                     if let Some(variant) =
                         Self::try_resolve_enum_variant_from_ty(path_id, db, expected_ty)
                     {
-                        let ctor = ConstructorKind::Variant(variant.variant, variant.ty);
+                        let ctor = ConstructorKind::Variant(variant.variant, expected_ty);
                         return Some((ctor, expected_ty));
                     }
                 }
@@ -216,6 +217,20 @@ impl<'db> SimplifiedPattern<'db> {
         db: &'db dyn HirAnalysisDb,
         expected_ty: TyId<'db>,
     ) -> Option<ResolvedVariant<'db>> {
+        // DEBUG: Log the expected type information
+        eprintln!(
+            "DEBUG: try_resolve_enum_variant_from_ty - expected_ty: {:?}",
+            expected_ty.pretty_print(db)
+        );
+        eprintln!(
+            "DEBUG: expected_ty generic_args: {:?}",
+            expected_ty
+                .generic_args(db)
+                .iter()
+                .map(|t| t.pretty_print(db))
+                .collect::<Vec<_>>()
+        );
+
         // Check if the expected type is an enum and this path could be a variant
         let expected_enum = expected_ty.as_enum(db)?;
         let variants = expected_enum.variants(db);
@@ -231,6 +246,15 @@ impl<'db> SimplifiedPattern<'db> {
                         enum_: expected_enum,
                         idx: idx as u16,
                     };
+                    eprintln!(
+                        "DEBUG: Creating ResolvedVariant with ty: {:?}, args: {:?}",
+                        expected_ty.pretty_print(db),
+                        expected_ty
+                            .generic_args(db)
+                            .iter()
+                            .map(|t| t.pretty_print(db))
+                            .collect::<Vec<_>>()
+                    );
                     return Some(ResolvedVariant {
                         ty: expected_ty,
                         variant,
@@ -296,15 +320,18 @@ impl<'db> ConstructorKind<'db> {
     pub fn field_types(&self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
         match self {
             Self::Variant(variant, ty) => {
-                // Get field types from the ADT definition
+                // DEBUG: Loget field types from the ADT definition
                 if let Some(adt_def) = ty.adt_def(db) {
+                    let args = ty.generic_args(db);
+
                     adt_def
                         .fields(db)
                         .get(variant.idx as usize)
                         .map(|field_list| {
+                            // Normal case: instantiate with the available args
                             field_list
                                 .iter_types(db)
-                                .map(|binder| binder.instantiate(db, ty.generic_args(db)))
+                                .map(|binder| binder.instantiate(db, args))
                                 .collect()
                         })
                         .unwrap_or_default()
