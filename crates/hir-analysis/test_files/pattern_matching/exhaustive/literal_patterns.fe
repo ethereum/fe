@@ -65,3 +65,13 @@ fn test_or_pattern_literals(x: u8) -> u8 {
         }
     }
 }
+
+// Test boolean tuple exhaustive
+fn test_bool_tuple_exhaustive(pair: (bool, bool)) -> u8 {
+    match pair {
+        (true, true) => 4
+        (true, false) => 3
+        (false, true) => 2
+        (false, false) => 1
+    }
+}

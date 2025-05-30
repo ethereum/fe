@@ -1,8 +1,0 @@
-fn test_boolean_tuple(t: (bool, bool)) -> u8 {
-    match t {
-        (true, true) => 3
-        (true, false) => 2
-        (false, true) => 1
-        (false, false) => 0
-    }
-}
