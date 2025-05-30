@@ -27,12 +27,7 @@ impl<'db> TyChecker<'db> {
                 self.unify_ty(pat, ty_var, expected)
             }
 
-            Pat::Rest => {
-                // Rest patterns match anything but don't bind.
-                // Rest patterns should have the same type as their containing pattern type (tuple, variant, etc.)
-                // This ensures proper handling in tuple/variant patterns where '..' is used.
-                self.unify_ty(pat, expected, expected) // Explicitly unify with expected type
-            }
+            Pat::Rest => expected, // rest pattern type checking?
             Pat::Lit(..) => self.check_lit_pat(pat, pat_data),
             Pat::Tuple(..) => self.check_tuple_pat(pat, pat_data, expected),
             Pat::Path(..) => self.check_path_pat(pat, pat_data),

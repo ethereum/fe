@@ -90,15 +90,15 @@ note:
     └─ Switch on expr.0
        ├─ true =>
        │  └─ Switch on expr.1
-       │     ├─ Int(IntegerId(Id(4403), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+       │     ├─ 0 =>
        │     │  └─ Execute arm #0
-       │     ├─ Int(IntegerId(Id(4402), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+       │     ├─ 1 =>
        │     │  └─ Execute arm #1
        │     └─ _ =>
        │        └─ Execute arm #2
        └─ false =>
           └─ Switch on expr.1
-             ├─ Int(IntegerId(Id(4403), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             ├─ 0 =>
              │  └─ Execute arm #3
              └─ _ =>
                 └─ Execute arm #4

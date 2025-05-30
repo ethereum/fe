@@ -43,7 +43,7 @@ note:
     └─ Switch on expr.0
        └─ tuple() =>
           └─ Switch on expr.0.0
-             ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             ├─ 0 =>
              │  └─ Switch on expr.0.1
              │     ├─ true =>
              │     │  └─ Switch on expr.1
@@ -62,7 +62,7 @@ note:
              │                 │       x ← expr.1.1
              │                 └─ _ =>
              │                    └─ Execute arm #4
-             ├─ Int(IntegerId(Id(5400), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             ├─ 1 =>
              │  └─ Switch on expr.0.1
              │     ├─ true =>
              │     │  └─ Switch on expr.1
@@ -111,9 +111,9 @@ note:
     └─ Switch on expr.0
        └─ record{} =>
           └─ Switch on expr.0.0
-             ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             ├─ 0 =>
              │  └─ Switch on expr.0.1
-             │     ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             │     ├─ 0 =>
              │     │  └─ Switch on expr.1
              │     │     ├─ Red =>
              │     │     │  └─ Execute arm #0
@@ -129,7 +129,7 @@ note:
              │              └─ Execute arm #3
              └─ _ =>
                 └─ Switch on expr.0.1
-                   ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+                   ├─ 0 =>
                    │  └─ Switch on expr.1
                    │     ├─ Blue =>
                    │     │  └─ Execute arm #2
@@ -153,9 +153,9 @@ note:
     └─ Switch on expr.0
        └─ record{} =>
           └─ Switch on expr.0.0
-             ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             ├─ 0 =>
              │  └─ Switch on expr.0.1
-             │     ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             │     ├─ 0 =>
              │     │  └─ Execute arm #0
              │     └─ _ =>
              │        └─ Switch on expr.1
@@ -163,15 +163,15 @@ note:
              │              └─ Execute arm #2
              │                   bx ← expr.1.0
              │                   by ← expr.1.1
-             ├─ Int(IntegerId(Id(5400), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             ├─ 1 =>
              │  └─ Switch on expr.0.1
-             │     ├─ Int(IntegerId(Id(5400), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             │     ├─ 1 =>
              │     │  └─ Switch on expr.1
              │     │     └─ record{} =>
              │     │        └─ Switch on expr.1.0
-             │     │           ├─ Int(IntegerId(Id(5401), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             │     │           ├─ 2 =>
              │     │           │  └─ Switch on expr.1.1
-             │     │           │     ├─ Int(IntegerId(Id(5401), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             │     │           │     ├─ 2 =>
              │     │           │     │  └─ Execute arm #1
              │     │           │     └─ _ =>
              │     │           │        └─ Execute arm #2
@@ -209,9 +209,9 @@ note:
  │  └─ Switch on expr.0
  │     └─ record{} =>
  │        └─ Switch on expr.0.0
- │           ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+ │           ├─ 0 =>
  │           │  └─ Switch on expr.0.1
- │           │     ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+ │           │     ├─ 0 =>
  │           │     │  └─ Execute arm #0
  │           │     │       radius ← expr.1
  │           │     └─ _ =>
@@ -225,9 +225,9 @@ note:
  │        └─ Switch on expr.0.0
  │           └─ record{} =>
  │              └─ Switch on expr.0.0.0
- │                 ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+ │                 ├─ 0 =>
  │                 │  └─ Switch on expr.0.0.1
- │                 │     ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+ │                 │     ├─ 0 =>
  │                 │     │  └─ Execute arm #2
  │                 │     └─ _ =>
  │                 │        └─ Execute arm #3
@@ -237,15 +237,15 @@ note:
     └─ Switch on expr.0
        └─ record{} =>
           └─ Switch on expr.0.0
-             ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             ├─ 0 =>
              │  └─ Switch on expr.0.1
-             │     ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             │     ├─ 0 =>
              │     │  └─ Switch on expr.1
              │     │     └─ record{} =>
              │     │        └─ Switch on expr.1.0
-             │     │           ├─ Int(IntegerId(Id(5400), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             │     │           ├─ 1 =>
              │     │           │  └─ Switch on expr.1.1
-             │     │           │     ├─ Int(IntegerId(Id(5400), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+             │     │           │     ├─ 1 =>
              │     │           │     │  └─ Execute arm #4
              │     │           │     └─ _ =>
              │     │           │        └─ Execute arm #5
@@ -315,9 +315,9 @@ note:
        │  └─ Switch on expr.1
        │     └─ record{} =>
        │        └─ Switch on expr.1.0
-       │           ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+       │           ├─ 0 =>
        │           │  └─ Switch on expr.1.1
-       │           │     ├─ Int(IntegerId(Id(5405), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+       │           │     ├─ 0 =>
        │           │     │  └─ Switch on expr.2
        │           │     │     └─ tuple() =>
        │           │     │        └─ Switch on expr.2.0
@@ -333,7 +333,7 @@ note:
        │  └─ Switch on expr.1
        │     └─ record{} =>
        │        └─ Switch on expr.1.0
-       │           ├─ Int(IntegerId(Id(5400), PhantomData<&salsa::interned::Value<fe_hir::hir_def::IntegerId>>)) =>
+       │           ├─ 1 =>
        │           │  └─ Switch on expr.2
        │           │     └─ tuple() =>
        │           │        └─ Switch on expr.2.0
