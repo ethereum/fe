@@ -232,15 +232,7 @@ impl<'db> SimplifiedPattern<'db> {
                         enum_: expected_enum,
                         idx: idx as u16,
                     };
-                    eprintln!(
-                        "DEBUG: Creating ResolvedVariant with ty: {:?}, args: {:?}",
-                        expected_ty.pretty_print(db),
-                        expected_ty
-                            .generic_args(db)
-                            .iter()
-                            .map(|t| t.pretty_print(db))
-                            .collect::<Vec<_>>()
-                    );
+
                     return Some(ResolvedVariant {
                         ty: expected_ty,
                         variant,

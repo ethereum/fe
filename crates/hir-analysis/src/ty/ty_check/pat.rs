@@ -73,9 +73,10 @@ impl<'db> TyChecker<'db> {
 
         let unified = self.unify_ty(pat, actual, expected);
         if unified.has_invalid(self.db) {
+            // Even when unification fails, we need to check patterns to ensure
+            // variable binding works correctly
             pat_tup.iter().for_each(|&pat| {
-                self.env
-                    .type_pat(pat, TyId::invalid(self.db, InvalidCause::Other));
+                self.check_pat(pat, TyId::invalid(self.db, InvalidCause::Other));
             });
             return unified;
         }

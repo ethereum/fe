@@ -1,0 +1,72 @@
+// Test to investigate pattern binding inconsistencies
+
+enum Option<T> {
+    Some(T),
+    None
+}
+
+fn test_simple_binding() -> i32 {
+    let opt: Option<i32> = Option::Some(42)
+    match opt {
+        Option::Some(x) => x  // This should work
+        Option::None => 0
+    }
+}
+
+fn test_tuple_binding_both_known() -> i32 {
+    let pair: (Option<i32>, Option<i32>) = (Option::Some(1), Option::Some(2))
+    match pair {
+        (Option::Some(a), Option::Some(b)) => a + b
+        (Option::Some(a), Option::None) => a
+        (Option::None, Option::Some(b)) => b
+        (Option::None, Option::None) => 0
+    }
+}
+
+fn test_tuple_binding_unknown() -> i32 {
+    // Both Option types are unknown - this is where the issue occurs
+    let pair = (Option::None, Option::None)
+    match pair {
+        (Option::Some(a), Option::Some(b)) => a + b
+        (Option::Some(a), Option::None) => a      // Does 'a' bind correctly?
+        (Option::None, Option::Some(b)) => b      // Does 'b' bind correctly?
+        (Option::None, Option::None) => 0
+    }
+}
+
+fn test_single_unknown() -> i32 {
+    let opt = Option::None
+    match opt {
+        Option::Some(x) => x  // Does 'x' bind when type is unknown?
+        Option::None => 42
+    }
+}
+
+fn test_first_position_unknown() -> i32 {
+    let pair = (Option::None, Option::Some(42))
+    match pair {
+        (Option::Some(a), Option::Some(b)) => a + b
+        (Option::Some(a), Option::None) => a      // Does 'a' bind when first type unknown?
+        (Option::None, Option::Some(b)) => b      // Does 'b' bind when first type unknown?
+        (Option::None, Option::None) => 0
+    }
+}
+
+fn test_second_position_unknown() -> i32 {
+    let pair = (Option::Some(42), Option::None)
+    match pair {
+        (Option::Some(a), Option::Some(b)) => a + b
+        (Option::Some(a), Option::None) => a      // Does 'a' bind when second type unknown?
+        (Option::None, Option::Some(b)) => b      // Does 'b' bind when second type unknown?
+        (Option::None, Option::None) => 0
+    }
+}
+
+fn test_nested_unknown() -> i32 {
+    let nested = Option::Some(Option::None)
+    match nested {
+        Option::Some(Option::Some(x)) => x  // Does 'x' bind in nested unknown?
+        Option::Some(Option::None) => 0
+        Option::None => -1
+    }
+}

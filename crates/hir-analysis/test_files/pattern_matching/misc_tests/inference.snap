@@ -1,0 +1,66 @@
+---
+source: crates/hir-analysis/tests/pattern_matching.rs
+expression: diagnostic_output
+input_file: test_files/pattern_matching/misc_tests/inference.fe
+---
+Misc test file inference.fe has 7 diagnostic(s):
+
+error[8-0014]: type must be known here
+    ┌─ inference.fe:212:47
+    │
+212 │         (Option::Some(a), Option::Some(b)) => a + b
+    │                                               ^ type must be known here
+
+error[8-0024]: argument label mismatch
+    ┌─ inference.fe:186:26
+    │
+180 │ fn identity<T>(value: T) -> T {
+    │    -------- function defined here
+    ·
+186 │     let value = identity(Option::None)
+    │                          ^^^^^^^^^^^^ expected `value` label
+
+error[8-0031]: type annotation is needed
+    ┌─ inference.fe:171:9
+    │
+171 │     let result = Result::Ok(100)
+    │         ^^^^^^
+    │         │
+    │         type annotation is needed
+    │         consider giving `: Result<i32, _>` here
+
+error[8-0031]: type annotation is needed
+    ┌─ inference.fe:197:9
+    │
+197 │     let outer = Result::Ok(Option::None)
+    │         ^^^^^
+    │         │
+    │         type annotation is needed
+    │         consider giving `: Result<Option<i32>, _>` here
+
+error[8-0031]: type annotation is needed
+    ┌─ inference.fe:214:10
+    │
+214 │         (Option::None, Option::Some(b)) => b
+    │          ^^^^^^^^^^^^
+    │          │
+    │          type annotation is needed
+    │          consider giving `: Option<_>` here
+
+error[8-0031]: type annotation is needed
+    ┌─ inference.fe:215:10
+    │
+215 │         (Option::None, Option::None) => 0
+    │          ^^^^^^^^^^^^
+    │          │
+    │          type annotation is needed
+    │          consider giving `: Option<_>` here
+
+error[8-0031]: type annotation is needed
+    ┌─ inference.fe:215:24
+    │
+215 │         (Option::None, Option::None) => 0
+    │                        ^^^^^^^^^^^^
+    │                        │
+    │                        type annotation is needed
+    │                        consider giving `: Option<_>` here
