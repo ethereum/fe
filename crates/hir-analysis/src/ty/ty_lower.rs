@@ -225,6 +225,13 @@ pub(super) fn lower_generic_arg<'db>(
             let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
             TyId::const_ty(db, const_ty)
         }
+
+        GenericArg::AssocType(_assoc_type_arg) => {
+            // Associated type arguments are constraints, not regular type arguments
+            // For now, treat them as invalid types since proper constraint handling
+            // requires more complex implementation
+            TyId::invalid(db, InvalidCause::Other)
+        }
     }
 }
 

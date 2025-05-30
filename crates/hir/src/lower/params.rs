@@ -101,6 +101,9 @@ impl<'db> GenericArg<'db> {
             ast::GenericArgKind::Const(const_param) => {
                 ConstGenericArg::lower_ast(ctxt, const_param).into()
             }
+            ast::GenericArgKind::AssocType(assoc_type_param) => {
+                AssocTypeGenericArg::lower_ast(ctxt, assoc_type_param).into()
+            }
         }
     }
 }
@@ -120,6 +123,14 @@ impl<'db> ConstGenericArg<'db> {
             .into();
 
         Self { body }
+    }
+}
+
+impl<'db> AssocTypeGenericArg<'db> {
+    fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::AssocTypeGenericArg) -> Self {
+        let name = IdentId::lower_token_partial(ctxt, ast.name());
+        let ty = TypeId::lower_ast_partial(ctxt, ast.ty());
+        Self { name, ty }
     }
 }
 
