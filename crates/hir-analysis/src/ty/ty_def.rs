@@ -249,6 +249,15 @@ impl<'db> TyId<'db> {
     }
 
     pub fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
+        // Check if this is directly a tuple type
+        if matches!(
+            self.data(db),
+            TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
+        ) {
+            return true;
+        }
+
+        // Check if the base type is a tuple (for TyApp cases)
         matches!(
             self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
