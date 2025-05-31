@@ -20,8 +20,6 @@ pub fn run(opts: &Options) {
     match &opts.command {
         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
-            let base_url = url_from_directory_path(path.canonicalize_utf8().unwrap())
-                .expect("failed to parse base URL");
             let mut db = DriverDataBase::default();
             let mut ingot_resolver = IngotResolver::default();
 
@@ -92,6 +90,9 @@ pub fn run(opts: &Options) {
                             files,
                         }),
                 }) => {
+                    let base_url = url_from_directory_path(path.canonicalize_utf8().unwrap())
+                        .expect("failed to parse base URL");
+
                     let diagnostics = ingot_resolver.take_diagnostics();
                     if !diagnostics.is_empty() {
                         eprintln!("an error was encountered while resolving `{path}`");
@@ -128,7 +129,7 @@ pub fn run(opts: &Options) {
                     std::process::exit(2)
                 }
                 Err(error) => {
-                    eprintln!("{error}");
+                    eprintln!("{error}: {path}");
                     std::process::exit(2)
                 }
             };
