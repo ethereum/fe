@@ -170,10 +170,7 @@ impl<'db> TyId<'db> {
     /// Decompose type application into the base type and type arguments, this
     /// doesn't perform deconstruction recursively. e.g.,
     /// `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
-    pub(super) fn decompose_ty_app(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> (TyId<'db>, &'db [TyId<'db>]) {
+    pub fn decompose_ty_app(self, db: &'db dyn HirAnalysisDb) -> (TyId<'db>, &'db [TyId<'db>]) {
         let (base, args) = decompose_ty_app(db, self);
         (*base, args)
     }
@@ -251,7 +248,16 @@ impl<'db> TyId<'db> {
         matches!(self.base_ty(db).data(db), TyData::ConstTy(_))
     }
 
-    pub(crate) fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
+    pub fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
+        // Check if this is directly a tuple type
+        if matches!(
+            self.data(db),
+            TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
+        ) {
+            return true;
+        }
+
+        // Check if the base type is a tuple (for TyApp cases)
         matches!(
             self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
@@ -574,6 +580,41 @@ impl<'db> TyId<'db> {
             kind: applicable_kind.clone(),
             const_ty,
         })
+    }
+
+    /// Returns the number of fields for tuple types and structs
+    pub fn field_count(self, db: &'db dyn HirAnalysisDb) -> usize {
+        if self.is_tuple(db) {
+            let (_, elems) = self.decompose_ty_app(db);
+            elems.len()
+        } else if let Some(adt_def) = self.adt_def(db) {
+            match adt_def.adt_ref(db) {
+                AdtRef::Struct(_) => adt_def.fields(db)[0].num_types(),
+                _ => 0,
+            }
+        } else {
+            0
+        }
+    }
+
+    /// Returns the field types for tuple types and structs
+    pub fn field_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        if self.is_tuple(db) {
+            let (_, elems) = self.decompose_ty_app(db);
+            elems.to_vec()
+        } else if let Some(adt_def) = self.adt_def(db) {
+            match adt_def.adt_ref(db) {
+                AdtRef::Struct(_) => {
+                    let args = self.generic_args(db);
+                    (0..adt_def.fields(db)[0].num_types())
+                        .map(|idx| adt_def.fields(db)[0].ty(db, idx).instantiate(db, args))
+                        .collect()
+                }
+                _ => vec![],
+            }
+        } else {
+            vec![]
+        }
     }
 }
 
