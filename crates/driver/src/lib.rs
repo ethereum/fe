@@ -112,7 +112,7 @@ pub fn run(opts: &Options) {
                             Some(content),
                         );
                     }
-                    base_url
+                    base_url.ingot(&db).expect("Failed to find ingot")
                 }
                 Ok(Ingot::SingleFile { path, content }) => {
                     let url = url_from_file_path(path.canonicalize_utf8().unwrap()).unwrap();
@@ -120,17 +120,14 @@ pub fn run(opts: &Options) {
                     db.workspace()
                         .containing_ingot(&db, &url)
                         .expect("Failed to find ingot")
-                        .base(&db)
                 }
                 Ok(_) => {
-                    eprintln!("an error was encountered while resolving `{base_url}`");
                     for diagnostic in ingot_resolver.take_diagnostics() {
                         eprintln!("{diagnostic}")
                     }
                     std::process::exit(2)
                 }
                 Err(error) => {
-                    eprintln!("an error was encountered while resolving `{base_url}`");
                     eprintln!("{error}");
                     std::process::exit(2)
                 }
@@ -138,8 +135,7 @@ pub fn run(opts: &Options) {
 
             let core_diags =
                 db.run_on_ingot(core_ingot.ingot(&db).expect("core ingot should exist"));
-            let local_diags =
-                db.run_on_ingot(local_ingot.ingot(&db).expect("local ingot should exist"));
+            let local_diags = db.run_on_ingot(local_ingot);
 
             if !core_diags.is_empty() || !local_diags.is_empty() {
                 core_diags.emit(&db);
