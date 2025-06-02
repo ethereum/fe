@@ -77,7 +77,7 @@ impl<'db> TyCheckEnv<'db> {
             };
 
             let mut ty = match param.ty {
-                Partial::Present(hir_ty) => lower_hir_ty(db, hir_ty, func.scope()),
+                Partial::Present(hir_ty) => lower_hir_ty(db, hir_ty, func.scope(), crate::ty::trait_resolution::PredicateListId::empty_list(db)),
                 Partial::Absent => TyId::invalid(db, InvalidCause::Other),
             };
 

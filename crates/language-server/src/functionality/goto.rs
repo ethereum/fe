@@ -6,7 +6,10 @@ use hir::{
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
     SpannedHirDb,
 };
-use hir_analysis::name_resolution::{resolve_path, PathResErrorKind};
+use hir_analysis::{
+    name_resolution::{resolve_path, PathResErrorKind},
+    ty::trait_resolution::PredicateListId,
+};
 
 use crate::{
     backend::{db::LanguageServerDb, Backend},
@@ -93,7 +96,7 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     let (path, _is_intermediate, scope) =
         find_path_surrounding_cursor(db, cursor, path_segment_collector.paths)?;
 
-    let resolved = resolve_path(db, path, scope, None, false);
+    let resolved = resolve_path(db, path, scope, PredicateListId::empty_list(db), false);
     let scopes = match resolved {
         Ok(r) => r.as_scope(db).into_iter().collect::<Vec<_>>(),
         Err(err) => match err.kind {
@@ -331,7 +334,8 @@ mod tests {
             let full_paths = path_collector.paths;
 
             if let Some((path, _, scope)) = find_path_surrounding_cursor(db, *cursor, full_paths) {
-                let resolved_enclosing_path = resolve_path(db, path, scope, None, false);
+                let resolved_enclosing_path =
+                    resolve_path(db, path, scope, PredicateListId::empty_list(db), false);
 
                 let res = match resolved_enclosing_path {
                     Ok(res) => res.pretty_path(db).unwrap(),

@@ -529,6 +529,7 @@ pub(crate) fn ty_depth_impl<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> u
         | TyData::Never
         | TyData::TyBase(_)
         | TyData::TyParam(_)
+        | TyData::AssocTy { .. }
         | TyData::TyVar(_) => 1,
         TyData::TyApp(lhs, rhs) => {
             let lhs_depth = ty_depth_impl(db, *lhs);

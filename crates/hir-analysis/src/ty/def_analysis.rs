@@ -191,7 +191,15 @@ pub fn analyze_impl<'db>(
     let Some(hir_ty) = impl_.ty(db).to_opt() else {
         return Vec::new();
     };
-    let ty = lower_hir_ty(db, hir_ty, impl_.scope());
+
+    let assumptions = collect_constraints(db, impl_.into());
+
+    let ty = lower_hir_ty(
+        db,
+        hir_ty,
+        impl_.scope(),
+        assumptions.instantiate_identity(),
+    );
 
     let analyzer = DefAnalyzer::for_impl(db, impl_, ty);
     analyzer.analyze()
@@ -276,11 +284,19 @@ impl<'db> DefAnalyzer<'db> {
         let self_ty = match func.hir_func_def(db).unwrap().scope().parent(db).unwrap() {
             ScopeId::Item(ItemKind::Trait(trait_)) => lower_trait(db, trait_).self_param(db).into(),
             ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => match impl_trait.ty(db).to_opt() {
-                Some(hir_ty) => lower_hir_ty(db, hir_ty, impl_trait.scope()).into(),
+                Some(hir_ty) => lower_hir_ty(
+                    db,
+                    hir_ty,
+                    impl_trait.scope(),
+                    PredicateListId::empty_list(db),
+                )
+                .into(),
                 _ => TyId::invalid(db, InvalidCause::Other).into(),
             },
             ScopeId::Item(ItemKind::Impl(impl_)) => match impl_.ty(db).to_opt() {
-                Some(hir_ty) => lower_hir_ty(db, hir_ty, impl_.scope()).into(),
+                Some(hir_ty) => {
+                    lower_hir_ty(db, hir_ty, impl_.scope(), PredicateListId::empty_list(db)).into()
+                }
                 None => TyId::invalid(db, InvalidCause::Other).into(),
             },
             _ => None,
@@ -303,7 +319,7 @@ impl<'db> DefAnalyzer<'db> {
     /// TODO: This method is a stop-gap implementation until we design a true
     /// const type system.
     fn verify_term_type_kind(&mut self, ty: HirTyId<'db>, span: DynLazySpan<'db>) -> bool {
-        let ty = lower_hir_ty(self.db, ty, self.scope());
+        let ty = lower_hir_ty(self.db, ty, self.scope(), self.assumptions);
         if !ty.has_star_kind(self.db) {
             self.diags.push(TyLowerDiag::ExpectedStarKind(span).into());
             false
@@ -321,7 +337,7 @@ impl<'db> DefAnalyzer<'db> {
             return false;
         };
 
-        let param_ty = lower_hir_ty(self.db, self_ty, self.def.scope(self.db));
+        let param_ty = lower_hir_ty(self.db, self_ty, self.def.scope(self.db), self.assumptions);
         if !param_ty.has_invalid(self.db) && !expected_ty.has_invalid(self.db) {
             let (expected_base_ty, expected_param_ty_args) = expected_ty.decompose_ty_app(self.db);
             let (param_base_ty, param_ty_args) = param_ty.decompose_ty_app(self.db);
@@ -454,7 +470,13 @@ fn check_param_defined_in_parent<'db>(
     let parent_scope = scope.parent_item(db)?.scope();
     let path = PathId::from_ident(db, name);
 
-    match resolve_path(db, path, parent_scope, None, false) {
+    match resolve_path(
+        db,
+        path,
+        parent_scope,
+        PredicateListId::empty_list(db),
+        false,
+    ) {
         Ok(r @ PathRes::Ty(ty)) if ty.is_param(db) => {
             Some(TyLowerDiag::GenericParamAlreadyDefinedInParent {
                 span,
@@ -472,7 +494,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
     fn visit_item(&mut self, _ctxt: &mut VisitorCtxt<'db, LazyItemSpan>, _item: ItemKind<'db>) {}
 
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, hir_ty: HirTyId<'db>) {
-        let ty = lower_hir_ty(self.db, hir_ty, self.scope());
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope(), self.assumptions);
         let span = ctxt.span().unwrap();
 
         if ty.has_invalid(self.db) {
@@ -496,7 +518,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             return;
         };
 
-        let ty = lower_hir_ty(self.db, hir_ty, self.scope());
+        let ty = lower_hir_ty(self.db, hir_ty, self.scope(), self.assumptions);
 
         if ty.is_const_ty(self.db) {
             let diag =
@@ -536,7 +558,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         // Checks if the field type is the same as the type of const type parameter.
         if let Some(const_ty) = find_const_ty_param(self.db, name, ctxt.scope()) {
             let const_ty_ty = const_ty.ty(self.db);
-            let field_ty = lower_hir_ty(self.db, ty, ctxt.scope());
+            let field_ty = lower_hir_ty(self.db, ty, ctxt.scope(), self.assumptions);
             if !const_ty_ty.has_invalid(self.db)
                 && !field_ty.has_invalid(self.db)
                 && field_ty != const_ty_ty
@@ -654,7 +676,13 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
 
         if let (Some((ty, span)), Ok(trait_inst)) = (
             &self.current_ty,
-            lower_trait_ref(self.db, current_ty, trait_ref, self.scope()),
+            lower_trait_ref(
+                self.db,
+                current_ty,
+                trait_ref,
+                self.scope(),
+                self.assumptions,
+            ),
         ) {
             let expected_kind = trait_inst.def(self.db).expected_implementor_kind(self.db);
             if !expected_kind.does_match(ty.kind(self.db)) {
@@ -674,7 +702,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             current_ty,
             trait_ref,
             self.scope(),
-            Some(self.assumptions),
+            self.assumptions,
             ctxt.span().unwrap().into(),
         ) {
             self.diags.push(diag);
@@ -701,7 +729,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             return;
         };
 
-        let impl_ty = lower_hir_ty(self.db, impl_ty, impl_.scope());
+        let impl_ty = lower_hir_ty(self.db, impl_ty, impl_.scope(), self.assumptions);
         if !impl_ty.is_inherent_impl_allowed(self.db, self.scope().ingot(self.db)) {
             let base = impl_ty.base_ty(self.db);
             let diag = ImplDiag::InherentImplIsNotAllowed {
@@ -910,10 +938,10 @@ fn analyze_trait_ref<'db>(
     self_ty: TyId<'db>,
     trait_ref: TraitRefId<'db>,
     scope: ScopeId<'db>,
-    assumptions: Option<PredicateListId<'db>>,
+    assumptions: PredicateListId<'db>,
     span: DynLazySpan<'db>,
 ) -> Option<TyDiagCollection<'db>> {
-    let trait_inst = match lower_trait_ref(db, self_ty, trait_ref, scope) {
+    let trait_inst = match lower_trait_ref(db, self_ty, trait_ref, scope, assumptions) {
         Ok(trait_ref) => trait_ref,
 
         Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
@@ -989,11 +1017,7 @@ fn analyze_trait_ref<'db>(
         }
     };
 
-    if let Some(assumptions) = assumptions {
-        trait_inst.emit_sat_diag(db, scope.ingot(db), assumptions, span)
-    } else {
-        None
-    }
+    trait_inst.emit_sat_diag(db, scope.ingot(db), assumptions, span)
 }
 
 #[derive(Clone, Copy, Debug, derive_more::From)]
@@ -1065,22 +1089,12 @@ fn analyze_impl_trait_specific_error<'db>(
     };
 
     // 1. Checks if implementor type is well-formed except for the satisfiability.
-    let ty = lower_hir_ty(db, ty, impl_trait.scope());
+    let ty = lower_hir_ty(db, ty, impl_trait.scope(), PredicateListId::empty_list(db));
     if let Some(diag) = ty.emit_diag(db, impl_trait.span().ty().into()) {
         diags.push(diag);
     }
 
-    // 2. Checks if the trait ref is well-formed except for the satisfiability.
-    if let Some(diag) = analyze_trait_ref(
-        db,
-        ty,
-        trait_ref,
-        impl_trait.scope(),
-        None,
-        impl_trait.span().trait_ref().into(),
-    ) {
-        diags.push(diag);
-    }
+    // 2. Trait ref well-formedness is checked during trait lowering below
 
     // If there is any error at the point, it means that `Implementor` is not
     // well-formed and no more analysis is needed to reduce the amount of error
@@ -1089,8 +1103,76 @@ fn analyze_impl_trait_specific_error<'db>(
         return Err(diags);
     }
 
-    let trait_inst = match lower_trait_ref(db, ty, trait_ref, impl_trait.scope()) {
+    let trait_inst = match lower_trait_ref(
+        db,
+        ty,
+        trait_ref,
+        impl_trait.scope(),
+        PredicateListId::empty_list(db),
+    ) {
         Ok(trait_inst) => trait_inst,
+        Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
+            diags.push(
+                TraitConstraintDiag::TraitArgNumMismatch {
+                    span: impl_trait.span().trait_ref().into(),
+                    expected,
+                    given,
+                }
+                .into(),
+            );
+            return Err(diags);
+        }
+        Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
+            diags.push(
+                TraitConstraintDiag::TraitArgKindMismatch {
+                    span: impl_trait.span().trait_ref().into(),
+                    expected,
+                    actual: given,
+                }
+                .into(),
+            );
+            return Err(diags);
+        }
+        Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => {
+            match (expected, given) {
+                (Some(expected), None) => {
+                    // Expected const type but got normal type
+                    diags.push(
+                        TyLowerDiag::ConstTyExpected {
+                            span: impl_trait.span().trait_ref().into(),
+                            expected,
+                        }
+                        .into(),
+                    );
+                }
+                (None, Some(given)) => {
+                    // Expected normal type but got const
+                    diags.push(
+                        TyLowerDiag::NormalTypeExpected {
+                            span: impl_trait.span().trait_ref().into(),
+                            given,
+                        }
+                        .into(),
+                    );
+                }
+                (Some(expected), Some(given)) => {
+                    // Const type mismatch
+                    diags.push(
+                        TyLowerDiag::ConstTyMismatch {
+                            span: impl_trait.span().trait_ref().into(),
+                            expected,
+                            given,
+                        }
+                        .into(),
+                    );
+                }
+                _ => {
+                    unreachable!()
+                    // Both None - this case shouldn't normally happen
+                }
+            }
+            return Err(diags);
+        }
         Err(_) => return Err(vec![]),
     };
 
@@ -1184,12 +1266,14 @@ fn analyze_impl_trait_specific_error<'db>(
 
     // 6. Checks if the trait inst is WF.
     let trait_ref_span: DynLazySpan = impl_trait.span().trait_ref().into();
+
     for &goal in trait_constraints.list(db) {
         is_satisfied(goal, trait_ref_span.clone());
     }
 
     // 7. Checks if the implementor ty satisfies the super trait constraints.
     let target_ty_span: DynLazySpan = impl_trait.span().ty().into();
+
     for &super_trait in trait_def.super_traits(db) {
         let super_trait = super_trait.instantiate(db, trait_inst.args(db));
         is_satisfied(super_trait, target_ty_span.clone())
@@ -1281,7 +1365,8 @@ fn find_const_ty_param<'db>(
     scope: ScopeId<'db>,
 ) -> Option<ConstTyId<'db>> {
     let path = PathId::from_ident(db, ident);
-    let Ok(PathRes::Ty(ty)) = resolve_path(db, path, scope, None, true) else {
+    let Ok(PathRes::Ty(ty)) = resolve_path(db, path, scope, PredicateListId::empty_list(db), true)
+    else {
         return None;
     };
     match ty.data(db) {

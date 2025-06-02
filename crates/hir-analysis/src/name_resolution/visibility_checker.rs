@@ -56,6 +56,7 @@ pub(crate) fn is_ty_visible_from(db: &dyn HirAnalysisDb, ty: TyId, from_scope: S
             TyBase::Func(func) => is_scope_visible_from(db, func.scope(db), from_scope),
         },
         TyData::TyParam(param) => is_scope_visible_from(db, param.scope(db), from_scope),
+        TyData::AssocTy(assoc_ty) => is_scope_visible_from(db, assoc_ty.scope(db), from_scope),
 
         TyData::ConstTy(const_ty) => match const_ty.data(db) {
             ConstTyData::TyVar(_, _) => true,

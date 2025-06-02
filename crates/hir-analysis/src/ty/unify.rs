@@ -460,6 +460,20 @@ impl<'db> Unifiable<'db> for TraitInstId<'db> {
             table.unify_ty(self_arg, other_arg)?;
         }
 
+        // Unify associated type bindings
+        for (name, &self_assoc_ty) in self.assoc_type_bindings(db) {
+            if let Some(&other_assoc_ty) = other.assoc_type_bindings(db).get(name) {
+                table.unify_ty(self_assoc_ty, other_assoc_ty)?;
+            } else {
+                return Err(UnificationError::TypeMismatch);
+            }
+        }
+
+        // Check that other doesn't have extra bindings
+        if self.assoc_type_bindings(db).len() != other.assoc_type_bindings(db).len() {
+            return Err(UnificationError::TypeMismatch);
+        }
+
         Ok(())
     }
 }

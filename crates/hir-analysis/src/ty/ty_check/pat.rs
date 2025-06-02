@@ -297,7 +297,7 @@ impl<'db> TyChecker<'db> {
             }
             let elem_ty = match hir_ty.to_opt() {
                 Some(ty) => {
-                    let ty = lower_hir_ty(self.db, ty, variant.enum_(self.db).scope());
+                    let ty = lower_hir_ty(self.db, ty, variant.enum_(self.db).scope(), crate::ty::trait_resolution::PredicateListId::empty_list(self.db));
                     Binder::bind(ty).instantiate(self.db, variant.ty.generic_args(self.db))
                 }
                 _ => TyId::invalid(self.db, InvalidCause::Other),

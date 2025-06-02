@@ -73,6 +73,12 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                 TyId::const_ty(db, const_ty)
             }
 
+            AssocTy(assoc) => {
+                let folded_trait = assoc.trait_.fold_with(folder);
+                let ty = TyId::assoc_ty(folder.db(), folded_trait, assoc.name);
+                ty
+            }
+
             TyVar(_) | TyParam(_) | TyBase(_) | Never | Invalid(_) => self,
         }
     }
@@ -124,7 +130,7 @@ impl<'db> TyFoldable<'db> for TraitInstId<'db> {
             .map(|ty| ty.fold_with(folder))
             .collect::<Vec<_>>();
 
-        TraitInstId::new(db, def, args)
+        TraitInstId::new(db, def, args, self.assoc_type_bindings(db).clone())
     }
 }
 

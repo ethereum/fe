@@ -23,6 +23,7 @@ use super::{
     const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
     func_def::FuncDef,
+    trait_def::TraitInstId,
     trait_resolution::{PredicateListId, WellFormedness},
     ty_lower::collect_generic_params,
     unify::InferenceKey,
@@ -144,6 +145,13 @@ impl<'db> TyId<'db> {
         match self.data(db) {
             TyData::TyVar(var) => var.pretty_print(),
             TyData::TyParam(param) => param.pretty_print(db),
+            TyData::AssocTy(assoc_ty) => {
+                format!(
+                    "{}::{}",
+                    assoc_ty.trait_.pretty_print(db, false),
+                    assoc_ty.name.data(db)
+                )
+            }
             TyData::TyApp(_, _) => pretty_print_ty_app(db, self),
             TyData::TyBase(ty_con) => ty_con.pretty_print(db),
             TyData::ConstTy(const_ty) => const_ty.pretty_print(db),
@@ -222,6 +230,15 @@ impl<'db> TyId<'db> {
 
     pub(super) fn const_ty(db: &'db dyn HirAnalysisDb, const_ty: ConstTyId<'db>) -> Self {
         Self::new(db, TyData::ConstTy(const_ty))
+    }
+
+    pub(super) fn assoc_ty(
+        db: &'db dyn HirAnalysisDb,
+        trait_: TraitInstId<'db>,
+        name: IdentId<'db>,
+    ) -> Self {
+        let assoc_ty = AssocTy { trait_, name };
+        Self::new(db, TyData::AssocTy(assoc_ty))
     }
 
     pub(crate) fn adt(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Self {
@@ -303,6 +320,7 @@ impl<'db> TyId<'db> {
     pub(crate) fn as_scope(self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
         match self.base_ty(db).data(db) {
             TyData::TyParam(param) => Some(param.scope(db)),
+            TyData::AssocTy(assoc_ty) => Some(assoc_ty.scope(db)),
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.scope(db)),
             TyData::TyBase(TyBase::Func(func)) => Some(func.scope(db)),
             TyData::TyBase(TyBase::Prim(..)) => None,
@@ -323,6 +341,7 @@ impl<'db> TyId<'db> {
         match self.base_ty(db).data(db) {
             TyData::TyVar(_) => None,
             TyData::TyParam(param) => param.scope(db).name_span(db),
+            TyData::AssocTy(assoc_ty) => assoc_ty.scope(db).name_span(db),
 
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.name_span(db)),
             TyData::TyBase(TyBase::Func(func)) => Some(func.name_span(db)),
@@ -590,6 +609,8 @@ pub enum TyData<'db> {
     /// Type Parameter.
     TyParam(TyParam<'db>),
 
+    AssocTy(AssocTy<'db>),
+
     // Type application,
     // e.g., `Option<i32>` is represented as `TApp(TyConst(Option), TyConst(i32))`.
     TyApp(TyId<'db>, TyId<'db>),
@@ -807,6 +828,25 @@ impl TyVar<'_> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct AssocTy<'db> {
+    pub trait_: TraitInstId<'db>,
+    pub name: IdentId<'db>,
+}
+
+impl<'db> AssocTy<'db> {
+    pub fn scope(&self, db: &'db dyn HirAnalysisDb) -> ScopeId<'db> {
+        // Find the index of this associated type in the trait's type list
+        let trait_def = self.trait_.def(db).trait_(db);
+        let types = trait_def.types(db);
+        let idx = types
+            .iter()
+            .position(|t| t.name.to_opt() == Some(self.name))
+            .unwrap_or(0) as u16;
+        ScopeId::TraitType(trait_def, idx)
+    }
+}
+
 /// Type generics parameter. We also treat `Self` type in a trait definition as
 /// a special type parameter.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -839,6 +879,10 @@ impl<'db> TyParam<'db> {
         matches!(self.variant, Variant::TraitSelf)
     }
 
+    pub fn is_normal(&self) -> bool {
+        matches!(self.variant, Variant::Normal)
+    }
+
     pub(super) fn normal_param(
         name: IdentId<'db>,
         idx: usize,
@@ -850,21 +894,6 @@ impl<'db> TyParam<'db> {
             idx,
             kind,
             variant: Variant::Normal,
-            owner: scope,
-        }
-    }
-
-    pub(super) fn assoc_type(
-        name: IdentId<'db>,
-        idx: usize,
-        kind: Kind,
-        scope: ScopeId<'db>,
-    ) -> Self {
-        Self {
-            name,
-            idx,
-            kind,
-            variant: Variant::AssocTy,
             owner: scope,
         }
     }
@@ -901,7 +930,6 @@ impl<'db> TyParam<'db> {
 enum Variant {
     Normal,
     TraitSelf,
-    AssocTy,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, derive_more::From, Update)]
@@ -1064,6 +1092,7 @@ impl HasKind for TyData<'_> {
         match self {
             TyData::TyVar(ty_var) => ty_var.kind(db),
             TyData::TyParam(ty_param) => ty_param.kind.clone(),
+            TyData::AssocTy(_) => Kind::Star,
             TyData::TyBase(ty_const) => ty_const.kind(db),
             TyData::TyApp(abs, _) => match abs.kind(db) {
                 // `TyId::app` method handles the kind mismatch, so we don't need to verify it again

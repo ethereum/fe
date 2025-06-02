@@ -7,7 +7,13 @@ use salsa::Update;
 use smallvec::smallvec;
 
 use super::{
+    adt_def::lower_adt,
     const_ty::{ConstTyData, ConstTyId},
+    func_def::lower_func,
+    trait_resolution::{
+        constraint::{collect_adt_constraints, collect_constraints, collect_func_def_constraints},
+        PredicateListId,
+    },
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
 use crate::name_resolution::{
@@ -15,28 +21,88 @@ use crate::name_resolution::{
 };
 use crate::{ty::binder::Binder, HirAnalysisDb};
 
+/// Gets the appropriate assumptions for a given scope.
+/// This function determines what trait constraints should be assumed
+/// when lowering types in the given scope context.
+fn assumptions_for_scope<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+) -> PredicateListId<'db> {
+    // Walk up the scope hierarchy to find the appropriate constraint context
+    let mut current_scope = Some(scope);
+    while let Some(scope) = current_scope {
+        if let ScopeId::Item(item) = scope {
+            match item {
+                ItemKind::Func(func) => {
+                    if let Some(func_def) = lower_func(db, func) {
+                        return collect_func_def_constraints(db, func_def, true)
+                            .instantiate_identity();
+                    }
+                }
+                ItemKind::Struct(struct_) => {
+                    let adt_def = lower_adt(db, struct_.into());
+                    return collect_adt_constraints(db, adt_def).instantiate_identity();
+                }
+                ItemKind::Enum(enum_) => {
+                    let adt_def = lower_adt(db, enum_.into());
+                    return collect_adt_constraints(db, adt_def).instantiate_identity();
+                }
+                ItemKind::Trait(trait_) => {
+                    return collect_constraints(db, trait_.into()).instantiate_identity();
+                }
+                ItemKind::Impl(impl_) => {
+                    return collect_constraints(db, impl_.into()).instantiate_identity();
+                }
+                ItemKind::ImplTrait(impl_trait) => {
+                    return collect_constraints(db, impl_trait.into()).instantiate_identity();
+                }
+                ItemKind::TypeAlias(type_alias) => {
+                    return collect_constraints(db, type_alias.into()).instantiate_identity();
+                }
+                _ => {}
+            }
+        }
+        current_scope = scope.parent(db);
+    }
+
+    // Default to empty assumptions if no constraint context is found
+    PredicateListId::empty_list(db)
+}
+
+/// Convenience function that automatically determines appropriate assumptions for the scope.
+/// This function should be used when you don't have specific assumptions to pass.
+pub fn lower_hir_ty_with_scope_assumptions<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: HirTyId<'db>,
+    scope: ScopeId<'db>,
+) -> TyId<'db> {
+    let assumptions = assumptions_for_scope(db, scope);
+    lower_hir_ty(db, ty, scope, assumptions)
+}
+
 /// Lowers the given HirTy to `TyId`.
 #[salsa::tracked]
 pub fn lower_hir_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: HirTyId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
     match ty.data(db) {
         HirTyKind::Ptr(pointee) => {
-            let pointee = lower_opt_hir_ty(db, scope, *pointee);
+            let pointee = lower_opt_hir_ty(db, scope, *pointee, assumptions);
             let ptr = TyId::ptr(db);
             TyId::app(db, ptr, pointee)
         }
 
-        HirTyKind::Path(path) => lower_path(db, scope, *path),
+        HirTyKind::Path(path) => lower_path(db, scope, *path, assumptions),
 
         HirTyKind::Tuple(tuple_id) => {
             let elems = tuple_id.data(db);
             let len = elems.len();
             let tuple = TyId::tuple(db, len);
             elems.iter().fold(tuple, |acc, &elem| {
-                let elem_ty = lower_opt_hir_ty(db, scope, elem);
+                let elem_ty = lower_opt_hir_ty(db, scope, elem, assumptions);
                 if !elem_ty.has_star_kind(db) {
                     return TyId::invalid(db, InvalidCause::NotFullyApplied);
                 }
@@ -46,7 +112,7 @@ pub fn lower_hir_ty<'db>(
         }
 
         HirTyKind::Array(hir_elem_ty, len) => {
-            let elem_ty = lower_opt_hir_ty(db, scope, *hir_elem_ty);
+            let elem_ty = lower_opt_hir_ty(db, scope, *hir_elem_ty, assumptions);
             let len_ty = ConstTyId::from_opt_body(db, *len);
             let len_ty = TyId::const_ty(db, len_ty);
             let array = TyId::array(db, elem_ty);
@@ -57,14 +123,14 @@ pub fn lower_hir_ty<'db>(
     }
 }
 
-fn lower_opt_hir_ty<'db>(
+pub fn lower_opt_hir_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
-    hir_ty: Partial<HirTyId<'db>>,
+    ty: Partial<HirTyId<'db>>,
+    assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
-    hir_ty
-        .to_opt()
-        .map(|hir_ty| lower_hir_ty(db, hir_ty, scope))
+    ty.to_opt()
+        .map(|hir_ty| lower_hir_ty(db, hir_ty, scope, assumptions))
         .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
 }
 
@@ -72,11 +138,12 @@ fn lower_path<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     path: Partial<PathId<'db>>,
+    assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
     let Some(path) = path.to_opt() else {
         return TyId::invalid(db, InvalidCause::Other);
     };
-    match resolve_path(db, path, scope, None, false) {
+    match resolve_path(db, path, scope, assumptions, false) {
         Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => ty,
         _ => TyId::invalid(db, InvalidCause::Other),
     }
@@ -86,6 +153,7 @@ fn lower_const_ty_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     ty: HirTyId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
     let HirTyKind::Path(path) = ty.data(db) else {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
@@ -98,7 +166,7 @@ fn lower_const_ty_ty<'db>(
     {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
     }
-    let ty = lower_path(db, scope, *path);
+    let ty = lower_path(db, scope, *path, assumptions);
 
     if ty.has_invalid(db) || ty.is_integral(db) || ty.is_bool(db) {
         ty
@@ -132,7 +200,8 @@ pub(crate) fn lower_type_alias<'db>(
         };
     };
 
-    let alias_to = lower_hir_ty(db, hir_ty, alias.scope());
+    let assumptions = collect_constraints(db, alias.into()).instantiate_identity();
+    let alias_to = lower_hir_ty(db, hir_ty, alias.scope(), assumptions);
     let alias_to = if let TyData::Invalid(InvalidCause::AliasCycle(cycle)) = alias_to.data(db) {
         if cycle.contains(&alias) {
             alias_to
@@ -220,7 +289,7 @@ pub(crate) fn lower_generic_arg_list<'db>(
             GenericArg::Type(ty_arg) => ty_arg
                 .ty
                 .to_opt()
-                .map(|ty| lower_hir_ty(db, ty, scope))
+                .map(|ty| lower_hir_ty(db, ty, scope, PredicateListId::empty_list(db)))
                 .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
 
             GenericArg::Const(const_arg) => {
@@ -345,21 +414,6 @@ impl<'db> GenericParamCollector<'db> {
         }
     }
 
-    fn collect_associated_types(&mut self) {
-        let GenericParamOwner::Trait(trait_item) = self.owner else {
-            return;
-        };
-
-        let associated_types = trait_item.types(self.db);
-
-        for (idx, assoc_ty) in associated_types.iter().enumerate() {
-            let param_idx = idx + self.params.len();
-            let kind = self.extract_kind(assoc_ty.bounds.as_slice());
-            self.params
-                .push(TyParamPrecursor::assoc_type(assoc_ty.name, param_idx, kind));
-        }
-    }
-
     fn collect_kind_in_where_clause(&mut self) {
         let Some(where_clause_owner) = self.owner.where_clause_owner() else {
             return;
@@ -391,7 +445,6 @@ impl<'db> GenericParamCollector<'db> {
 
     fn finalize(mut self) -> GenericParamTypeSet<'db> {
         self.collect_generic_params();
-        self.collect_associated_types();
         self.collect_kind_in_where_clause();
 
         GenericParamTypeSet::new(
@@ -474,7 +527,6 @@ enum Variant<'db> {
     TraitSelf,
     Normal,
     Const(Option<HirTyId<'db>>),
-    AssocTy,
 }
 
 impl<'db> TyParamPrecursor<'db> {
@@ -501,15 +553,11 @@ impl<'db> TyParamPrecursor<'db> {
             }
             Variant::Const(Some(ty)) => {
                 let param = TyParam::normal_param(name, lowered_idx, kind, scope);
-                let ty = lower_const_ty_ty(db, scope, ty);
+                let ty = lower_const_ty_ty(db, scope, ty, PredicateListId::empty_list(db));
                 let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, ty));
                 TyId::new(db, TyData::ConstTy(const_ty))
             }
             Variant::Const(None) => TyId::invalid(db, InvalidCause::Other),
-            Variant::AssocTy => {
-                let param = TyParam::assoc_type(name, lowered_idx, kind, scope);
-                TyId::new(db, TyData::TyParam(param))
-            }
         }
     }
 
@@ -528,15 +576,6 @@ impl<'db> TyParamPrecursor<'db> {
             original_idx: idx.into(),
             kind: None,
             variant: Variant::Const(ty),
-        }
-    }
-
-    fn assoc_type(name: Partial<IdentId<'db>>, idx: usize, kind: Option<Kind>) -> Self {
-        Self {
-            name,
-            original_idx: idx.into(),
-            kind,
-            variant: Variant::AssocTy,
         }
     }
 

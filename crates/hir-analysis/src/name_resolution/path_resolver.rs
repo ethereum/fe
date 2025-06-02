@@ -1,3 +1,4 @@
+use common::indexmap::{IndexMap, IndexSet};
 use either::Either;
 use hir::{
     hir_def::{
@@ -25,6 +26,7 @@ use crate::{
         adt_def::{lower_adt, AdtRef},
         binder::Binder,
         canonical::{Canonical, Canonicalized},
+        fold::TyFoldable,
         func_def::{lower_func, FuncDef, HirFuncDefKind},
         trait_def::{impls_for_ty, TraitInstId},
         trait_lower::lower_trait,
@@ -33,6 +35,7 @@ use crate::{
         ty_lower::{
             collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias, TyAlias,
         },
+        unify::UnificationTable,
     },
     HirAnalysisDb,
 };
@@ -395,7 +398,7 @@ pub fn resolve_path<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-    assumptions: Option<PredicateListId<'db>>,
+    assumptions: PredicateListId<'db>,
     resolve_tail_as_value: bool,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
     resolve_path_impl(
@@ -413,7 +416,7 @@ pub fn resolve_path_with_observer<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-    assumptions: Option<PredicateListId<'db>>,
+    assumptions: PredicateListId<'db>,
     resolve_tail_as_value: bool,
     observer: &mut F,
 ) -> PathResolutionResult<'db, PathRes<'db>>
@@ -435,7 +438,7 @@ fn resolve_path_impl<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
-    assumptions: Option<PredicateListId<'db>>,
+    assumptions: PredicateListId<'db>,
     resolve_tail_as_value: bool,
     is_tail: bool,
     observer: &mut F,
@@ -497,7 +500,7 @@ where
                     receiver_ty.value,
                     ident,
                     parent_scope,
-                    assumptions.unwrap_or_else(|| PredicateListId::empty_list(db)),
+                    assumptions,
                 ) {
                     Ok(cand) => {
                         let r = PathRes::Method(ty, cand);
@@ -511,7 +514,8 @@ where
                 }
             }
 
-            let assoc_tys = find_associated_type(db, scope, Canonical::new(db, ty), ident);
+            let assoc_tys =
+                find_associated_type(db, scope, Canonical::new(db, ty), ident, assumptions);
             let Some(assoc) = assoc_tys.first() else {
                 return Err(PathResError::new(
                     PathResErrorKind::NotFound {
@@ -555,7 +559,7 @@ where
         }
     };
 
-    let r = resolve_name_res(db, &res, parent_ty, path, scope)?;
+    let r = resolve_name_res(db, &res, parent_ty, path, scope, assumptions)?;
     observer(path, &r);
     Ok(r)
 }
@@ -565,15 +569,85 @@ fn find_associated_type<'db>(
     scope: ScopeId<'db>,
     ty: Canonical<TyId<'db>>,
     name: IdentId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> SmallVec<TyId<'db>, 4> {
+    eprintln!(
+        "find_associated_type: scope={:?}, ty={:?}, name={:?}, assumptions={:?}",
+        scope.pretty_path(db),
+        ty.value.pretty_print(db),
+        name.data(db),
+        assumptions
+    );
+
+    let mut candidates: IndexSet<TyId<'db>> = IndexSet::new();
     let ingot = scope.ingot(db);
-    impls_for_ty(db, ingot, ty)
-        .iter()
-        .filter_map(|i| {
-            let t = i.skip_binder().types(db).get(&name);
-            t.copied()
-        })
-        .collect()
+
+    // Case 1: ty is a concrete type or can be resolved to concrete impls.
+    // This part attempts to find associated types from concrete `impl` blocks.
+    for implementor_binder in impls_for_ty(db, ingot, ty).iter() {
+        // Create a fresh unification table for this specific implementor candidate.
+        let mut table = UnificationTable::new(db);
+
+        // Instantiate the LHS type `ty` with fresh unification variables if it's generic.
+        let lhs_ty_instance = ty.extract_identity(&mut table);
+
+        // Instantiate the implementor with fresh unification variables for its generic parameters.
+        let implementor_instance = table.instantiate_with_fresh_vars(*implementor_binder);
+
+        // Try to unify the LHS type with the self type of the implementor.
+        if table
+            .unify(lhs_ty_instance, implementor_instance.self_ty(db))
+            .is_ok()
+        {
+            // If unification succeeds, the implementor's generic parameters are now (potentially)
+            // bound to parts of `lhs_ty_instance`.
+            if let Some(assoc_ty_template) = implementor_instance.types(db).get(&name) {
+                // The associated type from the `impl` block might itself contain generic parameters
+                // from the `impl` block. These need to be substituted based on the unification outcome.
+                candidates.insert(assoc_ty_template.fold_with(&mut table));
+            }
+        }
+    }
+
+    // Case 2: The LHS `ty` is a generic type parameter (e.g., `A` in `A::Encoder` where `A: Abi`).
+    // We look for the associated type in its trait bounds.
+    if let TyData::TyParam(_) = ty.value.data(db) {
+        // Check if the canonical value is a TyParam
+
+        for &predicate_trait_inst in assumptions.list(db).iter() {
+            // `predicate_trait_inst` is a specific trait bound, e.g., `A: Abi` or `S<A>: SomeTrait`.
+            // It has `def` (the TraitDef) and `args` (the actual types for Self, generics, and resolved associated types).
+
+            let mut table = UnificationTable::new(db);
+            // Instantiate the LHS `ty` (e.g., A) with fresh variables for unification.
+            let lhs_ty_instance = ty.extract_identity(&mut table);
+
+            // Instantiate the `self_ty` from the predicate (e.g., the `A` in `A: Abi`) also with fresh variables.
+            let predicate_self_ty_instance =
+                table.instantiate_with_fresh_vars(Binder::bind(predicate_trait_inst.self_ty(db)));
+
+            // Check if the current trait bound applies to our LHS type `ty`.
+            if table
+                .unify(lhs_ty_instance, predicate_self_ty_instance)
+                .is_ok()
+            {
+                let _trait_def_of_bound = predicate_trait_inst.def(db);
+
+                // Look for the associated type by name in the trait bindings
+                if let Some(&actual_assoc_ty_in_bound) = predicate_trait_inst.assoc_type_bindings(db).get(&name) {
+                    // This `actual_assoc_ty_in_bound` needs to be processed by the unification table
+                    // to substitute any type variables based on the `lhs_ty_instance` unification.
+                    candidates.insert(actual_assoc_ty_in_bound.fold_with(&mut table));
+                }
+            }
+        }
+    }
+
+    eprintln!("candidates: ");
+    for c in candidates.iter() {
+        eprintln!("    {}", c.pretty_print(db));
+    }
+    candidates.into_iter().collect()
 }
 
 pub fn resolve_name_res<'db>(
@@ -582,6 +656,7 @@ pub fn resolve_name_res<'db>(
     parent_ty: Option<TyId<'db>>,
     path: PathId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
     let args = &lower_generic_arg_list(db, path.generic_args(db), scope);
     let res = match nameres.kind {
@@ -606,7 +681,7 @@ pub fn resolve_name_res<'db>(
                 ItemKind::Const(const_) => {
                     // TODO err if any args
                     let ty = if let Some(ty) = const_.ty(db).to_opt() {
-                        lower_hir_ty(db, ty, scope)
+                        lower_hir_ty(db, ty, scope, assumptions)
                     } else {
                         TyId::invalid(db, InvalidCause::Other)
                     };
@@ -646,7 +721,7 @@ pub fn resolve_name_res<'db>(
                         PathRes::Ty(ty)
                     } else {
                         let trait_def = lower_trait(db, t);
-                        let trait_inst = TraitInstId::new(db, trait_def, args);
+                        let trait_inst = TraitInstId::new(db, trait_def, args, IndexMap::new());
                         PathRes::Trait(trait_inst)
                     }
                 }
@@ -697,7 +772,7 @@ fn impl_typeid_to_ty<'db>(
     args: &[TyId<'db>],
 ) -> PathResolutionResult<'db, TyId<'db>> {
     if let Some(hir_ty) = hir_ty.to_opt() {
-        let ty = lower_hir_ty(db, hir_ty, scope); // root scope!
+        let ty = lower_hir_ty(db, hir_ty, scope, PredicateListId::empty_list(db)); // root scope!
         Ok(TyId::foldl(db, ty, args))
     } else {
         Err(PathResError::parse_err(path))

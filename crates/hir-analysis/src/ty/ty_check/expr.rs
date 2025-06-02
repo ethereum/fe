@@ -21,6 +21,7 @@ use crate::{
         canonical::Canonicalized,
         const_ty::ConstTyId,
         diagnostics::{BodyDiag, FuncBodyDiag},
+        trait_resolution::PredicateListId,
         ty_check::{callable::Callable, path::RecordInitChecker, TyChecker},
         ty_def::{InvalidCause, TyId},
     },
@@ -1075,7 +1076,9 @@ fn resolve_ident_expr<'db>(
         let Ok(res) = bucket.pick_any(&[NameDomain::VALUE, NameDomain::TYPE]) else {
             return ResolvedPathInBody::Invalid;
         };
-        let Ok(reso) = resolve_name_res(db, res, None, path, scope) else {
+        let Ok(reso) =
+            resolve_name_res(db, res, None, path, scope, PredicateListId::empty_list(db))
+        else {
             return ResolvedPathInBody::Invalid;
         };
         ResolvedPathInBody::Reso(reso)

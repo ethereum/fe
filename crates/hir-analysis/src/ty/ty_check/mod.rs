@@ -64,7 +64,12 @@ impl<'db> TyChecker<'db> {
         let env = TyCheckEnv::new_with_func(db, func)?;
         let expected_ty = match func.ret_ty(db) {
             Some(hir_ty) => {
-                let ty = lower_hir_ty(db, hir_ty, func.scope());
+                let ty = lower_hir_ty(
+                    db,
+                    hir_ty,
+                    func.scope(),
+                    crate::ty::trait_resolution::PredicateListId::empty_list(db),
+                );
                 if ty.is_star_kind(db) {
                     ty
                 } else {
@@ -131,7 +136,7 @@ impl<'db> TyChecker<'db> {
         span: LazyTySpan<'db>,
         star_kind_required: bool,
     ) -> TyId<'db> {
-        let ty = lower_hir_ty(self.db, hir_ty, self.env.scope());
+        let ty = lower_hir_ty(self.db, hir_ty, self.env.scope(), self.env.assumptions());
         if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
             self.push_diag(diag)
         }
@@ -243,7 +248,7 @@ impl<'db> TyChecker<'db> {
             self.db,
             path,
             scope,
-            Some(self.env.assumptions()),
+            self.env.assumptions(),
             resolve_tail_as_value,
             &mut check_visibility,
         ) {

@@ -6,6 +6,7 @@ use super::{
     binder::Binder,
     canonical::Canonical,
     func_def::{lower_func, FuncDef},
+    trait_resolution::PredicateListId,
     ty_def::{InvalidCause, TyBase, TyId},
     ty_lower::lower_hir_ty,
     unify::UnificationTable,
@@ -146,7 +147,7 @@ impl<'db> MethodCollector<'db> {
     fn collect_impls(&mut self, impls: &[Impl<'db>]) {
         for impl_ in impls {
             let ty = match impl_.ty(self.db).to_opt() {
-                Some(ty) => lower_hir_ty(self.db, ty, impl_.scope()),
+                Some(ty) => lower_hir_ty(self.db, ty, impl_.scope(), PredicateListId::empty_list(self.db)),
                 None => TyId::invalid(self.db, InvalidCause::Other),
             };
 

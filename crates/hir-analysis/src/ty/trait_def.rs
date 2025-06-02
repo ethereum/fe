@@ -2,7 +2,7 @@
 
 use common::indexmap::{IndexMap, IndexSet};
 use hir::{
-    hir_def::{scope_graph::ScopeId, IdentId, ImplTrait, IngotId, Trait},
+    hir_def::{IdentId, ImplTrait, IngotId, Trait},
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
@@ -20,7 +20,7 @@ use super::{
         PredicateListId, WellFormedness,
     },
     ty_def::{Kind, TyId},
-    ty_lower::{lower_hir_ty, GenericParamTypeSet},
+    ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
 };
 use crate::{
@@ -244,8 +244,12 @@ pub(super) fn does_impl_trait_conflict(
 #[derive(Debug)]
 pub struct TraitInstId<'db> {
     pub def: TraitDef<'db>,
+    /// Regular type and const parameters: [Self, ExplicitTypeParam1, ..., ExplicitConstParamN]
     #[return_ref]
     pub args: Vec<TyId<'db>>,
+    /// Associated type bindings: mapping from assoc type name to bound type
+    #[return_ref]
+    pub assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>>,
 }
 
 impl<'db> TraitInstId<'db> {
@@ -261,6 +265,7 @@ impl<'db> TraitInstId<'db> {
             // Skip the first type parameter since it's the implementor type.
             args.next();
 
+            let mut has_generics = false;
             if let Some(first) = args.next() {
                 s.push('<');
                 s.push_str(first);
@@ -268,6 +273,31 @@ impl<'db> TraitInstId<'db> {
                     s.push_str(", ");
                     s.push_str(arg);
                 }
+                has_generics = true;
+            }
+
+            // Add associated type bindings
+            if !self.assoc_type_bindings(db).is_empty() {
+                if !has_generics {
+                    s.push('<');
+                } else {
+                    s.push_str(", ");
+                }
+
+                let mut first_assoc = true;
+                for (name, ty) in self.assoc_type_bindings(db) {
+                    if !first_assoc {
+                        s.push_str(", ");
+                    }
+                    first_assoc = false;
+                    s.push_str(name.data(db));
+                    s.push_str(" = ");
+                    s.push_str(ty.pretty_print(db));
+                }
+                has_generics = true;
+            }
+
+            if has_generics {
                 s.push('>');
             }
 
@@ -331,35 +361,37 @@ impl<'db> TraitDef<'db> {
         methods
     }
 
-    pub fn assoc_types(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> IndexMap<IdentId<'db>, TraitTypeDecl<'db>> {
-        let trait_scope = ScopeId::Item(self.trait_(db).into());
-        let mut types = IndexMap::default();
+    // xxx
+    // pub fn assoc_types(
+    //     self,
+    //     db: &'db dyn HirAnalysisDb,
+    // ) -> IndexMap<IdentId<'db>, TraitTypeDecl<'db>> {
+    //     let trait_scope = ScopeId::Item(self.trait_(db).into());
+    //     let mut types = IndexMap::default();
 
-        for (_idx, type_) in self.trait_(db).types(db).iter().enumerate() {
-            let Some(name) = type_.name.to_opt() else {
-                continue;
-            };
-            let default_ty = type_
-                .default
-                .map(|t| Binder::bind(lower_hir_ty(db, t, trait_scope)));
+    //     let assumptions = collect_constraints(db, self.trait_(db).into()).instantiate_identity();
 
-            // let kind = Kind::Star; // xxx
-            // let assoc_ty = TyParam::assoc_type(name, idx, kind, trait_scope).ty(db);
-            // let mut bounds = IndexSet::new();
-            // add_bounds_to_constraint_set(db, trait_scope, assoc_ty, &type_.bounds, &mut bounds);
-            // let bounds = bounds.into_iter().collect();
+    //     for (idx, type_) in self.trait_(db).types(db).iter().enumerate() {
+    //         let Some(name) = type_.name.to_opt() else {
+    //             continue;
+    //         };
 
-            // We can simply ignore the conflict here because it's already
-            // handled by the def analysis pass
-            types
-                .entry(name)
-                .or_insert(TraitTypeDecl { name, default_ty });
-        }
-        types
-    }
+    //         let default_ty = type_
+    //             .default
+    //             .map(|t| Binder::bind(lower_hir_ty(db, t, trait_scope, assumptions)));
+
+    //         let kind = Kind::Star; // xxx
+    //         let assoc_ty = TyId::new(db, todo!());
+    //         let mut bounds = IndexSet::new();
+    //         add_bounds_to_constraint_set(db, trait_scope, assoc_ty, &type_.bounds, &mut bounds);
+    //         let bounds = bounds.into_iter().collect();
+
+    //         types
+    //             .entry(name)
+    //             .or_insert(TraitTypeDecl { name, default_ty });
+    //     }
+    //     types
+    // }
 
     // pub fn assoc_type_bounds(
     //     self,
