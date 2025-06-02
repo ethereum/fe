@@ -6,7 +6,10 @@ trait Abi {
 struct SolAbi {}
 impl Abi for SolAbi {
     type Selector = [u8; 4]
+    type Encoder = SolEncoder
 }
+
+struct SolEncoder {}
 
 trait Encode<A: Abi> {
     fn encode(self, mut e: A::Encoder)

@@ -1,20 +1,29 @@
 //! This module implements the trait and impl trait lowering process.
 
 use common::indexmap::IndexMap;
-use hir::hir_def::{scope_graph::ScopeId, IdentId, ImplTrait, IngotId, Partial, Trait, TraitRefId};
+use hir::hir_def::{
+    params::GenericArg, scope_graph::ScopeId, AssocTypeGenericArg, IdentId, ImplTrait, IngotId,
+    Partial, Trait, TraitRefId, TypeId,
+};
 use rustc_hash::FxHashMap;
 use salsa::Update;
 
 use super::{
     binder::Binder,
+    const_ty::ConstTyId,
     func_def::FuncDef,
     trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId},
     ty_def::{InvalidCause, Kind, TyId},
-    ty_lower::{collect_generic_params, lower_generic_arg_list},
+    ty_lower::{collect_generic_params, lower_hir_ty},
 };
 use crate::{
     name_resolution::{resolve_path, PathRes, PathResError},
-    ty::{func_def::lower_func, ty_def::TyData, ty_lower::lower_hir_ty},
+    ty::{
+        const_ty::ConstTyData,
+        func_def::lower_func,
+        ty_def::{TyData, TyParam},
+        ty_lower::lower_opt_hir_ty,
+    },
     HirAnalysisDb,
 };
 
@@ -109,12 +118,8 @@ pub(crate) fn lower_trait_ref<'db>(
     trait_ref: TraitRefId<'db>,
     scope: ScopeId<'db>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
-    let mut args = vec![self_ty];
-    if let Some(generic_args) = trait_ref.generic_args(db) {
-        args.extend(lower_generic_arg_list(db, generic_args, scope));
-    };
-
     let Partial::Present(path) = trait_ref.path(db) else {
+        // Path is syntactically absent, should be caught by parser
         return Err(TraitRefLowerError::Other);
     };
 
@@ -124,61 +129,149 @@ pub(crate) fn lower_trait_ref<'db>(
         Err(e) => return Err(TraitRefLowerError::PathResError(e)),
     };
 
-    // The first parameter of the trait is the self type, so we need to skip it.
-    if trait_def.params(db).len() != args.len() {
-        return Err(TraitRefLowerError::ArgNumMismatch {
-            expected: trait_def.params(db).len() - 1,
-            given: args.len() - 1,
-        });
+    let Some(args) = trait_ref.generic_args(db) else {
+        return Ok(TraitInstId::new(db, trait_def, vec![self_ty]));
+    };
+    let args = args.data(db);
+
+    // trait_params is [Self, ExplicitTypeParam1, ..., ExplicitConstParamN, ..., AssocTypeParam1, ...]
+    let trait_params: &[TyId<'db>] = trait_def.params(db);
+    let mut final_args: Vec<TyId<'db>> = Vec::with_capacity(trait_params.len());
+
+    let mut args_iter = args
+        .iter()
+        .filter(|arg| matches!(arg, GenericArg::Type(_) | GenericArg::Const(_)));
+
+    // 1. Add Self type
+    final_args.push(self_ty);
+
+    let mut expected = 0;
+    let mut given = 0;
+
+    // 2. Process explicit generic parameters (type and const)
+    for param in trait_params.iter().skip(1) {
+        match param.data(db) {
+            TyData::TyParam(p) if p.is_normal() => {}
+            TyData::ConstTy(_) => {}
+            _ => break,
+        };
+        expected += 1;
+
+        if let Some(user_arg) = args_iter.next() {
+            given += 1;
+            let lowered_user_arg = match user_arg {
+                GenericArg::Type(ty_arg) => lower_opt_hir_ty(db, scope, ty_arg.ty),
+                GenericArg::Const(const_arg) => {
+                    let const_ty_id = ConstTyId::from_opt_body(db, const_arg.body);
+                    TyId::const_ty(db, const_ty_id)
+                }
+                _ => unreachable!(),
+            };
+            final_args.push(lowered_user_arg);
+        } else {
+            // Not enough explicit generic arguments provided.
+            return Err(TraitRefLowerError::ArgNumMismatch { expected, given });
+        }
     }
 
-    for (param, arg) in trait_def
-        .params(db)
+    // Check if there were more explicit arguments provided by user than expected
+    if args_iter.next().is_some() {
+        let given = args
+            .iter()
+            .filter(|arg| matches!(arg, GenericArg::Type(_) | GenericArg::Const(_)))
+            .count();
+        return Err(TraitRefLowerError::ArgNumMismatch { expected, given });
+    }
+
+    // 3. Process associated type parameters
+    let assoc_type_bindings: FxHashMap<IdentId<'db>, Partial<TypeId<'db>>> = args
         .iter()
-        .skip(1)
-        .zip(args.iter_mut().skip(1))
-    {
-        if !param.kind(db).does_match(arg.kind(db)) {
+        .filter_map(|arg| match arg {
+            GenericArg::AssocType(AssocTypeGenericArg { name, ty }) if name.is_present() => {
+                Some((*name.unwrap(), *ty))
+            }
+            _ => None,
+        })
+        .collect();
+
+    for (i, param) in trait_params.iter().enumerate().skip(1 + expected) {
+        let param = match param.data(db) {
+            TyData::TyParam(p) if p.is_assoc_ty() => p,
+            _ => continue, // Should be a TyParam for an associated type
+        };
+
+        let assoc_name = param.name;
+        if let Some(hir_assoc_ty_val) = assoc_type_bindings.get(&assoc_name) {
+            final_args.push(lower_opt_hir_ty(db, scope, *hir_assoc_ty_val));
+        } else {
+            // Associated type not specified by user, create a TyParam representing the associated type
+            let assoc_kind = param.kind.clone();
+            let trait_scope = trait_def.trait_(db).scope(); // Scope of the trait definition
+            let assoc_ty_param = TyParam::assoc_type(assoc_name, i, assoc_kind, trait_scope);
+            final_args.push(TyId::new(db, TyData::TyParam(assoc_ty_param)));
+        }
+    }
+    assert_eq!(final_args.len(), trait_params.len());
+
+    // 4. Perform kind checking and const type evaluation for all arguments (already in final_args)
+    // Skip Self (index 0)
+    for i in 1..final_args.len() {
+        let expected_param_ty = trait_params[i];
+        let actual_arg_ty = &mut final_args[i]; // Get a mutable reference to update
+
+        // Kind Check
+        if !expected_param_ty
+            .kind(db)
+            .does_match(actual_arg_ty.kind(db))
+        {
             return Err(TraitRefLowerError::ArgKindMisMatch {
-                expected: param.kind(db).clone(),
-                given: *arg,
+                expected: expected_param_ty.kind(db).clone(),
+                given: *actual_arg_ty, // Use the value before potential modification
             });
         }
 
-        let expected_const_ty = match param.data(db) {
-            TyData::ConstTy(expected_ty) => expected_ty.ty(db).into(),
+        // Const Type Evaluation/Check (if expected_param_ty is a const generic parameter)
+        let expected_const_value_type = match expected_param_ty.data(db) {
+            TyData::ConstTy(cty_id) => match cty_id.data(db) {
+                // This is the type *of* the const generic value, e.g., u32 for `const N: u32`
+                ConstTyData::TyParam(_, ty_of_const_val) => Some(*ty_of_const_val),
+                _ => None,
+            },
             _ => None,
         };
 
-        match arg.evaluate_const_ty(db, expected_const_ty) {
-            Ok(ty) => *arg = ty,
-
-            Err(InvalidCause::ConstTyMismatch { expected, given }) => {
-                return Err(TraitRefLowerError::ArgTypeMismatch {
-                    expected: Some(expected),
-                    given: Some(given),
-                });
+        match actual_arg_ty.evaluate_const_ty(db, expected_const_value_type) {
+            Ok(evaluated_ty) => {
+                *actual_arg_ty = evaluated_ty; // Update in place
             }
-
-            Err(InvalidCause::ConstTyExpected { expected }) => {
-                return Err(TraitRefLowerError::ArgTypeMismatch {
-                    expected: Some(expected),
-                    given: None,
-                });
+            Err(cause) => {
+                let err_kind = match cause {
+                    InvalidCause::ConstTyMismatch { expected, given } => {
+                        TraitRefLowerError::ArgTypeMismatch {
+                            expected: Some(expected),
+                            given: Some(given),
+                        }
+                    }
+                    InvalidCause::ConstTyExpected { expected } => {
+                        TraitRefLowerError::ArgTypeMismatch {
+                            expected: Some(expected),
+                            given: None,
+                        }
+                    }
+                    InvalidCause::NormalTypeExpected { given } => {
+                        TraitRefLowerError::ArgTypeMismatch {
+                            expected: None,
+                            given: Some(given),
+                        }
+                    }
+                    _ => TraitRefLowerError::Other,
+                };
+                return Err(err_kind);
             }
-
-            Err(InvalidCause::NormalTypeExpected { given }) => {
-                return Err(TraitRefLowerError::ArgTypeMismatch {
-                    expected: None,
-                    given: Some(given),
-                })
-            }
-
-            _ => return Err(TraitRefLowerError::Other),
         }
     }
 
-    Ok(TraitInstId::new(db, trait_def, args))
+    Ok(TraitInstId::new(db, trait_def, final_args))
 }
 
 #[salsa::tracked(return_ref)]
