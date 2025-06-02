@@ -1,0 +1,364 @@
+---
+source: crates/hir-analysis/tests/decision_tree.rs
+expression: res
+input_file: test_files/decision_trees/stress_patterns.fe
+---
+note: 
+   ┌─ stress_patterns.fe:35:5
+   │  
+35 │ ╭     match large {
+36 │ │         VeryLargeEnum::Variant1 => 1
+37 │ │         VeryLargeEnum::Variant2 => 2
+38 │ │         VeryLargeEnum::Variant3 => 3
+39 │ │         VeryLargeEnum::Variant4 => 4
+40 │ │         VeryLargeEnum::Variant5 => 5
+41 │ │     }
+   │ ╰─────^ Decision Tree for test_large_enum_decision_tree:
+ Switch on expr
+ ├─ Variant1 =>
+ │  └─ Execute arm #0
+ ├─ Variant2 =>
+ │  └─ Execute arm #1
+ ├─ Variant3 =>
+ │  └─ Execute arm #2
+ ├─ Variant4 =>
+ │  └─ Execute arm #3
+ └─ Variant5 =>
+    └─ Execute arm #4
+
+
+note: 
+   ┌─ stress_patterns.fe:46:5
+   │  
+46 │ ╭     match data {
+47 │ │         ((0, true), (Color::Red, _)) => 10
+48 │ │         ((0, false), (Color::Green, x)) => x + 20
+49 │ │         ((1, _), (Color::Blue, _)) => 30
+50 │ │         ((_, true), (Color::Red, _)) => 40
+51 │ │         _ => 0
+52 │ │     }
+   │ ╰─────^ Decision Tree for test_complex_tuple_decision_tree:
+ Switch on expr
+ └─ tuple() =>
+    └─ Switch on expr.0
+       └─ tuple() =>
+          └─ Switch on expr.0.0
+             ├─ 0 =>
+             │  └─ Switch on expr.0.1
+             │     ├─ true =>
+             │     │  └─ Switch on expr.1
+             │     │     └─ tuple() =>
+             │     │        └─ Switch on expr.1.0
+             │     │           ├─ Red =>
+             │     │           │  └─ Execute arm #0
+             │     │           └─ _ =>
+             │     │              └─ Execute arm #4
+             │     └─ false =>
+             │        └─ Switch on expr.1
+             │           └─ tuple() =>
+             │              └─ Switch on expr.1.0
+             │                 ├─ Green =>
+             │                 │  └─ Execute arm #1
+             │                 │       x ← expr.1.1
+             │                 └─ _ =>
+             │                    └─ Execute arm #4
+             ├─ 1 =>
+             │  └─ Switch on expr.0.1
+             │     ├─ true =>
+             │     │  └─ Switch on expr.1
+             │     │     └─ tuple() =>
+             │     │        └─ Switch on expr.1.0
+             │     │           ├─ Blue =>
+             │     │           │  └─ Execute arm #2
+             │     │           ├─ Red =>
+             │     │           │  └─ Execute arm #3
+             │     │           └─ _ =>
+             │     │              └─ Execute arm #4
+             │     └─ _ =>
+             │        └─ Switch on expr.1
+             │           └─ tuple() =>
+             │              └─ Switch on expr.1.0
+             │                 ├─ Blue =>
+             │                 │  └─ Execute arm #2
+             │                 └─ _ =>
+             │                    └─ Execute arm #4
+             └─ _ =>
+                └─ Switch on expr.0.1
+                   ├─ true =>
+                   │  └─ Switch on expr.1
+                   │     └─ tuple() =>
+                   │        └─ Switch on expr.1.0
+                   │           ├─ Red =>
+                   │           │  └─ Execute arm #3
+                   │           └─ _ =>
+                   │              └─ Execute arm #4
+                   └─ _ =>
+                      └─ Execute arm #4
+
+
+note: 
+   ┌─ stress_patterns.fe:57:5
+   │  
+57 │ ╭     match (point, color) {
+58 │ │         (Point { x: 0, y: 0 }, Color::Red) => 100
+59 │ │         (Point { x: 0, y: _ }, Color::Green) => 200
+60 │ │         (Point { x: _, y: 0 }, Color::Blue) => 300
+61 │ │         (Point { x, y }, _) => x + y
+62 │ │     }
+   │ ╰─────^ Decision Tree for test_struct_decision_tree:
+ Switch on expr
+ └─ tuple() =>
+    └─ Switch on expr.0
+       └─ record{} =>
+          └─ Switch on expr.0.0
+             ├─ 0 =>
+             │  └─ Switch on expr.0.1
+             │     ├─ 0 =>
+             │     │  └─ Switch on expr.1
+             │     │     ├─ Red =>
+             │     │     │  └─ Execute arm #0
+             │     │     ├─ Green =>
+             │     │     │  └─ Execute arm #1
+             │     │     └─ Blue =>
+             │     │        └─ Execute arm #2
+             │     └─ _ =>
+             │        └─ Switch on expr.1
+             │           ├─ Green =>
+             │           │  └─ Execute arm #1
+             │           └─ _ =>
+             │              └─ Execute arm #3
+             └─ _ =>
+                └─ Switch on expr.0.1
+                   ├─ 0 =>
+                   │  └─ Switch on expr.1
+                   │     ├─ Blue =>
+                   │     │  └─ Execute arm #2
+                   │     └─ _ =>
+                   │        └─ Execute arm #3
+                   └─ _ =>
+                      └─ Execute arm #3
+
+
+note: 
+   ┌─ stress_patterns.fe:67:5
+   │  
+67 │ ╭     match rect {
+68 │ │         Rectangle { top_left: Point { x: 0, y: 0 }, bottom_right: _ } => 50
+69 │ │         Rectangle { top_left: Point { x: 1, y: 1 }, bottom_right: Point { x: 2, y: 2 } } => 100
+70 │ │         Rectangle { top_left: Point { x, y }, bottom_right: Point { x: bx, y: by } } => x + y + bx + by
+71 │ │     }
+   │ ╰─────^ Decision Tree for test_nested_struct_decision_tree:
+ Switch on expr
+ └─ record{} =>
+    └─ Switch on expr.0
+       └─ record{} =>
+          └─ Switch on expr.0.0
+             ├─ 0 =>
+             │  └─ Switch on expr.0.1
+             │     ├─ 0 =>
+             │     │  └─ Execute arm #0
+             │     └─ _ =>
+             │        └─ Switch on expr.1
+             │           └─ record{} =>
+             │              └─ Execute arm #2
+             │                   bx ← expr.1.0
+             │                   by ← expr.1.1
+             ├─ 1 =>
+             │  └─ Switch on expr.0.1
+             │     ├─ 1 =>
+             │     │  └─ Switch on expr.1
+             │     │     └─ record{} =>
+             │     │        └─ Switch on expr.1.0
+             │     │           ├─ 2 =>
+             │     │           │  └─ Switch on expr.1.1
+             │     │           │     ├─ 2 =>
+             │     │           │     │  └─ Execute arm #1
+             │     │           │     └─ _ =>
+             │     │           │        └─ Execute arm #2
+             │     │           └─ _ =>
+             │     │              └─ Execute arm #2
+             │     │                   by ← expr.1.1
+             │     └─ _ =>
+             │        └─ Switch on expr.1
+             │           └─ record{} =>
+             │              └─ Execute arm #2
+             │                   bx ← expr.1.0
+             │                   by ← expr.1.1
+             └─ _ =>
+                └─ Switch on expr.1
+                   └─ record{} =>
+                      └─ Execute arm #2
+                           bx ← expr.1.0
+                           by ← expr.1.1
+                           y ← expr.0.1
+
+
+note: 
+   ┌─ stress_patterns.fe:76:5
+   │  
+76 │ ╭     match shape {
+77 │ │         ShapeVariant::Circle(Point { x: 0, y: 0 }, radius) => radius
+78 │ │         ShapeVariant::Circle(Point { x, y }, _) => x + y
+79 │ │         ShapeVariant::Rect(Rectangle { top_left: Point { x: 0, y: 0 }, bottom_right: _ }) => 200
+   · │
+82 │ │         ShapeVariant::Line(_, _) => 250
+83 │ │     }
+   │ ╰─────^ Decision Tree for test_enum_data_decision_tree:
+ Switch on expr
+ ├─ Circle =>
+ │  └─ Switch on expr.0
+ │     └─ record{} =>
+ │        └─ Switch on expr.0.0
+ │           ├─ 0 =>
+ │           │  └─ Switch on expr.0.1
+ │           │     ├─ 0 =>
+ │           │     │  └─ Execute arm #0
+ │           │     │       radius ← expr.1
+ │           │     └─ _ =>
+ │           │        └─ Execute arm #1
+ │           └─ _ =>
+ │              └─ Execute arm #1
+ │                   y ← expr.0.1
+ ├─ Rect =>
+ │  └─ Switch on expr.0
+ │     └─ record{} =>
+ │        └─ Switch on expr.0.0
+ │           └─ record{} =>
+ │              └─ Switch on expr.0.0.0
+ │                 ├─ 0 =>
+ │                 │  └─ Switch on expr.0.0.1
+ │                 │     ├─ 0 =>
+ │                 │     │  └─ Execute arm #2
+ │                 │     └─ _ =>
+ │                 │        └─ Execute arm #3
+ │                 └─ _ =>
+ │                    └─ Execute arm #3
+ └─ Line =>
+    └─ Switch on expr.0
+       └─ record{} =>
+          └─ Switch on expr.0.0
+             ├─ 0 =>
+             │  └─ Switch on expr.0.1
+             │     ├─ 0 =>
+             │     │  └─ Switch on expr.1
+             │     │     └─ record{} =>
+             │     │        └─ Switch on expr.1.0
+             │     │           ├─ 1 =>
+             │     │           │  └─ Switch on expr.1.1
+             │     │           │     ├─ 1 =>
+             │     │           │     │  └─ Execute arm #4
+             │     │           │     └─ _ =>
+             │     │           │        └─ Execute arm #5
+             │     │           └─ _ =>
+             │     │              └─ Execute arm #5
+             │     └─ _ =>
+             │        └─ Execute arm #5
+             └─ _ =>
+                └─ Execute arm #5
+
+
+note: 
+   ┌─ stress_patterns.fe:88:5
+   │  
+88 │ ╭     match data {
+89 │ │         (VeryLargeEnum::Variant1 | VeryLargeEnum::Variant2, true) => 10
+90 │ │         (VeryLargeEnum::Variant3 | VeryLargeEnum::Variant4, false) => 20
+91 │ │         (VeryLargeEnum::Variant5, _) => 30
+92 │ │         _ => 0
+93 │ │     }
+   │ ╰─────^ Decision Tree for test_or_pattern_decision_tree:
+ Switch on expr
+ └─ tuple() =>
+    └─ Switch on expr.0
+       ├─ Variant1 =>
+       │  └─ Switch on expr.1
+       │     ├─ true =>
+       │     │  └─ Execute arm #0
+       │     └─ _ =>
+       │        └─ Execute arm #3
+       ├─ Variant2 =>
+       │  └─ Switch on expr.1
+       │     ├─ true =>
+       │     │  └─ Execute arm #0
+       │     └─ _ =>
+       │        └─ Execute arm #3
+       ├─ Variant3 =>
+       │  └─ Switch on expr.1
+       │     ├─ false =>
+       │     │  └─ Execute arm #1
+       │     └─ _ =>
+       │        └─ Execute arm #3
+       ├─ Variant4 =>
+       │  └─ Switch on expr.1
+       │     ├─ false =>
+       │     │  └─ Execute arm #1
+       │     └─ _ =>
+       │        └─ Execute arm #3
+       └─ Variant5 =>
+          └─ Execute arm #2
+
+
+note: 
+    ┌─ stress_patterns.fe:100:5
+    │  
+100 │ ╭     match data {
+101 │ │         (VeryLargeEnum::Variant1, Point { x: 0, y: 0 }, (true, _)) => 100
+102 │ │         (VeryLargeEnum::Variant2, Point { x: 1, y: _ }, (false, val)) => val + 50
+103 │ │         (VeryLargeEnum::Variant3 | VeryLargeEnum::Variant4, Point { x, y }, (_, _)) => x + y + 25
+104 │ │         _ => 1
+105 │ │     }
+    │ ╰─────^ Decision Tree for test_mixed_pattern_decision_tree:
+ Switch on expr
+ └─ tuple() =>
+    └─ Switch on expr.0
+       ├─ Variant1 =>
+       │  └─ Switch on expr.1
+       │     └─ record{} =>
+       │        └─ Switch on expr.1.0
+       │           ├─ 0 =>
+       │           │  └─ Switch on expr.1.1
+       │           │     ├─ 0 =>
+       │           │     │  └─ Switch on expr.2
+       │           │     │     └─ tuple() =>
+       │           │     │        └─ Switch on expr.2.0
+       │           │     │           ├─ true =>
+       │           │     │           │  └─ Execute arm #0
+       │           │     │           └─ _ =>
+       │           │     │              └─ Execute arm #3
+       │           │     └─ _ =>
+       │           │        └─ Execute arm #3
+       │           └─ _ =>
+       │              └─ Execute arm #3
+       ├─ Variant2 =>
+       │  └─ Switch on expr.1
+       │     └─ record{} =>
+       │        └─ Switch on expr.1.0
+       │           ├─ 1 =>
+       │           │  └─ Switch on expr.2
+       │           │     └─ tuple() =>
+       │           │        └─ Switch on expr.2.0
+       │           │           ├─ false =>
+       │           │           │  └─ Execute arm #1
+       │           │           │       val ← expr.2.1
+       │           │           └─ _ =>
+       │           │              └─ Execute arm #3
+       │           └─ _ =>
+       │              └─ Execute arm #3
+       ├─ Variant3 =>
+       │  └─ Switch on expr.1
+       │     └─ record{} =>
+       │        └─ Switch on expr.2
+       │           └─ tuple() =>
+       │              └─ Execute arm #2
+       │                   y ← expr.1.1
+       │                   x ← expr.1.0
+       ├─ Variant4 =>
+       │  └─ Switch on expr.1
+       │     └─ record{} =>
+       │        └─ Switch on expr.2
+       │           └─ tuple() =>
+       │              └─ Execute arm #2
+       │                   y ← expr.1.1
+       │                   x ← expr.1.0
+       └─ _ =>
+          └─ Execute arm #3
