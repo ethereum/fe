@@ -390,6 +390,7 @@ impl<'db> TraitDef<'db> {
     }
 }
 
+#[allow(dead_code)] // xxx
 pub struct TraitTypeDecl<'db> {
     name: IdentId<'db>,
     default_ty: Option<Binder<TyId<'db>>>,

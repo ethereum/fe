@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 
 use super::NameRes;
 use crate::{
-    ty::{trait_def::TraitDef, ty_def::TyId},
+    ty::{trait_def::TraitInstId, ty_def::TyId},
     HirAnalysisDb,
 };
 
@@ -23,7 +23,7 @@ pub enum NameResDiag<'db> {
     MethodNotFound {
         primary: DynLazySpan<'db>,
         method_name: IdentId<'db>,
-        receiver: Either<TyId<'db>, TraitDef<'db>>,
+        receiver: Either<TyId<'db>, TraitInstId<'db>>,
     },
 
     /// The resolved name is not visible.

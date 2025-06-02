@@ -9,8 +9,8 @@ error[2-0002]: `Output` is not found
 4 │     fn add(self, _ other: T) -> Self::Output // TODO: fix 'not found' error
   │                                       ^^^^^^ `Output` is not found
 
-error[6-0008]: method return type mismatch
-   ┌─ associated_types.fe:14:35
+error[6-0001]: given trait argument number mismatch
+   ┌─ associated_types.fe:11:6
    │
-14 │     fn add(self, _ other: u16) -> Val {
-   │                                   ^^^ expected `invalid(Other)` type, but the given type is `invalid(Other)`
+11 │ impl Add<u16> for Val {
+   │      ^^^^^^^^ expected 2 arguments here, but 1 given
