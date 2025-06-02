@@ -119,7 +119,7 @@ pub(crate) fn lower_trait_ref<'db>(
     };
 
     let trait_def = match resolve_path(db, path, scope, None, false) {
-        Ok(PathRes::Trait(t)) => t,
+        Ok(PathRes::Trait(t)) => t.def(db),
         Ok(res) => return Err(TraitRefLowerError::InvalidDomain(res)),
         Err(e) => return Err(TraitRefLowerError::PathResError(e)),
     };

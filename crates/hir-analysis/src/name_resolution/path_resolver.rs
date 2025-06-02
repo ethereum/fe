@@ -26,7 +26,7 @@ use crate::{
         binder::Binder,
         canonical::{Canonical, Canonicalized},
         func_def::{lower_func, FuncDef, HirFuncDefKind},
-        trait_def::{impls_for_ty, TraitDef},
+        trait_def::{impls_for_ty, TraitInstId},
         trait_lower::lower_trait,
         trait_resolution::PredicateListId,
         ty_def::{InvalidCause, TyData, TyId},
@@ -236,7 +236,7 @@ pub enum PathRes<'db> {
     TyAlias(TyAlias<'db>, TyId<'db>),
     Func(TyId<'db>),
     FuncParam(ItemKind<'db>, u16),
-    Trait(TraitDef<'db>),
+    Trait(TraitInstId<'db>),
     EnumVariant(ResolvedVariant<'db>),
     Const(TyId<'db>),
     Mod(ScopeId<'db>),
@@ -264,7 +264,7 @@ impl<'db> PathRes<'db> {
         match self {
             PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => ty.as_scope(db),
             PathRes::TyAlias(alias, _) => Some(alias.alias.scope()),
-            PathRes::Trait(trait_) => Some(trait_.trait_(db).scope()),
+            PathRes::Trait(trait_) => Some(trait_.def(db).trait_(db).scope()),
             PathRes::EnumVariant(variant) => Some(variant.enum_(db).scope()),
             PathRes::FuncParam(item, idx) => Some(ScopeId::FuncParam(*item, *idx)),
             PathRes::Mod(scope) => Some(*scope),
@@ -645,7 +645,9 @@ pub fn resolve_name_res<'db>(
                         let ty = TyId::foldl(db, ty, args);
                         PathRes::Ty(ty)
                     } else {
-                        PathRes::Trait(lower_trait(db, t)) // xxx TraitInstId
+                        let trait_def = lower_trait(db, t);
+                        let trait_inst = TraitInstId::new(db, trait_def, args);
+                        PathRes::Trait(trait_inst)
                     }
                 }
 

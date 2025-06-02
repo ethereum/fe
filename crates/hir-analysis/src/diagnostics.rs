@@ -192,7 +192,7 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 let (recv_name, recv_ty, recv_kind) = match receiver {
                     Either::Left(ty) => (ty.pretty_print(db), Some(ty), ty.kind_name(db)),
                     Either::Right(trait_) => {
-                        let name = trait_.trait_(db).name(db).unwrap().data(db);
+                        let name = trait_.def(db).trait_(db).name(db).unwrap().data(db);
                         (name, None, "trait".to_string())
                     }
                 };
