@@ -1,95 +1,53 @@
 pub mod db;
 pub mod diagnostics;
 pub mod files;
+
 use camino::Utf8PathBuf;
 
 use common::InputDb;
 pub use db::DriverDataBase;
 
-use clap::Subcommand;
 use common::{
-    config::{Config, DependencyDescription, IngotArguments},
+    config::{Config, IngotArguments},
     file::workspace::Workspace,
 };
 use hir::hir_def::TopLevelMod;
-use resolver::{files::FilesResolver, ingot::ingot_graph_resolver, ResolutionHandler, Resolver};
+use resolver::{
+    files::{File, FilesResolver},
+    ingot::ingot_graph_resolver,
+    ResolutionHandler, Resolver,
+};
 use smol_str::SmolStr;
 use url::Url;
 
-pub struct InputNodeHandler<'a> {
-    pub db: &'a mut dyn InputDb,
-    pub workspace: Workspace,
-}
-
-impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
-    type Item = Vec<(Utf8PathBuf, (SmolStr, IngotArguments))>;
-
-    fn handle_resolution(
-        &mut self,
-        ingot_path: &Utf8PathBuf,
-        files: Vec<(Utf8PathBuf, String)>,
-    ) -> Self::Item {
-        let mut config = None;
-
-        // println!("{ingot_path}: {:#?}", files);
-
-        for (path, content) in files {
-            if path.ends_with("fe.toml") {
-                self.workspace.touch(
-                    self.db,
-                    Url::from_file_path(path).unwrap(),
-                    Some(content.clone()),
-                );
-                config = Some(content);
-            } else {
-                self.workspace
-                    .touch(self.db, Url::from_file_path(path).unwrap(), Some(content));
-            }
-        }
-
-        if let Some(content) = config {
-            let config = Config::from_string(content);
-            config
-                .dependencies
-                .into_iter()
-                .map(|dependency| match dependency.description {
-                    DependencyDescription::Path(path) => (
-                        ingot_path.join(path).canonicalize_utf8().unwrap(),
-                        (dependency.alias, IngotArguments::default()),
-                    ),
-                    DependencyDescription::PathWithArguments { path, arguments } => (
-                        ingot_path.join(path).canonicalize_utf8().unwrap(),
-                        (dependency.alias, arguments),
-                    ),
-                })
-                .collect()
-        } else {
-            vec![]
-        }
-    }
-}
-
-pub fn setup_workspace(db: &mut dyn InputDb, path: &Utf8PathBuf) -> Workspace {
+pub fn setup_workspace(
+    path: &Utf8PathBuf,
+) -> (DriverDataBase, Workspace, Vec<WorkspaceSetupDiagnostics>) {
+    let mut db = DriverDataBase::default();
     let workspace = db.workspace();
-    let node_handler = InputNodeHandler { db, workspace };
-    let mut graph_resolver = ingot_graph_resolver(node_handler);
-    let graph = graph_resolver
-        .transient_resolve(&path.canonicalize_utf8().unwrap())
+    let node_handler = InputNodeHandler {
+        db: &mut db,
+        workspace,
+    };
+    let mut ingot_graph_resolver = ingot_graph_resolver(node_handler);
+    let _graph = ingot_graph_resolver
+        .transient_resolve(&Url::from_directory_path(&path.canonicalize_utf8().unwrap()).unwrap())
         .unwrap();
 
-    workspace
-}
+    let diagnostics = ingot_graph_resolver
+        .take_diagnostics()
+        .into_iter()
+        .map(|diagnostic| WorkspaceSetupDiagnostics::UnresolvableIngotDependency)
+        .chain(
+            ingot_graph_resolver
+                .node_resolver
+                .take_diagnostics()
+                .into_iter()
+                .map(|diagnostic| WorkspaceSetupDiagnostics::FileError),
+        )
+        .collect();
 
-#[derive(Debug, Clone, Subcommand)]
-pub enum Command {
-    Build,
-    Check {
-        // #[clap(default_value_t = find_project_root().unwrap_or(Utf8PathBuf::from(".")))]
-        path: Utf8PathBuf,
-        #[arg(short, long)]
-        core: Option<Utf8PathBuf>,
-    },
-    New,
+    (db, workspace, diagnostics)
 }
 
 fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
@@ -99,6 +57,63 @@ fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
 }
 
 // Maybe the driver should eventually only support WASI?
+
+#[derive(Clone, Debug)]
+pub enum WorkspaceSetupDiagnostics {
+    UnresolvableIngotDependency,
+    IngotDependencyCycle,
+    FileError,
+}
+
+pub struct InputNodeHandler<'a> {
+    pub db: &'a mut dyn InputDb,
+    pub workspace: Workspace,
+}
+
+impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
+    type Item = Vec<(Url, (SmolStr, IngotArguments))>;
+
+    fn handle_resolution(&mut self, ingot_url: &Url, files: Vec<File>) -> Self::Item {
+        let mut config = None;
+
+        // println!("{ingot_url}: {:#?}", files);
+
+        for file in files {
+            if file.path.ends_with("fe.toml") {
+                self.workspace.touch(
+                    self.db,
+                    Url::from_file_path(file.path).unwrap(),
+                    Some(file.content.clone()),
+                );
+                config = Some(file.content);
+            } else {
+                self.workspace.touch(
+                    self.db,
+                    Url::from_file_path(file.path).unwrap(),
+                    Some(file.content),
+                );
+            }
+        }
+
+        if let Some(content) = config {
+            let config = Config::from_string(content);
+            config
+                .based_dependencies(ingot_url)
+                .into_iter()
+                .map(|based_dependency| {
+                    (
+                        // Node weight
+                        based_dependency.url,
+                        // Node edge
+                        (based_dependency.alias, based_dependency.arguments),
+                    )
+                })
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+}
 
 fn url_from_file_path<P: AsRef<std::path::Path>>(path: P) -> Result<Url, ()> {
     #[cfg(not(target_arch = "wasm32"))]

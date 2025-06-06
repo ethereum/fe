@@ -3,27 +3,34 @@ use glob::glob;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
+use url::Url;
 
 use crate::Resolver;
 
 #[derive(Default)]
 pub struct FilesResolver {
     patterns: Vec<String>,
-    diagnostics: Vec<FilesResolverDiagnostic>,
+    diagnostics: Vec<FilesResolutionDiagnostic>,
 }
 
 #[derive(Debug)]
-pub enum FilesResolverError {
-    PathDoesNotExist(Utf8PathBuf),
+pub struct File {
+    pub path: Utf8PathBuf,
+    pub content: String,
+}
+
+#[derive(Debug)]
+pub enum FilesResolutionError {
+    FileUrlDoesNotExist(Url),
     GlobError(glob::GlobError),
     PatternError(glob::PatternError),
     IoError(io::Error),
 }
 
 #[derive(Debug)]
-pub enum FilesResolverDiagnostic {
+pub enum FilesResolutionDiagnostic {
     SkippedNonUtf8(PathBuf),
-    IoError(Utf8PathBuf, io::Error),
+    FileIoError(Utf8PathBuf, io::Error),
 }
 
 impl FilesResolver {
@@ -50,51 +57,46 @@ impl FilesResolver {
 }
 
 impl Resolver for FilesResolver {
-    type Description = Utf8PathBuf;
-    type Resource = Vec<(Utf8PathBuf, String)>;
-    type Error = FilesResolverError;
-    type Diagnostic = FilesResolverDiagnostic;
+    type Description = Url;
+    type Resource = Vec<File>;
+    type Error = FilesResolutionError;
+    type Diagnostic = FilesResolutionDiagnostic;
 
-    fn transient_resolve(
-        &mut self,
-        base: &Self::Description,
-    ) -> Result<Self::Resource, Self::Error> {
+    fn transient_resolve(&mut self, url: &Url) -> Result<Vec<File>, FilesResolutionError> {
         let mut results = vec![];
 
-        for pattern in &self.patterns {
-            let combined = base.join(pattern);
-            let pattern_str = combined.as_str();
+        // for remote ingots we can setup the local path here after resolving the git repo
+        let ingot_path = Utf8PathBuf::from(url.path());
 
-            let entries = glob(pattern_str).map_err(FilesResolverError::PatternError)?;
+        for pattern in &self.patterns {
+            let pattern = ingot_path.join(pattern);
+            let entries = glob(pattern.as_str()).map_err(FilesResolutionError::PatternError)?;
 
             for entry in entries {
                 match entry {
                     Ok(path) => {
                         if path.is_file() {
-                            match Utf8PathBuf::from_path_buf(path.clone()) {
-                                Ok(utf8_path) => match fs::read_to_string(&path) {
-                                    Ok(content) => results.push((utf8_path, content)),
-                                    Err(e) => {
-                                        self.diagnostics.push(FilesResolverDiagnostic::IoError(
-                                            Utf8PathBuf::from_path_buf(path).unwrap_or_default(),
-                                            e,
-                                        ))
-                                    }
+                            match Utf8PathBuf::from_path_buf(path) {
+                                Ok(path) => match fs::read_to_string(&path) {
+                                    Ok(content) => results.push(File { path, content }),
+                                    Err(error) => self
+                                        .diagnostics
+                                        .push(FilesResolutionDiagnostic::FileIoError(path, error)),
                                 },
-                                Err(_) => {
+                                Err(error) => {
                                     self.diagnostics
-                                        .push(FilesResolverDiagnostic::SkippedNonUtf8(path));
+                                        .push(FilesResolutionDiagnostic::SkippedNonUtf8(error));
                                 }
                             }
                         }
                     }
-                    Err(e) => return Err(FilesResolverError::GlobError(e)),
+                    Err(e) => return Err(FilesResolutionError::GlobError(e)),
                 }
             }
         }
 
         if results.is_empty() {
-            return Err(FilesResolverError::PathDoesNotExist(base.clone()));
+            return Err(FilesResolutionError::FileUrlDoesNotExist(url.clone()));
         }
 
         Ok(results)
@@ -104,4 +106,3 @@ impl Resolver for FilesResolver {
         std::mem::take(&mut self.diagnostics)
     }
 }
-

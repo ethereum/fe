@@ -13,4 +13,13 @@ Graph {
         1: "b",
     },
 }
-[]
+[
+    UnresolvableNode(
+        "c",
+        EntryDoesNotExist,
+    ),
+    UnresolvableNode(
+        "d",
+        EntryDoesNotExist,
+    ),
+]

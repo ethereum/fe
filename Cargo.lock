@@ -842,7 +842,6 @@ name = "fe-driver"
 version = "0.26.0"
 dependencies = [
  "camino",
- "clap",
  "codespan-reporting",
  "fe-common",
  "fe-hir",
@@ -971,6 +970,7 @@ dependencies = [
  "semver",
  "smol_str",
  "toml",
+ "url",
 ]
 
 [[package]]

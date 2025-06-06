@@ -8,17 +8,20 @@ use resolver::{
     Resolver,
 };
 use smol_str::SmolStr;
+use url::Url;
 
 pub fn print_tree(path: &Utf8PathBuf) {
     let mut graph_resolver = basic_ingot_graph_resolver();
+    let c_path = &path.canonicalize_utf8().unwrap();
+    println!("{c_path}");
     let ingot_graph = graph_resolver
-        .transient_resolve(&path.canonicalize_utf8().unwrap())
+        .transient_resolve(&Url::from_directory_path(c_path.as_str()).unwrap())
         .unwrap();
     print!(
         "{}",
         print_tree_impl(
             &ingot_graph,
-            &path.canonicalize_utf8().unwrap(),
+            &Url::from_directory_path(c_path.as_str()).unwrap(),
             &graph_resolver.node_handler.configs
         )
     );
@@ -50,9 +53,9 @@ impl TreePrefix {
 }
 
 pub fn print_tree_impl(
-    graph: &DiGraph<Utf8PathBuf, (SmolStr, IngotArguments)>,
-    root_path: &Utf8PathBuf,
-    configs: &HashMap<Utf8PathBuf, Config>,
+    graph: &DiGraph<Url, (SmolStr, IngotArguments)>,
+    root_path: &Url,
+    configs: &HashMap<Url, Config>,
 ) -> String {
     let mut output = String::new();
 
@@ -77,11 +80,11 @@ pub fn print_tree_impl(
 }
 
 fn print_node(
-    graph: &DiGraph<Utf8PathBuf, (SmolStr, IngotArguments)>,
+    graph: &DiGraph<Url, (SmolStr, IngotArguments)>,
     node: NodeIndex,
     prefix: TreePrefix,
     output: &mut String,
-    configs: &HashMap<Utf8PathBuf, Config>,
+    configs: &HashMap<Url, Config>,
     cycle_nodes: &HashSet<NodeIndex>,
     seen: &mut HashSet<NodeIndex>,
 ) {

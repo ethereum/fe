@@ -1,6 +1,9 @@
+use std::str::FromStr;
+
 use camino::Utf8PathBuf;
 use smol_str::SmolStr;
 use toml::Value;
+use url::Url;
 
 use crate::ingot::Version;
 
@@ -94,6 +97,13 @@ impl Config {
             diagnostics,
         }
     }
+
+    pub fn based_dependencies(&self, base_url: &Url) -> Vec<BasedDependency> {
+        self.dependencies
+            .iter()
+            .map(|dependency| dependency.based(base_url))
+            .collect()
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
@@ -135,6 +145,37 @@ impl Dependency {
             description: DependencyDescription::PathWithArguments { path, arguments },
         }
     }
+
+    pub fn based(&self, base_url: &Url) -> BasedDependency {
+        match &self.description {
+            // base_url.join(path.as_str()).unwrap().directory().unwrap()
+            DependencyDescription::Path(path) => BasedDependency {
+                alias: self.alias.clone(),
+                arguments: IngotArguments::default(),
+                url: join_dependency_path(base_url, path),
+            },
+            DependencyDescription::PathWithArguments { path, arguments } => BasedDependency {
+                alias: self.alias.clone(),
+                arguments: IngotArguments::default(),
+                url: join_dependency_path(base_url, path),
+            },
+        }
+    }
+}
+
+fn join_dependency_path(base_url: &Url, path: &Utf8PathBuf) -> Url {
+    if base_url.as_str().ends_with("/") {
+        base_url.join(path.as_str()).unwrap()
+    } else {
+        Url::from_str(&format!("{}/{}", base_url.as_str(), path.as_str())).unwrap()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct BasedDependency {
+    pub alias: SmolStr,
+    pub arguments: IngotArguments,
+    pub url: Url,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]

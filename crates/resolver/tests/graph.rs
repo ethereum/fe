@@ -53,7 +53,11 @@ fn load_toml(path: &str) -> HashMap<String, Vec<String>> {
 type FixtureEntryGraphResolver<K, V> =
     GraphResolverImpl<FixtureEntryResolver<K, V>, MockNodeHandler, ()>;
 
-fn fixture_resolver<K, V>(fixture: Fixture<HashMap<K, V>>) -> FixtureEntryGraphResolver<K, V> {
+fn fixture_resolver<K, V>(fixture: Fixture<HashMap<K, V>>) -> FixtureEntryGraphResolver<K, V>
+where
+    K: Eq + Hash + Clone,
+    V: Eq + Hash + Clone,
+{
     GraphResolverImpl {
         node_resolver: FixtureEntryResolver(fixture),
         node_handler: MockNodeHandler::default(),

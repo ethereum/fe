@@ -35,6 +35,7 @@ pub fn run(opts: &Options) {
     match &opts.command {
         Command::Build => eprintln!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
+            /// TODO readd custom core
             check(path);
         }
         Command::Tree { path } => {

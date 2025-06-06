@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::{hash::Hash, marker::PhantomData, mem::take};
 
 use indexmap::IndexMap;
@@ -21,7 +22,7 @@ where
 
 impl<NR, NH, E> Default for GraphResolverImpl<NR, NH, E>
 where
-    NR: Default,
+    NR: Resolver + Default,
     NH: Default,
 {
     fn default() -> Self {
@@ -34,14 +35,17 @@ where
     }
 }
 
-pub struct GraphResolverImpl<NR, NH, E> {
+pub struct GraphResolverImpl<NR: Resolver, NH, E> {
     pub node_resolver: NR,
     pub node_handler: NH,
-    pub diagnostics: Vec<UnresolvableNode>,
+    pub diagnostics: Vec<UnresolvableNode<NR::Description, NR::Error>>,
     pub _edge: PhantomData<E>,
 }
 
-impl<NR, NH, E> GraphResolverImpl<NR, NH, E> {
+impl<NR, NH, E> GraphResolverImpl<NR, NH, E>
+where
+    NR: Resolver,
+{
     pub fn new(node_resolver: NR, node_handler: NH) -> Self {
         Self {
             node_resolver,
@@ -52,15 +56,8 @@ impl<NR, NH, E> GraphResolverImpl<NR, NH, E> {
     }
 }
 
-// #[derive(Debug)]
-// pub struct UnresolvableNode<ND, > {
-//     node_description: NR::Description,
-//     resolution_error: NR::Error,
-//     back_node_descriptions: Vec<NR::Description>,
-// }
-
 #[derive(Debug)]
-pub struct UnresolvableNode;
+pub struct UnresolvableNode<N, E>(N, E);
 
 #[derive(Debug)]
 pub struct UnresolvableRootNode;
@@ -75,7 +72,7 @@ where
 {
     type Description = NR::Description;
     type Resource = DiGraph<NR::Description, E>;
-    type Diagnostic = UnresolvableNode;
+    type Diagnostic = UnresolvableNode<NR::Description, NR::Error>;
     type Error = UnresolvableRootNode;
 
     fn transient_resolve(
@@ -122,7 +119,9 @@ where
                         }
                     }
                 }
-                Err(_) => {
+                Err(error) => {
+                    self.diagnostics
+                        .push(UnresolvableNode(unresolved_node_description.clone(), error));
                     unresolvable_nodes
                         .entry(unresolved_node_description)
                         .or_default()
@@ -131,13 +130,11 @@ where
             }
         }
 
-        // if graph.node_count() == 0 {
-        //     return Err(unresolvable_nodes.shift_remove(des));
-        // } else if !unresolvable_nodes.is_empty() {
-        //     self.diagnostics.push(UnresolvableNodes);
-        // }
-
-        Ok(graph)
+        if graph.node_count() == 0 {
+            Err(UnresolvableRootNode)
+        } else {
+            Ok(graph)
+        }
     }
 
     fn take_diagnostics(&mut self) -> Vec<Self::Diagnostic> {

@@ -1,10 +1,14 @@
 use std::collections::HashMap;
 
-use camino::Utf8PathBuf;
-use common::config::{Config, DependencyDescription, IngotArguments};
+use common::config::{Config, IngotArguments};
 use smol_str::SmolStr;
+use url::Url;
 
-use crate::{files::FilesResolver, graph::GraphResolverImpl, ResolutionHandler};
+use crate::{
+    files::{File, FilesResolver},
+    graph::GraphResolverImpl,
+    ResolutionHandler,
+};
 
 pub type IngotGraphResolver<NH> = GraphResolverImpl<FilesResolver, NH, (SmolStr, IngotArguments)>;
 
@@ -20,42 +24,36 @@ pub fn ingot_graph_resolver<NH>(node_handler: NH) -> IngotGraphResolver<NH> {
     GraphResolverImpl::new(files_resolver, node_handler)
 }
 
-#[derive(Debug)]
-pub struct IngotConfigDoesNotExist;
-
-#[derive(Debug)]
-pub struct UnresolvedDependency;
+// #[derive(Debug)]
+// pub struct IngotConfigDoesNotExist;
+//
+// #[derive(Debug)]
+// pub struct UnresolvedDependency;
 
 pub type BasicIngotGraphResolver = IngotGraphResolver<BasicIngotNodeHandler>;
 
 #[derive(Default)]
 pub struct BasicIngotNodeHandler {
-    pub configs: HashMap<Utf8PathBuf, Config>,
+    pub configs: HashMap<Url, Config>,
 }
 
 impl ResolutionHandler<FilesResolver> for BasicIngotNodeHandler {
-    type Item = Vec<(Utf8PathBuf, (SmolStr, IngotArguments))>;
+    type Item = Vec<(Url, (SmolStr, IngotArguments))>;
 
-    fn handle_resolution(
-        &mut self,
-        ingot_path: &Utf8PathBuf,
-        mut files: Vec<(Utf8PathBuf, String)>,
-    ) -> Self::Item {
-        if let Some((_file_path, content)) = files.pop() {
-            let config = Config::from_string(content);
-            self.configs.insert(ingot_path.clone(), config.clone());
+    fn handle_resolution(&mut self, ingot_url: &Url, mut files: Vec<File>) -> Self::Item {
+        if let Some(file) = files.pop() {
+            let config = Config::from_string(file.content);
+            self.configs.insert(ingot_url.clone(), config.clone());
             config
-                .dependencies
+                .based_dependencies(ingot_url)
                 .into_iter()
-                .map(|dependency| match dependency.description {
-                    DependencyDescription::Path(path) => (
-                        ingot_path.join(path).canonicalize_utf8().unwrap(),
-                        (dependency.alias, IngotArguments::default()),
-                    ),
-                    DependencyDescription::PathWithArguments { path, arguments } => (
-                        ingot_path.join(path).canonicalize_utf8().unwrap(),
-                        (dependency.alias, arguments),
-                    ),
+                .map(|based_dependency| {
+                    (
+                        // Node weight
+                        based_dependency.url,
+                        // Node edge
+                        (based_dependency.alias, based_dependency.arguments),
+                    )
                 })
                 .collect()
         } else {
