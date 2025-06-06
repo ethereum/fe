@@ -4,7 +4,7 @@ pub mod files;
 
 use camino::Utf8PathBuf;
 
-use common::InputDb;
+use common::{urlext::canonical_url, InputDb};
 pub use db::DriverDataBase;
 
 use common::{
@@ -24,15 +24,14 @@ pub fn setup_workspace(
     path: &Utf8PathBuf,
 ) -> (DriverDataBase, Workspace, Vec<WorkspaceSetupDiagnostics>) {
     let mut db = DriverDataBase::default();
+    let ingot_url = canonical_url(path).unwrap();
     let workspace = db.workspace();
     let node_handler = InputNodeHandler {
         db: &mut db,
         workspace,
     };
     let mut ingot_graph_resolver = ingot_graph_resolver(node_handler);
-    let _graph = ingot_graph_resolver
-        .transient_resolve(&Url::from_directory_path(&path.canonicalize_utf8().unwrap()).unwrap())
-        .unwrap();
+    let _graph = ingot_graph_resolver.transient_resolve(&ingot_url).unwrap();
 
     let diagnostics = ingot_graph_resolver
         .take_diagnostics()

@@ -1,4 +1,5 @@
 use camino::Utf8PathBuf;
+use common::urlext::canonical_url;
 use url::Url;
 
 pub fn check(path: &Utf8PathBuf) {
@@ -9,14 +10,8 @@ pub fn check(path: &Utf8PathBuf) {
     }
 
     let ingot = workspace
-        .containing_ingot(
-            &db,
-            &Url::from_file_path(path.canonicalize_utf8().unwrap().join("fe.toml")).unwrap(),
-            // &Url::from_directory_path(path.canonicalize_utf8().unwrap())
-            //     .unwrap()
-            //     .directory()
-            //     .unwrap(),
-        )
+        // should probably get url from setup
+        .containing_ingot(&db, &canonical_url(path).unwrap())
         .unwrap();
     let diags = db.run_on_ingot(ingot);
     diags.emit(&db);

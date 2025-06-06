@@ -1,7 +1,10 @@
 use std::collections::{HashMap, HashSet};
 
 use camino::Utf8PathBuf;
-use common::config::{Config, IngotArguments};
+use common::{
+    config::{Config, IngotArguments},
+    urlext::canonical_url,
+};
 use resolver::{
     graph::{petgraph, DiGraph, NodeIndex},
     ingot::basic_ingot_graph_resolver,
@@ -12,16 +15,13 @@ use url::Url;
 
 pub fn print_tree(path: &Utf8PathBuf) {
     let mut graph_resolver = basic_ingot_graph_resolver();
-    let c_path = &path.canonicalize_utf8().unwrap();
-    println!("{c_path}");
-    let ingot_graph = graph_resolver
-        .transient_resolve(&Url::from_directory_path(c_path.as_str()).unwrap())
-        .unwrap();
+    let ingot_url = canonical_url(path).unwrap();
+    let ingot_graph = graph_resolver.transient_resolve(&ingot_url).unwrap();
     print!(
         "{}",
         print_tree_impl(
             &ingot_graph,
-            &Url::from_directory_path(c_path.as_str()).unwrap(),
+            &ingot_url,
             &graph_resolver.node_handler.configs
         )
     );

@@ -1,3 +1,4 @@
+use camino::Utf8PathBuf;
 use url::Url;
 
 #[derive(Debug)]
@@ -49,6 +50,13 @@ impl UrlExt for Url {
             return Some(parent);
         }
     }
+}
+
+pub fn canonical_url(path: &Utf8PathBuf) -> Result<Url, ()> {
+    Ok(
+        Url::from_directory_path(path.canonicalize_utf8().map_err(|_| ())?.as_str())
+            .map_err(|_| ())?,
+    )
 }
 
 #[cfg(test)]
