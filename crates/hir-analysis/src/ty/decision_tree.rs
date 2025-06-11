@@ -129,16 +129,6 @@ impl ColumnSelectionPolicy {
         db: &'db dyn HirAnalysisDb,
         matrix: &SimplifiedArmMatrix<'db>,
     ) -> usize {
-        if self.0.is_empty() {
-            // Default heuristic: select first column with constructors
-            for col in 0..matrix.ncols() {
-                if !is_column_all_wildcards_simplified(matrix, col) {
-                    return col;
-                }
-            }
-            return 0;
-        }
-
         let mut candidates: Vec<_> = (0..matrix.ncols()).collect();
 
         for scoring_fn in &self.0 {
@@ -158,11 +148,29 @@ impl ColumnSelectionPolicy {
             }
 
             if candidates.len() == 1 {
-                break;
+                return candidates.pop().unwrap();
             }
         }
 
-        candidates.into_iter().next().unwrap_or(0)
+        // If there are more than one candidates remained, filter the columns with the
+        // shortest occurrences among the candidates, then select the rightmost one.
+        // This heuristics corresponds to the R pseudo heuristic in the paper.
+        let mut shortest_occurrences = usize::MAX;
+        for col in std::mem::take(&mut candidates) {
+            let occurrences = matrix.occurrences[col].0.len();
+            match occurrences.cmp(&shortest_occurrences) {
+                std::cmp::Ordering::Less => {
+                    candidates = vec![col];
+                    shortest_occurrences = occurrences;
+                }
+                std::cmp::Ordering::Equal => {
+                    candidates.push(col);
+                }
+                std::cmp::Ordering::Greater => {}
+            }
+        }
+
+        candidates.pop().unwrap()
     }
 }
 
