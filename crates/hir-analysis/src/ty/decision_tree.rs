@@ -360,6 +360,10 @@ impl<'db> SimplifiedArm<'db> {
         }
     }
 
+    fn pat(&self, col: usize) -> &SimplifiedPattern {
+        &self.pat_vec.inner[col]
+    }
+
     fn new_binds(&self, occurrence: &Occurrence) -> IndexMap<(IdentId<'db>, usize), Occurrence> {
         let mut binds = self.binds.clone();
         if let Some(SimplifiedPatternKind::WildCard(Some(bind))) =
@@ -417,11 +421,28 @@ impl<'db> SimplifiedArmMatrix<'db> {
     }
 
     fn ncols(&self) -> usize {
-        if self.arms.is_empty() {
-            0
-        } else {
-            self.arms[0].pat_vec.inner.len()
+        self.arms[0].pat_vec.len()
+    }
+
+    fn pat(&self, row: usize, col: usize) -> &SimplifiedPattern {
+        self.arms[row].pat(col)
+    }
+
+    fn reduced_pat_mat(&self, col: usize) -> PatternMatrix {
+        let mut rows = Vec::with_capacity(self.nrows());
+        for arm in self.arms.iter() {
+            let reduced_pat_vec = arm
+                .pat_vec
+                .inner
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| (*i != col))
+                .map(|(_, pat)| pat.clone())
+                .collect();
+            rows.push(PatternRowVec::new(reduced_pat_vec));
         }
+
+        PatternMatrix::new(rows)
     }
 
     fn sigma_set(&self, col: usize) -> SigmaSet<'db> {
@@ -537,38 +558,19 @@ impl NecessityMatrix {
     }
 
     fn compute<'db>(&mut self, db: &'db dyn HirAnalysisDb, matrix: &SimplifiedArmMatrix<'db>) {
-        for i in 0..self.nrow {
-            for j in 0..self.ncol {
-                let pos = self.pos(i, j);
-                let is_needed = self.is_needed(db, matrix, i, j);
-                self.data[pos] = is_needed;
+        for row in 0..self.nrow {
+            for col in 0..self.ncol {
+                let pat = matrix.pat(row, col);
+                let pos = self.pos(row, col);
+
+                if !pat.is_wildcard() {
+                    self.data[pos] = true;
+                } else {
+                    let reduced_pat_mat = matrix.reduced_pat_mat(col);
+                    self.data[pos] = !reduced_pat_mat.is_row_useful(db, row);
+                }
             }
         }
-    }
-
-    fn is_needed<'db>(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-        matrix: &SimplifiedArmMatrix<'db>,
-        row: usize,
-        col: usize,
-    ) -> bool {
-        if row >= matrix.nrows() || col >= matrix.ncols() {
-            return false;
-        }
-
-        let current_pattern = &matrix.arms[row].pat_vec.inner[col];
-
-        // Check if this column is needed to distinguish this row from previous rows
-        for prev_row in 0..row {
-            let prev_pattern = &matrix.arms[prev_row].pat_vec.inner[col];
-
-            if !patterns_compatible(db, current_pattern, prev_pattern) {
-                return true;
-            }
-        }
-
-        false
     }
 
     fn compute_needed_column_score(&self, col: usize) -> i32 {
@@ -630,27 +632,6 @@ fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'d
                 SimplifiedPattern::new(SimplifiedPatternKind::Or(gen_pats), pat.ty)
             }
         }
-    }
-}
-
-/// Check if two patterns are compatible (could match the same value)
-fn patterns_compatible<'db>(
-    _db: &'db dyn HirAnalysisDb,
-    pat1: &SimplifiedPattern<'db>,
-    pat2: &SimplifiedPattern<'db>,
-) -> bool {
-    match (&pat1.kind, &pat2.kind) {
-        // Wildcards are compatible with everything
-        (SimplifiedPatternKind::WildCard(_), _) | (_, SimplifiedPatternKind::WildCard(_)) => true,
-
-        // Constructors are compatible if they're the same constructor
-        (
-            SimplifiedPatternKind::Constructor { kind: k1, .. },
-            SimplifiedPatternKind::Constructor { kind: k2, .. },
-        ) => k1 == k2,
-
-        // Or patterns need more complex analysis, for now assume compatible
-        (SimplifiedPatternKind::Or(_), _) | (_, SimplifiedPatternKind::Or(_)) => true,
     }
 }
 
