@@ -1,0 +1,2 @@
+- format workspace setup errors
+- add resolved graph to workspace and use it for easier access of salsa ingots 
