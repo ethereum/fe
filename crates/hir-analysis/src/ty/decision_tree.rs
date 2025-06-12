@@ -51,20 +51,10 @@ pub enum Case<'db> {
 
 /// Represents a path to a value in the matched expression
 /// e.g., expr.0.1 would be Occurrence(vec![0, 1])
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub struct Occurrence(pub Vec<usize>);
 
-impl Default for Occurrence {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Occurrence {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
-
     pub fn child(&self, index: usize) -> Self {
         let mut path = self.0.clone();
         path.push(index);
@@ -252,19 +242,17 @@ pub fn build_decision_tree_with_policy<'db>(
     DecisionTreeBuilder::new(policy).build(db, simplified_matrix)
 }
 
-/// Create a default optimized column selection policy
-pub fn default_optimized_policy() -> ColumnSelectionPolicy {
-    let mut policy = ColumnSelectionPolicy::default();
-    policy.arity().small_branching();
-    policy
-}
-
 /// Build a decision tree from a pattern matrix with optimized column selection
 pub fn build_optimized_decision_tree<'db>(
     db: &'db dyn HirAnalysisDb,
     matrix: &PatternMatrix<'db>,
 ) -> DecisionTree<'db> {
-    let policy = default_optimized_policy();
+    let policy = {
+        let mut policy = ColumnSelectionPolicy::default();
+        // PBA heuristics described in the paper.
+        policy.needed_prefix().small_branching().arity();
+        policy
+    };
     build_decision_tree_with_policy(db, matrix, policy)
 }
 
@@ -323,13 +311,13 @@ impl DecisionTreeBuilder {
         let constructors: Vec<_> = sigma_set.into_iter().collect();
 
         for ctor in constructors {
-            let specialized_matrix = matrix.phi_specialize(db, ctor.clone(), occurrence);
+            let specialized_matrix = matrix.phi_specialize(db, ctor, occurrence);
             let subtree = self.build(db, specialized_matrix);
             switch_arms.push((Case::Constructor(ctor), subtree));
         }
 
         if !is_complete {
-            let specialized_matrix = matrix.d_specialize(db, occurrence);
+            let specialized_matrix = matrix.d_specialize(occurrence);
             let subtree = self.build(db, specialized_matrix);
             switch_arms.push((Case::Default, subtree));
         }
@@ -369,7 +357,7 @@ impl<'db> SimplifiedArm<'db> {
         if let Some(SimplifiedPatternKind::WildCard(Some(bind))) =
             self.pat_vec.head().map(|pat| &pat.kind)
         {
-            binds.entry(bind.clone()).or_insert(occurrence.clone());
+            binds.entry(*bind).or_insert(occurrence.clone());
         }
         binds
     }
@@ -385,9 +373,7 @@ impl<'db> SimplifiedArm<'db> {
         // Extract bindings from current patterns
         for (pat, occurrence) in self.pat_vec.inner.iter().zip(occurrences.iter()) {
             if let SimplifiedPatternKind::WildCard(Some(bind)) = &pat.kind {
-                binds
-                    .entry(bind.clone())
-                    .or_insert_with(|| occurrence.clone());
+                binds.entry(*bind).or_insert_with(|| occurrence.clone());
             }
         }
 
@@ -411,7 +397,7 @@ impl<'db> SimplifiedArmMatrix<'db> {
             .enumerate()
             .map(|(body, pat)| SimplifiedArm::new(pat, body))
             .collect();
-        let occurrences = vec![Occurrence::new(); cols];
+        let occurrences = vec![Occurrence::default(); cols];
 
         SimplifiedArmMatrix { arms, occurrences }
     }
@@ -512,17 +498,22 @@ impl<'db> SimplifiedArmMatrix<'db> {
         }
     }
 
-    pub fn d_specialize(&self, db: &'db dyn HirAnalysisDb, _occurrence: &Occurrence) -> Self {
+    pub fn d_specialize(&self, occurrence: &Occurrence) -> Self {
         let mut new_arms = Vec::new();
 
         for arm in &self.arms {
-            new_arms.extend(arm.pat_vec.d_specialize(db).into_iter().map(|pat_vec| {
-                SimplifiedArm {
-                    pat_vec,
-                    body: arm.body,
-                    binds: arm.binds.clone(),
-                }
-            }));
+            let binds = arm.new_binds(occurrence);
+
+            new_arms.extend(
+                arm.pat_vec
+                    .d_specialize()
+                    .into_iter()
+                    .map(|pat_vec| SimplifiedArm {
+                        pat_vec,
+                        body: arm.body,
+                        binds: binds.clone(),
+                    }),
+            );
         }
 
         SimplifiedArmMatrix {
@@ -608,7 +599,7 @@ fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'d
         SimplifiedPatternKind::Constructor { kind, fields } => {
             let fields = fields.iter().map(generalize_pattern).collect();
             let kind = SimplifiedPatternKind::Constructor {
-                kind: kind.clone(),
+                kind: *kind,
                 fields,
             };
             SimplifiedPattern::new(kind, pat.ty)
@@ -641,7 +632,7 @@ mod tests {
 
     #[test]
     fn test_occurrence_nested_access() {
-        let root = Occurrence::new();
+        let root = Occurrence::default();
         let tuple_first = root.child(0);
         let tuple_second = root.child(1);
         let nested = tuple_first.child(0).child(1);
@@ -655,7 +646,7 @@ mod tests {
     #[test]
     fn test_occurrence_path_building() {
         // Test building complex occurrence paths
-        let root = Occurrence::new();
+        let root = Occurrence::default();
         assert_eq!(root.0, vec![]);
 
         // Simulate accessing tuple.0.field.1
