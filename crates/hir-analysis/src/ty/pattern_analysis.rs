@@ -57,13 +57,10 @@ impl<'db> PatternMatrix<'db> {
 
         if sigma_set.is_complete(db, ty) {
             for ctor in sigma_set.into_iter() {
-                match self
-                    .phi_specialize(db, ctor.clone())
-                    .find_missing_patterns(db)
-                {
+                match self.phi_specialize(db, ctor).find_missing_patterns(db) {
                     Some(vec) if vec.is_empty() => {
                         let pat_kind = SimplifiedPatternKind::Constructor {
-                            kind: ctor.clone(),
+                            kind: ctor,
                             fields: vec![],
                         };
                         let pat = SimplifiedPattern::new(pat_kind, ty);
@@ -80,10 +77,8 @@ impl<'db> PatternMatrix<'db> {
                             for &field_ty in field_types.iter() {
                                 fields.push(SimplifiedPattern::wildcard(None, field_ty));
                             }
-                            let pat_kind = SimplifiedPatternKind::Constructor {
-                                kind: ctor.clone(),
-                                fields,
-                            };
+                            let pat_kind =
+                                SimplifiedPatternKind::Constructor { kind: ctor, fields };
                             // Use the constructor's type instead of the potentially wrong ty parameter
                             let constructor_ty = match ctor {
                                 ConstructorKind::Type(ty) => ty,
@@ -96,7 +91,7 @@ impl<'db> PatternMatrix<'db> {
                         debug_assert!(vec.len() >= field_num);
                         let rem = vec.split_off(field_num);
                         let pat_kind = SimplifiedPatternKind::Constructor {
-                            kind: ctor.clone(),
+                            kind: ctor,
                             fields: vec,
                         };
                         let pat = SimplifiedPattern::new(pat_kind, ty);
@@ -112,7 +107,7 @@ impl<'db> PatternMatrix<'db> {
 
             None
         } else {
-            self.d_specialize(db).find_missing_patterns(db).map(|vec| {
+            self.d_specialize().find_missing_patterns(db).map(|vec| {
                 let sigma_set = self.sigma_set();
                 let kind = if sigma_set.is_empty() {
                     SimplifiedPatternKind::WildCard(None)
@@ -169,12 +164,12 @@ impl<'db> PatternMatrix<'db> {
 
         match &head_pattern.kind {
             SimplifiedPatternKind::WildCard(_) => self
-                .d_specialize(db)
-                .is_pattern_useful(db, &pat_vec.d_specialize(db)[0]),
+                .d_specialize()
+                .is_pattern_useful(db, &pat_vec.d_specialize()[0]),
 
             SimplifiedPatternKind::Constructor { kind, .. } => self
-                .phi_specialize(db, kind.clone())
-                .is_pattern_useful(db, &pat_vec.phi_specialize(db, kind.clone())[0]),
+                .phi_specialize(db, *kind)
+                .is_pattern_useful(db, &pat_vec.phi_specialize(db, *kind)[0]),
 
             SimplifiedPatternKind::Or(pats) => pats
                 .iter()
@@ -186,16 +181,16 @@ impl<'db> PatternMatrix<'db> {
         let rows = self
             .rows
             .iter()
-            .flat_map(|row| row.phi_specialize(db, ctor.clone()))
+            .flat_map(|row| row.phi_specialize(db, ctor))
             .collect();
         PatternMatrix { rows }
     }
 
-    pub fn d_specialize(&self, db: &'db dyn HirAnalysisDb) -> Self {
+    pub fn d_specialize(&self) -> Self {
         let rows = self
             .rows
             .iter()
-            .flat_map(|row| row.d_specialize(db))
+            .flat_map(|row| row.d_specialize())
             .collect();
         PatternMatrix { rows }
     }
@@ -259,7 +254,7 @@ impl<'db> PatternRowVec<'db> {
             SimplifiedPatternKind::WildCard(bind) => {
                 let mut inner = Vec::with_capacity(self.inner.len() + ctor_fields.len() - 1);
                 for field_ty in ctor_fields {
-                    inner.push(SimplifiedPattern::wildcard(bind.clone(), field_ty));
+                    inner.push(SimplifiedPattern::wildcard(*bind, field_ty));
                 }
                 inner.extend_from_slice(&self.inner[1..]);
                 vec![Self::new(inner)]
@@ -283,14 +278,14 @@ impl<'db> PatternRowVec<'db> {
                     tmp_inner.push(pat.clone());
                     tmp_inner.extend_from_slice(&self.inner[1..]);
                     let tmp = PatternRowVec::new(tmp_inner);
-                    result.extend(tmp.phi_specialize(db, ctor.clone()));
+                    result.extend(tmp.phi_specialize(db, ctor));
                 }
                 result
             }
         }
     }
 
-    pub fn d_specialize(&self, db: &'db dyn HirAnalysisDb) -> Vec<Self> {
+    pub fn d_specialize(&self) -> Vec<Self> {
         if self.inner.is_empty() {
             return vec![];
         }
@@ -311,7 +306,7 @@ impl<'db> PatternRowVec<'db> {
                     tmp_inner.push(pat.clone());
                     tmp_inner.extend_from_slice(&self.inner[1..]);
                     let tmp = PatternRowVec::new(tmp_inner);
-                    result.extend(tmp.d_specialize(db));
+                    result.extend(tmp.d_specialize());
                 }
                 result
             }

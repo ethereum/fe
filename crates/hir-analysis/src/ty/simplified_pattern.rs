@@ -259,7 +259,7 @@ impl<'db> SimplifiedPatternKind<'db> {
     pub(crate) fn collect_ctors(&self) -> Vec<ConstructorKind<'db>> {
         match self {
             Self::WildCard(_) => vec![],
-            Self::Constructor { kind, .. } => vec![kind.clone()],
+            Self::Constructor { kind, .. } => vec![*kind],
             Self::Or(pats) => {
                 let mut ctors = vec![];
                 for pat in pats {
