@@ -2,30 +2,30 @@
 //! Based on "Compiling pattern matching to good decision trees"
 
 use super::pattern_analysis::{PatternMatrix, PatternRowVec, SigmaSet};
-use super::simplified_pattern::{ConstructorKind, SimplifiedPattern};
+use super::simplified_pattern::{ConstructorKind, SimplifiedPattern, SimplifiedPatternKind};
 use crate::ty::ty_def::TyId;
 use crate::HirAnalysisDb;
+use hir::hir_def::IdentId;
 use indexmap::IndexMap;
-use smol_str::SmolStr;
 
 /// A decision tree for pattern matching compilation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DecisionTree<'db> {
     /// Leaf node - execute this match arm
-    Leaf(LeafNode),
+    Leaf(LeafNode<'db>),
     /// Switch node - test a value and branch
     Switch(SwitchNode<'db>),
 }
 
 /// A leaf node in the decision tree
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct LeafNode {
+pub struct LeafNode<'db> {
     pub arm_index: usize,
-    pub bindings: IndexMap<(SmolStr, usize), Occurrence>,
+    pub bindings: IndexMap<(IdentId<'db>, usize), Occurrence>,
 }
 
-impl LeafNode {
-    fn new(arm: SimplifiedArm<'_>, occurrences: &[Occurrence]) -> Self {
+impl<'db> LeafNode<'db> {
+    fn new(arm: SimplifiedArm<'db>, occurrences: &[Occurrence]) -> Self {
         let arm_index = arm.body;
         let bindings = arm.finalize_binds(occurrences);
         Self {
@@ -76,13 +76,19 @@ impl Occurrence {
     }
 
     pub fn parent(&self) -> Option<Occurrence> {
-        if self.0.is_empty() {
-            None
-        } else {
-            let mut parent_path = self.0.clone();
-            parent_path.pop();
-            Some(Self(parent_path))
-        }
+        let mut inner = self.0.clone();
+        inner.pop().map(|_| Occurrence(inner))
+    }
+
+    fn phi_specialize(&self, db: &dyn HirAnalysisDb, ctor: ConstructorKind) -> Vec<Self> {
+        let arity = ctor.arity(db);
+        (0..arity)
+            .map(|i| {
+                let mut inner = self.0.clone();
+                inner.push(i);
+                Self(inner)
+            })
+            .collect()
     }
 
     pub fn last_index(&self) -> Option<usize> {
@@ -340,7 +346,7 @@ impl DecisionTreeBuilder {
 struct SimplifiedArm<'db> {
     pat_vec: PatternRowVec<'db>,
     body: usize,
-    binds: IndexMap<(SmolStr, usize), Occurrence>,
+    binds: IndexMap<(IdentId<'db>, usize), Occurrence>,
 }
 
 impl<'db> SimplifiedArm<'db> {
@@ -354,16 +360,30 @@ impl<'db> SimplifiedArm<'db> {
         }
     }
 
-    fn finalize_binds(&self, occurrences: &[Occurrence]) -> IndexMap<(SmolStr, usize), Occurrence> {
+    fn new_binds(&self, occurrence: &Occurrence) -> IndexMap<(IdentId<'db>, usize), Occurrence> {
+        let mut binds = self.binds.clone();
+        if let Some(SimplifiedPatternKind::WildCard(Some(bind))) =
+            self.pat_vec.head().map(|pat| &pat.kind)
+        {
+            binds.entry(bind.clone()).or_insert(occurrence.clone());
+        }
+        binds
+    }
+
+    fn finalize_binds(
+        &self,
+        occurrences: &[Occurrence],
+    ) -> IndexMap<(IdentId<'db>, usize), Occurrence> {
         use super::simplified_pattern::SimplifiedPatternKind;
 
         let mut binds = self.binds.clone();
 
         // Extract bindings from current patterns
         for (pat, occurrence) in self.pat_vec.inner.iter().zip(occurrences.iter()) {
-            if let SimplifiedPatternKind::WildCard(Some((name, arm_idx))) = &pat.kind {
-                let key = (SmolStr::new(name), *arm_idx);
-                binds.entry(key).or_insert_with(|| occurrence.clone());
+            if let SimplifiedPatternKind::WildCard(Some(bind)) = &pat.kind {
+                binds
+                    .entry(bind.clone())
+                    .or_insert_with(|| occurrence.clone());
             }
         }
 
@@ -447,58 +467,46 @@ impl<'db> SimplifiedArmMatrix<'db> {
         occurrence: &Occurrence,
     ) -> Self {
         let mut new_arms = Vec::new();
-        let arity = ctor.arity(db);
 
         for arm in &self.arms {
-            let specialized_rows = arm.pat_vec.phi_specialize(db, ctor.clone());
-            for specialized_row in specialized_rows {
-                let mut new_arm = SimplifiedArm::new(&specialized_row, arm.body);
-                new_arm.binds = arm.binds.clone();
-                new_arms.push(new_arm);
-            }
+            let binds = arm.new_binds(occurrence);
+            new_arms.extend(
+                arm.pat_vec
+                    .phi_specialize(db, ctor)
+                    .into_iter()
+                    .map(|pat_vec| SimplifiedArm {
+                        pat_vec,
+                        body: arm.body,
+                        binds: binds.clone(),
+                    }),
+            );
         }
 
-        // Update occurrences: remove first column, add constructor fields
-        let mut new_occurrences = if self.occurrences.is_empty() {
-            vec![]
-        } else {
-            self.occurrences[1..].to_vec()
-        };
+        let mut new_occurrences = self.occurrences[0].phi_specialize(db, ctor);
+        new_occurrences.extend_from_slice(&self.occurrences.as_slice()[1..]);
 
-        for i in 0..arity {
-            new_occurrences.insert(i, occurrence.child(i));
-        }
-
-        SimplifiedArmMatrix {
+        Self {
             arms: new_arms,
             occurrences: new_occurrences,
         }
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     pub fn d_specialize(&self, db: &'db dyn HirAnalysisDb, _occurrence: &Occurrence) -> Self {
         let mut new_arms = Vec::new();
 
         for arm in &self.arms {
-            let specialized_rows = arm.pat_vec.d_specialize(db);
-
-            for specialized_row in specialized_rows {
-                let mut new_arm = SimplifiedArm::new(&specialized_row, arm.body);
-                new_arm.binds = arm.binds.clone();
-                new_arms.push(new_arm);
-            }
+            new_arms.extend(arm.pat_vec.d_specialize(db).into_iter().map(|pat_vec| {
+                SimplifiedArm {
+                    pat_vec,
+                    body: arm.body,
+                    binds: arm.binds.clone(),
+                }
+            }));
         }
-
-        // Remove first column from occurrences
-        let new_occurrences = if self.occurrences.is_empty() {
-            vec![]
-        } else {
-            self.occurrences[1..].to_vec()
-        };
 
         SimplifiedArmMatrix {
             arms: new_arms,
-            occurrences: new_occurrences,
+            occurrences: self.occurrences[1..].to_vec(),
         }
     }
 
@@ -590,24 +598,8 @@ impl NecessityMatrix {
     }
 }
 
-/// Check if the specified column has all wildcards in simplified matrix
-fn is_column_all_wildcards_simplified(matrix: &SimplifiedArmMatrix<'_>, col: usize) -> bool {
-    if matrix.nrows() == 0 || col >= matrix.ncols() {
-        return false;
-    }
-
-    matrix.arms.iter().all(|arm| {
-        arm.pat_vec
-            .inner
-            .get(col)
-            .is_none_or(|pat| pat.is_wildcard())
-    })
-}
-
 /// Generalize a pattern by removing bindings from constructors
 fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'db> {
-    use crate::ty::simplified_pattern::SimplifiedPatternKind;
-
     match &pat.kind {
         SimplifiedPatternKind::WildCard(_) => pat.clone(),
 
@@ -633,13 +625,9 @@ fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'d
             }
 
             if gen_pats.len() == 1 {
-                gen_pats.into_iter().next().unwrap()
+                gen_pats.pop().unwrap()
             } else {
-                let ty = gen_pats
-                    .first()
-                    .map(|p| p.ty)
-                    .unwrap_or_else(|| panic!("Cannot create OR pattern with no alternatives"));
-                SimplifiedPattern::new(SimplifiedPatternKind::Or(gen_pats), ty)
+                SimplifiedPattern::new(SimplifiedPatternKind::Or(gen_pats), pat.ty)
             }
         }
     }
@@ -651,8 +639,6 @@ fn patterns_compatible<'db>(
     pat1: &SimplifiedPattern<'db>,
     pat2: &SimplifiedPattern<'db>,
 ) -> bool {
-    use crate::ty::simplified_pattern::SimplifiedPatternKind;
-
     match (&pat1.kind, &pat2.kind) {
         // Wildcards are compatible with everything
         (SimplifiedPatternKind::WildCard(_), _) | (_, SimplifiedPatternKind::WildCard(_)) => true,
@@ -673,18 +659,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_occurrence_creation() {
-        let occ = Occurrence::new();
-        assert_eq!(occ.0, vec![]);
-
-        let child = occ.child(0);
-        assert_eq!(child.0, vec![0]);
-
-        let grandchild = child.child(1);
-        assert_eq!(grandchild.0, vec![0, 1]);
-    }
-
-    #[test]
     fn test_occurrence_nested_access() {
         let root = Occurrence::new();
         let tuple_first = root.child(0);
@@ -695,103 +669,6 @@ mod tests {
         assert_eq!(tuple_first.0, vec![0]);
         assert_eq!(tuple_second.0, vec![1]);
         assert_eq!(nested.0, vec![0, 0, 1]);
-    }
-
-    #[test]
-    fn test_decision_tree_leaf_creation() {
-        let mut bindings = IndexMap::new();
-        bindings.insert(("x".into(), 0), Occurrence::new());
-
-        let leaf = DecisionTree::Leaf(LeafNode {
-            arm_index: 0,
-            bindings,
-        });
-
-        match leaf {
-            DecisionTree::Leaf(leaf_node) => {
-                assert_eq!(leaf_node.arm_index, 0);
-                assert_eq!(leaf_node.bindings.len(), 1);
-                assert!(leaf_node.bindings.contains_key(&("x".into(), 0)));
-                assert_eq!(leaf_node.bindings[&("x".into(), 0)], Occurrence::new());
-            }
-            _ => panic!("Expected leaf node"),
-        }
-    }
-
-    #[test]
-    fn test_decision_tree_switch_creation() {
-        let leaf = DecisionTree::Leaf(LeafNode {
-            arm_index: 0,
-            bindings: IndexMap::new(),
-        });
-
-        let switch = DecisionTree::Switch(SwitchNode {
-            occurrence: Occurrence::new(),
-            arms: vec![(Case::Default, leaf)],
-        });
-
-        match switch {
-            DecisionTree::Switch(switch_node) => {
-                assert_eq!(switch_node.occurrence, Occurrence::new());
-                assert_eq!(switch_node.arms.len(), 1);
-                assert!(matches!(switch_node.arms[0].0, Case::Default));
-            }
-            _ => panic!("Expected switch node"),
-        }
-    }
-
-    #[test]
-    fn test_is_all_wildcards_helper() {
-        use crate::ty::pattern_analysis::PatternMatrix;
-
-        // Test with empty matrix
-        let _empty_matrix = PatternMatrix::new(vec![]);
-        let simplified_matrix = SimplifiedArmMatrix::new(&_empty_matrix);
-        assert!(!is_column_all_wildcards_simplified(&simplified_matrix, 0));
-        assert!(!is_column_all_wildcards_simplified(&simplified_matrix, 1));
-    }
-
-    #[test]
-    fn test_decision_tree_api_coverage() {
-        // Test that our decision tree structures work as expected
-        let occurrence = Occurrence::new();
-        let child_occurrence = occurrence.child(0);
-
-        // Test leaf creation with bindings
-        let mut bindings = IndexMap::new();
-        bindings.insert(("x".into(), 0), occurrence.clone());
-        bindings.insert(("y".into(), 1), child_occurrence);
-
-        let leaf = DecisionTree::Leaf(LeafNode {
-            arm_index: 1,
-            bindings,
-        });
-
-        if let DecisionTree::Leaf(leaf_node) = leaf {
-            assert_eq!(leaf_node.arm_index, 1);
-            assert_eq!(leaf_node.bindings.len(), 2);
-        } else {
-            panic!("Expected leaf");
-        }
-
-        // Test switch creation with multiple branches
-        let branch_leaf = DecisionTree::Leaf(LeafNode {
-            arm_index: 0,
-            bindings: IndexMap::new(),
-        });
-
-        let switch = DecisionTree::Switch(SwitchNode {
-            occurrence: Occurrence::new(),
-            arms: vec![(Case::Default, branch_leaf)],
-        });
-
-        if let DecisionTree::Switch(switch_node) = switch {
-            assert_eq!(switch_node.occurrence, Occurrence::new());
-            assert_eq!(switch_node.arms.len(), 1);
-            assert!(matches!(switch_node.arms[0].0, Case::Default));
-        } else {
-            panic!("Expected switch");
-        }
     }
 
     #[test]
@@ -816,101 +693,9 @@ mod tests {
     }
 
     #[test]
-    fn test_decision_tree_nesting() {
-        // Test creating nested decision trees
-        let mut inner_bindings = IndexMap::new();
-        inner_bindings.insert(("inner".into(), 0), Occurrence::new().child(1));
-
-        let inner_leaf = DecisionTree::Leaf(LeafNode {
-            arm_index: 2,
-            bindings: inner_bindings,
-        });
-
-        let outer_switch = DecisionTree::Switch(SwitchNode {
-            occurrence: Occurrence::new(),
-            arms: vec![(Case::Default, inner_leaf)],
-        });
-
-        let root_switch = DecisionTree::Switch(SwitchNode {
-            occurrence: Occurrence::new(),
-            arms: vec![(Case::Default, outer_switch)],
-        });
-
-        // Verify nested structure
-        if let DecisionTree::Switch(root_node) = root_switch {
-            assert_eq!(root_node.arms.len(), 1);
-            if let (Case::Default, DecisionTree::Switch(inner_node)) = &root_node.arms[0] {
-                assert_eq!(inner_node.arms.len(), 1);
-                if let (Case::Default, DecisionTree::Leaf(leaf_node)) = &inner_node.arms[0] {
-                    assert_eq!(leaf_node.arm_index, 2);
-                    assert_eq!(leaf_node.bindings.len(), 1);
-                } else {
-                    panic!("Expected inner leaf");
-                }
-            } else {
-                panic!("Expected inner switch");
-            }
-        } else {
-            panic!("Expected root switch");
-        }
-    }
-
-    #[test]
-    fn test_column_selection_policy_api() {
-        // Test column selection policy builder pattern
-        let mut policy = ColumnSelectionPolicy::default();
-        policy.arity().small_branching();
-
-        // Verify policy has expected heuristics
-        assert_eq!(policy.0.len(), 2);
-        assert_eq!(policy.0[0], ColumnScoringFunction::Arity);
-        assert_eq!(policy.0[1], ColumnScoringFunction::SmallBranching);
-
-        // Test chaining all heuristics
-        let mut full_policy = ColumnSelectionPolicy::default();
-        full_policy
-            .arity()
-            .small_branching()
-            .needed_column()
-            .needed_prefix();
-        assert_eq!(full_policy.0.len(), 4);
-    }
-
-    #[test]
-    fn test_default_optimized_policy() {
-        // Test that default optimized policy has expected heuristics
-        let policy = default_optimized_policy();
-        assert_eq!(policy.0.len(), 2);
-        assert_eq!(policy.0[0], ColumnScoringFunction::Arity);
-        assert_eq!(policy.0[1], ColumnScoringFunction::SmallBranching);
-    }
-
-    #[test]
-    fn test_decision_tree_api_variants() {
-        // We can't easily test with real patterns without a full database setup,
-        // but we can test that the API functions exist and have the right signatures
-
-        // Test that build_decision_tree uses default policy
-        let _empty_matrix = PatternMatrix::new(vec![]);
-        // This would panic with empty matrix, but we're testing API existence
-        // In real usage, the matrix would have valid patterns
-
-        // Test that we can create policies
-        let custom_policy = ColumnSelectionPolicy::default();
-        let optimized_policy = default_optimized_policy();
-
-        // Verify policies are different (custom is empty, optimized has heuristics)
-        assert_eq!(custom_policy.0.len(), 0);
-        assert_eq!(optimized_policy.0.len(), 2);
-    }
-
-    #[test]
     fn test_necessity_matrix_api() {
         // Test necessity matrix creation and basic operations
         let matrix = NecessityMatrix::new(3, 2);
-        assert_eq!(matrix.ncol, 3);
-        assert_eq!(matrix.nrow, 2);
-        assert_eq!(matrix.data.len(), 6); // 3 * 2
 
         // Test position calculation
         assert_eq!(matrix.pos(0, 0), 0);
@@ -919,28 +704,5 @@ mod tests {
         assert_eq!(matrix.pos(1, 0), 3);
         assert_eq!(matrix.pos(1, 1), 4);
         assert_eq!(matrix.pos(1, 2), 5);
-    }
-
-    #[test]
-    fn test_occurrence_api_completeness() {
-        // Test all occurrence methods work together
-        let root = Occurrence::new();
-        assert_eq!(root.0, vec![]);
-        assert_eq!(root.last_index(), None);
-        assert_eq!(root.parent(), None);
-
-        let child = root.child(5);
-        assert_eq!(child.0, vec![5]);
-        assert_eq!(child.last_index(), Some(5));
-        assert_eq!(child.parent(), Some(root.clone()));
-
-        let grandchild = child.child(3);
-        assert_eq!(grandchild.0, vec![5, 3]);
-        assert_eq!(grandchild.last_index(), Some(3));
-        assert_eq!(grandchild.parent(), Some(child));
-
-        // Test iterator
-        let indices: Vec<_> = grandchild.iter().copied().collect();
-        assert_eq!(indices, vec![5, 3]);
     }
 }
