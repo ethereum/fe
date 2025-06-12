@@ -55,12 +55,6 @@ pub enum Case<'db> {
 pub struct Occurrence(pub Vec<usize>);
 
 impl Occurrence {
-    pub fn child(&self, index: usize) -> Self {
-        let mut path = self.0.clone();
-        path.push(index);
-        Self(path)
-    }
-
     pub fn iter(&self) -> impl Iterator<Item = &usize> {
         self.0.iter()
     }
@@ -629,40 +623,6 @@ fn generalize_pattern<'db>(pat: &SimplifiedPattern<'db>) -> SimplifiedPattern<'d
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_occurrence_nested_access() {
-        let root = Occurrence::default();
-        let tuple_first = root.child(0);
-        let tuple_second = root.child(1);
-        let nested = tuple_first.child(0).child(1);
-
-        assert_eq!(root.0, vec![]);
-        assert_eq!(tuple_first.0, vec![0]);
-        assert_eq!(tuple_second.0, vec![1]);
-        assert_eq!(nested.0, vec![0, 0, 1]);
-    }
-
-    #[test]
-    fn test_occurrence_path_building() {
-        // Test building complex occurrence paths
-        let root = Occurrence::default();
-        assert_eq!(root.0, vec![]);
-
-        // Simulate accessing tuple.0.field.1
-        let tuple_field = root.child(0);
-        let nested_field = tuple_field.child(2);
-        let final_access = nested_field.child(1);
-
-        assert_eq!(tuple_field.0, vec![0]);
-        assert_eq!(nested_field.0, vec![0, 2]);
-        assert_eq!(final_access.0, vec![0, 2, 1]);
-
-        // Test that different paths are independent
-        let other_path = root.child(1).child(0);
-        assert_eq!(other_path.0, vec![1, 0]);
-        assert_ne!(final_access.0, other_path.0);
-    }
 
     #[test]
     fn test_necessity_matrix_api() {
