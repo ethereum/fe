@@ -290,7 +290,6 @@ impl<'db> PatternRowVec<'db> {
         }
     }
 
-    #[allow(clippy::only_used_in_recursion)]
     pub fn d_specialize(&self, db: &'db dyn HirAnalysisDb) -> Vec<Self> {
         if self.inner.is_empty() {
             return vec![];

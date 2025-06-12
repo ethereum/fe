@@ -9,6 +9,7 @@ use crate::HirAnalysisDb;
 use hir::hir_def::{
     scope_graph::ScopeId, Body as HirBody, LitKind, Partial, Pat as HirPat, PathId, VariantKind,
 };
+use hir::hir_def::{EnumVariant, IdentId};
 
 /// A simplified representation of a pattern for analysis
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -22,7 +23,7 @@ impl<'db> SimplifiedPattern<'db> {
         Self { kind, ty }
     }
 
-    pub fn wildcard(bind: Option<(String, usize)>, ty: TyId<'db>) -> Self {
+    pub fn wildcard(bind: Option<(IdentId<'db>, usize)>, ty: TyId<'db>) -> Self {
         Self::new(SimplifiedPatternKind::WildCard(bind), ty)
     }
 
@@ -67,10 +68,7 @@ impl<'db> SimplifiedPattern<'db> {
                 {
                     SimplifiedPattern::constructor(ctor, vec![], ctor_ty)
                 } else if let Partial::Present(path_id) = path_partial {
-                    let binding_name = path_id
-                        .ident(db)
-                        .to_opt()
-                        .map(|ident| (ident.data(db).to_string(), arm_idx));
+                    let binding_name = path_id.ident(db).to_opt().map(|ident| (ident, arm_idx));
                     SimplifiedPattern::wildcard(binding_name, expected_ty)
                 } else {
                     SimplifiedPattern::wildcard(None, expected_ty)
@@ -228,7 +226,7 @@ impl<'db> SimplifiedPattern<'db> {
         for (idx, variant_def) in variants.data(db).iter().enumerate() {
             if let Partial::Present(variant_name) = variant_def.name {
                 if variant_name.data(db) == path_name {
-                    let variant = hir::hir_def::EnumVariant {
+                    let variant = EnumVariant {
                         enum_: expected_enum,
                         idx: idx as u16,
                     };
@@ -249,7 +247,7 @@ impl<'db> SimplifiedPattern<'db> {
 /// The kind of a simplified pattern
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SimplifiedPatternKind<'db> {
-    WildCard(Option<(String, usize)>),
+    WildCard(Option<(IdentId<'db>, usize)>),
     Constructor {
         kind: ConstructorKind<'db>,
         fields: Vec<SimplifiedPattern<'db>>,
@@ -286,10 +284,10 @@ impl<'db> SimplifiedPatternKind<'db> {
 }
 
 /// Represents different kinds of constructors that can appear in patterns
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ConstructorKind<'db> {
     /// Enum variant - stores just the variant and type, not the path
-    Variant(hir::hir_def::EnumVariant<'db>, TyId<'db>),
+    Variant(EnumVariant<'db>, TyId<'db>),
     Type(TyId<'db>),
     Literal(LitKind<'db>, TyId<'db>),
 }

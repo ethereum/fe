@@ -41,7 +41,11 @@ fn convert_to_ascii_tree<'db>(
 
             // Add bindings if present
             for ((name, _idx), occurrence) in &leaf_node.bindings {
-                lines.push(format!("  {} ← {}", name, render_occurrence(occurrence)));
+                lines.push(format!(
+                    "  {} ← {}",
+                    name.data(db),
+                    render_occurrence(occurrence)
+                ));
             }
 
             Tree::Leaf(lines)

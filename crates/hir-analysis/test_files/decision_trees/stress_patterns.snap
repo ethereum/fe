@@ -101,6 +101,7 @@ note:
        │           │     │  └─ Execute arm #0
        │           │     └─ _ =>
        │           │        └─ Execute arm #3
+       │           │             y ← expr.0.1
        │           └─ _ =>
        │              └─ Execute arm #3
        │                   x ← expr.0.0
@@ -149,6 +150,8 @@ note:
                    │     │     │  └─ Execute arm #0
                    │     │     └─ _ =>
                    │     │        └─ Execute arm #2
+                   │     │             bx ← expr.1.0
+                   │     │             x ← expr.0.0
                    │     │             by ← expr.1.1
                    │     ├─ 1 =>
                    │     │  └─ Switch on expr.0.1
@@ -158,11 +161,17 @@ note:
                    │     │     │     │  └─ Execute arm #1
                    │     │     │     └─ _ =>
                    │     │     │        └─ Execute arm #2
+                   │     │     │             bx ← expr.1.0
+                   │     │     │             x ← expr.0.0
+                   │     │     │             y ← expr.0.1
                    │     │     └─ _ =>
                    │     │        └─ Execute arm #2
+                   │     │             bx ← expr.1.0
+                   │     │             x ← expr.0.0
                    │     │             by ← expr.1.1
                    │     └─ _ =>
                    │        └─ Execute arm #2
+                   │             bx ← expr.1.0
                    │             by ← expr.1.1
                    │             y ← expr.0.1
                    └─ _ =>
@@ -173,6 +182,7 @@ note:
                          │     │  └─ Execute arm #0
                          │     └─ _ =>
                          │        └─ Execute arm #2
+                         │             x ← expr.0.0
                          │             by ← expr.1.1
                          └─ _ =>
                             └─ Execute arm #2
@@ -204,6 +214,7 @@ note:
  │                 │     │  └─ Execute arm #0
  │                 │     └─ _ =>
  │                 │        └─ Execute arm #1
+ │                 │             y ← expr.0.1
  │                 └─ _ =>
  │                    └─ Execute arm #1
  │                         x ← expr.0.0
