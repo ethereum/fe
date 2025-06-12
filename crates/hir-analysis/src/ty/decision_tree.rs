@@ -3,7 +3,6 @@
 
 use super::pattern_analysis::{PatternMatrix, PatternRowVec, SigmaSet};
 use super::simplified_pattern::{ConstructorKind, SimplifiedPattern, SimplifiedPatternKind};
-use crate::ty::ty_def::TyId;
 use crate::HirAnalysisDb;
 use hir::hir_def::IdentId;
 use indexmap::IndexMap;
@@ -189,41 +188,32 @@ impl ColumnScoringFunction {
         col: usize,
     ) -> i32 {
         match self {
-            ColumnScoringFunction::Arity => {
-                let sigma_set = matrix.sigma_set(col);
-                -sigma_set
-                    .into_iter()
-                    .map(|ctor| ctor.arity(db) as i32)
-                    .sum::<i32>()
-            }
+            ColumnScoringFunction::Arity => matrix
+                .sigma_set(col)
+                .0
+                .iter()
+                .map(|c| -(c.arity(db) as i32))
+                .sum(),
+
             ColumnScoringFunction::SmallBranching => {
                 let sigma_set = matrix.sigma_set(col);
-                let ty = matrix.first_column_ty();
-                let is_complete = sigma_set.is_complete(db, ty);
-                let cardinal = sigma_set.into_iter().count() as i32;
-                if is_complete {
-                    -cardinal
+                let score = -(matrix.sigma_set(col).len() as i32);
+                if sigma_set.is_complete(db) {
+                    score
                 } else {
-                    -(cardinal + 1)
+                    score - 1
                 }
             }
+
             ColumnScoringFunction::NeededColumn => {
                 matrix.necessity_matrix(db).compute_needed_column_score(col)
             }
+
             ColumnScoringFunction::NeededPrefix => {
                 matrix.necessity_matrix(db).compute_needed_prefix_score(col)
             }
         }
     }
-}
-
-/// Build a decision tree from a pattern matrix with default policy
-pub fn build_decision_tree<'db>(
-    db: &'db dyn HirAnalysisDb,
-    matrix: &PatternMatrix<'db>,
-) -> DecisionTree<'db> {
-    let policy = ColumnSelectionPolicy::default();
-    build_decision_tree_with_policy(db, matrix, policy)
 }
 
 /// Build a decision tree from a pattern matrix with a specific column selection policy
@@ -237,7 +227,7 @@ pub fn build_decision_tree_with_policy<'db>(
 }
 
 /// Build a decision tree from a pattern matrix with optimized column selection
-pub fn build_optimized_decision_tree<'db>(
+pub fn build_decision_tree<'db>(
     db: &'db dyn HirAnalysisDb,
     matrix: &PatternMatrix<'db>,
 ) -> DecisionTree<'db> {
@@ -275,44 +265,21 @@ impl DecisionTreeBuilder {
             ));
         }
 
-        // Handle case where matrix has no columns (fully specialized)
-        if matrix.ncols() == 0 {
-            return DecisionTree::Leaf(LeafNode::new(
-                matrix.arms.pop().unwrap(),
-                &matrix.occurrences,
-            ));
-        }
-
         let col = self.policy.select_column(db, &matrix);
         matrix.swap(col);
 
         let mut switch_arms = vec![];
-
-        // Handle case where occurrences vector is empty due to pattern analysis changes
-        if matrix.occurrences.is_empty() {
-            // If no occurrences but we have a matrix, create a default leaf
-            if let Some(first_arm) = matrix.arms.first() {
-                return DecisionTree::Leaf(LeafNode::new(first_arm.clone(), &[]));
-            } else {
-                panic!("Empty matrix with no arms in decision tree build");
-            }
-        }
-
         let occurrence = &matrix.occurrences[0];
         let sigma_set = matrix.sigma_set(0);
-        let ty = matrix.first_column_ty();
-        let is_complete = sigma_set.is_complete(db, ty);
-        let constructors: Vec<_> = sigma_set.into_iter().collect();
-
-        for ctor in constructors {
-            let specialized_matrix = matrix.phi_specialize(db, ctor, occurrence);
-            let subtree = self.build(db, specialized_matrix);
+        for &ctor in sigma_set.0.iter() {
+            let destructured_mat = matrix.phi_specialize(db, ctor, occurrence);
+            let subtree = self.build(db, destructured_mat);
             switch_arms.push((Case::Constructor(ctor), subtree));
         }
 
-        if !is_complete {
-            let specialized_matrix = matrix.d_specialize(occurrence);
-            let subtree = self.build(db, specialized_matrix);
+        if !sigma_set.is_complete(db) {
+            let destructured_mat = matrix.d_specialize(occurrence);
+            let subtree = self.build(db, destructured_mat);
             switch_arms.push((Case::Default, subtree));
         }
 
@@ -427,13 +394,6 @@ impl<'db> SimplifiedArmMatrix<'db> {
 
     fn sigma_set(&self, col: usize) -> SigmaSet<'db> {
         SigmaSet::from_rows(self.arms.iter().map(|arm| &arm.pat_vec), col)
-    }
-
-    fn first_column_ty(&self) -> TyId<'db> {
-        if self.arms.is_empty() {
-            panic!("Cannot get first column type from empty matrix");
-        }
-        self.arms[0].pat_vec.inner[0].ty
     }
 
     fn is_first_arm_satisfied(&self) -> bool {
