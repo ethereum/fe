@@ -57,7 +57,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct UnresolvableNode<N, E>(N, E);
+pub struct UnresolvableNode<N, E>(pub N, pub E);
 
 #[derive(Debug)]
 pub struct UnresolvableRootNode;

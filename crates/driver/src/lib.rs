@@ -4,7 +4,7 @@ pub mod files;
 
 use camino::Utf8PathBuf;
 
-use common::{urlext::canonical_url, InputDb};
+use common::{config::DependencyDescription, urlext::canonical_url, InputDb};
 pub use db::DriverDataBase;
 
 use common::{
@@ -13,7 +13,7 @@ use common::{
 };
 use hir::hir_def::TopLevelMod;
 use resolver::{
-    files::{File, FilesResolver},
+    files::{File, FilesResolutionError, FilesResolver},
     ingot::ingot_graph_resolver,
     ResolutionHandler, Resolver,
 };
@@ -22,7 +22,13 @@ use url::Url;
 
 pub fn setup_workspace(
     path: &Utf8PathBuf,
-) -> (DriverDataBase, Workspace, Vec<WorkspaceSetupDiagnostics>) {
+) -> (
+    DriverDataBase,
+    Workspace,
+    Url,
+    Vec<Url>,
+    Vec<WorkspaceSetupDiagnostics>,
+) {
     let mut db = DriverDataBase::default();
     let ingot_url = canonical_url(path).unwrap();
     let workspace = db.workspace();
@@ -31,12 +37,22 @@ pub fn setup_workspace(
         workspace,
     };
     let mut ingot_graph_resolver = ingot_graph_resolver(node_handler);
-    let _graph = ingot_graph_resolver.transient_resolve(&ingot_url).unwrap();
+    let graph = ingot_graph_resolver.transient_resolve(&ingot_url).unwrap();
+    let dependency_urls = graph
+        .node_weights()
+        .filter(|weight| *weight != &ingot_url)
+        .cloned()
+        .collect();
 
     let diagnostics = ingot_graph_resolver
         .take_diagnostics()
         .into_iter()
-        .map(|diagnostic| WorkspaceSetupDiagnostics::UnresolvableIngotDependency)
+        .map(
+            |diagnostic| WorkspaceSetupDiagnostics::UnresolvableIngotDependency {
+                target: diagnostic.0,
+                error: diagnostic.1,
+            },
+        )
         .chain(
             ingot_graph_resolver
                 .node_resolver
@@ -46,7 +62,7 @@ pub fn setup_workspace(
         )
         .collect();
 
-    (db, workspace, diagnostics)
+    (db, workspace, ingot_url, dependency_urls, diagnostics)
 }
 
 fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
@@ -57,9 +73,12 @@ fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
 
 // Maybe the driver should eventually only support WASI?
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum WorkspaceSetupDiagnostics {
-    UnresolvableIngotDependency,
+    UnresolvableIngotDependency {
+        target: Url,
+        error: FilesResolutionError,
+    },
     IngotDependencyCycle,
     FileError,
 }

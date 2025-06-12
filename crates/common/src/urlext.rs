@@ -10,6 +10,7 @@ pub enum UrlExtError {
 pub trait UrlExt {
     fn parent(&self) -> Option<Url>;
     fn directory(&self) -> Option<Url>;
+    fn join_directory(&self, path: &Utf8PathBuf) -> Result<Url, ()>;
 }
 
 impl UrlExt for Url {
@@ -49,6 +50,16 @@ impl UrlExt for Url {
             }
             return Some(parent);
         }
+    }
+
+    fn join_directory(&self, path: &Utf8PathBuf) -> Result<Url, ()> {
+        Ok(if path.as_str().ends_with("/") {
+            self.join(path.as_str()).map_err(|_| ())?
+        } else {
+            let mut path = path.clone();
+            path.push("");
+            self.join(path.as_str()).map_err(|_| ())?
+        })
     }
 }
 

@@ -5,7 +5,7 @@ use smol_str::SmolStr;
 use toml::Value;
 use url::Url;
 
-use crate::ingot::Version;
+use crate::{ingot::Version, urlext::UrlExt};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Config {
@@ -152,22 +152,14 @@ impl Dependency {
             DependencyDescription::Path(path) => BasedDependency {
                 alias: self.alias.clone(),
                 arguments: IngotArguments::default(),
-                url: join_dependency_path(base_url, path),
+                url: base_url.join_directory(path).unwrap(),
             },
             DependencyDescription::PathWithArguments { path, arguments } => BasedDependency {
                 alias: self.alias.clone(),
                 arguments: IngotArguments::default(),
-                url: join_dependency_path(base_url, path),
+                url: base_url.join_directory(path).unwrap(),
             },
         }
-    }
-}
-
-fn join_dependency_path(base_url: &Url, path: &Utf8PathBuf) -> Url {
-    if base_url.as_str().ends_with("/") {
-        base_url.join(path.as_str()).unwrap()
-    } else {
-        Url::from_str(&format!("{}/{}", base_url.as_str(), path.as_str())).unwrap()
     }
 }
 
