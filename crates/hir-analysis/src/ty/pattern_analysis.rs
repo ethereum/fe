@@ -55,7 +55,7 @@ impl<'db> PatternMatrix<'db> {
         let ty = self.first_column_ty();
         let sigma_set = self.sigma_set();
 
-        if sigma_set.is_complete(db, ty) {
+        if sigma_set.is_complete(db) {
             for ctor in sigma_set.into_iter() {
                 match self.phi_specialize(db, ctor).find_missing_patterns(db) {
                     Some(vec) if vec.is_empty() => {
@@ -326,7 +326,7 @@ impl<'db> PatternRowVec<'db> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct SigmaSet<'db>(IndexSet<ConstructorKind<'db>>);
+pub struct SigmaSet<'db>(pub IndexSet<ConstructorKind<'db>>);
 
 impl<'db> SigmaSet<'db> {
     pub fn from_rows<'a>(rows: impl Iterator<Item = &'a PatternRowVec<'db>>, column: usize) -> Self
@@ -366,7 +366,7 @@ impl<'db> SigmaSet<'db> {
         Self(ctors)
     }
 
-    pub fn is_complete(&self, db: &'db dyn HirAnalysisDb, _ty: TyId<'db>) -> bool {
+    pub fn is_complete(&self, db: &'db dyn HirAnalysisDb) -> bool {
         match self.0.first() {
             Some(ctor) => {
                 let expected = ctor_variant_num(db, ctor);

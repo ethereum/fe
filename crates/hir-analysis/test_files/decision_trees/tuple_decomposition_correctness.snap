@@ -87,24 +87,20 @@ note:
    │ ╰─────^ Decision Tree for test_mixed_type_tuple:
  Switch on expr
  └─ tuple() =>
-    └─ Switch on expr.1
-       ├─ 0 =>
-       │  └─ Switch on expr.0
-       │     ├─ true =>
+    └─ Switch on expr.0
+       ├─ true =>
+       │  └─ Switch on expr.1
+       │     ├─ 0 =>
        │     │  └─ Execute arm #0
-       │     └─ false =>
-       │        └─ Execute arm #3
-       ├─ 1 =>
-       │  └─ Switch on expr.0
-       │     ├─ true =>
+       │     ├─ 1 =>
        │     │  └─ Execute arm #1
-       │     └─ false =>
-       │        └─ Execute arm #4
-       └─ _ =>
-          └─ Switch on expr.0
-             ├─ true =>
-             │  └─ Execute arm #2
-             └─ false =>
+       │     └─ _ =>
+       │        └─ Execute arm #2
+       └─ false =>
+          └─ Switch on expr.1
+             ├─ 0 =>
+             │  └─ Execute arm #3
+             └─ _ =>
                 └─ Execute arm #4
 
 
@@ -121,39 +117,25 @@ note:
    │ ╰─────^ Decision Tree for test_nested_tuple:
  Switch on expr
  └─ tuple() =>
-    └─ Switch on expr.1
-       ├─ true =>
-       │  └─ Switch on expr.0
-       │     └─ tuple() =>
-       │        └─ Switch on expr.0.1
-       │           ├─ true =>
-       │           │  └─ Switch on expr.0.0
-       │           │     ├─ true =>
-       │           │     │  └─ Execute arm #0
-       │           │     └─ false =>
-       │           │        └─ Execute arm #4
-       │           └─ false =>
-       │              └─ Switch on expr.0.0
-       │                 ├─ true =>
-       │                 │  └─ Execute arm #2
-       │                 └─ false =>
-       │                    └─ Execute arm #4
-       └─ false =>
-          └─ Switch on expr.0
-             └─ tuple() =>
-                └─ Switch on expr.0.1
-                   ├─ true =>
-                   │  └─ Switch on expr.0.0
-                   │     ├─ true =>
-                   │     │  └─ Execute arm #1
-                   │     └─ false =>
-                   │        └─ Execute arm #4
-                   └─ false =>
-                      └─ Switch on expr.0.0
-                         ├─ true =>
-                         │  └─ Execute arm #3
-                         └─ false =>
-                            └─ Execute arm #4
+    └─ Switch on expr.0
+       └─ tuple() =>
+          └─ Switch on expr.0.0
+             ├─ true =>
+             │  └─ Switch on expr.1
+             │     ├─ true =>
+             │     │  └─ Switch on expr.0.1
+             │     │     ├─ true =>
+             │     │     │  └─ Execute arm #0
+             │     │     └─ false =>
+             │     │        └─ Execute arm #2
+             │     └─ false =>
+             │        └─ Switch on expr.0.1
+             │           ├─ true =>
+             │           │  └─ Execute arm #1
+             │           └─ false =>
+             │              └─ Execute arm #3
+             └─ false =>
+                └─ Execute arm #4
 
 
 note: 
@@ -168,27 +150,23 @@ note:
    │ ╰─────^ Decision Tree for test_tuple_with_wildcards:
  Switch on expr
  └─ tuple() =>
-    └─ Switch on expr.2
+    └─ Switch on expr.0
        ├─ true =>
-       │  └─ Switch on expr.0
+       │  └─ Switch on expr.2
        │     ├─ true =>
        │     │  └─ Execute arm #0
-       │     └─ false =>
-       │        └─ Switch on expr.1
-       │           ├─ true =>
-       │           │  └─ Execute arm #1
-       │           └─ _ =>
-       │              └─ Execute arm #3
+       │     └─ _ =>
+       │        └─ Execute arm #3
        └─ false =>
-          └─ Switch on expr.0
-             ├─ false =>
-             │  └─ Switch on expr.1
-             │     ├─ true =>
-             │     │  └─ Execute arm #1
-             │     └─ false =>
-             │        └─ Execute arm #2
-             └─ _ =>
-                └─ Execute arm #3
+          └─ Switch on expr.1
+             ├─ true =>
+             │  └─ Execute arm #1
+             └─ false =>
+                └─ Switch on expr.2
+                   ├─ false =>
+                   │  └─ Execute arm #2
+                   └─ _ =>
+                      └─ Execute arm #3
 
 
 note: 
@@ -204,43 +182,27 @@ note:
    │ ╰─────^ Decision Tree for test_large_tuple:
  Switch on expr
  └─ tuple() =>
-    └─ Switch on expr.4
+    └─ Switch on expr.0
        ├─ true =>
-       │  └─ Switch on expr.0
+       │  └─ Switch on expr.1
        │     ├─ true =>
-       │     │  └─ Switch on expr.1
+       │     │  └─ Switch on expr.2
        │     │     ├─ true =>
-       │     │     │  └─ Switch on expr.2
+       │     │     │  └─ Switch on expr.3
        │     │     │     ├─ true =>
-       │     │     │     │  └─ Switch on expr.3
+       │     │     │     │  └─ Switch on expr.4
        │     │     │     │     ├─ true =>
        │     │     │     │     │  └─ Execute arm #0
        │     │     │     │     └─ false =>
-       │     │     │     │        └─ Execute arm #2
+       │     │     │     │        └─ Execute arm #1
        │     │     │     └─ false =>
-       │     │     │        └─ Execute arm #3
+       │     │     │        └─ Execute arm #2
        │     │     └─ false =>
-       │     │        └─ Execute arm #4
+       │     │        └─ Execute arm #3
        │     └─ false =>
-       │        └─ Execute arm #5
+       │        └─ Execute arm #4
        └─ false =>
-          └─ Switch on expr.0
-             ├─ true =>
-             │  └─ Switch on expr.1
-             │     ├─ true =>
-             │     │  └─ Switch on expr.2
-             │     │     ├─ true =>
-             │     │     │  └─ Switch on expr.3
-             │     │     │     ├─ true =>
-             │     │     │     │  └─ Execute arm #1
-             │     │     │     └─ false =>
-             │     │     │        └─ Execute arm #2
-             │     │     └─ false =>
-             │     │        └─ Execute arm #3
-             │     └─ false =>
-             │        └─ Execute arm #4
-             └─ false =>
-                └─ Execute arm #5
+          └─ Execute arm #5
 
 
 note: 
