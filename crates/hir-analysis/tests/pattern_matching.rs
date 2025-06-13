@@ -49,7 +49,7 @@ fn exhaustive_matches(fixture: Fixture<&str>) {
         }
 
         diagnostic_output.push_str(std::str::from_utf8(buffer.as_slice()).unwrap());
-        snap_test!(diagnostic_output, fixture.path());
+        eprintln!("{diagnostic_output}");
 
         panic!(
             "Exhaustive test file {} should have no diagnostics but found {} diagnostic(s)",

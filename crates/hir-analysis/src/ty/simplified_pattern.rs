@@ -9,7 +9,11 @@ use crate::HirAnalysisDb;
 use hir::hir_def::{
     scope_graph::ScopeId, Body as HirBody, LitKind, Partial, Pat as HirPat, PathId, VariantKind,
 };
-use hir::hir_def::{EnumVariant, IdentId, PatId};
+use hir::hir_def::{EnumVariant, FieldParent, IdentId, PatId};
+use rustc_hash::FxHashMap;
+use smallvec1::SmallVec;
+
+use super::adt_def::AdtRef;
 
 /// A simplified representation of a pattern for analysis
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -52,8 +56,7 @@ impl<'db> SimplifiedPattern<'db> {
     ) -> Self {
         match pat {
             HirPat::Rest => {
-                // Only allowed in tuple pattern
-                unreachable!()
+                unreachable!("Rest pattern is only allowed within tuple and record patterns")
             }
             HirPat::WildCard => SimplifiedPattern::wildcard(None, expected_ty),
 
@@ -117,15 +120,31 @@ impl<'db> SimplifiedPattern<'db> {
                 if let Some((ctor, ctor_ty)) =
                     Self::resolve_constructor(path_partial, db, scope, Some(expected_ty))
                 {
-                    Self::from_constructor_pattern(
-                        ctor,
-                        ctor_ty,
-                        fields.iter().map(|f| f.pat.data(db, body).clone()),
-                        db,
-                        body,
-                        scope,
-                        arm_idx,
-                    )
+                    let named: FxHashMap<_, _> = fields
+                        .iter()
+                        .filter_map(|f| Some((f.label(db, body)?, f.pat.data(db, body))))
+                        .collect();
+
+                    let mut canonicalized_fields = vec![];
+                    for (name, field_ty) in ctor
+                        .field_names(db)
+                        .expect("Pat::Record constructor must have field names")
+                        .iter()
+                        .zip(ctor.field_types(db))
+                    {
+                        let p = match named.get(name) {
+                            Some(Partial::Present(fp)) => {
+                                Self::from_hir_pat(db, fp, body, scope, arm_idx, field_ty)
+                            }
+                            Some(Partial::Absent) => {
+                                Self::wildcard(Some((*name, arm_idx)), field_ty)
+                            }
+                            None => Self::wildcard(None, field_ty),
+                        };
+                        canonicalized_fields.push(p);
+                    }
+
+                    Self::constructor(ctor, canonicalized_fields, ctor_ty)
                 } else {
                     SimplifiedPattern::wildcard(None, expected_ty)
                 }
@@ -158,28 +177,6 @@ impl<'db> SimplifiedPattern<'db> {
             }
             Partial::Absent => SimplifiedPattern::wildcard(None, expected_ty),
         }
-    }
-
-    fn from_constructor_pattern(
-        ctor: ConstructorKind<'db>,
-        ctor_ty: TyId<'db>,
-        sub_patterns: impl Iterator<Item = Partial<HirPat<'db>>>,
-        db: &'db dyn HirAnalysisDb,
-        body: HirBody<'db>,
-        scope: ScopeId<'db>,
-        arm_idx: usize,
-    ) -> Self {
-        let field_types = ctor.field_types(db);
-        let subpatterns: Vec<_> = sub_patterns
-            .zip(field_types.iter())
-            .map(|(pat_partial, &field_ty)| match pat_partial {
-                Partial::Present(pat_data) => {
-                    SimplifiedPattern::from_hir_pat(db, &pat_data, body, scope, arm_idx, field_ty)
-                }
-                Partial::Absent => SimplifiedPattern::wildcard(None, field_ty),
-            })
-            .collect();
-        SimplifiedPattern::constructor(ctor, subpatterns, ctor_ty)
     }
 
     /// Unified constructor resolution from path
@@ -359,6 +356,27 @@ impl<'db> ConstructorKind<'db> {
         }
     }
 
+    pub fn field_names(&self, db: &'db dyn HirAnalysisDb) -> Option<SmallVec<[IdentId<'db>; 4]>> {
+        let field_parent = match self {
+            Self::Variant(v, _) if matches!(v.kind(db), VariantKind::Record(..)) => {
+                Some(FieldParent::Variant(*v))
+            }
+            Self::Type(ty) => match ty.adt_def(db)?.adt_ref(db) {
+                AdtRef::Struct(struct_def) => Some(FieldParent::Struct(struct_def)),
+                _ => None,
+            },
+            _ => None,
+        }?;
+        Some(
+            field_parent
+                .fields(db)
+                .data(db)
+                .iter()
+                .filter_map(|field| field.name.to_opt())
+                .collect(),
+        )
+    }
+
     pub fn arity(&self, db: &'db dyn HirAnalysisDb) -> usize {
         match self {
             Self::Variant(variant, _) => {
@@ -390,10 +408,7 @@ pub fn display_missing_pattern<'db>(
     pat: &SimplifiedPattern<'db>,
 ) -> String {
     match &pat.kind {
-        SimplifiedPatternKind::WildCard(_) => {
-            // For wildcards, just use underscore
-            "_".to_string()
-        }
+        SimplifiedPatternKind::WildCard(_) => "_".to_string(),
 
         SimplifiedPatternKind::Constructor { kind, fields, .. } => {
             match kind {
