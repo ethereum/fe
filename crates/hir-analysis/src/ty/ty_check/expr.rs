@@ -1,8 +1,8 @@
 use either::Either;
 use hir::{
     hir_def::{
-        ArithBinOp, BinOp, Expr, ExprId, FieldIndex, GenericArgListId, IdentId, Partial, PathId,
-        UnOp, VariantKind,
+        ArithBinOp, BinOp, Expr, ExprId, FieldIndex, GenericArgListId, IdentId, Partial, Pat,
+        PatId, PathId, UnOp, VariantKind,
     },
     span::path::LazyPathSpan,
 };
@@ -825,8 +825,7 @@ impl<'db> TyChecker<'db> {
 
         let mut match_ty = self.fresh_ty();
         // Store cloned HirPat data and the original PatId for diagnostics.
-        let mut hir_pats_with_ids: Vec<(hir::hir_def::Pat<'db>, hir::hir_def::PatId)> =
-            Vec::with_capacity(arms.len());
+        let mut hir_pats_with_ids: Vec<(&Pat<'db>, PatId)> = Vec::with_capacity(arms.len());
 
         // First loop: Type check patterns, collect HIR patterns for analysis, and type check arm bodies.
         for arm in arms.iter() {
@@ -835,7 +834,7 @@ impl<'db> TyChecker<'db> {
             let pat_data_partial = arm.pat.data(self.db, self.body());
             if let Partial::Present(actual_pat_data) = pat_data_partial {
                 // Clone the Pat data for ownership in the vector.
-                hir_pats_with_ids.push((actual_pat_data.clone(), arm.pat));
+                hir_pats_with_ids.push((actual_pat_data, arm.pat));
             }
             // If pat_data is Partial::Absent, check_pat should have already emitted an error.
             // We only include valid patterns in the exhaustiveness/reachability analysis.
@@ -847,8 +846,10 @@ impl<'db> TyChecker<'db> {
         }
 
         // Collect owned HirPat data for analysis.
-        let collected_hir_pats: Vec<hir::hir_def::Pat<'db>> =
-            hir_pats_with_ids.iter().map(|(p, _id)| p.clone()).collect();
+        let collected_hir_pats: Vec<Pat<'db>> = hir_pats_with_ids
+            .iter()
+            .map(|(p, _id)| (*p).clone())
+            .collect();
 
         // Perform reachability analysis.
         let reachability = crate::ty::pattern_analysis::check_reachability(

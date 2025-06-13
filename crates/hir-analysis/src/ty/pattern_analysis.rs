@@ -4,8 +4,8 @@
 use super::simplified_pattern::{
     ctor_variant_num, ConstructorKind, SimplifiedPattern, SimplifiedPatternKind,
 };
-use crate::ty::ty_def::TyId;
 use crate::ty::AdtRef;
+use crate::ty::{simplified_pattern::display_missing_pattern, ty_def::TyId};
 use crate::HirAnalysisDb;
 use common::indexmap::IndexSet;
 use hir::hir_def::{scope_graph::ScopeId, Body as HirBody, LitKind, Pat as HirPat};
@@ -32,7 +32,7 @@ impl<'db> PatternMatrix<'db> {
             .enumerate()
             .map(|(i, pat)| {
                 PatternRowVec::new(vec![SimplifiedPattern::from_hir_pat(
-                    pat, db, body, scope, i, ty,
+                    db, pat, body, scope, i, ty,
                 )])
             })
             .collect();
@@ -69,25 +69,20 @@ impl<'db> PatternMatrix<'db> {
                     }
 
                     Some(mut vec) => {
-                        let field_num = ctor.arity(db);
-                        // For infinite types or mismatched patterns, generate wildcards
-                        if vec.len() < field_num {
-                            let field_types = ctor.field_types(db);
-                            let mut fields = Vec::with_capacity(field_num);
-                            for &field_ty in field_types.iter() {
-                                fields.push(SimplifiedPattern::wildcard(None, field_ty));
-                            }
-                            let pat_kind =
-                                SimplifiedPatternKind::Constructor { kind: ctor, fields };
-                            // Use the constructor's type instead of the potentially wrong ty parameter
-                            let constructor_ty = match ctor {
-                                ConstructorKind::Type(ty) => ty,
-                                ConstructorKind::Variant(_variant, ty) => ty,
-                                ConstructorKind::Literal(_, ty) => ty,
-                            };
-                            let pat = SimplifiedPattern::new(pat_kind, constructor_ty);
-                            return Some(vec![pat]);
+                        eprintln!("missing patterns:");
+                        for v in &vec {
+                            eprintln!("  {}", display_missing_pattern(db, v));
                         }
+
+                        eprintln!("matrix: ");
+                        for row in &self.rows {
+                            row.inner.iter().for_each(|field| {
+                                eprint!("{}, ", display_missing_pattern(db, field));
+                            });
+                            eprintln!();
+                        }
+
+                        let field_num = ctor.arity(db);
                         debug_assert!(vec.len() >= field_num);
                         let rem = vec.split_off(field_num);
                         let pat_kind = SimplifiedPatternKind::Constructor {
@@ -113,22 +108,16 @@ impl<'db> PatternMatrix<'db> {
                     SimplifiedPatternKind::WildCard(None)
                 } else {
                     let complete_sigma = SigmaSet::complete_sigma(db, ty);
-                    if complete_sigma.is_empty() {
-                        // Infinite type - can't enumerate all constructors, so use wildcard
-                        SimplifiedPatternKind::WildCard(None)
-                    } else {
-                        let difference = complete_sigma.difference(&sigma_set);
-                        SimplifiedPatternKind::Or(
-                            difference
-                                .into_iter()
-                                .map(|ctor| {
-                                    let kind =
-                                        SimplifiedPatternKind::ctor_with_wild_card_fields(db, ctor);
-                                    SimplifiedPattern::new(kind, ty)
-                                })
-                                .collect(),
-                        )
-                    }
+                    SimplifiedPatternKind::Or(
+                        complete_sigma
+                            .difference(&sigma_set)
+                            .map(|ctor| {
+                                let kind =
+                                    SimplifiedPatternKind::ctor_with_wild_card_fields(db, *ctor);
+                                SimplifiedPattern::new(kind, ty)
+                            })
+                            .collect(),
+                    )
                 };
 
                 let mut result = vec![SimplifiedPattern::new(kind, ty)];
@@ -140,6 +129,7 @@ impl<'db> PatternMatrix<'db> {
     }
 
     pub fn is_row_useful(&self, db: &'db dyn HirAnalysisDb, row: usize) -> bool {
+        debug_assert!(self.nrows() > row);
         if row == 0 {
             return true;
         }
@@ -158,18 +148,25 @@ impl<'db> PatternMatrix<'db> {
             return false;
         }
 
-        let Some(head_pattern) = pat_vec.head() else {
-            return false; // Empty pattern vector is not useful
-        };
+        match &pat_vec.head().unwrap().kind {
+            SimplifiedPatternKind::WildCard(_) => {
+                let d_specialized = pat_vec.d_specialize();
+                if d_specialized.is_empty() {
+                    false
+                } else {
+                    self.d_specialize().is_pattern_useful(db, &d_specialized[0])
+                }
+            }
 
-        match &head_pattern.kind {
-            SimplifiedPatternKind::WildCard(_) => self
-                .d_specialize()
-                .is_pattern_useful(db, &pat_vec.d_specialize()[0]),
-
-            SimplifiedPatternKind::Constructor { kind, .. } => self
-                .phi_specialize(db, *kind)
-                .is_pattern_useful(db, &pat_vec.phi_specialize(db, *kind)[0]),
+            SimplifiedPatternKind::Constructor { kind, .. } => {
+                let phi_specialized = pat_vec.phi_specialize(db, *kind);
+                if phi_specialized.is_empty() {
+                    false
+                } else {
+                    self.phi_specialize(db, *kind)
+                        .is_pattern_useful(db, &phi_specialized[0])
+                }
+            }
 
             SimplifiedPatternKind::Or(pats) => pats
                 .iter()
@@ -208,11 +205,10 @@ impl<'db> PatternMatrix<'db> {
     }
 
     pub fn ncols(&self) -> usize {
-        if self.rows.is_empty() {
-            0
-        } else {
-            self.rows[0].len()
-        }
+        debug_assert_ne!(self.nrows(), 0);
+        let ncols = self.rows[0].len();
+        debug_assert!(self.rows.iter().all(|row| row.len() == ncols));
+        ncols
     }
 }
 
@@ -243,9 +239,7 @@ impl<'db> PatternRowVec<'db> {
         db: &'db dyn HirAnalysisDb,
         ctor: ConstructorKind<'db>,
     ) -> Vec<Self> {
-        if self.inner.is_empty() {
-            return vec![];
-        }
+        debug_assert!(!self.inner.is_empty());
 
         let first_pat = &self.inner[0];
         let ctor_fields = ctor.field_types(db);
@@ -286,9 +280,7 @@ impl<'db> PatternRowVec<'db> {
     }
 
     pub fn d_specialize(&self) -> Vec<Self> {
-        if self.inner.is_empty() {
-            return vec![];
-        }
+        debug_assert!(!self.inner.is_empty());
 
         let first_pat = &self.inner[0];
         match &first_pat.kind {
@@ -314,13 +306,12 @@ impl<'db> PatternRowVec<'db> {
     }
 
     fn first_column_ty(&self) -> TyId<'db> {
+        debug_assert!(!self.inner.is_empty());
         self.inner[0].ty
     }
 
     fn collect_column_ctors(&self, column: usize) -> Vec<ConstructorKind<'db>> {
-        if column >= self.inner.len() {
-            return vec![];
-        }
+        debug_assert!(!self.inner.is_empty());
         self.inner[column].kind.collect_ctors()
     }
 }
@@ -385,8 +376,11 @@ impl<'db> SigmaSet<'db> {
         self.0.is_empty()
     }
 
-    pub fn difference(&self, other: &Self) -> Vec<ConstructorKind<'db>> {
-        self.0.difference(&other.0).cloned().collect()
+    pub fn difference<'a>(
+        &'a self,
+        other: &'a Self,
+    ) -> impl Iterator<Item = &'a ConstructorKind<'db>> + 'a {
+        self.0.difference(&other.0)
     }
 }
 

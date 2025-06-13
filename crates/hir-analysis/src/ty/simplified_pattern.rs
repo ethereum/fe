@@ -9,7 +9,7 @@ use crate::HirAnalysisDb;
 use hir::hir_def::{
     scope_graph::ScopeId, Body as HirBody, LitKind, Partial, Pat as HirPat, PathId, VariantKind,
 };
-use hir::hir_def::{EnumVariant, IdentId};
+use hir::hir_def::{EnumVariant, IdentId, PatId};
 
 /// A simplified representation of a pattern for analysis
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -43,15 +43,19 @@ impl<'db> SimplifiedPattern<'db> {
     }
 
     pub fn from_hir_pat(
-        pat: &HirPat<'db>,
         db: &'db dyn HirAnalysisDb,
+        pat: &HirPat<'db>,
         body: HirBody<'db>,
         scope: ScopeId<'db>,
         arm_idx: usize,
         expected_ty: TyId<'db>,
     ) -> Self {
         match pat {
-            HirPat::WildCard | HirPat::Rest => SimplifiedPattern::wildcard(None, expected_ty),
+            HirPat::Rest => {
+                // Only allowed in tuple pattern
+                unreachable!()
+            }
+            HirPat::WildCard => SimplifiedPattern::wildcard(None, expected_ty),
 
             HirPat::Lit(lit_partial) => {
                 if let Partial::Present(lit_kind) = lit_partial {
@@ -76,15 +80,18 @@ impl<'db> SimplifiedPattern<'db> {
             }
 
             HirPat::Tuple(elements) => {
-                let ctor = ConstructorKind::Type(expected_ty);
-                Self::from_constructor_pattern(
-                    ctor,
-                    expected_ty,
-                    elements.iter().map(|e| e.data(db, body).clone()),
+                let simplified = simplify_tuple_pattern_elements(
                     db,
                     body,
                     scope,
                     arm_idx,
+                    elements,
+                    &expected_ty.field_types(db),
+                );
+                SimplifiedPattern::constructor(
+                    ConstructorKind::Type(expected_ty),
+                    simplified,
+                    expected_ty,
                 )
             }
 
@@ -92,15 +99,15 @@ impl<'db> SimplifiedPattern<'db> {
                 if let Some((ctor, ctor_ty)) =
                     Self::resolve_constructor(path_partial, db, scope, Some(expected_ty))
                 {
-                    Self::from_constructor_pattern(
-                        ctor,
-                        ctor_ty,
-                        elements.iter().map(|e| e.data(db, body).clone()),
+                    let simplified = simplify_tuple_pattern_elements(
                         db,
                         body,
                         scope,
                         arm_idx,
-                    )
+                        elements,
+                        &ctor.field_types(db),
+                    );
+                    SimplifiedPattern::constructor(ctor, simplified, ctor_ty)
                 } else {
                     SimplifiedPattern::wildcard(None, expected_ty)
                 }
@@ -138,7 +145,7 @@ impl<'db> SimplifiedPattern<'db> {
     }
 
     fn from_partial_pat_id(
-        pat_id: hir::hir_def::PatId,
+        pat_id: PatId,
         db: &'db dyn HirAnalysisDb,
         body: HirBody<'db>,
         scope: ScopeId<'db>,
@@ -147,7 +154,7 @@ impl<'db> SimplifiedPattern<'db> {
     ) -> Self {
         match pat_id.data(db, body) {
             Partial::Present(pat_data) => {
-                SimplifiedPattern::from_hir_pat(pat_data, db, body, scope, arm_idx, expected_ty)
+                SimplifiedPattern::from_hir_pat(db, pat_data, body, scope, arm_idx, expected_ty)
             }
             Partial::Absent => SimplifiedPattern::wildcard(None, expected_ty),
         }
@@ -167,7 +174,7 @@ impl<'db> SimplifiedPattern<'db> {
             .zip(field_types.iter())
             .map(|(pat_partial, &field_ty)| match pat_partial {
                 Partial::Present(pat_data) => {
-                    SimplifiedPattern::from_hir_pat(&pat_data, db, body, scope, arm_idx, field_ty)
+                    SimplifiedPattern::from_hir_pat(db, &pat_data, body, scope, arm_idx, field_ty)
                 }
                 Partial::Absent => SimplifiedPattern::wildcard(None, field_ty),
             })
@@ -242,6 +249,40 @@ impl<'db> SimplifiedPattern<'db> {
 
         None
     }
+}
+
+fn simplify_tuple_pattern_elements<'db>(
+    db: &'db dyn HirAnalysisDb,
+    body: HirBody<'db>,
+    scope: ScopeId<'db>,
+    arm_idx: usize,
+    elements: &[PatId],
+    elem_tys: &[TyId<'db>],
+) -> Vec<SimplifiedPattern<'db>> {
+    let mut simplified = vec![];
+
+    let mut elem_tys_iter = elem_tys.iter();
+    for pat in elements {
+        if pat.is_rest(db, body) {
+            for _ in 0..(elem_tys.len() - (elements.len() - 1)) {
+                let ty = elem_tys_iter.next().unwrap();
+                simplified.push(SimplifiedPattern::new(
+                    SimplifiedPatternKind::WildCard(None),
+                    *ty,
+                ));
+            }
+        } else {
+            simplified.push(SimplifiedPattern::from_hir_pat(
+                db,
+                pat.data(db, body).unwrap(),
+                body,
+                scope,
+                arm_idx,
+                *elem_tys_iter.next().unwrap(),
+            ));
+        }
+    }
+    simplified
 }
 
 /// The kind of a simplified pattern
