@@ -294,7 +294,7 @@ impl<'db> PathRes<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub struct ResolvedVariant<'db> {
     pub ty: TyId<'db>,
     pub variant: EnumVariant<'db>,
