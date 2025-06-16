@@ -6,3 +6,10 @@ edition = "2021"
 [dependencies]
 clap.workspace = true
 driver.workspace = true
+common.workspace = true
+resolver.workspace = true
+camino.workspace = true
+hir-analysis.workspace = true
+hir.workspace = true
+url.workspace = true
+smol_str.workspace = true

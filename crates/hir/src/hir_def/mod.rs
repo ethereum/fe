@@ -78,12 +78,26 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
     // access `InputIngot` directly.
     #[salsa::tracked(return_ref)]
     fn resolved_external_ingots(self, db: &'db dyn HirDb) -> Vec<(IdentId<'db>, Ingot<'db>)> {
+        // self.dependencies(db)
+        //     .iter()
+        //     .filter_map(
+        //         |Dependency {
+        //              alias,
+        //              description: DependencyDescription { url, .. },
+        //          }| {
+        //             db.workspace()
+        //                 .containing_ingot(db, url)
+        //                 .map(|ingot_description| {
+        //                     (IdentId::new(db, alias.to_string()), ingot_description)
+        //                 })
+        //         },
+        //     )
+        //     .collect()
         self.dependencies(db)
             .iter()
-            .filter_map(|(name, url)| {
-                self.index(db)
-                    .containing_ingot(db, url)
-                    .map(|ingot_description| (IdentId::new(db, name), ingot_description))
+            .map(|(alias, url)| {
+                let ingot = db.workspace().containing_ingot(db, url).unwrap();
+                (IdentId::new(db, alias.to_string()), ingot)
             })
             .collect()
     }
