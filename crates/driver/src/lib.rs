@@ -2,9 +2,9 @@ pub mod db;
 pub mod diagnostics;
 pub mod files;
 
-use camino::Utf8PathBuf;
+use std::{collections::HashSet, mem::take};
 
-use common::{config::DependencyDescription, urlext::canonical_url, InputDb};
+use common::InputDb;
 pub use db::DriverDataBase;
 
 use common::{
@@ -14,37 +14,20 @@ use common::{
 use hir::hir_def::TopLevelMod;
 use resolver::{
     files::{File, FilesResolutionError, FilesResolver},
+    graph::DiGraph,
     ingot::ingot_graph_resolver,
     ResolutionHandler, Resolver,
 };
 use smol_str::SmolStr;
 use url::Url;
 
-pub fn setup_workspace(
-    path: &Utf8PathBuf,
-) -> (
-    DriverDataBase,
-    Workspace,
-    Url,
-    Vec<Url>,
-    Vec<WorkspaceSetupDiagnostics>,
-) {
-    let mut db = DriverDataBase::default();
-    let ingot_url = canonical_url(path).unwrap();
+pub fn init_workspace_ingot(db: &mut DriverDataBase, ingot_url: &Url) {
     let workspace = db.workspace();
-    let node_handler = InputNodeHandler {
-        db: &mut db,
-        workspace,
-    };
+    let node_handler = InputNodeHandler::from_workspace(db, workspace);
     let mut ingot_graph_resolver = ingot_graph_resolver(node_handler);
     let graph = ingot_graph_resolver.transient_resolve(&ingot_url).unwrap();
-    let dependency_urls = graph
-        .node_weights()
-        .filter(|weight| *weight != &ingot_url)
-        .cloned()
-        .collect();
 
-    let diagnostics = ingot_graph_resolver
+    let diagnostics: Vec<WorkspaceSetupDiagnostics> = ingot_graph_resolver
         .take_diagnostics()
         .into_iter()
         .map(
@@ -62,7 +45,7 @@ pub fn setup_workspace(
         )
         .collect();
 
-    (db, workspace, ingot_url, dependency_urls, diagnostics)
+    ingot_graph_resolver.node_handler.join_graph(graph);
 }
 
 fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
@@ -85,7 +68,22 @@ pub enum WorkspaceSetupDiagnostics {
 
 pub struct InputNodeHandler<'a> {
     pub db: &'a mut dyn InputDb,
-    pub workspace: Workspace,
+    pub join_edges: Vec<(Url, Url, (SmolStr, IngotArguments))>,
+}
+
+impl<'a> InputNodeHandler<'a> {
+    pub fn from_workspace(db: &'a mut dyn InputDb, workspace: Workspace) -> Self {
+        Self {
+            db,
+            join_edges: vec![],
+        }
+    }
+
+    pub fn join_graph(&mut self, graph: DiGraph<Url, (SmolStr, IngotArguments)>) {
+        self.db
+            .workspace()
+            .join_graph(self.db, graph, take(&mut self.join_edges));
+    }
 }
 
 impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
@@ -98,14 +96,14 @@ impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
 
         for file in files {
             if file.path.ends_with("fe.toml") {
-                self.workspace.touch(
+                self.db.workspace().touch(
                     self.db,
                     Url::from_file_path(file.path).unwrap(),
                     Some(file.content.clone()),
                 );
                 config = Some(file.content);
             } else {
-                self.workspace.touch(
+                self.db.workspace().touch(
                     self.db,
                     Url::from_file_path(file.path).unwrap(),
                     Some(file.content),
@@ -115,16 +113,32 @@ impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
 
         if let Some(content) = config {
             let config = Config::from_string(content);
+
+            let weights: HashSet<Url> = self
+                .db
+                .workspace()
+                .get_graph(self.db)
+                .node_weights()
+                .cloned()
+                .collect();
+
             config
                 .based_dependencies(ingot_url)
                 .into_iter()
-                .map(|based_dependency| {
-                    (
-                        // Node weight
-                        based_dependency.url,
-                        // Node edge
-                        (based_dependency.alias, based_dependency.arguments),
-                    )
+                .filter_map(|based_dependency| {
+                    if weights.contains(&based_dependency.url) {
+                        self.join_edges.push((
+                            ingot_url.clone(),
+                            based_dependency.url,
+                            (based_dependency.alias, based_dependency.arguments),
+                        ));
+                        None
+                    } else {
+                        Some((
+                            based_dependency.url,
+                            (based_dependency.alias, based_dependency.arguments),
+                        ))
+                    }
                 })
                 .collect()
         } else {

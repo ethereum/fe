@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use camino::Utf8PathBuf;
 use smol_str::SmolStr;
 use toml::Value;

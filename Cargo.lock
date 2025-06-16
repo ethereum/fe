@@ -824,6 +824,7 @@ dependencies = [
  "fe-parser",
  "ordermap",
  "paste",
+ "petgraph",
  "radix_immutable",
  "rust-embed",
  "rustc-hash 2.1.1",

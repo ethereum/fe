@@ -1,26 +1,28 @@
 use camino::Utf8PathBuf;
 use common::urlext::canonical_url;
-use url::Url;
+use common::InputDb;
+use driver::DriverDataBase;
 
 pub fn check(path: &Utf8PathBuf) {
-    let (db, workspace, base_ingot_url, dependency_ingot_urls, diagnostics) =
-        driver::setup_workspace(path);
+    let mut db = DriverDataBase::default();
+    let ingot_url = canonical_url(path).unwrap();
+    driver::init_workspace_ingot(&mut db, &ingot_url);
 
-    for diagnostic in diagnostics {
-        println!("{:?}", diagnostic);
-    }
-
-    let ingot = workspace.containing_ingot(&db, &base_ingot_url).unwrap();
+    let ingot = db.workspace().containing_ingot(&db, &ingot_url).unwrap();
     let diags = db.run_on_ingot(ingot);
     if !diags.is_empty() {
+        eprintln!("errors in {ingot_url}");
         diags.emit(&db);
     }
 
-    for dependency_url in dependency_ingot_urls {
-        println!("{}", dependency_url);
-        let ingot = workspace.containing_ingot(&db, &dependency_url).unwrap();
+    for dependency_url in db.workspace().dependency_urls(&db, &ingot_url) {
+        let ingot = db
+            .workspace()
+            .containing_ingot(&db, &dependency_url)
+            .unwrap();
         let diags = db.run_on_ingot(ingot);
         if !diags.is_empty() {
+            eprintln!("errors in {dependency_url}");
             diags.emit(&db);
         }
     }

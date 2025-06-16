@@ -5,7 +5,7 @@ use radix_immutable::StringPrefixView;
 use smol_str::SmolStr;
 use url::Url;
 
-use crate::config::{Config, Dependency, DependencyDescription, IngotMetadata};
+use crate::config::{Config, DependencyDescription};
 use crate::core::BUILTIN_CORE_BASE_URL;
 use crate::file::{File, Workspace};
 use crate::urlext::UrlExt;
@@ -220,22 +220,17 @@ impl Workspace {
         containing_ingot_impl(db, self, location.clone())
     }
 
-    pub fn touch_ingot<'db>(
-        self,
-        db: &'db mut dyn InputDb,
-        base_url: &Url,
-        config: IngotMetadata,
-    ) -> Option<Ingot<'db>> {
-        let base_dir = base_url
-            .directory()
-            .expect("Base URL should have a directory");
-        let config_file = base_dir
-            .join("fe.toml")
-            .expect("Config file should be indexed");
-        let config = self.touch(db, config_file, None);
-
-        config.containing_ingot(db)
-    }
+    // pub fn touch_ingot<'db>(self, db: &'db mut dyn InputDb, base_url: &Url) -> Option<Ingot<'db>> {
+    //     let base_dir = base_url
+    //         .directory()
+    //         .expect("Base URL should have a directory");
+    //     let config_file = base_dir
+    //         .join("fe.toml")
+    //         .expect("Config file should be indexed");
+    //     let config = self.touch(db, config_file, None);
+    //
+    //     config.containing_ingot(db)
+    // }
 }
 
 /// Private helper to create canonical ingots for regular projects
