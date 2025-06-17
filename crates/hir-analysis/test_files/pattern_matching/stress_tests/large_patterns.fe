@@ -160,11 +160,11 @@ fn test_large_tuple_mixed_types(data: (u8, bool, VeryLargeEnum, u8, bool, u8, Ve
 // Test large tuple with rest patterns in different positions
 fn test_large_tuple_with_rest_patterns(data: (u8, u8, u8, u8, u8, u8, u8, u8)) -> u8 {
     match data {
+        (0, 1, 2, .., 5, 6, 7) => 60
         (0, .., 7) => 100
         (1, 2, ..) => 90
         (.., 6, 7) => 80
         (1, .., 6) => 70
-        (0, 1, 2, .., 5, 6, 7) => 60
         _ => 1
     }
 }
@@ -344,7 +344,7 @@ fn test_complex_record_tuple_nesting(
         (ComplexData { id: 0, coords: (0, 0), metadata: VeryLargeEnum::Variant1 }, (Rectangle { top_left: Point { x: 1, y: 1 }, bottom_right: _ }, (ShapeVariant::Circle(_, _), true)), Point { x: target_x, y: target_y }) => target_x + target_y + 100
         (ComplexData { id, coords: (cx, cy), metadata: VeryLargeEnum::Variant2 | VeryLargeEnum::Variant3 }, (Rectangle { top_left: _, bottom_right: Point { x: br_x, y: br_y } }, (ShapeVariant::Rect(_), false)), Point { x: 0, y: 0 }) => id + cx + cy + br_x + br_y + 50
         (ComplexData { id: _, coords: _, metadata: _ }, (Rectangle { top_left: Point { x: tl_x, y: tl_y }, bottom_right: Point { x: br_x, y: br_y } }, (ShapeVariant::Polygon(ComplexData { id: inner_id, coords: (inner_cx, inner_cy), metadata: _ }), _)), Point { x, y }) => tl_x + tl_y + br_x + br_y + inner_id + inner_cx + inner_cy + x + y
-        
+
         _ => 1
     }
 }

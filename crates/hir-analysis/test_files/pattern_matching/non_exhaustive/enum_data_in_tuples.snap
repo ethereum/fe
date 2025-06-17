@@ -13,7 +13,7 @@ error[8-0034]: non-exhaustive patterns: type `(Item, Item)` is not covered
 15 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = Not covered: `(_, _)`
+   = Not covered: `(Item::Pair(_, _) | Item::Empty, _)`
 
 error[8-0034]: non-exhaustive patterns: type `(Item, Item)` is not covered
    ┌─ enum_data_in_tuples.fe:22:5
@@ -49,7 +49,7 @@ error[8-0034]: non-exhaustive patterns: type `((Item, u8), Item)` is not covered
 44 │ │     }
    │ ╰─────^ match expression does not cover all possible values
    │  
-   = Not covered: `(_, _)`
+   = Not covered: `((Item::Pair(_, _), _), _)`
 
 error[8-0034]: non-exhaustive patterns: type `(Item, Item, Item)` is not covered
    ┌─ enum_data_in_tuples.fe:49:5

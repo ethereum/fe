@@ -4,8 +4,8 @@
 use super::simplified_pattern::{
     ctor_variant_num, ConstructorKind, SimplifiedPattern, SimplifiedPatternKind,
 };
+use crate::ty::ty_def::TyId;
 use crate::ty::AdtRef;
-use crate::ty::{simplified_pattern::display_missing_pattern, ty_def::TyId};
 use crate::HirAnalysisDb;
 use common::indexmap::IndexSet;
 use hir::hir_def::{scope_graph::ScopeId, Body as HirBody, LitKind, Pat as HirPat};
@@ -13,11 +13,23 @@ use hir::hir_def::{scope_graph::ScopeId, Body as HirBody, LitKind, Pat as HirPat
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternMatrix<'db> {
     pub rows: Vec<PatternRowVec<'db>>,
+    /// Column count for empty matrices (when rows.is_empty())
+    column_count: Option<usize>,
 }
 
 impl<'db> PatternMatrix<'db> {
     pub fn new(rows: Vec<PatternRowVec<'db>>) -> Self {
-        Self { rows }
+        Self {
+            rows,
+            column_count: None,
+        }
+    }
+
+    pub fn new_with_column_count(rows: Vec<PatternRowVec<'db>>, column_count: usize) -> Self {
+        Self {
+            rows,
+            column_count: Some(column_count),
+        }
     }
 
     pub fn from_hir_patterns(
@@ -36,7 +48,10 @@ impl<'db> PatternMatrix<'db> {
                 )])
             })
             .collect();
-        Self { rows }
+        Self {
+            rows,
+            column_count: None,
+        }
     }
 
     /// Find missing patterns that would make the matrix exhaustive
@@ -45,7 +60,10 @@ impl<'db> PatternMatrix<'db> {
         db: &'db dyn HirAnalysisDb,
     ) -> Option<Vec<SimplifiedPattern<'db>>> {
         if self.nrows() == 0 {
-            // Non Exhaustive!
+            // Non Exhaustive! Return n wildcards as per paper algorithm I(∅, n)
+
+            // Return empty vec as signal - the caller will generate the actual wildcards
+            // when it has the necessary type information
             return Some(vec![]);
         }
         if self.ncols() == 0 {
@@ -57,34 +75,43 @@ impl<'db> PatternMatrix<'db> {
 
         if sigma_set.is_complete(db) {
             for ctor in sigma_set.into_iter() {
-                match self.phi_specialize(db, ctor).find_missing_patterns(db) {
-                    Some(vec) if vec.is_empty() => {
-                        let pat_kind = SimplifiedPatternKind::Constructor {
-                            kind: ctor,
-                            fields: vec![],
-                        };
-                        let pat = SimplifiedPattern::new(pat_kind, ty);
+                let specialized = self.phi_specialize(db, ctor);
 
+                match specialized.find_missing_patterns(db) {
+                    Some(vec) if vec.is_empty() => {
+                        // Empty matrix returned empty vec - generate constructor with wildcards
+                        let field_types = ctor.field_types(db);
+                        let mut fields = Vec::with_capacity(field_types.len());
+                        for &field_ty in field_types.iter() {
+                            fields.push(SimplifiedPattern::wildcard(None, field_ty));
+                        }
+
+                        let pat_kind = SimplifiedPatternKind::Constructor { kind: ctor, fields };
+                        let pat = SimplifiedPattern::new(pat_kind, ty);
                         return Some(vec![pat]);
                     }
 
                     Some(mut vec) => {
-                        eprintln!("missing patterns:");
-                        for v in &vec {
-                            eprintln!("  {}", display_missing_pattern(db, v));
-                        }
-
-                        eprintln!("matrix: ");
-                        for row in &self.rows {
-                            row.inner.iter().for_each(|field| {
-                                eprint!("{}, ", display_missing_pattern(db, field));
-                            });
-                            eprintln!();
-                        }
-
+                        // According to paper: I(S(ck,P), ak + n - 1) returns (r1...rak p2...pn)
+                        // where first ak patterns are constructor fields, rest are remaining columns
                         let field_num = ctor.arity(db);
-                        debug_assert!(vec.len() >= field_num);
-                        let rem = vec.split_off(field_num);
+
+                        // Split vector: first field_num are constructor fields, rest are other columns
+                        let remaining_patterns = if vec.len() >= field_num {
+                            vec.split_off(field_num)
+                        } else {
+                            // If we don't have enough patterns, pad with wildcards
+                            let field_types = ctor.field_types(db);
+                            while vec.len() < field_num {
+                                let field_ty = field_types
+                                    .get(vec.len())
+                                    .copied()
+                                    .unwrap_or_else(|| field_types[0]); // fallback
+                                vec.push(SimplifiedPattern::wildcard(None, field_ty));
+                            }
+                            Vec::new()
+                        };
+
                         let pat_kind = SimplifiedPatternKind::Constructor {
                             kind: ctor,
                             fields: vec,
@@ -92,7 +119,7 @@ impl<'db> PatternMatrix<'db> {
                         let pat = SimplifiedPattern::new(pat_kind, ty);
 
                         let mut result = vec![pat];
-                        result.extend_from_slice(&rem);
+                        result.extend_from_slice(&remaining_patterns);
                         return Some(result);
                     }
 
@@ -136,6 +163,7 @@ impl<'db> PatternMatrix<'db> {
 
         let previous = PatternMatrix {
             rows: self.rows[0..row].to_vec(),
+            column_count: None,
         };
         previous.is_pattern_useful(db, &self.rows[row])
     }
@@ -144,6 +172,13 @@ impl<'db> PatternMatrix<'db> {
         if self.nrows() == 0 {
             return true;
         }
+
+        // Handle empty pattern vector (n=0) as per paper's base case
+        if pat_vec.is_empty() {
+            // Base case: Urec(P, ()) = false when P has rows (m > 0)
+            return false;
+        }
+
         if self.ncols() == 0 {
             return false;
         }
@@ -175,21 +210,38 @@ impl<'db> PatternMatrix<'db> {
     }
 
     pub fn phi_specialize(&self, db: &'db dyn HirAnalysisDb, ctor: ConstructorKind<'db>) -> Self {
-        let rows = self
+        let rows: Vec<_> = self
             .rows
             .iter()
             .flat_map(|row| row.phi_specialize(db, ctor))
             .collect();
-        PatternMatrix { rows }
+
+        // Calculate column count for specialized matrix
+        let new_column_count = if rows.is_empty() && self.ncols() > 0 {
+            // Original columns - 1 (removed) + ctor.arity (added)
+            Some(self.ncols() - 1 + ctor.arity(db))
+        } else {
+            None
+        };
+
+        PatternMatrix::new_with_column_count(rows, new_column_count.unwrap_or(0))
     }
 
     pub fn d_specialize(&self) -> Self {
-        let rows = self
+        let rows: Vec<_> = self
             .rows
             .iter()
             .flat_map(|row| row.d_specialize())
             .collect();
-        PatternMatrix { rows }
+
+        // Default specialization removes one column
+        let new_column_count = if rows.is_empty() && self.ncols() > 0 {
+            Some(self.ncols() - 1)
+        } else {
+            None
+        };
+
+        PatternMatrix::new_with_column_count(rows, new_column_count.unwrap_or(0))
     }
 
     pub fn sigma_set(&self) -> SigmaSet<'db> {
@@ -205,10 +257,13 @@ impl<'db> PatternMatrix<'db> {
     }
 
     pub fn ncols(&self) -> usize {
-        debug_assert_ne!(self.nrows(), 0);
-        let ncols = self.rows[0].len();
-        debug_assert!(self.rows.iter().all(|row| row.len() == ncols));
-        ncols
+        if self.nrows() == 0 {
+            self.column_count.unwrap_or(0)
+        } else {
+            let ncols = self.rows[0].len();
+            debug_assert!(self.rows.iter().all(|row| row.len() == ncols));
+            ncols
+        }
     }
 }
 
