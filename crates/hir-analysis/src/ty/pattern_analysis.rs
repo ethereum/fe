@@ -13,23 +13,11 @@ use hir::hir_def::{scope_graph::ScopeId, Body as HirBody, LitKind, Pat as HirPat
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PatternMatrix<'db> {
     pub rows: Vec<PatternRowVec<'db>>,
-    /// Column count for empty matrices (when rows.is_empty())
-    column_count: Option<usize>,
 }
 
 impl<'db> PatternMatrix<'db> {
     pub fn new(rows: Vec<PatternRowVec<'db>>) -> Self {
-        Self {
-            rows,
-            column_count: None,
-        }
-    }
-
-    pub fn new_with_column_count(rows: Vec<PatternRowVec<'db>>, column_count: usize) -> Self {
-        Self {
-            rows,
-            column_count: Some(column_count),
-        }
+        Self { rows }
     }
 
     pub fn from_hir_patterns(
@@ -48,10 +36,7 @@ impl<'db> PatternMatrix<'db> {
                 )])
             })
             .collect();
-        Self {
-            rows,
-            column_count: None,
-        }
+        Self { rows }
     }
 
     /// Find missing patterns that would make the matrix exhaustive
@@ -163,7 +148,6 @@ impl<'db> PatternMatrix<'db> {
 
         let previous = PatternMatrix {
             rows: self.rows[0..row].to_vec(),
-            column_count: None,
         };
         previous.is_pattern_useful(db, &self.rows[row])
     }
@@ -216,15 +200,7 @@ impl<'db> PatternMatrix<'db> {
             .flat_map(|row| row.phi_specialize(db, ctor))
             .collect();
 
-        // Calculate column count for specialized matrix
-        let new_column_count = if rows.is_empty() && self.ncols() > 0 {
-            // Original columns - 1 (removed) + ctor.arity (added)
-            Some(self.ncols() - 1 + ctor.arity(db))
-        } else {
-            None
-        };
-
-        PatternMatrix::new_with_column_count(rows, new_column_count.unwrap_or(0))
+        PatternMatrix::new(rows)
     }
 
     pub fn d_specialize(&self) -> Self {
@@ -234,14 +210,7 @@ impl<'db> PatternMatrix<'db> {
             .flat_map(|row| row.d_specialize())
             .collect();
 
-        // Default specialization removes one column
-        let new_column_count = if rows.is_empty() && self.ncols() > 0 {
-            Some(self.ncols() - 1)
-        } else {
-            None
-        };
-
-        PatternMatrix::new_with_column_count(rows, new_column_count.unwrap_or(0))
+        PatternMatrix::new(rows)
     }
 
     pub fn sigma_set(&self) -> SigmaSet<'db> {
@@ -258,7 +227,7 @@ impl<'db> PatternMatrix<'db> {
 
     pub fn ncols(&self) -> usize {
         if self.nrows() == 0 {
-            self.column_count.unwrap_or(0)
+            0
         } else {
             let ncols = self.rows[0].len();
             debug_assert!(self.rows.iter().all(|row| row.len() == ncols));
