@@ -130,7 +130,7 @@ impl<'db> TyFoldable<'db> for TraitInstId<'db> {
             .map(|ty| ty.fold_with(folder))
             .collect::<Vec<_>>();
 
-        TraitInstId::new(db, def, args)
+        TraitInstId::new(db, def, args, self.assoc_type_bindings(db).clone())
     }
 }
 

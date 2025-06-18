@@ -1,4 +1,4 @@
-use common::indexmap::IndexSet;
+use common::indexmap::{IndexMap, IndexSet};
 use either::Either;
 use hir::{
     hir_def::{
@@ -631,26 +631,13 @@ fn find_associated_type<'db>(
                 .unify(lhs_ty_instance, predicate_self_ty_instance)
                 .is_ok()
             {
-                let trait_def_of_bound = predicate_trait_inst.def(db);
-                let params_of_trait_def = trait_def_of_bound.params(db); // These are TyParam declarations for Self, generics, and assoc types
+                let _trait_def_of_bound = predicate_trait_inst.def(db);
 
-                // Iterate over the parameters declared in the trait definition.
-                for (param_idx, declared_trait_param_ty) in params_of_trait_def.iter().enumerate() {
-                    if let TyData::TyParam(defined_param_tp) = declared_trait_param_ty.data(db) {
-                        // Check if this declared parameter is an associated type and matches the `name` we're looking for.
-                        if defined_param_tp.is_assoc_ty() && defined_param_tp.name == name {
-                            // `predicate_trait_inst.args(db)` contains the actual TyIds for this bound instance.
-                            // The TyId at `param_idx` corresponds to the resolved type for this associated type.
-                            if let Some(actual_assoc_ty_in_bound) =
-                                predicate_trait_inst.args(db).get(param_idx)
-                            {
-                                // This `actual_assoc_ty_in_bound` needs to be processed by the unification table
-                                // to substitute any type variables based on the `lhs_ty_instance` unification.
-                                candidates.insert(actual_assoc_ty_in_bound.fold_with(&mut table));
-                            }
-                            break; // Found the named associated type within this trait bound.
-                        }
-                    }
+                // Look for the associated type by name in the trait bindings
+                if let Some(&actual_assoc_ty_in_bound) = predicate_trait_inst.assoc_type_bindings(db).get(&name) {
+                    // This `actual_assoc_ty_in_bound` needs to be processed by the unification table
+                    // to substitute any type variables based on the `lhs_ty_instance` unification.
+                    candidates.insert(actual_assoc_ty_in_bound.fold_with(&mut table));
                 }
             }
         }
@@ -734,7 +721,7 @@ pub fn resolve_name_res<'db>(
                         PathRes::Ty(ty)
                     } else {
                         let trait_def = lower_trait(db, t);
-                        let trait_inst = TraitInstId::new(db, trait_def, args);
+                        let trait_inst = TraitInstId::new(db, trait_def, args, IndexMap::new());
                         PathRes::Trait(trait_inst)
                     }
                 }

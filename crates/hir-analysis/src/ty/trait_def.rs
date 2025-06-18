@@ -244,11 +244,25 @@ pub(super) fn does_impl_trait_conflict(
 #[derive(Debug)]
 pub struct TraitInstId<'db> {
     pub def: TraitDef<'db>,
+    /// Regular type and const parameters: [Self, ExplicitTypeParam1, ..., ExplicitConstParamN]
     #[return_ref]
     pub args: Vec<TyId<'db>>,
+    /// Associated type bindings: mapping from assoc type name to bound type
+    #[return_ref]
+    pub assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>>,
 }
 
 impl<'db> TraitInstId<'db> {
+    /// Create a new TraitInstId with separated args and associated type bindings
+    pub fn new_with_assoc_bindings(
+        db: &'db dyn HirAnalysisDb,
+        def: TraitDef<'db>,
+        args: Vec<TyId<'db>>,
+        assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>>,
+    ) -> Self {
+        Self::new(db, def, args, assoc_type_bindings)
+    }
+
     pub fn pretty_print(self, db: &dyn HirAnalysisDb, as_pred: bool) -> String {
         if as_pred {
             let inst = self.pretty_print(db, false);
@@ -261,6 +275,7 @@ impl<'db> TraitInstId<'db> {
             // Skip the first type parameter since it's the implementor type.
             args.next();
 
+            let mut has_generics = false;
             if let Some(first) = args.next() {
                 s.push('<');
                 s.push_str(first);
@@ -268,6 +283,31 @@ impl<'db> TraitInstId<'db> {
                     s.push_str(", ");
                     s.push_str(arg);
                 }
+                has_generics = true;
+            }
+
+            // Add associated type bindings
+            if !self.assoc_type_bindings(db).is_empty() {
+                if !has_generics {
+                    s.push('<');
+                } else {
+                    s.push_str(", ");
+                }
+                
+                let mut first_assoc = true;
+                for (name, ty) in self.assoc_type_bindings(db) {
+                    if !first_assoc {
+                        s.push_str(", ");
+                    }
+                    first_assoc = false;
+                    s.push_str(&name.data(db));
+                    s.push_str(" = ");
+                    s.push_str(&ty.pretty_print(db));
+                }
+                has_generics = true;
+            }
+
+            if has_generics {
                 s.push('>');
             }
 

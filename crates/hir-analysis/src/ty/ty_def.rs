@@ -879,30 +879,11 @@ impl<'db> TyParam<'db> {
         matches!(self.variant, Variant::TraitSelf)
     }
 
-    pub fn is_assoc_ty(&self) -> bool {
-        false
-    }
-
     pub fn is_normal(&self) -> bool {
         matches!(self.variant, Variant::Normal)
     }
 
     pub(super) fn normal_param(
-        name: IdentId<'db>,
-        idx: usize,
-        kind: Kind,
-        scope: ScopeId<'db>,
-    ) -> Self {
-        Self {
-            name,
-            idx,
-            kind,
-            variant: Variant::Normal,
-            owner: scope,
-        }
-    }
-
-    pub(super) fn assoc_type(
         name: IdentId<'db>,
         idx: usize,
         kind: Kind,

@@ -19,12 +19,7 @@ use super::{
 };
 use crate::{
     name_resolution::{resolve_path, PathRes, PathResError},
-    ty::{
-        const_ty::ConstTyData,
-        func_def::lower_func,
-        ty_def::{TyData, TyParam},
-        ty_lower::lower_opt_hir_ty,
-    },
+    ty::{const_ty::ConstTyData, func_def::lower_func, ty_def::TyData, ty_lower::lower_opt_hir_ty},
     HirAnalysisDb,
 };
 
@@ -138,7 +133,7 @@ pub(crate) fn lower_trait_ref<'db>(
     };
 
     let Some(args) = trait_ref.generic_args(db) else {
-        return Ok(TraitInstId::new(db, trait_def, vec![self_ty]));
+        return Ok(TraitInstId::new(db, trait_def, vec![self_ty], IndexMap::new()));
     };
     let args = args.data(db);
 
@@ -193,42 +188,7 @@ pub(crate) fn lower_trait_ref<'db>(
         return Err(TraitRefLowerError::ArgNumMismatch { expected, given });
     }
 
-    // 3. Process associated type parameters
-    let assoc_type_bindings: FxHashMap<IdentId<'db>, Partial<TypeId<'db>>> = args
-        .iter()
-        .filter_map(|arg| match arg {
-            GenericArg::AssocType(AssocTypeGenericArg { name, ty }) if name.is_present() => {
-                Some((*name.unwrap(), *ty))
-            }
-            _ => None,
-        })
-        .collect();
-
-    for (i, param) in trait_params.iter().enumerate().skip(1 + expected) {
-        let param = match param.data(db) {
-            TyData::TyParam(p) if p.is_assoc_ty() => p,
-            _ => continue, // Should be a TyParam for an associated type
-        };
-
-        let assoc_name = param.name;
-        if let Some(hir_assoc_ty_val) = assoc_type_bindings.get(&assoc_name) {
-            final_args.push(lower_opt_hir_ty(
-                db,
-                scope,
-                *hir_assoc_ty_val,
-                PredicateListId::empty_list(db),
-            ));
-        } else {
-            // Associated type not specified by user, create a TyParam representing the associated type
-            let assoc_kind = param.kind.clone();
-            let trait_scope = trait_def.trait_(db).scope(); // Scope of the trait definition
-            let assoc_ty_param = TyParam::assoc_type(assoc_name, i, assoc_kind, trait_scope);
-            final_args.push(TyId::new(db, TyData::TyParam(assoc_ty_param)));
-        }
-    }
-    assert_eq!(final_args.len(), trait_params.len());
-
-    // 4. Perform kind checking and const type evaluation for all arguments (already in final_args)
+    // 3. Perform kind checking and const type evaluation for regular arguments (Self + explicit params)
     // Skip Self (index 0)
     for i in 1..final_args.len() {
         let expected_param_ty = trait_params[i];
@@ -286,7 +246,42 @@ pub(crate) fn lower_trait_ref<'db>(
         }
     }
 
-    Ok(TraitInstId::new(db, trait_def, final_args))
+    // 4. Process associated type parameters
+    let user_assoc_type_bindings: FxHashMap<IdentId<'db>, Partial<TypeId<'db>>> = args
+        .iter()
+        .filter_map(|arg| match arg {
+            GenericArg::AssocType(AssocTypeGenericArg { name, ty }) if name.is_present() => {
+                Some((*name.unwrap(), *ty))
+            }
+            _ => None,
+        })
+        .collect();
+
+    let mut assoc_bindings = IndexMap::new();
+    // Process associated types from the trait definition
+    let associated_types = trait_def.trait_(db).types(db);
+    for trait_type in associated_types.iter() {
+        if let Some(assoc_name) = trait_type.name.to_opt() {
+            if let Some(hir_assoc_ty_val) = user_assoc_type_bindings.get(&assoc_name) {
+                // User provided an explicit binding for this associated type
+                let bound_ty = lower_opt_hir_ty(
+                    db,
+                    scope,
+                    *hir_assoc_ty_val,
+                    PredicateListId::empty_list(db),
+                );
+                assoc_bindings.insert(assoc_name, bound_ty);
+            } else {
+                // Associated type not specified by user, create an AssocTy representing it
+                // We need to create a temporary TraitInstId without assoc bindings to avoid recursion
+                let temp_trait_inst = TraitInstId::new(db, trait_def, final_args.clone(), IndexMap::new());
+                let assoc_ty = TyId::assoc_ty(db, temp_trait_inst, assoc_name);
+                assoc_bindings.insert(assoc_name, assoc_ty);
+            }
+        }
+    }
+
+    Ok(TraitInstId::new(db, trait_def, final_args, assoc_bindings))
 }
 
 #[salsa::tracked(return_ref)]

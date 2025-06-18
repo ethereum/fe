@@ -1,4 +1,4 @@
-use common::indexmap::IndexSet;
+use common::indexmap::{IndexMap, IndexSet};
 use hir::hir_def::{scope_graph::ScopeId, IdentId, Trait};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -282,7 +282,7 @@ impl<'db> MethodSelector<'db> {
             .map(|ty| table.new_var_from_param(*ty))
             .collect_vec();
 
-        let cand = TraitInstId::new(self.db, def, inst_args);
+        let cand = TraitInstId::new(self.db, def, inst_args, IndexMap::new());
         // Unify receiver and method self.
         method.instantiate_with_inst(&mut table, receiver, cand);
 

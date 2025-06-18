@@ -156,6 +156,9 @@ impl<'db> TyVisitable<'db> for TraitInstId<'db> {
     {
         let db = visitor.db();
         self.args(db).visit_with(visitor);
+        for (_, ty) in self.assoc_type_bindings(db) {
+            ty.visit_with(visitor);
+        }
     }
 }
 

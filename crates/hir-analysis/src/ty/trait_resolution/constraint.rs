@@ -1,4 +1,4 @@
-use common::indexmap::IndexSet;
+use common::indexmap::{IndexMap, IndexSet};
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, ItemKind, TypeBound, WhereClauseId,
 };
@@ -199,6 +199,7 @@ pub fn collect_constraints<'db>(
             db,
             trait_def,
             collect_generic_params(db, owner).params(db).to_vec(),
+            IndexMap::new(),
         ));
     }
 
