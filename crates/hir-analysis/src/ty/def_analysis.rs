@@ -1111,6 +1111,68 @@ fn analyze_impl_trait_specific_error<'db>(
         PredicateListId::empty_list(db),
     ) {
         Ok(trait_inst) => trait_inst,
+        Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
+            diags.push(
+                TraitConstraintDiag::TraitArgNumMismatch {
+                    span: impl_trait.span().trait_ref().into(),
+                    expected,
+                    given,
+                }
+                .into(),
+            );
+            return Err(diags);
+        }
+        Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
+            diags.push(
+                TraitConstraintDiag::TraitArgKindMismatch {
+                    span: impl_trait.span().trait_ref().into(),
+                    expected,
+                    actual: given,
+                }
+                .into(),
+            );
+            return Err(diags);
+        }
+        Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => {
+            match (expected, given) {
+                (Some(expected), None) => {
+                    // Expected const type but got normal type
+                    diags.push(
+                        TyLowerDiag::ConstTyExpected {
+                            span: impl_trait.span().trait_ref().into(),
+                            expected,
+                        }
+                        .into(),
+                    );
+                }
+                (None, Some(given)) => {
+                    // Expected normal type but got const
+                    diags.push(
+                        TyLowerDiag::NormalTypeExpected {
+                            span: impl_trait.span().trait_ref().into(),
+                            given,
+                        }
+                        .into(),
+                    );
+                }
+                (Some(expected), Some(given)) => {
+                    // Const type mismatch
+                    diags.push(
+                        TyLowerDiag::ConstTyMismatch {
+                            span: impl_trait.span().trait_ref().into(),
+                            expected,
+                            given,
+                        }
+                        .into(),
+                    );
+                }
+                _ => {
+                    unreachable!()
+                    // Both None - this case shouldn't normally happen
+                }
+            }
+            return Err(diags);
+        }
         Err(_) => return Err(vec![]),
     };
 

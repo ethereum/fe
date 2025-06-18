@@ -133,6 +133,20 @@ pub(crate) fn lower_trait_ref<'db>(
     };
 
     let Some(args) = trait_ref.generic_args(db) else {
+        // No generic args provided, but we need to check if the trait expects any
+        let trait_params: &[TyId<'db>] = trait_def.params(db);
+        let expected = trait_params.iter().skip(1).take_while(|param| {
+            match param.data(db) {
+                TyData::TyParam(p) if p.is_normal() => true,
+                TyData::ConstTy(_) => true,
+                _ => false,
+            }
+        }).count();
+        
+        if expected > 0 {
+            return Err(TraitRefLowerError::ArgNumMismatch { expected, given: 0 });
+        }
+        
         return Ok(TraitInstId::new(db, trait_def, vec![self_ty], IndexMap::new()));
     };
     let args = args.data(db);
