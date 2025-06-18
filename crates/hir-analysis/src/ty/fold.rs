@@ -73,6 +73,12 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                 TyId::const_ty(db, const_ty)
             }
 
+            AssocTy(assoc) => {
+                let folded_trait = assoc.trait_.fold_with(folder);
+                let ty = TyId::assoc_ty(folder.db(), folded_trait, assoc.name);
+                ty
+            }
+
             TyVar(_) | TyParam(_) | TyBase(_) | Never | Invalid(_) => self,
         }
     }

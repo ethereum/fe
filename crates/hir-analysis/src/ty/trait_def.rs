@@ -2,7 +2,7 @@
 
 use common::indexmap::{IndexMap, IndexSet};
 use hir::{
-    hir_def::{scope_graph::ScopeId, IdentId, ImplTrait, IngotId, Trait},
+    hir_def::{IdentId, ImplTrait, IngotId, Trait},
     span::DynLazySpan,
 };
 use rustc_hash::FxHashMap;
@@ -20,7 +20,7 @@ use super::{
         PredicateListId, WellFormedness,
     },
     ty_def::{Kind, TyId},
-    ty_lower::{lower_hir_ty, GenericParamTypeSet},
+    ty_lower::GenericParamTypeSet,
     unify::UnificationTable,
 };
 use crate::{
@@ -331,35 +331,37 @@ impl<'db> TraitDef<'db> {
         methods
     }
 
-    pub fn assoc_types(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> IndexMap<IdentId<'db>, TraitTypeDecl<'db>> {
-        let trait_scope = ScopeId::Item(self.trait_(db).into());
-        let mut types = IndexMap::default();
+    // xxx
+    // pub fn assoc_types(
+    //     self,
+    //     db: &'db dyn HirAnalysisDb,
+    // ) -> IndexMap<IdentId<'db>, TraitTypeDecl<'db>> {
+    //     let trait_scope = ScopeId::Item(self.trait_(db).into());
+    //     let mut types = IndexMap::default();
 
-        for (_idx, type_) in self.trait_(db).types(db).iter().enumerate() {
-            let Some(name) = type_.name.to_opt() else {
-                continue;
-            };
-            let default_ty = type_
-                .default
-                .map(|t| Binder::bind(lower_hir_ty(db, t, trait_scope)));
+    //     let assumptions = collect_constraints(db, self.trait_(db).into()).instantiate_identity();
 
-            // let kind = Kind::Star; // xxx
-            // let assoc_ty = TyParam::assoc_type(name, idx, kind, trait_scope).ty(db);
-            // let mut bounds = IndexSet::new();
-            // add_bounds_to_constraint_set(db, trait_scope, assoc_ty, &type_.bounds, &mut bounds);
-            // let bounds = bounds.into_iter().collect();
+    //     for (idx, type_) in self.trait_(db).types(db).iter().enumerate() {
+    //         let Some(name) = type_.name.to_opt() else {
+    //             continue;
+    //         };
 
-            // We can simply ignore the conflict here because it's already
-            // handled by the def analysis pass
-            types
-                .entry(name)
-                .or_insert(TraitTypeDecl { name, default_ty });
-        }
-        types
-    }
+    //         let default_ty = type_
+    //             .default
+    //             .map(|t| Binder::bind(lower_hir_ty(db, t, trait_scope, assumptions)));
+
+    //         let kind = Kind::Star; // xxx
+    //         let assoc_ty = TyId::new(db, todo!());
+    //         let mut bounds = IndexSet::new();
+    //         add_bounds_to_constraint_set(db, trait_scope, assoc_ty, &type_.bounds, &mut bounds);
+    //         let bounds = bounds.into_iter().collect();
+
+    //         types
+    //             .entry(name)
+    //             .or_insert(TraitTypeDecl { name, default_ty });
+    //     }
+    //     types
+    // }
 
     // pub fn assoc_type_bounds(
     //     self,

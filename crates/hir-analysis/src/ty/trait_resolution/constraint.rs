@@ -59,10 +59,12 @@ pub(crate) fn collect_super_traits<'db>(
     let self_param = trait_.self_param(db);
     let scope = trait_.trait_(db).scope();
 
-    let mut super_traits = IndexSet::new();
+    // xxx use generic param bounds
+    let assumptions = PredicateListId::empty_list(db);
 
+    let mut super_traits = IndexSet::new();
     for &super_ in hir_trait.super_traits(db).iter() {
-        if let Ok(inst) = lower_trait_ref(db, self_param, super_, scope) {
+        if let Ok(inst) = lower_trait_ref(db, self_param, super_, scope, assumptions) {
             super_traits.insert(Binder::bind(inst));
         }
     }
@@ -76,7 +78,7 @@ pub(crate) fn collect_super_traits<'db>(
         {
             for bound in &pred.bounds {
                 if let TypeBound::Trait(bound) = bound {
-                    if let Ok(inst) = lower_trait_ref(db, self_param, *bound, scope) {
+                    if let Ok(inst) = lower_trait_ref(db, self_param, *bound, scope, assumptions) {
                         super_traits.insert(Binder::bind(inst));
                     }
                 }
@@ -236,7 +238,7 @@ fn collect_constraints_from_where_clause<'db>(
             continue;
         };
 
-        let ty = lower_hir_ty(db, hir_ty, scope);
+        let ty = lower_hir_ty(db, hir_ty, scope, PredicateListId::empty_list(db));
 
         // We don't need to collect super traits, please refer to
         // [`collect_super_traits`] function for details.
@@ -260,7 +262,13 @@ pub(crate) fn add_bounds_to_constraint_set<'db>(
             continue;
         };
 
-        let Ok(trait_inst) = lower_trait_ref(db, bound_ty, *trait_ref, scope) else {
+        let Ok(trait_inst) = lower_trait_ref(
+            db,
+            bound_ty,
+            *trait_ref,
+            scope,
+            PredicateListId::empty_list(db),
+        ) else {
             continue;
         };
 

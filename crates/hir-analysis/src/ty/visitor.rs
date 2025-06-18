@@ -31,6 +31,9 @@ pub trait TyVisitor<'db> {
     fn visit_param(&mut self, ty_param: &TyParam<'db>) {}
 
     #[allow(unused_variables)]
+    fn visit_assoc_ty(&mut self, assoc_ty: &super::ty_def::AssocTy<'db>) {}
+
+    #[allow(unused_variables)]
     fn visit_const_param(&mut self, ty_param: &TyParam<'db>, const_ty_ty: TyId<'db>) {}
 
     fn visit_app(&mut self, abs: TyId<'db>, arg: TyId<'db>) {
@@ -67,17 +70,12 @@ where
 {
     match ty.data(visitor.db()) {
         TyData::TyVar(var) => visitor.visit_var(var),
-
         TyData::TyParam(param) => visitor.visit_param(param),
-
+        TyData::AssocTy(assoc_ty) => visitor.visit_assoc_ty(assoc_ty),
         TyData::TyApp(abs, arg) => visitor.visit_app(*abs, *arg),
-
         TyData::TyBase(ty_con) => visitor.visit_ty_base(ty_con),
-
         TyData::ConstTy(const_ty) => visitor.visit_const_ty(const_ty),
-
         TyData::Never => {}
-
         TyData::Invalid(cause) => visitor.visit_invalid(cause),
     }
 }

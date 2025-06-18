@@ -14,6 +14,7 @@ use crate::{
 
 use super::{
     diagnostics::{TyDiagCollection, TyLowerDiag},
+    trait_resolution::PredicateListId,
     ty_def::{InvalidCause, TyData, TyId},
     ty_lower::lower_hir_ty,
 };
@@ -48,7 +49,12 @@ impl<'db> HirTyErrVisitor<'db> {
 
 impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, hir_ty: TypeId<'db>) {
-        let ty = lower_hir_ty(self.db, hir_ty, ctxt.scope());
+        let ty = lower_hir_ty(
+            self.db,
+            hir_ty,
+            ctxt.scope(),
+            crate::ty::trait_resolution::PredicateListId::empty_list(self.db),
+        );
 
         // This will report errors with nested types that are fundamental to the nested type,
         // but will not catch cases where the nested type is fine on its own, but incompatible
@@ -102,7 +108,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             self.db,
             path,
             scope,
-            None,
+            PredicateListId::empty_list(self.db),
             false,
             &mut check_visibility,
         ) {

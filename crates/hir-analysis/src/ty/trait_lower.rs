@@ -13,6 +13,7 @@ use super::{
     const_ty::ConstTyId,
     func_def::FuncDef,
     trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId},
+    trait_resolution::PredicateListId,
     ty_def::{InvalidCause, Kind, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty},
 };
@@ -64,8 +65,10 @@ pub(crate) fn lower_impl_trait<'db>(
 ) -> Option<Binder<Implementor<'db>>> {
     let scope = impl_trait.scope();
 
+    let assumptions = PredicateListId::empty_list(db);
+
     let hir_ty = impl_trait.ty(db).to_opt()?;
-    let ty = lower_hir_ty(db, hir_ty, scope);
+    let ty = lower_hir_ty(db, hir_ty, scope, assumptions);
     if ty.has_invalid(db) {
         return None;
     }
@@ -75,6 +78,7 @@ pub(crate) fn lower_impl_trait<'db>(
         ty,
         impl_trait.trait_ref(db).to_opt()?,
         impl_trait.scope(),
+        assumptions,
     )
     .ok()?;
 
@@ -92,7 +96,10 @@ pub(crate) fn lower_impl_trait<'db>(
         .types(db)
         .iter()
         .filter_map(|t| match (t.name.to_opt(), t.ty.to_opt()) {
-            (Some(name), Some(ty)) => Some((name, lower_hir_ty(db, ty, scope))),
+            (Some(name), Some(ty)) => Some((
+                name,
+                lower_hir_ty(db, ty, scope, PredicateListId::empty_list(db)),
+            )),
             _ => None,
         })
         .collect();
@@ -103,7 +110,7 @@ pub(crate) fn lower_impl_trait<'db>(
         };
         types
             .entry(name)
-            .or_insert_with(|| lower_hir_ty(db, default, scope));
+            .or_insert_with(|| lower_hir_ty(db, default, scope, PredicateListId::empty_list(db)));
     }
     let implementor = Implementor::new(db, trait_, params, types, impl_trait);
 
@@ -117,13 +124,14 @@ pub(crate) fn lower_trait_ref<'db>(
     self_ty: TyId<'db>,
     trait_ref: TraitRefId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
     let Partial::Present(path) = trait_ref.path(db) else {
         // Path is syntactically absent, should be caught by parser
         return Err(TraitRefLowerError::Other);
     };
 
-    let trait_def = match resolve_path(db, path, scope, None, false) {
+    let trait_def = match resolve_path(db, path, scope, assumptions, false) {
         Ok(PathRes::Trait(t)) => t.def(db),
         Ok(res) => return Err(TraitRefLowerError::InvalidDomain(res)),
         Err(e) => return Err(TraitRefLowerError::PathResError(e)),
@@ -160,7 +168,9 @@ pub(crate) fn lower_trait_ref<'db>(
         if let Some(user_arg) = args_iter.next() {
             given += 1;
             let lowered_user_arg = match user_arg {
-                GenericArg::Type(ty_arg) => lower_opt_hir_ty(db, scope, ty_arg.ty),
+                GenericArg::Type(ty_arg) => {
+                    lower_opt_hir_ty(db, scope, ty_arg.ty, PredicateListId::empty_list(db))
+                }
                 GenericArg::Const(const_arg) => {
                     let const_ty_id = ConstTyId::from_opt_body(db, const_arg.body);
                     TyId::const_ty(db, const_ty_id)
@@ -202,7 +212,12 @@ pub(crate) fn lower_trait_ref<'db>(
 
         let assoc_name = param.name;
         if let Some(hir_assoc_ty_val) = assoc_type_bindings.get(&assoc_name) {
-            final_args.push(lower_opt_hir_ty(db, scope, *hir_assoc_ty_val));
+            final_args.push(lower_opt_hir_ty(
+                db,
+                scope,
+                *hir_assoc_ty_val,
+                PredicateListId::empty_list(db),
+            ));
         } else {
             // Associated type not specified by user, create a TyParam representing the associated type
             let assoc_kind = param.kind.clone();
