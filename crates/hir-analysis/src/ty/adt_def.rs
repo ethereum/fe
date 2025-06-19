@@ -177,9 +177,9 @@ impl<'db> AdtField<'db> {
                 let adt_def = lower_adt(db, contract.into());
                 collect_adt_constraints(db, adt_def).instantiate_identity()
             }
-            _ => crate::ty::trait_resolution::PredicateListId::empty_list(db),
+            _ => unreachable!(),
         };
-        
+
         let ty = if let Some(ty) = self.tys[i].to_opt() {
             lower_hir_ty(db, ty, self.scope, assumptions)
         } else {

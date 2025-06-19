@@ -96,7 +96,7 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     let (path, _is_intermediate, scope) =
         find_path_surrounding_cursor(db, cursor, path_segment_collector.paths)?;
 
-    let resolved = resolve_path(db, path, scope, PredicateListId::empty_list(db), false);
+    let resolved = resolve_path(db, path, scope, PredicateListId::empty_list(db), false); // xxx fixme
     let scopes = match resolved {
         Ok(r) => r.as_scope(db).into_iter().collect::<Vec<_>>(),
         Err(err) => match err.kind {

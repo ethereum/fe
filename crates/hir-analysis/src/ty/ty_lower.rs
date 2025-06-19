@@ -9,7 +9,6 @@ use smallvec::smallvec;
 use super::{
     adt_def::lower_adt,
     const_ty::{ConstTyData, ConstTyId},
-    func_def::lower_func,
     trait_resolution::{
         constraint::{collect_adt_constraints, collect_constraints, collect_func_def_constraints},
         PredicateListId,
@@ -34,10 +33,8 @@ fn assumptions_for_scope<'db>(
         if let ScopeId::Item(item) = scope {
             match item {
                 ItemKind::Func(func) => {
-                    if let Some(func_def) = lower_func(db, func) {
-                        return collect_func_def_constraints(db, func_def, true)
-                            .instantiate_identity();
-                    }
+                    return collect_func_def_constraints(db, func.into(), true)
+                        .instantiate_identity();
                 }
                 ItemKind::Struct(struct_) => {
                     let adt_def = lower_adt(db, struct_.into());
@@ -289,7 +286,7 @@ pub(crate) fn lower_generic_arg_list<'db>(
             GenericArg::Type(ty_arg) => ty_arg
                 .ty
                 .to_opt()
-                .map(|ty| lower_hir_ty(db, ty, scope, PredicateListId::empty_list(db)))
+                .map(|ty| lower_hir_ty(db, ty, scope, PredicateListId::empty_list(db))) // xxx fixme
                 .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
 
             GenericArg::Const(const_arg) => {
@@ -553,7 +550,7 @@ impl<'db> TyParamPrecursor<'db> {
             }
             Variant::Const(Some(ty)) => {
                 let param = TyParam::normal_param(name, lowered_idx, kind, scope);
-                let ty = lower_const_ty_ty(db, scope, ty, PredicateListId::empty_list(db));
+                let ty = lower_const_ty_ty(db, scope, ty, PredicateListId::empty_list(db)); // xxx fixme
                 let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, ty));
                 TyId::new(db, TyData::ConstTy(const_ty))
             }

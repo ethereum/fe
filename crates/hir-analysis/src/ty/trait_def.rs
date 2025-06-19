@@ -223,6 +223,37 @@ impl<'db> Implementor<'db> {
     ) -> &'db IndexMap<IdentId<'db>, FuncDef<'db>> {
         collect_implementor_methods(db, self)
     }
+
+    /// Pretty print the implementor in the format `impl Foo<u16> for SomeType { type A = X; type B = Y }`
+    pub(crate) fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
+        let mut s = String::from("impl ");
+
+        // Add the trait name with its generic arguments
+        s.push_str(&self.trait_(db).pretty_print(db, false));
+
+        // Add "for" and the self type
+        s.push_str(" for ");
+        s.push_str(self.self_ty(db).pretty_print(db));
+
+        // Add associated types if any
+        if !self.types(db).is_empty() {
+            s.push_str(" { ");
+            let mut first = true;
+            for (name, ty) in self.types(db) {
+                if !first {
+                    s.push_str("; ");
+                }
+                first = false;
+                s.push_str("type ");
+                s.push_str(name.data(db));
+                s.push_str(" = ");
+                s.push_str(ty.pretty_print(db));
+            }
+            s.push_str(" }");
+        }
+
+        s
+    }
 }
 
 /// Returns `true` if the given two implementor conflicts.
@@ -247,7 +278,8 @@ pub struct TraitInstId<'db> {
     /// Regular type and const parameters: [Self, ExplicitTypeParam1, ..., ExplicitConstParamN]
     #[return_ref]
     pub args: Vec<TyId<'db>>,
-    /// Associated type bindings: mapping from assoc type name to bound type
+
+    /// Associated type bounds specified by user, eg `Iterator<Item=i32>`
     #[return_ref]
     pub assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>>,
 }
@@ -347,9 +379,10 @@ pub struct TraitDef<'db> {
 #[salsa::tracked]
 impl<'db> TraitDef<'db> {
     pub fn methods(self, db: &'db dyn HirAnalysisDb) -> IndexMap<IdentId<'db>, TraitMethod<'db>> {
+        let assumptions = collect_constraints(db, self.trait_(db).into()).instantiate_identity();
         let mut methods = IndexMap::<IdentId<'db>, TraitMethod<'db>>::default();
         for method in self.trait_(db).methods(db) {
-            let Some(func) = lower_func(db, method) else {
+            let Some(func) = lower_func(db, method, assumptions) else {
                 continue;
             };
             let name = func.name(db);

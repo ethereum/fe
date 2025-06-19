@@ -7,7 +7,7 @@ use crate::{
     ty::{
         adt_def::{lower_adt, AdtDef},
         binder::Binder,
-        func_def::{FuncDef, HirFuncDefKind},
+        func_def::HirFuncDefKind,
         trait_def::{TraitDef, TraitInstId},
         trait_lower::{lower_impl_trait, lower_trait, lower_trait_ref},
         trait_resolution::PredicateListId,
@@ -29,7 +29,7 @@ pub(crate) fn ty_constraints<'db>(
         TyData::TyBase(TyBase::Adt(adt)) => (adt.params(db), collect_adt_constraints(db, *adt)),
         TyData::TyBase(TyBase::Func(func_def)) => (
             func_def.params(db),
-            collect_func_def_constraints(db, *func_def, true),
+            collect_func_def_constraints(db, func_def.hir_def(db), true),
         ),
         _ => {
             return PredicateListId::empty_list(db);
@@ -135,10 +135,10 @@ pub(crate) fn collect_adt_constraints<'db>(
 #[salsa::tracked]
 pub(crate) fn collect_func_def_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
-    func: FuncDef<'db>,
+    func: HirFuncDefKind<'db>,
     include_parent: bool,
 ) -> Binder<PredicateListId<'db>> {
-    let hir_func = match func.hir_def(db) {
+    let hir_func = match func {
         HirFuncDefKind::Func(func) => func,
         HirFuncDefKind::VariantCtor(var) => {
             let adt = lower_adt(db, var.enum_.into());

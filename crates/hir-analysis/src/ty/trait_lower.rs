@@ -19,7 +19,11 @@ use super::{
 };
 use crate::{
     name_resolution::{resolve_path, PathRes, PathResError},
-    ty::{const_ty::ConstTyData, func_def::lower_func, ty_def::TyData, ty_lower::lower_opt_hir_ty},
+    ty::{
+        const_ty::ConstTyData, func_def::lower_func,
+        trait_resolution::constraint::collect_constraints, ty_def::TyData,
+        ty_lower::lower_opt_hir_ty,
+    },
     HirAnalysisDb,
 };
 
@@ -60,7 +64,7 @@ pub(crate) fn lower_impl_trait<'db>(
 ) -> Option<Binder<Implementor<'db>>> {
     let scope = impl_trait.scope();
 
-    let assumptions = PredicateListId::empty_list(db);
+    let assumptions = collect_constraints(db, impl_trait.into()).instantiate_identity();
 
     let hir_ty = impl_trait.ty(db).to_opt()?;
     let ty = lower_hir_ty(db, hir_ty, scope, assumptions);
@@ -91,10 +95,7 @@ pub(crate) fn lower_impl_trait<'db>(
         .types(db)
         .iter()
         .filter_map(|t| match (t.name.to_opt(), t.ty.to_opt()) {
-            (Some(name), Some(ty)) => Some((
-                name,
-                lower_hir_ty(db, ty, scope, PredicateListId::empty_list(db)),
-            )),
+            (Some(name), Some(ty)) => Some((name, lower_hir_ty(db, ty, scope, assumptions))),
             _ => None,
         })
         .collect();
@@ -105,7 +106,7 @@ pub(crate) fn lower_impl_trait<'db>(
         };
         types
             .entry(name)
-            .or_insert_with(|| lower_hir_ty(db, default, scope, PredicateListId::empty_list(db)));
+            .or_insert_with(|| lower_hir_ty(db, default, scope, assumptions));
     }
     let implementor = Implementor::new(db, trait_, params, types, impl_trait);
 
@@ -184,9 +185,7 @@ pub(crate) fn lower_trait_ref<'db>(
         if let Some(user_arg) = args_iter.next() {
             given += 1;
             let lowered_user_arg = match user_arg {
-                GenericArg::Type(ty_arg) => {
-                    lower_opt_hir_ty(db, scope, ty_arg.ty, PredicateListId::empty_list(db))
-                }
+                GenericArg::Type(ty_arg) => lower_opt_hir_ty(db, scope, ty_arg.ty, assumptions),
                 GenericArg::Const(const_arg) => {
                     let const_ty_id = ConstTyId::from_opt_body(db, const_arg.body);
                     TyId::const_ty(db, const_ty_id)
@@ -285,12 +284,7 @@ pub(crate) fn lower_trait_ref<'db>(
         if let Some(assoc_name) = trait_type.name.to_opt() {
             if let Some(hir_assoc_ty_val) = user_assoc_type_bindings.get(&assoc_name) {
                 // User provided an explicit binding for this associated type
-                let bound_ty = lower_opt_hir_ty(
-                    db,
-                    scope,
-                    *hir_assoc_ty_val,
-                    PredicateListId::empty_list(db),
-                );
+                let bound_ty = lower_opt_hir_ty(db, scope, *hir_assoc_ty_val, assumptions);
                 assoc_bindings.insert(assoc_name, bound_ty);
             }
         }
@@ -304,10 +298,11 @@ pub(crate) fn collect_implementor_methods<'db>(
     db: &'db dyn HirAnalysisDb,
     implementor: Implementor<'db>,
 ) -> IndexMap<IdentId<'db>, FuncDef<'db>> {
+    let assumptions =
+        collect_constraints(db, implementor.hir_impl_trait(db).into()).instantiate_identity();
     let mut methods = IndexMap::default();
-
     for method in implementor.hir_impl_trait(db).methods(db) {
-        if let Some(func) = lower_func(db, method) {
+        if let Some(func) = lower_func(db, method, assumptions) {
             methods.insert(func.name(db), func);
         }
     }

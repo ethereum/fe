@@ -13,6 +13,8 @@ use hir::{
 use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
 use test_utils::snap_test;
 
+// xxx remove this
+
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/early_path_resolution",
     glob: "*.fe"
