@@ -842,8 +842,8 @@ impl<'db> AssocTy<'db> {
         let idx = types
             .iter()
             .position(|t| t.name.to_opt() == Some(self.name))
-            .unwrap_or(0) as u16;
-        ScopeId::TraitType(trait_def, idx)
+            .unwrap();
+        ScopeId::TraitType(trait_def, idx as u16)
     }
 }
 

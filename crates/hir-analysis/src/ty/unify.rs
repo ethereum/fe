@@ -11,7 +11,7 @@ use super::{
     binder::Binder,
     fold::{TyFoldable, TyFolder},
     trait_def::{Implementor, TraitInstId},
-    ty_def::{inference_keys, ApplicableTyProp, Kind, TyData, TyId, TyVar, TyVarSort},
+    ty_def::{inference_keys, ApplicableTyProp, AssocTy, Kind, TyData, TyId, TyVar, TyVarSort},
 };
 use crate::{
     ty::const_ty::{ConstTyData, EvaluatedConstTy},
@@ -170,9 +170,63 @@ where
                     _ => Err(UnificationError::TypeMismatch),
                 }
             }
+            (TyData::AssocTy(t1), TyData::AssocTy(t2)) if t1 == t2 => Ok(()),
+            (TyData::AssocTy(assoc), _) => {
+                if let Some(resolved_ty) = self.resolve_assoc_ty(assoc) {
+                    self.unify_ty(resolved_ty, ty2)
+                } else {
+                    Err(UnificationError::TypeMismatch)
+                }
+            }
+
+            (_, TyData::AssocTy(assoc)) => {
+                // Try to resolve the associated type
+                if let Some(resolved_ty) = self.resolve_assoc_ty(assoc) {
+                    self.unify_ty(ty1, resolved_ty)
+                } else {
+                    Err(UnificationError::TypeMismatch)
+                }
+            }
 
             _ => Err(UnificationError::TypeMismatch),
         }
+    }
+
+    /// Try to resolve an associated type to a concrete type
+    fn resolve_assoc_ty(&mut self, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
+        // First, check if the trait instance has a binding for this associated type
+        if let Some(&bound_ty) = assoc.trait_.assoc_type_bindings(self.db).get(&assoc.name) {
+            return Some(bound_ty);
+        }
+
+        // If not directly bound, we need to look up the implementation
+        let self_ty = assoc.trait_.self_ty(self.db);
+
+        // If the self type is still a type variable, we can't resolve yet
+        if self_ty.is_ty_var(self.db) {
+            return None;
+        }
+
+        // Find the implementor for this trait and self type
+        let ingot = assoc.trait_.def(self.db).ingot(self.db);
+        let canonical_self_ty = super::canonical::Canonical::new(self.db, self_ty);
+        let implementors = super::trait_def::impls_for_ty(self.db, ingot, canonical_self_ty);
+
+        for implementor in implementors {
+            let impl_inst = implementor.skip_binder();
+            if impl_inst.trait_def(self.db) == assoc.trait_.def(self.db) {
+                // Check if the trait arguments match
+                let impl_trait_inst = impl_inst.trait_(self.db);
+                if impl_trait_inst.args(self.db)[1..] == assoc.trait_.args(self.db)[1..] {
+                    // Found the right implementor, get the associated type
+                    if let Some(&assoc_ty_value) = impl_inst.types(self.db).get(&assoc.name) {
+                        return Some(assoc_ty_value);
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     pub fn new_var(&mut self, sort: TyVarSort, kind: &Kind) -> TyId<'db> {

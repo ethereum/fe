@@ -1,20 +1,37 @@
 trait Abi {
     type Selector: Encode<Self>
-    type Encoder
+    type Encoder: AbiEncoder
+}
+
+trait AbiEncoder {
+    fn with_encoded_size(_: usize) -> Self
 }
 
 struct SolAbi {}
 impl Abi for SolAbi {
     type Selector = [u8; 4]
-    type Encoder = SolEncoder
+    type Encoder = SolEncoder // xxx: trait assoc ty constraints aren't checked
 }
 
 struct SolEncoder {}
+impl SolEncoder {
+    fn write_byte(mut self, _: u8) {}
+}
 
 trait Encode<A: Abi> {
-    fn encode(self, mut e: A::Encoder)
+    fn encode(self, mut _ e: A::Encoder)
 }
 
 impl Encode<SolAbi> for [u8; 4] {
-    fn encode(self, mut e: SolAbi::Encoder) {}
+    fn encode(self, mut _ e: SolAbi::Encoder) {
+        e.write_byte(self[0])
+        e.write_byte(self[1])
+        e.write_byte(self[2])
+        e.write_byte(self[3])
+    }
+}
+
+fn f(enc: SolEncoder) {
+    let selector = [0, 1, 2, 3]
+    selector.encode(enc)
 }
