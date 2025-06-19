@@ -7,3 +7,4 @@ edition = "2021"
 clap.workspace = true
 driver.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true

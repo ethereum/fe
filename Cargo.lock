@@ -792,6 +792,7 @@ dependencies = [
  "clap",
  "fe-driver",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
