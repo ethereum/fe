@@ -71,7 +71,9 @@ impl DiagnosticsCollection<'_> {
             term::emit(&mut buffer, &config, &CsDbWrapper(db), &diag.to_cs(db)).unwrap();
         }
 
-        writer.print(&buffer).expect("Failed to write diagnostics to stderr");
+        writer
+            .print(&buffer)
+            .expect("Failed to write diagnostics to stderr");
     }
 
     /// Format the accumulated diagnostics to a string.

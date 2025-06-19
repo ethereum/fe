@@ -42,12 +42,14 @@ mod tests {
     fn test_rust_log_env() {
         // This test demonstrates how to use RUST_LOG with tests
         // Run with: RUST_LOG=debug cargo test test_rust_log_env -- --nocapture
-        let _guard = setup_tracing_with_filter(&std::env::var("RUST_LOG").unwrap_or_else(|_| "off".to_string()));
-        
+        let _guard = setup_tracing_with_filter(
+            &std::env::var("RUST_LOG").unwrap_or_else(|_| "off".to_string()),
+        );
+
         info!("This is an info message");
         debug!("This is a debug message");
         warn!("This is a warning message");
-        
+
         // Test passes if no panic occurs
     }
 }
