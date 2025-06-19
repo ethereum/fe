@@ -224,6 +224,7 @@ impl<'db> Implementor<'db> {
         collect_implementor_methods(db, self)
     }
 
+    #[allow(dead_code)]
     /// Pretty print the implementor in the format `impl Foo<u16> for SomeType { type A = X; type B = Y }`
     pub(crate) fn pretty_print(self, db: &'db dyn HirAnalysisDb) -> String {
         let mut s = String::from("impl ");

@@ -1,0 +1,10 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: test_files/ty_check/associated_types_cycle.fe
+---
+note: 
+   ┌─ associated_types_cycle.fe:19:45
+   │
+19 │     fn encode(self, mut e: SolAbi::Encoder) {}
+   │                                             ^^ ()

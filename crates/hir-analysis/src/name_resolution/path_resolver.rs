@@ -31,7 +31,7 @@ use crate::{
         trait_def::{impls_for_ty, TraitInstId},
         trait_lower::lower_trait,
         trait_resolution::PredicateListId,
-        ty_def::{InvalidCause, TyData, TyId},
+        ty_def::{AssocTy, InvalidCause, TyData, TyId},
         ty_lower::{
             collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias, TyAlias,
         },
@@ -571,14 +571,6 @@ fn find_associated_type<'db>(
     name: IdentId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> SmallVec<TyId<'db>, 4> {
-    eprintln!(
-        "find_associated_type: scope={:?}, ty={}, name={}, assumptions={}",
-        scope.pretty_path(db),
-        ty.value.pretty_print(db),
-        name.data(db),
-        assumptions.pretty_print(db)
-    );
-
     let mut candidates: IndexSet<TyId<'db>> = IndexSet::new();
     let ingot = scope.ingot(db);
 
@@ -594,19 +586,11 @@ fn find_associated_type<'db>(
         // Instantiate the implementor with fresh unification variables for its generic parameters.
         let implementor_instance = table.instantiate_with_fresh_vars(*implementor);
 
-        eprintln!(
-            "find_associated_type unifying `{}` =? `{}` (implementor traitinst: {})",
-            lhs_ty_instance.pretty_print(db),
-            implementor_instance.self_ty(db).pretty_print(db),
-            implementor_instance.trait_(db).pretty_print(db, true)
-        );
-
         // Try to unify the LHS type with the self type of the implementor.
         if table
             .unify(lhs_ty_instance, implementor_instance.self_ty(db))
             .is_ok()
         {
-            eprint!("  ok!");
             // If unification succeeds, the implementor's generic parameters are now (potentially)
             // bound to parts of `lhs_ty_instance`.
             if let Some(assoc_ty_template) = implementor_instance.types(db).get(&name) {
@@ -639,7 +623,7 @@ fn find_associated_type<'db>(
                 .unify(lhs_ty_instance, predicate_self_ty_instance)
                 .is_ok()
             {
-                let _trait_def_of_bound = predicate_trait_inst.def(db);
+                let trait_def_of_bound = predicate_trait_inst.def(db);
 
                 // Look for the associated type by name in the trait bindings
                 if let Some(&actual_assoc_ty_in_bound) =
@@ -648,15 +632,27 @@ fn find_associated_type<'db>(
                     // This `actual_assoc_ty_in_bound` needs to be processed by the unification table
                     // to substitute any type variables based on the `lhs_ty_instance` unification.
                     candidates.insert(actual_assoc_ty_in_bound.fold_with(&mut table));
+                } else {
+                    // If no explicit binding is found, check if the trait declares this associated type
+                    for trait_type in trait_def_of_bound.trait_(db).types(db).iter() {
+                        if trait_type.name.to_opt() == Some(name) {
+                            // Create an associated type for this trait bound
+                            let assoc_ty_id = TyId::new(
+                                db,
+                                TyData::AssocTy(AssocTy {
+                                    trait_: predicate_trait_inst,
+                                    name,
+                                }),
+                            );
+                            candidates.insert(assoc_ty_id.fold_with(&mut table));
+                            break;
+                        }
+                    }
                 }
             }
         }
     }
 
-    eprintln!("candidates: ");
-    for c in candidates.iter() {
-        eprintln!("    {}", c.pretty_print(db));
-    }
     candidates.into_iter().collect()
 }
 
