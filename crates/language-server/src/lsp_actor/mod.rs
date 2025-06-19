@@ -180,7 +180,7 @@ mod tests {
             state: &mut TestState,
             _: InitializeParams,
         ) -> Result<InitializeResult, ResponseError> {
-            println!("Handling initialize request");
+            eprintln!("Handling initialize request");
             state.initialized = true;
             Ok(InitializeResult::default())
         }
