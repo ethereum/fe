@@ -9,7 +9,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec1::SmallVec;
 use trait_def::TraitDef;
 use trait_lower::lower_trait;
-use trait_resolution::constraint::super_trait_cycle;
+use trait_resolution::constraint::{collect_constraints, super_trait_cycle};
 use ty_def::{InvalidCause, TyData};
 use ty_error::collect_ty_lower_errors;
 use ty_lower::lower_type_alias;
@@ -258,11 +258,13 @@ impl ModuleAnalysisPass for TypeAliasAnalysisPass {
         let mut diags = vec![];
         let mut cycle_participants = FxHashSet::<TypeAlias>::default();
 
-        for alias in top_mod.all_type_aliases(db) {
-            if cycle_participants.contains(alias) {
+        for &alias in top_mod.all_type_aliases(db) {
+            if cycle_participants.contains(&alias) {
                 continue;
             }
-            let ta = lower_type_alias(db, *alias);
+
+            let assumptions = collect_constraints(db, alias.into()).instantiate_identity();
+            let ta = lower_type_alias(db, alias);
             let ty = ta.alias_to.skip_binder();
             if let TyData::Invalid(InvalidCause::AliasCycle(cycle)) = ty.data(db) {
                 if let Some(diag) = ty.emit_diag(db, alias.span().ty().into()) {
@@ -272,9 +274,15 @@ impl ModuleAnalysisPass for TypeAliasAnalysisPass {
             } else if ty.has_invalid(db) {
                 if let Some(hir_ty) = alias.ty(db).to_opt() {
                     diags.extend(
-                        collect_ty_lower_errors(db, alias.scope(), hir_ty, alias.span().ty())
-                            .into_iter()
-                            .map(|d| d.to_voucher()),
+                        collect_ty_lower_errors(
+                            db,
+                            alias.scope(),
+                            hir_ty,
+                            alias.span().ty(),
+                            assumptions,
+                        )
+                        .into_iter()
+                        .map(|d| d.to_voucher()),
                     )
                 }
             }

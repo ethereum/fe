@@ -210,11 +210,13 @@ pub fn analyze_func<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
-    let Some(func_def) = lower_func(db, func) else {
+    let assumptions = collect_func_def_constraints(db, func.into(), true).instantiate_identity();
+
+    let Some(func_def) = lower_func(db, func, assumptions) else {
         return Vec::new();
     };
 
-    let analyzer = DefAnalyzer::for_func(db, func_def);
+    let analyzer = DefAnalyzer::for_func(db, func_def, assumptions);
     analyzer.analyze()
 }
 
@@ -244,6 +246,12 @@ impl<'db> DefAnalyzer<'db> {
     fn for_trait(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
         let def = lower_trait(db, trait_);
         let assumptions = collect_constraints(db, trait_.into()).instantiate_identity();
+
+        eprintln!(
+            "DefAnalyzer::for_trait({:?}) assumptions: {}",
+            trait_.name(db).to_opt().map(|i| i.data(db)),
+            assumptions.pretty_print(db)
+        );
         Self {
             db,
             def: def.into(),
@@ -279,8 +287,11 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
-    fn for_func(db: &'db dyn HirAnalysisDb, func: FuncDef<'db>) -> Self {
-        let assumptions = collect_func_def_constraints(db, func, true).instantiate_identity();
+    fn for_func(
+        db: &'db dyn HirAnalysisDb,
+        func: FuncDef<'db>,
+        assumptions: PredicateListId<'db>,
+    ) -> Self {
         let self_ty = match func.hir_func_def(db).unwrap().scope().parent(db).unwrap() {
             ScopeId::Item(ItemKind::Trait(trait_)) => lower_trait(db, trait_).self_param(db).into(),
             ScopeId::Item(ItemKind::ImplTrait(impl_trait)) => match impl_trait.ty(db).to_opt() {
@@ -288,15 +299,19 @@ impl<'db> DefAnalyzer<'db> {
                     db,
                     hir_ty,
                     impl_trait.scope(),
-                    PredicateListId::empty_list(db),
+                    collect_constraints(db, impl_trait.into()).instantiate_identity(),
                 )
                 .into(),
                 _ => TyId::invalid(db, InvalidCause::Other).into(),
             },
             ScopeId::Item(ItemKind::Impl(impl_)) => match impl_.ty(db).to_opt() {
-                Some(hir_ty) => {
-                    lower_hir_ty(db, hir_ty, impl_.scope(), PredicateListId::empty_list(db)).into()
-                }
+                Some(hir_ty) => lower_hir_ty(
+                    db,
+                    hir_ty,
+                    impl_.scope(),
+                    collect_constraints(db, impl_.into()).instantiate_identity(),
+                )
+                .into(),
                 None => TyId::invalid(db, InvalidCause::Other).into(),
             },
             _ => None,
@@ -498,7 +513,13 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         let span = ctxt.span().unwrap();
 
         if ty.has_invalid(self.db) {
-            let diags = collect_ty_lower_errors(self.db, ctxt.scope(), hir_ty, span.clone());
+            let diags = collect_ty_lower_errors(
+                self.db,
+                ctxt.scope(),
+                hir_ty,
+                span.clone(),
+                self.assumptions,
+            );
             if !diags.is_empty() {
                 self.diags.extend(diags);
                 return;
@@ -753,7 +774,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'db, LazyFuncSpan<'db>>,
         hir_func: hir::hir_def::Func<'db>,
     ) {
-        let Some(func) = lower_func(self.db, hir_func) else {
+        let Some(func) = lower_func(self.db, hir_func, self.assumptions) else {
             return;
         };
 
@@ -787,7 +808,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         let def = std::mem::replace(&mut self.def, func.into());
         let constraints = std::mem::replace(
             &mut self.assumptions,
-            collect_func_def_constraints(self.db, func, true).instantiate_identity(),
+            collect_func_def_constraints(self.db, hir_func.into(), true).instantiate_identity(),
         );
 
         if let Some(args) = hir_func.params(self.db).to_opt() {
@@ -1089,7 +1110,8 @@ fn analyze_impl_trait_specific_error<'db>(
     };
 
     // 1. Checks if implementor type is well-formed except for the satisfiability.
-    let ty = lower_hir_ty(db, ty, impl_trait.scope(), PredicateListId::empty_list(db));
+    let assumptions = collect_constraints(db, impl_trait.into()).instantiate_identity();
+    let ty = lower_hir_ty(db, ty, impl_trait.scope(), assumptions);
     if let Some(diag) = ty.emit_diag(db, impl_trait.span().ty().into()) {
         diags.push(diag);
     }
@@ -1103,13 +1125,7 @@ fn analyze_impl_trait_specific_error<'db>(
         return Err(diags);
     }
 
-    let trait_inst = match lower_trait_ref(
-        db,
-        ty,
-        trait_ref,
-        impl_trait.scope(),
-        PredicateListId::empty_list(db),
-    ) {
+    let trait_inst = match lower_trait_ref(db, ty, trait_ref, impl_trait.scope(), assumptions) {
         Ok(trait_inst) => trait_inst,
         Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
             diags.push(

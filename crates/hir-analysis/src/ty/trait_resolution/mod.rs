@@ -146,6 +146,17 @@ pub struct PredicateListId<'db> {
 }
 
 impl<'db> PredicateListId<'db> {
+    pub fn pretty_print(&self, db: &'db dyn HirAnalysisDb) -> String {
+        format!(
+            "{{{}}}",
+            self.list(db)
+                .iter()
+                .map(|pred| pred.pretty_print(db, true))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+
     pub(super) fn merge(self, db: &'db dyn HirAnalysisDb, other: Self) -> Self {
         let mut predicates = self.list(db).clone();
         predicates.extend(other.list(db));

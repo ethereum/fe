@@ -77,7 +77,9 @@ impl<'db> TyCheckEnv<'db> {
             };
 
             let mut ty = match param.ty {
-                Partial::Present(hir_ty) => lower_hir_ty(db, hir_ty, func.scope(), crate::ty::trait_resolution::PredicateListId::empty_list(db)),
+                Partial::Present(hir_ty) => {
+                    lower_hir_ty(db, hir_ty, func.scope(), env.assumptions())
+                }
                 Partial::Absent => TyId::invalid(db, InvalidCause::Other),
             };
 
@@ -116,17 +118,23 @@ impl<'db> TyCheckEnv<'db> {
     /// Returns a function if the `body` being checked has `BodyKind::FuncBody`.
     /// If the `body` has `BodyKind::Anonymous`, returns None
     pub(super) fn func(&self) -> Option<FuncDef<'db>> {
-        let func = match self.body.body_kind(self.db) {
+        let func = self.hir_func()?;
+
+        lower_func(self.db, func, self.assumptions())
+    }
+
+    fn hir_func(&self) -> Option<Func<'db>> {
+        match self.body.body_kind(self.db) {
             BodyKind::FuncBody => self.var_env.first()?.scope.item().try_into().ok(),
             BodyKind::Anonymous => None,
-        }?;
-
-        lower_func(self.db, func)
+        }
     }
 
     pub(super) fn assumptions(&self) -> PredicateListId<'db> {
-        match self.func() {
-            Some(func) => collect_func_def_constraints(self.db, func, true).instantiate_identity(),
+        match self.hir_func() {
+            Some(func) => {
+                collect_func_def_constraints(self.db, func.into(), true).instantiate_identity()
+            }
             None => PredicateListId::empty_list(self.db),
         }
     }

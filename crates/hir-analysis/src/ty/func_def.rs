@@ -6,6 +6,7 @@ use hir::{
 use super::{binder::Binder, ty_def::TyId, ty_lower::GenericParamTypeSet};
 use crate::{
     ty::{
+        trait_resolution::PredicateListId,
         ty_def::InvalidCause,
         ty_lower::{collect_generic_params, lower_hir_ty},
     },
@@ -15,11 +16,13 @@ use crate::{
 /// Lower func to [`FuncDef`]. This function returns `None` iff the function
 /// name is `Partial::Absent`.
 #[salsa::tracked]
-pub fn lower_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Option<FuncDef<'db>> {
+pub fn lower_func<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    assumptions: PredicateListId<'db>,
+) -> Option<FuncDef<'db>> {
     let name = func.name(db).to_opt()?;
     let params_set = collect_generic_params(db, func.into());
-
-    let assumptions = crate::ty::trait_resolution::PredicateListId::empty_list(db);
 
     let args = match func.params(db) {
         Partial::Present(params) => params

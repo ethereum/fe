@@ -572,11 +572,11 @@ fn find_associated_type<'db>(
     assumptions: PredicateListId<'db>,
 ) -> SmallVec<TyId<'db>, 4> {
     eprintln!(
-        "find_associated_type: scope={:?}, ty={:?}, name={:?}, assumptions={:?}",
+        "find_associated_type: scope={:?}, ty={}, name={}, assumptions={}",
         scope.pretty_path(db),
         ty.value.pretty_print(db),
         name.data(db),
-        assumptions
+        assumptions.pretty_print(db)
     );
 
     let mut candidates: IndexSet<TyId<'db>> = IndexSet::new();
@@ -584,7 +584,7 @@ fn find_associated_type<'db>(
 
     // Case 1: ty is a concrete type or can be resolved to concrete impls.
     // This part attempts to find associated types from concrete `impl` blocks.
-    for implementor_binder in impls_for_ty(db, ingot, ty).iter() {
+    for implementor in impls_for_ty(db, ingot, ty).iter() {
         // Create a fresh unification table for this specific implementor candidate.
         let mut table = UnificationTable::new(db);
 
@@ -592,13 +592,21 @@ fn find_associated_type<'db>(
         let lhs_ty_instance = ty.extract_identity(&mut table);
 
         // Instantiate the implementor with fresh unification variables for its generic parameters.
-        let implementor_instance = table.instantiate_with_fresh_vars(*implementor_binder);
+        let implementor_instance = table.instantiate_with_fresh_vars(*implementor);
+
+        eprintln!(
+            "find_associated_type unifying `{}` =? `{}` (implementor traitinst: {})",
+            lhs_ty_instance.pretty_print(db),
+            implementor_instance.self_ty(db).pretty_print(db),
+            implementor_instance.trait_(db).pretty_print(db, true)
+        );
 
         // Try to unify the LHS type with the self type of the implementor.
         if table
             .unify(lhs_ty_instance, implementor_instance.self_ty(db))
             .is_ok()
         {
+            eprint!("  ok!");
             // If unification succeeds, the implementor's generic parameters are now (potentially)
             // bound to parts of `lhs_ty_instance`.
             if let Some(assoc_ty_template) = implementor_instance.types(db).get(&name) {
@@ -634,7 +642,9 @@ fn find_associated_type<'db>(
                 let _trait_def_of_bound = predicate_trait_inst.def(db);
 
                 // Look for the associated type by name in the trait bindings
-                if let Some(&actual_assoc_ty_in_bound) = predicate_trait_inst.assoc_type_bindings(db).get(&name) {
+                if let Some(&actual_assoc_ty_in_bound) =
+                    predicate_trait_inst.assoc_type_bindings(db).get(&name)
+                {
                     // This `actual_assoc_ty_in_bound` needs to be processed by the unification table
                     // to substitute any type variables based on the `lhs_ty_instance` unification.
                     candidates.insert(actual_assoc_ty_in_bound.fold_with(&mut table));
@@ -674,7 +684,7 @@ pub fn resolve_name_res<'db>(
                 ItemKind::TopMod(_) | ItemKind::Mod(_) => PathRes::Mod(scope_id),
 
                 ItemKind::Func(func) => {
-                    let func_def = lower_func(db, func).unwrap();
+                    let func_def = lower_func(db, func, assumptions).unwrap();
                     let ty = TyId::func(db, func_def);
                     PathRes::Func(TyId::foldl(db, ty, args))
                 }
@@ -706,12 +716,22 @@ pub fn resolve_name_res<'db>(
                     }
                 }
 
-                ItemKind::Impl(impl_) => {
-                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(db), scope, args)?)
-                }
-                ItemKind::ImplTrait(impl_) => {
-                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(db), scope, args)?)
-                }
+                ItemKind::Impl(impl_) => PathRes::Ty(impl_typeid_to_ty(
+                    db,
+                    path,
+                    impl_.ty(db),
+                    scope,
+                    args,
+                    assumptions,
+                )?),
+                ItemKind::ImplTrait(impl_) => PathRes::Ty(impl_typeid_to_ty(
+                    db,
+                    path,
+                    impl_.ty(db),
+                    scope,
+                    args,
+                    assumptions,
+                )?),
 
                 ItemKind::Trait(t) => {
                     if path.is_self_ty(db) {
@@ -770,9 +790,10 @@ fn impl_typeid_to_ty<'db>(
     hir_ty: Partial<TypeId<'db>>,
     scope: ScopeId<'db>,
     args: &[TyId<'db>],
+    assumptions: PredicateListId<'db>,
 ) -> PathResolutionResult<'db, TyId<'db>> {
     if let Some(hir_ty) = hir_ty.to_opt() {
-        let ty = lower_hir_ty(db, hir_ty, scope, PredicateListId::empty_list(db)); // root scope!
+        let ty = lower_hir_ty(db, hir_ty, scope, assumptions); // root scope!
         Ok(TyId::foldl(db, ty, args))
     } else {
         Err(PathResError::parse_err(path))

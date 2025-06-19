@@ -266,9 +266,10 @@ fn compare_constraints<'db>(
     map_to_impl: &[TyId<'db>],
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
-    let impl_m_constraints = collect_func_def_constraints(db, impl_m, false).instantiate_identity();
+    let impl_m_constraints =
+        collect_func_def_constraints(db, impl_m.hir_def(db), false).instantiate_identity();
     let trait_m_constraints =
-        collect_func_def_constraints(db, trait_m, false).instantiate(db, map_to_impl);
+        collect_func_def_constraints(db, trait_m.hir_def(db), false).instantiate(db, map_to_impl);
     let mut unsatisfied_goals = ThinVec::new();
     for &goal in impl_m_constraints.list(db) {
         let canonical_goal = Canonical::new(db, goal);

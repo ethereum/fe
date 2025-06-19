@@ -24,9 +24,11 @@ pub fn collect_ty_lower_errors<'db>(
     scope: ScopeId<'db>,
     hir_ty: TypeId<'db>,
     span: LazyTySpan<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
     let mut vis = HirTyErrVisitor {
         db,
+        assumptions,
         diags: Vec::new(),
     };
     let mut ctxt = VisitorCtxt::new(db, scope, span);
@@ -37,6 +39,7 @@ pub fn collect_ty_lower_errors<'db>(
 struct HirTyErrVisitor<'db> {
     db: &'db dyn HirAnalysisDb,
     diags: Vec<TyDiagCollection<'db>>,
+    assumptions: PredicateListId<'db>,
 }
 
 impl<'db> HirTyErrVisitor<'db> {
@@ -49,12 +52,7 @@ impl<'db> HirTyErrVisitor<'db> {
 
 impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, hir_ty: TypeId<'db>) {
-        let ty = lower_hir_ty(
-            self.db,
-            hir_ty,
-            ctxt.scope(),
-            crate::ty::trait_resolution::PredicateListId::empty_list(self.db),
-        );
+        let ty = lower_hir_ty(self.db, hir_ty, ctxt.scope(), self.assumptions);
 
         // This will report errors with nested types that are fundamental to the nested type,
         // but will not catch cases where the nested type is fine on its own, but incompatible
@@ -108,7 +106,7 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             self.db,
             path,
             scope,
-            PredicateListId::empty_list(self.db),
+            self.assumptions,
             false,
             &mut check_visibility,
         ) {
