@@ -14,11 +14,12 @@ use resolver::{
     ingot::{source_files::SourceFiles, Ingot, IngotResolver},
     Resolver,
 };
+use tracing::{error, warn};
 use url::Url;
 
 pub fn run(opts: &Options) {
     match &opts.command {
-        Command::Build => eprintln!("`fe build` doesn't work at the moment"),
+        Command::Build => warn!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
             let mut db = DriverDataBase::default();
             let mut ingot_resolver = IngotResolver::default();
@@ -36,9 +37,9 @@ pub fn run(opts: &Options) {
                         let core_base_url = Url::parse("core-ingot:///").unwrap();
                         let diagnostics = ingot_resolver.take_diagnostics();
                         if !diagnostics.is_empty() {
-                            eprintln!("an error was encountered while resolving `{core_path}`");
+                            error!("an error was encountered while resolving `{core_path}`");
                             for diagnostic in diagnostics {
-                                eprintln!("{diagnostic}")
+                                error!("{diagnostic}")
                             }
                             std::process::exit(2)
                         }
@@ -61,19 +62,19 @@ pub fn run(opts: &Options) {
                         core_base_url
                     }
                     Ok(Ingot::SingleFile { .. }) => {
-                        eprintln!("standalone core ingot not supported");
+                        error!("standalone core ingot not supported");
                         std::process::exit(2)
                     }
                     Ok(_) => {
-                        eprintln!("an error was encountered while resolving `{core_path}`");
+                        error!("an error was encountered while resolving `{core_path}`");
                         for diagnostic in ingot_resolver.take_diagnostics() {
-                            eprintln!("{diagnostic}")
+                            error!("{diagnostic}")
                         }
                         std::process::exit(2)
                     }
                     Err(error) => {
-                        eprintln!("an error was encountered while resolving `{core_path}`");
-                        eprintln!("{error}");
+                        error!("an error was encountered while resolving `{core_path}`");
+                        error!("{error}");
                         std::process::exit(2)
                     }
                 }
@@ -95,9 +96,9 @@ pub fn run(opts: &Options) {
 
                     let diagnostics = ingot_resolver.take_diagnostics();
                     if !diagnostics.is_empty() {
-                        eprintln!("an error was encountered while resolving `{path}`");
+                        error!("an error was encountered while resolving `{path}`");
                         for diagnostic in diagnostics {
-                            eprintln!("{diagnostic}")
+                            error!("{diagnostic}")
                         }
                         std::process::exit(2)
                     }
@@ -124,12 +125,12 @@ pub fn run(opts: &Options) {
                 }
                 Ok(_) => {
                     for diagnostic in ingot_resolver.take_diagnostics() {
-                        eprintln!("{diagnostic}")
+                        error!("{diagnostic}")
                     }
                     std::process::exit(2)
                 }
                 Err(error) => {
-                    eprintln!("{error}: {path}");
+                    error!("{error}: {path}");
                     std::process::exit(2)
                 }
             };
@@ -144,7 +145,7 @@ pub fn run(opts: &Options) {
                 std::process::exit(1);
             }
         }
-        Command::New => eprintln!("`fe new` doesn't work at the moment"),
+        Command::New => warn!("`fe new` doesn't work at the moment"),
     }
 }
 

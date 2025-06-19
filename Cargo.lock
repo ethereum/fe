@@ -791,6 +791,7 @@ version = "0.26.0"
 dependencies = [
  "clap",
  "fe-driver",
+ "tracing",
 ]
 
 [[package]]
@@ -803,6 +804,7 @@ dependencies = [
  "fe-driver",
  "fe-hir-analysis",
  "fe-parser",
+ "tracing",
  "url",
  "walkdir",
 ]
@@ -842,6 +844,7 @@ dependencies = [
  "fe-test-utils",
  "salsa",
  "smol_str",
+ "tracing",
  "url",
 ]
 
@@ -862,6 +865,7 @@ dependencies = [
  "salsa",
  "smallvec 2.0.0-alpha.10",
  "thin-vec",
+ "tracing",
  "url",
 ]
 
@@ -958,6 +962,7 @@ dependencies = [
  "serde-semver",
  "smol_str",
  "toml",
+ "tracing",
 ]
 
 [[package]]
@@ -983,6 +988,7 @@ dependencies = [
  "fe-hir",
  "fe-hir-analysis",
  "fe-test-utils",
+ "tracing",
  "url",
  "wasm-bindgen-test",
 ]

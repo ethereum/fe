@@ -144,6 +144,7 @@ mod tests {
     use service::LspActorService;
     use std::ops::ControlFlow;
     use tower::Service;
+    use tracing::info;
 
     #[derive(Debug)]
     enum Initialize {}
@@ -180,7 +181,7 @@ mod tests {
             state: &mut TestState,
             _: InitializeParams,
         ) -> Result<InitializeResult, ResponseError> {
-            eprintln!("Handling initialize request");
+            info!("Handling initialize request");
             state.initialized = true;
             Ok(InitializeResult::default())
         }
@@ -190,7 +191,7 @@ mod tests {
         service.handle_request_mut::<Initialize>(handle_initialize);
 
         async fn handle_initialized(state: &mut TestState, _: ()) -> Result<(), ResponseError> {
-            println!("Handling initialized notification");
+            info!("Handling initialized notification");
             assert!(state.initialized, "State should be initialized");
             Ok(())
         }
@@ -204,7 +205,7 @@ mod tests {
             serde_json::to_value(init_params).unwrap(),
         );
 
-        println!("Sending initialize request");
+        info!("Sending initialize request");
 
         let init_result = service.call(init_request).await.unwrap();
 
@@ -216,7 +217,7 @@ mod tests {
         // Test initialized notification
         let init_notification = AnyNotification::stub(Initialized::METHOD.to_string(), json!(null));
 
-        println!("Sending initialized notification");
+        info!("Sending initialized notification");
         if let ControlFlow::Break(Err(e)) = service.notify(init_notification) {
             panic!("Failed to send Initialized notification: {:?}", e);
         }

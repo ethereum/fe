@@ -6,6 +6,7 @@ use common::{
 };
 use cranelift_entity::{entity_impl, EntityRef, PrimaryMap};
 use salsa::Update;
+use tracing::error;
 
 use super::{IdentId, TopLevelMod};
 use crate::{lower::map_file_to_mod_impl, HirDb};
@@ -235,10 +236,10 @@ impl<'db> ModuleTreeBuilder<'db> {
 
     fn build_tree(&mut self) {
         let root = self.ingot.root_file(self.db).unwrap_or_else(|_| {
-            eprintln!("ingot root file is missing");
-            eprintln!("Files in ingot:");
+            error!("ingot root file is missing");
+            error!("Files in ingot:");
             for (url, file) in self.ingot.files(self.db).iter() {
-                eprintln!("  {}: {:?}", url, file.path(self.db));
+                error!("  {}: {:?}", url, file.path(self.db));
             }
             panic!("ingot root file is missing");
         });

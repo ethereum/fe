@@ -4,6 +4,7 @@ use serde::Deserialize;
 use smol_str::SmolStr;
 use std::{fmt, fs, mem};
 use toml::{self, Table};
+use tracing::warn;
 
 use crate::Resolver;
 
@@ -75,7 +76,7 @@ impl Resolver for ConfigResolver {
             };
 
             if raw_config.dependencies.is_some() {
-                eprintln!("ingot dependencies are not yet supported")
+                warn!("ingot dependencies are not yet supported")
             }
 
             Ok(IngotMetadata { name, version })

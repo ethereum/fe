@@ -1,3 +1,5 @@
+use tracing::info;
+
 fn main() {
-    eprintln!("run `cargo bench`");
+    info!("run `cargo bench`");
 }
