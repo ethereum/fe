@@ -1,7 +1,7 @@
 trait Add<T> {
     type Output
 
-    fn add(self, _ other: T) -> Self::Output // TODO: fix 'not found' error
+    fn add(self, _ other: T) -> Self::Output
 }
 
 struct Val {

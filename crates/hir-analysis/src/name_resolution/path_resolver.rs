@@ -575,9 +575,7 @@ fn find_associated_type<'db>(
     let ingot = scope.ingot(db);
 
     // Case 1: ty is a concrete type or can be resolved to concrete impls.
-    // This part attempts to find associated types from concrete `impl` blocks.
     for implementor in impls_for_ty(db, ingot, ty).iter() {
-        // Create a fresh unification table for this specific implementor candidate.
         let mut table = UnificationTable::new(db);
 
         // Instantiate the LHS type `ty` with fresh unification variables if it's generic.
@@ -586,17 +584,16 @@ fn find_associated_type<'db>(
         // Instantiate the implementor with fresh unification variables for its generic parameters.
         let implementor_instance = table.instantiate_with_fresh_vars(*implementor);
 
-        // Try to unify the LHS type with the self type of the implementor.
         if table
             .unify(lhs_ty_instance, implementor_instance.self_ty(db))
             .is_ok()
         {
             // If unification succeeds, the implementor's generic parameters are now (potentially)
             // bound to parts of `lhs_ty_instance`.
-            if let Some(assoc_ty_template) = implementor_instance.types(db).get(&name) {
+            if let Some(ty) = implementor_instance.types(db).get(&name) {
                 // The associated type from the `impl` block might itself contain generic parameters
                 // from the `impl` block. These need to be substituted based on the unification outcome.
-                candidates.insert(assoc_ty_template.fold_with(&mut table));
+                candidates.insert(ty.fold_with(&mut table));
             }
         }
     }
