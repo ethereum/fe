@@ -5,7 +5,7 @@ use async_lsp::{
     lsp_types::{
         Hover, HoverParams, InitializeParams, InitializeResult, InitializedParams, LogMessageParams,
     },
-    LanguageClient, ResponseError,
+    ErrorCode, LanguageClient, ResponseError,
 };
 
 use common::InputDb;
@@ -154,12 +154,27 @@ pub async fn handle_file_change(
     backend: &mut Backend,
     message: FileChange,
 ) -> Result<(), ResponseError> {
-    let path = message
-        .uri
-        .to_file_path()
-        .unwrap_or_else(|_| panic!("Failed to convert URI to path: {:?}", message.uri));
+    let path = match message.uri.to_file_path() {
+        Ok(p) => p,
+        Err(_) => {
+            error!("Failed to convert URI to path: {:?}", message.uri);
+            return Err(ResponseError::new(
+                ErrorCode::INVALID_PARAMS,
+                format!("Invalid file URI: {}", message.uri),
+            ));
+        }
+    };
 
-    let path = path.to_str().unwrap();
+    let path = match path.to_str() {
+        Some(p) => p,
+        None => {
+            error!("Path contains invalid UTF-8: {:?}", path);
+            return Err(ResponseError::new(
+                ErrorCode::INVALID_PARAMS,
+                "Path contains invalid UTF-8".to_string(),
+            ));
+        }
+    };
 
     match message.kind {
         ChangeKind::Open(contents) => {
@@ -173,7 +188,13 @@ pub async fn handle_file_change(
         }
         ChangeKind::Create => {
             info!("file created: {:?}", &path);
-            let contents = tokio::fs::read_to_string(&path).await.unwrap();
+            let contents = match tokio::fs::read_to_string(&path).await {
+                Ok(c) => c,
+                Err(e) => {
+                    error!("Failed to read file {}: {}", path, e);
+                    return Ok(());
+                }
+            };
             if let Ok(url) = url::Url::from_file_path(path) {
                 backend
                     .db
@@ -186,7 +207,13 @@ pub async fn handle_file_change(
             let contents = if let Some(text) = contents {
                 text
             } else {
-                tokio::fs::read_to_string(&path).await.unwrap()
+                match tokio::fs::read_to_string(&path).await {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to read file {}: {}", path, e);
+                        return Ok(());
+                    }
+                }
             };
             if let Ok(url) = url::Url::from_file_path(path) {
                 backend
@@ -238,7 +265,9 @@ pub async fn handle_files_need_diagnostics(
                 version: None,
             };
             info!("Publishing diagnostics for URI: {:?}", uri);
-            client.publish_diagnostics(diagnostics_params).unwrap();
+            let _ = client
+                .publish_diagnostics(diagnostics_params)
+                .map_err(|e| error!("Failed to publish diagnostics for {}: {:?}", uri, e));
         }
     }
     Ok(())
@@ -270,4 +299,9 @@ pub async fn handle_hover_request(
     });
     info!("sending hover response: {:?}", response);
     Ok(response)
+}
+
+pub async fn handle_shutdown(_backend: &Backend, _message: ()) -> Result<(), ResponseError> {
+    info!("received shutdown request");
+    Ok(())
 }
