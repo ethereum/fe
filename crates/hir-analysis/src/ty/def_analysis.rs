@@ -246,12 +246,6 @@ impl<'db> DefAnalyzer<'db> {
     fn for_trait(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
         let def = lower_trait(db, trait_);
         let assumptions = collect_constraints(db, trait_.into()).instantiate_identity();
-
-        eprintln!(
-            "DefAnalyzer::for_trait({:?}) assumptions: {}",
-            trait_.name(db).to_opt().map(|i| i.data(db)),
-            assumptions.pretty_print(db)
-        );
         Self {
             db,
             def: def.into(),
@@ -1355,6 +1349,7 @@ impl<'db> ImplTraitMethodAnalyzer<'db> {
                 *impl_m,
                 *trait_m,
                 self.implementor.trait_(self.db),
+                self.implementor,
                 &mut self.diags,
             );
 

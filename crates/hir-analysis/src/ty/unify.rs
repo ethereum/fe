@@ -115,13 +115,6 @@ where
     /// automatically when unification fails.
     fn unify_ty(&mut self, ty1: TyId<'db>, ty2: TyId<'db>) -> UnificationResult {
         if !ty1.kind(self.db).does_match(ty2.kind(self.db)) {
-            eprintln!(
-                "kind mismatch! {} ({}) vs {} ({})",
-                ty1.pretty_print(self.db),
-                ty1.kind(self.db),
-                ty2.pretty_print(self.db),
-                ty2.kind(self.db),
-            );
             return Err(UnificationError::TypeMismatch);
         }
 
