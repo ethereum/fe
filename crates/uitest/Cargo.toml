@@ -17,3 +17,4 @@ test-utils.workspace = true
 hir.workspace = true
 hir-analysis.workspace = true
 common.workspace = true
+tracing.workspace = true

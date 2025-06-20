@@ -30,6 +30,7 @@ use hir::{
 };
 use rustc_hash::FxHashMap;
 use test_utils::url_utils::UrlExt;
+use tracing::error;
 use url::Url;
 
 type CodeSpanFileId = usize;
@@ -81,7 +82,7 @@ impl HirAnalysisTestDb {
                 let cs_diag = &diag.to_cs(self);
                 term::emit(&mut buffer, &config, &CsDbWrapper(self), cs_diag).unwrap();
             }
-            eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
+            error!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 
             panic!("this module contains errors");
         }

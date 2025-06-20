@@ -8,6 +8,7 @@ use fe_parser::{
     syntax_node::SyntaxNode,
     SyntaxKind,
 };
+use tracing::error;
 
 type BoxedParseFn = Box<dyn Fn(&mut Parser<lexer::Lexer>)>;
 pub struct TestRunner {
@@ -90,7 +91,7 @@ impl TestRunner {
         let (cst, errors) = parser.finish_to_node();
 
         for error in &errors {
-            println!("{}@{:?}", error.msg(), error.range());
+            error!("{}@{:?}", error.msg(), error.range());
         }
         if self.should_success {
             assert! {errors.is_empty()}

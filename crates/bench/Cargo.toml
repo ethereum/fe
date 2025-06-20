@@ -14,6 +14,7 @@ parser.workspace = true
 common.workspace = true
 camino.workspace = true
 url.workspace = true
+tracing.workspace = true
 
 [[bench]]
 name = "analysis"
