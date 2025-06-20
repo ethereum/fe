@@ -1,5 +1,5 @@
-use tracing::info;
+use tracing::error;
 
 fn main() {
-    info!("run `cargo bench`");
+    error!("run `cargo bench`");
 }

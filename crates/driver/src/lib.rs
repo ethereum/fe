@@ -14,12 +14,12 @@ use resolver::{
     ingot::{source_files::SourceFiles, Ingot, IngotResolver},
     Resolver,
 };
-use tracing::{error, warn};
+use tracing::error;
 use url::Url;
 
 pub fn run(opts: &Options) {
     match &opts.command {
-        Command::Build => warn!("`fe build` doesn't work at the moment"),
+        Command::Build => error!("`fe build` doesn't work at the moment"),
         Command::Check { path, core } => {
             let mut db = DriverDataBase::default();
             let mut ingot_resolver = IngotResolver::default();
@@ -145,7 +145,7 @@ pub fn run(opts: &Options) {
                 std::process::exit(1);
             }
         }
-        Command::New => warn!("`fe new` doesn't work at the moment"),
+        Command::New => error!("`fe new` doesn't work at the moment"),
     }
 }
 
