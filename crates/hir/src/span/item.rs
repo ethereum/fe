@@ -208,11 +208,12 @@ define_lazy_span_node!(
 define_lazy_span_node!(
     LazyTraitTypeSpan,
     ast::TraitTypeItem,
+    @token {
+        (name, name),
+    }
     @node {
-// xxx
-//        (attributes, attr_list, LazyAttrListSpan),
-//        (generic_params, generic_params, LazyGenericParamListSpan),
-//        (where_clause, where_clause, LazyWhereClauseSpan),
+        (ty, ty, LazyTySpan),
+        (attributes, attr_list, LazyAttrListSpan),
     }
 );
 
@@ -225,11 +226,16 @@ define_lazy_span_node!(
         (where_clause, where_clause, LazyWhereClauseSpan),
         (trait_ref, trait_ref, LazyTraitRefSpan),
         (ty, ty, LazyTySpan),
+        (item_list, item_list, LazyTraitItemListSpan),
     }
 );
 impl<'db> LazyImplTraitSpan<'db> {
     pub fn new(i: ImplTrait<'db>) -> Self {
         Self(crate::span::transition::SpanTransitionChain::new(i))
+    }
+
+    pub fn associated_type(self, idx: usize) -> LazyTraitTypeSpan<'db> {
+        self.item_list().assoc_type(idx)
     }
 }
 

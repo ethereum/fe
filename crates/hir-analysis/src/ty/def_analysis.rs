@@ -1256,7 +1256,7 @@ fn analyze_impl_trait_specific_error<'db>(
         collect_constraints(db, trait_def.trait_(db).into()).instantiate(db, trait_inst.args(db));
     let assumptions = implementor.instantiate_identity().constraints(db);
 
-    let mut is_satisfied = |goal: TraitInstId<'db>, span: DynLazySpan<'db>| {
+    let is_satisfied = |goal: TraitInstId<'db>, span: DynLazySpan<'db>, diags: &mut Vec<_>| {
         let canonical_goal = Canonicalized::new(db, goal);
         match is_goal_satisfiable(db, impl_trait_ingot, canonical_goal.value, assumptions) {
             GoalSatisfiability::Satisfied(_) | GoalSatisfiability::ContainsInvalid => {}
@@ -1278,7 +1278,7 @@ fn analyze_impl_trait_specific_error<'db>(
     let trait_ref_span: DynLazySpan = impl_trait.span().trait_ref().into();
 
     for &goal in trait_constraints.list(db) {
-        is_satisfied(goal, trait_ref_span.clone());
+        is_satisfied(goal, trait_ref_span.clone(), &mut diags);
     }
 
     // 7. Checks if the implementor ty satisfies the super trait constraints.
@@ -1286,7 +1286,58 @@ fn analyze_impl_trait_specific_error<'db>(
 
     for &super_trait in trait_def.super_traits(db) {
         let super_trait = super_trait.instantiate(db, trait_inst.args(db));
-        is_satisfied(super_trait, target_ty_span.clone())
+        is_satisfied(super_trait, target_ty_span.clone(), &mut diags)
+    }
+
+    // 8. Check that all required associated types are implemented,
+    //    and that they satisfy their bounds
+    let trait_hir = trait_def.trait_(db);
+    let impl_types = implementor.instantiate_identity().types(db);
+    for assoc_type in trait_hir.types(db).iter() {
+        let Some(name) = assoc_type.name.to_opt() else {
+            continue;
+        };
+
+        let impl_ty = impl_types.get(&name);
+        if impl_ty.is_none() && assoc_type.default.is_none() {
+            diags.push(
+                ImplDiag::MissingAssociatedType {
+                    primary: impl_trait.span().ty().into(),
+                    type_name: name,
+                    trait_: trait_hir,
+                }
+                .into(),
+            );
+        }
+        let Some(&impl_ty) = impl_ty else {
+            continue;
+        };
+
+        // Check each bound on the associated type
+        for bound in &assoc_type.bounds {
+            match bound {
+                hir::hir_def::TypeBound::Trait(trait_ref) => {
+                    // Lower the trait reference with the implemented type as self
+                    match lower_trait_ref(db, impl_ty, *trait_ref, impl_trait.scope(), assumptions)
+                    {
+                        Ok(trait_inst) => {
+                            let assoc_ty_span = impl_trait
+                                .associated_type_span(db, name)
+                                .map(|span| span.ty().into())
+                                .unwrap_or_else(|| impl_trait.span().ty().into());
+
+                            is_satisfied(trait_inst, assoc_ty_span, &mut diags);
+                        }
+                        Err(_) => {
+                            // errors in lowering should be reported elsewhere
+                        }
+                    }
+                }
+                hir::hir_def::TypeBound::Kind(_) => {
+                    todo!("kind bounds on associated types")
+                }
+            }
+        }
     }
 
     if diags.is_empty() {

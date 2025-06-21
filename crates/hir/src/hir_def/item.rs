@@ -20,7 +20,7 @@ use crate::{
         item::{
             LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFuncSpan, LazyImplSpan,
             LazyImplTraitSpan, LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan,
-            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefSpan,
+            LazyTraitSpan, LazyTraitTypeSpan, LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefSpan,
         },
         params::{LazyGenericParamListSpan, LazyWhereClauseSpan},
         DynLazySpan, HirOrigin,
@@ -917,6 +917,17 @@ impl<'db> ImplTrait<'db> {
         LazyImplTraitSpan::new(self)
     }
 
+    pub fn associated_type_span(
+        self,
+        db: &'db dyn HirDb,
+        name: IdentId<'db>,
+    ) -> Option<LazyTraitTypeSpan<'db>> {
+        self.types(db)
+            .iter()
+            .position(|t| t.name.to_opt() == Some(name))
+            .map(|idx| self.span().associated_type(idx))
+    }
+
     pub fn children_non_nested(
         self,
         db: &'db dyn HirDb,
@@ -938,7 +949,7 @@ impl<'db> ImplTrait<'db> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub struct ImplTraitType<'db> {
     pub name: Partial<IdentId<'db>>,
     pub ty: Partial<TypeId<'db>>,
