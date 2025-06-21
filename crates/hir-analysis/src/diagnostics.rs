@@ -2143,6 +2143,26 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                     error_code,
                 }
             }
+
+            Self::MissingAssociatedType {
+                primary,
+                type_name,
+                trait_,
+            } => CompleteDiagnostic {
+                severity,
+                message: "missing associated type in trait implementation".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "missing associated type `{}` from trait `{}`",
+                        type_name.data(db),
+                        trait_.name(db).unwrap().data(db)
+                    ),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![],
+                error_code,
+            },
         }
     }
 }

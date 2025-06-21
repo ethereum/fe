@@ -18,3 +18,13 @@ impl Abi for SolAbi {
     type Selector = [u8; 4]   // Doesn't impl Encode<SolAbi>
     type Encoder = SolEncoder // Doesn't impl AbiEncoder
 }
+
+struct Complex<S, E> {}
+impl<S, E> Abi for Complex<S, E>
+where
+    // S: Encode<Complex<S, E>>,
+    E: AbiEncoder
+{
+    type Selector = S
+    type Encoder = E
+}

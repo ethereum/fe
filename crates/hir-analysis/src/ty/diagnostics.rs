@@ -591,6 +591,12 @@ pub enum ImplDiag<'db> {
         ty: String,
         is_nominal: bool,
     },
+
+    MissingAssociatedType {
+        primary: DynLazySpan<'db>,
+        type_name: IdentId<'db>,
+        trait_: Trait<'db>,
+    },
 }
 
 impl ImplDiag<'_> {
@@ -608,6 +614,7 @@ impl ImplDiag<'_> {
             Self::MethodStricterBound { .. } => 9,
             Self::InvalidSelfType { .. } => 10,
             Self::InherentImplIsNotAllowed { .. } => 11,
+            Self::MissingAssociatedType { .. } => 12,
         }
     }
 }
