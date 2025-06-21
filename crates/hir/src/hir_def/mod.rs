@@ -81,7 +81,7 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
         self.dependencies(db)
             .iter()
             .filter_map(|(name, url)| {
-                self.index(db)
+                db.workspace()
                     .containing_ingot(db, url)
                     .map(|ingot_description| (IdentId::new(db, name.as_str()), ingot_description))
             })

@@ -125,7 +125,6 @@ impl Workspace {
 mod tests {
     use super::*;
     use common::ingot::IngotKind;
-    use common::ingot::Version;
     use common::InputDb;
     use hir::lower::map_file_to_mod;
     use std::fs::create_dir_all;
@@ -201,18 +200,10 @@ mod tests {
 
         // Verify that the ingot metadata is the default, as we are not parsing fe.toml for it
         if let Some(ingot) = ingot1_desc {
-            assert_eq!(
-                ingot.version(&db).unwrap(),
-                Version::new(0, 0, 0),
-                "Ingot1 version should be default"
-            );
+            assert_eq!(ingot.version(&db), None, "Ingot1 version should be default");
         }
         if let Some(ingot) = ingot2_desc {
-            assert_eq!(
-                ingot.version(&db).unwrap(),
-                Version::new(0, 0, 0),
-                "Ingot2 version should be default"
-            );
+            assert_eq!(ingot.version(&db), None, "Ingot2 version should be default");
         }
 
         // Check that files were discovered
