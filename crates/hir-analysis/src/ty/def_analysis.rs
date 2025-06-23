@@ -6,8 +6,8 @@ use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
         scope_graph::ScopeId, EnumVariant, FieldDef, FieldParent, Func, GenericParam, IdentId,
-        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeBound, TypeId as HirTyId,
-        VariantKind,
+        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeBound,
+        TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
@@ -149,16 +149,16 @@ pub fn analyze_trait<'db>(
 ) -> Vec<TyDiagCollection<'db>> {
     let analyzer = DefAnalyzer::for_trait(db, trait_);
     let mut diags = analyzer.analyze();
-    
+
     // Check associated type defaults satisfy their bounds
     let _trait_def = lower_trait(db, trait_);
     let assumptions = collect_constraints(db, trait_.into()).instantiate_identity();
-    
-    for (_idx, assoc_type) in trait_.types(db).iter().enumerate() {
+
+    for assoc_type in trait_.types(db) {
         if let Some(default_ty) = assoc_type.default {
             // Lower the default type
             let default_ty = lower_hir_ty(db, default_ty, trait_.scope(), assumptions);
-            
+
             // Check each bound on the associated type
             for bound in &assoc_type.bounds {
                 if let TypeBound::Trait(trait_ref) = bound {
@@ -167,7 +167,12 @@ pub fn analyze_trait<'db>(
                         Ok(trait_inst) => {
                             // Check if the default type satisfies the trait bound
                             let canonical_inst = Canonical::new(db, trait_inst);
-                            match is_goal_satisfiable(db, trait_.top_mod(db).ingot(db), canonical_inst, assumptions) {
+                            match is_goal_satisfiable(
+                                db,
+                                trait_.top_mod(db).ingot(db),
+                                canonical_inst,
+                                assumptions,
+                            ) {
                                 GoalSatisfiability::Satisfied(_) => continue,
                                 GoalSatisfiability::UnSat(subgoal) => {
                                     // Report error: default type doesn't satisfy the bound
@@ -195,7 +200,7 @@ pub fn analyze_trait<'db>(
             }
         }
     }
-    
+
     diags
 }
 
@@ -1341,7 +1346,7 @@ fn analyze_impl_trait_specific_error<'db>(
     //    and that they satisfy their bounds
     let trait_hir = trait_def.trait_(db);
     let impl_types = implementor.instantiate_identity().types(db);
-    for assoc_type in trait_hir.types(db).iter() {
+    for assoc_type in trait_hir.types(db) {
         let Some(name) = assoc_type.name.to_opt() else {
             continue;
         };
