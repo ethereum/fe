@@ -20,3 +20,11 @@ error[6-0003]: trait bound is not satisfied
    │
 28 │     type Selector = S
    │                     ^ `S` doesn't implement `Encode<Complex<S, E>>`
+
+error[6-0003]: trait bound is not satisfied
+   ┌─ assoc_ty.fe:34:1
+   │  
+34 │ ╭ trait Tr1 {
+35 │ │     type Foo: Tr2 = FooDefault
+36 │ │ }
+   │ ╰─^ `FooDefault` doesn't implement `Tr2`
