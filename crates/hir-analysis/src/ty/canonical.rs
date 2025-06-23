@@ -44,7 +44,7 @@ where
     {
         assert!(table.is_empty());
 
-        for var in collect_variables(table.db, &self.value).iter() {
+        for var in collect_variables(table.db, &self.value) {
             table.new_var(var.sort, &var.kind);
         }
 

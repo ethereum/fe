@@ -575,7 +575,7 @@ fn find_associated_type<'db>(
     let ingot = scope.ingot(db);
 
     // Case 1: ty is a concrete type or can be resolved to concrete impls.
-    for implementor in impls_for_ty(db, ingot, ty).iter() {
+    for implementor in impls_for_ty(db, ingot, ty) {
         let mut table = UnificationTable::new(db);
 
         // Instantiate the LHS type `ty` with fresh unification variables if it's generic.
@@ -603,7 +603,7 @@ fn find_associated_type<'db>(
     if let TyData::TyParam(_) = ty.value.data(db) {
         // Check if the canonical value is a TyParam
 
-        for &predicate_trait_inst in assumptions.list(db).iter() {
+        for &predicate_trait_inst in assumptions.list(db) {
             // `predicate_trait_inst` is a specific trait bound, e.g., `A: Abi` or `S<A>: SomeTrait`.
             // It has `def` (the TraitDef) and `args` (the actual types for Self, generics, and resolved associated types).
 
@@ -631,7 +631,7 @@ fn find_associated_type<'db>(
                     candidates.insert(actual_assoc_ty_in_bound.fold_with(&mut table));
                 } else {
                     // If no explicit binding is found, check if the trait declares this associated type
-                    for trait_type in trait_def_of_bound.trait_(db).types(db).iter() {
+                    for trait_type in trait_def_of_bound.trait_(db).types(db) {
                         if trait_type.name.to_opt() == Some(name) {
                             // Create an associated type for this trait bound
                             let assoc_ty_id = TyId::new(
