@@ -17,3 +17,4 @@ toml = "0.8"
 serde = { version = "1", features = ["derive"] }
 smol_str.workspace = true
 tracing.workspace = true
+url.workspace = true
