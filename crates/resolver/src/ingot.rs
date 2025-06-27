@@ -1,9 +1,9 @@
 use std::{fmt, fs};
 
 use camino::Utf8PathBuf;
-use common::config::IngotMetadata;
 use config::ConfigResolver;
 use source_files::{SourceFiles, SourceFilesResolver};
+use url::Url;
 
 use crate::Resolver;
 
@@ -13,11 +13,11 @@ pub mod source_files;
 #[derive(Debug)]
 pub enum Ingot {
     SingleFile {
-        path: Utf8PathBuf,
+        url: Url,
         content: String,
     },
     Folder {
-        config: Option<IngotMetadata>,
+        config: Option<String>,
         source_files: Option<SourceFiles>,
     },
 }
@@ -25,7 +25,6 @@ pub enum Ingot {
 #[derive(Debug)]
 pub enum Diagnostic {
     ConfigError(config::Error),
-    ConfigDiagnostics(Vec<config::Diagnostic>),
     SourceFilesError(source_files::Error),
     SourceFilesDiagnostics(Vec<source_files::Diagnostic>),
 }
@@ -42,18 +41,20 @@ pub struct IngotResolver {
 }
 
 impl Resolver for IngotResolver {
-    type Description = Utf8PathBuf;
+    type Description = Url;
     type Resource = Ingot;
     type Error = Error;
     type Diagnostic = Diagnostic;
 
-    fn resolve(&mut self, ingot_path: &Utf8PathBuf) -> Result<Ingot, Error> {
+    fn resolve(&mut self, ingot_url: &Url) -> Result<Ingot, Error> {
+        let ingot_path = Utf8PathBuf::from(ingot_url.path());
+
         if ingot_path.exists() {
             if ingot_path.is_dir() {
-                let mut config_resolver = ConfigResolver::default();
+                let mut config_resolver = ConfigResolver;
                 let mut source_files_resolver = SourceFilesResolver::default();
 
-                let config = match config_resolver.resolve(ingot_path) {
+                let config = match config_resolver.resolve(ingot_url) {
                     Ok(config) => Some(config),
                     Err(error) => {
                         self.diagnostics.push(Diagnostic::ConfigError(error));
@@ -61,7 +62,7 @@ impl Resolver for IngotResolver {
                     }
                 };
 
-                let source_files = match source_files_resolver.resolve(ingot_path) {
+                let source_files = match source_files_resolver.resolve(ingot_url) {
                     Ok(source_files) => Some(source_files),
                     Err(error) => {
                         self.diagnostics.push(Diagnostic::SourceFilesError(error));
@@ -69,13 +70,7 @@ impl Resolver for IngotResolver {
                     }
                 };
 
-                let config_diags = config_resolver.take_diagnostics();
                 let source_files_diags = source_files_resolver.take_diagnostics();
-
-                if !config_diags.is_empty() {
-                    self.diagnostics
-                        .push(Diagnostic::ConfigDiagnostics(config_diags));
-                }
 
                 if !source_files_diags.is_empty() {
                     self.diagnostics
@@ -89,7 +84,7 @@ impl Resolver for IngotResolver {
             } else {
                 match fs::read_to_string(ingot_path) {
                     Ok(content) => Ok(Ingot::SingleFile {
-                        path: ingot_path.clone(),
+                        url: ingot_url.clone(),
                         content,
                     }),
                     Err(error) => Err(Error::SingleFileReadError(error)),
@@ -118,16 +113,12 @@ impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::ConfigError(error) => write!(f, "config resolution error: {error}"),
-            Self::ConfigDiagnostics(diagnostics) => {
-                writeln!(f, "unable to resolve config file due to the following:")?;
-                for diagnostic in diagnostics {
-                    writeln!(f, " {diagnostic}")?
-                }
-                Ok(())
-            }
             Self::SourceFilesError(error) => write!(f, "source files resolution error: {error}"),
             Self::SourceFilesDiagnostics(diagnostics) => {
-                writeln!(f, "unable to resolve source files due to the following:")?;
+                writeln!(
+                    f,
+                    "the following errors were encountered during source file resolution:"
+                )?;
                 for diagnostic in diagnostics {
                     writeln!(f, " {diagnostic}")?
                 }

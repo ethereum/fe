@@ -25,9 +25,11 @@ pub fn run(opts: &Options) {
             let mut ingot_resolver = IngotResolver::default();
 
             let core_ingot = if let Some(core_path) = core {
-                match ingot_resolver.resolve(core_path) {
+                let core_url = Url::from_directory_path(path).unwrap();
+
+                match ingot_resolver.resolve(&core_url) {
                     Ok(Ingot::Folder {
-                        config,
+                        config: _,
                         source_files:
                             Some(SourceFiles {
                                 root: Some(_root),
@@ -44,20 +46,9 @@ pub fn run(opts: &Options) {
                             std::process::exit(2)
                         }
                         let index = db.workspace();
-                        index.touch_ingot(
-                            &mut db,
-                            &core_base_url,
-                            config.expect("config is required"),
-                        );
-                        for (path, content) in files {
-                            index.touch(
-                                &mut db,
-                                url_from_file_path(
-                                    path.canonicalize().expect("Failed to canonicalize path"),
-                                )
-                                .expect("Failed to create URL"),
-                                Some(content),
-                            );
+                        index.touch_ingot(&mut db, &core_base_url);
+                        for (file_url, content) in files {
+                            index.touch(&mut db, file_url, Some(content));
                         }
                         core_base_url
                     }
@@ -82,9 +73,11 @@ pub fn run(opts: &Options) {
                 db.builtin_core().base(&db)
             };
 
-            let local_ingot = match ingot_resolver.resolve(path) {
+            let path_url = Url::from_directory_path(path).unwrap();
+
+            let local_ingot = match ingot_resolver.resolve(&path_url) {
                 Ok(Ingot::Folder {
-                    config,
+                    config: _,
                     source_files:
                         Some(SourceFiles {
                             root: Some(_root),
@@ -103,20 +96,13 @@ pub fn run(opts: &Options) {
                         std::process::exit(2)
                     }
                     let index = db.workspace();
-                    index.touch_ingot(&mut db, &base_url, config.expect("config is required"));
-                    for (path, content) in files {
-                        index.touch(
-                            &mut db,
-                            url_from_file_path(
-                                path.canonicalize().expect("Failed to canonicalize path"),
-                            )
-                            .expect("Failed to create URL"),
-                            Some(content),
-                        );
+                    index.touch_ingot(&mut db, &base_url);
+                    for (file_url, content) in files {
+                        index.touch(&mut db, file_url, Some(content));
                     }
                     base_url.ingot(&db).expect("Failed to find ingot")
                 }
-                Ok(Ingot::SingleFile { path, content }) => {
+                Ok(Ingot::SingleFile { url: _, content }) => {
                     let url = url_from_file_path(path.canonicalize_utf8().unwrap()).unwrap();
                     db.workspace().touch(&mut db, url.clone(), Some(content));
                     db.workspace()

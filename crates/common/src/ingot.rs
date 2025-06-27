@@ -1,10 +1,11 @@
+use core::panic;
+
 use camino::Utf8PathBuf;
 use radix_immutable::StringPrefixView;
-use serde::Serialize;
+use smol_str::SmolStr;
 use url::Url;
 
-use crate::config::IngotMetadata;
-// use crate::config::IngotManifest;
+use crate::config::{Config, DependencyDescription};
 use crate::core::BUILTIN_CORE_BASE_URL;
 use crate::file::{File, Workspace};
 use crate::urlext::UrlExt;
@@ -68,10 +69,7 @@ pub struct Ingot<'db> {
     pub standalone_file: Option<File>,
     #[tracked]
     pub index: Workspace,
-    pub version: Version,
     pub kind: IngotKind,
-    #[tracked]
-    pub dependencies: Vec<(String, Url)>,
 }
 
 #[derive(Debug)]
@@ -109,6 +107,76 @@ impl<'db> Ingot<'db> {
             // For regular ingots, use the ingot base URL
             db.workspace().items_at_base(db, self.base(db))
         }
+    }
+
+    #[salsa::tracked]
+    pub fn config(self, db: &'db dyn InputDb) -> Option<Config> {
+        db.workspace()
+            .containing_ingot_config(db, self.base(db))
+            .map(|config_file| Config::parse(config_file.text(db)).unwrap())
+    }
+
+    #[salsa::tracked]
+    pub fn version(self, db: &'db dyn InputDb) -> Option<Version> {
+        self.config(db)
+            .map(|config| config.metadata.version)
+            .flatten()
+    }
+
+    #[salsa::tracked]
+    pub fn dependencies(self, db: &'db dyn InputDb) -> Vec<(SmolStr, Url)> {
+        let base_url = self.base(db);
+        let mut deps = match self.config(db) {
+            Some(config) => config
+                .dependencies
+                .into_iter()
+                .map(|dependency| {
+                    let mut path = match dependency.description {
+                        DependencyDescription::Path(path) => path,
+                        DependencyDescription::PathWithParameters {
+                            path,
+                            parameters: _,
+                        } => path,
+                    };
+                    if !path.ends_with("/") {
+                        path.push("");
+                    }
+                    let url = base_url.join(path.as_str()).unwrap().directory().unwrap();
+                    (dependency.alias, url)
+                })
+                .collect(),
+            None => vec![],
+        };
+
+        if self.kind(db) != IngotKind::Core {
+            deps.push((
+                "core".into(),
+                Url::parse(BUILTIN_CORE_BASE_URL).expect("couldn't parse core ingot URL"),
+            ))
+        }
+        deps
+
+        // // Only include core dependency if not already in a core ingot
+        // let core_dependency = if self.kind(db) != IngotKind::Core {
+        //     vec![Dependency {
+        //         alias: "core".into(),
+        //         description: DependencyDescription {
+        //             url: Url::parse(BUILTIN_CORE_BASE_URL).expect("couldn't parse core ingot URL"),
+        //             arguments: None,
+        //         },
+        //     }]
+        // } else {
+        //     vec![]
+        // };
+        //
+        // match self.config(db) {
+        //     Some(config) => config
+        //         .dependencies
+        //         .into_iter()
+        //         .chain(core_dependency)
+        //         .collect(),
+        //     None => core_dependency,
+        // }
     }
 }
 
@@ -157,31 +225,17 @@ impl Workspace {
         containing_ingot_impl(db, self, location.clone())
     }
 
-    pub fn touch_ingot<'db>(
-        self,
-        db: &'db mut dyn InputDb,
-        base_url: &Url,
-        config: IngotMetadata,
-    ) -> Option<Ingot<'db>> {
+    pub fn touch_ingot<'db>(self, db: &'db mut dyn InputDb, base_url: &Url) -> Option<Ingot<'db>> {
         let base_dir = base_url
             .directory()
             .expect("Base URL should have a directory");
         let config_file = base_dir
             .join("fe.toml")
             .expect("Config file should be indexed");
-        // Wrap the config in a proper IngotConfig wrapper for serialization
-        let ingot_config = IngotConfig { ingot: config };
-        let config_toml = toml::to_string(&ingot_config).unwrap_or_default();
-        let config = self.touch(db, config_file, Some(config_toml));
+        let config = self.touch(db, config_file, None);
 
         config.containing_ingot(db)
     }
-}
-
-/// A wrapper struct to ensure the config is serialized with an [ingot] table
-#[derive(Serialize)]
-struct IngotConfig {
-    ingot: IngotMetadata,
 }
 
 /// Private helper to create canonical ingots for regular projects
@@ -191,26 +245,19 @@ pub(super) fn ingot_at_base_url<'db>(
     index: Workspace,
     base_url: Url,
 ) -> Ingot<'db> {
-    let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
+    let _core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
     let is_core = base_url.scheme().contains("core");
-    let dependencies = if is_core {
-        vec![]
-    } else {
-        vec![("core".into(), core_url)]
-    };
 
     let ingot = Ingot::new(
         db,
         base_url,
         None,
         index,
-        Version::new(1, 0, 0),
         if is_core {
             IngotKind::Core
         } else {
             IngotKind::Local
         },
-        dependencies,
     );
 
     // this is a sad necessity :(( for now
@@ -227,18 +274,9 @@ pub(super) fn standalone_ingot<'db>(
     base_url: Url,
     root_file: Option<File>,
 ) -> Ingot<'db> {
-    let core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
-    let dependencies = vec![("core".into(), core_url)];
+    let _core_url = Url::parse(BUILTIN_CORE_BASE_URL).expect("Failed to parse core URL");
 
-    let ingot = Ingot::new(
-        db,
-        base_url,
-        root_file,
-        index,
-        Version::new(0, 0, 0),
-        IngotKind::StandAlone,
-        dependencies,
-    );
+    let ingot = Ingot::new(db, base_url, root_file, index, IngotKind::StandAlone);
 
     // this is a sad necessity :(( for now
     let _ = ingot.files(db);
