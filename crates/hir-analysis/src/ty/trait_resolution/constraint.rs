@@ -2,6 +2,7 @@ use common::indexmap::{IndexMap, IndexSet};
 use hir::hir_def::{
     scope_graph::ScopeId, GenericParam, GenericParamOwner, ItemKind, TypeBound, WhereClauseId,
 };
+use itertools::Itertools;
 
 use crate::{
     ty::{
@@ -239,7 +240,11 @@ fn collect_constraints_from_where_clause<'db>(
             continue;
         };
 
-        let ty = lower_hir_ty(db, hir_ty, scope, PredicateListId::empty_list(db));
+        // TODO: this isn't sufficient; it requires a specific ordering of constraints.
+        //   eg. `where T: A, T::Atype: B` works,
+        //   but `where T::Atype: B, T: A` doesn't.
+        let assumptions_so_far = PredicateListId::new(db, predicates.iter().copied().collect_vec());
+        let ty = lower_hir_ty(db, hir_ty, scope, assumptions_so_far);
 
         // We don't need to collect super traits, please refer to
         // [`collect_super_traits`] function for details.
