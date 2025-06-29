@@ -173,9 +173,10 @@ note:
    │ ╭────────^
 43 │ │     let enc1 = SolAbi::Encoder::with_encoded_size(1024)
 44 │ │     let enc2 = SolEncoder::with_encoded_size(256)
-45 │ │     let selector = [0, 1, 2, 3]
-46 │ │     selector.encode(enc1)
-47 │ │ }
+45 │ │     let enc3: SolEncoder = AbiEncoder::with_encoded_size(128)
+46 │ │     let selector = [0, 1, 2, 3]
+47 │ │     selector.encode(enc1)
+48 │ │ }
    │ ╰─^ ()
 
 note: 
@@ -229,53 +230,77 @@ note:
 note: 
    ┌─ associated_types_cycle.fe:45:9
    │
-45 │     let selector = [0, 1, 2, 3]
+45 │     let enc3: SolEncoder = AbiEncoder::with_encoded_size(128)
+   │         ^^^^ SolEncoder
+
+note: 
+   ┌─ associated_types_cycle.fe:45:28
+   │
+45 │     let enc3: SolEncoder = AbiEncoder::with_encoded_size(128)
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fn with_encoded_size<SolEncoder>
+
+note: 
+   ┌─ associated_types_cycle.fe:45:28
+   │
+45 │     let enc3: SolEncoder = AbiEncoder::with_encoded_size(128)
+   │                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ SolEncoder
+
+note: 
+   ┌─ associated_types_cycle.fe:45:58
+   │
+45 │     let enc3: SolEncoder = AbiEncoder::with_encoded_size(128)
+   │                                                          ^^^ usize
+
+note: 
+   ┌─ associated_types_cycle.fe:46:9
+   │
+46 │     let selector = [0, 1, 2, 3]
    │         ^^^^^^^^ [u8; 4]
 
 note: 
-   ┌─ associated_types_cycle.fe:45:20
+   ┌─ associated_types_cycle.fe:46:20
    │
-45 │     let selector = [0, 1, 2, 3]
+46 │     let selector = [0, 1, 2, 3]
    │                    ^^^^^^^^^^^^ [u8; 4]
-
-note: 
-   ┌─ associated_types_cycle.fe:45:21
-   │
-45 │     let selector = [0, 1, 2, 3]
-   │                     ^ u8
-
-note: 
-   ┌─ associated_types_cycle.fe:45:24
-   │
-45 │     let selector = [0, 1, 2, 3]
-   │                        ^ u8
-
-note: 
-   ┌─ associated_types_cycle.fe:45:27
-   │
-45 │     let selector = [0, 1, 2, 3]
-   │                           ^ u8
-
-note: 
-   ┌─ associated_types_cycle.fe:45:30
-   │
-45 │     let selector = [0, 1, 2, 3]
-   │                              ^ u8
-
-note: 
-   ┌─ associated_types_cycle.fe:46:5
-   │
-46 │     selector.encode(enc1)
-   │     ^^^^^^^^ [u8; 4]
-
-note: 
-   ┌─ associated_types_cycle.fe:46:5
-   │
-46 │     selector.encode(enc1)
-   │     ^^^^^^^^^^^^^^^^^^^^^ ()
 
 note: 
    ┌─ associated_types_cycle.fe:46:21
    │
-46 │     selector.encode(enc1)
+46 │     let selector = [0, 1, 2, 3]
+   │                     ^ u8
+
+note: 
+   ┌─ associated_types_cycle.fe:46:24
+   │
+46 │     let selector = [0, 1, 2, 3]
+   │                        ^ u8
+
+note: 
+   ┌─ associated_types_cycle.fe:46:27
+   │
+46 │     let selector = [0, 1, 2, 3]
+   │                           ^ u8
+
+note: 
+   ┌─ associated_types_cycle.fe:46:30
+   │
+46 │     let selector = [0, 1, 2, 3]
+   │                              ^ u8
+
+note: 
+   ┌─ associated_types_cycle.fe:47:5
+   │
+47 │     selector.encode(enc1)
+   │     ^^^^^^^^ [u8; 4]
+
+note: 
+   ┌─ associated_types_cycle.fe:47:5
+   │
+47 │     selector.encode(enc1)
+   │     ^^^^^^^^^^^^^^^^^^^^^ ()
+
+note: 
+   ┌─ associated_types_cycle.fe:47:21
+   │
+47 │     selector.encode(enc1)
    │                     ^^^^ SolEncoder

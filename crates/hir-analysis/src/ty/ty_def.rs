@@ -146,11 +146,8 @@ impl<'db> TyId<'db> {
             TyData::TyVar(var) => var.pretty_print(),
             TyData::TyParam(param) => param.pretty_print(db),
             TyData::AssocTy(assoc_ty) => {
-                format!(
-                    "{}::{}",
-                    assoc_ty.trait_.pretty_print(db, false),
-                    assoc_ty.name.data(db)
-                )
+                let self_ty = assoc_ty.trait_.self_ty(db);
+                format!("{}::{}", self_ty.pretty_print(db), assoc_ty.name.data(db))
             }
             TyData::TyApp(_, _) => pretty_print_ty_app(db, self),
             TyData::TyBase(ty_con) => ty_con.pretty_print(db),

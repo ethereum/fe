@@ -1,3 +1,4 @@
+use common::indexmap::IndexMap;
 use thin_vec::ThinVec;
 
 use super::{
@@ -68,7 +69,14 @@ pub(super) fn compare_impl_method<'db>(
         .chain(impl_m.explicit_params(db).iter())
         .copied()
         .collect();
-    err |= !compare_ty(db, impl_m, trait_m.0, &map_to_impl, implementor.types(db), sink);
+    err |= !compare_ty(
+        db,
+        impl_m,
+        trait_m.0,
+        &map_to_impl,
+        implementor.types(db),
+        sink,
+    );
     if err {
         return;
     }
@@ -212,7 +220,7 @@ fn compare_ty<'db>(
     impl_m: FuncDef<'db>,
     trait_m: FuncDef<'db>,
     map_to_impl: &[TyId<'db>],
-    assoc_type_bindings: &common::indexmap::IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
+    assoc_type_bindings: &IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let mut err = false;
@@ -220,7 +228,8 @@ fn compare_ty<'db>(
     let trait_m_arg_tys = trait_m.arg_tys(db);
 
     for (idx, (&trait_m_ty, &impl_m_ty)) in trait_m_arg_tys.iter().zip(impl_m_arg_tys).enumerate() {
-        let trait_m_ty = instantiate_with_assoc_types(db, trait_m_ty, map_to_impl, assoc_type_bindings);
+        let trait_m_ty =
+            instantiate_with_assoc_types(db, trait_m_ty, map_to_impl, assoc_type_bindings);
         if trait_m_ty.has_invalid(db) {
             continue;
         }
@@ -233,22 +242,24 @@ fn compare_ty<'db>(
                     // by finding the implementation of the trait for the self type
                     let self_ty = trait_assoc.trait_.self_ty(db);
                     let trait_def = trait_assoc.trait_.def(db);
-                    
+
                     // Look for implementors of this trait for the self type
                     let ingot = impl_m.ingot(db);
                     let implementors = super::trait_def::impls_for_ty(
-                        db, 
-                        ingot, 
-                        super::canonical::Canonical::new(db, self_ty)
+                        db,
+                        ingot,
+                        super::canonical::Canonical::new(db, self_ty),
                     );
-                    
+
                     // Find an implementor that matches our trait
                     let mut found_match = false;
                     for implementor in implementors {
                         let impl_inst = implementor.skip_binder();
                         if impl_inst.trait_def(db) == trait_def {
                             // Found the right implementor, check if it has the associated type
-                            if let Some(&assoc_ty_value) = impl_inst.types(db).get(&trait_assoc.name) {
+                            if let Some(&assoc_ty_value) =
+                                impl_inst.types(db).get(&trait_assoc.name)
+                            {
                                 // The associated type resolves to this value
                                 if assoc_ty_value == impl_m_ty {
                                     found_match = true;
@@ -259,9 +270,9 @@ fn compare_ty<'db>(
                     }
                     found_match
                 }
-                _ => false
+                _ => false,
             };
-            
+
             if !types_match {
                 sink.push(
                     ImplDiag::MethodArgTyMismatch {
@@ -279,7 +290,8 @@ fn compare_ty<'db>(
     }
 
     let impl_m_ret_ty = impl_m.ret_ty(db).instantiate_identity();
-    let trait_m_ret_ty = instantiate_with_assoc_types(db, trait_m.ret_ty(db), map_to_impl, assoc_type_bindings);
+    let trait_m_ret_ty =
+        instantiate_with_assoc_types(db, trait_m.ret_ty(db), map_to_impl, assoc_type_bindings);
     if !impl_m_ret_ty.has_invalid(db) && trait_m_ret_ty != impl_m_ret_ty {
         sink.push(
             ImplDiag::MethodRetTyMismatch {
@@ -345,12 +357,12 @@ fn instantiate_with_assoc_types<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: Binder<TyId<'db>>,
     map_to_impl: &[TyId<'db>],
-    assoc_type_bindings: &common::indexmap::IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
+    assoc_type_bindings: &IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
 ) -> TyId<'db> {
     struct InstantiateWithAssocFolder<'db, 'a> {
         db: &'db dyn HirAnalysisDb,
         args: &'a [TyId<'db>],
-        assoc_type_bindings: &'a common::indexmap::IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
+        assoc_type_bindings: &'a IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
     }
 
     impl<'db> TyFolder<'db> for InstantiateWithAssocFolder<'db, '_> {
@@ -368,7 +380,7 @@ fn instantiate_with_assoc_types<'db>(
                     if let Some(&bound_ty) = self.assoc_type_bindings.get(&assoc_ty.name) {
                         return bound_ty;
                     }
-                    
+
                     // If the trait's self type is a type parameter that we're substituting,
                     // we need to first substitute the trait instance's type parameters
                     let trait_inst = assoc_ty.trait_;
@@ -376,7 +388,7 @@ fn instantiate_with_assoc_types<'db>(
                     for &arg in trait_inst.args(self.db) {
                         new_args.push(self.fold_ty(arg));
                     }
-                    
+
                     // If the args changed, create a new trait instance
                     if &new_args != trait_inst.args(self.db) {
                         let new_trait_inst = super::trait_def::TraitInstId::new(
@@ -385,7 +397,7 @@ fn instantiate_with_assoc_types<'db>(
                             new_args,
                             trait_inst.assoc_type_bindings(self.db).clone(),
                         );
-                        
+
                         // If the self type is now concrete (not a type parameter),
                         // try to resolve the associated type from implementations
                         let self_ty = new_trait_inst.self_ty(self.db);
@@ -394,7 +406,7 @@ fn instantiate_with_assoc_types<'db>(
                             // For now, we'll just create the new AssocTy
                             // TODO: Actually resolve the associated type from impls
                         }
-                        
+
                         // Create a new AssocTy with the updated trait instance
                         let new_assoc_ty = super::ty_def::AssocTy {
                             trait_: new_trait_inst,
@@ -404,7 +416,8 @@ fn instantiate_with_assoc_types<'db>(
                     }
                 }
                 TyData::ConstTy(const_ty) => {
-                    if let super::const_ty::ConstTyData::TyParam(param, _) = const_ty.data(self.db) {
+                    if let super::const_ty::ConstTyData::TyParam(param, _) = const_ty.data(self.db)
+                    {
                         return self.args[param.idx];
                     }
                 }

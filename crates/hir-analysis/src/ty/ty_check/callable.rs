@@ -31,7 +31,7 @@ pub struct Callable<'db> {
 impl<'db> TyVisitable<'db> for Callable<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         self.generic_args.visit_with(visitor)
     }
@@ -72,6 +72,10 @@ impl<'db> Callable<'db> {
             func_def: *func_def,
             generic_args: args.to_vec(),
         })
+    }
+
+    pub fn generic_args(&self) -> &[TyId<'db>] {
+        &self.generic_args
     }
 
     pub fn ret_ty(&self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {

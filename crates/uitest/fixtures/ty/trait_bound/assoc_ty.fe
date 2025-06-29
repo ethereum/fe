@@ -29,9 +29,8 @@ where
     type Encoder = E
 }
 
-trait Tr2 {}
-
 trait Tr1 {
     type Foo: Tr2 = FooDefault
 }
+trait Tr2 {}
 struct FooDefault {} // Doesn't impl Tr2

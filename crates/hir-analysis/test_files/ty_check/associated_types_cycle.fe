@@ -42,6 +42,7 @@ impl Encode<SolAbi> for [u8; 4] {
 fn f() {
     let enc1 = SolAbi::Encoder::with_encoded_size(1024)
     let enc2 = SolEncoder::with_encoded_size(256)
+    let enc3: SolEncoder = AbiEncoder::with_encoded_size(128)
     let selector = [0, 1, 2, 3]
     selector.encode(enc1)
 }
