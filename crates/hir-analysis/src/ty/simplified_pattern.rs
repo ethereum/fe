@@ -425,13 +425,13 @@ pub fn display_missing_pattern<'db>(
                         Partial::Absent => "UnknownEnum".to_string(),
                     };
 
-                    let full_name = format!("{}::{}", enum_name, variant_name);
+                    let full_name = format!("{enum_name}::{variant_name}");
 
                     match variant.kind(db) {
                         hir::hir_def::VariantKind::Unit => full_name,
                         hir::hir_def::VariantKind::Tuple(_) => {
                             if fields.is_empty() {
-                                format!("{}(..)", full_name)
+                                format!("{full_name}(..)")
                             } else {
                                 let field_patterns: Vec<String> = fields
                                     .iter()
@@ -442,11 +442,11 @@ pub fn display_missing_pattern<'db>(
                         }
                         hir::hir_def::VariantKind::Record(_) => {
                             if fields.is_empty() {
-                                format!("{} {{ .. }}", full_name)
+                                format!("{full_name} {{ .. }}")
                             } else {
                                 // For record variants, we'd need field names which are complex to get
                                 // For now, use the simpler pattern
-                                format!("{} {{ .. }}", full_name)
+                                format!("{full_name} {{ .. }}")
                             }
                         }
                     }
@@ -465,7 +465,7 @@ pub fn display_missing_pattern<'db>(
                     } else {
                         // Try to get struct/type name
                         let type_name = ty.pretty_print(db);
-                        format!("{} {{ .. }}", type_name)
+                        format!("{type_name} {{ .. }}")
                     }
                 }
                 ConstructorKind::Literal(lit, _) => match lit {

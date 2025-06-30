@@ -219,7 +219,7 @@ mod tests {
 
         info!("Sending initialized notification");
         if let ControlFlow::Break(Err(e)) = service.notify(init_notification) {
-            panic!("Failed to send Initialized notification: {:?}", e);
+            panic!("Failed to send Initialized notification: {e:?}");
         }
 
         // Wait a bit to ensure the notification is processed

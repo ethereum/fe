@@ -162,7 +162,7 @@ impl DiagnosticVoucher for NameResDiag<'_> {
 
                 CompleteDiagnostic {
                     severity,
-                    message: format!("`{}` conflicts with other definitions", ident),
+                    message: format!("`{ident}` conflicts with other definitions"),
                     sub_diagnostics: diags,
                     notes: vec![],
                     error_code,
@@ -173,7 +173,7 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 let ident = ident.data(db);
                 CompleteDiagnostic {
                     severity,
-                    message: format!("`{}` is not found", ident),
+                    message: format!("`{ident}` is not found"),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!("`{ident}` is not found"),
@@ -770,13 +770,13 @@ where
     let mut spans = spans;
     let mut subs = vec![SubDiagnostic::new(
         LabelStyle::Primary,
-        format!("`{}` is defined here", name),
+        format!("`{name}` is defined here"),
         spans.next().unwrap(),
     )];
     subs.extend(spans.map(|span| {
         SubDiagnostic::new(
             LabelStyle::Secondary,
-            format!("`{}` is redefined here", name),
+            format!("`{name}` is redefined here"),
             span,
         )
     }));
@@ -886,14 +886,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
             } => {
                 let mut labels = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected unit variant here, but found {}", kind_name),
+                    message: format!("expected unit variant here, but found {kind_name}"),
                     span: primary.resolve(db),
                 }];
 
                 if let Some(hint) = hint {
                     labels.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("Consider using `{}` instead", hint),
+                        message: format!("Consider using `{hint}` instead"),
                         span: primary.resolve(db),
                     });
                 }
@@ -915,7 +915,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 let mut labels = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: if let Some(kind_name) = kind_name {
-                        format!("expected tuple variant here, but found {}", kind_name)
+                        format!("expected tuple variant here, but found {kind_name}")
                     } else {
                         "expected tuple variant here".to_string()
                     },
@@ -925,7 +925,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 if let Some(hint) = hint {
                     labels.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("Consider using `{}` instead", hint),
+                        message: format!("Consider using `{hint}` instead"),
                         span: primary.resolve(db),
                     });
                 }
@@ -947,10 +947,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 let mut labels = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: if let Some(kind_name) = kind_name {
-                        format!(
-                            "expected record variant or struct here, but found {}",
-                            kind_name
-                        )
+                        format!("expected record variant or struct here, but found {kind_name}")
                     } else {
                         "expected record variant or struct here".to_string()
                     },
@@ -960,7 +957,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 if let Some(hint) = hint {
                     labels.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("Consider using `{}` instead", hint),
+                        message: format!("Consider using `{hint}` instead"),
                         span: primary.resolve(db),
                     });
                 }
@@ -983,7 +980,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 message: "field count mismatch".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected {} fields here, but {} given", expected, given),
+                    message: format!("expected {expected} fields here, but {given} given"),
                     span: primary.resolve(db),
                 }],
                 notes: vec![],
@@ -1035,7 +1032,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 if let Some(hint) = hint {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("Consider using `{}` instead", hint),
+                        message: format!("Consider using `{hint}` instead"),
                         span: primary.resolve(db),
                     });
                 }
@@ -1062,14 +1059,14 @@ impl DiagnosticVoucher for BodyDiag<'_> {
 
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("missing `{}`", missing),
+                    message: format!("missing `{missing}`"),
                     span: primary.resolve(db),
                 }];
 
                 if let Some(hint) = hint {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("Consider using `{}` instead", hint),
+                        message: format!("Consider using `{hint}` instead"),
                         span: primary.resolve(db),
                     });
                 }
@@ -1250,10 +1247,10 @@ impl DiagnosticVoucher for BodyDiag<'_> {
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: format!("`{}` is not allowed outside of a loop", stmt),
+                    message: format!("`{stmt}` is not allowed outside of a loop"),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("`{}` is not allowed here", stmt),
+                        message: format!("`{stmt}` is not allowed here"),
                         span: primary.resolve(db),
                     }],
                     notes: vec![],
@@ -1270,7 +1267,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
 
                 CompleteDiagnostic {
                     severity: Severity::Error,
-                    message: format!("`{}` needs to be implemented for {}", trait_name, ty),
+                    message: format!("`{trait_name}` needs to be implemented for {ty}"),
                     sub_diagnostics: vec![
                         SubDiagnostic {
                             style: LabelStyle::Primary,
@@ -1317,8 +1314,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!(
-                            "expected {} generic arguments, but {} given",
-                            expected, given
+                            "expected {expected} generic arguments, but {given} given"
                         ),
                         span: primary.resolve(db),
                     },
@@ -1343,7 +1339,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("expected {} arguments, but {} given", expected, given),
+                        message: format!("expected {expected} arguments, but {given} given"),
                         span: primary.resolve(db),
                     },
                     SubDiagnostic {
@@ -1442,7 +1438,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 let method_name = method_name.data(db);
                 let mut sub_diagnostics = vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("`{}` is ambiguous", method_name),
+                    message: format!("`{method_name}` is ambiguous"),
                     span: primary.resolve(db),
                 }];
 
@@ -1567,10 +1563,8 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 };
 
                 let method_str = method_name.data(db);
-                let message = format!(
-                    "no method named `{}` found for {} `{}`",
-                    method_str, recv_kind, recv_name
-                );
+                let message =
+                    format!("no method named `{method_str}` found for {recv_kind} `{recv_name}`");
 
                 if let Some(ty) = recv_ty {
                     if let Some(field_ty) =
@@ -1600,7 +1594,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     message,
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("method not found in `{}`", recv_name),
+                        message: format!("method not found in `{recv_name}`"),
                         span: primary.resolve(db),
                     }],
                     notes: vec![],
@@ -1803,7 +1797,7 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                 message: "given trait argument number mismatch".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected {} arguments here, but {} given", expected, given),
+                    message: format!("expected {expected} arguments here, but {given} given"),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
@@ -1824,8 +1818,7 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
                         message: format!(
-                            "expected `{}` kind, but `{}` has `{}` kind",
-                            expected, ty_display, actual_kind,
+                            "expected `{expected}` kind, but `{ty_display}` has `{actual_kind}` kind",
                         ),
                         span: span.resolve(db),
                     }],
@@ -1977,7 +1970,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                     message: "not all trait methods are implemented".to_string(),
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("missing implementations: {}", missing),
+                        message: format!("missing implementations: {missing}"),
                         span: primary.resolve(db),
                     }],
                     notes: vec![],
@@ -2192,7 +2185,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 is_nominal,
             } => {
                 let msg = if *is_nominal {
-                    format!("inherent impl is not allowed for foreign type `{}`", ty)
+                    format!("inherent impl is not allowed for foreign type `{ty}`")
                 } else {
                     "inherent impl is not allowed for non nominal type".to_string()
                 };

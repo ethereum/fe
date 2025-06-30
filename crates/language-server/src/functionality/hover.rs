@@ -37,7 +37,7 @@ pub fn hover_helper(
 
             let result = [pretty_path, definition_source, docs]
                 .iter()
-                .filter_map(|info| info.clone().map(|info| format!("{}\n", info)))
+                .filter_map(|info| info.clone().map(|info| format!("{info}\n")))
                 .collect::<Vec<String>>()
                 .join("\n");
 

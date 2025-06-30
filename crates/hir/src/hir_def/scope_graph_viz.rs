@@ -156,7 +156,7 @@ impl<'db, 'a> dot2::Labeller<'a> for ScopeGraphFormatter<'db> {
             EdgeKind::Anon(_) => "anon",
         };
         let color = edge.color();
-        let colored_label = format!(r#" <font color="{}">{}</font> "#, color, label);
+        let colored_label = format!(r#" <font color="{color}">{label}</font> "#);
         Text::HtmlStr(colored_label.into())
     }
 

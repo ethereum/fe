@@ -87,8 +87,7 @@ mod tests {
         let parent = url.parent();
         assert!(
             parent.is_none(),
-            "Parent should be `None` but instead we got {:?}",
-            parent
+            "Parent should be `None` but instead we got {parent:?}"
         );
     }
 

@@ -359,7 +359,7 @@ impl<'db> ScopeId<'db> {
 
         if let Some(parent) = self.parent(db) {
             let parent_path = parent.pretty_path(db)?;
-            Some(format!("{}::{}", parent_path, name))
+            Some(format!("{parent_path}::{name}"))
         } else {
             Some(name)
         }

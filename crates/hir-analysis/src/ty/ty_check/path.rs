@@ -320,7 +320,7 @@ impl<'db> RecordLike<'db> {
 
                     let name = s.name(db).unwrap().data(db);
                     let init_args = s.format_initializer_args(db);
-                    Some(format!("{}{}", name, init_args))
+                    Some(format!("{name}{init_args}"))
                 } else {
                     None
                 }
@@ -328,7 +328,7 @@ impl<'db> RecordLike<'db> {
             RecordLike::Variant(variant) => {
                 let expected_sub_pat = variant.variant.def(db).format_initializer_args(db);
                 let path = variant.path.pretty_print(db);
-                Some(format!("{}{}", path, expected_sub_pat))
+                Some(format!("{path}{expected_sub_pat}"))
             }
         }
     }

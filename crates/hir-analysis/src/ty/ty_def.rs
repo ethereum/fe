@@ -792,7 +792,7 @@ impl fmt::Display for Kind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Star => write!(f, "*"),
-            Self::Abs(lhs, rhs) => write!(f, "({} -> {})", lhs, rhs),
+            Self::Abs(lhs, rhs) => write!(f, "({lhs} -> {rhs})"),
             Self::Any => write!(f, "Any"),
         }
     }
@@ -852,7 +852,7 @@ impl TyVar<'_> {
         match self.sort {
             TyVarSort::General => ("_").to_string(),
             TyVarSort::Integral => "{integer}".to_string(),
-            TyVarSort::String(n) => format!("String<{}>", n).to_string(),
+            TyVarSort::String(n) => format!("String<{n}>").to_string(),
         }
     }
 }
@@ -1222,7 +1222,7 @@ fn pretty_print_ty_app<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String
         TyData::TyBase(Prim(Array)) => {
             let elem_ty = args[0].pretty_print(db);
             let len = args[1].pretty_print(db);
-            format!("[{}; {}]", elem_ty, len)
+            format!("[{elem_ty}; {len}]")
         }
 
         TyData::TyBase(Prim(Tuple(_))) => {

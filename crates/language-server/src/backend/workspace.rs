@@ -51,7 +51,7 @@ impl Workspace {
         self.sync_local_ingots(db, &path_str)?;
 
         // Sync files for each ingot
-        let ingot_paths = glob::glob(&format!("{}/**/{}", path_str, FE_CONFIG_SUFFIX))?
+        let ingot_paths = glob::glob(&format!("{path_str}/**/{FE_CONFIG_SUFFIX}"))?
             .filter_map(Result::ok)
             .filter_map(|p| p.to_str().map(String::from))
             .collect::<Vec<_>>();

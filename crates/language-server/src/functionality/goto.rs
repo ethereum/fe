@@ -124,7 +124,7 @@ pub async fn handle_goto_definition(
     let url = url::Url::from_file_path(file_path_str).map_err(|()| {
         ResponseError::new(
             async_lsp::ErrorCode::INTERNAL_ERROR,
-            format!("Invalid file path: {}", file_path_str),
+            format!("Invalid file path: {file_path_str}"),
         )
     })?;
     let file = backend
@@ -134,10 +134,7 @@ pub async fn handle_goto_definition(
         .ok_or_else(|| {
             ResponseError::new(
                 async_lsp::ErrorCode::INTERNAL_ERROR,
-                format!(
-                    "File not found in index: {} (original path: {})",
-                    url, file_path_str
-                ),
+                format!("File not found in index: {url} (original path: {file_path_str})"),
             )
         })?;
     let top_mod = map_file_to_mod(&backend.db, file);
