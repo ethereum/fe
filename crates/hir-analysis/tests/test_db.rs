@@ -42,7 +42,7 @@ define_input_db!(HirAnalysisTestDb);
 impl HirAnalysisTestDb {
     pub fn new_stand_alone(&mut self, file_path: Utf8PathBuf, text: &str) -> File {
         let file_name = if file_path.is_relative() {
-            format!("/{}", file_path)
+            format!("/{file_path}")
         } else {
             file_path.to_string()
         };

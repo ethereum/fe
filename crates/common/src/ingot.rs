@@ -44,10 +44,7 @@ impl IngotBaseUrl for Url {
         initial_content: Option<String>,
     ) -> File {
         if relative_path.is_absolute() {
-            panic!(
-                "Expected relative path, got absolute path: {}",
-                relative_path
-            );
+            panic!("Expected relative path, got absolute path: {relative_path}");
         }
         let path = self
             .directory()

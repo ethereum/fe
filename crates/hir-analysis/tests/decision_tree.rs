@@ -79,7 +79,7 @@ fn render_occurrence(occurrence: &Occurrence) -> String {
         let mut result = "expr".to_string();
         for &index in &occurrence.0 {
             use std::fmt::Write;
-            write!(&mut result, ".{}", index).unwrap();
+            write!(&mut result, ".{index}").unwrap();
         }
         result
     }
@@ -199,7 +199,7 @@ impl<'db> Visitor<'db> for DecisionTreeVisitor<'db, '_> {
                     let visualization = render_decision_tree(self.db, &tree);
 
                     let func_name = self.current_func.as_deref().unwrap_or("unknown");
-                    let prop = format!("Decision Tree for {}:\n{}", func_name, visualization);
+                    let prop = format!("Decision Tree for {func_name}:\n{visualization}");
 
                     if let Some(span) = ctxt.span() {
                         self.prop_formatter

@@ -77,8 +77,7 @@ fn non_exhaustive_matches(fixture: Fixture<&str>) {
     // Verify we have at least one diagnosis
     assert!(
         !diags.is_empty(),
-        "Expected pattern matching errors but found none in file: {}",
-        file_name
+        "Expected pattern matching errors but found none in file: {file_name}"
     );
 
     // Format diagnostics using codespan with arrow indicators
@@ -125,8 +124,7 @@ fn unreachable_patterns(fixture: Fixture<&str>) {
     // Verify we have at least one diagnosis
     assert!(
         !diags.is_empty(),
-        "Expected unreachable pattern errors but found none in file: {}",
-        file_name
+        "Expected unreachable pattern errors but found none in file: {file_name}"
     );
 
     // Format diagnostics using codespan with arrow indicators

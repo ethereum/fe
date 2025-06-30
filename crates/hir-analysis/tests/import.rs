@@ -60,7 +60,7 @@ fn format_imports<'db>(
                 let ident = ident.data(db);
                 for res in res_set {
                     let def_path = res.pretty_path(db).unwrap();
-                    let resolved = format!("{} as {}", def_path, ident);
+                    let resolved = format!("{def_path} as {ident}");
                     use_res_map.entry(use_).or_default().push(resolved)
                 }
             }

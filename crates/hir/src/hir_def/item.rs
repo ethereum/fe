@@ -1088,7 +1088,7 @@ impl<'db> FieldDefListId<'db> {
             .collect::<Vec<_>>()
             .join(", ");
 
-        format!(" {{ {} }}", args)
+        format!(" {{ {args} }}")
     }
 }
 
@@ -1195,7 +1195,7 @@ impl VariantDef<'_> {
             VariantKind::Unit => "".to_string(),
             VariantKind::Tuple(tup) => {
                 let args = (0..tup.len(db)).map(|_| "_").collect::<Vec<_>>().join(", ");
-                format!("({})", args)
+                format!("({args})")
             }
 
             VariantKind::Record(fields) => fields.format_initializer_args(db),
