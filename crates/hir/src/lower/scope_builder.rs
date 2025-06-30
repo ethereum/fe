@@ -5,7 +5,7 @@ use crate::{
     hir_def::{
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
         Body, Enum, EnumVariant, ExprId, FieldDefListId, FieldParent, FuncParamListId,
-        FuncParamName, GenericParamListId, ItemKind, TopLevelMod, TrackedItemId,
+        FuncParamName, GenericParamListId, ItemKind, TopLevelMod, Trait, TrackedItemId,
         TrackedItemVariant, Use, VariantDefListId, VariantKind, Visibility,
     },
     HirDb,
@@ -226,6 +226,7 @@ impl<'db> ScopeGraphBuilder<'db> {
                     inner.into(),
                     inner.generic_params(self.db),
                 );
+                self.add_trait_type_scope(item_node, inner);
                 self.graph
                     .add_edge(item_node, item_node, EdgeKind::self_ty());
                 inner
@@ -413,6 +414,26 @@ impl<'db> ScopeGraphBuilder<'db> {
                 .map(EdgeKind::generic_param)
                 .unwrap_or_else(EdgeKind::anon);
             self.graph.add_edge(parent_node, generic_param_node, kind)
+        }
+    }
+
+    fn add_trait_type_scope(
+        &mut self,
+        parent_node: NodeId,
+        trait_: Trait<'db>,
+    ) {
+        for (i, trait_type) in trait_.types(self.db).iter().enumerate() {
+            let scope_id = ScopeId::TraitType(trait_, i as u16);
+            let scope = Scope::new(scope_id, Visibility::Private);
+            let trait_type_node = self.graph.push(scope_id, scope);
+
+            self.graph.add_lex_edge(trait_type_node, parent_node);
+            let kind = trait_type
+                .name
+                .to_opt()
+                .map(EdgeKind::trait_type)
+                .unwrap_or_else(EdgeKind::anon);
+            self.graph.add_edge(parent_node, trait_type_node, kind)
         }
     }
 
