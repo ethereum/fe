@@ -3,7 +3,7 @@ use either::Either;
 use hir::{
     hir_def::{
         scope_graph::ScopeId, Enum, EnumVariant, GenericParamOwner, IdentId, ItemKind, Partial,
-        PathId, TypeId, VariantKind,
+        PathId, TypeId, TypeBound, VariantKind,
     },
     span::DynLazySpan,
 };
@@ -29,7 +29,7 @@ use crate::{
         fold::TyFoldable,
         func_def::{lower_func, FuncDef, HirFuncDefKind},
         trait_def::{impls_for_ty, TraitInstId},
-        trait_lower::lower_trait,
+        trait_lower::{lower_trait, lower_trait_ref},
         trait_resolution::PredicateListId,
         ty_def::{AssocTy, InvalidCause, TyData, TyId},
         ty_lower::{
@@ -646,6 +646,51 @@ fn find_associated_type<'db>(
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // Case 3: The LHS `ty` is an associated type (e.g., `T::Encoder` in `T::Encoder::Output`).
+    // We need to look at the trait bound on the associated type.
+    if let TyData::AssocTy(assoc_ty) = ty.value.data(db) {
+        // Get the trait that defines this associated type
+        let trait_def = assoc_ty.trait_.def(db);
+        let trait_ = trait_def.trait_(db);
+        
+        // Find the associated type definition in the trait
+        for trait_type in trait_.types(db) {
+            if trait_type.name.to_opt() == Some(assoc_ty.name) {
+                // Check if this associated type has trait bounds
+                for bound in &trait_type.bounds {
+                    if let TypeBound::Trait(trait_ref) = bound {
+                        // We need to resolve the trait reference to check its associated types
+                        // First, we need to lower the trait ref with proper substitutions
+                        
+                        // The self type for the trait bound is the associated type itself
+                        let self_ty = ty.value;
+                        
+                        // Try to lower the trait reference
+                        if let Ok(bound_trait_inst) = lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions) {
+                            let bound_trait_def = bound_trait_inst.def(db).trait_(db);
+                            
+                            // Check if this trait has the associated type we're looking for
+                            for bound_trait_type in bound_trait_def.types(db) {
+                                if bound_trait_type.name.to_opt() == Some(name) {
+                                    // Create an associated type for this nested access
+                                    let nested_assoc_ty = TyId::new(
+                                        db,
+                                        TyData::AssocTy(AssocTy {
+                                            trait_: bound_trait_inst,
+                                            name,
+                                        }),
+                                    );
+                                    candidates.insert(nested_assoc_ty);
+                                }
+                            }
+                        }
+                    }
+                }
+                break;
             }
         }
     }

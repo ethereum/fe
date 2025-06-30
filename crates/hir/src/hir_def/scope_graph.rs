@@ -530,6 +530,10 @@ impl<'db> EdgeKind<'db> {
     pub fn anon() -> Self {
         EdgeKind::Anon(AnonEdge())
     }
+
+    pub fn trait_type(ident: IdentId<'db>) -> Self {
+        EdgeKind::TraitType(ident.into())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

@@ -1,0 +1,72 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+assertion_line: 48
+expression: res
+input_file: test_files/ty_check/associated_type_in_fn_signature.fe
+---
+note: 
+   ┌─ associated_type_in_fn_signature.fe:32:55
+   │  
+32 │       fn get_output<T: Abi>(self) -> T::Encoder::Output {
+   │ ╭───────────────────────────────────────────────────────^
+33 │ │         todo()
+34 │ │     }
+   │ ╰─────^ T::Encoder::Output
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:33:9
+   │
+33 │         todo()
+   │         ^^^^ fn todo
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:33:9
+   │
+33 │         todo()
+   │         ^^^^^^ T::Encoder::Output
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:37:26
+   │  
+37 │   fn example(ms: MyStruct) {
+   │ ╭──────────────────────────^
+38 │ │     let a: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+39 │ │     let t: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+40 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:38:9
+   │
+38 │     let a: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+   │         ^ u32
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:38:39
+   │
+38 │     let a: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+   │                                       ^^ MyStruct
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:38:39
+   │
+38 │     let a: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+   │                                       ^^^^^^^^^^^^^^^^^^^^^^^^ invalid(Other)
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:39:9
+   │
+39 │     let t: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+   │         ^ u32
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:39:39
+   │
+39 │     let t: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+   │                                       ^^ MyStruct
+
+note: 
+   ┌─ associated_type_in_fn_signature.fe:39:39
+   │
+39 │     let t: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+   │                                       ^^^^^^^^^^^^^^^^^^^^^^^^ invalid(Other)
