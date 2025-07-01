@@ -213,17 +213,17 @@ where
         let implementors = super::trait_def::impls_for_ty(self.db, ingot, canonical_self_ty);
 
         for implementor in implementors {
-            let impl_inst = implementor.skip_binder();
-            if impl_inst.trait_def(self.db) == assoc.trait_.def(self.db) {
-                // Check if the trait arguments match
-                let impl_trait_inst = impl_inst.trait_(self.db);
-                if impl_trait_inst.args(self.db)[1..] == assoc.trait_.args(self.db)[1..] {
-                    // Found the right implementor, get the associated type
-                    if let Some(&assoc_ty_value) = impl_inst.types(self.db).get(&assoc.name) {
-                        return Some(assoc_ty_value);
-                    }
+            let snapshot = self.snapshot();
+            let impl_inst = self.instantiate_with_fresh_vars(*implementor);
+
+            if self.unify(impl_inst.trait_(self.db), assoc.trait_).is_ok() {
+                if let Some(&assoc_ty_value) = impl_inst.types(self.db).get(&assoc.name) {
+                    let resolved_ty = self.fold_ty(assoc_ty_value);
+                    self.rollback_to(snapshot);
+                    return Some(resolved_ty);
                 }
             }
+            self.rollback_to(snapshot);
         }
 
         None

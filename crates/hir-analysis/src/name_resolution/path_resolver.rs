@@ -571,21 +571,20 @@ fn find_assoc_type_in_trait<'db>(
     trait_: hir::hir_def::Trait<'db>,
     trait_inst: TraitInstId<'db>,
     name: IdentId<'db>,
-    table: Option<&mut UnificationTable<'db>>,
+    table: &mut UnificationTable<'db>,
 ) -> Option<TyId<'db>> {
     for trait_type in trait_.types(db) {
         if trait_type.name.to_opt() == Some(name) {
-            let mut assoc_ty = TyId::new(
-                db,
-                TyData::AssocTy(AssocTy {
-                    trait_: trait_inst,
-                    name,
-                }),
+            return Some(
+                TyId::new(
+                    db,
+                    TyData::AssocTy(AssocTy {
+                        trait_: trait_inst,
+                        name,
+                    }),
+                )
+                .fold_with(table),
             );
-            if let Some(table) = table {
-                assoc_ty = assoc_ty.fold_with(table);
-            }
-            return Some(assoc_ty);
         }
     }
     None
@@ -617,19 +616,17 @@ fn find_associated_type<'db>(
         {
             // If unification succeeds, the implementor's generic parameters are now (potentially)
             // bound to parts of `lhs_ty_instance`.
-            if let Some(ty) = implementor_instance.types(db).get(&name) {
+            if let Some(&ty) = implementor_instance.types(db).get(&name) {
                 // The associated type from the `impl` block might itself contain generic parameters
                 // from the `impl` block. These need to be substituted based on the unification outcome.
-                candidates.insert(ty.fold_with(&mut table));
+                let resolved_ty = ty.fold_with(&mut table);
+                candidates.insert(resolved_ty);
             }
         }
     }
 
-    // Case 2: The LHS `ty` is a generic type parameter (e.g., `A` in `A::Encoder` where `A: Abi`).
-    // We look for the associated type in its trait bounds.
+    // Case 2: The LHS `ty` is a generic type parameter
     if let TyData::TyParam(_) = ty.value.data(db) {
-        // Check if the canonical value is a TyParam
-
         for &predicate_trait_inst in assumptions.list(db) {
             // `predicate_trait_inst` is a specific trait bound, e.g., `A: Abi` or `S<A>: SomeTrait`.
             // It has `def` (the TraitDef) and `args` (the actual types for Self, generics, and resolved associated types).
@@ -663,7 +660,7 @@ fn find_associated_type<'db>(
                         trait_def_of_bound.trait_(db),
                         predicate_trait_inst,
                         name,
-                        Some(&mut table),
+                        &mut table,
                     ) {
                         candidates.insert(assoc_ty);
                     }
@@ -675,6 +672,34 @@ fn find_associated_type<'db>(
     // Case 3: The LHS `ty` is an associated type (e.g., `T::Encoder` in `T::Encoder::Output`).
     // We need to look at the trait bound on the associated type.
     if let TyData::AssocTy(assoc_ty) = ty.value.data(db) {
+        // Create a unification table to handle substitutions from the outer context
+        let mut table = UnificationTable::new(db);
+
+        // Extract the canonical type's substitutions into the unification table
+        // This ensures we maintain any type parameter bindings from the outer context
+        let ty_with_subst = ty.extract_identity(&mut table);
+
+        // First, check if there are trait bounds on this associated type in the assumptions
+        // (e.g., from where clauses like `T::Assoc: Level1`)
+        for trait_inst in assumptions.list(db) {
+            // Check if this trait bound applies to our associated type
+            let mut pred_table = UnificationTable::new(db);
+            if pred_table
+                .unify(trait_inst.self_ty(db), ty_with_subst)
+                .is_ok()
+            {
+                let trait_def = trait_inst.def(db).trait_(db);
+
+                // Check if this trait has the associated type we're looking for
+                if let Some(nested_assoc_ty) =
+                    find_assoc_type_in_trait(db, trait_def, *trait_inst, name, &mut pred_table)
+                {
+                    candidates.insert(nested_assoc_ty);
+                }
+            }
+        }
+
+        // Also check bounds defined on the associated type in the trait definition
         // Get the trait that defines this associated type
         let trait_def = assoc_ty.trait_.def(db);
         let trait_ = trait_def.trait_(db);
@@ -688,8 +713,9 @@ fn find_associated_type<'db>(
                         // We need to resolve the trait reference to check its associated types
                         // First, we need to lower the trait ref with proper substitutions
 
-                        // The self type for the trait bound is the associated type itself
-                        let self_ty = ty.value;
+                        // The self type for the trait bound is the associated type itself,
+                        // but we need to apply substitutions from the unification table
+                        let self_ty = ty_with_subst.fold_with(&mut table);
 
                         // Try to lower the trait reference
                         if let Ok(bound_trait_inst) =
@@ -698,12 +724,13 @@ fn find_associated_type<'db>(
                             let bound_trait_def = bound_trait_inst.def(db).trait_(db);
 
                             // Check if this trait has the associated type we're looking for
+                            // Pass the unification table to apply substitutions
                             if let Some(nested_assoc_ty) = find_assoc_type_in_trait(
                                 db,
                                 bound_trait_def,
                                 bound_trait_inst,
                                 name,
-                                None,
+                                &mut table,
                             ) {
                                 candidates.insert(nested_assoc_ty);
                             }

@@ -1,0 +1,302 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: test_files/ty_check/nested_assoc_type_bug.fe
+---
+note: 
+   ┌─ nested_assoc_type_bug.fe:47:59
+   │  
+47 │   fn extract_value<T: Level1>() -> T::Middle::Nested::Value {
+   │ ╭───────────────────────────────────────────────────────────^
+48 │ │     todo()
+49 │ │ }
+   │ ╰─^ T::Middle::Nested::Value
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:48:5
+   │
+48 │     todo()
+   │     ^^^^ fn todo
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:48:5
+   │
+48 │     todo()
+   │     ^^^^^^ T::Middle::Nested::Value
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:52:29
+   │  
+52 │   fn test_nested_with_param() {
+   │ ╭─────────────────────────────^
+53 │ │     // This should resolve through the chain preserving the u32 parameter:
+54 │ │     // ConcreteLevel1<u32> -> ConcreteLevel2<u32> -> ConcreteLevel3<u32> -> u32
+55 │ │     let v1: u32 = extract_value<ConcreteLevel1<u32>>()
+   · │
+59 │ │     let v2: u256 = extract_value<ConcreteLevel1<u256>>()
+60 │ │ }
+   │ ╰─^ ()
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:55:9
+   │
+55 │     let v1: u32 = extract_value<ConcreteLevel1<u32>>()
+   │         ^^ u32
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:55:19
+   │
+55 │     let v1: u32 = extract_value<ConcreteLevel1<u32>>()
+   │                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fn extract_value<ConcreteLevel1<u32>>
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:55:19
+   │
+55 │     let v1: u32 = extract_value<ConcreteLevel1<u32>>()
+   │                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u32
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:59:9
+   │
+59 │     let v2: u256 = extract_value<ConcreteLevel1<u256>>()
+   │         ^^ u256
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:59:20
+   │
+59 │     let v2: u256 = extract_value<ConcreteLevel1<u256>>()
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ fn extract_value<ConcreteLevel1<u256>>
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:59:20
+   │
+59 │     let v2: u256 = extract_value<ConcreteLevel1<u256>>()
+   │                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:90:46
+   │  
+90 │       fn encode(self) -> Self::Encoder::Output {
+   │ ╭──────────────────────────────────────────────^
+91 │ │         todo()
+92 │ │     }
+   │ ╰─────^ T
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:91:9
+   │
+91 │         todo()
+   │         ^^^^ fn todo
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:91:9
+   │
+91 │         todo()
+   │         ^^^^^^ T
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:96:59
+   │  
+96 │   fn encode_value<C: Codec>(codec: C) -> C::Encoder::Output {
+   │ ╭───────────────────────────────────────────────────────────^
+97 │ │     codec.encode()
+98 │ │ }
+   │ ╰─^ C::Encoder::Output
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:97:5
+   │
+97 │     codec.encode()
+   │     ^^^^^ C
+
+note: 
+   ┌─ nested_assoc_type_bug.fe:97:5
+   │
+97 │     codec.encode()
+   │     ^^^^^^^^^^^^^^ C::Encoder::Output
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:100:17
+    │  
+100 │   fn test_codec() {
+    │ ╭─────────────────^
+101 │ │     let codec32: MyCodec<u32> = MyCodec { phantom: 0 }
+102 │ │     let codec256: MyCodec<u256> = MyCodec { phantom: 0 }
+103 │ │     
+    · │
+109 │ │     let encoded2: u256 = encode_value(codec: codec256)
+110 │ │ }
+    │ ╰─^ ()
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:101:9
+    │
+101 │     let codec32: MyCodec<u32> = MyCodec { phantom: 0 }
+    │         ^^^^^^^ MyCodec<u32>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:101:33
+    │
+101 │     let codec32: MyCodec<u32> = MyCodec { phantom: 0 }
+    │                                 ^^^^^^^^^^^^^^^^^^^^^^ MyCodec<u32>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:101:52
+    │
+101 │     let codec32: MyCodec<u32> = MyCodec { phantom: 0 }
+    │                                                    ^ u32
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:102:9
+    │
+102 │     let codec256: MyCodec<u256> = MyCodec { phantom: 0 }
+    │         ^^^^^^^^ MyCodec<u256>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:102:35
+    │
+102 │     let codec256: MyCodec<u256> = MyCodec { phantom: 0 }
+    │                                   ^^^^^^^^^^^^^^^^^^^^^^ MyCodec<u256>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:102:54
+    │
+102 │     let codec256: MyCodec<u256> = MyCodec { phantom: 0 }
+    │                                                      ^ u256
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:106:9
+    │
+106 │     let encoded1: u32 = encode_value(codec: codec32)
+    │         ^^^^^^^^ u32
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:106:25
+    │
+106 │     let encoded1: u32 = encode_value(codec: codec32)
+    │                         ^^^^^^^^^^^^ fn encode_value<MyCodec<u32>>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:106:25
+    │
+106 │     let encoded1: u32 = encode_value(codec: codec32)
+    │                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u32
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:106:45
+    │
+106 │     let encoded1: u32 = encode_value(codec: codec32)
+    │                                             ^^^^^^^ MyCodec<u32>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:109:9
+    │
+109 │     let encoded2: u256 = encode_value(codec: codec256)
+    │         ^^^^^^^^ u256
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:109:26
+    │
+109 │     let encoded2: u256 = encode_value(codec: codec256)
+    │                          ^^^^^^^^^^^^ fn encode_value<MyCodec<u256>>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:109:26
+    │
+109 │     let encoded2: u256 = encode_value(codec: codec256)
+    │                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ u256
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:109:46
+    │
+109 │     let encoded2: u256 = encode_value(codec: codec256)
+    │                                              ^^^^^^^^ MyCodec<u256>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:120:1
+    │  
+120 │ ╭ {
+121 │ │     // Here we need T::Assoc to resolve to something that implements Level1
+122 │ │     // and then we use its nested associated type
+123 │ │     let _nested: T::Assoc::Middle::Nested::Value = todo()
+124 │ │     todo()
+125 │ │ }
+    │ ╰─^ T::Assoc
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:123:9
+    │
+123 │     let _nested: T::Assoc::Middle::Nested::Value = todo()
+    │         ^^^^^^^ T::Assoc::Middle::Nested::Value
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:123:52
+    │
+123 │     let _nested: T::Assoc::Middle::Nested::Value = todo()
+    │                                                    ^^^^ fn todo
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:123:52
+    │
+123 │     let _nested: T::Assoc::Middle::Nested::Value = todo()
+    │                                                    ^^^^^^ T::Assoc::Middle::Nested::Value
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:124:5
+    │
+124 │     todo()
+    │     ^^^^ fn todo
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:124:5
+    │
+124 │     todo()
+    │     ^^^^^^ T::Assoc
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:133:23
+    │  
+133 │   fn test_constrained() {
+    │ ╭───────────────────────^
+134 │ │     let h: HasLevel1 = HasLevel1{}
+135 │ │     // This should work: HasLevel1::Assoc = ConcreteLevel1<bool>
+136 │ │     // ConcreteLevel1<bool>::Middle::Nested::Value = bool
+137 │ │     let result: ConcreteLevel1<bool> = constrained(t: h)
+138 │ │ }
+    │ ╰─^ ()
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:134:9
+    │
+134 │     let h: HasLevel1 = HasLevel1{}
+    │         ^ HasLevel1
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:134:24
+    │
+134 │     let h: HasLevel1 = HasLevel1{}
+    │                        ^^^^^^^^^^^ HasLevel1
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:137:9
+    │
+137 │     let result: ConcreteLevel1<bool> = constrained(t: h)
+    │         ^^^^^^ ConcreteLevel1<bool>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:137:40
+    │
+137 │     let result: ConcreteLevel1<bool> = constrained(t: h)
+    │                                        ^^^^^^^^^^^ fn constrained<HasLevel1>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:137:40
+    │
+137 │     let result: ConcreteLevel1<bool> = constrained(t: h)
+    │                                        ^^^^^^^^^^^^^^^^^ ConcreteLevel1<bool>
+
+note: 
+    ┌─ nested_assoc_type_bug.fe:137:55
+    │
+137 │     let result: ConcreteLevel1<bool> = constrained(t: h)
+    │                                                       ^ HasLevel1

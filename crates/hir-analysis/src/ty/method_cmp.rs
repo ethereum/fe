@@ -5,6 +5,7 @@ use thin_vec::ThinVec;
 use super::{
     binder::Binder,
     canonical::Canonical,
+    const_ty::ConstTyData,
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
     func_def::FuncDef,
@@ -13,6 +14,7 @@ use super::{
         constraint::collect_func_def_constraints, is_goal_satisfiable, GoalSatisfiability,
     },
     ty_def::{TyData, TyId},
+    unify::UnificationTable,
 };
 use crate::HirAnalysisDb;
 
@@ -76,6 +78,7 @@ pub(super) fn compare_impl_method<'db>(
         trait_m.0,
         &map_to_impl,
         implementor.types(db),
+        implementor,
         sink,
     );
     if err {
@@ -222,6 +225,7 @@ fn compare_ty<'db>(
     trait_m: FuncDef<'db>,
     map_to_impl: &[TyId<'db>],
     assoc_type_bindings: &IndexMap<IdentId<'db>, TyId<'db>>,
+    implementor: super::trait_def::Implementor<'db>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let mut err = false;
@@ -235,67 +239,43 @@ fn compare_ty<'db>(
             continue;
         }
         let impl_m_ty = impl_m_ty.instantiate_identity();
-        if !impl_m_ty.has_invalid(db) && trait_m_ty != impl_m_ty {
-            // Check if one is an AssocTy and the other is not - they might still be compatible
-            let types_match = match (trait_m_ty.data(db), impl_m_ty.data(db)) {
-                (TyData::AssocTy(trait_assoc), _) => {
-                    // If we have an associated type like `SolAbi::Encoder`, we need to resolve it
-                    // by finding the implementation of the trait for the self type
-                    let self_ty = trait_assoc.trait_.self_ty(db);
-                    let trait_def = trait_assoc.trait_.def(db);
-
-                    // Look for implementors of this trait for the self type
-                    let ingot = impl_m.ingot(db);
-                    let implementors = impls_for_ty(db, ingot, Canonical::new(db, self_ty));
-
-                    // Find an implementor that matches our trait
-                    let mut found_match = false;
-                    for implementor in implementors {
-                        let impl_inst = implementor.skip_binder();
-                        if impl_inst.trait_def(db) == trait_def {
-                            // Found the right implementor, check if it has the associated type
-                            if let Some(&assoc_ty_value) =
-                                impl_inst.types(db).get(&trait_assoc.name)
-                            {
-                                // The associated type resolves to this value
-                                if assoc_ty_value == impl_m_ty {
-                                    found_match = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    found_match
+        if !impl_m_ty.has_invalid(db)
+            && !types_match_with_assoc_resolution(db, trait_m_ty, impl_m_ty, impl_m, implementor)
+        {
+            sink.push(
+                ImplDiag::MethodArgTyMismatch {
+                    trait_m,
+                    impl_m,
+                    trait_m_ty,
+                    impl_m_ty,
+                    param_idx: idx,
                 }
-                _ => false,
-            };
-
-            if !types_match {
-                sink.push(
-                    ImplDiag::MethodArgTyMismatch {
-                        trait_m,
-                        impl_m,
-                        trait_m_ty,
-                        impl_m_ty,
-                        param_idx: idx,
-                    }
-                    .into(),
-                );
-                err = true;
-            }
+                .into(),
+            );
+            err = true;
         }
     }
 
     let impl_m_ret_ty = impl_m.ret_ty(db).instantiate_identity();
     let trait_m_ret_ty =
         instantiate_with_assoc_types(db, trait_m.ret_ty(db), map_to_impl, assoc_type_bindings);
-    if !impl_m_ret_ty.has_invalid(db) && trait_m_ret_ty != impl_m_ret_ty {
+
+    if !impl_m_ret_ty.has_invalid(db)
+        && !trait_m_ret_ty.has_invalid(db)
+        && !types_match_with_assoc_resolution(
+            db,
+            trait_m_ret_ty,
+            impl_m_ret_ty,
+            impl_m,
+            implementor,
+        )
+    {
         sink.push(
             ImplDiag::MethodRetTyMismatch {
                 trait_m,
                 impl_m,
                 trait_ty: trait_m_ret_ty,
-                impl_ty: trait_m_ret_ty,
+                impl_ty: impl_m_ret_ty,
             }
             .into(),
         );
@@ -304,6 +284,58 @@ fn compare_ty<'db>(
     }
 
     !err
+}
+
+/// Compares two types, handling associated type resolution when the expected type
+/// is still an unresolved associated type after instantiation.
+fn types_match_with_assoc_resolution<'db>(
+    db: &'db dyn HirAnalysisDb,
+    expected_ty: TyId<'db>,
+    actual_ty: TyId<'db>,
+    impl_m: FuncDef<'db>,
+    implementor: super::trait_def::Implementor<'db>,
+) -> bool {
+    // Direct equality check first
+    if expected_ty == actual_ty {
+        return true;
+    }
+
+    // Handle unresolved associated types
+    match expected_ty.data(db) {
+        TyData::AssocTy(expected_assoc) => {
+            let trait_def = expected_assoc.trait_.def(db);
+
+            // First check if this is from the trait we're implementing
+            if trait_def == implementor.trait_def(db) {
+                // Directly look up the binding from the implementor we already have
+                if let Some(&assoc_ty_value) = implementor.types(db).get(&expected_assoc.name) {
+                    // The associated type value might itself need substitution
+                    // For example, if the associated type is defined as `type Output = T`
+                    // we need to substitute T with the actual type parameter
+                    return assoc_ty_value == actual_ty;
+                }
+            }
+
+            // Fall back to searching for other implementations
+            // (needed for associated types from other traits)
+            let self_ty = expected_assoc.trait_.self_ty(db);
+            let ingot = impl_m.ingot(db);
+            let implementors = impls_for_ty(db, ingot, Canonical::new(db, self_ty));
+
+            for implementor in implementors {
+                let impl_inst = implementor.skip_binder();
+                if impl_inst.trait_def(db) == trait_def {
+                    if let Some(&assoc_ty_value) = impl_inst.types(db).get(&expected_assoc.name) {
+                        if assoc_ty_value == actual_ty {
+                            return true;
+                        }
+                    }
+                }
+            }
+            false
+        }
+        _ => false, // Types don't match and expected is not an associated type
+    }
 }
 
 /// Checks if the method constraints are stricter than the trait constraints.
@@ -349,7 +381,6 @@ fn compare_constraints<'db>(
     }
 }
 
-// xxx what is this
 /// Instantiates a type with both type parameters and associated type bindings.
 fn instantiate_with_assoc_types<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -405,15 +436,31 @@ fn instantiate_with_assoc_types<'db>(
                             let canonical_self_ty = Canonical::new(self.db, self_ty);
                             let implementors = impls_for_ty(self.db, ingot, canonical_self_ty);
 
+                            // We need to properly map type parameters from the implementation
+                            // to our concrete type arguments
+                            let mut table = UnificationTable::new(self.db);
+                            let extracted_self_ty = canonical_self_ty.extract_identity(&mut table);
+
                             for implementor in implementors {
-                                let impl_inst = implementor.skip_binder();
+                                let snapshot = table.snapshot();
+                                let impl_inst = table.instantiate_with_fresh_vars(*implementor);
+
                                 if impl_inst.trait_def(self.db) == new_trait_inst.def(self.db) {
-                                    if let Some(&assoc_ty_value) =
-                                        impl_inst.types(self.db).get(&assoc_ty.name)
+                                    // Unify to establish type parameter mappings
+                                    if table
+                                        .unify(extracted_self_ty, impl_inst.self_ty(self.db))
+                                        .is_ok()
                                     {
-                                        return assoc_ty_value;
+                                        if let Some(&assoc_ty_value) =
+                                            impl_inst.types(self.db).get(&assoc_ty.name)
+                                        {
+                                            // Apply the unification substitutions to the associated type value
+                                            let substituted = assoc_ty_value.fold_with(&mut table);
+                                            return substituted;
+                                        }
                                     }
                                 }
+                                table.rollback_to(snapshot);
                             }
                         }
 
@@ -426,8 +473,7 @@ fn instantiate_with_assoc_types<'db>(
                     }
                 }
                 TyData::ConstTy(const_ty) => {
-                    if let super::const_ty::ConstTyData::TyParam(param, _) = const_ty.data(self.db)
-                    {
+                    if let ConstTyData::TyParam(param, _) = const_ty.data(self.db) {
                         return self.args[param.idx];
                     }
                 }
