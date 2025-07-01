@@ -263,12 +263,11 @@ pub fn analyze_func<'db>(
     db: &'db dyn HirAnalysisDb,
     func: Func<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
-    let assumptions = collect_func_def_constraints(db, func.into(), true).instantiate_identity();
-
-    let Some(func_def) = lower_func(db, func, assumptions) else {
+    let Some(func_def) = lower_func(db, func) else {
         return Vec::new();
     };
 
+    let assumptions = collect_func_def_constraints(db, func.into(), true).instantiate_identity();
     let analyzer = DefAnalyzer::for_func(db, func_def, assumptions);
     analyzer.analyze()
 }
@@ -821,7 +820,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'db, LazyFuncSpan<'db>>,
         hir_func: hir::hir_def::Func<'db>,
     ) {
-        let Some(func) = lower_func(self.db, hir_func, self.assumptions) else {
+        let Some(func) = lower_func(self.db, hir_func) else {
             return;
         };
 
@@ -1400,6 +1399,7 @@ fn analyze_impl_trait_specific_error<'db>(
     }
 }
 
+// xxx remove object
 struct ImplTraitMethodAnalyzer<'db> {
     db: &'db dyn HirAnalysisDb,
     diags: Vec<TyDiagCollection<'db>>,

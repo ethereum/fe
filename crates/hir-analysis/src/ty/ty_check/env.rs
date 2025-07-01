@@ -120,7 +120,7 @@ impl<'db> TyCheckEnv<'db> {
     pub(super) fn func(&self) -> Option<FuncDef<'db>> {
         let func = self.hir_func()?;
 
-        lower_func(self.db, func, self.assumptions())
+        lower_func(self.db, func)
     }
 
     fn hir_func(&self) -> Option<Func<'db>> {

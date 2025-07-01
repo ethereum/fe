@@ -380,10 +380,9 @@ pub struct TraitDef<'db> {
 #[salsa::tracked]
 impl<'db> TraitDef<'db> {
     pub fn methods(self, db: &'db dyn HirAnalysisDb) -> IndexMap<IdentId<'db>, TraitMethod<'db>> {
-        let assumptions = collect_constraints(db, self.trait_(db).into()).instantiate_identity();
         let mut methods = IndexMap::<IdentId<'db>, TraitMethod<'db>>::default();
         for method in self.trait_(db).methods(db) {
-            let Some(func) = lower_func(db, method, assumptions) else {
+            let Some(func) = lower_func(db, method) else {
                 continue;
             };
             let name = func.name(db);

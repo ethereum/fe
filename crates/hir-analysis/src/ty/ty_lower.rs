@@ -7,75 +7,14 @@ use salsa::Update;
 use smallvec::smallvec;
 
 use super::{
-    adt_def::lower_adt,
     const_ty::{ConstTyData, ConstTyId},
-    trait_resolution::{
-        constraint::{collect_adt_constraints, collect_constraints, collect_func_def_constraints},
-        PredicateListId,
-    },
+    trait_resolution::{constraint::collect_constraints, PredicateListId},
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
 use crate::name_resolution::{
     resolve_ident_to_bucket, resolve_path, NameDomain, NameResKind, PathRes,
 };
 use crate::{ty::binder::Binder, HirAnalysisDb};
-
-/// Gets the appropriate assumptions for a given scope.
-/// This function determines what trait constraints should be assumed
-/// when lowering types in the given scope context.
-fn assumptions_for_scope<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-) -> PredicateListId<'db> {
-    // Walk up the scope hierarchy to find the appropriate constraint context
-    let mut current_scope = Some(scope);
-    while let Some(scope) = current_scope {
-        if let ScopeId::Item(item) = scope {
-            match item {
-                ItemKind::Func(func) => {
-                    return collect_func_def_constraints(db, func.into(), true)
-                        .instantiate_identity();
-                }
-                ItemKind::Struct(struct_) => {
-                    let adt_def = lower_adt(db, struct_.into());
-                    return collect_adt_constraints(db, adt_def).instantiate_identity();
-                }
-                ItemKind::Enum(enum_) => {
-                    let adt_def = lower_adt(db, enum_.into());
-                    return collect_adt_constraints(db, adt_def).instantiate_identity();
-                }
-                ItemKind::Trait(trait_) => {
-                    return collect_constraints(db, trait_.into()).instantiate_identity();
-                }
-                ItemKind::Impl(impl_) => {
-                    return collect_constraints(db, impl_.into()).instantiate_identity();
-                }
-                ItemKind::ImplTrait(impl_trait) => {
-                    return collect_constraints(db, impl_trait.into()).instantiate_identity();
-                }
-                ItemKind::TypeAlias(type_alias) => {
-                    return collect_constraints(db, type_alias.into()).instantiate_identity();
-                }
-                _ => {}
-            }
-        }
-        current_scope = scope.parent(db);
-    }
-
-    // Default to empty assumptions if no constraint context is found
-    PredicateListId::empty_list(db)
-}
-
-/// Convenience function that automatically determines appropriate assumptions for the scope.
-/// This function should be used when you don't have specific assumptions to pass.
-pub fn lower_hir_ty_with_scope_assumptions<'db>(
-    db: &'db dyn HirAnalysisDb,
-    ty: HirTyId<'db>,
-    scope: ScopeId<'db>,
-) -> TyId<'db> {
-    let assumptions = assumptions_for_scope(db, scope);
-    lower_hir_ty(db, ty, scope, assumptions)
-}
 
 /// Lowers the given HirTy to `TyId`.
 #[salsa::tracked]
