@@ -1,4 +1,5 @@
 use common::indexmap::IndexMap;
+use hir::hir_def::IdentId;
 use thin_vec::ThinVec;
 
 use super::{
@@ -7,7 +8,7 @@ use super::{
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
     func_def::FuncDef,
-    trait_def::{TraitInstId, TraitMethod},
+    trait_def::{impls_for_ty, TraitInstId, TraitMethod},
     trait_resolution::{
         constraint::collect_func_def_constraints, is_goal_satisfiable, GoalSatisfiability,
     },
@@ -220,7 +221,7 @@ fn compare_ty<'db>(
     impl_m: FuncDef<'db>,
     trait_m: FuncDef<'db>,
     map_to_impl: &[TyId<'db>],
-    assoc_type_bindings: &IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
+    assoc_type_bindings: &IndexMap<IdentId<'db>, TyId<'db>>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) -> bool {
     let mut err = false;
@@ -245,11 +246,7 @@ fn compare_ty<'db>(
 
                     // Look for implementors of this trait for the self type
                     let ingot = impl_m.ingot(db);
-                    let implementors = super::trait_def::impls_for_ty(
-                        db,
-                        ingot,
-                        super::canonical::Canonical::new(db, self_ty),
-                    );
+                    let implementors = impls_for_ty(db, ingot, Canonical::new(db, self_ty));
 
                     // Find an implementor that matches our trait
                     let mut found_match = false;
@@ -352,17 +349,18 @@ fn compare_constraints<'db>(
     }
 }
 
+// xxx what is this
 /// Instantiates a type with both type parameters and associated type bindings.
 fn instantiate_with_assoc_types<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: Binder<TyId<'db>>,
     map_to_impl: &[TyId<'db>],
-    assoc_type_bindings: &IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
+    assoc_type_bindings: &IndexMap<IdentId<'db>, TyId<'db>>,
 ) -> TyId<'db> {
     struct InstantiateWithAssocFolder<'db, 'a> {
         db: &'db dyn HirAnalysisDb,
         args: &'a [TyId<'db>],
-        assoc_type_bindings: &'a IndexMap<hir::hir_def::IdentId<'db>, TyId<'db>>,
+        assoc_type_bindings: &'a IndexMap<IdentId<'db>, TyId<'db>>,
     }
 
     impl<'db> TyFolder<'db> for InstantiateWithAssocFolder<'db, '_> {
@@ -403,8 +401,20 @@ fn instantiate_with_assoc_types<'db>(
                         let self_ty = new_trait_inst.self_ty(self.db);
                         if !matches!(self_ty.data(self.db), TyData::TyParam(_)) {
                             // Look for implementations of this trait for the concrete type
-                            // For now, we'll just create the new AssocTy
-                            // TODO: Actually resolve the associated type from impls
+                            let ingot = new_trait_inst.ingot(self.db);
+                            let canonical_self_ty = Canonical::new(self.db, self_ty);
+                            let implementors = impls_for_ty(self.db, ingot, canonical_self_ty);
+
+                            for implementor in implementors {
+                                let impl_inst = implementor.skip_binder();
+                                if impl_inst.trait_def(self.db) == new_trait_inst.def(self.db) {
+                                    if let Some(&assoc_ty_value) =
+                                        impl_inst.types(self.db).get(&assoc_ty.name)
+                                    {
+                                        return assoc_ty_value;
+                                    }
+                                }
+                            }
                         }
 
                         // Create a new AssocTy with the updated trait instance

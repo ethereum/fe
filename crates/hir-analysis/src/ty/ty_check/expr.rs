@@ -21,6 +21,7 @@ use crate::{
         canonical::Canonicalized,
         const_ty::ConstTyId,
         diagnostics::{BodyDiag, FuncBodyDiag},
+        fold::TyFoldable,
         ty_check::{callable::Callable, path::RecordInitChecker, TyChecker},
         ty_def::{InvalidCause, TyId},
     },
@@ -293,8 +294,10 @@ impl<'db> TyChecker<'db> {
         callable.check_args(self, args, call_span.args(), None);
 
         let ret_ty = callable.ret_ty(self.db);
+        // Normalize the return type to resolve any associated types
+        let normalized_ret_ty = ret_ty.fold_with(&mut self.table);
         self.env.register_callable(expr, callable);
-        ExprProp::new(ret_ty, true)
+        ExprProp::new(normalized_ret_ty, true)
     }
 
     fn check_method_call(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
@@ -390,8 +393,10 @@ impl<'db> TyChecker<'db> {
             Some((*receiver, receiver_prop)),
         );
         let ret_ty = callable.ret_ty(self.db);
+        // Normalize the return type to resolve any associated types
+        let normalized_ret_ty = ret_ty.fold_with(&mut self.table);
         self.env.register_callable(expr, callable);
-        ExprProp::new(ret_ty, true)
+        ExprProp::new(normalized_ret_ty, true)
     }
 
     fn check_path(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {

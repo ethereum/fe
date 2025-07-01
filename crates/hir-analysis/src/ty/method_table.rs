@@ -158,7 +158,7 @@ impl<'db> MethodCollector<'db> {
             }
 
             for func in impl_.funcs(self.db) {
-                let Some(func) = lower_func(self.db, func, assumptions) else {
+                let Some(func) = lower_func(self.db, func) else {
                     continue;
                 };
 

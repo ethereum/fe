@@ -298,11 +298,9 @@ pub(crate) fn collect_implementor_methods<'db>(
     db: &'db dyn HirAnalysisDb,
     implementor: Implementor<'db>,
 ) -> IndexMap<IdentId<'db>, FuncDef<'db>> {
-    let assumptions =
-        collect_constraints(db, implementor.hir_impl_trait(db).into()).instantiate_identity();
     let mut methods = IndexMap::default();
     for method in implementor.hir_impl_trait(db).methods(db) {
-        if let Some(func) = lower_func(db, method, assumptions) {
+        if let Some(func) = lower_func(db, method) {
             methods.insert(func.name(db), func);
         }
     }

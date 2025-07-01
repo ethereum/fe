@@ -34,7 +34,12 @@ impl MyTrait for MyStruct {
     }
 }
 
+fn use_encoder<T: Encoder>(enc: T) -> T::Output {
+    todo()
+}
+
 fn example(ms: MyStruct) {
+    let s: u32 = use_encoder(enc: SomeEncoder{})
     let a: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
-    let t: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
+    let b: SomeAbi::Encoder::Output = ms.get_output<SomeAbi>()
 }

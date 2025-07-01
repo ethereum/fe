@@ -593,6 +593,14 @@ where
                     return ty.super_fold_with(self);
                 }
             },
+            TyData::AssocTy(assoc) => {
+                // Try to resolve the associated type to a concrete type
+                if let Some(resolved_ty) = self.table.resolve_assoc_ty(assoc) {
+                    return self.fold_ty(resolved_ty);
+                }
+                // If we can't resolve it, continue with normal folding
+                return ty.super_fold_with(self);
+            },
             _ => {
                 return ty.super_fold_with(self);
             }

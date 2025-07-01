@@ -3,7 +3,7 @@ use either::Either;
 use hir::{
     hir_def::{
         scope_graph::ScopeId, Enum, EnumVariant, GenericParamOwner, IdentId, ItemKind, Partial,
-        PathId, TypeId, TypeBound, VariantKind,
+        PathId, TypeBound, TypeId, VariantKind,
     },
     span::DynLazySpan,
 };
@@ -564,6 +564,33 @@ where
     Ok(r)
 }
 
+/// Helper function to find an associated type in a trait by name.
+/// Returns the associated type if found, with optional folding through a unification table.
+fn find_assoc_type_in_trait<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_: hir::hir_def::Trait<'db>,
+    trait_inst: TraitInstId<'db>,
+    name: IdentId<'db>,
+    table: Option<&mut UnificationTable<'db>>,
+) -> Option<TyId<'db>> {
+    for trait_type in trait_.types(db) {
+        if trait_type.name.to_opt() == Some(name) {
+            let mut assoc_ty = TyId::new(
+                db,
+                TyData::AssocTy(AssocTy {
+                    trait_: trait_inst,
+                    name,
+                }),
+            );
+            if let Some(table) = table {
+                assoc_ty = assoc_ty.fold_with(table);
+            }
+            return Some(assoc_ty);
+        }
+    }
+    None
+}
+
 fn find_associated_type<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
@@ -631,19 +658,14 @@ fn find_associated_type<'db>(
                     candidates.insert(actual_assoc_ty_in_bound.fold_with(&mut table));
                 } else {
                     // If no explicit binding is found, check if the trait declares this associated type
-                    for trait_type in trait_def_of_bound.trait_(db).types(db) {
-                        if trait_type.name.to_opt() == Some(name) {
-                            // Create an associated type for this trait bound
-                            let assoc_ty_id = TyId::new(
-                                db,
-                                TyData::AssocTy(AssocTy {
-                                    trait_: predicate_trait_inst,
-                                    name,
-                                }),
-                            );
-                            candidates.insert(assoc_ty_id.fold_with(&mut table));
-                            break;
-                        }
+                    if let Some(assoc_ty) = find_assoc_type_in_trait(
+                        db,
+                        trait_def_of_bound.trait_(db),
+                        predicate_trait_inst,
+                        name,
+                        Some(&mut table),
+                    ) {
+                        candidates.insert(assoc_ty);
                     }
                 }
             }
@@ -656,7 +678,7 @@ fn find_associated_type<'db>(
         // Get the trait that defines this associated type
         let trait_def = assoc_ty.trait_.def(db);
         let trait_ = trait_def.trait_(db);
-        
+
         // Find the associated type definition in the trait
         for trait_type in trait_.types(db) {
             if trait_type.name.to_opt() == Some(assoc_ty.name) {
@@ -665,27 +687,25 @@ fn find_associated_type<'db>(
                     if let TypeBound::Trait(trait_ref) = bound {
                         // We need to resolve the trait reference to check its associated types
                         // First, we need to lower the trait ref with proper substitutions
-                        
+
                         // The self type for the trait bound is the associated type itself
                         let self_ty = ty.value;
-                        
+
                         // Try to lower the trait reference
-                        if let Ok(bound_trait_inst) = lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions) {
+                        if let Ok(bound_trait_inst) =
+                            lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions)
+                        {
                             let bound_trait_def = bound_trait_inst.def(db).trait_(db);
-                            
+
                             // Check if this trait has the associated type we're looking for
-                            for bound_trait_type in bound_trait_def.types(db) {
-                                if bound_trait_type.name.to_opt() == Some(name) {
-                                    // Create an associated type for this nested access
-                                    let nested_assoc_ty = TyId::new(
-                                        db,
-                                        TyData::AssocTy(AssocTy {
-                                            trait_: bound_trait_inst,
-                                            name,
-                                        }),
-                                    );
-                                    candidates.insert(nested_assoc_ty);
-                                }
+                            if let Some(nested_assoc_ty) = find_assoc_type_in_trait(
+                                db,
+                                bound_trait_def,
+                                bound_trait_inst,
+                                name,
+                                None,
+                            ) {
+                                candidates.insert(nested_assoc_ty);
                             }
                         }
                     }
@@ -722,7 +742,7 @@ pub fn resolve_name_res<'db>(
                 ItemKind::TopMod(_) | ItemKind::Mod(_) => PathRes::Mod(scope_id),
 
                 ItemKind::Func(func) => {
-                    let func_def = lower_func(db, func, assumptions).unwrap();
+                    let func_def = lower_func(db, func).unwrap();
                     let ty = TyId::func(db, func_def);
                     PathRes::Func(TyId::foldl(db, ty, args))
                 }
