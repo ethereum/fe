@@ -59,7 +59,7 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --all-features --verbose --exclude fe-language-server --exclude fe-bench
 
-  wasm-test:
+  wasm-wasi-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -67,22 +67,22 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-      - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      - name: Install WASM targets
+        run: |
+          rustup target add wasm32-unknown-unknown
+          rustup target add wasm32-wasip1
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2
-      - name: Run WASM tests
-        # wasm-pack needs a Cargo.toml with a 'package' field.
-        # (see https://github.com/rustwasm/wasm-pack/issues/642)
-        # This will still run all tests in the workspace.
-        run: wasm-pack test --node crates/driver --workspace --exclude fe-language-server --exclude fe-bench
+      - name: Check core crates for wasm32-unknown-unknown
+        run: cargo check -p fe-common -p fe-parser -p fe-hir -p fe-hir-analysis --target wasm32-unknown-unknown
+      - name: Check filesystem crates for wasm32-wasip1
+        run: cargo check -p fe-driver -p fe-resolver -p fe --target wasm32-wasip1
 
   release:
     # Only run this when we push a tag
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ${{ matrix.os }}
-    # needs: [lint, test, wasm-test]
-    needs: [lint, test]
+    needs: [lint, test, wasm-wasi-check]
     strategy:
       matrix:
         include:

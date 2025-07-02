@@ -236,12 +236,12 @@ impl<'db> ModuleTreeBuilder<'db> {
 
     fn build_tree(&mut self) {
         let root = self.ingot.root_file(self.db).unwrap_or_else(|_| {
-            error!("ingot root file is missing");
+            error!("ingot root file is missing in {}", self.ingot.base(self.db));
             error!("Files in ingot:");
             for (url, file) in self.ingot.files(self.db).iter() {
                 error!("  {}: {:?}", url, file.path(self.db));
             }
-            panic!("ingot root file is missing");
+            std::process::exit(2)
         });
 
         for (_url, child) in self.ingot.files(self.db).iter() {

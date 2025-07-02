@@ -83,7 +83,7 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
             .filter_map(|(name, url)| {
                 self.index(db)
                     .containing_ingot(db, url)
-                    .map(|ingot_description| (IdentId::new(db, name), ingot_description))
+                    .map(|ingot_description| (IdentId::new(db, name.as_str()), ingot_description))
             })
             .collect()
     }

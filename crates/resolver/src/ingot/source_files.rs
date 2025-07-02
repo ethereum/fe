@@ -3,11 +3,12 @@ use std::{fmt, fs, mem, path::PathBuf};
 use crate::Resolver;
 use camino::Utf8PathBuf;
 use glob::glob;
+use url::Url;
 
 #[derive(Debug)]
 pub struct SourceFiles {
-    pub root: Option<Utf8PathBuf>,
-    pub files: Vec<(Utf8PathBuf, String)>,
+    pub root: Option<Url>,
+    pub files: Vec<(Url, String)>,
 }
 
 #[derive(Debug)]
@@ -30,12 +31,13 @@ pub struct SourceFilesResolver {
 }
 
 impl Resolver for SourceFilesResolver {
-    type Description = Utf8PathBuf;
+    type Description = Url;
     type Resource = SourceFiles;
     type Error = Error;
     type Diagnostic = Diagnostic;
 
-    fn resolve(&mut self, ingot_path: &Utf8PathBuf) -> Result<SourceFiles, Error> {
+    fn resolve(&mut self, ingot_url: &Url) -> Result<SourceFiles, Error> {
+        let ingot_path = Utf8PathBuf::from(ingot_url.path());
         let source_path = ingot_path.join("src");
 
         if !source_path.exists() {
@@ -53,7 +55,7 @@ impl Resolver for SourceFilesResolver {
             .filter_map(|entry| match entry {
                 Ok(path) => match Utf8PathBuf::from_path_buf(path.to_path_buf()) {
                     Ok(path) => match fs::read_to_string(&path) {
-                        Ok(content) => Some((path, content)),
+                        Ok(content) => Some((Url::from_file_path(path).unwrap(), content)),
                         Err(error) => {
                             self.diagnostics
                                 .push(Diagnostic::FileReadError(path, error));
@@ -73,7 +75,7 @@ impl Resolver for SourceFilesResolver {
             .collect();
 
         let root = if root.exists() {
-            Some(root)
+            Some(Url::from_file_path(root).unwrap())
         } else {
             self.diagnostics.push(Diagnostic::RootFileDoesNotExist);
             None
