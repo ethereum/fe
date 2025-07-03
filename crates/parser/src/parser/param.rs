@@ -336,7 +336,7 @@ impl super::Parse for GenericArgScope {
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.set_newline_as_trivia(false);
-        
+
         // Check if this is an associated type argument (Ident = Type)
         let is_assoc_type = parser.dry_run(|parser| {
             parser.current_kind() == Some(SyntaxKind::Ident) && {
@@ -349,10 +349,10 @@ impl super::Parse for GenericArgScope {
             self.set_kind(SyntaxKind::AssocTypeGenericArg);
             // Parse the identifier name
             parser.bump_expected(SyntaxKind::Ident);
-            
+
             // Parse the equals sign
             parser.bump_expected(SyntaxKind::Eq);
-            
+
             // Parse the type
             parse_type(parser, None)?;
         } else {
@@ -378,8 +378,6 @@ impl super::Parse for GenericArgScope {
         Ok(())
     }
 }
-
-
 
 define_scope! { pub(crate) CallArgListScope, CallArgList, (RParen, Comma) }
 impl super::Parse for CallArgListScope {

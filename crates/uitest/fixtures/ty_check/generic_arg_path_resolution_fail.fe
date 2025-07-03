@@ -4,6 +4,8 @@ extern {
 
 trait Tr1 {
     type Foo
+
+    fn make_foo(self) -> Self::Foo
 }
 
 struct S1<T> {

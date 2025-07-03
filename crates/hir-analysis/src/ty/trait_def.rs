@@ -10,14 +10,15 @@ use salsa::Update;
 
 use super::{
     binder::Binder,
-    canonical::Canonical,
+    canonical::{Canonical, Canonicalized},
     diagnostics::{TraitConstraintDiag, TyDiagCollection},
+    fold::TyFoldable as _,
     func_def::{lower_func, FuncDef},
     trait_lower::collect_implementor_methods,
     trait_resolution::{
         check_trait_inst_wf,
         constraint::{collect_constraints, collect_super_traits},
-        PredicateListId, WellFormedness,
+        is_goal_satisfiable, GoalSatisfiability, PredicateListId, WellFormedness,
     },
     ty_def::{Kind, TyId},
     ty_lower::GenericParamTypeSet,
@@ -267,7 +268,44 @@ pub(super) fn does_impl_trait_conflict(
     let a = table.instantiate_with_fresh_vars(a);
     let b = table.instantiate_with_fresh_vars(b);
 
-    table.unify(a, b).is_ok()
+    if table.unify(a, b).is_err() {
+        return false;
+    }
+
+    let a_constraints = a.constraints(db);
+    let b_constraints = b.constraints(db);
+
+    if a_constraints.is_empty(db) && b_constraints.is_empty(db) {
+        return true;
+    }
+
+    let ingot = a.trait_def(db).ingot(db);
+
+    // Check if all constraints from both implementations would be satisfiable
+    // when the types are unified
+    let merged_constraints = a_constraints.merge(db, b_constraints);
+
+    // Check each constraint to see if it would be satisfiable
+    for &constraint in merged_constraints.list(db) {
+        let constraint = Canonicalized::new(db, constraint.fold_with(&mut table));
+
+        // Check if this constraint is satisfiable
+        match is_goal_satisfiable(db, ingot, constraint.value, PredicateListId::empty_list(db)) {
+            GoalSatisfiability::UnSat(_) => {
+                // If any constraint is unsatisfiable, the implementations don't actually conflict
+                return false;
+            }
+            GoalSatisfiability::ContainsInvalid => {
+                // Don't report a conflict error if there are invalid types
+                return false;
+            }
+            _ => {
+                // Constraint is satisfiable or needs more information, continue checking
+            }
+        }
+    }
+
+    true
 }
 
 /// Represents an instantiated trait, which can be thought of as a trait

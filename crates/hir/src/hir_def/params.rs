@@ -37,10 +37,13 @@ impl<'db> GenericArgListId<'db> {
                                 .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db))
                         }
                         GenericArg::AssocType(a) => {
-                            let name = a.name.to_opt()
+                            let name = a
+                                .name
+                                .to_opt()
                                 .map_or_else(|| "<missing>".into(), |n| n.data(db).to_string());
-                            let ty = a.ty.to_opt()
-                                .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db));
+                            let ty =
+                                a.ty.to_opt()
+                                    .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db));
                             format!("{} = {}", name, ty)
                         }
                     })
