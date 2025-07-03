@@ -4,37 +4,68 @@ expression: diags
 input_file: fixtures/ty_check/generic_arg_path_resolution_fail.fe
 ---
 error[2-0002]: `Bar` is not found
-   ┌─ generic_arg_path_resolution_fail.fe:19:19
+   ┌─ generic_arg_path_resolution_fail.fe:21:19
    │
-19 │     type Foo = T::Bar  // Error: T has Tr2 bound but Tr2 doesn't have Bar associated type
+21 │     type Foo = T::Bar  // Error: T has Tr2 bound but Tr2 doesn't have Bar associated type
    │                   ^^^ `Bar` is not found
 
 error[2-0002]: `NonExistent` is not found
-   ┌─ generic_arg_path_resolution_fail.fe:32:12
+   ┌─ generic_arg_path_resolution_fail.fe:34:12
    │
-32 │     x: Vec<NonExistent>  // Error: NonExistent doesn't exist
+34 │     x: Vec<NonExistent>  // Error: NonExistent doesn't exist
    │            ^^^^^^^^^^^ `NonExistent` is not found
 
-error[5-0001]: conflict trait implementation
-   ┌─ generic_arg_path_resolution_fail.fe:18:22
+error[2-0002]: `Bar` is not found
+   ┌─ generic_arg_path_resolution_fail.fe:41:26
    │
-18 │ impl<T: Tr2> Tr1 for S1<T> {
-   │                      ^^^^^ conflict trait implementation
-   ·
-38 │ impl Tr1 for S1<Concrete> {
-   │              ------------ conflict with this trait implementation
+41 │     type Foo = Concrete::Bar  // Error: Concrete doesn't have associated type Bar
+   │                          ^^^ `Bar` is not found
 
-error[5-0001]: conflict trait implementation
-   ┌─ generic_arg_path_resolution_fail.fe:18:22
+error[2-0002]: `Missing` is not found
+   ┌─ generic_arg_path_resolution_fail.fe:54:26
    │
-18 │ impl<T: Tr2> Tr1 for S1<T> {
-   │                      ^^^^^ conflict trait implementation
-   ·
-51 │ impl<T: Tr3> Tr1 for S1<T> {
-   │                      ----- conflict with this trait implementation
+54 │     type Foo = T::Inner::Missing  // Error: T::Inner doesn't have associated type Missing
+   │                          ^^^^^^^ `Missing` is not found
 
-error[6-0001]: method not defined in trait
-   ┌─ generic_arg_path_resolution_fail.fe:18:14
+error[2-0011]: ambiguous associated type `Foo`
+   ┌─ generic_arg_path_resolution_fail.fe:23:32
    │
-18 │ impl<T: Tr2> Tr1 for S1<T> {
-   │              ^^^ method `make_foo` is not defined in trait `Tr1`
+ 5 │ trait Tr1 {
+   │       ---
+   │       │
+   │       candidate: `Tr1`
+   │       candidate: `Tr1`
+   ·
+23 │     fn make_foo(self) -> Self::Foo {
+   │                                ^^^ associated type `Foo` is ambiguous
+   │
+   = specify the trait explicitly: `<Type as Trait>::Foo`
+
+error[2-0011]: ambiguous associated type `Foo`
+   ┌─ generic_arg_path_resolution_fail.fe:43:32
+   │
+ 5 │ trait Tr1 {
+   │       ---
+   │       │
+   │       candidate: `Tr1`
+   │       candidate: `Tr1`
+   │       candidate: `Tr1`
+   ·
+43 │     fn make_foo(self) -> Self::Foo {
+   │                                ^^^ associated type `Foo` is ambiguous
+   │
+   = specify the trait explicitly: `<Type as Trait>::Foo`
+
+error[2-0011]: ambiguous associated type `Foo`
+   ┌─ generic_arg_path_resolution_fail.fe:56:32
+   │
+ 5 │ trait Tr1 {
+   │       ---
+   │       │
+   │       candidate: `Tr1`
+   │       candidate: `Tr1`
+   ·
+56 │     fn make_foo(self) -> Self::Foo {
+   │                                ^^^ associated type `Foo` is ambiguous
+   │
+   = specify the trait explicitly: `<Type as Trait>::Foo`

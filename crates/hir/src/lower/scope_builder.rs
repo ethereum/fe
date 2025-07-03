@@ -5,8 +5,8 @@ use crate::{
     hir_def::{
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
         Body, Enum, EnumVariant, ExprId, FieldDefListId, FieldParent, FuncParamListId,
-        FuncParamName, GenericParamListId, ItemKind, TopLevelMod, Trait, TrackedItemId,
-        TrackedItemVariant, Use, VariantDefListId, VariantKind, Visibility,
+        FuncParamName, GenericParamListId, ItemKind, TopLevelMod, TrackedItemId,
+        TrackedItemVariant, Trait, Use, VariantDefListId, VariantKind, Visibility,
     },
     HirDb,
 };
@@ -417,11 +417,7 @@ impl<'db> ScopeGraphBuilder<'db> {
         }
     }
 
-    fn add_trait_type_scope(
-        &mut self,
-        parent_node: NodeId,
-        trait_: Trait<'db>,
-    ) {
+    fn add_trait_type_scope(&mut self, parent_node: NodeId, trait_: Trait<'db>) {
         for (i, trait_type) in trait_.types(self.db).iter().enumerate() {
             let scope_id = ScopeId::TraitType(trait_, i as u16);
             let scope = Scope::new(scope_id, Visibility::Private);

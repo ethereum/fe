@@ -1695,16 +1695,16 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 conflict_with,
             } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "conflict trait implementation".to_string(),
+                message: "conflicting trait implementations".to_string(),
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: "conflict trait implementation".to_string(),
+                        message: "this trait implementation".to_string(),
                         span: primary.span().ty().resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: "conflict with this trait implementation".to_string(),
+                        message: "conflicts with this trait implementation".to_string(),
                         span: conflict_with.span().ty().resolve(db),
                     },
                 ],

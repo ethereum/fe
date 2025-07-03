@@ -129,18 +129,18 @@ impl<'db> TyFolder<'db> for InstantiateFolder<'db, '_> {
                 // When substituting type parameters in associated types,
                 // we need to fold the trait instance to substitute its generic parameters
                 let trait_inst = assoc_ty.trait_;
-                
+
                 // Fold the self type and generic arguments of the trait instance
                 let folded_self_ty = self.fold_ty(trait_inst.self_ty(self.db));
                 let mut folded_generic_args = vec![];
                 for &arg in trait_inst.args(self.db) {
                     folded_generic_args.push(self.fold_ty(arg));
                 }
-                
+
                 // If any types changed, create a new trait instance with substituted types
-                if folded_self_ty != trait_inst.self_ty(self.db) 
-                    || folded_generic_args != *trait_inst.args(self.db) {
-                    
+                if folded_self_ty != trait_inst.self_ty(self.db)
+                    || folded_generic_args != *trait_inst.args(self.db)
+                {
                     // If we couldn't resolve to a concrete type, create a new trait instance
                     let new_trait_inst = TraitInstId::new(
                         self.db,
@@ -148,7 +148,7 @@ impl<'db> TyFolder<'db> for InstantiateFolder<'db, '_> {
                         folded_generic_args,
                         trait_inst.assoc_type_bindings(self.db).clone(),
                     );
-                    
+
                     // Return a new associated type with the updated trait instance
                     return TyId::new(
                         self.db,

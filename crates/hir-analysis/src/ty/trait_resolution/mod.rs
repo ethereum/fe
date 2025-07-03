@@ -167,6 +167,10 @@ impl<'db> PredicateListId<'db> {
         Self::new(db, Vec::new())
     }
 
+    pub fn is_empty(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.list(db).is_empty()
+    }
+
     fn extend_by_super(self, db: &'db dyn HirAnalysisDb) -> Self {
         let mut super_traits: IndexSet<_> = self.list(db).iter().copied().collect();
         for &pred in self.list(db) {
