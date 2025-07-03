@@ -600,7 +600,7 @@ where
                 }
                 // If we can't resolve it, continue with normal folding
                 return ty.super_fold_with(self);
-            },
+            }
             _ => {
                 return ty.super_fold_with(self);
             }

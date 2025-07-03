@@ -1,0 +1,40 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/generic_arg_path_resolution_fail.fe
+---
+error[2-0002]: `Bar` is not found
+   ┌─ generic_arg_path_resolution_fail.fe:19:19
+   │
+19 │     type Foo = T::Bar  // Error: T has Tr2 bound but Tr2 doesn't have Bar associated type
+   │                   ^^^ `Bar` is not found
+
+error[2-0002]: `NonExistent` is not found
+   ┌─ generic_arg_path_resolution_fail.fe:32:12
+   │
+32 │     x: Vec<NonExistent>  // Error: NonExistent doesn't exist
+   │            ^^^^^^^^^^^ `NonExistent` is not found
+
+error[5-0001]: conflict trait implementation
+   ┌─ generic_arg_path_resolution_fail.fe:18:22
+   │
+18 │ impl<T: Tr2> Tr1 for S1<T> {
+   │                      ^^^^^ conflict trait implementation
+   ·
+38 │ impl Tr1 for S1<Concrete> {
+   │              ------------ conflict with this trait implementation
+
+error[5-0001]: conflict trait implementation
+   ┌─ generic_arg_path_resolution_fail.fe:18:22
+   │
+18 │ impl<T: Tr2> Tr1 for S1<T> {
+   │                      ^^^^^ conflict trait implementation
+   ·
+51 │ impl<T: Tr3> Tr1 for S1<T> {
+   │                      ----- conflict with this trait implementation
+
+error[6-0001]: method not defined in trait
+   ┌─ generic_arg_path_resolution_fail.fe:18:14
+   │
+18 │ impl<T: Tr2> Tr1 for S1<T> {
+   │              ^^^ method `make_foo` is not defined in trait `Tr1`

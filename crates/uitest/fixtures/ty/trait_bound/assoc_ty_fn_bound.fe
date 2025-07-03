@@ -21,7 +21,7 @@ impl Tr1 for S3 {
 }
 
 impl Tr1 for S4 {
-    type Foo = S5 // xxx missing Error: S5 doesn't exist
+    type Foo = S5
 }
 
 fn f<T>(_: T)

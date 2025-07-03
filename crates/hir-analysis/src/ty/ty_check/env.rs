@@ -80,7 +80,7 @@ impl<'db> TyCheckEnv<'db> {
                 Partial::Present(hir_ty) => {
                     lower_hir_ty(db, hir_ty, func.scope(), env.assumptions())
                 }
-                Partial::Absent => TyId::invalid(db, InvalidCause::Other),
+                Partial::Absent => TyId::invalid(db, InvalidCause::ParseError),
             };
 
             if !ty.is_star_kind(db) {

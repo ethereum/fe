@@ -98,7 +98,7 @@ impl<'db> Callable<'db> {
             return true;
         }
 
-        let given_args = lower_generic_arg_list(db, args, tc.env.scope());
+        let given_args = lower_generic_arg_list(db, args, tc.env.scope(), tc.env.assumptions());
         let offset = self.func_def.offset_to_explicit_params_position(db);
         let current_args = &mut self.generic_args[offset..];
 

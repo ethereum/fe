@@ -10,7 +10,7 @@ use crate::ty::{
 impl<'db> TyChecker<'db> {
     pub(super) fn check_stmt(&mut self, stmt: StmtId, expected: TyId<'db>) -> TyId<'db> {
         let Partial::Present(stmt_data) = self.env.stmt_data(stmt) else {
-            return TyId::invalid(self.db, InvalidCause::Other);
+            return TyId::invalid(self.db, InvalidCause::ParseError);
         };
 
         match stmt_data {

@@ -33,7 +33,7 @@ pub fn lower_func<'db>(
                     .ty
                     .to_opt()
                     .map(|ty| lower_hir_ty(db, ty, func.scope(), assumptions))
-                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other));
+                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::ParseError));
                 Binder::bind(ty)
             })
             .collect(),

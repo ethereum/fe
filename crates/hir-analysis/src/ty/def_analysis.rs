@@ -348,7 +348,7 @@ impl<'db> DefAnalyzer<'db> {
                     collect_constraints(db, impl_trait.into()).instantiate_identity(),
                 )
                 .into(),
-                _ => TyId::invalid(db, InvalidCause::Other).into(),
+                _ => TyId::invalid(db, InvalidCause::ParseError).into(),
             },
             ScopeId::Item(ItemKind::Impl(impl_)) => match impl_.ty(db).to_opt() {
                 Some(hir_ty) => lower_hir_ty(
@@ -358,7 +358,7 @@ impl<'db> DefAnalyzer<'db> {
                     collect_constraints(db, impl_.into()).instantiate_identity(),
                 )
                 .into(),
-                None => TyId::invalid(db, InvalidCause::Other).into(),
+                None => TyId::invalid(db, InvalidCause::ParseError).into(),
             },
             _ => None,
         };
@@ -730,6 +730,14 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'db, LazyTraitRefSpan<'db>>,
         trait_ref: TraitRefId<'db>,
     ) {
+        if self.current_ty.is_none() {
+            eprintln!(
+                "no current_ty! trait_ref: {}, scope: {:?}",
+                trait_ref.path(self.db).unwrap().pretty_print(self.db),
+                self.scope().pretty_path(self.db)
+            );
+        }
+
         let current_ty = self
             .current_ty
             .as_ref()
@@ -813,6 +821,46 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         } else {
             walk_impl(self, ctxt, impl_);
         }
+    }
+
+    fn visit_impl_trait(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyImplTraitSpan<'db>>,
+        impl_trait: ImplTrait<'db>,
+    ) {
+        for assoc_type in impl_trait.types(self.db) {
+            if let Some(ty) = assoc_type.ty.to_opt() {
+                let ty_span = assoc_type
+                    .name
+                    .to_opt()
+                    .and_then(|name| impl_trait.associated_type_span(self.db, name))
+                    .map(|s| s.ty())
+                    .unwrap_or_else(|| ctxt.span().unwrap().ty());
+
+                let lowered_ty = lower_hir_ty(self.db, ty, impl_trait.scope(), self.assumptions);
+
+                if lowered_ty.has_invalid(self.db) {
+                    let diags = collect_ty_lower_errors(
+                        self.db,
+                        impl_trait.scope(),
+                        ty,
+                        ty_span.clone(),
+                        self.assumptions,
+                    );
+                    if !diags.is_empty() {
+                        self.diags.extend(diags);
+                    }
+                }
+
+                if let Some(diag) =
+                    lowered_ty.emit_wf_diag(self.db, ctxt.ingot(), self.assumptions, ty_span.into())
+                {
+                    self.diags.push(diag);
+                }
+            }
+        }
+
+        walk_impl_trait(self, ctxt, impl_trait);
     }
 
     fn visit_func(

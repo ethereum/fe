@@ -807,7 +807,7 @@ impl<'db> TyChecker<'db> {
 
             array_ty
         } else {
-            let len_ty = ConstTyId::invalid(self.db, InvalidCause::Other);
+            let len_ty = ConstTyId::invalid(self.db, InvalidCause::ParseError);
             let len_ty = TyId::const_ty(self.db, len_ty);
             TyId::app(self.db, array, len_ty)
         };
