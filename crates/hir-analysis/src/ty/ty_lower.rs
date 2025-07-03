@@ -67,7 +67,7 @@ pub fn lower_opt_hir_ty<'db>(
 ) -> TyId<'db> {
     ty.to_opt()
         .map(|hir_ty| lower_hir_ty(db, hir_ty, scope, assumptions))
-        .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
+        .unwrap_or_else(|| TyId::invalid(db, InvalidCause::ParseError))
 }
 
 fn lower_path<'db>(
@@ -77,11 +77,12 @@ fn lower_path<'db>(
     assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
     let Some(path) = path.to_opt() else {
-        return TyId::invalid(db, InvalidCause::Other);
+        return TyId::invalid(db, InvalidCause::ParseError);
     };
     match resolve_path(db, path, scope, assumptions, false) {
         Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => ty,
-        _ => TyId::invalid(db, InvalidCause::Other),
+        Ok(_) => TyId::invalid(db, InvalidCause::Other),
+        Err(_) => TyId::invalid(db, InvalidCause::PathResolutionFailed { path }),
     }
 }
 
@@ -131,7 +132,7 @@ pub(crate) fn lower_type_alias<'db>(
     let Some(hir_ty) = alias.ty(db).to_opt() else {
         return TyAlias {
             alias,
-            alias_to: Binder::bind(TyId::invalid(db, InvalidCause::Other)),
+            alias_to: Binder::bind(TyId::invalid(db, InvalidCause::ParseError)),
             param_set,
         };
     };
@@ -218,6 +219,7 @@ pub(crate) fn lower_generic_arg_list<'db>(
     db: &'db dyn HirAnalysisDb,
     args: GenericArgListId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> Vec<TyId<'db>> {
     args.data(db)
         .iter()
@@ -225,8 +227,8 @@ pub(crate) fn lower_generic_arg_list<'db>(
             GenericArg::Type(ty_arg) => ty_arg
                 .ty
                 .to_opt()
-                .map(|ty| lower_hir_ty(db, ty, scope, PredicateListId::empty_list(db))) // xxx fixme
-                .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
+                .map(|ty| lower_hir_ty(db, ty, scope, assumptions))
+                .unwrap_or_else(|| TyId::invalid(db, InvalidCause::ParseError)),
 
             GenericArg::Const(const_arg) => {
                 let const_ty = ConstTyId::from_opt_body(db, const_arg.body);

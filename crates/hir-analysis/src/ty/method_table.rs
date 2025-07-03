@@ -150,7 +150,7 @@ impl<'db> MethodCollector<'db> {
 
             let ty = match impl_.ty(self.db).to_opt() {
                 Some(ty) => lower_hir_ty(self.db, ty, impl_.scope(), assumptions),
-                None => TyId::invalid(self.db, InvalidCause::Other),
+                None => TyId::invalid(self.db, InvalidCause::ParseError),
             };
 
             if ty.has_invalid(self.db) | !ty.is_inherent_impl_allowed(self.db, self.ingot) {

@@ -32,6 +32,13 @@ pub enum NameResDiag<'db> {
     /// The resolved name is ambiguous.
     Ambiguous(DynLazySpan<'db>, IdentId<'db>, Vec<DynLazySpan<'db>>),
 
+    /// The associated type is ambiguous.
+    AmbiguousAssociatedType {
+        span: DynLazySpan<'db>,
+        name: IdentId<'db>,
+        candidates: Vec<(TraitInstId<'db>, TyId<'db>)>,
+    },
+
     /// The name is found, but it can't be used as a middle segment of a path.
     InvalidPathSegment(DynLazySpan<'db>, IdentId<'db>, Option<DynLazySpan<'db>>),
 
@@ -68,6 +75,7 @@ impl<'db> NameResDiag<'db> {
             Self::MethodNotFound { primary, .. } => primary.top_mod(db).unwrap(),
             Self::Invisible(span, _, _) => span.top_mod(db).unwrap(),
             Self::Ambiguous(span, _, _) => span.top_mod(db).unwrap(),
+            Self::AmbiguousAssociatedType { span, .. } => span.top_mod(db).unwrap(),
             Self::InvalidPathSegment(span, _, _) => span.top_mod(db).unwrap(),
             Self::ExpectedType(span, _, _) => span.top_mod(db).unwrap(),
             Self::ExpectedTrait(span, _, _) => span.top_mod(db).unwrap(),
@@ -95,6 +103,7 @@ impl<'db> NameResDiag<'db> {
             Self::NotFound(..) => 2,
             Self::Invisible(..) => 3,
             Self::Ambiguous(..) => 4,
+            Self::AmbiguousAssociatedType { .. } => 11,
             Self::InvalidPathSegment(..) => 5,
             Self::ExpectedType(..) => 6,
             Self::ExpectedTrait(..) => 7,

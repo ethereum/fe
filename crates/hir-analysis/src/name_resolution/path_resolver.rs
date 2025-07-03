@@ -63,6 +63,12 @@ pub enum PathResErrorKind<'db> {
     /// The name is found, but it's ambiguous.
     Ambiguous(ThinVec<NameRes<'db>>),
 
+    /// The associated type is ambiguous.
+    AmbiguousAssociatedType {
+        name: IdentId<'db>,
+        candidates: Vec<(TraitInstId<'db>, TyId<'db>)>,
+    },
+
     /// The name is found, but it can't be used in the middle of a use path.
     InvalidPathSegment(PathRes<'db>),
 
@@ -110,6 +116,12 @@ impl<'db> PathResError<'db> {
             PathResErrorKind::NotFound { .. } => "Not found".to_string(),
             PathResErrorKind::ParseError => "Parse error".to_string(),
             PathResErrorKind::Ambiguous(v) => format!("Ambiguous; {} options.", v.len()),
+            PathResErrorKind::AmbiguousAssociatedType {
+                name: _,
+                candidates,
+            } => {
+                format!("Ambiguous associated type; {} options.", candidates.len())
+            }
             PathResErrorKind::InvalidPathSegment(_) => "Invalid path segment".to_string(),
             PathResErrorKind::Conflict(..) => "Conflicting definitions".to_string(),
             PathResErrorKind::TooManyGenericArgs {
@@ -179,6 +191,15 @@ impl<'db> PathResError<'db> {
             }
 
             PathResErrorKind::Conflict(spans) => NameResDiag::Conflict(ident, spans),
+
+            PathResErrorKind::AmbiguousAssociatedType { name, candidates } => {
+                NameResDiag::AmbiguousAssociatedType {
+                    span,
+                    name,
+                    candidates,
+                }
+            }
+
             PathResErrorKind::MethodSelection(_) => todo!(),
         };
         Some(diag)
@@ -516,19 +537,33 @@ where
 
             let assoc_tys =
                 find_associated_type(db, scope, Canonical::new(db, ty), ident, assumptions);
-            let Some(assoc) = assoc_tys.first() else {
-                return Err(PathResError::new(
-                    PathResErrorKind::NotFound {
-                        parent: parent_res,
-                        bucket: NameResBucket::default(),
-                    },
-                    path,
-                ));
-            };
-            // xxx ambiguous associated type error
-            let r = PathRes::Ty(*assoc);
-            observer(path, &r);
-            return Ok(r);
+
+            match assoc_tys.len() {
+                0 => {
+                    return Err(PathResError::new(
+                        PathResErrorKind::NotFound {
+                            parent: parent_res,
+                            bucket: NameResBucket::default(),
+                        },
+                        path,
+                    ));
+                }
+                1 => {
+                    let (_, assoc_ty) = assoc_tys[0];
+                    let r = PathRes::Ty(assoc_ty);
+                    observer(path, &r);
+                    return Ok(r);
+                }
+                _ => {
+                    return Err(PathResError::new(
+                        PathResErrorKind::AmbiguousAssociatedType {
+                            name: ident,
+                            candidates: assoc_tys.into_vec(),
+                        },
+                        path,
+                    ));
+                }
+            }
         }
 
         Some(PathRes::Func(_) | PathRes::EnumVariant(..)) => {
@@ -596,8 +631,8 @@ fn find_associated_type<'db>(
     ty: Canonical<TyId<'db>>,
     name: IdentId<'db>,
     assumptions: PredicateListId<'db>,
-) -> SmallVec<TyId<'db>, 4> {
-    let mut candidates: IndexSet<TyId<'db>> = IndexSet::new();
+) -> SmallVec<(TraitInstId<'db>, TyId<'db>), 4> {
+    let mut candidates: IndexSet<(TraitInstId<'db>, TyId<'db>)> = IndexSet::new();
     let ingot = scope.ingot(db);
 
     // Case 1: ty is a concrete type or can be resolved to concrete impls.
@@ -620,7 +655,7 @@ fn find_associated_type<'db>(
                 // The associated type from the `impl` block might itself contain generic parameters
                 // from the `impl` block. These need to be substituted based on the unification outcome.
                 let resolved_ty = ty.fold_with(&mut table);
-                candidates.insert(resolved_ty);
+                candidates.insert((implementor_instance.trait_(db), resolved_ty));
             }
         }
     }
@@ -652,7 +687,10 @@ fn find_associated_type<'db>(
                 {
                     // This `actual_assoc_ty_in_bound` needs to be processed by the unification table
                     // to substitute any type variables based on the `lhs_ty_instance` unification.
-                    candidates.insert(actual_assoc_ty_in_bound.fold_with(&mut table));
+                    candidates.insert((
+                        predicate_trait_inst,
+                        actual_assoc_ty_in_bound.fold_with(&mut table),
+                    ));
                 } else {
                     // If no explicit binding is found, check if the trait declares this associated type
                     if let Some(assoc_ty) = find_assoc_type_in_trait(
@@ -662,7 +700,7 @@ fn find_associated_type<'db>(
                         name,
                         &mut table,
                     ) {
-                        candidates.insert(assoc_ty);
+                        candidates.insert((predicate_trait_inst, assoc_ty));
                     }
                 }
             }
@@ -694,7 +732,7 @@ fn find_associated_type<'db>(
                 if let Some(nested_assoc_ty) =
                     find_assoc_type_in_trait(db, trait_def, *trait_inst, name, &mut pred_table)
                 {
-                    candidates.insert(nested_assoc_ty);
+                    candidates.insert((*trait_inst, nested_assoc_ty));
                 }
             }
         }
@@ -732,7 +770,7 @@ fn find_associated_type<'db>(
                                 name,
                                 &mut table,
                             ) {
-                                candidates.insert(nested_assoc_ty);
+                                candidates.insert((bound_trait_inst, nested_assoc_ty));
                             }
                         }
                     }
@@ -753,7 +791,7 @@ pub fn resolve_name_res<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
-    let args = &lower_generic_arg_list(db, path.generic_args(db), scope);
+    let args = &lower_generic_arg_list(db, path.generic_args(db), scope, assumptions);
     let res = match nameres.kind {
         NameResKind::Prim(prim) => {
             let ty = TyId::from_hir_prim_ty(db, prim);
@@ -778,7 +816,7 @@ pub fn resolve_name_res<'db>(
                     let ty = if let Some(ty) = const_.ty(db).to_opt() {
                         lower_hir_ty(db, ty, scope, assumptions)
                     } else {
-                        TyId::invalid(db, InvalidCause::Other)
+                        TyId::invalid(db, InvalidCause::ParseError)
                     };
                     PathRes::Const(ty)
                 }

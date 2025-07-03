@@ -183,7 +183,7 @@ impl<'db> AdtField<'db> {
         let ty = if let Some(ty) = self.tys[i].to_opt() {
             lower_hir_ty(db, ty, self.scope, assumptions)
         } else {
-            TyId::invalid(db, InvalidCause::Other)
+            TyId::invalid(db, InvalidCause::ParseError)
         };
 
         Binder::bind(ty)

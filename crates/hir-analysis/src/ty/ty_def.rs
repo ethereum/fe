@@ -8,7 +8,8 @@ use hir::{
     hir_def::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Body, Enum, GenericParamOwner, IdentId, IngotId, IntegerId, TypeAlias as HirTypeAlias,
+        Body, Enum, GenericParamOwner, IdentId, IngotId, IntegerId, PathId,
+        TypeAlias as HirTypeAlias,
     },
     span::DynLazySpan,
 };
@@ -680,6 +681,13 @@ pub enum InvalidCause<'db> {
     },
 
     // TraitConstraintNotSat(PredicateId),
+    ParseError,
+
+    /// Path resolution failed during type lowering
+    PathResolutionFailed {
+        path: PathId<'db>,
+    },
+
     /// `Other` indicates the cause is already reported in other analysis
     /// passes, e.g., parser or name resolution.
     Other,
@@ -719,6 +727,8 @@ impl InvalidCause<'_> {
             | InvalidCause::TooManyGenericArgs { .. }
             | InvalidCause::InvalidConstParamTy
             | InvalidCause::RecursiveConstParamTy
+            | InvalidCause::ParseError
+            | InvalidCause::PathResolutionFailed { .. }
             | InvalidCause::Other => format!("{self:?}"),
 
             InvalidCause::InvalidConstTyExpr { body: _ } => "InvalidConstTyExpr".into(),

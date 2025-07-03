@@ -292,6 +292,40 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 }
             }
 
+            Self::AmbiguousAssociatedType {
+                span,
+                name,
+                candidates,
+            } => {
+                let name = name.data(db);
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("associated type `{name}` is ambiguous"),
+                    span: span.resolve(db),
+                }];
+
+                // Add a note for each candidate trait
+                for (trait_inst, _ty) in candidates {
+                    let trait_name = trait_inst.def(db).trait_(db).name(db).unwrap().data(db);
+                    sub_diagnostics.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("candidate: `{}`", trait_name),
+                        span: trait_inst.def(db).trait_(db).span().name().resolve(db),
+                    });
+                }
+
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("ambiguous associated type `{name}`"),
+                    sub_diagnostics,
+                    notes: vec![format!(
+                        "specify the trait explicitly: `<Type as Trait>::{}`",
+                        name
+                    )],
+                    error_code,
+                }
+            }
+
             Self::InvalidPathSegment(prim_span, name, res_span) => {
                 let name = name.data(db);
                 let mut labels = vec![SubDiagnostic {

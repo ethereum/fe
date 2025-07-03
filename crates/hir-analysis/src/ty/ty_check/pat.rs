@@ -17,7 +17,7 @@ use crate::{
 impl<'db> TyChecker<'db> {
     pub(super) fn check_pat(&mut self, pat: PatId, expected: TyId<'db>) -> TyId<'db> {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
-            let actual = TyId::invalid(self.db, InvalidCause::Other);
+            let actual = TyId::invalid(self.db, InvalidCause::ParseError);
             return self.unify_ty(pat, actual, expected);
         };
 
@@ -50,7 +50,7 @@ impl<'db> TyChecker<'db> {
 
         match lit {
             Partial::Present(lit) => self.lit_ty(lit),
-            Partial::Absent => TyId::invalid(self.db, InvalidCause::Other),
+            Partial::Absent => TyId::invalid(self.db, InvalidCause::ParseError),
         }
     }
 
@@ -108,7 +108,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let Partial::Present(path) = path else {
-            return TyId::invalid(self.db, InvalidCause::Other);
+            return TyId::invalid(self.db, InvalidCause::ParseError);
         };
 
         let span = pat.span(self.body()).into_path_pat();
@@ -208,7 +208,7 @@ impl<'db> TyChecker<'db> {
 
     fn check_path_tuple_pat(&mut self, pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::PathTuple(Partial::Present(path), elems) = pat_data else {
-            return TyId::invalid(self.db, InvalidCause::Other);
+            return TyId::invalid(self.db, InvalidCause::ParseError);
         };
 
         let span = pat.span(self.body()).into_path_tuple_pat();
@@ -305,7 +305,7 @@ impl<'db> TyChecker<'db> {
                     );
                     Binder::bind(ty).instantiate(self.db, variant.ty.generic_args(self.db))
                 }
-                _ => TyId::invalid(self.db, InvalidCause::Other),
+                _ => TyId::invalid(self.db, InvalidCause::ParseError),
             };
 
             self.check_pat(elems[arg_idx], elem_ty);
@@ -317,7 +317,7 @@ impl<'db> TyChecker<'db> {
 
     fn check_record_pat(&mut self, pat: PatId, pat_data: &Pat<'db>) -> TyId<'db> {
         let Pat::Record(Partial::Present(path), _) = pat_data else {
-            return TyId::invalid(self.db, InvalidCause::Other);
+            return TyId::invalid(self.db, InvalidCause::ParseError);
         };
 
         let span = pat.span(self.body()).into_record_pat();

@@ -237,6 +237,9 @@ fn diag_from_invalid_cause<'db>(
             TyLowerDiag::InvalidConstTyExpr(body.span().into()).into()
         }
 
-        InvalidCause::Other => return None,
+        // These errors should be caught and reported elsewhere
+        InvalidCause::PathResolutionFailed { .. }
+        | InvalidCause::ParseError
+        | InvalidCause::Other => return None,
     })
 }
