@@ -1,5 +1,6 @@
 ---
 source: crates/uitest/tests/ty_check.rs
+assertion_line: 20
 expression: diags
 input_file: fixtures/ty_check/generic_arg_path_resolution_fail.fe
 ---
@@ -26,46 +27,3 @@ error[2-0002]: `Missing` is not found
    │
 54 │     type Foo = T::Inner::Missing  // Error: T::Inner doesn't have associated type Missing
    │                          ^^^^^^^ `Missing` is not found
-
-error[2-0011]: ambiguous associated type `Foo`
-   ┌─ generic_arg_path_resolution_fail.fe:23:32
-   │
- 5 │ trait Tr1 {
-   │       ---
-   │       │
-   │       candidate: `Tr1`
-   │       candidate: `Tr1`
-   ·
-23 │     fn make_foo(self) -> Self::Foo {
-   │                                ^^^ associated type `Foo` is ambiguous
-   │
-   = specify the trait explicitly: `<Type as Trait>::Foo`
-
-error[2-0011]: ambiguous associated type `Foo`
-   ┌─ generic_arg_path_resolution_fail.fe:43:32
-   │
- 5 │ trait Tr1 {
-   │       ---
-   │       │
-   │       candidate: `Tr1`
-   │       candidate: `Tr1`
-   │       candidate: `Tr1`
-   ·
-43 │     fn make_foo(self) -> Self::Foo {
-   │                                ^^^ associated type `Foo` is ambiguous
-   │
-   = specify the trait explicitly: `<Type as Trait>::Foo`
-
-error[2-0011]: ambiguous associated type `Foo`
-   ┌─ generic_arg_path_resolution_fail.fe:56:32
-   │
- 5 │ trait Tr1 {
-   │       ---
-   │       │
-   │       candidate: `Tr1`
-   │       candidate: `Tr1`
-   ·
-56 │     fn make_foo(self) -> Self::Foo {
-   │                                ^^^ associated type `Foo` is ambiguous
-   │
-   = specify the trait explicitly: `<Type as Trait>::Foo`

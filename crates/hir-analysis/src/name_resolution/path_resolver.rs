@@ -28,7 +28,7 @@ use crate::{
         canonical::{Canonical, Canonicalized},
         fold::TyFoldable,
         func_def::{lower_func, FuncDef, HirFuncDefKind},
-        trait_def::{impls_for_ty, TraitInstId},
+        trait_def::{impls_for_ty_with_constraints, TraitInstId},
         trait_lower::{lower_trait, lower_trait_ref},
         trait_resolution::PredicateListId,
         ty_def::{AssocTy, InvalidCause, TyData, TyId},
@@ -636,14 +636,14 @@ fn find_associated_type<'db>(
     let ingot = scope.ingot(db);
 
     // Case 1: ty is a concrete type or can be resolved to concrete impls.
-    for implementor in impls_for_ty(db, ingot, ty) {
+    for implementor in impls_for_ty_with_constraints(db, ingot, ty, assumptions) {
         let mut table = UnificationTable::new(db);
 
         // Instantiate the LHS type `ty` with fresh unification variables if it's generic.
         let lhs_ty_instance = ty.extract_identity(&mut table);
 
         // Instantiate the implementor with fresh unification variables for its generic parameters.
-        let implementor_instance = table.instantiate_with_fresh_vars(*implementor);
+        let implementor_instance = table.instantiate_with_fresh_vars(implementor);
 
         if table
             .unify(lhs_ty_instance, implementor_instance.self_ty(db))

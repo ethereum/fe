@@ -69,6 +69,72 @@ pub(crate) fn impls_for_trait<'db>(
         .collect()
 }
 
+/// Returns all [`Implementor`] for the given `ty` that satisfy the given assumptions.
+pub(crate) fn impls_for_ty_with_constraints<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: IngotId<'db>,
+    ty: Canonical<TyId<'db>>,
+    assumptions: PredicateListId<'db>,
+) -> Vec<Binder<Implementor<'db>>> {
+    let mut table = UnificationTable::new(db);
+    let ty = ty.extract_identity(&mut table);
+
+    let env = ingot_trait_env(db, ingot);
+    if ty.has_invalid(db) {
+        return vec![];
+    }
+
+    let mut cands = vec![];
+    for (key, insts) in env.ty_to_implementors.iter() {
+        let snapshot = table.snapshot();
+        let key = table.instantiate_with_fresh_vars(*key);
+        if table.unify(key, ty.base_ty(db)).is_ok() {
+            cands.push(insts);
+        }
+
+        table.rollback_to(snapshot);
+    }
+
+    cands
+        .into_iter()
+        .flatten()
+        .copied()
+        .filter(|impl_| {
+            let snapshot = table.snapshot();
+
+            let impl_ = table.instantiate_with_fresh_vars(*impl_);
+            let impl_ty = table.instantiate_to_term(impl_.self_ty(db));
+            let ty = table.instantiate_to_term(ty);
+            let unifies = table.unify(impl_ty, ty).is_ok();
+
+            if unifies {
+                // Filter out impls that don't satisfy assumptions
+                let impl_constraints = impl_.constraints(db);
+                if impl_constraints.is_empty(db) {
+                    table.rollback_to(snapshot);
+                    return true;
+                }
+
+                for &constraint in impl_constraints.list(db) {
+                    let constraint = Canonicalized::new(db, constraint);
+                    match is_goal_satisfiable(db, ingot, constraint.value, assumptions) {
+                        GoalSatisfiability::UnSat(_) => {
+                            table.rollback_to(snapshot);
+                            return false;
+                        }
+                        _ => {
+                            // Ignoring the NeedsConfirmation case for now
+                        }
+                    }
+                }
+            }
+
+            table.rollback_to(snapshot);
+            unifies
+        })
+        .collect()
+}
+
 /// Returns all [`Implementor`] for the given `ty`.
 #[salsa::tracked(return_ref)]
 pub(crate) fn impls_for_ty<'db>(
