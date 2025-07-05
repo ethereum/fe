@@ -171,63 +171,15 @@ where
                 }
             }
             (TyData::AssocTy(t1), TyData::AssocTy(t2)) if t1 == t2 => Ok(()),
-            (TyData::AssocTy(assoc), _) => {
-                if let Some(resolved_ty) = self.resolve_assoc_ty(assoc) {
-                    self.unify_ty(resolved_ty, ty2)
-                } else {
-                    Err(UnificationError::TypeMismatch)
-                }
-            }
-
-            (_, TyData::AssocTy(assoc)) => {
-                // Try to resolve the associated type
-                if let Some(resolved_ty) = self.resolve_assoc_ty(assoc) {
-                    self.unify_ty(ty1, resolved_ty)
-                } else {
-                    Err(UnificationError::TypeMismatch)
-                }
+            (TyData::AssocTy(_), _) | (_, TyData::AssocTy(_)) => {
+                // Associated types should be resolved before unification
+                Err(UnificationError::TypeMismatch)
             }
 
             _ => Err(UnificationError::TypeMismatch),
         }
     }
 
-    /// Try to resolve an associated type to a concrete type
-    fn resolve_assoc_ty(&mut self, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
-        // First, check if the trait instance has a binding for this associated type
-        if let Some(&bound_ty) = assoc.trait_.assoc_type_bindings(self.db).get(&assoc.name) {
-            return Some(bound_ty);
-        }
-
-        // If not directly bound, we need to look up the implementation
-        let self_ty = assoc.trait_.self_ty(self.db);
-
-        // If the self type is still a type variable, we can't resolve yet
-        if self_ty.is_ty_var(self.db) {
-            return None;
-        }
-
-        // Find the implementor for this trait and self type
-        let ingot = assoc.trait_.def(self.db).ingot(self.db);
-        let canonical_self_ty = super::canonical::Canonical::new(self.db, self_ty);
-        let implementors = super::trait_def::impls_for_ty(self.db, ingot, canonical_self_ty);
-
-        for implementor in implementors {
-            let snapshot = self.snapshot();
-            let impl_inst = self.instantiate_with_fresh_vars(*implementor);
-
-            if self.unify(impl_inst.trait_(self.db), assoc.trait_).is_ok() {
-                if let Some(&assoc_ty_value) = impl_inst.types(self.db).get(&assoc.name) {
-                    let resolved_ty = self.fold_ty(assoc_ty_value);
-                    self.rollback_to(snapshot);
-                    return Some(resolved_ty);
-                }
-            }
-            self.rollback_to(snapshot);
-        }
-
-        None
-    }
 
     pub fn new_var(&mut self, sort: TyVarSort, kind: &Kind) -> TyId<'db> {
         let key = self.new_key(kind, sort);
@@ -562,6 +514,46 @@ where
     var_stack: Vec<InferenceKey<'db>>,
 }
 
+impl<'a, 'db, U> TyVarResolver<'a, 'db, U>
+where
+    U: UnificationStore<'db>,
+{
+    /// Try to resolve an associated type to a concrete type if we have enough information
+    fn try_resolve_assoc_ty(&mut self, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
+        // First check if the trait instance has a binding for this associated type
+        if let Some(&bound_ty) = assoc.trait_.assoc_type_bindings(self.table.db).get(&assoc.name) {
+            return Some(bound_ty);
+        }
+
+        // If the self type is still a type variable, we can't resolve yet
+        let self_ty = assoc.trait_.self_ty(self.table.db).fold_with(&mut *self.table);
+        if self_ty.is_ty_var(self.table.db) {
+            return None;
+        }
+
+        // Try to find an implementation
+        let ingot = assoc.trait_.def(self.table.db).ingot(self.table.db);
+        let canonical_self_ty = super::canonical::Canonical::new(self.table.db, self_ty);
+        let implementors = super::trait_def::impls_for_ty(self.table.db, ingot, canonical_self_ty);
+
+        for implementor in implementors {
+            let snapshot = self.table.snapshot();
+            let impl_inst = self.table.instantiate_with_fresh_vars(*implementor);
+
+            if self.table.unify(impl_inst.trait_(self.table.db), assoc.trait_).is_ok() {
+                if let Some(&assoc_ty_value) = impl_inst.types(self.table.db).get(&assoc.name) {
+                    let resolved_ty = self.table.fold_ty(assoc_ty_value);
+                    self.table.rollback_to(snapshot);
+                    return Some(resolved_ty);
+                }
+            }
+            self.table.rollback_to(snapshot);
+        }
+
+        None
+    }
+}
+
 impl<'db, U> TyFolder<'db> for TyVarResolver<'_, 'db, U>
 where
     U: UnificationStore<'db>,
@@ -595,7 +587,8 @@ where
             },
             TyData::AssocTy(assoc) => {
                 // Try to resolve the associated type to a concrete type
-                if let Some(resolved_ty) = self.table.resolve_assoc_ty(assoc) {
+                // xxx
+                if let Some(resolved_ty) = self.try_resolve_assoc_ty(assoc) {
                     return self.fold_ty(resolved_ty);
                 }
                 // If we can't resolve it, continue with normal folding

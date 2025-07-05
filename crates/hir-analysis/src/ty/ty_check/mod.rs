@@ -22,17 +22,19 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
 
 use super::{
+    canonical::Canonical,
     diagnostics::{BodyDiag, FuncBodyDiag, TyDiagCollection, TyLowerDiag},
     fold::{TyFoldable, TyFolder},
     trait_def::{TraitInstId, TraitMethod},
     trait_resolution::PredicateListId,
-    ty_def::{InvalidCause, Kind, TyId, TyVarSort},
+    ty_def::{InvalidCause, Kind, TyData, TyId, TyVarSort},
     ty_lower::lower_hir_ty,
     unify::{InferenceKey, UnificationError, UnificationTable},
 };
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag, resolve_path_with_observer, PathRes, PathResError,
+        diagnostics::NameResDiag, resolve_assoc_ty, resolve_path_with_observer, PathRes,
+        PathResError,
     },
     ty::ty_def::{inference_keys, TyFlags},
     HirAnalysisDb,
@@ -191,6 +193,10 @@ impl<'db> TyChecker<'db> {
             return TyId::invalid(self.db, InvalidCause::Other);
         };
 
+        // Resolve associated types before unification
+        let actual = self.normalize_ty(actual);
+        let expected = self.normalize_ty(expected);
+
         match self.table.unify(actual, expected) {
             Ok(()) => {
                 // FIXME: This is a temporary workaround, this should be removed when we
@@ -259,6 +265,52 @@ impl<'db> TyChecker<'db> {
         }
 
         res
+    }
+
+    /// Resolve associated type to concrete type if possible
+    fn normalize_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
+        let mut ty = ty.fold_with(&mut self.table);
+        if matches!(ty.data(self.db), TyData::AssocTy(_)) {
+            eprintln!("resolving {}", ty.pretty_print(self.db));
+            if let Some(resolved) = self.try_resolve_assoc_ty(ty) {
+                eprintln!("  -> {}", resolved.pretty_print(self.db));
+                ty = resolved;
+            }
+        }
+        ty
+    }
+
+    fn try_resolve_assoc_ty(&mut self, ty: TyId<'db>) -> Option<TyId<'db>> {
+        let TyData::AssocTy(assoc_ty) = ty.data(self.db) else {
+            unreachable!()
+        };
+
+        // First check if the trait instance has a binding for this associated type
+        if let Some(&bound_ty) = assoc_ty
+            .trait_
+            .assoc_type_bindings(self.db)
+            .get(&assoc_ty.name)
+        {
+            return Some(bound_ty);
+        }
+
+        let mut candidates = common::indexmap::IndexSet::new();
+        resolve_assoc_ty(
+            self.db,
+            self.env.scope(),
+            Canonical::new(self.db, ty),
+            assoc_ty.name,
+            self.env.assumptions(),
+            &mut candidates,
+            assoc_ty,
+        );
+
+        eprintln!("  candidates {candidates:?}");
+        if candidates.len() == 1 {
+            candidates.first().map(|p| p.1)
+        } else {
+            None
+        }
     }
 }
 
