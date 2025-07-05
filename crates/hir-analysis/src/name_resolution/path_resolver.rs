@@ -710,78 +710,91 @@ fn find_associated_type<'db>(
     // Case 3: The LHS `ty` is an associated type (e.g., `T::Encoder` in `T::Encoder::Output`).
     // We need to look at the trait bound on the associated type.
     if let TyData::AssocTy(assoc_ty) = ty.value.data(db) {
-        // Create a unification table to handle substitutions from the outer context
-        let mut table = UnificationTable::new(db);
-
-        // Extract the canonical type's substitutions into the unification table
-        // This ensures we maintain any type parameter bindings from the outer context
-        let ty_with_subst = ty.extract_identity(&mut table);
-
-        // First, check if there are trait bounds on this associated type in the assumptions
-        // (e.g., from where clauses like `T::Assoc: Level1`)
-        for trait_inst in assumptions.list(db) {
-            // Check if this trait bound applies to our associated type
-            let mut pred_table = UnificationTable::new(db);
-            if pred_table
-                .unify(trait_inst.self_ty(db), ty_with_subst)
-                .is_ok()
-            {
-                let trait_def = trait_inst.def(db).trait_(db);
-
-                // Check if this trait has the associated type we're looking for
-                if let Some(nested_assoc_ty) =
-                    find_assoc_type_in_trait(db, trait_def, *trait_inst, name, &mut pred_table)
-                {
-                    candidates.insert((*trait_inst, nested_assoc_ty));
-                }
-            }
-        }
-
-        // Also check bounds defined on the associated type in the trait definition
-        // Get the trait that defines this associated type
-        let trait_def = assoc_ty.trait_.def(db);
-        let trait_ = trait_def.trait_(db);
-
-        // Find the associated type definition in the trait
-        for trait_type in trait_.types(db) {
-            if trait_type.name.to_opt() == Some(assoc_ty.name) {
-                // Check if this associated type has trait bounds
-                for bound in &trait_type.bounds {
-                    if let TypeBound::Trait(trait_ref) = bound {
-                        // We need to resolve the trait reference to check its associated types
-                        // First, we need to lower the trait ref with proper substitutions
-
-                        // The self type for the trait bound is the associated type itself,
-                        // but we need to apply substitutions from the unification table
-                        let self_ty = ty_with_subst.fold_with(&mut table);
-
-                        // Try to lower the trait reference
-                        if let Ok(bound_trait_inst) =
-                            lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions)
-                        {
-                            let bound_trait_def = bound_trait_inst.def(db).trait_(db);
-
-                            // Check if this trait has the associated type we're looking for
-                            // Pass the unification table to apply substitutions
-                            if let Some(nested_assoc_ty) = find_assoc_type_in_trait(
-                                db,
-                                bound_trait_def,
-                                bound_trait_inst,
-                                name,
-                                &mut table,
-                            ) {
-                                candidates.insert((bound_trait_inst, nested_assoc_ty));
-                            }
-                        }
-                    }
-                }
-                break;
-            }
-        }
+        resolve_assoc_ty(db, scope, ty, name, assumptions, &mut candidates, assoc_ty);
     }
 
     candidates.into_iter().collect()
 }
+
+pub fn resolve_assoc_ty<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: Canonical<TyId<'db>>,
+    name: IdentId<'db>,
+    assumptions: PredicateListId<'db>,
+    candidates: &mut IndexSet<(TraitInstId<'db>, TyId<'db>)>,
+    assoc_ty: &AssocTy<'db>,
+) {
+    // Create a unification table to handle substitutions from the outer context
+    let mut table = UnificationTable::new(db);
+
+    // Extract the canonical type's substitutions into the unification table
+    // This ensures we maintain any type parameter bindings from the outer context
+    let ty_with_subst = ty.extract_identity(&mut table);
+
+    // First, check if there are trait bounds on this associated type in the assumptions
+    // (e.g., from where clauses like `T::Assoc: Level1`)
+    for trait_inst in assumptions.list(db) {
+        // Check if this trait bound applies to our associated type
+        let mut pred_table = UnificationTable::new(db);
+        if pred_table
+            .unify(trait_inst.self_ty(db), ty_with_subst)
+            .is_ok()
+        {
+            let trait_def = trait_inst.def(db).trait_(db);
+
+            // Check if this trait has the associated type we're looking for
+            if let Some(nested_assoc_ty) =
+                find_assoc_type_in_trait(db, trait_def, *trait_inst, name, &mut pred_table)
+            {
+                candidates.insert((*trait_inst, nested_assoc_ty));
+            }
+        }
+    }
+
+    // Also check bounds defined on the associated type in the trait definition
+    // Get the trait that defines this associated type
+    let trait_def = assoc_ty.trait_.def(db);
+    let trait_ = trait_def.trait_(db);
+
+    // Find the associated type definition in the trait
+    for trait_type in trait_.types(db) {
+        if trait_type.name.to_opt() == Some(assoc_ty.name) {
+            // Check if this associated type has trait bounds
+            for bound in &trait_type.bounds {
+                if let TypeBound::Trait(trait_ref) = bound {
+                    // We need to resolve the trait reference to check its associated types
+                    // First, we need to lower the trait ref with proper substitutions
+
+                    // The self type for the trait bound is the associated type itself,
+                    // but we need to apply substitutions from the unification table
+                    let self_ty = ty_with_subst.fold_with(&mut table);
+
+                    // Try to lower the trait reference
+                    if let Ok(bound_trait_inst) =
+                        lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions)
+                    {
+                        let bound_trait_def = bound_trait_inst.def(db).trait_(db);
+
+                        // Check if this trait has the associated type we're looking for
+                        // Pass the unification table to apply substitutions
+                        if let Some(nested_assoc_ty) = find_assoc_type_in_trait(
+                            db,
+                            bound_trait_def,
+                            bound_trait_inst,
+                            name,
+                            &mut table,
+                        ) {
+                            candidates.insert((bound_trait_inst, nested_assoc_ty));
+                        }
+                    }
+                }
+            }
+            break;
+        }
+    }
+}
+
 
 pub fn resolve_name_res<'db>(
     db: &'db dyn HirAnalysisDb,

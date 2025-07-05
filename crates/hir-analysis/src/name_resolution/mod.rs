@@ -14,8 +14,8 @@ pub use name_resolver::{
     NameResolutionError, QueryDirective,
 };
 pub use path_resolver::{
-    resolve_ident_to_bucket, resolve_name_res, resolve_path, resolve_path_with_observer, PathRes,
-    PathResError, PathResErrorKind, ResolvedVariant,
+    resolve_assoc_ty, resolve_ident_to_bucket, resolve_name_res, resolve_path,
+    resolve_path_with_observer, PathRes, PathResError, PathResErrorKind, ResolvedVariant,
 };
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
