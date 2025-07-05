@@ -1,3 +1,4 @@
+use common::indexmap::IndexMap;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamOwner, IdentId,
     ItemKind, KindBound as HirKindBound, Partial, PathId, TypeAlias as HirTypeAlias, TypeBound,
@@ -8,6 +9,7 @@ use smallvec::smallvec;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
+    trait_def::{TraitDef, TraitInstId},
     trait_resolution::{constraint::collect_constraints, PredicateListId},
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
@@ -82,7 +84,10 @@ fn lower_path<'db>(
     match resolve_path(db, path, scope, assumptions, false) {
         Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => ty,
         Ok(_) => TyId::invalid(db, InvalidCause::Other),
-        Err(_) => TyId::invalid(db, InvalidCause::PathResolutionFailed { path }),
+        Err(_) => {
+            eprintln!("Path resolution failed for path: {}", path.pretty_print(db));
+            TyId::invalid(db, InvalidCause::PathResolutionFailed { path })
+        }
     }
 }
 
@@ -241,6 +246,48 @@ pub(crate) fn lower_generic_arg_list<'db>(
             }
         })
         .collect()
+}
+
+/// Lowers generic arguments for a trait, handling both regular type/const parameters
+/// and associated type constraints (e.g., `Iterator<Item=i32>`), and returns a TraitInstId
+pub(crate) fn lower_trait_generic_args<'db>(
+    db: &'db dyn HirAnalysisDb,
+    trait_def: TraitDef<'db>,
+    args: GenericArgListId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> TraitInstId<'db> {
+    let mut type_args = Vec::new();
+    let mut assoc_type_bindings = IndexMap::new();
+
+    for arg in args.data(db) {
+        match arg {
+            GenericArg::Type(ty_arg) => {
+                let ty = ty_arg
+                    .ty
+                    .to_opt()
+                    .map(|ty| lower_hir_ty(db, ty, scope, assumptions))
+                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::ParseError));
+                type_args.push(ty);
+            }
+
+            GenericArg::Const(const_arg) => {
+                let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
+                type_args.push(TyId::const_ty(db, const_ty));
+            }
+
+            GenericArg::AssocType(assoc_type_arg) => {
+                if let (Some(name), Some(ty)) =
+                    (assoc_type_arg.name.to_opt(), assoc_type_arg.ty.to_opt())
+                {
+                    let lowered_ty = lower_hir_ty(db, ty, scope, assumptions);
+                    assoc_type_bindings.insert(name, lowered_ty);
+                }
+            }
+        }
+    }
+
+    TraitInstId::new(db, trait_def, &type_args, assoc_type_bindings)
 }
 
 #[salsa::interned]

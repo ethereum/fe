@@ -9,6 +9,7 @@ use super::{
     diagnostics::{ImplDiag, TyDiagCollection},
     fold::{TyFoldable, TyFolder},
     func_def::FuncDef,
+    normalize::normalize_ty,
     trait_def::{impls_for_ty, TraitInstId, TraitMethod},
     trait_resolution::{
         constraint::collect_func_def_constraints, is_goal_satisfiable, GoalSatisfiability,
@@ -239,8 +240,26 @@ fn compare_ty<'db>(
             continue;
         }
         let impl_m_ty = impl_m_ty.instantiate_identity();
+
+        // Normalize both types to resolve any associated types
+        let trait_m_ty_normalized = {
+            let assumptions =
+                collect_func_def_constraints(db, trait_m.hir_def(db), true).instantiate_identity();
+            normalize_ty(db, trait_m_ty, impl_m.scope(db), assumptions)
+        };
+        let impl_m_ty_normalized = {
+            let assumptions =
+                collect_func_def_constraints(db, impl_m.hir_def(db), true).instantiate_identity();
+            normalize_ty(db, impl_m_ty, impl_m.scope(db), assumptions)
+        };
         if !impl_m_ty.has_invalid(db)
-            && !types_match_with_assoc_resolution(db, trait_m_ty, impl_m_ty, impl_m, implementor)
+            && !types_match_with_assoc_resolution(
+                db,
+                trait_m_ty_normalized,
+                impl_m_ty_normalized,
+                impl_m,
+                implementor,
+            )
         {
             sink.push(
                 ImplDiag::MethodArgTyMismatch {
@@ -260,12 +279,24 @@ fn compare_ty<'db>(
     let trait_m_ret_ty =
         instantiate_with_assoc_types(db, trait_m.ret_ty(db), map_to_impl, assoc_type_bindings);
 
+    // Normalize return types
+    let trait_m_ret_ty_normalized = {
+        let assumptions =
+            collect_func_def_constraints(db, trait_m.hir_def(db), true).instantiate_identity();
+        normalize_ty(db, trait_m_ret_ty, impl_m.scope(db), assumptions)
+    };
+    let impl_m_ret_ty_normalized = {
+        let assumptions =
+            collect_func_def_constraints(db, impl_m.hir_def(db), true).instantiate_identity();
+        normalize_ty(db, impl_m_ret_ty, impl_m.scope(db), assumptions)
+    };
+
     if !impl_m_ret_ty.has_invalid(db)
         && !trait_m_ret_ty.has_invalid(db)
         && !types_match_with_assoc_resolution(
             db,
-            trait_m_ret_ty,
-            impl_m_ret_ty,
+            trait_m_ret_ty_normalized,
+            impl_m_ret_ty_normalized,
             impl_m,
             implementor,
         )

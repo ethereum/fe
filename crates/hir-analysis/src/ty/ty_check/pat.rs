@@ -303,7 +303,10 @@ impl<'db> TyChecker<'db> {
                         variant.enum_(self.db).scope(),
                         self.env.assumptions(),
                     );
-                    Binder::bind(ty).instantiate(self.db, variant.ty.generic_args(self.db))
+                    let instantiated =
+                        Binder::bind(ty).instantiate(self.db, variant.ty.generic_args(self.db));
+                    // Normalize the type to resolve associated types
+                    self.normalize_ty(instantiated)
                 }
                 _ => TyId::invalid(self.db, InvalidCause::ParseError),
             };

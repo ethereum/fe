@@ -203,7 +203,7 @@ impl super::Parse for TypeBoundScope {
             if self.disallow_trait_bound {
                 return parser.error_and_recover("trait bounds are not allowed here");
             }
-            parser.parse(TraitRefScope::default())
+            parser.parse_or_recover(TraitRefScope::default())
         }
     }
 }
@@ -264,19 +264,12 @@ impl super::Parse for KindBoundAbsScope {
 
 define_scope! { pub(super) TraitRefScope, TraitRef }
 impl super::Parse for TraitRefScope {
-    type Error = Recovery<ErrProof>;
+    type Error = ParseError;
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
-        parser.or_recover(|parser| {
-            parser.parse(PathScope::default()).map_err(|_| {
-                ParseError::expected(&[SyntaxKind::TraitRef], None, parser.end_of_prev_token)
-            })
-        })?;
-
-        if parser.current_kind() == Some(SyntaxKind::Lt) {
-            parser.parse(GenericArgListScope::default())?;
-        }
-        Ok(())
+        parser.parse(PathScope::default()).map_err(|_| {
+            ParseError::expected(&[SyntaxKind::TraitRef], None, parser.end_of_prev_token)
+        })
     }
 }
 

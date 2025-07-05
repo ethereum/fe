@@ -15,7 +15,7 @@ impl super::Parse for UseTreeScope {
         }
 
         let use_path_scope = UsePathScope::default();
-        parser.or_recover(|p| p.parse(use_path_scope.clone()))?;
+        parser.parse_or_recover(use_path_scope.clone())?;
         let is_glob = use_path_scope.is_glob.get();
 
         if parser.current_kind() == Some(SyntaxKind::AsKw) {

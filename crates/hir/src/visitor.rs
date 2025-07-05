@@ -1715,6 +1715,7 @@ where
     } else {
         0
     };
+    // xxx handle PathKind::QualifiedType case
     if let Some(ident) = path.ident(ctxt.db).to_opt() {
         ctxt.with_new_ctxt(
             |span| span.segment(idx).into_atom(),

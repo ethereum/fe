@@ -409,6 +409,8 @@ pub enum SyntaxKind {
     Path,
     /// `Segment1`
     PathSegment,
+    /// `<Foo as SomeTrait>`
+    QualifiedType,
 
     /// `#attr`
     Attr,
@@ -605,6 +607,7 @@ impl SyntaxKind {
             SyntaxKind::TraitRef => "trait name",
             SyntaxKind::PathSegment => "path segment",
             SyntaxKind::PathPat => "pattern",
+            SyntaxKind::QualifiedType => "qualified type",
 
             SyntaxKind::ArrayExpr => "array definition",
             SyntaxKind::RecordFieldDef => "field",

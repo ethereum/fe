@@ -29,6 +29,7 @@ pub mod fold;
 pub mod func_def;
 mod method_cmp;
 pub mod method_table;
+pub mod normalize;
 pub mod trait_def;
 pub mod trait_lower;
 pub mod trait_resolution;

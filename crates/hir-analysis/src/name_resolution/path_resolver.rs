@@ -3,7 +3,7 @@ use either::Either;
 use hir::{
     hir_def::{
         scope_graph::ScopeId, Enum, EnumVariant, GenericParamOwner, IdentId, ItemKind, Partial,
-        PathId, TypeBound, TypeId, VariantKind,
+        PathId, PathKind, TypeBound, TypeId, VariantKind,
     },
     span::DynLazySpan,
 };
@@ -33,7 +33,8 @@ use crate::{
         trait_resolution::PredicateListId,
         ty_def::{AssocTy, InvalidCause, TyData, TyId},
         ty_lower::{
-            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias, TyAlias,
+            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_trait_generic_args,
+            lower_type_alias, TyAlias,
         },
         unify::UnificationTable,
     },
@@ -66,7 +67,7 @@ pub enum PathResErrorKind<'db> {
     /// The associated type is ambiguous.
     AmbiguousAssociatedType {
         name: IdentId<'db>,
-        candidates: Vec<(TraitInstId<'db>, TyId<'db>)>,
+        candidates: ThinVec<(TraitInstId<'db>, TyId<'db>)>,
     },
 
     /// The name is found, but it can't be used in the middle of a use path.
@@ -143,7 +144,7 @@ impl<'db> PathResError<'db> {
         expected: ExpectedPathKind,
     ) -> Option<NameResDiag<'db>> {
         let failed_at = self.failed_at;
-        let ident = failed_at.ident(db).to_opt()?;
+        let ident = failed_at.ident(db).to_opt()?; // xxx PathKind::QualifiedType
 
         let diag = match self.kind {
             PathResErrorKind::ParseError => unreachable!(),
@@ -482,6 +483,26 @@ where
         })
         .transpose()?;
 
+    if let PathKind::QualifiedType { type_, trait_ } = path.kind(db) {
+        if path.parent(db).is_some() {
+            return Err(PathResError::new(
+                PathResErrorKind::InvalidPathSegment(PathRes::Ty(TyId::invalid(
+                    db,
+                    InvalidCause::Other,
+                ))),
+                path,
+            ));
+        }
+        let ty = lower_hir_ty(db, type_, scope, assumptions);
+        let trait_inst = lower_trait_ref(db, ty, trait_, scope, assumptions)
+            .map_err(|_| PathResError::parse_err(path))?; // xxx
+
+        let qualified_ty = TyId::qualified_ty(db, ty, trait_inst);
+        let r = PathRes::Ty(qualified_ty);
+        observer(path, &r);
+        return Ok(r);
+    }
+
     let Some(ident) = path.ident(db).to_opt() else {
         return Err(PathResError::parse_err(path));
     };
@@ -558,7 +579,7 @@ where
                     return Err(PathResError::new(
                         PathResErrorKind::AmbiguousAssociatedType {
                             name: ident,
-                            candidates: assoc_tys.into_vec(),
+                            candidates: assoc_tys.into_iter().collect(),
                         },
                         path,
                     ));
@@ -625,7 +646,7 @@ fn find_assoc_type_in_trait<'db>(
     None
 }
 
-fn find_associated_type<'db>(
+pub(crate) fn find_associated_type<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     ty: Canonical<TyId<'db>>,
@@ -795,7 +816,6 @@ pub fn resolve_assoc_ty<'db>(
     }
 }
 
-
 pub fn resolve_name_res<'db>(
     db: &'db dyn HirAnalysisDb,
     nameres: &NameRes<'db>,
@@ -877,7 +897,13 @@ pub fn resolve_name_res<'db>(
                         PathRes::Ty(ty)
                     } else {
                         let trait_def = lower_trait(db, t);
-                        let trait_inst = TraitInstId::new(db, trait_def, args, IndexMap::new());
+                        let trait_inst = lower_trait_generic_args(
+                            db,
+                            trait_def,
+                            path.generic_args(db),
+                            scope,
+                            assumptions,
+                        );
                         PathRes::Trait(trait_inst)
                     }
                 }
@@ -893,8 +919,27 @@ pub fn resolve_name_res<'db>(
             }
 
             ScopeId::TraitType(t, idx) => {
-                let _ty = &t.types(db)[idx as usize];
-                todo!() // xxx
+                let trait_def = lower_trait(db, t);
+                let trait_type = &t.types(db)[idx as usize];
+
+                let params = collect_generic_params(db, t.into());
+                let self_ty = params.trait_self(db).unwrap();
+
+                let mut trait_args = vec![self_ty];
+                trait_args.extend_from_slice(args);
+                let trait_inst = TraitInstId::new(db, trait_def, &trait_args, IndexMap::new());
+
+                // Create an associated type reference
+                let assoc_ty_name = trait_type.name.to_opt().unwrap();
+                let assoc_ty = TyId::new(
+                    db,
+                    TyData::AssocTy(AssocTy {
+                        trait_: trait_inst,
+                        name: assoc_ty_name,
+                    }),
+                );
+
+                PathRes::Ty(assoc_ty)
             }
 
             ScopeId::Variant(var) => {

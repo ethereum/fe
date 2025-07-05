@@ -71,24 +71,16 @@ Root@0..90
       ImplTrait@38..71
         ImplKw@38..42 "impl"
         WhiteSpace@42..43 " "
-        TraitRef@43..49
+        TraitRef@43..44
           Path@43..44
             PathSegment@43..44
               Ident@43..44 "C"
-          GenericArgList@44..49
-            Lt@44..45 "<"
-            TypeGenericArg@45..46
-              PathType@45..46
-                Path@45..46
-                  PathSegment@45..46
-                    Ident@45..46 "T"
-            Comma@46..47 ","
-            WhiteSpace@47..48 " "
-            TypeGenericArg@48..49
-              PathType@48..49
-                Path@48..49
-                  PathSegment@48..49
-                    Ident@48..49 "u"
+        Error@44..49
+          Lt@44..45 "<"
+          Ident@45..46 "T"
+          Comma@46..47 ","
+          WhiteSpace@47..48 " "
+          Ident@48..49 "u"
         WhiteSpace@49..50 " "
         ForKw@50..53 "for"
         WhiteSpace@53..54 " "

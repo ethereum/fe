@@ -140,10 +140,10 @@ impl<'db> CandidateAssembler<'db> {
             let self_ty = table.instantiate_to_term(self_ty);
 
             if table.unify(extracted_receiver_ty, self_ty).is_ok() {
-                self.insert_trait_method_cand(pred.def(self.db));
+                self.insert_trait_method_cand_with_inst(pred.def(self.db), pred);
                 for super_trait in pred.def(self.db).super_traits(self.db) {
                     let super_trait = super_trait.instantiate(self.db, pred.args(self.db));
-                    self.insert_trait_method_cand(super_trait.def(self.db));
+                    self.insert_trait_method_cand_with_inst(super_trait.def(self.db), super_trait);
                 }
             }
 
@@ -154,6 +154,17 @@ impl<'db> CandidateAssembler<'db> {
     fn insert_trait_method_cand(&mut self, trait_def: TraitDef<'db>) {
         if let Some(&trait_method) = trait_def.methods(self.db).get(&self.method_name) {
             self.candidates.insert_trait(trait_def, trait_method);
+        }
+    }
+
+    fn insert_trait_method_cand_with_inst(
+        &mut self,
+        trait_def: TraitDef<'db>,
+        trait_inst: TraitInstId<'db>,
+    ) {
+        if let Some(&trait_method) = trait_def.methods(self.db).get(&self.method_name) {
+            self.candidates
+                .insert_trait_with_inst(trait_def, trait_method, trait_inst);
         }
     }
 }
@@ -275,14 +286,20 @@ impl<'db> MethodSelector<'db> {
         let receiver = self.receiver.extract_identity(&mut table);
         let receiver = table.instantiate_to_term(receiver); // xxx remove?
 
-        // Assign type variables to trait parameters.
-        let inst_args = def
-            .params(self.db)
-            .iter()
-            .map(|ty| table.new_var_from_param(*ty))
-            .collect_vec();
+        // Check if we have a stored trait instance with associated type bindings
+        let cand = if let Some(&stored_inst) = self.candidates.trait_instances.get(&(def, method)) {
+            // Use the stored instance which includes associated type bindings
+            stored_inst
+        } else {
+            // Create a fresh instance without bindings
+            let inst_args = def
+                .params(self.db)
+                .iter()
+                .map(|ty| table.new_var_from_param(*ty))
+                .collect_vec();
+            TraitInstId::new(self.db, def, inst_args, IndexMap::new())
+        };
 
-        let cand = TraitInstId::new(self.db, def, inst_args, IndexMap::new());
         // Unify receiver and method self.
         method.instantiate_with_inst(&mut table, receiver, cand);
 
@@ -362,6 +379,8 @@ pub enum MethodSelectionError<'db> {
 struct AssembledCandidates<'db> {
     inherent_methods: FxHashSet<FuncDef<'db>>,
     traits: IndexSet<(TraitDef<'db>, TraitMethod<'db>)>,
+    // Store trait instances with their associated type bindings
+    trait_instances: IndexMap<(TraitDef<'db>, TraitMethod<'db>), TraitInstId<'db>>,
 }
 
 impl<'db> AssembledCandidates<'db> {
@@ -371,5 +390,15 @@ impl<'db> AssembledCandidates<'db> {
 
     fn insert_trait(&mut self, def: TraitDef<'db>, method: TraitMethod<'db>) {
         self.traits.insert((def, method));
+    }
+
+    fn insert_trait_with_inst(
+        &mut self,
+        def: TraitDef<'db>,
+        method: TraitMethod<'db>,
+        inst: TraitInstId<'db>,
+    ) {
+        self.traits.insert((def, method));
+        self.trait_instances.insert((def, method), inst);
     }
 }

@@ -32,6 +32,9 @@ impl PathSegment {
                 SK::SelfTypeKw => Some(PathSegmentKind::SelfTy(node.into_token().unwrap())),
                 SK::SelfKw => Some(PathSegmentKind::Self_(node.into_token().unwrap())),
                 SK::Ident => Some(PathSegmentKind::Ident(node.into_token().unwrap())),
+                SK::QualifiedType => Some(PathSegmentKind::QualifiedType(
+                    QualifiedType::cast(node.into_node().unwrap()).unwrap(),
+                )),
                 _ => None,
             },
             _ => None,
@@ -39,14 +42,13 @@ impl PathSegment {
     }
     /// Returns the identifier of the segment.
     pub fn ident(&self) -> Option<SyntaxToken> {
-        let token = self.syntax().first_child_or_token()?.into_token()?;
-        if matches!(
-            token.kind(),
-            SK::IngotKw | SK::SuperKw | SK::SelfTypeKw | SK::SelfKw | SK::Ident
-        ) {
-            Some(token)
-        } else {
-            None
+        match self.kind()? {
+            PathSegmentKind::Ingot(token) => Some(token),
+            PathSegmentKind::Super(token) => Some(token),
+            PathSegmentKind::SelfTy(token) => Some(token),
+            PathSegmentKind::Self_(token) => Some(token),
+            PathSegmentKind::Ident(token) => Some(token),
+            PathSegmentKind::QualifiedType(_) => None,
         }
     }
 
@@ -73,6 +75,22 @@ pub enum PathSegmentKind {
     Self_(SyntaxToken),
     /// `foo`
     Ident(SyntaxToken),
+    /// `<Foo as Bar>`
+    QualifiedType(QualifiedType),
+}
+
+ast_node! {
+    pub struct QualifiedType,
+    SK::QualifiedType
+}
+impl QualifiedType {
+    pub fn ty(&self) -> Option<super::Type> {
+        support::child(self.syntax())
+    }
+
+    pub fn trait_qualifier(&self) -> Option<super::TraitRef> {
+        support::child(self.syntax())
+    }
 }
 
 #[cfg(test)]
