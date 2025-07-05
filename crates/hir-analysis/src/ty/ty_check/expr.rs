@@ -21,7 +21,6 @@ use crate::{
         canonical::Canonicalized,
         const_ty::ConstTyId,
         diagnostics::{BodyDiag, FuncBodyDiag},
-        fold::TyFoldable,
         ty_check::{callable::Callable, path::RecordInitChecker, TyChecker},
         ty_def::{InvalidCause, TyId},
     },
@@ -293,9 +292,12 @@ impl<'db> TyChecker<'db> {
 
         callable.check_args(self, args, call_span.args(), None);
 
+        // Check function constraints after instantiation
+        callable.check_constraints(self, expr.span(self.body()).into());
+
         let ret_ty = callable.ret_ty(self.db);
         // Normalize the return type to resolve any associated types
-        let normalized_ret_ty = ret_ty.fold_with(&mut self.table);
+        let normalized_ret_ty = self.normalize_ty(ret_ty);
         self.env.register_callable(expr, callable);
         ExprProp::new(normalized_ret_ty, true)
     }
@@ -341,16 +343,18 @@ impl<'db> TyChecker<'db> {
             }
         };
 
-        let func_ty = match candidate {
+        let (func_ty, trait_inst) = match candidate {
             Candidate::InherentMethod(func_def) => {
                 let func_ty = TyId::func(self.db, func_def);
-                self.table.instantiate_to_term(func_ty)
+                (self.table.instantiate_to_term(func_ty), None)
             }
 
             Candidate::TraitMethod(cand) => {
                 let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
                 let trait_method = cand.method;
-                trait_method.instantiate_with_inst(&mut self.table, receiver_prop.ty, inst)
+                let func_ty =
+                    trait_method.instantiate_with_inst(&mut self.table, receiver_prop.ty, inst);
+                (func_ty, Some(inst))
             }
 
             Candidate::NeedsConfirmation(cand) => {
@@ -358,7 +362,9 @@ impl<'db> TyChecker<'db> {
                 self.env
                     .register_confirmation(inst, call_span.clone().into());
                 let trait_method = cand.method;
-                trait_method.instantiate_with_inst(&mut self.table, receiver_prop.ty, inst)
+                let func_ty =
+                    trait_method.instantiate_with_inst(&mut self.table, receiver_prop.ty, inst);
+                (func_ty, Some(inst))
             }
         };
 
@@ -392,9 +398,23 @@ impl<'db> TyChecker<'db> {
             call_span.args(),
             Some((*receiver, receiver_prop)),
         );
+
+        // Check function constraints after instantiation
+        callable.check_constraints(self, expr.span(self.body()).into());
+
         let ret_ty = callable.ret_ty(self.db);
+
+        // Apply associated type substitutions if this is a trait method
+        let ret_ty = if let Some(inst) = trait_inst {
+            use crate::ty::fold::{AssocTySubst, TyFoldable};
+            let mut subst = AssocTySubst::new(self.db, inst);
+            ret_ty.fold_with(&mut subst)
+        } else {
+            ret_ty
+        };
+
         // Normalize the return type to resolve any associated types
-        let normalized_ret_ty = ret_ty.fold_with(&mut self.table);
+        let normalized_ret_ty = self.normalize_ty(ret_ty);
         self.env.register_callable(expr, callable);
         ExprProp::new(normalized_ret_ty, true)
     }

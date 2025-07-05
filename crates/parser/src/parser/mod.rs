@@ -239,6 +239,13 @@ impl<S: TokenStream> Parser<S> {
         ok && !self.dry_run_states.last().unwrap().err
     }
 
+    pub fn parse_or_recover<T>(&mut self, scope: T) -> Result<(), Recovery<ErrProof>>
+    where
+        T: Parse<Error = ParseError> + 'static,
+    {
+        self.or_recover(|parser| parser.parse(scope))
+    }
+
     pub fn or_recover<F>(&mut self, f: F) -> Result<(), Recovery<ErrProof>>
     where
         F: FnOnce(&mut Self) -> Result<(), ParseError>,

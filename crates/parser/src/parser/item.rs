@@ -371,9 +371,11 @@ impl super::Parse for SuperTraitListScope {
 
     fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
         parser.bump_expected(SyntaxKind::Colon);
-        parser.parse(TraitRefScope::default())?;
-        while parser.bump_if(SyntaxKind::Plus) {
-            parser.parse(TraitRefScope::default())?;
+        loop {
+            parser.parse_or_recover(TraitRefScope::default())?;
+            if !parser.bump_if(SyntaxKind::Plus) {
+                break;
+            }
         }
         Ok(())
     }
@@ -441,7 +443,7 @@ impl super::Parse for ImplScope {
                 SyntaxKind::LBrace,
             ]);
 
-            parser.parse(TraitRefScope::default())?;
+            parser.parse_or_recover(TraitRefScope::default())?;
             if parser.find_and_pop(SyntaxKind::ForKw, ExpectedKind::Unspecified)? {
                 parser.bump();
             }

@@ -1,4 +1,4 @@
-use parser::ast;
+use parser::ast::{self};
 
 use super::FileLowerCtxt;
 use crate::hir_def::{Body, Partial, PathId, TraitRefId, TupleTypeId, TypeId, TypeKind};

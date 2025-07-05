@@ -36,7 +36,7 @@ pub enum NameResDiag<'db> {
     AmbiguousAssociatedType {
         span: DynLazySpan<'db>,
         name: IdentId<'db>,
-        candidates: Vec<(TraitInstId<'db>, TyId<'db>)>,
+        candidates: ThinVec<(TraitInstId<'db>, TyId<'db>)>,
     },
 
     /// The name is found, but it can't be used as a middle segment of a path.

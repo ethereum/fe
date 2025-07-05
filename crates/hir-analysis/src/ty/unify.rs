@@ -11,7 +11,7 @@ use super::{
     binder::Binder,
     fold::{TyFoldable, TyFolder},
     trait_def::{Implementor, TraitInstId},
-    ty_def::{inference_keys, ApplicableTyProp, AssocTy, Kind, TyData, TyId, TyVar, TyVarSort},
+    ty_def::{inference_keys, ApplicableTyProp, Kind, TyData, TyId, TyVar, TyVarSort},
 };
 use crate::{
     ty::const_ty::{ConstTyData, EvaluatedConstTy},
@@ -179,7 +179,6 @@ where
             _ => Err(UnificationError::TypeMismatch),
         }
     }
-
 
     pub fn new_var(&mut self, sort: TyVarSort, kind: &Kind) -> TyId<'db> {
         let key = self.new_key(kind, sort);
@@ -460,17 +459,25 @@ impl<'db> Unifiable<'db> for TraitInstId<'db> {
         }
 
         // Unify associated type bindings
+        // We need to handle the case where one trait instance has more specific
+        // associated type bindings than the other. A more specific constraint
+        // (with bindings) should be able to satisfy a less specific constraint
+        // (without bindings).
+
+        // First, unify all bindings that are present in both
         for (name, &self_assoc_ty) in self.assoc_type_bindings(db) {
             if let Some(&other_assoc_ty) = other.assoc_type_bindings(db).get(name) {
                 table.unify_ty(self_assoc_ty, other_assoc_ty)?;
-            } else {
-                return Err(UnificationError::TypeMismatch);
             }
         }
 
-        // Check that other doesn't have extra bindings
-        if self.assoc_type_bindings(db).len() != other.assoc_type_bindings(db).len() {
-            return Err(UnificationError::TypeMismatch);
+        // For bindings that are only in other, we need to check if self can satisfy them
+        for (name, &_other_assoc_ty) in other.assoc_type_bindings(db) {
+            if !self.assoc_type_bindings(db).contains_key(name) {
+                // other has a binding that self doesn't have
+                // This means other is more specific than self, so unification fails
+                return Err(UnificationError::TypeMismatch);
+            }
         }
 
         Ok(())
@@ -514,46 +521,6 @@ where
     var_stack: Vec<InferenceKey<'db>>,
 }
 
-impl<'a, 'db, U> TyVarResolver<'a, 'db, U>
-where
-    U: UnificationStore<'db>,
-{
-    /// Try to resolve an associated type to a concrete type if we have enough information
-    fn try_resolve_assoc_ty(&mut self, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
-        // First check if the trait instance has a binding for this associated type
-        if let Some(&bound_ty) = assoc.trait_.assoc_type_bindings(self.table.db).get(&assoc.name) {
-            return Some(bound_ty);
-        }
-
-        // If the self type is still a type variable, we can't resolve yet
-        let self_ty = assoc.trait_.self_ty(self.table.db).fold_with(&mut *self.table);
-        if self_ty.is_ty_var(self.table.db) {
-            return None;
-        }
-
-        // Try to find an implementation
-        let ingot = assoc.trait_.def(self.table.db).ingot(self.table.db);
-        let canonical_self_ty = super::canonical::Canonical::new(self.table.db, self_ty);
-        let implementors = super::trait_def::impls_for_ty(self.table.db, ingot, canonical_self_ty);
-
-        for implementor in implementors {
-            let snapshot = self.table.snapshot();
-            let impl_inst = self.table.instantiate_with_fresh_vars(*implementor);
-
-            if self.table.unify(impl_inst.trait_(self.table.db), assoc.trait_).is_ok() {
-                if let Some(&assoc_ty_value) = impl_inst.types(self.table.db).get(&assoc.name) {
-                    let resolved_ty = self.table.fold_ty(assoc_ty_value);
-                    self.table.rollback_to(snapshot);
-                    return Some(resolved_ty);
-                }
-            }
-            self.table.rollback_to(snapshot);
-        }
-
-        None
-    }
-}
-
 impl<'db, U> TyFolder<'db> for TyVarResolver<'_, 'db, U>
 where
     U: UnificationStore<'db>,
@@ -585,13 +552,9 @@ where
                     return ty.super_fold_with(self);
                 }
             },
-            TyData::AssocTy(assoc) => {
-                // Try to resolve the associated type to a concrete type
-                // xxx
-                if let Some(resolved_ty) = self.try_resolve_assoc_ty(assoc) {
-                    return self.fold_ty(resolved_ty);
-                }
-                // If we can't resolve it, continue with normal folding
+            TyData::AssocTy(_) => {
+                // Associated types should be resolved before unification
+                // by the normalization process
                 return ty.super_fold_with(self);
             }
             _ => {

@@ -15,6 +15,8 @@ use crate::{
         diagnostics::{BodyDiag, FuncBodyDiag},
         fold::{TyFoldable, TyFolder},
         func_def::FuncDef,
+        trait_def::TraitInstId,
+        trait_resolution::constraint::collect_func_def_constraints,
         ty_def::{TyBase, TyData, TyId},
         ty_lower::lower_generic_arg_list,
         visitor::{TyVisitable, TyVisitor},
@@ -188,6 +190,7 @@ impl<'db> Callable<'db> {
             }
 
             let expected = expected.instantiate(db, &self.generic_args);
+            let expected = tc.normalize_ty(expected);
             tc.equate_ty(given.expr_prop.ty, expected, given.expr_span);
         }
     }
@@ -227,6 +230,39 @@ impl<'db> CallArg<'db> {
             expr_prop,
             label_span,
             expr_span,
+        }
+    }
+}
+
+impl<'db> Callable<'db> {
+    pub(super) fn check_constraints(&self, tc: &mut TyChecker<'db>, span: DynLazySpan<'db>) {
+        let db = tc.db;
+
+        // Get the function's constraints
+        let constraints = collect_func_def_constraints(db, self.func_def.hir_def(db), true);
+
+        // Instantiate constraints with the actual type arguments
+        let instantiated = constraints.instantiate(db, &self.generic_args);
+
+        // Normalize each constraint to resolve associated types
+        for &constraint in instantiated.list(db) {
+            // Normalize the constraint's arguments
+            let normalized_args: Vec<_> = constraint
+                .args(db)
+                .iter()
+                .map(|&arg| tc.normalize_ty(arg))
+                .collect();
+
+            let normalized_constraint = TraitInstId::new(
+                db,
+                constraint.def(db),
+                normalized_args,
+                constraint.assoc_type_bindings(db).clone(),
+            );
+
+            // Register the normalized constraint for confirmation
+            tc.env
+                .register_confirmation(normalized_constraint, span.clone());
         }
     }
 }

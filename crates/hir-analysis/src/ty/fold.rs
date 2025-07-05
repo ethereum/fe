@@ -80,6 +80,12 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                 ty
             }
 
+            QualifiedTy(ty, trait_inst) => {
+                let folded_ty = folder.fold_ty(*ty);
+                let folded_trait = trait_inst.fold_with(folder);
+                TyId::qualified_ty(folder.db(), folded_ty, folded_trait)
+            }
+
             TyVar(_) | TyParam(_) | TyBase(_) | Never | Invalid(_) => self,
         }
     }
@@ -187,5 +193,44 @@ impl<'db> TyFoldable<'db> for ExprProp<'db> {
     {
         let ty = self.ty.fold_with(folder);
         Self { ty, ..self }
+    }
+}
+
+/// A type folder that substitutes associated types based on a trait instance's bindings
+pub struct AssocTySubst<'db> {
+    db: &'db dyn HirAnalysisDb,
+    trait_inst: TraitInstId<'db>,
+}
+
+impl<'db> AssocTySubst<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb, trait_inst: TraitInstId<'db>) -> Self {
+        Self { db, trait_inst }
+    }
+}
+
+impl<'db> TyFolder<'db> for AssocTySubst<'db> {
+    fn db(&self) -> &'db dyn HirAnalysisDb {
+        self.db
+    }
+
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
+        match ty.data(self.db) {
+            TyData::AssocTy(assoc_ty) => {
+                // Check if this associated type belongs to our trait instance
+                if assoc_ty.trait_.def(self.db) == self.trait_inst.def(self.db) {
+                    // Check if we have a binding for this associated type
+                    if let Some(&bound_ty) = self
+                        .trait_inst
+                        .assoc_type_bindings(self.db)
+                        .get(&assoc_ty.name)
+                    {
+                        return bound_ty.fold_with(self);
+                    }
+                }
+                // Continue with default folding
+                ty.super_fold_with(self)
+            }
+            _ => ty.super_fold_with(self),
+        }
     }
 }

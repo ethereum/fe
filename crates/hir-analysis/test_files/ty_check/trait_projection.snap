@@ -1,0 +1,98 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: test_files/ty_check/trait_projection.fe
+---
+note: 
+   ┌─ trait_projection.fe:23:33
+   │  
+23 │       fn next(self) -> Self::Item {
+   │ ╭─────────────────────────────────^
+24 │ │         self.value
+25 │ │     }
+   │ ╰─────^ u32
+
+note: 
+   ┌─ trait_projection.fe:24:9
+   │
+24 │         self.value
+   │         ^^^^ MyIter
+
+note: 
+   ┌─ trait_projection.fe:24:9
+   │
+24 │         self.value
+   │         ^^^^^^^^^^ u32
+
+note: 
+   ┌─ trait_projection.fe:31:1
+   │  
+31 │ ╭ {
+32 │ │     x.next()
+33 │ │ }
+   │ ╰─^ T::Item
+
+note: 
+   ┌─ trait_projection.fe:32:5
+   │
+32 │     x.next()
+   │     ^ T
+
+note: 
+   ┌─ trait_projection.fe:32:5
+   │
+32 │     x.next()
+   │     ^^^^^^^^ T::Item
+
+note: 
+   ┌─ trait_projection.fe:45:33
+   │  
+45 │       fn next(self) -> Self::Item {
+   │ ╭─────────────────────────────────^
+46 │ │         self.inner.next()
+47 │ │     }
+   │ ╰─────^ T::Item
+
+note: 
+   ┌─ trait_projection.fe:46:9
+   │
+46 │         self.inner.next()
+   │         ^^^^ Wrapper<T>
+
+note: 
+   ┌─ trait_projection.fe:46:9
+   │
+46 │         self.inner.next()
+   │         ^^^^^^^^^^ T
+
+note: 
+   ┌─ trait_projection.fe:46:9
+   │
+46 │         self.inner.next()
+   │         ^^^^^^^^^^^^^^^^^ T::Item
+
+note: 
+   ┌─ trait_projection.fe:53:1
+   │  
+53 │ ╭ {
+54 │ │     x.into_iter().next()
+55 │ │ }
+   │ ╰─^ invalid(PathResolutionFailed(Self::Item))
+
+note: 
+   ┌─ trait_projection.fe:54:5
+   │
+54 │     x.into_iter().next()
+   │     ^ T
+
+note: 
+   ┌─ trait_projection.fe:54:5
+   │
+54 │     x.into_iter().next()
+   │     ^^^^^^^^^^^^^ T::IntoIter
+
+note: 
+   ┌─ trait_projection.fe:54:5
+   │
+54 │     x.into_iter().next()
+   │     ^^^^^^^^^^^^^^^^^^^^ invalid(PathResolutionFailed(Self::Item))

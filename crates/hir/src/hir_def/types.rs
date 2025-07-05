@@ -38,7 +38,6 @@ impl<'db> TypeId<'db> {
             TypeKind::Path(p) => p
                 .to_opt()
                 .map_or_else(|| "<missing>".into(), |p| p.pretty_print(db)),
-
             TypeKind::Tuple(tup) => tup
                 .data(db)
                 .iter()

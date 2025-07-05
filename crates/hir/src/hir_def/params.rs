@@ -220,6 +220,12 @@ impl<'db> TraitRefId<'db> {
     pub fn generic_args(self, db: &'db dyn HirDb) -> Option<GenericArgListId<'db>> {
         self.path(db).to_opt().map(|path| path.generic_args(db))
     }
+
+    pub fn pretty_print(self, db: &dyn HirDb) -> String {
+        self.path(db)
+            .to_opt()
+            .map_or("<missing>".to_string(), |p| p.pretty_print(db))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

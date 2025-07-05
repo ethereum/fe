@@ -55,7 +55,33 @@ pub(crate) fn check_ty_wf<'db>(
 
     let constraints = ty_constraints(db, ty);
 
-    for &goal in constraints.list(db) {
+    // Normalize constraints to resolve associated types
+    let normalized_constraints = {
+        use crate::ty::normalize::normalize_ty;
+        // Get a reasonable scope for normalization
+        let scope = ingot.root_mod(db).scope();
+        let normalized_list: Vec<_> = constraints
+            .list(db)
+            .iter()
+            .map(|&goal| {
+                // Normalize each argument in the goal
+                let normalized_args: Vec<_> = goal
+                    .args(db)
+                    .iter()
+                    .map(|&arg| normalize_ty(db, arg, scope, assumptions))
+                    .collect();
+                TraitInstId::new(
+                    db,
+                    goal.def(db),
+                    normalized_args,
+                    goal.assoc_type_bindings(db).clone(),
+                )
+            })
+            .collect();
+        PredicateListId::new(db, normalized_list)
+    };
+
+    for &goal in normalized_constraints.list(db) {
         let mut table = UnificationTable::new(db);
         let canonical_goal = Canonicalized::new(db, goal);
 
@@ -98,7 +124,32 @@ pub(crate) fn check_trait_inst_wf<'db>(
     let constraints = collect_constraints(db, trait_inst.def(db).trait_(db).into())
         .instantiate(db, trait_inst.args(db));
 
-    for &goal in constraints.list(db) {
+    // Normalize constraints after instantiation to resolve associated types
+    let normalized_constraints = {
+        use crate::ty::normalize::normalize_ty;
+        let scope = trait_inst.ingot(db).root_mod(db).scope();
+        let normalized_list: Vec<_> = constraints
+            .list(db)
+            .iter()
+            .map(|&goal| {
+                // Normalize each argument in the goal
+                let normalized_args: Vec<_> = goal
+                    .args(db)
+                    .iter()
+                    .map(|&arg| normalize_ty(db, arg, scope, assumptions))
+                    .collect();
+                TraitInstId::new(
+                    db,
+                    goal.def(db),
+                    normalized_args,
+                    goal.assoc_type_bindings(db).clone(),
+                )
+            })
+            .collect();
+        PredicateListId::new(db, normalized_list)
+    };
+
+    for &goal in normalized_constraints.list(db) {
         let mut table = UnificationTable::new(db);
         let canonical_goal = Canonicalized::new(db, goal);
         if let GoalSatisfiability::UnSat(subgoal) =
