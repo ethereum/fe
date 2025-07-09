@@ -2054,47 +2054,69 @@ impl DiagnosticVoucher for ImplDiag<'_> {
             },
 
             Self::MethodArgTyMismatch {
-                trait_m: _,
+                trait_m,
                 impl_m,
                 trait_m_ty,
                 impl_m_ty,
                 param_idx,
-            } => CompleteDiagnostic {
-                severity,
-                message: "method argument type mismatch".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!(
-                        "expected `{}` type, but the given type is `{}`",
-                        trait_m_ty.pretty_print(db),
-                        impl_m_ty.pretty_print(db)
-                    ),
-                    span: impl_m.param_span(db, *param_idx).resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            } => {
+                let method_name = impl_m.name(db).data(db);
+                
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("method `{}` has incompatible argument type", method_name),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: format!(
+                                "expected `{}`, found `{}`",
+                                trait_m_ty.pretty_print(db),
+                                impl_m_ty.pretty_print(db)
+                            ),
+                            span: impl_m.param_span(db, *param_idx).resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "trait requires this type".to_string(),
+                            span: trait_m.param_span(db, *param_idx).resolve(db),
+                        },
+                    ],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::MethodRetTyMismatch {
-                trait_m: _,
+                trait_m,
                 impl_m,
                 trait_ty,
                 impl_ty,
-            } => CompleteDiagnostic {
-                severity,
-                message: "method return type mismatch".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!(
-                        "expected `{}` type, but the given type is `{}`",
-                        trait_ty.pretty_print(db),
-                        impl_ty.pretty_print(db),
-                    ),
-                    span: impl_m.hir_func_def(db).unwrap().span().ret_ty().resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            } => {
+                let method_name = impl_m.name(db).data(db);
+                
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("method `{}` has incompatible return type", method_name),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: format!(
+                                "expected `{}`, found `{}`",
+                                trait_ty.pretty_print(db),
+                                impl_ty.pretty_print(db),
+                            ),
+                            span: impl_m.hir_func_def(db).unwrap().span().ret_ty().resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "trait requires this return type".to_string(),
+                            span: trait_m.hir_func_def(db).unwrap().span().ret_ty().resolve(db),
+                        },
+                    ],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::MethodStricterBound {
                 span,
