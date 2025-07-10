@@ -2061,7 +2061,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 param_idx,
             } => {
                 let method_name = impl_m.name(db).data(db);
-                
+
                 CompleteDiagnostic {
                     severity,
                     message: format!("method `{}` has incompatible argument type", method_name),
@@ -2093,7 +2093,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 impl_ty,
             } => {
                 let method_name = impl_m.name(db).data(db);
-                
+
                 CompleteDiagnostic {
                     severity,
                     message: format!("method `{}` has incompatible return type", method_name),
@@ -2110,7 +2110,12 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: "trait requires this return type".to_string(),
-                            span: trait_m.hir_func_def(db).unwrap().span().ret_ty().resolve(db),
+                            span: trait_m
+                                .hir_func_def(db)
+                                .unwrap()
+                                .span()
+                                .ret_ty()
+                                .resolve(db),
                         },
                     ],
                     notes: vec![],

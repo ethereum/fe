@@ -220,12 +220,13 @@ fn collect_constraints_from_generic_params<'db>(
 
     // Determine if we should add associated type bounds based on the owner type
     // We want to add them for functions and structs, but not for traits or impl traits
-    let should_add_assoc_bounds = matches!(owner, 
-        GenericParamOwner::Func(_) | 
-        GenericParamOwner::Struct(_) | 
-        GenericParamOwner::Enum(_) |
-        GenericParamOwner::TypeAlias(_) |
-        GenericParamOwner::Impl(_)
+    let should_add_assoc_bounds = matches!(
+        owner,
+        GenericParamOwner::Func(_)
+            | GenericParamOwner::Struct(_)
+            | GenericParamOwner::Enum(_)
+            | GenericParamOwner::TypeAlias(_)
+            | GenericParamOwner::Impl(_)
     );
 
     for (i, hir_param) in param_list.data(db).iter().enumerate() {
@@ -235,11 +236,20 @@ fn collect_constraints_from_generic_params<'db>(
 
         let ty = param_set.param_by_original_idx(db, i).unwrap();
         let bounds = &hir_param.bounds;
-        
+
         // Build assumptions from predicates collected so far
-        let assumptions_so_far = PredicateListId::new(db, predicates.iter().copied().collect::<Vec<_>>());
-        
-        add_bounds_to_constraint_set_with_assoc(db, owner.scope(), ty, bounds, predicates, assumptions_so_far, should_add_assoc_bounds);
+        let assumptions_so_far =
+            PredicateListId::new(db, predicates.iter().copied().collect::<Vec<_>>());
+
+        add_bounds_to_constraint_set_with_assoc(
+            db,
+            owner.scope(),
+            ty,
+            bounds,
+            predicates,
+            assumptions_so_far,
+            should_add_assoc_bounds,
+        );
     }
 }
 
@@ -267,7 +277,15 @@ fn collect_constraints_from_where_clause<'db>(
         }
 
         // For where clauses, we want to add associated type bounds when the constrained type is a parameter
-        add_bounds_to_constraint_set_with_assoc(db, scope, ty, &hir_pred.bounds, predicates, assumptions_so_far, ty.is_param(db));
+        add_bounds_to_constraint_set_with_assoc(
+            db,
+            scope,
+            ty,
+            &hir_pred.bounds,
+            predicates,
+            assumptions_so_far,
+            ty.is_param(db),
+        );
     }
 }
 
@@ -297,18 +315,12 @@ fn add_bounds_to_constraint_set_with_assoc<'db>(
             continue;
         };
 
-        let Ok(trait_inst) = lower_trait_ref(
-            db,
-            bound_ty,
-            *trait_ref,
-            scope,
-            assumptions,
-        ) else {
+        let Ok(trait_inst) = lower_trait_ref(db, bound_ty, *trait_ref, scope, assumptions) else {
             continue;
         };
 
         set.insert(trait_inst);
-        
+
         // Only add associated type bounds when explicitly requested and when the bound type is a parameter
         if include_assoc_bounds && bound_ty.is_param(db) {
             add_associated_type_bounds(db, scope, bound_ty, trait_inst, set, assumptions);
@@ -329,13 +341,13 @@ fn add_associated_type_bounds<'db>(
 ) {
     let trait_def = trait_inst.def(db);
     let trait_ = trait_def.trait_(db);
-    
+
     // Iterate through the trait's associated types
     for assoc_type in trait_.types(db) {
         let Some(name) = assoc_type.name.to_opt() else {
             continue;
         };
-        
+
         // Create the associated type for the given self type (e.g., T::IntoIter)
         let assoc_ty = TyId::new(
             db,
@@ -344,7 +356,7 @@ fn add_associated_type_bounds<'db>(
                 name,
             }),
         );
-        
+
         // Filter out bounds that would create cycles
         let mut safe_bounds = Vec::new();
         for bound in &assoc_type.bounds {
@@ -363,7 +375,7 @@ fn add_associated_type_bounds<'db>(
             }
             safe_bounds.push(bound.clone());
         }
-        
+
         // Add bounds for this associated type
         // We pass the current assumptions to avoid issues with ordering
         add_bounds_to_constraint_set(db, scope, assoc_ty, &safe_bounds, set, assumptions);

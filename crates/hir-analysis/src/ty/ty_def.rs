@@ -150,10 +150,10 @@ impl<'db> TyId<'db> {
                 let self_ty = assoc_ty.trait_.self_ty(db);
                 format!("{}::{}", self_ty.pretty_print(db), assoc_ty.name.data(db))
             }
-            TyData::QualifiedTy(ty, trait_inst) => {
+            TyData::QualifiedTy(trait_inst) => {
                 format!(
                     "<{} as {}>",
-                    ty.pretty_print(db),
+                    trait_inst.self_ty(db).pretty_print(db),
                     trait_inst.pretty_print(db, false)
                 )
             }
@@ -246,12 +246,8 @@ impl<'db> TyId<'db> {
         Self::new(db, TyData::AssocTy(assoc_ty))
     }
 
-    pub(crate) fn qualified_ty(
-        db: &'db dyn HirAnalysisDb,
-        ty: TyId<'db>,
-        trait_: TraitInstId<'db>,
-    ) -> Self {
-        Self::new(db, TyData::QualifiedTy(ty, trait_))
+    pub(crate) fn qualified_ty(db: &'db dyn HirAnalysisDb, trait_: TraitInstId<'db>) -> Self {
+        Self::new(db, TyData::QualifiedTy(trait_))
     }
 
     pub(crate) fn adt(db: &'db dyn HirAnalysisDb, adt: AdtDef<'db>) -> Self {
@@ -334,7 +330,7 @@ impl<'db> TyId<'db> {
         match self.base_ty(db).data(db) {
             TyData::TyParam(param) => Some(param.scope(db)),
             TyData::AssocTy(assoc_ty) => Some(assoc_ty.scope(db)),
-            TyData::QualifiedTy(_, trait_inst) => Some(trait_inst.def(db).trait_(db).scope()),
+            TyData::QualifiedTy(trait_inst) => Some(trait_inst.def(db).trait_(db).scope()),
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.scope(db)),
             TyData::TyBase(TyBase::Func(func)) => Some(func.scope(db)),
             TyData::TyBase(TyBase::Prim(..)) => None,
@@ -356,9 +352,7 @@ impl<'db> TyId<'db> {
             TyData::TyVar(_) => None,
             TyData::TyParam(param) => param.scope(db).name_span(db),
             TyData::AssocTy(assoc_ty) => assoc_ty.scope(db).name_span(db),
-            TyData::QualifiedTy(_, trait_inst) => {
-                trait_inst.def(db).trait_(db).scope().name_span(db)
-            }
+            TyData::QualifiedTy(trait_inst) => trait_inst.def(db).trait_(db).scope().name_span(db),
 
             TyData::TyBase(TyBase::Adt(adt)) => Some(adt.name_span(db)),
             TyData::TyBase(TyBase::Func(func)) => Some(func.name_span(db)),
@@ -667,7 +661,7 @@ pub enum TyData<'db> {
     AssocTy(AssocTy<'db>),
 
     /// Qualified type, e.g., `<T as Iterator>`.
-    QualifiedTy(TyId<'db>, TraitInstId<'db>), // xxx remove tyid?
+    QualifiedTy(TraitInstId<'db>),
 
     // Type application,
     // e.g., `Option<i32>` is represented as `TApp(TyConst(Option), TyConst(i32))`.
@@ -1161,7 +1155,7 @@ impl HasKind for TyData<'_> {
             TyData::TyVar(ty_var) => ty_var.kind(db),
             TyData::TyParam(ty_param) => ty_param.kind.clone(),
             TyData::AssocTy(_) => Kind::Star,
-            TyData::QualifiedTy(_, _) => Kind::Star,
+            TyData::QualifiedTy(_) => Kind::Star,
             TyData::TyBase(ty_const) => ty_const.kind(db),
             TyData::TyApp(abs, _) => match abs.kind(db) {
                 // `TyId::app` method handles the kind mismatch, so we don't need to verify it again

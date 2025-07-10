@@ -4,95 +4,95 @@ expression: res
 input_file: test_files/ty_check/trait_projection.fe
 ---
 note: 
-   ┌─ trait_projection.fe:23:33
+   ┌─ trait_projection.fe:21:33
    │  
-23 │       fn next(self) -> Self::Item {
+21 │       fn next(self) -> Self::Item {
    │ ╭─────────────────────────────────^
-24 │ │         self.value
-25 │ │     }
+22 │ │         self.value
+23 │ │     }
    │ ╰─────^ u32
 
 note: 
-   ┌─ trait_projection.fe:24:9
+   ┌─ trait_projection.fe:22:9
    │
-24 │         self.value
+22 │         self.value
    │         ^^^^ MyIter
 
 note: 
-   ┌─ trait_projection.fe:24:9
+   ┌─ trait_projection.fe:22:9
    │
-24 │         self.value
+22 │         self.value
    │         ^^^^^^^^^^ u32
 
 note: 
-   ┌─ trait_projection.fe:31:1
+   ┌─ trait_projection.fe:29:1
    │  
-31 │ ╭ {
-32 │ │     x.next()
-33 │ │ }
+29 │ ╭ {
+30 │ │     x.next()
+31 │ │ }
    │ ╰─^ T::Item
 
 note: 
-   ┌─ trait_projection.fe:32:5
+   ┌─ trait_projection.fe:30:5
    │
-32 │     x.next()
+30 │     x.next()
    │     ^ T
 
 note: 
-   ┌─ trait_projection.fe:32:5
+   ┌─ trait_projection.fe:30:5
    │
-32 │     x.next()
+30 │     x.next()
    │     ^^^^^^^^ T::Item
 
 note: 
-   ┌─ trait_projection.fe:45:33
+   ┌─ trait_projection.fe:43:33
    │  
-45 │       fn next(self) -> Self::Item {
+43 │       fn next(self) -> Self::Item {
    │ ╭─────────────────────────────────^
-46 │ │         self.inner.next()
-47 │ │     }
+44 │ │         self.inner.next()
+45 │ │     }
    │ ╰─────^ T::Item
 
 note: 
-   ┌─ trait_projection.fe:46:9
+   ┌─ trait_projection.fe:44:9
    │
-46 │         self.inner.next()
+44 │         self.inner.next()
    │         ^^^^ Wrapper<T>
 
 note: 
-   ┌─ trait_projection.fe:46:9
+   ┌─ trait_projection.fe:44:9
    │
-46 │         self.inner.next()
+44 │         self.inner.next()
    │         ^^^^^^^^^^ T
 
 note: 
-   ┌─ trait_projection.fe:46:9
+   ┌─ trait_projection.fe:44:9
    │
-46 │         self.inner.next()
+44 │         self.inner.next()
    │         ^^^^^^^^^^^^^^^^^ T::Item
 
 note: 
-   ┌─ trait_projection.fe:53:1
+   ┌─ trait_projection.fe:51:1
    │  
-53 │ ╭ {
-54 │ │     x.into_iter().next()
-55 │ │ }
+51 │ ╭ {
+52 │ │     x.into_iter().next() // xxx: path resolution failed: Self::Item
+53 │ │ }
    │ ╰─^ invalid(PathResolutionFailed(Self::Item))
 
 note: 
-   ┌─ trait_projection.fe:54:5
+   ┌─ trait_projection.fe:52:5
    │
-54 │     x.into_iter().next()
+52 │     x.into_iter().next() // xxx: path resolution failed: Self::Item
    │     ^ T
 
 note: 
-   ┌─ trait_projection.fe:54:5
+   ┌─ trait_projection.fe:52:5
    │
-54 │     x.into_iter().next()
+52 │     x.into_iter().next() // xxx: path resolution failed: Self::Item
    │     ^^^^^^^^^^^^^ T::IntoIter
 
 note: 
-   ┌─ trait_projection.fe:54:5
+   ┌─ trait_projection.fe:52:5
    │
-54 │     x.into_iter().next()
+52 │     x.into_iter().next() // xxx: path resolution failed: Self::Item
    │     ^^^^^^^^^^^^^^^^^^^^ invalid(PathResolutionFailed(Self::Item))

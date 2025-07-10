@@ -1421,22 +1421,27 @@ fn analyze_impl_trait_specific_error<'db>(
                     // properly handle Self references in the bound. For example, if we have
                     // `type Selector: Encode<Self>` in the trait and `impl Abi for SolAbi`,
                     // then Self in the bound should refer to SolAbi, not [u8; 4].
-                    
+
                     // We need to lower the trait reference in the proper context.
                     // The trait bound may contain Self, which should refer to the implementor type.
                     // So we lower it with the implementor type as the self type, and using
                     // the trait's scope (where Self is defined).
                     let implementor_ty = implementor.instantiate_identity().self_ty(db);
-                    
+
                     // Lower the trait reference from the associated type bound
-                    match lower_trait_ref(db, impl_ty, *trait_ref, trait_def.trait_(db).scope(), assumptions)
-                    {
+                    match lower_trait_ref(
+                        db,
+                        impl_ty,
+                        *trait_ref,
+                        trait_def.trait_(db).scope(),
+                        assumptions,
+                    ) {
                         Ok(mut trait_inst) => {
                             // If the trait reference contains Self, we need to substitute it
                             // with the actual implementor type
                             let trait_args = trait_inst.args(db);
                             let mut new_args = vec![];
-                            
+
                             for &arg in trait_args {
                                 if arg.is_trait_self(db) {
                                     // Replace trait Self with the implementor type
@@ -1445,7 +1450,7 @@ fn analyze_impl_trait_specific_error<'db>(
                                     new_args.push(arg);
                                 }
                             }
-                            
+
                             // Create a new trait instance with substituted arguments
                             trait_inst = TraitInstId::new(
                                 db,
@@ -1453,7 +1458,7 @@ fn analyze_impl_trait_specific_error<'db>(
                                 new_args,
                                 trait_inst.assoc_type_bindings(db).clone(),
                             );
-                            
+
                             let assoc_ty_span = impl_trait
                                 .associated_type_span(db, name)
                                 .map(|span| span.ty().into())
