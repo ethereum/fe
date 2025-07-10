@@ -5,7 +5,7 @@ use salsa::Setter;
 use smol_str::SmolStr;
 use url::Url;
 
-use crate::config::IngotArguments;
+use crate::config::DependencyArguments;
 use crate::InputDb;
 use crate::{file::File, indexmap::IndexMap};
 
@@ -19,7 +19,7 @@ pub enum InputIndexError {
 pub struct Workspace {
     files: StringTrie<Url, File>,
     paths: IndexMap<File, Url>,
-    graph: DiGraph<Url, (SmolStr, IngotArguments)>,
+    graph: DiGraph<Url, (SmolStr, DependencyArguments)>,
     graph_nodes: IndexMap<Url, NodeIndex>,
 }
 
@@ -116,8 +116,8 @@ impl Workspace {
     pub fn join_graph(
         &self,
         db: &mut dyn InputDb,
-        graph: DiGraph<Url, (SmolStr, IngotArguments)>,
-        join_edges: Vec<(Url, Url, (SmolStr, IngotArguments))>,
+        graph: DiGraph<Url, (SmolStr, DependencyArguments)>,
+        join_edges: Vec<(Url, Url, (SmolStr, DependencyArguments))>,
     ) {
         let old_graph = self.graph(db);
         let combined_graph = join_graphs(&old_graph, &graph, &join_edges);
@@ -128,7 +128,7 @@ impl Workspace {
         self.set_graph(db).to(combined_graph);
     }
 
-    pub fn get_graph(&self, db: &dyn InputDb) -> DiGraph<Url, (SmolStr, IngotArguments)> {
+    pub fn get_graph(&self, db: &dyn InputDb) -> DiGraph<Url, (SmolStr, DependencyArguments)> {
         self.graph(db).clone()
     }
 
@@ -151,10 +151,10 @@ use petgraph::graph::NodeIndex;
 use std::collections::HashMap;
 
 fn join_graphs(
-    g1: &DiGraph<Url, (SmolStr, IngotArguments)>,
-    g2: &DiGraph<Url, (SmolStr, IngotArguments)>,
-    join_edges: &[(Url, Url, (SmolStr, IngotArguments))],
-) -> DiGraph<Url, (SmolStr, IngotArguments)> {
+    g1: &DiGraph<Url, (SmolStr, DependencyArguments)>,
+    g2: &DiGraph<Url, (SmolStr, DependencyArguments)>,
+    join_edges: &[(Url, Url, (SmolStr, DependencyArguments))],
+) -> DiGraph<Url, (SmolStr, DependencyArguments)> {
     let mut combined = DiGraph::new();
 
     let mut node_map = HashMap::<Url, NodeIndex>::new();

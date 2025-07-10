@@ -4,10 +4,10 @@ pub mod files;
 
 use std::{collections::HashSet, mem::take};
 
-use common::InputDb;
+use common::{config::DependencyArguments, InputDb};
 pub use db::DriverDataBase;
 
-use common::config::{Config, IngotArguments};
+use common::config::Config;
 use hir::hir_def::TopLevelMod;
 use resolver::{
     files::{File, FilesResolutionError, FilesResolver},
@@ -64,7 +64,7 @@ pub enum WorkspaceSetupDiagnostics {
 
 pub struct InputNodeHandler<'a> {
     pub db: &'a mut dyn InputDb,
-    pub join_edges: Vec<(Url, Url, (SmolStr, IngotArguments))>,
+    pub join_edges: Vec<(Url, Url, (SmolStr, DependencyArguments))>,
 }
 
 impl<'a> InputNodeHandler<'a> {
@@ -75,7 +75,7 @@ impl<'a> InputNodeHandler<'a> {
         }
     }
 
-    pub fn join_graph(&mut self, graph: DiGraph<Url, (SmolStr, IngotArguments)>) {
+    pub fn join_graph(&mut self, graph: DiGraph<Url, (SmolStr, DependencyArguments)>) {
         self.db
             .workspace()
             .join_graph(self.db, graph, take(&mut self.join_edges));
@@ -83,7 +83,7 @@ impl<'a> InputNodeHandler<'a> {
 }
 
 impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
-    type Item = Vec<(Url, (SmolStr, IngotArguments))>;
+    type Item = Vec<(Url, (SmolStr, DependencyArguments))>;
 
     fn handle_resolution(&mut self, ingot_url: &Url, files: Vec<File>) -> Self::Item {
         let mut config = None;
@@ -108,7 +108,7 @@ impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
         }
 
         if let Some(content) = config {
-            let config = Config::from_string(content);
+            let config = Config::parse(&content).unwrap();
 
             let weights: HashSet<Url> = self
                 .db
@@ -126,13 +126,13 @@ impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
                         self.join_edges.push((
                             ingot_url.clone(),
                             based_dependency.url,
-                            (based_dependency.alias, based_dependency.arguments),
+                            (based_dependency.alias, based_dependency.parameters),
                         ));
                         None
                     } else {
                         Some((
                             based_dependency.url,
-                            (based_dependency.alias, based_dependency.arguments),
+                            (based_dependency.alias, based_dependency.parameters),
                         ))
                     }
                 })

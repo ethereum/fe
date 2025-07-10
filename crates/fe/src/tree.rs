@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use camino::Utf8PathBuf;
 use common::{
-    config::{Config, IngotArguments},
+    config::{Config, DependencyArguments},
     urlext::canonical_url,
 };
 use resolver::{
@@ -15,7 +15,7 @@ use url::Url;
 
 pub fn print_tree(path: &Utf8PathBuf) {
     let mut graph_resolver = basic_ingot_graph_resolver();
-    let ingot_url = canonical_url(path).unwrap();
+    let ingot_url = canonical_url(path);
     let ingot_graph = graph_resolver.transient_resolve(&ingot_url).unwrap();
     print!(
         "{}",
@@ -53,7 +53,7 @@ impl TreePrefix {
 }
 
 pub fn print_tree_impl(
-    graph: &DiGraph<Url, (SmolStr, IngotArguments)>,
+    graph: &DiGraph<Url, (SmolStr, DependencyArguments)>,
     root_path: &Url,
     configs: &HashMap<Url, Config>,
 ) -> String {
@@ -80,7 +80,7 @@ pub fn print_tree_impl(
 }
 
 fn print_node(
-    graph: &DiGraph<Url, (SmolStr, IngotArguments)>,
+    graph: &DiGraph<Url, (SmolStr, DependencyArguments)>,
     node: NodeIndex,
     prefix: TreePrefix,
     output: &mut String,
@@ -92,9 +92,9 @@ fn print_node(
     let base_label = if let Some(config) = configs.get(ingot_path) {
         format!(
             "{} v{}",
-            config.ingot.name.as_deref().unwrap_or("null"),
+            config.metadata.name.as_deref().unwrap_or("null"),
             config
-                .ingot
+                .metadata
                 .version
                 .as_ref()
                 .map(ToString::to_string)
