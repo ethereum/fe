@@ -734,6 +734,20 @@ pub(crate) fn find_associated_type<'db>(
         resolve_assoc_ty(db, scope, ty, name, assumptions, &mut candidates, assoc_ty);
     }
 
+    // Case 4: The LHS `ty` is a qualified type (e.g., `<T as Iterator>` in `<T as Iterator>::Item`).
+    if let TyData::QualifiedTy(_inner_ty, trait_inst) = ty.value.data(db) {
+        // For a qualified type, we know exactly which trait to look in
+        let trait_def = trait_inst.def(db).trait_(db);
+
+        // Look for the associated type in the trait
+        let mut table = UnificationTable::new(db);
+        if let Some(assoc_ty) =
+            find_assoc_type_in_trait(db, trait_def, *trait_inst, name, &mut table)
+        {
+            candidates.insert((*trait_inst, assoc_ty));
+        }
+    }
+
     candidates.into_iter().collect()
 }
 
