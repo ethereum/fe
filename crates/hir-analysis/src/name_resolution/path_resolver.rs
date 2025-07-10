@@ -497,7 +497,7 @@ where
         let trait_inst = lower_trait_ref(db, ty, trait_, scope, assumptions)
             .map_err(|_| PathResError::parse_err(path))?; // xxx
 
-        let qualified_ty = TyId::qualified_ty(db, ty, trait_inst);
+        let qualified_ty = TyId::qualified_ty(db, trait_inst);
         let r = PathRes::Ty(qualified_ty);
         observer(path, &r);
         return Ok(r);
@@ -735,7 +735,7 @@ pub(crate) fn find_associated_type<'db>(
     }
 
     // Case 4: The LHS `ty` is a qualified type (e.g., `<T as Iterator>` in `<T as Iterator>::Item`).
-    if let TyData::QualifiedTy(_inner_ty, trait_inst) = ty.value.data(db) {
+    if let TyData::QualifiedTy(trait_inst) = ty.value.data(db) {
         // For a qualified type, we know exactly which trait to look in
         let trait_def = trait_inst.def(db).trait_(db);
 

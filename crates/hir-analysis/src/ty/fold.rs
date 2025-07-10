@@ -80,10 +80,9 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                 ty
             }
 
-            QualifiedTy(ty, trait_inst) => {
-                let folded_ty = folder.fold_ty(*ty);
+            QualifiedTy(trait_inst) => {
                 let folded_trait = trait_inst.fold_with(folder);
-                TyId::qualified_ty(folder.db(), folded_ty, folded_trait)
+                TyId::qualified_ty(folder.db(), folded_trait)
             }
 
             TyVar(_) | TyParam(_) | TyBase(_) | Never | Invalid(_) => self,

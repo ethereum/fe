@@ -74,8 +74,8 @@ where
         TyData::TyVar(var) => visitor.visit_var(var),
         TyData::TyParam(param) => visitor.visit_param(param),
         TyData::AssocTy(assoc_ty) => visitor.visit_assoc_ty(assoc_ty),
-        TyData::QualifiedTy(ty, trait_inst) => {
-            visitor.visit_ty(*ty);
+        TyData::QualifiedTy(trait_inst) => {
+            visitor.visit_ty(trait_inst.self_ty(visitor.db()));
             trait_inst.visit_with(visitor);
         }
         TyData::TyApp(abs, arg) => visitor.visit_app(*abs, *arg),

@@ -358,11 +358,9 @@ pub(super) fn does_impl_trait_conflict(
         // Check if this constraint is satisfiable
         match is_goal_satisfiable(db, ingot, constraint.value, PredicateListId::empty_list(db)) {
             GoalSatisfiability::UnSat(_) => {
-                // If any constraint is unsatisfiable, the implementations don't actually conflict
                 return false;
             }
             GoalSatisfiability::ContainsInvalid => {
-                // Don't report a conflict error if there are invalid types
                 return false;
             }
             _ => {
