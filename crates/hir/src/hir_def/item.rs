@@ -885,10 +885,17 @@ impl<'db> Trait<'db> {
             _ => None,
         })
     }
+
+    pub fn assoc_ty(self, db: &'db dyn HirDb, name: IdentId<'db>) -> Option<&'db TraitType<'db>> {
+        self.types(db)
+            .iter()
+            .find(|trait_type| trait_type.name.to_opt() == Some(name))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub struct TraitType<'db> {
+    // xxx rename AssocTyDecl
     pub name: Partial<IdentId<'db>>,
     pub bounds: Vec<TypeBound<'db>>,
     pub default: Option<TypeId<'db>>,

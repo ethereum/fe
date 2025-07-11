@@ -21,6 +21,7 @@ use crate::{
         canonical::Canonicalized,
         const_ty::ConstTyId,
         diagnostics::{BodyDiag, FuncBodyDiag},
+        normalize::normalize_ty,
         ty_check::{callable::Callable, path::RecordInitChecker, TyChecker},
         ty_def::{InvalidCause, TyId},
     },
@@ -34,6 +35,8 @@ impl<'db> TyChecker<'db> {
             self.env.type_expr(expr, typed);
             return typed;
         };
+
+        let expected = normalize_ty(self.db, expected, self.env.scope(), self.env.assumptions());
 
         self.env.enter_expr(expr);
         let mut actual = match expr_data {
@@ -58,6 +61,7 @@ impl<'db> TyChecker<'db> {
         self.env.leave_expr();
 
         let typeable = Typeable::Expr(expr, actual);
+        actual.ty = normalize_ty(self.db, actual.ty, self.env.scope(), self.env.assumptions());
         actual.ty = self.unify_ty(typeable, actual.ty, expected);
         actual
     }
@@ -661,6 +665,8 @@ impl<'db> TyChecker<'db> {
         let lhs_ty = self.fresh_ty();
         let typed_lhs = self.check_expr(*lhs, lhs_ty);
         let lhs_ty = typed_lhs.ty;
+        // let lhs_ty = normalize_ty(self.db, lhs_ty, self.env.scope(), self.env.assumptions());
+
         let (ty_base, ty_args) = lhs_ty.decompose_ty_app(self.db);
 
         if ty_base.has_invalid(self.db) {

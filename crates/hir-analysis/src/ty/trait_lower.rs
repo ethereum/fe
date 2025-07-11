@@ -3,7 +3,7 @@
 use common::indexmap::IndexMap;
 use hir::hir_def::{
     params::GenericArg, scope_graph::ScopeId, AssocTypeGenericArg, IdentId, ImplTrait, IngotId,
-    Partial, Trait, TraitRefId, TypeId,
+    ItemKind, Partial, Trait, TraitRefId, TypeId,
 };
 use rustc_hash::FxHashMap;
 use salsa::Update;
@@ -284,7 +284,18 @@ pub(crate) fn lower_trait_ref<'db>(
         if let Some(assoc_name) = trait_type.name.to_opt() {
             if let Some(hir_assoc_ty_val) = user_assoc_type_bindings.get(&assoc_name) {
                 // User provided an explicit binding for this associated type
-                let bound_ty = lower_opt_hir_ty(db, scope, *hir_assoc_ty_val, assumptions);
+                // When processing trait bounds on associated types within a trait definition,
+                // we need to ensure that Self references are resolved in the trait's scope.
+                // Check if we're in a trait definition context by examining the scope.
+                let ty_lower_scope = match scope {
+                    ScopeId::Item(ItemKind::Trait(trait_item)) => {
+                        // We're processing bounds within a trait definition.
+                        // Use the trait's scope so that Self::Item resolves correctly.
+                        ScopeId::Item(trait_item.into())
+                    }
+                    _ => scope,
+                };
+                let bound_ty = lower_opt_hir_ty(db, ty_lower_scope, *hir_assoc_ty_val, assumptions);
                 assoc_bindings.insert(assoc_name, bound_ty);
             }
         }

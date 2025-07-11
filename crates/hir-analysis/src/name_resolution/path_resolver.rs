@@ -2,13 +2,13 @@ use common::indexmap::{IndexMap, IndexSet};
 use either::Either;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Enum, EnumVariant, GenericParamOwner, IdentId, ItemKind, Partial,
-        PathId, PathKind, TypeBound, TypeId, VariantKind,
+        scope_graph::ScopeId, Enum, EnumVariant, GenericParamOwner, IdentId, ImplTrait, ItemKind,
+        Partial, PathId, PathKind, Trait, TypeBound, TypeId, VariantKind,
     },
     span::DynLazySpan,
 };
 use if_chain::if_chain;
-use smallvec::SmallVec;
+use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
 
 use super::{
@@ -620,110 +620,78 @@ where
     Ok(r)
 }
 
-/// Helper function to find an associated type in a trait by name.
-/// Returns the associated type if found, with optional folding through a unification table.
-fn find_assoc_type_in_trait<'db>(
-    db: &'db dyn HirAnalysisDb,
-    trait_: hir::hir_def::Trait<'db>,
-    trait_inst: TraitInstId<'db>,
-    name: IdentId<'db>,
-    table: &mut UnificationTable<'db>,
-) -> Option<TyId<'db>> {
-    for trait_type in trait_.types(db) {
-        if trait_type.name.to_opt() == Some(name) {
-            return Some(
-                TyId::new(
-                    db,
-                    TyData::AssocTy(AssocTy {
-                        trait_: trait_inst,
-                        name,
-                    }),
-                )
-                .fold_with(table),
-            );
-        }
-    }
-    None
-}
-
-pub(crate) fn find_associated_type<'db>(
+pub fn find_associated_type<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     ty: Canonical<TyId<'db>>,
     name: IdentId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> SmallVec<(TraitInstId<'db>, TyId<'db>), 4> {
+    // Qualified type: `<A as T>::B`. B must be an associated type of trait T.
+    if let TyData::QualifiedTy(trait_inst) = ty.value.data(db) {
+        return if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+            smallvec![(*trait_inst, assoc_ty)]
+        } else {
+            smallvec![]
+        };
+    }
+
     let mut candidates: IndexSet<(TraitInstId<'db>, TyId<'db>)> = IndexSet::new();
     let ingot = scope.ingot(db);
 
-    // Case 1: ty is a concrete type or can be resolved to concrete impls.
-    for implementor in impls_for_ty_with_constraints(db, ingot, ty, assumptions) {
-        let mut table = UnificationTable::new(db);
+    if let TyData::TyParam(param) = ty.value.data(db) {
+        // Trait self, in trait or impl trait. Associated type must be in this trait.
+        if param.is_trait_self() {
+            if let Some(trait_) = param.owner.resolve_to::<Trait>(db) {
+                if trait_.assoc_ty(db, name).is_some() {
+                    let trait_inst = TraitInstId::new(
+                        db,
+                        lower_trait(db, trait_),
+                        vec![ty.value],
+                        IndexMap::new(),
+                    );
+                    let assoc_ty = TyId::assoc_ty(db, trait_inst, name);
+                    return smallvec![(trait_inst, assoc_ty)];
+                }
+            } else if let Some(impl_trait) = param.owner.resolve_to::<ImplTrait>(db) {
+                if let Some(trait_ref) = impl_trait.trait_ref(db).to_opt() {
+                    if let Ok(trait_inst) =
+                        lower_trait_ref(db, ty.value, trait_ref, impl_trait.scope(), assumptions)
+                    {
+                        if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+                            return smallvec![(trait_inst, assoc_ty)];
+                        }
+                    }
+                }
+            }
+        }
 
-        // Instantiate the LHS type `ty` with fresh unification variables if it's generic.
-        let lhs_ty_instance = ty.extract_identity(&mut table);
+        for &trait_inst in assumptions.list(db) {
+            // `trait_inst` is a specific trait bound, e.g., `A: Abi` or `S<A>: SomeTrait`.
+            let mut table = UnificationTable::new(db);
+            let lhs_ty = ty.extract_identity(&mut table);
+            let pred_self_ty =
+                table.instantiate_with_fresh_vars(Binder::bind(trait_inst.self_ty(db)));
 
-        // Instantiate the implementor with fresh unification variables for its generic parameters.
-        let implementor_instance = table.instantiate_with_fresh_vars(implementor);
-
-        if table
-            .unify(lhs_ty_instance, implementor_instance.self_ty(db))
-            .is_ok()
-        {
-            // If unification succeeds, the implementor's generic parameters are now (potentially)
-            // bound to parts of `lhs_ty_instance`.
-            if let Some(&ty) = implementor_instance.types(db).get(&name) {
-                // The associated type from the `impl` block might itself contain generic parameters
-                // from the `impl` block. These need to be substituted based on the unification outcome.
-                let resolved_ty = ty.fold_with(&mut table);
-                candidates.insert((implementor_instance.trait_(db), resolved_ty));
+            if table.unify(lhs_ty, pred_self_ty).is_ok() {
+                // trait bound has an explicit associated type binding, eg `T: Iterator<Item=i32>`,
+                // or the trait declares an associated type with this name.
+                if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+                    candidates.insert((trait_inst, assoc_ty.fold_with(&mut table)));
+                }
             }
         }
     }
 
-    // Case 2: The LHS `ty` is a generic type parameter
-    if let TyData::TyParam(_) = ty.value.data(db) {
-        for &predicate_trait_inst in assumptions.list(db) {
-            // `predicate_trait_inst` is a specific trait bound, e.g., `A: Abi` or `S<A>: SomeTrait`.
-            // It has `def` (the TraitDef) and `args` (the actual types for Self, generics, and resolved associated types).
+    // check all impls for ty
+    for impl_ in impls_for_ty_with_constraints(db, ingot, ty, assumptions) {
+        let mut table = UnificationTable::new(db);
+        let lhs_ty = ty.extract_identity(&mut table);
+        let impl_ = table.instantiate_with_fresh_vars(impl_);
 
-            let mut table = UnificationTable::new(db);
-            // Instantiate the LHS `ty` (e.g., A) with fresh variables for unification.
-            let lhs_ty_instance = ty.extract_identity(&mut table);
-
-            // Instantiate the `self_ty` from the predicate (e.g., the `A` in `A: Abi`) also with fresh variables.
-            let predicate_self_ty_instance =
-                table.instantiate_with_fresh_vars(Binder::bind(predicate_trait_inst.self_ty(db)));
-
-            // Check if the current trait bound applies to our LHS type `ty`.
-            if table
-                .unify(lhs_ty_instance, predicate_self_ty_instance)
-                .is_ok()
-            {
-                let trait_def_of_bound = predicate_trait_inst.def(db);
-
-                // Look for the associated type by name in the trait bindings
-                if let Some(&actual_assoc_ty_in_bound) =
-                    predicate_trait_inst.assoc_type_bindings(db).get(&name)
-                {
-                    // This `actual_assoc_ty_in_bound` needs to be processed by the unification table
-                    // to substitute any type variables based on the `lhs_ty_instance` unification.
-                    candidates.insert((
-                        predicate_trait_inst,
-                        actual_assoc_ty_in_bound.fold_with(&mut table),
-                    ));
-                } else {
-                    // If no explicit binding is found, check if the trait declares this associated type
-                    if let Some(assoc_ty) = find_assoc_type_in_trait(
-                        db,
-                        trait_def_of_bound.trait_(db),
-                        predicate_trait_inst,
-                        name,
-                        &mut table,
-                    ) {
-                        candidates.insert((predicate_trait_inst, assoc_ty));
-                    }
-                }
+        if table.unify(lhs_ty, impl_.self_ty(db)).is_ok() {
+            if let Some(ty) = impl_.assoc_ty(db, name) {
+                candidates.insert((impl_.trait_(db), ty.fold_with(&mut table)));
             }
         }
     }
@@ -732,20 +700,6 @@ pub(crate) fn find_associated_type<'db>(
     // We need to look at the trait bound on the associated type.
     if let TyData::AssocTy(assoc_ty) = ty.value.data(db) {
         resolve_assoc_ty(db, scope, ty, name, assumptions, &mut candidates, assoc_ty);
-    }
-
-    // Case 4: The LHS `ty` is a qualified type (e.g., `<T as Iterator>` in `<T as Iterator>::Item`).
-    if let TyData::QualifiedTy(trait_inst) = ty.value.data(db) {
-        // For a qualified type, we know exactly which trait to look in
-        let trait_def = trait_inst.def(db).trait_(db);
-
-        // Look for the associated type in the trait
-        let mut table = UnificationTable::new(db);
-        if let Some(assoc_ty) =
-            find_assoc_type_in_trait(db, trait_def, *trait_inst, name, &mut table)
-        {
-            candidates.insert((*trait_inst, assoc_ty));
-        }
     }
 
     candidates.into_iter().collect()
@@ -776,56 +730,28 @@ pub fn resolve_assoc_ty<'db>(
             .unify(trait_inst.self_ty(db), ty_with_subst)
             .is_ok()
         {
-            let trait_def = trait_inst.def(db).trait_(db);
-
-            // Check if this trait has the associated type we're looking for
-            if let Some(nested_assoc_ty) =
-                find_assoc_type_in_trait(db, trait_def, *trait_inst, name, &mut pred_table)
-            {
-                candidates.insert((*trait_inst, nested_assoc_ty));
+            if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+                candidates.insert((*trait_inst, assoc_ty.fold_with(&mut pred_table)));
             }
         }
     }
 
     // Also check bounds defined on the associated type in the trait definition
-    // Get the trait that defines this associated type
     let trait_def = assoc_ty.trait_.def(db);
     let trait_ = trait_def.trait_(db);
 
-    // Find the associated type definition in the trait
-    for trait_type in trait_.types(db) {
-        if trait_type.name.to_opt() == Some(assoc_ty.name) {
-            // Check if this associated type has trait bounds
-            for bound in &trait_type.bounds {
-                if let TypeBound::Trait(trait_ref) = bound {
-                    // We need to resolve the trait reference to check its associated types
-                    // First, we need to lower the trait ref with proper substitutions
+    if let Some(assoc_ty_decl) = trait_.assoc_ty(db, assoc_ty.name) {
+        for bound in &assoc_ty_decl.bounds {
+            let TypeBound::Trait(trait_ref) = bound else {
+                todo!("assoc ty kind bounds")
+            };
+            let self_ty = ty_with_subst.fold_with(&mut table);
 
-                    // The self type for the trait bound is the associated type itself,
-                    // but we need to apply substitutions from the unification table
-                    let self_ty = ty_with_subst.fold_with(&mut table);
-
-                    // Try to lower the trait reference
-                    if let Ok(bound_trait_inst) =
-                        lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions)
-                    {
-                        let bound_trait_def = bound_trait_inst.def(db).trait_(db);
-
-                        // Check if this trait has the associated type we're looking for
-                        // Pass the unification table to apply substitutions
-                        if let Some(nested_assoc_ty) = find_assoc_type_in_trait(
-                            db,
-                            bound_trait_def,
-                            bound_trait_inst,
-                            name,
-                            &mut table,
-                        ) {
-                            candidates.insert((bound_trait_inst, nested_assoc_ty));
-                        }
-                    }
+            if let Ok(inst) = lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions) {
+                if let Some(assoc_ty) = inst.assoc_ty(db, name) {
+                    candidates.insert((inst, assoc_ty.fold_with(&mut table)));
                 }
             }
-            break;
         }
     }
 }
@@ -839,6 +765,7 @@ pub fn resolve_name_res<'db>(
     assumptions: PredicateListId<'db>,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
     let args = &lower_generic_arg_list(db, path.generic_args(db), scope, assumptions);
+
     let res = match nameres.kind {
         NameResKind::Prim(prim) => {
             let ty = TyId::from_hir_prim_ty(db, prim);

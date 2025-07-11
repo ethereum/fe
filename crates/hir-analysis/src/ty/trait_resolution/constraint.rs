@@ -323,7 +323,7 @@ fn add_bounds_to_constraint_set_with_assoc<'db>(
 
         // Only add associated type bounds when explicitly requested and when the bound type is a parameter
         if include_assoc_bounds && bound_ty.is_param(db) {
-            add_associated_type_bounds(db, scope, bound_ty, trait_inst, set, assumptions);
+            add_associated_type_bounds(db, trait_inst, set, assumptions);
         }
     }
 }
@@ -333,8 +333,6 @@ fn add_bounds_to_constraint_set_with_assoc<'db>(
 /// `type IntoIter: Iterator`, this will add `T::IntoIter: Iterator`.
 fn add_associated_type_bounds<'db>(
     db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    _self_ty: TyId<'db>,
     trait_inst: TraitInstId<'db>,
     set: &mut IndexSet<TraitInstId<'db>>,
     assumptions: PredicateListId<'db>,
@@ -377,7 +375,9 @@ fn add_associated_type_bounds<'db>(
         }
 
         // Add bounds for this associated type
-        // We pass the current assumptions to avoid issues with ordering
-        add_bounds_to_constraint_set(db, scope, assoc_ty, &safe_bounds, set, assumptions);
+        // IMPORTANT: Use the trait's scope, not the current scope, to ensure paths like Self::Item
+        // are resolved correctly
+        let trait_scope = ScopeId::Item(trait_.into());
+        add_bounds_to_constraint_set(db, trait_scope, assoc_ty, &safe_bounds, set, assumptions);
     }
 }

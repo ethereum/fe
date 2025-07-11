@@ -81,13 +81,11 @@ fn lower_path<'db>(
     let Some(path) = path.to_opt() else {
         return TyId::invalid(db, InvalidCause::ParseError);
     };
+
     match resolve_path(db, path, scope, assumptions, false) {
         Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => ty,
         Ok(_) => TyId::invalid(db, InvalidCause::Other),
-        Err(_) => {
-            eprintln!("Path resolution failed for path: {}", path.pretty_print(db));
-            TyId::invalid(db, InvalidCause::PathResolutionFailed { path })
-        }
+        Err(_) => TyId::invalid(db, InvalidCause::PathResolutionFailed { path }),
     }
 }
 

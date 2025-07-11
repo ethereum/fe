@@ -5,14 +5,15 @@
 //! that types are in their most resolved form.
 
 use common::indexmap::IndexSet;
-use hir::hir_def::scope_graph::ScopeId;
+use hir::hir_def::{scope_graph::ScopeId, ImplTrait};
 
 use super::{
     canonical::Canonical,
     fold::{TyFoldable, TyFolder},
     trait_def::impls_for_ty_with_constraints,
-    trait_resolution::PredicateListId,
-    ty_def::{AssocTy, TyData, TyId},
+    trait_resolution::{constraint::collect_constraints, PredicateListId},
+    ty_def::{AssocTy, TyData, TyId, TyParam},
+    ty_lower::lower_hir_ty,
     unify::{self, UnificationTable},
 };
 use crate::{name_resolution::resolve_assoc_ty, HirAnalysisDb};
@@ -64,6 +65,16 @@ impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
 
     fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         match ty.data(self.db) {
+            TyData::TyParam(p @ TyParam { owner, .. }) if p.is_trait_self() => {
+                if let Some(impl_) = owner.resolve_to::<ImplTrait>(self.db) {
+                    if let Some(hir_ty) = impl_.ty(self.db).to_opt() {
+                        let impl_assumptions =
+                            collect_constraints(self.db, impl_.into()).instantiate_identity();
+                        return lower_hir_ty(self.db, hir_ty, impl_.scope(), impl_assumptions);
+                    }
+                }
+                ty
+            }
             TyData::AssocTy(assoc_ty) => {
                 // Prevent infinite recursion
                 if self.seen.contains(assoc_ty) {

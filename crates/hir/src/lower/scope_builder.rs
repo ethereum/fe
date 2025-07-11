@@ -135,6 +135,27 @@ impl<'db> ScopeGraphBuilder<'db> {
                 if let Some(params) = inner.params(self.db).to_opt() {
                     self.add_func_param_scope(item_node, inner.into(), params);
                 }
+
+                // Add self_ty edge if this function is inside a trait or impl
+                if !self.scope_stack.is_empty() {
+                    let parent_scope_id = self.graph.nodes[parent_node].0;
+                    if let Some(parent_item) = parent_scope_id.to_item() {
+                        match parent_item {
+                            ItemKind::Trait(_) => {
+                                // Function is inside a trait, add edge to trait for Self resolution
+                                self.graph
+                                    .add_edge(item_node, parent_node, EdgeKind::self_ty());
+                            }
+                            ItemKind::Impl(_) | ItemKind::ImplTrait(_) => {
+                                // Function is inside an impl, add edge to impl for Self resolution
+                                self.graph
+                                    .add_edge(item_node, parent_node, EdgeKind::self_ty());
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 inner
                     .name(self.db)
                     .to_opt()

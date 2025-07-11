@@ -192,8 +192,26 @@ impl<'db> TyChecker<'db> {
         };
 
         // Resolve associated types before unification
+        eprintln!(
+            "equate_ty `{}` =? `{}`",
+            actual.pretty_print(self.db),
+            expected.pretty_print(self.db)
+        );
+        let actual = actual.fold_with(&mut self.table);
+        let expected = expected.fold_with(&mut self.table);
+        eprintln!(
+            "  folded `{}` =? `{}`",
+            actual.pretty_print(self.db),
+            expected.pretty_print(self.db)
+        );
+
         let actual = self.normalize_ty(actual);
         let expected = self.normalize_ty(expected);
+        eprintln!(
+            "  normalized `{}` =? `{}`",
+            actual.pretty_print(self.db),
+            expected.pretty_print(self.db)
+        );
 
         match self.table.unify(actual, expected) {
             Ok(()) => {

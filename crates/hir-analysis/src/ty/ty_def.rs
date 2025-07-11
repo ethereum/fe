@@ -237,7 +237,7 @@ impl<'db> TyId<'db> {
         Self::new(db, TyData::ConstTy(const_ty))
     }
 
-    pub(super) fn assoc_ty(
+    pub fn assoc_ty(
         db: &'db dyn HirAnalysisDb,
         trait_: TraitInstId<'db>,
         name: IdentId<'db>,

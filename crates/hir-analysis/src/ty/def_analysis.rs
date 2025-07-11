@@ -22,6 +22,7 @@ use super::{
     func_def::FuncDef,
     method_cmp::compare_impl_method,
     method_table::probe_method,
+    normalize::normalize_ty,
     trait_def::{ingot_trait_env, Implementor, TraitDef},
     trait_lower::{lower_trait, lower_trait_ref, TraitRefLowerError},
     trait_resolution::{
@@ -399,6 +400,7 @@ impl<'db> DefAnalyzer<'db> {
         };
 
         let param_ty = lower_hir_ty(self.db, self_ty, self.def.scope(self.db), self.assumptions);
+        let param_ty = normalize_ty(self.db, param_ty, self.def.scope(self.db), self.assumptions);
         if !param_ty.has_invalid(self.db) && !expected_ty.has_invalid(self.db) {
             let (expected_base_ty, expected_param_ty_args) = expected_ty.decompose_ty_app(self.db);
             let (param_base_ty, param_ty_args) = param_ty.decompose_ty_app(self.db);

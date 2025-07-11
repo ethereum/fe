@@ -214,7 +214,17 @@ impl<'db> TyFolder<'db> for AssocTySubst<'db> {
 
     fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
         match ty.data(self.db) {
+            TyData::TyParam(param) => {
+                // If this is a trait self parameter, substitute with the trait instance's self type
+                if param.is_trait_self() {
+                    return self.trait_inst.self_ty(self.db).fold_with(self);
+                }
+                ty.super_fold_with(self)
+            }
             TyData::AssocTy(assoc_ty) => {
+                // First fold the trait instance to handle any Self substitutions
+                let folded_trait = assoc_ty.trait_.fold_with(self);
+
                 // Check if this associated type belongs to our trait instance
                 if assoc_ty.trait_.def(self.db) == self.trait_inst.def(self.db) {
                     // Check if we have a binding for this associated type
@@ -226,6 +236,12 @@ impl<'db> TyFolder<'db> for AssocTySubst<'db> {
                         return bound_ty.fold_with(self);
                     }
                 }
+
+                // If the trait instance changed due to Self substitution, create a new associated type
+                if folded_trait != assoc_ty.trait_ {
+                    return TyId::assoc_ty(self.db, folded_trait, assoc_ty.name);
+                }
+
                 // Continue with default folding
                 ty.super_fold_with(self)
             }

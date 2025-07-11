@@ -264,6 +264,14 @@ pub(crate) struct Implementor<'db> {
 }
 
 impl<'db> Implementor<'db> {
+    pub(crate) fn assoc_ty(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        name: IdentId<'db>,
+    ) -> Option<TyId<'db>> {
+        self.types(db).get(&name).copied()
+    }
+
     /// Returns the trait definition that this implementor implements.
     pub(crate) fn trait_def(self, db: &'db dyn HirAnalysisDb) -> TraitDef<'db> {
         self.trait_(db).def(db)
@@ -388,6 +396,23 @@ pub struct TraitInstId<'db> {
 }
 
 impl<'db> TraitInstId<'db> {
+    pub fn assoc_ty_bindings(self, db: &'db dyn HirAnalysisDb) -> Vec<(IdentId<'db>, TyId<'db>)> {
+        self.assoc_type_bindings(db)
+            .iter()
+            .map(|(&name, &ty)| (name, ty))
+            .collect()
+    }
+
+    pub fn assoc_ty(self, db: &'db dyn HirAnalysisDb, name: IdentId<'db>) -> Option<TyId<'db>> {
+        if let Some(ty) = self.assoc_type_bindings(db).get(&name) {
+            return Some(*ty);
+        }
+        if self.def(db).trait_(db).assoc_ty(db, name).is_some() {
+            return Some(TyId::assoc_ty(db, self, name));
+        }
+        None
+    }
+
     pub fn pretty_print(self, db: &dyn HirAnalysisDb, as_pred: bool) -> String {
         if as_pred {
             let inst = self.pretty_print(db, false);
@@ -495,49 +520,6 @@ impl<'db> TraitDef<'db> {
         }
         methods
     }
-
-    // xxx
-    // pub fn assoc_types(
-    //     self,
-    //     db: &'db dyn HirAnalysisDb,
-    // ) -> IndexMap<IdentId<'db>, TraitTypeDecl<'db>> {
-    //     let trait_scope = ScopeId::Item(self.trait_(db).into());
-    //     let mut types = IndexMap::default();
-
-    //     let assumptions = collect_constraints(db, self.trait_(db).into()).instantiate_identity();
-
-    //     for (idx, type_) in self.trait_(db).types(db).iter().enumerate() {
-    //         let Some(name) = type_.name.to_opt() else {
-    //             continue;
-    //         };
-
-    //         let default_ty = type_
-    //             .default
-    //             .map(|t| Binder::bind(lower_hir_ty(db, t, trait_scope, assumptions)));
-
-    //         let kind = Kind::Star; // xxx
-    //         let assoc_ty = TyId::new(db, todo!());
-    //         let mut bounds = IndexSet::new();
-    //         add_bounds_to_constraint_set(db, trait_scope, assoc_ty, &type_.bounds, &mut bounds);
-    //         let bounds = bounds.into_iter().collect();
-
-    //         types
-    //             .entry(name)
-    //             .or_insert(TraitTypeDecl { name, default_ty });
-    //     }
-    //     types
-    // }
-
-    // pub fn assoc_type_bounds(
-    //     self,
-    //     db: &'db dyn HirAnalysisDb,
-    //     ty: TraitTypeDecl<'db>,
-    // ) -> Vec<TraitInstId<'db>> {
-    //     let mut bounds = IndexSet::new();
-    //     let hir = self.trait_(db).types(db)[ty.idx as usize];
-    //     add_bounds_to_constraint_set(db, scope, bound_ty, bounds, set);
-    //     bounds
-    // }
 
     pub fn params(self, db: &'db dyn HirAnalysisDb) -> &'db [TyId<'db>] {
         self.param_set(db).params(db)
