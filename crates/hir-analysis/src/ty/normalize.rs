@@ -31,6 +31,11 @@ pub fn normalize_ty<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
+    if ty.pretty_print(db).contains("IntoIter::Item") {
+        eprintln!("Normalizing: {}", ty.pretty_print(db));
+        eprintln!("Assumptions: {}", assumptions.pretty_print(db));
+    }
+
     let mut normalizer = TypeNormalizer {
         db,
         scope,
@@ -43,6 +48,9 @@ pub fn normalize_ty<'db>(
     loop {
         let normalized = current.fold_with(&mut normalizer);
         if normalized == current {
+            if ty.pretty_print(db).contains("IntoIter::Item") {
+                eprintln!("Final normalized result: {}", normalized.pretty_print(db));
+            }
             break normalized;
         }
         current = normalized;
@@ -101,8 +109,19 @@ impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
 
 impl<'db> TypeNormalizer<'db> {
     fn try_resolve_assoc_ty(&mut self, ty: TyId<'db>, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
+        eprintln!(
+            "try_resolve_assoc_ty: {} with trait {}",
+            ty.pretty_print(self.db),
+            assoc.trait_.pretty_print(self.db, false)
+        );
+
         // First check if the trait instance has a binding for this associated type
         if let Some(&bound_ty) = assoc.trait_.assoc_type_bindings(self.db).get(&assoc.name) {
+            eprintln!(
+                "Found binding: {} = {}",
+                assoc.name.data(self.db),
+                bound_ty.pretty_print(self.db)
+            );
             return Some(bound_ty);
         }
 

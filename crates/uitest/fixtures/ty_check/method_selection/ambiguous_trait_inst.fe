@@ -20,5 +20,5 @@ impl Trait<u32> for Foo<u32> {
 
 fn run(x: u32) {
     let f = Foo { t: x }
-    let y = f.foo() // TODO: duplicate errors
+    let y = f.foo()
 }

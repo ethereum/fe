@@ -1,8 +1,9 @@
-use common::indexmap::{IndexMap, IndexSet};
+use common::indexmap::IndexSet;
+use either::Either;
 use hir::hir_def::{
-    scope_graph::ScopeId, GenericParam, GenericParamOwner, ItemKind, TypeBound, WhereClauseId,
+    scope_graph::ScopeId, types::TypeId as HirTypeId, GenericParam, GenericParamOwner, ItemKind,
+    TraitRefId, TypeBound,
 };
-use itertools::Itertools;
 
 use crate::{
     ty::{
@@ -10,9 +11,9 @@ use crate::{
         binder::Binder,
         func_def::HirFuncDefKind,
         trait_def::{TraitDef, TraitInstId},
-        trait_lower::{lower_impl_trait, lower_trait, lower_trait_ref},
+        trait_lower::{lower_impl_trait, lower_trait_ref},
         trait_resolution::PredicateListId,
-        ty_def::{AssocTy, TyBase, TyData, TyId, TyVarSort},
+        ty_def::{TyBase, TyData, TyId, TyVarSort},
         ty_lower::{collect_generic_params, lower_hir_ty},
         unify::InferenceKey,
     },
@@ -184,200 +185,96 @@ pub fn collect_constraints<'db>(
     db: &'db dyn HirAnalysisDb,
     owner: GenericParamOwner<'db>,
 ) -> Binder<PredicateListId<'db>> {
-    let mut predicates = IndexSet::new();
+    let mut deferred: Vec<Deferred<'db>> = Vec::new();
+    let owner_scope = owner.scope();
 
-    collect_constraints_from_generic_params(db, owner, &mut predicates);
-
-    if let Some(where_clause) = owner.where_clause(db) {
-        collect_constraints_from_where_clause(db, where_clause, owner.scope(), &mut predicates);
+    // --- Generic parameter bounds ------------------------------------------------
+    let param_set = collect_generic_params(db, owner);
+    let param_list = owner.params(db);
+    for (idx, param) in param_list.data(db).iter().enumerate() {
+        let GenericParam::Type(hir_param) = param else {
+            continue;
+        };
+        let ty = param_set.param_by_original_idx(db, idx).unwrap();
+        for bound in &hir_param.bounds {
+            if let TypeBound::Trait(trait_ref) = bound {
+                deferred.push(Deferred {
+                    bound_ty: Either::Right(ty),
+                    trait_ref: *trait_ref,
+                    scope: owner_scope,
+                });
+            }
+        }
     }
 
-    // Collect super traits from the trait definition and add them to the predicate
-    // list.
-    if let GenericParamOwner::Trait(trait_) = owner {
-        let trait_def = lower_trait(db, trait_);
-        predicates.insert(TraitInstId::new(
-            db,
-            trait_def,
-            collect_generic_params(db, owner).params(db).to_vec(),
-            IndexMap::new(),
-        ));
+    // --- Where-clause predicates --------------------------------------------------
+    if let Some(where_clause) = owner.where_clause(db) {
+        for w_pred in where_clause.data(db) {
+            let Some(hir_ty) = w_pred.ty.to_opt() else {
+                continue;
+            };
+            for bound in &w_pred.bounds {
+                if let TypeBound::Trait(trait_ref) = bound {
+                    deferred.push(Deferred {
+                        bound_ty: Either::Left(hir_ty),
+                        trait_ref: *trait_ref,
+                        scope: owner_scope,
+                    });
+                }
+            }
+        }
+    }
+
+    let mut all_predicates: IndexSet<TraitInstId<'db>> = IndexSet::new();
+
+    // fixed-point iteration over deferred predicates
+    while !deferred.is_empty() {
+        let assumptions =
+            PredicateListId::new(db, all_predicates.iter().copied().collect::<Vec<_>>());
+
+        let before = deferred.len();
+        deferred.retain(|p| match try_resolve_type_bound(db, &p, assumptions) {
+            Some(inst) => {
+                all_predicates.insert(inst);
+                false
+            }
+            None => true,
+        });
+        if deferred.len() == before {
+            return Binder::bind(assumptions); // xxx return error?
+        }
     }
 
     Binder::bind(PredicateListId::new(
         db,
-        predicates.into_iter().collect::<Vec<_>>(),
+        all_predicates.into_iter().collect::<Vec<_>>(),
     ))
 }
 
-fn collect_constraints_from_generic_params<'db>(
-    db: &'db dyn HirAnalysisDb,
-    owner: GenericParamOwner<'db>,
-    predicates: &mut IndexSet<TraitInstId<'db>>,
-) {
-    let param_set = collect_generic_params(db, owner);
-    let param_list = owner.params(db);
-
-    // Determine if we should add associated type bounds based on the owner type
-    // We want to add them for functions and structs, but not for traits or impl traits
-    let should_add_assoc_bounds = matches!(
-        owner,
-        GenericParamOwner::Func(_)
-            | GenericParamOwner::Struct(_)
-            | GenericParamOwner::Enum(_)
-            | GenericParamOwner::TypeAlias(_)
-            | GenericParamOwner::Impl(_)
-    );
-
-    for (i, hir_param) in param_list.data(db).iter().enumerate() {
-        let GenericParam::Type(hir_param) = hir_param else {
-            continue;
-        };
-
-        let ty = param_set.param_by_original_idx(db, i).unwrap();
-        let bounds = &hir_param.bounds;
-
-        // Build assumptions from predicates collected so far
-        let assumptions_so_far =
-            PredicateListId::new(db, predicates.iter().copied().collect::<Vec<_>>());
-
-        add_bounds_to_constraint_set_with_assoc(
-            db,
-            owner.scope(),
-            ty,
-            bounds,
-            predicates,
-            assumptions_so_far,
-            should_add_assoc_bounds,
-        );
-    }
-}
-
-fn collect_constraints_from_where_clause<'db>(
-    db: &'db dyn HirAnalysisDb,
-    where_clause: WhereClauseId<'db>,
+struct Deferred<'db> {
+    bound_ty: Either<HirTypeId<'db>, TyId<'db>>,
+    trait_ref: TraitRefId<'db>,
     scope: ScopeId<'db>,
-    predicates: &mut IndexSet<TraitInstId<'db>>,
-) {
-    for hir_pred in where_clause.data(db) {
-        let Some(hir_ty) = hir_pred.ty.to_opt() else {
-            continue;
-        };
-
-        // TODO: this isn't sufficient; it requires a specific ordering of constraints.
-        //   eg. `where T: A, T::Atype: B` works,
-        //   but `where T::Atype: B, T: A` doesn't.
-        let assumptions_so_far = PredicateListId::new(db, predicates.iter().copied().collect_vec());
-        let ty = lower_hir_ty(db, hir_ty, scope, assumptions_so_far);
-
-        // We don't need to collect super traits, please refer to
-        // [`collect_super_traits`] function for details.
-        if ty.has_invalid(db) || ty.is_trait_self(db) {
-            continue;
-        }
-
-        // For where clauses, we want to add associated type bounds when the constrained type is a parameter
-        add_bounds_to_constraint_set_with_assoc(
-            db,
-            scope,
-            ty,
-            &hir_pred.bounds,
-            predicates,
-            assumptions_so_far,
-            ty.is_param(db),
-        );
-    }
 }
 
-pub(crate) fn add_bounds_to_constraint_set<'db>(
+fn try_resolve_type_bound<'db>(
     db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    bound_ty: TyId<'db>,
-    bounds: &[TypeBound<'db>],
-    set: &mut IndexSet<TraitInstId<'db>>,
+    deferred: &Deferred<'db>,
     assumptions: PredicateListId<'db>,
-) {
-    // By default, don't add associated type bounds
-    add_bounds_to_constraint_set_with_assoc(db, scope, bound_ty, bounds, set, assumptions, false);
-}
-
-fn add_bounds_to_constraint_set_with_assoc<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    bound_ty: TyId<'db>,
-    bounds: &[TypeBound<'db>],
-    set: &mut IndexSet<TraitInstId<'db>>,
-    assumptions: PredicateListId<'db>,
-    include_assoc_bounds: bool,
-) {
-    for bound in bounds {
-        let TypeBound::Trait(trait_ref) = bound else {
-            continue;
-        };
-
-        let Ok(trait_inst) = lower_trait_ref(db, bound_ty, *trait_ref, scope, assumptions) else {
-            continue;
-        };
-
-        set.insert(trait_inst);
-
-        // Only add associated type bounds when explicitly requested and when the bound type is a parameter
-        if include_assoc_bounds && bound_ty.is_param(db) {
-            add_associated_type_bounds(db, trait_inst, set, assumptions);
-        }
-    }
-}
-
-/// Add bounds from a trait's associated types to the constraint set.
-/// For example, if we have `T: IntoIterator` where `IntoIterator` has
-/// `type IntoIter: Iterator`, this will add `T::IntoIter: Iterator`.
-fn add_associated_type_bounds<'db>(
-    db: &'db dyn HirAnalysisDb,
-    trait_inst: TraitInstId<'db>,
-    set: &mut IndexSet<TraitInstId<'db>>,
-    assumptions: PredicateListId<'db>,
-) {
-    let trait_def = trait_inst.def(db);
-    let trait_ = trait_def.trait_(db);
-
-    // Iterate through the trait's associated types
-    for assoc_type in trait_.types(db) {
-        let Some(name) = assoc_type.name.to_opt() else {
-            continue;
-        };
-
-        // Create the associated type for the given self type (e.g., T::IntoIter)
-        let assoc_ty = TyId::new(
-            db,
-            TyData::AssocTy(AssocTy {
-                trait_: trait_inst,
-                name,
-            }),
-        );
-
-        // Filter out bounds that would create cycles
-        let mut safe_bounds = Vec::new();
-        for bound in &assoc_type.bounds {
-            if let TypeBound::Trait(trait_ref) = bound {
-                // Check if this trait bound references the same trait we're processing
-                if let Some(path) = trait_ref.path(db).to_opt() {
-                    if let Some(root_ident) = path.root_ident(db) {
-                        // Skip if this bound references the same trait (to avoid cycles)
-                        if let Some(trait_name) = trait_.name(db).to_opt() {
-                            if root_ident == trait_name {
-                                continue;
-                            }
-                        }
-                    }
-                }
+) -> Option<TraitInstId<'db>> {
+    let ty = match deferred.bound_ty {
+        Either::Left(hir_ty) => {
+            let ty = lower_hir_ty(db, hir_ty, deferred.scope, assumptions);
+            if ty.has_invalid(db) {
+                return None;
             }
-            safe_bounds.push(bound.clone());
+            ty
         }
+        Either::Right(ty) => ty,
+    };
 
-        // Add bounds for this associated type
-        // IMPORTANT: Use the trait's scope, not the current scope, to ensure paths like Self::Item
-        // are resolved correctly
-        let trait_scope = ScopeId::Item(trait_.into());
-        add_bounds_to_constraint_set(db, trait_scope, assoc_ty, &safe_bounds, set, assumptions);
+    match lower_trait_ref(db, ty, deferred.trait_ref, deferred.scope, assumptions) {
+        Ok(inst) => Some(inst),
+        Err(_) => None,
     }
 }

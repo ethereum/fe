@@ -3,7 +3,7 @@
 use common::indexmap::IndexMap;
 use hir::hir_def::{
     params::GenericArg, scope_graph::ScopeId, AssocTypeGenericArg, IdentId, ImplTrait, IngotId,
-    ItemKind, Partial, Trait, TraitRefId, TypeId,
+    Partial, Trait, TraitRefId,
 };
 use rustc_hash::FxHashMap;
 use salsa::Update;
@@ -267,39 +267,18 @@ pub(crate) fn lower_trait_ref<'db>(
     }
 
     // 4. Process associated type parameters
-    let user_assoc_type_bindings: FxHashMap<IdentId<'db>, Partial<TypeId<'db>>> = args
+    let assoc_bindings: IndexMap<IdentId<'db>, TyId<'db>> = args
         .iter()
         .filter_map(|arg| match arg {
-            GenericArg::AssocType(AssocTypeGenericArg { name, ty }) if name.is_present() => {
-                Some((*name.unwrap(), *ty))
+            GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
+                let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) else {
+                    return None;
+                };
+                Some((name, lower_hir_ty(db, ty, scope, assumptions)))
             }
             _ => None,
         })
         .collect();
-
-    let mut assoc_bindings = IndexMap::new();
-    // Process associated types from the trait definition
-    let associated_types = trait_def.trait_(db).types(db);
-    for trait_type in associated_types.iter() {
-        if let Some(assoc_name) = trait_type.name.to_opt() {
-            if let Some(hir_assoc_ty_val) = user_assoc_type_bindings.get(&assoc_name) {
-                // User provided an explicit binding for this associated type
-                // When processing trait bounds on associated types within a trait definition,
-                // we need to ensure that Self references are resolved in the trait's scope.
-                // Check if we're in a trait definition context by examining the scope.
-                let ty_lower_scope = match scope {
-                    ScopeId::Item(ItemKind::Trait(trait_item)) => {
-                        // We're processing bounds within a trait definition.
-                        // Use the trait's scope so that Self::Item resolves correctly.
-                        ScopeId::Item(trait_item.into())
-                    }
-                    _ => scope,
-                };
-                let bound_ty = lower_opt_hir_ty(db, ty_lower_scope, *hir_assoc_ty_val, assumptions);
-                assoc_bindings.insert(assoc_name, bound_ty);
-            }
-        }
-    }
 
     Ok(TraitInstId::new(db, trait_def, final_args, assoc_bindings))
 }
