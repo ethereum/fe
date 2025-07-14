@@ -2,232 +2,46 @@ pub mod db;
 pub mod diagnostics;
 pub mod files;
 
-use camino::Utf8PathBuf;
-use common::core::HasBuiltinCore;
-use common::ingot::IngotBaseUrl;
+use std::{collections::HashSet, mem::take};
 
-use common::InputDb;
+use common::{config::DependencyArguments, InputDb};
 pub use db::DriverDataBase;
 
-use clap::{Parser, Subcommand};
+use common::config::Config;
 use hir::hir_def::TopLevelMod;
 use resolver::{
-    ingot::{source_files::SourceFiles, Ingot, IngotResolver},
-    Resolver,
+    files::{File, FilesResolutionError, FilesResolver},
+    graph::DiGraph,
+    ingot::ingot_graph_resolver,
+    ResolutionHandler, Resolver,
 };
+use smol_str::SmolStr;
 use url::Url;
 
-pub fn run(opts: &Options) {
-    match &opts.command {
-        Command::Build => eprintln!("`fe build` doesn't work at the moment"),
-        Command::Check { path, core } => {
-            let mut db = DriverDataBase::default();
-            let mut ingot_resolver = IngotResolver::default();
+pub fn init_workspace_ingot(db: &mut DriverDataBase, ingot_url: &Url) {
+    let node_handler = InputNodeHandler::from_db(db);
+    let mut ingot_graph_resolver = ingot_graph_resolver(node_handler);
+    let graph = ingot_graph_resolver.transient_resolve(&ingot_url).unwrap();
 
-            let core_url = if let Some(core_path) = core {
-                if !core_path.exists() {
-                    eprintln!("the core path `{core_path}` does not exist");
-                    std::process::exit(1)
-                }
+    // let diagnostics: Vec<WorkspaceSetupDiagnostics> = ingot_graph_resolver
+    //     .take_diagnostics()
+    //     .into_iter()
+    //     .map(
+    //         |diagnostic| WorkspaceSetupDiagnostics::UnresolvableIngotDependency {
+    //             target: diagnostic.0,
+    //             error: diagnostic.1,
+    //         },
+    //     )
+    //     .chain(
+    //         ingot_graph_resolver
+    //             .node_resolver
+    //             .take_diagnostics()
+    //             .into_iter()
+    //             .map(|diagnostic| WorkspaceSetupDiagnostics::FileError),
+    //     )
+    //     .collect();
 
-                let core_url = match core_path.canonicalize_utf8() {
-                    Ok(canonical_path) => {
-                        if canonical_path.is_file() {
-                            Url::from_file_path(canonical_path)
-                                .expect("unable to create file url from directory path ")
-                        } else {
-                            Url::from_directory_path(canonical_path)
-                                .expect("unable to create directory url from canonical path")
-                        }
-                    }
-                    Err(err) => {
-                        eprintln!("failed to canonicalize path `{core_path}`: {err}");
-                        std::process::exit(1)
-                    }
-                };
-
-                match ingot_resolver.resolve(&core_url) {
-                    Ok(Ingot::Folder {
-                        config,
-                        source_files:
-                            Some(SourceFiles {
-                                root: Some(_root),
-                                files,
-                            }),
-                    }) => {
-                        let core_base_url = Url::parse("core-ingot:///").unwrap();
-                        let diagnostics = ingot_resolver.take_diagnostics();
-                        if !diagnostics.is_empty() {
-                            eprintln!("an error was encountered while resolving `{core_path}`");
-                            for diagnostic in diagnostics {
-                                eprintln!("{diagnostic}")
-                            }
-                            std::process::exit(1)
-                        }
-                        let index = db.workspace();
-                        if let Some(config) = config {
-                            let config_url = config.url;
-                            index.touch_ingot(&mut db, &core_base_url, Some(config.content));
-                            let config = core_base_url
-                                .ingot(&db)
-                                .expect("core ingot should exist")
-                                .config(&db)
-                                .expect("core ingot config should exist");
-                            if let Some(diagnostics) = config.formatted_diagnostics() {
-                                eprintln!(
-                                    "there are issues with the core fe.toml file {config_url}"
-                                );
-                                eprintln!("{diagnostics}");
-                                std::process::exit(1)
-                            }
-                        } else {
-                            index.touch_ingot(&mut db, &core_base_url, None);
-                        };
-                        for (file_url, content) in files {
-                            let rebased_file_url = core_base_url
-                                .join(&file_url.path()[core_url.path().len()..])
-                                .unwrap();
-                            index.touch(&mut db, rebased_file_url, Some(content));
-                        }
-                        core_base_url
-                    }
-                    Ok(Ingot::SingleFile { .. }) => {
-                        eprintln!("standalone core ingot not supported");
-                        std::process::exit(1)
-                    }
-                    Ok(_) => {
-                        eprintln!("an error was encountered while resolving `{core_path}`");
-                        for diagnostic in ingot_resolver.take_diagnostics() {
-                            eprintln!("{diagnostic}")
-                        }
-                        std::process::exit(1)
-                    }
-                    Err(error) => {
-                        eprintln!("an error was encountered while resolving `{core_path}`");
-                        eprintln!("{error}");
-                        std::process::exit(1)
-                    }
-                }
-            } else {
-                db.builtin_core().base(&db)
-            };
-
-            if !path.exists() {
-                eprintln!("the path `{path}` does not exist");
-                std::process::exit(1)
-            }
-
-            let path_url = match path.canonicalize_utf8() {
-                Ok(canonical_path) => {
-                    if canonical_path.is_file() {
-                        Url::from_file_path(canonical_path)
-                            .expect("unable to create file url from directory path ")
-                    } else {
-                        Url::from_directory_path(canonical_path)
-                            .expect("unable to create directory url from canonical path")
-                    }
-                }
-                Err(err) => {
-                    eprintln!("failed to canonicalize path `{path}`: {err}");
-                    std::process::exit(1)
-                }
-            };
-
-            let local_url = match ingot_resolver.resolve(&path_url) {
-                Ok(Ingot::Folder {
-                    config,
-                    source_files:
-                        Some(SourceFiles {
-                            root: Some(_root),
-                            files,
-                        }),
-                }) => {
-                    let base_url = Url::from_directory_path(path.canonicalize_utf8().unwrap())
-                        .expect("failed to parse base URL");
-
-                    let diagnostics = ingot_resolver.take_diagnostics();
-                    if !diagnostics.is_empty() {
-                        eprintln!("an error was encountered while resolving `{path}`");
-                        for diagnostic in diagnostics {
-                            eprintln!("{diagnostic}")
-                        }
-                        std::process::exit(1)
-                    }
-                    let index = db.workspace();
-                    if let Some(config) = config {
-                        let config_url = config.url;
-                        index.touch_ingot(&mut db, &base_url, Some(config.content));
-                        let config = base_url
-                            .ingot(&db)
-                            .expect("local ingot should exist")
-                            .config(&db)
-                            .expect("local ingot config should exist");
-                        if let Some(diagnostics) = config.formatted_diagnostics() {
-                            eprintln!("there are issues with the local fe.toml file {config_url}",);
-                            eprintln!("{diagnostics}");
-                            std::process::exit(1)
-                        }
-                    } else {
-                        index.touch_ingot(&mut db, &base_url, None);
-                    };
-
-                    for (file_url, content) in files {
-                        index.touch(&mut db, file_url, Some(content));
-                    }
-                    base_url
-                }
-                Ok(Ingot::SingleFile { url, content }) => {
-                    db.workspace().touch(&mut db, url.clone(), Some(content));
-                    url
-                }
-                Ok(_) => {
-                    for diagnostic in ingot_resolver.take_diagnostics() {
-                        eprintln!("{diagnostic}")
-                    }
-                    std::process::exit(1)
-                }
-                Err(error) => {
-                    eprintln!("{error}: {path}");
-                    std::process::exit(1)
-                }
-            };
-
-            let core_source_diags =
-                db.run_on_ingot(core_url.ingot(&db).expect("core ingot should exist"));
-            if !core_source_diags.is_empty() {
-                eprintln!("errors in {core_url}\n");
-                core_source_diags.emit(&db);
-                std::process::exit(1);
-            }
-
-            let local_source_diags = db.run_on_ingot(local_url.ingot(&db).unwrap());
-            if !local_source_diags.is_empty() {
-                eprintln!("errors in {local_url}\n");
-                local_source_diags.emit(&db);
-                std::process::exit(1);
-            }
-        }
-        Command::New => eprintln!("`fe new` doesn't work at the moment"),
-    }
-}
-
-#[derive(Debug, Clone, Parser)]
-#[command(version, about, long_about = None)]
-pub struct Options {
-    #[command(subcommand)]
-    pub command: Command,
-}
-
-#[derive(Debug, Clone, Subcommand)]
-pub enum Command {
-    Build,
-    Check {
-        // #[clap(default_value_t = find_project_root().unwrap_or(Utf8PathBuf::from(".")))]
-        path: Utf8PathBuf,
-        #[arg(short, long)]
-        core: Option<Utf8PathBuf>,
-    },
-    New,
+    ingot_graph_resolver.node_handler.join_graph(graph);
 }
 
 fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
@@ -237,3 +51,94 @@ fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
 }
 
 // Maybe the driver should eventually only support WASI?
+
+#[derive(Debug)]
+pub enum WorkspaceSetupDiagnostics {
+    UnresolvableIngotDependency {
+        target: Url,
+        error: FilesResolutionError,
+    },
+    IngotDependencyCycle,
+    FileError,
+}
+
+pub struct InputNodeHandler<'a> {
+    pub db: &'a mut dyn InputDb,
+    pub join_edges: Vec<(Url, Url, (SmolStr, DependencyArguments))>,
+}
+
+impl<'a> InputNodeHandler<'a> {
+    pub fn from_db(db: &'a mut dyn InputDb) -> Self {
+        Self {
+            db,
+            join_edges: vec![],
+        }
+    }
+
+    pub fn join_graph(&mut self, graph: DiGraph<Url, (SmolStr, DependencyArguments)>) {
+        self.db
+            .workspace()
+            .join_graph(self.db, graph, take(&mut self.join_edges));
+    }
+}
+
+impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
+    type Item = Vec<(Url, (SmolStr, DependencyArguments))>;
+
+    fn handle_resolution(&mut self, ingot_url: &Url, files: Vec<File>) -> Self::Item {
+        let mut config = None;
+
+        // println!("{ingot_url}: {:#?}", files);
+
+        for file in files {
+            if file.path.ends_with("fe.toml") {
+                self.db.workspace().touch(
+                    self.db,
+                    Url::from_file_path(file.path).unwrap(),
+                    Some(file.content.clone()),
+                );
+                config = Some(file.content);
+            } else {
+                self.db.workspace().touch(
+                    self.db,
+                    Url::from_file_path(file.path).unwrap(),
+                    Some(file.content),
+                );
+            }
+        }
+
+        if let Some(content) = config {
+            let config = Config::parse(&content).unwrap();
+
+            let weights: HashSet<Url> = self
+                .db
+                .workspace()
+                .get_graph(self.db)
+                .node_weights()
+                .cloned()
+                .collect();
+
+            config
+                .based_dependencies(ingot_url)
+                .into_iter()
+                .filter_map(|based_dependency| {
+                    if weights.contains(&based_dependency.url) {
+                        self.join_edges.push((
+                            ingot_url.clone(),
+                            based_dependency.url,
+                            (based_dependency.alias, based_dependency.parameters),
+                        ));
+                        None
+                    } else {
+                        Some((
+                            based_dependency.url,
+                            (based_dependency.alias, based_dependency.parameters),
+                        ))
+                    }
+                })
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+}

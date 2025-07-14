@@ -1,8 +1,11 @@
 use camino::Utf8PathBuf;
+use petgraph::graph::DiGraph;
 use radix_immutable::{StringPrefixView, StringTrie, Trie};
 use salsa::Setter;
+use smol_str::SmolStr;
 use url::Url;
 
+use crate::config::DependencyArguments;
 use crate::InputDb;
 use crate::{file::File, indexmap::IndexMap};
 
@@ -16,12 +19,20 @@ pub enum InputIndexError {
 pub struct Workspace {
     files: StringTrie<Url, File>,
     paths: IndexMap<File, Url>,
+    graph: DiGraph<Url, (SmolStr, DependencyArguments)>,
+    graph_nodes: IndexMap<Url, NodeIndex>,
 }
 
 #[salsa::tracked]
 impl Workspace {
     pub fn default(db: &dyn InputDb) -> Self {
-        Workspace::new(db, Trie::new(), IndexMap::new())
+        Workspace::new(
+            db,
+            Trie::new(),
+            IndexMap::default(),
+            DiGraph::default(),
+            IndexMap::default(),
+        )
     }
     pub(crate) fn set(
         &self,
@@ -101,7 +112,100 @@ impl Workspace {
     pub fn all_files(&self, db: &dyn InputDb) -> StringTrie<Url, File> {
         self.files(db)
     }
+
+    pub fn join_graph(
+        &self,
+        db: &mut dyn InputDb,
+        graph: DiGraph<Url, (SmolStr, DependencyArguments)>,
+        join_edges: Vec<(Url, Url, (SmolStr, DependencyArguments))>,
+    ) {
+        let old_graph = self.graph(db);
+        let combined_graph = join_graphs(&old_graph, &graph, &join_edges);
+        self.set_graph_nodes(db).to(combined_graph
+            .node_indices()
+            .map(|index| (graph[index].clone(), index))
+            .collect());
+        self.set_graph(db).to(combined_graph);
+    }
+
+    pub fn get_graph(&self, db: &dyn InputDb) -> DiGraph<Url, (SmolStr, DependencyArguments)> {
+        self.graph(db).clone()
+    }
+
+    pub fn dependency_urls(&self, db: &dyn InputDb, url: &Url) -> Vec<Url> {
+        let root = *self.graph_nodes(db).get(url).unwrap();
+        let mut dfs = Dfs::new(&self.graph(db), root);
+        let mut visited = Vec::new();
+
+        while let Some(node) = dfs.next(&self.graph(db)) {
+            if node != root {
+                visited.push(self.graph(db)[node].clone());
+            }
+        }
+
+        visited
+    }
 }
+
+use petgraph::graph::NodeIndex;
+use std::collections::HashMap;
+
+fn join_graphs(
+    g1: &DiGraph<Url, (SmolStr, DependencyArguments)>,
+    g2: &DiGraph<Url, (SmolStr, DependencyArguments)>,
+    join_edges: &[(Url, Url, (SmolStr, DependencyArguments))],
+) -> DiGraph<Url, (SmolStr, DependencyArguments)> {
+    let mut combined = DiGraph::new();
+
+    let mut node_map = HashMap::<Url, NodeIndex>::new();
+
+    // Insert g1 nodes
+    for idx in g1.node_indices() {
+        let url = &g1[idx];
+        let new_idx = combined.add_node(url.clone());
+        node_map.insert(url.clone(), new_idx);
+    }
+
+    // Insert g2 nodes
+    for idx in g2.node_indices() {
+        let url = &g2[idx];
+        let new_idx = combined.add_node(url.clone());
+        node_map.insert(url.clone(), new_idx);
+    }
+
+    // Insert g1 edges
+    for edge in g1.edge_references() {
+        let source_url = &g1[edge.source()];
+        let target_url = &g1[edge.target()];
+        combined.add_edge(
+            node_map[source_url],
+            node_map[target_url],
+            edge.weight().clone(),
+        );
+    }
+
+    // Insert g2 edges
+    for edge in g2.edge_references() {
+        let source_url = &g2[edge.source()];
+        let target_url = &g2[edge.target()];
+        combined.add_edge(
+            node_map[source_url],
+            node_map[target_url],
+            edge.weight().clone(),
+        );
+    }
+
+    // Insert join edges (across g1 and g2)
+    for (from_url, to_url, weight) in join_edges {
+        if let (Some(&from), Some(&to)) = (node_map.get(from_url), node_map.get(to_url)) {
+            combined.add_edge(from, to, weight.clone());
+        }
+    }
+
+    combined
+}
+
+use petgraph::visit::{Dfs, EdgeRef};
 
 #[cfg(test)]
 mod tests {
