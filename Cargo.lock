@@ -924,6 +924,7 @@ dependencies = [
  "fe-hir",
  "fe-hir-analysis",
  "fe-parser",
+ "fe-resolver",
  "fe-test-utils",
  "futures",
  "futures-batch",

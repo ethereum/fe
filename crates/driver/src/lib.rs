@@ -60,7 +60,9 @@ pub fn run(opts: &Options) {
                         let core_base_url = Url::parse("core-ingot:///").unwrap();
                         let diagnostics = ingot_resolver.take_diagnostics();
                         if !diagnostics.is_empty() {
-                            eprintln!("an error was encountered while resolving `{core_path}`");
+                            eprintln!(
+                                "an error was encountered while resolving `{core_path}`"
+                            );
                             for diagnostic in diagnostics {
                                 eprintln!("{diagnostic}");
                             }
@@ -165,7 +167,9 @@ pub fn run(opts: &Options) {
                             .config(&db)
                             .expect("local ingot config should exist");
                         if let Some(diagnostics) = config.formatted_diagnostics() {
-                            eprintln!("there are issues with the local fe.toml file {config_url}",);
+                            eprintln!(
+                                "there are issues with the local fe.toml file {config_url}",
+                            );
                             eprintln!("{diagnostics}");
                             std::process::exit(1)
                         }

@@ -7,6 +7,8 @@ mod lsp_actor;
 mod lsp_streams;
 mod server;
 mod util;
+#[cfg(test)]
+mod test_utils;
 
 use std::net::SocketAddr;
 use std::time::Duration;

@@ -173,7 +173,8 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::backend::{db::LanguageServerDatabase, workspace::Workspace};
+    use crate::backend::db::LanguageServerDatabase;
+    use crate::test_utils::test_utils::load_ingot_from_directory;
 
     // given a cursor position and a string, convert to cursor line and column
     fn line_col_from_cursor(cursor: Cursor, s: &str) -> (usize, usize) {
@@ -271,24 +272,13 @@ mod tests {
             std::path::Path::new(&cargo_manifest_dir).join("test_files/single_ingot");
 
         let mut db = LanguageServerDatabase::default();
-        let mut workspace = Workspace::default();
-
-        let _ = workspace.set_workspace_root(&mut db, &ingot_base_dir);
-
-        // Touch fe.toml file to create a local ingot
-        let fe_toml_path = ingot_base_dir.join("fe.toml");
-        let fe_toml_url = Url::from_file_path(fe_toml_path).unwrap();
-        db.workspace()
-            .touch(&mut db, fe_toml_url, Some("".to_string()));
-
-        // Now touch the Fe source file
+        
+        // Load all files from the ingot directory
+        load_ingot_from_directory(&mut db, &ingot_base_dir);
+        
+        // Get our specific test file
         let fe_source_path = fixture.path();
         let file_url = Url::from_file_path(fe_source_path).unwrap();
-        let _file = db.workspace().touch(
-            &mut db,
-            file_url.clone(),
-            Some(fixture.content().to_string()),
-        );
 
         // Get the containing ingot - should be Local now
         let ingot = db.workspace().containing_ingot(&db, file_url).unwrap();
