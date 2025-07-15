@@ -17,8 +17,6 @@ pub mod use_tree;
 mod scope_graph_viz;
 
 pub(crate) mod module_tree;
-#[cfg(test)]
-mod salsa_caching_test;
 
 pub use attr::*;
 pub use body::*;

@@ -1,3 +1,5 @@
+#![allow(clippy::print_stderr)]
+
 pub mod db;
 pub mod diagnostics;
 pub mod files;
@@ -60,7 +62,7 @@ pub fn run(opts: &Options) {
                         if !diagnostics.is_empty() {
                             eprintln!("an error was encountered while resolving `{core_path}`");
                             for diagnostic in diagnostics {
-                                eprintln!("{diagnostic}")
+                                eprintln!("{diagnostic}");
                             }
                             std::process::exit(1)
                         }
@@ -98,7 +100,7 @@ pub fn run(opts: &Options) {
                     Ok(_) => {
                         eprintln!("an error was encountered while resolving `{core_path}`");
                         for diagnostic in ingot_resolver.take_diagnostics() {
-                            eprintln!("{diagnostic}")
+                            eprintln!("{diagnostic}");
                         }
                         std::process::exit(1)
                     }
@@ -149,7 +151,7 @@ pub fn run(opts: &Options) {
                     if !diagnostics.is_empty() {
                         eprintln!("an error was encountered while resolving `{path}`");
                         for diagnostic in diagnostics {
-                            eprintln!("{diagnostic}")
+                            eprintln!("{diagnostic}");
                         }
                         std::process::exit(1)
                     }
@@ -182,7 +184,7 @@ pub fn run(opts: &Options) {
                 }
                 Ok(_) => {
                     for diagnostic in ingot_resolver.take_diagnostics() {
-                        eprintln!("{diagnostic}")
+                        eprintln!("{diagnostic}");
                     }
                     std::process::exit(1)
                 }
