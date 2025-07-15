@@ -92,7 +92,7 @@ impl Workspace {
         // Get ingot URL and descriptor
         let ingot_url =
             Url::from_file_path(ingot_root).map_err(|_| anyhow::anyhow!("Invalid URL"))?;
-        let ingot = match db.workspace().containing_ingot(db, &ingot_url) {
+        let ingot = match db.workspace().containing_ingot(db, ingot_url) {
             Some(ingot) => ingot,
             None => return Ok(()),
         };
@@ -192,8 +192,8 @@ mod tests {
         let ingot1_url = Url::from_file_path(ingot1_path.parent().unwrap()).unwrap();
         let ingot2_url = Url::from_file_path(ingot2_path.parent().unwrap()).unwrap();
 
-        let ingot1_desc = db.workspace().containing_ingot(&db, &ingot1_url);
-        let ingot2_desc = db.workspace().containing_ingot(&db, &ingot2_url);
+        let ingot1_desc = db.workspace().containing_ingot(&db, ingot1_url);
+        let ingot2_desc = db.workspace().containing_ingot(&db, ingot2_url);
 
         assert!(ingot1_desc.is_some(), "Ingot1 should be discovered");
         assert!(ingot2_desc.is_some(), "Ingot2 should be discovered");
@@ -273,7 +273,7 @@ mod tests {
         // Get the ingot for the file
         let ingot = db
             .workspace()
-            .containing_ingot(&db, &file_url)
+            .containing_ingot(&db, file_url)
             .expect("Ingot should be created for standalone file");
         assert_eq!(ingot.kind(&db), IngotKind::StandAlone);
 

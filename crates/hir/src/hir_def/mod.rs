@@ -17,6 +17,8 @@ pub mod use_tree;
 mod scope_graph_viz;
 
 pub(crate) mod module_tree;
+#[cfg(test)]
+mod salsa_caching_test;
 
 pub use attr::*;
 pub use body::*;
@@ -36,11 +38,6 @@ pub use use_tree::*;
 
 use crate::HirDb;
 
-// #[salsa::tracked]
-// #[derive(Debug)]
-// pub struct IngotDescription<'db> {
-//     inner: IngotUrl<'db>,
-// }
 pub trait HirIngot<'db> {
     fn module_tree(self, db: &'db dyn HirDb) -> &'db ModuleTree<'db>;
     fn all_modules(self, db: &'db dyn HirDb) -> &'db Vec<TopLevelMod<'db>>;
@@ -82,15 +79,11 @@ impl<'db> HirIngot<'db> for Ingot<'db> {
             .iter()
             .filter_map(|(name, url)| {
                 db.workspace()
-                    .containing_ingot(db, url)
+                    .containing_ingot(db, url.clone())
                     .map(|ingot_description| (IdentId::new(db, name.as_str()), ingot_description))
             })
             .collect()
     }
-
-    // fn kind(self, db: &dyn HirDb) -> IngotKind {
-    //     self.ingot_kind(db)
-    // }
 
     #[salsa::tracked(return_ref)]
     fn all_enums(self, db: &'db dyn HirDb) -> Vec<Enum<'db>> {

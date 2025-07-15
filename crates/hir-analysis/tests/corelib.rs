@@ -40,7 +40,7 @@ fn corelib_standalone(fixture: Fixture<&str>) {
 
     let local_diags = db.run_on_ingot(
         db.workspace()
-            .containing_ingot(&db, &url)
+            .containing_ingot(&db, url)
             .expect("Failed to find containing ingot"),
     );
     if !local_diags.is_empty() {

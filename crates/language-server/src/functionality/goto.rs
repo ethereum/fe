@@ -291,7 +291,7 @@ mod tests {
         );
 
         // Get the containing ingot - should be Local now
-        let ingot = db.workspace().containing_ingot(&db, &file_url).unwrap();
+        let ingot = db.workspace().containing_ingot(&db, file_url).unwrap();
         assert_eq!(ingot.kind(&db), IngotKind::Local);
 
         // Introduce a new scope to limit the lifetime of `top_mod`
@@ -307,7 +307,7 @@ mod tests {
 
         // Get the containing ingot for the file path
         let file_url = Url::from_file_path(fixture.path()).unwrap();
-        let ingot = db.workspace().containing_ingot(&db, &file_url);
+        let ingot = db.workspace().containing_ingot(&db, file_url);
         assert_eq!(ingot.unwrap().kind(&db), IngotKind::Local);
     }
 

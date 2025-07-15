@@ -26,16 +26,14 @@ pub enum IngotFileKind {
 impl File {
     #[salsa::tracked]
     pub fn containing_ingot(self, db: &dyn InputDb) -> Option<Ingot<'_>> {
-        let index = db.workspace();
         self.url(db)
-            .and_then(|url| index.containing_ingot(db, &url))
+            .and_then(|url| db.workspace().containing_ingot(db, url))
     }
 
     #[salsa::tracked(return_ref)]
     pub fn path(self, db: &dyn InputDb) -> Option<Utf8PathBuf> {
-        let index = db.workspace();
         self.containing_ingot(db)
-            .and_then(|ingot| index.get_relative_path(db, ingot.base(db), self))
+            .and_then(|ingot| db.workspace().get_relative_path(db, ingot.base(db), self))
     }
 
     #[salsa::tracked]
@@ -52,7 +50,6 @@ impl File {
     }
 
     pub fn url(self, db: &dyn InputDb) -> Option<Url> {
-        let index = db.workspace();
-        index.get_path(db, self)
+        db.workspace().get_path(db, self)
     }
 }
