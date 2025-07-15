@@ -1,17 +1,16 @@
-pub(crate) mod db;
 use async_lsp::ClientSocket;
-use db::LanguageServerDatabase;
+use driver::DriverDataBase;
 
 pub struct Backend {
     pub(super) client: ClientSocket,
-    pub(super) db: LanguageServerDatabase,
+    pub(super) db: DriverDataBase,
     #[allow(dead_code)] // TODO: salsa3-compatible parallelism
     pub(super) workers: tokio::runtime::Runtime,
 }
 
 impl Backend {
     pub fn new(client: ClientSocket) -> Self {
-        let db = LanguageServerDatabase::default();
+        let db = DriverDataBase::default();
 
         let workers = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(1)

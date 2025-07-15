@@ -9,10 +9,12 @@ use async_lsp::{
 };
 
 use common::InputDb;
+use resolver::{
+    ingot::{source_files::SourceFiles, Ingot as ResolvedIngot, IngotResolver},
+    Resolver,
+};
 use rustc_hash::FxHashSet;
-use resolver::{Resolver, ingot::{IngotResolver, Ingot as ResolvedIngot, source_files::SourceFiles}};
 use url::Url;
-use glob;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
 
@@ -59,7 +61,7 @@ async fn discover_and_load_ingots(
     // Find all fe.toml files in the workspace
     let pattern = format!("{}/**/fe.toml", root_path.to_string_lossy());
     let config_paths = glob::glob(&pattern)
-        .map_err(|e| ResponseError::new(ErrorCode::INTERNAL_ERROR, format!("Glob error: {}", e)))?
+        .map_err(|e| ResponseError::new(ErrorCode::INTERNAL_ERROR, format!("Glob error: {e}")))?
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
 
@@ -71,7 +73,7 @@ async fn discover_and_load_ingots(
         let ingot_url = Url::from_directory_path(ingot_dir).map_err(|_| {
             ResponseError::new(
                 ErrorCode::INTERNAL_ERROR,
-                format!("Invalid ingot path: {:?}", ingot_dir),
+                format!("Invalid ingot path: {ingot_dir:?}"),
             )
         })?;
 
@@ -82,12 +84,18 @@ async fn discover_and_load_ingots(
             }) => {
                 // Touch the config file if it exists
                 if let Some(config) = config {
-                    backend.db.workspace().touch(&mut backend.db, config.url, Some(config.content));
+                    backend
+                        .db
+                        .workspace()
+                        .touch(&mut backend.db, config.url, Some(config.content));
                 }
-                
+
                 // Touch all source files
                 for (file_url, content) in files {
-                    backend.db.workspace().touch(&mut backend.db, file_url, Some(content));
+                    backend
+                        .db
+                        .workspace()
+                        .touch(&mut backend.db, file_url, Some(content));
                 }
             }
             Ok(_) => {
@@ -104,7 +112,7 @@ async fn discover_and_load_ingots(
         let root_url = Url::from_directory_path(root_path).map_err(|_| {
             ResponseError::new(
                 ErrorCode::INTERNAL_ERROR,
-                format!("Invalid workspace root path: {:?}", root_path),
+                format!("Invalid workspace root path: {root_path:?}"),
             )
         })?;
 
@@ -114,14 +122,23 @@ async fn discover_and_load_ingots(
                 source_files: Some(SourceFiles { files, .. }),
             }) => {
                 if let Some(config) = config {
-                    backend.db.workspace().touch(&mut backend.db, config.url, Some(config.content));
+                    backend
+                        .db
+                        .workspace()
+                        .touch(&mut backend.db, config.url, Some(config.content));
                 }
                 for (file_url, content) in files {
-                    backend.db.workspace().touch(&mut backend.db, file_url, Some(content));
+                    backend
+                        .db
+                        .workspace()
+                        .touch(&mut backend.db, file_url, Some(content));
                 }
             }
             Ok(ResolvedIngot::SingleFile { url, content }) => {
-                backend.db.workspace().touch(&mut backend.db, url, Some(content));
+                backend
+                    .db
+                    .workspace()
+                    .touch(&mut backend.db, url, Some(content));
             }
             Ok(_) => {
                 info!("No Fe source files found in workspace root");
@@ -168,10 +185,14 @@ pub async fn initialized(
     info!("language server initialized! recieved notification!");
 
     // Get all files from the workspace
-    let all_files: Vec<_> = backend.db.workspace().all_files(&backend.db).iter()
+    let all_files: Vec<_> = backend
+        .db
+        .workspace()
+        .all_files(&backend.db)
+        .iter()
         .map(|(url, _file)| url)
         .collect();
-    
+
     for url in all_files {
         let _ = backend.client.emit(NeedsDiagnostics(url));
     }
@@ -266,7 +287,8 @@ pub async fn handle_file_change(
     };
 
     // Check if this is a fe.toml file
-    let is_fe_toml = path.file_name()
+    let is_fe_toml = path
+        .file_name()
         .and_then(|name| name.to_str())
         .map(|name| name == "fe.toml")
         .unwrap_or(false);
@@ -295,7 +317,7 @@ pub async fn handle_file_change(
                     .db
                     .workspace()
                     .touch(&mut backend.db, url.clone(), Some(contents));
-                
+
                 // If a fe.toml was created, discover and load all files in the new ingot
                 if is_fe_toml {
                     if let Some(ingot_dir) = path.parent() {
@@ -322,7 +344,7 @@ pub async fn handle_file_change(
                     .db
                     .workspace()
                     .touch(&mut backend.db, url.clone(), Some(contents));
-                
+
                 // If fe.toml was modified, re-scan the ingot for any new files
                 if is_fe_toml {
                     if let Some(ingot_dir) = path.parent() {
@@ -348,23 +370,26 @@ async fn load_ingot_files(
     ingot_dir: &std::path::Path,
 ) -> Result<(), ResponseError> {
     info!("Loading ingot files from: {:?}", ingot_dir);
-    
+
     let mut ingot_resolver = IngotResolver::default();
     let ingot_url = Url::from_directory_path(ingot_dir).map_err(|_| {
         ResponseError::new(
             ErrorCode::INTERNAL_ERROR,
-            format!("Invalid ingot path: {:?}", ingot_dir),
+            format!("Invalid ingot path: {ingot_dir:?}"),
         )
     })?;
 
     match ingot_resolver.resolve(&ingot_url) {
         Ok(ResolvedIngot::Folder {
-            config: _,  // Already loaded by the file change handler
+            config: _, // Already loaded by the file change handler
             source_files: Some(SourceFiles { files, .. }),
         }) => {
             // Touch all source files
             for (file_url, content) in files {
-                backend.db.workspace().touch(&mut backend.db, file_url.clone(), Some(content));
+                backend
+                    .db
+                    .workspace()
+                    .touch(&mut backend.db, file_url.clone(), Some(content));
                 let _ = backend.client.emit(NeedsDiagnostics(file_url));
             }
         }
@@ -375,7 +400,7 @@ async fn load_ingot_files(
             error!("Failed to resolve ingot at {:?}: {:?}", ingot_dir, e);
         }
     }
-    
+
     Ok(())
 }
 
@@ -399,6 +424,7 @@ pub async fn handle_files_need_diagnostics(
 
     for ingot in ingots_need_diagnostics {
         // Get diagnostics per file
+        use crate::lsp_diagnostics::LspDiagnostics;
         let diagnostics_map = backend.db.diagnostics_for_ingot(ingot);
 
         info!(

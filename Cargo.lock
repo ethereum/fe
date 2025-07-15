@@ -921,6 +921,7 @@ dependencies = [
  "codespan-reporting",
  "dir-test",
  "fe-common",
+ "fe-driver",
  "fe-hir",
  "fe-hir-analysis",
  "fe-parser",

@@ -34,6 +34,7 @@ tracing-tree.workspace = true
 url = "2.5.4"
 
 common.workspace = true
+driver.workspace = true
 hir.workspace = true
 hir-analysis.workspace = true
 parser.workspace = true

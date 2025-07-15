@@ -11,9 +11,10 @@ use hir_analysis::name_resolution::{resolve_path, PathResErrorKind};
 use tracing::error;
 
 use crate::{
-    backend::{db::LanguageServerDb, Backend},
+    backend::Backend,
     util::{to_lsp_location_from_scope, to_offset_from_position},
 };
+use driver::DriverDataBase;
 pub type Cursor = parser::TextSize;
 
 #[derive(Default)]
@@ -33,7 +34,7 @@ impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
 }
 
 fn find_path_surrounding_cursor<'db>(
-    db: &'db dyn LanguageServerDb,
+    db: &'db DriverDataBase,
     cursor: Cursor,
     full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
 ) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
@@ -82,7 +83,7 @@ pub fn find_enclosing_item<'db>(
 }
 
 pub fn get_goto_target_scopes_for_cursor<'db>(
-    db: &'db dyn LanguageServerDb,
+    db: &'db DriverDataBase,
     top_mod: TopLevelMod<'db>,
     cursor: Cursor,
 ) -> Option<Vec<ScopeId<'db>>> {
@@ -173,8 +174,8 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::backend::db::LanguageServerDatabase;
-    use crate::test_utils::test_utils::load_ingot_from_directory;
+    use crate::test_utils::load_ingot_from_directory;
+    use driver::DriverDataBase;
 
     // given a cursor position and a string, convert to cursor line and column
     fn line_col_from_cursor(cursor: Cursor, s: &str) -> (usize, usize) {
@@ -195,7 +196,7 @@ mod tests {
     }
 
     fn extract_multiple_cursor_positions_from_spans(
-        db: &dyn LanguageServerDb,
+        db: &DriverDataBase,
         top_mod: TopLevelMod,
     ) -> Vec<parser::TextSize> {
         let mut visitor_ctxt = VisitorCtxt::with_top_mod(db, top_mod);
@@ -218,7 +219,7 @@ mod tests {
     }
 
     fn make_goto_cursors_snapshot(
-        db: &dyn LanguageServerDb,
+        db: &DriverDataBase,
         fixture: &Fixture<&str>,
         top_mod: TopLevelMod,
     ) -> String {
@@ -271,11 +272,11 @@ mod tests {
         let ingot_base_dir =
             std::path::Path::new(&cargo_manifest_dir).join("test_files/single_ingot");
 
-        let mut db = LanguageServerDatabase::default();
-        
+        let mut db = DriverDataBase::default();
+
         // Load all files from the ingot directory
         load_ingot_from_directory(&mut db, &ingot_base_dir);
-        
+
         // Get our specific test file
         let fe_source_path = fixture.path();
         let file_url = Url::from_file_path(fe_source_path).unwrap();
@@ -306,7 +307,7 @@ mod tests {
         glob: "goto*.fe"
     )]
     fn test_goto_cursor_target(fixture: Fixture<&str>) {
-        let mut db = LanguageServerDatabase::default(); // Changed to mut
+        let mut db = DriverDataBase::default(); // Changed to mut
         let file = db.workspace().touch(
             &mut db,
             Url::from_file_path(fixture.path()).unwrap(),
@@ -323,7 +324,7 @@ mod tests {
         glob: "smallest_enclosing*.fe"
     )]
     fn test_find_path_surrounding_cursor(fixture: Fixture<&str>) {
-        let mut db = LanguageServerDatabase::default(); // Changed to mut
+        let mut db = DriverDataBase::default(); // Changed to mut
 
         let file = db.workspace().touch(
             &mut db,

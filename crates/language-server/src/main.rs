@@ -4,11 +4,12 @@ mod fallback;
 mod functionality;
 mod logging;
 mod lsp_actor;
+mod lsp_diagnostics;
 mod lsp_streams;
 mod server;
-mod util;
 #[cfg(test)]
 mod test_utils;
+mod util;
 
 use std::net::SocketAddr;
 use std::time::Duration;
