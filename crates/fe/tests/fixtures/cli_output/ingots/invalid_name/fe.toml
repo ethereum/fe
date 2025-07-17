@@ -1,0 +1,3 @@
+[ingot]
+name = "invalid_name_with_underscores"
+version = "0.0.1"

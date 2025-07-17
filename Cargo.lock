@@ -794,7 +794,9 @@ name = "fe"
 version = "0.26.0"
 dependencies = [
  "clap",
+ "dir-test",
  "fe-driver",
+ "fe-test-utils",
  "tracing",
  "tracing-subscriber",
 ]
