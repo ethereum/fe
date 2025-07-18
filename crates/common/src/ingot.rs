@@ -59,13 +59,11 @@ impl IngotBaseUrl for Url {
     }
 }
 
-#[salsa::tracked]
+#[salsa::interned]
 #[derive(Debug)]
 pub struct Ingot<'db> {
     pub base: Url,
     pub standalone_file: Option<File>,
-    #[tracked]
-    pub index: Workspace,
     pub kind: IngotKind,
 }
 
@@ -215,19 +213,13 @@ impl Workspace {
 }
 
 /// Private helper to create canonical ingots for regular projects
-#[salsa::tracked]
-pub(super) fn ingot_at_base_url<'db>(
-    db: &'db dyn InputDb,
-    index: Workspace,
-    base_url: Url,
-) -> Ingot<'db> {
+pub(super) fn ingot_at_base_url<'db>(db: &'db dyn InputDb, base_url: Url) -> Ingot<'db> {
     let is_core = base_url.scheme().contains("core");
 
     let ingot = Ingot::new(
         db,
         base_url,
         None,
-        index,
         if is_core {
             IngotKind::Core
         } else {
@@ -245,11 +237,10 @@ pub(super) fn ingot_at_base_url<'db>(
 #[salsa::tracked]
 pub(super) fn standalone_ingot<'db>(
     db: &'db dyn InputDb,
-    index: Workspace,
     base_url: Url,
     root_file: Option<File>,
 ) -> Ingot<'db> {
-    let ingot = Ingot::new(db, base_url, root_file, index, IngotKind::StandAlone);
+    let ingot = Ingot::new(db, base_url, root_file, IngotKind::StandAlone);
 
     // this is a sad necessity :(( for now
     let _ = ingot.files(db);
@@ -272,7 +263,7 @@ pub(super) fn containing_ingot_impl<'db>(
             .expect("Config file should be indexed")
             .directory()
             .expect("Config URL should have a directory");
-        Some(ingot_at_base_url(db, index, base_url))
+        Some(ingot_at_base_url(db, base_url))
     } else {
         // Make a standalone ingot if no config is found
         let base = location.directory().unwrap_or_else(|| location.clone());
@@ -281,7 +272,7 @@ pub(super) fn containing_ingot_impl<'db>(
         } else {
             None
         };
-        Some(standalone_ingot(db, index, base, specific_root_file))
+        Some(standalone_ingot(db, base, specific_root_file))
     }
 }
 
