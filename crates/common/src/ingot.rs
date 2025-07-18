@@ -5,7 +5,7 @@ use radix_immutable::StringPrefixView;
 use smol_str::SmolStr;
 use url::Url;
 
-use crate::config::Config;
+use crate::config::{Config, ConfigDiagnostic};
 use crate::core::BUILTIN_CORE_BASE_URL;
 use crate::file::{File, Workspace};
 use crate::urlext::UrlExt;
@@ -110,7 +110,18 @@ impl<'db> Ingot<'db> {
     pub fn config(self, db: &'db dyn InputDb) -> Option<Config> {
         db.workspace()
             .containing_ingot_config(db, self.base(db))
-            .map(|config_file| Config::parse(config_file.text(db)).unwrap())
+            .map(|config_file| match Config::parse(config_file.text(db)) {
+                Ok(config) => config,
+                Err(err) => {
+                    // Create a Config with just the parse error as a diagnostic
+                    let diagnostics = vec![ConfigDiagnostic::InvalidTomlSyntax(err.to_string())];
+                    Config {
+                        metadata: Default::default(),
+                        diagnostics,
+                        dependencies: Vec::new(),
+                    }
+                }
+            })
     }
 
     #[salsa::tracked]

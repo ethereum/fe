@@ -210,6 +210,7 @@ pub enum ConfigDiagnostic {
     InvalidDependencyAlias(SmolStr),
     InvalidDependencyName(SmolStr),
     InvalidDependencyVersion(SmolStr),
+    InvalidTomlSyntax(String),
     MissingDependencyPath {
         alias: SmolStr,
         description: String,
@@ -241,6 +242,7 @@ impl Display for ConfigDiagnostic {
             Self::InvalidDependencyVersion(version) => {
                 write!(f, "invalid dependency version \"{version}\"")
             }
+            Self::InvalidTomlSyntax(err) => write!(f, "invalid TOML syntax: {err}"),
             Self::MissingDependencyPath { alias, description } => write!(
                 f,
                 "the dependency \"{alias}\" is missing a path argument \"{description}\""
