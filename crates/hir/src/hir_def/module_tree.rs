@@ -1,4 +1,4 @@
-use camino::Utf8Path;
+use camino::Utf8PathBuf;
 use common::{
     file::{File, IngotFileKind},
     indexmap::IndexMap,
@@ -6,7 +6,6 @@ use common::{
 };
 use cranelift_entity::{entity_impl, EntityRef, PrimaryMap};
 use salsa::Update;
-use tracing::error;
 
 use super::{IdentId, TopLevelMod};
 use crate::{lower::map_file_to_mod_impl, HirDb};
@@ -144,13 +143,80 @@ impl ModuleTree<'_> {
 /// top level modules. This function only depends on an ingot structure and
 /// external ingot dependency, and not depends on file contents.
 #[salsa::tracked(return_ref)]
-#[allow(elided_named_lifetimes)]
-pub(crate) fn module_tree_impl<'a>(db: &'a dyn HirDb, ingot: Ingot<'a>) -> ModuleTree<'a> {
-    ModuleTreeBuilder::new(db, ingot).build()
+pub(crate) fn module_tree_impl<'db>(db: &'db dyn HirDb, ingot: Ingot<'db>) -> ModuleTree<'db> {
+    // Build everything in one tracked function to avoid passing complex data between functions
+    let mut module_tree = PrimaryMap::default();
+    let mut mod_map = IndexMap::default();
+    let mut path_map = IndexMap::default();
+
+    // Collect source modules
+    let files = ingot.files(db);
+    for (_, file) in files.iter() {
+        if let Some(IngotFileKind::Source) = file.kind(db) {
+            let top_mod = map_file_to_mod_impl(db, file);
+            let module_id = module_tree.push(ModuleTreeNode::new(top_mod));
+            let path = file.path(db).as_ref().expect("couldn't get path").clone();
+            path_map.insert(path, module_id);
+            mod_map.insert(top_mod, module_id);
+        }
+    }
+
+    // Find root
+    let root_file = ingot.root_file(db).expect("module needs a root file");
+    let root_mod = map_file_to_mod_impl(db, root_file);
+    let root = mod_map[&root_mod];
+
+    // Build parent-child relationships
+    for (_, child_file) in files.iter() {
+        if child_file == root_file {
+            continue;
+        }
+
+        if let Some(IngotFileKind::Source) = child_file.kind(db) {
+            if let Some(parent_id) = find_parent_module(db, child_file, root_file, &path_map) {
+                let child_mod = map_file_to_mod_impl(db, child_file);
+                let child_id = mod_map[&child_mod];
+
+                module_tree[parent_id].children.push(child_id);
+                module_tree[child_id].parent = Some(parent_id);
+            }
+        }
+    }
+
+    ModuleTree {
+        root,
+        module_tree: PMap(module_tree),
+        mod_map,
+        ingot,
+    }
+}
+
+/// Find the parent module for a given file
+fn find_parent_module<'db>(
+    db: &'db dyn HirDb,
+    child_file: File,
+    root_file: File,
+    path_map: &'db IndexMap<Utf8PathBuf, ModuleTreeNodeId>,
+) -> Option<ModuleTreeNodeId> {
+    let root_path = root_file.path(db).as_ref()?;
+    let child_path = child_file.path(db).as_ref()?;
+
+    // If in same directory as root, parent is root
+    if child_path.parent() == root_path.parent() {
+        return path_map.get(root_path).copied();
+    }
+
+    // Otherwise, find parent based on directory structure
+    let file_dir = child_path.parent()?;
+    let parent_dir = file_dir.parent()?;
+    let parent_mod_stem = file_dir.file_name()?;
+    let parent_mod_path = parent_dir.join(parent_mod_stem).with_extension("fe");
+
+    path_map.get(&parent_mod_path).copied()
 }
 
 /// A top level module that is one-to-one mapped to a file.
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub struct ModuleTreeNode<'db> {
     pub top_mod: TopLevelMod<'db>,
     /// A parent of the top level module.
@@ -179,131 +245,6 @@ impl<'db> ModuleTreeNode<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub struct ModuleTreeNodeId(u32);
 entity_impl!(ModuleTreeNodeId);
-
-struct ModuleTreeBuilder<'db> {
-    db: &'db dyn HirDb,
-    ingot: Ingot<'db>,
-    module_tree: PrimaryMap<ModuleTreeNodeId, ModuleTreeNode<'db>>,
-    mod_map: IndexMap<TopLevelMod<'db>, ModuleTreeNodeId>,
-    path_map: IndexMap<&'db Utf8Path, ModuleTreeNodeId>,
-}
-
-impl<'db> ModuleTreeBuilder<'db> {
-    fn new(db: &'db dyn HirDb, ingot: Ingot<'db>) -> Self {
-        Self {
-            db,
-            ingot,
-            module_tree: PrimaryMap::default(),
-            mod_map: IndexMap::default(),
-            path_map: IndexMap::default(),
-        }
-    }
-
-    fn build(mut self) -> ModuleTree<'db> {
-        self.set_modules();
-        self.build_tree();
-
-        let root_mod = map_file_to_mod_impl(
-            self.db,
-            self.ingot
-                .root_file(self.db)
-                .expect("module needs a root file"),
-        );
-        let root = self.mod_map[&root_mod];
-        ModuleTree {
-            root,
-            module_tree: PMap(self.module_tree),
-            mod_map: self.mod_map,
-            ingot: self.ingot,
-        }
-    }
-
-    fn set_modules(&mut self) {
-        for (_url, file) in self.ingot.files(self.db).iter() {
-            // Only process source files, skip config files like fe.toml
-            if let Some(IngotFileKind::Source) = file.kind(self.db) {
-                let top_mod = map_file_to_mod_impl(self.db, file);
-
-                let module_id = self.module_tree.push(ModuleTreeNode::new(top_mod));
-                let path = file.path(self.db).as_ref().expect("couldn't get path");
-                // .clone();
-                let path = Utf8Path::new(path);
-                self.path_map.insert(path, module_id);
-                self.mod_map.insert(top_mod, module_id);
-            }
-        }
-    }
-
-    fn build_tree(&mut self) {
-        let root = self.ingot.root_file(self.db).unwrap_or_else(|_| {
-            error!("ingot root file is missing in {}", self.ingot.base(self.db));
-            error!("Files in ingot:");
-            for (url, file) in self.ingot.files(self.db).iter() {
-                error!("  {}: {:?}", url, file.path(self.db));
-            }
-            std::process::exit(2)
-        });
-
-        for (_url, child) in self.ingot.files(self.db).iter() {
-            // Ignore the root file because it has no parent.
-            if child == root {
-                continue;
-            }
-
-            // Skip non-source files (e.g., fe.toml)
-            if let Some(kind) = child.kind(self.db) {
-                if kind != IngotFileKind::Source {
-                    continue;
-                }
-            } else {
-                continue; // Skip files without a recognized kind
-            }
-
-            let root_path = root.path(self.db).as_ref().expect("couldn't get root path");
-            let root_mod = map_file_to_mod_impl(self.db, root);
-            let child_path = child
-                .path(self.db)
-                .as_ref()
-                .expect("couldn't get child path");
-            let child_mod = map_file_to_mod_impl(self.db, child);
-
-            // If the file is in the same directory as the root file, the file is a direct
-            // child of the root.
-            if child_path.parent() == root_path.parent() {
-                let root_mod = self.mod_map[&root_mod];
-                let cur_mod = self.mod_map[&child_mod];
-                self.add_branch(root_mod, cur_mod);
-                continue;
-            }
-
-            assert!(child_path
-                .parent()
-                .unwrap()
-                .starts_with(root_path.parent().unwrap()));
-
-            if let Some(parent_mod) = self.parent_module(child) {
-                let cur_mod = self.mod_map[&child_mod];
-                self.add_branch(parent_mod, cur_mod);
-            }
-        }
-    }
-
-    fn parent_module(&self, file: File) -> Option<ModuleTreeNodeId> {
-        let file_path = file.path(self.db).as_ref().expect("File path not found");
-        let file_dir = file_path.parent()?;
-        let parent_dir = file_dir.parent()?;
-
-        let parent_mod_stem = file_dir.into_iter().next_back()?;
-        let parent_mod_path = parent_dir.join(parent_mod_stem).with_extension("fe");
-        self.path_map.get(parent_mod_path.as_path()).copied()
-    }
-
-    fn add_branch(&mut self, parent: ModuleTreeNodeId, child: ModuleTreeNodeId) {
-        self.module_tree[parent].children.push(child);
-
-        self.module_tree[child].parent = Some(parent);
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -342,7 +283,7 @@ mod tests {
         let local_tree = lower::module_tree(
             &db,
             index
-                .containing_ingot(&db, &ingot_base)
+                .containing_ingot(&db, ingot_base)
                 .expect("Failed to construct ingot"),
         );
         let root_node = local_tree.root_data();

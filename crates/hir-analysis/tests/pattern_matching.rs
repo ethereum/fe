@@ -14,6 +14,7 @@ use test_utils::snap_test;
     dir: "$CARGO_MANIFEST_DIR/test_files/pattern_matching",
     glob: "exhaustive/*.fe"
 )]
+#[allow(clippy::print_stderr)]
 fn exhaustive_matches(fixture: Fixture<&str>) {
     let mut db = HirAnalysisTestDb::default();
     let path = Path::new(fixture.path());

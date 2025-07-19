@@ -36,7 +36,7 @@ impl<T: InputDb> HasBuiltinCore for T {
     fn builtin_core(&self) -> Ingot {
         let core = self
             .workspace()
-            .containing_ingot(self, Url::parse(BUILTIN_CORE_BASE_URL).as_ref().unwrap());
+            .containing_ingot(self, Url::parse(BUILTIN_CORE_BASE_URL).unwrap());
         core.expect("Built-in core ingot failed to initialize")
     }
 }
