@@ -9,10 +9,11 @@ use super::{
     goto::{get_goto_target_scopes_for_cursor, Cursor},
     item_info::{get_docstring, get_item_definition_markdown, get_item_path_markdown},
 };
-use crate::{backend::db::LanguageServerDb, util::to_offset_from_position};
+use crate::util::to_offset_from_position;
+use driver::DriverDataBase;
 
 pub fn hover_helper(
-    db: &dyn LanguageServerDb,
+    db: &DriverDataBase,
     file: File,
     params: async_lsp::lsp_types::HoverParams,
 ) -> Result<Option<Hover>, Error> {

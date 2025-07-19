@@ -84,9 +84,6 @@ pub fn diag_to_lsp(
         return result;
     };
 
-    // TODO: this assumes that all sub_diagnostics point at files in the same ingot,
-    // which might not be the case
-
     diag.sub_diagnostics.into_iter().for_each(|sub| {
         let is_primary = sub.is_primary();
 
