@@ -14,6 +14,7 @@ use resolver::{
     Resolver,
 };
 use rustc_hash::FxHashSet;
+use salsa::Setter;
 use url::Url;
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
@@ -245,9 +246,39 @@ pub async fn handle_did_change_text_document(
     message: async_lsp::lsp_types::DidChangeTextDocumentParams,
 ) -> Result<(), ResponseError> {
     info!("file changed: {:?}", message.text_document.uri);
+    info!("content_changes length: {}", message.content_changes.len());
+    for (i, change) in message.content_changes.iter().enumerate() {
+        info!(
+            "change[{}]: range={:?}, text_len={}",
+            i,
+            change.range,
+            change.text.len()
+        );
+        info!(
+            "change[{}] text preview: {:?}",
+            i,
+            &change.text.chars().take(100).collect::<String>()
+        );
+    }
+
+    // For FULL sync mode, we expect exactly one change with no range (entire document)
+    let new_text =
+        if message.content_changes.len() == 1 && message.content_changes[0].range.is_none() {
+            // Full document sync - the text is the entire new document
+            message.content_changes[0].text.clone()
+        } else {
+            // This shouldn't happen with FULL sync, but let's handle it gracefully
+            error!(
+                "Unexpected content changes format for FULL sync mode: {} changes",
+                message.content_changes.len()
+            );
+            // For now, just use the first change text (might be wrong)
+            message.content_changes[0].text.clone()
+        };
+
     let _ = backend.client.clone().emit(FileChange {
         uri: message.text_document.uri,
-        kind: ChangeKind::Edit(Some(message.content_changes[0].text.clone())),
+        kind: ChangeKind::Edit(Some(new_text)),
     });
     Ok(())
 }
@@ -340,10 +371,12 @@ pub async fn handle_file_change(
                 }
             };
             if let Ok(url) = url::Url::from_file_path(&path) {
-                backend
+                let file = backend
                     .db
                     .workspace()
-                    .touch(&mut backend.db, url.clone(), Some(contents));
+                    .touch(&mut backend.db, url.clone(), None);
+
+                file.set_text(&mut backend.db).to(contents);
 
                 // If fe.toml was modified, re-scan the ingot for any new files
                 if is_fe_toml {

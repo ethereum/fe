@@ -36,6 +36,19 @@ pub(crate) fn probe_method<'db>(
     table.probe(db, ty, name)
 }
 
+/// Public wrapper for language server support that creates a canonical type internally
+#[salsa::tracked(return_ref)]
+pub fn probe_method_for_language_server<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    ty: TyId<'db>,
+    name: IdentId<'db>,
+) -> Vec<FuncDef<'db>> {
+    // Create a simple canonical type with no type variables for basic method lookup
+    let canonical_ty = Canonical::new(db, ty);
+    probe_method(db, ingot, canonical_ty, name).to_vec()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct MethodTable<'db> {
     buckets: FxHashMap<TyBase<'db>, MethodBucket<'db>>,

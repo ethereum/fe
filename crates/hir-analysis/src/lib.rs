@@ -1,6 +1,7 @@
 use hir::{span::DynLazySpan, HirDb};
 pub mod analysis_pass;
 pub mod diagnostics;
+pub mod language_server_support;
 
 #[salsa::db]
 pub trait HirAnalysisDb: HirDb {}
