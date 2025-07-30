@@ -892,6 +892,7 @@ dependencies = [
  "fe-common",
  "fe-driver",
  "fe-hir",
+ "fe-parser",
  "fe-test-utils",
  "if_chain",
  "indexmap",

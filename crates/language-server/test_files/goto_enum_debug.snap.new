@@ -1,0 +1,30 @@
+---
+source: crates/language-server/src/functionality/goto.rs
+assertion_line: 258
+expression: snapshot
+input_file: test_files/goto_enum_debug.fe
+---
+0: enum Color {
+1:     Red,
+2:     Green { intensity: u32 },
+3:     Blue(u32)
+4: }
+5: 
+6: fn test() {
+7:     let red = Color::Red
+8:     let green = Color::Green { intensity: 50 }
+9:     let blue = Color::Blue(100)
+10: }
+---
+cursor position (1, 6), path: goto_enum_debug::Color
+cursor position (2, 5), path: goto_enum_debug::Color::Red
+cursor position (3, 5), path: goto_enum_debug::Color::Green
+cursor position (3, 13), path: goto_enum_debug::Color::Green::intensity
+cursor position (4, 5), path: goto_enum_debug::Color::Blue
+cursor position (7, 4), path: goto_enum_debug::test
+cursor position (8, 15), path: goto_enum_debug::Color
+cursor position (8, 22), path: goto_enum_debug::Color::Red
+cursor position (9, 17), path: goto_enum_debug::Color
+cursor position (9, 24), path: goto_enum_debug::Color::Green
+cursor position (10, 16), path: goto_enum_debug::Color
+cursor position (10, 23), path: goto_enum_debug::Color::Blue

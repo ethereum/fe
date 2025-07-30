@@ -1,0 +1,51 @@
+---
+source: crates/language-server/src/functionality/goto.rs
+assertion_line: 258
+expression: snapshot
+input_file: test_files/goto_values.fe
+---
+0: use core
+1: 
+2: struct MyStruct {
+3:     pub field: u32
+4: }
+5: 
+6: const MY_CONST: u32 = 42
+7: 
+8: fn my_function() -> u32 {
+9:     MY_CONST + 10
+10: }
+11: 
+12: fn another_function(param: MyStruct) -> u32 {
+13:     param.field + my_function()
+14: }
+15: 
+16: fn main() {
+17:     let x: MyStruct = MyStruct { field: 5 }
+18:     let y = my_function()
+19:     let z = another_function(x)
+20:     let c = MY_CONST
+21:     
+22:     core::todo()
+23: }
+24: 
+25: mod nested {
+26:     pub const NESTED_CONST: u32 = 100
+27:     
+28:     pub fn nested_function() -> u32 {
+29:         NESTED_CONST * 2
+30:     }
+31: }
+32: 
+33: fn test_nested() {
+34:     let a = nested::NESTED_CONST
+35:     let b = nested::nested_function()
+36: }
+---
+cursor position (18, 9), path: goto_values::main::{fn_body}
+cursor position (19, 9), path: goto_values::main::{fn_body}
+cursor position (20, 9), path: goto_values::main::{fn_body}
+cursor position (20, 30), path: goto_values::main::{fn_body}
+cursor position (21, 9), path: goto_values::main::{fn_body}
+cursor position (35, 9), path: goto_values::test_nested::{fn_body}
+cursor position (36, 9), path: goto_values::test_nested::{fn_body}

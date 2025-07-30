@@ -27,6 +27,7 @@ tracing.workspace = true
 common.workspace = true
 test-utils.workspace = true
 hir.workspace = true
+parser.workspace = true
 url.workspace = true
 
 [dev-dependencies]
