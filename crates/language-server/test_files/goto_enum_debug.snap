@@ -15,12 +15,15 @@ input_file: test_files/goto_enum_debug.fe
 9:     let blue = Color::Blue(100)
 10: }
 ---
-cursor position (7, 8), path: local_var_def_at_line_8
-cursor position (7, 14), path: goto_enum_debug::Color
-cursor position (7, 21), path: goto_enum_debug::Color::Red
-cursor position (8, 8), path: local_var_def_at_line_9
-cursor position (8, 16), path: goto_enum_debug::Color
-cursor position (8, 23), path: goto_enum_debug::Color::Green
-cursor position (9, 8), path: local_var_def_at_line_10
-cursor position (9, 15), path: goto_enum_debug::Color
-cursor position (9, 22), path: goto_enum_debug::Color::Blue
+cursor position (1, 6), path: goto_enum_debug::Color
+cursor position (2, 5), path: goto_enum_debug::Color::Red
+cursor position (3, 5), path: goto_enum_debug::Color::Green
+cursor position (3, 13), path: goto_enum_debug::Color::Green::intensity
+cursor position (4, 5), path: goto_enum_debug::Color::Blue
+cursor position (7, 4), path: goto_enum_debug::test
+cursor position (8, 15), path: goto_enum_debug::Color
+cursor position (8, 22), path: goto_enum_debug::Color::Red
+cursor position (9, 17), path: goto_enum_debug::Color
+cursor position (9, 24), path: goto_enum_debug::Color::Green
+cursor position (10, 16), path: goto_enum_debug::Color
+cursor position (10, 23), path: goto_enum_debug::Color::Blue

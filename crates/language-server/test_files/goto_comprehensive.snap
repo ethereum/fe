@@ -65,39 +65,44 @@ input_file: test_files/goto_comprehensive.fe
 59:     }
 60: }
 ---
-cursor position (5, 5), path: goto_comprehensive::Container
-cursor position (7, 8), path: goto_comprehensive
-cursor position (7, 13), path: goto_comprehensive::Container::value
-cursor position (19, 8), path: local_var_def_at_line_20
-cursor position (19, 20), path: goto_comprehensive::Container
-cursor position (22, 8), path: local_var_def_at_line_23
-cursor position (22, 14), path: local_var_def_at_line_20
-cursor position (22, 24), path: goto_comprehensive::Container::value
-cursor position (25, 8), path: local_var_def_at_line_26
-cursor position (25, 20), path: local_var_def_at_line_20
-cursor position (28, 8), path: local_var_def_at_line_29
-cursor position (28, 25), path: local_var_def_at_line_20
-cursor position (29, 8), path: local_var_def_at_line_30
-cursor position (29, 19), path: local_var_def_at_line_23
-cursor position (34, 8), path: local_var_def_at_line_35
-cursor position (34, 14), path: goto_comprehensive::Color
-cursor position (34, 21), path: goto_comprehensive::Color::Red
-cursor position (35, 8), path: local_var_def_at_line_36
-cursor position (35, 16), path: goto_comprehensive::Color
-cursor position (35, 23), path: goto_comprehensive::Color::Green
-cursor position (36, 8), path: local_var_def_at_line_37
-cursor position (36, 15), path: goto_comprehensive::Color
-cursor position (36, 22), path: goto_comprehensive::Color::Blue
-cursor position (39, 10), path: local_var_def_at_line_36
-cursor position (40, 8), path: goto_comprehensive::Color
-cursor position (40, 15), path: goto_comprehensive::Color::Green
-cursor position (40, 23), path: local_var_def_at_line_41
-cursor position (42, 16), path: local_var_def_at_line_43
-cursor position (42, 23), path: local_var_def_at_line_41
-cursor position (52, 22), path: goto_comprehensive::Inner
-cursor position (53, 15), path: goto_comprehensive::Wrapper::S
-cursor position (56, 8), path: goto_comprehensive::Inner
-cursor position (56, 15), path: goto_comprehensive::Wrapper
-cursor position (58, 8), path: goto_comprehensive
-cursor position (58, 13), path: goto_comprehensive::Wrapper::inner
-cursor position (58, 19), path: goto_comprehensive::Inner::foo
+cursor position (2, 8), path: goto_comprehensive::Container
+cursor position (3, 9), path: goto_comprehensive::Container::value
+cursor position (6, 6), path: goto_comprehensive::Container
+cursor position (7, 12), path: 
+cursor position (7, 16), path: goto_comprehensive
+cursor position (8, 9), path: goto_comprehensive
+cursor position (8, 14), path: goto_comprehensive::Container::value
+cursor position (13, 6), path: goto_comprehensive::Color
+cursor position (14, 5), path: goto_comprehensive::Color::Red
+cursor position (15, 5), path: goto_comprehensive::Color::Green
+cursor position (15, 13), path: goto_comprehensive::Color::Green::intensity
+cursor position (16, 5), path: goto_comprehensive::Color::Blue
+cursor position (19, 4), path: goto_comprehensive::test_field_access
+cursor position (20, 21), path: goto_comprehensive::Container
+cursor position (23, 25), path: goto_comprehensive::Container::value
+cursor position (26, 31), path: 
+cursor position (33, 4), path: goto_comprehensive::test_enum_variants
+cursor position (35, 15), path: goto_comprehensive::Color
+cursor position (35, 22), path: goto_comprehensive::Color::Red
+cursor position (36, 17), path: goto_comprehensive::Color
+cursor position (36, 24), path: goto_comprehensive::Color::Green
+cursor position (37, 16), path: goto_comprehensive::Color
+cursor position (37, 23), path: goto_comprehensive::Color::Blue
+cursor position (41, 9), path: goto_comprehensive::Color
+cursor position (41, 16), path: goto_comprehensive::Color::Green
+cursor position (49, 11), path: goto_comprehensive::Inner
+cursor position (50, 8), path: goto_comprehensive::Inner::foo
+cursor position (50, 12), path: goto_comprehensive::Inner::foo::self
+goto_comprehensive
+cursor position (53, 12), path: goto_comprehensive::Wrapper
+cursor position (53, 20), path: goto_comprehensive::Wrapper::S
+cursor position (53, 23), path: goto_comprehensive::Inner
+cursor position (54, 9), path: goto_comprehensive::Wrapper::inner
+cursor position (54, 16), path: goto_comprehensive::Wrapper::S
+cursor position (57, 6), path: 
+cursor position (57, 9), path: goto_comprehensive::Inner
+cursor position (57, 16), path: goto_comprehensive::Wrapper
+cursor position (58, 12), path: 
+cursor position (58, 20), path: goto_comprehensive
+cursor position (59, 9), path: goto_comprehensive
+cursor position (59, 14), path: goto_comprehensive::Wrapper::inner

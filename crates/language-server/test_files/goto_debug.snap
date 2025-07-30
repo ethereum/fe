@@ -13,8 +13,9 @@ input_file: test_files/goto_debug.fe
 7:     let val = p.x
 8: }
 ---
-cursor position (6, 8), path: local_var_def_at_line_7
-cursor position (6, 12), path: goto_debug::Point
-cursor position (7, 8), path: local_var_def_at_line_8
-cursor position (7, 14), path: local_var_def_at_line_7
-cursor position (7, 16), path: goto_debug::Point::x
+cursor position (1, 8), path: goto_debug::Point
+cursor position (2, 9), path: goto_debug::Point::x
+cursor position (3, 9), path: goto_debug::Point::y
+cursor position (6, 4), path: goto_debug::test
+cursor position (7, 13), path: goto_debug::Point
+cursor position (8, 17), path: goto_debug::Point::x

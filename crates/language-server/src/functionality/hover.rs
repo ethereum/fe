@@ -6,7 +6,7 @@ use hir::lower::map_file_to_mod;
 use tracing::info;
 
 use super::{
-    goto::{get_goto_target_scopes_for_cursor, Cursor},
+    goto::Cursor,
     item_info::{get_docstring, get_item_definition_markdown, get_item_path_markdown},
 };
 use crate::util::to_offset_from_position;
@@ -26,9 +26,15 @@ pub fn hover_helper(
     );
 
     let top_mod = map_file_to_mod(db, file);
-    let goto_info = &get_goto_target_scopes_for_cursor(db, top_mod, cursor).unwrap_or_default();
+    
+    // Use the enhanced tooling API for hover information
+    let hover_info = hir_analysis::tooling_api::get_hover_info(db, top_mod, cursor);
+    let (goto_info, _position) = match hover_info {
+        Some((scopes, position)) => (scopes, position),
+        None => return Ok(None),
+    };
 
-    let scopes_info = goto_info
+    let scopes_info = &goto_info
         .iter()
         .map(|scope| {
             let item = scope.item();

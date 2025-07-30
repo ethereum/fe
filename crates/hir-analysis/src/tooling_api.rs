@@ -812,3 +812,100 @@ where
     // Resolve position to scopes
     resolve_position_to_scopes(db, position, enclosing_item)
 }
+
+/// Find all references to a symbol throughout the module
+/// This is groundwork for "Find All References" LSP feature
+pub fn find_all_references<'db, DB>(
+    db: &'db DB,
+    top_mod: TopLevelMod<'db>,
+    target_scope: ScopeId<'db>,
+) -> Vec<ResolvablePosition<'db>>
+where
+    DB: SpannedHirDb + HirAnalysisDb,
+{
+    let positions = collect_resolvable_positions(db, top_mod);
+    positions
+        .into_iter()
+        .filter(|position| {
+            let enclosing_item = find_enclosing_item_for_position(db, top_mod, position)
+                .unwrap_or_else(|| ItemKind::TopMod(top_mod));
+            
+            if let Some(scopes) = resolve_position_to_scopes(db, position.clone(), enclosing_item) {
+                scopes.contains(&target_scope)
+            } else {
+                false
+            }
+        })
+        .collect()
+}
+
+/// Get hover information for a position - combines goto resolution with additional context
+/// This enhances the existing hover functionality
+pub fn get_hover_info<'db, DB>(
+    db: &'db DB,
+    top_mod: TopLevelMod<'db>,
+    cursor: Cursor,
+) -> Option<(Vec<ScopeId<'db>>, ResolvablePosition<'db>)>
+where
+    DB: SpannedHirDb + HirAnalysisDb,
+{
+    let positions = collect_resolvable_positions(db, top_mod);
+    let position = find_position_at_cursor(db, cursor, positions)?;
+    
+    let enclosing_item = find_enclosing_item(db, top_mod, cursor)
+        .unwrap_or_else(|| ItemKind::TopMod(top_mod));
+    
+    if let Some(scopes) = resolve_position_to_scopes(db, position.clone(), enclosing_item) {
+        Some((scopes, position))
+    } else {
+        None
+    }
+}
+
+/// Helper function to find enclosing item for a position
+fn find_enclosing_item_for_position<'db>(
+    db: &'db dyn SpannedHirDb,
+    top_mod: TopLevelMod<'db>,
+    position: &ResolvablePosition<'db>,
+) -> Option<ItemKind<'db>> {
+    // Extract cursor from position and find enclosing item
+    let cursor = match position {
+        ResolvablePosition::Path(_, _, span) => {
+            if let Some(resolved_span) = span.clone().resolve(db) {
+                resolved_span.range.start()
+            } else {
+                return None;
+            }
+        }
+        ResolvablePosition::FieldAccess(_, _, _, span) => {
+            if let Some(resolved_span) = span.resolve(db) {
+                resolved_span.range.start()
+            } else {
+                return None;
+            }
+        }
+        ResolvablePosition::MethodCall(_, _, _, span) => {
+            if let Some(resolved_span) = span.resolve(db) {
+                resolved_span.range.start()
+            } else {
+                return None;
+            }
+        }
+        ResolvablePosition::LocalVariable(_, _, span) => {
+            if let Some(resolved_span) = span.resolve(db) {
+                resolved_span.range.start()
+            } else {
+                return None;
+            }
+        }
+        ResolvablePosition::PatternField(_, _, span) => {
+            if let Some(resolved_span) = span.resolve(db) {
+                resolved_span.range.start()
+            } else {
+                return None;
+            }
+        }
+    };
+    
+    find_enclosing_item(db, top_mod, cursor)
+}

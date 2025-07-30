@@ -5,10 +5,7 @@ use hir::{
         scope_graph::ScopeId, ItemKind, PathId, TopLevelMod,
     },
     lower::map_file_to_mod,
-    span::LazySpan,
-    SpannedHirDb,
 };
-use hir_analysis::name_resolution::{PathResErrorKind};
 use tracing::error;
 
 use crate::{
@@ -146,7 +143,6 @@ pub async fn handle_goto_definition(
 
 #[cfg(test)]
 mod tests {
-    use common::ingot::IngotKind;
     use dir_test::{dir_test, Fixture};
     use std::collections::BTreeMap;
     use test_utils::snap_test;
