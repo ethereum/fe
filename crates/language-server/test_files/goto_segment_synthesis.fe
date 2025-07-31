@@ -1,0 +1,16 @@
+// Test that cursor synthesis works for path segments
+mod a {
+    pub mod b {
+        pub mod c {
+            pub const DEEP_CONST: u32 = 42
+        }
+    }
+}
+
+fn test_segments() {
+    // Multi-segment path - should synthesize cursors for each segment
+    let x = a::b::c::DEEP_CONST
+    
+    // Two-segment path
+    let y = a::b
+}

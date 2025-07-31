@@ -1,0 +1,8 @@
+// Simple test to debug segment resolution
+mod nested {
+    pub const NESTED_CONST: u32 = 100
+}
+
+fn test() {
+    let x = nested::NESTED_CONST
+}

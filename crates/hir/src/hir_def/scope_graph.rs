@@ -11,7 +11,7 @@ use super::{
     scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, EnumVariant,
     ExprId, FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl,
     ImplTrait, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind,
-    Visibility,
+    Visibility, TypeId, TypeKind,
 };
 use crate::{
     hir_def::{BodyKind, GenericParamOwner},
@@ -354,10 +354,39 @@ impl<'db> ScopeId<'db> {
                 BodyKind::FuncBody => "{fn_body}".to_string(),
                 BodyKind::Anonymous => "{anonymous_body}".to_string(),
             },
+            ScopeId::Item(ItemKind::Func(func)) => {
+                // Get function name
+                if let Some(name) = func.name(db).to_opt() {
+                    name.data(db).clone()
+                } else {
+                    return None;
+                }
+            },
+            ScopeId::Item(ItemKind::Impl(impl_)) => {
+                // Handle impl blocks specially - they don't have names
+                // but we can use the type they implement
+                if let Some(ty) = impl_.ty(db).to_opt() {
+                    // For now, just use a placeholder that includes the type
+                    format!("impl_{:?}", ty).replace("TypeId", "")
+                } else {
+                    "impl".to_string()
+                }
+            },
             _ => self.name(db)?.data(db).clone(),
         };
 
         if let Some(parent) = self.parent(db) {
+            // Special case: if this is a function in an impl block, format it as Type::method
+            if let (ScopeId::Item(ItemKind::Func(_)), ScopeId::Item(ItemKind::Impl(impl_))) = (self, parent) {
+                // Try to get the type name from the impl
+                if let Some(ty) = impl_.ty(db).to_opt() {
+                    // Try to extract a simple name from the type
+                    if let Some(type_name) = extract_type_name(db, ty) {
+                        return Some(format!("{}::{}", type_name, name));
+                    }
+                }
+            }
+            
             let parent_path = parent.pretty_path(db)?;
             Some(format!("{parent_path}::{name}"))
         } else {
@@ -721,5 +750,23 @@ mod tests {
 
         let field = scope_graph.children(variant).next().unwrap();
         assert!(matches!(field, ScopeId::Field(FieldParent::Variant(..), _)));
+    }
+}
+
+/// Helper function to extract a simple type name from a TypeId
+fn extract_type_name<'db>(db: &'db dyn HirDb, ty: TypeId<'db>) -> Option<String> {
+    match ty.data(db) {
+        TypeKind::Path(path) => {
+            // Try to get the path and extract its ident (the last segment)
+            if let Some(path) = path.to_opt() {
+                // Get the ident of this path segment (which is the last one)
+                if let Some(ident) = path.ident(db).to_opt() {
+                    return Some(ident.data(db).clone());
+                }
+            }
+            None
+        }
+        TypeKind::SelfType(_) => Some("Self".to_string()),
+        _ => None,
     }
 }

@@ -1,0 +1,32 @@
+---
+source: crates/language-server/src/functionality/goto.rs
+expression: snapshot
+input_file: test_files/goto_simple_method.fe
+---
+0: struct Container {
+1:     pub value: u32
+2: }
+3: 
+4: impl Container {
+5:     pub fn get(self) -> u32 {
+6:         self.value
+7:     }
+8: }
+9: 
+10: fn test() {
+11:     let container = Container { value: 42 };
+12:     let result = container.get();
+13: }
+---
+cursor position (1, 8), path: goto_simple_method::Container
+cursor position (2, 9), path: goto_simple_method::Container::value
+cursor position (5, 6), path: goto_simple_method::Container
+cursor position (6, 12), path: Container::get
+cursor position (6, 16), path: Container::get::self
+goto_simple_method
+cursor position (7, 9), path: Container::get::self
+goto_simple_method
+cursor position (7, 14), path: goto_simple_method::Container::value
+cursor position (11, 4), path: goto_simple_method::test
+cursor position (12, 21), path: goto_simple_method::Container
+cursor position (13, 28), path: Container::get

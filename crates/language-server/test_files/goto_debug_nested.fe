@@ -1,0 +1,7 @@
+mod nested {
+    pub const NESTED_CONST: u32 = 100
+}
+
+fn test_nested() {
+    let a = nested::NESTED_CONST
+}

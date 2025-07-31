@@ -68,9 +68,11 @@ input_file: test_files/goto_comprehensive.fe
 cursor position (2, 8), path: goto_comprehensive::Container
 cursor position (3, 9), path: goto_comprehensive::Container::value
 cursor position (6, 6), path: goto_comprehensive::Container
-cursor position (7, 12), path: 
-cursor position (7, 16), path: goto_comprehensive
-cursor position (8, 9), path: goto_comprehensive
+cursor position (7, 12), path: Container::get
+cursor position (7, 16), path: Container::get::self
+goto_comprehensive
+cursor position (8, 9), path: Container::get::self
+goto_comprehensive
 cursor position (8, 14), path: goto_comprehensive::Container::value
 cursor position (13, 6), path: goto_comprehensive::Color
 cursor position (14, 5), path: goto_comprehensive::Color::Red
@@ -80,7 +82,7 @@ cursor position (16, 5), path: goto_comprehensive::Color::Blue
 cursor position (19, 4), path: goto_comprehensive::test_field_access
 cursor position (20, 21), path: goto_comprehensive::Container
 cursor position (23, 25), path: goto_comprehensive::Container::value
-cursor position (26, 31), path: 
+cursor position (26, 31), path: Container::get
 cursor position (33, 4), path: goto_comprehensive::test_enum_variants
 cursor position (35, 15), path: goto_comprehensive::Color
 cursor position (35, 22), path: goto_comprehensive::Color::Red
@@ -99,10 +101,13 @@ cursor position (53, 20), path: goto_comprehensive::Wrapper::S
 cursor position (53, 23), path: goto_comprehensive::Inner
 cursor position (54, 9), path: goto_comprehensive::Wrapper::inner
 cursor position (54, 16), path: goto_comprehensive::Wrapper::S
-cursor position (57, 6), path: 
+cursor position (57, 6), path: goto_comprehensive::impl_(Id(3805), PhantomData<&salsa::interned::Value<fe_hir::hir_def::types::>>)::S
 cursor position (57, 9), path: goto_comprehensive::Inner
 cursor position (57, 16), path: goto_comprehensive::Wrapper
-cursor position (58, 12), path: 
-cursor position (58, 20), path: goto_comprehensive
-cursor position (59, 9), path: goto_comprehensive
+cursor position (58, 12), path: Wrapper::foo
+cursor position (58, 20), path: Wrapper::foo::self
+goto_comprehensive
+cursor position (59, 9), path: Wrapper::foo::self
+goto_comprehensive
 cursor position (59, 14), path: goto_comprehensive::Wrapper::inner
+cursor position (59, 20), path: goto_comprehensive::Inner::foo

@@ -179,12 +179,19 @@ mod tests {
         for position in positions {
             match position {
                 hir_analysis::tooling_api::ResolvablePosition::Path(path, _, lazy_span) => {
-                    // Extract cursor positions from all path segments
-                    for idx in 0..=path.segment_index(db) {
+                    // First, add cursor for the full path
+                    if let Some(full_span) = lazy_span.resolve(db) {
+                        cursors.push(full_span.range.start());
+                    }
+                    
+                    // Then try to extract cursor positions from individual segments
+                    let segment_count = path.segment_index(db) + 1;
+                    for idx in 0..segment_count {
                         if let Some(seg_span) = lazy_span.clone().segment(idx).resolve(db) {
                             cursors.push(seg_span.range.start());
                         }
                     }
+                    
                 }
                 hir_analysis::tooling_api::ResolvablePosition::FieldAccess(_, _, _, lazy_span) |
                 hir_analysis::tooling_api::ResolvablePosition::MethodCall(_, _, _, lazy_span) |

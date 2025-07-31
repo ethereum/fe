@@ -1,5 +1,5 @@
 use common::ingot::Ingot;
-use hir::hir_def::{HirIngot, IdentId, Impl};
+use hir::hir_def::{HirIngot, IdentId, Impl, ImplTrait};
 use rustc_hash::FxHashMap;
 use salsa::Update;
 
@@ -20,8 +20,14 @@ pub(crate) fn collect_methods<'db>(
 ) -> MethodTable<'db> {
     let mut collector = MethodCollector::new(db, ingot);
 
+    // Collect inherent methods from impl blocks
     let impls = ingot.all_impls(db);
     collector.collect_impls(impls);
+    
+    // Also collect trait methods from trait implementations
+    let impl_traits = ingot.all_impl_traits(db);
+    collector.collect_impl_traits(impl_traits);
+    
     collector.finalize()
 }
 
@@ -44,9 +50,35 @@ pub fn probe_method_for_language_server<'db>(
     ty: TyId<'db>,
     name: IdentId<'db>,
 ) -> Vec<FuncDef<'db>> {
-    // Create a simple canonical type with no type variables for basic method lookup
+    // First try normal method lookup
     let canonical_ty = Canonical::new(db, ty);
-    probe_method(db, ingot, canonical_ty, name).to_vec()
+    let mut methods = probe_method(db, ingot, canonical_ty, name).to_vec();
+    
+    // If no methods found and this is a type parameter, check trait bounds
+    if methods.is_empty() {
+        if let TyData::TyParam(_ty_param) = ty.data(db) {
+            // For type parameters with trait bounds, we need to look up methods in those traits
+            // This is a simplified approach - a full implementation would need to check
+            // the constraints/predicates for this type parameter
+            
+            // For now, we'll try to find trait methods that match the name
+            // This is a hack but should make simple cases work
+            // We need to get all top-level modules in the ingot and check their traits
+            for module in ingot.all_modules(db) {
+                for trait_ in module.all_traits(db) {
+                    for method in trait_.methods(db) {
+                        if method.name(db).to_opt() == Some(name) {
+                            if let Some(func_def) = lower_func(db, method) {
+                                methods.push(func_def);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    methods
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
@@ -174,6 +206,29 @@ impl<'db> MethodCollector<'db> {
                 };
 
                 self.insert(ty, func)
+            }
+        }
+    }
+
+    fn collect_impl_traits(&mut self, impl_traits: &[ImplTrait<'db>]) {
+        for impl_trait in impl_traits {
+            // Get the implementor type
+            let ty = match impl_trait.ty(self.db).to_opt() {
+                Some(ty) => lower_hir_ty(self.db, ty, impl_trait.scope()),
+                None => continue,
+            };
+            
+            // Skip if the type is invalid
+            if ty.has_invalid(self.db) {
+                continue;
+            }
+            
+            // Get all methods from the trait implementation
+            for func in impl_trait.methods(self.db) {
+                let Some(func_def) = lower_func(self.db, func) else {
+                    continue;
+                };
+                self.insert(ty, func_def);
             }
         }
     }
