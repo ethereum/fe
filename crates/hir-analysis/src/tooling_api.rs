@@ -64,6 +64,7 @@ struct PositionCollector<'db> {
 }
 
 impl<'db, 'ast: 'db> Visitor<'ast> for PositionCollector<'db> {
+
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>, path: PathId<'db>) {
         let Some(span) = ctxt.span() else {
             return;
@@ -112,10 +113,16 @@ impl<'db, 'ast: 'db> Visitor<'ast> for PositionCollector<'db> {
             // Handle method calls: container.get(), container.display()
             Expr::MethodCall(receiver_expr, method_name, _generic_args, _call_args) => {
                 if let Partial::Present(method_ident) = method_name {
-                    if let Some(method_span) = ctxt
+                    // Try to get the method name span
+                    let method_span = ctxt
                         .span()
-                        .map(|span| span.into_method_call_expr().method_name())
-                    {
+                        .map(|span| {
+                            // Try to get method call expression span
+                            let method_call_span = span.into_method_call_expr();
+                            method_call_span.method_name()
+                        });
+                    
+                    if let Some(method_span) = method_span {
                         let scope = ctxt.scope();
                         self.positions.push(ResolvablePosition::MethodCall(
                             *receiver_expr,
@@ -731,14 +738,19 @@ pub fn resolve_position_to_scopes<'db>(
             let analysis = analyze_function_for_language_server(db, func);
             let receiver_ty = analysis.expr_type(db, receiver_expr);
             
-            // Look up inherent methods
+            // Look up both inherent and trait methods using probe_method
             let ingot = scope.ingot(db);
-            let methods = find_methods_for_type(db, ingot, receiver_ty, method_ident);
+            let method_results = crate::ty::method_table::probe_method_for_language_server(
+                db, 
+                ingot, 
+                receiver_ty, 
+                method_ident
+            );
             
-            if !methods.is_empty() {
-                let scopes: Vec<_> = methods
-                    .into_iter()
-                    .map(|func_def| func_def.scope(db))
+            if !method_results.is_empty() {
+                let scopes: Vec<_> = method_results
+                    .iter()
+                    .map(|method_def| method_def.scope(db))
                     .collect();
                 Some(scopes)
             } else {
