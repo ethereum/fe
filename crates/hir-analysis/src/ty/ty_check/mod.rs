@@ -8,7 +8,7 @@ mod stmt;
 
 pub use self::path::RecordLike;
 pub use callable::Callable;
-pub use env::ExprProp;
+pub use env::{ExprProp, LocalBinding};
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
 use hir::{

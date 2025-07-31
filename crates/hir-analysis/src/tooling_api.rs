@@ -29,7 +29,7 @@ use crate::{
     ty::{
         func_def::FuncDef,
         method_table::probe_method_for_language_server,
-        ty_check::check_func_body,
+        ty_check::{check_func_body, LocalBinding},
         ty_def::TyId,
     },
     HirAnalysisDb,
@@ -314,62 +314,38 @@ pub fn find_enclosing_item<'db>(
     smallest_enclosing_item
 }
 
-/// Public representation of a local binding (variable, parameter, pattern)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PublicLocalBinding<'db> {
-    /// Local variable binding from a pattern
-    Local {
-        /// The pattern ID where this variable is defined
-        pat: PatId,
-        /// Whether the binding is mutable
-        is_mut: bool,
-    },
-    /// Function parameter binding
-    Param {
-        /// Parameter index in the function signature
-        idx: usize,
-        /// The type of the parameter
-        ty: TyId<'db>,
-        /// Whether the parameter is mutable
-        is_mut: bool,
-    },
-}
-
-impl<'db> PublicLocalBinding<'db> {
-    /// Check if this binding is mutable
-    pub fn is_mut(&self) -> bool {
-        match self {
-            Self::Local { is_mut, .. } | Self::Param { is_mut, .. } => *is_mut,
-        }
-    }
-
-    /// Get the definition span for this binding
-    pub fn definition_span(&self, db: &'db dyn HirAnalysisDb, body: Body<'db>) -> Option<DynLazySpan<'db>> {
-        match self {
-            Self::Local { pat, .. } => Some(pat.span(body).into()),
-            Self::Param { idx, .. } => {
-                // For parameters, we need to get the function that contains this body
-                // and then get the parameter span
-                let body_item = body.into();
-                if let Some(func) = match body_item {
-                    ItemKind::Body(_body_def) => {
-                        let body_scope = ScopeId::from_item(body_item);
-                        if let Some(parent_scope) = body_scope.parent(db) {
-                            if let ScopeId::Item(ItemKind::Func(parent_func)) = parent_scope {
-                                Some(parent_func)
-                            } else {
-                                None
-                            }
+/// Helper function to get the definition span for a LocalBinding
+pub fn get_local_binding_definition_span<'db>(
+    binding: &LocalBinding<'db>,
+    db: &'db dyn HirAnalysisDb,
+    body: Body<'db>,
+) -> Option<DynLazySpan<'db>> {
+    match binding {
+        LocalBinding::Local { pat, .. } => Some(pat.span(body).into()),
+        LocalBinding::Param { .. } => {
+            // For parameters, we need to get the function that contains this body
+            // and then get the parameter span
+            let body_item = body.into();
+            if let Some(func) = match body_item {
+                ItemKind::Body(_body_def) => {
+                    let body_scope = ScopeId::from_item(body_item);
+                    if let Some(parent_scope) = body_scope.parent(db) {
+                        if let ScopeId::Item(ItemKind::Func(parent_func)) = parent_scope {
+                            Some(parent_func)
                         } else {
                             None
                         }
+                    } else {
+                        None
                     }
-                    _ => None,
-                } {
-                    Some(func.span().params().param(*idx).name().into())
-                } else {
-                    None
                 }
+                _ => None,
+            } {
+                // For now, return function span since we don't have parameter index info
+                // TODO: Get the correct parameter span using parameter index
+                Some(func.span().into())
+            } else {
+                None
             }
         }
     }
@@ -383,7 +359,7 @@ pub struct PublicExprInfo<'db> {
     /// Whether the expression is mutable
     pub is_mut: bool,
     /// If this expression references a local binding, this contains the binding info
-    pub local_binding: Option<PublicLocalBinding<'db>>,
+    pub local_binding: Option<LocalBinding<'db>>,
 }
 
 impl<'db> PublicExprInfo<'db> {
@@ -397,7 +373,7 @@ impl<'db> PublicExprInfo<'db> {
     }
 
     /// Create a new expression info with local binding reference
-    pub fn with_binding(ty: TyId<'db>, is_mut: bool, binding: PublicLocalBinding<'db>) -> Self {
+    pub fn with_binding(ty: TyId<'db>, is_mut: bool, binding: LocalBinding<'db>) -> Self {
         Self {
             ty,
             is_mut,
@@ -416,9 +392,9 @@ pub struct FunctionAnalysis<'db> {
     /// Enhanced expression information including local binding references
     pub expression_info: FxHashMap<ExprId, PublicExprInfo<'db>>,
     /// Map from identifier names to their local bindings in different scopes
-    pub local_bindings: FxHashMap<IdentId<'db>, Vec<PublicLocalBinding<'db>>>,
+    pub local_bindings: FxHashMap<IdentId<'db>, Vec<LocalBinding<'db>>>,
     /// Map from expressions to their local bindings (for variables that reference local bindings)
-    pub expr_to_binding: FxHashMap<ExprId, PublicLocalBinding<'db>>,
+    pub expr_to_binding: FxHashMap<ExprId, LocalBinding<'db>>,
 }
 
 impl<'db> FunctionAnalysis<'db> {
@@ -439,17 +415,17 @@ impl<'db> FunctionAnalysis<'db> {
     }
 
     /// Check if an expression references a local binding
-    pub fn expr_local_binding(&self, expr: ExprId) -> Option<PublicLocalBinding<'db>> {
+    pub fn expr_local_binding(&self, expr: ExprId) -> Option<LocalBinding<'db>> {
         self.expr_to_binding.get(&expr).copied()
     }
 
     /// Find all local bindings for a given identifier name
-    pub fn find_local_bindings(&self, ident: IdentId<'db>) -> &[PublicLocalBinding<'db>] {
+    pub fn find_local_bindings(&self, ident: IdentId<'db>) -> &[LocalBinding<'db>] {
         self.local_bindings.get(&ident).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
     /// Get all expressions that reference local bindings
-    pub fn all_local_references(&self) -> impl Iterator<Item = (ExprId, PublicLocalBinding<'db>)> + '_ {
+    pub fn all_local_references(&self) -> impl Iterator<Item = (ExprId, LocalBinding<'db>)> + '_ {
         self.expr_to_binding.iter().map(|(&expr, &binding)| (expr, binding))
     }
 }
@@ -515,7 +491,7 @@ fn extract_comprehensive_analysis_from_body<'db>(
             // Extract identifier bindings from patterns
             if let Pat::Path(Partial::Present(path), ..) = pat_data {
                 if let Partial::Present(ident) = path.ident(self.db) {
-                    let binding = PublicLocalBinding::Local {
+                    let binding = LocalBinding::Local {
                         pat,
                         is_mut: false, // TODO: Extract mutability from pattern
                     };
@@ -540,22 +516,8 @@ fn extract_comprehensive_analysis_from_body<'db>(
             // Get expression properties from typed body
             let expr_prop = self.typed_body.expr_prop(self.db, expr);
             
-            // Convert local binding if present
-            let public_binding = expr_prop.binding.map(|_binding| {
-                // Since we can't access the private LocalBinding enum directly,
-                // we'll need a different approach. For now, we'll create a placeholder
-                // that indicates we found a binding but can't extract its details
-                // This is a limitation of the current private API structure
-                
-                // TODO: This needs to be fixed once we have access to LocalBinding details
-                // For now, create a dummy binding
-                PublicLocalBinding::Local {
-                    pat: PatId::from_u32(0), // Placeholder
-                    is_mut: expr_prop.is_mut,
-                }
-            });
-
-            let expr_info = if let Some(binding) = public_binding {
+            // Now we can access the real LocalBinding directly
+            let expr_info = if let Some(binding) = expr_prop.binding {
                 self.analysis.expr_to_binding.insert(expr, binding);
                 PublicExprInfo::with_binding(expr_prop.ty, expr_prop.is_mut, binding)
             } else {
@@ -622,7 +584,7 @@ pub struct IdentifierResolution<'db> {
     /// Scopes found through global name resolution
     pub global_scopes: Vec<ScopeId<'db>>,
     /// Local bindings found in the current function
-    pub local_bindings: Vec<PublicLocalBinding<'db>>,
+    pub local_bindings: Vec<LocalBinding<'db>>,
 }
 
 impl<'db> IdentifierResolution<'db> {

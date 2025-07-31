@@ -67,7 +67,7 @@ fn get_precise_local_variable_locations(
             
             // For each local binding, get its definition span directly
             for binding in &resolution.local_bindings {
-                if let Some(def_span) = binding.definition_span(db, body) {
+                if let Some(def_span) = hir_analysis::tooling_api::get_local_binding_definition_span(binding, db, body) {
                     let location = to_lsp_location_from_lazy_span(db, def_span);
                     precise_locations.push(location);
                 }

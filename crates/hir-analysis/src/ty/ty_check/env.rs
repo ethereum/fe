@@ -394,7 +394,7 @@ impl<'db> BlockEnv<'db> {
 pub struct ExprProp<'db> {
     pub ty: TyId<'db>,
     pub is_mut: bool,
-    pub(crate) binding: Option<LocalBinding<'db>>,
+    pub binding: Option<LocalBinding<'db>>,
 }
 
 impl<'db> ExprProp<'db> {
@@ -432,7 +432,7 @@ impl<'db> ExprProp<'db> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub(crate) enum LocalBinding<'db> {
+pub enum LocalBinding<'db> {
     Local {
         pat: PatId,
         is_mut: bool,
