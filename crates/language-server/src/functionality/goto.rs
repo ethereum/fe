@@ -5,6 +5,7 @@ use hir::{
         scope_graph::ScopeId, ItemKind, PathId, TopLevelMod,
     },
     lower::map_file_to_mod,
+    span::LazySpan,
 };
 use tracing::error;
 

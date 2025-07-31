@@ -345,7 +345,7 @@ impl<'db> PublicLocalBinding<'db> {
                 // and then get the parameter span
                 let body_item = body.into();
                 if let Some(func) = match body_item {
-                    ItemKind::Body(body_def) => {
+                    ItemKind::Body(_body_def) => {
                         let body_scope = ScopeId::from_item(body_item);
                         if let Some(parent_scope) = body_scope.parent(db) {
                             if let ScopeId::Item(ItemKind::Func(parent_func)) = parent_scope {
@@ -489,7 +489,7 @@ fn extract_comprehensive_analysis_from_body<'db>(
 
     struct ComprehensiveExtractor<'db, 'a> {
         db: &'db dyn HirAnalysisDb,
-        body: Body<'db>,
+        _body: Body<'db>,
         typed_body: &'a crate::ty::ty_check::TypedBody<'db>,
         analysis: &'a mut FunctionAnalysis<'db>,
     }
@@ -534,7 +534,7 @@ fn extract_comprehensive_analysis_from_body<'db>(
             let expr_prop = self.typed_body.expr_prop(self.db, expr);
             
             // Convert local binding if present
-            let public_binding = expr_prop.binding.map(|binding| {
+            let public_binding = expr_prop.binding.map(|_binding| {
                 // Since we can't access the private LocalBinding enum directly,
                 // we'll need a different approach. For now, we'll create a placeholder
                 // that indicates we found a binding but can't extract its details
@@ -563,7 +563,7 @@ fn extract_comprehensive_analysis_from_body<'db>(
 
     let mut extractor = ComprehensiveExtractor {
         db,
-        body,
+        _body: body,
         typed_body,
         analysis,
     };
