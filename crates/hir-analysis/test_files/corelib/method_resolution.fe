@@ -2,7 +2,7 @@ use core::{Option, panic}
 
 fn f() -> usize {
     let x = Option::Some(10)
-    let y = Option::default()
+    let y: Option<usize> = Option::None
 
     if y.is_some() {
         y.unwrap()

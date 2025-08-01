@@ -1,7 +1,7 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
 expression: snapshot
-input_file: crates/language-server/test_files/single_ingot/src/lib.fe
+input_file: test_files/single_ingot/src/lib.fe
 ---
 0: use ingot::foo::Why
 1: 
@@ -29,10 +29,15 @@ input_file: crates/language-server/test_files/single_ingot/src/lib.fe
 ---
 cursor position (9, 11), path: lib::foo::Why
 cursor position (14, 7), path: lib::foo::Why
+cursor position (19, 8), path: local_var_def_at_line_20
 cursor position (19, 11), path: lib::foo::Why
+cursor position (20, 8), path: local_var_def_at_line_21
+local_var_def_at_line_22
 cursor position (20, 12), path: lib::who
 cursor position (20, 17), path: lib::who::what
 cursor position (20, 23), path: lib::who::what::how
+cursor position (21, 8), path: local_var_def_at_line_21
+local_var_def_at_line_22
 cursor position (21, 11), path: lib::who
 cursor position (21, 16), path: lib::who::what
 cursor position (21, 22), path: lib::who::what::how

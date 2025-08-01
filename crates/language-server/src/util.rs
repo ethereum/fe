@@ -62,6 +62,14 @@ pub fn to_lsp_location_from_scope(
     to_lsp_location_from_span(db, span)
 }
 
+pub fn to_lsp_location_from_lazy_span(
+    db: &dyn SpannedHirDb,
+    lazy_span: hir::span::DynLazySpan,
+) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
+    let span = lazy_span.resolve(db).ok_or("Failed to resolve lazy span")?;
+    to_lsp_location_from_span(db, span)
+}
+
 pub fn severity_to_lsp(is_primary: bool, severity: Severity) -> DiagnosticSeverity {
     // We set the severity to `HINT` for a secondary diags.
     if !is_primary {

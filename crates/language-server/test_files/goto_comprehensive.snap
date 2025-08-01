@@ -1,0 +1,159 @@
+---
+source: crates/language-server/src/functionality/goto.rs
+expression: snapshot
+input_file: test_files/goto_comprehensive.fe
+---
+0: // Test struct field access resolution
+1: struct Container {
+2:     pub value: u32
+3: }
+4: 
+5: impl Container {
+6:     pub fn get(self) -> u32 {
+7:         self.value
+8:     }
+9: }
+10: 
+11: // Test enum variant resolution
+12: enum Color {
+13:     Red,
+14:     Green { intensity: u32 },
+15:     Blue(u32)
+16: }
+17: 
+18: fn test_field_access() {
+19:     let container = Container { value: 42 }
+20: 
+21:     // This should resolve to the field definition
+22:     let val = container.value
+23: 
+24:     // This should resolve to the method definition
+25:     let retrieved = container.get()
+26: 
+27:     // Test local variable references
+28:     let copy_container = container  // should resolve to line 20
+29:     let copy_val = val             // should resolve to line 23
+30: }
+31: 
+32: fn test_enum_variants() {
+33:     // These should resolve to the specific variants, not the enum
+34:     let red = Color::Red
+35:     let green = Color::Green { intensity: 50 }
+36:     let blue = Color::Blue(100)
+37: 
+38:     // Test pattern matching field resolution
+39:     match green {
+40:         Color::Green { intensity } => {
+41:             // 'intensity' here should resolve to the field in the enum variant
+42:             let _val = intensity
+43:         }
+44:         _ => {}
+45:     }
+46: }
+47: 
+48: pub trait Inner {
+49:     fn foo(self) -> i32
+50: }
+51: 
+52: pub struct Wrapper<S: Inner> {
+53:     pub inner: S,
+54: }
+55: 
+56: impl<S: Inner> Wrapper<S> {
+57:     pub fn foo(mut self) -> i32 {
+58:         self.inner.foo()
+59:     }
+60: }
+---
+cursor position (2, 8), path: goto_comprehensive::Container
+cursor position (2, 9), path: goto_comprehensive::Container
+cursor position (2, 16), path: goto_comprehensive::Container
+cursor position (3, 9), path: goto_comprehensive::Container::value
+cursor position (3, 10), path: goto_comprehensive::Container::value
+cursor position (3, 13), path: goto_comprehensive::Container::value
+cursor position (6, 6), path: goto_comprehensive::Container
+cursor position (6, 7), path: goto_comprehensive::Container
+cursor position (6, 14), path: goto_comprehensive::Container
+cursor position (7, 12), path: Container::get
+cursor position (7, 13), path: Container::get
+cursor position (7, 14), path: Container::get
+cursor position (8, 14), path: goto_comprehensive::Container::value
+cursor position (8, 15), path: goto_comprehensive::Container::value
+cursor position (8, 18), path: goto_comprehensive::Container::value
+cursor position (13, 6), path: goto_comprehensive::Color
+cursor position (13, 7), path: goto_comprehensive::Color
+cursor position (13, 10), path: goto_comprehensive::Color
+cursor position (14, 5), path: goto_comprehensive::Color::Red
+cursor position (14, 6), path: goto_comprehensive::Color::Red
+cursor position (14, 7), path: goto_comprehensive::Color::Red
+cursor position (15, 5), path: goto_comprehensive::Color::Green
+cursor position (15, 6), path: goto_comprehensive::Color::Green
+cursor position (15, 9), path: goto_comprehensive::Color::Green
+cursor position (15, 13), path: goto_comprehensive::Color::Green::intensity
+cursor position (15, 14), path: goto_comprehensive::Color::Green::intensity
+cursor position (15, 21), path: goto_comprehensive::Color::Green::intensity
+cursor position (16, 5), path: goto_comprehensive::Color::Blue
+cursor position (16, 6), path: goto_comprehensive::Color::Blue
+cursor position (16, 8), path: goto_comprehensive::Color::Blue
+cursor position (19, 4), path: goto_comprehensive::test_field_access
+cursor position (19, 5), path: goto_comprehensive::test_field_access
+cursor position (19, 20), path: goto_comprehensive::test_field_access
+cursor position (20, 21), path: goto_comprehensive::Container
+cursor position (20, 22), path: goto_comprehensive::Container
+cursor position (20, 29), path: goto_comprehensive::Container
+cursor position (23, 25), path: goto_comprehensive::Container::value
+cursor position (23, 26), path: goto_comprehensive::Container::value
+cursor position (23, 29), path: goto_comprehensive::Container::value
+cursor position (26, 31), path: Container::get
+cursor position (26, 32), path: Container::get
+cursor position (26, 33), path: Container::get
+cursor position (33, 4), path: goto_comprehensive::test_enum_variants
+cursor position (33, 5), path: goto_comprehensive::test_enum_variants
+cursor position (33, 21), path: goto_comprehensive::test_enum_variants
+cursor position (35, 15), path: goto_comprehensive::Color
+cursor position (35, 16), path: goto_comprehensive::Color
+cursor position (35, 22), path: goto_comprehensive::Color::Red
+cursor position (35, 23), path: goto_comprehensive::Color::Red
+cursor position (36, 17), path: goto_comprehensive::Color
+cursor position (36, 18), path: goto_comprehensive::Color
+cursor position (36, 24), path: goto_comprehensive::Color::Green
+cursor position (36, 25), path: goto_comprehensive::Color::Green
+cursor position (37, 16), path: goto_comprehensive::Color
+cursor position (37, 17), path: goto_comprehensive::Color
+cursor position (37, 23), path: goto_comprehensive::Color::Blue
+cursor position (37, 24), path: goto_comprehensive::Color::Blue
+cursor position (41, 9), path: goto_comprehensive::Color
+cursor position (41, 10), path: goto_comprehensive::Color
+cursor position (41, 16), path: goto_comprehensive::Color::Green
+cursor position (41, 17), path: goto_comprehensive::Color::Green
+cursor position (49, 11), path: goto_comprehensive::Inner
+cursor position (49, 12), path: goto_comprehensive::Inner
+cursor position (49, 15), path: goto_comprehensive::Inner
+cursor position (50, 8), path: goto_comprehensive::Inner::foo
+cursor position (50, 9), path: goto_comprehensive::Inner::foo
+cursor position (50, 10), path: goto_comprehensive::Inner::foo
+cursor position (53, 12), path: goto_comprehensive::Wrapper
+cursor position (53, 13), path: goto_comprehensive::Wrapper
+cursor position (53, 18), path: goto_comprehensive::Wrapper
+cursor position (53, 23), path: goto_comprehensive::Inner
+cursor position (53, 24), path: goto_comprehensive::Inner
+cursor position (53, 27), path: goto_comprehensive::Inner
+cursor position (54, 9), path: goto_comprehensive::Wrapper::inner
+cursor position (54, 10), path: goto_comprehensive::Wrapper::inner
+cursor position (54, 13), path: goto_comprehensive::Wrapper::inner
+cursor position (54, 16), path: goto_comprehensive::Wrapper::S
+cursor position (57, 9), path: goto_comprehensive::Inner
+cursor position (57, 10), path: goto_comprehensive::Inner
+cursor position (57, 13), path: goto_comprehensive::Inner
+cursor position (57, 16), path: goto_comprehensive::Wrapper
+cursor position (57, 17), path: goto_comprehensive::Wrapper
+cursor position (57, 22), path: goto_comprehensive::Wrapper
+cursor position (58, 12), path: Wrapper::foo
+cursor position (58, 13), path: Wrapper::foo
+cursor position (58, 14), path: Wrapper::foo
+cursor position (59, 14), path: goto_comprehensive::Wrapper::inner
+cursor position (59, 15), path: goto_comprehensive::Wrapper::inner
+cursor position (59, 18), path: goto_comprehensive::Wrapper::inner
+cursor position (59, 20), path: goto_comprehensive::Inner::foo
+cursor position (59, 21), path: goto_comprehensive::Inner::foo
+cursor position (59, 22), path: goto_comprehensive::Inner::foo

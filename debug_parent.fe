@@ -1,0 +1,9 @@
+struct Container {
+    value: u32
+}
+
+impl Container {
+    fn get(self) -> u32 {
+        self.value
+    }
+}

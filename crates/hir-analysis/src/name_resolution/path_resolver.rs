@@ -232,7 +232,7 @@ impl<'db> PathRes<'db> {
             | PathRes::TypeMemberTbd(ty) => ty.as_scope(db),
             PathRes::TyAlias(alias, _) => Some(alias.alias.scope()),
             PathRes::Trait(trait_) => Some(trait_.trait_(db).scope()),
-            PathRes::EnumVariant(variant) => Some(variant.enum_(db).scope()),
+            PathRes::EnumVariant(variant) => Some(variant.variant.scope()),
             PathRes::FuncParam(item, idx) => Some(ScopeId::FuncParam(*item, *idx)),
             PathRes::Mod(scope) => Some(*scope),
         }

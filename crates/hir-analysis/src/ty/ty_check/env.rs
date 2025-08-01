@@ -394,8 +394,9 @@ impl<'db> BlockEnv<'db> {
 pub struct ExprProp<'db> {
     pub ty: TyId<'db>,
     pub is_mut: bool,
-    pub(crate) binding: Option<LocalBinding<'db>>,
+    pub binding: Option<LocalBinding<'db>>,
 }
+
 
 impl<'db> ExprProp<'db> {
     pub(super) fn new(ty: TyId<'db>, is_mut: bool) -> Self {
@@ -432,7 +433,7 @@ impl<'db> ExprProp<'db> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
-pub(crate) enum LocalBinding<'db> {
+pub enum LocalBinding<'db> {
     Local {
         pat: PatId,
         is_mut: bool,
@@ -487,6 +488,22 @@ impl<'db> LocalBinding<'db> {
                 let hir_func = env.func().unwrap().hir_func_def(env.db).unwrap();
                 hir_func.span().params().param(*idx).name().into()
             }
+        }
+    }
+}
+
+impl<'db> TyFoldable<'db> for LocalBinding<'db> {
+    fn super_fold_with<F>(self, folder: &mut F) -> Self
+    where
+        F: TyFolder<'db>,
+    {
+        match self {
+            LocalBinding::Local { .. } => self,
+            LocalBinding::Param { idx, ty, is_mut } => LocalBinding::Param {
+                idx,
+                ty: ty.fold_with(folder),
+                is_mut,
+            },
         }
     }
 }
