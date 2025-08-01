@@ -1,122 +1,112 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-expression: snapshot
+expression: result
 input_file: test_files/goto_values.fe
 ---
-0: use core
-1: 
-2: struct MyStruct {
-3:     pub field: u32
-4: }
-5: 
-6: const MY_CONST: u32 = 42
-7: 
-8: fn my_function() -> u32 {
-9:     MY_CONST + 10
-10: }
-11: 
-12: fn another_function(param: MyStruct) -> u32 {
-13:     param.field + my_function()
-14: }
-15: 
-16: fn main() {
-17:     let x: MyStruct = MyStruct { field: 5 }
-18:     let y = my_function()
-19:     let z = another_function(x)
-20:     let c = MY_CONST
-21:     
-22:     core::todo()
-23: }
-24: 
-25: mod nested {
-26:     pub const NESTED_CONST: u32 = 100
-27:     
-28:     pub fn nested_function() -> u32 {
-29:         NESTED_CONST * 2
-30:     }
-31: }
-32: 
-33: fn test_nested() {
-34:     let a = nested::NESTED_CONST
-35:     let b = nested::nested_function()
-36: }
+use core
+
+struct MyStruct {
+    pub field: u32
+}
+
+const MY_CONST: u32 = 42
+
+fn my_function() -> u32 {
+    MY_CONST + 10
+}
+
+fn another_function(param: MyStruct) -> u32 {
+    param.field + my_function()
+}
+
+fn main() {
+    let x: MyStruct = MyStruct { field: 5 }
+    let y = my_function()
+    let z = another_function(x)
+    let c = MY_CONST
+    
+    core::todo()
+}
+
+mod nested {
+    pub const NESTED_CONST: u32 = 100
+    
+    pub fn nested_function() -> u32 {
+        NESTED_CONST * 2
+    }
+}
+
+fn test_nested() {
+    let a = nested::NESTED_CONST
+    let b = nested::nested_function()
+}
 ---
-cursor position (3, 8), path: goto_values::MyStruct
-cursor position (3, 9), path: goto_values::MyStruct
-cursor position (3, 15), path: goto_values::MyStruct
-cursor position (4, 9), path: goto_values::MyStruct::field
-cursor position (4, 10), path: goto_values::MyStruct::field
-cursor position (4, 13), path: goto_values::MyStruct::field
-cursor position (7, 7), path: goto_values::MY_CONST
-cursor position (7, 8), path: goto_values::MY_CONST
-cursor position (7, 14), path: goto_values::MY_CONST
-cursor position (9, 4), path: goto_values::my_function
-cursor position (9, 5), path: goto_values::my_function
-cursor position (9, 14), path: goto_values::my_function
-cursor position (10, 5), path: goto_values::MY_CONST
-cursor position (10, 6), path: goto_values::MY_CONST
-cursor position (10, 12), path: goto_values::MY_CONST
-cursor position (13, 4), path: goto_values::another_function
-cursor position (13, 5), path: goto_values::another_function
-cursor position (13, 19), path: goto_values::another_function
-cursor position (13, 28), path: goto_values::MyStruct
-cursor position (13, 29), path: goto_values::MyStruct
-cursor position (13, 35), path: goto_values::MyStruct
-cursor position (14, 5), path: goto_values::another_function::param
-cursor position (14, 6), path: goto_values::another_function::param
-cursor position (14, 9), path: goto_values::another_function::param
-cursor position (14, 11), path: goto_values::MyStruct::field
-cursor position (14, 12), path: goto_values::MyStruct::field
-cursor position (14, 15), path: goto_values::MyStruct::field
-cursor position (14, 19), path: goto_values::my_function
-cursor position (14, 20), path: goto_values::my_function
-cursor position (14, 29), path: goto_values::my_function
-cursor position (17, 4), path: goto_values::main
-cursor position (17, 5), path: goto_values::main
-cursor position (17, 7), path: goto_values::main
-cursor position (18, 9), path: goto_values::main
-cursor position (18, 12), path: goto_values::MyStruct
-cursor position (18, 13), path: goto_values::MyStruct
-cursor position (18, 19), path: goto_values::MyStruct
-cursor position (18, 23), path: goto_values::MyStruct
-cursor position (18, 24), path: goto_values::MyStruct
-cursor position (18, 30), path: goto_values::MyStruct
-cursor position (19, 9), path: goto_values::main
-cursor position (19, 13), path: goto_values::my_function
-cursor position (19, 14), path: goto_values::my_function
-cursor position (19, 23), path: goto_values::my_function
-cursor position (20, 9), path: goto_values::main
-cursor position (20, 13), path: goto_values::another_function
-cursor position (20, 14), path: goto_values::another_function
-cursor position (20, 28), path: goto_values::another_function
-cursor position (20, 30), path: goto_values::main
-cursor position (21, 9), path: goto_values::main
-cursor position (21, 13), path: goto_values::MY_CONST
-cursor position (21, 14), path: goto_values::MY_CONST
-cursor position (21, 20), path: goto_values::MY_CONST
-cursor position (23, 5), path: lib
-cursor position (23, 6), path: lib
-cursor position (23, 11), path: lib::todo
-cursor position (23, 12), path: lib::todo
-cursor position (27, 15), path: goto_values::nested::NESTED_CONST
-cursor position (27, 16), path: goto_values::nested::NESTED_CONST
-cursor position (27, 26), path: goto_values::nested::NESTED_CONST
-cursor position (29, 12), path: goto_values::nested::nested_function
-cursor position (29, 13), path: goto_values::nested::nested_function
-cursor position (29, 26), path: goto_values::nested::nested_function
-cursor position (30, 9), path: goto_values::nested::NESTED_CONST
-cursor position (30, 10), path: goto_values::nested::NESTED_CONST
-cursor position (30, 20), path: goto_values::nested::NESTED_CONST
-cursor position (34, 4), path: goto_values::test_nested
-cursor position (34, 5), path: goto_values::test_nested
-cursor position (34, 14), path: goto_values::test_nested
-cursor position (35, 9), path: goto_values::test_nested
-cursor position (35, 13), path: goto_values::nested
-cursor position (35, 14), path: goto_values::nested
-cursor position (35, 21), path: goto_values::nested::NESTED_CONST
-cursor position (35, 22), path: goto_values::nested::NESTED_CONST
-cursor position (36, 9), path: goto_values::test_nested
-cursor position (36, 13), path: goto_values::nested
-cursor position (36, 14), path: goto_values::nested
-cursor position (36, 21), path: goto_values::nested::nested_function
-cursor position (36, 22), path: goto_values::nested::nested_function
+cursor position: 17, path: goto_values::MyStruct
+cursor position: 18, path: goto_values::MyStruct
+cursor position: 24, path: goto_values::MyStruct
+cursor position: 36, path: goto_values::MyStruct::field
+cursor position: 37, path: goto_values::MyStruct::field
+cursor position: 40, path: goto_values::MyStruct::field
+cursor position: 56, path: goto_values::MY_CONST
+cursor position: 57, path: goto_values::MY_CONST
+cursor position: 63, path: goto_values::MY_CONST
+cursor position: 79, path: goto_values::my_function
+cursor position: 80, path: goto_values::my_function
+cursor position: 89, path: goto_values::my_function
+cursor position: 106, path: goto_values::MY_CONST
+cursor position: 107, path: goto_values::MY_CONST
+cursor position: 113, path: goto_values::MY_CONST
+cursor position: 126, path: goto_values::another_function
+cursor position: 127, path: goto_values::another_function
+cursor position: 141, path: goto_values::another_function
+cursor position: 173, path: goto_values::another_function::param
+cursor position: 174, path: goto_values::another_function::param
+cursor position: 177, path: goto_values::another_function::param
+cursor position: 179, path: goto_values::MyStruct::field
+cursor position: 180, path: goto_values::MyStruct::field
+cursor position: 183, path: goto_values::MyStruct::field
+cursor position: 187, path: goto_values::my_function
+cursor position: 188, path: goto_values::my_function
+cursor position: 197, path: goto_values::my_function
+cursor position: 207, path: goto_values::main
+cursor position: 208, path: goto_values::main
+cursor position: 210, path: goto_values::main
+cursor position: 227, path: goto_values::MyStruct
+cursor position: 228, path: goto_values::MyStruct
+cursor position: 234, path: goto_values::MyStruct
+cursor position: 238, path: goto_values::MyStruct
+cursor position: 239, path: goto_values::MyStruct
+cursor position: 245, path: goto_values::MyStruct
+cursor position: 272, path: goto_values::my_function
+cursor position: 273, path: goto_values::my_function
+cursor position: 282, path: goto_values::my_function
+cursor position: 298, path: goto_values::another_function
+cursor position: 299, path: goto_values::another_function
+cursor position: 313, path: goto_values::another_function
+cursor position: 330, path: goto_values::MY_CONST
+cursor position: 331, path: goto_values::MY_CONST
+cursor position: 337, path: goto_values::MY_CONST
+cursor position: 348, path: lib
+cursor position: 349, path: lib
+cursor position: 354, path: lib::todo
+cursor position: 355, path: lib::todo
+cursor position: 391, path: goto_values::nested::NESTED_CONST
+cursor position: 392, path: goto_values::nested::NESTED_CONST
+cursor position: 402, path: goto_values::nested::NESTED_CONST
+cursor position: 431, path: goto_values::nested::nested_function
+cursor position: 432, path: goto_values::nested::nested_function
+cursor position: 445, path: goto_values::nested::nested_function
+cursor position: 466, path: goto_values::nested::NESTED_CONST
+cursor position: 467, path: goto_values::nested::NESTED_CONST
+cursor position: 477, path: goto_values::nested::NESTED_CONST
+cursor position: 495, path: goto_values::test_nested
+cursor position: 496, path: goto_values::test_nested
+cursor position: 505, path: goto_values::test_nested
+cursor position: 523, path: goto_values::nested
+cursor position: 524, path: goto_values::nested
+cursor position: 531, path: goto_values::nested::NESTED_CONST
+cursor position: 532, path: goto_values::nested::NESTED_CONST
+cursor position: 556, path: goto_values::nested
+cursor position: 557, path: goto_values::nested
+cursor position: 564, path: goto_values::nested::nested_function
+cursor position: 565, path: goto_values::nested::nested_function

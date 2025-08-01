@@ -55,7 +55,8 @@ pub struct Wrapper<S: Inner> {
 }
 
 impl<S: Inner> Wrapper<S> {
-    pub fn foo(mut self) -> i32 {
+    pub fn foo(mut self, mut dog: i32) -> i32 {
         self.inner.foo()
+        dog
     }
 }

@@ -17,7 +17,6 @@ cursor position (2, 26), path: goto_debug_nested::nested::NESTED_CONST
 cursor position (5, 4), path: goto_debug_nested::test_nested
 cursor position (5, 5), path: goto_debug_nested::test_nested
 cursor position (5, 14), path: goto_debug_nested::test_nested
-cursor position (6, 9), path: goto_debug_nested::test_nested
 cursor position (6, 13), path: goto_debug_nested::nested
 cursor position (6, 14), path: goto_debug_nested::nested
 cursor position (6, 21), path: goto_debug_nested::nested::NESTED_CONST

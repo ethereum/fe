@@ -1,5 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
+assertion_line: 322
 expression: snapshot
 input_file: test_files/goto_comprehensive.fe
 ---
@@ -60,10 +61,11 @@ input_file: test_files/goto_comprehensive.fe
 54: }
 55: 
 56: impl<S: Inner> Wrapper<S> {
-57:     pub fn foo(mut self) -> i32 {
+57:     pub fn foo(mut self, mut dog: i32) -> i32 {
 58:         self.inner.foo()
-59:     }
-60: }
+59:         dog
+60:     }
+61: }
 ---
 cursor position (2, 8), path: goto_comprehensive::Container
 cursor position (2, 9), path: goto_comprehensive::Container
@@ -157,3 +159,6 @@ cursor position (59, 18), path: goto_comprehensive::Wrapper::inner
 cursor position (59, 20), path: goto_comprehensive::Inner::foo
 cursor position (59, 21), path: goto_comprehensive::Inner::foo
 cursor position (59, 22), path: goto_comprehensive::Inner::foo
+cursor position (60, 9), path: Wrapper::foo::dog
+cursor position (60, 10), path: Wrapper::foo::dog
+cursor position (60, 11), path: Wrapper::foo::dog

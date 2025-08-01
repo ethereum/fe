@@ -1,9 +1,7 @@
 use async_lsp::ResponseError;
 use common::InputDb;
 use hir::{
-    hir_def::{
-        scope_graph::ScopeId, ItemKind, TopLevelMod,
-    },
+    hir_def::ItemKind,
     lower::map_file_to_mod,
     span::LazySpan,
 };
@@ -11,18 +9,24 @@ use tracing::error;
 
 use crate::{
     backend::Backend,
-    util::{to_lsp_location_from_scope, to_offset_from_position},
+    util::{to_lsp_location_from_scope, to_lsp_location_from_lazy_span, to_offset_from_position},
 };
 use driver::DriverDataBase;
 pub type Cursor = parser::TextSize;
 
-pub fn get_goto_target_scopes_for_cursor<'db>(
-    db: &'db DriverDataBase,
-    top_mod: TopLevelMod<'db>,
-    cursor: Cursor,
-) -> Option<Vec<ScopeId<'db>>> {
-    // Use the new consolidated tooling API
-    hir_analysis::tooling_api::get_goto_definition_scopes(db, top_mod, cursor)
+/// Convert a Definition to an LSP Location
+fn definition_to_lsp_location(
+    db: &DriverDataBase,
+    definition: &hir_analysis::tooling_api::Definition,
+) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
+    match definition {
+        hir_analysis::tooling_api::Definition::Scope(scope) => {
+            to_lsp_location_from_scope(db, *scope)
+        }
+        hir_analysis::tooling_api::Definition::Location(lazy_span) => {
+            to_lsp_location_from_lazy_span(db, lazy_span.clone())
+        }
+    }
 }
 
 
@@ -57,11 +61,24 @@ pub async fn handle_goto_definition(
     
     
 
-    // Use the unified approach for all symbols
-    let mut scopes = get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
+    // Get definitions for the cursor position
+    let mut definitions = hir_analysis::tooling_api::get_goto_definitions(&backend.db, top_mod, cursor).unwrap_or_default();
     
-    // If we didn't find any scopes, check if this cursor is at an item definition name
-    if scopes.is_empty() {
+    // Debug logging
+    eprintln!("Goto definition at cursor {:?}: found {} definitions", cursor, definitions.len());
+    for (i, def) in definitions.iter().enumerate() {
+        match def {
+            hir_analysis::tooling_api::Definition::Scope(scope) => {
+                eprintln!("  Definition {}: Scope - {:?}", i, scope.pretty_path(&backend.db));
+            }
+            hir_analysis::tooling_api::Definition::Location(_span) => {
+                eprintln!("  Definition {}: Location span", i);
+            }
+        }
+    }
+    
+    // If we didn't find any definitions, check if this cursor is at an item definition name
+    if definitions.is_empty() {
             use hir::span::item::{LazyStructSpan, LazyFuncSpan, LazyEnumSpan};
             use hir::hir_def::scope_graph::ScopeId;
             
@@ -72,7 +89,7 @@ pub async fn handle_goto_definition(
                         let struct_span = LazyStructSpan::new(s);
                         if let Some(name_span) = struct_span.name().resolve(&backend.db) {
                             if name_span.range.start() == cursor {
-                                scopes = vec![ScopeId::from_item(item)];
+                                definitions = vec![hir_analysis::tooling_api::Definition::Scope(ScopeId::from_item(item))];
                                 break;
                             }
                         }
@@ -81,7 +98,7 @@ pub async fn handle_goto_definition(
                         let func_span = LazyFuncSpan::new(f);
                         if let Some(name_span) = func_span.name().resolve(&backend.db) {
                             if name_span.range.start() == cursor {
-                                scopes = vec![ScopeId::from_item(item)];
+                                definitions = vec![hir_analysis::tooling_api::Definition::Scope(ScopeId::from_item(item))];
                                 break;
                             }
                         }
@@ -90,7 +107,7 @@ pub async fn handle_goto_definition(
                         let enum_span = LazyEnumSpan::new(e);
                         if let Some(name_span) = enum_span.name().resolve(&backend.db) {
                             if name_span.range.start() == cursor {
-                                scopes = vec![ScopeId::from_item(item)];
+                                definitions = vec![hir_analysis::tooling_api::Definition::Scope(ScopeId::from_item(item))];
                                 break;
                             }
                         }
@@ -100,9 +117,9 @@ pub async fn handle_goto_definition(
             }
         }
     
-    let locations = scopes
+    let locations = definitions
         .iter()
-        .map(|scope| to_lsp_location_from_scope(&backend.db, *scope))
+        .map(|def| definition_to_lsp_location(&backend.db, def))
         .collect::<Vec<_>>();
 
     let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
@@ -125,6 +142,7 @@ pub async fn handle_goto_definition(
 #[cfg(test)]
 mod tests {
     use dir_test::{dir_test, Fixture};
+    use hir::hir_def::TopLevelMod;
     use std::collections::BTreeMap;
     use test_utils::snap_test;
     use url::Url;

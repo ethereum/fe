@@ -8,8 +8,8 @@ mod stmt;
 
 pub use self::path::RecordLike;
 pub use callable::Callable;
-pub use env::{ExprProp, LocalBinding};
 use env::TyCheckEnv;
+pub use env::{ExprProp, LocalBinding};
 pub(super) use expr::TraitOps;
 use hir::{
     hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, TypeId as HirTyId},

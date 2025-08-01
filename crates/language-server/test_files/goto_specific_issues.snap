@@ -38,7 +38,6 @@ cursor position (5, 26), path: goto_specific_issues::nested::NESTED_CONST
 cursor position (8, 4), path: goto_specific_issues::test_nested
 cursor position (8, 5), path: goto_specific_issues::test_nested
 cursor position (8, 14), path: goto_specific_issues::test_nested
-cursor position (10, 9), path: goto_specific_issues::test_nested
 cursor position (10, 13), path: goto_specific_issues::nested
 cursor position (10, 14), path: goto_specific_issues::nested
 cursor position (10, 21), path: goto_specific_issues::nested::NESTED_CONST
@@ -67,18 +66,9 @@ cursor position (20, 18), path: goto_specific_issues::Container::value
 cursor position (24, 4), path: goto_specific_issues::test_container
 cursor position (24, 5), path: goto_specific_issues::test_container
 cursor position (24, 17), path: goto_specific_issues::test_container
-cursor position (25, 9), path: goto_specific_issues::test_container
-cursor position (25, 10), path: goto_specific_issues::test_container
-cursor position (25, 17), path: goto_specific_issues::test_container
 cursor position (25, 21), path: goto_specific_issues::Container
 cursor position (25, 22), path: goto_specific_issues::Container
 cursor position (25, 29), path: goto_specific_issues::Container
-cursor position (27, 9), path: goto_specific_issues::test_container
-cursor position (27, 10), path: goto_specific_issues::test_container
-cursor position (27, 14), path: goto_specific_issues::test_container
-cursor position (27, 18), path: goto_specific_issues::test_container
-cursor position (27, 19), path: goto_specific_issues::test_container
-cursor position (27, 26), path: goto_specific_issues::test_container
 cursor position (27, 28), path: Container::get
 cursor position (27, 29), path: Container::get
 cursor position (27, 30), path: Container::get

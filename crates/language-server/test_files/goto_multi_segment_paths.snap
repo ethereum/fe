@@ -26,12 +26,10 @@ cursor position (5, 32), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
 cursor position (10, 4), path: goto_multi_segment_paths::test_segments
 cursor position (10, 5), path: goto_multi_segment_paths::test_segments
 cursor position (10, 16), path: goto_multi_segment_paths::test_segments
-cursor position (12, 9), path: goto_multi_segment_paths::test_segments
 cursor position (12, 13), path: goto_multi_segment_paths::a
 cursor position (12, 16), path: goto_multi_segment_paths::a::b
 cursor position (12, 19), path: goto_multi_segment_paths::a::b::c
 cursor position (12, 22), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
 cursor position (12, 23), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
-cursor position (15, 9), path: goto_multi_segment_paths::test_segments
 cursor position (15, 13), path: goto_multi_segment_paths::a
 cursor position (15, 16), path: goto_multi_segment_paths::a::b

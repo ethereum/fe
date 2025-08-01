@@ -21,12 +21,7 @@ cursor position (3, 9), path: goto_debug::Point::y
 cursor position (6, 4), path: goto_debug::test
 cursor position (6, 5), path: goto_debug::test
 cursor position (6, 7), path: goto_debug::test
-cursor position (7, 9), path: goto_debug::test
 cursor position (7, 13), path: goto_debug::Point
 cursor position (7, 14), path: goto_debug::Point
 cursor position (7, 17), path: goto_debug::Point
-cursor position (8, 9), path: goto_debug::test
-cursor position (8, 10), path: goto_debug::test
-cursor position (8, 11), path: goto_debug::test
-cursor position (8, 15), path: goto_debug::test
 cursor position (8, 17), path: goto_debug::Point::x

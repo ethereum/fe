@@ -189,6 +189,19 @@ impl<'db> TyVisitable<'db> for ExprProp<'db> {
     }
 }
 
+impl<'db> TyVisitable<'db> for crate::ty::ty_check::LocalBinding<'db> {
+    fn visit_with<V>(&self, visitor: &mut V)
+    where
+        V: TyVisitor<'db>,
+    {
+        use crate::ty::ty_check::LocalBinding;
+        match self {
+            LocalBinding::Local { .. } => {}
+            LocalBinding::Param { ty, .. } => ty.visit_with(visitor),
+        }
+    }
+}
+
 pub fn collect_flags<'db, V: TyVisitable<'db>>(db: &'db dyn HirAnalysisDb, v: V) -> TyFlags {
     struct Collector<'db> {
         db: &'db dyn HirAnalysisDb,

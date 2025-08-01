@@ -28,15 +28,12 @@ cursor position (4, 10), path: goto::Bar
 cursor position (6, 4), path: goto::main
 cursor position (6, 5), path: goto::main
 cursor position (6, 7), path: goto::main
-cursor position (7, 9), path: goto::main
 cursor position (7, 12), path: goto::Foo
 cursor position (7, 13), path: goto::Foo
 cursor position (7, 14), path: goto::Foo
-cursor position (8, 9), path: goto::main
 cursor position (8, 12), path: goto::Bar
 cursor position (8, 13), path: goto::Bar
 cursor position (8, 14), path: goto::Bar
-cursor position (9, 9), path: goto::main
 cursor position (9, 12), path: goto::baz
 cursor position (9, 13), path: goto::baz
 cursor position (9, 17), path: goto::baz::Baz

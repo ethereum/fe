@@ -1,0 +1,8 @@
+pub fn test() {
+    let self = Container { value: 42 };
+    let x = self.value; // Here, 'self' should be resolvable
+}
+
+struct Container {
+    pub value: u32,
+}

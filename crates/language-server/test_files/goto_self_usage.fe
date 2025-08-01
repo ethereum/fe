@@ -1,0 +1,16 @@
+struct MyStruct {
+    value: u32
+}
+
+impl MyStruct {
+    fn test_self(self) -> u32 {
+        // The 'self' below should resolve to the parameter on line 6
+        self.value
+    }
+
+    fn test_mut_self(mut self) -> u32 {
+        // The 'self' below should also resolve to the parameter on line 11
+        self.value = 10
+        self.value
+    }
+}
