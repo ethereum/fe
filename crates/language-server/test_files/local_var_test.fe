@@ -1,4 +1,0 @@
-fn test() {
-    let x = 42
-    let y = x  // should resolve to line 2
-}

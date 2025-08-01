@@ -261,37 +261,41 @@ impl<'db> MethodSelector<'db> {
     fn select_trait_methods(&self) -> Result<Candidate<'db>, MethodSelectionError<'db>> {
         let traits = &self.candidates.traits;
 
-        if traits.len() == 1 {
-            let (def, method) = traits.iter().next().unwrap();
-            return Ok(self.find_inst(*def, *method));
-        }
+        match traits.len() {
+            0 => Err(MethodSelectionError::NotFound),
+            1 => {
+                // If there is only one candidate trait, it's unambiguous.
+                let (def, method) = traits.iter().next().unwrap();
+                Ok(self.find_inst(*def, *method))
+            }
+            _ => {
+                // Multiple candidates exist, so we need to use visibility to disambiguate.
+                let available_traits = self.available_traits();
+                let visible_traits: Vec<_> = traits
+                    .iter()
+                    .copied()
+                    .filter(|cand| available_traits.contains(&cand.0))
+                    .collect();
 
-        let available_traits = self.available_traits();
-        let visible_traits: Vec<_> = traits
-            .iter()
-            .copied()
-            .filter(|cand| available_traits.contains(&cand.0))
-            .collect();
-
-        match visible_traits.len() {
-            0 => {
-                if traits.is_empty() {
-                    Err(MethodSelectionError::NotFound)
-                } else {
-                    // Suggests trait imports.
-                    let traits = traits.iter().map(|(def, _)| def.trait_(self.db)).collect();
-                    Err(MethodSelectionError::InvisibleTraitMethod(traits))
+                match visible_traits.len() {
+                    0 => {
+                        // Ambiguous, but none are in scope to help.
+                        let traits = traits.iter().map(|(def, _)| def.trait_(self.db)).collect();
+                        Err(MethodSelectionError::InvisibleTraitMethod(traits))
+                    }
+                    1 => {
+                        // Exactly one candidate is visible, so the ambiguity is resolved.
+                        let (def, method) = visible_traits[0];
+                        Ok(self.find_inst(def, method))
+                    }
+                    _ => {
+                        // Multiple visible candidates, so it's truly ambiguous.
+                        Err(MethodSelectionError::AmbiguousTraitMethod(
+                            visible_traits.into_iter().map(|cand| cand.0).collect(),
+                        ))
+                    }
                 }
             }
-
-            1 => {
-                let (def, method) = visible_traits[0];
-                Ok(self.find_inst(def, method))
-            }
-
-            _ => Err(MethodSelectionError::AmbiguousTraitMethod(
-                visible_traits.into_iter().map(|cand| cand.0).collect(),
-            )),
         }
     }
 

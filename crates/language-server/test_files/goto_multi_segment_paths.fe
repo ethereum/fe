@@ -1,4 +1,4 @@
-// Test that cursor synthesis works for path segments
+// Test that multi-segment path resolution works correctly
 mod a {
     pub mod b {
         pub mod c {
@@ -8,7 +8,7 @@ mod a {
 }
 
 fn test_segments() {
-    // Multi-segment path - should synthesize cursors for each segment
+    // Multi-segment path - each segment should have its own cursor position
     let x = a::b::c::DEEP_CONST
     
     // Two-segment path

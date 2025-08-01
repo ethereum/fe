@@ -1,0 +1,37 @@
+---
+source: crates/language-server/src/functionality/goto.rs
+expression: snapshot
+input_file: test_files/goto_multi_segment_paths.fe
+---
+0: // Test that multi-segment path resolution works correctly
+1: mod a {
+2:     pub mod b {
+3:         pub mod c {
+4:             pub const DEEP_CONST: u32 = 42
+5:         }
+6:     }
+7: }
+8: 
+9: fn test_segments() {
+10:     // Multi-segment path - each segment should have its own cursor position
+11:     let x = a::b::c::DEEP_CONST
+12:     
+13:     // Two-segment path
+14:     let y = a::b
+15: }
+---
+cursor position (5, 23), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
+cursor position (5, 24), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
+cursor position (5, 32), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
+cursor position (10, 4), path: goto_multi_segment_paths::test_segments
+cursor position (10, 5), path: goto_multi_segment_paths::test_segments
+cursor position (10, 16), path: goto_multi_segment_paths::test_segments
+cursor position (12, 9), path: goto_multi_segment_paths::test_segments
+cursor position (12, 13), path: goto_multi_segment_paths::a
+cursor position (12, 16), path: goto_multi_segment_paths::a::b
+cursor position (12, 19), path: goto_multi_segment_paths::a::b::c
+cursor position (12, 22), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
+cursor position (12, 23), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
+cursor position (15, 9), path: goto_multi_segment_paths::test_segments
+cursor position (15, 13), path: goto_multi_segment_paths::a
+cursor position (15, 16), path: goto_multi_segment_paths::a::b

@@ -9,6 +9,6 @@ impl Container {
 }
 
 fn test() {
-    let container = Container { value: 42 };
-    let result = container.get();
+    let container = Container { value: 42 }
+    let result = container.get()
 }

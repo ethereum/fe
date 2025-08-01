@@ -19,14 +19,32 @@ input_file: test_files/goto.fe
 13:    pub struct Baz {}
 14: }
 ---
-cursor position (1, 5), path: lib
 cursor position (3, 8), path: goto::Foo
+cursor position (3, 9), path: goto::Foo
+cursor position (3, 10), path: goto::Foo
 cursor position (4, 8), path: goto::Bar
+cursor position (4, 9), path: goto::Bar
+cursor position (4, 10), path: goto::Bar
 cursor position (6, 4), path: goto::main
+cursor position (6, 5), path: goto::main
+cursor position (6, 7), path: goto::main
+cursor position (7, 9), path: goto::main
 cursor position (7, 12), path: goto::Foo
+cursor position (7, 13), path: goto::Foo
+cursor position (7, 14), path: goto::Foo
+cursor position (8, 9), path: goto::main
 cursor position (8, 12), path: goto::Bar
+cursor position (8, 13), path: goto::Bar
+cursor position (8, 14), path: goto::Bar
+cursor position (9, 9), path: goto::main
 cursor position (9, 12), path: goto::baz
+cursor position (9, 13), path: goto::baz
 cursor position (9, 17), path: goto::baz::Baz
+cursor position (9, 18), path: goto::baz::Baz
 cursor position (10, 5), path: lib
+cursor position (10, 6), path: lib
 cursor position (10, 11), path: lib::todo
+cursor position (10, 12), path: lib::todo
 cursor position (14, 15), path: goto::baz::Baz
+cursor position (14, 16), path: goto::baz::Baz
+cursor position (14, 17), path: goto::baz::Baz

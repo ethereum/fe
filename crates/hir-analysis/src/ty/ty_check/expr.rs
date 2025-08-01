@@ -492,7 +492,19 @@ impl<'db> TyChecker<'db> {
                     };
                     ExprProp::new(self.table.instantiate_to_term(ty), true)
                 }
-                PathRes::Mod(_) | PathRes::FuncParam(..) => todo!(),
+                PathRes::FuncParam(_func_item, _idx) => {
+                    // This shouldn't happen in expression context if parameters are properly
+                    // resolved as local bindings. This might indicate a bug in name resolution.
+                    ExprProp::invalid(self.db)
+                }
+                PathRes::Mod(scope_id) => {
+                    let diag = BodyDiag::NotValue {
+                        primary: span.into(),
+                        given: Either::Left(scope_id.item()),
+                    };
+                    self.push_diag(diag);
+                    ExprProp::invalid(self.db)
+                }
             },
         }
     }

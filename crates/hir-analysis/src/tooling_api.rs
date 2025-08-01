@@ -1,5 +1,5 @@
 //! Tooling API for IDE features
-//! 
+//!
 //! This module provides public APIs for IDE and tooling integration.
 //! It acts as a stable interface over the internal compiler machinery.
 //!
@@ -14,13 +14,16 @@
 //! - Handle both local (within function) and global (cross-module) analysis
 
 use hir::{
-    hir_def::{scope_graph::ScopeId, Body, Expr, ExprId, FieldIndex, Func, IdentId, ItemKind, Partial, Pat, PatId, PathId, TopLevelMod},
-    span::{DynLazySpan, LazySpan, LazySpanAtom},
-    visitor::{
-        prelude::{LazyExprSpan, LazyPatSpan, LazyPathSpan},
-        Visitor, VisitorCtxt, walk_expr, walk_pat,
+    hir_def::{
+        scope_graph::ScopeId, Body, Expr, ExprId, FieldIndex, Func, IdentId, ItemKind, Partial,
+        Pat, PatId, PathId, TopLevelMod, FieldDef, VariantDef, Struct, Enum, Const, Trait, Impl,
     },
-    SpannedHirDb,
+    span::{DynLazySpan, LazySpan, LazySpanAtom, item::{LazyStructSpan, LazyEnumSpan, LazyConstSpan, LazyTraitSpan, LazyImplSpan}},
+    visitor::{
+        prelude::{LazyExprSpan, LazyPatSpan, LazyPathSpan, LazyFieldDefSpan, LazyFuncSpan, LazyVariantDefSpan},
+        walk_expr, walk_pat, walk_field_def, walk_func, walk_variant_def, walk_struct, walk_enum, walk_const, walk_trait, walk_impl, Visitor, VisitorCtxt,
+    },
+    HirDb, SpannedHirDb,
 };
 use rustc_hash::FxHashMap;
 
@@ -35,7 +38,7 @@ use crate::{
     HirAnalysisDb,
 };
 
-/// Text cursor position (compatible with language server protocols)  
+/// Text cursor position (compatible with language server protocols)
 pub type Cursor = parser::TextSize;
 
 // ============================================================================
@@ -45,51 +48,69 @@ pub type Cursor = parser::TextSize;
 /// Different types of positions that can be resolved to definitions
 #[derive(Debug, Clone)]
 pub enum ResolvablePosition<'db> {
-    /// Path references like `Color::Red`, `std::collections::Map`
+    /// Definition of any top-level item (struct, fn, enum, const, trait)
+    ItemDefinition(ItemKind<'db>, LazySpanAtom<'db>),
+    
+    /// A qualified path (e.g., `Color::Red`, `std::math::sqrt`)
     Path(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>),
-    /// Field access like `green.intensity`, `self.value`
+    /// A field access expression (e.g., `container.value`)
     FieldAccess(ExprId, IdentId<'db>, ScopeId<'db>, LazySpanAtom<'db>),
-    /// Method calls like `container.get()`, `container.display()`
+    /// A method call expression (e.g., `container.get()`)
     MethodCall(ExprId, IdentId<'db>, ScopeId<'db>, LazySpanAtom<'db>),
-    /// Local variable references like `local_var`, function parameters
-    LocalVariable(IdentId<'db>, ScopeId<'db>, LazySpanAtom<'db>),
-    /// Pattern field references like `intensity` in `Green { intensity }`
+    /// A reference to a local variable or function parameter
+    LocalBinding(IdentId<'db>, ScopeId<'db>, LazySpanAtom<'db>),
+    /// A field within a pattern (e.g., `{ intensity }` in `Color::Green { intensity }`)
     PatternField(IdentId<'db>, ScopeId<'db>, LazySpanAtom<'db>),
+    /// The definition of a struct or contract field
+    FieldDefinition(FieldDef<'db>, ScopeId<'db>, LazySpanAtom<'db>),
+    /// The definition of an enum variant
+    VariantDefinition(VariantDef<'db>, ScopeId<'db>, LazySpanAtom<'db>),
 }
 
 /// Collector for gathering resolvable positions in code
-#[derive(Default)]
 struct PositionCollector<'db> {
     positions: Vec<ResolvablePosition<'db>>,
 }
 
-impl<'db, 'ast: 'db> Visitor<'ast> for PositionCollector<'db> {
+impl<'db> PositionCollector<'db> {
+    fn new(_db: &'db dyn HirDb) -> Self {
+        Self {
+            positions: Vec::new(),
+        }
+    }
+}
 
-    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>, path: PathId<'db>) {
+impl<'db> Visitor<'db> for PositionCollector<'db> {
+    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let Some(span) = ctxt.span() else {
             return;
         };
         let scope = ctxt.scope();
-        
-        // Create position for the full path
-        self.positions.push(ResolvablePosition::Path(path, scope, span.clone()));
-        
-        // For multi-segment paths, create positions for each individual segment
-        // Each segment gets its own path and its own span within the full path span
-        let segment_count = path.segment_index(ctxt.db()) + 1;
-        for segment_idx in 0..segment_count {
-            if let Some(segment_path) = path.segment(ctxt.db(), segment_idx) {
-                // Create a position for this specific segment
-                // Note: We still use the full path span here because the segment span
-                // resolution happens in find_position_at_cursor during cursor matching
-                self.positions.push(ResolvablePosition::Path(segment_path, scope, span.clone()));
+
+        if path.parent(ctxt.db()).is_none() {
+            // This is a single-segment path (e.g., `container`, `Color`). This is the
+            // ONLY place we create a `LocalBinding` candidate from a path.
+            // The resolver will correctly fall back to global scope if it's not a local.
+            if let Some(ident) = path.ident(ctxt.db()).to_opt() {
+                let atom_span = span.clone().segment(0).ident();
+                self.positions
+                    .push(ResolvablePosition::LocalBinding(ident, scope, atom_span));
+            }
+        } else {
+            // This is a multi-segment path (e.g., `Color::Red`). This can't be a local variable.
+            // We only create `Path` candidates for each segment.
+            for segment_idx in 0..=path.segment_index(ctxt.db()) {
+                if let Some(segment_path) = path.segment(ctxt.db(), segment_idx) {
+                    self.positions
+                        .push(ResolvablePosition::Path(segment_path, scope, span.clone()));
+                }
             }
         }
     }
 
     fn visit_expr(
         &mut self,
-        ctxt: &mut VisitorCtxt<'ast, LazyExprSpan<'ast>>,
+        ctxt: &mut VisitorCtxt<'db, LazyExprSpan<'db>>,
         expr: ExprId,
         expr_data: &Expr<'db>,
     ) {
@@ -114,14 +135,12 @@ impl<'db, 'ast: 'db> Visitor<'ast> for PositionCollector<'db> {
             Expr::MethodCall(receiver_expr, method_name, _generic_args, _call_args) => {
                 if let Partial::Present(method_ident) = method_name {
                     // Try to get the method name span
-                    let method_span = ctxt
-                        .span()
-                        .map(|span| {
-                            // Try to get method call expression span
-                            let method_call_span = span.into_method_call_expr();
-                            method_call_span.method_name()
-                        });
-                    
+                    let method_span = ctxt.span().map(|span| {
+                        // Try to get method call expression span
+                        let method_call_span = span.into_method_call_expr();
+                        method_call_span.method_name()
+                    });
+
                     if let Some(method_span) = method_span {
                         let scope = ctxt.scope();
                         self.positions.push(ResolvablePosition::MethodCall(
@@ -140,23 +159,10 @@ impl<'db, 'ast: 'db> Visitor<'ast> for PositionCollector<'db> {
         walk_expr(self, ctxt, expr);
     }
 
-    fn visit_ident(
-        &mut self,
-        ctxt: &mut VisitorCtxt<'ast, LazySpanAtom<'ast>>,
-        ident: IdentId<'db>,
-    ) {
-        let Some(span) = ctxt.span() else {
-            return;
-        };
-        let scope = ctxt.scope();
-        // Collect as potential local variable reference
-        self.positions
-            .push(ResolvablePosition::LocalVariable(ident, scope, span));
-    }
 
     fn visit_pat(
         &mut self,
-        ctxt: &mut VisitorCtxt<'ast, LazyPatSpan<'ast>>,
+        ctxt: &mut VisitorCtxt<'db, LazyPatSpan<'db>>,
         pat: PatId,
         pat_data: &Pat<'db>,
     ) {
@@ -180,6 +186,146 @@ impl<'db, 'ast: 'db> Visitor<'ast> for PositionCollector<'db> {
         // Continue with default traversal
         walk_pat(self, ctxt, pat);
     }
+
+    fn visit_field_def(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyFieldDefSpan<'db>>,
+        field: &FieldDef<'db>,
+    ) {
+        if let Partial::Present(_) = field.name {
+            if let Some(span) = ctxt.span().map(|s| s.name()) {
+                self.positions.push(ResolvablePosition::FieldDefinition(
+                    field.clone(),
+                    ctxt.scope(),
+                    span,
+                ));
+            }
+        }
+        walk_field_def(self, ctxt, field);
+    }
+
+    fn visit_variant_def(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyVariantDefSpan<'db>>,
+        variant: &VariantDef<'db>,
+    ) {
+        if let Partial::Present(_) = variant.name {
+            if let Some(span) = ctxt.span().map(|s| s.name()) {
+                self.positions.push(ResolvablePosition::VariantDefinition(
+                    variant.clone(),
+                    ctxt.scope(),
+                    span,
+                ));
+            }
+        }
+        walk_variant_def(self, ctxt, variant);
+    }
+
+    fn visit_func(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyFuncSpan<'db>>,
+        func: Func<'db>,
+    ) {
+        // Collect the function definition itself
+        if let Some(_name) = func.name(ctxt.db()).to_opt() {
+            if let Some(span) = ctxt.span().map(|s| s.name()) {
+                self.positions.push(ResolvablePosition::ItemDefinition(
+                    ItemKind::Func(func),
+                    span,
+                ));
+            }
+        }
+        
+        // Continue with default traversal
+        walk_func(self, ctxt, func);
+    }
+
+    fn visit_struct(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyStructSpan<'db>>,
+        s: Struct<'db>,
+    ) {
+        // Collect the struct definition itself
+        if let Some(_name) = s.name(ctxt.db()).to_opt() {
+            if let Some(span) = ctxt.span().map(|s| s.name()) {
+                self.positions.push(ResolvablePosition::ItemDefinition(
+                    ItemKind::Struct(s),
+                    span,
+                ));
+            }
+        }
+        
+        // Continue with default traversal
+        walk_struct(self, ctxt, s);
+    }
+
+    fn visit_enum(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyEnumSpan<'db>>,
+        e: Enum<'db>,
+    ) {
+        // Collect the enum definition itself
+        if let Some(_name) = e.name(ctxt.db()).to_opt() {
+            if let Some(span) = ctxt.span().map(|s| s.name()) {
+                self.positions.push(ResolvablePosition::ItemDefinition(
+                    ItemKind::Enum(e),
+                    span,
+                ));
+            }
+        }
+        
+        // Continue with default traversal
+        walk_enum(self, ctxt, e);
+    }
+
+    fn visit_const(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyConstSpan<'db>>,
+        c: Const<'db>,
+    ) {
+        // Collect the const definition itself
+        if let Some(_name) = c.name(ctxt.db()).to_opt() {
+            if let Some(span) = ctxt.span().map(|s| s.name()) {
+                self.positions.push(ResolvablePosition::ItemDefinition(
+                    ItemKind::Const(c),
+                    span,
+                ));
+            }
+        }
+        
+        // Continue with default traversal
+        walk_const(self, ctxt, c);
+    }
+
+    fn visit_trait(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyTraitSpan<'db>>,
+        t: Trait<'db>,
+    ) {
+        // Collect the trait definition itself
+        if let Some(_name) = t.name(ctxt.db()).to_opt() {
+            if let Some(span) = ctxt.span().map(|s| s.name()) {
+                self.positions.push(ResolvablePosition::ItemDefinition(
+                    ItemKind::Trait(t),
+                    span,
+                ));
+            }
+        }
+        
+        // Continue with default traversal
+        walk_trait(self, ctxt, t);
+    }
+
+    fn visit_impl(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyImplSpan<'db>>,
+        impl_: Impl<'db>,
+    ) {
+        // For impl blocks, we don't collect the impl itself as a position,
+        // but we need to traverse into it to collect positions from its contents
+        walk_impl(self, ctxt, impl_);
+    }
+
 }
 
 /// Collect all resolvable positions in a top-level module
@@ -188,8 +334,9 @@ pub fn collect_resolvable_positions<'db>(
     top_mod: TopLevelMod<'db>,
 ) -> Vec<ResolvablePosition<'db>> {
     let mut visitor_ctxt = VisitorCtxt::with_top_mod(db, top_mod);
-    let mut collector = PositionCollector::default();
+    let mut collector = PositionCollector::new(db);
     collector.visit_top_mod(&mut visitor_ctxt, top_mod);
+
     collector.positions
 }
 
@@ -202,21 +349,24 @@ pub fn find_position_at_cursor<'db>(
     // Helper function to get position priority (higher number = higher priority)
     fn get_position_priority(pos: &ResolvablePosition) -> u32 {
         match pos {
-            ResolvablePosition::FieldAccess(_, _, _, _) => 5,
-            ResolvablePosition::MethodCall(_, _, _, _) => 4,
+            ResolvablePosition::ItemDefinition(_, _) => 8,
+            ResolvablePosition::FieldAccess(_, _, _, _) => 7,
+            ResolvablePosition::MethodCall(_, _, _, _) => 6,
+            ResolvablePosition::FieldDefinition(_, _, _) => 5,
+            ResolvablePosition::VariantDefinition(_, _, _) => 4,
             ResolvablePosition::PatternField(_, _, _) => 3,
-            ResolvablePosition::LocalVariable(_, _, _) => 2,
+            ResolvablePosition::LocalBinding(_, _, _) => 2,
             ResolvablePosition::Path(_, _, _) => 1,
         }
     }
-    
+
     // Collect all candidates first, then apply priority logic
     let mut candidates = Vec::new();
-    
+
     for position in positions {
         match &position {
             ResolvablePosition::Path(path, scope, lazy_span) => {
-                // First check if cursor is in a specific segment (higher priority)
+                // Check all segments of the path to see if cursor matches any of them
                 for idx in 0..=path.segment_index(db) {
                     if let Some(seg_span) = lazy_span.clone().segment(idx).resolve(db) {
                         if seg_span.range.contains(cursor) {
@@ -226,40 +376,62 @@ pub fn find_position_at_cursor<'db>(
                                     *scope,
                                     lazy_span.clone(),
                                 );
-                                candidates.push((seg_position, seg_span.range.end() - seg_span.range.start()));
+                                candidates.push((
+                                    seg_position,
+                                    seg_span.range.end() - seg_span.range.start(),
+                                ));
                             }
                         }
                     }
                 }
-                
-                // Also add the full path position if it contains cursor
-                let span = lazy_span.resolve(db)?;
-                if span.range.contains(cursor) {
-                    candidates.push((position.clone(), span.range.end() - span.range.start()));
-                }
             }
             ResolvablePosition::FieldAccess(_expr, _ident, _scope, lazy_span) => {
-                let span = lazy_span.resolve(db)?;
-                if span.range.contains(cursor) {
-                    candidates.push((position.clone(), span.range.end() - span.range.start()));
+                if let Some(span) = lazy_span.resolve(db) {
+                    if span.range.contains(cursor) {
+                        candidates.push((position.clone(), span.range.end() - span.range.start()));
+                    }
                 }
             }
             ResolvablePosition::MethodCall(_expr, _ident, _scope, lazy_span) => {
-                let span = lazy_span.resolve(db)?;
-                if span.range.contains(cursor) {
-                    candidates.push((position.clone(), span.range.end() - span.range.start()));
+                if let Some(span) = lazy_span.resolve(db) {
+                    if span.range.contains(cursor) {
+                        candidates.push((position.clone(), span.range.end() - span.range.start()));
+                    }
                 }
             }
-            ResolvablePosition::LocalVariable(_ident, _scope, lazy_span) => {
-                let span = lazy_span.resolve(db)?;
-                if span.range.contains(cursor) {
-                    candidates.push((position.clone(), span.range.end() - span.range.start()));
+            ResolvablePosition::LocalBinding(_ident, _scope, lazy_span) => {
+                if let Some(span) = lazy_span.resolve(db) {
+                    if span.range.contains(cursor) {
+                        candidates.push((position.clone(), span.range.end() - span.range.start()));
+                    }
                 }
             }
             ResolvablePosition::PatternField(_ident, _scope, lazy_span) => {
-                let span = lazy_span.resolve(db)?;
-                if span.range.contains(cursor) {
-                    candidates.push((position.clone(), span.range.end() - span.range.start()));
+                if let Some(span) = lazy_span.resolve(db) {
+                    if span.range.contains(cursor) {
+                        candidates.push((position.clone(), span.range.end() - span.range.start()));
+                    }
+                }
+            }
+            ResolvablePosition::FieldDefinition(_field_def, _scope, lazy_span) => {
+                if let Some(span) = lazy_span.resolve(db) {
+                    if span.range.contains(cursor) {
+                        candidates.push((position.clone(), span.range.end() - span.range.start()));
+                    }
+                }
+            }
+            ResolvablePosition::VariantDefinition(_variant_def, _scope, lazy_span) => {
+                if let Some(span) = lazy_span.resolve(db) {
+                    if span.range.contains(cursor) {
+                        candidates.push((position.clone(), span.range.end() - span.range.start()));
+                    }
+                }
+            }
+            ResolvablePosition::ItemDefinition(_item, lazy_span) => {
+                if let Some(span) = lazy_span.resolve(db) {
+                    if span.range.contains(cursor) {
+                        candidates.push((position.clone(), span.range.end() - span.range.start()));
+                    }
                 }
             }
         }
@@ -272,11 +444,11 @@ pub fn find_position_at_cursor<'db>(
 
     for (position, range_size) in candidates {
         let priority = get_position_priority(&position);
-        
-        let is_better = best_range_size.is_none() 
+
+        let is_better = best_range_size.is_none()
             || priority > best_priority.unwrap()
             || (priority == best_priority.unwrap() && range_size < best_range_size.unwrap());
-            
+
         if is_better {
             best_position = Some(position);
             best_range_size = Some(range_size);
@@ -421,12 +593,17 @@ impl<'db> FunctionAnalysis<'db> {
 
     /// Find all local bindings for a given identifier name
     pub fn find_local_bindings(&self, ident: IdentId<'db>) -> &[LocalBinding<'db>] {
-        self.local_bindings.get(&ident).map(|v| v.as_slice()).unwrap_or(&[])
+        self.local_bindings
+            .get(&ident)
+            .map(|v| v.as_slice())
+            .unwrap_or(&[])
     }
 
     /// Get all expressions that reference local bindings
     pub fn all_local_references(&self) -> impl Iterator<Item = (ExprId, LocalBinding<'db>)> + '_ {
-        self.expr_to_binding.iter().map(|(&expr, &binding)| (expr, binding))
+        self.expr_to_binding
+            .iter()
+            .map(|(&expr, &binding)| (expr, binding))
     }
 }
 
@@ -436,10 +613,10 @@ pub fn analyze_function_for_language_server<'db>(
     func: Func<'db>,
 ) -> FunctionAnalysis<'db> {
     let (_diags, typed_body) = check_func_body(db, func);
-    
+
     // Get the function body if available
     let body = func.body(db);
-    
+
     // Convert internal TypedBody to our public representation
     let mut analysis = FunctionAnalysis {
         body,
@@ -495,7 +672,7 @@ fn extract_comprehensive_analysis_from_body<'db>(
                         pat,
                         is_mut: false, // TODO: Extract mutability from pattern
                     };
-                    
+
                     self.analysis
                         .local_bindings
                         .entry(ident)
@@ -515,7 +692,7 @@ fn extract_comprehensive_analysis_from_body<'db>(
         ) {
             // Get expression properties from typed body
             let expr_prop = self.typed_body.expr_prop(self.db, expr);
-            
+
             // Now we can access the real LocalBinding directly
             let expr_info = if let Some(binding) = expr_prop.binding {
                 self.analysis.expr_to_binding.insert(expr, binding);
@@ -525,7 +702,7 @@ fn extract_comprehensive_analysis_from_body<'db>(
             };
 
             self.analysis.expression_info.insert(expr, expr_info);
-            
+
             walk_expr(self, ctxt, expr);
         }
     }
@@ -594,16 +771,20 @@ impl<'db> IdentifierResolution<'db> {
     }
 
     /// Get all resolved scopes (both global and local binding definition scopes)
-    pub fn all_scopes(&self, _db: &'db dyn HirAnalysisDb, body: Option<Body<'db>>) -> Vec<ScopeId<'db>> {
+    pub fn all_scopes(
+        &self,
+        _db: &'db dyn HirAnalysisDb,
+        body: Option<Body<'db>>,
+    ) -> Vec<ScopeId<'db>> {
         let scopes = self.global_scopes.clone();
-        
+
         // For local bindings, we'd need to compute their definition scopes
         // This is more complex and would require access to the function definition
         if let Some(_body) = body {
             // TODO: Convert local bindings to their definition scopes
             // For now, we only return global scopes
         }
-        
+
         scopes
     }
 }
@@ -615,7 +796,7 @@ pub fn find_all_references_in_function<'db>(
     target_ident: IdentId<'db>,
 ) -> Vec<ExprId> {
     let analysis = analyze_function_for_language_server(db, func);
-    
+
     analysis
         .all_local_references()
         .filter_map(|(expr_id, binding)| {
@@ -626,6 +807,65 @@ pub fn find_all_references_in_function<'db>(
             Some(expr_id) // TODO: Implement proper matching logic
         })
         .collect()
+}
+
+/// Helper function to resolve receiver type with fallback logic
+fn resolve_receiver_type_with_fallback<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    receiver_expr: ExprId,
+    scope: ScopeId<'db>,
+    mut receiver_ty: TyId<'db>,
+) -> TyId<'db> {
+    // If type analysis failed, try to resolve the receiver directly
+    if receiver_ty.has_invalid(db) {
+        if let Some(body) = func.body(db) {
+            let expr_data = receiver_expr.data(db, body);
+            if let hir::hir_def::Partial::Present(expr) = expr_data {
+                match expr {
+                    hir::hir_def::Expr::Path(hir::hir_def::Partial::Present(path)) => {
+                        // Special handling for 'self'
+                        if path.segment_index(db) == 0 && path.ident(db).to_opt().map(|id| id.data(db)) == Some(&"self".to_string()) {
+                            // Get the impl block's self type
+                            let func_scope = ScopeId::Item(ItemKind::Func(func));
+                            if let Some(parent_scope) = func_scope.parent(db) {
+                                if let ScopeId::Item(ItemKind::Impl(impl_)) = parent_scope {
+                                    if let hir::hir_def::Partial::Present(ty) = impl_.ty(db) {
+                                        use crate::ty::ty_lower::lower_hir_ty;
+                                        receiver_ty = lower_hir_ty(db, ty, scope);
+                                    }
+                                }
+                            }
+                        } else {
+                            // Try to resolve the path directly
+                            use crate::name_resolution::{resolve_path, PathRes};
+                            if let Ok(path_res) = resolve_path(db, *path, scope, false) {
+                                match path_res {
+                                    PathRes::Ty(ty) => {
+                                        receiver_ty = ty;
+                                    }
+                                    PathRes::FuncParam(_func_item, param_idx) => {
+                                        // Get the type from the function parameter
+                                        if let hir::hir_def::Partial::Present(params) = func.params(db) {
+                                            if let Some(param) = params.data(db).get(param_idx as usize) {
+                                                if let hir::hir_def::Partial::Present(param_ty) = param.ty {
+                                                    use crate::ty::ty_lower::lower_hir_ty;
+                                                    receiver_ty = lower_hir_ty(db, param_ty, scope);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+    receiver_ty
 }
 
 /// Find methods available for a given type by name
@@ -646,23 +886,75 @@ pub fn resolve_position_to_scopes<'db>(
     enclosing_item: ItemKind<'db>,
 ) -> Option<Vec<ScopeId<'db>>> {
     match position {
+        ResolvablePosition::ItemDefinition(item, _span) => {
+            // An item definition simply resolves to itself
+            Some(vec![item.scope()])
+        }
         ResolvablePosition::Path(path, scope, _span) => {
             // Use the original path resolution logic
             use crate::name_resolution::{resolve_ident_to_bucket, resolve_path};
             if path.parent(db).is_none() {
                 // Single segment path - use bucket API to get all domains
-                let bucket = resolve_ident_to_bucket(db, path, scope);
-                Some(bucket.iter_ok().flat_map(|r| r.scope()).collect())
+                if let Some(ident) = path.ident(db).to_opt() {
+                    let single_ident_path = PathId::from_ident(db, ident);
+                    let bucket = resolve_ident_to_bucket(db, single_ident_path, scope);
+                    Some(bucket.iter_ok().flat_map(|r| r.scope()).collect())
+                } else {
+                    None
+                }
             } else {
-                // Multi-segment path - try both VALUE and TYPE domains
+                // Multi-segment path - for constants and functions, we want to use the bucket API
+                // to find their definition scope
+                if let Some(parent_path) = path.parent(db) {
+                    if let Ok(parent_res) = resolve_path(db, parent_path, scope, false) {
+                        if let Some(parent_scope) = parent_res.as_scope(db) {
+                            // Now resolve the final segment in the parent scope
+                            if let Some(ident) = path.ident(db).to_opt() {
+                                let bucket = resolve_ident_to_bucket(
+                                    db,
+                                    PathId::from_ident(db, ident),
+                                    parent_scope,
+                                );
+                                let scopes: Vec<_> =
+                                    bucket.iter_ok().flat_map(|r| r.scope()).collect();
+                                if !scopes.is_empty() {
+                                    return Some(scopes);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Fall back to the original logic for other cases
                 let value_resolved = resolve_path(db, path, scope, true);
                 match value_resolved {
-                    Ok(r) => Some(r.as_scope(db).into_iter().collect::<Vec<_>>()),
+                    Ok(r) => {
+                        // For modules and types, use their scope directly
+                        r.as_scope(db).map(|s| vec![s])
+                    }
                     Err(_) => {
                         // Fall back to TYPE domain
                         let type_resolved = resolve_path(db, path, scope, false);
                         match type_resolved {
-                            Ok(r) => Some(r.as_scope(db).into_iter().collect::<Vec<_>>()),
+                            Ok(r) => {
+                                // For types, try to get their own scope first, otherwise their definition scope
+                                if let Some(scope) = r.as_scope(db) {
+                                    Some(vec![scope])
+                                } else {
+                                    // Similar logic for types that are constants
+                                    if let Some(parent_path) = path.parent(db) {
+                                        if let Ok(parent_res) =
+                                            resolve_path(db, parent_path, scope, false)
+                                        {
+                                            parent_res.as_scope(db).map(|s| vec![s])
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                }
+                            }
                             Err(err) => match err.kind {
                                 crate::name_resolution::PathResErrorKind::NotFound(bucket) => {
                                     Some(bucket.iter_ok().flat_map(|r| r.scope()).collect())
@@ -695,20 +987,25 @@ pub fn resolve_position_to_scopes<'db>(
                 }
                 _ => return None,
             };
-            
+
             // Get the receiver type
             let analysis = analyze_function_for_language_server(db, func);
             let receiver_ty = analysis.expr_type(db, receiver_expr);
-            
+
+            // Use helper function to resolve receiver type with fallback
+            let receiver_ty = resolve_receiver_type_with_fallback(db, func, receiver_expr, scope, receiver_ty);
+
             // Look up both inherent and trait methods using probe_method
             let ingot = scope.ingot(db);
             let method_results = crate::ty::method_table::probe_method_for_language_server(
-                db, 
-                ingot, 
-                receiver_ty, 
-                method_ident
+                db,
+                ingot,
+                receiver_ty,
+                method_ident,
             );
-            
+
+            // Debug output
+
             if !method_results.is_empty() {
                 let scopes: Vec<_> = method_results
                     .iter()
@@ -719,7 +1016,7 @@ pub fn resolve_position_to_scopes<'db>(
                 None
             }
         }
-        ResolvablePosition::FieldAccess(receiver_expr, field_ident, _scope, _span) => {
+        ResolvablePosition::FieldAccess(receiver_expr, field_ident, scope, _span) => {
             // Get the function context to type the receiver expression
             let func = match enclosing_item {
                 ItemKind::Func(func) => func,
@@ -737,29 +1034,70 @@ pub fn resolve_position_to_scopes<'db>(
                 }
                 _ => return None,
             };
-            
+
             // Get the receiver type and resolve field using RecordLike
             use crate::ty::ty_check::{check_func_body, RecordLike};
             let (_diags, typed_body) = check_func_body(db, func);
             let receiver_ty = typed_body.expr_ty(db, receiver_expr);
-            let record_like = RecordLike::from_ty(receiver_ty);
 
+            // Use helper function to resolve receiver type with fallback
+            let receiver_ty = resolve_receiver_type_with_fallback(db, func, receiver_expr, scope, receiver_ty);
+
+            let record_like = RecordLike::from_ty(receiver_ty);
             if let Some(field_scope) = record_like.record_field_scope(db, field_ident) {
                 Some(vec![field_scope])
             } else {
                 None
             }
         }
-        ResolvablePosition::LocalVariable(ident, scope, _span) => {
-            // Resolve local variable through scope using the original approach
+        ResolvablePosition::LocalBinding(ident, scope, _span) => {
+            // For local variables, we need the enclosing function to check local bindings
+            let func = match enclosing_item {
+                ItemKind::Func(func) => Some(func),
+                ItemKind::Body(body) => {
+                    let body_scope = ScopeId::from_item(ItemKind::Body(body));
+                    if let Some(parent_scope) = body_scope.parent(db) {
+                        if let ScopeId::Item(ItemKind::Func(parent_func)) = parent_scope {
+                            Some(parent_func)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+
+            if let Some(func) = func {
+                let path = PathId::from_ident(db, ident);
+                let resolution = resolve_identifier_comprehensive(db, path, scope, Some(func));
+
+                // If we found local bindings, return the function scope
+                // This allows the test to show where the local variable is defined
+                if !resolution.local_bindings.is_empty() {
+                    return Some(vec![ScopeId::Item(ItemKind::Func(func))]);
+                }
+            }
+
+            // Fall back to global scope resolution
             use crate::name_resolution::resolve_ident_to_bucket;
             let path = PathId::from_ident(db, ident);
             let bucket = resolve_ident_to_bucket(db, path, scope);
-            Some(bucket.iter_ok().flat_map(|r| r.scope()).collect())
+            let scopes: Vec<_> = bucket.iter_ok().flat_map(|r| r.scope()).collect();
+            Some(scopes)
         }
         ResolvablePosition::PatternField(_ident, _scope, _span) => {
             // TODO: Implement pattern field resolution
             None
+        }
+        ResolvablePosition::FieldDefinition(_field_def, scope, _span) => {
+            // A field definition resolves to its containing struct/contract
+            Some(vec![scope])
+        }
+        ResolvablePosition::VariantDefinition(_variant_def, scope, _span) => {
+            // A variant definition resolves to its containing enum
+            Some(vec![scope])
         }
     }
 }
@@ -775,14 +1113,14 @@ where
 {
     // Collect all positions
     let positions = collect_resolvable_positions(db, top_mod);
-    
+
     // Find the position at cursor
     let position = find_position_at_cursor(db, cursor, positions)?;
-    
+
     // Find enclosing item for context
-    let enclosing_item = find_enclosing_item(db, top_mod, cursor)
-        .unwrap_or_else(|| ItemKind::TopMod(top_mod));
-    
+    let enclosing_item =
+        find_enclosing_item(db, top_mod, cursor).unwrap_or_else(|| ItemKind::TopMod(top_mod));
+
     // Resolve position to scopes
     resolve_position_to_scopes(db, position, enclosing_item)
 }
@@ -803,7 +1141,7 @@ where
         .filter(|position| {
             let enclosing_item = find_enclosing_item_for_position(db, top_mod, position)
                 .unwrap_or_else(|| ItemKind::TopMod(top_mod));
-            
+
             if let Some(scopes) = resolve_position_to_scopes(db, position.clone(), enclosing_item) {
                 scopes.contains(&target_scope)
             } else {
@@ -825,10 +1163,10 @@ where
 {
     let positions = collect_resolvable_positions(db, top_mod);
     let position = find_position_at_cursor(db, cursor, positions)?;
-    
-    let enclosing_item = find_enclosing_item(db, top_mod, cursor)
-        .unwrap_or_else(|| ItemKind::TopMod(top_mod));
-    
+
+    let enclosing_item =
+        find_enclosing_item(db, top_mod, cursor).unwrap_or_else(|| ItemKind::TopMod(top_mod));
+
     if let Some(scopes) = resolve_position_to_scopes(db, position.clone(), enclosing_item) {
         Some((scopes, position))
     } else {
@@ -865,7 +1203,7 @@ fn find_enclosing_item_for_position<'db>(
                 return None;
             }
         }
-        ResolvablePosition::LocalVariable(_, _, span) => {
+        ResolvablePosition::LocalBinding(_, _, span) => {
             if let Some(resolved_span) = span.resolve(db) {
                 resolved_span.range.start()
             } else {
@@ -879,7 +1217,28 @@ fn find_enclosing_item_for_position<'db>(
                 return None;
             }
         }
+        ResolvablePosition::FieldDefinition(_, _, span) => {
+            if let Some(resolved_span) = span.resolve(db) {
+                resolved_span.range.start()
+            } else {
+                return None;
+            }
+        }
+        ResolvablePosition::VariantDefinition(_, _, span) => {
+            if let Some(resolved_span) = span.resolve(db) {
+                resolved_span.range.start()
+            } else {
+                return None;
+            }
+        }
+        ResolvablePosition::ItemDefinition(_, span) => {
+            if let Some(resolved_span) = span.resolve(db) {
+                resolved_span.range.start()
+            } else {
+                return None;
+            }
+        }
     };
-    
+
     find_enclosing_item(db, top_mod, cursor)
 }

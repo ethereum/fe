@@ -14,19 +14,40 @@ input_file: test_files/goto_simple_method.fe
 8: }
 9: 
 10: fn test() {
-11:     let container = Container { value: 42 };
-12:     let result = container.get();
+11:     let container = Container { value: 42 }
+12:     let result = container.get()
 13: }
 ---
 cursor position (1, 8), path: goto_simple_method::Container
+cursor position (1, 9), path: goto_simple_method::Container
+cursor position (1, 16), path: goto_simple_method::Container
 cursor position (2, 9), path: goto_simple_method::Container::value
+cursor position (2, 10), path: goto_simple_method::Container::value
+cursor position (2, 13), path: goto_simple_method::Container::value
 cursor position (5, 6), path: goto_simple_method::Container
+cursor position (5, 7), path: goto_simple_method::Container
+cursor position (5, 14), path: goto_simple_method::Container
 cursor position (6, 12), path: Container::get
-cursor position (6, 16), path: Container::get::self
-goto_simple_method
-cursor position (7, 9), path: Container::get::self
-goto_simple_method
+cursor position (6, 13), path: Container::get
+cursor position (6, 14), path: Container::get
 cursor position (7, 14), path: goto_simple_method::Container::value
+cursor position (7, 15), path: goto_simple_method::Container::value
+cursor position (7, 18), path: goto_simple_method::Container::value
 cursor position (11, 4), path: goto_simple_method::test
+cursor position (11, 5), path: goto_simple_method::test
+cursor position (11, 7), path: goto_simple_method::test
+cursor position (12, 9), path: goto_simple_method::test
+cursor position (12, 10), path: goto_simple_method::test
+cursor position (12, 17), path: goto_simple_method::test
 cursor position (12, 21), path: goto_simple_method::Container
+cursor position (12, 22), path: goto_simple_method::Container
+cursor position (12, 29), path: goto_simple_method::Container
+cursor position (13, 9), path: goto_simple_method::test
+cursor position (13, 10), path: goto_simple_method::test
+cursor position (13, 14), path: goto_simple_method::test
+cursor position (13, 18), path: goto_simple_method::test
+cursor position (13, 19), path: goto_simple_method::test
+cursor position (13, 26), path: goto_simple_method::test
 cursor position (13, 28), path: Container::get
+cursor position (13, 29), path: Container::get
+cursor position (13, 30), path: Container::get

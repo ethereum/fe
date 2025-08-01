@@ -55,7 +55,7 @@ fn get_precise_local_variable_locations(
     let position = hir_analysis::tooling_api::find_position_at_cursor(db, cursor, positions)?;
     
     match position {
-        hir_analysis::tooling_api::ResolvablePosition::LocalVariable(ident, scope, _span) => {
+        hir_analysis::tooling_api::ResolvablePosition::LocalBinding(ident, scope, _span) => {
             // Use the comprehensive resolution to get local bindings
             let path = PathId::from_ident(db, ident);
             let resolution = hir_analysis::tooling_api::resolve_identifier_comprehensive(
@@ -111,6 +111,8 @@ pub async fn handle_goto_definition(
     let file_text = file.text(&backend.db);
     let cursor: Cursor = to_offset_from_position(params.position, file_text.as_str());
     let top_mod = map_file_to_mod(&backend.db, file);
+    
+    
 
     // Check if we can get precise locations for local variables using spans
     let locations = if let Some(precise_locations) = get_precise_local_variable_locations(&backend.db, top_mod, cursor) {
@@ -118,7 +120,48 @@ pub async fn handle_goto_definition(
         precise_locations
     } else {
         // For everything else, use the scope-based approach
-        let scopes = get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
+        let mut scopes = get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
+        
+        // If we didn't find any scopes, check if this cursor is at an item definition name
+        if scopes.is_empty() {
+            use hir::span::item::{LazyStructSpan, LazyFuncSpan, LazyEnumSpan};
+            use hir::hir_def::scope_graph::ScopeId;
+            
+            let items = top_mod.scope_graph(&backend.db).items_dfs(&backend.db);
+            for item in items {
+                match item {
+                    ItemKind::Struct(s) => {
+                        let struct_span = LazyStructSpan::new(s);
+                        if let Some(name_span) = struct_span.name().resolve(&backend.db) {
+                            if name_span.range.start() == cursor {
+                                scopes = vec![ScopeId::from_item(item)];
+                                break;
+                            }
+                        }
+                    }
+                    ItemKind::Func(f) => {
+                        let func_span = LazyFuncSpan::new(f);
+                        if let Some(name_span) = func_span.name().resolve(&backend.db) {
+                            if name_span.range.start() == cursor {
+                                scopes = vec![ScopeId::from_item(item)];
+                                break;
+                            }
+                        }
+                    }
+                    ItemKind::Enum(e) => {
+                        let enum_span = LazyEnumSpan::new(e);
+                        if let Some(name_span) = enum_span.name().resolve(&backend.db) {
+                            if name_span.range.start() == cursor {
+                                scopes = vec![ScopeId::from_item(item)];
+                                break;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        
         scopes
             .iter()
             .map(|scope| to_lsp_location_from_scope(&backend.db, *scope))
@@ -177,32 +220,107 @@ mod tests {
         let mut cursors = Vec::new();
         
         for position in positions {
-            match position {
+            match &position {
                 hir_analysis::tooling_api::ResolvablePosition::Path(path, _, lazy_span) => {
-                    // First, add cursor for the full path
-                    if let Some(full_span) = lazy_span.resolve(db) {
-                        cursors.push(full_span.range.start());
-                    }
-                    
-                    // Then try to extract cursor positions from individual segments
-                    let segment_count = path.segment_index(db) + 1;
-                    for idx in 0..segment_count {
+                    // Extract cursor positions from all path segments
+                    for idx in 0..=path.segment_index(db) {
                         if let Some(seg_span) = lazy_span.clone().segment(idx).resolve(db) {
+                            // Add multiple cursor positions across the span for better test coverage
                             cursors.push(seg_span.range.start());
+                            if seg_span.range.end() > seg_span.range.start() + parser::TextSize::from(1) {
+                                cursors.push(seg_span.range.start() + parser::TextSize::from(1));
+                            }
                         }
                     }
-                    
                 }
-                hir_analysis::tooling_api::ResolvablePosition::FieldAccess(_, _, _, lazy_span) |
-                hir_analysis::tooling_api::ResolvablePosition::MethodCall(_, _, _, lazy_span) |
-                hir_analysis::tooling_api::ResolvablePosition::LocalVariable(_, _, lazy_span) |
+                hir_analysis::tooling_api::ResolvablePosition::FieldAccess(_, _, _, lazy_span) => {
+                    if let Some(span) = lazy_span.resolve(db) {
+                        cursors.push(span.range.start());
+                        // Add multiple cursors to test that goto works across the entire span
+                        if span.range.len() > parser::TextSize::from(2) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                            cursors.push(span.range.end() - parser::TextSize::from(1));
+                        } else if span.range.len() > parser::TextSize::from(1) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                        }
+                    }
+                }
+                hir_analysis::tooling_api::ResolvablePosition::MethodCall(_, _, _, lazy_span) => {
+                    if let Some(span) = lazy_span.resolve(db) {
+                        cursors.push(span.range.start());
+                        // Add multiple cursors to test that goto works across the entire span
+                        if span.range.len() > parser::TextSize::from(2) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                            cursors.push(span.range.end() - parser::TextSize::from(1));
+                        } else if span.range.len() > parser::TextSize::from(1) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                        }
+                    }
+                }
                 hir_analysis::tooling_api::ResolvablePosition::PatternField(_, _, lazy_span) => {
                     if let Some(span) = lazy_span.resolve(db) {
                         cursors.push(span.range.start());
+                        // Add multiple cursors to test that goto works across the entire span
+                        if span.range.len() > parser::TextSize::from(2) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                            cursors.push(span.range.end() - parser::TextSize::from(1));
+                        } else if span.range.len() > parser::TextSize::from(1) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                        }
+                    }
+                }
+                hir_analysis::tooling_api::ResolvablePosition::LocalBinding(_ident, _scope, lazy_span) => {
+                    // For local variables, we need the span of the variable usage, not definition
+                    if let Some(span) = lazy_span.resolve(db) {
+                        cursors.push(span.range.start());
+                        // Add multiple cursors to test that goto works across the entire span
+                        if span.range.len() > parser::TextSize::from(2) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                            cursors.push(span.range.end() - parser::TextSize::from(1));
+                        } else if span.range.len() > parser::TextSize::from(1) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                        }
+                    }
+                }
+                hir_analysis::tooling_api::ResolvablePosition::FieldDefinition(_, _, lazy_span) => {
+                    if let Some(span) = lazy_span.resolve(db) {
+                        cursors.push(span.range.start());
+                        // Add multiple cursors to test that goto works across the entire span
+                        if span.range.len() > parser::TextSize::from(2) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                            cursors.push(span.range.end() - parser::TextSize::from(1));
+                        } else if span.range.len() > parser::TextSize::from(1) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                        }
+                    }
+                }
+                hir_analysis::tooling_api::ResolvablePosition::VariantDefinition(_, _, lazy_span) => {
+                    if let Some(span) = lazy_span.resolve(db) {
+                        cursors.push(span.range.start());
+                        // Add multiple cursors to test that goto works across the entire span
+                        if span.range.len() > parser::TextSize::from(2) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                            cursors.push(span.range.end() - parser::TextSize::from(1));
+                        } else if span.range.len() > parser::TextSize::from(1) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                        }
+                    }
+                }
+                hir_analysis::tooling_api::ResolvablePosition::ItemDefinition(_, lazy_span) => {
+                    if let Some(span) = lazy_span.resolve(db) {
+                        cursors.push(span.range.start());
+                        // Add multiple cursors to test that goto works across the entire span
+                        if span.range.len() > parser::TextSize::from(2) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                            cursors.push(span.range.end() - parser::TextSize::from(1));
+                        } else if span.range.len() > parser::TextSize::from(1) {
+                            cursors.push(span.range.start() + parser::TextSize::from(1));
+                        }
                     }
                 }
             }
         }
+
 
         cursors.sort();
         cursors.dedup();
@@ -224,10 +342,10 @@ mod tests {
 
         let cursors = extract_multiple_cursor_positions_from_spans(&db, top_mod);
         let mut cursor_path_map: BTreeMap<Cursor, String> = BTreeMap::default();
-
-        for cursor in &cursors {
+        
+        for (_idx, cursor) in cursors.iter().enumerate() {
             let scopes = hir_analysis::tooling_api::get_goto_definition_scopes(&db, top_mod, *cursor).unwrap_or_default();
-
+            
             if !scopes.is_empty() {
                 cursor_path_map.insert(
                     *cursor,
