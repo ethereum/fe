@@ -12,6 +12,14 @@
 //! - Provide stable public APIs that abstract internal compiler details
 //! - Support incremental/partial analysis for performance
 //! - Handle both local (within function) and global (cross-module) analysis
+//!
+//! ## Type Checker Integration
+//! This API relies heavily on the type checker for accurate symbol resolution.
+//! Previous versions included complex fallback logic to handle cases where the
+//! type checker would fail on certain expressions (e.g., binary operations with
+//! method calls). With improvements to the type checker's handling of temporary
+//! values, this fallback logic is no longer needed, resulting in a cleaner and
+//! more maintainable API.
 
 use hir::{
     hir_def::{
@@ -809,64 +817,6 @@ pub fn find_all_references_in_function<'db>(
         .collect()
 }
 
-/// Helper function to resolve receiver type with fallback logic
-fn resolve_receiver_type_with_fallback<'db>(
-    db: &'db dyn HirAnalysisDb,
-    func: Func<'db>,
-    receiver_expr: ExprId,
-    scope: ScopeId<'db>,
-    mut receiver_ty: TyId<'db>,
-) -> TyId<'db> {
-    // If type analysis failed, try to resolve the receiver directly
-    if receiver_ty.has_invalid(db) {
-        if let Some(body) = func.body(db) {
-            let expr_data = receiver_expr.data(db, body);
-            if let hir::hir_def::Partial::Present(expr) = expr_data {
-                match expr {
-                    hir::hir_def::Expr::Path(hir::hir_def::Partial::Present(path)) => {
-                        // Special handling for 'self'
-                        if path.segment_index(db) == 0 && path.ident(db).to_opt().map(|id| id.data(db)) == Some(&"self".to_string()) {
-                            // Get the impl block's self type
-                            let func_scope = ScopeId::Item(ItemKind::Func(func));
-                            if let Some(parent_scope) = func_scope.parent(db) {
-                                if let ScopeId::Item(ItemKind::Impl(impl_)) = parent_scope {
-                                    if let hir::hir_def::Partial::Present(ty) = impl_.ty(db) {
-                                        use crate::ty::ty_lower::lower_hir_ty;
-                                        receiver_ty = lower_hir_ty(db, ty, scope);
-                                    }
-                                }
-                            }
-                        } else {
-                            // Try to resolve the path directly
-                            use crate::name_resolution::{resolve_path, PathRes};
-                            if let Ok(path_res) = resolve_path(db, *path, scope, false) {
-                                match path_res {
-                                    PathRes::Ty(ty) => {
-                                        receiver_ty = ty;
-                                    }
-                                    PathRes::FuncParam(_func_item, param_idx) => {
-                                        // Get the type from the function parameter
-                                        if let hir::hir_def::Partial::Present(params) = func.params(db) {
-                                            if let Some(param) = params.data(db).get(param_idx as usize) {
-                                                if let hir::hir_def::Partial::Present(param_ty) = param.ty {
-                                                    use crate::ty::ty_lower::lower_hir_ty;
-                                                    receiver_ty = lower_hir_ty(db, param_ty, scope);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-    }
-    receiver_ty
-}
 
 /// Find methods available for a given type by name
 /// This includes both inherent methods (from impl blocks) and trait methods
@@ -992,8 +942,8 @@ pub fn resolve_position_to_scopes<'db>(
             let analysis = analyze_function_for_language_server(db, func);
             let receiver_ty = analysis.expr_type(db, receiver_expr);
 
-            // Use helper function to resolve receiver type with fallback
-            let receiver_ty = resolve_receiver_type_with_fallback(db, func, receiver_expr, scope, receiver_ty);
+            // The type checker now handles complex expressions correctly, no fallback needed
+            // receiver_ty already has the correct type from the type checker
 
             // Look up both inherent and trait methods using probe_method
             let ingot = scope.ingot(db);
@@ -1016,7 +966,7 @@ pub fn resolve_position_to_scopes<'db>(
                 None
             }
         }
-        ResolvablePosition::FieldAccess(receiver_expr, field_ident, scope, _span) => {
+        ResolvablePosition::FieldAccess(receiver_expr, field_ident, _scope, _span) => {
             // Get the function context to type the receiver expression
             let func = match enclosing_item {
                 ItemKind::Func(func) => func,
@@ -1040,8 +990,8 @@ pub fn resolve_position_to_scopes<'db>(
             let (_diags, typed_body) = check_func_body(db, func);
             let receiver_ty = typed_body.expr_ty(db, receiver_expr);
 
-            // Use helper function to resolve receiver type with fallback
-            let receiver_ty = resolve_receiver_type_with_fallback(db, func, receiver_expr, scope, receiver_ty);
+            // The type checker now handles complex expressions correctly, no fallback needed
+            // receiver_ty already has the correct type from the type checker
 
             let record_like = RecordLike::from_ty(receiver_ty);
             if let Some(field_scope) = record_like.record_field_scope(db, field_ident) {

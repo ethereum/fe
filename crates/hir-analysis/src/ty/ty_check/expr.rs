@@ -159,102 +159,74 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
 
-        let lhs_ty = self.fresh_ty();
-        let typed_lhs = self.check_expr(*lhs, lhs_ty);
-        let lhs_ty = typed_lhs.ty;
-        if lhs_ty.has_invalid(self.db) {
+        let lhs_expected = self.fresh_ty();
+        let lhs_ty = self.check_expr(*lhs, lhs_expected).ty;
+        let rhs_expected = self.fresh_ty();
+        let rhs_ty = self.check_expr(*rhs, rhs_expected).ty;
+
+        if lhs_ty.has_invalid(self.db) || rhs_ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
 
-        match op {
+        let operands_ty = self.equate_ty(lhs_ty, rhs_ty, expr.span(self.body()).into());
+        if operands_ty.has_invalid(self.db) {
+            return ExprProp::invalid(self.db);
+        }
+
+        let result_ty = match op {
             BinOp::Arith(arith_op) => {
                 use hir::hir_def::ArithBinOp::*;
-
-                let typed_rhs = self.check_expr(*rhs, lhs_ty);
-                let rhs_ty = typed_rhs.ty;
-                if rhs_ty.has_invalid(self.db) {
-                    return ExprProp::invalid(self.db);
-                }
-
                 match arith_op {
                     Add | Sub | Mul | Div | Rem | Pow | LShift | RShift => {
-                        if lhs_ty.is_integral(self.db) {
-                            return typed_rhs;
+                        if operands_ty.is_integral(self.db) {
+                            operands_ty
+                        } else {
+                            TyId::invalid(self.db, InvalidCause::Other)
                         }
                     }
-
                     BitAnd | BitOr | BitXor => {
-                        if lhs_ty.is_integral(self.db) | lhs_ty.is_bool(self.db) {
-                            return typed_rhs;
+                        if operands_ty.is_integral(self.db) || operands_ty.is_bool(self.db) {
+                            operands_ty
+                        } else {
+                            TyId::invalid(self.db, InvalidCause::Other)
                         }
                     }
                 }
             }
-
-            BinOp::Comp(comp_op) => {
-                use hir::hir_def::CompBinOp::*;
-
-                let typed_rhs = self.check_expr(*rhs, lhs_ty);
-                let rhs_ty = typed_rhs.ty;
-                if rhs_ty.has_invalid(self.db) {
-                    return ExprProp::invalid(self.db);
-                }
-
-                match comp_op {
-                    Eq | NotEq => {
-                        if lhs_ty.is_integral(self.db) | lhs_ty.is_bool(self.db) {
-                            let ty = TyId::bool(self.db);
-                            return ExprProp::new(ty, true);
-                        }
-                    }
-
-                    Lt | LtEq | Gt | GtEq => {
-                        if lhs_ty.is_integral(self.db) {
-                            let ty = TyId::bool(self.db);
-                            return ExprProp::new(ty, true);
-                        }
-                    }
+            BinOp::Comp(_) => {
+                if operands_ty.is_integral(self.db) || operands_ty.is_bool(self.db) {
+                    TyId::bool(self.db)
+                } else {
+                    TyId::invalid(self.db, InvalidCause::Other)
                 }
             }
-
-            BinOp::Logical(logical_op) => {
-                use hir::hir_def::LogicalBinOp::*;
-
-                let typed_rhs = self.check_expr(*rhs, lhs_ty);
-                let rhs_ty = typed_rhs.ty;
-                if rhs_ty.has_invalid(self.db) {
-                    return ExprProp::invalid(self.db);
-                }
-
-                match logical_op {
-                    And | Or => {
-                        if lhs_ty.is_bool(self.db) & rhs_ty.is_bool(self.db) {
-                            let ty = TyId::bool(self.db);
-                            return ExprProp::new(ty, true);
-                        }
-                    }
+            BinOp::Logical(_) => {
+                if operands_ty.is_bool(self.db) {
+                    operands_ty
+                } else {
+                    TyId::invalid(self.db, InvalidCause::Other)
                 }
             }
-        }
+        };
 
-        let lhs_base_ty = lhs_ty.base_ty(self.db);
-        if lhs_base_ty.is_ty_var(self.db) {
-            let diag = BodyDiag::TypeMustBeKnown(lhs.span(self.body()).into());
-            self.push_diag(diag);
+        if result_ty.has_invalid(self.db) {
+            let base_ty = operands_ty.base_ty(self.db);
+            if base_ty.is_ty_var(self.db) {
+                let diag = BodyDiag::TypeMustBeKnown(lhs.span(self.body()).into());
+                self.push_diag(diag);
+            } else {
+                let diag = BodyDiag::ops_trait_not_implemented(
+                    self.db,
+                    expr.span(self.body()).into(),
+                    operands_ty,
+                    *op,
+                );
+                self.push_diag(diag);
+            }
             return ExprProp::invalid(self.db);
         }
 
-        // TODO: We need to check if the type implements a trait corresponding to the
-        // operator when these traits are defined in `std`.
-        let diag = BodyDiag::ops_trait_not_implemented(
-            self.db,
-            expr.span(self.body()).into(),
-            lhs_ty,
-            *op,
-        );
-        self.push_diag(diag);
-
-        ExprProp::invalid(self.db)
+        ExprProp::new(result_ty, true)
     }
 
     fn check_call(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {

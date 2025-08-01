@@ -2,7 +2,7 @@ use async_lsp::ResponseError;
 use common::InputDb;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, ItemKind, PathId, TopLevelMod,
+        scope_graph::ScopeId, ItemKind, TopLevelMod,
     },
     lower::map_file_to_mod,
     span::LazySpan,
@@ -11,7 +11,7 @@ use tracing::error;
 
 use crate::{
     backend::Backend,
-    util::{to_lsp_location_from_scope, to_lsp_location_from_lazy_span, to_offset_from_position},
+    util::{to_lsp_location_from_scope, to_offset_from_position},
 };
 use driver::DriverDataBase;
 pub type Cursor = parser::TextSize;
@@ -25,63 +25,6 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     hir_analysis::tooling_api::get_goto_definition_scopes(db, top_mod, cursor)
 }
 
-/// Get precise local variable definition locations using direct span information
-fn get_precise_local_variable_locations(
-    db: &DriverDataBase,
-    top_mod: TopLevelMod,
-    cursor: Cursor,
-) -> Option<Vec<Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>>>> {
-    // Find the enclosing function
-    let enclosing_item = hir_analysis::tooling_api::find_enclosing_item(db, top_mod, cursor)?;
-    let func = match enclosing_item {
-        ItemKind::Func(func) => func,
-        ItemKind::Body(body) => {
-            let body_scope = ScopeId::from_item(ItemKind::Body(body));
-            if let Some(parent_scope) = body_scope.parent(db) {
-                if let ScopeId::Item(ItemKind::Func(parent_func)) = parent_scope {
-                    parent_func
-                } else {
-                    return None;
-                }
-            } else {
-                return None;
-            }
-        }
-        _ => return None,
-    };
-
-    // Find the resolvable position at cursor using tooling API
-    let positions = hir_analysis::tooling_api::collect_resolvable_positions(db, top_mod);
-    let position = hir_analysis::tooling_api::find_position_at_cursor(db, cursor, positions)?;
-    
-    match position {
-        hir_analysis::tooling_api::ResolvablePosition::LocalBinding(ident, scope, _span) => {
-            // Use the comprehensive resolution to get local bindings
-            let path = PathId::from_ident(db, ident);
-            let resolution = hir_analysis::tooling_api::resolve_identifier_comprehensive(
-                db, path, scope, Some(func)
-            );
-            
-            let mut precise_locations = Vec::new();
-            let body = func.body(db)?;
-            
-            // For each local binding, get its definition span directly
-            for binding in &resolution.local_bindings {
-                if let Some(def_span) = hir_analysis::tooling_api::get_local_binding_definition_span(binding, db, body) {
-                    let location = to_lsp_location_from_lazy_span(db, def_span);
-                    precise_locations.push(location);
-                }
-            }
-            
-            if !precise_locations.is_empty() {
-                Some(precise_locations)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
-}
 
 pub async fn handle_goto_definition(
     backend: &mut Backend,
@@ -114,16 +57,11 @@ pub async fn handle_goto_definition(
     
     
 
-    // Check if we can get precise locations for local variables using spans
-    let locations = if let Some(precise_locations) = get_precise_local_variable_locations(&backend.db, top_mod, cursor) {
-        // For local variables, use the precise span-based locations
-        precise_locations
-    } else {
-        // For everything else, use the scope-based approach
-        let mut scopes = get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
-        
-        // If we didn't find any scopes, check if this cursor is at an item definition name
-        if scopes.is_empty() {
+    // Use the unified approach for all symbols
+    let mut scopes = get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
+    
+    // If we didn't find any scopes, check if this cursor is at an item definition name
+    if scopes.is_empty() {
             use hir::span::item::{LazyStructSpan, LazyFuncSpan, LazyEnumSpan};
             use hir::hir_def::scope_graph::ScopeId;
             
@@ -161,12 +99,11 @@ pub async fn handle_goto_definition(
                 }
             }
         }
-        
-        scopes
-            .iter()
-            .map(|scope| to_lsp_location_from_scope(&backend.db, *scope))
-            .collect::<Vec<_>>()
-    };
+    
+    let locations = scopes
+        .iter()
+        .map(|scope| to_lsp_location_from_scope(&backend.db, *scope))
+        .collect::<Vec<_>>();
 
     let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
         Ok(Some(async_lsp::lsp_types::GotoDefinitionResponse::Array(
