@@ -61,8 +61,8 @@ pub(crate) fn collect_super_traits<'db>(
     let self_param = trait_.self_param(db);
     let scope = trait_.trait_(db).scope();
 
-    // xxx use generic param bounds
-    let assumptions = PredicateListId::empty_list(db);
+    // Use the trait's own constraints as assumptions when lowering super traits
+    let assumptions = collect_constraints(db, hir_trait.into()).instantiate_identity();
 
     let mut super_traits = IndexSet::new();
     for &super_ in hir_trait.super_traits(db).iter() {
