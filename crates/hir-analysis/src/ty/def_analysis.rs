@@ -1411,10 +1411,44 @@ fn analyze_impl_trait_specific_error<'db>(
                 .into(),
             );
         }
-        let Some(&_impl_ty) = impl_ty else {
+        let Some(&impl_ty) = impl_ty else {
             continue;
         };
-        // xxx check bounds!
+        
+        // Check that the implemented associated type satisfies its bounds
+        for bound in &assoc_type.bounds {
+            if let TypeBound::Trait(trait_ref) = bound {
+                match lower_trait_ref(db, impl_ty, *trait_ref, impl_trait.scope(), assumptions) {
+                    Ok(bound_inst) => {
+                        let canonical_bound = Canonical::new(db, bound_inst);
+                        if let GoalSatisfiability::UnSat(subgoal) = is_goal_satisfiable(
+                            db,
+                            impl_trait.top_mod(db).ingot(db),
+                            canonical_bound,
+                            assumptions,
+                        ) {
+                            // Find the span for this specific associated type implementation
+                            let assoc_ty_span = impl_trait
+                                .associated_type_span(db, name)
+                                .map(|s| s.ty().into())
+                                .unwrap_or_else(|| impl_trait.span().ty().into());
+                            
+                            diags.push(
+                                TraitConstraintDiag::TraitBoundNotSat {
+                                    span: assoc_ty_span,
+                                    primary_goal: bound_inst,
+                                    unsat_subgoal: subgoal.map(|s| s.value),
+                                }
+                                .into(),
+                            );
+                        }
+                    }
+                    Err(_) => {
+                        // Error lowering the trait bound - this will be reported elsewhere
+                    }
+                }
+            }
+        }
     }
 
     if diags.is_empty() {
