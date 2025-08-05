@@ -16,11 +16,7 @@ fn ingot_graph_resolution() {
             .unwrap(),
     )
     .unwrap();
-    let ingot_a_url = base_url
-        .join("fixtures/ingots/A")
-        .unwrap()
-        .directory()
-        .unwrap();
+    let ingot_a_url = base_url.join("fixtures/ingots/A/").unwrap();
     println!("{:?}", ingot_a_url);
     let ingot_graph = resolver.transient_resolve(&ingot_a_url).unwrap();
     snap_test!(

@@ -981,6 +981,7 @@ dependencies = [
  "semver",
  "smol_str 0.1.24",
  "toml",
+ "tracing",
  "url",
 ]
 

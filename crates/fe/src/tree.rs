@@ -4,23 +4,32 @@ use camino::Utf8PathBuf;
 use common::{config::Config, graph::EdgeWeight, urlext::canonical_url};
 use resolver::{
     graph::{petgraph, DiGraph, NodeIndex},
-    ingot::basic_ingot_graph_resolver,
     Resolver,
 };
 use url::Url;
 
 pub fn print_tree(path: &Utf8PathBuf) {
-    let mut graph_resolver = basic_ingot_graph_resolver();
+    let mut graph_resolver = resolver::ingot::basic_ingot_graph_resolver();
     let ingot_url = canonical_url(path);
-    let ingot_graph = graph_resolver.transient_resolve(&ingot_url).unwrap();
-    print!(
-        "{}",
-        print_tree_impl(
-            &ingot_graph,
-            &ingot_url,
-            &graph_resolver.node_handler.configs
-        )
-    );
+
+    println!("🌳 Dependency tree for: {ingot_url}");
+    println!();
+
+    match graph_resolver.transient_resolve(&ingot_url) {
+        Ok(ingot_graph) => {
+            print!(
+                "{}",
+                print_tree_impl(
+                    &ingot_graph,
+                    &ingot_url,
+                    &graph_resolver.node_handler.configs
+                )
+            );
+        }
+        Err(err) => {
+            println!("❌ Failed to resolve dependency tree: {err}");
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -87,7 +96,7 @@ fn print_node(
     let ingot_path = &graph[node];
     let base_label = if let Some(config) = configs.get(ingot_path) {
         format!(
-            "{} v{}",
+            "📦 {} v{}",
             config.metadata.name.as_deref().unwrap_or("null"),
             config
                 .metadata
@@ -97,7 +106,7 @@ fn print_node(
                 .unwrap_or_else(|| "null".to_string())
         )
     } else {
-        "[unknown config]".to_string()
+        "📦 [unknown config]".to_string()
     };
 
     let is_in_cycle = cycle_nodes.contains(&node);
@@ -105,7 +114,7 @@ fn print_node(
 
     let mut label = base_label.clone();
     if will_close_cycle {
-        label = format!("{label} [cycle]");
+        label = format!("{label} 🔄 [cycle]");
     }
 
     if is_in_cycle {

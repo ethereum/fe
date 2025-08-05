@@ -15,6 +15,7 @@ url.workspace = true
 glob.workspace = true
 semver.workspace = true
 petgraph.workspace = true
+tracing.workspace = true
 
 indexmap = "2.9"
 git2 = "0.19"

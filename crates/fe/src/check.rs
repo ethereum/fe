@@ -5,7 +5,14 @@ use driver::DriverDataBase;
 pub fn check(path: &Utf8PathBuf) {
     let mut db = DriverDataBase::default();
     let ingot_url = canonical_url(path);
-    driver::init_workspace_ingot(&mut db, &ingot_url);
+    let workspace_diagnostics = driver::init_workspace_ingot(&mut db, &ingot_url);
+
+    // Print workspace setup diagnostics if any
+    if !workspace_diagnostics.is_empty() {
+        for diagnostic in &workspace_diagnostics {
+            eprintln!("{diagnostic}");
+        }
+    }
 
     let ingot = db.workspace().containing_ingot(&db, &ingot_url).unwrap();
     let diags = db.run_on_ingot(ingot);

@@ -16,34 +16,46 @@ use resolver::{
     files::{File, FilesResolutionError, FilesResolver},
     graph::DiGraph,
     ingot::ingot_graph_resolver,
-    ResolutionHandler, Resolver,
+    GraphResolutionHandler, ResolutionHandler, Resolver,
 };
 use url::Url;
 
-pub fn init_workspace_ingot(db: &mut DriverDataBase, ingot_url: &Url) {
+pub fn init_workspace_ingot(
+    db: &mut DriverDataBase,
+    ingot_url: &Url,
+) -> Vec<WorkspaceSetupDiagnostics> {
+    tracing::trace!(target: "resolver", "Starting workspace ingot resolution for: {}", ingot_url);
     let node_handler = InputNodeHandler::from_db(db);
     let mut ingot_graph_resolver = ingot_graph_resolver(node_handler);
-    let graph = ingot_graph_resolver.transient_resolve(&ingot_url).unwrap();
+    let graph = ingot_graph_resolver.transient_resolve(ingot_url).unwrap();
 
-    // let diagnostics: Vec<WorkspaceSetupDiagnostics> = ingot_graph_resolver
-    //     .take_diagnostics()
-    //     .into_iter()
-    //     .map(
-    //         |diagnostic| WorkspaceSetupDiagnostics::UnresolvableIngotDependency {
-    //             target: diagnostic.0,
-    //             error: diagnostic.1,
-    //         },
-    //     )
-    //     .chain(
-    //         ingot_graph_resolver
-    //             .node_resolver
-    //             .take_diagnostics()
-    //             .into_iter()
-    //             .map(|diagnostic| WorkspaceSetupDiagnostics::FileError),
-    //     )
-    //     .collect();
+    let diagnostics: Vec<WorkspaceSetupDiagnostics> = ingot_graph_resolver
+        .take_diagnostics()
+        .into_iter()
+        .map(
+            |diagnostic| WorkspaceSetupDiagnostics::UnresolvableIngotDependency {
+                target: diagnostic.0,
+                error: diagnostic.1,
+            },
+        )
+        .chain(
+            ingot_graph_resolver
+                .node_resolver
+                .take_diagnostics()
+                .into_iter()
+                .map(|_diagnostic| WorkspaceSetupDiagnostics::FileError),
+        )
+        .collect();
 
     ingot_graph_resolver.node_handler.join_graph(graph);
+
+    if diagnostics.is_empty() {
+        tracing::trace!(target: "resolver", "Workspace ingot resolution completed successfully for: {}", ingot_url);
+    } else {
+        tracing::warn!(target: "resolver", "Workspace ingot resolution completed with {} diagnostics for: {}", diagnostics.len(), ingot_url);
+    }
+
+    diagnostics
 }
 
 fn _dump_scope_graph(db: &DriverDataBase, top_mod: TopLevelMod) -> String {
@@ -62,6 +74,25 @@ pub enum WorkspaceSetupDiagnostics {
     },
     IngotDependencyCycle,
     FileError,
+}
+
+impl std::fmt::Display for WorkspaceSetupDiagnostics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            WorkspaceSetupDiagnostics::UnresolvableIngotDependency { target, error } => {
+                write!(
+                    f,
+                    "Failed to resolve ingot dependency '{target}': {error}"
+                )
+            }
+            WorkspaceSetupDiagnostics::IngotDependencyCycle => {
+                write!(f, "Detected cycle in ingot dependencies")
+            }
+            WorkspaceSetupDiagnostics::FileError => {
+                write!(f, "File resolution error occurred")
+            }
+        }
+    }
 }
 
 pub struct InputNodeHandler<'a> {
@@ -142,5 +173,13 @@ impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
         } else {
             vec![]
         }
+    }
+}
+
+impl<'a> GraphResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
+    type Item = Vec<(Url, EdgeWeight)>;
+
+    fn handle_graph_resolution(&mut self, ingot_url: &Url, files: Vec<File>) -> Self::Item {
+        self.handle_resolution(ingot_url, files)
     }
 }
