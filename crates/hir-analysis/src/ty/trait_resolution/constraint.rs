@@ -214,6 +214,11 @@ pub fn collect_constraints<'db>(
                 continue;
             };
             for bound in &w_pred.bounds {
+                // Filter out super trait constraints; handled in `collect_super_traits`
+                if hir_ty.is_self_ty(db) && matches!(owner, GenericParamOwner::Trait(_)) {
+                    continue;
+                }
+
                 if let TypeBound::Trait(trait_ref) = bound {
                     deferred.push(Deferred {
                         bound_ty: Either::Left(hir_ty),
