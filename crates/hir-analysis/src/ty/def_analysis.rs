@@ -1414,7 +1414,7 @@ fn analyze_impl_trait_specific_error<'db>(
         let Some(&impl_ty) = impl_ty else {
             continue;
         };
-        
+
         // Check that the implemented associated type satisfies its bounds
         for bound in &assoc_type.bounds {
             if let TypeBound::Trait(trait_ref) = bound {
@@ -1432,7 +1432,7 @@ fn analyze_impl_trait_specific_error<'db>(
                                 .associated_type_span(db, name)
                                 .map(|s| s.ty().into())
                                 .unwrap_or_else(|| impl_trait.span().ty().into());
-                            
+
                             diags.push(
                                 TraitConstraintDiag::TraitBoundNotSat {
                                     span: assoc_ty_span,

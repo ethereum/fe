@@ -296,9 +296,6 @@ impl<'db> TyChecker<'db> {
 
         callable.check_args(self, args, call_span.args(), None);
 
-        // Check function constraints after instantiation
-        callable.check_constraints(self, expr.span(self.body()).into());
-
         let ret_ty = callable.ret_ty(self.db);
         // Normalize the return type to resolve any associated types
         let normalized_ret_ty = self.normalize_ty(ret_ty);
@@ -399,12 +396,12 @@ impl<'db> TyChecker<'db> {
         callable.check_args(
             self,
             args,
-            call_span.args(),
+            call_span.clone().args(),
             Some((*receiver, receiver_prop)),
         );
 
         // Check function constraints after instantiation
-        callable.check_constraints(self, expr.span(self.body()).into());
+        callable.check_constraints(self, call_span.method_name().into());
 
         let ret_ty = callable.ret_ty(self.db);
 

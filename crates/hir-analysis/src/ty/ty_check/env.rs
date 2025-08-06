@@ -15,7 +15,7 @@ use crate::{
     ty::{
         canonical::{Canonical, Canonicalized},
         const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
-        diagnostics::{BodyDiag, FuncBodyDiag},
+        diagnostics::{BodyDiag, FuncBodyDiag, TraitConstraintDiag, TyDiagCollection},
         fold::{TyFoldable, TyFolder},
         func_def::{lower_func, FuncDef},
         trait_def::TraitInstId,
@@ -381,8 +381,24 @@ impl<'db> TyCheckEnv<'db> {
                     }
                 }
 
+                GoalSatisfiability::UnSat(subgoal) => {
+                    // Emit diagnostic for unsatisfied trait bound
+                    // These are constraints that were explicitly registered for confirmation,
+                    // not general WF checks, so we need to emit diagnostics for them
+                    if !inst.self_ty(self.db).has_var(self.db) {
+                        let unsat_subgoal =
+                            subgoal.map(|s| canonical_inst.extract_solution(prober.table, s));
+                        let diag = TraitConstraintDiag::TraitBoundNotSat {
+                            span: span.clone(),
+                            primary_goal: inst,
+                            unsat_subgoal,
+                        };
+                        sink.push(TyDiagCollection::from(diag).into())
+                    }
+                }
+
                 _ => {
-                    // WF is checked by `TyCheckerFinalizer`
+                    // Other cases (Satisfied, ContainsInvalid) are handled elsewhere
                 }
             }
         }
