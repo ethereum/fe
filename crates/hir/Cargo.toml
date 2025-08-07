@@ -14,6 +14,7 @@ dot2 = "1.0"
 num-bigint.workspace = true
 num-traits = "0.2.19"
 paste.workspace = true
+rangemap = "1.4"
 rustc-hash.workspace = true
 salsa.workspace = true
 smallvec.workspace = true

@@ -868,6 +868,7 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "paste",
+ "rangemap",
  "rustc-hash 2.1.1",
  "salsa",
  "smallvec 2.0.0-alpha.11",
@@ -954,6 +955,7 @@ dependencies = [
  "fe-test-utils",
  "lazy_static",
  "logos",
+ "rangemap",
  "rowan",
  "rustc-hash 2.1.1",
  "smallvec 2.0.0-alpha.11",
@@ -1825,6 +1827,12 @@ source = "git+https://github.com/micahscopes/radix_immutable.git#cc9825ea75f73a5
 dependencies = [
  "once_cell",
 ]
+
+[[package]]
+name = "rangemap"
+version = "1.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f93e7e49bb0bf967717f7bd674458b3d6b0c5f48ec7e3038166026a69fc22223"
 
 [[package]]
 name = "rayon"

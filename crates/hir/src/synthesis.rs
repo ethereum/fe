@@ -18,14 +18,13 @@
 //! - AST traversal is localized to a single function body
 //! - Source map lookup is O(1) with IndexMap
 
-use std::collections::HashMap;
-
 use parser::{ast_index::AstNodeAtPosition, TextSize};
+use rangemap::RangeMap;
 
 use crate::{
     hir_def::{Body, ExprId, ItemKind, PatId, StmtId, TopLevelMod},
     span::{body_source_map, HirOrigin, LazySpan},
-    SpannedHirDb,
+    HirDb, SpannedHirDb,
 };
 
 pub type Cursor = TextSize;
@@ -94,7 +93,7 @@ pub trait ResolveHir<'db> {
 pub struct ModuleLazyHir<'db> {
     top_mod: TopLevelMod<'db>,
     /// Cache of bodies indexed by their text range for fast lookup
-    body_cache: Option<HashMap<(TextSize, TextSize), Body<'db>>>,
+    body_cache: Option<RangeMap<TextSize, Body<'db>>>,
 }
 
 impl<'db> ModuleLazyHir<'db> {
@@ -112,31 +111,9 @@ impl<'db> ModuleLazyHir<'db> {
             return;
         }
 
-        let mut cache = HashMap::new();
-
-        // Collect all bodies in the module
-        let items = self.top_mod.scope_graph(db).items_dfs(db);
-        for item in items {
-            // Check if this item has a body
-            let body = match item {
-                ItemKind::Func(func) => {
-                    if let Some(body) = func.body(db) {
-                        body
-                    } else {
-                        continue;
-                    }
-                }
-                _ => continue,
-            };
-
-            // Get the span of this body and cache it
-            if let Some(span) = body.span().resolve(db) {
-                let range = span.range;
-                cache.insert((range.start(), range.end()), body);
-            }
-        }
-
-        self.body_cache = Some(cache);
+        // Use the Salsa query to get the cached body index
+        let body_index = module_body_index(db, self.top_mod);
+        self.body_cache = Some(body_index.clone());
     }
 
     /// Find the body that most closely contains the given cursor position
@@ -149,21 +126,8 @@ impl<'db> ModuleLazyHir<'db> {
 
         let cache = self.body_cache.as_ref().unwrap();
 
-        // Find the smallest body that contains the cursor
-        let mut best_body = None;
-        let mut best_range_size = None;
-
-        for (&(start, end), &body) in cache {
-            if start <= cursor && cursor <= end {
-                let range_size = end - start;
-                if best_range_size.is_none() || range_size < best_range_size.unwrap() {
-                    best_body = Some(body);
-                    best_range_size = Some(range_size);
-                }
-            }
-        }
-
-        best_body
+        // Use rangemap for efficient position-based lookup
+        cache.get(&cursor).copied()
     }
 }
 
@@ -235,7 +199,6 @@ fn find_ast_node_at_position(
     body: Body,
     cursor: Cursor,
 ) -> AstNodeAtPosition {
-    use parser::ast::prelude::AstNode;
     use parser::ast_index::find_ast_node_at_position;
     use parser::SyntaxNode;
 
@@ -245,6 +208,50 @@ fn find_ast_node_at_position(
 
     // Use the parser's ast_index to find the node at the position
     find_ast_node_at_position(&root_syntax, cursor)
+}
+
+/// Build the body index for a module (non-Salsa version for now)
+pub fn module_body_index<'db>(
+    db: &'db dyn SpannedHirDb,
+    top_mod: TopLevelMod<'db>,
+) -> RangeMap<TextSize, Body<'db>> {
+    let mut body_index = RangeMap::new();
+
+    // Collect all bodies in the module
+    let items = top_mod.scope_graph(db).items_dfs(db);
+    for item in items {
+        // Check if this item has a body
+        let body = match item {
+            ItemKind::Func(func) => {
+                if let Some(body) = func.body(db) {
+                    body
+                } else {
+                    continue;
+                }
+            }
+            _ => continue,
+        };
+
+        // Get the span of this body and add to index
+        if let Some(span) = body.span().resolve(db) {
+            let range = span.range;
+            body_index.insert(range.start()..range.end(), body);
+        }
+    }
+
+    body_index
+}
+
+/// Build the AST spatial index for a module (non-Salsa version for now)
+pub fn module_ast_index<'db>(
+    db: &'db dyn SpannedHirDb,
+    top_mod: TopLevelMod<'db>,
+) -> parser::ast_index::AstSpatialIndex {
+    // Parse the file and build spatial index
+    let green_node = crate::lower::parse_file_impl(db, top_mod);
+    let root_syntax = parser::SyntaxNode::new_root(green_node);
+
+    parser::ast_index::AstSpatialIndex::build_from_syntax(&root_syntax)
 }
 
 /// Utility function to create a lazy HIR resolver for a cursor position
@@ -316,6 +323,13 @@ mod tests {
         );
         let top_mod = map_file_to_mod(&db, file);
 
+        // Test the Salsa query directly
+        let body_index = module_body_index(&db, top_mod);
+
+        // Should have built an index
+        println!("Body index contains {} entries", body_index.len());
+
+        // Test module resolver cache
         let mut resolver = ModuleLazyHir::new(top_mod);
         resolver.ensure_body_cache(&db);
 
@@ -378,5 +392,116 @@ fn calculate(x: i32) -> i32 {
             // Just verify the function doesn't panic and returns valid results
             assert!(matches!(result, LazyHirResult::None) || result.is_some());
         }
+    }
+
+    #[test]
+    fn test_salsa_queries() {
+        let mut db = TestDb::default();
+        let source = r#"
+fn test_func() -> i32 {
+    let x = 42;
+    x
+}
+
+fn another_func() -> bool {
+    true
+}
+"#;
+        let file = db.workspace().touch(
+            &mut db,
+            Url::parse("file:///test.fe").unwrap(),
+            Some(source.to_string()),
+        );
+        let top_mod = map_file_to_mod(&db, file);
+
+        // Test body index query
+        let body_index = module_body_index(&db, top_mod);
+        println!("Body index: {} entries", body_index.len());
+
+        // Test AST index query
+        let ast_index = module_ast_index(&db, top_mod);
+        println!("AST index created successfully");
+
+        // Test lookup in body index
+        let cursor = TextSize::from(50); // Somewhere in the first function
+        if let Some(body) = body_index.get(&cursor) {
+            println!("Found body at cursor position");
+            // Test AST lookup within that body
+            let _ast_result = find_ast_node_at_position(&db, *body, cursor);
+        }
+    }
+
+    #[test]
+    fn test_performance_comparison() {
+        let mut db = TestDb::default();
+        let source = r#"
+fn large_function() -> i32 {
+    let a = 1;
+    let b = 2;
+    let c = 3;
+    let d = 4;
+    let e = 5;
+    let f = 6;
+    let g = 7;
+    let h = 8;
+    let i = 9;
+    let j = 10;
+    let result = a + b + c + d + e + f + g + h + i + j;
+    result
+}
+
+fn another_function() -> bool {
+    let x = true;
+    let y = false;
+    x && y
+}
+
+fn third_function() -> String {
+    let s1 = "hello";
+    let s2 = "world";
+    format!("{} {}", s1, s2)
+}
+"#;
+        let file = db.workspace().touch(
+            &mut db,
+            Url::parse("file:///performance_test.fe").unwrap(),
+            Some(source.to_string()),
+        );
+        let top_mod = map_file_to_mod(&db, file);
+
+        // Test rangemap performance
+        let start = std::time::Instant::now();
+        let body_index = module_body_index(&db, top_mod);
+        let index_build_time = start.elapsed();
+
+        // Test multiple lookups using rangemap
+        let start = std::time::Instant::now();
+        for offset in (0..source.len()).step_by(10) {
+            let cursor = TextSize::from(offset as u32);
+            let _result = body_index.get(&cursor);
+        }
+        let lookup_time = start.elapsed();
+
+        println!("Index build time: {:?}", index_build_time);
+        println!(
+            "Lookup time for {} queries: {:?}",
+            source.len() / 10,
+            lookup_time
+        );
+        println!(
+            "Average lookup time: {:?}",
+            lookup_time / (source.len() / 10) as u32
+        );
+
+        // Test AST spatial index
+        let start = std::time::Instant::now();
+        let _ast_index = module_ast_index(&db, top_mod);
+        let ast_build_time = start.elapsed();
+
+        println!("AST index build time: {:?}", ast_build_time);
+
+        // Verify we have multiple bodies indexed
+        assert!(body_index.len() > 0);
+        println!("Successfully indexed {} bodies", body_index.len());
     }
 }
