@@ -135,7 +135,7 @@ pub fn diag_to_lsp(
     result
 }
 
-fn to_lsp_location_from_span(
+pub fn to_lsp_location_from_span(
     db: &dyn InputDb,
     span: Span,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {

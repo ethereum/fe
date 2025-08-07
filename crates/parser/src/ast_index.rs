@@ -178,17 +178,27 @@ pub fn find_ast_node_at_position(root: &SyntaxNode, offset: TextSize) -> AstNode
     // Find the deepest node containing the cursor
     let deepest_node = find_node_at_offset(root, offset);
 
-    // Try to cast to specific AST node types, preferring expressions > statements > patterns
-    if let Some(expr) = ast::Expr::cast(deepest_node.clone()) {
-        return AstNodeAtPosition::Expr(expr);
-    }
+    // Traverse up from the deepest node to find the first expression, statement, or pattern
+    let mut current = deepest_node.clone();
+    loop {
+        // Try to cast to specific AST node types, preferring expressions > statements > patterns
+        if let Some(expr) = ast::Expr::cast(current.clone()) {
+            return AstNodeAtPosition::Expr(expr);
+        }
 
-    if let Some(stmt) = ast::Stmt::cast(deepest_node.clone()) {
-        return AstNodeAtPosition::Stmt(stmt);
-    }
+        if let Some(stmt) = ast::Stmt::cast(current.clone()) {
+            return AstNodeAtPosition::Stmt(stmt);
+        }
 
-    if let Some(pat) = ast::Pat::cast(deepest_node.clone()) {
-        return AstNodeAtPosition::Pat(pat);
+        if let Some(pat) = ast::Pat::cast(current.clone()) {
+            return AstNodeAtPosition::Pat(pat);
+        }
+
+        // Move to parent node
+        match current.parent() {
+            Some(parent) => current = parent,
+            None => break,
+        }
     }
 
     AstNodeAtPosition::None

@@ -1,19 +1,19 @@
 use async_lsp::ResponseError;
 use common::InputDb;
 use hir::{
-    hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod},
+    hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod, TypeKind},
     lower::map_file_to_mod,
     span::{DynLazySpan, LazySpan},
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
     SpannedHirDb,
 };
 use hir_analysis::name_resolution::{resolve_path, PathResErrorKind};
-use tracing::error;
+use tracing::{debug, error};
 
 use crate::{
     backend::Backend,
     hir_integration::{lazy_hir_for_cursor, LazyHirResult},
-    util::{to_lsp_location_from_scope, to_offset_from_position},
+    util::to_offset_from_position,
 };
 use driver::DriverDataBase;
 pub type Cursor = parser::TextSize;
@@ -112,28 +112,305 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     Some(scopes)
 }
 
-/// Demonstration function showing how lazy HIR can be used for goto definition
-/// This is a simplified version that shows the potential of the lazy HIR approach
-pub fn demonstrate_lazy_hir_goto<'db>(
+/// Goto definition using HIR synthesis architecture integrated with semantic resolution
+pub fn goto_definition_with_hir_synthesis<'db>(
     db: &'db DriverDataBase,
     top_mod: TopLevelMod<'db>,
     cursor: Cursor,
-) -> Option<LazyHirResult<'db>> {
+) -> Result<Vec<ScopeId<'db>>, Box<dyn std::error::Error>> {
+    use crate::hir_integration::{lazy_hir_for_cursor, LazyHirResult};
+
     // Use the HIR synthesis system to find the HIR node at the cursor position
-    let result = lazy_hir_for_cursor(db, top_mod, cursor);
+    let hir_result = lazy_hir_for_cursor(db, top_mod, cursor);
 
-    // In a full implementation, we would:
-    // 1. Get the HIR node from the result
-    // 2. Resolve its definition location using ResolveHir trait
-    // 3. Convert to LSP location response
-    // 4. Handle different node types (expressions, statements, patterns)
-    // 5. Fall back to current implementation if synthesis fails
 
-    if result.is_some() {
-        Some(result)
-    } else {
-        None
+    // Debug: Log what HIR synthesis found
+    match &hir_result {
+        LazyHirResult::Expr(body, expr_id, context) => {
+            debug!(
+                "HIR synthesis found expression: body={:?}, expr_id={:?}, context={:?}",
+                body, expr_id, context
+            );
+        }
+        LazyHirResult::Stmt(body, stmt_id, context) => {
+            debug!(
+                "HIR synthesis found statement: body={:?}, stmt_id={:?}, context={:?}",
+                body, stmt_id, context
+            );
+        }
+        LazyHirResult::Pat(body, pat_id) => {
+            debug!(
+                "HIR synthesis found pattern: body={:?}, pat_id={:?}",
+                body, pat_id
+            );
+        }
+        LazyHirResult::None => {
+            debug!(
+                "HIR synthesis found nothing at cursor position {:?}",
+                cursor
+            );
+        }
     }
+
+    // Now resolve the HIR node to its semantic definition
+    let result = match hir_result {
+        LazyHirResult::Expr(body, expr_id, context) => resolve_expression_definition(db, body, expr_id, context),
+        LazyHirResult::Stmt(body, stmt_id, context) => resolve_statement_definition(db, body, stmt_id, context),
+        LazyHirResult::Pat(body, pat_id) => resolve_pattern_definition(db, body, pat_id),
+        LazyHirResult::None => {
+            // No HIR node found at this position - nothing to go to
+            Ok(vec![])
+        }
+    };
+    
+    result
+}
+
+/// Resolve definition location for an expression HIR node
+fn resolve_expression_definition<'db>(
+    db: &'db DriverDataBase,
+    body: hir::hir_def::Body<'db>,
+    expr_id: hir::hir_def::ExprId,
+    context: hir::synthesis::HirNodeContext,
+) -> Result<Vec<ScopeId<'db>>, Box<dyn std::error::Error>> {
+    use hir::hir_def::{Expr, Partial};
+
+    // Get the actual expression data from its ID
+    let expr_data = &body.exprs(db)[expr_id];
+
+    // Match on the kind of expression to handle different semantic cases
+    match expr_data {
+        // This is the most common case: a variable, function call, type name, etc.
+        Partial::Present(Expr::Path(Partial::Present(path_id))) => {
+            let scope = body.scope();
+            
+            // Check if we have segment context
+            match context {
+                hir::synthesis::HirNodeContext::PathSegment(segment_index) => {
+                    // Resolve just the specific segment
+                    if let Some(segment_path_id) = path_id.segment(db, segment_index) {
+                        match resolve_path(db, segment_path_id, scope, true) {
+                            Ok(path_res) => {
+                                if let Some(scope) = path_res.as_scope(db) {
+                                    return Ok(vec![scope]);
+                                }
+                            }
+                            Err(_) => {}
+                        }
+                    }
+                }
+                hir::synthesis::HirNodeContext::Regular => {
+                    // Resolve the full path
+                    match resolve_path(db, *path_id, scope, true) {
+                        Ok(path_res) => {
+                            if let Some(scope) = path_res.as_scope(db) {
+                                return Ok(vec![scope]);
+                            }
+                        }
+                        Err(_) => {}
+                    }
+                }
+            }
+            
+            Ok(vec![])
+        }
+
+        // Function calls - resolve to the function definition
+        Partial::Present(Expr::Call(callee_expr_id, _args)) => {
+            // Recursively resolve the callee expression
+            // For function calls, we don't need segment resolution
+            resolve_expression_definition(db, body, *callee_expr_id, hir::synthesis::HirNodeContext::Regular)
+        }
+
+        // Method calls - resolve to the method definition
+        Partial::Present(Expr::MethodCall(
+            _receiver_expr_id,
+            _method_name,
+            _generic_args,
+            _call_args,
+        )) => {
+            // For method calls, we need type information of the receiver
+            // This is more complex and would involve type inference
+            // For now, we'll leave this as a TODO and focus on path resolution
+            // TODO: Implement method resolution using type inference
+            Ok(vec![])
+        }
+
+        // Field access - resolve to the field definition
+        Partial::Present(Expr::Field(_receiver_expr_id, _field_index)) => {
+            // Similar to method calls, this requires type information
+            // TODO: Implement field resolution using type inference
+            Ok(vec![])
+        }
+
+        // Other expression types don't have definitions to jump to
+        _ => {
+            Ok(vec![])
+        }
+    }
+}
+
+/// Resolve definition location for a statement HIR node
+fn resolve_statement_definition<'db>(
+    db: &'db DriverDataBase,
+    body: hir::hir_def::Body<'db>,
+    stmt_id: hir::hir_def::StmtId,
+    context: hir::synthesis::HirNodeContext,
+) -> Result<Vec<ScopeId<'db>>, Box<dyn std::error::Error>> {
+    use hir::hir_def::{Partial, Stmt};
+
+    // Get the actual statement data from its ID
+    let stmt_data = &body.stmts(db)[stmt_id];
+
+    match stmt_data {
+        // Let statements: resolve the type annotation or initializer expression
+        Partial::Present(Stmt::Let(_pat_id, type_annotation, init_expr)) => {
+            let mut scopes = vec![];
+
+            // If there's a type annotation, try to resolve it
+            if let Some(type_id) = type_annotation {
+                // Get the type data and check if it's a path type
+                if let hir::hir_def::TypeKind::Path(Partial::Present(path_id)) = type_id.data(db) {
+                    // Resolve the path in the type annotation
+                    let scope = body.scope();
+                    
+                    // Check if we have segment context
+                    match context {
+                        hir::synthesis::HirNodeContext::PathSegment(segment_index) => {
+                            // Resolve just the specific segment
+                            if let Some(segment_path_id) = path_id.segment(db, segment_index) {
+                                match resolve_path(db, segment_path_id, scope, false) {
+                                    Ok(path_res) => {
+                                        if let Some(scope) = path_res.as_scope(db) {
+                                            scopes.push(scope);
+                                        }
+                                    }
+                                    Err(_) => {}
+                                }
+                            }
+                        }
+                        hir::synthesis::HirNodeContext::Regular => {
+                            // Resolve the full path
+                            match resolve_path(db, *path_id, scope, false) {
+                                Ok(path_res) => {
+                                    if let Some(scope) = path_res.as_scope(db) {
+                                        scopes.push(scope);
+                                    }
+                                }
+                                Err(_) => {}
+                            }
+                        }
+                    }
+                }
+            }
+
+            // If there's an initializer expression, resolve it
+            if let Some(expr_id) = init_expr {
+                let expr_scopes = resolve_expression_definition(db, body, *expr_id, hir::synthesis::HirNodeContext::Regular)?;
+                scopes.extend(expr_scopes);
+            }
+
+            Ok(scopes)
+        }
+
+        // For loops: resolve the iterable expression
+        Partial::Present(Stmt::For(_pat_id, iterable_expr_id, _body_expr_id)) => {
+            resolve_expression_definition(db, body, *iterable_expr_id, hir::synthesis::HirNodeContext::Regular)
+        }
+
+        // While loops: resolve the condition expression
+        Partial::Present(Stmt::While(condition_expr_id, _body_expr_id)) => {
+            resolve_expression_definition(db, body, *condition_expr_id, hir::synthesis::HirNodeContext::Regular)
+        }
+
+        // Expression statements: resolve the expression
+        Partial::Present(Stmt::Expr(expr_id)) => resolve_expression_definition(db, body, *expr_id, hir::synthesis::HirNodeContext::Regular),
+
+        // Other statement types don't have meaningful definitions
+        _ => Ok(vec![]),
+    }
+}
+
+/// Resolve definition location for a pattern HIR node
+fn resolve_pattern_definition<'db>(
+    db: &'db DriverDataBase,
+    body: hir::hir_def::Body<'db>,
+    pat_id: hir::hir_def::PatId,
+) -> Result<Vec<ScopeId<'db>>, Box<dyn std::error::Error>> {
+    use hir::hir_def::{Partial, Pat};
+
+    // Get the actual pattern data from its ID
+    let pat_data = &body.pats(db)[pat_id];
+
+    match pat_data {
+        // Path patterns: resolve to the type or variant definition
+        Partial::Present(Pat::Path(Partial::Present(path_id), _is_mut)) => {
+            let scope = body.scope();
+
+            // Resolve the path to its definition
+            match resolve_path(db, *path_id, scope, false) {
+                Ok(path_res) => {
+                    if let Some(scope) = path_res.as_scope(db) {
+                        return Ok(vec![scope]);
+                    }
+                    Ok(vec![])
+                }
+                Err(_) => Ok(vec![]),
+            }
+        }
+
+        // Path tuple patterns: resolve to the tuple type definition
+        Partial::Present(Pat::PathTuple(Partial::Present(path_id), _tuple_pats)) => {
+            let scope = body.scope();
+
+            match resolve_path(db, *path_id, scope, false) {
+                Ok(path_res) => {
+                    if let Some(scope) = path_res.as_scope(db) {
+                        return Ok(vec![scope]);
+                    }
+                    Ok(vec![])
+                }
+                Err(_) => Ok(vec![]),
+            }
+        }
+
+        // Record patterns: resolve to the record type definition
+        Partial::Present(Pat::Record(Partial::Present(path_id), _record_fields)) => {
+            let scope = body.scope();
+
+            match resolve_path(db, *path_id, scope, false) {
+                Ok(path_res) => {
+                    if let Some(scope) = path_res.as_scope(db) {
+                        return Ok(vec![scope]);
+                    }
+                    Ok(vec![])
+                }
+                Err(_) => Ok(vec![]),
+            }
+        }
+
+        // Other pattern types don't have definitions to jump to
+        _ => Ok(vec![]),
+    }
+}
+
+/// Performance comparison between old visitor-based and new HIR synthesis approaches
+pub fn benchmark_goto_approaches<'db>(
+    db: &'db DriverDataBase,
+    top_mod: TopLevelMod<'db>,
+    cursor: Cursor,
+) -> (std::time::Duration, std::time::Duration) {
+    // Benchmark old visitor-based approach
+    let start = std::time::Instant::now();
+    let _old_result = get_goto_target_scopes_for_cursor(db, top_mod, cursor);
+    let old_time = start.elapsed();
+
+    // Benchmark new HIR synthesis approach
+    let start = std::time::Instant::now();
+    let _new_result = goto_definition_with_hir_synthesis(db, top_mod, cursor);
+    let new_time = start.elapsed();
+
+    (old_time, new_time)
 }
 
 pub async fn handle_goto_definition(
@@ -160,41 +437,33 @@ pub async fn handle_goto_definition(
         .ok_or_else(|| {
             ResponseError::new(
                 async_lsp::ErrorCode::INTERNAL_ERROR,
-                format!("File not found in index: {url} (original path: {file_path_str})"),
+                format!("File not found in workspace: {url}"),
             )
         })?;
     let top_mod = map_file_to_mod(&backend.db, file);
 
-    // Demonstration: Try the new synthesis-based lazy HIR approach first
-    // This showcases the improved architecture with proper separation of concerns:
-    // - Parser crate handles AST position finding
-    // - HIR crate handles semantic synthesis
-    // - Language server provides thin integration layer
-    let _lazy_result = demonstrate_lazy_hir_goto(&backend.db, top_mod, cursor);
-
-    let scopes =
-        get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
-
-    let locations = scopes
-        .iter()
-        .map(|scope| to_lsp_location_from_scope(&backend.db, *scope))
-        .collect::<Vec<_>>();
-
-    let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
-        Ok(Some(async_lsp::lsp_types::GotoDefinitionResponse::Array(
-            locations
-                .into_iter()
-                .filter_map(std::result::Result::ok)
-                .collect(),
-        )));
-    let response = match result {
-        Ok(response) => response,
-        Err(e) => {
-            error!("Error handling goto definition: {:?}", e);
-            None
+    // Use enhanced HIR synthesis approach
+    match goto_definition_with_hir_synthesis(&backend.db, top_mod, cursor) {
+        Ok(scopes) => {
+            let locations: Result<Vec<_>, _> = scopes
+                .iter()
+                .map(|scope| crate::util::to_lsp_location_from_scope(&backend.db, *scope))
+                .collect();
+            match locations {
+                Ok(locations) => Ok(Some(async_lsp::lsp_types::GotoDefinitionResponse::Array(
+                    locations,
+                ))),
+                Err(e) => {
+                    error!("Failed to convert scopes to locations: {:?}", e);
+                    Ok(None)
+                }
+            }
         }
-    };
-    Ok(response)
+        Err(e) => {
+            error!("Enhanced goto definition failed: {:?}", e);
+            Ok(None)
+        }
+    }
 }
 // }
 #[cfg(test)]
@@ -260,7 +529,7 @@ mod tests {
 
         for cursor in &cursors {
             let scopes =
-                get_goto_target_scopes_for_cursor(db, top_mod, *cursor).unwrap_or_default();
+                goto_definition_with_hir_synthesis(db, top_mod, *cursor).unwrap_or_default();
 
             if !scopes.is_empty() {
                 cursor_path_map.insert(

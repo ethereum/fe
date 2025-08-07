@@ -24,18 +24,69 @@ use rangemap::RangeMap;
 use crate::{
     hir_def::{Body, ExprId, ItemKind, PatId, StmtId, TopLevelMod},
     span::{body_source_map, HirOrigin, LazySpan},
-    HirDb, SpannedHirDb,
+    SpannedHirDb,
 };
 
+/// Wrapper for RangeMap to add Salsa compatibility traits
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BodyIndex<'db>(RangeMap<TextSize, Body<'db>>);
+
+impl<'db> BodyIndex<'db> {
+    pub fn new() -> Self {
+        Self(RangeMap::new())
+    }
+
+    pub fn insert(&mut self, range: std::ops::Range<TextSize>, body: Body<'db>) {
+        self.0.insert(range, body);
+    }
+
+    pub fn get(&self, position: &TextSize) -> Option<Body<'db>> {
+        self.0.get(position).cloned()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl<'db> Default for BodyIndex<'db> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Wrapper for AST spatial index to add Salsa compatibility
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AstIndex(parser::ast_index::AstSpatialIndex);
+
+impl AstIndex {
+    pub fn new(index: parser::ast_index::AstSpatialIndex) -> Self {
+        Self(index)
+    }
+
+    pub fn find_at_position(&self, offset: TextSize) -> AstNodeAtPosition {
+        self.0.find_at_position(offset)
+    }
+}
+
 pub type Cursor = TextSize;
+
+/// Additional context for HIR nodes
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HirNodeContext {
+    /// Path expression with the segment index that contains the cursor
+    PathSegment(usize),
+    /// Regular context
+    Regular,
+}
 
 /// Result of a lazy HIR lookup from cursor position
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LazyHirResult<'db> {
     /// Found an expression HIR node
-    Expr(Body<'db>, ExprId),
+    Expr(Body<'db>, ExprId, HirNodeContext),
     /// Found a statement HIR node
-    Stmt(Body<'db>, StmtId),
+    Stmt(Body<'db>, StmtId, HirNodeContext),
     /// Found a pattern HIR node
     Pat(Body<'db>, PatId),
     /// No HIR node found at this position
@@ -46,8 +97,8 @@ impl<'db> LazyHirResult<'db> {
     /// Get the body containing this HIR node, if any
     pub fn body(&self) -> Option<Body<'db>> {
         match self {
-            LazyHirResult::Expr(body, _)
-            | LazyHirResult::Stmt(body, _)
+            LazyHirResult::Expr(body, _, _)
+            | LazyHirResult::Stmt(body, _, _)
             | LazyHirResult::Pat(body, _) => Some(*body),
             LazyHirResult::None => None,
         }
@@ -93,7 +144,7 @@ pub trait ResolveHir<'db> {
 pub struct ModuleLazyHir<'db> {
     top_mod: TopLevelMod<'db>,
     /// Cache of bodies indexed by their text range for fast lookup
-    body_cache: Option<RangeMap<TextSize, Body<'db>>>,
+    body_cache: Option<BodyIndex<'db>>,
 }
 
 impl<'db> ModuleLazyHir<'db> {
@@ -113,7 +164,7 @@ impl<'db> ModuleLazyHir<'db> {
 
         // Use the Salsa query to get the cached body index
         let body_index = module_body_index(db, self.top_mod);
-        self.body_cache = Some(body_index.clone());
+        self.body_cache = Some(body_index);
     }
 
     /// Find the body that most closely contains the given cursor position
@@ -127,7 +178,7 @@ impl<'db> ModuleLazyHir<'db> {
         let cache = self.body_cache.as_ref().unwrap();
 
         // Use rangemap for efficient position-based lookup
-        cache.get(&cursor).copied()
+        cache.get(&cursor)
     }
 }
 
@@ -144,6 +195,7 @@ impl<'db> LazyHir<'db> for ModuleLazyHir<'db> {
             return LazyHirResult::None;
         };
 
+
         // Get the source map for this body
         let source_map = body_source_map(db, body);
 
@@ -155,7 +207,33 @@ impl<'db> LazyHir<'db> for ModuleLazyHir<'db> {
             AstNodeAtPosition::Expr(expr_ast) => {
                 let origin = HirOrigin::Raw(parser::ast::AstPtr::new(&expr_ast));
                 if let Some(&expr_id) = source_map.expr_map.source_to_node.get(&origin) {
-                    LazyHirResult::Expr(body, expr_id)
+                    // Check if this is a path expression and determine which segment contains the cursor
+                    let context = if let parser::ast::ExprKind::Path(path_expr) = expr_ast.kind() {
+                        if let Some(path) = path_expr.path() {
+                            // Find which segment contains the cursor
+                            let mut segment_index = None;
+                            for (idx, segment) in path.segments().enumerate() {
+                                use parser::ast::prelude::AstNode;
+                                let segment_range = segment.syntax().text_range();
+                                if segment_range.contains(cursor) {
+                                    segment_index = Some(idx);
+                                    break;
+                                }
+                            }
+                            
+                            if let Some(idx) = segment_index {
+                                HirNodeContext::PathSegment(idx)
+                            } else {
+                                HirNodeContext::Regular
+                            }
+                        } else {
+                            HirNodeContext::Regular
+                        }
+                    } else {
+                        HirNodeContext::Regular
+                    };
+                    
+                    LazyHirResult::Expr(body, expr_id, context)
                 } else {
                     LazyHirResult::None
                 }
@@ -163,7 +241,47 @@ impl<'db> LazyHir<'db> for ModuleLazyHir<'db> {
             AstNodeAtPosition::Stmt(stmt_ast) => {
                 let origin = HirOrigin::Raw(parser::ast::AstPtr::new(&stmt_ast));
                 if let Some(&stmt_id) = source_map.stmt_map.source_to_node.get(&origin) {
-                    LazyHirResult::Stmt(body, stmt_id)
+                    // Check if cursor is within a path type in the statement
+                    let context = if let parser::ast::StmtKind::Let(let_stmt) = stmt_ast.kind() {
+                        if let Some(ty) = let_stmt.type_annotation() {
+                            if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                if let Some(path) = path_type.path() {
+                                    // Check if cursor is within this path
+                                    use parser::ast::prelude::AstNode;
+                                    let path_range = path.syntax().text_range();
+                                    if path_range.contains(cursor) {
+                                        // Find which segment contains the cursor
+                                        let mut segment_index = None;
+                                        for (idx, segment) in path.segments().enumerate() {
+                                            let segment_range = segment.syntax().text_range();
+                                            if segment_range.contains(cursor) {
+                                                segment_index = Some(idx);
+                                                break;
+                                            }
+                                        }
+                                        
+                                        if let Some(idx) = segment_index {
+                                            HirNodeContext::PathSegment(idx)
+                                        } else {
+                                            HirNodeContext::Regular
+                                        }
+                                    } else {
+                                        HirNodeContext::Regular
+                                    }
+                                } else {
+                                    HirNodeContext::Regular
+                                }
+                            } else {
+                                HirNodeContext::Regular
+                            }
+                        } else {
+                            HirNodeContext::Regular
+                        }
+                    } else {
+                        HirNodeContext::Regular
+                    };
+                    
+                    LazyHirResult::Stmt(body, stmt_id, context)
                 } else {
                     LazyHirResult::None
                 }
@@ -176,7 +294,9 @@ impl<'db> LazyHir<'db> for ModuleLazyHir<'db> {
                     LazyHirResult::None
                 }
             }
-            AstNodeAtPosition::None => LazyHirResult::None,
+            AstNodeAtPosition::None => {
+                LazyHirResult::None
+            }
         }
     }
 
@@ -206,16 +326,18 @@ fn find_ast_node_at_position(
     let green_node = crate::lower::parse_file_impl(db, body.top_mod(db));
     let root_syntax = SyntaxNode::new_root(green_node);
 
+
     // Use the parser's ast_index to find the node at the position
-    find_ast_node_at_position(&root_syntax, cursor)
+    let result = find_ast_node_at_position(&root_syntax, cursor);
+    result
 }
 
-/// Build the body index for a module (non-Salsa version for now)
+/// Build the body index for a module (simplified for now)
 pub fn module_body_index<'db>(
     db: &'db dyn SpannedHirDb,
     top_mod: TopLevelMod<'db>,
-) -> RangeMap<TextSize, Body<'db>> {
-    let mut body_index = RangeMap::new();
+) -> BodyIndex<'db> {
+    let mut body_index = BodyIndex::new();
 
     // Collect all bodies in the module
     let items = top_mod.scope_graph(db).items_dfs(db);
@@ -236,22 +358,21 @@ pub fn module_body_index<'db>(
         if let Some(span) = body.span().resolve(db) {
             let range = span.range;
             body_index.insert(range.start()..range.end(), body);
+        } else {
         }
     }
 
     body_index
 }
 
-/// Build the AST spatial index for a module (non-Salsa version for now)
-pub fn module_ast_index<'db>(
-    db: &'db dyn SpannedHirDb,
-    top_mod: TopLevelMod<'db>,
-) -> parser::ast_index::AstSpatialIndex {
+/// Build the AST spatial index for a module (simplified for now)
+pub fn module_ast_index<'db>(db: &'db dyn SpannedHirDb, top_mod: TopLevelMod<'db>) -> AstIndex {
     // Parse the file and build spatial index
     let green_node = crate::lower::parse_file_impl(db, top_mod);
     let root_syntax = parser::SyntaxNode::new_root(green_node);
 
-    parser::ast_index::AstSpatialIndex::build_from_syntax(&root_syntax)
+    let spatial_index = parser::ast_index::AstSpatialIndex::build_from_syntax(&root_syntax);
+    AstIndex::new(spatial_index)
 }
 
 /// Utility function to create a lazy HIR resolver for a cursor position
@@ -261,8 +382,7 @@ pub fn lazy_hir_for_cursor<'db>(
     cursor: Cursor,
 ) -> LazyHirResult<'db> {
     let resolver = ModuleLazyHir::new(top_mod);
-    resolver.find_hir_at_position(db, cursor)
-}
+    resolver.find_hir_at_position(db, cursor)}
 
 /// Basic implementation of ResolveHir for demonstration
 pub struct BasicHirResolver;
@@ -427,7 +547,7 @@ fn another_func() -> bool {
         if let Some(body) = body_index.get(&cursor) {
             println!("Found body at cursor position");
             // Test AST lookup within that body
-            let _ast_result = find_ast_node_at_position(&db, *body, cursor);
+            let _ast_result = find_ast_node_at_position(&db, body, cursor);
         }
     }
 
