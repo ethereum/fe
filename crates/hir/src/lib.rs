@@ -4,9 +4,11 @@ pub use lower::parse::ParserError;
 pub mod hir_def;
 pub mod lower;
 pub mod span;
+pub mod synthesis;
 pub mod visitor;
 
 pub use common::{file::File, file::Workspace, ingot::Ingot};
+pub use synthesis::{lazy_hir_for_cursor, LazyHir, LazyHirResult, ResolveHir};
 #[salsa::db]
 pub trait HirDb: salsa::Database + InputDb {}
 

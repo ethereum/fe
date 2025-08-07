@@ -1,0 +1,31 @@
+fn simple_function() {
+    let x = 42;
+    let y = x + 1;
+    y
+}
+
+fn another_function(param: u32) -> u32 {
+    if param > 0 {
+        param * 2
+    } else {
+        0
+    }
+}
+
+struct TestStruct {
+    field1: u32,
+    field2: bool,
+}
+
+impl TestStruct {
+    fn new(value: u32) -> Self {
+        Self {
+            field1: value,
+            field2: true,
+        }
+    }
+
+    fn get_field(&self) -> u32 {
+        self.field1
+    }
+}

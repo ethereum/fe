@@ -2,6 +2,7 @@ mod backend;
 mod cli;
 mod fallback;
 mod functionality;
+mod hir_integration;
 mod logging;
 mod lsp_actor;
 mod lsp_diagnostics;

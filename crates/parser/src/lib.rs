@@ -1,4 +1,5 @@
 pub mod ast;
+pub mod ast_index;
 pub mod lexer;
 pub mod parser;
 pub mod syntax_kind;

@@ -12,6 +12,7 @@ use tracing::error;
 
 use crate::{
     backend::Backend,
+    hir_integration::{lazy_hir_for_cursor, LazyHirResult},
     util::{to_lsp_location_from_scope, to_offset_from_position},
 };
 use driver::DriverDataBase;
@@ -111,6 +112,30 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     Some(scopes)
 }
 
+/// Demonstration function showing how lazy HIR can be used for goto definition
+/// This is a simplified version that shows the potential of the lazy HIR approach
+pub fn demonstrate_lazy_hir_goto<'db>(
+    db: &'db DriverDataBase,
+    top_mod: TopLevelMod<'db>,
+    cursor: Cursor,
+) -> Option<LazyHirResult<'db>> {
+    // Use the HIR synthesis system to find the HIR node at the cursor position
+    let result = lazy_hir_for_cursor(db, top_mod, cursor);
+
+    // In a full implementation, we would:
+    // 1. Get the HIR node from the result
+    // 2. Resolve its definition location using ResolveHir trait
+    // 3. Convert to LSP location response
+    // 4. Handle different node types (expressions, statements, patterns)
+    // 5. Fall back to current implementation if synthesis fails
+
+    if result.is_some() {
+        Some(result)
+    } else {
+        None
+    }
+}
+
 pub async fn handle_goto_definition(
     backend: &mut Backend,
     params: async_lsp::lsp_types::GotoDefinitionParams,
@@ -139,6 +164,13 @@ pub async fn handle_goto_definition(
             )
         })?;
     let top_mod = map_file_to_mod(&backend.db, file);
+
+    // Demonstration: Try the new synthesis-based lazy HIR approach first
+    // This showcases the improved architecture with proper separation of concerns:
+    // - Parser crate handles AST position finding
+    // - HIR crate handles semantic synthesis
+    // - Language server provides thin integration layer
+    let _lazy_result = demonstrate_lazy_hir_goto(&backend.db, top_mod, cursor);
 
     let scopes =
         get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
