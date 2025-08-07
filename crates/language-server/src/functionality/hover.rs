@@ -2,7 +2,8 @@ use anyhow::Error;
 use async_lsp::lsp_types::Hover;
 
 use common::file::File;
-use hir::{lower::map_file_to_mod, span::LazySpan};
+use hir::lower::map_file_to_mod;
+use hir_analysis::ty::ty_check::check_func_body;
 use tracing::info;
 
 use super::goto::Cursor;
@@ -48,19 +49,23 @@ fn create_expression_hover(
     body: hir::hir_def::Body,
     expr_id: hir::hir_def::ExprId,
 ) -> Result<Option<Hover>, Error> {
-    let expr_data = &body.exprs(db)[expr_id];
-
-    // Get type information if available
-    let type_info = format!("Expression: {:?}", expr_data);
-
-    // Get span information
-    let location_info = if let Some(span) = expr_id.span(body).resolve(db) {
-        format!("Location: {:?}:{:?}", span.range.start(), span.range.end())
+    // Try to get type information by finding the containing function
+    let type_info = if let Some(func) = find_containing_func(db, body) {
+        // Get the typed body from type checking
+        let (_, typed_body) = check_func_body(db, func);
+        
+        // Get the type of this expression
+        let ty = typed_body.expr_ty(db, expr_id);
+        
+        // Use pretty_print to get a human-readable type
+        ty.pretty_print(db).to_string()
     } else {
-        "Location: unknown".to_string()
+        // Fallback for non-function bodies
+        "<type information unavailable>".to_string()
     };
 
-    let contents = format!("```fe\n{}\n```\n\n{}", type_info, location_info);
+    // Build the hover content
+    let contents = format!("```fe\n{}\n```", type_info);
 
     Ok(Some(Hover {
         contents: async_lsp::lsp_types::HoverContents::Markup(
@@ -79,16 +84,30 @@ fn create_statement_hover(
     body: hir::hir_def::Body,
     stmt_id: hir::hir_def::StmtId,
 ) -> Result<Option<Hover>, Error> {
+    use hir::hir_def::{Partial, Stmt};
+    
     let stmt_data = &body.stmts(db)[stmt_id];
-
-    let type_info = format!("Statement: {:?}", stmt_data);
-    let location_info = if let Some(span) = stmt_id.span(body).resolve(db) {
-        format!("Location: {:?}:{:?}", span.range.start(), span.range.end())
-    } else {
-        "Location: unknown".to_string()
+    
+    // Extract type information based on statement kind
+    let type_info = match stmt_data {
+        Partial::Present(Stmt::Let(pat_id, _type_annotation, _init_expr)) => {
+            if let Some(func) = find_containing_func(db, body) {
+                // Get the typed body from type checking
+                let (_, typed_body) = check_func_body(db, func);
+                
+                // Get the type of the pattern (variable binding)
+                let ty = typed_body.pat_ty(db, *pat_id);
+                
+                // Use pretty_print to get a human-readable type
+                format!("let: {}", ty.pretty_print(db))
+            } else {
+                "let: <type information unavailable>".to_string()
+            }
+        }
+        _ => "<statement>".to_string(),
     };
 
-    let contents = format!("```fe\n{}\n```\n\n{}", type_info, location_info);
+    let contents = format!("```fe\n{}\n```", type_info);
 
     Ok(Some(Hover {
         contents: async_lsp::lsp_types::HoverContents::Markup(
@@ -107,16 +126,21 @@ fn create_pattern_hover(
     body: hir::hir_def::Body,
     pat_id: hir::hir_def::PatId,
 ) -> Result<Option<Hover>, Error> {
-    let pat_data = &body.pats(db)[pat_id];
-
-    let type_info = format!("Pattern: {:?}", pat_data);
-    let location_info = if let Some(span) = pat_id.span(body).resolve(db) {
-        format!("Location: {:?}:{:?}", span.range.start(), span.range.end())
+    // Try to get type information from the parent function
+    let type_info = if let Some(func) = find_containing_func(db, body) {
+        // Get the typed body from type checking
+        let (_, typed_body) = check_func_body(db, func);
+        
+        // Get the type of this pattern
+        let ty = typed_body.pat_ty(db, pat_id);
+        
+        // Use pretty_print to get a human-readable type
+        ty.pretty_print(db).to_string()
     } else {
-        "Location: unknown".to_string()
+        "<type information unavailable>".to_string()
     };
 
-    let contents = format!("```fe\n{}\n```\n\n{}", type_info, location_info);
+    let contents = format!("```fe\n{}\n```", type_info);
 
     Ok(Some(Hover {
         contents: async_lsp::lsp_types::HoverContents::Markup(
@@ -127,4 +151,31 @@ fn create_pattern_hover(
         ),
         range: None,
     }))
+}
+
+/// Find the function that contains a given body
+fn find_containing_func<'db>(
+    db: &'db DriverDataBase,
+    body: hir::hir_def::Body<'db>,
+) -> Option<hir::hir_def::Func<'db>> {
+    use hir::hir_def::{ItemKind, BodyKind};
+    
+    // Check if this is a function body
+    if body.body_kind(db) != BodyKind::FuncBody {
+        return None;
+    }
+    
+    // Get all items in the module and find the function with this body
+    let top_mod = body.top_mod(db);
+    let items = top_mod.scope_graph(db).items_dfs(db);
+    
+    for item in items {
+        if let ItemKind::Func(func) = item {
+            if func.body(db) == Some(body) {
+                return Some(func);
+            }
+        }
+    }
+    
+    None
 }

@@ -1,7 +1,7 @@
 use async_lsp::ResponseError;
 use common::InputDb;
 use hir::{
-    hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod, TypeKind},
+    hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod},
     lower::map_file_to_mod,
     span::{DynLazySpan, LazySpan},
     visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
@@ -10,11 +10,7 @@ use hir::{
 use hir_analysis::name_resolution::{resolve_path, PathResErrorKind};
 use tracing::{debug, error};
 
-use crate::{
-    backend::Backend,
-    hir_integration::{lazy_hir_for_cursor, LazyHirResult},
-    util::to_offset_from_position,
-};
+use crate::{backend::Backend, util::to_offset_from_position};
 use driver::DriverDataBase;
 pub type Cursor = parser::TextSize;
 

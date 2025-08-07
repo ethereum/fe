@@ -13,7 +13,7 @@
 
 // Re-export the main synthesis API from HIR crate for convenience
 pub use hir::lazy_hir_for_cursor;
-pub use hir::synthesis::{LazyHir, LazyHirResult, ModuleLazyHir, ResolveHir};
+pub use hir::synthesis::LazyHirResult;
 
 // Re-export cursor type for consistency with existing language server code
 pub use parser::TextSize as Cursor;
