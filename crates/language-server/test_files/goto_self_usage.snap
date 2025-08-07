@@ -1,0 +1,23 @@
+---
+source: crates/language-server/src/functionality/goto.rs
+assertion_line: 720
+expression: snapshot
+input_file: test_files/goto_self_usage.fe
+---
+0: struct MyStruct {
+1:     value: u32
+2: }
+3: 
+4: impl MyStruct {
+5:     fn test_self(self) -> u32 {
+6:         // The 'self' below should resolve to the parameter on line 6
+7:         self.value
+8:     }
+9: 
+10:     fn test_mut_self(mut self) -> u32 {
+11:         // The 'self' below should also resolve to the parameter on line 11
+12:         self.value = 10
+13:         self.value
+14:     }
+15: }
+---

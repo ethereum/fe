@@ -1,5 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
+assertion_line: 644
 expression: snapshot
 input_file: test_files/single_ingot/src/lib.fe
 ---

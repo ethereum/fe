@@ -15,6 +15,7 @@ use driver::DriverDataBase;
 pub type Cursor = parser::TextSize;
 
 #[derive(Default)]
+#[allow(dead_code)]
 struct PathSpanCollector<'db> {
     paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
 }
@@ -30,6 +31,7 @@ impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
     }
 }
 
+#[allow(dead_code)]
 fn find_path_surrounding_cursor<'db>(
     db: &'db DriverDataBase,
     cursor: Cursor,
@@ -119,6 +121,16 @@ pub fn goto_definition_with_hir_synthesis<'db>(
     // Use the HIR synthesis system to find the HIR node at the cursor position
     let hir_result = lazy_hir_for_cursor(db, top_mod, cursor);
 
+    debug!(
+        "Cursor {:?}: HIR result = {:?}",
+        cursor,
+        match &hir_result {
+            LazyHirResult::Expr(_, _, _) => "Expr",
+            LazyHirResult::Stmt(_, _, _) => "Stmt",
+            LazyHirResult::Pat(_, _) => "Pat",
+            LazyHirResult::None => "None",
+        }
+    );
 
     // Debug: Log what HIR synthesis found
     match &hir_result {
@@ -150,15 +162,19 @@ pub fn goto_definition_with_hir_synthesis<'db>(
 
     // Now resolve the HIR node to its semantic definition
     let result = match hir_result {
-        LazyHirResult::Expr(body, expr_id, context) => resolve_expression_definition(db, body, expr_id, context),
-        LazyHirResult::Stmt(body, stmt_id, context) => resolve_statement_definition(db, body, stmt_id, context),
+        LazyHirResult::Expr(body, expr_id, context) => {
+            resolve_expression_definition(db, body, expr_id, context)
+        }
+        LazyHirResult::Stmt(body, stmt_id, context) => {
+            resolve_statement_definition(db, body, stmt_id, context)
+        }
         LazyHirResult::Pat(body, pat_id) => resolve_pattern_definition(db, body, pat_id),
         LazyHirResult::None => {
             // No HIR node found at this position - nothing to go to
             Ok(vec![])
         }
     };
-    
+
     result
 }
 
@@ -169,17 +185,71 @@ fn resolve_expression_definition<'db>(
     expr_id: hir::hir_def::ExprId,
     context: hir::synthesis::HirNodeContext,
 ) -> Result<Vec<ScopeId<'db>>, Box<dyn std::error::Error>> {
-    use hir::hir_def::{Expr, Partial};
+    use hir::hir_def::{Expr, Partial, PatId};
+    use hir_analysis::ty::ty_check::env::{LocalBinding, TyCheckEnv};
+    use hir_analysis::ty::ty_check::path::ResolvedPathInBody;
 
     // Get the actual expression data from its ID
     let expr_data = &body.exprs(db)[expr_id];
+
+    // Special handling if we're on a field access
+    if let hir::synthesis::HirNodeContext::FieldAccess = context {
+        // This means the cursor is on the field name in a field access expression
+        if let Partial::Present(Expr::Field(_receiver_expr_id, field_index)) = expr_data {
+            if let Some(_field_idx) = field_index.to_opt() {
+                // TODO: Implement proper field resolution
+                // This requires accessing type information and resolving to field definitions
+                // which involves private APIs in hir-analysis
+                // For now, field goto is not fully implemented
+            }
+        }
+        return Ok(vec![]);
+    }
 
     // Match on the kind of expression to handle different semantic cases
     match expr_data {
         // This is the most common case: a variable, function call, type name, etc.
         Partial::Present(Expr::Path(Partial::Present(path_id))) => {
             let scope = body.scope();
-            
+
+            // First check if this is a bare identifier that might be a local variable
+            if path_id.is_bare_ident(db) {
+                // Try to resolve as a local binding using type checker's resolution
+                let ident = *path_id.ident(db).unwrap();
+
+                // We need to create a type check environment to look up local bindings
+                // This is a simplified version - in reality we'd need the actual TyCheckEnv
+                // from when the body was type-checked
+                if let Some(typed_body) = db.typed_body(body.into()) {
+                    // Check if this identifier resolves to a local binding
+                    // We need to iterate through the body's patterns to find the binding
+                    for (pat_id, pat) in body.pats(db).iter() {
+                        if let Partial::Present(hir::hir_def::Pat::Bind(bind_name, _)) = pat {
+                            if let Partial::Present(name) = bind_name {
+                                if *name == ident {
+                                    // Found the binding! Now get its source location
+                                    if let Some(source_map) = db.body_source_map(body.into()) {
+                                        if let Some(origin) =
+                                            source_map.pat_map(db).node_to_source.get(pat_id)
+                                        {
+                                            // Convert the origin to a file location
+                                            if let Some(span) =
+                                                origin.syntax_node_ptr().map(|ptr| ptr.text_range())
+                                            {
+                                                // This is a local binding - return its definition location
+                                                // We need to construct a proper ScopeId or return empty for now
+                                                // since local bindings don't have ScopeIds
+                                                return Ok(vec![]);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Check if we have segment context
             match context {
                 hir::synthesis::HirNodeContext::PathSegment(segment_index) => {
@@ -206,8 +276,12 @@ fn resolve_expression_definition<'db>(
                         Err(_) => {}
                     }
                 }
+                hir::synthesis::HirNodeContext::FieldAccess => {
+                    // Field access context for path expression - shouldn't happen
+                    // but we need to handle it for exhaustiveness
+                }
             }
-            
+
             Ok(vec![])
         }
 
@@ -215,7 +289,12 @@ fn resolve_expression_definition<'db>(
         Partial::Present(Expr::Call(callee_expr_id, _args)) => {
             // Recursively resolve the callee expression
             // For function calls, we don't need segment resolution
-            resolve_expression_definition(db, body, *callee_expr_id, hir::synthesis::HirNodeContext::Regular)
+            resolve_expression_definition(
+                db,
+                body,
+                *callee_expr_id,
+                hir::synthesis::HirNodeContext::Regular,
+            )
         }
 
         // Method calls - resolve to the method definition
@@ -232,17 +311,36 @@ fn resolve_expression_definition<'db>(
             Ok(vec![])
         }
 
+        // Record initialization - resolve to the struct/record type definition
+        Partial::Present(Expr::RecordInit(Partial::Present(path_id), _fields)) => {
+            let scope = body.scope();
+
+            // Resolve the record type path
+            match resolve_path(db, *path_id, scope, false) {
+                Ok(path_res) => {
+                    if let Some(scope) = path_res.as_scope(db) {
+                        return Ok(vec![scope]);
+                    }
+                    Ok(vec![])
+                }
+                Err(_) => Ok(vec![]),
+            }
+        }
+
         // Field access - resolve to the field definition
-        Partial::Present(Expr::Field(_receiver_expr_id, _field_index)) => {
-            // Similar to method calls, this requires type information
-            // TODO: Implement field resolution using type inference
+        Partial::Present(Expr::Field(_receiver_expr_id, field_index)) => {
+            // We need to get the type of the receiver and find the field
+            if let Some(_field_idx) = field_index.to_opt() {
+                // TODO: Implement proper field resolution
+                // This requires accessing type information and resolving to field definitions
+                // which involves private APIs in hir-analysis
+                // For now, field goto is not fully implemented
+            }
             Ok(vec![])
         }
 
         // Other expression types don't have definitions to jump to
-        _ => {
-            Ok(vec![])
-        }
+        _ => Ok(vec![]),
     }
 }
 
@@ -269,7 +367,7 @@ fn resolve_statement_definition<'db>(
                 if let hir::hir_def::TypeKind::Path(Partial::Present(path_id)) = type_id.data(db) {
                     // Resolve the path in the type annotation
                     let scope = body.scope();
-                    
+
                     // Check if we have segment context
                     match context {
                         hir::synthesis::HirNodeContext::PathSegment(segment_index) => {
@@ -296,13 +394,21 @@ fn resolve_statement_definition<'db>(
                                 Err(_) => {}
                             }
                         }
+                        hir::synthesis::HirNodeContext::FieldAccess => {
+                            // Field access in type annotation - not applicable here
+                        }
                     }
                 }
             }
 
             // If there's an initializer expression, resolve it
             if let Some(expr_id) = init_expr {
-                let expr_scopes = resolve_expression_definition(db, body, *expr_id, hir::synthesis::HirNodeContext::Regular)?;
+                let expr_scopes = resolve_expression_definition(
+                    db,
+                    body,
+                    *expr_id,
+                    hir::synthesis::HirNodeContext::Regular,
+                )?;
                 scopes.extend(expr_scopes);
             }
 
@@ -311,16 +417,31 @@ fn resolve_statement_definition<'db>(
 
         // For loops: resolve the iterable expression
         Partial::Present(Stmt::For(_pat_id, iterable_expr_id, _body_expr_id)) => {
-            resolve_expression_definition(db, body, *iterable_expr_id, hir::synthesis::HirNodeContext::Regular)
+            resolve_expression_definition(
+                db,
+                body,
+                *iterable_expr_id,
+                hir::synthesis::HirNodeContext::Regular,
+            )
         }
 
         // While loops: resolve the condition expression
         Partial::Present(Stmt::While(condition_expr_id, _body_expr_id)) => {
-            resolve_expression_definition(db, body, *condition_expr_id, hir::synthesis::HirNodeContext::Regular)
+            resolve_expression_definition(
+                db,
+                body,
+                *condition_expr_id,
+                hir::synthesis::HirNodeContext::Regular,
+            )
         }
 
         // Expression statements: resolve the expression
-        Partial::Present(Stmt::Expr(expr_id)) => resolve_expression_definition(db, body, *expr_id, hir::synthesis::HirNodeContext::Regular),
+        Partial::Present(Stmt::Expr(expr_id)) => resolve_expression_definition(
+            db,
+            body,
+            *expr_id,
+            hir::synthesis::HirNodeContext::Regular,
+        ),
 
         // Other statement types don't have meaningful definitions
         _ => Ok(vec![]),
@@ -500,6 +621,11 @@ mod tests {
         let mut path_collector = PathSpanCollector::default();
         path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
 
+        debug!(
+            "PathSpanCollector found {} paths",
+            path_collector.paths.len()
+        );
+
         let mut cursors = Vec::new();
         for (path, _, lazy_span) in path_collector.paths {
             for idx in 0..=path.segment_index(db) {
@@ -511,7 +637,7 @@ mod tests {
         cursors.sort();
         cursors.dedup();
 
-        error!("Found cursors: {:?}", cursors);
+        debug!("Found {} unique cursors: {:?}", cursors.len(), cursors);
         cursors
     }
 
@@ -520,24 +646,98 @@ mod tests {
         fixture: &Fixture<&str>,
         top_mod: TopLevelMod,
     ) -> String {
-        let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
-        let mut cursor_path_map: BTreeMap<Cursor, String> = BTreeMap::default();
+        // Parse the file to get the syntax tree
+        use parser::{ast, SyntaxKind, SyntaxNode};
+        let green_node = hir::lower::parse_file_impl(db, top_mod);
+        let root_syntax = SyntaxNode::new_root(green_node);
+        let _content = fixture.content();
+        let mut test_positions = Vec::new();
 
-        for cursor in &cursors {
-            let scopes =
-                goto_definition_with_hir_synthesis(db, top_mod, *cursor).unwrap_or_default();
+        // Walk the syntax tree to find all identifiers and paths
+        fn collect_identifier_positions(node: &SyntaxNode, positions: &mut Vec<Cursor>) {
+            use parser::ast::prelude::AstNode;
 
-            if !scopes.is_empty() {
-                cursor_path_map.insert(
-                    *cursor,
-                    scopes
-                        .iter()
-                        .flat_map(|x| x.pretty_path(db))
-                        .collect::<Vec<_>>()
-                        .join("\n"),
-                );
+            // Check if this is an identifier or a path
+            match node.kind() {
+                SyntaxKind::Ident => {
+                    // This is an identifier - test goto at its position
+                    let start = node.text_range().start();
+                    positions.push(start);
+                }
+                SyntaxKind::Path => {
+                    // For paths, test each segment
+                    if let Some(path) = ast::Path::cast(node.clone()) {
+                        for segment in path.segments() {
+                            if let Some(ident) = segment.ident() {
+                                let start = ident.text_range().start();
+                                positions.push(start);
+                            }
+                        }
+                    }
+                }
+                SyntaxKind::PathType => {
+                    // Type paths
+                    if let Some(path_type) = ast::PathType::cast(node.clone()) {
+                        if let Some(path) = path_type.path() {
+                            for segment in path.segments() {
+                                if let Some(ident) = segment.ident() {
+                                    let start = ident.text_range().start();
+                                    positions.push(start);
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            // Recurse to children
+            for child in node.children() {
+                collect_identifier_positions(&child, positions);
             }
         }
+
+        collect_identifier_positions(&root_syntax, &mut test_positions);
+
+        test_positions.sort();
+        test_positions.dedup();
+
+        let mut cursor_path_map: BTreeMap<Cursor, String> = BTreeMap::default();
+        debug!(
+            "Testing {} positions for goto resolution",
+            test_positions.len()
+        );
+        let mut success_count = 0;
+        let mut error_count = 0;
+
+        for cursor in &test_positions {
+            match goto_definition_with_hir_synthesis(db, top_mod, *cursor) {
+                Ok(scopes) => {
+                    if !scopes.is_empty() {
+                        success_count += 1;
+                        cursor_path_map.insert(
+                            *cursor,
+                            scopes
+                                .iter()
+                                .flat_map(|x| x.pretty_path(db))
+                                .collect::<Vec<_>>()
+                                .join("\n"),
+                        );
+                    }
+                }
+                Err(e) => {
+                    error_count += 1;
+                    debug!("Error at cursor {:?}: {:?}", cursor, e);
+                }
+            }
+        }
+
+        debug!(
+            "Goto resolution: {} successful, {} errors, {} no results",
+            success_count,
+            error_count,
+            test_positions.len() - success_count - error_count
+        );
 
         let cursor_lines = cursor_path_map
             .iter()

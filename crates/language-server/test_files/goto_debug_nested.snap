@@ -1,0 +1,15 @@
+---
+source: crates/language-server/src/functionality/goto.rs
+assertion_line: 667
+expression: snapshot
+input_file: test_files/goto_debug_nested.fe
+---
+0: mod nested {
+1:     pub const NESTED_CONST: u32 = 100
+2: }
+3: 
+4: fn test_nested() {
+5:     let a = nested::NESTED_CONST
+6: }
+---
+cursor position (5, 12), path: goto_debug_nested::nested

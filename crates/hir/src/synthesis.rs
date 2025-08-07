@@ -76,6 +76,8 @@ pub type Cursor = TextSize;
 pub enum HirNodeContext {
     /// Path expression with the segment index that contains the cursor
     PathSegment(usize),
+    /// Field access where cursor is on the field name
+    FieldAccess,
     /// Regular context
     Regular,
 }
@@ -208,29 +210,43 @@ impl<'db> LazyHir<'db> for ModuleLazyHir<'db> {
                 let origin = HirOrigin::Raw(parser::ast::AstPtr::new(&expr_ast));
                 if let Some(&expr_id) = source_map.expr_map.source_to_node.get(&origin) {
                     // Check if this is a path expression and determine which segment contains the cursor
-                    let context = if let parser::ast::ExprKind::Path(path_expr) = expr_ast.kind() {
-                        if let Some(path) = path_expr.path() {
-                            // Find which segment contains the cursor
-                            let mut segment_index = None;
-                            for (idx, segment) in path.segments().enumerate() {
-                                use parser::ast::prelude::AstNode;
-                                let segment_range = segment.syntax().text_range();
-                                if segment_range.contains(cursor) {
-                                    segment_index = Some(idx);
-                                    break;
+                    let context = match expr_ast.kind() {
+                        parser::ast::ExprKind::Path(path_expr) => {
+                            if let Some(path) = path_expr.path() {
+                                // Find which segment contains the cursor
+                                let mut segment_index = None;
+                                for (idx, segment) in path.segments().enumerate() {
+                                    use parser::ast::prelude::AstNode;
+                                    let segment_range = segment.syntax().text_range();
+                                    if segment_range.contains(cursor) {
+                                        segment_index = Some(idx);
+                                        break;
+                                    }
                                 }
-                            }
-                            
-                            if let Some(idx) = segment_index {
-                                HirNodeContext::PathSegment(idx)
+                                
+                                if let Some(idx) = segment_index {
+                                    HirNodeContext::PathSegment(idx)
+                                } else {
+                                    HirNodeContext::Regular
+                                }
                             } else {
                                 HirNodeContext::Regular
                             }
-                        } else {
-                            HirNodeContext::Regular
                         }
-                    } else {
-                        HirNodeContext::Regular
+                        parser::ast::ExprKind::Field(field_expr) => {
+                            // Check if cursor is on the field name
+                            if let Some(field_name) = field_expr.field_name() {
+                                let field_range = field_name.text_range();
+                                if field_range.contains(cursor) {
+                                    HirNodeContext::FieldAccess
+                                } else {
+                                    HirNodeContext::Regular
+                                }
+                            } else {
+                                HirNodeContext::Regular
+                            }
+                        }
+                        _ => HirNodeContext::Regular
                     };
                     
                     LazyHirResult::Expr(body, expr_id, context)

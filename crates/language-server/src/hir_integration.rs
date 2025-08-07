@@ -134,6 +134,7 @@ mod tests {
     use common::InputDb;
     use driver::DriverDataBase;
     use hir::lower::map_file_to_mod;
+    use hir::synthesis::{ModuleLazyHir, LazyHir};
     use url::Url;
 
     #[test]
