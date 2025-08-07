@@ -120,7 +120,7 @@ impl<'db> ProofForest<'db> {
         goal: Goal<'db>,
         assumptions: PredicateListId<'db>,
     ) -> Self {
-        let assumptions = assumptions.extend_by_super(db);
+        let assumptions = assumptions.extend_all_bounds(db);
 
         let mut forest = Self {
             ingot,

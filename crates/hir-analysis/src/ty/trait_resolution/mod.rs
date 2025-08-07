@@ -5,7 +5,9 @@ use salsa::Update;
 
 use super::{
     canonical::{Canonical, Canonicalized, Solution},
+    fold::{AssocTySubst, TyFoldable},
     trait_def::TraitInstId,
+    trait_lower::lower_trait_ref,
     ty_def::{TyFlags, TyId},
 };
 use crate::{
@@ -222,15 +224,68 @@ impl<'db> PredicateListId<'db> {
         self.list(db).is_empty()
     }
 
-    fn extend_by_super(self, db: &'db dyn HirAnalysisDb) -> Self {
-        let mut super_traits: IndexSet<_> = self.list(db).iter().copied().collect();
-        for &pred in self.list(db) {
+    /// Transitively extends the predicate list with all implied bounds:
+    /// - Super trait bounds (transitively)
+    /// - Associated type bounds from trait definitions
+    pub fn extend_all_bounds(self, db: &'db dyn HirAnalysisDb) -> Self {
+        let mut all_predicates: IndexSet<TraitInstId<'db>> =
+            self.list(db).iter().copied().collect();
+
+        let mut worklist: Vec<TraitInstId<'db>> = self.list(db).iter().copied().collect();
+
+        while let Some(pred) = worklist.pop() {
+            // 1. Collect super traits
             for &super_trait in pred.def(db).super_traits(db).iter() {
-                let super_trait = super_trait.instantiate(db, pred.args(db));
-                super_traits.insert(super_trait);
+                // Instantiate with current predicate's args
+                let inst = super_trait.instantiate(db, pred.args(db));
+
+                // Also substitute `Self` and associated types using current predicate's
+                // assoc-type bindings so derived bounds are as concrete as possible.
+                let mut subst = AssocTySubst::new(db, pred);
+                let inst = inst.fold_with(&mut subst);
+
+                if all_predicates.insert(inst) {
+                    // New predicate added, add to worklist for further processing
+                    worklist.push(inst);
+                }
+            }
+
+            // 2. Collect associated type bounds
+            let hir_trait = pred.def(db).trait_(db);
+            for trait_type in hir_trait.types(db) {
+                // Get the associated type name
+                let Some(assoc_ty_name) = trait_type.name.to_opt() else {
+                    continue;
+                };
+
+                // Create the associated type: Self::AssocType
+                let assoc_ty = TyId::assoc_ty(db, pred, assoc_ty_name);
+
+                // xxx ???
+                let assumptions =
+                    PredicateListId::new(db, all_predicates.iter().copied().collect::<Vec<_>>());
+
+                // Process each bound on the associated type
+                for bound in &trait_type.bounds {
+                    if let hir::hir_def::params::TypeBound::Trait(trait_ref) = bound {
+                        // Lower the trait reference with the associated type as Self
+                        // We need to convert the HIR trait ref to a TraitInstId
+                        // This requires lowering which needs a scope
+                        let scope = hir_trait.scope();
+
+                        if let Ok(trait_inst) =
+                            lower_trait_ref(db, assoc_ty, *trait_ref, scope, assumptions)
+                        {
+                            if all_predicates.insert(trait_inst) {
+                                // New predicate added, add to worklist
+                                worklist.push(trait_inst);
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        Self::new(db, super_traits.into_iter().collect::<Vec<_>>())
+        Self::new(db, all_predicates.into_iter().collect::<Vec<_>>())
     }
 }
