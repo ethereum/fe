@@ -105,7 +105,14 @@ impl Resolver for FilesResolver {
     type Error = FilesResolutionError;
     type Diagnostic = FilesResolutionDiagnostic;
 
-    fn transient_resolve(&mut self, url: &Url) -> Result<Vec<File>, FilesResolutionError> {
+    fn resolve<H>(
+        &mut self,
+        handler: &mut H,
+        url: &Url,
+    ) -> Result<H::Item, Self::Error>
+    where
+        H: crate::ResolutionHandler<Self>,
+    {
         tracing::trace!(target: "resolver", "Starting file resolution for URL: {}", url);
         let mut results = vec![];
 
@@ -152,7 +159,7 @@ impl Resolver for FilesResolver {
         }
 
         tracing::trace!(target: "resolver", "File resolution completed successfully, found {} files", results.len());
-        Ok(results)
+        Ok(handler.handle_resolution(url, results))
     }
 
     fn take_diagnostics(&mut self) -> Vec<Self::Diagnostic> {

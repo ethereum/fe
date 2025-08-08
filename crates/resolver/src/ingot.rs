@@ -5,22 +5,19 @@ use url::Url;
 
 use crate::{
     files::{File, FilesResolver},
-    graph::GraphResolverImpl,
-    GraphResolutionHandler, ResolutionHandler,
+    graph::{DiGraph, GraphResolverImpl, GraphResolutionHandler},
+    ResolutionHandler,
 };
 
 pub type IngotGraphResolver<NH> = GraphResolverImpl<FilesResolver, NH, EdgeWeight>;
 
 pub fn basic_ingot_graph_resolver() -> IngotGraphResolver<BasicIngotNodeHandler> {
-    GraphResolverImpl::new(
-        FilesResolver::exact_file("fe.toml".into()),
-        BasicIngotNodeHandler::default(),
-    )
+    GraphResolverImpl::new(FilesResolver::exact_file("fe.toml".into()))
 }
 
-pub fn ingot_graph_resolver<NH>(node_handler: NH) -> IngotGraphResolver<NH> {
+pub fn ingot_graph_resolver<NH>() -> IngotGraphResolver<NH> {
     let files_resolver = FilesResolver::with_patterns(&["fe.toml", "src/**/*.fe"]);
-    GraphResolverImpl::new(files_resolver, node_handler)
+    GraphResolverImpl::new(files_resolver)
 }
 
 #[derive(Debug)]
@@ -149,10 +146,11 @@ impl ResolutionHandler<FilesResolver> for BasicIngotNodeHandler {
     }
 }
 
-impl GraphResolutionHandler<FilesResolver> for BasicIngotNodeHandler {
-    type Item = Vec<(Url, EdgeWeight)>;
+impl GraphResolutionHandler<Url, DiGraph<Url, EdgeWeight>> for BasicIngotNodeHandler {
+    type Item = DiGraph<Url, EdgeWeight>;
 
-    fn handle_graph_resolution(&mut self, ingot_url: &Url, files: Vec<File>) -> Self::Item {
-        self.handle_resolution(ingot_url, files)
+    fn handle_graph_resolution(&mut self, _ingot_url: &Url, graph: DiGraph<Url, EdgeWeight>) -> Self::Item {
+        // For graph resolution, we can process the graph and return it
+        graph
     }
 }

@@ -2,7 +2,7 @@ use core::panic;
 use std::{collections::HashMap, hash::Hash, marker::PhantomData};
 
 use dir_test::{dir_test, Fixture};
-use fe_resolver::{graph::GraphResolverImpl, ResolutionHandler, Resolver};
+use fe_resolver::{graph::{GraphResolverImpl, GraphResolutionHandler, GraphResolver}, ResolutionHandler, Resolver};
 use test_utils::snap_test;
 
 struct FixtureEntryResolver<K, V>(pub Fixture<HashMap<K, V>>);
@@ -18,12 +18,16 @@ impl<K: Eq + Hash, V: Clone> Resolver for FixtureEntryResolver<K, V> {
     type Error = EntryDoesNotExist;
     type Diagnostic = ();
 
-    fn transient_resolve(
+    fn resolve<H>(
         &mut self,
+        handler: &mut H,
         description: &Self::Description,
-    ) -> Result<Self::Resource, Self::Error> {
+    ) -> Result<H::Item, Self::Error>
+    where
+        H: ResolutionHandler<Self>,
+    {
         if let Some(value) = self.0.content().get(description) {
-            Ok(value.clone())
+            Ok(handler.handle_resolution(description, value.clone()))
         } else {
             Err(EntryDoesNotExist)
         }
@@ -42,6 +46,14 @@ impl ResolutionHandler<FixtureEntryResolver<String, Vec<String>>> for MockNodeHa
 
     fn handle_resolution(&mut self, source: &String, targets: Vec<String>) -> Self::Item {
         targets.into_iter().map(|target| (target, ())).collect()
+    }
+}
+
+impl GraphResolutionHandler<FixtureEntryResolver<String, Vec<String>>> for MockNodeHandler {
+    type Item = Vec<(String, ())>;
+
+    fn handle_graph_resolution(&mut self, source: &String, targets: Vec<String>) -> Self::Item {
+        self.handle_resolution(source, targets)
     }
 }
 
@@ -74,7 +86,7 @@ where
 fn graph_resolution(fixture: Fixture<HashMap<String, Vec<String>>>) {
     let fixture_path = fixture.path();
     let mut resolver = fixture_resolver(fixture);
-    let graph = resolver.transient_resolve(&"a".to_string()).unwrap();
+    let graph = resolver.graph_resolve(&"a".to_string()).unwrap();
     snap_test!(
         format!("{:#?}\n{:#?}", graph, resolver.take_diagnostics()),
         fixture_path

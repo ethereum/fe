@@ -3,26 +3,27 @@ use std::collections::{HashMap, HashSet};
 use camino::Utf8PathBuf;
 use common::{config::Config, graph::EdgeWeight, urlext::canonical_url};
 use resolver::{
-    graph::{petgraph, DiGraph, NodeIndex},
-    Resolver,
+    graph::{petgraph, DiGraph, NodeIndex, GraphResolver},
+    ingot::BasicIngotNodeHandler,
 };
 use url::Url;
 
 pub fn print_tree(path: &Utf8PathBuf) {
     let mut graph_resolver = resolver::ingot::basic_ingot_graph_resolver();
+    let mut node_handler = BasicIngotNodeHandler::default();
     let ingot_url = canonical_url(path);
 
     println!("🌳 Dependency tree for: {ingot_url}");
     println!();
 
-    match graph_resolver.transient_resolve(&ingot_url) {
+    match graph_resolver.graph_resolve(&mut node_handler, &ingot_url) {
         Ok(ingot_graph) => {
             print!(
                 "{}",
                 print_tree_impl(
                     &ingot_graph,
                     &ingot_url,
-                    &graph_resolver.node_handler.configs
+                    &node_handler.configs
                 )
             );
         }

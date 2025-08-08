@@ -14,9 +14,9 @@ use common::config::Config;
 use hir::hir_def::TopLevelMod;
 use resolver::{
     files::{File, FilesResolutionError, FilesResolver},
-    graph::DiGraph,
+    graph::{DiGraph, GraphResolutionHandler, GraphResolver},
     ingot::ingot_graph_resolver,
-    GraphResolutionHandler, ResolutionHandler, Resolver,
+    ResolutionHandler, Resolver,
 };
 use url::Url;
 
@@ -25,9 +25,9 @@ pub fn init_workspace_ingot(
     ingot_url: &Url,
 ) -> Vec<WorkspaceSetupDiagnostics> {
     tracing::trace!(target: "resolver", "Starting workspace ingot resolution for: {}", ingot_url);
-    let node_handler = InputNodeHandler::from_db(db);
-    let mut ingot_graph_resolver = ingot_graph_resolver(node_handler);
-    let graph = ingot_graph_resolver.transient_resolve(ingot_url).unwrap();
+    let mut node_handler = InputNodeHandler::from_db(db);
+    let mut ingot_graph_resolver = ingot_graph_resolver::<InputNodeHandler>();
+    let graph = ingot_graph_resolver.graph_resolve(&mut node_handler, ingot_url).unwrap();
 
     let diagnostics: Vec<WorkspaceSetupDiagnostics> = ingot_graph_resolver
         .take_diagnostics()
@@ -47,7 +47,7 @@ pub fn init_workspace_ingot(
         )
         .collect();
 
-    ingot_graph_resolver.node_handler.join_graph(graph);
+    node_handler.join_graph(graph);
 
     if diagnostics.is_empty() {
         tracing::trace!(target: "resolver", "Workspace ingot resolution completed successfully for: {}", ingot_url);
@@ -176,10 +176,12 @@ impl<'a> ResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
     }
 }
 
-impl<'a> GraphResolutionHandler<FilesResolver> for InputNodeHandler<'a> {
-    type Item = Vec<(Url, EdgeWeight)>;
+impl<'a> GraphResolutionHandler<Url, DiGraph<Url, EdgeWeight>> for InputNodeHandler<'a> {
+    type Item = DiGraph<Url, EdgeWeight>;
 
-    fn handle_graph_resolution(&mut self, ingot_url: &Url, files: Vec<File>) -> Self::Item {
-        self.handle_resolution(ingot_url, files)
+    fn handle_graph_resolution(&mut self, _ingot_url: &Url, graph: DiGraph<Url, EdgeWeight>) -> Self::Item {
+        // For graph resolution, we can process the graph and return it
+        // This allows for any post-processing of the resolved graph
+        graph
     }
 }

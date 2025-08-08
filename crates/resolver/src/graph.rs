@@ -1,38 +1,60 @@
-use std::{fmt, hash::Hash, marker::PhantomData, mem::take};
+use std::{fmt, marker::PhantomData, mem::take};
 
 use indexmap::IndexMap;
 pub use petgraph::graph::{DiGraph, NodeIndex};
 
 pub use petgraph;
 
-use crate::{GraphResolutionHandler, Resolver};
+use crate::Resolver;
 
-pub trait GraphResolver<NR, NH, E>
+pub trait GraphResolutionHandler<D, R> {
+    type Item;
+
+    fn handle_graph_resolution(&mut self, description: &D, resource: R) -> Self::Item;
+}
+
+pub trait GraphResolver<NR, NH, E>: Sized
 where
     NR: Resolver,
-    NH: GraphResolutionHandler<NR>,
-    NH::Item: IntoIterator<Item = (NR::Description, E)>,
+    NH: GraphResolutionHandler<NR::Description, DiGraph<NR::Description, E>>
+        + crate::ResolutionHandler<NR>,
+    <NH as crate::ResolutionHandler<NR>>::Item: IntoIterator<Item = (NR::Description, E)>,
     NR::Description: Eq + std::hash::Hash + Clone,
     E: Clone,
 {
+    type Description;
+    type Resource;
+
     fn graph_resolve(
         &mut self,
-        root_node: &NR::Description,
-    ) -> Result<DiGraph<NR::Description, E>, UnresolvableRootNode>;
+        handler: &mut NH,
+        root_node: &Self::Description,
+    ) -> Result<
+        <NH as GraphResolutionHandler<NR::Description, DiGraph<NR::Description, E>>>::Item,
+        UnresolvableRootNode,
+    >;
 }
 
 impl<NR, NH, E> GraphResolver<NR, NH, E> for GraphResolverImpl<NR, NH, E>
 where
     NR: Resolver,
-    NH: GraphResolutionHandler<NR>,
-    NH::Item: IntoIterator<Item = (NR::Description, E)>,
+    NH: GraphResolutionHandler<NR::Description, DiGraph<NR::Description, E>>
+        + crate::ResolutionHandler<NR>,
+    <NH as crate::ResolutionHandler<NR>>::Item: IntoIterator<Item = (NR::Description, E)>,
     NR::Description: Eq + std::hash::Hash + Clone,
     E: Clone,
 {
+    type Description = NR::Description;
+    type Resource = DiGraph<NR::Description, E>;
+
     fn graph_resolve(
         &mut self,
-        root_node: &NR::Description,
-    ) -> Result<DiGraph<NR::Description, E>, UnresolvableRootNode> {
+        handler: &mut NH,
+        root_node: &Self::Description,
+    ) -> Result<
+        <NH as GraphResolutionHandler<NR::Description, DiGraph<NR::Description, E>>>::Item,
+        UnresolvableRootNode,
+    > {
         tracing::trace!(target: "resolver", "Starting graph resolution");
 
         let mut graph = DiGraph::default();
@@ -47,7 +69,7 @@ where
             tracing::trace!(target: "resolver", "Resolving node");
             match self
                 .node_resolver
-                .resolve_with_graph_handler(&mut self.node_handler, &unresolved_node_description)
+                .resolve(handler, &unresolved_node_description)
             {
                 Ok(forward_nodes) => {
                     tracing::trace!(target: "resolver", "Successfully resolved node");
@@ -93,7 +115,8 @@ where
             Err(UnresolvableRootNode)
         } else {
             tracing::trace!(target: "resolver", "Graph resolution completed successfully with {} nodes", graph.node_count());
-            Ok(graph)
+            let result = handler.handle_graph_resolution(root_node, graph);
+            Ok(result)
         }
     }
 }
@@ -101,36 +124,39 @@ where
 impl<NR, NH, E> Default for GraphResolverImpl<NR, NH, E>
 where
     NR: Resolver + Default,
-    NH: Default,
 {
     fn default() -> Self {
         Self {
             node_resolver: NR::default(),
-            node_handler: NH::default(),
             diagnostics: vec![],
             _edge: PhantomData,
+            _handler: PhantomData,
         }
     }
 }
 
 pub struct GraphResolverImpl<NR: Resolver, NH, E> {
     pub node_resolver: NR,
-    pub node_handler: NH,
     pub diagnostics: Vec<UnresolvableNode<NR::Description, NR::Error>>,
     pub _edge: PhantomData<E>,
+    pub _handler: PhantomData<NH>,
 }
 
 impl<NR, NH, E> GraphResolverImpl<NR, NH, E>
 where
     NR: Resolver,
 {
-    pub fn new(node_resolver: NR, node_handler: NH) -> Self {
+    pub fn new(node_resolver: NR) -> Self {
         Self {
             node_resolver,
-            node_handler,
             diagnostics: vec![],
             _edge: PhantomData,
+            _handler: PhantomData,
         }
+    }
+
+    pub fn take_diagnostics(&mut self) -> Vec<UnresolvableNode<NR::Description, NR::Error>> {
+        take(&mut self.diagnostics)
     }
 }
 
@@ -167,28 +193,3 @@ impl fmt::Display for UnresolvableRootNode {
 }
 
 impl std::error::Error for UnresolvableRootNode {}
-
-impl<NR, NH, E> Resolver for GraphResolverImpl<NR, NH, E>
-where
-    NR: Resolver,
-    NH: GraphResolutionHandler<NR>,
-    NH::Item: IntoIterator<Item = (NR::Description, E)>,
-    NR::Description: Eq + Hash + Clone,
-    E: Clone,
-{
-    type Description = NR::Description;
-    type Resource = DiGraph<NR::Description, E>;
-    type Diagnostic = UnresolvableNode<NR::Description, NR::Error>;
-    type Error = UnresolvableRootNode;
-
-    fn transient_resolve(
-        &mut self,
-        root_node: &Self::Description,
-    ) -> Result<Self::Resource, Self::Error> {
-        self.graph_resolve(root_node)
-    }
-
-    fn take_diagnostics(&mut self) -> Vec<Self::Diagnostic> {
-        take(&mut self.diagnostics)
-    }
-}

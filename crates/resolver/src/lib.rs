@@ -14,28 +14,7 @@ pub trait Resolver: Sized {
         description: &Self::Description,
     ) -> Result<H::Item, Self::Error>
     where
-        H: ResolutionHandler<Self>,
-    {
-        self.transient_resolve(description)
-            .map(|resource| handler.handle_resolution(description, resource))
-    }
-
-    fn resolve_with_graph_handler<GH>(
-        &mut self,
-        handler: &mut GH,
-        description: &Self::Description,
-    ) -> Result<GH::Item, Self::Error>
-    where
-        GH: GraphResolutionHandler<Self>,
-    {
-        self.transient_resolve(description)
-            .map(|resource| handler.handle_graph_resolution(description, resource))
-    }
-
-    fn transient_resolve(
-        &mut self,
-        description: &Self::Description,
-    ) -> Result<Self::Resource, Self::Error>;
+        H: ResolutionHandler<Self>;
 
     fn take_diagnostics(&mut self) -> Vec<Self::Diagnostic>;
 }
@@ -53,15 +32,3 @@ where
     ) -> Self::Item;
 }
 
-pub trait GraphResolutionHandler<GR>
-where
-    GR: Resolver,
-{
-    type Item;
-
-    fn handle_graph_resolution(
-        &mut self,
-        description: &GR::Description,
-        resource: GR::Resource,
-    ) -> Self::Item;
-}
