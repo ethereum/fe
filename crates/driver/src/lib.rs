@@ -20,7 +20,7 @@ use resolver::{
 };
 use url::Url;
 
-pub fn init_workspace_ingot(
+pub fn init_ingot(
     db: &mut DriverDataBase,
     ingot_url: &Url,
 ) -> Vec<WorkspaceSetupDiagnostics> {
