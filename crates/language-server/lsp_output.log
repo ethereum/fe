@@ -1,0 +1,128 @@
+warning: unused import: `TypeKind`
+ --> crates/language-server/src/functionality/goto.rs:4:68
+  |
+4 |     hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod, TypeKind},
+  |                                                                    ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused imports: `LazyHirResult` and `lazy_hir_for_cursor`
+  --> crates/language-server/src/functionality/goto.rs:15:23
+   |
+15 |     hir_integration::{lazy_hir_for_cursor, LazyHirResult},
+   |                       ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+
+warning: unused imports: `LazyHir`, `ModuleLazyHir`, and `ResolveHir`
+  --> crates/language-server/src/hir_integration.rs:16:26
+   |
+16 | pub use hir::synthesis::{LazyHir, LazyHirResult, ModuleLazyHir, ResolveHir};
+   |                          ^^^^^^^                 ^^^^^^^^^^^^^  ^^^^^^^^^^
+
+warning: struct `PathSpanCollector` is never constructed
+  --> crates/language-server/src/functionality/goto.rs:22:8
+   |
+22 | struct PathSpanCollector<'db> {
+   |        ^^^^^^^^^^^^^^^^^
+   |
+   = note: `PathSpanCollector` has a derived impl for the trait `Default`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
+warning: function `find_path_surrounding_cursor` is never used
+  --> crates/language-server/src/functionality/goto.rs:37:4
+   |
+37 | fn find_path_surrounding_cursor<'db>(
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `find_enclosing_item` is never used
+  --> crates/language-server/src/functionality/goto.rs:60:8
+   |
+60 | pub fn find_enclosing_item<'db>(
+   |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `get_goto_target_scopes_for_cursor` is never used
+  --> crates/language-server/src/functionality/goto.rs:86:8
+   |
+86 | pub fn get_goto_target_scopes_for_cursor<'db>(
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `benchmark_goto_approaches` is never used
+   --> crates/language-server/src/functionality/goto.rs:421:8
+    |
+421 | pub fn benchmark_goto_approaches<'db>(
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `get_docstring` is never used
+ --> crates/language-server/src/functionality/item_info.rs:7:8
+  |
+7 | pub fn get_docstring(db: &dyn HirDb, scope: ScopeId) -> Option<String> {
+  |        ^^^^^^^^^^^^^
+
+warning: function `get_item_path_markdown` is never used
+  --> crates/language-server/src/functionality/item_info.rs:22:8
+   |
+22 | pub fn get_item_path_markdown(db: &dyn HirDb, item: ItemKind) -> Option<String> {
+   |        ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `get_item_definition_markdown` is never used
+  --> crates/language-server/src/functionality/item_info.rs:28:8
+   |
+28 | pub fn get_item_definition_markdown(db: &dyn SpannedHirDb, item: ItemKind) -> Option<String> {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `HirIntegration` is never constructed
+  --> crates/language-server/src/hir_integration.rs:22:12
+   |
+22 | pub struct HirIntegration;
+   |            ^^^^^^^^^^^^^^
+
+warning: associated functions `position_to_cursor`, `find_hir_at_lsp_position`, `has_hir_result`, `benchmark_hir_synthesis`, and `analyze_performance` are never used
+  --> crates/language-server/src/hir_integration.rs:26:12
+   |
+24 | impl HirIntegration {
+   | ------------------- associated functions in this implementation
+25 |     /// Convert LSP position to cursor offset for HIR synthesis
+26 |     pub fn position_to_cursor(position: async_lsp::lsp_types::Position, text: &str) -> Cursor {
+   |            ^^^^^^^^^^^^^^^^^^
+...
+31 |     pub fn find_hir_at_lsp_position<'db>(
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+42 |     pub fn has_hir_result(result: &LazyHirResult<'_>) -> bool {
+   |            ^^^^^^^^^^^^^^
+...
+47 |     pub fn benchmark_hir_synthesis<'db>(
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
+...
+86 |     pub fn analyze_performance<'db>(
+   |            ^^^^^^^^^^^^^^^^^^^
+
+warning: struct `HirSynthesisBenchmark` is never constructed
+   --> crates/language-server/src/hir_integration.rs:115:12
+    |
+115 | pub struct HirSynthesisBenchmark {
+    |            ^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `HirSynthesisBenchmark` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: struct `PerformanceAnalysis` is never constructed
+   --> crates/language-server/src/hir_integration.rs:125:12
+    |
+125 | pub struct PerformanceAnalysis {
+    |            ^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `PerformanceAnalysis` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: `fe-language-server` (bin "fe-language-server") generated 15 warnings (run `cargo fix --bin "fe-language-server"` to apply 3 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.48s
+     Running `/home/micah/hacker-stuff-2023/fe-stuff/fe/target/debug/fe-language-server`
+Content-Length: 139
+
+{"jsonrpc":"2.0","method":"window/logMessage","params":{"message":"18:LSP actorINFO Building local executor on spawned thread\n","type":4}}Content-Length: 108
+
+{"jsonrpc":"2.0","method":"window/logMessage","params":{"message":"18:LSP actor┐actor task{}\n","type":4}}Content-Length: 129
+
+{"jsonrpc":"2.0","method":"window/logMessage","params":{"message":"18:LSP actor├─ INFO Constructing actor state\n","type":4}}Content-Length: 128
+
+{"jsonrpc":"2.0","method":"window/logMessage","params":{"message":"18:LSP actor├─ INFO Starting actor run loop\n","type":4}}Content-Length: 127
+
+{"jsonrpc":"2.0","method":"window/logMessage","params":{"message":"18:LSP actor├─ INFO Actor run loop started\n","type":4}}

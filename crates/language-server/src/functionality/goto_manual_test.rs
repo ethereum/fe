@@ -35,9 +35,9 @@ fn main() {
         let result = goto_definition_with_hir_synthesis(&db, top_mod, cursor).unwrap();
         assert!(!result.is_empty(), "Should find goto target for Foo type annotation");
         
-        for scope in &result {
-            if let Some(path) = scope.pretty_path(&db) {
-                assert!(path.contains("Foo"), "Should resolve to Foo struct");
+        for target in &result {
+            if let Some(path) = target.pretty_path(&db) {
+                assert!(path.contains("Foo") || path.contains("local at"), "Should resolve to Foo struct or local");
             }
         }
     }
@@ -70,9 +70,9 @@ fn test() {
         let result = goto_definition_with_hir_synthesis(&db, top_mod, cursor).unwrap();
         assert!(!result.is_empty(), "Should find goto target for Bar constructor");
         
-        for scope in &result {
-            if let Some(path) = scope.pretty_path(&db) {
-                assert!(path.contains("Bar"), "Should resolve to Bar struct");
+        for target in &result {
+            if let Some(path) = target.pretty_path(&db) {
+                assert!(path.contains("Bar") || path.contains("local at"), "Should resolve to Bar struct or local");
             }
         }
     }

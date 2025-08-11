@@ -1,6 +1,5 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 667
 expression: snapshot
 input_file: test_files/goto_debug_nested.fe
 ---
@@ -13,3 +12,4 @@ input_file: test_files/goto_debug_nested.fe
 6: }
 ---
 cursor position (5, 12), path: goto_debug_nested::nested
+cursor position (5, 20), path: goto_debug_nested::nested::NESTED_CONST

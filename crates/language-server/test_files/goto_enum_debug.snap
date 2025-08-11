@@ -1,6 +1,5 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 736
 expression: snapshot
 input_file: test_files/goto_enum_debug.fe
 ---
@@ -17,8 +16,8 @@ input_file: test_files/goto_enum_debug.fe
 10: }
 ---
 cursor position (7, 14), path: goto_enum_debug::Color
-cursor position (7, 21), path: goto_enum_debug::Color
-cursor position (8, 16), path: goto_enum_debug::Color
-cursor position (8, 23), path: goto_enum_debug::Color
+cursor position (7, 21), path: goto_enum_debug::Color::Red
+cursor position (8, 16), path: goto_enum_debug::Color::Green
+cursor position (8, 23), path: goto_enum_debug::Color::Green
 cursor position (9, 15), path: goto_enum_debug::Color
-cursor position (9, 22), path: goto_enum_debug::Color
+cursor position (9, 22), path: goto_enum_debug::Color::Blue

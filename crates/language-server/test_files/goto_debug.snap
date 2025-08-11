@@ -1,6 +1,5 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 736
 expression: snapshot
 input_file: test_files/goto_debug.fe
 ---
@@ -15,3 +14,4 @@ input_file: test_files/goto_debug.fe
 8: }
 ---
 cursor position (6, 12), path: goto_debug::Point
+cursor position (7, 14), path: local at 6:8

@@ -1,6 +1,5 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 667
 expression: snapshot
 input_file: test_files/goto_multi_segment_paths.fe
 ---
@@ -24,5 +23,6 @@ input_file: test_files/goto_multi_segment_paths.fe
 cursor position (11, 12), path: goto_multi_segment_paths::a
 cursor position (11, 15), path: goto_multi_segment_paths::a::b
 cursor position (11, 18), path: goto_multi_segment_paths::a::b::c
+cursor position (11, 21), path: goto_multi_segment_paths::a::b::c::DEEP_CONST
 cursor position (14, 12), path: goto_multi_segment_paths::a
 cursor position (14, 15), path: goto_multi_segment_paths::a::b

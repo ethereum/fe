@@ -1,0 +1,20 @@
+fn test_hover() -> i32 {
+    let x: i32 = 42;
+    let y = x + 10;
+    let z: String = "hello";
+    
+    if y > 50 {
+        y * 2
+    } else {
+        x
+    }
+}
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn use_point(p: Point) -> i32 {
+    p.x + p.y
+}

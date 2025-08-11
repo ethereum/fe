@@ -1,0 +1,33 @@
+struct Wrapper<T> {
+    inner: T
+}
+
+trait Inner {
+    fn inner_method(self) -> i32
+}
+
+impl<S: Inner> Wrapper<S> {
+    fn new(inner: S) -> Self {
+        Self { inner }
+    }
+    
+    fn delegate(self) -> i32 {
+        self.inner.inner_method()
+    }
+}
+
+struct ConcreteInner {
+    value: i32
+}
+
+impl Inner for ConcreteInner {
+    fn inner_method(self) -> i32 {
+        self.value
+    }
+}
+
+fn test_impl() {
+    let concrete = ConcreteInner { value: 42 };
+    let wrapper = Wrapper::new(concrete);
+    wrapper.delegate()
+}
