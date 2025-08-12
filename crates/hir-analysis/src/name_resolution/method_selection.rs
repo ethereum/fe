@@ -21,18 +21,17 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
-pub enum Candidate<'db> {
-    // xxx MethodCandidate
+pub enum MethodCandidate<'db> {
     InherentMethod(FuncDef<'db>),
     TraitMethod(TraitMethodCand<'db>),
     NeedsConfirmation(TraitMethodCand<'db>),
 }
 
-impl<'db> Candidate<'db> {
+impl<'db> MethodCandidate<'db> {
     pub fn name(&self, db: &'db dyn HirAnalysisDb) -> IdentId<'db> {
         match self {
-            Candidate::InherentMethod(func_def) => func_def.name(db),
-            Candidate::TraitMethod(cand) | Candidate::NeedsConfirmation(cand) => {
+            MethodCandidate::InherentMethod(func_def) => func_def.name(db),
+            MethodCandidate::TraitMethod(cand) | MethodCandidate::NeedsConfirmation(cand) => {
                 cand.method.0.name(db)
             }
         }
@@ -57,7 +56,7 @@ pub(crate) fn select_method_candidate<'db>(
     method_name: IdentId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-) -> Result<Candidate<'db>, MethodSelectionError<'db>> {
+) -> Result<MethodCandidate<'db>, MethodSelectionError<'db>> {
     if receiver.value.is_ty_var(db) {
         return Err(MethodSelectionError::ReceiverTypeMustBeKnown);
     }
@@ -178,7 +177,7 @@ struct MethodSelector<'db> {
 }
 
 impl<'db> MethodSelector<'db> {
-    fn select(self) -> Result<Candidate<'db>, MethodSelectionError<'db>> {
+    fn select(self) -> Result<MethodCandidate<'db>, MethodSelectionError<'db>> {
         if let Some(res) = self.select_inherent_method() {
             return res;
         }
@@ -186,7 +185,9 @@ impl<'db> MethodSelector<'db> {
         self.select_trait_methods()
     }
 
-    fn select_inherent_method(&self) -> Option<Result<Candidate<'db>, MethodSelectionError<'db>>> {
+    fn select_inherent_method(
+        &self,
+    ) -> Option<Result<MethodCandidate<'db>, MethodSelectionError<'db>>> {
         let inherent_methods = &self.candidates.inherent_methods;
         let visible_inherent_methods: Vec<_> = inherent_methods
             .iter()
@@ -204,7 +205,9 @@ impl<'db> MethodSelector<'db> {
                     )))
                 }
             }
-            1 => Some(Ok(Candidate::InherentMethod(visible_inherent_methods[0]))),
+            1 => Some(Ok(MethodCandidate::InherentMethod(
+                visible_inherent_methods[0],
+            ))),
 
             _ => Some(Err(MethodSelectionError::AmbiguousInherentMethod(
                 inherent_methods.iter().copied().collect(),
@@ -227,7 +230,7 @@ impl<'db> MethodSelector<'db> {
     /// * `Ok(Candidate)` - The selected method candidate.
     /// * `Err(MethodSelectionError)` - An error indicating the reason for
     ///   failure.
-    fn select_trait_methods(&self) -> Result<Candidate<'db>, MethodSelectionError<'db>> {
+    fn select_trait_methods(&self) -> Result<MethodCandidate<'db>, MethodSelectionError<'db>> {
         let traits = &self.candidates.traits;
 
         if traits.len() == 1 {
@@ -281,7 +284,7 @@ impl<'db> MethodSelector<'db> {
     /// # Returns
     ///
     /// A `Candidate` representing the found trait method instance.
-    fn find_inst(&self, def: TraitDef<'db>, method: TraitMethod<'db>) -> Candidate<'db> {
+    fn find_inst(&self, def: TraitDef<'db>, method: TraitMethod<'db>) -> MethodCandidate<'db> {
         let mut table = UnificationTable::new(self.db);
         let receiver = self.receiver.extract_identity(&mut table);
         let receiver = table.instantiate_to_term(receiver); // xxx remove?
@@ -319,7 +322,7 @@ impl<'db> MethodSelector<'db> {
                 // Unify candidate to solution.
                 table.unify(cand, solution).unwrap();
 
-                Candidate::TraitMethod(TraitMethodCand::new(
+                MethodCandidate::TraitMethod(TraitMethodCand::new(
                     self.receiver
                         .canonicalize_solution(self.db, &mut table, cand),
                     method,
@@ -328,11 +331,13 @@ impl<'db> MethodSelector<'db> {
 
             &GoalSatisfiability::NeedsConfirmation(_)
             | GoalSatisfiability::ContainsInvalid
-            | GoalSatisfiability::UnSat(_) => Candidate::NeedsConfirmation(TraitMethodCand::new(
-                self.receiver
-                    .canonicalize_solution(self.db, &mut table, cand),
-                method,
-            )),
+            | GoalSatisfiability::UnSat(_) => {
+                MethodCandidate::NeedsConfirmation(TraitMethodCand::new(
+                    self.receiver
+                        .canonicalize_solution(self.db, &mut table, cand),
+                    method,
+                ))
+            }
         }
     }
 

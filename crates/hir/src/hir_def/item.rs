@@ -838,8 +838,6 @@ impl<'db> Impl<'db> {
         })
     }
 
-    // xxx TODO pub fn types(self, db: &'db dyn HirDb)
-
     pub fn scope(self) -> ScopeId<'db> {
         ScopeId::from_item(self.into())
     }
@@ -860,7 +858,7 @@ pub struct Trait<'db> {
     pub super_traits: Vec<TraitRefId<'db>>,
     pub where_clause: WhereClauseId<'db>,
     #[return_ref]
-    pub types: Vec<TraitType<'db>>,
+    pub types: Vec<AssocTyDecl<'db>>,
 
     pub top_mod: TopLevelMod<'db>,
 
@@ -894,7 +892,7 @@ impl<'db> Trait<'db> {
         })
     }
 
-    pub fn assoc_ty(self, db: &'db dyn HirDb, name: IdentId<'db>) -> Option<&'db TraitType<'db>> {
+    pub fn assoc_ty(self, db: &'db dyn HirDb, name: IdentId<'db>) -> Option<&'db AssocTyDecl<'db>> {
         self.types(db)
             .iter()
             .find(|trait_type| trait_type.name.to_opt() == Some(name))
@@ -902,8 +900,7 @@ impl<'db> Trait<'db> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
-pub struct TraitType<'db> {
-    // xxx rename AssocTyDecl
+pub struct AssocTyDecl<'db> {
     pub name: Partial<IdentId<'db>>,
     pub bounds: Vec<TypeBound<'db>>,
     pub default: Option<TypeId<'db>>,
@@ -921,7 +918,7 @@ pub struct ImplTrait<'db> {
     pub generic_params: GenericParamListId<'db>,
     pub where_clause: WhereClauseId<'db>,
     #[return_ref]
-    pub types: Vec<ImplTraitType<'db>>,
+    pub types: Vec<AssocTyDef<'db>>,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -965,7 +962,7 @@ impl<'db> ImplTrait<'db> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
-pub struct ImplTraitType<'db> {
+pub struct AssocTyDef<'db> {
     pub name: Partial<IdentId<'db>>,
     pub ty: Partial<TypeId<'db>>,
 }

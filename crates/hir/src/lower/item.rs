@@ -296,7 +296,7 @@ impl<'db> Trait<'db> {
                     ast::TraitItemKind::Func(func) => {
                         Func::lower_ast(ctxt, func, false);
                     }
-                    ast::TraitItemKind::Type(t) => types.push(TraitType::lower_ast(ctxt, t)),
+                    ast::TraitItemKind::Type(t) => types.push(AssocTyDecl::lower_ast(ctxt, t)),
                 };
             }
         }
@@ -319,7 +319,7 @@ impl<'db> Trait<'db> {
     }
 }
 
-impl<'db> TraitType<'db> {
+impl<'db> AssocTyDecl<'db> {
     pub(super) fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitTypeItem) -> Self {
         let name = IdentId::lower_token_partial(ctxt, ast.name());
         let bounds = ast
@@ -334,7 +334,7 @@ impl<'db> TraitType<'db> {
 
         let default = TypeId::lower_ast_partial(ctxt, ast.ty()).to_opt();
 
-        TraitType {
+        AssocTyDecl {
             name,
             bounds,
             default,
@@ -361,7 +361,7 @@ impl<'db> ImplTrait<'db> {
                     ast::TraitItemKind::Func(func) => {
                         Func::lower_ast(ctxt, func, false);
                     }
-                    ast::TraitItemKind::Type(t) => types.push(ImplTraitType::lower_ast(ctxt, t)),
+                    ast::TraitItemKind::Type(t) => types.push(AssocTyDef::lower_ast(ctxt, t)),
                 };
             }
         }
@@ -382,9 +382,9 @@ impl<'db> ImplTrait<'db> {
     }
 }
 
-impl<'db> ImplTraitType<'db> {
+impl<'db> AssocTyDef<'db> {
     fn lower_ast(ctxt: &mut FileLowerCtxt<'db>, ast: ast::TraitTypeItem) -> Self {
-        ImplTraitType {
+        AssocTyDef {
             name: IdentId::lower_token_partial(ctxt, ast.name()),
             ty: TypeId::lower_ast_partial(ctxt, ast.ty()),
         }

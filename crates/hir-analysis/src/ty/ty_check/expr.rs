@@ -13,7 +13,7 @@ use crate::{
     name_resolution::{
         diagnostics::NameResDiag,
         is_scope_visible_from,
-        method_selection::{select_method_candidate, Candidate, MethodSelectionError},
+        method_selection::{select_method_candidate, MethodCandidate, MethodSelectionError},
         resolve_name_res, resolve_query, EarlyNameQueryId, ExpectedPathKind, NameDomain,
         NameResBucket, PathRes, QueryDirective,
     },
@@ -345,12 +345,12 @@ impl<'db> TyChecker<'db> {
         };
 
         let (func_ty, trait_inst) = match candidate {
-            Candidate::InherentMethod(func_def) => {
+            MethodCandidate::InherentMethod(func_def) => {
                 let func_ty = TyId::func(self.db, func_def);
                 (self.table.instantiate_to_term(func_ty), None)
             }
 
-            Candidate::TraitMethod(cand) => {
+            MethodCandidate::TraitMethod(cand) => {
                 let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
                 let trait_method = cand.method;
                 let func_ty =
@@ -358,7 +358,7 @@ impl<'db> TyChecker<'db> {
                 (func_ty, Some(inst))
             }
 
-            Candidate::NeedsConfirmation(cand) => {
+            MethodCandidate::NeedsConfirmation(cand) => {
                 let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
                 self.env
                     .register_confirmation(inst, call_span.clone().into());
@@ -529,7 +529,7 @@ impl<'db> TyChecker<'db> {
                 PathRes::Method(receiver_ty, candidate) => {
                     let canonical_r_ty = Canonicalized::new(self.db, receiver_ty);
                     let method_ty = match candidate {
-                        Candidate::InherentMethod(func_def) => {
+                        MethodCandidate::InherentMethod(func_def) => {
                             // xxx move this stuff to path_resolver
                             let mut method_ty = TyId::func(self.db, func_def);
                             for &arg in receiver_ty.generic_args(self.db) {
@@ -545,9 +545,10 @@ impl<'db> TyChecker<'db> {
                             }
                             method_ty
                         }
-                        Candidate::TraitMethod(cand) | Candidate::NeedsConfirmation(cand) => {
+                        MethodCandidate::TraitMethod(cand)
+                        | MethodCandidate::NeedsConfirmation(cand) => {
                             let inst = canonical_r_ty.extract_solution(&mut self.table, cand.inst);
-                            if matches!(candidate, Candidate::NeedsConfirmation(_)) {
+                            if matches!(candidate, MethodCandidate::NeedsConfirmation(_)) {
                                 self.env.register_confirmation(inst, span.clone().into());
                             }
                             cand.method

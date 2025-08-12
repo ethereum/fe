@@ -8,9 +8,9 @@ use rustc_hash::FxHashSet;
 use salsa::Update;
 
 use super::{
-    scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, EnumVariant,
-    ExprId, FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl,
-    ImplTrait, ItemKind, Mod, TopLevelMod, Trait, TraitType, TypeAlias, Use, VariantDef,
+    scope_graph_viz::ScopeGraphFormatter, AssocTyDecl, AttrListId, Body, Const, Contract, Enum,
+    EnumVariant, ExprId, FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam,
+    IdentId, Impl, ImplTrait, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef,
     VariantKind, Visibility,
 };
 use crate::{
@@ -672,7 +672,7 @@ impl<'db> FromScope<'db> for &'db GenericParam<'db> {
     }
 }
 
-impl<'db> FromScope<'db> for &'db TraitType<'db> {
+impl<'db> FromScope<'db> for &'db AssocTyDecl<'db> {
     fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self> {
         let ScopeId::TraitType(t, idx) = scope else {
             return None;

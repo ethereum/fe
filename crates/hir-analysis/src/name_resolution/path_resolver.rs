@@ -14,7 +14,7 @@ use thin_vec::ThinVec;
 use super::{
     diagnostics::NameResDiag,
     is_scope_visible_from,
-    method_selection::{select_method_candidate, Candidate, MethodSelectionError},
+    method_selection::{select_method_candidate, MethodCandidate, MethodSelectionError},
     name_resolver::{NameRes, NameResBucket, NameResolutionError},
     resolve_query,
     visibility_checker::is_ty_visible_from,
@@ -265,7 +265,7 @@ pub enum PathRes<'db> {
     EnumVariant(ResolvedVariant<'db>),
     Const(TyId<'db>),
     Mod(ScopeId<'db>),
-    Method(TyId<'db>, Candidate<'db>),
+    Method(TyId<'db>, MethodCandidate<'db>),
 }
 
 impl<'db> PathRes<'db> {
