@@ -8,7 +8,8 @@ use hir::{
     SpannedHirDb,
 };
 use hir_analysis::ty::ty_check::{check_func_body, RecordLike};
-use hir_analysis::name_resolution::{resolve_ident_to_bucket, resolve_path, NameDomain, NameResKind, PathResErrorKind};
+use hir_analysis::name_resolution::local_binding_span_for_expr;
+use hir_analysis::name_resolution::{resolve_ident_to_bucket, resolve_path, resolve_path_segment, NameDomain, NameResKind, PathResErrorKind};
 use tracing::{debug, error};
 
 use crate::{backend::Backend, util::to_offset_from_position};
@@ -191,7 +192,35 @@ pub fn goto_definition_with_hir_synthesis<'db>(
         }
         LazyHirResult::Pat(body, pat_id) => resolve_pattern_definition(db, body, pat_id),
         LazyHirResult::None => {
-            // No HIR node found at this position - nothing to go to
+            if let Some(item) = find_enclosing_item(db, top_mod, cursor) {
+                if matches!(item, ItemKind::Impl(_) | ItemKind::ImplTrait(_)) {
+                    let mut vctxt = hir::visitor::VisitorCtxt::with_item(db, item);
+                    let mut collector = PathSpanCollector::default();
+                    collector.visit_item(&mut vctxt, item);
+                    if let Some((seg_path, _intermediate, scope)) = find_path_surrounding_cursor(db, cursor, collector.paths) {
+                        match hir_analysis::name_resolution::resolve_path_segment(db, seg_path, seg_path.segment_index(db), scope, false) {
+                            Ok(res) => {
+                                if let Some(s) = res.as_scope(db) {
+                                    return Ok(vec![GotoTarget::Scope(s)]);
+                                }
+                            }
+                            Err(err) => match err.kind {
+                                PathResErrorKind::NotFound(bucket) => {
+                                    let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                    if !scopes.is_empty() {
+                                        return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
+                                    }
+                                }
+                                PathResErrorKind::Ambiguous(vec) => {
+                                    let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                    return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
+                                }
+                                _ => {}
+                            },
+                        }
+                    }
+                }
+            }
             Ok(vec![])
         }
     };
@@ -235,14 +264,7 @@ fn resolve_expression_definition<'db>(
         parent_scope: ScopeId<'db>,
         tail_seg: PathId<'db>,
     ) -> Option<ScopeId<'db>> {
-        let bucket = resolve_ident_to_bucket(db, tail_seg, parent_scope);
-        match bucket.pick(NameDomain::VALUE) {
-            Ok(nr) => match nr.kind {
-                NameResKind::Scope(scope) => Some(scope),
-                _ => None,
-            },
-            Err(_) => None,
-        }
+        hir_analysis::name_resolution::resolve_tail_value_scope(db, tail_seg, parent_scope)
     }
 
     fn find_containing_func<'db>(
@@ -277,8 +299,19 @@ fn resolve_expression_definition<'db>(
         Partial::Present(Expr::Path(Partial::Present(path_id))) => {
             let scope = body.scope();
 
-            if let Some(resolved) = try_resolve_local_variable(db, body, *path_id) {
-                return Ok(vec![GotoTarget::Span(resolved)]);
+            if path_id.is_bare_ident(db) {
+                if let Ok(path_res) = resolve_path_segment(db, *path_id, 0, body.scope(), true) {
+                    if let hir_analysis::name_resolution::PathRes::FuncParam(..) = path_res {
+                        if let Some(s) = path_res.as_scope(db) {
+                            return Ok(vec![GotoTarget::Scope(s)]);
+                        }
+                    }
+                }
+                if let Some(func) = find_containing_func(db, body) {
+                    if let Some(span) = local_binding_span_for_expr(db, db, func, expr_id) {
+                        return Ok(vec![GotoTarget::Span(span)]);
+                    }
+                }
             }
 
             // Handle bare identifiers in TYPE domain for impl headers
@@ -297,50 +330,53 @@ fn resolve_expression_definition<'db>(
             // Check if we have segment context
             match context {
                 hir::synthesis::HirNodeContext::PathSegment(segment_index) => {
-                    // Resolve just the specific segment
-                    if let Some(segment_path_id) = path_id.segment(db, segment_index) {
-                        match resolve_path(db, segment_path_id, scope, true) {
-                            Ok(path_res) => {
-                                if let hir_analysis::name_resolution::PathRes::EnumVariant(v) = &path_res {
-                                    return Ok(vec![GotoTarget::Scope(ScopeId::Variant(v.variant))]);
-                                }
-                                if let Some(scope) = path_res.as_scope(db) {
-                                    return Ok(vec![GotoTarget::Scope(scope)]);
-                                }
-                                if let hir_analysis::name_resolution::PathRes::Const(_) = &path_res {
-                                    let parent_scope = {
-                                        if let Some(parent) = path_id.parent(db) {
-                                            resolve_path(db, parent, scope, false)
-                                                .ok()
-                                                .and_then(|r| r.as_scope(db))
-                                                .unwrap_or(scope)
-                                        } else {
-                                            scope
-                                        }
-                                    };
-                                    if let Some(ident) = segment_path_id.ident(db).to_opt() {
-                                        let single = PathId::from_ident(db, ident);
-                                        if let Some(s) = resolve_value_name_scope(db, parent_scope, single) {
-                                            return Ok(vec![GotoTarget::Scope(s)]);
-                                        }
+                    // Resolve just the specific segment using analysis API
+                    match resolve_path_segment(db, *path_id, segment_index, scope, true) {
+                        Ok(path_res) => {
+                            if let hir_analysis::name_resolution::PathRes::EnumVariant(v) = &path_res {
+                                return Ok(vec![GotoTarget::Scope(ScopeId::Variant(v.variant))]);
+                            }
+                            if let Some(scope) = path_res.as_scope(db) {
+                                return Ok(vec![GotoTarget::Scope(scope)]);
+                            }
+                            if let Some(s) = hir_analysis::name_resolution::resolve_path_segment_scope(db, *path_id, path_id.segment_index(db), scope, true) {
+                                return Ok(vec![GotoTarget::Scope(s)]);
+                            }
+                            if let hir_analysis::name_resolution::PathRes::Const(_) = &path_res {
+                                let parent_scope = {
+                                    if let Some(parent) = path_id.parent(db) {
+                                        resolve_path(db, parent, scope, false)
+                                            .ok()
+                                            .and_then(|r| r.as_scope(db))
+                                            .unwrap_or(scope)
+                                    } else {
+                                        scope
+                                    }
+                                };
+                                if let Some(seg_ident) = path_id
+                                    .segment(db, segment_index)
+                                    .and_then(|p| p.ident(db).to_opt())
+                                {
+                                    let single = PathId::from_ident(db, seg_ident);
+                                    if let Some(s) = resolve_value_name_scope(db, parent_scope, single) {
+                                        return Ok(vec![GotoTarget::Scope(s)]);
                                     }
                                 }
                             }
-                            Err(err) => match err.kind {
-                                PathResErrorKind::NotFound(bucket) => {
-                                    let scopes =
-                                        bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
-                                    if !scopes.is_empty() {
-                                        return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
-                                    }
-                                }
-                                PathResErrorKind::Ambiguous(vec) => {
-                                    let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                        }
+                        Err(err) => match err.kind {
+                            PathResErrorKind::NotFound(bucket) => {
+                                let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                if !scopes.is_empty() {
                                     return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
                                 }
-                                _ => {}
-                            },
-                        }
+                            }
+                            PathResErrorKind::Ambiguous(vec) => {
+                                let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
+                            }
+                            _ => {}
+                        },
                     }
                 }
                 hir::synthesis::HirNodeContext::Regular => {
@@ -352,6 +388,9 @@ fn resolve_expression_definition<'db>(
                             }
                             if let Some(scope) = path_res.as_scope(db) {
                                 return Ok(vec![GotoTarget::Scope(scope)]);
+                            }
+                            if let Some(s) = hir_analysis::name_resolution::resolve_path_segment_scope(db, *path_id, path_id.segment_index(db), scope, true) {
+                                return Ok(vec![GotoTarget::Scope(s)]);
                             }
                             if let hir_analysis::name_resolution::PathRes::Const(_) = &path_res {
                                 let parent_scope = {
@@ -516,26 +555,24 @@ fn resolve_statement_definition<'db>(
                     // Check if we have segment context
                     match context {
                         hir::synthesis::HirNodeContext::PathSegment(segment_index) => {
-                            // Resolve just the specific segment
-                            if let Some(segment_path_id) = path_id.segment(db, segment_index) {
-                                match resolve_path(db, segment_path_id, scope, false) {
-                                    Ok(path_res) => {
-                                        if let hir_analysis::name_resolution::PathRes::EnumVariant(v) = &path_res {
-                                            targets.push(GotoTarget::Scope(ScopeId::Variant(v.variant)));
-                                        } else if let Some(scope) = path_res.as_scope(db) {
-                                            targets.push(GotoTarget::Scope(scope));
-                                        }
+                            // Resolve just the specific segment using analysis API
+                            match resolve_path_segment(db, *path_id, segment_index, scope, false) {
+                                Ok(path_res) => {
+                                    if let hir_analysis::name_resolution::PathRes::EnumVariant(v) = &path_res {
+                                        targets.push(GotoTarget::Scope(ScopeId::Variant(v.variant)));
+                                    } else if let Some(scope) = path_res.as_scope(db) {
+                                        targets.push(GotoTarget::Scope(scope));
                                     }
-                                    Err(err) => match err.kind {
-                                        PathResErrorKind::NotFound(bucket) => targets.extend(
-                                            bucket.iter_ok().flat_map(|r| r.scope()).map(GotoTarget::Scope)
-                                        ),
-                                        PathResErrorKind::Ambiguous(vec) => targets.extend(
-                                            vec.into_iter().flat_map(|r| r.scope()).map(GotoTarget::Scope)
-                                        ),
-                                        _ => {}
-                                    },
                                 }
+                                Err(err) => match err.kind {
+                                    PathResErrorKind::NotFound(bucket) => targets.extend(
+                                        bucket.iter_ok().flat_map(|r| r.scope()).map(GotoTarget::Scope)
+                                    ),
+                                    PathResErrorKind::Ambiguous(vec) => targets.extend(
+                                        vec.into_iter().flat_map(|r| r.scope()).map(GotoTarget::Scope)
+                                    ),
+                                    _ => {}
+                                },
                             }
                         }
                         hir::synthesis::HirNodeContext::Regular => {

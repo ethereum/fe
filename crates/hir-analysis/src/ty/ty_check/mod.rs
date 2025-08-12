@@ -9,13 +9,15 @@ mod stmt;
 pub use self::path::RecordLike;
 pub use callable::Callable;
 pub use env::ExprProp;
-use env::TyCheckEnv;
+use env::{TyCheckEnv, LocalBinding};
 pub(super) use expr::TraitOps;
 use hir::{
-    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, TypeId as HirTyId},
+    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, Partial, TypeId as HirTyId},
     span::{
         expr::LazyExprSpan, pat::LazyPatSpan, path::LazyPathSpan, types::LazyTySpan, DynLazySpan,
     },
+    span::LazySpan,
+    SpannedHirDb,
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
 
@@ -421,8 +423,6 @@ impl<'db> TyCheckerFinalizer<'db> {
 
         let mut skip_diag = false;
         for key in inference_keys(self.db, &ty) {
-            // If at least one of the inference keys are already seen, we will skip emitting
-            // diagnostics.
             skip_diag |= !self.ty_vars.insert(key);
         }
 
@@ -443,5 +443,61 @@ impl<'db> TyCheckerFinalizer<'db> {
         if let Some(diag) = ty.emit_wf_diag(self.db, ingot, self.assumptions, span) {
             self.diags.push(diag.into());
         }
+    }
+}
+
+impl<'db> TypedBody<'db> {
+    pub fn has_body(&self) -> bool { self.body.is_some() }
+}
+
+pub fn local_binding_span_at<'db>(
+    db: &'db dyn SpannedHirDb,
+    body: Body<'db>,
+    path: PathId<'db>,
+) -> Option<common::diagnostics::Span> {
+    if !path.is_bare_ident(db) { return None; }
+    let ident = path.ident(db).to_opt()?;
+    let mut best_span: Option<common::diagnostics::Span> = None;
+    for (pat_id, pat) in body.pats(db).iter() {
+        if let Partial::Present(Pat::Path(Partial::Present(p_path), _)) = pat {
+            if p_path.is_bare_ident(db) {
+                if let Some(p_ident) = p_path.ident(db).to_opt() {
+                    if p_ident == ident {
+                        if let Some(span) = pat_id.span(body).resolve(db) {
+                            if best_span.as_ref().map(|s| s.range.start() < span.range.start()).unwrap_or(true) {
+                                best_span = Some(span);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    best_span
+}
+
+pub fn local_binding_span_for_expr<'db>(
+    analysis_db: &'db dyn HirAnalysisDb,
+    span_db: &'db dyn SpannedHirDb,
+    func: hir::hir_def::Func<'db>,
+    expr: hir::hir_def::ExprId,
+) -> Option<common::diagnostics::Span> {
+    let (_, typed_body) = check_func_body(analysis_db, func);
+    let prop = typed_body.expr_prop(analysis_db, expr);
+    if let Some(binding) = prop.binding() {
+        match binding {
+            LocalBinding::Local { pat, .. } => {
+                let body = func.body(analysis_db)?;
+                pat.span(body).resolve(span_db)
+            }
+            LocalBinding::Param { idx, .. } => {
+                use crate::ty::func_def::lower_func;
+                let def = lower_func(analysis_db, func).unwrap();
+                let hir_func = def.hir_func_def(analysis_db).unwrap();
+                hir_func.span().params().param(idx).name().resolve(span_db)
+            }
+        }
+    } else {
+        None
     }
 }

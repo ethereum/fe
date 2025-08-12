@@ -1,5 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
+assertion_line: 1083
 expression: snapshot
 input_file: test_files/goto_simple_method.fe
 ---
@@ -18,5 +19,6 @@ input_file: test_files/goto_simple_method.fe
 12:     let result = container.get()
 13: }
 ---
+cursor position (4, 5), path: goto_simple_method::Container
 cursor position (11, 20), path: goto_simple_method::Container
 cursor position (12, 17), path: local at 11:8

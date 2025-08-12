@@ -365,6 +365,74 @@ pub fn resolve_path<'db>(
     resolve_path_impl(db, path, scope, resolve_tail_as_value, true, &mut |_, _| {})
 }
 
+/// Resolve a specific path segment by index, returning the definition at that segment.
+pub fn resolve_path_segment<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    seg_idx: usize,
+    scope: ScopeId<'db>,
+    resolve_tail_as_value: bool,
+) -> PathResolutionResult<'db, PathRes<'db>> {
+    if seg_idx > path.segment_index(db) { return Err(PathResError::parse_err(path)); }
+    let mut current_parent: Option<PathRes<'db>> = None;
+    let mut parent_scope = scope;
+    for i in 0..=seg_idx {
+        let segment = path.segment(db, i).unwrap();
+        let query_scope = match &current_parent {
+            Some(res) => res.as_scope(db).unwrap_or(parent_scope),
+            None => parent_scope,
+        };
+        let query = make_query(db, segment, query_scope);
+        let bucket = resolve_query(db, query);
+        let nameres = if i == path.segment_index(db) && resolve_tail_as_value {
+            match bucket.pick(NameDomain::VALUE) {
+                Ok(res) => res.clone(),
+                Err(_) => pick_type_domain_from_bucket(bucket, segment)?,
+            }
+        } else {
+            pick_type_domain_from_bucket(bucket, segment)?
+        };
+        let reso = resolve_name_res(db, &nameres, current_parent.clone(), segment, query_scope)?;
+        current_parent = Some(reso);
+        parent_scope = query_scope;
+    }
+    Ok(current_parent.unwrap())
+}
+
+/// Resolve and return the raw ScopeId for the specified path segment if the name directly maps to a scope
+pub fn resolve_path_segment_scope<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    seg_idx: usize,
+    scope: ScopeId<'db>,
+    resolve_tail_as_value: bool,
+) -> Option<ScopeId<'db>> {
+    if seg_idx > path.segment_index(db) { return None; }
+    let mut current_parent: Option<PathRes<'db>> = None;
+    let mut parent_scope = scope;
+    for i in 0..=seg_idx {
+        let segment = path.segment(db, i).unwrap();
+        let query_scope = current_parent.as_ref().and_then(|r| r.as_scope(db)).unwrap_or(parent_scope);
+        let query = make_query(db, segment, query_scope);
+        let bucket = resolve_query(db, query);
+        let nameres = if i == path.segment_index(db) && resolve_tail_as_value {
+            match bucket.pick(NameDomain::VALUE) {
+                Ok(res) => res.clone(),
+                Err(_) => match bucket.pick(NameDomain::TYPE) { Ok(res) => res.clone(), Err(_) => return None },
+            }
+        } else {
+            match bucket.pick(NameDomain::TYPE) { Ok(res) => res.clone(), Err(_) => return None }
+        };
+        if i == seg_idx {
+            if let super::name_resolver::NameResKind::Scope(s) = nameres.kind { return Some(s); }
+        }
+        let reso = resolve_name_res(db, &nameres, current_parent.clone(), segment, query_scope).ok()?;
+        current_parent = Some(reso);
+        parent_scope = query_scope;
+    }
+    None
+}
+
 pub fn resolve_path_with_observer<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
@@ -376,6 +444,28 @@ where
     F: FnMut(PathId<'db>, &PathRes<'db>),
 {
     resolve_path_impl(db, path, scope, resolve_tail_as_value, true, observer)
+}
+
+/// Resolve the tail segment of a path in VALUE domain and return its concrete item scope if any.
+pub fn resolve_tail_value_scope<'db>(
+    db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+) -> Option<ScopeId<'db>> {
+    let parent_scope = path
+        .parent(db)
+        .and_then(|p| resolve_path(db, p, scope, false).ok().and_then(|r| r.as_scope(db)))
+        .unwrap_or(scope);
+    let query = make_query(db, path, parent_scope);
+    let bucket = resolve_query(db, query);
+    if let Ok(res) = bucket.pick(NameDomain::VALUE) {
+        match res.kind {
+            super::name_resolver::NameResKind::Scope(s) => Some(s),
+            _ => None,
+        }
+    } else {
+        None
+    }
 }
 
 fn resolve_path_impl<'db, F>(
