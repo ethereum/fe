@@ -44,7 +44,7 @@ impl<'db> GenericArgListId<'db> {
                             let ty =
                                 a.ty.to_opt()
                                     .map_or_else(|| "<missing>".into(), |t| t.pretty_print(db));
-                            format!("{} = {}", name, ty)
+                            format!("{name} = {ty}")
                         }
                     })
                     .collect::<Vec<_>>()

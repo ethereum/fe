@@ -230,7 +230,7 @@ impl<'db> PredicateListId<'db> {
         let mut all_predicates: IndexSet<TraitInstId<'db>> =
             self.list(db).iter().copied().collect();
 
-        let mut worklist: Vec<TraitInstId<'db>> = self.list(db).iter().copied().collect();
+        let mut worklist: Vec<TraitInstId<'db>> = self.list(db).to_vec();
 
         while let Some(pred) = worklist.pop() {
             // 1. Collect super traits

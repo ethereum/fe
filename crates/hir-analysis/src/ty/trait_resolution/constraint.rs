@@ -238,7 +238,7 @@ pub fn collect_constraints<'db>(
             PredicateListId::new(db, all_predicates.iter().copied().collect::<Vec<_>>());
 
         let before = deferred.len();
-        deferred.retain(|p| match try_resolve_type_bound(db, &p, assumptions) {
+        deferred.retain(|p| match try_resolve_type_bound(db, p, assumptions) {
             Some(inst) => {
                 all_predicates.insert(inst);
                 false
@@ -278,8 +278,5 @@ fn try_resolve_type_bound<'db>(
         Either::Right(ty) => ty,
     };
 
-    match lower_trait_ref(db, ty, deferred.trait_ref, deferred.scope, assumptions) {
-        Ok(inst) => Some(inst),
-        Err(_) => None,
-    }
+    lower_trait_ref(db, ty, deferred.trait_ref, deferred.scope, assumptions).ok()
 }

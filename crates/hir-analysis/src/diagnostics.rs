@@ -202,10 +202,8 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 };
 
                 let method_str = method_name.data(db);
-                let message = format!(
-                    "no method named `{}` found for {} `{}`",
-                    method_str, recv_kind, recv_name
-                );
+                let message =
+                    format!("no method named `{method_str}` found for {recv_kind} `{recv_name}`");
 
                 if let Some(ty) = recv_ty {
                     if let Some(field_ty) = RecordLike::Type(*ty).record_field_ty(db, *method_name)
@@ -234,7 +232,7 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                     message,
                     sub_diagnostics: vec![SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: format!("method not found in `{}`", recv_name),
+                        message: format!("method not found in `{recv_name}`"),
                         span: primary.resolve(db),
                     }],
                     notes: vec![],
@@ -314,7 +312,7 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                     let trait_name = trait_inst.def(db).trait_(db).name(db).unwrap().data(db);
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("candidate: `{}`", trait_name),
+                        message: format!("candidate: `{trait_name}`"),
                         span: trait_inst.def(db).trait_(db).span().name().resolve(db),
                     });
                 }
@@ -2110,7 +2108,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
 
                 CompleteDiagnostic {
                     severity,
-                    message: format!("method `{}` has incompatible argument type", method_name),
+                    message: format!("method `{method_name}` has incompatible argument type"),
                     sub_diagnostics: vec![
                         SubDiagnostic {
                             style: LabelStyle::Primary,
@@ -2142,7 +2140,7 @@ impl DiagnosticVoucher for ImplDiag<'_> {
 
                 CompleteDiagnostic {
                     severity,
-                    message: format!("method `{}` has incompatible return type", method_name),
+                    message: format!("method `{method_name}` has incompatible return type"),
                     sub_diagnostics: vec![
                         SubDiagnostic {
                             style: LabelStyle::Primary,

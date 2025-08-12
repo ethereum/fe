@@ -406,11 +406,8 @@ impl<'db> TyChecker<'db> {
                 }
 
                 PathRes::Method(..) | PathRes::FuncParam(..) => {
-                    let diag = BodyDiag::record_expected(
-                        self.db,
-                        pat.span(self.body()).into(),
-                        None,
-                    );
+                    let diag =
+                        BodyDiag::record_expected(self.db, pat.span(self.body()).into(), None);
                     self.push_diag(diag);
                     TyId::invalid(self.db, InvalidCause::Other)
                 }
