@@ -15,7 +15,7 @@ pub struct Core;
 
 pub trait HasBuiltinCore: InputDb {
     fn initialize_builtin_core(&mut self);
-    fn builtin_core(&self) -> Ingot;
+    fn builtin_core(&self) -> Ingot<'_>;
 }
 
 impl<T: InputDb> HasBuiltinCore for T {
@@ -33,7 +33,7 @@ impl<T: InputDb> HasBuiltinCore for T {
         }
     }
 
-    fn builtin_core(&self) -> Ingot {
+    fn builtin_core(&self) -> Ingot<'_> {
         let core = self
             .workspace()
             .containing_ingot(self, Url::parse(BUILTIN_CORE_BASE_URL).unwrap());

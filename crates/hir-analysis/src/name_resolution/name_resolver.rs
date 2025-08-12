@@ -282,7 +282,7 @@ impl<'db> NameRes<'db> {
         }
     }
 
-    pub fn enum_variant(&self) -> Option<EnumVariant> {
+    pub fn enum_variant(&self) -> Option<EnumVariant<'_>> {
         match self.kind {
             NameResKind::Scope(ScopeId::Variant(v)) => Some(v),
             _ => None,

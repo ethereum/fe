@@ -51,7 +51,7 @@ impl DriverDataBase {
         DiagnosticsCollection(pass_manager.run_on_module_tree(self, tree))
     }
 
-    pub fn top_mod(&self, input: File) -> TopLevelMod {
+    pub fn top_mod(&self, input: File) -> TopLevelMod<'_> {
         map_file_to_mod(self, input)
     }
 }
