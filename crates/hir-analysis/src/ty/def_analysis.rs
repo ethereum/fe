@@ -228,7 +228,7 @@ pub fn analyze_impl_trait<'db>(
         }
     };
 
-    let mut diags = ImplTraitMethodAnalyzer::new(db, implementor.instantiate_identity()).analyze();
+    let mut diags = analyze_impl_trait_method(db, implementor.instantiate_identity());
 
     let analyzer = DefAnalyzer::for_trait_impl(db, implementor.instantiate_identity());
     let def_diags = analyzer.analyze();
@@ -1458,79 +1458,61 @@ fn analyze_impl_trait_specific_error<'db>(
     }
 }
 
-// xxx remove object
-struct ImplTraitMethodAnalyzer<'db> {
+fn analyze_impl_trait_method<'db>(
     db: &'db dyn HirAnalysisDb,
-    diags: Vec<TyDiagCollection<'db>>,
     implementor: Implementor<'db>,
-}
+) -> Vec<TyDiagCollection<'db>> {
+    let mut diags = vec![];
+    let impl_methods = implementor.methods(db);
+    let hir_trait = implementor.trait_def(db).trait_(db);
+    let trait_methods = implementor.trait_def(db).methods(db);
+    let mut required_methods: IndexSet<_> = trait_methods
+        .iter()
+        .filter_map(|(name, &trait_method)| {
+            if !trait_method.has_default_impl(db) {
+                Some(*name)
+            } else {
+                None
+            }
+        })
+        .collect();
 
-impl<'db> ImplTraitMethodAnalyzer<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, implementor: Implementor<'db>) -> Self {
-        Self {
-            db,
-            diags: vec![],
-            implementor,
-        }
-    }
-
-    fn analyze(mut self) -> Vec<TyDiagCollection<'db>> {
-        let impl_methods = self.implementor.methods(self.db);
-        let hir_trait = self.implementor.trait_def(self.db).trait_(self.db);
-        let trait_methods = self.implementor.trait_def(self.db).methods(self.db);
-        let mut required_methods: IndexSet<_> = trait_methods
-            .iter()
-            .filter_map(|(name, &trait_method)| {
-                if !trait_method.has_default_impl(self.db) {
-                    Some(*name)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        for (name, impl_m) in impl_methods {
-            let Some(trait_m) = trait_methods.get(name) else {
-                self.diags.push(
-                    ImplDiag::MethodNotDefinedInTrait {
-                        primary: self
-                            .implementor
-                            .hir_impl_trait(self.db)
-                            .span()
-                            .trait_ref()
-                            .into(),
-                        method_name: *name,
-                        trait_: hir_trait,
-                    }
-                    .into(),
-                );
-                continue;
-            };
-
-            compare_impl_method(
-                self.db,
-                *impl_m,
-                *trait_m,
-                self.implementor.trait_(self.db),
-                self.implementor,
-                &mut self.diags,
-            );
-
-            required_methods.remove(name);
-        }
-
-        if !required_methods.is_empty() {
-            self.diags.push(
-                ImplDiag::NotAllTraitItemsImplemented {
-                    primary: self.implementor.hir_impl_trait(self.db).span().ty().into(),
-                    not_implemented: required_methods.into_iter().collect(),
+    for (name, impl_m) in impl_methods {
+        let Some(trait_m) = trait_methods.get(name) else {
+            diags.push(
+                ImplDiag::MethodNotDefinedInTrait {
+                    primary: implementor.hir_impl_trait(db).span().trait_ref().into(),
+                    method_name: *name,
+                    trait_: hir_trait,
                 }
                 .into(),
             );
-        }
+            continue;
+        };
 
-        self.diags
+        compare_impl_method(
+            db,
+            *impl_m,
+            *trait_m,
+            implementor.trait_(db),
+            implementor,
+            &mut diags,
+        );
+
+        required_methods.remove(name);
     }
+
+    if !required_methods.is_empty() {
+        diags.push(
+            ImplDiag::NotAllTraitItemsImplemented {
+                primary: implementor.hir_impl_trait(db).span().ty().into(),
+                not_implemented: required_methods.into_iter().collect(),
+            }
+            .into(),
+        );
+    }
+
+    diags
 }
 
 fn find_const_ty_param<'db>(
