@@ -1,4 +1,4 @@
-use common::{InputFile, InputIngot};
+use common::{file::File, ingot::Ingot};
 use num_bigint::BigUint;
 use num_traits::Num;
 use parser::{
@@ -9,8 +9,8 @@ use parser::{
 use self::{item::lower_module_items, scope_builder::ScopeGraphBuilder};
 use crate::{
     hir_def::{
-        module_tree_impl, scope_graph::ScopeGraph, ExprId, IdentId, IngotId, IntegerId, ItemKind,
-        LitKind, ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId, TrackedItemVariant,
+        module_tree_impl, scope_graph::ScopeGraph, ExprId, IdentId, IntegerId, ItemKind, LitKind,
+        ModuleTree, Partial, StringId, TopLevelMod, TrackedItemId, TrackedItemVariant,
     },
     HirDb, LowerHirDb,
 };
@@ -34,9 +34,8 @@ mod use_tree;
 /// This function just maps the file to a top-level module, and doesn't perform
 /// any parsing or lowering.
 /// To perform the actual lowering, use [`scope_graph`] instead.
-pub fn map_file_to_mod(db: &dyn LowerHirDb, ingot: InputIngot, file: InputFile) -> TopLevelMod {
-    let ingot = module_tree_impl(db, ingot).ingot;
-    map_file_to_mod_impl(db, ingot, file)
+pub fn map_file_to_mod(db: &dyn LowerHirDb, file: File) -> TopLevelMod {
+    map_file_to_mod_impl(db, file)
 }
 
 /// Returns the scope graph of the given top-level module.
@@ -48,20 +47,25 @@ pub fn scope_graph<'db>(
 }
 
 /// Returns the ingot module tree of the given ingot.
-pub fn module_tree(db: &dyn LowerHirDb, ingot: InputIngot) -> &ModuleTree {
+pub fn module_tree<'db>(db: &'db dyn LowerHirDb, ingot: Ingot<'db>) -> &'db ModuleTree<'db> {
     module_tree_impl(db, ingot)
 }
 
 #[salsa::tracked]
-pub(crate) fn map_file_to_mod_impl<'db>(
-    db: &'db dyn HirDb,
-    ingot: IngotId<'db>,
-    file: InputFile,
-) -> TopLevelMod<'db> {
+pub(crate) fn map_file_to_mod_impl<'db>(db: &'db dyn HirDb, file: File) -> TopLevelMod<'db> {
     let path = file.path(db);
+    let path = path.as_ref().unwrap_or_else(|| {
+        panic!(
+            "File path is not valid: {:?}, containing ingot: {:?}, file url: {:?}",
+            path,
+            file.containing_ingot(db),
+            // .expect("should have ingot")
+            file.url(db)
+        )
+    });
     let name = path.file_stem().unwrap();
     let mod_name = IdentId::new(db, name.to_string());
-    TopLevelMod::new(db, mod_name, ingot, file)
+    TopLevelMod::new(db, mod_name, file)
 }
 
 #[salsa::tracked(return_ref)]

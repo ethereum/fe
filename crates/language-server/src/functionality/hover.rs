@@ -1,6 +1,7 @@
 use anyhow::Error;
 use async_lsp::lsp_types::Hover;
-use common::{InputFile, InputIngot};
+
+use common::file::File;
 use hir::lower::map_file_to_mod;
 use tracing::info;
 
@@ -8,12 +9,12 @@ use super::{
     goto::{get_goto_target_scopes_for_cursor, Cursor},
     item_info::{get_docstring, get_item_definition_markdown, get_item_path_markdown},
 };
-use crate::{backend::db::LanguageServerDb, util::to_offset_from_position};
+use crate::util::to_offset_from_position;
+use driver::DriverDataBase;
 
 pub fn hover_helper(
-    db: &dyn LanguageServerDb,
-    ingot: InputIngot,
-    file: InputFile,
+    db: &DriverDataBase,
+    file: File,
     params: async_lsp::lsp_types::HoverParams,
 ) -> Result<Option<Hover>, Error> {
     info!("handling hover");
@@ -24,7 +25,7 @@ pub fn hover_helper(
         file_text.as_str(),
     );
 
-    let top_mod = map_file_to_mod(db, ingot, file);
+    let top_mod = map_file_to_mod(db, file);
     let goto_info = &get_goto_target_scopes_for_cursor(db, top_mod, cursor).unwrap_or_default();
 
     let scopes_info = goto_info
@@ -37,7 +38,7 @@ pub fn hover_helper(
 
             let result = [pretty_path, definition_source, docs]
                 .iter()
-                .filter_map(|info| info.clone().map(|info| format!("{}\n", info)))
+                .filter_map(|info| info.clone().map(|info| format!("{info}\n")))
                 .collect::<Vec<String>>()
                 .join("\n");
 

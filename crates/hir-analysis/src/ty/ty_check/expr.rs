@@ -1,7 +1,7 @@
 use either::Either;
 use hir::hir_def::{
-    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, GenericArgListId, IdentId, Partial, PathId, UnOp,
-    VariantKind,
+    ArithBinOp, BinOp, Expr, ExprId, FieldIndex, GenericArgListId, IdentId, Partial, Pat, PatId,
+    PathId, UnOp, VariantKind,
 };
 
 use super::{
@@ -481,7 +481,8 @@ impl<'db> TyChecker<'db> {
                         ExprProp::new(self.table.instantiate_to_term(const_ty_ty), true)
                     } else {
                         let diag = if ty.is_struct(self.db) {
-                            BodyDiag::unit_variant_expected(self.db, span.into(), ty)
+                            let record_like = RecordLike::from_ty(ty);
+                            BodyDiag::unit_variant_expected(self.db, span.into(), record_like)
                         } else {
                             BodyDiag::NotValue {
                                 primary: span.into(),
@@ -510,10 +511,11 @@ impl<'db> TyChecker<'db> {
                             self.table.instantiate_to_term(ty)
                         }
                         VariantKind::Record(_) => {
+                            let record_like = RecordLike::from_variant(variant);
                             let diag = BodyDiag::unit_variant_expected(
                                 self.db,
                                 expr.span(self.body()).into(),
-                                variant,
+                                record_like,
                             );
                             self.push_diag(diag);
 
@@ -574,29 +576,40 @@ impl<'db> TyChecker<'db> {
         };
 
         match reso {
-            PathRes::Ty(ty) | PathRes::TyAlias(_, ty) if ty.is_record(self.db) => {
-                self.check_record_init_fields(&ty, expr);
-                ExprProp::new(ty, true)
+            PathRes::Ty(ty) | PathRes::TyAlias(_, ty) => {
+                let record_like = RecordLike::from_ty(ty);
+                if record_like.is_record(self.db) {
+                    self.check_record_init_fields(&record_like, expr);
+                    ExprProp::new(ty, true)
+                } else {
+                    let diag =
+                        BodyDiag::record_expected(self.db, span.path().into(), Some(record_like));
+                    self.push_diag(diag);
+                    ExprProp::invalid(self.db)
+                }
             }
 
-            PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty) | PathRes::Const(ty) => {
-                let diag = BodyDiag::record_expected(self.db, span.path().into(), Some(ty));
+            PathRes::Func(ty) | PathRes::Const(ty) => {
+                let record_like = RecordLike::from_ty(ty);
+                let diag =
+                    BodyDiag::record_expected(self.db, span.path().into(), Some(record_like));
                 self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
             PathRes::Method(..) | PathRes::FuncParam(..) => {
-                let diag = BodyDiag::record_expected::<TyId>(self.db, span.path().into(), None);
+                let diag = BodyDiag::record_expected(self.db, span.path().into(), None);
                 self.push_diag(diag);
                 ExprProp::invalid(self.db)
             }
 
             PathRes::EnumVariant(variant) => {
-                if variant.is_record(self.db) {
-                    self.check_record_init_fields(&variant, expr);
-                    ExprProp::new(variant.ty, true)
+                let ty = variant.ty;
+                let record_like = RecordLike::from_variant(variant);
+                if record_like.is_record(self.db) {
+                    self.check_record_init_fields(&record_like, expr);
+                    ExprProp::new(ty, true)
                 } else {
-                    let diag =
-                        BodyDiag::record_expected::<TyId<'db>>(self.db, span.path().into(), None);
+                    let diag = BodyDiag::record_expected(self.db, span.path().into(), None);
                     self.push_diag(diag);
 
                     ExprProp::invalid(self.db)
@@ -621,7 +634,7 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn check_record_init_fields<T: RecordLike<'db>>(&mut self, record_like: &T, expr: ExprId) {
+    fn check_record_init_fields(&mut self, record_like: &RecordLike<'db>, expr: ExprId) {
         let hir_db = self.db;
 
         let Partial::Present(Expr::RecordInit(_, fields)) = expr.data(hir_db, self.body()) else {
@@ -669,6 +682,7 @@ impl<'db> TyChecker<'db> {
         if ty_base.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
         }
+        let ty_base = lhs_ty;
 
         if ty_base.is_ty_var(self.db) {
             let diag = BodyDiag::TypeMustBeKnown(lhs.span(self.body()).into());
@@ -678,8 +692,9 @@ impl<'db> TyChecker<'db> {
 
         match field {
             FieldIndex::Ident(label) => {
-                if let Some(field_ty) = lhs_ty.record_field_ty(self.db, *label) {
-                    if let Some(scope) = lhs_ty.record_field_scope(self.db, *label) {
+                let record_like = RecordLike::from_ty(lhs_ty);
+                if let Some(field_ty) = record_like.record_field_ty(self.db, *label) {
+                    if let Some(scope) = record_like.record_field_scope(self.db, *label) {
                         if !is_scope_visible_from(self.db, scope, self.env.scope()) {
                             // Check the visibility of the field.
                             let diag = NameResDiag::Invisible(
@@ -862,7 +877,7 @@ impl<'db> TyChecker<'db> {
         ExprProp::new(ty, true)
     }
 
-    fn check_match(&mut self, _expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
+    fn check_match(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
         let Expr::Match(scrutinee, arms) = expr_data else {
             unreachable!()
         };
@@ -875,15 +890,66 @@ impl<'db> TyChecker<'db> {
         };
 
         let mut match_ty = self.fresh_ty();
-        for arm in arms {
+        // Store cloned HirPat data and the original PatId for diagnostics.
+        let mut hir_pats_with_ids: Vec<(&Pat<'db>, PatId)> = Vec::with_capacity(arms.len());
+
+        // First loop: Type check patterns, collect HIR patterns for analysis, and type check arm bodies.
+        for arm in arms.iter() {
             self.check_pat(arm.pat, scrutinee_ty);
+
+            let pat_data_partial = arm.pat.data(self.db, self.body());
+            if let Partial::Present(actual_pat_data) = pat_data_partial {
+                // Clone the Pat data for ownership in the vector.
+                hir_pats_with_ids.push((actual_pat_data, arm.pat));
+            }
+            // If pat_data is Partial::Absent, check_pat should have already emitted an error.
+            // We only include valid patterns in the exhaustiveness/reachability analysis.
 
             self.env.enter_scope(arm.body);
             self.env.flush_pending_bindings();
-
             match_ty = self.check_expr(arm.body, match_ty).ty;
-
             self.env.leave_scope();
+        }
+
+        // Collect owned HirPat data for analysis.
+        let collected_hir_pats: Vec<Pat<'db>> = hir_pats_with_ids
+            .iter()
+            .map(|(p, _id)| (*p).clone())
+            .collect();
+
+        // Perform reachability analysis.
+        let reachability = crate::ty::pattern_analysis::check_reachability(
+            self.db,
+            &collected_hir_pats,
+            self.body(),
+            self.env.scope(),
+            scrutinee_ty,
+        );
+
+        for (i, is_reachable) in reachability.iter().enumerate() {
+            if !is_reachable {
+                let (_current_hir_pat, current_pat_id) = &hir_pats_with_ids[i];
+                let diag = crate::ty::diagnostics::BodyDiag::UnreachablePattern {
+                    primary: current_pat_id.span(self.body()).into(),
+                };
+                self.push_diag(diag);
+            }
+        }
+
+        // Perform exhaustiveness analysis.
+        if let Err(missing_patterns) = crate::ty::pattern_analysis::check_exhaustiveness(
+            self.db,
+            &collected_hir_pats,
+            self.body(),
+            self.env.scope(),
+            scrutinee_ty,
+        ) {
+            let diag = crate::ty::diagnostics::BodyDiag::NonExhaustiveMatch {
+                primary: expr.span(self.body()).into(),
+                scrutinee_ty,
+                missing_patterns,
+            };
+            self.push_diag(diag);
         }
 
         ExprProp::new(match_ty, true)

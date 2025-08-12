@@ -4,9 +4,9 @@ use std::{
     mem,
 };
 
-use common::indexmap::IndexMap;
+use common::{indexmap::IndexMap, ingot::Ingot};
 use hir::{
-    hir_def::{prim_ty::PrimTy, scope_graph::ScopeId, IdentId, IngotId, Use},
+    hir_def::{prim_ty::PrimTy, scope_graph::ScopeId, HirIngot, IdentId, Use},
     span::DynLazySpan,
 };
 use itertools::Itertools;
@@ -28,7 +28,7 @@ pub(crate) struct ImportResolver<'db> {
     db: &'db dyn HirAnalysisDb,
 
     /// The ingot that is being resolved.
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
 
     /// The set of imports that have been resolved.
     resolved_imports: IntermediateResolvedImports<'db>,
@@ -52,7 +52,7 @@ pub(crate) struct ImportResolver<'db> {
     suspicious_imports: FxHashSet<Use<'db>>,
 }
 impl<'db> ImportResolver<'db> {
-    pub(crate) fn new(db: &'db dyn HirAnalysisDb, ingot: IngotId<'db>) -> Self {
+    pub(crate) fn new(db: &'db dyn HirAnalysisDb, ingot: Ingot<'db>) -> Self {
         Self {
             db,
             ingot,
@@ -522,7 +522,7 @@ impl<'db> ImportResolver<'db> {
         if !res.is_external(self.db, self.ingot)
             && (self
                 .ingot
-                .external_ingots(self.db)
+                .resolved_external_ingots(self.db)
                 .iter()
                 .any(|(ingot_name, _)| *ingot_name == first_segment_ident)
                 || PrimTy::all_types()
@@ -890,11 +890,11 @@ enum IUseResolution<'db> {
 
 struct IntermediateResolvedImports<'db> {
     resolved_imports: ResolvedImports<'db>,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
 }
 
 impl<'db> IntermediateResolvedImports<'db> {
-    fn new(ingot: IngotId<'db>) -> Self {
+    fn new(ingot: Ingot<'db>) -> Self {
         Self {
             resolved_imports: ResolvedImports::default(),
             ingot,
@@ -1022,7 +1022,7 @@ fn resolved_imports_for_scope<'db>(
 impl NameRes<'_> {
     /// Returns true if the bucket contains an resolution that is not in the
     /// same ingot as the current resolution of the `i_use`.
-    fn is_external(&self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {
+    fn is_external(&self, db: &dyn HirAnalysisDb, ingot: Ingot) -> bool {
         match self.kind {
             NameResKind::Scope(scope) => scope.ingot(db) != ingot,
             NameResKind::Prim(_) => true,

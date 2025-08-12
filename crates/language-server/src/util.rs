@@ -3,7 +3,7 @@ use async_lsp::lsp_types::{
 };
 use common::{
     diagnostics::{CompleteDiagnostic, Severity, Span},
-    InputDb, InputIngot,
+    InputDb,
 };
 use hir::{hir_def::scope_graph::ScopeId, span::LazySpan, SpannedHirDb};
 use rustc_hash::FxHashMap;
@@ -55,12 +55,11 @@ pub fn to_lsp_range_from_span(
 
 pub fn to_lsp_location_from_scope(
     db: &dyn SpannedHirDb,
-    ingot: InputIngot,
     scope: ScopeId,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
     let lazy_span = scope.name_span(db).ok_or("Failed to get name span")?;
     let span = lazy_span.resolve(db).ok_or("Failed to resolve span")?;
-    to_lsp_location_from_span(db, ingot, span)
+    to_lsp_location_from_span(db, span)
 }
 
 pub fn severity_to_lsp(is_primary: bool, severity: Severity) -> DiagnosticSeverity {
@@ -78,16 +77,12 @@ pub fn severity_to_lsp(is_primary: bool, severity: Severity) -> DiagnosticSeveri
 
 pub fn diag_to_lsp(
     db: &dyn InputDb,
-    ingot: InputIngot,
     diag: CompleteDiagnostic,
 ) -> FxHashMap<async_lsp::lsp_types::Url, Vec<async_lsp::lsp_types::Diagnostic>> {
     let mut result = FxHashMap::default();
-    let Ok(primary_location) = to_lsp_location_from_span(db, ingot, diag.primary_span()) else {
+    let Ok(primary_location) = to_lsp_location_from_span(db, diag.primary_span()) else {
         return result;
     };
-
-    // TODO: this assumes that all sub_diagnostics point at files in the same ingot,
-    // which might not be the case
 
     diag.sub_diagnostics.into_iter().for_each(|sub| {
         let is_primary = sub.is_primary();
@@ -104,7 +99,7 @@ pub fn diag_to_lsp(
                 return;
             };
 
-            let location = match to_lsp_location_from_span(db, ingot, span) {
+            let location = match to_lsp_location_from_span(db, span) {
                 Ok(location) => location,
                 Err(e) => {
                     error!(e);
@@ -142,14 +137,11 @@ pub fn diag_to_lsp(
 
 fn to_lsp_location_from_span(
     db: &dyn InputDb,
-    ingot: InputIngot,
     span: Span,
 ) -> Result<async_lsp::lsp_types::Location, Box<dyn std::error::Error>> {
-    let uri = span.file.abs_path(db, ingot);
+    let url = span.file.url(db).expect("Failed to get file URL");
     let range = to_lsp_range_from_span(span, db)?;
-    let uri = async_lsp::lsp_types::Url::from_file_path(uri)
-        .map_err(|()| "Failed to convert path to URL")?;
-    Ok(async_lsp::lsp_types::Location { uri, range })
+    Ok(async_lsp::lsp_types::Location { uri: url, range })
 }
 
 #[cfg(target_arch = "wasm32")]

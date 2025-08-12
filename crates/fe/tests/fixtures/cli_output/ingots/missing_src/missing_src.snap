@@ -1,0 +1,9 @@
+---
+source: crates/fe/tests/cli_output.rs
+assertion_line: 78
+expression: output
+---
+=== STDERR ===
+source files resolution error: `src` folder does not exist in the ingot directory
+
+=== EXIT CODE: 1 ===

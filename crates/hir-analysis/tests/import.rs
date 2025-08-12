@@ -19,8 +19,8 @@ fn import_standalone(fixture: Fixture<&str>) {
     let mut db = HirAnalysisTestDb::default();
     let path = Path::new(fixture.path());
     let file_name = path.file_name().and_then(|file| file.to_str()).unwrap();
-    let (ingot, file) = db.new_stand_alone(file_name, fixture.content());
-    let (top_mod, mut prop_formatter) = db.top_mod(ingot, file);
+    let file = db.new_stand_alone(file_name.into(), fixture.content());
+    let (top_mod, mut prop_formatter) = db.top_mod(file);
 
     db.assert_no_diags(top_mod);
 
@@ -60,7 +60,7 @@ fn format_imports<'db>(
                 let ident = ident.data(db);
                 for res in res_set {
                     let def_path = res.pretty_path(db).unwrap();
-                    let resolved = format!("{} as {}", def_path, ident);
+                    let resolved = format!("{def_path} as {ident}");
                     use_res_map.entry(use_).or_default().push(resolved)
                 }
             }

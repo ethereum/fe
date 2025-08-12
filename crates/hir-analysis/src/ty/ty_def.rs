@@ -3,13 +3,15 @@
 use std::fmt;
 
 use bitflags::bitflags;
-use common::{indexmap::IndexSet, input::IngotKind};
+use common::{
+    indexmap::IndexSet,
+    ingot::{Ingot, IngotKind},
+};
 use hir::{
     hir_def::{
         prim_ty::{IntTy as HirIntTy, PrimTy as HirPrimTy, UintTy as HirUintTy},
         scope_graph::ScopeId,
-        Body, Enum, GenericParamOwner, IdentId, IngotId, IntegerId, PathId,
-        TypeAlias as HirTypeAlias,
+        Body, Enum, GenericParamOwner, IdentId, IntegerId, PathId, TypeAlias as HirTypeAlias,
     },
     span::DynLazySpan,
 };
@@ -103,8 +105,8 @@ impl<'db> TyId<'db> {
         matches!(self.data(db), TyData::Never)
     }
 
-    /// Returns `IngotId` that declares the type.
-    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Option<IngotId<'db>> {
+    /// Returns `IngotDescription` that declares the type.
+    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Option<Ingot<'db>> {
         match self.data(db) {
             TyData::TyBase(TyBase::Adt(adt)) => adt.ingot(db).into(),
             TyData::TyBase(TyBase::Func(def)) => def.ingot(db).into(),
@@ -165,7 +167,7 @@ impl<'db> TyId<'db> {
         }
     }
 
-    pub fn is_inherent_impl_allowed(self, db: &dyn HirAnalysisDb, ingot: IngotId) -> bool {
+    pub fn is_inherent_impl_allowed(self, db: &dyn HirAnalysisDb, ingot: Ingot) -> bool {
         if self.is_param(db) {
             return false;
         };
@@ -180,10 +182,7 @@ impl<'db> TyId<'db> {
     /// Decompose type application into the base type and type arguments, this
     /// doesn't perform deconstruction recursively. e.g.,
     /// `App(App(T, U), App(V, W))` -> `(T, [U, App(V, W)])`
-    pub(super) fn decompose_ty_app(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> (TyId<'db>, &'db [TyId<'db>]) {
+    pub fn decompose_ty_app(self, db: &'db dyn HirAnalysisDb) -> (TyId<'db>, &'db [TyId<'db>]) {
         let (base, args) = decompose_ty_app(db, self);
         (*base, args)
     }
@@ -274,7 +273,16 @@ impl<'db> TyId<'db> {
         matches!(self.base_ty(db).data(db), TyData::ConstTy(_))
     }
 
-    pub(crate) fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
+    pub fn is_tuple(self, db: &dyn HirAnalysisDb) -> bool {
+        // Check if this is directly a tuple type
+        if matches!(
+            self.data(db),
+            TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
+        ) {
+            return true;
+        }
+
+        // Check if the base type is a tuple (for TyApp cases)
         matches!(
             self.base_ty(db).data(db),
             TyData::TyBase(TyBase::Prim(PrimTy::Tuple(_)))
@@ -381,7 +389,7 @@ impl<'db> TyId<'db> {
     pub(super) fn emit_wf_diag(
         self,
         db: &'db dyn HirAnalysisDb,
-        ingot: IngotId<'db>,
+        ingot: Ingot<'db>,
         assumptions: PredicateListId<'db>,
         span: DynLazySpan<'db>,
     ) -> Option<TyDiagCollection<'db>> {
@@ -640,6 +648,41 @@ impl<'db> TyId<'db> {
             const_ty,
         })
     }
+
+    /// Returns the number of fields for tuple types and structs
+    pub fn field_count(self, db: &'db dyn HirAnalysisDb) -> usize {
+        if self.is_tuple(db) {
+            let (_, elems) = self.decompose_ty_app(db);
+            elems.len()
+        } else if let Some(adt_def) = self.adt_def(db) {
+            match adt_def.adt_ref(db) {
+                AdtRef::Struct(_) => adt_def.fields(db)[0].num_types(),
+                _ => 0,
+            }
+        } else {
+            0
+        }
+    }
+
+    /// Returns the field types for tuple types and structs
+    pub fn field_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyId<'db>> {
+        if self.is_tuple(db) {
+            let (_, elems) = self.decompose_ty_app(db);
+            elems.to_vec()
+        } else if let Some(adt_def) = self.adt_def(db) {
+            match adt_def.adt_ref(db) {
+                AdtRef::Struct(_) => {
+                    let args = self.generic_args(db);
+                    (0..adt_def.fields(db)[0].num_types())
+                        .map(|idx| adt_def.fields(db)[0].ty(db, idx).instantiate(db, args))
+                        .collect()
+                }
+                _ => vec![],
+            }
+        } else {
+            vec![]
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -885,7 +928,7 @@ impl TyVar<'_> {
         match self.sort {
             TyVarSort::General => ("_").to_string(),
             TyVarSort::Integral => "{integer}".to_string(),
-            TyVarSort::String(n) => format!("String<{}>", n).to_string(),
+            TyVarSort::String(n) => format!("String<{n}>").to_string(),
         }
     }
 }
@@ -1294,7 +1337,7 @@ fn pretty_print_ty_app<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> String
         TyData::TyBase(Prim(Array)) => {
             let elem_ty = args[0].pretty_print(db);
             let len = args[1].pretty_print(db);
-            format!("[{}; {}]", elem_ty, len)
+            format!("[{elem_ty}; {len}]")
         }
 
         TyData::TyBase(Prim(Tuple(_))) => {

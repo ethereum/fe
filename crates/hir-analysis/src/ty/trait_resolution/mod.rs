@@ -15,7 +15,7 @@ use crate::{
 };
 use common::indexmap::IndexSet;
 use constraint::collect_constraints;
-use hir::hir_def::IngotId;
+use hir::{hir_def::HirIngot, Ingot};
 use salsa::Update;
 
 pub(crate) mod constraint;
@@ -24,7 +24,7 @@ mod proof_forest;
 #[salsa::tracked(return_ref)]
 pub fn is_goal_satisfiable<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
     goal: Canonical<TraitInstId<'db>>,
     assumptions: PredicateListId<'db>,
 ) -> GoalSatisfiability<'db> {
@@ -41,7 +41,7 @@ pub fn is_goal_satisfiable<'db>(
 #[salsa::tracked]
 pub(crate) fn check_ty_wf<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
     ty: TyId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> WellFormedness<'db> {
@@ -118,7 +118,7 @@ impl WellFormedness<'_> {
 #[salsa::tracked]
 pub(crate) fn check_trait_inst_wf<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
     trait_inst: TraitInstId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> WellFormedness<'db> {

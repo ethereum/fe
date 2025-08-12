@@ -375,6 +375,7 @@ define_lazy_span_node!(
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         hir_def::{Enum, Func, Mod, Struct, TypeAlias, Use},
         test_db::TestDb,
@@ -394,8 +395,8 @@ mod tests {
             }
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let item_tree = db.parse_source(ingot, file);
+        let file = db.standalone_file(text);
+        let item_tree = db.parse_source(file);
         let top_mod = item_tree.top_mod;
         assert_eq!(text, db.text_at(top_mod, &top_mod.span()));
     }
@@ -411,8 +412,8 @@ mod tests {
             }
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let mod_ = db.expect_item::<Mod>(ingot, file);
+        let file = db.standalone_file(text);
+        let mod_ = db.expect_item::<Mod>(file);
         let top_mod = mod_.top_mod(&db);
         let mod_span = mod_.span();
         assert_eq!(
@@ -433,9 +434,8 @@ mod tests {
                 where U: Add
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-
-        let fn_ = db.expect_item::<Func>(ingot, file);
+        let file = db.standalone_file(text);
+        let fn_ = db.expect_item::<Func>(file);
         let top_mod = fn_.top_mod(&db);
         assert_eq!("my_func", db.text_at(top_mod, &fn_.span().name()));
 
@@ -493,8 +493,8 @@ mod tests {
                 pub y: foo::Bar<2>
             }"#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let struct_ = db.expect_item::<Struct>(ingot, file);
+        let file = db.standalone_file(text);
+        let struct_ = db.expect_item::<Struct>(file);
         let top_mod = struct_.top_mod(&db);
         assert_eq!("Foo", db.text_at(top_mod, &struct_.span().name()));
 
@@ -524,8 +524,8 @@ mod tests {
                 }
             }"#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let enum_ = db.expect_item::<Enum>(ingot, file);
+        let file = db.standalone_file(text);
+        let enum_ = db.expect_item::<Enum>(file);
         let top_mod = enum_.top_mod(&db);
         assert_eq!("Foo", db.text_at(top_mod, &enum_.span().name()));
 
@@ -549,8 +549,8 @@ mod tests {
             pub type Foo = u32
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let alias = db.expect_item::<TypeAlias>(ingot, file);
+        let file = db.standalone_file(text);
+        let alias = db.expect_item::<TypeAlias>(file);
         let top_mod = alias.top_mod(&db);
         assert_eq!("Foo", db.text_at(top_mod, &alias.span().alias()));
         assert_eq!("u32", db.text_at(top_mod, &alias.span().ty()));
@@ -565,8 +565,8 @@ mod tests {
             use foo::bar::baz::Trait as _
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let use_ = db.expect_item::<Use>(ingot, file);
+        let file = db.standalone_file(text);
+        let use_ = db.expect_item::<Use>(file);
 
         let top_mod = use_.top_mod(&db);
         assert_eq!("foo", db.text_at(top_mod, &use_.span().path().segment(0)));
@@ -585,8 +585,8 @@ mod tests {
             use foo::bar::{baz::*, qux as Alias}
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let uses = db.expect_items::<Use>(ingot, file);
+        let file = db.standalone_file(text);
+        let uses = db.expect_items::<Use>(file);
         assert_eq!(uses.len(), 2);
 
         let top_mod = uses[0].top_mod(&db);

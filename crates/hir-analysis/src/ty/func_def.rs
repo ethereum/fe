@@ -1,5 +1,6 @@
+use common::ingot::Ingot;
 use hir::{
-    hir_def::{scope_graph::ScopeId, EnumVariant, Func, FuncParamName, IdentId, IngotId, Partial},
+    hir_def::{scope_graph::ScopeId, EnumVariant, Func, FuncParamName, IdentId, Partial},
     span::DynLazySpan,
 };
 
@@ -75,7 +76,7 @@ pub struct FuncDef<'db> {
 }
 
 impl<'db> FuncDef<'db> {
-    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
+    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Ingot<'db> {
         self.hir_def(db).ingot(db)
     }
 
@@ -158,7 +159,7 @@ impl<'db> HirFuncDefKind<'db> {
         }
     }
 
-    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> IngotId<'db> {
+    pub fn ingot(self, db: &'db dyn HirAnalysisDb) -> Ingot<'db> {
         let top_mod = match self {
             Self::Func(func) => func.top_mod(db),
             Self::VariantCtor(v) => v.enum_.top_mod(db),

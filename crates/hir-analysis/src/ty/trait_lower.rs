@@ -1,8 +1,8 @@
 //! This module implements the trait and impl trait lowering process.
 
-use common::indexmap::IndexMap;
+use common::{indexmap::IndexMap, ingot::Ingot};
 use hir::hir_def::{
-    params::GenericArg, scope_graph::ScopeId, AssocTypeGenericArg, IdentId, ImplTrait, IngotId,
+    params::GenericArg, scope_graph::ScopeId, AssocTypeGenericArg, HirIngot, IdentId, ImplTrait,
     Partial, Trait, TraitRefId,
 };
 use rustc_hash::FxHashMap;
@@ -42,10 +42,10 @@ pub(crate) fn lower_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_trait_impls<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
 ) -> TraitImplTable<'db> {
     let const_impls = ingot
-        .external_ingots(db)
+        .resolved_external_ingots(db)
         .iter()
         .map(|(_, external)| collect_trait_impls(db, *external))
         .collect();

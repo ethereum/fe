@@ -1,4 +1,5 @@
-use hir::hir_def::{IdentId, Impl, IngotId};
+use common::ingot::Ingot;
+use hir::hir_def::{HirIngot, IdentId, Impl};
 use rustc_hash::FxHashMap;
 use salsa::Update;
 
@@ -16,7 +17,7 @@ use crate::{ty::ty_def::TyData, HirAnalysisDb};
 #[salsa::tracked(return_ref)]
 pub(crate) fn collect_methods<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
 ) -> MethodTable<'db> {
     let mut collector = MethodCollector::new(db, ingot);
 
@@ -28,7 +29,7 @@ pub(crate) fn collect_methods<'db>(
 #[salsa::tracked(return_ref)]
 pub(crate) fn probe_method<'db>(
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
     ty: Canonical<TyId<'db>>,
     name: IdentId<'db>,
 ) -> Vec<FuncDef<'db>> {
@@ -131,12 +132,12 @@ impl<'db> MethodBucket<'db> {
 
 struct MethodCollector<'db> {
     db: &'db dyn HirAnalysisDb,
-    ingot: IngotId<'db>,
+    ingot: Ingot<'db>,
     method_table: MethodTable<'db>,
 }
 
 impl<'db> MethodCollector<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, ingot: IngotId<'db>) -> Self {
+    fn new(db: &'db dyn HirAnalysisDb, ingot: Ingot<'db>) -> Self {
         Self {
             db,
             ingot,

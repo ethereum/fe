@@ -153,6 +153,15 @@ where
 
 impl<V> Eq for IndexSet<V> where V: Eq + Hash {}
 
+impl<V> Hash for IndexSet<V>
+where
+    V: Hash + Eq,
+{
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
 impl<V> FromIterator<V> for IndexSet<V>
 where
     V: Hash + Eq,

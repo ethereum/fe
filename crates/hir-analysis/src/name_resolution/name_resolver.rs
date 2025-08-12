@@ -9,8 +9,8 @@ use hir::{
             SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TraitTypeEdge, TypeEdge, ValueEdge,
             VariantEdge,
         },
-        Enum, EnumVariant, GenericParam, GenericParamOwner, IdentId, ItemKind, Mod, TopLevelMod,
-        Trait, Use,
+        Enum, EnumVariant, GenericParam, GenericParamOwner, HirIngot, IdentId, ItemKind, Mod,
+        TopLevelMod, Trait, Use,
     },
     span::DynLazySpan,
 };
@@ -561,7 +561,7 @@ impl<'db, 'a> NameResolver<'db, 'a> {
             .scope(self.db)
             .top_mod(self.db)
             .ingot(self.db)
-            .external_ingots(self.db)
+            .resolved_external_ingots(self.db)
             .iter()
             .for_each(|(name, ingot)| {
                 if *name == query.name(self.db) {

@@ -182,7 +182,7 @@ impl EvaluatedConstTy<'_> {
             EvaluatedConstTy::LitInt(val) => {
                 format!("{}", val.data(db))
             }
-            EvaluatedConstTy::LitBool(val) => format!("{}", val),
+            EvaluatedConstTy::LitBool(val) => format!("{val}"),
             EvaluatedConstTy::Invalid => "<invalid>".to_string(),
         }
     }

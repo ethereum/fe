@@ -325,19 +325,26 @@ pub enum BodyDiag<'db> {
         span: DynLazySpan<'db>,
         ty: TyId<'db>,
     },
+
+    NonExhaustiveMatch {
+        primary: DynLazySpan<'db>,
+        scrutinee_ty: TyId<'db>,
+        missing_patterns: Vec<String>, // Text representation of missing patterns
+    },
+    UnreachablePattern {
+        primary: DynLazySpan<'db>,
+    },
 }
 
 impl<'db> BodyDiag<'db> {
-    pub(super) fn unit_variant_expected<T>(
+    pub(super) fn unit_variant_expected(
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
-        record_like: T,
-    ) -> Self
-    where
-        T: RecordLike<'db>,
-    {
+        record_like: RecordLike<'db>,
+    ) -> Self {
         let kind_name = record_like.kind_name(db);
         let hint = record_like.initializer_hint(db);
+
         Self::UnitVariantExpected {
             primary,
             kind_name,
@@ -345,14 +352,11 @@ impl<'db> BodyDiag<'db> {
         }
     }
 
-    pub(super) fn tuple_variant_expected<T>(
+    pub(super) fn tuple_variant_expected(
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
-        record_like: Option<T>,
-    ) -> Self
-    where
-        T: RecordLike<'db>,
-    {
+        record_like: Option<RecordLike<'db>>,
+    ) -> Self {
         let (kind_name, hint) = if let Some(record_like) = record_like {
             (
                 Some(record_like.kind_name(db)),
@@ -369,14 +373,11 @@ impl<'db> BodyDiag<'db> {
         }
     }
 
-    pub(super) fn record_expected<T>(
+    pub(super) fn record_expected(
         db: &'db dyn HirAnalysisDb,
         primary: DynLazySpan<'db>,
-        record_like: Option<T>,
-    ) -> Self
-    where
-        T: RecordLike<'db>,
-    {
+        record_like: Option<RecordLike<'db>>,
+    ) -> Self {
         let (kind_name, hint) = if let Some(record_like) = record_like {
             (
                 Some(record_like.kind_name(db)),
@@ -448,6 +449,8 @@ impl<'db> BodyDiag<'db> {
             Self::TypeAnnotationNeeded { .. } => 31,
             Self::DuplicatedBinding { .. } => 32,
             Self::NotAMethod { .. } => 33,
+            Self::NonExhaustiveMatch { .. } => 34,
+            Self::UnreachablePattern { .. } => 35,
         }
     }
 }

@@ -5,6 +5,7 @@ mod pat;
 mod path;
 mod stmt;
 
+pub use self::path::RecordLike;
 pub use callable::Callable;
 pub use env::ExprProp;
 use env::TyCheckEnv;
@@ -16,7 +17,6 @@ use hir::{
     },
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
 };
-pub(crate) use path::RecordLike;
 
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;

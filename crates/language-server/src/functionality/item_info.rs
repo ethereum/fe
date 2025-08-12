@@ -22,7 +22,7 @@ pub fn get_docstring(db: &dyn HirDb, scope: ScopeId) -> Option<String> {
 pub fn get_item_path_markdown(db: &dyn HirDb, item: ItemKind) -> Option<String> {
     item.scope()
         .pretty_path(db)
-        .map(|path| format!("```fe\n{}\n```", path))
+        .map(|path| format!("```fe\n{path}\n```"))
 }
 
 pub fn get_item_definition_markdown(db: &dyn SpannedHirDb, item: ItemKind) -> Option<String> {

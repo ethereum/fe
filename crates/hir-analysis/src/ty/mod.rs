@@ -23,6 +23,8 @@ pub mod adt_def;
 pub mod binder;
 pub mod canonical;
 pub mod const_ty;
+
+pub mod decision_tree;
 pub mod def_analysis;
 pub mod diagnostics;
 pub mod fold;
@@ -30,9 +32,11 @@ pub mod func_def;
 mod method_cmp;
 pub mod method_table;
 pub mod normalize;
+pub mod pattern_analysis;
+pub mod simplified_pattern;
 pub mod trait_def;
 pub mod trait_lower;
-pub mod trait_resolution;
+pub mod trait_resolution; // This line was previously 'pub mod name_resolution;'
 pub mod ty_check;
 pub mod ty_def;
 pub mod ty_error;

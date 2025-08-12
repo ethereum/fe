@@ -1,0 +1,10 @@
+---
+source: crates/fe/tests/cli_output.rs
+assertion_line: 94
+expression: output
+---
+=== STDERR ===
+there are issues with the local fe.toml file file://<project>/crates/fe/tests/fixtures/cli_output/ingots/missing_dep/fe.toml
+  dependencies are not yet supported
+
+=== EXIT CODE: 1 ===

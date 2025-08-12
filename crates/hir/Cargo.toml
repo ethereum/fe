@@ -21,3 +21,5 @@ thin-vec.workspace = true
 
 common.workspace = true
 parser.workspace = true
+url.workspace = true
+tracing.workspace = true

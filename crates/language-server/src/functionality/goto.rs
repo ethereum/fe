@@ -1,4 +1,5 @@
 use async_lsp::ResponseError;
+use common::InputDb;
 use hir::{
     hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod},
     lower::map_file_to_mod,
@@ -10,11 +11,13 @@ use hir_analysis::{
     name_resolution::{resolve_path, PathResErrorKind},
     ty::trait_resolution::PredicateListId,
 };
+use tracing::error;
 
 use crate::{
-    backend::{db::LanguageServerDb, Backend},
+    backend::Backend,
     util::{to_lsp_location_from_scope, to_offset_from_position},
 };
+use driver::DriverDataBase;
 pub type Cursor = parser::TextSize;
 
 #[derive(Default)]
@@ -34,7 +37,7 @@ impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
 }
 
 fn find_path_surrounding_cursor<'db>(
-    db: &'db dyn LanguageServerDb,
+    db: &'db DriverDataBase,
     cursor: Cursor,
     full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
 ) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
@@ -83,7 +86,7 @@ pub fn find_enclosing_item<'db>(
 }
 
 pub fn get_goto_target_scopes_for_cursor<'db>(
-    db: &'db dyn LanguageServerDb,
+    db: &'db DriverDataBase,
     top_mod: TopLevelMod<'db>,
     cursor: Cursor,
 ) -> Option<Vec<ScopeId<'db>>> {
@@ -111,8 +114,6 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     Some(scopes)
 }
 
-use crate::backend::workspace::IngotFileContext;
-
 pub async fn handle_goto_definition(
     backend: &mut Backend,
     params: async_lsp::lsp_types::GotoDefinitionParams,
@@ -123,19 +124,31 @@ pub async fn handle_goto_definition(
     let cursor: Cursor = to_offset_from_position(params.position, file_text.unwrap().as_str());
 
     // Get the module and the goto info
-    let file_path = params.text_document.uri.path();
-    let (ingot, file) = backend
-        .workspace
-        .get_input_for_file_path(file_path)
-        .unwrap();
-    let top_mod = map_file_to_mod(&backend.db, ingot, file);
+    let file_path_str = params.text_document.uri.path();
+    let url = url::Url::from_file_path(file_path_str).map_err(|()| {
+        ResponseError::new(
+            async_lsp::ErrorCode::INTERNAL_ERROR,
+            format!("Invalid file path: {file_path_str}"),
+        )
+    })?;
+    let file = backend
+        .db
+        .workspace()
+        .get(&backend.db, &url)
+        .ok_or_else(|| {
+            ResponseError::new(
+                async_lsp::ErrorCode::INTERNAL_ERROR,
+                format!("File not found in index: {url} (original path: {file_path_str})"),
+            )
+        })?;
+    let top_mod = map_file_to_mod(&backend.db, file);
 
     let scopes =
         get_goto_target_scopes_for_cursor(&backend.db, top_mod, cursor).unwrap_or_default();
 
     let locations = scopes
         .iter()
-        .map(|scope| to_lsp_location_from_scope(&backend.db, ingot, *scope))
+        .map(|scope| to_lsp_location_from_scope(&backend.db, *scope))
         .collect::<Vec<_>>();
 
     let result: Result<Option<async_lsp::lsp_types::GotoDefinitionResponse>, ()> =
@@ -148,7 +161,7 @@ pub async fn handle_goto_definition(
     let response = match result {
         Ok(response) => response,
         Err(e) => {
-            eprintln!("Error handling goto definition: {:?}", e);
+            error!("Error handling goto definition: {:?}", e);
             None
         }
     };
@@ -157,18 +170,15 @@ pub async fn handle_goto_definition(
 // }
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeMap, path::Path};
-
-    use common::input::IngotKind;
+    use common::ingot::IngotKind;
     use dir_test::{dir_test, Fixture};
-    use salsa::Setter;
+    use std::collections::BTreeMap;
     use test_utils::snap_test;
+    use url::Url;
 
     use super::*;
-    use crate::backend::{
-        db::LanguageServerDatabase,
-        workspace::{IngotFileContext, Workspace},
-    };
+    use crate::test_utils::load_ingot_from_directory;
+    use driver::DriverDataBase;
 
     // given a cursor position and a string, convert to cursor line and column
     fn line_col_from_cursor(cursor: Cursor, s: &str) -> (usize, usize) {
@@ -189,7 +199,7 @@ mod tests {
     }
 
     fn extract_multiple_cursor_positions_from_spans(
-        db: &LanguageServerDatabase,
+        db: &DriverDataBase,
         top_mod: TopLevelMod,
     ) -> Vec<parser::TextSize> {
         let mut visitor_ctxt = VisitorCtxt::with_top_mod(db, top_mod);
@@ -207,12 +217,12 @@ mod tests {
         cursors.sort();
         cursors.dedup();
 
-        eprintln!("Found cursors: {:?}", cursors);
+        error!("Found cursors: {:?}", cursors);
         cursors
     }
 
     fn make_goto_cursors_snapshot(
-        db: &LanguageServerDatabase,
+        db: &DriverDataBase,
         fixture: &Fixture<&str>,
         top_mod: TopLevelMod,
     ) -> String {
@@ -262,32 +272,36 @@ mod tests {
     )]
     fn test_goto_multiple_files(fixture: Fixture<&str>) {
         let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
-        let ingot_base_dir = Path::new(&cargo_manifest_dir).join("test_files/single_ingot");
+        let ingot_base_dir =
+            std::path::Path::new(&cargo_manifest_dir).join("test_files/single_ingot");
 
-        let mut db = LanguageServerDatabase::default();
-        let mut workspace = Workspace::default();
+        let mut db = DriverDataBase::default();
 
-        let _ = workspace.set_workspace_root(&mut db, &ingot_base_dir);
+        // Load all files from the ingot directory
+        load_ingot_from_directory(&mut db, &ingot_base_dir);
 
-        let fe_source_path = ingot_base_dir.join(fixture.path());
-        let fe_source_path = fe_source_path.to_str().unwrap();
-        let (ingot, file) = workspace
-            .touch_input_for_file_path(&mut db, fixture.path())
-            .unwrap();
+        // Get our specific test file
+        let fe_source_path = fixture.path();
+        let file_url = Url::from_file_path(fe_source_path).unwrap();
+
+        // Get the containing ingot - should be Local now
+        let ingot = db.workspace().containing_ingot(&db, file_url).unwrap();
         assert_eq!(ingot.kind(&db), IngotKind::Local);
-
-        file.set_text(&mut db).to((*fixture.content()).to_string());
 
         // Introduce a new scope to limit the lifetime of `top_mod`
         {
-            let (ingot, file) = workspace.get_input_for_file_path(fe_source_path).unwrap();
-            let top_mod = map_file_to_mod(&db, ingot, file);
+            // Get the file directly from the file index
+            let file_url = Url::from_file_path(fe_source_path).unwrap();
+            let file = db.workspace().get(&db, &file_url).unwrap();
+            let top_mod = map_file_to_mod(&db, file);
 
             let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
             snap_test!(snapshot, fixture.path());
         }
 
-        let ingot = workspace.touch_ingot_for_file_path(&mut db, fixture.path());
+        // Get the containing ingot for the file path
+        let file_url = Url::from_file_path(fixture.path()).unwrap();
+        let ingot = db.workspace().containing_ingot(&db, file_url);
         assert_eq!(ingot.unwrap().kind(&db), IngotKind::Local);
     }
 
@@ -296,15 +310,15 @@ mod tests {
         glob: "goto*.fe"
     )]
     fn test_goto_cursor_target(fixture: Fixture<&str>) {
-        let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default();
-        let (ingot, file) = workspace
-            .touch_input_for_file_path(db, fixture.path())
-            .unwrap();
-        file.set_text(db).to((*fixture.content()).to_string());
-        let top_mod = map_file_to_mod(db, ingot, file);
+        let mut db = DriverDataBase::default(); // Changed to mut
+        let file = db.workspace().touch(
+            &mut db,
+            Url::from_file_path(fixture.path()).unwrap(),
+            Some(fixture.content().to_string()),
+        );
+        let top_mod = map_file_to_mod(&db, file);
 
-        let snapshot = make_goto_cursors_snapshot(db, &fixture, top_mod);
+        let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
         snap_test!(snapshot, fixture.path());
     }
 
@@ -313,36 +327,36 @@ mod tests {
         glob: "smallest_enclosing*.fe"
     )]
     fn test_find_path_surrounding_cursor(fixture: Fixture<&str>) {
-        let db = &mut LanguageServerDatabase::default();
-        let workspace = &mut Workspace::default();
+        let mut db = DriverDataBase::default(); // Changed to mut
 
-        let (ingot, file) = workspace
-            .touch_input_for_file_path(db, fixture.path())
-            .unwrap();
-        file.set_text(db).to((*fixture.content()).to_string());
-        let top_mod = map_file_to_mod(db, ingot, file);
+        let file = db.workspace().touch(
+            &mut db,
+            Url::from_file_path(fixture.path()).unwrap(),
+            Some(fixture.content().to_string()),
+        );
+        let top_mod = map_file_to_mod(&db, file);
 
-        let cursors = extract_multiple_cursor_positions_from_spans(db, top_mod);
+        let cursors = extract_multiple_cursor_positions_from_spans(&db, top_mod);
 
         let mut cursor_paths: Vec<(Cursor, String)> = vec![];
 
         for cursor in &cursors {
-            let mut visitor_ctxt = VisitorCtxt::with_top_mod(db, top_mod);
+            let mut visitor_ctxt = VisitorCtxt::with_top_mod(&db, top_mod);
             let mut path_collector = PathSpanCollector::default();
             path_collector.visit_top_mod(&mut visitor_ctxt, top_mod);
 
             let full_paths = path_collector.paths;
 
-            if let Some((path, _, scope)) = find_path_surrounding_cursor(db, *cursor, full_paths) {
+            if let Some((path, _, scope)) = find_path_surrounding_cursor(&db, *cursor, full_paths) {
                 let resolved_enclosing_path =
-                    resolve_path(db, path, scope, PredicateListId::empty_list(db), false);
+                    resolve_path(&db, path, scope, PredicateListId::empty_list(&db), false);
 
                 let res = match resolved_enclosing_path {
-                    Ok(res) => res.pretty_path(db).unwrap(),
+                    Ok(res) => res.pretty_path(&db).unwrap(),
                     Err(err) => match err.kind {
                         PathResErrorKind::Ambiguous(vec) => vec
                             .iter()
-                            .map(|r| r.pretty_path(db).unwrap())
+                            .map(|r| r.pretty_path(&db).unwrap())
                             .collect::<Vec<_>>()
                             .join("\n"),
                         _ => "".into(),

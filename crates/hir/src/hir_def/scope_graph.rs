@@ -1,13 +1,16 @@
 use std::io;
 
-use common::indexmap::{IndexMap, IndexSet};
+use common::{
+    indexmap::{IndexMap, IndexSet},
+    ingot::Ingot,
+};
 use rustc_hash::FxHashSet;
 use salsa::Update;
 
 use super::{
     scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, EnumVariant,
     ExprId, FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl,
-    ImplTrait, IngotId, ItemKind, Mod, TopLevelMod, Trait, TraitType, TypeAlias, Use, VariantDef,
+    ImplTrait, ItemKind, Mod, TopLevelMod, Trait, TraitType, TypeAlias, Use, VariantDef,
     VariantKind, Visibility,
 };
 use crate::{
@@ -203,8 +206,8 @@ impl<'db> ScopeId<'db> {
         false
     }
 
-    /// Return the `IngotId` containing the scope.
-    pub fn ingot(self, db: &'db dyn HirDb) -> IngotId<'db> {
+    /// Return the `IngotDescription` containing the scope.
+    pub fn ingot(self, db: &'db dyn HirDb) -> Ingot<'db> {
         self.top_mod(db).ingot(db)
     }
 
@@ -368,7 +371,7 @@ impl<'db> ScopeId<'db> {
 
         if let Some(parent) = self.parent(db) {
             let parent_path = parent.pretty_path(db)?;
-            Some(format!("{}::{}", parent_path, name))
+            Some(format!("{parent_path}::{name}"))
         } else {
             Some(name)
         }
@@ -708,8 +711,8 @@ mod tests {
             }
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let scope_graph = db.parse_source(ingot, file);
+        let file = db.standalone_file(text);
+        let scope_graph = db.parse_source(file);
         assert_eq!(scope_graph.items_dfs(&db).count(), 8);
 
         for (i, item) in scope_graph.items_dfs(&db).enumerate() {
@@ -737,8 +740,8 @@ mod tests {
             }
         "#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let scope_graph = db.parse_source(ingot, file);
+        let file = db.standalone_file(text);
+        let scope_graph = db.parse_source(file);
         let root = scope_graph.top_mod.scope();
         let enum_ = scope_graph.children(root).next().unwrap();
         assert!(matches!(enum_.item(), ItemKind::Enum(_)));

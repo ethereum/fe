@@ -220,6 +220,7 @@ impl ChainInitiator for ExprRoot<'_> {
 
 #[cfg(test)]
 mod tests {
+
     use crate::{
         hir_def::{ArithBinOp, Body, Expr},
         test_db::TestDb,
@@ -235,8 +236,8 @@ mod tests {
             }
         }"#;
 
-        let (ingot, file) = db.standalone_file(text);
-        let body: Body = db.expect_item::<Body>(ingot, file);
+        let file = db.standalone_file(text);
+        let body: Body = db.expect_item::<Body>(file);
         let bin_expr = match body.exprs(&db).values().nth(2).unwrap().unwrap() {
             Expr::AugAssign(lhs, rhs, bin_op) => (*lhs, *rhs, *bin_op),
             _ => unreachable!(),

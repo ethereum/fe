@@ -3,10 +3,12 @@ use codespan_reporting::term::{
     self,
     termcolor::{BufferWriter, ColorChoice},
 };
-use common::{diagnostics::CompleteDiagnostic, InputFile, InputIngot};
+use common::file::File;
+use common::{define_input_db, diagnostics::CompleteDiagnostic};
 use hir::{
     hir_def::TopLevelMod,
     lower::{map_file_to_mod, module_tree},
+    Ingot,
 };
 use hir_analysis::{
     analysis_pass::{AnalysisPassManager, ParsingPass},
@@ -20,15 +22,7 @@ use hir_analysis::{
 
 use crate::diagnostics::ToCsDiag;
 
-#[derive(Default, Clone)]
-#[salsa::db]
-pub struct DriverDataBase {
-    storage: salsa::Storage<Self>,
-}
-#[salsa::db]
-impl salsa::Database for DriverDataBase {
-    fn salsa_event(&self, _event: &dyn Fn() -> salsa::Event) {}
-}
+define_input_db!(DriverDataBase);
 
 impl DriverDataBase {
     // TODO: An temporary implementation for ui testing.
@@ -44,21 +38,21 @@ impl DriverDataBase {
         DiagnosticsCollection(pass_manager.run_on_module(self, top_mod))
     }
 
-    pub fn run_on_ingot(&self, ingot: InputIngot) -> DiagnosticsCollection {
+    pub fn run_on_ingot<'db>(&'db self, ingot: Ingot<'db>) -> DiagnosticsCollection<'db> {
         self.run_on_ingot_with_pass_manager(ingot, initialize_analysis_pass())
     }
 
-    pub fn run_on_ingot_with_pass_manager(
-        &self,
-        ingot: InputIngot,
+    pub fn run_on_ingot_with_pass_manager<'db>(
+        &'db self,
+        ingot: Ingot<'db>,
         mut pass_manager: AnalysisPassManager,
-    ) -> DiagnosticsCollection {
+    ) -> DiagnosticsCollection<'db> {
         let tree = module_tree(self, ingot);
         DiagnosticsCollection(pass_manager.run_on_module_tree(self, tree))
     }
 
-    pub fn top_mod(&self, ingot: InputIngot, input: InputFile) -> TopLevelMod {
-        map_file_to_mod(self, ingot, input)
+    pub fn top_mod(&self, input: File) -> TopLevelMod {
+        map_file_to_mod(self, input)
     }
 }
 
@@ -77,7 +71,9 @@ impl DiagnosticsCollection<'_> {
             term::emit(&mut buffer, &config, &CsDbWrapper(db), &diag.to_cs(db)).unwrap();
         }
 
-        eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
+        writer
+            .print(&buffer)
+            .expect("Failed to write diagnostics to stderr");
     }
 
     /// Format the accumulated diagnostics to a string.

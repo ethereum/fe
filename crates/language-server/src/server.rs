@@ -9,7 +9,7 @@ use async_lsp::lsp_types::notification::{
     self, DidChangeTextDocument, DidChangeWatchedFiles, DidOpenTextDocument, DidSaveTextDocument,
     Initialized,
 };
-use async_lsp::lsp_types::request::{GotoDefinition, HoverRequest};
+use async_lsp::lsp_types::request::{GotoDefinition, HoverRequest, Shutdown};
 use async_lsp::ClientSocket;
 use async_std::stream::StreamExt;
 use futures_batch::ChunksTimeoutStreamExt;
@@ -51,7 +51,8 @@ pub(crate) fn setup(
         .handle_notification::<DidChangeTextDocument>(handlers::handle_did_change_text_document)
         .handle_notification::<DidChangeWatchedFiles>(handlers::handle_did_change_watched_files)
         .handle_notification::<DidSaveTextDocument>(handlers::handle_did_save_text_document)
-        .handle_notification::<notification::Exit>(handlers::handle_exit);
+        .handle_notification::<notification::Exit>(handlers::handle_exit)
+        .handle_request::<Shutdown>(handlers::handle_shutdown);
 
     let mut streaming_router = Router::new(());
     setup_streams(client.clone(), &mut streaming_router);
