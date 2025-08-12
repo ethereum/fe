@@ -75,24 +75,24 @@ note:
    ┌─ trait_projection.fe:51:1
    │  
 51 │ ╭ {
-52 │ │     x.into_iter().next() // xxx: path resolution failed: Self::Item
+52 │ │     x.into_iter().next()
 53 │ │ }
-   │ ╰─^ invalid(PathResolutionFailed(Self::Item))
+   │ ╰─^ T::Item
 
 note: 
    ┌─ trait_projection.fe:52:5
    │
-52 │     x.into_iter().next() // xxx: path resolution failed: Self::Item
+52 │     x.into_iter().next()
    │     ^ T
 
 note: 
    ┌─ trait_projection.fe:52:5
    │
-52 │     x.into_iter().next() // xxx: path resolution failed: Self::Item
+52 │     x.into_iter().next()
    │     ^^^^^^^^^^^^^ T::IntoIter
 
 note: 
    ┌─ trait_projection.fe:52:5
    │
-52 │     x.into_iter().next() // xxx: path resolution failed: Self::Item
-   │     ^^^^^^^^^^^^^^^^^^^^ invalid(PathResolutionFailed(Self::Item))
+52 │     x.into_iter().next()
+   │     ^^^^^^^^^^^^^^^^^^^^ T::Item

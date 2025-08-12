@@ -1,8 +1,3 @@
-use common::indexmap::IndexSet;
-use constraint::collect_constraints;
-use hir::hir_def::IngotId;
-use salsa::Update;
-
 use super::{
     canonical::{Canonical, Canonicalized, Solution},
     fold::{AssocTySubst, TyFoldable},
@@ -18,6 +13,10 @@ use crate::{
     },
     HirAnalysisDb,
 };
+use common::indexmap::IndexSet;
+use constraint::collect_constraints;
+use hir::hir_def::IngotId;
+use salsa::Update;
 
 pub(crate) mod constraint;
 mod proof_forest;
@@ -225,7 +224,7 @@ impl<'db> PredicateListId<'db> {
     }
 
     /// Transitively extends the predicate list with all implied bounds:
-    /// - Super trait bounds (transitively)
+    /// - Super trait bounds
     /// - Associated type bounds from trait definitions
     pub fn extend_all_bounds(self, db: &'db dyn HirAnalysisDb) -> Self {
         let mut all_predicates: IndexSet<TraitInstId<'db>> =
@@ -261,7 +260,6 @@ impl<'db> PredicateListId<'db> {
                 // Create the associated type: Self::AssocType
                 let assoc_ty = TyId::assoc_ty(db, pred, assoc_ty_name);
 
-                // xxx ???
                 let assumptions =
                     PredicateListId::new(db, all_predicates.iter().copied().collect::<Vec<_>>());
 
@@ -276,6 +274,13 @@ impl<'db> PredicateListId<'db> {
                         if let Ok(trait_inst) =
                             lower_trait_ref(db, assoc_ty, *trait_ref, scope, assumptions)
                         {
+                            // Substitute `Self` and associated types in the bound using
+                            // the original predicate's trait instance (e.g. map
+                            // `<Self as IntoIterator>::Item` to the concrete binding from
+                            // `<T as IntoIterator>` when available).
+                            let mut subst = AssocTySubst::new(db, pred);
+                            let trait_inst = trait_inst.fold_with(&mut subst);
+
                             if all_predicates.insert(trait_inst) {
                                 // New predicate added, add to worklist
                                 worklist.push(trait_inst);

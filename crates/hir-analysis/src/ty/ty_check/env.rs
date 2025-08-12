@@ -133,7 +133,10 @@ impl<'db> TyCheckEnv<'db> {
     pub(super) fn assumptions(&self) -> PredicateListId<'db> {
         match self.hir_func() {
             Some(func) => {
-                collect_func_def_constraints(self.db, func.into(), true).instantiate_identity()
+                // Include all implied bounds (super traits and associated type bounds)
+                collect_func_def_constraints(self.db, func.into(), true)
+                    .instantiate_identity()
+                    .extend_all_bounds(self.db)
             }
             None => PredicateListId::empty_list(self.db),
         }

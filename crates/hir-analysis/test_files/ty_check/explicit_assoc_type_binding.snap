@@ -1,5 +1,6 @@
 ---
 source: crates/hir-analysis/tests/ty_check.rs
+assertion_line: 48
 expression: res
 input_file: test_files/ty_check/explicit_assoc_type_binding.fe
 ---
@@ -16,10 +17,11 @@ note:
    ┌─ explicit_assoc_type_binding.fe:13:9
    │
 13 │     let x: <T::IntoIter as Iterator>::Item = 10
-   │         ^ invalid(PathResolutionFailed(<T::IntoIter as Iterator>::Item))
+   │         ^ i32
 
 note: 
    ┌─ explicit_assoc_type_binding.fe:13:46
    │
 13 │     let x: <T::IntoIter as Iterator>::Item = 10
-   │                                              ^^ invalid(PathResolutionFailed(<T::IntoIter as Iterator>::Item))
+   │                                              ^^ i32
+

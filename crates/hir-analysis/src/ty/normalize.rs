@@ -31,11 +31,6 @@ pub fn normalize_ty<'db>(
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
-    if ty.pretty_print(db).contains("IntoIter::Item") {
-        eprintln!("Normalizing: {}", ty.pretty_print(db));
-        eprintln!("Assumptions: {}", assumptions.pretty_print(db));
-    }
-
     let mut normalizer = TypeNormalizer {
         db,
         scope,
@@ -48,9 +43,6 @@ pub fn normalize_ty<'db>(
     loop {
         let normalized = current.fold_with(&mut normalizer);
         if normalized == current {
-            if ty.pretty_print(db).contains("IntoIter::Item") {
-                eprintln!("Final normalized result: {}", normalized.pretty_print(db));
-            }
             break normalized;
         }
         current = normalized;
@@ -109,20 +101,27 @@ impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
 
 impl<'db> TypeNormalizer<'db> {
     fn try_resolve_assoc_ty(&mut self, ty: TyId<'db>, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
-        eprintln!(
-            "try_resolve_assoc_ty: {} with trait {}",
-            ty.pretty_print(self.db),
-            assoc.trait_.pretty_print(self.db, false)
-        );
-
         // First check if the trait instance has a binding for this associated type
         if let Some(&bound_ty) = assoc.trait_.assoc_type_bindings(self.db).get(&assoc.name) {
-            eprintln!(
-                "Found binding: {} = {}",
-                assoc.name.data(self.db),
-                bound_ty.pretty_print(self.db)
-            );
             return Some(bound_ty);
+        }
+
+        // Then check assumptions for an equivalent trait instance that carries
+        // an explicit associated type binding (e.g., implied by where-clauses
+        // or trait associated type bounds like `type IntoIter: Iterator<Item=...>`)
+        for &pred in self.assumptions.list(self.db) {
+            if pred.def(self.db) != assoc.trait_.def(self.db) {
+                continue;
+            }
+
+            let mut table = UnificationTable::new(self.db);
+            let lhs_self = assoc.trait_.self_ty(self.db);
+            let rhs_self = pred.self_ty(self.db);
+            if table.unify(lhs_self, rhs_self).is_ok() {
+                if let Some(&bound) = pred.assoc_type_bindings(self.db).get(&assoc.name) {
+                    return Some(bound.fold_with(&mut table));
+                }
+            }
         }
 
         // Try to resolve using the full resolution logic
