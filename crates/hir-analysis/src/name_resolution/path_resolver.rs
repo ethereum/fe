@@ -665,7 +665,11 @@ pub fn find_associated_type<'db>(
                 }
             }
         }
+    }
 
+    // Check explicit bounds in assumptions that match `ty` only when `ty` is a type
+    // parameter (to avoid spurious ambiguities for concrete types that already have impls).
+    if let TyData::TyParam(_) = ty.value.data(db) {
         for &trait_inst in assumptions.list(db) {
             // `trait_inst` is a specific trait bound, e.g., `A: Abi` or `S<A>: SomeTrait`.
             let mut table = UnificationTable::new(db);
@@ -872,13 +876,7 @@ pub fn resolve_name_res<'db>(
 
                 // Create an associated type reference
                 let assoc_ty_name = trait_type.name.to_opt().unwrap();
-                let assoc_ty = TyId::new(
-                    db,
-                    TyData::AssocTy(AssocTy {
-                        trait_: trait_inst,
-                        name: assoc_ty_name,
-                    }),
-                );
+                let assoc_ty = TyId::assoc_ty(db, trait_inst, assoc_ty_name);
 
                 PathRes::Ty(assoc_ty)
             }

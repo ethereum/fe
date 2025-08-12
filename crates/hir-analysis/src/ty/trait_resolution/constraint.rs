@@ -163,7 +163,7 @@ pub(crate) fn collect_func_def_constraints<'db>(
         Some(ItemKind::Impl(impl_)) => collect_constraints(db, impl_.into()),
 
         Some(ItemKind::ImplTrait(impl_trait)) => {
-            // xxx remove?
+            // Only include constraints if the impl trait lowers successfully
             if lower_impl_trait(db, impl_trait).is_none() {
                 return func_constraints;
             }
