@@ -1,6 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 1050
+assertion_line: 1233
 expression: snapshot
 input_file: test_files/goto_values.fe
 ---
@@ -43,6 +43,7 @@ input_file: test_files/goto_values.fe
 36: }
 ---
 cursor position (9, 4), path: goto_values::MY_CONST
+cursor position (12, 27), path: goto_values::MyStruct
 cursor position (13, 4), path: goto_values::another_function::param
 cursor position (13, 18), path: goto_values::my_function
 cursor position (17, 11), path: goto_values::MyStruct

@@ -36,10 +36,51 @@ pub fn hover_helper(
         LazyHirResult::Expr(body, expr_id, _) => create_expression_hover(db, body, expr_id),
         LazyHirResult::Stmt(body, stmt_id, _) => create_statement_hover(db, body, stmt_id),
         LazyHirResult::Pat(body, pat_id) => create_pattern_hover(db, body, pat_id),
-        LazyHirResult::None => {
-            // No HIR node found at this position
-            Ok(None)
+        LazyHirResult::ItemPath(item, path, _ctx, seg) => {
+            // Resolve the item-level path to a scope and show a concise label
+            let scope = hir::hir_def::scope_graph::ScopeId::from_item(item);
+            let res = if let Some(i) = seg {
+                hir_analysis::name_resolution::resolve_path_segment(db, path, i, scope, true)
+                    .ok()
+                    .and_then(|r| r.as_scope(db))
+            } else {
+                hir_analysis::name_resolution::resolve_path(db, path, scope, true)
+                    .ok()
+                    .and_then(|r| r.as_scope(db))
+            };
+
+            if let Some(s) = res {
+                let label = s.pretty_path(db).unwrap_or_default();
+                let contents = format!("```fe\n{}\n```", label);
+                Ok(Some(Hover {
+                    contents: async_lsp::lsp_types::HoverContents::Markup(
+                        async_lsp::lsp_types::MarkupContent {
+                            kind: async_lsp::lsp_types::MarkupKind::Markdown,
+                            value: contents,
+                        },
+                    ),
+                    range: None,
+                }))
+            } else {
+                Ok(None)
+            }
         }
+        LazyHirResult::ItemType(_item, _ty, _ctx) => Ok(None),
+        LazyHirResult::ItemGenericParam(item, idx) => {
+            let scope = hir::hir_def::scope_graph::ScopeId::GenericParam(item, idx);
+            let label = scope.pretty_path(db).unwrap_or_else(|| format!("generic param #{}", idx));
+            let contents = format!("```fe\n{}\n```", label);
+            Ok(Some(Hover {
+                contents: async_lsp::lsp_types::HoverContents::Markup(
+                    async_lsp::lsp_types::MarkupContent {
+                        kind: async_lsp::lsp_types::MarkupKind::Markdown,
+                        value: contents,
+                    },
+                ),
+                range: None,
+            }))
+        }
+        LazyHirResult::None => Ok(None),
     }
 }
 

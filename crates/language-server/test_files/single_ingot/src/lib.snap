@@ -1,6 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 644
+assertion_line: 1210
 expression: snapshot
 input_file: test_files/single_ingot/src/lib.fe
 ---
@@ -28,6 +28,8 @@ input_file: test_files/single_ingot/src/lib.fe
 21:     let z: who::what::how::When
 22: }
 ---
+cursor position (9, 11), path: lib::foo::Why
+cursor position (14, 7), path: lib::foo::Why
 cursor position (19, 11), path: lib::foo::Why
 cursor position (20, 12), path: lib::who
 cursor position (20, 17), path: lib::who::what

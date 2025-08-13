@@ -16,6 +16,7 @@ use crate::{backend::Backend, util::to_offset_from_position};
 use driver::DriverDataBase;
 pub type Cursor = parser::TextSize;
 
+#[derive(Debug)]
 pub enum GotoTarget<'db> {
     Scope(ScopeId<'db>),
     Span(common::diagnostics::Span),
@@ -59,18 +60,30 @@ fn find_path_surrounding_cursor<'db>(
     cursor: Cursor,
     full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
 ) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
+    // Choose the smallest (most specific) path span that contains the cursor
+    let mut best: Option<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>, parser::TextRange)> = None;
     for (path, scope, lazy_span) in full_paths {
         let span = lazy_span.resolve(db).unwrap();
         if span.range.contains(cursor) {
-            for idx in 0..=path.segment_index(db) {
-                let seg_span = lazy_span.clone().segment(idx).resolve(db).unwrap();
-                if seg_span.range.contains(cursor) {
-                    return Some((
-                        path.segment(db, idx).unwrap(),
-                        idx != path.segment_index(db),
-                        scope,
-                    ));
+            let len = span.range.end() - span.range.start();
+            if best.as_ref().map(|(_, _, _, r)| (r.end() - r.start()) > len).unwrap_or(true) {
+                best = Some((path, scope, lazy_span, span.range));
+            }
+        }
+    }
+    let Some((path, scope, lazy_span, _)) = best.clone() else { return None };
+    for idx in 0..=path.segment_index(db) {
+        let seg_lazy = lazy_span.clone().segment(idx);
+        let seg_full = seg_lazy.resolve(db).unwrap();
+        if seg_full.range.contains(cursor) {
+            if let Some(id_span) = seg_lazy.ident().resolve(db) {
+                if id_span.range.contains(cursor) {
+                    return Some((path.segment(db, idx).unwrap(), idx != path.segment_index(db), scope));
+                } else {
+                    continue;
                 }
+            } else {
+                continue;
             }
         }
     }
@@ -137,8 +150,16 @@ pub fn goto_definition_with_hir_synthesis<'db>(
     db: &'db DriverDataBase,
     top_mod: TopLevelMod<'db>,
     cursor: Cursor,
+    file: common::file::File,
 ) -> Result<Vec<GotoTarget<'db>>, Box<dyn std::error::Error>> {
     use crate::hir_integration::{lazy_hir_for_cursor, LazyHirResult};
+
+    // First check if the cursor is on an identifier character
+    // This prevents goto from triggering on punctuation like ::, =, etc.
+    if !is_cursor_on_identifier_char(db, cursor, file) {
+        debug!("Cursor is not on an identifier character, skipping goto");
+        return Ok(vec![]);
+    }
 
     // Use the HIR synthesis system to find the HIR node at the cursor position
     let hir_result = lazy_hir_for_cursor(db, top_mod, cursor);
@@ -150,6 +171,9 @@ pub fn goto_definition_with_hir_synthesis<'db>(
             LazyHirResult::Expr(_, _, _) => "Expr",
             LazyHirResult::Stmt(_, _, _) => "Stmt",
             LazyHirResult::Pat(_, _) => "Pat",
+            LazyHirResult::ItemPath(_, _, _, _) => "ItemPath",
+            LazyHirResult::ItemType(_, _, _) => "ItemType",
+            LazyHirResult::ItemGenericParam(_, _) => "ItemGenericParam",
             LazyHirResult::None => "None",
         }
     );
@@ -174,6 +198,24 @@ pub fn goto_definition_with_hir_synthesis<'db>(
                 body, pat_id
             );
         }
+        LazyHirResult::ItemPath(item, _path, ctx, seg) => {
+            debug!(
+                "HIR synthesis found item path: item={:?}, context={:?}, segment={:?}",
+                item, ctx, seg
+            );
+        }
+        LazyHirResult::ItemType(item, _ty, ctx) => {
+            debug!(
+                "HIR synthesis found item type: item={:?}, context={:?}",
+                item, ctx
+            );
+        }
+        LazyHirResult::ItemGenericParam(item, idx) => {
+            debug!(
+                "HIR synthesis found item generic param: item={:?}, idx={:?}",
+                item, idx
+            );
+        }
         LazyHirResult::None => {
             debug!(
                 "HIR synthesis found nothing at cursor position {:?}",
@@ -185,39 +227,106 @@ pub fn goto_definition_with_hir_synthesis<'db>(
     // Now resolve the HIR node to its semantic definition
     let result = match hir_result {
         LazyHirResult::Expr(body, expr_id, context) => {
-            resolve_expression_definition(db, body, expr_id, context)
+            resolve_expression_definition(db, body, expr_id, context, cursor, file)
         }
         LazyHirResult::Stmt(body, stmt_id, context) => {
-            resolve_statement_definition(db, body, stmt_id, context)
+            resolve_statement_definition(db, body, stmt_id, context, cursor, file)
         }
         LazyHirResult::Pat(body, pat_id) => resolve_pattern_definition(db, body, pat_id),
+        LazyHirResult::ItemPath(item, path, _ctx, seg) => {
+            // Try to resolve using the item's scope directly (no visitor)
+            let scope = hir::hir_def::scope_graph::ScopeId::from_item(item);
+            // If we have a segment index, resolve that first
+            if let Some(segment_index) = seg {
+                let out: Result<Vec<GotoTarget<'db>>, Box<dyn std::error::Error>> = match resolve_path_segment(db, path, segment_index, scope, true) {
+                    Ok(res) => {
+                        if let Some(s) = res.as_scope(db) {
+                            Ok(vec![GotoTarget::Scope(s)])
+                        } else if let Some(s) = hir_analysis::name_resolution::resolve_path_segment_scope(db, path, segment_index, scope, true) {
+                            Ok(vec![GotoTarget::Scope(s)])
+                        } else {
+                            Ok(vec![])
+                        }
+                    }
+                    Err(err) => match err.kind {
+                        PathResErrorKind::NotFound(bucket) => {
+                            let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                            if !scopes.is_empty() {
+                                Ok(scopes.into_iter().map(GotoTarget::Scope).collect())
+                            } else {
+                                Ok(vec![])
+                            }
+                        }
+                        PathResErrorKind::Ambiguous(vec) => {
+                            let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                            Ok(scopes.into_iter().map(GotoTarget::Scope).collect())
+                        }
+                        _ => Ok(vec![]),
+                    },
+                };
+                return out;
+            }
+            // Otherwise resolve the full path
+            match resolve_path(db, path, scope, false) {
+                Ok(res) => {
+                    if let Some(s) = res.as_scope(db) {
+                        Ok(vec![GotoTarget::Scope(s)])
+                    } else if let Some(s) = hir_analysis::name_resolution::resolve_path_segment_scope(db, path, path.segment_index(db), scope, true) {
+                        Ok(vec![GotoTarget::Scope(s)])
+                    } else {
+                        Ok(vec![])
+                    }
+                }
+                Err(err) => match err.kind {
+                    PathResErrorKind::NotFound(bucket) => {
+                        let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                        if !scopes.is_empty() {
+                            Ok(scopes.into_iter().map(GotoTarget::Scope).collect())
+                        } else {
+                            Ok(vec![])
+                        }
+                    }
+                    PathResErrorKind::Ambiguous(vec) => {
+                        let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                        Ok(scopes.into_iter().map(GotoTarget::Scope).collect())
+                    }
+                    _ => Ok(vec![]),
+                },
+            }
+        }
+        LazyHirResult::ItemType(_item, _ty, _ctx) => {
+            // TODO: Add type-specific goto targets when available
+            Ok(vec![])
+        }
+        LazyHirResult::ItemGenericParam(item, idx) => {
+            let scope = hir::hir_def::scope_graph::ScopeId::GenericParam(item, idx);
+            Ok(vec![GotoTarget::Scope(scope)])
+        }
         LazyHirResult::None => {
             if let Some(item) = find_enclosing_item(db, top_mod, cursor) {
-                if matches!(item, ItemKind::Impl(_) | ItemKind::ImplTrait(_)) {
-                    let mut vctxt = hir::visitor::VisitorCtxt::with_item(db, item);
-                    let mut collector = PathSpanCollector::default();
-                    collector.visit_item(&mut vctxt, item);
-                    if let Some((seg_path, _intermediate, scope)) = find_path_surrounding_cursor(db, cursor, collector.paths) {
-                        match hir_analysis::name_resolution::resolve_path_segment(db, seg_path, seg_path.segment_index(db), scope, false) {
-                            Ok(res) => {
-                                if let Some(s) = res.as_scope(db) {
-                                    return Ok(vec![GotoTarget::Scope(s)]);
-                                }
+                let mut vctxt = hir::visitor::VisitorCtxt::with_item(db, item);
+                let mut collector = PathSpanCollector::default();
+                collector.visit_item(&mut vctxt, item);
+                if let Some((seg_path, _intermediate, scope)) = find_path_surrounding_cursor(db, cursor, collector.paths) {
+                    match resolve_path_segment(db, seg_path, seg_path.segment_index(db), scope, false) {
+                        Ok(res) => {
+                            if let Some(s) = res.as_scope(db) {
+                                return Ok(vec![GotoTarget::Scope(s)]);
                             }
-                            Err(err) => match err.kind {
-                                PathResErrorKind::NotFound(bucket) => {
-                                    let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
-                                    if !scopes.is_empty() {
-                                        return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
-                                    }
-                                }
-                                PathResErrorKind::Ambiguous(vec) => {
-                                    let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                        }
+                        Err(err) => match err.kind {
+                            PathResErrorKind::NotFound(bucket) => {
+                                let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                if !scopes.is_empty() {
                                     return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
                                 }
-                                _ => {}
-                            },
-                        }
+                            }
+                            PathResErrorKind::Ambiguous(vec) => {
+                                let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
+                            }
+                            _ => {}
+                        },
                     }
                 }
             }
@@ -228,12 +337,44 @@ pub fn goto_definition_with_hir_synthesis<'db>(
     result
 }
 
+/// Check if cursor is on an identifier character
+fn is_cursor_on_identifier_char<'db>(
+    db: &'db DriverDataBase,
+    cursor: Cursor,
+    file: common::file::File,
+) -> bool {
+    let source = file.text(db);
+    let cursor_offset: usize = cursor.into();
+    
+    // Special case: cursor is at end of file - check if previous char is identifier
+    if cursor_offset == source.len() && cursor_offset > 0 {
+        if let Some(ch) = source.chars().nth(cursor_offset - 1) {
+            return ch.is_alphanumeric() || ch == '_';
+        }
+        return false;
+    }
+    
+    if cursor_offset >= source.len() {
+        return false;
+    }
+    
+    // Get the character at the cursor position
+    if let Some(ch) = source.chars().nth(cursor_offset) {
+        return ch.is_alphanumeric() || ch == '_';
+    }
+    
+    false
+}
+
+
 /// Resolve definition location for an expression HIR node
 fn resolve_expression_definition<'db>(
     db: &'db DriverDataBase,
     body: hir::hir_def::Body<'db>,
     expr_id: hir::hir_def::ExprId,
     context: hir::synthesis::HirNodeContext,
+    cursor: Cursor,
+    file: common::file::File,
 ) -> Result<Vec<GotoTarget<'db>>, Box<dyn std::error::Error>> {
     use hir::hir_def::{Expr, Partial};
 
@@ -445,6 +586,8 @@ fn resolve_expression_definition<'db>(
                 body,
                 *callee_expr_id,
                 hir::synthesis::HirNodeContext::Regular,
+                cursor,
+                file,
             )
         }
 
@@ -523,6 +666,8 @@ fn resolve_statement_definition<'db>(
     body: hir::hir_def::Body<'db>,
     stmt_id: hir::hir_def::StmtId,
     context: hir::synthesis::HirNodeContext,
+    cursor: Cursor,
+    file: common::file::File,
 ) -> Result<Vec<GotoTarget<'db>>, Box<dyn std::error::Error>> {
     use hir::hir_def::{Partial, Stmt};
 
@@ -610,6 +755,8 @@ fn resolve_statement_definition<'db>(
                     body,
                     *expr_id,
                     hir::synthesis::HirNodeContext::Regular,
+                    cursor,
+                    file,
                 )?;
                 targets.extend(expr_scopes);
             }
@@ -624,6 +771,8 @@ fn resolve_statement_definition<'db>(
                 body,
                 *iterable_expr_id,
                 hir::synthesis::HirNodeContext::Regular,
+                cursor,
+                file,
             )
         }
 
@@ -634,6 +783,8 @@ fn resolve_statement_definition<'db>(
                 body,
                 *condition_expr_id,
                 hir::synthesis::HirNodeContext::Regular,
+                cursor,
+                file,
             )
         }
 
@@ -643,6 +794,8 @@ fn resolve_statement_definition<'db>(
             body,
             *expr_id,
             hir::synthesis::HirNodeContext::Regular,
+            cursor,
+            file,
         ),
 
         // Other statement types don't have meaningful definitions
@@ -739,6 +892,7 @@ pub fn benchmark_goto_approaches<'db>(
     db: &'db DriverDataBase,
     top_mod: TopLevelMod<'db>,
     cursor: Cursor,
+    file: common::file::File,
 ) -> (std::time::Duration, std::time::Duration) {
     // Benchmark old visitor-based approach
     let start = std::time::Instant::now();
@@ -747,7 +901,7 @@ pub fn benchmark_goto_approaches<'db>(
 
     // Benchmark new HIR synthesis approach
     let start = std::time::Instant::now();
-    let _new_result = goto_definition_with_hir_synthesis(db, top_mod, cursor);
+    let _new_result = goto_definition_with_hir_synthesis(db, top_mod, cursor, file);
     let new_time = start.elapsed();
 
     (old_time, new_time)
@@ -783,7 +937,7 @@ pub async fn handle_goto_definition(
     let top_mod = map_file_to_mod(&backend.db, file);
 
     // Use enhanced HIR synthesis approach
-    match goto_definition_with_hir_synthesis(&backend.db, top_mod, cursor) {
+    match goto_definition_with_hir_synthesis(&backend.db, top_mod, cursor, file) {
          Ok(targets) => {
             if !targets.is_empty() {
                 let locations: Result<Vec<_>, _> = targets
@@ -918,6 +1072,7 @@ mod tests {
         db: &DriverDataBase,
         fixture: &Fixture<&str>,
         top_mod: TopLevelMod,
+        file: common::file::File,
     ) -> String {
         // Parse the file to get the syntax tree
         use parser::{ast, SyntaxKind, SyntaxNode};
@@ -984,7 +1139,7 @@ mod tests {
         let mut error_count = 0;
 
         for cursor in &test_positions {
-            match goto_definition_with_hir_synthesis(db, top_mod, *cursor) {
+            match goto_definition_with_hir_synthesis(db, top_mod, *cursor, file) {
                 Ok(targets) => {
                     if !targets.is_empty() {
                         success_count += 1;
@@ -1062,7 +1217,7 @@ mod tests {
             let file = db.workspace().get(&db, &file_url).unwrap();
             let top_mod = map_file_to_mod(&db, file);
 
-            let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
+            let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod, file);
             snap_test!(snapshot, fixture.path());
         }
 
@@ -1085,7 +1240,7 @@ mod tests {
         );
         let top_mod = map_file_to_mod(&db, file);
 
-        let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
+        let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod, file);
         snap_test!(snapshot, fixture.path());
     }
 
@@ -1102,7 +1257,7 @@ mod tests {
         );
         let top_mod = map_file_to_mod(&db, file);
 
-        let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod);
+        let snapshot = make_goto_cursors_snapshot(&db, &fixture, top_mod, file);
         snap_test!(snapshot, fixture.path());
     }
 

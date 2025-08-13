@@ -1,6 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 1083
+assertion_line: 1233
 expression: snapshot
 input_file: test_files/goto_comprehensive.fe
 ---
@@ -53,19 +53,23 @@ input_file: test_files/goto_comprehensive.fe
 46: }
 47: 
 48: pub trait Inner {
-49:     fn foo(self) -> i32
-50: }
-51: 
-52: pub struct Wrapper<S: Inner> {
-53:     pub inner: S,
-54: }
-55: 
-56: impl<S: Inner> Wrapper<S> {
-57:     pub fn foo(mut self, mut dog: i32) -> i32 {
-58:         self.inner.foo()
-59:         dog
-60:     }
-61: }
+49:     //type InnerType
+50:     fn foo(self) -> i32
+51: }
+52: 
+53: pub struct Wrapper<S: Inner> {
+54:     pub inner: S,
+55:     //pub x: S::InnerType
+56: }
+57: 
+58: impl<S: Inner> Wrapper<S> {
+59:     pub fn foo(mut self, mut dog: i32) -> i32 {
+60:         self.inner.foo() // collect_constraints_from_func_def
+61:         // let x = ...
+62:         // x.foo()
+63:         dog
+64:     }
+65: }
 ---
 cursor position (5, 5), path: goto_comprehensive::Container
 cursor position (19, 20), path: goto_comprehensive::Container
@@ -83,7 +87,9 @@ cursor position (39, 10), path: local at 35:8
 cursor position (40, 8), path: goto_comprehensive::Color::Green
 cursor position (40, 15), path: goto_comprehensive::Color::Green
 cursor position (42, 23), path: local at 40:23
-cursor position (56, 8), path: goto_comprehensive::Inner
-cursor position (56, 15), path: goto_comprehensive::Wrapper
-cursor position (56, 23), path: goto_comprehensive::Wrapper
-cursor position (59, 8), path:
+cursor position (53, 22), path: goto_comprehensive::Inner
+cursor position (54, 15), path: goto_comprehensive::Wrapper::S
+cursor position (58, 8), path: goto_comprehensive::Inner
+cursor position (58, 15), path: goto_comprehensive::Wrapper
+cursor position (58, 23), path: goto_comprehensive::Wrapper
+cursor position (63, 8), path:

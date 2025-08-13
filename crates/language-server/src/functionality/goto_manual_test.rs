@@ -32,7 +32,7 @@ fn main() {
         let cursor = TextSize::from(foo_pos as u32);
         
         // Test goto at the Foo type annotation
-        let result = goto_definition_with_hir_synthesis(&db, top_mod, cursor).unwrap();
+        let result = goto_definition_with_hir_synthesis(&db, top_mod, cursor, file).unwrap();
         assert!(!result.is_empty(), "Should find goto target for Foo type annotation");
         
         for target in &result {
@@ -67,7 +67,7 @@ fn test() {
         let cursor = TextSize::from(bar_pos as u32);
         
         // Test goto at the Bar constructor
-        let result = goto_definition_with_hir_synthesis(&db, top_mod, cursor).unwrap();
+        let result = goto_definition_with_hir_synthesis(&db, top_mod, cursor, file).unwrap();
         assert!(!result.is_empty(), "Should find goto target for Bar constructor");
         
         for target in &result {

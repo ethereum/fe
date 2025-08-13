@@ -1,6 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 1083
+assertion_line: 1233
 expression: snapshot
 input_file: test_files/goto_specific_issues.fe
 ---
@@ -35,6 +35,8 @@ input_file: test_files/goto_specific_issues.fe
 ---
 cursor position (9, 12), path: goto_specific_issues::nested
 cursor position (9, 20), path: goto_specific_issues::nested::NESTED_CONST
+cursor position (14, 15), path: goto_specific_issues::Foo
 cursor position (17, 5), path: goto_specific_issues::Container
+cursor position (18, 24), path: goto_specific_issues::Foo
 cursor position (24, 20), path: goto_specific_issues::Container
 cursor position (26, 17), path: local at 24:8

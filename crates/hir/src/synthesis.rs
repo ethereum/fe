@@ -22,10 +22,11 @@ use parser::{ast_index::AstNodeAtPosition, TextSize};
 use rangemap::RangeMap;
 
 use crate::{
-    hir_def::{Body, ExprId, ItemKind, PatId, StmtId, TopLevelMod},
+    hir_def::{Body, ExprId, ItemKind, PatId, PathId, StmtId, TopLevelMod, TypeId},
     span::{body_source_map, HirOrigin, LazySpan},
     SpannedHirDb,
 };
+use crate::visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt};
 
 /// Wrapper for RangeMap to add Salsa compatibility traits
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +83,23 @@ pub enum HirNodeContext {
     Regular,
 }
 
+/// Context for item-level HIR nodes
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ItemNodeContext {
+    /// Type bound in generic parameter (e.g., T: Trait)
+    TypeBound,
+    /// Where clause predicate
+    WhereClause,
+    /// Super trait in trait definition
+    SuperTrait,
+    /// Type in impl header (e.g., impl Trait for Type)
+    ImplHeader,
+    /// Generic parameter name
+    GenericParam,
+    /// Regular item context
+    Regular,
+}
+
 /// Result of a lazy HIR lookup from cursor position
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LazyHirResult<'db> {
@@ -91,6 +109,13 @@ pub enum LazyHirResult<'db> {
     Stmt(Body<'db>, StmtId, HirNodeContext),
     /// Found a pattern HIR node
     Pat(Body<'db>, PatId),
+    /// Found a path in an item context (not in a body)
+    /// The optional segment index specifies which segment the cursor is on
+    ItemPath(ItemKind<'db>, PathId<'db>, ItemNodeContext, Option<usize>),
+    /// Found a type in an item context
+    ItemType(ItemKind<'db>, TypeId<'db>, ItemNodeContext),
+    /// Found a generic parameter name in an item context (by index in the param list)
+    ItemGenericParam(ItemKind<'db>, u16),
     /// No HIR node found at this position
     None,
 }
@@ -102,7 +127,10 @@ impl<'db> LazyHirResult<'db> {
             LazyHirResult::Expr(body, _, _)
             | LazyHirResult::Stmt(body, _, _)
             | LazyHirResult::Pat(body, _) => Some(*body),
-            LazyHirResult::None => None,
+            LazyHirResult::ItemPath(_, _, _, _)
+            | LazyHirResult::ItemType(_, _, _)
+            | LazyHirResult::ItemGenericParam(_, _)
+            | LazyHirResult::None => None,
         }
     }
 
@@ -193,11 +221,38 @@ impl<'db> LazyHir<'db> for ModuleLazyHir<'db> {
         let mut resolver = self.clone();
 
         // First find the body containing this position
-        let Some(body) = resolver.find_containing_body(db, cursor) else {
-            return LazyHirResult::None;
-        };
+        if let Some(body) = resolver.find_containing_body(db, cursor) {
+            // Handle nodes within function bodies (existing logic)
+            return resolver.find_hir_in_body(db, body, cursor);
+        }
+        
+        // If not in a body, check if we're in an item definition
+        resolver.find_hir_in_item(db, cursor)
+    }
+    
+    fn find_bodies_at_position(&self, db: &'db dyn SpannedHirDb, cursor: Cursor) -> Vec<Body<'db>> {
+        let mut resolver = self.clone();
+        resolver.ensure_body_cache(db);
+        
+        let cache = resolver.body_cache.as_ref().unwrap();
+        
+        // For now, just return the single body at this position
+        if let Some(body) = cache.get(&cursor) {
+            vec![body]
+        } else {
+            vec![]
+        }
+    }
+}
 
-
+impl<'db> ModuleLazyHir<'db> {
+    /// Find HIR nodes within a function body
+    fn find_hir_in_body(
+        &self,
+        db: &'db dyn SpannedHirDb,
+        body: Body<'db>,
+        cursor: Cursor,
+    ) -> LazyHirResult<'db> {
         // Get the source map for this body
         let source_map = body_source_map(db, body);
 
@@ -323,6 +378,332 @@ impl<'db> LazyHir<'db> for ModuleLazyHir<'db> {
         } else {
             vec![]
         }
+    }
+    
+    /// Find HIR nodes in item-level constructs (generic bounds, where clauses, etc.)
+    fn find_hir_in_item(
+        &self,
+        db: &'db dyn SpannedHirDb,
+        cursor: Cursor,
+    ) -> LazyHirResult<'db> {
+        use parser::ast::prelude::AstNode;
+        use parser::ast::{GenericParamsOwner, WhereClauseOwner};
+        
+        // Parse the file to get the AST
+        let green_node = crate::lower::parse_file_impl(db, self.top_mod);
+        let root_syntax = parser::SyntaxNode::new_root(green_node);
+        
+        // Find the most specific node at the cursor position
+        let token = match root_syntax.token_at_offset(cursor).right_biased() {
+            Some(token) => token,
+            None => return LazyHirResult::None,
+        };
+        
+        // Walk up from the token to find relevant item-level constructs
+        for ancestor in token.parent_ancestors() {
+            // Check if we're in a struct/enum/trait/impl item
+            if let Some(item) = parser::ast::Item::cast(ancestor.clone()) {
+                if let Some(item_kind) = item.kind() {
+                    match item_kind {
+                        parser::ast::ItemKind::Struct(struct_item) => {
+                        // Check if cursor is in generic parameters
+                        if let Some(generics) = struct_item.generic_params() {
+                            if generics.syntax().text_range().contains(cursor) {
+                                // Find which generic parameter contains the cursor
+                                for (idx, param) in generics.into_iter().enumerate() {
+                                    // Param name under cursor -> generic param
+                                    if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                        if let Some(name_tok) = type_param.name() {
+                                            if name_tok.text_range().contains(cursor) {
+                                                if let Some(item_kind) = parser::ast::Item::cast(struct_item.syntax().clone()).and_then(|i| i.kind()) {
+                                                    let hir_item = self.find_enclosing_item_for_ast(db, &parser::ast::Item::cast(struct_item.syntax().clone()).unwrap()).unwrap_or_else(|| self.top_mod.into());
+                                                    return LazyHirResult::ItemGenericParam(hir_item, idx as u16);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if param.syntax().text_range().contains(cursor) {
+                                        // Check if this is a type parameter with bounds
+                                        if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                            if let Some(bounds) = type_param.bounds() {
+                                                for bound in bounds {
+                                                    if bound.syntax().text_range().contains(cursor) {
+                                                        // This is a type bound - we need to resolve it
+                                                        if let Some(path) = extract_path_from_type_bound(&bound) {
+                                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::TypeBound, cursor);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                        parser::ast::ItemKind::Impl(impl_item) => {
+                            // Check if cursor is in generic parameters
+                            if let Some(generics) = impl_item.generic_params() {
+                                if generics.syntax().text_range().contains(cursor) {
+                                    // Find which generic parameter contains the cursor
+                                    for (idx, param) in generics.into_iter().enumerate() {
+                                        if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                            if let Some(name_tok) = type_param.name() {
+                                                if name_tok.text_range().contains(cursor) {
+                                                    return LazyHirResult::ItemGenericParam(self.find_enclosing_item_for_ast(db, &item).unwrap_or(self.top_mod.into()), idx as u16);
+                                                }
+                                            }
+                                        }
+                                        if param.syntax().text_range().contains(cursor) {
+                                            // Check if this is a type parameter with bounds
+                                            if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                                if let Some(bounds) = type_param.bounds() {
+                                                    for bound in bounds {
+                                                        if bound.syntax().text_range().contains(cursor) {
+                                                            // This is a type bound - we need to resolve it
+                                                            if let Some(path) = extract_path_from_type_bound(&bound) {
+                                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::TypeBound, cursor);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Check if cursor is in the impl target type
+                            if let Some(impl_target) = impl_item.ty() {
+                                if impl_target.syntax().text_range().contains(cursor) {
+                                    if let parser::ast::TypeKind::Path(path_type) = impl_target.kind() {
+                                        if let Some(path) = path_type.path() {
+                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::ImplHeader, cursor);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        parser::ast::ItemKind::ImplTrait(impl_trait) => {
+                            // Check if cursor is in generic parameters
+                            if let Some(generics) = impl_trait.generic_params() {
+                                if generics.syntax().text_range().contains(cursor) {
+                                    // Find which generic parameter contains the cursor
+                                    for (idx, param) in generics.into_iter().enumerate() {
+                                        if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                            if let Some(name_tok) = type_param.name() {
+                                                if name_tok.text_range().contains(cursor) {
+                                                    return LazyHirResult::ItemGenericParam(self.find_enclosing_item_for_ast(db, &item).unwrap_or(self.top_mod.into()), idx as u16);
+                                                }
+                                            }
+                                        }
+                                        if param.syntax().text_range().contains(cursor) {
+                                            // Check if this is a type parameter with bounds
+                                            if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                                if let Some(bounds) = type_param.bounds() {
+                                                    for bound in bounds {
+                                                        if bound.syntax().text_range().contains(cursor) {
+                                                            // This is a type bound - we need to resolve it
+                                                            if let Some(path) = extract_path_from_type_bound(&bound) {
+                                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::TypeBound, cursor);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Check if cursor is in the trait being implemented
+                            if let Some(trait_ref) = impl_trait.trait_ref() {
+                                if let Some(trait_path) = trait_ref.path() {
+                                    if trait_path.syntax().text_range().contains(cursor) {
+                                        return self.resolve_item_path(db, item.clone(), trait_path, ItemNodeContext::ImplHeader, cursor);
+                                    }
+                                }
+                            }
+                            
+                            // Check if cursor is in the impl target type
+                            if let Some(impl_target) = impl_trait.ty() {
+                                if impl_target.syntax().text_range().contains(cursor) {
+                                    if let parser::ast::TypeKind::Path(path_type) = impl_target.kind() {
+                                        if let Some(path) = path_type.path() {
+                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::ImplHeader, cursor);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        parser::ast::ItemKind::Trait(trait_item) => {
+                        // Check if cursor is in generic parameters
+                        if let Some(generics) = trait_item.generic_params() {
+                            if generics.syntax().text_range().contains(cursor) {
+                                // Find which generic parameter contains the cursor
+                                for (idx, param) in generics.into_iter().enumerate() {
+                                    if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                        if let Some(name_tok) = type_param.name() {
+                                            if name_tok.text_range().contains(cursor) {
+                                                return LazyHirResult::ItemGenericParam(self.find_enclosing_item_for_ast(db, &item).unwrap_or(self.top_mod.into()), idx as u16);
+                                            }
+                                        }
+                                    }
+                                    if param.syntax().text_range().contains(cursor) {
+                                        // Check if this is a type parameter with bounds
+                                        if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                            if let Some(bounds) = type_param.bounds() {
+                                                for bound in bounds {
+                                                    if bound.syntax().text_range().contains(cursor) {
+                                                        // This is a type bound - we need to resolve it
+                                                        if let Some(path) = extract_path_from_type_bound(&bound) {
+                                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::TypeBound, cursor);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // Check super traits: trait Foo: Bar + Baz {}
+                        if let Some(supers) = trait_item.super_trait_list() {
+                            if supers.syntax().text_range().contains(cursor) {
+                                for trait_ref in supers {
+                                    if let Some(path) = trait_ref.path() {
+                                        if path.syntax().text_range().contains(cursor) {
+                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::SuperTrait, cursor);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Check if cursor is in where clause bounds
+                        if let Some(where_clause) = trait_item.where_clause() {
+                            if where_clause.syntax().text_range().contains(cursor) {
+                                for predicate in where_clause {
+                                    if predicate.syntax().text_range().contains(cursor) {
+                                        if let Some(bounds) = predicate.bounds() {
+                                            for bound in bounds {
+                                                if bound.syntax().text_range().contains(cursor) {
+                                                    if let Some(path) = extract_path_from_type_bound(&bound) {
+                                                        return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::WhereClause, cursor);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        
+        LazyHirResult::None
+    }
+    
+    /// Resolve a path found in an item context to HIR
+    fn resolve_item_path(
+        &self,
+        db: &'db dyn SpannedHirDb,
+        item_ast: parser::ast::Item,
+        path_ast: parser::ast::Path,
+        context: ItemNodeContext,
+        cursor: Cursor,
+    ) -> LazyHirResult<'db> {
+        use parser::ast::prelude::AstNode;
+
+        // 1) Find enclosing HIR item for the given AST item by span containment
+        let item_kind = match self.find_enclosing_item_for_ast(db, &item_ast) {
+            Some(it) => it,
+            None => return LazyHirResult::None,
+        };
+
+        // 2) Within that item, collect HIR paths and their spans
+        let mut vctxt = VisitorCtxt::with_item(db, item_kind);
+        let mut collector = PathSpanCollector::default();
+        collector.visit_item(&mut vctxt, item_kind);
+
+        // Derive segment index from AST path and cursor
+        let seg_index = {
+            let mut idx = None;
+            for (i, seg) in path_ast.segments().enumerate() {
+                if seg.syntax().text_range().contains(cursor) {
+                    idx = Some(i);
+                    break;
+                }
+            }
+            idx
+        };
+
+        // 3) Match the AST path range to a collected HIR path's span
+        let ast_range = path_ast.syntax().text_range();
+        for (path_id, _scope, lazy_span) in collector.paths {
+            if let Some(span) = lazy_span.resolve(db) {
+                if span.range == ast_range {
+                    return LazyHirResult::ItemPath(item_kind, path_id, context, seg_index);
+                }
+                // Fallback: allow containment in case of minor mismatch
+                if span.range.contains(ast_range.start()) && span.range.contains(ast_range.end()) {
+                    return LazyHirResult::ItemPath(item_kind, path_id, context, seg_index);
+                }
+            }
+        }
+
+        LazyHirResult::None
+    }
+}
+
+/// Extract a path from a type bound AST node
+fn extract_path_from_type_bound(bound: &parser::ast::TypeBound) -> Option<parser::ast::Path> {
+    // Type bounds can be trait bounds or kind bounds
+    // We're interested in trait bounds which contain paths
+    bound.trait_bound()?.path()
+}
+
+/// Lightweight path span collector for a single item
+#[derive(Default)]
+struct PathSpanCollector<'db> {
+    paths: Vec<(PathId<'db>, crate::hir_def::scope_graph::ScopeId<'db>, LazyPathSpan<'db>)>,
+}
+
+impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
+    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>, path: PathId<'db>) {
+        let Some(span) = ctxt.span() else { return; };
+        let scope = ctxt.scope();
+        self.paths.push((path, scope, span));
+    }
+}
+
+impl<'db> ModuleLazyHir<'db> {
+    /// Find the HIR ItemKind that encloses a given AST item by comparing spans
+    fn find_enclosing_item_for_ast(
+        &self,
+        db: &'db dyn SpannedHirDb,
+        item_ast: &parser::ast::Item,
+    ) -> Option<ItemKind<'db>> {
+        use parser::ast::prelude::AstNode;
+        let ast_range = item_ast.syntax().text_range();
+        let items = self.top_mod.scope_graph(db).items_dfs(db);
+
+        let mut best: Option<(ItemKind<'db>, parser::TextRange)> = None;
+        for item in items {
+            if let Some(span) = crate::span::DynLazySpan::from(item.span()).resolve(db) {
+                if span.range.contains(ast_range.start()) && span.range.contains(ast_range.end()) {
+                    let len = span.range.end() - span.range.start();
+                    if best.as_ref().map(|(_, r)| (r.end() - r.start()) > len).unwrap_or(true) {
+                        best = Some((item, span.range));
+                    }
+                }
+            }
+        }
+        best.map(|(it, _)| it)
     }
 }
 
