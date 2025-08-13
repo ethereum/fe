@@ -4,13 +4,13 @@
 //! to concrete types when possible. This happens before type unification to ensure
 //! that types are in their most resolved form.
 
-use common::indexmap::IndexSet;
+use common::indexmap::{IndexMap, IndexSet};
 use hir::hir_def::{scope_graph::ScopeId, ImplTrait};
 
 use super::{
     canonical::Canonical,
     fold::{TyFoldable, TyFolder},
-    trait_def::impls_for_ty_with_constraints,
+    trait_def::{impls_for_ty_with_constraints, TraitInstId},
     trait_resolution::{constraint::collect_constraints, PredicateListId},
     ty_def::{AssocTy, TyData, TyId, TyParam},
     ty_lower::lower_hir_ty,
@@ -126,7 +126,7 @@ impl<'db> TypeNormalizer<'db> {
 
         // Try to resolve using the full resolution logic
         let canonical_ty = Canonical::new(self.db, ty);
-        let mut candidates = IndexSet::new();
+        let mut candidates: IndexMap<TyId<'db>, TraitInstId<'db>> = IndexMap::new();
 
         // Use the same resolution logic as path resolution
         resolve_assoc_ty(
@@ -158,7 +158,11 @@ impl<'db> TypeNormalizer<'db> {
                 {
                     if let Some(&ty) = implementor_instance.types(self.db).get(&assoc.name) {
                         let resolved_ty = ty.fold_with(&mut table);
-                        candidates.insert((implementor_instance.trait_(self.db), resolved_ty));
+                        // Normalize to collapse equivalent candidates and dedup by normalized type
+                        let norm = normalize_ty(self.db, resolved_ty, self.scope, self.assumptions);
+                        candidates
+                            .entry(norm)
+                            .or_insert(implementor_instance.trait_(self.db));
                     }
                 }
             }
@@ -166,7 +170,7 @@ impl<'db> TypeNormalizer<'db> {
 
         // If we have exactly one candidate, use it
         if candidates.len() == 1 {
-            candidates.first().map(|(_, ty)| *ty)
+            candidates.first().map(|(&ty, _)| ty)
         } else {
             None
         }

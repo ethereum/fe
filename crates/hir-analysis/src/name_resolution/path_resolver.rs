@@ -1,4 +1,4 @@
-use common::indexmap::{IndexMap, IndexSet};
+use common::indexmap::IndexMap;
 use either::Either;
 use hir::{
     hir_def::{
@@ -28,6 +28,7 @@ use crate::{
         canonical::{Canonical, Canonicalized},
         fold::TyFoldable,
         func_def::{lower_func, FuncDef, HirFuncDefKind},
+        normalize::normalize_ty,
         trait_def::{impls_for_ty_with_constraints, TraitInstId},
         trait_lower::{
             lower_trait, lower_trait_ref, lower_trait_ref_impl, TraitArgError, TraitRefLowerError,
@@ -669,7 +670,10 @@ pub fn find_associated_type<'db>(
         };
     }
 
-    let mut candidates: IndexSet<(TraitInstId<'db>, TyId<'db>)> = IndexSet::new();
+    // Collect unique candidates keyed by their normalized associated type.
+    // This avoids scanning and dedups different trait bounds that resolve to
+    // the same concrete type.
+    let mut candidates: IndexMap<TyId<'db>, TraitInstId<'db>> = IndexMap::new();
     let ingot = scope.ingot(db);
 
     if let TyData::TyParam(param) = ty.value.data(db) {
@@ -711,10 +715,10 @@ pub fn find_associated_type<'db>(
                 table.instantiate_with_fresh_vars(Binder::bind(trait_inst.self_ty(db)));
 
             if table.unify(lhs_ty, pred_self_ty).is_ok() {
-                // trait bound has an explicit associated type binding, eg `T: Iterator<Item=i32>`,
-                // or the trait declares an associated type with this name.
                 if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
-                    candidates.insert((trait_inst, assoc_ty.fold_with(&mut table)));
+                    let folded = assoc_ty.fold_with(&mut table);
+                    let norm = normalize_ty(db, folded, scope, assumptions);
+                    candidates.entry(norm).or_insert(trait_inst);
                 }
             }
         }
@@ -728,7 +732,9 @@ pub fn find_associated_type<'db>(
 
         if table.unify(lhs_ty, impl_.self_ty(db)).is_ok() {
             if let Some(ty) = impl_.assoc_ty(db, name) {
-                candidates.insert((impl_.trait_(db), ty.fold_with(&mut table)));
+                let folded = ty.fold_with(&mut table);
+                let norm = normalize_ty(db, folded, scope, assumptions);
+                candidates.entry(norm).or_insert(impl_.trait_(db));
             }
         }
     }
@@ -739,7 +745,10 @@ pub fn find_associated_type<'db>(
         resolve_assoc_ty(db, scope, ty, name, assumptions, &mut candidates, assoc_ty);
     }
 
-    candidates.into_iter().collect()
+    candidates
+        .into_iter()
+        .map(|(ty, inst)| (inst, ty))
+        .collect()
 }
 
 pub fn resolve_assoc_ty<'db>(
@@ -748,7 +757,7 @@ pub fn resolve_assoc_ty<'db>(
     ty: Canonical<TyId<'db>>,
     name: IdentId<'db>,
     assumptions: PredicateListId<'db>,
-    candidates: &mut IndexSet<(TraitInstId<'db>, TyId<'db>)>,
+    candidates: &mut IndexMap<TyId<'db>, TraitInstId<'db>>,
     assoc_ty: &AssocTy<'db>,
 ) {
     // Create a unification table to handle substitutions from the outer context
@@ -765,7 +774,8 @@ pub fn resolve_assoc_ty<'db>(
             if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
                 let snapshot = table.snapshot();
                 let folded = assoc_ty.fold_with(&mut table);
-                candidates.insert((trait_inst, folded));
+                let norm = normalize_ty(db, folded, scope, assumptions);
+                candidates.entry(norm).or_insert(trait_inst);
                 table.rollback_to(snapshot);
             }
         }
@@ -784,7 +794,9 @@ pub fn resolve_assoc_ty<'db>(
 
             if let Ok(inst) = lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions) {
                 if let Some(assoc_ty) = inst.assoc_ty(db, name) {
-                    candidates.insert((inst, assoc_ty.fold_with(&mut table)));
+                    let folded = assoc_ty.fold_with(&mut table);
+                    let norm = normalize_ty(db, folded, scope, assumptions);
+                    candidates.entry(norm).or_insert(inst);
                 }
             }
         }

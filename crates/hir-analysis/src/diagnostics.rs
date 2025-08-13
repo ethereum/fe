@@ -307,13 +307,30 @@ impl DiagnosticVoucher for PathResDiag<'_> {
                     span: span.resolve(db),
                 }];
 
-                // Add a note for each candidate trait
-                for (trait_inst, _ty) in candidates {
-                    let trait_name = trait_inst.def(db).trait_(db).name(db).unwrap().data(db);
+                for (trait_inst, ty) in candidates {
+                    let trait_def = trait_inst.def(db).trait_(db);
+                    let trait_name = trait_def.name(db).unwrap().data(db);
+                    let span = trait_def.span().name().resolve(db);
+
+                    let msg = match ty.data(db) {
+                        TyData::AssocTy(_) | TyData::Invalid(_) | TyData::Never => {
+                            format!("candidate: `{trait_name}`")
+                        }
+                        _ => {
+                            // Render as: candidate: <Self as Trait>::Name = Ty
+                            let self_ty = trait_inst.self_ty(db).pretty_print(db);
+                            let ty_str = ty.pretty_print(db);
+                            format!(
+                                "candidate: <{} as {}>::{} = {}",
+                                self_ty, trait_name, name, ty_str
+                            )
+                        }
+                    };
+
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: format!("candidate: `{trait_name}`"),
-                        span: trait_inst.def(db).trait_(db).span().name().resolve(db),
+                        message: msg,
+                        span,
                     });
                 }
 
