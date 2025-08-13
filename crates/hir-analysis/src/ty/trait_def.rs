@@ -539,12 +539,6 @@ impl<'db> TraitDef<'db> {
     }
 }
 
-#[allow(dead_code)] // xxx
-pub struct TraitTypeDecl<'db> {
-    name: IdentId<'db>,
-    default_ty: Option<Binder<TyId<'db>>>,
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, salsa::Update)]
 pub struct TraitMethod<'db>(pub FuncDef<'db>);
 

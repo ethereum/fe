@@ -3,17 +3,17 @@ source: crates/uitest/tests/ty.rs
 expression: diags
 input_file: fixtures/ty/def/kind_mismatch.fe
 ---
-error[2-0009]: too many generic args; expected 2, given 3
+error[2-0011]: incorrect number of generic arguments for `Foo`; expected 2, given 3
   ┌─ kind_mismatch.fe:9:10
   │
 9 │     baz: Foo<i32, u32, u256>,
-  │          ^^^ `Foo` expects 2 arguments, but 3 were given
+  │          ^^^ expected 2 arguments, but 3 were given
 
-error[2-0009]: too many generic args; expected 2, given 3
+error[2-0011]: incorrect number of generic arguments for `Foo`; expected 2, given 3
    ┌─ kind_mismatch.fe:10:19
    │
 10 │     boz: Foo<i32, Foo<i32, u32, u256>>,
-   │                   ^^^ `Foo` expects 2 arguments, but 3 were given
+   │                   ^^^ expected 2 arguments, but 3 were given
 
 error[3-0001]: invalid type argument kind
   ┌─ kind_mismatch.fe:7:10

@@ -7,7 +7,7 @@ use super::{
     ty_def::{Kind, TyId},
 };
 use crate::{
-    diagnostics::DiagnosticVoucher, name_resolution::diagnostics::NameResDiag, HirAnalysisDb,
+    diagnostics::DiagnosticVoucher, name_resolution::diagnostics::PathResDiag, HirAnalysisDb,
 };
 use either::Either;
 use hir::{
@@ -29,7 +29,7 @@ use thin_vec::ThinVec;
 pub enum FuncBodyDiag<'db> {
     Ty(TyDiagCollection<'db>),
     Body(BodyDiag<'db>),
-    NameRes(NameResDiag<'db>),
+    NameRes(PathResDiag<'db>),
 }
 
 impl<'db> FuncBodyDiag<'db> {
@@ -45,7 +45,7 @@ impl<'db> FuncBodyDiag<'db> {
 #[derive(Debug, PartialEq, Eq, Hash, Clone, derive_more::From, Update)]
 pub enum TyDiagCollection<'db> {
     Ty(TyLowerDiag<'db>),
-    PathRes(NameResDiag<'db>),
+    PathRes(PathResDiag<'db>),
     Satisfiability(TraitConstraintDiag<'db>),
     TraitLower(TraitLowerDiag<'db>),
     Impl(ImplDiag<'db>),

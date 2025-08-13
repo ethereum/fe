@@ -12,7 +12,7 @@ use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
 
 use super::{
-    diagnostics::NameResDiag,
+    diagnostics::PathResDiag,
     is_scope_visible_from,
     method_selection::{select_method_candidate, MethodCandidate, MethodSelectionError},
     name_resolver::{NameRes, NameResBucket, NameResolutionError},
@@ -29,12 +29,13 @@ use crate::{
         fold::TyFoldable,
         func_def::{lower_func, FuncDef, HirFuncDefKind},
         trait_def::{impls_for_ty_with_constraints, TraitInstId},
-        trait_lower::{lower_trait, lower_trait_ref},
+        trait_lower::{
+            lower_trait, lower_trait_ref, lower_trait_ref_impl, TraitArgError, TraitRefLowerError,
+        },
         trait_resolution::PredicateListId,
-        ty_def::{AssocTy, InvalidCause, TyData, TyId},
+        ty_def::{AssocTy, InvalidCause, Kind, TyData, TyId},
         ty_lower::{
-            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_trait_generic_args,
-            lower_type_alias, TyAlias,
+            collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias, TyAlias,
         },
         unify::UnificationTable,
     },
@@ -76,10 +77,17 @@ pub enum PathResErrorKind<'db> {
     /// The definition conflicts with other definitions.
     Conflict(ThinVec<DynLazySpan<'db>>),
 
-    TooManyGenericArgs {
-        ty: TyId<'db>,
-        expected: u16,
-        given: u16,
+    ArgNumMismatch {
+        expected: usize,
+        given: usize,
+    },
+    ArgKindMisMatch {
+        expected: Kind,
+        given: TyId<'db>,
+    },
+    ArgTypeMismatch {
+        expected: Option<TyId<'db>>,
+        given: Option<TyId<'db>>,
     },
 
     MethodSelection(MethodSelectionError<'db>),
@@ -125,12 +133,14 @@ impl<'db> PathResError<'db> {
             }
             PathResErrorKind::InvalidPathSegment(_) => "Invalid path segment".to_string(),
             PathResErrorKind::Conflict(..) => "Conflicting definitions".to_string(),
-            PathResErrorKind::TooManyGenericArgs {
-                ty: _,
-                expected,
-                given,
-            } => {
+            PathResErrorKind::ArgNumMismatch { expected, given } => {
                 format!("Incorrect number of generic args; expected {expected}, given {given}.")
+            }
+            PathResErrorKind::ArgKindMisMatch { .. } => {
+                "Generic argument kind mismatch".to_string()
+            }
+            PathResErrorKind::ArgTypeMismatch { .. } => {
+                "Generic const argument type mismatch".to_string()
             }
             PathResErrorKind::MethodSelection(..) => todo!(),
         }
@@ -142,7 +152,7 @@ impl<'db> PathResError<'db> {
         path: PathId<'db>,
         span: DynLazySpan<'db>,
         expected: ExpectedPathKind,
-    ) -> Option<NameResDiag<'db>> {
+    ) -> Option<PathResDiag<'db>> {
         let failed_at = self.failed_at;
         let ident = failed_at.ident(db).to_opt()?; // xxx PathKind::QualifiedType
 
@@ -151,50 +161,60 @@ impl<'db> PathResError<'db> {
             PathResErrorKind::NotFound { parent, bucket } => {
                 if let Some(nr) = bucket.iter_ok().next() {
                     if path != self.failed_at {
-                        NameResDiag::InvalidPathSegment(span, ident, nr.kind.name_span(db))
+                        PathResDiag::InvalidPathSegment(span, ident, nr.kind.name_span(db))
                     } else {
                         match expected {
                             ExpectedPathKind::Record | ExpectedPathKind::Type => {
-                                NameResDiag::ExpectedType(span, ident, nr.kind_name())
+                                PathResDiag::ExpectedType(span, ident, nr.kind_name())
                             }
                             ExpectedPathKind::Trait => {
-                                NameResDiag::ExpectedTrait(span, ident, nr.kind_name())
+                                PathResDiag::ExpectedTrait(span, ident, nr.kind_name())
                             }
                             ExpectedPathKind::Value => {
-                                NameResDiag::ExpectedValue(span, ident, nr.kind_name())
+                                PathResDiag::ExpectedValue(span, ident, nr.kind_name())
                             }
                             ExpectedPathKind::Function => func_not_found_err(span, ident, parent),
-                            _ => NameResDiag::NotFound(span, ident),
+                            _ => PathResDiag::NotFound(span, ident),
                         }
                     }
                 } else if expected == ExpectedPathKind::Function {
                     func_not_found_err(span, ident, parent)
                 } else {
-                    NameResDiag::NotFound(span, ident)
+                    PathResDiag::NotFound(span, ident)
                 }
             }
 
-            PathResErrorKind::Ambiguous(cands) => NameResDiag::ambiguous(db, span, ident, cands),
+            PathResErrorKind::Ambiguous(cands) => PathResDiag::ambiguous(db, span, ident, cands),
 
-            PathResErrorKind::TooManyGenericArgs {
-                ty,
+            PathResErrorKind::ArgNumMismatch { expected, given } => PathResDiag::ArgNumMismatch {
+                span,
+                ident,
                 expected,
                 given,
-            } => NameResDiag::TooManyGenericArgs {
+            },
+
+            PathResErrorKind::ArgKindMisMatch { expected, given } => PathResDiag::ArgKindMismatch {
                 span,
-                ty,
+                ident,
+                expected,
+                given,
+            },
+
+            PathResErrorKind::ArgTypeMismatch { expected, given } => PathResDiag::ArgTypeMismatch {
+                span,
+                ident,
                 expected,
                 given,
             },
 
             PathResErrorKind::InvalidPathSegment(res) => {
-                NameResDiag::InvalidPathSegment(span, ident, res.name_span(db))
+                PathResDiag::InvalidPathSegment(span, ident, res.name_span(db))
             }
 
-            PathResErrorKind::Conflict(spans) => NameResDiag::Conflict(ident, spans),
+            PathResErrorKind::Conflict(spans) => PathResDiag::Conflict(ident, spans),
 
             PathResErrorKind::AmbiguousAssociatedType { name, candidates } => {
-                NameResDiag::AmbiguousAssociatedType {
+                PathResDiag::AmbiguousAssociatedType {
                     span,
                     name,
                     candidates,
@@ -211,19 +231,19 @@ fn func_not_found_err<'db>(
     span: DynLazySpan<'db>,
     ident: IdentId<'db>,
     parent: Option<PathRes<'db>>,
-) -> NameResDiag<'db> {
+) -> PathResDiag<'db> {
     match parent {
-        Some(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) => NameResDiag::MethodNotFound {
+        Some(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) => PathResDiag::MethodNotFound {
             primary: span,
             method_name: ident,
             receiver: Either::Left(ty),
         },
-        Some(PathRes::Trait(t)) => NameResDiag::MethodNotFound {
+        Some(PathRes::Trait(t)) => PathResDiag::MethodNotFound {
             primary: span,
             method_name: ident,
             receiver: Either::Right(t),
         },
-        _ => NameResDiag::NotFound(span, ident),
+        _ => PathResDiag::NotFound(span, ident),
     }
 }
 
@@ -497,17 +517,14 @@ where
         let trait_inst = match lower_trait_ref(db, ty, trait_, scope, assumptions) {
             Ok(inst) => inst,
             Err(err) => {
-                use crate::ty::trait_lower::TraitRefLowerError as E;
                 let path = trait_.path(db).to_opt().unwrap_or(path);
                 let err = match err {
-                    E::PathResError(e) => e,
-                    E::InvalidDomain(res) => {
+                    TraitRefLowerError::PathResError(e) => e,
+                    TraitRefLowerError::InvalidDomain(res) => {
+                        // TODO: better error ("expected trait ref")
                         PathResError::new(PathResErrorKind::InvalidPathSegment(res), path)
                     }
-                    E::ArgNumMismatch { .. }
-                    | E::ArgKindMisMatch { .. }
-                    | E::ArgTypeMismatch { .. }
-                    | E::Other => PathResError::parse_err(path),
+                    TraitRefLowerError::Ignored => PathResError::parse_err(path),
                 };
                 return Err(err);
             }
@@ -857,15 +874,27 @@ pub fn resolve_name_res<'db>(
                         let ty = TyId::foldl(db, ty, args);
                         PathRes::Ty(ty)
                     } else {
-                        let trait_def = lower_trait(db, t);
-                        let trait_inst = lower_trait_generic_args(
-                            db,
-                            trait_def,
-                            path.generic_args(db),
-                            scope,
-                            assumptions,
-                        );
-                        PathRes::Trait(trait_inst)
+                        match lower_trait_ref_impl(db, path, scope, assumptions, t) {
+                            Ok(t) => PathRes::Trait(t),
+                            Err(err) => {
+                                let kind = match err {
+                                    TraitArgError::ArgNumMismatch { expected, given } => {
+                                        PathResErrorKind::ArgNumMismatch { expected, given }
+                                    }
+                                    TraitArgError::ArgKindMisMatch { expected, given } => {
+                                        PathResErrorKind::ArgKindMisMatch { expected, given }
+                                    }
+                                    TraitArgError::ArgTypeMismatch { expected, given } => {
+                                        PathResErrorKind::ArgTypeMismatch { expected, given }
+                                    }
+                                    TraitArgError::Ignored => PathResErrorKind::ParseError,
+                                };
+                                return Err(PathResError {
+                                    kind,
+                                    failed_at: path,
+                                });
+                            }
+                        }
                     }
                 }
 
@@ -948,10 +977,9 @@ fn ty_from_adtref<'db>(
     if let TyData::Invalid(InvalidCause::TooManyGenericArgs { expected, given }) = applied.data(db)
     {
         Err(PathResError::new(
-            PathResErrorKind::TooManyGenericArgs {
-                ty,
-                expected: *expected as u16,
-                given: *given as u16,
+            PathResErrorKind::ArgNumMismatch {
+                expected: *expected,
+                given: *given,
             },
             path,
         ))

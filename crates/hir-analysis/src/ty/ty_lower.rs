@@ -1,4 +1,3 @@
-use common::indexmap::IndexMap;
 use hir::hir_def::{
     scope_graph::ScopeId, GenericArg, GenericArgListId, GenericParam, GenericParamOwner, IdentId,
     ItemKind, KindBound as HirKindBound, Partial, PathId, TypeAlias as HirTypeAlias, TypeBound,
@@ -9,7 +8,6 @@ use smallvec::smallvec;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
-    trait_def::{TraitDef, TraitInstId},
     trait_resolution::{constraint::collect_constraints, PredicateListId},
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
@@ -28,7 +26,7 @@ pub fn lower_hir_ty<'db>(
 ) -> TyId<'db> {
     match ty.data(db) {
         HirTyKind::Ptr(pointee) => {
-            let pointee = lower_opt_hir_ty(db, scope, *pointee, assumptions);
+            let pointee = lower_opt_hir_ty(db, *pointee, scope, assumptions);
             let ptr = TyId::ptr(db);
             TyId::app(db, ptr, pointee)
         }
@@ -40,7 +38,7 @@ pub fn lower_hir_ty<'db>(
             let len = elems.len();
             let tuple = TyId::tuple(db, len);
             elems.iter().fold(tuple, |acc, &elem| {
-                let elem_ty = lower_opt_hir_ty(db, scope, elem, assumptions);
+                let elem_ty = lower_opt_hir_ty(db, elem, scope, assumptions);
                 if !elem_ty.has_star_kind(db) {
                     return TyId::invalid(db, InvalidCause::NotFullyApplied);
                 }
@@ -50,7 +48,7 @@ pub fn lower_hir_ty<'db>(
         }
 
         HirTyKind::Array(hir_elem_ty, len) => {
-            let elem_ty = lower_opt_hir_ty(db, scope, *hir_elem_ty, assumptions);
+            let elem_ty = lower_opt_hir_ty(db, *hir_elem_ty, scope, assumptions);
             let len_ty = ConstTyId::from_opt_body(db, *len);
             let len_ty = TyId::const_ty(db, len_ty);
             let array = TyId::array(db, elem_ty);
@@ -63,8 +61,8 @@ pub fn lower_hir_ty<'db>(
 
 pub fn lower_opt_hir_ty<'db>(
     db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
     ty: Partial<HirTyId<'db>>,
+    scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
     ty.to_opt()
@@ -227,12 +225,7 @@ pub(crate) fn lower_generic_arg_list<'db>(
     args.data(db)
         .iter()
         .map(|arg| match arg {
-            GenericArg::Type(ty_arg) => ty_arg
-                .ty
-                .to_opt()
-                .map(|ty| lower_hir_ty(db, ty, scope, assumptions))
-                .unwrap_or_else(|| TyId::invalid(db, InvalidCause::ParseError)),
-
+            GenericArg::Type(ty_arg) => lower_opt_hir_ty(db, ty_arg.ty, scope, assumptions),
             GenericArg::Const(const_arg) => {
                 let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
                 TyId::const_ty(db, const_ty)
@@ -244,48 +237,6 @@ pub(crate) fn lower_generic_arg_list<'db>(
             }
         })
         .collect()
-}
-
-/// Lowers generic arguments for a trait, handling both regular type/const parameters
-/// and associated type constraints (e.g., `Iterator<Item=i32>`), and returns a TraitInstId
-pub(crate) fn lower_trait_generic_args<'db>(
-    db: &'db dyn HirAnalysisDb,
-    trait_def: TraitDef<'db>,
-    args: GenericArgListId<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> TraitInstId<'db> {
-    let mut type_args = Vec::new();
-    let mut assoc_type_bindings = IndexMap::new();
-
-    for arg in args.data(db) {
-        match arg {
-            GenericArg::Type(ty_arg) => {
-                let ty = ty_arg
-                    .ty
-                    .to_opt()
-                    .map(|ty| lower_hir_ty(db, ty, scope, assumptions))
-                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::ParseError));
-                type_args.push(ty);
-            }
-
-            GenericArg::Const(const_arg) => {
-                let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
-                type_args.push(TyId::const_ty(db, const_ty));
-            }
-
-            GenericArg::AssocType(assoc_type_arg) => {
-                if let (Some(name), Some(ty)) =
-                    (assoc_type_arg.name.to_opt(), assoc_type_arg.ty.to_opt())
-                {
-                    let lowered_ty = lower_hir_ty(db, ty, scope, assumptions);
-                    assoc_type_bindings.insert(name, lowered_ty);
-                }
-            }
-        }
-    }
-
-    TraitInstId::new(db, trait_def, &type_args, assoc_type_bindings)
 }
 
 #[salsa::interned]

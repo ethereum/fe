@@ -4,7 +4,7 @@
 //! [`CompleteDiagnostic`].
 
 use crate::{
-    name_resolution::diagnostics::NameResDiag,
+    name_resolution::diagnostics::{ImportDiag, PathResDiag},
     ty::{
         diagnostics::{
             BodyDiag, DefConflictError, FuncBodyDiag, ImplDiag, TraitConstraintDiag,
@@ -133,7 +133,7 @@ impl DiagnosticVoucher for TyDiagCollection<'_> {
     }
 }
 
-impl DiagnosticVoucher for NameResDiag<'_> {
+impl DiagnosticVoucher for PathResDiag<'_> {
     fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::NameResolution, self.local_code());
         let severity = Severity::Error;
@@ -399,25 +399,200 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 }
             }
 
-            Self::TooManyGenericArgs {
-                span,
-                ty,
-                expected,
-                given,
-            } => CompleteDiagnostic {
+            Self::ArgNumMismatch { span, ident, expected, given } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: format!("too many generic args; expected {expected}, given {given}"),
+                message: format!(
+                    "incorrect number of generic arguments for `{}`; expected {expected}, given {given}",
+                    ident.data(db)
+                ),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("expected {expected} arguments, but {given} were given"),
+                    span: span.resolve(db),
+                }],
+                notes: vec![],
+                error_code,
+            },
+
+            Self::ArgKindMismatch { span, ident, expected, given } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!("invalid type argument kind for `{}`", ident.data(db)),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!(
-                        "`{}` expects {expected} arguments, but {given} were given",
-                        ty.pretty_print(db)
+                        "expected `{expected}` kind, but `{}` has `{}` kind",
+                        given.pretty_print(db),
+                        given.kind(db)
                     ),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
                 error_code,
             },
+
+            Self::ArgTypeMismatch { span, ident, expected, given } => {
+                let (header, message) = match (expected, given) {
+                    (Some(exp), Some(giv)) => (
+                        format!("const type mismatch for `{}`", ident.data(db)),
+                        format!("expected `{}`, given `{}`",
+                            exp.pretty_print(db),
+                            giv.pretty_print(db))
+                    ),
+
+                    (Some(exp), None) => (format!(
+                        "const generic argument expected for `{}`",
+                        ident.data(db),
+                    ), format!("expected const argument of type `{}`", exp.pretty_print(db))),
+                    (None, Some(giv)) => (
+                        "unexpected const generic argument".to_string(),
+                        format!("expected type generic argument, given const `{}`", giv.pretty_print(db))),
+                    (None, None) => ("invalid const argument".to_string(), "unexpected const argument".to_string()),
+                };
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: header,
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message,
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+        }
+    }
+}
+
+impl DiagnosticVoucher for ImportDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let error_code = GlobalErrorCode::new(
+            DiagnosticPass::NameResolution,
+            match self {
+                ImportDiag::Conflict(..) => 1,
+                ImportDiag::NotFound(..) => 2,
+                ImportDiag::Invisible(..) => 3,
+                ImportDiag::Ambiguous(..) => 4,
+                ImportDiag::InvalidPathSegment(..) => 5,
+            },
+        );
+        let severity = Severity::Error;
+        match self {
+            ImportDiag::Conflict(ident, conflicts) => {
+                let ident = ident.data(db);
+                let mut spans: Vec<_> = conflicts
+                    .iter()
+                    .filter_map(|span| span.resolve(db))
+                    .collect();
+                spans.sort_unstable();
+                let mut spans = spans.into_iter();
+                let mut diags = Vec::with_capacity(conflicts.len());
+                diags.push(SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{ident}` is defined here"),
+                    spans.next(),
+                ));
+                for sub_span in spans {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format! {"`{ident}` is redefined here"},
+                        Some(sub_span),
+                    ));
+                }
+
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{ident}` conflicts with other definitions"),
+                    sub_diagnostics: diags,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+            ImportDiag::NotFound(prim_span, ident) => {
+                let ident = ident.data(db);
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{ident}` is not found"),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{ident}` is not found"),
+                        span: prim_span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+            ImportDiag::Invisible(prim_span, ident, span) => {
+                let ident = ident.data(db);
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{ident}` is not visible"),
+                    span: prim_span.resolve(db),
+                }];
+                if let Some(span) = span {
+                    sub_diagnostics.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("`{ident}` is defined here"),
+                        span: span.resolve(db),
+                    });
+                }
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{ident}` is not visible"),
+                    sub_diagnostics,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+            ImportDiag::Ambiguous(prim_span, ident, candidates) => {
+                let ident = ident.data(db);
+                let mut diags = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{ident}` is ambiguous"),
+                    span: prim_span.resolve(db),
+                }];
+                let mut cand_spans: Vec<_> = candidates
+                    .iter()
+                    .filter_map(|span| span.resolve(db))
+                    .collect();
+                cand_spans.sort_unstable();
+                diags.extend(cand_spans.into_iter().enumerate().map(|(i, span)| {
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("candidate {}", i + 1),
+                        Some(span),
+                    )
+                }));
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{ident}` is ambiguous"),
+                    sub_diagnostics: diags,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+            ImportDiag::InvalidPathSegment(prim_span, name, res_span) => {
+                let name = name.data(db);
+                let mut labels = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{name}` can't be used as a middle segment of a path"),
+                    span: prim_span.resolve(db),
+                }];
+                if let Some(span) = res_span {
+                    labels.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("`{name}` is defined here"),
+                        span: span.resolve(db),
+                    });
+                }
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{name}` can't be used as a middle segment of a path"),
+                    sub_diagnostics: labels,
+                    notes: vec![],
+                    error_code,
+                }
+            }
         }
     }
 }

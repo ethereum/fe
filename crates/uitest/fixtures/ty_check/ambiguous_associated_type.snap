@@ -1,10 +1,9 @@
 ---
 source: crates/uitest/tests/ty_check.rs
-assertion_line: 27
 expression: diags
 input_file: fixtures/ty_check/ambiguous_associated_type.fe
 ---
-error[2-0011]: ambiguous associated type `Output`
+error[2-0009]: ambiguous associated type `Output`
    ┌─ ambiguous_associated_type.fe:22:40
    │
  3 │ trait TraitA {
@@ -18,7 +17,7 @@ error[2-0011]: ambiguous associated type `Output`
    │
    = specify the trait explicitly: `<Type as Trait>::Output`
 
-error[2-0011]: ambiguous associated type `Nested`
+error[2-0009]: ambiguous associated type `Nested`
    ┌─ ambiguous_associated_type.fe:44:54
    │
 36 │ trait Level1 {
@@ -32,7 +31,7 @@ error[2-0011]: ambiguous associated type `Nested`
    │
    = specify the trait explicitly: `<Type as Trait>::Nested`
 
-error[2-0011]: ambiguous associated type `Output`
+error[2-0009]: ambiguous associated type `Output`
    ┌─ ambiguous_associated_type.fe:49:15
    │
  3 │ trait TraitA {

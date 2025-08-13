@@ -3,7 +3,7 @@
 use common::{indexmap::IndexMap, ingot::Ingot};
 use hir::hir_def::{
     params::GenericArg, scope_graph::ScopeId, AssocTypeGenericArg, HirIngot, IdentId, ImplTrait,
-    Partial, Trait, TraitRefId,
+    Partial, PathId, Trait, TraitRefId,
 };
 use rustc_hash::FxHashMap;
 use salsa::Update;
@@ -14,14 +14,15 @@ use super::{
     func_def::FuncDef,
     trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId},
     trait_resolution::PredicateListId,
-    ty_def::{InvalidCause, Kind, TyId},
+    ty_def::{InvalidCause, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty},
 };
 use crate::{
     name_resolution::{resolve_path, PathRes, PathResError},
     ty::{
-        const_ty::ConstTyData, func_def::lower_func,
-        trait_resolution::constraint::collect_constraints, ty_def::TyData,
+        func_def::lower_func,
+        trait_resolution::constraint::collect_constraints,
+        ty_def::{Kind, TyData},
         ty_lower::lower_opt_hir_ty,
     },
     HirAnalysisDb,
@@ -123,150 +124,108 @@ pub(crate) fn lower_trait_ref<'db>(
     assumptions: PredicateListId<'db>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
     let Partial::Present(path) = trait_ref.path(db) else {
-        // Path is syntactically absent, should be caught by parser
-        return Err(TraitRefLowerError::Other);
+        return Err(TraitRefLowerError::Ignored);
     };
 
-    let trait_def = match resolve_path(db, path, scope, assumptions, false) {
-        Ok(PathRes::Trait(t)) => t.def(db),
-        Ok(res) => return Err(TraitRefLowerError::InvalidDomain(res)),
-        Err(e) => return Err(TraitRefLowerError::PathResError(e)),
-    };
-
-    let Some(args) = trait_ref.generic_args(db) else {
-        // No generic args provided, but we need to check if the trait expects any
-        let trait_params: &[TyId<'db>] = trait_def.params(db);
-        let expected = trait_params
-            .iter()
-            .skip(1)
-            .take_while(|param| match param.data(db) {
-                TyData::TyParam(p) if p.is_normal() => true,
-                TyData::ConstTy(_) => true,
-                _ => false,
-            })
-            .count();
-
-        if expected > 0 {
-            return Err(TraitRefLowerError::ArgNumMismatch { expected, given: 0 });
+    match resolve_path(db, path, scope, assumptions, false) {
+        Ok(PathRes::Trait(t)) => {
+            let mut args = t.args(db).clone();
+            args[0] = self_ty;
+            Ok(TraitInstId::new(
+                db,
+                t.def(db),
+                args,
+                t.assoc_type_bindings(db),
+            ))
         }
+        Ok(res) => Err(TraitRefLowerError::InvalidDomain(res)),
+        Err(e) => Err(TraitRefLowerError::PathResError(e)),
+    }
+}
 
-        return Ok(TraitInstId::new(
-            db,
-            trait_def,
-            vec![self_ty],
-            IndexMap::new(),
-        ));
-    };
-    let args = args.data(db);
+pub(crate) enum TraitArgError<'db> {
+    ArgNumMismatch {
+        expected: usize,
+        given: usize,
+    },
+    ArgKindMisMatch {
+        // TODO: add index, improve diag display
+        expected: Kind,
+        given: TyId<'db>,
+    },
+    ArgTypeMismatch {
+        expected: Option<TyId<'db>>,
+        given: Option<TyId<'db>>,
+    },
+    Ignored,
+}
 
-    // trait_params is [Self, ExplicitTypeParam1, ..., ExplicitConstParamN, ..., AssocTypeParam1, ...]
+pub(crate) fn lower_trait_ref_impl<'db>(
+    db: &'db (dyn HirAnalysisDb + 'static),
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    t: Trait<'db>,
+) -> Result<TraitInstId<'db>, TraitArgError<'db>> {
+    let trait_def = lower_trait(db, t);
     let trait_params: &[TyId<'db>] = trait_def.params(db);
+    let args = path.generic_args(db).data(db);
+
     let mut final_args: Vec<TyId<'db>> = Vec::with_capacity(trait_params.len());
-
-    let mut args_iter = args
-        .iter()
-        .filter(|arg| matches!(arg, GenericArg::Type(_) | GenericArg::Const(_)));
-
-    // 1. Add Self type
-    final_args.push(self_ty);
-
-    let mut expected = 0;
-    let mut given = 0;
-
-    // 2. Process explicit generic parameters (type and const)
-    for param in trait_params.iter().skip(1) {
-        match param.data(db) {
-            TyData::TyParam(p) if p.is_normal() => {}
-            TyData::ConstTy(_) => {}
-            _ => break,
-        };
-        expected += 1;
-
-        if let Some(user_arg) = args_iter.next() {
-            given += 1;
-            let lowered_user_arg = match user_arg {
-                GenericArg::Type(ty_arg) => lower_opt_hir_ty(db, scope, ty_arg.ty, assumptions),
-                GenericArg::Const(const_arg) => {
-                    let const_ty_id = ConstTyId::from_opt_body(db, const_arg.body);
-                    TyId::const_ty(db, const_ty_id)
-                }
-                _ => unreachable!(),
-            };
-            final_args.push(lowered_user_arg);
-        } else {
-            // Not enough explicit generic arguments provided.
-            return Err(TraitRefLowerError::ArgNumMismatch { expected, given });
+    final_args.push(trait_def.self_param(db));
+    final_args.extend(args.iter().filter_map(|arg| match arg {
+        GenericArg::Type(ty_arg) => Some(lower_opt_hir_ty(db, ty_arg.ty, scope, assumptions)),
+        GenericArg::Const(const_arg) => {
+            let const_ty_id = ConstTyId::from_opt_body(db, const_arg.body);
+            Some(TyId::const_ty(db, const_ty_id))
         }
+        _ => None,
+    }));
+
+    if final_args.len() != trait_params.len() {
+        return Err(TraitArgError::ArgNumMismatch {
+            expected: trait_params.len() - 1,
+            given: final_args.len() - 1,
+        });
     }
 
-    // Check if there were more explicit arguments provided by user than expected
-    if args_iter.next().is_some() {
-        let given = args
-            .iter()
-            .filter(|arg| matches!(arg, GenericArg::Type(_) | GenericArg::Const(_)))
-            .count();
-        return Err(TraitRefLowerError::ArgNumMismatch { expected, given });
-    }
-
-    // 3. Perform kind checking and const type evaluation for regular arguments (Self + explicit params)
-    // Skip Self (index 0)
-    for i in 1..final_args.len() {
-        let expected_param_ty = trait_params[i];
-        let actual_arg_ty = &mut final_args[i]; // Get a mutable reference to update
-
-        // Kind Check
-        if !expected_param_ty
-            .kind(db)
-            .does_match(actual_arg_ty.kind(db))
-        {
-            return Err(TraitRefLowerError::ArgKindMisMatch {
-                expected: expected_param_ty.kind(db).clone(),
-                given: *actual_arg_ty, // Use the value before potential modification
+    for (expected_ty, actual_ty) in trait_params.iter().zip(final_args.iter_mut()).skip(1) {
+        if !expected_ty.kind(db).does_match(actual_ty.kind(db)) {
+            return Err(TraitArgError::ArgKindMisMatch {
+                expected: expected_ty.kind(db).clone(),
+                given: *actual_ty,
             });
         }
 
-        // Const Type Evaluation/Check (if expected_param_ty is a const generic parameter)
-        let expected_const_value_type = match expected_param_ty.data(db) {
-            TyData::ConstTy(cty_id) => match cty_id.data(db) {
-                // This is the type *of* the const generic value, e.g., u32 for `const N: u32`
-                ConstTyData::TyParam(_, ty_of_const_val) => Some(*ty_of_const_val),
-                _ => None,
-            },
+        let expected_const_ty = match expected_ty.data(db) {
+            TyData::ConstTy(expected_ty) => expected_ty.ty(db).into(),
             _ => None,
         };
 
-        match actual_arg_ty.evaluate_const_ty(db, expected_const_value_type) {
-            Ok(evaluated_ty) => {
-                *actual_arg_ty = evaluated_ty; // Update in place
+        match actual_ty.evaluate_const_ty(db, expected_const_ty) {
+            Ok(evaluated_ty) => *actual_ty = evaluated_ty,
+            Err(InvalidCause::ConstTyMismatch { expected, given }) => {
+                return Err(TraitArgError::ArgTypeMismatch {
+                    expected: Some(expected),
+                    given: Some(given),
+                });
             }
-            Err(cause) => {
-                let err_kind = match cause {
-                    InvalidCause::ConstTyMismatch { expected, given } => {
-                        TraitRefLowerError::ArgTypeMismatch {
-                            expected: Some(expected),
-                            given: Some(given),
-                        }
-                    }
-                    InvalidCause::ConstTyExpected { expected } => {
-                        TraitRefLowerError::ArgTypeMismatch {
-                            expected: Some(expected),
-                            given: None,
-                        }
-                    }
-                    InvalidCause::NormalTypeExpected { given } => {
-                        TraitRefLowerError::ArgTypeMismatch {
-                            expected: None,
-                            given: Some(given),
-                        }
-                    }
-                    _ => TraitRefLowerError::Other,
-                };
-                return Err(err_kind);
+            Err(InvalidCause::ConstTyExpected { expected }) => {
+                return Err(TraitArgError::ArgTypeMismatch {
+                    expected: Some(expected),
+                    given: None,
+                });
             }
+            Err(InvalidCause::NormalTypeExpected { given }) => {
+                return Err(TraitArgError::ArgTypeMismatch {
+                    expected: None,
+                    given: Some(given),
+                })
+            }
+            _ => return Err(TraitArgError::Ignored),
         }
     }
 
-    // 4. Process associated type parameters
     let assoc_bindings: IndexMap<IdentId<'db>, TyId<'db>> = args
         .iter()
         .filter_map(|arg| match arg {
@@ -300,32 +259,10 @@ pub(crate) fn collect_implementor_methods<'db>(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub(crate) enum TraitRefLowerError<'db> {
-    /// The number of arguments doesn't match the number of parameters.
-    ArgNumMismatch {
-        expected: usize,
-        given: usize,
-    },
-
-    /// The kind of the argument doesn't match the kind of the parameter of the
-    /// trait.
-    ArgKindMisMatch {
-        expected: Kind,
-        given: TyId<'db>,
-    },
-
-    /// The argument type doesn't match the const parameter type.
-    ArgTypeMismatch {
-        expected: Option<TyId<'db>>,
-        given: Option<TyId<'db>>,
-    },
-
     PathResError(PathResError<'db>),
-
     InvalidDomain(PathRes<'db>),
-
-    /// Other errors, which is reported by another pass. So we don't need to
-    /// report this error kind.
-    Other,
+    /// Error is expected to be reported elsewhere.
+    Ignored,
 }
 
 /// Collect all implementors in an ingot.

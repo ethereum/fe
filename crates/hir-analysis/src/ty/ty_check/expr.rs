@@ -11,7 +11,7 @@ use super::{
 };
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag,
+        diagnostics::PathResDiag,
         is_scope_visible_from,
         method_selection::{select_method_candidate, MethodCandidate, MethodSelectionError},
         resolve_name_res, resolve_query, EarlyNameQueryId, ExpectedPathKind, NameDomain,
@@ -530,7 +530,7 @@ impl<'db> TyChecker<'db> {
                     let canonical_r_ty = Canonicalized::new(self.db, receiver_ty);
                     let method_ty = match candidate {
                         MethodCandidate::InherentMethod(func_def) => {
-                            // xxx move this stuff to path_resolver
+                            // TODO: move this to path resolver
                             let mut method_ty = TyId::func(self.db, func_def);
                             for &arg in receiver_ty.generic_args(self.db) {
                                 // If the method is defined in "specialized" impl block
@@ -698,7 +698,7 @@ impl<'db> TyChecker<'db> {
                     if let Some(scope) = record_like.record_field_scope(self.db, *label) {
                         if !is_scope_visible_from(self.db, scope, self.env.scope()) {
                             // Check the visibility of the field.
-                            let diag = NameResDiag::Invisible(
+                            let diag = PathResDiag::Invisible(
                                 expr.span(self.body()).into_field_expr().accessor().into(),
                                 *label,
                                 scope.name_span(self.db),
@@ -1139,7 +1139,7 @@ fn xxx_err_thing<'db>(
 
         MethodSelectionError::NotFound => {
             let base_ty = receiver.data.base_ty(db);
-            NameResDiag::MethodNotFound {
+            PathResDiag::MethodNotFound {
                 primary: method.span,
                 method_name: method.data,
                 receiver: Either::Left(base_ty),
@@ -1148,7 +1148,7 @@ fn xxx_err_thing<'db>(
         }
 
         MethodSelectionError::InvisibleInherentMethod(func) => {
-            NameResDiag::Invisible(method.span, method.data, func.name_span(db).into()).into()
+            PathResDiag::Invisible(method.span, method.data, func.name_span(db).into()).into()
         }
 
         MethodSelectionError::InvisibleTraitMethod(traits) => BodyDiag::InvisibleAmbiguousTrait {

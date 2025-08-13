@@ -6,7 +6,7 @@ use hir::{
 
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag, resolve_path_with_observer, ExpectedPathKind, PathRes,
+        diagnostics::PathResDiag, resolve_path_with_observer, ExpectedPathKind, PathRes,
     },
     ty::visitor::TyVisitor,
     HirAnalysisDb,
@@ -137,12 +137,12 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             let ident = path.ident(self.db).to_opt().unwrap();
             let span = path_span.clone().segment(path.segment_index(self.db));
             self.diags
-                .push(NameResDiag::ExpectedType(span.into(), ident, res.kind_name()).into());
+                .push(PathResDiag::ExpectedType(span.into(), ident, res.kind_name()).into());
         }
         if let Some((path, deriv_span)) = invisible {
             let span = path_span.segment(path.segment_index(self.db)).ident();
             let ident = path.ident(self.db);
-            let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
+            let diag = PathResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag.into());
         }
 

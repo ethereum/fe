@@ -174,7 +174,6 @@ impl<'db> Callable<'db> {
             .enumerate()
         {
             if_chain! {
-                // xxx check this
                 if let Some(expected_label) = self.func_def.param_label(db, i);
                 if !expected_label.is_self(db);
                 if Some(expected_label) != given.label;

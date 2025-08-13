@@ -11,7 +11,7 @@ use rustc_hash::FxHashMap;
 
 use super::{env::LocalBinding, TyChecker};
 use crate::{
-    name_resolution::{diagnostics::NameResDiag, is_scope_visible_from, PathRes, ResolvedVariant},
+    name_resolution::{diagnostics::PathResDiag, is_scope_visible_from, PathRes, ResolvedVariant},
     ty::{
         adt_def::{AdtDef, AdtField, AdtRef},
         diagnostics::{BodyDiag, FuncBodyDiag},
@@ -120,7 +120,7 @@ impl<'tc, 'db, 'a> RecordInitChecker<'tc, 'db, 'a> {
         if is_scope_visible_from(self.tc.db, field_scope, self.tc.env.scope()) {
             Ok(ty)
         } else {
-            let diag = NameResDiag::Invisible(field_span, label, field_scope.name_span(self.tc.db));
+            let diag = PathResDiag::Invisible(field_span, label, field_scope.name_span(self.tc.db));
 
             self.invalid_field_given = true;
             Err(diag.into())

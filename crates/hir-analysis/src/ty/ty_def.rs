@@ -554,7 +554,7 @@ impl<'db> TyId<'db> {
         }
     }
 
-    pub(super) fn evaluate_const_ty(
+    pub(crate) fn evaluate_const_ty(
         self,
         db: &'db dyn HirAnalysisDb,
         expected_ty: Option<TyId<'db>>,
@@ -1003,7 +1003,7 @@ impl<'db> TyParam<'db> {
         }
     }
 
-    pub(super) fn trait_self(db: &'db dyn HirAnalysisDb, kind: Kind, scope: ScopeId<'db>) -> Self {
+    pub fn trait_self(db: &'db dyn HirAnalysisDb, kind: Kind, scope: ScopeId<'db>) -> Self {
         Self {
             name: IdentId::make_self_ty(db),
             idx: 0,

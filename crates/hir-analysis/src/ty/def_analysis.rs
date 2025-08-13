@@ -35,7 +35,7 @@ use super::{
     visitor::{walk_ty, TyVisitor},
 };
 use crate::{
-    name_resolution::{diagnostics::NameResDiag, resolve_path, ExpectedPathKind, PathRes},
+    name_resolution::{diagnostics::PathResDiag, resolve_path, ExpectedPathKind, PathRes},
     ty::{
         adt_def::AdtDef,
         binder::Binder,
@@ -1053,63 +1053,6 @@ fn analyze_trait_ref<'db>(
     let trait_inst = match lower_trait_ref(db, self_ty, trait_ref, scope, assumptions) {
         Ok(trait_ref) => trait_ref,
 
-        Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
-            return Some(
-                TraitConstraintDiag::TraitArgNumMismatch {
-                    span,
-                    expected,
-                    given,
-                }
-                .into(),
-            );
-        }
-
-        Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
-            return Some(
-                TraitConstraintDiag::TraitArgKindMismatch {
-                    span,
-                    expected,
-                    actual: given,
-                }
-                .into(),
-            );
-        }
-
-        Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => match (expected, given) {
-            (Some(expected), Some(given)) => {
-                return Some(
-                    TyLowerDiag::ConstTyMismatch {
-                        span: span.into(),
-                        expected,
-                        given,
-                    }
-                    .into(),
-                )
-            }
-
-            (Some(expected), None) => {
-                return Some(
-                    TyLowerDiag::ConstTyExpected {
-                        span: span.into(),
-                        expected,
-                    }
-                    .into(),
-                )
-            }
-
-            (None, Some(given)) => {
-                return Some(
-                    TyLowerDiag::NormalTypeExpected {
-                        span: span.into(),
-                        given,
-                    }
-                    .into(),
-                )
-            }
-
-            (None, None) => unreachable!(),
-        },
-
         Err(TraitRefLowerError::PathResError(err)) => {
             return Some(
                 err.into_diag(
@@ -1124,7 +1067,7 @@ fn analyze_trait_ref<'db>(
 
         Err(TraitRefLowerError::InvalidDomain(res)) => {
             return Some(
-                NameResDiag::ExpectedTrait(
+                PathResDiag::ExpectedTrait(
                     span.into(),
                     *trait_ref.path(db).unwrap().ident(db).unwrap(),
                     res.kind_name(),
@@ -1133,7 +1076,7 @@ fn analyze_trait_ref<'db>(
             )
         }
 
-        Err(TraitRefLowerError::Other) => {
+        Err(TraitRefLowerError::Ignored) => {
             return None;
         }
     };
@@ -1233,69 +1176,29 @@ fn analyze_impl_trait_specific_error<'db>(
 
     let trait_inst = match lower_trait_ref(db, ty, trait_ref, impl_trait.scope(), assumptions) {
         Ok(trait_inst) => trait_inst,
-        Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
-            diags.push(
-                TraitConstraintDiag::TraitArgNumMismatch {
-                    span: impl_trait.span().trait_ref(),
-                    expected,
-                    given,
-                }
-                .into(),
-            );
-            return Err(diags);
-        }
-        Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
-            diags.push(
-                TraitConstraintDiag::TraitArgKindMismatch {
-                    span: impl_trait.span().trait_ref(),
-                    expected,
-                    actual: given,
-                }
-                .into(),
-            );
-            return Err(diags);
-        }
-        Err(TraitRefLowerError::ArgTypeMismatch { expected, given }) => {
-            match (expected, given) {
-                (Some(expected), None) => {
-                    // Expected const type but got normal type
-                    diags.push(
-                        TyLowerDiag::ConstTyExpected {
-                            span: impl_trait.span().trait_ref().into(),
-                            expected,
-                        }
-                        .into(),
-                    );
-                }
-                (None, Some(given)) => {
-                    // Expected normal type but got const
-                    diags.push(
-                        TyLowerDiag::NormalTypeExpected {
-                            span: impl_trait.span().trait_ref().into(),
-                            given,
-                        }
-                        .into(),
-                    );
-                }
-                (Some(expected), Some(given)) => {
-                    // Const type mismatch
-                    diags.push(
-                        TyLowerDiag::ConstTyMismatch {
-                            span: impl_trait.span().trait_ref().into(),
-                            expected,
-                            given,
-                        }
-                        .into(),
-                    );
-                }
-                _ => {
-                    unreachable!()
-                    // Both None - this case shouldn't normally happen
-                }
+        Err(TraitRefLowerError::PathResError(err)) => {
+            if let Some(diag) = err.into_diag(
+                db,
+                *trait_ref.path(db).unwrap(),
+                impl_trait.span().trait_ref().into(),
+                ExpectedPathKind::Trait,
+            ) {
+                diags.push(diag.into());
             }
             return Err(diags);
         }
-        Err(_) => return Err(vec![]),
+        Err(TraitRefLowerError::InvalidDomain(res)) => {
+            diags.push(
+                PathResDiag::ExpectedTrait(
+                    impl_trait.span().trait_ref().into(),
+                    *trait_ref.path(db).unwrap().ident(db).unwrap(),
+                    res.kind_name(),
+                )
+                .into(),
+            );
+            return Err(diags);
+        }
+        Err(TraitRefLowerError::Ignored) => return Err(diags),
     };
 
     // 3. Check if the ingot containing impl trait is the same as the ingot which

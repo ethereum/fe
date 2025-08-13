@@ -33,7 +33,7 @@ use super::{
 use crate::ty::ty_error::collect_ty_lower_errors;
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag, resolve_path_with_observer, PathRes, PathResError,
+        diagnostics::PathResDiag, resolve_path_with_observer, PathRes, PathResError,
     },
     ty::ty_def::{inference_keys, TyFlags},
     HirAnalysisDb,
@@ -212,26 +212,10 @@ impl<'db> TyChecker<'db> {
         };
 
         // Resolve associated types before unification
-        // eprintln!( xxx
-        //     "equate_ty `{}` =? `{}`",
-        //     actual.pretty_print(self.db),
-        //     expected.pretty_print(self.db)
-        // );
         let actual = actual.fold_with(&mut self.table);
         let expected = expected.fold_with(&mut self.table);
-        // eprintln!( xxx
-        //     "  folded `{}` =? `{}`",
-        //     actual.pretty_print(self.db),
-        //     expected.pretty_print(self.db)
-        // );
-
         let actual = self.normalize_ty(actual);
         let expected = self.normalize_ty(expected);
-        // eprintln!( xxx
-        //     "  normalized `{}` =? `{}`",
-        //     actual.pretty_print(self.db),
-        //     expected.pretty_print(self.db)
-        // );
 
         match self.table.unify(actual, expected) {
             Ok(()) => {
@@ -296,7 +280,7 @@ impl<'db> TyChecker<'db> {
         if let Some((path, deriv_span)) = invisible {
             let span = span.clone().segment(path.segment_index(self.db)).ident();
             let ident = path.ident(self.db);
-            let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
+            let diag = PathResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag.into());
         }
 

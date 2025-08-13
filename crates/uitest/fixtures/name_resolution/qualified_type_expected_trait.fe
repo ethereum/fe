@@ -1,0 +1,15 @@
+trait Iterator {
+    type Item
+}
+
+fn demo<T>(x: T) {
+    let _: <T as NotATrait>::Item = 10
+}
+
+trait Default {
+    fn default() -> Self
+}
+
+fn f<T: Default>() -> T {
+    Default<i32>::default()
+}

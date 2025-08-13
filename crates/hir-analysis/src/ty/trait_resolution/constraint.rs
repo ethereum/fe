@@ -188,7 +188,7 @@ pub fn collect_constraints<'db>(
     let mut deferred: Vec<Deferred<'db>> = Vec::new();
     let owner_scope = owner.scope();
 
-    // --- Generic parameter bounds ------------------------------------------------
+    // Generic parameter bounds
     let param_set = collect_generic_params(db, owner);
     let param_list = owner.params(db);
     for (idx, param) in param_list.data(db).iter().enumerate() {
@@ -207,7 +207,7 @@ pub fn collect_constraints<'db>(
         }
     }
 
-    // --- Where-clause predicates --------------------------------------------------
+    // Where-clause predicates
     if let Some(where_clause) = owner.where_clause(db) {
         for w_pred in where_clause.data(db) {
             let Some(hir_ty) = w_pred.ty.to_opt() else {
@@ -246,7 +246,7 @@ pub fn collect_constraints<'db>(
             None => true,
         });
         if deferred.len() == before {
-            return Binder::bind(assumptions); // xxx return error?
+            return Binder::bind(assumptions);
         }
     }
 

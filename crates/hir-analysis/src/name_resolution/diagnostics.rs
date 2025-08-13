@@ -8,12 +8,13 @@ use thin_vec::ThinVec;
 
 use super::NameRes;
 use crate::{
+    ty::ty_def::Kind,
     ty::{trait_def::TraitInstId, ty_def::TyId},
     HirAnalysisDb,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
-pub enum NameResDiag<'db> {
+pub enum PathResDiag<'db> {
     /// The definition conflicts with other definitions.
     Conflict(IdentId<'db>, ThinVec<DynLazySpan<'db>>),
 
@@ -42,13 +43,6 @@ pub enum NameResDiag<'db> {
     /// The name is found, but it can't be used as a middle segment of a path.
     InvalidPathSegment(DynLazySpan<'db>, IdentId<'db>, Option<DynLazySpan<'db>>),
 
-    TooManyGenericArgs {
-        span: DynLazySpan<'db>,
-        ty: TyId<'db>,
-        expected: u16,
-        given: u16,
-    },
-
     /// The name is found but belongs to a different name domain other than the
     /// Type.
     ExpectedType(DynLazySpan<'db>, IdentId<'db>, &'static str),
@@ -60,9 +54,28 @@ pub enum NameResDiag<'db> {
     /// The name is found but belongs to a different name domain other than the
     /// value.
     ExpectedValue(DynLazySpan<'db>, IdentId<'db>, &'static str),
+
+    ArgNumMismatch {
+        span: DynLazySpan<'db>,
+        ident: IdentId<'db>,
+        expected: usize,
+        given: usize,
+    },
+    ArgKindMismatch {
+        span: DynLazySpan<'db>,
+        ident: IdentId<'db>,
+        expected: Kind,
+        given: TyId<'db>,
+    },
+    ArgTypeMismatch {
+        span: DynLazySpan<'db>,
+        ident: IdentId<'db>,
+        expected: Option<TyId<'db>>,
+        given: Option<TyId<'db>>,
+    },
 }
 
-impl<'db> NameResDiag<'db> {
+impl<'db> PathResDiag<'db> {
     /// Returns the top-level module where the diagnostic is located.
     pub fn top_mod(&self, db: &'db dyn HirAnalysisDb) -> TopLevelMod<'db> {
         match self {
@@ -80,7 +93,9 @@ impl<'db> NameResDiag<'db> {
             Self::ExpectedType(span, _, _) => span.top_mod(db).unwrap(),
             Self::ExpectedTrait(span, _, _) => span.top_mod(db).unwrap(),
             Self::ExpectedValue(span, _, _) => span.top_mod(db).unwrap(),
-            Self::TooManyGenericArgs { span, .. } => span.top_mod(db).unwrap(),
+            Self::ArgNumMismatch { span, .. } => span.top_mod(db).unwrap(),
+            Self::ArgKindMismatch { span, .. } => span.top_mod(db).unwrap(),
+            Self::ArgTypeMismatch { span, .. } => span.top_mod(db).unwrap(),
         }
     }
 
@@ -103,13 +118,53 @@ impl<'db> NameResDiag<'db> {
             Self::NotFound(..) => 2,
             Self::Invisible(..) => 3,
             Self::Ambiguous(..) => 4,
-            Self::AmbiguousAssociatedType { .. } => 11,
             Self::InvalidPathSegment(..) => 5,
             Self::ExpectedType(..) => 6,
             Self::ExpectedTrait(..) => 7,
             Self::ExpectedValue(..) => 8,
-            Self::TooManyGenericArgs { .. } => 9,
+            Self::AmbiguousAssociatedType { .. } => 9,
             Self::MethodNotFound { .. } => 10,
+            Self::ArgNumMismatch { .. } => 11,
+            Self::ArgKindMismatch { .. } => 12,
+            Self::ArgTypeMismatch { .. } => 13,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
+pub enum ImportDiag<'db> {
+    Conflict(IdentId<'db>, ThinVec<DynLazySpan<'db>>),
+    NotFound(DynLazySpan<'db>, IdentId<'db>),
+    Invisible(DynLazySpan<'db>, IdentId<'db>, Option<DynLazySpan<'db>>),
+    Ambiguous(DynLazySpan<'db>, IdentId<'db>, Vec<DynLazySpan<'db>>),
+    InvalidPathSegment(DynLazySpan<'db>, IdentId<'db>, Option<DynLazySpan<'db>>),
+}
+
+impl<'db> ImportDiag<'db> {
+    pub fn top_mod(&self, db: &'db dyn HirAnalysisDb) -> TopLevelMod<'db> {
+        match self {
+            Self::Conflict(_, conflicts) => conflicts
+                .iter()
+                .filter_map(|span| span.top_mod(db))
+                .min()
+                .unwrap(),
+            Self::NotFound(span, _) => span.top_mod(db).unwrap(),
+            Self::Invisible(span, _, _) => span.top_mod(db).unwrap(),
+            Self::Ambiguous(span, _, _) => span.top_mod(db).unwrap(),
+            Self::InvalidPathSegment(span, _, _) => span.top_mod(db).unwrap(),
+        }
+    }
+
+    pub(super) fn ambiguous(
+        db: &'db dyn HirAnalysisDb,
+        span: DynLazySpan<'db>,
+        ident: IdentId<'db>,
+        cands: ThinVec<NameRes<'db>>,
+    ) -> Self {
+        let cands = cands
+            .into_iter()
+            .filter_map(|name| name.kind.name_span(db))
+            .collect();
+        Self::Ambiguous(span, ident, cands)
     }
 }
