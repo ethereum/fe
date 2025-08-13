@@ -1403,14 +1403,7 @@ fn analyze_impl_trait_method<'db>(
             continue;
         };
 
-        compare_impl_method(
-            db,
-            *impl_m,
-            *trait_m,
-            implementor.trait_(db),
-            implementor,
-            &mut diags,
-        );
+        compare_impl_method(db, *impl_m, *trait_m, implementor.trait_(db), &mut diags);
 
         required_methods.remove(name);
     }
