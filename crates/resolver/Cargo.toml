@@ -7,6 +7,9 @@ license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 description = "Resolver lib for Fe."
 
+[lib]
+doctest = false
+
 [dependencies]
 common.workspace = true
 
