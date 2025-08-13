@@ -30,6 +30,7 @@ use super::{
     ty_lower::lower_hir_ty,
     unify::{InferenceKey, UnificationError, UnificationTable},
 };
+use crate::ty::ty_error::collect_ty_lower_errors;
 use crate::{
     name_resolution::{
         diagnostics::NameResDiag, resolve_path_with_observer, PathRes, PathResError,
@@ -132,6 +133,25 @@ impl<'db> TyChecker<'db> {
         star_kind_required: bool,
     ) -> TyId<'db> {
         let ty = lower_hir_ty(self.db, hir_ty, self.env.scope(), self.env.assumptions());
+
+        // If lowering failed, try to produce precise diagnostics (e.g., path resolution errors)
+        if ty.has_invalid(self.db) {
+            let diags = collect_ty_lower_errors(
+                self.db,
+                self.env.scope(),
+                hir_ty,
+                span.clone(),
+                self.env.assumptions(),
+            );
+            if !diags.is_empty() {
+                for d in diags {
+                    self.push_diag(d);
+                }
+                // Avoid cascading kind errors for already-invalid types
+                return TyId::invalid(self.db, InvalidCause::Other);
+            }
+        }
+
         if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
             self.push_diag(diag)
         }

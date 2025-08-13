@@ -147,7 +147,7 @@ impl<'db> PathResError<'db> {
         let ident = failed_at.ident(db).to_opt()?; // xxx PathKind::QualifiedType
 
         let diag = match self.kind {
-            PathResErrorKind::ParseError => unreachable!(),
+            PathResErrorKind::ParseError => return None,
             PathResErrorKind::NotFound { parent, bucket } => {
                 if let Some(nr) = bucket.iter_ok().next() {
                     if path != self.failed_at {
@@ -494,8 +494,24 @@ where
             ));
         }
         let ty = lower_hir_ty(db, type_, scope, assumptions);
-        let trait_inst = lower_trait_ref(db, ty, trait_, scope, assumptions)
-            .map_err(|_| PathResError::parse_err(path))?; // xxx
+        let trait_inst = match lower_trait_ref(db, ty, trait_, scope, assumptions) {
+            Ok(inst) => inst,
+            Err(err) => {
+                use crate::ty::trait_lower::TraitRefLowerError as E;
+                let path = trait_.path(db).to_opt().unwrap_or(path);
+                let err = match err {
+                    E::PathResError(e) => e,
+                    E::InvalidDomain(res) => {
+                        PathResError::new(PathResErrorKind::InvalidPathSegment(res), path)
+                    }
+                    E::ArgNumMismatch { .. }
+                    | E::ArgKindMisMatch { .. }
+                    | E::ArgTypeMismatch { .. }
+                    | E::Other => PathResError::parse_err(path),
+                };
+                return Err(err);
+            }
+        };
 
         let qualified_ty = TyId::qualified_ty(db, trait_inst);
         let r = PathRes::Ty(qualified_ty);

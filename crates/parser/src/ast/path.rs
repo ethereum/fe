@@ -40,6 +40,15 @@ impl PathSegment {
             _ => None,
         }
     }
+
+    /// Returns the qualified type node if this segment is a qualified type
+    /// like `<T as Trait>`.
+    pub fn qualified_type(&self) -> Option<QualifiedType> {
+        match self.kind()? {
+            PathSegmentKind::QualifiedType(q) => Some(q),
+            _ => None,
+        }
+    }
     /// Returns the identifier of the segment.
     pub fn ident(&self) -> Option<SyntaxToken> {
         match self.kind()? {

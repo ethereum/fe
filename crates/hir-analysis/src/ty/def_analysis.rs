@@ -732,8 +732,6 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         ctxt: &mut VisitorCtxt<'db, LazyTraitRefSpan<'db>>,
         trait_ref: TraitRefId<'db>,
     ) {
-        // Skip if we don't have a current type context
-
         let current_ty = self
             .current_ty
             .as_ref()
@@ -745,7 +743,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             return;
         }
 
-        if let (Some((ty, span)), Ok(trait_inst)) = (
+        if let (Some((ty, _)), Ok(trait_inst)) = (
             &self.current_ty,
             lower_trait_ref(
                 self.db,
@@ -759,7 +757,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             if !expected_kind.does_match(ty.kind(self.db)) {
                 self.diags.push(
                     TraitConstraintDiag::TraitArgKindMismatch {
-                        span: span.clone(),
+                        span: ctxt.span().unwrap(),
                         expected: expected_kind.clone(),
                         actual: *ty,
                     }
@@ -774,7 +772,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
             trait_ref,
             self.scope(),
             self.assumptions,
-            ctxt.span().unwrap().into(),
+            ctxt.span().unwrap(),
         ) {
             self.diags.push(diag);
         } else {
@@ -1050,7 +1048,7 @@ fn analyze_trait_ref<'db>(
     trait_ref: TraitRefId<'db>,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    span: DynLazySpan<'db>,
+    span: LazyTraitRefSpan<'db>,
 ) -> Option<TyDiagCollection<'db>> {
     let trait_inst = match lower_trait_ref(db, self_ty, trait_ref, scope, assumptions) {
         Ok(trait_ref) => trait_ref,
@@ -1081,7 +1079,7 @@ fn analyze_trait_ref<'db>(
             (Some(expected), Some(given)) => {
                 return Some(
                     TyLowerDiag::ConstTyMismatch {
-                        span,
+                        span: span.into(),
                         expected,
                         given,
                     }
@@ -1090,11 +1088,23 @@ fn analyze_trait_ref<'db>(
             }
 
             (Some(expected), None) => {
-                return Some(TyLowerDiag::ConstTyExpected { span, expected }.into())
+                return Some(
+                    TyLowerDiag::ConstTyExpected {
+                        span: span.into(),
+                        expected,
+                    }
+                    .into(),
+                )
             }
 
             (None, Some(given)) => {
-                return Some(TyLowerDiag::NormalTypeExpected { span, given }.into())
+                return Some(
+                    TyLowerDiag::NormalTypeExpected {
+                        span: span.into(),
+                        given,
+                    }
+                    .into(),
+                )
             }
 
             (None, None) => unreachable!(),
@@ -1105,7 +1115,7 @@ fn analyze_trait_ref<'db>(
                 err.into_diag(
                     db,
                     *trait_ref.path(db).unwrap(),
-                    span,
+                    span.into(),
                     ExpectedPathKind::Trait,
                 )?
                 .into(),
@@ -1115,7 +1125,7 @@ fn analyze_trait_ref<'db>(
         Err(TraitRefLowerError::InvalidDomain(res)) => {
             return Some(
                 NameResDiag::ExpectedTrait(
-                    span,
+                    span.into(),
                     *trait_ref.path(db).unwrap().ident(db).unwrap(),
                     res.kind_name(),
                 )
@@ -1134,7 +1144,7 @@ fn analyze_trait_ref<'db>(
         return None;
     }
 
-    trait_inst.emit_sat_diag(db, scope.ingot(db), assumptions, span)
+    trait_inst.emit_sat_diag(db, scope.ingot(db), assumptions, span.into())
 }
 
 #[derive(Clone, Copy, Debug, derive_more::From)]
@@ -1226,7 +1236,7 @@ fn analyze_impl_trait_specific_error<'db>(
         Err(TraitRefLowerError::ArgNumMismatch { expected, given }) => {
             diags.push(
                 TraitConstraintDiag::TraitArgNumMismatch {
-                    span: impl_trait.span().trait_ref().into(),
+                    span: impl_trait.span().trait_ref(),
                     expected,
                     given,
                 }
@@ -1237,7 +1247,7 @@ fn analyze_impl_trait_specific_error<'db>(
         Err(TraitRefLowerError::ArgKindMisMatch { expected, given }) => {
             diags.push(
                 TraitConstraintDiag::TraitArgKindMismatch {
-                    span: impl_trait.span().trait_ref().into(),
+                    span: impl_trait.span().trait_ref(),
                     expected,
                     actual: given,
                 }
@@ -1344,7 +1354,7 @@ fn analyze_impl_trait_specific_error<'db>(
     if ty.kind(db) != expected_kind {
         diags.push(
             TraitConstraintDiag::TraitArgKindMismatch {
-                span: impl_trait.span().ty().into(),
+                span: impl_trait.span().trait_ref(),
                 expected: expected_kind.clone(),
                 actual: implementor.instantiate_identity().self_ty(db),
             }

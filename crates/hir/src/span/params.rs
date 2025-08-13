@@ -155,6 +155,30 @@ define_lazy_span_node!(
     }
 );
 
+impl<'db> LazyTraitRefSpan<'db> {
+    /// Returns the span atom for the trait name (last segment ident) in this trait ref.
+    pub fn name(mut self) -> LazySpanAtom<'db> {
+        use crate::span::transition::{LazyArg, LazyTransitionFn, ResolvedOrigin};
+        use parser::ast::prelude::*;
+
+        fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
+            origin.map(|node| {
+                ast::TraitRef::cast(node)
+                    .and_then(|tr| tr.path())
+                    .and_then(|p| p.into_iter().last())
+                    .and_then(|seg| seg.ident())
+                    .map(|tok| tok.into())
+            })
+        }
+
+        self.0.push(LazyTransitionFn {
+            f,
+            arg: LazyArg::None,
+        });
+        LazySpanAtom(self.0)
+    }
+}
+
 define_lazy_span_node!(
     LazyKindBoundSpan,
     ast::KindBound,

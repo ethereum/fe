@@ -15,7 +15,11 @@ use hir::{
         Enum, FieldIndex, FieldParent, Func, IdentId, ImplTrait, ItemKind, PathId, Trait,
         TypeAlias as HirTypeAlias,
     },
-    span::{expr::LazyMethodCallExprSpan, params::LazyGenericParamSpan, DynLazySpan},
+    span::{
+        expr::LazyMethodCallExprSpan,
+        params::{LazyGenericParamSpan, LazyTraitRefSpan},
+        DynLazySpan,
+    },
 };
 use salsa::Update;
 use smallvec1::SmallVec;
@@ -480,18 +484,18 @@ impl TraitLowerDiag<'_> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TraitConstraintDiag<'db> {
     KindMismatch {
-        primary: DynLazySpan<'db>,
+        primary: LazyTraitRefSpan<'db>,
         trait_def: Trait<'db>,
     },
 
     TraitArgNumMismatch {
-        span: DynLazySpan<'db>,
+        span: LazyTraitRefSpan<'db>,
         expected: usize,
         given: usize,
     },
 
     TraitArgKindMismatch {
-        span: DynLazySpan<'db>,
+        span: LazyTraitRefSpan<'db>,
         expected: Kind,
         actual: TyId<'db>,
     },
