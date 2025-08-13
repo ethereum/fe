@@ -759,16 +759,14 @@ pub fn resolve_assoc_ty<'db>(
     let ty_with_subst = ty.extract_identity(&mut table);
 
     // First, check if there are trait bounds on this associated type in the assumptions
-    // (e.g., from where clauses like `T::Assoc: Level1`)
-    for trait_inst in assumptions.list(db) {
-        // Check if this trait bound applies to our associated type
-        let mut pred_table = UnificationTable::new(db);
-        if pred_table
-            .unify(trait_inst.self_ty(db), ty_with_subst)
-            .is_ok()
-        {
+    // (e.g., from where clauses like `T::Assoc: Level1`).
+    for &trait_inst in assumptions.list(db) {
+        if trait_inst.self_ty(db) == ty_with_subst {
             if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
-                candidates.insert((*trait_inst, assoc_ty.fold_with(&mut pred_table)));
+                let snapshot = table.snapshot();
+                let folded = assoc_ty.fold_with(&mut table);
+                candidates.insert((trait_inst, folded));
+                table.rollback_to(snapshot);
             }
         }
     }
