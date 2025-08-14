@@ -477,6 +477,97 @@ impl DiagnosticVoucher for PathResDiag<'_> {
                     error_code,
                 }
             }
+
+            Self::TypeMustBeKnown(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "type must be known here".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "type must be known here".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec![],
+                error_code,
+            },
+
+            Self::AmbiguousInherentMethod { primary, method_name, candidates } => {
+                let method_name = method_name.data(db);
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{method_name}` is ambiguous"),
+                    span: primary.resolve(db),
+                }];
+
+                for cand in candidates {
+                    sub_diagnostics.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("`{method_name}` is defined here"),
+                        span: cand.name_span(db).resolve(db),
+                    });
+                }
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "ambiguous method".to_string(),
+                    sub_diagnostics,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::AmbiguousTrait { primary, method_name, traits } => {
+                let method_name = method_name.data(db);
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{method_name}` is ambiguous"),
+                    span: primary.resolve(db),
+                }];
+
+                for trait_ in traits {
+                    let trait_name = trait_.name(db).unwrap().data(db);
+                    sub_diagnostics.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("candidate: `{trait_name}::{method_name}`"),
+                        span: primary.resolve(db),
+                    });
+                }
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "multiple trait candidates found".to_string(),
+                    sub_diagnostics,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::InvisibleAmbiguousTrait { primary, traits } => {
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message:
+                        "consider importing one of the following traits into the scope to resolve the ambiguity"
+                            .to_string(),
+                    span: primary.resolve(db),
+                }];
+
+                for trait_ in traits {
+                    if let Some(path) = trait_.scope().pretty_path(db) {
+                        sub_diagnostics.push(SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: format!("`use {path}`"),
+                            span: primary.resolve(db),
+                        });
+                    }
+                }
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "trait is not in the scope".to_string(),
+                    sub_diagnostics,
+                    notes: vec![],
+                    error_code,
+                }
+            }
         }
     }
 }

@@ -1,6 +1,6 @@
 use either::Either;
 use hir::{
-    hir_def::{IdentId, TopLevelMod},
+    hir_def::{IdentId, TopLevelMod, Trait},
     span::DynLazySpan,
 };
 use salsa::Update;
@@ -9,7 +9,7 @@ use thin_vec::ThinVec;
 use super::NameRes;
 use crate::{
     ty::ty_def::Kind,
-    ty::{trait_def::TraitInstId, ty_def::TyId},
+    ty::{func_def::FuncDef, trait_def::TraitInstId, ty_def::TyId},
     HirAnalysisDb,
 };
 
@@ -73,6 +73,23 @@ pub enum PathResDiag<'db> {
         expected: Option<TyId<'db>>,
         given: Option<TyId<'db>>,
     },
+
+    // Method selection related diagnostics
+    TypeMustBeKnown(DynLazySpan<'db>),
+    AmbiguousInherentMethod {
+        primary: DynLazySpan<'db>,
+        method_name: IdentId<'db>,
+        candidates: ThinVec<FuncDef<'db>>,
+    },
+    AmbiguousTrait {
+        primary: DynLazySpan<'db>,
+        method_name: IdentId<'db>,
+        traits: ThinVec<Trait<'db>>,
+    },
+    InvisibleAmbiguousTrait {
+        primary: DynLazySpan<'db>,
+        traits: ThinVec<Trait<'db>>,
+    },
 }
 
 impl<'db> PathResDiag<'db> {
@@ -96,6 +113,10 @@ impl<'db> PathResDiag<'db> {
             Self::ArgNumMismatch { span, .. } => span.top_mod(db).unwrap(),
             Self::ArgKindMismatch { span, .. } => span.top_mod(db).unwrap(),
             Self::ArgTypeMismatch { span, .. } => span.top_mod(db).unwrap(),
+            Self::TypeMustBeKnown(span) => span.top_mod(db).unwrap(),
+            Self::AmbiguousInherentMethod { primary, .. } => primary.top_mod(db).unwrap(),
+            Self::AmbiguousTrait { primary, .. } => primary.top_mod(db).unwrap(),
+            Self::InvisibleAmbiguousTrait { primary, .. } => primary.top_mod(db).unwrap(),
         }
     }
 
@@ -127,6 +148,10 @@ impl<'db> PathResDiag<'db> {
             Self::ArgNumMismatch { .. } => 11,
             Self::ArgKindMismatch { .. } => 12,
             Self::ArgTypeMismatch { .. } => 13,
+            Self::TypeMustBeKnown(..) => 14,
+            Self::AmbiguousInherentMethod { .. } => 15,
+            Self::AmbiguousTrait { .. } => 16,
+            Self::InvisibleAmbiguousTrait { .. } => 17,
         }
     }
 }

@@ -143,7 +143,24 @@ impl<'db> PathResError<'db> {
             PathResErrorKind::ArgTypeMismatch { .. } => {
                 "Generic const argument type mismatch".to_string()
             }
-            PathResErrorKind::MethodSelection(..) => todo!(),
+            PathResErrorKind::MethodSelection(err) => match err {
+                MethodSelectionError::AmbiguousInherentMethod(cands) => {
+                    format!("Ambiguous method; {} inherent candidates.", cands.len())
+                }
+                MethodSelectionError::AmbiguousTraitMethod(traits) => {
+                    format!("Ambiguous method; {} trait candidates.", traits.len())
+                }
+                MethodSelectionError::NotFound => "Method not found".to_string(),
+                MethodSelectionError::InvisibleInherentMethod(_) => {
+                    "Inherent method is not visible".to_string()
+                }
+                MethodSelectionError::InvisibleTraitMethod(traits) => {
+                    format!("Trait is not in scope; {} candidate(s).", traits.len())
+                }
+                MethodSelectionError::ReceiverTypeMustBeKnown => {
+                    "Receiver type must be known".to_string()
+                }
+            },
         }
     }
 
@@ -222,7 +239,34 @@ impl<'db> PathResError<'db> {
                 }
             }
 
-            PathResErrorKind::MethodSelection(_) => todo!(),
+            PathResErrorKind::MethodSelection(err) => match err {
+                MethodSelectionError::ReceiverTypeMustBeKnown => PathResDiag::TypeMustBeKnown(span),
+                MethodSelectionError::AmbiguousInherentMethod(candidates) => {
+                    PathResDiag::AmbiguousInherentMethod {
+                        primary: span,
+                        method_name: ident,
+                        candidates,
+                    }
+                }
+                MethodSelectionError::AmbiguousTraitMethod(trait_defs) => {
+                    let traits = trait_defs.into_iter().map(|d| d.trait_(db)).collect();
+                    PathResDiag::AmbiguousTrait {
+                        primary: span,
+                        method_name: ident,
+                        traits,
+                    }
+                }
+                MethodSelectionError::InvisibleInherentMethod(func) => {
+                    PathResDiag::Invisible(span, ident, func.name_span(db).into())
+                }
+                MethodSelectionError::InvisibleTraitMethod(traits) => {
+                    PathResDiag::InvisibleAmbiguousTrait {
+                        primary: span,
+                        traits,
+                    }
+                }
+                MethodSelectionError::NotFound => PathResDiag::NotFound(span, ident),
+            },
         };
         Some(diag)
     }
