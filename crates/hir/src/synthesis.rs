@@ -479,6 +479,21 @@ impl<'db> ModuleLazyHir<'db> {
                                 }
                             }
                         }
+                        // Also inspect struct field types
+                        if let Some(fields) = struct_item.fields() {
+                            for field in fields {
+                                if let Some(ty) = field.ty() {
+                                    if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                        if let Some(path) = path_type.path() {
+                                            use parser::ast::prelude::AstNode;
+                                            if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                         parser::ast::ItemKind::Impl(impl_item) => {
                             // Check if cursor is in generic parameters
@@ -518,6 +533,37 @@ impl<'db> ModuleLazyHir<'db> {
                                     if let parser::ast::TypeKind::Path(path_type) = impl_target.kind() {
                                         if let Some(path) = path_type.path() {
                                             return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::ImplHeader, cursor);
+                                        }
+                                    }
+                                }
+                            }
+                            // Inspect functions inside impl blocks for param/ret types
+                            if let Some(items) = impl_item.item_list() {
+                                for func in items {
+                                    // Param types
+                                    if let Some(params) = func.params() {
+                                        for param in params {
+                                            if let Some(ty) = param.ty() {
+                                                if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                                    if let Some(path) = path_type.path() {
+                                                        use parser::ast::prelude::AstNode;
+                                                        if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    // Return type
+                                    if let Some(ret) = func.ret_ty() {
+                                        if let parser::ast::TypeKind::Path(path_type) = ret.kind() {
+                                            if let Some(path) = path_type.path() {
+                                                use parser::ast::prelude::AstNode;
+                                                if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                                    return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -637,7 +683,94 @@ impl<'db> ModuleLazyHir<'db> {
                                 }
                             }
                         }
-                    }
+                        // Inspect trait method signatures for param/ret types
+                        if let Some(items) = trait_item.item_list() {
+                            for func in items {
+                                if let Some(params) = func.params() {
+                                    for param in params {
+                                        if let Some(ty) = param.ty() {
+                                            if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                                if let Some(path) = path_type.path() {
+                                                    use parser::ast::prelude::AstNode;
+                                                    if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                                        return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                if let Some(ret) = func.ret_ty() {
+                                    if let parser::ast::TypeKind::Path(path_type) = ret.kind() {
+                                        if let Some(path) = path_type.path() {
+                                            use parser::ast::prelude::AstNode;
+                                            if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        }
+                        parser::ast::ItemKind::Enum(enum_item) => {
+                            if let Some(variants) = enum_item.variants() {
+                                for var in variants {
+                                    use parser::ast::prelude::AstNode;
+                                    match var.kind() {
+                                        parser::ast::VariantKind::Tuple(tuple_ty) => {
+                                            for ty in tuple_ty.elem_tys() {
+                                                if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                                    if let Some(path) = path_type.path() {
+                                                        if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        parser::ast::VariantKind::Record(fields) => {
+                                            for field in fields {
+                                                if let Some(ty) = field.ty() {
+                                                    if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                                        if let Some(path) = path_type.path() {
+                                                            if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        parser::ast::VariantKind::Unit => {}
+                                    }
+                                }
+                            }
+                        }
+                        parser::ast::ItemKind::TypeAlias(ta) => {
+                            if let Some(ty) = ta.ty() {
+                                if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                    if let Some(path) = path_type.path() {
+                                        use parser::ast::prelude::AstNode;
+                                        if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        parser::ast::ItemKind::Const(cst) => {
+                            if let Some(ty) = cst.ty() {
+                                if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                    if let Some(path) = path_type.path() {
+                                        use parser::ast::prelude::AstNode;
+                                        if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         _ => {}
                     }
                 }
@@ -678,6 +811,7 @@ impl<'db> ModuleLazyHir<'db> {
                         if let Some((path_id, _lazy, seg, _r)) = best {
                             return LazyHirResult::ItemPath(item_hir, path_id, ItemNodeContext::Regular, Some(seg));
                         }
+                        // Check enum variants types
                     }
                 }
             }
