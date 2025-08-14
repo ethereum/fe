@@ -91,15 +91,11 @@ fn resolve_expression_definition<'db>(
 
     // Method call: resolve method on receiver type
     if let HirNodeContext::MethodCall = context {
-        if let Partial::Present(Expr::MethodCall(receiver_expr_id, method_name, _gen_args, _call_args)) = expr_data {
+        if let Partial::Present(Expr::MethodCall(..)) = expr_data {
             if let Some(func) = find_containing_func(db, body) {
                 let (_, typed_body) = crate::ty::ty_check::check_func_body(db, func);
-                let recv_ty = typed_body.expr_ty(db, *receiver_expr_id);
-                if let Some(name_ident) = method_name.to_opt() {
-                    let ingot = body.top_mod(db).ingot(db);
-                    let cands = probe_method_uncanonicalized(db, ingot, recv_ty, name_ident);
-                    let scopes = cands.into_iter().map(|fd| NavTarget::Scope(fd.scope(db))).collect::<Vec<_>>();
-                    if !scopes.is_empty() { return scopes; }
+                if let Some(callable) = typed_body.callable_expr(expr_id) {
+                    return vec![NavTarget::Scope(callable.func_def.scope(db))];
                 }
             }
         }

@@ -17,7 +17,7 @@ enum Color {
 }
 
 fn test_field_access() {
-    let container = Container { value: 42 }
+    let container = Container { value: 43 }
 
     // This should resolve to the field definition
     let val = container.value
@@ -47,20 +47,16 @@ fn test_enum_variants() {
 }
 
 pub trait Inner {
-    //type InnerType
     fn foo(self) -> i32
 }
 
 pub struct Wrapper<S: Inner> {
     pub inner: S,
-    //pub x: S::InnerType
 }
 
 impl<S: Inner> Wrapper<S> {
     pub fn foo(mut self, mut dog: i32) -> i32 {
         self.inner.foo() // collect_constraints_from_func_def
-        // let x = ...
-        // x.foo()
         dog
     }
 }
