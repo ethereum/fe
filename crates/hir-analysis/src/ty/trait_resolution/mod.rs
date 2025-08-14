@@ -7,6 +7,7 @@ use super::{
 };
 use crate::{
     ty::{
+        normalize::normalize_ty,
         trait_resolution::{constraint::ty_constraints, proof_forest::ProofForest},
         unify::UnificationTable,
         visitor::collect_flags,
@@ -58,7 +59,6 @@ pub(crate) fn check_ty_wf<'db>(
 
     // Normalize constraints to resolve associated types
     let normalized_constraints = {
-        use crate::ty::normalize::normalize_ty;
         // Get a reasonable scope for normalization
         let scope = ingot.root_mod(db).scope();
         let normalized_list: Vec<_> = constraints
@@ -127,7 +127,6 @@ pub(crate) fn check_trait_inst_wf<'db>(
 
     // Normalize constraints after instantiation to resolve associated types
     let normalized_constraints = {
-        use crate::ty::normalize::normalize_ty;
         let scope = trait_inst.ingot(db).root_mod(db).scope();
         let normalized_list: Vec<_> = constraints
             .list(db)

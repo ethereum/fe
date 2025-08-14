@@ -4,8 +4,10 @@
 //! to concrete types when possible. This happens before type unification to ensure
 //! that types are in their most resolved form.
 
-use common::indexmap::IndexSet;
+use std::collections::hash_map::Entry;
+
 use hir::hir_def::{scope_graph::ScopeId, ImplTrait};
+use rustc_hash::FxHashMap;
 
 use super::{
     canonical::Canonical,
@@ -34,27 +36,18 @@ pub fn normalize_ty<'db>(
         db,
         scope,
         assumptions,
-        seen: IndexSet::new(),
+        cache: FxHashMap::default(),
     };
 
-    // Keep normalizing until we reach a fixed point
-    let mut current = ty;
-    loop {
-        let normalized = current.fold_with(&mut normalizer);
-        if normalized == current {
-            break normalized;
-        }
-        current = normalized;
-        // Clear the seen set for the next iteration
-        normalizer.seen.clear();
-    }
+    ty.fold_with(&mut normalizer)
 }
 
 struct TypeNormalizer<'db> {
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-    seen: IndexSet<AssocTy<'db>>,
+    // Projection cache: None = in progress (cycle guard), Some(ty) = normalized result
+    cache: FxHashMap<AssocTy<'db>, Option<TyId<'db>>>,
 }
 
 impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
@@ -69,29 +62,35 @@ impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
                     if let Some(hir_ty) = impl_.ty(self.db).to_opt() {
                         let impl_assumptions =
                             collect_constraints(self.db, impl_.into()).instantiate_identity();
-                        return lower_hir_ty(self.db, hir_ty, impl_.scope(), impl_assumptions);
+                        let lowered =
+                            lower_hir_ty(self.db, hir_ty, impl_.scope(), impl_assumptions);
+                        // Continue folding the lowered type so it reaches normal form
+                        return self.fold_ty(lowered);
                     }
                 }
                 ty
             }
             TyData::AssocTy(assoc_ty) => {
-                // Prevent infinite recursion
-                if self.seen.contains(assoc_ty) {
-                    return ty;
+                match self.cache.entry(*assoc_ty) {
+                    Entry::Occupied(entry) => match entry.get() {
+                        Some(cached) => return *cached,
+                        None => return ty, // cycle: leave unresolved
+                    },
+                    Entry::Vacant(entry) => {
+                        entry.insert(None);
+                    }
                 }
-                self.seen.insert(assoc_ty.clone());
 
-                let resolved = self.try_resolve_assoc_ty(ty, assoc_ty);
-                let result = resolved.unwrap_or(ty);
-
-                self.seen.remove(assoc_ty);
-
-                // Continue folding the result in case it contains more associated types
-                if result != ty {
-                    self.fold_ty(result)
-                } else {
-                    result.super_fold_with(self)
+                if let Some(replacement) = self.try_resolve_assoc_ty(ty, assoc_ty) {
+                    let normalized = self.fold_ty(replacement);
+                    self.cache.insert(*assoc_ty, Some(normalized));
+                    return normalized;
                 }
+
+                // Not resolved; still fold internals (e.g., normalize self type)
+                let folded = ty.super_fold_with(self);
+                self.cache.insert(*assoc_ty, Some(folded));
+                folded
             }
             _ => ty.super_fold_with(self),
         }
@@ -113,8 +112,10 @@ impl<'db> TypeNormalizer<'db> {
             }
 
             let mut table = UnificationTable::new(self.db);
-            let lhs_self = assoc.trait_.self_ty(self.db);
-            let rhs_self = pred.self_ty(self.db);
+            // Normalize self types before attempting unification to avoid
+            // requiring a second outer pass for resolution.
+            let lhs_self = self.fold_ty(assoc.trait_.self_ty(self.db));
+            let rhs_self = self.fold_ty(pred.self_ty(self.db));
             if table.unify(lhs_self, rhs_self).is_ok() {
                 if let Some(&bound) = pred.assoc_type_bindings(self.db).get(&assoc.name) {
                     return Some(bound.fold_with(&mut table));
@@ -125,7 +126,8 @@ impl<'db> TypeNormalizer<'db> {
         // 3) Fall back to the general associated type search used by path resolution,
         //    but restrict results to the same trait as `assoc`.
         //    Search by the trait's self type: `SelfTy::assoc.name`.
-        let self_ty = assoc.trait_.self_ty(self.db);
+        // Normalize the trait's self type before candidate search.
+        let self_ty = self.fold_ty(assoc.trait_.self_ty(self.db));
         let mut cands = find_associated_type(
             self.db,
             self.scope,

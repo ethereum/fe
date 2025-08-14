@@ -933,7 +933,7 @@ impl TyVar<'_> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct AssocTy<'db> {
     pub trait_: TraitInstId<'db>,
     pub name: IdentId<'db>,
