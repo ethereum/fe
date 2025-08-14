@@ -323,6 +323,23 @@ impl<'db> ModuleLazyHir<'db> {
                                 HirNodeContext::Regular
                             }
                         }
+                        parser::ast::ExprKind::RecordInit(rec_init) => {
+                            use parser::ast::prelude::AstNode;
+                            if let Some(path) = rec_init.path() {
+                                let pr = path.syntax().text_range();
+                                if ModuleLazyHir::range_contains_inclusive(pr, cursor) {
+                                    let mut segment_index = None;
+                                    for (idx, seg) in path.segments().enumerate() {
+                                        let sr = seg.syntax().text_range();
+                                        if ModuleLazyHir::range_contains_inclusive(sr, cursor) {
+                                            segment_index = Some(idx);
+                                            break;
+                                        }
+                                    }
+                                    if let Some(idx) = segment_index { HirNodeContext::PathSegment(idx) } else { HirNodeContext::Regular }
+                                } else { HirNodeContext::Regular }
+                            } else { HirNodeContext::Regular }
+                        }
                         _ => HirNodeContext::Regular
                     };
                     
