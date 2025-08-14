@@ -4,19 +4,18 @@
 //! to concrete types when possible. This happens before type unification to ensure
 //! that types are in their most resolved form.
 
-use common::indexmap::{IndexMap, IndexSet};
+use common::indexmap::IndexSet;
 use hir::hir_def::{scope_graph::ScopeId, ImplTrait};
 
 use super::{
     canonical::Canonical,
     fold::{TyFoldable, TyFolder},
-    trait_def::{impls_for_ty_with_constraints, TraitInstId},
     trait_resolution::{constraint::collect_constraints, PredicateListId},
     ty_def::{AssocTy, TyData, TyId, TyParam},
     ty_lower::lower_hir_ty,
-    unify::{self, UnificationTable},
+    unify::UnificationTable,
 };
-use crate::{name_resolution::resolve_assoc_ty, HirAnalysisDb};
+use crate::{name_resolution::find_associated_type, HirAnalysisDb};
 
 /// Normalizes a type by resolving all associated types to concrete types when possible.
 ///
@@ -101,14 +100,13 @@ impl<'db> TyFolder<'db> for TypeNormalizer<'db> {
 
 impl<'db> TypeNormalizer<'db> {
     fn try_resolve_assoc_ty(&mut self, ty: TyId<'db>, assoc: &AssocTy<'db>) -> Option<TyId<'db>> {
-        // First check if the trait instance has a binding for this associated type
+        // 1) Check if the trait instance itself carries an explicit binding
         if let Some(&bound_ty) = assoc.trait_.assoc_type_bindings(self.db).get(&assoc.name) {
             return Some(bound_ty);
         }
 
-        // Then check assumptions for an equivalent trait instance that carries
-        // an explicit associated type binding (e.g., implied by where-clauses
-        // or trait associated type bounds like `type IntoIter: Iterator<Item=...>`)
+        // 2) Check assumptions for an equivalent trait instance that carries
+        //    an explicit associated type binding (e.g., from where-clauses).
         for &pred in self.assumptions.list(self.db) {
             if pred.def(self.db) != assoc.trait_.def(self.db) {
                 continue;
@@ -124,74 +122,25 @@ impl<'db> TypeNormalizer<'db> {
             }
         }
 
-        // Try to resolve using the full resolution logic
-        let canonical_ty = Canonical::new(self.db, ty);
-        let mut candidates: IndexMap<TyId<'db>, TraitInstId<'db>> = IndexMap::new();
-
-        // Use the same resolution logic as path resolution
-        resolve_assoc_ty(
+        // 3) Fall back to the general associated type search used by path resolution,
+        //    but restrict results to the same trait as `assoc`.
+        //    Search by the trait's self type: `SelfTy::assoc.name`.
+        let self_ty = assoc.trait_.self_ty(self.db);
+        let mut cands = find_associated_type(
             self.db,
             self.scope,
-            canonical_ty,
+            Canonical::new(self.db, self_ty),
             assoc.name,
             self.assumptions,
-            &mut candidates,
-            assoc,
         );
 
-        // Also try to find implementations for concrete types
-        if !assoc.trait_.self_ty(self.db).is_ty_var(self.db) {
-            let ingot = self.scope.ingot(self.db);
-            let self_ty = assoc.trait_.self_ty(self.db);
-            let canonical_self_ty = Canonical::new(self.db, self_ty);
-            for implementor in
-                impls_for_ty_with_constraints(self.db, ingot, canonical_self_ty, self.assumptions)
-            {
-                let mut table = UnificationTable::new(self.db);
-                let implementor_instance = table.instantiate_with_fresh_vars(implementor);
-
-                // Check if this implementor is for the right trait
-                if implementor_instance.trait_def(self.db) == assoc.trait_.def(self.db)
-                    && table
-                        .unify(self_ty, implementor_instance.self_ty(self.db))
-                        .is_ok()
-                {
-                    if let Some(&ty) = implementor_instance.types(self.db).get(&assoc.name) {
-                        let resolved_ty = ty.fold_with(&mut table);
-                        // Normalize to collapse equivalent candidates and dedup by normalized type
-                        let norm = normalize_ty(self.db, resolved_ty, self.scope, self.assumptions);
-                        candidates
-                            .entry(norm)
-                            .or_insert(implementor_instance.trait_(self.db));
-                    }
-                }
-            }
-        }
-
-        // If we have exactly one candidate, use it
-        if candidates.len() == 1 {
-            candidates.first().map(|(&ty, _)| ty)
-        } else {
-            None
+        // Keep only candidates from the same trait as `assoc`.
+        cands.retain(|(inst, _)| inst.def(self.db) == assoc.trait_.def(self.db));
+        match cands.as_slice() {
+            [] => None,
+            // Unique candidate: return it if it actually changes the type
+            [(_, t)] if *t != ty => Some(*t),
+            _ => None,
         }
     }
-}
-
-/// Helper function for normalizing types within a unification context.
-/// This is used when we already have a unification table and want to normalize
-/// types while preserving the current unification state.
-pub fn normalize_ty_with_table<'db, U>(
-    ty: TyId<'db>,
-    table: &mut unify::UnificationTableBase<'db, U>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> TyId<'db>
-where
-    U: unify::UnificationStore<'db>,
-{
-    // First fold with the table to resolve any type variables
-    let ty = ty.fold_with(table);
-
-    // Then normalize associated types
-    normalize_ty(table.db, ty, scope, assumptions)
 }

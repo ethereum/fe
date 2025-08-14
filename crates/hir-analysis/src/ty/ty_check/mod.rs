@@ -30,7 +30,7 @@ use super::{
     ty_lower::lower_hir_ty,
     unify::{InferenceKey, UnificationError, UnificationTable},
 };
-use crate::ty::ty_error::collect_ty_lower_errors;
+use crate::ty::{normalize::normalize_ty, ty_error::collect_ty_lower_errors};
 use crate::{
     name_resolution::{
         diagnostics::PathResDiag, resolve_path_with_observer, PathRes, PathResError,
@@ -289,10 +289,9 @@ impl<'db> TyChecker<'db> {
 
     /// Resolve associated type to concrete type if possible
     fn normalize_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
-        use crate::ty::normalize::normalize_ty_with_table;
-        normalize_ty_with_table(
-            ty,
-            &mut self.table,
+        normalize_ty(
+            self.db,
+            ty.fold_with(&mut self.table),
             self.env.scope(),
             self.env.assumptions(),
         )

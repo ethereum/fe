@@ -34,7 +34,7 @@ use crate::{
             lower_trait, lower_trait_ref, lower_trait_ref_impl, TraitArgError, TraitRefLowerError,
         },
         trait_resolution::PredicateListId,
-        ty_def::{AssocTy, InvalidCause, Kind, TyData, TyId},
+        ty_def::{InvalidCause, Kind, TyData, TyId},
         ty_lower::{
             collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias, TyAlias,
         },
@@ -548,6 +548,15 @@ where
 
     match parent_res {
         Some(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) => {
+            // Fast path: `<A as Trait>::Assoc` — return the projection directly.
+            if let TyData::QualifiedTy(trait_inst) = ty.data(db) {
+                if let Some(assoc_ty) = trait_inst.assoc_ty(db, ident) {
+                    let r = PathRes::Ty(assoc_ty);
+                    observer(path, &r);
+                    return Ok(r);
+                }
+            }
+
             // Try to resolve as an enum variant
             if let Some(enum_) = ty.as_enum(db) {
                 // We need to use the concrete enum scope instead of
@@ -590,30 +599,42 @@ where
                 }
             }
 
+            // Find raw associated types, then dedup by normalized result here.
             let assoc_tys =
                 find_associated_type(db, scope, Canonical::new(db, ty), ident, assumptions);
 
-            match assoc_tys.len() {
-                0 => {
-                    return Err(PathResError::new(
-                        PathResErrorKind::NotFound {
-                            parent: parent_res,
-                            bucket: NameResBucket::default(),
-                        },
-                        path,
-                    ));
-                }
+            if assoc_tys.is_empty() {
+                return Err(PathResError::new(
+                    PathResErrorKind::NotFound {
+                        parent: parent_res,
+                        bucket: NameResBucket::default(),
+                    },
+                    path,
+                ));
+            }
+
+            // Deduplicate by normalized type
+            let mut dedup: IndexMap<TyId<'db>, TraitInstId<'db>> = IndexMap::new();
+            for (inst, ty_candidate) in assoc_tys.iter().copied() {
+                let norm = normalize_ty(db, ty_candidate, scope, assumptions);
+                dedup.entry(norm).or_insert(inst);
+            }
+
+            match dedup.len() {
+                0 => unreachable!(),
                 1 => {
-                    let (_, assoc_ty) = assoc_tys[0];
-                    let r = PathRes::Ty(assoc_ty);
+                    let (assoc_ty, _) = dedup.first().unwrap();
+                    let r = PathRes::Ty(*assoc_ty);
                     observer(path, &r);
                     return Ok(r);
                 }
                 _ => {
+                    // Build candidate list from deduped set for diagnostics
+                    let candidates = dedup.into_iter().map(|(ty, inst)| (inst, ty)).collect();
                     return Err(PathResError::new(
                         PathResErrorKind::AmbiguousAssociatedType {
                             name: ident,
-                            candidates: assoc_tys.into_iter().collect(),
+                            candidates,
                         },
                         path,
                     ));
@@ -675,6 +696,10 @@ pub fn find_associated_type<'db>(
     // the same concrete type.
     let mut candidates: IndexMap<TyId<'db>, TraitInstId<'db>> = IndexMap::new();
     let ingot = scope.ingot(db);
+    // Use a single unification table and snapshots to preserve outer
+    // substitutions while isolating per-candidate attempts.
+    let mut table = UnificationTable::new(db);
+    let lhs_ty = ty.extract_identity(&mut table);
 
     if let TyData::TyParam(param) = ty.value.data(db) {
         // Trait self, in trait or impl trait. Associated type must be in this trait.
@@ -709,98 +734,80 @@ pub fn find_associated_type<'db>(
     if let TyData::TyParam(_) = ty.value.data(db) {
         for &trait_inst in assumptions.list(db) {
             // `trait_inst` is a specific trait bound, e.g., `A: Abi` or `S<A>: SomeTrait`.
-            let mut table = UnificationTable::new(db);
-            let lhs_ty = ty.extract_identity(&mut table);
+            let snapshot = table.snapshot();
             let pred_self_ty =
                 table.instantiate_with_fresh_vars(Binder::bind(trait_inst.self_ty(db)));
 
             if table.unify(lhs_ty, pred_self_ty).is_ok() {
                 if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
                     let folded = assoc_ty.fold_with(&mut table);
-                    let norm = normalize_ty(db, folded, scope, assumptions);
-                    candidates.entry(norm).or_insert(trait_inst);
+                    candidates.entry(folded).or_insert(trait_inst);
                 }
             }
+            table.rollback_to(snapshot);
         }
     }
 
     // check all impls for ty
     for impl_ in impls_for_ty_with_constraints(db, ingot, ty, assumptions) {
-        let mut table = UnificationTable::new(db);
-        let lhs_ty = ty.extract_identity(&mut table);
+        let snapshot = table.snapshot();
         let impl_ = table.instantiate_with_fresh_vars(impl_);
 
         if table.unify(lhs_ty, impl_.self_ty(db)).is_ok() {
             if let Some(ty) = impl_.assoc_ty(db, name) {
                 let folded = ty.fold_with(&mut table);
-                let norm = normalize_ty(db, folded, scope, assumptions);
-                candidates.entry(norm).or_insert(impl_.trait_(db));
+                candidates.entry(folded).or_insert(impl_.trait_(db));
             }
         }
+        table.rollback_to(snapshot);
     }
 
     // Case 3: The LHS `ty` is an associated type (e.g., `T::Encoder` in `T::Encoder::Output`).
     // We need to look at the trait bound on the associated type.
     if let TyData::AssocTy(assoc_ty) = ty.value.data(db) {
-        resolve_assoc_ty(db, scope, ty, name, assumptions, &mut candidates, assoc_ty);
+        // Extract the canonical type's substitutions into the unification table
+        // This ensures we maintain any type parameter bindings from the outer context
+        let ty_with_subst = ty.extract_identity(&mut table);
+
+        // First, check if there are trait bounds on this associated type in the assumptions
+        // (e.g., from where clauses like `T::Assoc: Level1`).
+        for &trait_inst in assumptions.list(db) {
+            let snapshot = table.snapshot();
+            // Allow unification to account for type variables in either side
+            if table.unify(ty_with_subst, trait_inst.self_ty(db)).is_ok() {
+                if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+                    let folded = assoc_ty.fold_with(&mut table);
+                    candidates.entry(folded).or_insert(trait_inst);
+                }
+            }
+            table.rollback_to(snapshot);
+        }
+
+        // Also check bounds defined on the associated type in the trait definition
+        let trait_def = assoc_ty.trait_.def(db);
+        let trait_ = trait_def.trait_(db);
+
+        if let Some(assoc_ty_decl) = trait_.assoc_ty(db, assoc_ty.name) {
+            for bound in &assoc_ty_decl.bounds {
+                let TypeBound::Trait(trait_ref) = bound else {
+                    todo!("assoc ty kind bounds")
+                };
+                let self_ty = ty_with_subst.fold_with(&mut table);
+
+                if let Ok(inst) = lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions) {
+                    if let Some(assoc_ty) = inst.assoc_ty(db, name) {
+                        let folded = assoc_ty.fold_with(&mut table);
+                        candidates.entry(folded).or_insert(inst);
+                    }
+                }
+            }
+        }
     }
 
     candidates
         .into_iter()
         .map(|(ty, inst)| (inst, ty))
         .collect()
-}
-
-pub fn resolve_assoc_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    scope: ScopeId<'db>,
-    ty: Canonical<TyId<'db>>,
-    name: IdentId<'db>,
-    assumptions: PredicateListId<'db>,
-    candidates: &mut IndexMap<TyId<'db>, TraitInstId<'db>>,
-    assoc_ty: &AssocTy<'db>,
-) {
-    // Create a unification table to handle substitutions from the outer context
-    let mut table = UnificationTable::new(db);
-
-    // Extract the canonical type's substitutions into the unification table
-    // This ensures we maintain any type parameter bindings from the outer context
-    let ty_with_subst = ty.extract_identity(&mut table);
-
-    // First, check if there are trait bounds on this associated type in the assumptions
-    // (e.g., from where clauses like `T::Assoc: Level1`).
-    for &trait_inst in assumptions.list(db) {
-        if trait_inst.self_ty(db) == ty_with_subst {
-            if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
-                let snapshot = table.snapshot();
-                let folded = assoc_ty.fold_with(&mut table);
-                let norm = normalize_ty(db, folded, scope, assumptions);
-                candidates.entry(norm).or_insert(trait_inst);
-                table.rollback_to(snapshot);
-            }
-        }
-    }
-
-    // Also check bounds defined on the associated type in the trait definition
-    let trait_def = assoc_ty.trait_.def(db);
-    let trait_ = trait_def.trait_(db);
-
-    if let Some(assoc_ty_decl) = trait_.assoc_ty(db, assoc_ty.name) {
-        for bound in &assoc_ty_decl.bounds {
-            let TypeBound::Trait(trait_ref) = bound else {
-                todo!("assoc ty kind bounds")
-            };
-            let self_ty = ty_with_subst.fold_with(&mut table);
-
-            if let Ok(inst) = lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions) {
-                if let Some(assoc_ty) = inst.assoc_ty(db, name) {
-                    let folded = assoc_ty.fold_with(&mut table);
-                    let norm = normalize_ty(db, folded, scope, assumptions);
-                    candidates.entry(norm).or_insert(inst);
-                }
-            }
-        }
-    }
 }
 
 pub fn resolve_name_res<'db>(

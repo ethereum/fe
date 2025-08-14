@@ -14,6 +14,7 @@ use crate::{
         binder::Binder,
         canonical::{Canonical, Canonicalized},
         fold::{TyFoldable, TyFolder},
+        normalize::normalize_ty,
         trait_def::{impls_for_trait, Implementor, TraitInstId},
         ty_def::{TyData, TyId},
         unify::PersistentUnificationTable,
@@ -363,8 +364,6 @@ impl GeneratorNode {
             // xxx require candidates to be pre-normalized
             // Normalize trait instance arguments before unification
             let normalized_gen_cand = {
-                use crate::ty::normalize::normalize_ty_with_table;
-                use crate::ty::trait_def::TraitInstId;
                 let trait_inst = gen_cand.trait_(db);
                 let scope = g_node.goal.value.ingot(db).root_mod(db).scope();
 
@@ -372,7 +371,7 @@ impl GeneratorNode {
                 let normalized_args: Vec<_> = trait_inst
                     .args(db)
                     .iter()
-                    .map(|&arg| normalize_ty_with_table(arg, &mut table, scope, g_node.assumptions))
+                    .map(|&arg| normalize_ty(db, arg, scope, g_node.assumptions))
                     .collect();
 
                 // Create normalized trait instance
@@ -493,8 +492,6 @@ impl ConsumerNode {
 
         // Normalize both instances before unification
         let normalized_pending = {
-            use crate::ty::normalize::normalize_ty_with_table;
-            use crate::ty::trait_def::TraitInstId;
             let scope = pending_inst.ingot(table.db()).root_mod(table.db()).scope();
             let assumptions = pf.g_nodes[c_node.root].assumptions;
 
@@ -502,7 +499,7 @@ impl ConsumerNode {
             let normalized_args: Vec<_> = pending_inst
                 .args(table.db())
                 .iter()
-                .map(|&arg| normalize_ty_with_table(arg, &mut table, scope, assumptions))
+                .map(|&arg| normalize_ty(table.db(), arg.fold_with(&mut table), scope, assumptions))
                 .collect();
 
             TraitInstId::new(
@@ -514,7 +511,6 @@ impl ConsumerNode {
         };
 
         let normalized_solution = {
-            use crate::ty::normalize::normalize_ty_with_table;
             use crate::ty::trait_def::TraitInstId;
             let scope = solution.ingot(table.db()).root_mod(table.db()).scope();
             let assumptions = pf.g_nodes[c_node.root].assumptions;
@@ -523,7 +519,7 @@ impl ConsumerNode {
             let normalized_args: Vec<_> = solution
                 .args(table.db())
                 .iter()
-                .map(|&arg| normalize_ty_with_table(arg, &mut table, scope, assumptions))
+                .map(|&arg| normalize_ty(table.db(), arg.fold_with(&mut table), scope, assumptions))
                 .collect();
 
             TraitInstId::new(
