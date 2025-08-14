@@ -79,6 +79,8 @@ pub enum HirNodeContext {
     PathSegment(usize),
     /// Field access where cursor is on the field name
     FieldAccess,
+    /// Method call where cursor is on the method name
+    MethodCall,
     /// Regular context
     Regular,
 }
@@ -287,6 +289,15 @@ impl<'db> ModuleLazyHir<'db> {
                             } else {
                                 HirNodeContext::Regular
                             }
+                        }
+                        parser::ast::ExprKind::MethodCall(method_call) => {
+                            // If cursor is on the method name token
+                            if let Some(name_tok) = method_call.method_name() {
+                                let r = name_tok.text_range();
+                                if r.contains(cursor) {
+                                    HirNodeContext::MethodCall
+                                } else { HirNodeContext::Regular }
+                            } else { HirNodeContext::Regular }
                         }
                         parser::ast::ExprKind::Field(field_expr) => {
                             // Check if cursor is on the field name
@@ -605,6 +616,45 @@ impl<'db> ModuleLazyHir<'db> {
             }
         }
         
+        // Generic catch-all: if inside an item, try to match any path span to avoid LSP fallbacks
+        let green_node = crate::lower::parse_file_impl(db, self.top_mod);
+        let root_syntax = parser::SyntaxNode::new_root(green_node);
+        if let Some(token) = root_syntax.token_at_offset(cursor).right_biased() {
+            for ancestor in token.parent_ancestors() {
+                if let Some(item) = parser::ast::Item::cast(ancestor.clone()) {
+                    if let Some(kind) = item.kind() {
+                        let item_hir = match self.find_enclosing_item_for_ast(db, &item) { Some(it) => it, None => continue };
+                        let mut vctxt = VisitorCtxt::with_item(db, item_hir);
+                        let mut collector = PathSpanCollector::default();
+                        collector.visit_item(&mut vctxt, item_hir);
+
+                        let mut best: Option<(PathId<'db>, LazyPathSpan<'db>, usize, parser::TextRange)> = None;
+                        for (path_id, _scope, lazy_span) in collector.paths {
+                            if let Some(span) = lazy_span.resolve(db) {
+                                if span.range.contains(cursor) {
+                                    // segment idx by ident span
+                                    let mut seg_idx = path_id.segment_index(db);
+                                    for idx in 0..=path_id.segment_index(db) {
+                                        if let Some(id_span) = lazy_span.clone().segment(idx).ident().resolve(db) {
+                                            if id_span.range.contains(cursor) { seg_idx = idx; break; }
+                                        }
+                                    }
+                                    let len = span.range.end() - span.range.start();
+                                    if best.as_ref().map(|(_, _, _, r)| (r.end() - r.start()) > len).unwrap_or(true) {
+                                        best = Some((path_id, lazy_span, seg_idx, span.range));
+                                    }
+                                }
+                            }
+                        }
+
+                        if let Some((path_id, _lazy, seg, _r)) = best {
+                            return LazyHirResult::ItemPath(item_hir, path_id, ItemNodeContext::Regular, Some(seg));
+                        }
+                    }
+                }
+            }
+        }
+
         LazyHirResult::None
     }
     
@@ -647,10 +697,21 @@ impl<'db> ModuleLazyHir<'db> {
         for (path_id, _scope, lazy_span) in collector.paths {
             if let Some(span) = lazy_span.resolve(db) {
                 if span.range == ast_range {
+                    debug_assert!({
+                        // Invariant: AST segments count should match HIR len
+                        let ast_len = path_ast.segments().count();
+                        let hir_len = path_id.segment_index(db) + 1;
+                        ast_len == hir_len
+                    }, "AST/HIR path segment count mismatch in resolve_item_path");
                     return LazyHirResult::ItemPath(item_kind, path_id, context, seg_index);
                 }
                 // Fallback: allow containment in case of minor mismatch
                 if span.range.contains(ast_range.start()) && span.range.contains(ast_range.end()) {
+                    debug_assert!({
+                        let ast_len = path_ast.segments().count();
+                        let hir_len = path_id.segment_index(db) + 1;
+                        ast_len == hir_len
+                    }, "AST/HIR path segment count mismatch in resolve_item_path (containment)");
                     return LazyHirResult::ItemPath(item_kind, path_id, context, seg_index);
                 }
             }

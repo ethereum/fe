@@ -1,6 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 1233
+assertion_line: 1140
 expression: snapshot
 input_file: test_files/goto_comprehensive.fe
 ---
@@ -77,14 +77,14 @@ cursor position (22, 14), path: local at 19:8
 cursor position (25, 20), path: local at 19:8
 cursor position (28, 25), path: local at 19:8
 cursor position (29, 19), path: local at 22:8
-cursor position (34, 14), path: goto_comprehensive::Color
+cursor position (34, 14), path: goto_comprehensive::Color::Red
 cursor position (34, 21), path: goto_comprehensive::Color::Red
-cursor position (35, 16), path: goto_comprehensive::Color::Green
+cursor position (35, 16), path: goto_comprehensive::Color
 cursor position (35, 23), path: goto_comprehensive::Color::Green
-cursor position (36, 15), path: goto_comprehensive::Color
+cursor position (36, 15), path: goto_comprehensive::Color::Blue
 cursor position (36, 22), path: goto_comprehensive::Color::Blue
 cursor position (39, 10), path: local at 35:8
-cursor position (40, 8), path: goto_comprehensive::Color::Green
+cursor position (40, 8), path: goto_comprehensive::Color
 cursor position (40, 15), path: goto_comprehensive::Color::Green
 cursor position (42, 23), path: local at 40:23
 cursor position (53, 22), path: goto_comprehensive::Inner

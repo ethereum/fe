@@ -1,15 +1,19 @@
 use async_lsp::ResponseError;
 use common::InputDb;
 use hir::{
-    hir_def::{scope_graph::ScopeId, ItemKind, PathId, TopLevelMod, Partial, Pat},
+    hir_def::{scope_graph::ScopeId, ItemKind, TopLevelMod},
     lower::map_file_to_mod,
-    span::{DynLazySpan, LazySpan},
-    visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt},
+    span::LazySpan,
     SpannedHirDb,
 };
-use hir_analysis::ty::ty_check::{check_func_body, RecordLike};
-use hir_analysis::name_resolution::local_binding_span_for_expr;
-use hir_analysis::name_resolution::{resolve_ident_to_bucket, resolve_path, resolve_path_segment, NameDomain, NameResKind, PathResErrorKind};
+use hir_analysis::navigation::{resolve_goto_full, NavTarget};
+use hir_analysis::ty::ty_check::{RecordLike, check_func_body, local_binding_span_for_expr};
+use hir_analysis::name_resolution::{
+    resolve_ident_to_bucket, resolve_path, resolve_path_segment, resolve_tail_value_scope,
+    NameDomain, NameResKind, PathResErrorKind,
+};
+use hir::hir_def::{PathId, Partial, Pat};
+
 use tracing::{debug, error};
 
 use crate::{backend::Backend, util::to_offset_from_position};
@@ -37,111 +41,103 @@ impl<'db> GotoTarget<'db> {
     }
 }
 
-#[derive(Default)]
-#[allow(dead_code)]
-struct PathSpanCollector<'db> {
-    paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
-}
+#[cfg(test)]
+mod debug_vis {
+    use super::*;
+    use hir::span::{DynLazySpan, LazySpan};
+    use hir::visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt};
+    use hir::hir_def::{PathId, scope_graph::ScopeId};
 
-impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
-    fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>, path: PathId<'db>) {
-        let Some(span) = ctxt.span() else {
-            return;
-        };
-
-        let scope = ctxt.scope();
-        self.paths.push((path, scope, span));
+    #[derive(Default)]
+    pub struct PathSpanCollector<'db> {
+        pub paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
     }
-}
 
-#[allow(dead_code)]
-fn find_path_surrounding_cursor<'db>(
-    db: &'db DriverDataBase,
-    cursor: Cursor,
-    full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
-) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
-    // Choose the smallest (most specific) path span that contains the cursor
-    let mut best: Option<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>, parser::TextRange)> = None;
-    for (path, scope, lazy_span) in full_paths {
-        let span = lazy_span.resolve(db).unwrap();
-        if span.range.contains(cursor) {
-            let len = span.range.end() - span.range.start();
-            if best.as_ref().map(|(_, _, _, r)| (r.end() - r.start()) > len).unwrap_or(true) {
-                best = Some((path, scope, lazy_span, span.range));
-            }
+    impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
+        fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>, path: PathId<'db>) {
+            let Some(span) = ctxt.span() else { return; };
+            let scope = ctxt.scope();
+            self.paths.push((path, scope, span));
         }
     }
-    let Some((path, scope, lazy_span, _)) = best.clone() else { return None };
-    for idx in 0..=path.segment_index(db) {
-        let seg_lazy = lazy_span.clone().segment(idx);
-        let seg_full = seg_lazy.resolve(db).unwrap();
-        if seg_full.range.contains(cursor) {
-            if let Some(id_span) = seg_lazy.ident().resolve(db) {
-                if id_span.range.contains(cursor) {
-                    return Some((path.segment(db, idx).unwrap(), idx != path.segment_index(db), scope));
-                } else {
-                    continue;
+
+    pub fn find_enclosing_item<'db>(
+        db: &'db dyn SpannedHirDb,
+        top_mod: TopLevelMod<'db>,
+        cursor: super::Cursor,
+    ) -> Option<ItemKind<'db>> {
+        let items = top_mod.scope_graph(db).items_dfs(db);
+        let mut smallest = None;
+        let mut size = None;
+        for item in items {
+            let span = DynLazySpan::from(item.span()).resolve(db).unwrap();
+            if span.range.contains(cursor) {
+                let len = span.range.end() - span.range.start();
+                if size.map(|s| s > len).unwrap_or(true) {
+                    smallest = Some(item);
+                    size = Some(len);
                 }
-            } else {
-                continue;
             }
         }
+        smallest
     }
-    None
-}
 
-pub fn find_enclosing_item<'db>(
-    db: &'db dyn SpannedHirDb,
-    top_mod: TopLevelMod<'db>,
-    cursor: Cursor,
-) -> Option<ItemKind<'db>> {
-    let items = top_mod.scope_graph(db).items_dfs(db);
-
-    let mut smallest_enclosing_item = None;
-    let mut smallest_range_size = None;
-
-    for item in items {
-        let lazy_item_span = DynLazySpan::from(item.span());
-        let item_span = lazy_item_span.resolve(db).unwrap();
-
-        if item_span.range.contains(cursor) {
-            let range_size = item_span.range.end() - item_span.range.start();
-            if smallest_range_size.is_none() || range_size < smallest_range_size.unwrap() {
-                smallest_enclosing_item = Some(item);
-                smallest_range_size = Some(range_size);
+    pub fn find_path_surrounding_cursor<'db>(
+        db: &'db DriverDataBase,
+        cursor: super::Cursor,
+        full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
+    ) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
+        let mut best: Option<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>, parser::TextRange)> = None;
+        for (path, scope, lazy_span) in full_paths {
+            let span = lazy_span.resolve(db).unwrap();
+            if span.range.contains(cursor) {
+                let len = span.range.end() - span.range.start();
+                if best.as_ref().map(|(_, _, _, r)| (r.end() - r.start()) > len).unwrap_or(true) {
+                    best = Some((path, scope, lazy_span, span.range));
+                }
             }
         }
+        let Some((path, scope, lazy_span, _)) = best.clone() else { return None };
+        for idx in 0..=path.segment_index(db) {
+            let seg_lazy = lazy_span.clone().segment(idx);
+            let seg_full = seg_lazy.resolve(db).unwrap();
+            if seg_full.range.contains(cursor) {
+                if let Some(id_span) = seg_lazy.ident().resolve(db) {
+                    if id_span.range.contains(cursor) {
+                        return Some((path.segment(db, idx).unwrap(), idx != path.segment_index(db), scope));
+                    }
+                }
+            }
+        }
+        None
     }
-
-    smallest_enclosing_item
 }
 
+#[cfg(test)]
 pub fn get_goto_target_scopes_for_cursor<'db>(
     db: &'db DriverDataBase,
     top_mod: TopLevelMod<'db>,
     cursor: Cursor,
 ) -> Option<Vec<ScopeId<'db>>> {
+    use debug_vis::*;
+    use hir::visitor::{VisitorCtxt, Visitor};
     let item: ItemKind = find_enclosing_item(db, top_mod, cursor)?;
-
     let mut visitor_ctxt = VisitorCtxt::with_item(db, item);
     let mut path_segment_collector = PathSpanCollector::default();
     path_segment_collector.visit_item(&mut visitor_ctxt, item);
-
     let (path, _is_intermediate, scope) =
         find_path_surrounding_cursor(db, cursor, path_segment_collector.paths)?;
-
-    let resolved = resolve_path(db, path, scope, false);
+    let resolved = hir_analysis::name_resolution::resolve_path(db, path, scope, false);
     let scopes = match resolved {
         Ok(r) => r.as_scope(db).into_iter().collect::<Vec<_>>(),
         Err(err) => match err.kind {
-            PathResErrorKind::NotFound(bucket) => {
+            hir_analysis::name_resolution::PathResErrorKind::NotFound(bucket) => {
                 bucket.iter_ok().flat_map(|r| r.scope()).collect()
             }
-            PathResErrorKind::Ambiguous(vec) => vec.into_iter().flat_map(|r| r.scope()).collect(),
+            hir_analysis::name_resolution::PathResErrorKind::Ambiguous(vec) => vec.into_iter().flat_map(|r| r.scope()).collect(),
             _ => vec![],
         },
     };
-
     Some(scopes)
 }
 
@@ -224,115 +220,12 @@ pub fn goto_definition_with_hir_synthesis<'db>(
         }
     }
 
-    // Now resolve the HIR node to its semantic definition
-    let result = match hir_result {
-        LazyHirResult::Expr(body, expr_id, context) => {
-            resolve_expression_definition(db, body, expr_id, context, cursor, file)
-        }
-        LazyHirResult::Stmt(body, stmt_id, context) => {
-            resolve_statement_definition(db, body, stmt_id, context, cursor, file)
-        }
-        LazyHirResult::Pat(body, pat_id) => resolve_pattern_definition(db, body, pat_id),
-        LazyHirResult::ItemPath(item, path, _ctx, seg) => {
-            // Try to resolve using the item's scope directly (no visitor)
-            let scope = hir::hir_def::scope_graph::ScopeId::from_item(item);
-            // If we have a segment index, resolve that first
-            if let Some(segment_index) = seg {
-                let out: Result<Vec<GotoTarget<'db>>, Box<dyn std::error::Error>> = match resolve_path_segment(db, path, segment_index, scope, true) {
-                    Ok(res) => {
-                        if let Some(s) = res.as_scope(db) {
-                            Ok(vec![GotoTarget::Scope(s)])
-                        } else if let Some(s) = hir_analysis::name_resolution::resolve_path_segment_scope(db, path, segment_index, scope, true) {
-                            Ok(vec![GotoTarget::Scope(s)])
-                        } else {
-                            Ok(vec![])
-                        }
-                    }
-                    Err(err) => match err.kind {
-                        PathResErrorKind::NotFound(bucket) => {
-                            let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
-                            if !scopes.is_empty() {
-                                Ok(scopes.into_iter().map(GotoTarget::Scope).collect())
-                            } else {
-                                Ok(vec![])
-                            }
-                        }
-                        PathResErrorKind::Ambiguous(vec) => {
-                            let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
-                            Ok(scopes.into_iter().map(GotoTarget::Scope).collect())
-                        }
-                        _ => Ok(vec![]),
-                    },
-                };
-                return out;
-            }
-            // Otherwise resolve the full path
-            match resolve_path(db, path, scope, false) {
-                Ok(res) => {
-                    if let Some(s) = res.as_scope(db) {
-                        Ok(vec![GotoTarget::Scope(s)])
-                    } else if let Some(s) = hir_analysis::name_resolution::resolve_path_segment_scope(db, path, path.segment_index(db), scope, true) {
-                        Ok(vec![GotoTarget::Scope(s)])
-                    } else {
-                        Ok(vec![])
-                    }
-                }
-                Err(err) => match err.kind {
-                    PathResErrorKind::NotFound(bucket) => {
-                        let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
-                        if !scopes.is_empty() {
-                            Ok(scopes.into_iter().map(GotoTarget::Scope).collect())
-                        } else {
-                            Ok(vec![])
-                        }
-                    }
-                    PathResErrorKind::Ambiguous(vec) => {
-                        let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
-                        Ok(scopes.into_iter().map(GotoTarget::Scope).collect())
-                    }
-                    _ => Ok(vec![]),
-                },
-            }
-        }
-        LazyHirResult::ItemType(_item, _ty, _ctx) => {
-            // TODO: Add type-specific goto targets when available
-            Ok(vec![])
-        }
-        LazyHirResult::ItemGenericParam(item, idx) => {
-            let scope = hir::hir_def::scope_graph::ScopeId::GenericParam(item, idx);
-            Ok(vec![GotoTarget::Scope(scope)])
-        }
-        LazyHirResult::None => {
-            if let Some(item) = find_enclosing_item(db, top_mod, cursor) {
-                let mut vctxt = hir::visitor::VisitorCtxt::with_item(db, item);
-                let mut collector = PathSpanCollector::default();
-                collector.visit_item(&mut vctxt, item);
-                if let Some((seg_path, _intermediate, scope)) = find_path_surrounding_cursor(db, cursor, collector.paths) {
-                    match resolve_path_segment(db, seg_path, seg_path.segment_index(db), scope, false) {
-                        Ok(res) => {
-                            if let Some(s) = res.as_scope(db) {
-                                return Ok(vec![GotoTarget::Scope(s)]);
-                            }
-                        }
-                        Err(err) => match err.kind {
-                            PathResErrorKind::NotFound(bucket) => {
-                                let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
-                                if !scopes.is_empty() {
-                                    return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
-                                }
-                            }
-                            PathResErrorKind::Ambiguous(vec) => {
-                                let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
-                                return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
-                            }
-                            _ => {}
-                        },
-                    }
-                }
-            }
-            Ok(vec![])
-        }
-    };
+    // Resolve via hir-analysis navigation
+    let nav_targets = resolve_goto_full(db, db, top_mod, cursor, hir_result);
+    let result = Ok(nav_targets
+        .into_iter()
+        .map(|t| match t { NavTarget::Scope(s) => GotoTarget::Scope(s), NavTarget::Span(sp) => GotoTarget::Span(sp) })
+        .collect());
 
     result
 }
@@ -520,7 +413,7 @@ fn resolve_expression_definition<'db>(
                         },
                     }
                 }
-                hir::synthesis::HirNodeContext::Regular => {
+                hir::synthesis::HirNodeContext::Regular | hir::synthesis::HirNodeContext::MethodCall => {
                     // Resolve the full path
                     match resolve_path(db, *path_id, scope, true) {
                         Ok(path_res) => {
@@ -720,7 +613,7 @@ fn resolve_statement_definition<'db>(
                                 },
                             }
                         }
-                        hir::synthesis::HirNodeContext::Regular => {
+                        hir::synthesis::HirNodeContext::Regular | hir::synthesis::HirNodeContext::MethodCall => {
                             // Resolve the full path
                             match resolve_path(db, *path_id, scope, false) {
                                 Ok(path_res) => {
@@ -888,6 +781,7 @@ fn resolve_pattern_definition<'db>(
 }
 
 /// Performance comparison between old visitor-based and new HIR synthesis approaches
+#[cfg(test)]
 pub fn benchmark_goto_approaches<'db>(
     db: &'db DriverDataBase,
     top_mod: TopLevelMod<'db>,
@@ -1019,6 +913,8 @@ mod tests {
     use url::Url;
 
     use super::*;
+    use hir::visitor::{VisitorCtxt, Visitor};
+    pub use crate::functionality::goto::debug_vis::{PathSpanCollector, find_path_surrounding_cursor, find_enclosing_item};
     use crate::test_utils::load_ingot_from_directory;
     use driver::DriverDataBase;
 

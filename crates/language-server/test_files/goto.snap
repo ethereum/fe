@@ -1,6 +1,6 @@
 ---
 source: crates/language-server/src/functionality/goto.rs
-assertion_line: 667
+assertion_line: 1140
 expression: snapshot
 input_file: test_files/goto.fe
 ---
@@ -24,5 +24,5 @@ cursor position (6, 11), path: goto::Foo
 cursor position (7, 11), path: goto::Bar
 cursor position (8, 11), path: goto::baz
 cursor position (8, 16), path: goto::baz::Baz
-cursor position (9, 4), path: lib
+cursor position (9, 4), path: lib::todo
 cursor position (9, 10), path: lib::todo

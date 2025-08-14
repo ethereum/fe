@@ -4,6 +4,7 @@ use async_lsp::lsp_types::Hover;
 use common::file::File;
 use hir::lower::map_file_to_mod;
 use hir_analysis::ty::ty_check::check_func_body;
+use hir_analysis::hover::hover_markdown_for_scope;
 use tracing::info;
 
 use super::goto::Cursor;
@@ -39,7 +40,7 @@ pub fn hover_helper(
         LazyHirResult::ItemPath(item, path, _ctx, seg) => {
             // Resolve the item-level path to a scope and show a concise label
             let scope = hir::hir_def::scope_graph::ScopeId::from_item(item);
-            let res = if let Some(i) = seg {
+            let resolved = if let Some(i) = seg {
                 hir_analysis::name_resolution::resolve_path_segment(db, path, i, scope, true)
                     .ok()
                     .and_then(|r| r.as_scope(db))
@@ -49,32 +50,26 @@ pub fn hover_helper(
                     .and_then(|r| r.as_scope(db))
             };
 
-            if let Some(s) = res {
-                let label = s.pretty_path(db).unwrap_or_default();
-                let contents = format!("```fe\n{}\n```", label);
-                Ok(Some(Hover {
-                    contents: async_lsp::lsp_types::HoverContents::Markup(
-                        async_lsp::lsp_types::MarkupContent {
-                            kind: async_lsp::lsp_types::MarkupKind::Markdown,
-                            value: contents,
-                        },
-                    ),
-                    range: None,
-                }))
-            } else {
-                Ok(None)
-            }
+            let md = resolved.and_then(|s| hover_markdown_for_scope(db, db, s));
+            Ok(md.map(|value| Hover {
+                contents: async_lsp::lsp_types::HoverContents::Markup(
+                    async_lsp::lsp_types::MarkupContent {
+                        kind: async_lsp::lsp_types::MarkupKind::Markdown,
+                        value,
+                    },
+                ),
+                range: None,
+            }))
         }
         LazyHirResult::ItemType(_item, _ty, _ctx) => Ok(None),
         LazyHirResult::ItemGenericParam(item, idx) => {
             let scope = hir::hir_def::scope_graph::ScopeId::GenericParam(item, idx);
-            let label = scope.pretty_path(db).unwrap_or_else(|| format!("generic param #{}", idx));
-            let contents = format!("```fe\n{}\n```", label);
-            Ok(Some(Hover {
+            let md = hover_markdown_for_scope(db, db, scope);
+            Ok(md.map(|value| Hover {
                 contents: async_lsp::lsp_types::HoverContents::Markup(
                     async_lsp::lsp_types::MarkupContent {
                         kind: async_lsp::lsp_types::MarkupKind::Markdown,
-                        value: contents,
+                        value,
                     },
                 ),
                 range: None,

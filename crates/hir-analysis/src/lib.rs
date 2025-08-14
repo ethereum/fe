@@ -10,6 +10,8 @@ impl<T> HirAnalysisDb for T where T: HirDb {}
 
 pub mod name_resolution;
 pub mod ty;
+pub mod hover;
+pub mod navigation;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Spanned<'db, T> {

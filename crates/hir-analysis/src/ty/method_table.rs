@@ -36,6 +36,18 @@ pub(crate) fn probe_method<'db>(
     table.probe(db, ty, name)
 }
 
+/// Convenience helper for callers outside the `ty` module to avoid importing
+/// the private `canonical` module.
+pub fn probe_method_uncanonicalized<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ingot: Ingot<'db>,
+    ty: TyId<'db>,
+    name: IdentId<'db>,
+) -> Vec<FuncDef<'db>> {
+    let c = super::canonical::Canonical::new(db, ty);
+    probe_method(db, ingot, c, name).clone()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct MethodTable<'db> {
     buckets: FxHashMap<TyBase<'db>, MethodBucket<'db>>,
