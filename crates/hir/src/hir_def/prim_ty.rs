@@ -12,7 +12,7 @@ pub enum PrimTy {
 }
 
 impl PrimTy {
-    pub fn name(self, db: &dyn HirDb) -> IdentId {
+    pub fn name(self, db: &dyn HirDb) -> IdentId<'_> {
         match self {
             PrimTy::Bool => IdentId::make_bool(db),
             PrimTy::Int(ty) => ty.name(db),
@@ -55,7 +55,7 @@ pub enum IntTy {
 }
 
 impl IntTy {
-    pub fn name(self, db: &dyn HirDb) -> IdentId {
+    pub fn name(self, db: &dyn HirDb) -> IdentId<'_> {
         match self {
             IntTy::I8 => IdentId::make_i8(db),
             IntTy::I16 => IdentId::make_i16(db),
@@ -80,7 +80,7 @@ pub enum UintTy {
 }
 
 impl UintTy {
-    pub fn name(self, db: &dyn HirDb) -> IdentId {
+    pub fn name(self, db: &dyn HirDb) -> IdentId<'_> {
         match self {
             UintTy::U8 => IdentId::make_u8(db),
             UintTy::U16 => IdentId::make_u16(db),

@@ -95,7 +95,7 @@ where
 
 impl ModuleTree<'_> {
     /// Returns the tree node data of the given id.
-    pub fn node_data(&self, id: ModuleTreeNodeId) -> &ModuleTreeNode {
+    pub fn node_data(&self, id: ModuleTreeNodeId) -> &ModuleTreeNode<'_> {
         &self.module_tree.0[id]
     }
 
@@ -105,7 +105,7 @@ impl ModuleTree<'_> {
     }
 
     /// Returns the tree node data of the given top level module.
-    pub fn tree_node_data(&self, top_mod: TopLevelMod) -> &ModuleTreeNode {
+    pub fn tree_node_data(&self, top_mod: TopLevelMod) -> &ModuleTreeNode<'_> {
         &self.module_tree.0[self.tree_node(top_mod)]
     }
 
@@ -114,21 +114,21 @@ impl ModuleTree<'_> {
         self.root
     }
 
-    pub fn root_data(&self) -> &ModuleTreeNode {
+    pub fn root_data(&self) -> &ModuleTreeNode<'_> {
         self.node_data(self.root)
     }
 
     /// Returns an iterator of all top level modules in this ingot.
-    pub fn all_modules(&self) -> impl Iterator<Item = TopLevelMod> + '_ {
+    pub fn all_modules(&self) -> impl Iterator<Item = TopLevelMod<'_>> + '_ {
         self.mod_map.keys().copied()
     }
 
-    pub fn parent(&self, top_mod: TopLevelMod) -> Option<TopLevelMod> {
+    pub fn parent(&self, top_mod: TopLevelMod) -> Option<TopLevelMod<'_>> {
         let node = self.tree_node_data(top_mod);
         node.parent.map(|id| self.module_tree.0[id].top_mod)
     }
 
-    pub fn children(&self, top_mod: TopLevelMod) -> impl Iterator<Item = TopLevelMod> + '_ {
+    pub fn children(&self, top_mod: TopLevelMod) -> impl Iterator<Item = TopLevelMod<'_>> + '_ {
         self.tree_node_data(top_mod)
             .children
             .iter()

@@ -6,8 +6,8 @@ use crate::{
         ExprId, Field, FieldDef, FieldDefListId, FieldIndex, FieldParent, Func, FuncParam,
         FuncParamListId, FuncParamName, GenericArg, GenericArgListId, GenericParam,
         GenericParamListId, IdentId, Impl, ImplTrait, ItemKind, KindBound, LitKind, MatchArm, Mod,
-        Partial, Pat, PatId, PathId, Stmt, StmtId, Struct, TopLevelMod, Trait, TraitRefId,
-        TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
+        Partial, Pat, PatId, PathId, PathKind, Stmt, StmtId, Struct, TopLevelMod, Trait,
+        TraitRefId, TupleTypeId, TypeAlias, TypeBound, TypeId, TypeKind, Use, UseAlias, UsePathId,
         UsePathSegment, VariantDef, VariantDefListId, VariantKind, WhereClauseId, WherePredicate,
     },
     span::{
@@ -1467,6 +1467,17 @@ pub fn walk_generic_arg<'db, V>(
                 visitor.visit_body(&mut VisitorCtxt::with_body(ctxt.db, body), body);
             }
         }
+
+        GenericArg::AssocType(assoc_type_arg) => {
+            if let Some(ty) = assoc_type_arg.ty.to_opt() {
+                ctxt.with_new_ctxt(
+                    |span| span.into_assoc_type_arg().ty(),
+                    |ctxt| {
+                        visitor.visit_ty(ctxt, ty);
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -1704,13 +1715,31 @@ where
     } else {
         0
     };
-    if let Some(ident) = path.ident(ctxt.db).to_opt() {
-        ctxt.with_new_ctxt(
-            |span| span.segment(idx).into_atom(),
-            |ctxt| {
-                visitor.visit_ident(ctxt, ident);
-            },
-        );
+    match path.kind(ctxt.db) {
+        PathKind::Ident { .. } => {
+            if let Some(ident) = path.ident(ctxt.db).to_opt() {
+                ctxt.with_new_ctxt(
+                    |span| span.segment(idx).into_atom(),
+                    |ctxt| {
+                        visitor.visit_ident(ctxt, ident);
+                    },
+                );
+            }
+        }
+        PathKind::QualifiedType { type_, trait_ } => {
+            ctxt.with_new_ctxt(
+                |span| span.segment(idx).qualified_type().ty(),
+                |ctxt| {
+                    visitor.visit_ty(ctxt, type_);
+                },
+            );
+            ctxt.with_new_ctxt(
+                |span| span.segment(idx).qualified_type().trait_qualifier(),
+                |ctxt| {
+                    visitor.visit_trait_ref(ctxt, trait_);
+                },
+            );
+        }
     }
     let generic_args = path.generic_args(ctxt.db);
     ctxt.with_new_ctxt(
@@ -1788,18 +1817,6 @@ pub fn walk_type<'db, V>(
                 if let Some(body) = body.to_opt() {
                     visitor.visit_body(&mut VisitorCtxt::with_body(ctxt.db, body), body);
                 }
-            },
-        ),
-
-        TypeKind::SelfType(generic_args) => ctxt.with_new_ctxt(
-            |span| span.into_self_type(),
-            |ctxt| {
-                ctxt.with_new_ctxt(
-                    |span| span.generic_args(),
-                    |ctxt| {
-                        visitor.visit_generic_arg_list(ctxt, *generic_args);
-                    },
-                );
             },
         ),
 

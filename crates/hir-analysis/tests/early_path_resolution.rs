@@ -2,13 +2,18 @@ mod test_db;
 use std::path::Path;
 
 use dir_test::{dir_test, Fixture};
-use fe_hir_analysis::name_resolution::{resolve_path, NameDomain};
+use fe_hir_analysis::{
+    name_resolution::{resolve_path, NameDomain},
+    ty::trait_resolution::PredicateListId,
+};
 use hir::{
     hir_def::{Expr, ExprId, ItemKind, Pat, PatId, PathId, TopLevelMod, TypeId},
     visitor::prelude::*,
 };
 use test_db::{HirAnalysisTestDb, HirPropertyFormatter};
 use test_utils::snap_test;
+
+// xxx remove this
 
 #[dir_test(
     dir: "$CARGO_MANIFEST_DIR/test_files/early_path_resolution",
@@ -74,7 +79,13 @@ impl<'db> Visitor<'db> for PathVisitor<'db, '_> {
 
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'db, LazyPathSpan<'db>>, path: PathId<'db>) {
         let scope = ctxt.scope();
-        let prop = match resolve_path(self.db, path, scope, false) {
+        let prop = match resolve_path(
+            self.db,
+            path,
+            scope,
+            PredicateListId::empty_list(self.db),
+            false,
+        ) {
             Ok(res) => res.pretty_path(self.db).unwrap(),
             Err(err) => err.print(),
         };

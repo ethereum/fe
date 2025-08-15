@@ -4,7 +4,7 @@
 //! [`CompleteDiagnostic`].
 
 use crate::{
-    name_resolution::diagnostics::NameResDiag,
+    name_resolution::diagnostics::{ImportDiag, PathResDiag},
     ty::{
         diagnostics::{
             BodyDiag, DefConflictError, FuncBodyDiag, ImplDiag, TraitConstraintDiag,
@@ -133,7 +133,7 @@ impl DiagnosticVoucher for TyDiagCollection<'_> {
     }
 }
 
-impl DiagnosticVoucher for NameResDiag<'_> {
+impl DiagnosticVoucher for PathResDiag<'_> {
     fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::NameResolution, self.local_code());
         let severity = Severity::Error;
@@ -178,6 +178,62 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                         style: LabelStyle::Primary,
                         message: format!("`{ident}` is not found"),
                         span: prim_span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::MethodNotFound {
+                primary,
+                method_name,
+                receiver,
+            } => {
+                let (recv_name, recv_ty, recv_kind) = match receiver {
+                    Either::Left(ty) => (
+                        ty.pretty_print(db),
+                        Some(ty),
+                        RecordLike::Type(*ty).kind_name(db),
+                    ),
+                    Either::Right(trait_) => {
+                        let name = trait_.def(db).trait_(db).name(db).unwrap().data(db);
+                        (name, None, "trait".to_string())
+                    }
+                };
+
+                let method_str = method_name.data(db);
+                let message =
+                    format!("no method named `{method_str}` found for {recv_kind} `{recv_name}`");
+
+                if let Some(ty) = recv_ty {
+                    if let Some(field_ty) = RecordLike::Type(*ty).record_field_ty(db, *method_name)
+                    {
+                        return CompleteDiagnostic {
+                            severity: Severity::Error,
+                            message,
+                            sub_diagnostics: vec![SubDiagnostic {
+                                style: LabelStyle::Primary,
+                                message: format!(
+                                    "field `{}` in `{}` has type `{}`",
+                                    method_str,
+                                    recv_name,
+                                    field_ty.pretty_print(db)
+                                ),
+                                span: primary.resolve(db),
+                            }],
+                            notes: vec![],
+                            error_code,
+                        };
+                    }
+                }
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message,
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("method not found in `{recv_name}`"),
+                        span: primary.resolve(db),
                     }],
                     notes: vec![],
                     error_code,
@@ -235,6 +291,57 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                     message: format!("`{ident}` is ambiguous"),
                     sub_diagnostics: diags,
                     notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::AmbiguousAssociatedType {
+                span,
+                name,
+                candidates,
+            } => {
+                let name = name.data(db);
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("associated type `{name}` is ambiguous"),
+                    span: span.resolve(db),
+                }];
+
+                for (trait_inst, ty) in candidates {
+                    let trait_def = trait_inst.def(db).trait_(db);
+                    let trait_name = trait_def.name(db).unwrap().data(db);
+                    let span = trait_def.span().name().resolve(db);
+
+                    let msg = match ty.data(db) {
+                        TyData::AssocTy(_) | TyData::Invalid(_) | TyData::Never => {
+                            format!("candidate: `{trait_name}`")
+                        }
+                        _ => {
+                            // Render as: candidate: <Self as Trait>::Name = Ty
+                            let self_ty = trait_inst.self_ty(db).pretty_print(db);
+                            let ty_str = ty.pretty_print(db);
+                            format!(
+                                "candidate: <{} as {}>::{} = {}",
+                                self_ty, trait_name, name, ty_str
+                            )
+                        }
+                    };
+
+                    sub_diagnostics.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: msg,
+                        span,
+                    });
+                }
+
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("ambiguous associated type `{name}`"),
+                    sub_diagnostics,
+                    notes: vec![format!(
+                        "specify the trait explicitly: `<Type as Trait>::{}`",
+                        name
+                    )],
                     error_code,
                 }
             }
@@ -309,21 +416,291 @@ impl DiagnosticVoucher for NameResDiag<'_> {
                 }
             }
 
-            Self::TooManyGenericArgs {
-                span,
-                expected,
-                given,
-            } => CompleteDiagnostic {
+            Self::ArgNumMismatch { span, ident, expected, given } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: format!("too many generic args; expected {expected}, given {given}"),
+                message: format!(
+                    "incorrect number of generic arguments for `{}`; expected {expected}, given {given}",
+                    ident.data(db)
+                ),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!("expected {expected} arguments here, but {given} given"),
+                    message: format!("expected {expected} arguments, but {given} were given"),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
                 error_code,
             },
+
+            Self::ArgKindMismatch { span, ident, expected, given } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: format!("invalid type argument kind for `{}`", ident.data(db)),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "expected `{expected}` kind, but `{}` has `{}` kind",
+                        given.pretty_print(db),
+                        given.kind(db)
+                    ),
+                    span: span.resolve(db),
+                }],
+                notes: vec![],
+                error_code,
+            },
+
+            Self::ArgTypeMismatch { span, ident, expected, given } => {
+                let (header, message) = match (expected, given) {
+                    (Some(exp), Some(giv)) => (
+                        format!("const type mismatch for `{}`", ident.data(db)),
+                        format!("expected `{}`, given `{}`",
+                            exp.pretty_print(db),
+                            giv.pretty_print(db))
+                    ),
+
+                    (Some(exp), None) => (format!(
+                        "const generic argument expected for `{}`",
+                        ident.data(db),
+                    ), format!("expected const argument of type `{}`", exp.pretty_print(db))),
+                    (None, Some(giv)) => (
+                        "unexpected const generic argument".to_string(),
+                        format!("expected type generic argument, given const `{}`", giv.pretty_print(db))),
+                    (None, None) => ("invalid const argument".to_string(), "unexpected const argument".to_string()),
+                };
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: header,
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message,
+                        span: span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::TypeMustBeKnown(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "type must be known here".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "type must be known here".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec![],
+                error_code,
+            },
+
+            Self::AmbiguousInherentMethod { primary, method_name, candidates } => {
+                let method_name = method_name.data(db);
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{method_name}` is ambiguous"),
+                    span: primary.resolve(db),
+                }];
+
+                for cand in candidates {
+                    sub_diagnostics.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("`{method_name}` is defined here"),
+                        span: cand.name_span(db).resolve(db),
+                    });
+                }
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "ambiguous method".to_string(),
+                    sub_diagnostics,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::AmbiguousTrait { primary, method_name, traits } => {
+                let method_name = method_name.data(db);
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{method_name}` is ambiguous"),
+                    span: primary.resolve(db),
+                }];
+
+                for trait_ in traits {
+                    let trait_name = trait_.name(db).unwrap().data(db);
+                    sub_diagnostics.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("candidate: `{trait_name}::{method_name}`"),
+                        span: primary.resolve(db),
+                    });
+                }
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "multiple trait candidates found".to_string(),
+                    sub_diagnostics,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::InvisibleAmbiguousTrait { primary, traits } => {
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message:
+                        "consider importing one of the following traits into the scope to resolve the ambiguity"
+                            .to_string(),
+                    span: primary.resolve(db),
+                }];
+
+                for trait_ in traits {
+                    if let Some(path) = trait_.scope().pretty_path(db) {
+                        sub_diagnostics.push(SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: format!("`use {path}`"),
+                            span: primary.resolve(db),
+                        });
+                    }
+                }
+
+                CompleteDiagnostic {
+                    severity: Severity::Error,
+                    message: "trait is not in the scope".to_string(),
+                    sub_diagnostics,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+        }
+    }
+}
+
+impl DiagnosticVoucher for ImportDiag<'_> {
+    fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
+        let error_code = GlobalErrorCode::new(
+            DiagnosticPass::NameResolution,
+            match self {
+                ImportDiag::Conflict(..) => 1,
+                ImportDiag::NotFound(..) => 2,
+                ImportDiag::Invisible(..) => 3,
+                ImportDiag::Ambiguous(..) => 4,
+                ImportDiag::InvalidPathSegment(..) => 5,
+            },
+        );
+        let severity = Severity::Error;
+        match self {
+            ImportDiag::Conflict(ident, conflicts) => {
+                let ident = ident.data(db);
+                let mut spans: Vec<_> = conflicts
+                    .iter()
+                    .filter_map(|span| span.resolve(db))
+                    .collect();
+                spans.sort_unstable();
+                let mut spans = spans.into_iter();
+                let mut diags = Vec::with_capacity(conflicts.len());
+                diags.push(SubDiagnostic::new(
+                    LabelStyle::Primary,
+                    format!("`{ident}` is defined here"),
+                    spans.next(),
+                ));
+                for sub_span in spans {
+                    diags.push(SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format! {"`{ident}` is redefined here"},
+                        Some(sub_span),
+                    ));
+                }
+
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{ident}` conflicts with other definitions"),
+                    sub_diagnostics: diags,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+            ImportDiag::NotFound(prim_span, ident) => {
+                let ident = ident.data(db);
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{ident}` is not found"),
+                    sub_diagnostics: vec![SubDiagnostic {
+                        style: LabelStyle::Primary,
+                        message: format!("`{ident}` is not found"),
+                        span: prim_span.resolve(db),
+                    }],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+            ImportDiag::Invisible(prim_span, ident, span) => {
+                let ident = ident.data(db);
+                let mut sub_diagnostics = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{ident}` is not visible"),
+                    span: prim_span.resolve(db),
+                }];
+                if let Some(span) = span {
+                    sub_diagnostics.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("`{ident}` is defined here"),
+                        span: span.resolve(db),
+                    });
+                }
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{ident}` is not visible"),
+                    sub_diagnostics,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+            ImportDiag::Ambiguous(prim_span, ident, candidates) => {
+                let ident = ident.data(db);
+                let mut diags = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{ident}` is ambiguous"),
+                    span: prim_span.resolve(db),
+                }];
+                let mut cand_spans: Vec<_> = candidates
+                    .iter()
+                    .filter_map(|span| span.resolve(db))
+                    .collect();
+                cand_spans.sort_unstable();
+                diags.extend(cand_spans.into_iter().enumerate().map(|(i, span)| {
+                    SubDiagnostic::new(
+                        LabelStyle::Secondary,
+                        format!("candidate {}", i + 1),
+                        Some(span),
+                    )
+                }));
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{ident}` is ambiguous"),
+                    sub_diagnostics: diags,
+                    notes: vec![],
+                    error_code,
+                }
+            }
+            ImportDiag::InvalidPathSegment(prim_span, name, res_span) => {
+                let name = name.data(db);
+                let mut labels = vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("`{name}` can't be used as a middle segment of a path"),
+                    span: prim_span.resolve(db),
+                }];
+                if let Some(span) = res_span {
+                    labels.push(SubDiagnostic {
+                        style: LabelStyle::Secondary,
+                        message: format!("`{name}` is defined here"),
+                        span: span.resolve(db),
+                    });
+                }
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("`{name}` can't be used as a middle segment of a path"),
+                    sub_diagnostics: labels,
+                    notes: vec![],
+                    error_code,
+                }
+            }
         }
     }
 }
@@ -730,18 +1107,6 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                         "expected a normal type here, but `{}` is given",
                         given.pretty_print(db)
                     ),
-                    span: span.resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
-
-            Self::AssocTy(span) => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "associated type is not supported ".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: "associated type is not implemented".to_string(),
                     span: span.resolve(db),
                 }],
                 notes: vec![],
@@ -1433,7 +1798,7 @@ impl DiagnosticVoucher for BodyDiag<'_> {
             Self::AmbiguousInherentMethodCall {
                 primary,
                 method_name,
-                cand_spans,
+                candidates,
             } => {
                 let method_name = method_name.data(db);
                 let mut sub_diagnostics = vec![SubDiagnostic {
@@ -1442,11 +1807,11 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     span: primary.resolve(db),
                 }];
 
-                for span in cand_spans {
+                for cand in candidates {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: format!("`{method_name}` is defined here"),
-                        span: span.resolve(db),
+                        span: cand.name_span(db).resolve(db),
                     });
                 }
 
@@ -1534,69 +1899,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     severity: Severity::Error,
                     message: "trait is not in the scope".to_string(),
                     sub_diagnostics,
-                    notes: vec![],
-                    error_code,
-                }
-            }
-
-            Self::MethodNotFound {
-                primary,
-                method_name,
-                receiver,
-            } => {
-                let (recv_name, recv_ty, recv_kind) = match receiver {
-                    Either::Left(ty) => {
-                        // Get type information
-                        let kind_name = if let Some(adt_ref) = ty.adt_ref(db) {
-                            adt_ref.kind_name().to_string()
-                        } else if ty.is_func(db) {
-                            "fn".to_string()
-                        } else {
-                            ty.pretty_print(db).to_string()
-                        };
-                        (ty.pretty_print(db), Some(ty), kind_name)
-                    }
-                    Either::Right(trait_) => {
-                        let name = trait_.trait_(db).name(db).unwrap().data(db);
-                        (name, None, "trait".to_string())
-                    }
-                };
-
-                let method_str = method_name.data(db);
-                let message =
-                    format!("no method named `{method_str}` found for {recv_kind} `{recv_name}`");
-
-                if let Some(ty) = recv_ty {
-                    if let Some(field_ty) =
-                        RecordLike::from_ty(*ty).record_field_ty(db, *method_name)
-                    {
-                        return CompleteDiagnostic {
-                            severity: Severity::Error,
-                            message,
-                            sub_diagnostics: vec![SubDiagnostic {
-                                style: LabelStyle::Primary,
-                                message: format!(
-                                    "field `{}` in `{}` has type `{}`",
-                                    method_str,
-                                    recv_name,
-                                    field_ty.pretty_print(db)
-                                ),
-                                span: primary.resolve(db),
-                            }],
-                            notes: vec![],
-                            error_code,
-                        };
-                    }
-                }
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message,
-                    sub_diagnostics: vec![SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: format!("method not found in `{recv_name}`"),
-                        span: primary.resolve(db),
-                    }],
                     notes: vec![],
                     error_code,
                 }
@@ -1721,16 +2023,16 @@ impl DiagnosticVoucher for TraitLowerDiag<'_> {
                 conflict_with,
             } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "conflict trait implementation".to_string(),
+                message: "conflicting trait implementations".to_string(),
                 sub_diagnostics: vec![
                     SubDiagnostic {
                         style: LabelStyle::Primary,
-                        message: "conflict trait implementation".to_string(),
+                        message: "this trait implementation".to_string(),
                         span: primary.span().ty().resolve(db),
                     },
                     SubDiagnostic {
                         style: LabelStyle::Secondary,
-                        message: "conflict with this trait implementation".to_string(),
+                        message: "conflicts with this trait implementation".to_string(),
                         span: conflict_with.span().ty().resolve(db),
                     },
                 ],
@@ -2079,47 +2381,74 @@ impl DiagnosticVoucher for ImplDiag<'_> {
             },
 
             Self::MethodArgTyMismatch {
-                trait_m: _,
+                trait_m,
                 impl_m,
                 trait_m_ty,
                 impl_m_ty,
                 param_idx,
-            } => CompleteDiagnostic {
-                severity,
-                message: "method argument type mismatch".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!(
-                        "expected `{}` type, but the given type is `{}`",
-                        trait_m_ty.pretty_print(db),
-                        impl_m_ty.pretty_print(db)
-                    ),
-                    span: impl_m.param_span(db, *param_idx).resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            } => {
+                let method_name = impl_m.name(db).data(db);
+
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("method `{method_name}` has incompatible argument type"),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: format!(
+                                "expected `{}`, found `{}`",
+                                trait_m_ty.pretty_print(db),
+                                impl_m_ty.pretty_print(db)
+                            ),
+                            span: impl_m.param_span(db, *param_idx).resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "trait requires this type".to_string(),
+                            span: trait_m.param_span(db, *param_idx).resolve(db),
+                        },
+                    ],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::MethodRetTyMismatch {
-                trait_m: _,
+                trait_m,
                 impl_m,
                 trait_ty,
                 impl_ty,
-            } => CompleteDiagnostic {
-                severity,
-                message: "method return type mismatch".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!(
-                        "expected `{}` type, but the given type is `{}`",
-                        trait_ty.pretty_print(db),
-                        impl_ty.pretty_print(db),
-                    ),
-                    span: impl_m.hir_func_def(db).unwrap().span().ret_ty().resolve(db),
-                }],
-                notes: vec![],
-                error_code,
-            },
+            } => {
+                let method_name = impl_m.name(db).data(db);
+
+                CompleteDiagnostic {
+                    severity,
+                    message: format!("method `{method_name}` has incompatible return type"),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: format!(
+                                "expected `{}`, found `{}`",
+                                trait_ty.pretty_print(db),
+                                impl_ty.pretty_print(db),
+                            ),
+                            span: impl_m.hir_func_def(db).unwrap().span().ret_ty().resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: "trait requires this return type".to_string(),
+                            span: trait_m
+                                .hir_func_def(db)
+                                .unwrap()
+                                .span()
+                                .ret_ty()
+                                .resolve(db),
+                        },
+                    ],
+                    notes: vec![],
+                    error_code,
+                }
+            }
 
             Self::MethodStricterBound {
                 span,
@@ -2202,6 +2531,26 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                     error_code,
                 }
             }
+
+            Self::MissingAssociatedType {
+                primary,
+                type_name,
+                trait_,
+            } => CompleteDiagnostic {
+                severity,
+                message: "missing associated type in trait implementation".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!(
+                        "missing associated type `{}` from trait `{}`",
+                        type_name.data(db),
+                        trait_.name(db).unwrap().data(db)
+                    ),
+                    span: primary.resolve(db),
+                }],
+                notes: vec![],
+                error_code,
+            },
         }
     }
 }

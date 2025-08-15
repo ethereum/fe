@@ -15,7 +15,7 @@ use salsa::Update;
 use thin_vec::ThinVec;
 
 use super::{
-    diagnostics::NameResDiag,
+    diagnostics::ImportDiag,
     name_resolver::{
         NameDerivation, NameDomain, NameRes, NameResBucket, NameResKind, NameResolutionError,
         NameResolutionResult, NameResolver, QueryDirective,
@@ -37,7 +37,7 @@ pub(crate) struct ImportResolver<'db> {
     intermediate_uses: FxHashMap<ScopeId<'db>, VecDeque<IntermediateUse<'db>>>,
 
     /// The errors that have been accumulated during the import resolution.
-    accumulated_errors: Vec<NameResDiag<'db>>,
+    accumulated_errors: Vec<ImportDiag<'db>>,
 
     /// The number of imported resolutions.
     /// This is used to judge if a import resolution doesn't change in each
@@ -64,7 +64,7 @@ impl<'db> ImportResolver<'db> {
         }
     }
 
-    pub(crate) fn resolve_imports(mut self) -> (ResolvedImports<'db>, Vec<NameResDiag<'db>>) {
+    pub(crate) fn resolve_imports(mut self) -> (ResolvedImports<'db>, Vec<ImportDiag<'db>>) {
         self.initialize_i_uses();
 
         let mut changed = true;
@@ -538,7 +538,7 @@ impl<'db> ImportResolver<'db> {
 
         match err {
             NameResolutionError::NotFound => {
-                self.accumulated_errors.push(NameResDiag::NotFound(
+                self.accumulated_errors.push(ImportDiag::NotFound(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                 ));
@@ -550,7 +550,7 @@ impl<'db> ImportResolver<'db> {
             }
 
             NameResolutionError::Ambiguous(cands) => {
-                self.accumulated_errors.push(NameResDiag::ambiguous(
+                self.accumulated_errors.push(ImportDiag::ambiguous(
                     self.db,
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
@@ -559,16 +559,15 @@ impl<'db> ImportResolver<'db> {
             }
 
             NameResolutionError::InvalidPathSegment(res) => {
-                self.accumulated_errors
-                    .push(NameResDiag::InvalidPathSegment(
-                        i_use.current_segment_span(),
-                        i_use.current_segment_ident(self.db).unwrap(),
-                        res.kind.name_span(self.db),
-                    ))
+                self.accumulated_errors.push(ImportDiag::InvalidPathSegment(
+                    i_use.current_segment_span(),
+                    i_use.current_segment_ident(self.db).unwrap(),
+                    res.kind.name_span(self.db),
+                ))
             }
 
             NameResolutionError::Invisible(invisible_span) => {
-                self.accumulated_errors.push(NameResDiag::Invisible(
+                self.accumulated_errors.push(ImportDiag::Invisible(
                     i_use.current_segment_span(),
                     i_use.current_segment_ident(self.db).unwrap(),
                     invisible_span,
@@ -577,7 +576,7 @@ impl<'db> ImportResolver<'db> {
 
             NameResolutionError::Conflict(ident, spans) => {
                 self.accumulated_errors
-                    .push(NameResDiag::Conflict(ident, spans));
+                    .push(ImportDiag::Conflict(ident, spans));
             }
         }
     }

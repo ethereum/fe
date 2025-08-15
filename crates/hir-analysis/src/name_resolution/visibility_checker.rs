@@ -56,6 +56,7 @@ pub(crate) fn is_ty_visible_from(db: &dyn HirAnalysisDb, ty: TyId, from_scope: S
             TyBase::Func(func) => is_scope_visible_from(db, func.scope(db), from_scope),
         },
         TyData::TyParam(param) => is_scope_visible_from(db, param.scope(db), from_scope),
+        TyData::AssocTy(assoc_ty) => is_scope_visible_from(db, assoc_ty.scope(db), from_scope),
 
         TyData::ConstTy(const_ty) => match const_ty.data(db) {
             ConstTyData::TyVar(_, _) => true,
@@ -66,6 +67,9 @@ pub(crate) fn is_ty_visible_from(db: &dyn HirAnalysisDb, ty: TyId, from_scope: S
             ConstTyData::UnEvaluated(body) => is_scope_visible_from(db, body.scope(), from_scope),
         },
         TyData::TyVar(_) | TyData::Never | TyData::Invalid(_) => true,
+        TyData::QualifiedTy(trait_inst) => {
+            is_scope_visible_from(db, trait_inst.def(db).trait_(db).scope(), from_scope)
+        }
         TyData::TyApp(_, _) => unreachable!(),
     }
 }

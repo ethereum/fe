@@ -1,7 +1,7 @@
 ---
 source: crates/uitest/tests/parser.rs
 expression: diags
-input_file: crates/uitest/fixtures/parser/func.fe
+input_file: fixtures/parser/func.fe
 ---
 error[1-0001]: unexpected syntax while parsing function definition
   ┌─ func.fe:1:17
@@ -33,7 +33,7 @@ error[1-0001]: expected trait name
 12 │ fn bar<T: @>()
    │          ^ expected trait name
 
-error[1-0001]: unexpected syntax while parsing trait name
+error[1-0001]: unexpected syntax while parsing type bound
    ┌─ func.fe:12:11
    │
 12 │ fn bar<T: @>()
@@ -45,10 +45,8 @@ error[1-0001]: expected trait name
 13 │     where T: 75 {}
    │             ^ expected trait name
 
-error[1-0001]: unexpected syntax while parsing trait name
+error[1-0001]: unexpected syntax while parsing type bound
    ┌─ func.fe:13:14
    │
 13 │     where T: 75 {}
    │              ^^ unexpected
-
-

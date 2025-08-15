@@ -9,9 +9,10 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec1::SmallVec;
 use trait_def::TraitDef;
 use trait_lower::lower_trait;
-use trait_resolution::constraint::super_trait_cycle;
+use trait_resolution::constraint::{collect_constraints, super_trait_cycle};
 use ty_def::{InvalidCause, TyData};
-use ty_lower::{lower_hir_ty, lower_type_alias};
+use ty_error::collect_ty_lower_errors;
+use ty_lower::lower_type_alias;
 
 use self::def_analysis::{
     analyze_adt, analyze_func, analyze_impl, analyze_impl_trait, analyze_trait,
@@ -20,6 +21,7 @@ use crate::{analysis_pass::ModuleAnalysisPass, diagnostics::DiagnosticVoucher, H
 
 pub mod adt_def;
 pub mod binder;
+pub mod canonical;
 pub mod const_ty;
 
 pub mod decision_tree;
@@ -27,7 +29,9 @@ pub mod def_analysis;
 pub mod diagnostics;
 pub mod fold;
 pub mod func_def;
+mod method_cmp;
 pub mod method_table;
+pub mod normalize;
 pub mod pattern_analysis;
 pub mod simplified_pattern;
 pub mod trait_def;
@@ -37,11 +41,8 @@ pub mod ty_check;
 pub mod ty_def;
 pub mod ty_error;
 pub mod ty_lower;
+pub mod unify;
 pub mod visitor;
-
-mod canonical;
-mod method_cmp;
-mod unify;
 
 /// An analysis pass for type definitions.
 pub struct AdtDefAnalysisPass {}
@@ -262,11 +263,13 @@ impl ModuleAnalysisPass for TypeAliasAnalysisPass {
         let mut diags = vec![];
         let mut cycle_participants = FxHashSet::<TypeAlias>::default();
 
-        for alias in top_mod.all_type_aliases(db) {
-            if cycle_participants.contains(alias) {
+        for &alias in top_mod.all_type_aliases(db) {
+            if cycle_participants.contains(&alias) {
                 continue;
             }
-            let ta = lower_type_alias(db, *alias);
+
+            let assumptions = collect_constraints(db, alias.into()).instantiate_identity();
+            let ta = lower_type_alias(db, alias);
             let ty = ta.alias_to.skip_binder();
             if let TyData::Invalid(InvalidCause::AliasCycle(cycle)) = ty.data(db) {
                 if let Some(diag) = ty.emit_diag(db, alias.span().ty().into()) {
@@ -275,10 +278,17 @@ impl ModuleAnalysisPass for TypeAliasAnalysisPass {
                 cycle_participants.extend(cycle.iter());
             } else if ty.has_invalid(db) {
                 if let Some(hir_ty) = alias.ty(db).to_opt() {
-                    let ty = lower_hir_ty(db, hir_ty, alias.scope());
-                    if let Some(diag) = ty.emit_diag(db, alias.span().ty().into()) {
-                        diags.push(diag.to_voucher());
-                    }
+                    diags.extend(
+                        collect_ty_lower_errors(
+                            db,
+                            alias.scope(),
+                            hir_ty,
+                            alias.span().ty(),
+                            assumptions,
+                        )
+                        .into_iter()
+                        .map(|d| d.to_voucher()),
+                    )
                 }
             }
         }

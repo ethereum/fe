@@ -1,3 +1,6 @@
+// TODO tracing::error doesn't log. set up default logger?
+#![allow(clippy::print_stderr)]
+
 use std::collections::BTreeMap;
 
 use camino::Utf8PathBuf;
@@ -30,7 +33,6 @@ use hir::{
 };
 use rustc_hash::FxHashMap;
 use test_utils::url_utils::UrlExt;
-use tracing::error;
 use url::Url;
 
 type CodeSpanFileId = usize;
@@ -56,7 +58,7 @@ impl HirAnalysisTestDb {
         )
     }
 
-    pub fn top_mod(&self, input: File) -> (TopLevelMod, HirPropertyFormatter) {
+    pub fn top_mod(&self, input: File) -> (TopLevelMod<'_>, HirPropertyFormatter<'_>) {
         let mut prop_formatter = HirPropertyFormatter::default();
         let top_mod = self.register_file(&mut prop_formatter, input);
         (top_mod, prop_formatter)
@@ -132,7 +134,8 @@ impl HirAnalysisTestDb {
                 let cs_diag = &diag.to_cs(self);
                 term::emit(&mut buffer, &config, &CsDbWrapper(self), cs_diag).unwrap();
             }
-            error!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
+
+            eprintln!("{}", std::str::from_utf8(buffer.as_slice()).unwrap());
 
             panic!("this module contains errors");
         }

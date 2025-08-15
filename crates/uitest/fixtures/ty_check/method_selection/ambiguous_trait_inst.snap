@@ -1,7 +1,7 @@
 ---
 source: crates/uitest/tests/ty_check.rs
 expression: diags
-input_file: crates/uitest/fixtures/ty_check/method_selection/ambiguous_trait_inst.fe
+input_file: fixtures/ty_check/method_selection/ambiguous_trait_inst.fe
 ---
 error[8-0027]: ambiguous trait implementation
    ┌─ ambiguous_trait_inst.fe:23:13

@@ -96,11 +96,26 @@ impl<'db> LazyGenericArgSpan<'db> {
     pub fn into_type_arg(self) -> LazyTypeGenericArgSpan<'db> {
         LazyTypeGenericArgSpan(self.0)
     }
+
+    pub fn into_assoc_type_arg(self) -> LazyAssocTypeGenericArgSpan<'db> {
+        LazyAssocTypeGenericArgSpan(self.0)
+    }
 }
 
 define_lazy_span_node!(
     LazyTypeGenericArgSpan,
     ast::TypeGenericArg,
+    @node {
+        (ty, ty, LazyTySpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyAssocTypeGenericArgSpan,
+    ast::AssocTypeGenericArg,
+    @token {
+        (name, name),
+    }
     @node {
         (ty, ty, LazyTySpan),
     }
@@ -139,6 +154,30 @@ define_lazy_span_node!(
         (path, path, LazyPathSpan),
     }
 );
+
+impl<'db> LazyTraitRefSpan<'db> {
+    /// Returns the span atom for the trait name (last segment ident) in this trait ref.
+    pub fn name(mut self) -> LazySpanAtom<'db> {
+        use crate::span::transition::{LazyArg, LazyTransitionFn, ResolvedOrigin};
+        use parser::ast::prelude::*;
+
+        fn f(origin: ResolvedOrigin, _: LazyArg) -> ResolvedOrigin {
+            origin.map(|node| {
+                ast::TraitRef::cast(node)
+                    .and_then(|tr| tr.path())
+                    .and_then(|p| p.into_iter().last())
+                    .and_then(|seg| seg.ident())
+                    .map(|tok| tok.into())
+            })
+        }
+
+        self.0.push(LazyTransitionFn {
+            f,
+            arg: LazyArg::None,
+        });
+        LazySpanAtom(self.0)
+    }
+}
 
 define_lazy_span_node!(
     LazyKindBoundSpan,

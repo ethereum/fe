@@ -190,8 +190,9 @@ ast_node! {
     /// `T: Trait`
     /// `{expr}`
     /// `lit`
+    /// `Output = u64`
     pub struct GenericArg,
-    SK::TypeGenericArg | SK::ConstGenericArg,
+    SK::TypeGenericArg | SK::ConstGenericArg | SK::AssocTypeGenericArg,
 }
 impl GenericArg {
     pub fn kind(&self) -> GenericArgKind {
@@ -201,6 +202,9 @@ impl GenericArg {
             }
             SK::ConstGenericArg => {
                 GenericArgKind::Const(AstNode::cast(self.syntax().clone()).unwrap())
+            }
+            SK::AssocTypeGenericArg => {
+                GenericArgKind::AssocType(AstNode::cast(self.syntax().clone()).unwrap())
             }
             _ => unreachable!(),
         }
@@ -223,6 +227,20 @@ ast_node! {
 }
 impl ConstGenericArg {
     pub fn expr(&self) -> Option<super::Expr> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    pub struct AssocTypeGenericArg,
+    SK::AssocTypeGenericArg,
+}
+impl AssocTypeGenericArg {
+    pub fn name(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
+    }
+
+    pub fn ty(&self) -> Option<super::Type> {
         support::child(self.syntax())
     }
 }
@@ -259,10 +277,12 @@ impl WherePredicate {
 /// A generic argument kind.
 /// `Type` is either `Type` or `T: Trait`.
 /// `Const` is either `{expr}` or `lit`.
+/// `AssocType` is `Output = u64`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, derive_more::From, derive_more::TryInto)]
 pub enum GenericArgKind {
     Type(TypeGenericArg),
     Const(ConstGenericArg),
+    AssocType(AssocTypeGenericArg),
 }
 
 ast_node! {
@@ -547,6 +567,23 @@ mod tests {
 
     #[test]
     #[wasm_bindgen_test]
+    fn generic_arg_with_assoc_type() {
+        let source = r#"<T, Output = u64>"#;
+        let ga = parse_generic_arg(source);
+        let mut args = ga.into_iter();
+
+        let GenericArgKind::Type(_) = args.next().unwrap().kind() else {
+            panic!("expected type arg");
+        };
+        let GenericArgKind::AssocType(a2) = args.next().unwrap().kind() else {
+            panic!("expected associated type arg");
+        };
+        assert_eq!(a2.name().unwrap().text(), "Output");
+        assert!(a2.ty().is_some());
+    }
+
+    #[test]
+    #[wasm_bindgen_test]
     fn where_clause() {
         let source = r#"where
             T: Trait + Trait2<X, Y>
@@ -574,5 +611,46 @@ mod tests {
             count += 1;
         }
         assert!(count == 3);
+    }
+
+    #[test]
+    #[wasm_bindgen_test]
+    fn generic_param_with_assoc_type() {
+        let source = r#"<T: Iterator<Item = i32>>"#;
+        let gp = parse_generic_params(source);
+        let mut params = gp.into_iter();
+
+        let GenericParamKind::Type(p1) = params.next().unwrap().kind() else {
+            panic!("expected type param");
+        };
+        assert_eq!(p1.name().unwrap().text(), "T");
+
+        let p1_bounds = p1.bounds().unwrap();
+        let mut p1_bounds = p1_bounds.iter();
+
+        let bound = p1_bounds.next().unwrap();
+        let trait_ref = bound.trait_bound().unwrap();
+        let trait_path = trait_ref.path().unwrap();
+        assert_eq!(
+            trait_path
+                .segments()
+                .next()
+                .unwrap()
+                .ident()
+                .unwrap()
+                .text(),
+            "Iterator"
+        );
+
+        // Check generic args on the trait path's last segment
+        let last_segment = trait_path.segments().next().unwrap();
+        let generic_args = last_segment.generic_args().unwrap();
+        let mut args = generic_args.into_iter();
+
+        let GenericArgKind::AssocType(assoc_arg) = args.next().unwrap().kind() else {
+            panic!("expected associated type arg");
+        };
+        assert_eq!(assoc_arg.name().unwrap().text(), "Item");
+        assert!(assoc_arg.ty().is_some());
     }
 }

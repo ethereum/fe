@@ -38,7 +38,7 @@ pub enum UnificationError {
     TypeMismatch,
 }
 
-pub(crate) trait UnificationStore<'db>:
+pub trait UnificationStore<'db>:
     Default
     + ena::unify::UnificationStoreBase<Key = InferenceKey<'db>, Value = InferenceValue<'db>>
     + ena::unify::UnificationStore
@@ -56,7 +56,7 @@ impl<'db, U> UnificationStore<'db> for U where
 }
 
 #[derive(Clone)]
-pub(crate) struct UnificationTableBase<'db, U>
+pub struct UnificationTableBase<'db, U>
 where
     U: ena::unify::UnificationStoreBase,
 {
@@ -170,6 +170,11 @@ where
                     _ => Err(UnificationError::TypeMismatch),
                 }
             }
+            (TyData::AssocTy(t1), TyData::AssocTy(t2)) if t1 == t2 => Ok(()),
+            (TyData::AssocTy(_), _) | (_, TyData::AssocTy(_)) => {
+                // Associated types should be resolved before unification
+                Err(UnificationError::TypeMismatch)
+            }
 
             _ => Err(UnificationError::TypeMismatch),
         }
@@ -180,7 +185,7 @@ where
         TyId::ty_var(self.db, sort, kind.clone(), key)
     }
 
-    pub(super) fn new_var_from_param(&mut self, ty: TyId<'db>) -> TyId<'db> {
+    pub fn new_var_from_param(&mut self, ty: TyId<'db>) -> TyId<'db> {
         match ty.data(self.db) {
             TyData::TyParam(param) => {
                 let sort = TyVarSort::General;
@@ -420,7 +425,7 @@ impl UnifyValue for InferenceValue<'_> {
     }
 }
 
-pub(crate) trait Unifiable<'db> {
+pub trait Unifiable<'db> {
     fn unify<U: UnificationStore<'db>>(
         self,
         table: &mut UnificationTableBase<'db, U>,
@@ -451,6 +456,28 @@ impl<'db> Unifiable<'db> for TraitInstId<'db> {
 
         for (&self_arg, &other_arg) in self.args(db).iter().zip(other.args(db)) {
             table.unify_ty(self_arg, other_arg)?;
+        }
+
+        // Unify associated type bindings
+        // We need to handle the case where one trait instance has more specific
+        // associated type bindings than the other. A more specific constraint
+        // (with bindings) should be able to satisfy a less specific constraint
+        // (without bindings).
+
+        // First, unify all bindings that are present in both
+        for (name, &self_assoc_ty) in self.assoc_type_bindings(db) {
+            if let Some(&other_assoc_ty) = other.assoc_type_bindings(db).get(name) {
+                table.unify_ty(self_assoc_ty, other_assoc_ty)?;
+            }
+        }
+
+        // For bindings that are only in other, we need to check if self can satisfy them
+        for (name, &_other_assoc_ty) in other.assoc_type_bindings(db) {
+            if !self.assoc_type_bindings(db).contains_key(name) {
+                // other has a binding that self doesn't have
+                // This means other is more specific than self, so unification fails
+                return Err(UnificationError::TypeMismatch);
+            }
         }
 
         Ok(())
@@ -525,6 +552,11 @@ where
                     return ty.super_fold_with(self);
                 }
             },
+            TyData::AssocTy(_) => {
+                // Associated types should be resolved before unification
+                // by the normalization process
+                return ty.super_fold_with(self);
+            }
             _ => {
                 return ty.super_fold_with(self);
             }

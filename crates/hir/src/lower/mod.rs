@@ -34,7 +34,7 @@ mod use_tree;
 /// This function just maps the file to a top-level module, and doesn't perform
 /// any parsing or lowering.
 /// To perform the actual lowering, use [`scope_graph`] instead.
-pub fn map_file_to_mod(db: &dyn LowerHirDb, file: File) -> TopLevelMod {
+pub fn map_file_to_mod(db: &dyn LowerHirDb, file: File) -> TopLevelMod<'_> {
     map_file_to_mod_impl(db, file)
 }
 

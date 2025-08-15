@@ -6,7 +6,7 @@ use crate::{
         scope_graph::{EdgeKind, Scope, ScopeEdge, ScopeGraph, ScopeId},
         Body, Enum, EnumVariant, ExprId, FieldDefListId, FieldParent, FuncParamListId,
         FuncParamName, GenericParamListId, HirIngot, ItemKind, TopLevelMod, TrackedItemId,
-        TrackedItemVariant, Use, VariantDefListId, VariantKind, Visibility,
+        TrackedItemVariant, Trait, Use, VariantDefListId, VariantKind, Visibility,
     },
     HirDb,
 };
@@ -135,6 +135,27 @@ impl<'db> ScopeGraphBuilder<'db> {
                 if let Some(params) = inner.params(self.db).to_opt() {
                     self.add_func_param_scope(item_node, inner.into(), params);
                 }
+
+                // Add self_ty edge if this function is inside a trait or impl
+                if !self.scope_stack.is_empty() {
+                    let parent_scope_id = self.graph.nodes[parent_node].0;
+                    if let Some(parent_item) = parent_scope_id.to_item() {
+                        match parent_item {
+                            ItemKind::Trait(_) => {
+                                // Function is inside a trait, add edge to trait for Self resolution
+                                self.graph
+                                    .add_edge(item_node, parent_node, EdgeKind::self_ty());
+                            }
+                            ItemKind::Impl(_) | ItemKind::ImplTrait(_) => {
+                                // Function is inside an impl, add edge to impl for Self resolution
+                                self.graph
+                                    .add_edge(item_node, parent_node, EdgeKind::self_ty());
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
                 inner
                     .name(self.db)
                     .to_opt()
@@ -226,6 +247,7 @@ impl<'db> ScopeGraphBuilder<'db> {
                     inner.into(),
                     inner.generic_params(self.db),
                 );
+                self.add_trait_type_scope(item_node, inner);
                 self.graph
                     .add_edge(item_node, item_node, EdgeKind::self_ty());
                 inner
@@ -413,6 +435,22 @@ impl<'db> ScopeGraphBuilder<'db> {
                 .map(EdgeKind::generic_param)
                 .unwrap_or_else(EdgeKind::anon);
             self.graph.add_edge(parent_node, generic_param_node, kind)
+        }
+    }
+
+    fn add_trait_type_scope(&mut self, parent_node: NodeId, trait_: Trait<'db>) {
+        for (i, trait_type) in trait_.types(self.db).iter().enumerate() {
+            let scope_id = ScopeId::TraitType(trait_, i as u16);
+            let scope = Scope::new(scope_id, Visibility::Private);
+            let trait_type_node = self.graph.push(scope_id, scope);
+
+            self.graph.add_lex_edge(trait_type_node, parent_node);
+            let kind = trait_type
+                .name
+                .to_opt()
+                .map(EdgeKind::trait_type)
+                .unwrap_or_else(EdgeKind::anon);
+            self.graph.add_edge(parent_node, trait_type_node, kind)
         }
     }
 

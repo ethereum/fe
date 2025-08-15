@@ -30,6 +30,7 @@ use crate::{
 /// Fn` is that we want to make all types that use `LazyTransitionFn` to be
 /// `Clone` and `Eq`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[allow(unpredictable_function_pointer_comparisons)]
 pub(crate) struct LazyTransitionFn {
     pub(super) f: fn(ResolvedOrigin, LazyArg) -> ResolvedOrigin,
     pub(super) arg: LazyArg,

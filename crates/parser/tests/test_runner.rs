@@ -94,6 +94,7 @@ impl TestRunner {
             error!("{}@{:?}", error.msg(), error.range());
         }
         if self.should_success {
+            error!("{cst:#?}");
             assert! {errors.is_empty()}
         } else {
             assert! {!errors.is_empty()}

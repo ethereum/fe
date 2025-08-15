@@ -1,6 +1,7 @@
 pub mod diagnostics;
 
 mod import_resolver;
+pub(crate) mod method_selection;
 mod name_resolver;
 mod path_resolver;
 pub(crate) mod traits_in_scope;
@@ -14,14 +15,14 @@ pub use name_resolver::{
     NameResolutionError, QueryDirective,
 };
 pub use path_resolver::{
-    resolve_ident_to_bucket, resolve_name_res, resolve_path, resolve_path_with_observer, PathRes,
-    PathResError, PathResErrorKind, ResolvedVariant,
+    find_associated_type, resolve_ident_to_bucket, resolve_name_res, resolve_path,
+    resolve_path_with_observer, PathRes, PathResError, PathResErrorKind, ResolvedVariant,
 };
 use tracing::debug;
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;
 
-use self::{diagnostics::NameResDiag, import_resolver::DefaultImporter};
+use self::{diagnostics::ImportDiag, import_resolver::DefaultImporter};
 use crate::{analysis_pass::ModuleAnalysisPass, diagnostics::DiagnosticVoucher, HirAnalysisDb};
 
 #[salsa::tracked(return_ref)]
@@ -58,17 +59,17 @@ impl ModuleAnalysisPass for ImportAnalysisPass {
 pub fn resolve_imports<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
-) -> (Vec<NameResDiag<'db>>, ResolvedImports<'db>) {
+) -> (Vec<ImportDiag<'db>>, ResolvedImports<'db>) {
     let resolver = import_resolver::ImportResolver::new(db, ingot);
     let (imports, diags) = resolver.resolve_imports();
     (diags, imports)
 }
 fn resolve_imports_cycle_recover<'db>(
     db: &'db dyn HirAnalysisDb,
-    _value: &(Vec<NameResDiag<'db>>, ResolvedImports<'db>),
+    _value: &(Vec<ImportDiag<'db>>, ResolvedImports<'db>),
     count: u32,
     ingot: Ingot<'db>,
-) -> salsa::CycleRecoveryAction<(Vec<NameResDiag<'db>>, ResolvedImports<'db>)> {
+) -> salsa::CycleRecoveryAction<(Vec<ImportDiag<'db>>, ResolvedImports<'db>)> {
     // Log cycle information for debugging
     debug!(
         "[CYCLE DETECTED] resolve_imports cycle detected for ingot '{}' (kind={:?}), iteration #{}",
@@ -85,7 +86,7 @@ fn resolve_imports_cycle_recover<'db>(
 fn resolve_imports_cycle_initial<'db>(
     db: &'db dyn HirAnalysisDb,
     ingot: Ingot<'db>,
-) -> (Vec<NameResDiag<'db>>, ResolvedImports<'db>) {
+) -> (Vec<ImportDiag<'db>>, ResolvedImports<'db>) {
     // Log initial cycle value creation for debugging
     debug!(
         "[CYCLE INITIAL] Creating initial value for resolve_imports cycle in ingot '{}' (kind={:?})",
@@ -102,6 +103,7 @@ fn resolve_imports_cycle_initial<'db>(
 pub enum ExpectedPathKind {
     /// NameDomain::TYPE
     Type,
+    Function,
     /// NameDomain::TYPE
     Trait,
     /// NameDomain::VALUE
@@ -110,6 +112,4 @@ pub enum ExpectedPathKind {
     Record,
     /// NameDomain::VALUE | NameDomain::TYPE
     Pat,
-    /// NameDomain::VALUE | NameDomain::TYPE
-    Expr,
 }

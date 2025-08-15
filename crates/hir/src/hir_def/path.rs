@@ -1,26 +1,46 @@
-use super::{GenericArgListId, IdentId};
+use super::{GenericArgListId, IdentId, TraitRefId, TypeId};
 use crate::{hir_def::Partial, HirDb};
 
 #[salsa::interned]
 #[derive(Debug)]
 pub struct PathId<'db> {
-    pub ident: Partial<IdentId<'db>>,
-    pub generic_args: GenericArgListId<'db>,
+    pub kind: PathKind<'db>,
     pub parent: Option<PathId<'db>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum PathKind<'db> {
+    Ident {
+        ident: Partial<IdentId<'db>>,
+        generic_args: GenericArgListId<'db>,
+    },
+    QualifiedType {
+        type_: TypeId<'db>,
+        trait_: TraitRefId<'db>,
+    },
 }
 
 impl<'db> PathId<'db> {
     pub fn from_ident(db: &'db dyn HirDb, ident: IdentId<'db>) -> Self {
         Self::new(
             db,
-            Partial::Present(ident),
-            GenericArgListId::none(db),
+            PathKind::Ident {
+                ident: Partial::Present(ident),
+                generic_args: GenericArgListId::none(db),
+            },
             None,
         )
     }
 
     pub fn self_ty(db: &'db dyn HirDb, args: GenericArgListId<'db>) -> Self {
-        Self::new(db, Partial::Present(IdentId::make_self_ty(db)), args, None)
+        Self::new(
+            db,
+            PathKind::Ident {
+                ident: Partial::Present(IdentId::make_self_ty(db)),
+                generic_args: args,
+            },
+            None,
+        )
     }
 
     pub fn len(self, db: &dyn HirDb) -> usize {
@@ -47,13 +67,22 @@ impl<'db> PathId<'db> {
         if let Some(parent) = self.parent(db) {
             parent.root_ident(db)
         } else {
-            self.ident(db).to_opt()
+            match self.kind(db) {
+                PathKind::Ident { ident, .. } => ident.to_opt(),
+                PathKind::QualifiedType { .. } => None,
+            }
         }
     }
 
     pub fn as_ident(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
-        if self.parent(db).is_none() && self.generic_args(db).is_empty(db) {
-            self.ident(db).to_opt()
+        if self.parent(db).is_none() {
+            match self.kind(db) {
+                PathKind::Ident {
+                    ident,
+                    generic_args,
+                } if generic_args.is_empty(db) => ident.to_opt(),
+                _ => None,
+            }
         } else {
             None
         }
@@ -61,13 +90,23 @@ impl<'db> PathId<'db> {
 
     pub fn is_bare_ident(self, db: &dyn HirDb) -> bool {
         self.parent(db).is_none()
-            && self.ident(db).is_present()
-            && self.generic_args(db).is_empty(db)
+            && match self.kind(db) {
+                PathKind::Ident {
+                    ident,
+                    generic_args,
+                } => ident.is_present() && generic_args.is_empty(db),
+                PathKind::QualifiedType { .. } => false,
+            }
     }
 
     pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
-        if self.parent(db).is_none() && self.ident(db).is_present() {
-            self.ident(db).unwrap().is_self_ty(db)
+        if self.parent(db).is_none() {
+            match self.kind(db) {
+                PathKind::Ident { ident, .. } if ident.is_present() => {
+                    ident.unwrap().is_self_ty(db)
+                }
+                _ => false,
+            }
         } else {
             false
         }
@@ -79,24 +118,54 @@ impl<'db> PathId<'db> {
         ident: Partial<IdentId<'db>>,
         generic_args: GenericArgListId<'db>,
     ) -> Self {
-        Self::new(db, ident, generic_args, Some(self))
-    }
-
-    pub fn push_ident(self, db: &'db dyn HirDb, ident: IdentId<'db>) -> Self {
         Self::new(
             db,
-            Partial::Present(ident),
-            GenericArgListId::none(db),
+            PathKind::Ident {
+                ident,
+                generic_args,
+            },
             Some(self),
         )
     }
 
+    pub fn push_ident(self, db: &'db dyn HirDb, ident: IdentId<'db>) -> Self {
+        self.push(db, Partial::Present(ident), GenericArgListId::none(db))
+    }
+
+    pub fn ident(self, db: &'db dyn HirDb) -> Partial<IdentId<'db>> {
+        match self.kind(db) {
+            PathKind::Ident { ident, .. } => ident,
+            PathKind::QualifiedType { .. } => Partial::Absent,
+        }
+    }
+
+    pub fn generic_args(self, db: &'db dyn HirDb) -> GenericArgListId<'db> {
+        match self.kind(db) {
+            PathKind::Ident { generic_args, .. } => generic_args,
+            PathKind::QualifiedType { .. } => GenericArgListId::none(db),
+        }
+    }
+
     pub fn pretty_print(self, db: &dyn HirDb) -> String {
-        let this = format!(
-            "{}{}",
-            self.ident(db).to_opt().map_or("_", |id| id.data(db)),
-            self.generic_args(db).pretty_print(db)
-        );
+        let this = match self.kind(db) {
+            PathKind::Ident {
+                ident,
+                generic_args,
+            } => {
+                format!(
+                    "{}{}",
+                    ident.to_opt().map_or("_", |id| id.data(db)),
+                    generic_args.pretty_print(db)
+                )
+            }
+            PathKind::QualifiedType { type_, trait_ } => {
+                format!(
+                    "<{} as {}>",
+                    type_.pretty_print(db),
+                    trait_.pretty_print(db)
+                )
+            }
+        };
 
         if let Some(parent) = self.parent(db) {
             parent.pretty_print(db) + "::" + &this

@@ -6,6 +6,9 @@ license = "Apache-2.0"
 repository = "https://github.com/ethereum/fe"
 description = "Provides HIR definition and lowering for Fe lang."
 
+[lib]
+doctest = false
+
 [dependencies]
 camino.workspace = true
 paste.workspace = true

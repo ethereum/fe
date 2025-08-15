@@ -15,6 +15,8 @@ use crate::{
         diagnostics::{BodyDiag, FuncBodyDiag},
         fold::{TyFoldable, TyFolder},
         func_def::FuncDef,
+        trait_def::TraitInstId,
+        trait_resolution::constraint::collect_func_def_constraints,
         ty_def::{TyBase, TyData, TyId},
         ty_lower::lower_generic_arg_list,
         visitor::{TyVisitable, TyVisitor},
@@ -31,7 +33,7 @@ pub struct Callable<'db> {
 impl<'db> TyVisitable<'db> for Callable<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         self.generic_args.visit_with(visitor)
     }
@@ -74,6 +76,10 @@ impl<'db> Callable<'db> {
         })
     }
 
+    pub fn generic_args(&self) -> &[TyId<'db>] {
+        &self.generic_args
+    }
+
     pub fn ret_ty(&self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         self.func_def.ret_ty(db).instantiate(db, &self.generic_args)
     }
@@ -94,7 +100,7 @@ impl<'db> Callable<'db> {
             return true;
         }
 
-        let given_args = lower_generic_arg_list(db, args, tc.env.scope());
+        let given_args = lower_generic_arg_list(db, args, tc.env.scope(), tc.env.assumptions());
         let offset = self.func_def.offset_to_explicit_params_position(db);
         let current_args = &mut self.generic_args[offset..];
 
@@ -168,7 +174,6 @@ impl<'db> Callable<'db> {
             .enumerate()
         {
             if_chain! {
-                // xxx check this
                 if let Some(expected_label) = self.func_def.param_label(db, i);
                 if !expected_label.is_self(db);
                 if Some(expected_label) != given.label;
@@ -184,6 +189,7 @@ impl<'db> Callable<'db> {
             }
 
             let expected = expected.instantiate(db, &self.generic_args);
+            let expected = tc.normalize_ty(expected);
             tc.equate_ty(given.expr_prop.ty, expected, given.expr_span);
         }
     }
@@ -223,6 +229,39 @@ impl<'db> CallArg<'db> {
             expr_prop,
             label_span,
             expr_span,
+        }
+    }
+}
+
+impl<'db> Callable<'db> {
+    pub(super) fn check_constraints(&self, tc: &mut TyChecker<'db>, span: DynLazySpan<'db>) {
+        let db = tc.db;
+
+        // Get the function's constraints
+        let constraints = collect_func_def_constraints(db, self.func_def.hir_def(db), true);
+
+        // Instantiate constraints with the actual type arguments
+        let instantiated = constraints.instantiate(db, &self.generic_args);
+
+        // Normalize each constraint to resolve associated types
+        for &constraint in instantiated.list(db) {
+            // Normalize the constraint's arguments
+            let normalized_args: Vec<_> = constraint
+                .args(db)
+                .iter()
+                .map(|&arg| tc.normalize_ty(arg))
+                .collect();
+
+            let normalized_constraint = TraitInstId::new(
+                db,
+                constraint.def(db),
+                normalized_args,
+                constraint.assoc_type_bindings(db).clone(),
+            );
+
+            // Register the normalized constraint for confirmation
+            tc.env
+                .register_confirmation(normalized_constraint, span.clone());
         }
     }
 }

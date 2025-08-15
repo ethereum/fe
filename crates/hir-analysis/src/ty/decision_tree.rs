@@ -309,7 +309,7 @@ impl<'db> SimplifiedArm<'db> {
         }
     }
 
-    fn pat(&self, col: usize) -> &SimplifiedPattern {
+    fn pat(&self, col: usize) -> &SimplifiedPattern<'_> {
         &self.pat_vec.inner[col]
     }
 
@@ -371,11 +371,11 @@ impl<'db> SimplifiedArmMatrix<'db> {
         self.arms[0].pat_vec.len()
     }
 
-    fn pat(&self, row: usize, col: usize) -> &SimplifiedPattern {
+    fn pat(&self, row: usize, col: usize) -> &SimplifiedPattern<'_> {
         self.arms[row].pat(col)
     }
 
-    fn reduced_pat_mat(&self, col: usize) -> PatternMatrix {
+    fn reduced_pat_mat(&self, col: usize) -> PatternMatrix<'_> {
         let mut rows = Vec::with_capacity(self.nrows());
         for arm in self.arms.iter() {
             let reduced_pat_vec = arm

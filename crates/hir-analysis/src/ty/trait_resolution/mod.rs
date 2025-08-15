@@ -1,23 +1,23 @@
-use common::{indexmap::IndexSet, ingot::Ingot};
-
-use salsa::Update;
-
 use super::{
     canonical::{Canonical, Canonicalized, Solution},
+    fold::{AssocTySubst, TyFoldable},
     trait_def::TraitInstId,
+    trait_lower::lower_trait_ref,
     ty_def::{TyFlags, TyId},
 };
 use crate::{
     ty::{
-        trait_resolution::{
-            constraint::{collect_trait_constraints, ty_constraints},
-            proof_forest::ProofForest,
-        },
+        normalize::normalize_ty,
+        trait_resolution::{constraint::ty_constraints, proof_forest::ProofForest},
         unify::UnificationTable,
         visitor::collect_flags,
     },
     HirAnalysisDb,
 };
+use common::indexmap::IndexSet;
+use constraint::collect_constraints;
+use hir::{hir_def::HirIngot, Ingot};
+use salsa::Update;
 
 pub(crate) mod constraint;
 mod proof_forest;
@@ -57,7 +57,32 @@ pub(crate) fn check_ty_wf<'db>(
 
     let constraints = ty_constraints(db, ty);
 
-    for &goal in constraints.list(db) {
+    // Normalize constraints to resolve associated types
+    let normalized_constraints = {
+        // Get a reasonable scope for normalization
+        let scope = ingot.root_mod(db).scope();
+        let normalized_list: Vec<_> = constraints
+            .list(db)
+            .iter()
+            .map(|&goal| {
+                // Normalize each argument in the goal
+                let normalized_args: Vec<_> = goal
+                    .args(db)
+                    .iter()
+                    .map(|&arg| normalize_ty(db, arg, scope, assumptions))
+                    .collect();
+                TraitInstId::new(
+                    db,
+                    goal.def(db),
+                    normalized_args,
+                    goal.assoc_type_bindings(db).clone(),
+                )
+            })
+            .collect();
+        PredicateListId::new(db, normalized_list)
+    };
+
+    for &goal in normalized_constraints.list(db) {
         let mut table = UnificationTable::new(db);
         let canonical_goal = Canonicalized::new(db, goal);
 
@@ -97,10 +122,34 @@ pub(crate) fn check_trait_inst_wf<'db>(
     trait_inst: TraitInstId<'db>,
     assumptions: PredicateListId<'db>,
 ) -> WellFormedness<'db> {
-    let constraints =
-        collect_trait_constraints(db, trait_inst.def(db)).instantiate(db, trait_inst.args(db));
+    let constraints = collect_constraints(db, trait_inst.def(db).trait_(db).into())
+        .instantiate(db, trait_inst.args(db));
 
-    for &goal in constraints.list(db) {
+    // Normalize constraints after instantiation to resolve associated types
+    let normalized_constraints = {
+        let scope = trait_inst.ingot(db).root_mod(db).scope();
+        let normalized_list: Vec<_> = constraints
+            .list(db)
+            .iter()
+            .map(|&goal| {
+                // Normalize each argument in the goal
+                let normalized_args: Vec<_> = goal
+                    .args(db)
+                    .iter()
+                    .map(|&arg| normalize_ty(db, arg, scope, assumptions))
+                    .collect();
+                TraitInstId::new(
+                    db,
+                    goal.def(db),
+                    normalized_args,
+                    goal.assoc_type_bindings(db).clone(),
+                )
+            })
+            .collect();
+        PredicateListId::new(db, normalized_list)
+    };
+
+    for &goal in normalized_constraints.list(db) {
         let mut table = UnificationTable::new(db);
         let canonical_goal = Canonicalized::new(db, goal);
         if let GoalSatisfiability::UnSat(subgoal) =
@@ -148,25 +197,99 @@ pub struct PredicateListId<'db> {
 }
 
 impl<'db> PredicateListId<'db> {
+    pub fn pretty_print(&self, db: &'db dyn HirAnalysisDb) -> String {
+        format!(
+            "{{{}}}",
+            self.list(db)
+                .iter()
+                .map(|pred| pred.pretty_print(db, true))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
+    }
+
     pub(super) fn merge(self, db: &'db dyn HirAnalysisDb, other: Self) -> Self {
         let mut predicates = self.list(db).clone();
         predicates.extend(other.list(db));
         PredicateListId::new(db, predicates)
     }
 
-    pub(super) fn empty_list(db: &'db dyn HirAnalysisDb) -> Self {
+    pub fn empty_list(db: &'db dyn HirAnalysisDb) -> Self {
         Self::new(db, Vec::new())
     }
 
-    fn extend_by_super(self, db: &'db dyn HirAnalysisDb) -> Self {
-        let mut super_traits: IndexSet<_> = self.list(db).iter().copied().collect();
-        for &pred in self.list(db) {
+    pub fn is_empty(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.list(db).is_empty()
+    }
+
+    /// Transitively extends the predicate list with all implied bounds:
+    /// - Super trait bounds
+    /// - Associated type bounds from trait definitions
+    pub fn extend_all_bounds(self, db: &'db dyn HirAnalysisDb) -> Self {
+        let mut all_predicates: IndexSet<TraitInstId<'db>> =
+            self.list(db).iter().copied().collect();
+
+        let mut worklist: Vec<TraitInstId<'db>> = self.list(db).to_vec();
+
+        while let Some(pred) = worklist.pop() {
+            // 1. Collect super traits
             for &super_trait in pred.def(db).super_traits(db).iter() {
-                let super_trait = super_trait.instantiate(db, pred.args(db));
-                super_traits.insert(super_trait);
+                // Instantiate with current predicate's args
+                let inst = super_trait.instantiate(db, pred.args(db));
+
+                // Also substitute `Self` and associated types using current predicate's
+                // assoc-type bindings so derived bounds are as concrete as possible.
+                let mut subst = AssocTySubst::new(db, pred);
+                let inst = inst.fold_with(&mut subst);
+
+                if all_predicates.insert(inst) {
+                    // New predicate added, add to worklist for further processing
+                    worklist.push(inst);
+                }
+            }
+
+            // 2. Collect associated type bounds
+            let hir_trait = pred.def(db).trait_(db);
+            for trait_type in hir_trait.types(db) {
+                // Get the associated type name
+                let Some(assoc_ty_name) = trait_type.name.to_opt() else {
+                    continue;
+                };
+
+                // Create the associated type: Self::AssocType
+                let assoc_ty = TyId::assoc_ty(db, pred, assoc_ty_name);
+
+                let assumptions =
+                    PredicateListId::new(db, all_predicates.iter().copied().collect::<Vec<_>>());
+
+                // Process each bound on the associated type
+                for bound in &trait_type.bounds {
+                    if let hir::hir_def::params::TypeBound::Trait(trait_ref) = bound {
+                        // Lower the trait reference with the associated type as Self
+                        // We need to convert the HIR trait ref to a TraitInstId
+                        // This requires lowering which needs a scope
+                        let scope = hir_trait.scope();
+
+                        if let Ok(trait_inst) =
+                            lower_trait_ref(db, assoc_ty, *trait_ref, scope, assumptions)
+                        {
+                            // Substitute `Self` and associated types in the bound using
+                            // the original predicate's trait instance (e.g. map
+                            // `<Self as IntoIterator>::Item` to the concrete binding from
+                            // `<T as IntoIterator>` when available).
+                            let mut subst = AssocTySubst::new(db, pred);
+                            let trait_inst = trait_inst.fold_with(&mut subst);
+
+                            if all_predicates.insert(trait_inst) {
+                                // New predicate added, add to worklist
+                                worklist.push(trait_inst);
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        Self::new(db, super_traits.into_iter().collect::<Vec<_>>())
+        Self::new(db, all_predicates.into_iter().collect::<Vec<_>>())
     }
 }

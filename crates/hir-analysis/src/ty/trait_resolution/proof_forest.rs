@@ -5,6 +5,7 @@ use std::collections::BinaryHeap;
 
 use common::{indexmap::IndexSet, ingot::Ingot};
 use cranelift_entity::{entity_impl, PrimaryMap};
+use hir::hir_def::HirIngot;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use super::{GoalSatisfiability, PredicateListId};
@@ -13,6 +14,7 @@ use crate::{
         binder::Binder,
         canonical::{Canonical, Canonicalized},
         fold::{TyFoldable, TyFolder},
+        normalize::normalize_ty,
         trait_def::{impls_for_trait, Implementor, TraitInstId},
         ty_def::{TyData, TyId},
         unify::PersistentUnificationTable,
@@ -119,7 +121,7 @@ impl<'db> ProofForest<'db> {
         goal: Goal<'db>,
         assumptions: PredicateListId<'db>,
     ) -> Self {
-        let assumptions = assumptions.extend_by_super(db);
+        let assumptions = assumptions.extend_all_bounds(db);
 
         let mut forest = Self {
             ingot,
@@ -358,8 +360,31 @@ impl GeneratorNode {
 
             let mut table = g_node.table.clone();
             let gen_cand = table.instantiate_with_fresh_vars(cand);
+
+            // xxx require candidates to be pre-normalized
+            // Normalize trait instance arguments before unification
+            let normalized_gen_cand = {
+                let trait_inst = gen_cand.trait_(db);
+                let scope = g_node.goal.value.ingot(db).root_mod(db).scope();
+
+                // Normalize each argument
+                let normalized_args: Vec<_> = trait_inst
+                    .args(db)
+                    .iter()
+                    .map(|&arg| normalize_ty(db, arg, scope, g_node.assumptions))
+                    .collect();
+
+                // Create normalized trait instance
+                TraitInstId::new(
+                    db,
+                    trait_inst.def(db),
+                    normalized_args,
+                    trait_inst.assoc_type_bindings(db).clone(),
+                )
+            };
+
             if table
-                .unify(gen_cand.trait_(db), g_node.extracted_goal)
+                .unify(normalized_gen_cand, g_node.extracted_goal)
                 .is_err()
             {
                 continue;
@@ -465,8 +490,51 @@ impl ConsumerNode {
         let (pending_inst, canonicalized_pending_inst) = &c_node.query;
         let solution = canonicalized_pending_inst.extract_solution(&mut table, solution);
 
+        // Normalize both instances before unification
+        let normalized_pending = {
+            let scope = pending_inst.ingot(table.db()).root_mod(table.db()).scope();
+            let assumptions = pf.g_nodes[c_node.root].assumptions;
+
+            // Normalize each argument
+            let normalized_args: Vec<_> = pending_inst
+                .args(table.db())
+                .iter()
+                .map(|&arg| normalize_ty(table.db(), arg.fold_with(&mut table), scope, assumptions))
+                .collect();
+
+            TraitInstId::new(
+                table.db(),
+                pending_inst.def(table.db()),
+                normalized_args,
+                pending_inst.assoc_type_bindings(table.db()).clone(),
+            )
+        };
+
+        let normalized_solution = {
+            use crate::ty::trait_def::TraitInstId;
+            let scope = solution.ingot(table.db()).root_mod(table.db()).scope();
+            let assumptions = pf.g_nodes[c_node.root].assumptions;
+
+            // Normalize each argument
+            let normalized_args: Vec<_> = solution
+                .args(table.db())
+                .iter()
+                .map(|&arg| normalize_ty(table.db(), arg.fold_with(&mut table), scope, assumptions))
+                .collect();
+
+            TraitInstId::new(
+                table.db(),
+                solution.def(table.db()),
+                normalized_args,
+                solution.assoc_type_bindings(table.db()).clone(),
+            )
+        };
+
         // Try to unifies pending inst and solution.
-        if table.unify(*pending_inst, solution).is_err() {
+        if table
+            .unify(normalized_pending, normalized_solution)
+            .is_err()
+        {
             return true;
         }
 
@@ -528,7 +596,9 @@ pub(crate) fn ty_depth_impl<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> u
         | TyData::Never
         | TyData::TyBase(_)
         | TyData::TyParam(_)
+        | TyData::AssocTy { .. }
         | TyData::TyVar(_) => 1,
+        TyData::QualifiedTy(trait_inst) => ty_depth_impl(db, trait_inst.self_ty(db)) + 1,
         TyData::TyApp(lhs, rhs) => {
             let lhs_depth = ty_depth_impl(db, *lhs);
             let rhs_depth = ty_depth_impl(db, *rhs);

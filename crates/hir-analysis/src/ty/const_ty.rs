@@ -36,7 +36,7 @@ pub(crate) fn evaluate_const_ty<'db>(
     let Partial::Present(expr) = body.expr(db).data(db, *body) else {
         let data = ConstTyData::Evaluated(
             EvaluatedConstTy::Invalid,
-            TyId::invalid(db, InvalidCause::Other),
+            TyId::invalid(db, InvalidCause::ParseError),
         );
         return ConstTyId::new(db, data);
     };
@@ -133,10 +133,10 @@ impl<'db> ConstTyId<'db> {
         Self::new(db, data)
     }
 
-    pub(super) fn from_opt_body(db: &'db dyn HirAnalysisDb, body: Partial<Body<'db>>) -> Self {
+    pub fn from_opt_body(db: &'db dyn HirAnalysisDb, body: Partial<Body<'db>>) -> Self {
         match body {
             Partial::Present(body) => Self::from_body(db, body),
-            Partial::Absent => Self::invalid(db, InvalidCause::Other),
+            Partial::Absent => Self::invalid(db, InvalidCause::ParseError),
         }
     }
 

@@ -180,6 +180,7 @@ define_lazy_span_node!(
         (super_traits, super_trait_list, LazySuperTraitListSpan),
         (where_clause, where_clause, LazyWhereClauseSpan),
         (modifier, modifier, LazyItemModifierSpan),
+        (item_list, item_list, LazyTraitItemListSpan),
     }
 );
 impl<'db> LazyTraitSpan<'db> {
@@ -197,6 +198,26 @@ define_lazy_span_node!(
 );
 
 define_lazy_span_node!(
+    LazyTraitItemListSpan,
+    ast::TraitItemList,
+    @idx {
+        (assoc_type, LazyTraitTypeSpan),
+    }
+);
+
+define_lazy_span_node!(
+    LazyTraitTypeSpan,
+    ast::TraitTypeItem,
+    @token {
+        (name, name),
+    }
+    @node {
+        (ty, ty, LazyTySpan),
+        (attributes, attr_list, LazyAttrListSpan),
+    }
+);
+
+define_lazy_span_node!(
     LazyImplTraitSpan,
     ast::ImplTrait,
     @node {
@@ -205,11 +226,16 @@ define_lazy_span_node!(
         (where_clause, where_clause, LazyWhereClauseSpan),
         (trait_ref, trait_ref, LazyTraitRefSpan),
         (ty, ty, LazyTySpan),
+        (item_list, item_list, LazyTraitItemListSpan),
     }
 );
 impl<'db> LazyImplTraitSpan<'db> {
     pub fn new(i: ImplTrait<'db>) -> Self {
         Self(crate::span::transition::SpanTransitionChain::new(i))
+    }
+
+    pub fn associated_type(self, idx: usize) -> LazyTraitTypeSpan<'db> {
+        self.item_list().assoc_type(idx)
     }
 }
 

@@ -1,6 +1,6 @@
 use rowan::ast::{support, AstNode};
 
-use super::{ast_node, TraitRef, TupleType};
+use super::{ast_node, TraitRef, TupleType, TypeBoundList};
 use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
 
 ast_node! {
@@ -118,6 +118,7 @@ ast_node! {
     pub struct Contract,
     SK::Contract,
 }
+
 impl super::AttrListOwner for Contract {}
 impl super::ItemModifierOwner for Contract {}
 impl Contract {
@@ -192,7 +193,6 @@ impl Trait {
 
     /// Returns the trait's item list.
     /// `{ .. }` in `trait Foo<..> where .. { .. }`
-    /// NOTE: Currently only supports `fn` items.
     pub fn item_list(&self) -> Option<TraitItemList> {
         support::child(self.syntax())
     }
@@ -211,6 +211,49 @@ impl SuperTraitList {
     pub fn colon(&self) -> Option<SyntaxToken> {
         support::token(self.syntax(), SK::Colon)
     }
+}
+
+ast_node! {
+    /// `type Bar` in trait definition
+    /// or `type Bar = i32` in trait implementation
+    pub struct TraitTypeItem,
+    SK::TraitTypeItem,
+}
+impl super::AttrListOwner for TraitTypeItem {}
+impl TraitTypeItem {
+    /// Returns the name of the associated type
+    pub fn name(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::Ident)
+    }
+
+    pub fn ty(&self) -> Option<super::Type> {
+        support::child(self.syntax())
+    }
+
+    pub fn bounds(&self) -> Option<TypeBoundList> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
+    pub struct TraitItem,
+    SK::Func | SK::TraitTypeItem
+}
+impl TraitItem {
+    pub fn kind(&self) -> TraitItemKind {
+        match self.syntax().kind() {
+            SK::Func => TraitItemKind::Func(AstNode::cast(self.syntax().clone()).unwrap()),
+            SK::TraitTypeItem => {
+                TraitItemKind::Type(TraitTypeItem::cast(self.syntax().clone()).unwrap())
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub enum TraitItemKind {
+    Func(Func),
+    Type(TraitTypeItem),
 }
 
 ast_node! {
@@ -259,8 +302,7 @@ impl ImplTrait {
 
     /// Returns the trait impl item list.
     /// `{ .. }` in `impl<T> Foo for Bar<T> { .. }`
-    /// NOTE: Currently only supports `fn` items.
-    pub fn item_list(&self) -> Option<ImplTraitItemList> {
+    pub fn item_list(&self) -> Option<TraitItemList> {
         support::child(self.syntax())
     }
 }
@@ -399,19 +441,13 @@ pub enum VariantKind {
 ast_node! {
     pub struct TraitItemList,
     SK::TraitItemList,
-    IntoIterator<Item=Func>,
+    IntoIterator<Item=TraitItem>,
 }
 
 ast_node! {
     pub struct ImplItemList,
     SK::ImplItemList,
-    IntoIterator<Item=Func>,
-}
-
-ast_node! {
-    pub struct ImplTraitItemList,
-    SK::ImplTraitItemList,
-    IntoIterator<Item=Func>,
+    IntoIterator<Item=Func>, // xxx ImplTraitItem
 }
 
 ast_node! {
@@ -673,6 +709,7 @@ mod tests {
     fn trait_() {
         let source = r#"
                 pub trait Foo {
+                    type Bar: Encode
                     pub fn foo<T>(self, t: T) -> T
                     pub fn default(self) -> u32 { return 1 }
                 }
@@ -681,19 +718,49 @@ mod tests {
         assert_eq!(t.name().unwrap().text(), "Foo");
 
         let mut count = 0;
-        for f in t.item_list().unwrap() {
+        for item in t.item_list().unwrap() {
             match count {
                 0 => {
-                    assert!(f.body().is_none());
+                    let TraitItemKind::Type(t) = item.kind() else {
+                        panic!()
+                    };
+                    assert_eq!(t.name().unwrap().text(), "Bar");
+                    assert_eq!(
+                        t.bounds()
+                            .unwrap()
+                            .into_iter()
+                            .next()
+                            .unwrap()
+                            .trait_bound()
+                            .unwrap()
+                            .path()
+                            .unwrap()
+                            .segments()
+                            .next()
+                            .unwrap()
+                            .ident()
+                            .unwrap()
+                            .text(),
+                        "Encode"
+                    );
                 }
                 1 => {
-                    assert!(f.body().is_some());
+                    let TraitItemKind::Func(func) = item.kind() else {
+                        panic!()
+                    };
+                    assert!(func.body().is_none());
+                }
+                2 => {
+                    let TraitItemKind::Func(func) = item.kind() else {
+                        panic!()
+                    };
+                    assert!(func.body().is_some());
                 }
                 _ => unreachable!(),
             }
             count += 1;
         }
-        assert_eq!(count, 2);
+        assert_eq!(count, 3);
     }
 
     #[test]
@@ -701,13 +768,23 @@ mod tests {
     fn impl_trait() {
         let source = r#"
             impl Trait::Foo for (i32)  {
+                type Foo = u32
                 fn foo<T>(self, _t: T) -> u32 { return 1 };
             }"#;
         let i: ImplTrait = parse_item(source);
         assert!(i.generic_params().is_none());
         assert!(i.trait_ref().is_some());
         assert!(matches!(i.ty().unwrap().kind(), TypeKind::Tuple(_)));
-        assert!(i.item_list().unwrap().iter().count() == 1);
+        let mut items = i.item_list().unwrap().iter();
+        assert!(matches!(
+            items.next().unwrap().kind(),
+            TraitItemKind::Type(_)
+        ));
+        assert!(matches!(
+            items.next().unwrap().kind(),
+            TraitItemKind::Func(_)
+        ));
+        assert_eq!(items.next(), None);
     }
 
     #[test]

@@ -1,15 +1,20 @@
+use common::indexmap::IndexMap;
+use either::Either;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, Enum, EnumVariant, GenericParamOwner, ItemKind, Partial, PathId,
-        TypeId, VariantKind,
+        scope_graph::ScopeId, Enum, EnumVariant, GenericParamOwner, IdentId, ImplTrait, ItemKind,
+        Partial, PathId, PathKind, Trait, TypeBound, TypeId, VariantKind,
     },
     span::DynLazySpan,
 };
+use if_chain::if_chain;
+use smallvec::{smallvec, SmallVec};
 use thin_vec::ThinVec;
 
 use super::{
-    diagnostics::NameResDiag,
+    diagnostics::PathResDiag,
     is_scope_visible_from,
+    method_selection::{select_method_candidate, MethodCandidate, MethodSelectionError},
     name_resolver::{NameRes, NameResBucket, NameResolutionError},
     resolve_query,
     visibility_checker::is_ty_visible_from,
@@ -20,13 +25,20 @@ use crate::{
     ty::{
         adt_def::{lower_adt, AdtRef},
         binder::Binder,
+        canonical::{Canonical, Canonicalized},
+        fold::TyFoldable,
         func_def::{lower_func, FuncDef, HirFuncDefKind},
-        trait_def::TraitDef,
-        trait_lower::lower_trait,
-        ty_def::{InvalidCause, TyId},
+        normalize::normalize_ty,
+        trait_def::{impls_for_ty_with_constraints, TraitInstId},
+        trait_lower::{
+            lower_trait, lower_trait_ref, lower_trait_ref_impl, TraitArgError, TraitRefLowerError,
+        },
+        trait_resolution::PredicateListId,
+        ty_def::{InvalidCause, Kind, TyData, TyId},
         ty_lower::{
             collect_generic_params, lower_generic_arg_list, lower_hir_ty, lower_type_alias, TyAlias,
         },
+        unify::UnificationTable,
     },
     HirAnalysisDb,
 };
@@ -42,7 +54,10 @@ pub struct PathResError<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
 pub enum PathResErrorKind<'db> {
     /// The name is not found.
-    NotFound(NameResBucket<'db>),
+    NotFound {
+        parent: Option<PathRes<'db>>,
+        bucket: NameResBucket<'db>,
+    },
 
     /// The name is invalid in parsing. Basically, no need to report it because
     /// the error is already emitted from parsing phase.
@@ -51,38 +66,52 @@ pub enum PathResErrorKind<'db> {
     /// The name is found, but it's ambiguous.
     Ambiguous(ThinVec<NameRes<'db>>),
 
+    /// The associated type is ambiguous.
+    AmbiguousAssociatedType {
+        name: IdentId<'db>,
+        candidates: ThinVec<(TraitInstId<'db>, TyId<'db>)>,
+    },
+
     /// The name is found, but it can't be used in the middle of a use path.
     InvalidPathSegment(PathRes<'db>),
 
     /// The definition conflicts with other definitions.
     Conflict(ThinVec<DynLazySpan<'db>>),
 
-    TooManyGenericArgs {
-        expected: u16,
-        given: u16,
+    ArgNumMismatch {
+        expected: usize,
+        given: usize,
+    },
+    ArgKindMisMatch {
+        expected: Kind,
+        given: TyId<'db>,
+    },
+    ArgTypeMismatch {
+        expected: Option<TyId<'db>>,
+        given: Option<TyId<'db>>,
     },
 
-    TraitMethodNotFound(TraitDef<'db>),
-
-    AssocTy(TyId<'db>), // TyId is parent type.
+    MethodSelection(MethodSelectionError<'db>),
 }
 
 impl<'db> PathResError<'db> {
     pub fn new(kind: PathResErrorKind<'db>, failed_at: PathId<'db>) -> Self {
         Self { kind, failed_at }
     }
-
-    pub fn not_found(path: PathId<'db>, bucket: NameResBucket<'db>) -> Self {
-        Self::new(PathResErrorKind::NotFound(bucket), path)
-    }
-
     pub fn parse_err(path: PathId<'db>) -> Self {
         Self::new(PathResErrorKind::ParseError, path)
     }
 
+    pub fn method_selection(err: MethodSelectionError<'db>, path: PathId<'db>) -> Self {
+        Self::new(PathResErrorKind::MethodSelection(err), path)
+    }
+
     pub fn from_name_res_error(err: NameResolutionError<'db>, path: PathId<'db>) -> Self {
         let kind = match err {
-            NameResolutionError::NotFound => PathResErrorKind::NotFound(NameResBucket::default()),
+            NameResolutionError::NotFound => PathResErrorKind::NotFound {
+                parent: None,
+                bucket: NameResBucket::default(),
+            },
             NameResolutionError::Invalid => PathResErrorKind::ParseError,
             NameResolutionError::Ambiguous(vec) => PathResErrorKind::Ambiguous(vec),
             NameResolutionError::Conflict(_ident, vec) => PathResErrorKind::Conflict(vec),
@@ -94,19 +123,44 @@ impl<'db> PathResError<'db> {
 
     pub fn print(&self) -> String {
         match &self.kind {
-            PathResErrorKind::NotFound(_) => "Not found".to_string(),
+            PathResErrorKind::NotFound { .. } => "Not found".to_string(),
             PathResErrorKind::ParseError => "Parse error".to_string(),
             PathResErrorKind::Ambiguous(v) => format!("Ambiguous; {} options.", v.len()),
+            PathResErrorKind::AmbiguousAssociatedType {
+                name: _,
+                candidates,
+            } => {
+                format!("Ambiguous associated type; {} options.", candidates.len())
+            }
             PathResErrorKind::InvalidPathSegment(_) => "Invalid path segment".to_string(),
             PathResErrorKind::Conflict(..) => "Conflicting definitions".to_string(),
-            PathResErrorKind::TooManyGenericArgs {
-                expected,
-                given: actual,
-            } => {
-                format!("Incorrect number of generic args; expected {expected}, given {actual}.")
+            PathResErrorKind::ArgNumMismatch { expected, given } => {
+                format!("Incorrect number of generic args; expected {expected}, given {given}.")
             }
-            PathResErrorKind::TraitMethodNotFound(_) => "Trait method not found".to_string(),
-            PathResErrorKind::AssocTy(_) => "Types cannot be nested inside other types".to_string(),
+            PathResErrorKind::ArgKindMisMatch { .. } => {
+                "Generic argument kind mismatch".to_string()
+            }
+            PathResErrorKind::ArgTypeMismatch { .. } => {
+                "Generic const argument type mismatch".to_string()
+            }
+            PathResErrorKind::MethodSelection(err) => match err {
+                MethodSelectionError::AmbiguousInherentMethod(cands) => {
+                    format!("Ambiguous method; {} inherent candidates.", cands.len())
+                }
+                MethodSelectionError::AmbiguousTraitMethod(traits) => {
+                    format!("Ambiguous method; {} trait candidates.", traits.len())
+                }
+                MethodSelectionError::NotFound => "Method not found".to_string(),
+                MethodSelectionError::InvisibleInherentMethod(_) => {
+                    "Inherent method is not visible".to_string()
+                }
+                MethodSelectionError::InvisibleTraitMethod(traits) => {
+                    format!("Trait is not in scope; {} candidate(s).", traits.len())
+                }
+                MethodSelectionError::ReceiverTypeMustBeKnown => {
+                    "Receiver type must be known".to_string()
+                }
+            },
         }
     }
 
@@ -116,54 +170,125 @@ impl<'db> PathResError<'db> {
         path: PathId<'db>,
         span: DynLazySpan<'db>,
         expected: ExpectedPathKind,
-    ) -> Option<NameResDiag<'db>> {
+    ) -> Option<PathResDiag<'db>> {
         let failed_at = self.failed_at;
-        let ident = failed_at.ident(db).to_opt()?;
+        let ident = failed_at.ident(db).to_opt()?; // xxx PathKind::QualifiedType
 
         let diag = match self.kind {
-            PathResErrorKind::ParseError => unreachable!(),
-            PathResErrorKind::NotFound(bucket) => {
+            PathResErrorKind::ParseError => return None,
+            PathResErrorKind::NotFound { parent, bucket } => {
                 if let Some(nr) = bucket.iter_ok().next() {
                     if path != self.failed_at {
-                        NameResDiag::InvalidPathSegment(span, ident, nr.kind.name_span(db))
+                        PathResDiag::InvalidPathSegment(span, ident, nr.kind.name_span(db))
                     } else {
                         match expected {
                             ExpectedPathKind::Record | ExpectedPathKind::Type => {
-                                NameResDiag::ExpectedType(span, ident, nr.kind_name())
+                                PathResDiag::ExpectedType(span, ident, nr.kind_name())
                             }
                             ExpectedPathKind::Trait => {
-                                NameResDiag::ExpectedTrait(span, ident, nr.kind_name())
+                                PathResDiag::ExpectedTrait(span, ident, nr.kind_name())
                             }
                             ExpectedPathKind::Value => {
-                                NameResDiag::ExpectedValue(span, ident, nr.kind_name())
+                                PathResDiag::ExpectedValue(span, ident, nr.kind_name())
                             }
-                            _ => NameResDiag::NotFound(span, ident),
+                            ExpectedPathKind::Function => func_not_found_err(span, ident, parent),
+                            _ => PathResDiag::NotFound(span, ident),
                         }
                     }
+                } else if expected == ExpectedPathKind::Function {
+                    func_not_found_err(span, ident, parent)
                 } else {
-                    NameResDiag::NotFound(span, ident)
+                    PathResDiag::NotFound(span, ident)
                 }
             }
 
-            PathResErrorKind::Ambiguous(cands) => NameResDiag::ambiguous(db, span, ident, cands),
+            PathResErrorKind::Ambiguous(cands) => PathResDiag::ambiguous(db, span, ident, cands),
 
-            PathResErrorKind::AssocTy(_) => todo!(),
-            PathResErrorKind::TraitMethodNotFound(_) => todo!(),
-            PathResErrorKind::TooManyGenericArgs { expected, given } => {
-                NameResDiag::TooManyGenericArgs {
-                    span,
-                    expected,
-                    given,
-                }
-            }
+            PathResErrorKind::ArgNumMismatch { expected, given } => PathResDiag::ArgNumMismatch {
+                span,
+                ident,
+                expected,
+                given,
+            },
+
+            PathResErrorKind::ArgKindMisMatch { expected, given } => PathResDiag::ArgKindMismatch {
+                span,
+                ident,
+                expected,
+                given,
+            },
+
+            PathResErrorKind::ArgTypeMismatch { expected, given } => PathResDiag::ArgTypeMismatch {
+                span,
+                ident,
+                expected,
+                given,
+            },
 
             PathResErrorKind::InvalidPathSegment(res) => {
-                NameResDiag::InvalidPathSegment(span, ident, res.name_span(db))
+                PathResDiag::InvalidPathSegment(span, ident, res.name_span(db))
             }
 
-            PathResErrorKind::Conflict(spans) => NameResDiag::Conflict(ident, spans),
+            PathResErrorKind::Conflict(spans) => PathResDiag::Conflict(ident, spans),
+
+            PathResErrorKind::AmbiguousAssociatedType { name, candidates } => {
+                PathResDiag::AmbiguousAssociatedType {
+                    span,
+                    name,
+                    candidates,
+                }
+            }
+
+            PathResErrorKind::MethodSelection(err) => match err {
+                MethodSelectionError::ReceiverTypeMustBeKnown => PathResDiag::TypeMustBeKnown(span),
+                MethodSelectionError::AmbiguousInherentMethod(candidates) => {
+                    PathResDiag::AmbiguousInherentMethod {
+                        primary: span,
+                        method_name: ident,
+                        candidates,
+                    }
+                }
+                MethodSelectionError::AmbiguousTraitMethod(trait_defs) => {
+                    let traits = trait_defs.into_iter().map(|d| d.trait_(db)).collect();
+                    PathResDiag::AmbiguousTrait {
+                        primary: span,
+                        method_name: ident,
+                        traits,
+                    }
+                }
+                MethodSelectionError::InvisibleInherentMethod(func) => {
+                    PathResDiag::Invisible(span, ident, func.name_span(db).into())
+                }
+                MethodSelectionError::InvisibleTraitMethod(traits) => {
+                    PathResDiag::InvisibleAmbiguousTrait {
+                        primary: span,
+                        traits,
+                    }
+                }
+                MethodSelectionError::NotFound => PathResDiag::NotFound(span, ident),
+            },
         };
         Some(diag)
+    }
+}
+
+fn func_not_found_err<'db>(
+    span: DynLazySpan<'db>,
+    ident: IdentId<'db>,
+    parent: Option<PathRes<'db>>,
+) -> PathResDiag<'db> {
+    match parent {
+        Some(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) => PathResDiag::MethodNotFound {
+            primary: span,
+            method_name: ident,
+            receiver: Either::Left(ty),
+        },
+        Some(PathRes::Trait(t)) => PathResDiag::MethodNotFound {
+            primary: span,
+            method_name: ident,
+            receiver: Either::Right(t),
+        },
+        _ => PathResDiag::NotFound(span, ident),
     }
 }
 
@@ -201,11 +326,11 @@ pub enum PathRes<'db> {
     TyAlias(TyAlias<'db>, TyId<'db>),
     Func(TyId<'db>),
     FuncParam(ItemKind<'db>, u16),
-    Trait(TraitDef<'db>),
+    Trait(TraitInstId<'db>),
     EnumVariant(ResolvedVariant<'db>),
     Const(TyId<'db>),
     Mod(ScopeId<'db>),
-    TypeMemberTbd(TyId<'db>),
+    Method(TyId<'db>, MethodCandidate<'db>),
 }
 
 impl<'db> PathRes<'db> {
@@ -219,31 +344,40 @@ impl<'db> PathRes<'db> {
             PathRes::Func(ty) => PathRes::Func(f(ty)),
             PathRes::Const(ty) => PathRes::Const(f(ty)),
             PathRes::EnumVariant(v) => PathRes::EnumVariant(ResolvedVariant { ty: f(v.ty), ..v }),
-            PathRes::TypeMemberTbd(parent_ty) => PathRes::TypeMemberTbd(f(parent_ty)),
+            // xxx map over candidate ty?
+            PathRes::Method(ty, candidate) => PathRes::Method(f(ty), candidate),
             r @ (PathRes::Trait(_) | PathRes::Mod(_) | PathRes::FuncParam(..)) => r,
         }
     }
 
     pub fn as_scope(&self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
         match self {
-            PathRes::Ty(ty)
-            | PathRes::Func(ty)
-            | PathRes::Const(ty)
-            | PathRes::TypeMemberTbd(ty) => ty.as_scope(db),
+            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => ty.as_scope(db),
             PathRes::TyAlias(alias, _) => Some(alias.alias.scope()),
-            PathRes::Trait(trait_) => Some(trait_.trait_(db).scope()),
+            PathRes::Trait(trait_) => Some(trait_.def(db).trait_(db).scope()),
             PathRes::EnumVariant(variant) => Some(variant.enum_(db).scope()),
             PathRes::FuncParam(item, idx) => Some(ScopeId::FuncParam(*item, *idx)),
             PathRes::Mod(scope) => Some(*scope),
+            PathRes::Method(ty, _) => ty.as_scope(db),
         }
     }
 
     pub fn is_visible_from(&self, db: &'db dyn HirAnalysisDb, from_scope: ScopeId<'db>) -> bool {
         match self {
-            PathRes::Ty(ty)
-            | PathRes::Func(ty)
-            | PathRes::Const(ty)
-            | PathRes::TypeMemberTbd(ty) => is_ty_visible_from(db, *ty, from_scope),
+            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => {
+                is_ty_visible_from(db, *ty, from_scope)
+            }
+            PathRes::Method(_, cand) => {
+                // Method visibility depends on the method's defining scope
+                // (function or trait method), not the receiver type.
+                let method_scope = match cand {
+                    MethodCandidate::InherentMethod(func_def) => func_def.scope(db),
+                    MethodCandidate::TraitMethod(c) | MethodCandidate::NeedsConfirmation(c) => {
+                        c.method.0.scope(db)
+                    }
+                };
+                is_scope_visible_from(db, method_scope, from_scope)
+            }
             r => is_scope_visible_from(db, r.as_scope(db).unwrap(), from_scope),
         }
     }
@@ -272,9 +406,11 @@ impl<'db> PathRes<'db> {
             r @ (PathRes::Trait(..) | PathRes::Mod(..) | PathRes::FuncParam(..)) => {
                 r.as_scope(db).unwrap().pretty_path(db)
             }
-            PathRes::TypeMemberTbd(parent_ty) => Some(format!(
-                "<TBD member of {}>",
-                ty_path(*parent_ty).unwrap_or_else(|| "<missing>".into())
+
+            PathRes::Method(ty, cand) => Some(format!(
+                "{}::{}",
+                ty_path(*ty).unwrap_or_else(|| "<missing>".into()),
+                cand.name(db).data(db)
             )),
         }
     }
@@ -289,7 +425,7 @@ impl<'db> PathRes<'db> {
             PathRes::EnumVariant(_) => "enum variant",
             PathRes::Const(_) => "constant",
             PathRes::Mod(_) => "module",
-            PathRes::TypeMemberTbd(_) => "method",
+            PathRes::Method(..) => "method",
         }
     }
 }
@@ -360,28 +496,47 @@ pub fn resolve_path<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
     resolve_tail_as_value: bool,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
-    resolve_path_impl(db, path, scope, resolve_tail_as_value, true, &mut |_, _| {})
+    resolve_path_impl(
+        db,
+        path,
+        scope,
+        assumptions,
+        resolve_tail_as_value,
+        true,
+        &mut |_, _| {},
+    )
 }
 
 pub fn resolve_path_with_observer<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
     resolve_tail_as_value: bool,
     observer: &mut F,
 ) -> PathResolutionResult<'db, PathRes<'db>>
 where
     F: FnMut(PathId<'db>, &PathRes<'db>),
 {
-    resolve_path_impl(db, path, scope, resolve_tail_as_value, true, observer)
+    resolve_path_impl(
+        db,
+        path,
+        scope,
+        assumptions,
+        resolve_tail_as_value,
+        true,
+        observer,
+    )
 }
 
 fn resolve_path_impl<'db, F>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
     resolve_tail_as_value: bool,
     is_tail: bool,
     observer: &mut F,
@@ -391,12 +546,55 @@ where
 {
     let parent_res = path
         .parent(db)
-        .map(|path| resolve_path_impl(db, path, scope, resolve_tail_as_value, false, observer))
+        .map(|path| {
+            resolve_path_impl(
+                db,
+                path,
+                scope,
+                assumptions,
+                resolve_tail_as_value,
+                false,
+                observer,
+            )
+        })
         .transpose()?;
 
-    if !path.ident(db).is_present() {
-        return Err(PathResError::parse_err(path));
+    if let PathKind::QualifiedType { type_, trait_ } = path.kind(db) {
+        if path.parent(db).is_some() {
+            return Err(PathResError::new(
+                PathResErrorKind::InvalidPathSegment(PathRes::Ty(TyId::invalid(
+                    db,
+                    InvalidCause::Other,
+                ))),
+                path,
+            ));
+        }
+        let ty = lower_hir_ty(db, type_, scope, assumptions);
+        let trait_inst = match lower_trait_ref(db, ty, trait_, scope, assumptions) {
+            Ok(inst) => inst,
+            Err(err) => {
+                let path = trait_.path(db).to_opt().unwrap_or(path);
+                let err = match err {
+                    TraitRefLowerError::PathResError(e) => e,
+                    TraitRefLowerError::InvalidDomain(res) => {
+                        // TODO: better error ("expected trait ref")
+                        PathResError::new(PathResErrorKind::InvalidPathSegment(res), path)
+                    }
+                    TraitRefLowerError::Ignored => PathResError::parse_err(path),
+                };
+                return Err(err);
+            }
+        };
+
+        let qualified_ty = TyId::qualified_ty(db, trait_inst);
+        let r = PathRes::Ty(qualified_ty);
+        observer(path, &r);
+        return Ok(r);
     }
+
+    let Some(ident) = path.ident(db).to_opt() else {
+        return Err(PathResError::parse_err(path));
+    };
 
     let parent_scope = parent_res
         .as_ref()
@@ -405,11 +603,20 @@ where
 
     match parent_res {
         Some(PathRes::Ty(ty) | PathRes::TyAlias(_, ty)) => {
+            // Fast path: `<A as Trait>::Assoc` — return the projection directly.
+            if let TyData::QualifiedTy(trait_inst) = ty.data(db) {
+                if let Some(assoc_ty) = trait_inst.assoc_ty(db, ident) {
+                    let r = PathRes::Ty(assoc_ty);
+                    observer(path, &r);
+                    return Ok(r);
+                }
+            }
+
             // Try to resolve as an enum variant
             if let Some(enum_) = ty.as_enum(db) {
                 // We need to use the concrete enum scope instead of
                 // parent_scope to resolve the variants in all cases,
-                // eg when parent is `Self`. I'm not really sure why this is.
+                // eg when parent is `Self`
                 let query = make_query(db, path, enum_.scope());
                 let bucket = resolve_query(db, query);
 
@@ -425,12 +632,68 @@ where
                     }
                 }
             }
-            if is_tail {
-                let r = PathRes::TypeMemberTbd(ty);
-                observer(path, &r);
-                return Ok(r);
-            } else {
-                todo!() // assoc type error
+
+            if is_tail && resolve_tail_as_value {
+                let receiver_ty = Canonicalized::new(db, ty);
+                match select_method_candidate(
+                    db,
+                    receiver_ty.value,
+                    ident,
+                    parent_scope,
+                    assumptions,
+                ) {
+                    Ok(cand) => {
+                        let r = PathRes::Method(ty, cand);
+                        observer(path, &r);
+                        return Ok(r);
+                    }
+                    Err(MethodSelectionError::NotFound) => {}
+                    Err(err) => {
+                        return Err(PathResError::method_selection(err, path));
+                    }
+                }
+            }
+
+            // Find raw associated types, then dedup by normalized result here.
+            let assoc_tys =
+                find_associated_type(db, scope, Canonical::new(db, ty), ident, assumptions);
+
+            if assoc_tys.is_empty() {
+                return Err(PathResError::new(
+                    PathResErrorKind::NotFound {
+                        parent: parent_res,
+                        bucket: NameResBucket::default(),
+                    },
+                    path,
+                ));
+            }
+
+            // Deduplicate by normalized type
+            let mut dedup: IndexMap<TyId<'db>, TraitInstId<'db>> = IndexMap::new();
+            for (inst, ty_candidate) in assoc_tys.iter().copied() {
+                let norm = normalize_ty(db, ty_candidate, scope, assumptions);
+                dedup.entry(norm).or_insert(inst);
+            }
+
+            match dedup.len() {
+                0 => unreachable!(),
+                1 => {
+                    let (assoc_ty, _) = dedup.first().unwrap();
+                    let r = PathRes::Ty(*assoc_ty);
+                    observer(path, &r);
+                    return Ok(r);
+                }
+                _ => {
+                    // Build candidate list from deduped set for diagnostics
+                    let candidates = dedup.into_iter().map(|(ty, inst)| (inst, ty)).collect();
+                    return Err(PathResError::new(
+                        PathResErrorKind::AmbiguousAssociatedType {
+                            name: ident,
+                            candidates,
+                        },
+                        path,
+                    ));
+                }
             }
         }
 
@@ -440,35 +703,178 @@ where
                 path,
             ));
         }
-        Some(PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..)) => unreachable!(),
+        Some(PathRes::FuncParam(..) | PathRes::Method(..)) => unreachable!(),
         Some(PathRes::Const(_) | PathRes::Mod(_) | PathRes::Trait(_)) | None => {}
     };
 
     let query = make_query(db, path, parent_scope);
     let bucket = resolve_query(db, query);
 
-    let res = if is_tail && resolve_tail_as_value {
-        match bucket.pick(NameDomain::VALUE) {
-            Ok(res) => res.clone(),
-            Err(_) => pick_type_domain_from_bucket(bucket, path)?,
-        }
-    } else {
-        pick_type_domain_from_bucket(bucket, path)?
-    };
-    let reso = resolve_name_res(db, &res, parent_res, path, scope)?;
+    let parent_ty = parent_res.as_ref().and_then(|res| match res {
+        PathRes::Ty(ty) | PathRes::TyAlias(_, ty) => Some(*ty),
+        _ => None,
+    });
 
-    observer(path, &reso);
-    Ok(reso)
+    let res = if_chain! {
+        if is_tail && resolve_tail_as_value;
+        if let Ok(res) = bucket.pick(NameDomain::VALUE);
+        then {
+            res.clone()
+        } else {
+            pick_type_domain_from_bucket(parent_res, bucket, path)?
+        }
+    };
+
+    let r = resolve_name_res(db, &res, parent_ty, path, scope, assumptions)?;
+    observer(path, &r);
+    Ok(r)
+}
+
+pub fn find_associated_type<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: Canonical<TyId<'db>>,
+    name: IdentId<'db>,
+    assumptions: PredicateListId<'db>,
+) -> SmallVec<(TraitInstId<'db>, TyId<'db>), 4> {
+    // Qualified type: `<A as T>::B`. B must be an associated type of trait T.
+    if let TyData::QualifiedTy(trait_inst) = ty.value.data(db) {
+        return if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+            smallvec![(*trait_inst, assoc_ty)]
+        } else {
+            smallvec![]
+        };
+    }
+
+    // Collect unique candidates keyed by their normalized associated type.
+    // This avoids scanning and dedups different trait bounds that resolve to
+    // the same concrete type.
+    let mut candidates: IndexMap<TyId<'db>, TraitInstId<'db>> = IndexMap::new();
+    let ingot = scope.ingot(db);
+    // Use a single unification table and snapshots to preserve outer
+    // substitutions while isolating per-candidate attempts.
+    let mut table = UnificationTable::new(db);
+    let lhs_ty = ty.extract_identity(&mut table);
+
+    if let TyData::TyParam(param) = ty.value.data(db) {
+        // Trait self, in trait or impl trait. Associated type must be in this trait.
+        if param.is_trait_self() {
+            if let Some(trait_) = param.owner.resolve_to::<Trait>(db) {
+                if trait_.assoc_ty(db, name).is_some() {
+                    let trait_inst = TraitInstId::new(
+                        db,
+                        lower_trait(db, trait_),
+                        vec![ty.value],
+                        IndexMap::new(),
+                    );
+                    let assoc_ty = TyId::assoc_ty(db, trait_inst, name);
+                    return smallvec![(trait_inst, assoc_ty)];
+                }
+            } else if let Some(impl_trait) = param.owner.resolve_to::<ImplTrait>(db) {
+                if let Some(trait_ref) = impl_trait.trait_ref(db).to_opt() {
+                    if let Ok(trait_inst) =
+                        lower_trait_ref(db, ty.value, trait_ref, impl_trait.scope(), assumptions)
+                    {
+                        if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+                            return smallvec![(trait_inst, assoc_ty)];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Check explicit bounds in assumptions that match `ty` only when `ty` is a type
+    // parameter (to avoid spurious ambiguities for concrete types that already have impls).
+    if let TyData::TyParam(_) = ty.value.data(db) {
+        for &trait_inst in assumptions.list(db) {
+            // `trait_inst` is a specific trait bound, e.g., `A: Abi` or `S<A>: SomeTrait`.
+            let snapshot = table.snapshot();
+            let pred_self_ty =
+                table.instantiate_with_fresh_vars(Binder::bind(trait_inst.self_ty(db)));
+
+            if table.unify(lhs_ty, pred_self_ty).is_ok() {
+                if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+                    let folded = assoc_ty.fold_with(&mut table);
+                    candidates.entry(folded).or_insert(trait_inst);
+                }
+            }
+            table.rollback_to(snapshot);
+        }
+    }
+
+    // check all impls for ty
+    for impl_ in impls_for_ty_with_constraints(db, ingot, ty, assumptions) {
+        let snapshot = table.snapshot();
+        let impl_ = table.instantiate_with_fresh_vars(impl_);
+
+        if table.unify(lhs_ty, impl_.self_ty(db)).is_ok() {
+            if let Some(ty) = impl_.assoc_ty(db, name) {
+                let folded = ty.fold_with(&mut table);
+                candidates.entry(folded).or_insert(impl_.trait_(db));
+            }
+        }
+        table.rollback_to(snapshot);
+    }
+
+    // Case 3: The LHS `ty` is an associated type (e.g., `T::Encoder` in `T::Encoder::Output`).
+    // We need to look at the trait bound on the associated type.
+    if let TyData::AssocTy(assoc_ty) = ty.value.data(db) {
+        // Extract the canonical type's substitutions into the unification table
+        // This ensures we maintain any type parameter bindings from the outer context
+        let ty_with_subst = ty.extract_identity(&mut table);
+
+        // First, check if there are trait bounds on this associated type in the assumptions
+        // (e.g., from where clauses like `T::Assoc: Level1`).
+        for &trait_inst in assumptions.list(db) {
+            let snapshot = table.snapshot();
+            // Allow unification to account for type variables in either side
+            if table.unify(ty_with_subst, trait_inst.self_ty(db)).is_ok() {
+                if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
+                    let folded = assoc_ty.fold_with(&mut table);
+                    candidates.entry(folded).or_insert(trait_inst);
+                }
+            }
+            table.rollback_to(snapshot);
+        }
+
+        // Also check bounds defined on the associated type in the trait definition
+        let trait_def = assoc_ty.trait_.def(db);
+        let trait_ = trait_def.trait_(db);
+
+        if let Some(assoc_ty_decl) = trait_.assoc_ty(db, assoc_ty.name) {
+            for bound in &assoc_ty_decl.bounds {
+                let TypeBound::Trait(trait_ref) = bound else {
+                    todo!("assoc ty kind bounds")
+                };
+                let self_ty = ty_with_subst.fold_with(&mut table);
+
+                if let Ok(inst) = lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions) {
+                    if let Some(assoc_ty) = inst.assoc_ty(db, name) {
+                        let folded = assoc_ty.fold_with(&mut table);
+                        candidates.entry(folded).or_insert(inst);
+                    }
+                }
+            }
+        }
+    }
+
+    candidates
+        .into_iter()
+        .map(|(ty, inst)| (inst, ty))
+        .collect()
 }
 
 pub fn resolve_name_res<'db>(
     db: &'db dyn HirAnalysisDb,
     nameres: &NameRes<'db>,
-    parent_ty: Option<PathRes<'db>>,
+    parent_ty: Option<TyId<'db>>,
     path: PathId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
-    let args = &lower_generic_arg_list(db, path.generic_args(db), scope);
+    let args = &lower_generic_arg_list(db, path.generic_args(db), scope, assumptions);
+
     let res = match nameres.kind {
         NameResKind::Prim(prim) => {
             let ty = TyId::from_hir_prim_ty(db, prim);
@@ -478,7 +884,7 @@ pub fn resolve_name_res<'db>(
             ScopeId::Item(item) => match item {
                 ItemKind::Struct(_) | ItemKind::Contract(_) | ItemKind::Enum(_) => {
                     let adt_ref = AdtRef::try_from_item(item).unwrap();
-                    PathRes::Ty(ty_from_adtref(db, adt_ref, args)?)
+                    PathRes::Ty(ty_from_adtref(db, path, adt_ref, args)?)
                 }
 
                 ItemKind::TopMod(_) | ItemKind::Mod(_) => PathRes::Mod(scope_id),
@@ -489,18 +895,27 @@ pub fn resolve_name_res<'db>(
                     PathRes::Func(TyId::foldl(db, ty, args))
                 }
                 ItemKind::Const(const_) => {
-                    // TODO err if any args
+                    if !args.is_empty() {
+                        return Err(PathResError::new(
+                            PathResErrorKind::ArgNumMismatch {
+                                expected: 0,
+                                given: args.len(),
+                            },
+                            path,
+                        ));
+                    }
                     let ty = if let Some(ty) = const_.ty(db).to_opt() {
-                        lower_hir_ty(db, ty, scope)
+                        lower_hir_ty(db, ty, scope, assumptions)
                     } else {
-                        TyId::invalid(db, InvalidCause::Other)
+                        TyId::invalid(db, InvalidCause::ParseError)
                     };
                     PathRes::Const(ty)
                 }
 
                 ItemKind::TypeAlias(type_alias) => {
                     let alias = lower_type_alias(db, type_alias);
-                    if args.len() < alias.params(db).len() {
+                    let expected = alias.params(db).len();
+                    if args.len() < expected {
                         PathRes::TyAlias(
                             alias.clone(),
                             TyId::invalid(
@@ -511,17 +926,49 @@ pub fn resolve_name_res<'db>(
                                 },
                             ),
                         )
+                    } else if args.len() > expected {
+                        return Err(PathResError::new(
+                            PathResErrorKind::ArgNumMismatch {
+                                expected,
+                                given: args.len(),
+                            },
+                            path,
+                        ));
                     } else {
-                        PathRes::TyAlias(alias.clone(), alias.alias_to.instantiate(db, args))
+                        let instantiated = alias.alias_to.instantiate(db, args);
+                        if let TyData::Invalid(InvalidCause::TooManyGenericArgs {
+                            expected,
+                            given,
+                        }) = instantiated.data(db)
+                        {
+                            return Err(PathResError::new(
+                                PathResErrorKind::ArgNumMismatch {
+                                    expected: *expected,
+                                    given: *given,
+                                },
+                                path,
+                            ));
+                        }
+                        PathRes::TyAlias(alias.clone(), instantiated)
                     }
                 }
 
-                ItemKind::Impl(impl_) => {
-                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(db), scope, args)?)
-                }
-                ItemKind::ImplTrait(impl_) => {
-                    PathRes::Ty(impl_typeid_to_ty(db, path, impl_.ty(db), scope, args)?)
-                }
+                ItemKind::Impl(impl_) => PathRes::Ty(impl_typeid_to_ty(
+                    db,
+                    path,
+                    impl_.ty(db),
+                    scope,
+                    args,
+                    assumptions,
+                )?),
+                ItemKind::ImplTrait(impl_) => PathRes::Ty(impl_typeid_to_ty(
+                    db,
+                    path,
+                    impl_.ty(db),
+                    scope,
+                    args,
+                    assumptions,
+                )?),
 
                 ItemKind::Trait(t) => {
                     if path.is_self_ty(db) {
@@ -530,7 +977,27 @@ pub fn resolve_name_res<'db>(
                         let ty = TyId::foldl(db, ty, args);
                         PathRes::Ty(ty)
                     } else {
-                        PathRes::Trait(lower_trait(db, t))
+                        match lower_trait_ref_impl(db, path, scope, assumptions, t) {
+                            Ok(t) => PathRes::Trait(t),
+                            Err(err) => {
+                                let kind = match err {
+                                    TraitArgError::ArgNumMismatch { expected, given } => {
+                                        PathResErrorKind::ArgNumMismatch { expected, given }
+                                    }
+                                    TraitArgError::ArgKindMisMatch { expected, given } => {
+                                        PathResErrorKind::ArgKindMisMatch { expected, given }
+                                    }
+                                    TraitArgError::ArgTypeMismatch { expected, given } => {
+                                        PathResErrorKind::ArgTypeMismatch { expected, given }
+                                    }
+                                    TraitArgError::Ignored => PathResErrorKind::ParseError,
+                                };
+                                return Err(PathResError {
+                                    kind,
+                                    failed_at: path,
+                                });
+                            }
+                        }
                     }
                 }
 
@@ -544,13 +1011,31 @@ pub fn resolve_name_res<'db>(
                 PathRes::Ty(ty)
             }
 
+            ScopeId::TraitType(t, idx) => {
+                let trait_def = lower_trait(db, t);
+                let trait_type = &t.types(db)[idx as usize];
+
+                let params = collect_generic_params(db, t.into());
+                let self_ty = params.trait_self(db).unwrap();
+
+                let mut trait_args = vec![self_ty];
+                trait_args.extend_from_slice(args);
+                let trait_inst = TraitInstId::new(db, trait_def, &trait_args, IndexMap::new());
+
+                // Create an associated type reference
+                let assoc_ty_name = trait_type.name.to_opt().unwrap();
+                let assoc_ty = TyId::assoc_ty(db, trait_inst, assoc_ty_name);
+
+                PathRes::Ty(assoc_ty)
+            }
+
             ScopeId::Variant(var) => {
-                let enum_ty = if let Some(PathRes::Ty(ty)) = parent_ty {
+                let enum_ty = if let Some(ty) = parent_ty {
                     ty
                 } else {
                     // The variant was imported via `use`.
                     debug_assert!(path.parent(db).is_none());
-                    ty_from_adtref(db, var.enum_.into(), &[])?
+                    ty_from_adtref(db, path, var.enum_.into(), &[])?
                 };
                 // TODO report error if args isn't empty
                 PathRes::EnumVariant(ResolvedVariant {
@@ -573,9 +1058,10 @@ fn impl_typeid_to_ty<'db>(
     hir_ty: Partial<TypeId<'db>>,
     scope: ScopeId<'db>,
     args: &[TyId<'db>],
+    assumptions: PredicateListId<'db>,
 ) -> PathResolutionResult<'db, TyId<'db>> {
     if let Some(hir_ty) = hir_ty.to_opt() {
-        let ty = lower_hir_ty(db, hir_ty, scope); // root scope!
+        let ty = lower_hir_ty(db, hir_ty, scope, assumptions); // root scope!
         Ok(TyId::foldl(db, ty, args))
     } else {
         Err(PathResError::parse_err(path))
@@ -584,15 +1070,29 @@ fn impl_typeid_to_ty<'db>(
 
 fn ty_from_adtref<'db>(
     db: &'db dyn HirAnalysisDb,
+    path: PathId<'db>,
     adt_ref: AdtRef<'db>,
     args: &[TyId<'db>],
 ) -> PathResolutionResult<'db, TyId<'db>> {
     let adt = lower_adt(db, adt_ref);
     let ty = TyId::adt(db, adt);
-    Ok(TyId::foldl(db, ty, args))
+    let applied = TyId::foldl(db, ty, args);
+    if let TyData::Invalid(InvalidCause::TooManyGenericArgs { expected, given }) = applied.data(db)
+    {
+        Err(PathResError::new(
+            PathResErrorKind::ArgNumMismatch {
+                expected: *expected,
+                given: *given,
+            },
+            path,
+        ))
+    } else {
+        Ok(applied)
+    }
 }
 
 fn pick_type_domain_from_bucket<'db>(
+    parent: Option<PathRes<'db>>,
     bucket: &NameResBucket<'db>,
     path: PathId<'db>,
 ) -> PathResolutionResult<'db, NameRes<'db>> {
@@ -600,7 +1100,13 @@ fn pick_type_domain_from_bucket<'db>(
         .pick(NameDomain::TYPE)
         .clone()
         .map_err(|err| match err {
-            NameResolutionError::NotFound => PathResError::not_found(path, bucket.clone()),
+            NameResolutionError::NotFound => PathResError::new(
+                PathResErrorKind::NotFound {
+                    parent: parent.clone(),
+                    bucket: bucket.clone(),
+                },
+                path,
+            ),
             err => PathResError::from_name_res_error(err, path),
         })
 }

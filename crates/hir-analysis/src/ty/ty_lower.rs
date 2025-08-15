@@ -8,13 +8,13 @@ use smallvec::smallvec;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
+    trait_resolution::{constraint::collect_constraints, PredicateListId},
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
-use crate::{
-    name_resolution::{resolve_ident_to_bucket, resolve_path, NameDomain, NameResKind, PathRes},
-    ty::binder::Binder,
-    HirAnalysisDb,
+use crate::name_resolution::{
+    resolve_ident_to_bucket, resolve_path, NameDomain, NameResKind, PathRes,
 };
+use crate::{ty::binder::Binder, HirAnalysisDb};
 
 /// Lowers the given HirTy to `TyId`.
 #[salsa::tracked]
@@ -22,31 +22,23 @@ pub fn lower_hir_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     ty: HirTyId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
     match ty.data(db) {
         HirTyKind::Ptr(pointee) => {
-            let pointee = lower_opt_hir_ty(db, scope, *pointee);
+            let pointee = lower_opt_hir_ty(db, *pointee, scope, assumptions);
             let ptr = TyId::ptr(db);
             TyId::app(db, ptr, pointee)
         }
 
-        HirTyKind::Path(path) => lower_path(db, scope, *path),
-
-        HirTyKind::SelfType(args) => {
-            let path = PathId::self_ty(db, *args);
-            match resolve_path(db, path, scope, false) {
-                Ok(PathRes::Ty(ty)) => ty,
-                Ok(_) => unreachable!(),
-                Err(_) => TyId::invalid(db, InvalidCause::Other),
-            }
-        }
+        HirTyKind::Path(path) => lower_path(db, scope, *path, assumptions),
 
         HirTyKind::Tuple(tuple_id) => {
             let elems = tuple_id.data(db);
             let len = elems.len();
             let tuple = TyId::tuple(db, len);
             elems.iter().fold(tuple, |acc, &elem| {
-                let elem_ty = lower_opt_hir_ty(db, scope, elem);
+                let elem_ty = lower_opt_hir_ty(db, elem, scope, assumptions);
                 if !elem_ty.has_star_kind(db) {
                     return TyId::invalid(db, InvalidCause::NotFullyApplied);
                 }
@@ -56,7 +48,7 @@ pub fn lower_hir_ty<'db>(
         }
 
         HirTyKind::Array(hir_elem_ty, len) => {
-            let elem_ty = lower_opt_hir_ty(db, scope, *hir_elem_ty);
+            let elem_ty = lower_opt_hir_ty(db, *hir_elem_ty, scope, assumptions);
             let len_ty = ConstTyId::from_opt_body(db, *len);
             let len_ty = TyId::const_ty(db, len_ty);
             let array = TyId::array(db, elem_ty);
@@ -67,28 +59,31 @@ pub fn lower_hir_ty<'db>(
     }
 }
 
-fn lower_opt_hir_ty<'db>(
+pub fn lower_opt_hir_ty<'db>(
     db: &'db dyn HirAnalysisDb,
+    ty: Partial<HirTyId<'db>>,
     scope: ScopeId<'db>,
-    hir_ty: Partial<HirTyId<'db>>,
+    assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
-    hir_ty
-        .to_opt()
-        .map(|hir_ty| lower_hir_ty(db, hir_ty, scope))
-        .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
+    ty.to_opt()
+        .map(|hir_ty| lower_hir_ty(db, hir_ty, scope, assumptions))
+        .unwrap_or_else(|| TyId::invalid(db, InvalidCause::ParseError))
 }
 
 fn lower_path<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     path: Partial<PathId<'db>>,
+    assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
     let Some(path) = path.to_opt() else {
-        return TyId::invalid(db, InvalidCause::Other);
+        return TyId::invalid(db, InvalidCause::ParseError);
     };
-    match resolve_path(db, path, scope, false) {
+
+    match resolve_path(db, path, scope, assumptions, false) {
         Ok(PathRes::Ty(ty) | PathRes::TyAlias(_, ty) | PathRes::Func(ty)) => ty,
-        _ => TyId::invalid(db, InvalidCause::Other),
+        Ok(_) => TyId::invalid(db, InvalidCause::Other),
+        Err(_) => TyId::invalid(db, InvalidCause::PathResolutionFailed { path }),
     }
 }
 
@@ -96,6 +91,7 @@ fn lower_const_ty_ty<'db>(
     db: &'db dyn HirAnalysisDb,
     scope: ScopeId<'db>,
     ty: HirTyId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> TyId<'db> {
     let HirTyKind::Path(path) = ty.data(db) else {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
@@ -108,7 +104,7 @@ fn lower_const_ty_ty<'db>(
     {
         return TyId::invalid(db, InvalidCause::InvalidConstParamTy);
     }
-    let ty = lower_path(db, scope, *path);
+    let ty = lower_path(db, scope, *path, assumptions);
 
     if ty.has_invalid(db) || ty.is_integral(db) || ty.is_bool(db) {
         ty
@@ -137,12 +133,13 @@ pub(crate) fn lower_type_alias<'db>(
     let Some(hir_ty) = alias.ty(db).to_opt() else {
         return TyAlias {
             alias,
-            alias_to: Binder::bind(TyId::invalid(db, InvalidCause::Other)),
+            alias_to: Binder::bind(TyId::invalid(db, InvalidCause::ParseError)),
             param_set,
         };
     };
 
-    let alias_to = lower_hir_ty(db, hir_ty, alias.scope());
+    let assumptions = collect_constraints(db, alias.into()).instantiate_identity();
+    let alias_to = lower_hir_ty(db, hir_ty, alias.scope(), assumptions);
     let alias_to = if let TyData::Invalid(InvalidCause::AliasCycle(cycle)) = alias_to.data(db) {
         if cycle.contains(&alias) {
             alias_to
@@ -219,33 +216,26 @@ impl<'db> TyAlias<'db> {
     }
 }
 
-pub(super) fn lower_generic_arg<'db>(
-    db: &'db dyn HirAnalysisDb,
-    arg: &GenericArg<'db>,
-    scope: ScopeId<'db>,
-) -> TyId<'db> {
-    match arg {
-        GenericArg::Type(ty_arg) => ty_arg
-            .ty
-            .to_opt()
-            .map(|ty| lower_hir_ty(db, ty, scope))
-            .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other)),
-
-        GenericArg::Const(const_arg) => {
-            let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
-            TyId::const_ty(db, const_ty)
-        }
-    }
-}
-
 pub(crate) fn lower_generic_arg_list<'db>(
     db: &'db dyn HirAnalysisDb,
     args: GenericArgListId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> Vec<TyId<'db>> {
     args.data(db)
         .iter()
-        .map(|arg| lower_generic_arg(db, arg, scope))
+        .map(|arg| match arg {
+            GenericArg::Type(ty_arg) => lower_opt_hir_ty(db, ty_arg.ty, scope, assumptions),
+            GenericArg::Const(const_arg) => {
+                let const_ty = ConstTyId::from_opt_body(db, const_arg.body);
+                TyId::const_ty(db, const_ty)
+            }
+
+            GenericArg::AssocType(_assoc_type_arg) => {
+                // xxx
+                TyId::invalid(db, InvalidCause::Other)
+            }
+        })
         .collect()
 }
 
@@ -368,7 +358,7 @@ impl<'db> GenericParamCollector<'db> {
         for pred in where_clause.data(hir_db) {
             match self.param_idx_from_ty(pred.ty.to_opt()) {
                 ParamLoc::Idx(idx) => {
-                    if self.params[idx].kind.is_none() && !self.params[idx].is_const_ty {
+                    if self.params[idx].kind.is_none() && !self.params[idx].is_const_ty() {
                         self.params[idx].kind = self.extract_kind(pred.bounds.as_slice());
                     }
                 }
@@ -414,23 +404,18 @@ impl<'db> GenericParamCollector<'db> {
             return ParamLoc::NonParam;
         };
 
-        let hir_db = self.db;
-
         let path = match ty.data(self.db) {
             HirTyKind::Path(Partial::Present(path)) => {
-                if path.is_bare_ident(hir_db) {
+                if path.is_bare_ident(self.db)
+                    && path.is_self_ty(self.db)
+                    && matches!(self.owner.into(), ItemKind::Trait(_))
+                {
+                    return ParamLoc::TraitSelf;
+                } else if path.is_bare_ident(self.db) {
                     *path
                 } else {
                     return ParamLoc::NonParam;
                 }
-            }
-
-            HirTyKind::SelfType(args) => {
-                return if matches!(self.owner.into(), ItemKind::Trait(_)) && args.is_empty(hir_db) {
-                    ParamLoc::TraitSelf
-                } else {
-                    ParamLoc::NonParam
-                };
             }
 
             _ => return ParamLoc::NonParam,
@@ -468,8 +453,14 @@ pub struct TyParamPrecursor<'db> {
     name: Partial<IdentId<'db>>,
     original_idx: Option<usize>,
     kind: Option<Kind>,
-    const_ty_ty: Option<HirTyId<'db>>,
-    is_const_ty: bool,
+    variant: Variant<'db>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Variant<'db> {
+    TraitSelf,
+    Normal,
+    Const(Option<HirTyId<'db>>),
 }
 
 impl<'db> TyParamPrecursor<'db> {
@@ -485,24 +476,23 @@ impl<'db> TyParamPrecursor<'db> {
 
         let kind = self.kind.clone().unwrap_or(Kind::Star);
 
-        if self.original_idx.is_none() {
-            let param = TyParam::trait_self(db, kind, scope);
-            return TyId::new(db, TyData::TyParam(param));
+        match self.variant {
+            Variant::TraitSelf => {
+                let param = TyParam::trait_self(db, kind, scope);
+                TyId::new(db, TyData::TyParam(param))
+            }
+            Variant::Normal => {
+                let param = TyParam::normal_param(name, lowered_idx, kind, scope);
+                TyId::new(db, TyData::TyParam(param))
+            }
+            Variant::Const(Some(ty)) => {
+                let param = TyParam::normal_param(name, lowered_idx, kind, scope);
+                let ty = lower_const_ty_ty(db, scope, ty, PredicateListId::empty_list(db)); // xxx fixme
+                let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, ty));
+                TyId::new(db, TyData::ConstTy(const_ty))
+            }
+            Variant::Const(None) => TyId::invalid(db, InvalidCause::Other),
         }
-
-        let param = TyParam::normal_param(name, lowered_idx, kind, scope);
-
-        if !self.is_const_ty {
-            return TyId::new(db, TyData::TyParam(param));
-        }
-
-        let const_ty_ty = match self.const_ty_ty {
-            Some(ty) => lower_const_ty_ty(db, scope, ty),
-            None => TyId::invalid(db, InvalidCause::Other),
-        };
-
-        let const_ty = ConstTyId::new(db, ConstTyData::TyParam(param, const_ty_ty));
-        TyId::new(db, TyData::ConstTy(const_ty))
     }
 
     fn ty_param(name: Partial<IdentId<'db>>, idx: usize, kind: Option<Kind>) -> Self {
@@ -510,8 +500,7 @@ impl<'db> TyParamPrecursor<'db> {
             name,
             original_idx: idx.into(),
             kind,
-            const_ty_ty: None,
-            is_const_ty: false,
+            variant: Variant::Normal,
         }
     }
 
@@ -520,8 +509,7 @@ impl<'db> TyParamPrecursor<'db> {
             name,
             original_idx: idx.into(),
             kind: None,
-            const_ty_ty: ty,
-            is_const_ty: true,
+            variant: Variant::Const(ty),
         }
     }
 
@@ -531,13 +519,16 @@ impl<'db> TyParamPrecursor<'db> {
             name,
             original_idx: None,
             kind,
-            const_ty_ty: None,
-            is_const_ty: false,
+            variant: Variant::TraitSelf,
         }
     }
 
     fn is_trait_self(&self) -> bool {
         self.original_idx.is_none()
+    }
+
+    fn is_const_ty(&self) -> bool {
+        matches!(self.variant, Variant::Const(_))
     }
 }
 
@@ -546,17 +537,15 @@ pub(super) fn lower_kind(kind: &HirKindBound) -> Kind {
         HirKindBound::Mono => Kind::Star,
         HirKindBound::Abs(lhs, rhs) => match (lhs, rhs) {
             (Partial::Present(lhs), Partial::Present(rhs)) => {
-                Kind::Abs(Box::new(lower_kind(lhs)), Box::new(lower_kind(rhs)))
+                Kind::Abs(Box::new((lower_kind(lhs), lower_kind(rhs))))
             }
             (Partial::Present(lhs), Partial::Absent) => {
-                Kind::Abs(Box::new(lower_kind(lhs)), Box::new(Kind::Any))
+                Kind::Abs(Box::new((lower_kind(lhs), Kind::Any)))
             }
             (Partial::Absent, Partial::Present(rhs)) => {
-                Kind::Abs(Box::new(Kind::Any), Box::new(lower_kind(rhs)))
+                Kind::Abs(Box::new((Kind::Any, lower_kind(rhs))))
             }
-            (Partial::Absent, Partial::Absent) => {
-                Kind::Abs(Box::new(Kind::Any), Box::new(Kind::Any))
-            }
+            (Partial::Absent, Partial::Absent) => Kind::Abs(Box::new((Kind::Any, Kind::Any))),
         },
     }
 }

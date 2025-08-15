@@ -7,6 +7,7 @@ use super::{
     binder::Binder,
     canonical::Canonical,
     func_def::{lower_func, FuncDef},
+    trait_resolution::constraint::collect_constraints,
     ty_def::{InvalidCause, TyBase, TyId},
     ty_lower::lower_hir_ty,
     unify::UnificationTable,
@@ -145,10 +146,12 @@ impl<'db> MethodCollector<'db> {
     }
 
     fn collect_impls(&mut self, impls: &[Impl<'db>]) {
-        for impl_ in impls {
+        for &impl_ in impls {
+            let assumptions = collect_constraints(self.db, impl_.into()).instantiate_identity();
+
             let ty = match impl_.ty(self.db).to_opt() {
-                Some(ty) => lower_hir_ty(self.db, ty, impl_.scope()),
-                None => TyId::invalid(self.db, InvalidCause::Other),
+                Some(ty) => lower_hir_ty(self.db, ty, impl_.scope(), assumptions),
+                None => TyId::invalid(self.db, InvalidCause::ParseError),
             };
 
             if ty.has_invalid(self.db) | !ty.is_inherent_impl_allowed(self.db, self.ingot) {
