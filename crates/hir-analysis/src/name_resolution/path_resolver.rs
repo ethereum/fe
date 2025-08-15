@@ -364,8 +364,19 @@ impl<'db> PathRes<'db> {
 
     pub fn is_visible_from(&self, db: &'db dyn HirAnalysisDb, from_scope: ScopeId<'db>) -> bool {
         match self {
-            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) | PathRes::Method(ty, _) => {
+            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => {
                 is_ty_visible_from(db, *ty, from_scope)
+            }
+            PathRes::Method(_, cand) => {
+                // Method visibility depends on the method's defining scope
+                // (function or trait method), not the receiver type.
+                let method_scope = match cand {
+                    MethodCandidate::InherentMethod(func_def) => func_def.scope(db),
+                    MethodCandidate::TraitMethod(c) | MethodCandidate::NeedsConfirmation(c) => {
+                        c.method.0.scope(db)
+                    }
+                };
+                is_scope_visible_from(db, method_scope, from_scope)
             }
             r => is_scope_visible_from(db, r.as_scope(db).unwrap(), from_scope),
         }
@@ -605,7 +616,7 @@ where
             if let Some(enum_) = ty.as_enum(db) {
                 // We need to use the concrete enum scope instead of
                 // parent_scope to resolve the variants in all cases,
-                // eg when parent is `Self`. I'm not really sure why this is.
+                // eg when parent is `Self`
                 let query = make_query(db, path, enum_.scope());
                 let bucket = resolve_query(db, query);
 
@@ -884,7 +895,15 @@ pub fn resolve_name_res<'db>(
                     PathRes::Func(TyId::foldl(db, ty, args))
                 }
                 ItemKind::Const(const_) => {
-                    // TODO err if any args
+                    if !args.is_empty() {
+                        return Err(PathResError::new(
+                            PathResErrorKind::ArgNumMismatch {
+                                expected: 0,
+                                given: args.len(),
+                            },
+                            path,
+                        ));
+                    }
                     let ty = if let Some(ty) = const_.ty(db).to_opt() {
                         lower_hir_ty(db, ty, scope, assumptions)
                     } else {
@@ -895,7 +914,8 @@ pub fn resolve_name_res<'db>(
 
                 ItemKind::TypeAlias(type_alias) => {
                     let alias = lower_type_alias(db, type_alias);
-                    if args.len() < alias.params(db).len() {
+                    let expected = alias.params(db).len();
+                    if args.len() < expected {
                         PathRes::TyAlias(
                             alias.clone(),
                             TyId::invalid(
@@ -906,8 +926,27 @@ pub fn resolve_name_res<'db>(
                                 },
                             ),
                         )
+                    } else if args.len() > expected {
+                        return Err(PathResError::new(
+                            PathResErrorKind::ArgNumMismatch { expected, given: args.len() },
+                            path,
+                        ));
                     } else {
-                        PathRes::TyAlias(alias.clone(), alias.alias_to.instantiate(db, args))
+                        let instantiated = alias.alias_to.instantiate(db, args);
+                        if let TyData::Invalid(InvalidCause::TooManyGenericArgs {
+                            expected,
+                            given,
+                        }) = instantiated.data(db)
+                        {
+                            return Err(PathResError::new(
+                                PathResErrorKind::ArgNumMismatch {
+                                    expected: *expected,
+                                    given: *given,
+                                },
+                                path,
+                            ));
+                        }
+                        PathRes::TyAlias(alias.clone(), instantiated)
                     }
                 }
 
