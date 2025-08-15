@@ -376,7 +376,6 @@ impl<'db> TyId<'db> {
         }
     }
 
-    // xxx remove/edit in favor of ty_error.rs
     /// Emit diagnostics for the type if the type contains invalid types.
     pub(super) fn emit_diag(
         self,

@@ -928,7 +928,10 @@ pub fn resolve_name_res<'db>(
                         )
                     } else if args.len() > expected {
                         return Err(PathResError::new(
-                            PathResErrorKind::ArgNumMismatch { expected, given: args.len() },
+                            PathResErrorKind::ArgNumMismatch {
+                                expected,
+                                given: args.len(),
+                            },
                             path,
                         ));
                     } else {

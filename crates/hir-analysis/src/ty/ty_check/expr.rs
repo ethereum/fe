@@ -330,7 +330,7 @@ impl<'db> TyChecker<'db> {
         ) {
             Ok(candidate) => candidate,
             Err(diag) => {
-                let diag = xxx_err_thing(
+                let diag = body_diag_from_method_selection_err(
                     self.db,
                     diag,
                     Spanned::new(
@@ -1107,7 +1107,7 @@ impl<'db> TyChecker<'db> {
     }
 }
 
-fn xxx_err_thing<'db>(
+fn body_diag_from_method_selection_err<'db>(
     db: &'db dyn HirAnalysisDb,
     err: MethodSelectionError<'db>,
     receiver: Spanned<'db, TyId<'db>>,
