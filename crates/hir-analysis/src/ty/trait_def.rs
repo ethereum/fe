@@ -169,7 +169,7 @@ impl<'db> TraitEnv<'db> {
     }
 
     /// Returns the corresponding implementor of the given `impl Trait` type.
-    pub(crate) fn map_impl_trait(&self, trait_ref: ImplTrait) -> Option<Binder<Implementor>> {
+    pub(crate) fn map_impl_trait(&self, trait_ref: ImplTrait) -> Option<Binder<Implementor<'_>>> {
         self.hir_to_implementor.get(&trait_ref).copied()
     }
 }
