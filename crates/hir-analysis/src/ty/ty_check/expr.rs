@@ -478,7 +478,7 @@ impl<'db> TyChecker<'db> {
 
                     ExprProp::new(self.table.instantiate_to_term(ty), true)
                 }
-                PathRes::Const(ty) => ExprProp::new(ty, true),
+                PathRes::Const(_, ty) => ExprProp::new(ty, true),
                 PathRes::TypeMemberTbd(parent_ty) => {
                     let ty = if parent_ty.has_invalid(self.db) {
                         let span = span.path().segment(path.segment_index(self.db) - 1);
@@ -525,7 +525,7 @@ impl<'db> TyChecker<'db> {
                 }
             }
 
-            PathRes::Func(ty) | PathRes::Const(ty) => {
+            PathRes::Func(ty) | PathRes::Const(_, ty) => {
                 let record_like = RecordLike::from_ty(ty);
                 let diag =
                     BodyDiag::record_expected(self.db, span.path().into(), Some(record_like));

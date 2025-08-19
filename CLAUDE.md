@@ -1,1 +1,0 @@
-- please be less terse.  you can be concise without being obtuse or even arcane.

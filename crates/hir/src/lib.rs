@@ -6,9 +6,10 @@ pub mod lower;
 pub mod span;
 pub mod synthesis;
 pub mod visitor;
+pub mod collect;
 
 pub use common::{file::File, file::Workspace, ingot::Ingot};
-pub use synthesis::{lazy_hir_for_cursor, LazyHir, LazyHirResult, ResolveHir};
+pub use synthesis::{lazy_hir_for_cursor, LazyHir, LazyHirResult};
 #[salsa::db]
 pub trait HirDb: salsa::Database + InputDb {}
 

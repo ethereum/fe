@@ -3,6 +3,7 @@
 pub mod attr;
 pub mod body;
 pub mod expr;
+pub mod decl_source_map;
 pub mod ident;
 pub mod item;
 pub mod params;
@@ -22,6 +23,7 @@ pub use attr::*;
 pub use body::*;
 use common::ingot::{Ingot, IngotKind};
 pub use expr::*;
+pub use decl_source_map::*;
 pub use ident::*;
 pub use item::*;
 pub use module_tree::*;

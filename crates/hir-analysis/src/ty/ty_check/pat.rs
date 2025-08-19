@@ -169,7 +169,7 @@ impl<'db> TyChecker<'db> {
                     PathRes::Ty(ty)
                     | PathRes::TyAlias(_, ty)
                     | PathRes::Func(ty)
-                    | PathRes::Const(ty),
+                    | PathRes::Const(_, ty),
                 ) => {
                     let record_like = RecordLike::from_ty(ty);
                     if record_like.is_record(self.db) {
@@ -237,7 +237,7 @@ impl<'db> TyChecker<'db> {
                 PathRes::Ty(ty)
                 | PathRes::TyAlias(_, ty)
                 | PathRes::Func(ty)
-                | PathRes::Const(ty) => {
+                | PathRes::Const(_, ty) => {
                     let diag = BodyDiag::tuple_variant_expected(
                         self.db,
                         pat.span(self.body()).into(),
@@ -361,7 +361,7 @@ impl<'db> TyChecker<'db> {
                 PathRes::Ty(ty)
                 | PathRes::TyAlias(_, ty)
                 | PathRes::Func(ty)
-                | PathRes::Const(ty) => {
+                | PathRes::Const(_, ty) => {
                     let diag = BodyDiag::record_expected(
                         self.db,
                         pat.span(self.body()).into(),

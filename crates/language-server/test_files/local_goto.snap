@@ -19,6 +19,7 @@ input_file: test_files/test_local_goto.fe
 13: }
 ---
 cursor position (2, 12), path: local at 1:8
+cursor position (5, 12), path: test_local_goto::test_locals::{fn_body}::{block0}::MY_CONST
 cursor position (8, 17), path: test_local_goto::helper
 cursor position (8, 24), path: local at 1:8
 cursor position (12, 4), path: test_local_goto::helper::param

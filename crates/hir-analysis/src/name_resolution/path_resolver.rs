@@ -203,7 +203,7 @@ pub enum PathRes<'db> {
     FuncParam(ItemKind<'db>, u16),
     Trait(TraitDef<'db>),
     EnumVariant(ResolvedVariant<'db>),
-    Const(TyId<'db>),
+    Const(ItemKind<'db>, TyId<'db>),
     Mod(ScopeId<'db>),
     TypeMemberTbd(TyId<'db>),
 }
@@ -217,7 +217,7 @@ impl<'db> PathRes<'db> {
             PathRes::Ty(ty) => PathRes::Ty(f(ty)),
             PathRes::TyAlias(alias, ty) => PathRes::TyAlias(alias, f(ty)),
             PathRes::Func(ty) => PathRes::Func(f(ty)),
-            PathRes::Const(ty) => PathRes::Const(f(ty)),
+            PathRes::Const(item, ty) => PathRes::Const(item, f(ty)),
             PathRes::EnumVariant(v) => PathRes::EnumVariant(ResolvedVariant { ty: f(v.ty), ..v }),
             PathRes::TypeMemberTbd(parent_ty) => PathRes::TypeMemberTbd(f(parent_ty)),
             r @ (PathRes::Trait(_) | PathRes::Mod(_) | PathRes::FuncParam(..)) => r,
@@ -226,10 +226,8 @@ impl<'db> PathRes<'db> {
 
     pub fn as_scope(&self, db: &'db dyn HirAnalysisDb) -> Option<ScopeId<'db>> {
         match self {
-            PathRes::Ty(ty)
-            | PathRes::Func(ty)
-            | PathRes::Const(ty)
-            | PathRes::TypeMemberTbd(ty) => ty.as_scope(db),
+            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::TypeMemberTbd(ty) => ty.as_scope(db),
+            PathRes::Const(item, _) => Some(item.scope()),
             PathRes::TyAlias(alias, _) => Some(alias.alias.scope()),
             PathRes::Trait(trait_) => Some(trait_.trait_(db).scope()),
             PathRes::EnumVariant(variant) => Some(variant.enum_(db).scope()),
@@ -242,8 +240,8 @@ impl<'db> PathRes<'db> {
         match self {
             PathRes::Ty(ty)
             | PathRes::Func(ty)
-            | PathRes::Const(ty)
             | PathRes::TypeMemberTbd(ty) => is_ty_visible_from(db, *ty, from_scope),
+            PathRes::Const(item, _) => is_scope_visible_from(db, item.scope(), from_scope),
             r => is_scope_visible_from(db, r.as_scope(db).unwrap(), from_scope),
         }
     }
@@ -262,7 +260,8 @@ impl<'db> PathRes<'db> {
         };
 
         match self {
-            PathRes::Ty(ty) | PathRes::Func(ty) | PathRes::Const(ty) => ty_path(*ty),
+            PathRes::Ty(ty) | PathRes::Func(ty) => ty_path(*ty),
+            PathRes::Const(item, _) => item.scope().pretty_path(db),
             PathRes::TyAlias(alias, _) => alias.alias.scope().pretty_path(db),
             PathRes::EnumVariant(v) => Some(format!(
                 "{}::{}",
@@ -287,7 +286,7 @@ impl<'db> PathRes<'db> {
             PathRes::FuncParam(..) => "function parameter",
             PathRes::Trait(_) => "trait",
             PathRes::EnumVariant(_) => "enum variant",
-            PathRes::Const(_) => "constant",
+            PathRes::Const(..) => "constant",
             PathRes::Mod(_) => "module",
             PathRes::TypeMemberTbd(_) => "method",
         }
@@ -551,7 +550,7 @@ where
             ));
         }
         Some(PathRes::TypeMemberTbd(_) | PathRes::FuncParam(..)) => unreachable!(),
-        Some(PathRes::Const(_) | PathRes::Mod(_) | PathRes::Trait(_)) | None => {}
+        Some(PathRes::Const(..) | PathRes::Mod(_) | PathRes::Trait(_)) | None => {}
     };
 
     let query = make_query(db, path, parent_scope);
@@ -605,7 +604,7 @@ pub fn resolve_name_res<'db>(
                     } else {
                         TyId::invalid(db, InvalidCause::Other)
                     };
-                    PathRes::Const(ty)
+                    PathRes::Const(ItemKind::Const(const_), ty)
                 }
 
                 ItemKind::TypeAlias(type_alias) => {

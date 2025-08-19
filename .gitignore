@@ -7,3 +7,5 @@ tarpaulin-report.html
 .vscode
 .DS_Store
 .local-notes/
+crates/language-server/*.log
+session_context/
