@@ -1,7 +1,7 @@
 use parser::ast;
 
 use super::define_lazy_span_node;
-use crate::span::{item::LazyBodySpan, params::LazyGenericArgListSpan, path::LazyPathSpan};
+use crate::span::{item::LazyBodySpan, path::LazyPathSpan};
 
 define_lazy_span_node!(LazyTySpan);
 impl<'db> LazyTySpan<'db> {
@@ -35,10 +35,6 @@ impl<'db> LazyTySpan<'db> {
     /// span will point to the same span of the original type.
     pub fn into_array_type(self) -> LazyArrayTypeSpan<'db> {
         LazyArrayTypeSpan(self.0)
-    }
-
-    pub fn into_self_type(self) -> LazySelfTypeSpan<'db> {
-        LazySelfTypeSpan(self.0)
     }
 }
 
@@ -84,16 +80,5 @@ define_lazy_span_node!(
     @node {
         (elem, elem_ty, LazyTySpan),
         (len, len, LazyBodySpan),
-    }
-);
-
-define_lazy_span_node!(
-    LazySelfTypeSpan,
-    ast::SelfType,
-    @token {
-        (self_kw, self_kw),
-    }
-    @node {
-        (generic_args, generic_args, LazyGenericArgListSpan),
     }
 );

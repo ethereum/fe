@@ -1,0 +1,16 @@
+---
+source: crates/uitest/tests/name_resolution.rs
+expression: diags
+input_file: fixtures/name_resolution/qualified_type_expected_trait.fe
+---
+error[2-0002]: `NotATrait` is not found
+  ┌─ qualified_type_expected_trait.fe:6:18
+  │
+6 │     let _: <T as NotATrait>::Item = 10
+  │                  ^^^^^^^^^ `NotATrait` is not found
+
+error[2-0011]: incorrect number of generic arguments for `Default`; expected 0, given 1
+   ┌─ qualified_type_expected_trait.fe:14:5
+   │
+14 │     Default<i32>::default()
+   │     ^^^^^^^^^^^^ expected 0 arguments, but 1 were given

@@ -1,6 +1,11 @@
 use parser::ast;
 
-use super::{define_lazy_span_node, params::LazyGenericArgListSpan, LazySpanAtom};
+use super::{
+    define_lazy_span_node,
+    params::{LazyGenericArgListSpan, LazyTraitRefSpan},
+    types::LazyTySpan,
+    LazySpanAtom,
+};
 
 define_lazy_span_node!(
     LazyPathSpan,
@@ -18,6 +23,7 @@ define_lazy_span_node!(
     }
     @node {
         (generic_args, generic_args, LazyGenericArgListSpan),
+        (qualified_type, qualified_type, LazyQualifiedTypeSpan),
     }
 );
 impl<'db> LazyPathSegmentSpan<'db> {
@@ -25,3 +31,12 @@ impl<'db> LazyPathSegmentSpan<'db> {
         LazySpanAtom(self.0)
     }
 }
+
+define_lazy_span_node!(
+    LazyQualifiedTypeSpan,
+    ast::QualifiedType,
+    @node {
+        (ty, ty, LazyTySpan),
+        (trait_qualifier, trait_qualifier, LazyTraitRefSpan),
+    }
+);

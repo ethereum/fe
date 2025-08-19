@@ -8,10 +8,10 @@ use rustc_hash::FxHashSet;
 use salsa::Update;
 
 use super::{
-    scope_graph_viz::ScopeGraphFormatter, AttrListId, Body, Const, Contract, Enum, EnumVariant,
-    ExprId, FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam, IdentId, Impl,
-    ImplTrait, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef, VariantKind,
-    Visibility,
+    scope_graph_viz::ScopeGraphFormatter, AssocTyDecl, AttrListId, Body, Const, Contract, Enum,
+    EnumVariant, ExprId, FieldDef, FieldParent, Func, FuncParam, FuncParamName, GenericParam,
+    IdentId, Impl, ImplTrait, ItemKind, Mod, TopLevelMod, Trait, TypeAlias, Use, VariantDef,
+    VariantKind, Visibility,
 };
 use crate::{
     hir_def::{BodyKind, GenericParamOwner},
@@ -83,6 +83,9 @@ pub enum ScopeId<'db> {
     /// A generic parameter scope.
     GenericParam(ItemKind<'db>, u16),
 
+    /// Trait associated type scope.
+    TraitType(Trait<'db>, u16),
+
     /// A function parameter scope.
     FuncParam(ItemKind<'db>, u16),
 
@@ -101,6 +104,7 @@ impl<'db> ScopeId<'db> {
         match self {
             ScopeId::Item(item) => item.top_mod(db),
             ScopeId::GenericParam(item, _) => item.top_mod(db),
+            ScopeId::TraitType(t, _) => t.top_mod(db),
             ScopeId::FuncParam(item, _) => item.top_mod(db),
             ScopeId::Field(p, _) => p.top_mod(db),
             ScopeId::Variant(v) => v.enum_.top_mod(db),
@@ -128,6 +132,7 @@ impl<'db> ScopeId<'db> {
             ScopeId::Item(item) => item,
             ScopeId::GenericParam(item, _) => item,
             ScopeId::FuncParam(item, _) => item,
+            ScopeId::TraitType(t, _) => t.into(),
             ScopeId::Field(FieldParent::Struct(s), _) => s.into(),
             ScopeId::Field(FieldParent::Contract(c), _) => c.into(),
             ScopeId::Field(FieldParent::Variant(v), _) | ScopeId::Variant(v) => v.enum_.into(),
@@ -303,6 +308,8 @@ impl<'db> ScopeId<'db> {
                 param.name().to_opt()
             }
 
+            ScopeId::TraitType(t, idx) => t.types(db)[idx as usize].name.to_opt(),
+
             ScopeId::Block(..) => None,
         }
     }
@@ -332,6 +339,10 @@ impl<'db> ScopeId<'db> {
                 Some(parent.params_span().param(idx as usize).into())
             }
 
+            ScopeId::TraitType(t, idx) => {
+                Some(t.span().item_list().assoc_type(idx as usize).into())
+            }
+
             ScopeId::Block(..) => None,
         }
     }
@@ -340,6 +351,7 @@ impl<'db> ScopeId<'db> {
         match self {
             ScopeId::Item(item) => item.kind_name(),
             ScopeId::GenericParam(_, _) => "type",
+            ScopeId::TraitType(..) => "associated type",
             ScopeId::FuncParam(_, _) => "value",
             ScopeId::Field(_, _) => "field",
             ScopeId::Variant(..) => "value",
@@ -446,6 +458,8 @@ pub enum EdgeKind<'db> {
     Type(TypeEdge<'db>),
     /// An edge to a trait.
     Trait(TraitEdge<'db>),
+    /// An edge from a trait to an associated type.
+    TraitType(TraitTypeEdge<'db>),
     /// An edge from a scope to a generic parameter.
     GenericParam(GenericParamEdge<'db>),
     /// An edge to a value. The value is either a function or a
@@ -519,6 +533,10 @@ impl<'db> EdgeKind<'db> {
     pub fn anon() -> Self {
         EdgeKind::Anon(AnonEdge())
     }
+
+    pub fn trait_type(ident: IdentId<'db>) -> Self {
+        EdgeKind::TraitType(ident.into())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -532,6 +550,9 @@ pub struct TypeEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
 pub struct TraitEdge<'db>(pub IdentId<'db>);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
+pub struct TraitTypeEdge<'db>(pub IdentId<'db>);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, derive_more::From, Update)]
 pub struct ValueEdge<'db>(pub IdentId<'db>);
@@ -648,6 +669,15 @@ impl<'db> FromScope<'db> for &'db GenericParam<'db> {
 
         let parent = GenericParamOwner::from_item_opt(parent).unwrap();
         Some(&parent.params(db).data(db)[idx as usize])
+    }
+}
+
+impl<'db> FromScope<'db> for &'db AssocTyDecl<'db> {
+    fn from_scope(scope: ScopeId<'db>, db: &'db dyn HirDb) -> Option<Self> {
+        let ScopeId::TraitType(t, idx) = scope else {
+            return None;
+        };
+        Some(&t.types(db)[idx as usize])
     }
 }
 

@@ -14,6 +14,7 @@ use rustc_hash::FxHashMap;
 use smallvec1::SmallVec;
 
 use super::adt_def::AdtRef;
+use super::trait_resolution::PredicateListId;
 
 /// A simplified representation of a pattern for analysis
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -190,7 +191,7 @@ impl<'db> SimplifiedPattern<'db> {
             return None;
         };
 
-        match resolve_path(db, *path_id, scope, true) {
+        match resolve_path(db, *path_id, scope, PredicateListId::empty_list(db), true) {
             Ok(PathRes::EnumVariant(variant)) => {
                 let ty = expected_ty.unwrap_or(variant.ty);
                 let ctor = ConstructorKind::Variant(variant.variant, ty);

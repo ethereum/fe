@@ -11,7 +11,7 @@ use parser::ast;
 use super::{
     scope_graph::{ScopeGraph, ScopeId},
     AttrListId, Body, FuncParamListId, FuncParamName, GenericParam, GenericParamListId, HirIngot,
-    IdentId, Partial, TupleTypeId, TypeId, UseAlias, WhereClauseId,
+    IdentId, Partial, TupleTypeId, TypeBound, TypeId, UseAlias, WhereClauseId,
 };
 use crate::{
     hir_def::TraitRefId,
@@ -20,7 +20,7 @@ use crate::{
         item::{
             LazyConstSpan, LazyContractSpan, LazyEnumSpan, LazyFuncSpan, LazyImplSpan,
             LazyImplTraitSpan, LazyItemSpan, LazyModSpan, LazyStructSpan, LazyTopModSpan,
-            LazyTraitSpan, LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefSpan,
+            LazyTraitSpan, LazyTraitTypeSpan, LazyTypeAliasSpan, LazyUseSpan, LazyVariantDefSpan,
         },
         params::{LazyGenericParamListSpan, LazyWhereClauseSpan},
         DynLazySpan, HirOrigin,
@@ -857,6 +857,9 @@ pub struct Trait<'db> {
     #[return_ref]
     pub super_traits: Vec<TraitRefId<'db>>,
     pub where_clause: WhereClauseId<'db>,
+    #[return_ref]
+    pub types: Vec<AssocTyDecl<'db>>,
+
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -888,6 +891,19 @@ impl<'db> Trait<'db> {
             _ => None,
         })
     }
+
+    pub fn assoc_ty(self, db: &'db dyn HirDb, name: IdentId<'db>) -> Option<&'db AssocTyDecl<'db>> {
+        self.types(db)
+            .iter()
+            .find(|trait_type| trait_type.name.to_opt() == Some(name))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, salsa::Update)]
+pub struct AssocTyDecl<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub bounds: Vec<TypeBound<'db>>,
+    pub default: Option<TypeId<'db>>,
 }
 
 #[salsa::tracked]
@@ -901,6 +917,8 @@ pub struct ImplTrait<'db> {
     pub attributes: AttrListId<'db>,
     pub generic_params: GenericParamListId<'db>,
     pub where_clause: WhereClauseId<'db>,
+    #[return_ref]
+    pub types: Vec<AssocTyDef<'db>>,
     pub top_mod: TopLevelMod<'db>,
 
     #[return_ref]
@@ -909,6 +927,17 @@ pub struct ImplTrait<'db> {
 impl<'db> ImplTrait<'db> {
     pub fn span(self) -> LazyImplTraitSpan<'db> {
         LazyImplTraitSpan::new(self)
+    }
+
+    pub fn associated_type_span(
+        self,
+        db: &'db dyn HirDb,
+        name: IdentId<'db>,
+    ) -> Option<LazyTraitTypeSpan<'db>> {
+        self.types(db)
+            .iter()
+            .position(|t| t.name.to_opt() == Some(name))
+            .map(|idx| self.span().associated_type(idx))
     }
 
     pub fn children_non_nested(
@@ -930,6 +959,12 @@ impl<'db> ImplTrait<'db> {
             _ => None,
         })
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub struct AssocTyDef<'db> {
+    pub name: Partial<IdentId<'db>>,
+    pub ty: Partial<TypeId<'db>>,
 }
 
 #[salsa::tracked]
@@ -1209,18 +1244,6 @@ pub enum VariantKind<'db> {
     Tuple(TupleTypeId<'db>),
     Record(FieldDefListId<'db>),
 }
-
-// xxx dead code {
-#[salsa::interned]
-#[derive(Debug)]
-pub struct ImplItemListId<'db> {
-    #[return_ref]
-    pub items: Vec<Func<'db>>,
-}
-pub type TraitItemListId<'db> = ImplItemListId<'db>;
-pub type ImplTraitItemListId<'db> = ImplItemListId<'db>;
-pub type ExternItemListId<'db> = ImplItemListId<'db>;
-// } xxx dead code
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Visibility {

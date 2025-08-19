@@ -7,14 +7,14 @@ use super::{
     trait_def::{Implementor, TraitInstId},
     trait_resolution::PredicateListId,
     ty_check::ExprProp,
-    ty_def::{InvalidCause, PrimTy, TyBase, TyData, TyFlags, TyId, TyParam, TyVar},
+    ty_def::{AssocTy, InvalidCause, PrimTy, TyBase, TyData, TyFlags, TyId, TyParam, TyVar},
 };
 use crate::HirAnalysisDb;
 
 pub trait TyVisitable<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>;
+        V: TyVisitor<'db> + ?Sized;
 }
 
 pub trait TyVisitor<'db> {
@@ -29,6 +29,11 @@ pub trait TyVisitor<'db> {
 
     #[allow(unused_variables)]
     fn visit_param(&mut self, ty_param: &TyParam<'db>) {}
+
+    #[allow(unused_variables)]
+    fn visit_assoc_ty(&mut self, assoc_ty: &AssocTy<'db>) {
+        walk_assoc_ty(self, assoc_ty);
+    }
 
     #[allow(unused_variables)]
     fn visit_const_param(&mut self, ty_param: &TyParam<'db>, const_ty_ty: TyId<'db>) {}
@@ -67,17 +72,16 @@ where
 {
     match ty.data(visitor.db()) {
         TyData::TyVar(var) => visitor.visit_var(var),
-
         TyData::TyParam(param) => visitor.visit_param(param),
-
+        TyData::AssocTy(assoc_ty) => visitor.visit_assoc_ty(assoc_ty),
+        TyData::QualifiedTy(trait_inst) => {
+            visitor.visit_ty(trait_inst.self_ty(visitor.db()));
+            trait_inst.visit_with(visitor);
+        }
         TyData::TyApp(abs, arg) => visitor.visit_app(*abs, *arg),
-
         TyData::TyBase(ty_con) => visitor.visit_ty_base(ty_con),
-
         TyData::ConstTy(const_ty) => visitor.visit_const_ty(const_ty),
-
         TyData::Never => {}
-
         TyData::Invalid(cause) => visitor.visit_invalid(cause),
     }
 }
@@ -106,10 +110,17 @@ where
     }
 }
 
+pub fn walk_assoc_ty<'db, V>(visitor: &mut V, assoc_ty: &AssocTy<'db>)
+where
+    V: TyVisitor<'db> + ?Sized,
+{
+    assoc_ty.trait_.visit_with(visitor);
+}
+
 impl<'db> TyVisitable<'db> for TyId<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         visitor.visit_ty(*self)
     }
@@ -121,7 +132,7 @@ where
 {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         self.iter().for_each(|ty| ty.visit_with(visitor))
     }
@@ -133,7 +144,7 @@ where
 {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         self.iter().for_each(|ty| ty.visit_with(visitor))
     }
@@ -145,7 +156,7 @@ where
 {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         self.iter().for_each(|ty| ty.visit_with(visitor))
     }
@@ -154,17 +165,20 @@ where
 impl<'db> TyVisitable<'db> for TraitInstId<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         let db = visitor.db();
         self.args(db).visit_with(visitor);
+        for (_, ty) in self.assoc_type_bindings(db) {
+            ty.visit_with(visitor);
+        }
     }
 }
 
 impl<'db> TyVisitable<'db> for Implementor<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         let db = visitor.db();
         self.params(db).visit_with(visitor);
@@ -174,7 +188,7 @@ impl<'db> TyVisitable<'db> for Implementor<'db> {
 impl<'db> TyVisitable<'db> for PredicateListId<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         self.list(visitor.db()).visit_with(visitor)
     }
@@ -183,7 +197,7 @@ impl<'db> TyVisitable<'db> for PredicateListId<'db> {
 impl<'db> TyVisitable<'db> for ExprProp<'db> {
     fn visit_with<V>(&self, visitor: &mut V)
     where
-        V: TyVisitor<'db>,
+        V: TyVisitor<'db> + ?Sized,
     {
         self.ty.visit_with(visitor)
     }

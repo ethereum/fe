@@ -1,12 +1,12 @@
 ---
 source: crates/parser/tests/error_recovery.rs
 expression: node
-input_file: crates/parser/test_files/error_recovery/items/func.fe
+input_file: test_files/error_recovery/items/func.fe
 ---
-Root@0..133
-  ItemList@0..132
-    Item@0..78
-      Func@0..78
+Root@0..131
+  ItemList@0..130
+    Item@0..77
+      Func@0..77
         FnKw@0..2 "fn"
         WhiteSpace@2..3 " "
         Ident@3..6 "foo"
@@ -89,67 +89,65 @@ Root@0..133
                   Path@66..72
                     PathSegment@66..72
                       Ident@66..72 "Trait2"
-        WhiteSpace@72..73 " "
-        Newline@73..74 "\n"
-        BlockExpr@74..78
-          LBrace@74..75 "{"
-          Newline@75..77 "\n\n"
-          RBrace@77..78 "}"
-    Newline@78..80 "\n\n"
-    Item@80..132
-      Func@80..132
-        FnKw@80..82 "fn"
-        WhiteSpace@82..83 " "
-        Ident@83..86 "foo"
-        GenericParamList@86..98
-          Lt@86..87 "<"
-          Error@87..89
+        Newline@72..73 "\n"
+        BlockExpr@73..77
+          LBrace@73..74 "{"
+          Newline@74..76 "\n\n"
+          RBrace@76..77 "}"
+    Newline@77..79 "\n\n"
+    Item@79..130
+      Func@79..130
+        FnKw@79..81 "fn"
+        WhiteSpace@81..82 " "
+        Ident@82..85 "foo"
+        GenericParamList@85..97
+          Lt@85..86 "<"
+          Error@86..88
+            Lt@86..87 "<"
             Lt@87..88 "<"
-            Lt@88..89 "<"
-          TypeGenericParam@89..97
-            Ident@89..90 "T"
-            TypeBoundList@90..97
-              Colon@90..91 ":"
-              WhiteSpace@91..92 " "
-              TypeBound@92..97
-                TraitRef@92..97
-                  Path@92..97
-                    PathSegment@92..97
-                      Ident@92..97 "Trait"
-          Gt@97..98 ">"
-        FuncParamList@98..106
-          LParen@98..99 "("
-          FnParam@99..105
-            Ident@99..100 "x"
-            Colon@100..101 ":"
-            WhiteSpace@101..102 " "
-            PathType@102..105
-              Path@102..105
-                PathSegment@102..105
-                  Ident@102..105 "i32"
-          RParen@105..106 ")"
-        Newline@106..107 "\n"
-        WhiteSpace@107..111 "    "
-        WhereClause@111..126
-          WhereKw@111..116 "where"
-          WhiteSpace@116..117 " "
-          WherePredicate@117..126
-            PathType@117..118
-              Path@117..118
-                PathSegment@117..118
-                  Ident@117..118 "T"
-            TypeBoundList@118..126
-              Colon@118..119 ":"
-              WhiteSpace@119..120 " "
-              TypeBound@120..126
-                TraitRef@120..126
-                  Path@120..126
-                    PathSegment@120..126
-                      Ident@120..126 "Trait2"
-        WhiteSpace@126..127 " "
-        Newline@127..128 "\n"
-        BlockExpr@128..132
-          LBrace@128..129 "{"
-          Newline@129..131 "\n\n"
-          RBrace@131..132 "}"
-  Newline@132..133 "\n"
+          TypeGenericParam@88..96
+            Ident@88..89 "T"
+            TypeBoundList@89..96
+              Colon@89..90 ":"
+              WhiteSpace@90..91 " "
+              TypeBound@91..96
+                TraitRef@91..96
+                  Path@91..96
+                    PathSegment@91..96
+                      Ident@91..96 "Trait"
+          Gt@96..97 ">"
+        FuncParamList@97..105
+          LParen@97..98 "("
+          FnParam@98..104
+            Ident@98..99 "x"
+            Colon@99..100 ":"
+            WhiteSpace@100..101 " "
+            PathType@101..104
+              Path@101..104
+                PathSegment@101..104
+                  Ident@101..104 "i32"
+          RParen@104..105 ")"
+        Newline@105..106 "\n"
+        WhiteSpace@106..110 "    "
+        WhereClause@110..125
+          WhereKw@110..115 "where"
+          WhiteSpace@115..116 " "
+          WherePredicate@116..125
+            PathType@116..117
+              Path@116..117
+                PathSegment@116..117
+                  Ident@116..117 "T"
+            TypeBoundList@117..125
+              Colon@117..118 ":"
+              WhiteSpace@118..119 " "
+              TypeBound@119..125
+                TraitRef@119..125
+                  Path@119..125
+                    PathSegment@119..125
+                      Ident@119..125 "Trait2"
+        Newline@125..126 "\n"
+        BlockExpr@126..130
+          LBrace@126..127 "{"
+          Newline@127..129 "\n\n"
+          RBrace@129..130 "}"
+  Newline@130..131 "\n"

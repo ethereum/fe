@@ -260,6 +260,8 @@ pub enum SyntaxKind {
     TypeGenericArg,
     /// `1`
     ConstGenericArg,
+    /// `Output = u64`
+    AssocTypeGenericArg,
     /// `FOO::Bar`
     PathExpr,
     /// `Foo { x: 1, y: "String"` }`
@@ -359,12 +361,12 @@ pub enum SyntaxKind {
     Trait,
     /// `: Trait + Trait2`
     SuperTraitList,
+    /// `type Foo` or `type Foo: SomeTrait = Bar`
+    TraitTypeItem,
     /// `{ fn foo() {..} }`
     TraitItemList,
     /// `impl Trait for Foo { .. }`
     ImplTrait,
-    /// `{ fn foo() {..} }`
-    ImplTraitItemList,
     /// `const FOO: i32 = 1`
     Const,
     /// `use foo::{Foo as Foo1, bar::Baz}`
@@ -407,6 +409,8 @@ pub enum SyntaxKind {
     Path,
     /// `Segment1`
     PathSegment,
+    /// `<Foo as SomeTrait>`
+    QualifiedType,
 
     /// `#attr`
     Attr,
@@ -603,6 +607,7 @@ impl SyntaxKind {
             SyntaxKind::TraitRef => "trait name",
             SyntaxKind::PathSegment => "path segment",
             SyntaxKind::PathPat => "pattern",
+            SyntaxKind::QualifiedType => "qualified type",
 
             SyntaxKind::ArrayExpr => "array definition",
             SyntaxKind::RecordFieldDef => "field",
@@ -625,6 +630,7 @@ impl SyntaxKind {
             SyntaxKind::GenericArgList => "generic type argument list",
             SyntaxKind::TypeGenericArg => "generic type argument",
             SyntaxKind::ConstGenericArg => "generic const argument",
+            SyntaxKind::AssocTypeGenericArg => "associated type argument",
             SyntaxKind::PathExpr => "path",
             SyntaxKind::RecordInitExpr => "record initialization expression",
             SyntaxKind::RecordFieldList => "record field list",
@@ -669,8 +675,8 @@ impl SyntaxKind {
             SyntaxKind::Trait => "trait definition",
             SyntaxKind::SuperTraitList => "supertrait list",
             SyntaxKind::TraitItemList => "`trait` item list",
+            SyntaxKind::TraitTypeItem => "`trait` type item",
             SyntaxKind::ImplTrait => "`impl` trait block",
-            SyntaxKind::ImplTraitItemList => "`impl` trait item list",
             SyntaxKind::Const => "const definition",
             SyntaxKind::Use => "`use` statement",
             SyntaxKind::UseTree => "`use` tree",

@@ -1,7 +1,6 @@
 mod callable;
 mod env;
 mod expr;
-mod method_selection;
 mod pat;
 mod path;
 mod stmt;
@@ -12,7 +11,7 @@ pub use env::ExprProp;
 use env::TyCheckEnv;
 pub(super) use expr::TraitOps;
 use hir::{
-    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, TypeId as HirTyId},
+    hir_def::{Body, Expr, ExprId, Func, LitKind, Partial, Pat, PatId, PathId, TypeId as HirTyId},
     span::{
         expr::LazyExprSpan, pat::LazyPatSpan, path::LazyPathSpan, types::LazyTySpan, DynLazySpan,
     },
@@ -31,9 +30,10 @@ use super::{
     ty_lower::lower_hir_ty,
     unify::{InferenceKey, UnificationError, UnificationTable},
 };
+use crate::ty::{normalize::normalize_ty, ty_error::collect_ty_lower_errors};
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag, resolve_path_with_observer, PathRes, PathResError,
+        diagnostics::PathResDiag, resolve_path_with_observer, PathRes, PathResError,
     },
     ty::ty_def::{inference_keys, TyFlags},
     HirAnalysisDb,
@@ -65,7 +65,7 @@ impl<'db> TyChecker<'db> {
         let env = TyCheckEnv::new_with_func(db, func)?;
         let expected_ty = match func.ret_ty(db) {
             Some(hir_ty) => {
-                let ty = lower_hir_ty(db, hir_ty, func.scope());
+                let ty = lower_hir_ty(db, hir_ty, func.scope(), env.assumptions());
                 if ty.is_star_kind(db) {
                     ty
                 } else {
@@ -106,6 +106,14 @@ impl<'db> TyChecker<'db> {
         self.env.body()
     }
 
+    fn parent_expr(&self) -> Option<&'db Expr<'db>> {
+        let id = self.env.parent_expr()?;
+        match &self.body().exprs(self.db)[id] {
+            Partial::Present(expr) => Some(expr),
+            Partial::Absent => None,
+        }
+    }
+
     fn lit_ty(&mut self, lit: &LitKind<'db>) -> TyId<'db> {
         match lit {
             LitKind::Bool(_) => TyId::bool(self.db),
@@ -124,7 +132,26 @@ impl<'db> TyChecker<'db> {
         span: LazyTySpan<'db>,
         star_kind_required: bool,
     ) -> TyId<'db> {
-        let ty = lower_hir_ty(self.db, hir_ty, self.env.scope());
+        let ty = lower_hir_ty(self.db, hir_ty, self.env.scope(), self.env.assumptions());
+
+        // If lowering failed, try to produce precise diagnostics (e.g., path resolution errors)
+        if ty.has_invalid(self.db) {
+            let diags = collect_ty_lower_errors(
+                self.db,
+                self.env.scope(),
+                hir_ty,
+                span.clone(),
+                self.env.assumptions(),
+            );
+            if !diags.is_empty() {
+                for d in diags {
+                    self.push_diag(d);
+                }
+                // Avoid cascading kind errors for already-invalid types
+                return TyId::invalid(self.db, InvalidCause::Other);
+            }
+        }
+
         if let Some(diag) = ty.emit_diag(self.db, span.clone().into()) {
             self.push_diag(diag)
         }
@@ -157,7 +184,7 @@ impl<'db> TyChecker<'db> {
 
         match t {
             Typeable::Expr(expr, mut typed_expr) => {
-                typed_expr.swap_ty(actual);
+                typed_expr.ty = actual;
                 self.env.type_expr(expr, typed_expr)
             }
             Typeable::Pat(pat) => self.env.type_pat(pat, actual),
@@ -183,6 +210,12 @@ impl<'db> TyChecker<'db> {
             self.push_diag(diag);
             return TyId::invalid(self.db, InvalidCause::Other);
         };
+
+        // Resolve associated types before unification
+        let actual = actual.fold_with(&mut self.table);
+        let expected = expected.fold_with(&mut self.table);
+        let actual = self.normalize_ty(actual);
+        let expected = self.normalize_ty(expected);
 
         match self.table.unify(actual, expected) {
             Ok(()) => {
@@ -236,6 +269,7 @@ impl<'db> TyChecker<'db> {
             self.db,
             path,
             scope,
+            self.env.assumptions(),
             resolve_tail_as_value,
             &mut check_visibility,
         ) {
@@ -246,11 +280,21 @@ impl<'db> TyChecker<'db> {
         if let Some((path, deriv_span)) = invisible {
             let span = span.clone().segment(path.segment_index(self.db)).ident();
             let ident = path.ident(self.db);
-            let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
+            let diag = PathResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag.into());
         }
 
         res
+    }
+
+    /// Resolve associated type to concrete type if possible
+    fn normalize_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
+        normalize_ty(
+            self.db,
+            ty.fold_with(&mut self.table),
+            self.env.scope(),
+            self.env.assumptions(),
+        )
     }
 }
 
@@ -311,7 +355,7 @@ impl Typeable<'_> {
 }
 
 impl<'db> TraitMethod<'db> {
-    fn instantiate_with_inst(
+    pub fn instantiate_with_inst(
         self,
         table: &mut UnificationTable<'db>,
         receiver_ty: TyId<'db>,
@@ -323,7 +367,12 @@ impl<'db> TraitMethod<'db> {
         let inst_self = table.instantiate_to_term(inst.self_ty(db));
         table.unify(inst_self, receiver_ty).unwrap();
 
-        table.instantiate_to_term(ty)
+        let instantiated = table.instantiate_to_term(ty);
+
+        // Apply associated type substitutions from the trait instance
+        use crate::ty::fold::{AssocTySubst, TyFoldable};
+        let mut subst = AssocTySubst::new(db, inst);
+        instantiated.fold_with(&mut subst)
     }
 }
 

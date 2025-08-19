@@ -10,6 +10,7 @@ use salsa::Update;
 
 use super::{
     binder::Binder,
+    trait_resolution::constraint::collect_adt_constraints,
     ty_def::{InvalidCause, TyId},
     ty_lower::{collect_generic_params, lower_hir_ty, GenericParamTypeSet},
 };
@@ -163,10 +164,27 @@ pub struct AdtField<'db> {
 }
 impl<'db> AdtField<'db> {
     pub fn ty(&self, db: &'db dyn HirAnalysisDb, i: usize) -> Binder<TyId<'db>> {
+        // Get ADT definition from scope to determine appropriate assumptions
+        let assumptions = match self.scope {
+            ScopeId::Item(ItemKind::Struct(struct_)) => {
+                let adt_def = lower_adt(db, struct_.into());
+                collect_adt_constraints(db, adt_def).instantiate_identity()
+            }
+            ScopeId::Item(ItemKind::Enum(enum_)) => {
+                let adt_def = lower_adt(db, enum_.into());
+                collect_adt_constraints(db, adt_def).instantiate_identity()
+            }
+            ScopeId::Item(ItemKind::Contract(contract)) => {
+                let adt_def = lower_adt(db, contract.into());
+                collect_adt_constraints(db, adt_def).instantiate_identity()
+            }
+            _ => unreachable!(),
+        };
+
         let ty = if let Some(ty) = self.tys[i].to_opt() {
-            lower_hir_ty(db, ty, self.scope)
+            lower_hir_ty(db, ty, self.scope, assumptions)
         } else {
-            TyId::invalid(db, InvalidCause::Other)
+            TyId::invalid(db, InvalidCause::ParseError)
         };
 
         Binder::bind(ty)

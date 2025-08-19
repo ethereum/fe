@@ -8,13 +8,14 @@ use hir::{
 use num_bigint::BigUint;
 use rustc_hash::FxHashMap;
 use salsa::Update;
+use thin_vec::ThinVec;
 
 use super::{Callable, TypedBody};
 use crate::{
     ty::{
         canonical::{Canonical, Canonicalized},
         const_ty::{ConstTyData, ConstTyId, EvaluatedConstTy},
-        diagnostics::{BodyDiag, FuncBodyDiag},
+        diagnostics::{BodyDiag, FuncBodyDiag, TraitConstraintDiag, TyDiagCollection},
         fold::{TyFoldable, TyFolder},
         func_def::{lower_func, FuncDef},
         trait_def::TraitInstId,
@@ -42,6 +43,7 @@ pub(super) struct TyCheckEnv<'db> {
     var_env: Vec<BlockEnv<'db>>,
     pending_vars: FxHashMap<IdentId<'db>, LocalBinding<'db>>,
     loop_stack: Vec<StmtId>,
+    expr_stack: Vec<ExprId>,
 }
 
 impl<'db> TyCheckEnv<'db> {
@@ -60,6 +62,7 @@ impl<'db> TyCheckEnv<'db> {
             var_env: vec![BlockEnv::new(func.scope(), 0)],
             pending_vars: FxHashMap::default(),
             loop_stack: Vec::new(),
+            expr_stack: Vec::new(),
         };
 
         env.enter_scope(body.expr(db));
@@ -74,8 +77,10 @@ impl<'db> TyCheckEnv<'db> {
             };
 
             let mut ty = match param.ty {
-                Partial::Present(hir_ty) => lower_hir_ty(db, hir_ty, func.scope()),
-                Partial::Absent => TyId::invalid(db, InvalidCause::Other),
+                Partial::Present(hir_ty) => {
+                    lower_hir_ty(db, hir_ty, func.scope(), env.assumptions())
+                }
+                Partial::Absent => TyId::invalid(db, InvalidCause::ParseError),
             };
 
             if !ty.is_star_kind(db) {
@@ -113,17 +118,26 @@ impl<'db> TyCheckEnv<'db> {
     /// Returns a function if the `body` being checked has `BodyKind::FuncBody`.
     /// If the `body` has `BodyKind::Anonymous`, returns None
     pub(super) fn func(&self) -> Option<FuncDef<'db>> {
-        let func = match self.body.body_kind(self.db) {
-            BodyKind::FuncBody => self.var_env.first()?.scope.item().try_into().ok(),
-            BodyKind::Anonymous => None,
-        }?;
+        let func = self.hir_func()?;
 
         lower_func(self.db, func)
     }
 
+    fn hir_func(&self) -> Option<Func<'db>> {
+        match self.body.body_kind(self.db) {
+            BodyKind::FuncBody => self.var_env.first()?.scope.item().try_into().ok(),
+            BodyKind::Anonymous => None,
+        }
+    }
+
     pub(super) fn assumptions(&self) -> PredicateListId<'db> {
-        match self.func() {
-            Some(func) => collect_func_def_constraints(self.db, func, true).instantiate_identity(),
+        match self.hir_func() {
+            Some(func) => {
+                // Include all implied bounds (super traits and associated type bounds)
+                collect_func_def_constraints(self.db, func.into(), true)
+                    .instantiate_identity()
+                    .extend_all_bounds(self.db)
+            }
             None => PredicateListId::empty_list(self.db),
         }
     }
@@ -168,6 +182,18 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn current_loop(&self) -> Option<StmtId> {
         self.loop_stack.last().copied()
+    }
+
+    pub(super) fn enter_expr(&mut self, expr: ExprId) {
+        self.expr_stack.push(expr);
+    }
+
+    pub(super) fn leave_expr(&mut self) {
+        self.expr_stack.pop();
+    }
+
+    pub(super) fn parent_expr(&self) -> Option<ExprId> {
+        self.expr_stack.iter().nth_back(1).copied()
     }
 
     pub(super) fn type_expr(&mut self, expr: ExprId, typed: ExprProp<'db>) {
@@ -347,7 +373,7 @@ impl<'db> TyCheckEnv<'db> {
                     let cands = ambiguous
                         .iter()
                         .map(|solution| canonical_inst.extract_solution(prober.table, *solution))
-                        .collect::<Vec<_>>();
+                        .collect::<ThinVec<_>>();
 
                     if !inst.self_ty(self.db).has_var(self.db) {
                         let diag = BodyDiag::AmbiguousTraitInst {
@@ -358,8 +384,24 @@ impl<'db> TyCheckEnv<'db> {
                     }
                 }
 
+                GoalSatisfiability::UnSat(subgoal) => {
+                    // Emit diagnostic for unsatisfied trait bound
+                    // These are constraints that were explicitly registered for confirmation,
+                    // not general WF checks, so we need to emit diagnostics for them
+                    if !inst.self_ty(self.db).has_var(self.db) {
+                        let unsat_subgoal =
+                            subgoal.map(|s| canonical_inst.extract_solution(prober.table, s));
+                        let diag = TraitConstraintDiag::TraitBoundNotSat {
+                            span: span.clone(),
+                            primary_goal: inst,
+                            unsat_subgoal,
+                        };
+                        sink.push(TyDiagCollection::from(diag).into())
+                    }
+                }
+
                 _ => {
-                    // WF is checked by `TyCheckerFinalizer`
+                    // Other cases (Satisfied, ContainsInvalid) are handled elsewhere
                 }
             }
         }
@@ -416,10 +458,6 @@ impl<'db> ExprProp<'db> {
 
     pub(super) fn binding(&self) -> Option<LocalBinding<'db>> {
         self.binding
-    }
-
-    pub(super) fn swap_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
-        std::mem::replace(&mut self.ty, ty)
     }
 
     pub(super) fn invalid(db: &'db dyn HirAnalysisDb) -> Self {

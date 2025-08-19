@@ -1,6 +1,7 @@
 use std::hash::Hash;
 
-use common::indexmap::IndexSet;
+use common::indexmap::{IndexMap, IndexSet};
+use hir::hir_def::IdentId;
 
 use super::{
     trait_def::{Implementor, TraitInstId},
@@ -73,6 +74,17 @@ impl<'db> TyFoldable<'db> for TyId<'db> {
                 TyId::const_ty(db, const_ty)
             }
 
+            AssocTy(assoc) => {
+                let folded_trait = assoc.trait_.fold_with(folder);
+                let ty = TyId::assoc_ty(folder.db(), folded_trait, assoc.name);
+                ty
+            }
+
+            QualifiedTy(trait_inst) => {
+                let folded_trait = trait_inst.fold_with(folder);
+                TyId::qualified_ty(folder.db(), folded_trait)
+            }
+
             TyVar(_) | TyParam(_) | TyBase(_) | Never | Invalid(_) => self,
         }
     }
@@ -124,7 +136,13 @@ impl<'db> TyFoldable<'db> for TraitInstId<'db> {
             .map(|ty| ty.fold_with(folder))
             .collect::<Vec<_>>();
 
-        TraitInstId::new(db, def, args)
+        let assoc_type_bindings: IndexMap<IdentId<'db>, TyId<'db>> = self
+            .assoc_type_bindings(db)
+            .iter()
+            .map(|(name, ty)| (*name, ty.fold_with(folder)))
+            .collect();
+
+        TraitInstId::new(db, def, args, assoc_type_bindings)
     }
 }
 
@@ -142,7 +160,13 @@ impl<'db> TyFoldable<'db> for Implementor<'db> {
             .collect::<Vec<_>>();
         let hir_impl_trait = self.hir_impl_trait(db);
 
-        Implementor::new(db, trait_inst, params, hir_impl_trait)
+        let types = self
+            .types(db)
+            .iter()
+            .map(|(ident, ty)| (*ident, ty.fold_with(folder)))
+            .collect::<IndexMap<_, _>>();
+
+        Implementor::new(db, trait_inst, params, types, hir_impl_trait)
     }
 }
 
@@ -168,5 +192,60 @@ impl<'db> TyFoldable<'db> for ExprProp<'db> {
     {
         let ty = self.ty.fold_with(folder);
         Self { ty, ..self }
+    }
+}
+
+/// A type folder that substitutes associated types based on a trait instance's bindings
+pub struct AssocTySubst<'db> {
+    db: &'db dyn HirAnalysisDb,
+    trait_inst: TraitInstId<'db>,
+}
+
+impl<'db> AssocTySubst<'db> {
+    pub fn new(db: &'db dyn HirAnalysisDb, trait_inst: TraitInstId<'db>) -> Self {
+        Self { db, trait_inst }
+    }
+}
+
+impl<'db> TyFolder<'db> for AssocTySubst<'db> {
+    fn db(&self) -> &'db dyn HirAnalysisDb {
+        self.db
+    }
+
+    fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
+        match ty.data(self.db) {
+            TyData::TyParam(param) => {
+                // If this is a trait self parameter, substitute with the trait instance's self type
+                if param.is_trait_self() {
+                    return self.trait_inst.self_ty(self.db).fold_with(self);
+                }
+                ty.super_fold_with(self)
+            }
+            TyData::AssocTy(assoc_ty) => {
+                // First fold the trait instance to handle any Self substitutions
+                let folded_trait = assoc_ty.trait_.fold_with(self);
+
+                // Check if this associated type belongs to our trait instance
+                if assoc_ty.trait_.def(self.db) == self.trait_inst.def(self.db) {
+                    // Check if we have a binding for this associated type
+                    if let Some(&bound_ty) = self
+                        .trait_inst
+                        .assoc_type_bindings(self.db)
+                        .get(&assoc_ty.name)
+                    {
+                        return bound_ty.fold_with(self);
+                    }
+                }
+
+                // If the trait instance changed due to Self substitution, create a new associated type
+                if folded_trait != assoc_ty.trait_ {
+                    return TyId::assoc_ty(self.db, folded_trait, assoc_ty.name);
+                }
+
+                // Continue with default folding
+                ty.super_fold_with(self)
+            }
+            _ => ty.super_fold_with(self),
+        }
     }
 }

@@ -5,7 +5,8 @@ use rustc_hash::FxHashMap;
 use super::{
     const_ty::ConstTyData,
     fold::{TyFoldable, TyFolder},
-    ty_def::{TyData, TyId},
+    trait_def::TraitInstId,
+    ty_def::{AssocTy, TyData, TyId},
 };
 use crate::HirAnalysisDb;
 
@@ -121,6 +122,38 @@ impl<'db> TyFolder<'db> for InstantiateFolder<'db, '_> {
             TyData::ConstTy(const_ty) => {
                 if let ConstTyData::TyParam(param, _) = const_ty.data(self.db) {
                     return self.args[param.idx];
+                }
+            }
+
+            TyData::AssocTy(assoc_ty) => {
+                // When substituting type parameters in associated types,
+                // we need to fold the trait instance to substitute its generic parameters
+                let trait_inst = assoc_ty.trait_;
+
+                // Fold the self type and generic arguments of the trait instance
+                let mut folded_generic_args = vec![];
+                for &arg in trait_inst.args(self.db) {
+                    folded_generic_args.push(self.fold_ty(arg));
+                }
+
+                // If any types changed, create a new trait instance with substituted types
+                if folded_generic_args != *trait_inst.args(self.db) {
+                    // If we couldn't resolve to a concrete type, create a new trait instance
+                    let new_trait_inst = TraitInstId::new(
+                        self.db,
+                        trait_inst.def(self.db),
+                        folded_generic_args,
+                        trait_inst.assoc_type_bindings(self.db).clone(),
+                    );
+
+                    // Return a new associated type with the updated trait instance
+                    return TyId::new(
+                        self.db,
+                        TyData::AssocTy(AssocTy {
+                            trait_: new_trait_inst,
+                            name: assoc_ty.name,
+                        }),
+                    );
                 }
             }
 

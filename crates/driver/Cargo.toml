@@ -8,6 +8,9 @@ description = "Provides Fe driver"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+doctest = false
+
 [dependencies]
 camino.workspace = true
 clap.workspace = true

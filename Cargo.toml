@@ -37,4 +37,4 @@ wasm-bindgen-test = "0.3"
 
 [profile.dev]
 # Set to 0 to make the build faster and debugging more difficult.
-debug = 1
+debug = 0

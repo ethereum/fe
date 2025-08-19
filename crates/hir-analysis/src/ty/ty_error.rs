@@ -6,7 +6,7 @@ use hir::{
 
 use crate::{
     name_resolution::{
-        diagnostics::NameResDiag, resolve_path_with_observer, ExpectedPathKind, PathRes,
+        diagnostics::PathResDiag, resolve_path_with_observer, ExpectedPathKind, PathRes,
     },
     ty::visitor::TyVisitor,
     HirAnalysisDb,
@@ -14,6 +14,7 @@ use crate::{
 
 use super::{
     diagnostics::{TyDiagCollection, TyLowerDiag},
+    trait_resolution::PredicateListId,
     ty_def::{InvalidCause, TyData, TyId},
     ty_lower::lower_hir_ty,
 };
@@ -23,9 +24,11 @@ pub fn collect_ty_lower_errors<'db>(
     scope: ScopeId<'db>,
     hir_ty: TypeId<'db>,
     span: LazyTySpan<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
     let mut vis = HirTyErrVisitor {
         db,
+        assumptions,
         diags: Vec::new(),
     };
     let mut ctxt = VisitorCtxt::new(db, scope, span);
@@ -36,6 +39,7 @@ pub fn collect_ty_lower_errors<'db>(
 struct HirTyErrVisitor<'db> {
     db: &'db dyn HirAnalysisDb,
     diags: Vec<TyDiagCollection<'db>>,
+    assumptions: PredicateListId<'db>,
 }
 
 impl<'db> HirTyErrVisitor<'db> {
@@ -48,7 +52,7 @@ impl<'db> HirTyErrVisitor<'db> {
 
 impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
     fn visit_ty(&mut self, ctxt: &mut VisitorCtxt<'db, LazyTySpan<'db>>, hir_ty: TypeId<'db>) {
-        let ty = lower_hir_ty(self.db, hir_ty, ctxt.scope());
+        let ty = lower_hir_ty(self.db, hir_ty, ctxt.scope(), self.assumptions);
 
         // This will report errors with nested types that are fundamental to the nested type,
         // but will not catch cases where the nested type is fine on its own, but incompatible
@@ -98,34 +102,47 @@ impl<'db> Visitor<'db> for HirTyErrVisitor<'db> {
             }
         };
 
-        let res =
-            match resolve_path_with_observer(self.db, path, scope, false, &mut check_visibility) {
-                Ok(res) => res,
+        let res = match resolve_path_with_observer(
+            self.db,
+            path,
+            scope,
+            self.assumptions,
+            false,
+            &mut check_visibility,
+        ) {
+            Ok(res) => res,
 
-                Err(err) => {
-                    let segment_span = path_span
-                        .segment(err.failed_at.segment_index(self.db))
-                        .ident();
-
-                    if let Some(diag) =
-                        err.into_diag(self.db, path, segment_span.into(), ExpectedPathKind::Type)
-                    {
-                        self.diags.push(diag.into());
+            Err(err) => {
+                let segment_idx = err.failed_at.segment_index(self.db);
+                // Use the HIR path to check if the corresponding segment is a QualifiedType.
+                let seg_hir = path.segment(self.db, segment_idx).unwrap_or(path);
+                let segment = path_span.segment(segment_idx);
+                let segment_span = match seg_hir.kind(self.db) {
+                    hir::hir_def::PathKind::QualifiedType { .. } => {
+                        segment.qualified_type().trait_qualifier().name()
                     }
-                    return;
+                    _ => segment.ident(),
+                };
+
+                if let Some(diag) =
+                    err.into_diag(self.db, path, segment_span.into(), ExpectedPathKind::Type)
+                {
+                    self.diags.push(diag.into());
                 }
-            };
+                return;
+            }
+        };
 
         if !matches!(res, PathRes::Ty(_) | PathRes::TyAlias(..)) {
             let ident = path.ident(self.db).to_opt().unwrap();
             let span = path_span.clone().segment(path.segment_index(self.db));
             self.diags
-                .push(NameResDiag::ExpectedType(span.into(), ident, res.kind_name()).into());
+                .push(PathResDiag::ExpectedType(span.into(), ident, res.kind_name()).into());
         }
         if let Some((path, deriv_span)) = invisible {
             let span = path_span.segment(path.segment_index(self.db)).ident();
             let ident = path.ident(self.db);
-            let diag = NameResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
+            let diag = PathResDiag::Invisible(span.into(), *ident.unwrap(), deriv_span);
             self.diags.push(diag.into());
         }
 
@@ -218,8 +235,6 @@ fn diag_from_invalid_cause<'db>(
         }
         .into(),
 
-        InvalidCause::AssocTy => TyLowerDiag::AssocTy(span).into(),
-
         InvalidCause::AliasCycle(cycle) => TyLowerDiag::TypeAliasCycle {
             cycle: cycle.to_vec(),
         }
@@ -229,6 +244,9 @@ fn diag_from_invalid_cause<'db>(
             TyLowerDiag::InvalidConstTyExpr(body.span().into()).into()
         }
 
-        InvalidCause::Other => return None,
+        // These errors should be caught and reported elsewhere
+        InvalidCause::PathResolutionFailed { .. }
+        | InvalidCause::ParseError
+        | InvalidCause::Other => return None,
     })
 }

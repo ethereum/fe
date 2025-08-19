@@ -3,6 +3,9 @@ name = "fe-test-utils"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+doctest = false
+
 [dependencies]
 insta = { default-features = false, version = "1.42" }
 tracing.workspace = true

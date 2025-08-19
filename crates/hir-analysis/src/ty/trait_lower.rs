@@ -2,21 +2,29 @@
 
 use common::{indexmap::IndexMap, ingot::Ingot};
 use hir::hir_def::{
-    scope_graph::ScopeId, HirIngot, IdentId, ImplTrait, Partial, Trait, TraitRefId,
+    params::GenericArg, scope_graph::ScopeId, AssocTypeGenericArg, HirIngot, IdentId, ImplTrait,
+    Partial, PathId, Trait, TraitRefId,
 };
 use rustc_hash::FxHashMap;
 use salsa::Update;
 
 use super::{
     binder::Binder,
+    const_ty::ConstTyId,
     func_def::FuncDef,
-    trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId, TraitMethod},
-    ty_def::{InvalidCause, Kind, TyId},
-    ty_lower::{collect_generic_params, lower_generic_arg_list, GenericParamTypeSet},
+    trait_def::{does_impl_trait_conflict, Implementor, TraitDef, TraitInstId},
+    trait_resolution::PredicateListId,
+    ty_def::{InvalidCause, TyId},
+    ty_lower::{collect_generic_params, lower_hir_ty},
 };
 use crate::{
     name_resolution::{resolve_path, PathRes, PathResError},
-    ty::{func_def::lower_func, ty_def::TyData, ty_lower::lower_hir_ty},
+    ty::{
+        func_def::lower_func,
+        trait_resolution::constraint::collect_constraints,
+        ty_def::{Kind, TyData},
+        ty_lower::lower_opt_hir_ty,
+    },
     HirAnalysisDb,
 };
 
@@ -24,7 +32,7 @@ type TraitImplTable<'db> = FxHashMap<TraitDef<'db>, Vec<Binder<Implementor<'db>>
 
 #[salsa::tracked]
 pub(crate) fn lower_trait<'db>(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> TraitDef<'db> {
-    TraitBuilder::new(db, trait_).build()
+    TraitDef::new(db, trait_)
 }
 
 /// Collect all trait implementors in the ingot.
@@ -57,8 +65,10 @@ pub(crate) fn lower_impl_trait<'db>(
 ) -> Option<Binder<Implementor<'db>>> {
     let scope = impl_trait.scope();
 
+    let assumptions = collect_constraints(db, impl_trait.into()).instantiate_identity();
+
     let hir_ty = impl_trait.ty(db).to_opt()?;
-    let ty = lower_hir_ty(db, hir_ty, scope);
+    let ty = lower_hir_ty(db, hir_ty, scope, assumptions);
     if ty.has_invalid(db) {
         return None;
     }
@@ -68,6 +78,7 @@ pub(crate) fn lower_impl_trait<'db>(
         ty,
         impl_trait.trait_ref(db).to_opt()?,
         impl_trait.scope(),
+        assumptions,
     )
     .ok()?;
 
@@ -81,7 +92,24 @@ pub(crate) fn lower_impl_trait<'db>(
         .params(db)
         .to_vec();
 
-    let implementor = Implementor::new(db, trait_, params, impl_trait);
+    let mut types: IndexMap<_, _> = impl_trait
+        .types(db)
+        .iter()
+        .filter_map(|t| match (t.name.to_opt(), t.ty.to_opt()) {
+            (Some(name), Some(ty)) => Some((name, lower_hir_ty(db, ty, scope, assumptions))),
+            _ => None,
+        })
+        .collect();
+
+    for t in trait_.def(db).trait_(db).types(db).iter() {
+        let (Some(name), Some(default)) = (t.name.to_opt(), t.default) else {
+            continue;
+        };
+        types
+            .entry(name)
+            .or_insert_with(|| lower_hir_ty(db, default, scope, assumptions));
+    }
+    let implementor = Implementor::new(db, trait_, params, types, impl_trait);
 
     Some(Binder::bind(implementor))
 }
@@ -93,77 +121,125 @@ pub(crate) fn lower_trait_ref<'db>(
     self_ty: TyId<'db>,
     trait_ref: TraitRefId<'db>,
     scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
 ) -> Result<TraitInstId<'db>, TraitRefLowerError<'db>> {
-    let mut args = vec![self_ty];
-    if let Some(generic_args) = trait_ref.generic_args(db) {
-        args.extend(lower_generic_arg_list(db, generic_args, scope));
-    };
-
     let Partial::Present(path) = trait_ref.path(db) else {
-        return Err(TraitRefLowerError::Other);
+        return Err(TraitRefLowerError::Ignored);
     };
 
-    let trait_def = match resolve_path(db, path, scope, false) {
-        Ok(PathRes::Trait(t)) => t,
-        Ok(res) => return Err(TraitRefLowerError::InvalidDomain(res)),
-        Err(e) => return Err(TraitRefLowerError::PathResError(e)),
-    };
+    match resolve_path(db, path, scope, assumptions, false) {
+        Ok(PathRes::Trait(t)) => {
+            let mut args = t.args(db).clone();
+            args[0] = self_ty;
+            Ok(TraitInstId::new(
+                db,
+                t.def(db),
+                args,
+                t.assoc_type_bindings(db),
+            ))
+        }
+        Ok(res) => Err(TraitRefLowerError::InvalidDomain(res)),
+        Err(e) => Err(TraitRefLowerError::PathResError(e)),
+    }
+}
 
-    // The first parameter of the trait is the self type, so we need to skip it.
-    if trait_def.params(db).len() != args.len() {
-        return Err(TraitRefLowerError::ArgNumMismatch {
-            expected: trait_def.params(db).len() - 1,
-            given: args.len() - 1,
+pub(crate) enum TraitArgError<'db> {
+    ArgNumMismatch {
+        expected: usize,
+        given: usize,
+    },
+    ArgKindMisMatch {
+        // TODO: add index, improve diag display
+        expected: Kind,
+        given: TyId<'db>,
+    },
+    ArgTypeMismatch {
+        expected: Option<TyId<'db>>,
+        given: Option<TyId<'db>>,
+    },
+    Ignored,
+}
+
+pub(crate) fn lower_trait_ref_impl<'db>(
+    db: &'db (dyn HirAnalysisDb + 'static),
+    path: PathId<'db>,
+    scope: ScopeId<'db>,
+    assumptions: PredicateListId<'db>,
+    t: Trait<'db>,
+) -> Result<TraitInstId<'db>, TraitArgError<'db>> {
+    let trait_def = lower_trait(db, t);
+    let trait_params: &[TyId<'db>] = trait_def.params(db);
+    let args = path.generic_args(db).data(db);
+
+    let mut final_args: Vec<TyId<'db>> = Vec::with_capacity(trait_params.len());
+    final_args.push(trait_def.self_param(db));
+    final_args.extend(args.iter().filter_map(|arg| match arg {
+        GenericArg::Type(ty_arg) => Some(lower_opt_hir_ty(db, ty_arg.ty, scope, assumptions)),
+        GenericArg::Const(const_arg) => {
+            let const_ty_id = ConstTyId::from_opt_body(db, const_arg.body);
+            Some(TyId::const_ty(db, const_ty_id))
+        }
+        _ => None,
+    }));
+
+    if final_args.len() != trait_params.len() {
+        return Err(TraitArgError::ArgNumMismatch {
+            expected: trait_params.len() - 1,
+            given: final_args.len() - 1,
         });
     }
 
-    for (param, arg) in trait_def
-        .params(db)
-        .iter()
-        .skip(1)
-        .zip(args.iter_mut().skip(1))
-    {
-        if !param.kind(db).does_match(arg.kind(db)) {
-            return Err(TraitRefLowerError::ArgKindMisMatch {
-                expected: param.kind(db).clone(),
-                given: *arg,
+    for (expected_ty, actual_ty) in trait_params.iter().zip(final_args.iter_mut()).skip(1) {
+        if !expected_ty.kind(db).does_match(actual_ty.kind(db)) {
+            return Err(TraitArgError::ArgKindMisMatch {
+                expected: expected_ty.kind(db).clone(),
+                given: *actual_ty,
             });
         }
 
-        let expected_const_ty = match param.data(db) {
+        let expected_const_ty = match expected_ty.data(db) {
             TyData::ConstTy(expected_ty) => expected_ty.ty(db).into(),
             _ => None,
         };
 
-        match arg.evaluate_const_ty(db, expected_const_ty) {
-            Ok(ty) => *arg = ty,
-
+        match actual_ty.evaluate_const_ty(db, expected_const_ty) {
+            Ok(evaluated_ty) => *actual_ty = evaluated_ty,
             Err(InvalidCause::ConstTyMismatch { expected, given }) => {
-                return Err(TraitRefLowerError::ArgTypeMismatch {
+                return Err(TraitArgError::ArgTypeMismatch {
                     expected: Some(expected),
                     given: Some(given),
                 });
             }
-
             Err(InvalidCause::ConstTyExpected { expected }) => {
-                return Err(TraitRefLowerError::ArgTypeMismatch {
+                return Err(TraitArgError::ArgTypeMismatch {
                     expected: Some(expected),
                     given: None,
                 });
             }
-
             Err(InvalidCause::NormalTypeExpected { given }) => {
-                return Err(TraitRefLowerError::ArgTypeMismatch {
+                return Err(TraitArgError::ArgTypeMismatch {
                     expected: None,
                     given: Some(given),
                 })
             }
-
-            _ => return Err(TraitRefLowerError::Other),
+            _ => return Err(TraitArgError::Ignored),
         }
     }
 
-    Ok(TraitInstId::new(db, trait_def, args))
+    let assoc_bindings: IndexMap<IdentId<'db>, TyId<'db>> = args
+        .iter()
+        .filter_map(|arg| match arg {
+            GenericArg::AssocType(AssocTypeGenericArg { name, ty }) => {
+                let (Some(name), Some(ty)) = (name.to_opt(), ty.to_opt()) else {
+                    return None;
+                };
+                Some((name, lower_hir_ty(db, ty, scope, assumptions)))
+            }
+            _ => None,
+        })
+        .collect();
+
+    Ok(TraitInstId::new(db, trait_def, final_args, assoc_bindings))
 }
 
 #[salsa::tracked(return_ref)]
@@ -172,7 +248,6 @@ pub(crate) fn collect_implementor_methods<'db>(
     implementor: Implementor<'db>,
 ) -> IndexMap<IdentId<'db>, FuncDef<'db>> {
     let mut methods = IndexMap::default();
-
     for method in implementor.hir_impl_trait(db).methods(db) {
         if let Some(func) = lower_func(db, method) {
             methods.insert(func.name(db), func);
@@ -184,78 +259,10 @@ pub(crate) fn collect_implementor_methods<'db>(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub(crate) enum TraitRefLowerError<'db> {
-    /// The number of arguments doesn't match the number of parameters.
-    ArgNumMismatch {
-        expected: usize,
-        given: usize,
-    },
-
-    /// The kind of the argument doesn't match the kind of the parameter of the
-    /// trait.
-    ArgKindMisMatch {
-        expected: Kind,
-        given: TyId<'db>,
-    },
-
-    /// The argument type doesn't match the const parameter type.
-    ArgTypeMismatch {
-        expected: Option<TyId<'db>>,
-        given: Option<TyId<'db>>,
-    },
-
     PathResError(PathResError<'db>),
-
     InvalidDomain(PathRes<'db>),
-
-    /// Other errors, which is reported by another pass. So we don't need to
-    /// report this error kind.
-    Other,
-}
-
-struct TraitBuilder<'db> {
-    db: &'db dyn HirAnalysisDb,
-    trait_: Trait<'db>,
-    param_set: GenericParamTypeSet<'db>,
-    methods: IndexMap<IdentId<'db>, TraitMethod<'db>>,
-}
-
-impl<'db> TraitBuilder<'db> {
-    fn new(db: &'db dyn HirAnalysisDb, trait_: Trait<'db>) -> Self {
-        let param_set = collect_generic_params(db, trait_.into());
-
-        Self {
-            db,
-            trait_,
-            param_set,
-            methods: IndexMap::default(),
-        }
-    }
-
-    fn build(mut self) -> TraitDef<'db> {
-        self.collect_params();
-        self.collect_methods();
-
-        TraitDef::new(self.db, self.trait_, self.param_set, self.methods)
-    }
-
-    fn collect_params(&mut self) {
-        self.param_set = collect_generic_params(self.db, self.trait_.into());
-    }
-
-    fn collect_methods(&mut self) {
-        let hir_db = self.db;
-        for method in self.trait_.methods(hir_db) {
-            let Some(func) = lower_func(self.db, method) else {
-                continue;
-            };
-
-            let name = func.name(self.db);
-            let trait_method = TraitMethod(func);
-            // We can simply ignore the conflict here because it's already handled by the
-            // name resolution.
-            self.methods.entry(name).or_insert(trait_method);
-        }
-    }
+    /// Error is expected to be reported elsewhere.
+    Ignored,
 }
 
 /// Collect all implementors in an ingot.

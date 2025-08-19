@@ -7,6 +7,7 @@ use hir::{
 use super::{binder::Binder, ty_def::TyId, ty_lower::GenericParamTypeSet};
 use crate::{
     ty::{
+        trait_resolution::constraint::collect_func_def_constraints,
         ty_def::InvalidCause,
         ty_lower::{collect_generic_params, lower_hir_ty},
     },
@@ -16,29 +17,35 @@ use crate::{
 /// Lower func to [`FuncDef`]. This function returns `None` iff the function
 /// name is `Partial::Absent`.
 #[salsa::tracked]
-pub fn lower_func<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Option<FuncDef<'db>> {
+pub fn lower_func<'db>(
+    db: &'db dyn HirAnalysisDb,
+    func: Func<'db>,
+    // _assumptions: PredicateListId<'db>,
+) -> Option<FuncDef<'db>> {
     let name = func.name(db).to_opt()?;
     let params_set = collect_generic_params(db, func.into());
-
+    let assumptions = collect_func_def_constraints(db, func.into(), true).instantiate_identity();
     let args = match func.params(db) {
-        Partial::Present(args) => args
+        Partial::Present(params) => params
             .data(db)
             .iter()
             .map(|arg| {
                 let ty = arg
                     .ty
                     .to_opt()
-                    .map(|ty| lower_hir_ty(db, ty, func.scope()))
-                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other));
+                    .map(|ty| lower_hir_ty(db, ty, func.scope(), assumptions))
+                    .unwrap_or_else(|| TyId::invalid(db, InvalidCause::ParseError));
                 Binder::bind(ty)
             })
             .collect(),
         Partial::Absent => vec![],
     };
 
+    // When lowering the return type, we need to use assumptions that include
+    // the function's own generic parameter constraints
     let ret_ty = func
         .ret_ty(db)
-        .map(|ty| lower_hir_ty(db, ty, func.scope()))
+        .map(|ty| lower_hir_ty(db, ty, func.scope(), assumptions))
         .unwrap_or_else(|| TyId::unit(db));
 
     Some(FuncDef::new(

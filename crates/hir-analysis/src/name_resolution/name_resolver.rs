@@ -6,7 +6,8 @@ use hir::{
         prim_ty::PrimTy,
         scope_graph::{
             AnonEdge, EdgeKind, FieldEdge, GenericParamEdge, IngotEdge, LexEdge, ModEdge, ScopeId,
-            SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TypeEdge, ValueEdge, VariantEdge,
+            SelfEdge, SelfTyEdge, SuperEdge, TraitEdge, TraitTypeEdge, TypeEdge, ValueEdge,
+            VariantEdge,
         },
         Enum, EnumVariant, GenericParam, GenericParamOwner, HirIngot, IdentId, ItemKind, Mod,
         TopLevelMod, Trait, Use,
@@ -795,6 +796,7 @@ impl NameDomain {
                     GenericParam::Const(_) => NameDomain::TYPE | NameDomain::VALUE,
                 }
             }
+            ScopeId::TraitType(..) => Self::TYPE,
             ScopeId::Field(..) => Self::FIELD,
             ScopeId::Variant(..) => Self::VALUE,
         }
@@ -883,6 +885,24 @@ impl<'db> QueryPropagator<'db> for TypeEdge<'db> {
 }
 
 impl<'db> QueryPropagator<'db> for TraitEdge<'db> {
+    fn propagate(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        query: EarlyNameQueryId<'db>,
+    ) -> PropagationResult {
+        if self.0 == query.name(db) {
+            PropagationResult::Terminated
+        } else {
+            PropagationResult::UnPropagated
+        }
+    }
+
+    fn propagate_glob(self) -> PropagationResult {
+        PropagationResult::Terminated
+    }
+}
+
+impl<'db> QueryPropagator<'db> for TraitTypeEdge<'db> {
     fn propagate(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1069,6 +1089,7 @@ impl<'db> QueryPropagator<'db> for EdgeKind<'db> {
             EdgeKind::Mod(edge) => edge.propagate(db, query),
             EdgeKind::Type(edge) => edge.propagate(db, query),
             EdgeKind::Trait(edge) => edge.propagate(db, query),
+            EdgeKind::TraitType(edge) => edge.propagate(db, query),
             EdgeKind::GenericParam(edge) => edge.propagate(db, query),
             EdgeKind::Value(edge) => edge.propagate(db, query),
             EdgeKind::Field(edge) => edge.propagate(db, query),
@@ -1087,6 +1108,7 @@ impl<'db> QueryPropagator<'db> for EdgeKind<'db> {
             EdgeKind::Mod(edge) => edge.propagate_glob(),
             EdgeKind::Type(edge) => edge.propagate_glob(),
             EdgeKind::Trait(edge) => edge.propagate_glob(),
+            EdgeKind::TraitType(edge) => edge.propagate_glob(),
             EdgeKind::GenericParam(edge) => edge.propagate_glob(),
             EdgeKind::Value(edge) => edge.propagate_glob(),
             EdgeKind::Field(edge) => edge.propagate_glob(),
