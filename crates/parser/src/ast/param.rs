@@ -1,7 +1,7 @@
 use rowan::ast::{support, AstNode};
 
 use super::ast_node;
-use crate::{FeLang, SyntaxKind as SK, SyntaxToken};
+use crate::{ast::Type, FeLang, SyntaxKind as SK, SyntaxToken};
 
 ast_node! {
     /// A list of parameters.
@@ -149,6 +149,10 @@ impl TypeGenericParam {
     }
 
     pub fn bounds(&self) -> Option<TypeBoundList> {
+        support::child(self.syntax())
+    }
+
+    pub fn default_ty(&self) -> Option<Type> {
         support::child(self.syntax())
     }
 }

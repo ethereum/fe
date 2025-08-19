@@ -5,9 +5,9 @@
 use common::indexmap::IndexSet;
 use hir::{
     hir_def::{
-        scope_graph::ScopeId, EnumVariant, FieldDef, FieldParent, Func, GenericParam, IdentId,
-        Impl as HirImpl, ImplTrait, ItemKind, PathId, Trait, TraitRefId, TypeBound,
-        TypeId as HirTyId, VariantKind,
+        scope_graph::ScopeId, EnumVariant, FieldDef, FieldParent, Func, GenericParam,
+        GenericParamListId, GenericParamOwner, IdentId, Impl as HirImpl, ImplTrait, ItemKind,
+        PathId, Trait, TraitRefId, TypeAlias, TypeBound, TypeId as HirTyId, VariantKind,
     },
     visitor::prelude::*,
 };
@@ -29,7 +29,7 @@ use super::{
         constraint::{collect_adt_constraints, collect_constraints, collect_func_def_constraints},
         PredicateListId,
     },
-    ty_def::{InvalidCause, TyData, TyId},
+    ty_def::{InvalidCause, TyData, TyId, TyParam},
     ty_error::collect_ty_lower_errors,
     ty_lower::{collect_generic_params, lower_kind},
     visitor::{walk_ty, TyVisitor},
@@ -67,7 +67,7 @@ pub fn analyze_adt<'db>(
     db: &'db dyn HirAnalysisDb,
     adt_ref: AdtRef<'db>,
 ) -> Vec<TyDiagCollection<'db>> {
-    let mut dupes = match adt_ref {
+    let dupes = match adt_ref {
         AdtRef::Struct(x) => check_duplicate_field_names(db, FieldParent::Struct(x)),
         AdtRef::Contract(x) => check_duplicate_field_names(db, FieldParent::Contract(x)),
         AdtRef::Enum(enum_) => {
@@ -84,13 +84,6 @@ pub fn analyze_adt<'db>(
             dupes
         }
     };
-
-    if let Some(go) = adt_ref.generic_owner() {
-        dupes.extend(check_duplicate_names(
-            go.params(db).data(db).iter().map(|p| p.name().to_opt()),
-            |idxs| TyLowerDiag::DuplicateGenericParamName(adt_ref, idxs).into(),
-        ))
-    }
 
     let analyzer = DefAnalyzer::for_adt(db, adt_ref);
     let mut diags = analyzer.analyze();
@@ -162,40 +155,41 @@ pub fn analyze_trait<'db>(
 
             // Check each bound on the associated type
             for bound in &assoc_type.bounds {
-                if let TypeBound::Trait(trait_ref) = bound {
-                    // Lower the trait bound
-                    match lower_trait_ref(db, default_ty, *trait_ref, trait_.scope(), assumptions) {
-                        Ok(trait_inst) => {
-                            // Check if the default type satisfies the trait bound
-                            let canonical_inst = Canonical::new(db, trait_inst);
-                            match is_goal_satisfiable(
-                                db,
-                                trait_.top_mod(db).ingot(db),
-                                canonical_inst,
-                                assumptions,
-                            ) {
-                                GoalSatisfiability::Satisfied(_) => continue,
-                                GoalSatisfiability::UnSat(subgoal) => {
-                                    // Report error: default type doesn't satisfy the bound
-                                    // TODO: Get a better span for the default type
-                                    diags.push(
-                                        TraitConstraintDiag::TraitBoundNotSat {
-                                            span: trait_.span().into(),
-                                            primary_goal: trait_inst,
-                                            unsat_subgoal: subgoal.map(|s| s.value),
-                                        }
-                                        .into(),
-                                    );
-                                }
-                                _ => {
-                                    // Other cases: NeedsConfirmation or ContainsInvalid
-                                    // These might warrant errors but we'll treat them as ok for now
-                                }
+                let TypeBound::Trait(trait_ref) = bound else {
+                    continue;
+                };
+                // Lower the trait bound
+                let Ok(trait_inst) =
+                    lower_trait_ref(db, default_ty, *trait_ref, trait_.scope(), assumptions)
+                else {
+                    // Trait ref lowering error - will be reported elsewhere
+                    continue;
+                };
+
+                // Check if the default type satisfies the trait bound
+                let canonical_inst = Canonical::new(db, trait_inst);
+                match is_goal_satisfiable(
+                    db,
+                    trait_.top_mod(db).ingot(db),
+                    canonical_inst,
+                    assumptions,
+                ) {
+                    GoalSatisfiability::Satisfied(_) => continue,
+                    GoalSatisfiability::UnSat(subgoal) => {
+                        // Report error: default type doesn't satisfy the bound
+                        // TODO: Get a better span for the default type
+                        diags.push(
+                            TraitConstraintDiag::TraitBoundNotSat {
+                                span: trait_.span().into(),
+                                primary_goal: trait_inst,
+                                unsat_subgoal: subgoal.map(|s| s.value),
                             }
-                        }
-                        Err(_) => {
-                            // Trait ref lowering error - will be reported elsewhere
-                        }
+                            .into(),
+                        );
+                    }
+                    _ => {
+                        // Other cases: NeedsConfirmation or ContainsInvalid
+                        // These might warrant errors but we'll treat them as ok for now
                     }
                 }
             }
@@ -374,6 +368,21 @@ impl<'db> DefAnalyzer<'db> {
         }
     }
 
+    pub(crate) fn for_type_alias(
+        db: &'db dyn HirAnalysisDb,
+        type_alias: hir::hir_def::TypeAlias<'db>,
+        assumptions: PredicateListId<'db>,
+    ) -> Self {
+        Self {
+            db,
+            def: DefKind::TypeAlias(type_alias),
+            self_ty: None,
+            diags: vec![],
+            assumptions,
+            current_ty: None,
+        }
+    }
+
     /// This method verifies if
     /// 1. the given `ty` has `*` kind.
     /// 2. the given `ty` is not const type
@@ -470,7 +479,7 @@ impl<'db> DefAnalyzer<'db> {
         self.def.scope(self.db)
     }
 
-    fn analyze(mut self) -> Vec<TyDiagCollection<'db>> {
+    pub(crate) fn analyze(mut self) -> Vec<TyDiagCollection<'db>> {
         match self.def {
             DefKind::Adt(def) => match def.adt_ref(self.db) {
                 AdtRef::Struct(struct_) => {
@@ -510,6 +519,11 @@ impl<'db> DefAnalyzer<'db> {
                 let hir_func = func.hir_func_def(self.db).unwrap();
                 let mut ctxt = VisitorCtxt::with_func(self.db, hir_func);
                 self.visit_func(&mut ctxt, hir_func);
+            }
+
+            DefKind::TypeAlias(type_alias) => {
+                let mut ctxt = VisitorCtxt::with_type_alias(self.db, type_alias);
+                self.visit_type_alias(&mut ctxt, type_alias);
             }
         }
 
@@ -665,10 +679,39 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         walk_variant_def(self, ctxt, variant);
     }
 
+    fn visit_generic_param_list(
+        &mut self,
+        ctxt: &mut VisitorCtxt<'db, LazyGenericParamListSpan<'db>>,
+        params: GenericParamListId<'db>,
+    ) {
+        let owner = GenericParamOwner::from_item_opt(self.scope().item()).unwrap();
+
+        self.diags.extend(check_duplicate_names(
+            params.data(self.db).iter().map(|p| p.name().to_opt()),
+            |idxs| TyLowerDiag::DuplicateGenericParamName(owner, idxs).into(),
+        ));
+
+        let mut default_idxs: SmallVec<[usize; 4]> = SmallVec::new();
+        for (i, p) in params.data(self.db).iter().enumerate() {
+            let is_defaulted_type = matches!(p, GenericParam::Type(tp) if tp.default_ty.is_some());
+            if is_defaulted_type {
+                default_idxs.push(i);
+            } else if !default_idxs.is_empty() {
+                for &idx in &default_idxs {
+                    let span = ctxt.span().unwrap().clone().param(idx);
+                    self.diags
+                        .push(TyLowerDiag::NonTrailingDefaultGenericParam(span).into());
+                }
+                break;
+            }
+        }
+        walk_generic_param_list(self, ctxt, params);
+    }
+
     fn visit_generic_param(
         &mut self,
         ctxt: &mut VisitorCtxt<'db, LazyGenericParamSpan<'db>>,
-        param: &hir::hir_def::GenericParam<'db>,
+        param: &GenericParam<'db>,
     ) {
         let ScopeId::GenericParam(_, idx) = ctxt.scope() else {
             unreachable!()
@@ -682,12 +725,55 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
         }
 
         match param {
-            GenericParam::Type(_) => {
+            GenericParam::Type(tp) => {
+                if let Some(default_ty) = tp.default_ty {
+                    let lowered = lower_hir_ty(self.db, default_ty, self.scope(), self.assumptions);
+
+                    // Collect referenced generic params belonging to the same owner.
+                    struct Collector<'db> {
+                        db: &'db dyn HirAnalysisDb,
+                        scope: ScopeId<'db>,
+                        out: Vec<usize>,
+                    }
+                    impl<'db> TyVisitor<'db> for Collector<'db> {
+                        fn db(&self) -> &'db dyn HirAnalysisDb {
+                            self.db
+                        }
+                        fn visit_param(&mut self, tp: &TyParam<'db>) {
+                            if !tp.is_trait_self() && tp.owner == self.scope {
+                                self.out.push(tp.original_idx(self.db));
+                            }
+                        }
+                        fn visit_const_param(&mut self, tp: &TyParam<'db>, _ty: TyId<'db>) {
+                            if tp.owner == self.scope {
+                                self.out.push(tp.original_idx(self.db));
+                            }
+                        }
+                    }
+
+                    let mut collector = Collector {
+                        db: self.db,
+                        scope: self.scope(),
+                        out: Vec::new(),
+                    };
+                    lowered.visit_with(&mut collector);
+
+                    let owner = GenericParamOwner::from_item_opt(self.scope().item()).unwrap();
+
+                    // Forward reference check: cannot reference a param not yet declared.
+                    for j in collector.out.iter().filter(|j| **j >= idx as usize) {
+                        if let Some(name) = owner.param(self.db, *j).name().to_opt() {
+                            let span = ctxt.span().unwrap();
+                            self.diags
+                                .push(TyLowerDiag::GenericDefaultForwardRef { span, name }.into());
+                        }
+                    }
+                }
+
                 self.current_ty = Some((
                     self.def.original_params(self.db)[idx as usize],
                     ctxt.span().unwrap().into_type_param().name().into(),
                 ));
-                walk_generic_param(self, ctxt, param)
             }
             GenericParam::Const(_) => {
                 let ty = self.def.original_params(self.db)[idx as usize];
@@ -702,6 +788,7 @@ impl<'db> Visitor<'db> for DefAnalyzer<'db> {
                 }
             }
         }
+        walk_generic_param(self, ctxt, param)
     }
 
     fn visit_kind_bound(
@@ -1097,6 +1184,7 @@ enum DefKind<'db> {
     ImplTrait(Implementor<'db>),
     Impl(HirImpl<'db>),
     Func(FuncDef<'db>),
+    TypeAlias(TypeAlias<'db>),
 }
 
 impl<'db> DefKind<'db> {
@@ -1107,6 +1195,7 @@ impl<'db> DefKind<'db> {
             Self::ImplTrait(def) => def.original_params(db),
             Self::Impl(hir_impl) => collect_generic_params(db, hir_impl.into()).params(db),
             Self::Func(def) => def.explicit_params(db),
+            Self::TypeAlias(alias) => collect_generic_params(db, alias.into()).explicit_params(db),
         }
     }
 
@@ -1133,6 +1222,7 @@ impl<'db> DefKind<'db> {
             Self::ImplTrait(def) => def.hir_impl_trait(db).scope(),
             Self::Impl(hir_impl) => hir_impl.scope(),
             Self::Func(def) => def.scope(db),
+            Self::TypeAlias(alias) => alias.scope(),
         }
     }
 }

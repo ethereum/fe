@@ -11,13 +11,15 @@ use trait_def::TraitDef;
 use trait_lower::lower_trait;
 use trait_resolution::constraint::{collect_constraints, super_trait_cycle};
 use ty_def::{InvalidCause, TyData};
-use ty_error::collect_ty_lower_errors;
 use ty_lower::lower_type_alias;
 
 use self::def_analysis::{
     analyze_adt, analyze_func, analyze_impl, analyze_impl_trait, analyze_trait,
 };
-use crate::{analysis_pass::ModuleAnalysisPass, diagnostics::DiagnosticVoucher, HirAnalysisDb};
+use crate::{
+    analysis_pass::ModuleAnalysisPass, diagnostics::DiagnosticVoucher,
+    ty::def_analysis::DefAnalyzer, HirAnalysisDb,
+};
 
 pub mod adt_def;
 pub mod binder;
@@ -276,20 +278,9 @@ impl ModuleAnalysisPass for TypeAliasAnalysisPass {
                     diags.push(diag.to_voucher());
                 }
                 cycle_participants.extend(cycle.iter());
-            } else if ty.has_invalid(db) {
-                if let Some(hir_ty) = alias.ty(db).to_opt() {
-                    diags.extend(
-                        collect_ty_lower_errors(
-                            db,
-                            alias.scope(),
-                            hir_ty,
-                            alias.span().ty(),
-                            assumptions,
-                        )
-                        .into_iter()
-                        .map(|d| d.to_voucher()),
-                    )
-                }
+            } else {
+                let analyzer = DefAnalyzer::for_type_alias(db, alias, assumptions);
+                diags.extend(analyzer.analyze().into_iter().map(|d| Box::new(d) as _));
             }
         }
         diags

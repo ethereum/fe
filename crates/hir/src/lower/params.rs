@@ -79,8 +79,13 @@ impl<'db> TypeGenericParam<'db> {
                     .collect()
             })
             .unwrap_or_default();
+        let default_ty = ast.default_ty().map(|ty| TypeId::lower_ast(ctxt, ty));
 
-        Self { name, bounds }
+        Self {
+            name,
+            bounds,
+            default_ty,
+        }
     }
 }
 

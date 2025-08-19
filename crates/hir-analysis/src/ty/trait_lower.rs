@@ -171,23 +171,39 @@ pub(crate) fn lower_trait_ref_impl<'db>(
     let trait_params: &[TyId<'db>] = trait_def.params(db);
     let args = path.generic_args(db).data(db);
 
-    let mut final_args: Vec<TyId<'db>> = Vec::with_capacity(trait_params.len());
-    final_args.push(trait_def.self_param(db));
-    final_args.extend(args.iter().filter_map(|arg| match arg {
-        GenericArg::Type(ty_arg) => Some(lower_opt_hir_ty(db, ty_arg.ty, scope, assumptions)),
-        GenericArg::Const(const_arg) => {
-            let const_ty_id = ConstTyId::from_opt_body(db, const_arg.body);
-            Some(TyId::const_ty(db, const_ty_id))
-        }
-        _ => None,
-    }));
+    // Lower provided explicit args (excluding Self)
+    let provided_explicit: Vec<TyId<'db>> = args
+        .iter()
+        .filter_map(|arg| match arg {
+            GenericArg::Type(ty_arg) => Some(lower_opt_hir_ty(db, ty_arg.ty, scope, assumptions)),
+            GenericArg::Const(const_arg) => {
+                let const_ty_id = ConstTyId::from_opt_body(db, const_arg.body);
+                Some(TyId::const_ty(db, const_ty_id))
+            }
+            _ => None,
+        })
+        .collect();
 
-    if final_args.len() != trait_params.len() {
+    // Fill trailing defaults using the trait's param set. Bind Self (idx 0).
+    let non_self_completed = trait_def
+        .param_set(db)
+        .complete_explicit_args_with_defaults(
+            db,
+            Some(trait_def.self_param(db)),
+            &provided_explicit,
+            assumptions,
+        );
+
+    if non_self_completed.len() != trait_params.len() - 1 {
         return Err(TraitArgError::ArgNumMismatch {
             expected: trait_params.len() - 1,
-            given: final_args.len() - 1,
+            given: non_self_completed.len(),
         });
     }
+
+    let mut final_args: Vec<TyId<'db>> = Vec::with_capacity(trait_params.len());
+    final_args.push(trait_def.self_param(db));
+    final_args.extend(non_self_completed);
 
     for (expected_ty, actual_ty) in trait_params.iter().zip(final_args.iter_mut()).skip(1) {
         if !expected_ty.kind(db).does_match(actual_ty.kind(db)) {

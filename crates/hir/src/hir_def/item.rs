@@ -216,7 +216,17 @@ impl<'db> From<WhereClauseOwner<'db>> for ItemKind<'db> {
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, derive_more::From, salsa::Supertype,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
+    derive_more::From,
+    salsa::Supertype,
+    salsa::Update,
 )]
 pub enum GenericParamOwner<'db> {
     Func(Func<'db>),
@@ -242,6 +252,30 @@ impl<'db> GenericParamOwner<'db> {
             GenericParamOwner::Impl(impl_) => impl_.generic_params(db),
             GenericParamOwner::Trait(trait_) => trait_.generic_params(db),
             GenericParamOwner::ImplTrait(impl_trait) => impl_trait.generic_params(db),
+        }
+    }
+
+    pub fn name(self, db: &'db dyn HirDb) -> Option<IdentId<'db>> {
+        match self {
+            GenericParamOwner::Func(func) => func.name(db).to_opt(),
+            GenericParamOwner::Struct(struct_) => struct_.name(db).to_opt(),
+            GenericParamOwner::Enum(enum_) => enum_.name(db).to_opt(),
+            GenericParamOwner::TypeAlias(type_alias) => type_alias.name(db).to_opt(),
+            GenericParamOwner::Impl(_) => None,
+            GenericParamOwner::Trait(trait_) => trait_.name(db).to_opt(),
+            GenericParamOwner::ImplTrait(_) => None,
+        }
+    }
+
+    pub fn kind_name(self) -> &'static str {
+        match self {
+            GenericParamOwner::Func(_) => "fn",
+            GenericParamOwner::Struct(_) => "struct",
+            GenericParamOwner::Enum(_) => "enum",
+            GenericParamOwner::TypeAlias(_) => "type",
+            GenericParamOwner::Impl(_) => "impl",
+            GenericParamOwner::Trait(_) => "trait",
+            GenericParamOwner::ImplTrait(_) => "impl trait",
         }
     }
 
