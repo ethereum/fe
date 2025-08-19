@@ -884,7 +884,7 @@ pub fn resolve_name_res<'db>(
             ScopeId::Item(item) => match item {
                 ItemKind::Struct(_) | ItemKind::Contract(_) | ItemKind::Enum(_) => {
                     let adt_ref = AdtRef::try_from_item(item).unwrap();
-                    PathRes::Ty(ty_from_adtref(db, path, adt_ref, args)?)
+                    PathRes::Ty(ty_from_adtref(db, path, adt_ref, args, assumptions)?)
                 }
 
                 ItemKind::TopMod(_) | ItemKind::Mod(_) => PathRes::Mod(scope_id),
@@ -915,18 +915,7 @@ pub fn resolve_name_res<'db>(
                 ItemKind::TypeAlias(type_alias) => {
                     let alias = lower_type_alias(db, type_alias);
                     let expected = alias.params(db).len();
-                    if args.len() < expected {
-                        PathRes::TyAlias(
-                            alias.clone(),
-                            TyId::invalid(
-                                db,
-                                InvalidCause::UnboundTypeAliasParam {
-                                    alias: type_alias,
-                                    n_given_args: args.len(),
-                                },
-                            ),
-                        )
-                    } else if args.len() > expected {
+                    if args.len() > expected {
                         return Err(PathResError::new(
                             PathResErrorKind::ArgNumMismatch {
                                 expected,
@@ -935,7 +924,26 @@ pub fn resolve_name_res<'db>(
                             path,
                         ));
                     } else {
-                        let instantiated = alias.alias_to.instantiate(db, args);
+                        let completed = alias.param_set.complete_explicit_args_with_defaults(
+                            db,
+                            None,
+                            args,
+                            assumptions,
+                        );
+                        if completed.len() < expected {
+                            return Ok(PathRes::TyAlias(
+                                alias.clone(),
+                                TyId::invalid(
+                                    db,
+                                    InvalidCause::UnboundTypeAliasParam {
+                                        alias: type_alias,
+                                        n_given_args: args.len(),
+                                    },
+                                ),
+                            ));
+                        }
+
+                        let instantiated = alias.alias_to.instantiate(db, &completed);
                         if let TyData::Invalid(InvalidCause::TooManyGenericArgs {
                             expected,
                             given,
@@ -1035,7 +1043,7 @@ pub fn resolve_name_res<'db>(
                 } else {
                     // The variant was imported via `use`.
                     debug_assert!(path.parent(db).is_none());
-                    ty_from_adtref(db, path, var.enum_.into(), &[])?
+                    ty_from_adtref(db, path, var.enum_.into(), &[], assumptions)?
                 };
                 // TODO report error if args isn't empty
                 PathRes::EnumVariant(ResolvedVariant {
@@ -1073,10 +1081,15 @@ fn ty_from_adtref<'db>(
     path: PathId<'db>,
     adt_ref: AdtRef<'db>,
     args: &[TyId<'db>],
+    assumptions: PredicateListId<'db>,
 ) -> PathResolutionResult<'db, TyId<'db>> {
     let adt = lower_adt(db, adt_ref);
     let ty = TyId::adt(db, adt);
-    let applied = TyId::foldl(db, ty, args);
+    // Fill trailing defaults (if any)
+    let completed_args =
+        adt.param_set(db)
+            .complete_explicit_args_with_defaults(db, None, args, assumptions);
+    let applied = TyId::foldl(db, ty, &completed_args);
     if let TyData::Invalid(InvalidCause::TooManyGenericArgs { expected, given }) = applied.data(db)
     {
         Err(PathResError::new(

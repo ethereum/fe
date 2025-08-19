@@ -8,6 +8,7 @@ use smallvec::smallvec;
 
 use super::{
     const_ty::{ConstTyData, ConstTyId},
+    fold::{TyFoldable, TyFolder},
     trait_resolution::{constraint::collect_constraints, PredicateListId},
     ty_def::{InvalidCause, Kind, TyData, TyId, TyParam},
 };
@@ -207,7 +208,7 @@ pub(crate) fn evaluate_params_precursor<'db>(
 pub struct TyAlias<'db> {
     pub alias: HirTypeAlias<'db>,
     pub alias_to: Binder<TyId<'db>>,
-    param_set: GenericParamTypeSet<'db>,
+    pub param_set: GenericParamTypeSet<'db>,
 }
 
 impl<'db> TyAlias<'db> {
@@ -287,6 +288,89 @@ impl<'db> GenericParamTypeSet<'db> {
             .get(idx)
             .map(|p| p.evaluate(db, self.scope(db), idx))
     }
+
+    /// Given explicit generic args provided at the use site, append any trailing
+    /// defaults from this param set and return the completed explicit arg list.
+    ///
+    /// - `provided_explicit`: args corresponding to the explicit params (i.e.,
+    ///   skipping implicit ones like trait `Self`).
+    /// - `implicit_bindings`: mapping of (lowered_idx -> TyId) for implicit
+    ///   parameters that should be available when evaluating defaults (e.g.,
+    ///   trait `Self` at index 0).
+    pub(crate) fn complete_explicit_args_with_defaults(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        trait_self: Option<TyId<'db>>,
+        provided_explicit: &[TyId<'db>],
+        assumptions: PredicateListId<'db>,
+    ) -> Vec<TyId<'db>> {
+        let total = self.params_precursor(db).len();
+        let offset = self.offset_to_explicit(db);
+
+        // mapping from lowered param idx -> bound arg, used to substitute in defaults
+        let mut mapping = vec![];
+        if let Some(self_ty) = trait_self {
+            mapping.push(Some(self_ty));
+        }
+        mapping.extend(provided_explicit.iter().map(|ty| Some(*ty)));
+        mapping.resize(total, None);
+
+        // Helper folder to substitute known params when lowering defaults
+        struct ParamSubst<'a, 'db> {
+            db: &'db dyn HirAnalysisDb,
+            mapping: &'a [Option<TyId<'db>>],
+        }
+        impl<'a, 'db> TyFolder<'db> for ParamSubst<'a, 'db> {
+            fn db(&self) -> &'db dyn HirAnalysisDb {
+                self.db
+            }
+            fn fold_ty(&mut self, ty: TyId<'db>) -> TyId<'db> {
+                match ty.data(self.db) {
+                    TyData::TyParam(param) => {
+                        if let Some(Some(rep)) = self.mapping.get(param.idx) {
+                            return *rep;
+                        }
+                        ty.super_fold_with(self)
+                    }
+                    TyData::ConstTy(const_ty) => {
+                        if let super::const_ty::ConstTyData::TyParam(param, _) =
+                            const_ty.data(self.db)
+                        {
+                            if let Some(Some(rep)) = self.mapping.get(param.idx) {
+                                return *rep;
+                            }
+                        }
+                        ty.super_fold_with(self)
+                    }
+                    _ => ty.super_fold_with(self),
+                }
+            }
+        }
+
+        // Build the returned explicit arg list, appending defaults where available.
+        let mut result: Vec<TyId<'db>> = provided_explicit.to_vec();
+        let scope = self.scope(db);
+        for i in (offset + provided_explicit.len())..total {
+            let prec = &self.params_precursor(db)[i];
+            match prec.default_hir_ty {
+                Some(hir_ty) => {
+                    let lowered = lower_hir_ty(db, hir_ty, scope, assumptions);
+                    let lowered = {
+                        let mut subst = ParamSubst {
+                            db,
+                            mapping: &mapping,
+                        };
+                        lowered.fold_with(&mut subst)
+                    };
+                    mapping[i] = Some(lowered);
+                    result.push(lowered);
+                }
+                None => break, // Missing non-default; stop filling further params
+            }
+        }
+
+        result
+    }
 }
 
 struct GenericParamCollector<'db> {
@@ -333,8 +417,9 @@ impl<'db> GenericParamCollector<'db> {
                     let name = param.name;
 
                     let kind = self.extract_kind(param.bounds.as_slice());
+                    let default_hir_ty = param.default_ty;
                     self.params
-                        .push(TyParamPrecursor::ty_param(name, idx, kind));
+                        .push(TyParamPrecursor::ty_param(name, idx, kind, default_hir_ty));
                 }
 
                 GenericParam::Const(param) => {
@@ -454,6 +539,7 @@ pub struct TyParamPrecursor<'db> {
     original_idx: Option<usize>,
     kind: Option<Kind>,
     variant: Variant<'db>,
+    default_hir_ty: Option<HirTyId<'db>>, // Only used for type params
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -495,12 +581,18 @@ impl<'db> TyParamPrecursor<'db> {
         }
     }
 
-    fn ty_param(name: Partial<IdentId<'db>>, idx: usize, kind: Option<Kind>) -> Self {
+    fn ty_param(
+        name: Partial<IdentId<'db>>,
+        idx: usize,
+        kind: Option<Kind>,
+        default_hir_ty: Option<HirTyId<'db>>,
+    ) -> Self {
         Self {
             name,
             original_idx: idx.into(),
             kind,
             variant: Variant::Normal,
+            default_hir_ty,
         }
     }
 
@@ -510,6 +602,7 @@ impl<'db> TyParamPrecursor<'db> {
             original_idx: idx.into(),
             kind: None,
             variant: Variant::Const(ty),
+            default_hir_ty: None,
         }
     }
 
@@ -520,6 +613,7 @@ impl<'db> TyParamPrecursor<'db> {
             original_idx: None,
             kind,
             variant: Variant::TraitSelf,
+            default_hir_ty: None,
         }
     }
 
