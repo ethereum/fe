@@ -944,19 +944,6 @@ pub fn resolve_name_res<'db>(
                         }
 
                         let instantiated = alias.alias_to.instantiate(db, &completed);
-                        if let TyData::Invalid(InvalidCause::TooManyGenericArgs {
-                            expected,
-                            given,
-                        }) = instantiated.data(db)
-                        {
-                            return Err(PathResError::new(
-                                PathResErrorKind::ArgNumMismatch {
-                                    expected: *expected,
-                                    given: *given,
-                                },
-                                path,
-                            ));
-                        }
                         PathRes::TyAlias(alias.clone(), instantiated)
                     }
                 }
