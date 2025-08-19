@@ -328,11 +328,11 @@ impl GeneratorNode {
             .canonicalize_solution(table.db(), table, g_node.extracted_goal);
         if g_node.solutions.insert(solution) {
             for &c_node in g_node.dependents.iter() {
-                let ordred_c_node = OrderedConsumerNode {
+                let ordered_c_node = OrderedConsumerNode {
                     node: c_node,
                     root: pf.c_nodes[c_node].root,
                 };
-                pf.c_heap.push((ordred_c_node, solution));
+                pf.c_heap.push((ordered_c_node, solution));
             }
         }
     }
