@@ -9,16 +9,16 @@ mod stmt;
 pub use self::path::RecordLike;
 pub use callable::Callable;
 pub use env::ExprProp;
-use env::{TyCheckEnv, LocalBinding};
+use env::{LocalBinding, TyCheckEnv};
 pub(super) use expr::TraitOps;
 use hir::{
-    hir_def::{Body, Expr, ExprId, Func, LitKind, Pat, PatId, PathId, Partial, TypeId as HirTyId},
+    hir_def::{Body, Expr, ExprId, Func, LitKind, Partial, Pat, PatId, PathId, TypeId as HirTyId},
+    span::LazySpan,
     span::{
         expr::LazyExprSpan, pat::LazyPatSpan, path::LazyPathSpan, types::LazyTySpan, DynLazySpan,
     },
-    span::LazySpan,
-    SpannedHirDb,
     visitor::{walk_expr, walk_pat, Visitor, VisitorCtxt},
+    SpannedHirDb,
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -447,7 +447,9 @@ impl<'db> TyCheckerFinalizer<'db> {
 }
 
 impl<'db> TypedBody<'db> {
-    pub fn has_body(&self) -> bool { self.body.is_some() }
+    pub fn has_body(&self) -> bool {
+        self.body.is_some()
+    }
 }
 
 pub fn local_binding_span_at<'db>(
@@ -455,7 +457,9 @@ pub fn local_binding_span_at<'db>(
     body: Body<'db>,
     path: PathId<'db>,
 ) -> Option<common::diagnostics::Span> {
-    if !path.is_bare_ident(db) { return None; }
+    if !path.is_bare_ident(db) {
+        return None;
+    }
     let ident = path.ident(db).to_opt()?;
     let mut best_span: Option<common::diagnostics::Span> = None;
     for (pat_id, pat) in body.pats(db).iter() {
@@ -464,7 +468,11 @@ pub fn local_binding_span_at<'db>(
                 if let Some(p_ident) = p_path.ident(db).to_opt() {
                     if p_ident == ident {
                         if let Some(span) = pat_id.span(body).resolve(db) {
-                            if best_span.as_ref().map(|s| s.range.start() < span.range.start()).unwrap_or(true) {
+                            if best_span
+                                .as_ref()
+                                .map(|s| s.range.start() < span.range.start())
+                                .unwrap_or(true)
+                            {
                                 best_span = Some(span);
                             }
                         }

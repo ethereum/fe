@@ -3,8 +3,8 @@ use async_lsp::lsp_types::Hover;
 
 use common::file::File;
 use hir::lower::map_file_to_mod;
-use hir_analysis::ty::ty_check::check_func_body;
 use hir_analysis::hover::hover_markdown_for_scope;
+use hir_analysis::ty::ty_check::check_func_body;
 use tracing::info;
 
 use super::goto::Cursor;
@@ -89,10 +89,10 @@ fn create_expression_hover(
     let type_info = if let Some(func) = find_containing_func(db, body) {
         // Get the typed body from type checking
         let (_, typed_body) = check_func_body(db, func);
-        
+
         // Get the type of this expression
         let ty = typed_body.expr_ty(db, expr_id);
-        
+
         // Use pretty_print to get a human-readable type
         ty.pretty_print(db).to_string()
     } else {
@@ -121,19 +121,19 @@ fn create_statement_hover(
     stmt_id: hir::hir_def::StmtId,
 ) -> Result<Option<Hover>, Error> {
     use hir::hir_def::{Partial, Stmt};
-    
+
     let stmt_data = &body.stmts(db)[stmt_id];
-    
+
     // Extract type information based on statement kind
     let type_info = match stmt_data {
         Partial::Present(Stmt::Let(pat_id, _type_annotation, _init_expr)) => {
             if let Some(func) = find_containing_func(db, body) {
                 // Get the typed body from type checking
                 let (_, typed_body) = check_func_body(db, func);
-                
+
                 // Get the type of the pattern (variable binding)
                 let ty = typed_body.pat_ty(db, *pat_id);
-                
+
                 // Use pretty_print to get a human-readable type
                 format!("let: {}", ty.pretty_print(db))
             } else {
@@ -166,10 +166,10 @@ fn create_pattern_hover(
     let type_info = if let Some(func) = find_containing_func(db, body) {
         // Get the typed body from type checking
         let (_, typed_body) = check_func_body(db, func);
-        
+
         // Get the type of this pattern
         let ty = typed_body.pat_ty(db, pat_id);
-        
+
         // Use pretty_print to get a human-readable type
         ty.pretty_print(db).to_string()
     } else {
@@ -194,17 +194,17 @@ fn find_containing_func<'db>(
     db: &'db DriverDataBase,
     body: hir::hir_def::Body<'db>,
 ) -> Option<hir::hir_def::Func<'db>> {
-    use hir::hir_def::{ItemKind, BodyKind};
-    
+    use hir::hir_def::{BodyKind, ItemKind};
+
     // Check if this is a function body
     if body.body_kind(db) != BodyKind::FuncBody {
         return None;
     }
-    
+
     // Get all items in the module and find the function with this body
     let top_mod = body.top_mod(db);
     let items = top_mod.scope_graph(db).items_dfs(db);
-    
+
     for item in items {
         if let ItemKind::Func(func) = item {
             if func.body(db) == Some(body) {
@@ -212,6 +212,6 @@ fn find_containing_func<'db>(
             }
         }
     }
-    
+
     None
 }

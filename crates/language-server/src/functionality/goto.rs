@@ -1,18 +1,18 @@
 use async_lsp::ResponseError;
 use common::InputDb;
+use hir::hir_def::{Partial, Pat, PathId};
 use hir::{
     hir_def::{scope_graph::ScopeId, ItemKind, TopLevelMod},
     lower::map_file_to_mod,
     span::LazySpan,
     SpannedHirDb,
 };
-use hir_analysis::navigation::{resolve_goto_full, NavTarget};
-use hir_analysis::ty::ty_check::{RecordLike, check_func_body, local_binding_span_for_expr};
 use hir_analysis::name_resolution::{
     resolve_ident_to_bucket, resolve_path, resolve_path_segment, resolve_tail_value_scope,
     NameDomain, NameResKind, PathResErrorKind,
 };
-use hir::hir_def::{PathId, Partial, Pat};
+use hir_analysis::navigation::{resolve_goto_full, NavTarget};
+use hir_analysis::ty::ty_check::{check_func_body, local_binding_span_for_expr, RecordLike};
 
 use tracing::{debug, error};
 
@@ -32,7 +32,10 @@ impl<'db> GotoTarget<'db> {
             GotoTarget::Scope(scope) => scope.pretty_path(db),
             GotoTarget::Span(span) => {
                 if let Ok(l) = crate::util::to_lsp_location_from_span(db, span.clone()) {
-                    Some(format!("local at {}:{}", l.range.start.line, l.range.start.character))
+                    Some(format!(
+                        "local at {}:{}",
+                        l.range.start.line, l.range.start.character
+                    ))
                 } else {
                     None
                 }
@@ -44,9 +47,9 @@ impl<'db> GotoTarget<'db> {
 #[cfg(test)]
 mod debug_vis {
     use super::*;
+    use hir::hir_def::{scope_graph::ScopeId, PathId};
     use hir::span::{DynLazySpan, LazySpan};
     use hir::visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt};
-    use hir::hir_def::{PathId, scope_graph::ScopeId};
 
     #[derive(Default)]
     pub struct PathSpanCollector<'db> {
@@ -54,8 +57,14 @@ mod debug_vis {
     }
 
     impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
-        fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>, path: PathId<'db>) {
-            let Some(span) = ctxt.span() else { return; };
+        fn visit_path(
+            &mut self,
+            ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>,
+            path: PathId<'db>,
+        ) {
+            let Some(span) = ctxt.span() else {
+                return;
+            };
             let scope = ctxt.scope();
             self.paths.push((path, scope, span));
         }
@@ -87,24 +96,39 @@ mod debug_vis {
         cursor: super::Cursor,
         full_paths: Vec<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>)>,
     ) -> Option<(PathId<'db>, bool, ScopeId<'db>)> {
-        let mut best: Option<(PathId<'db>, ScopeId<'db>, LazyPathSpan<'db>, parser::TextRange)> = None;
+        let mut best: Option<(
+            PathId<'db>,
+            ScopeId<'db>,
+            LazyPathSpan<'db>,
+            parser::TextRange,
+        )> = None;
         for (path, scope, lazy_span) in full_paths {
             let span = lazy_span.resolve(db).unwrap();
             if span.range.contains(cursor) {
                 let len = span.range.end() - span.range.start();
-                if best.as_ref().map(|(_, _, _, r)| (r.end() - r.start()) > len).unwrap_or(true) {
+                if best
+                    .as_ref()
+                    .map(|(_, _, _, r)| (r.end() - r.start()) > len)
+                    .unwrap_or(true)
+                {
                     best = Some((path, scope, lazy_span, span.range));
                 }
             }
         }
-        let Some((path, scope, lazy_span, _)) = best.clone() else { return None };
+        let Some((path, scope, lazy_span, _)) = best.clone() else {
+            return None;
+        };
         for idx in 0..=path.segment_index(db) {
             let seg_lazy = lazy_span.clone().segment(idx);
             let seg_full = seg_lazy.resolve(db).unwrap();
             if seg_full.range.contains(cursor) {
                 if let Some(id_span) = seg_lazy.ident().resolve(db) {
                     if id_span.range.contains(cursor) {
-                        return Some((path.segment(db, idx).unwrap(), idx != path.segment_index(db), scope));
+                        return Some((
+                            path.segment(db, idx).unwrap(),
+                            idx != path.segment_index(db),
+                            scope,
+                        ));
                     }
                 }
             }
@@ -120,7 +144,7 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
     cursor: Cursor,
 ) -> Option<Vec<ScopeId<'db>>> {
     use debug_vis::*;
-    use hir::visitor::{VisitorCtxt, Visitor};
+    use hir::visitor::{Visitor, VisitorCtxt};
     let item: ItemKind = find_enclosing_item(db, top_mod, cursor)?;
     let mut visitor_ctxt = VisitorCtxt::with_item(db, item);
     let mut path_segment_collector = PathSpanCollector::default();
@@ -134,7 +158,9 @@ pub fn get_goto_target_scopes_for_cursor<'db>(
             hir_analysis::name_resolution::PathResErrorKind::NotFound(bucket) => {
                 bucket.iter_ok().flat_map(|r| r.scope()).collect()
             }
-            hir_analysis::name_resolution::PathResErrorKind::Ambiguous(vec) => vec.into_iter().flat_map(|r| r.scope()).collect(),
+            hir_analysis::name_resolution::PathResErrorKind::Ambiguous(vec) => {
+                vec.into_iter().flat_map(|r| r.scope()).collect()
+            }
             _ => vec![],
         },
     };
@@ -224,7 +250,10 @@ pub fn goto_definition_with_hir_synthesis<'db>(
     let nav_targets = resolve_goto_full(db, db, top_mod, cursor, hir_result);
     let result = Ok(nav_targets
         .into_iter()
-        .map(|t| match t { NavTarget::Scope(s) => GotoTarget::Scope(s), NavTarget::Span(sp) => GotoTarget::Span(sp) })
+        .map(|t| match t {
+            NavTarget::Scope(s) => GotoTarget::Scope(s),
+            NavTarget::Span(sp) => GotoTarget::Span(sp),
+        })
         .collect());
 
     result
@@ -238,7 +267,7 @@ fn is_cursor_on_identifier_char<'db>(
 ) -> bool {
     let source = file.text(db);
     let cursor_offset: usize = cursor.into();
-    
+
     // Special case: cursor is at end of file - check if previous char is identifier
     if cursor_offset == source.len() && cursor_offset > 0 {
         if let Some(ch) = source.chars().nth(cursor_offset - 1) {
@@ -246,19 +275,18 @@ fn is_cursor_on_identifier_char<'db>(
         }
         return false;
     }
-    
+
     if cursor_offset >= source.len() {
         return false;
     }
-    
+
     // Get the character at the cursor position
     if let Some(ch) = source.chars().nth(cursor_offset) {
         return ch.is_alphanumeric() || ch == '_';
     }
-    
+
     false
 }
-
 
 /// Resolve definition location for an expression HIR node
 fn resolve_expression_definition<'db>(
@@ -352,7 +380,8 @@ fn resolve_expression_definition<'db>(
             if path_id.is_bare_ident(db) {
                 if let Some(ident) = path_id.ident(db).to_opt() {
                     let parent_scope = body.scope();
-                    let bucket = resolve_ident_to_bucket(db, PathId::from_ident(db, ident), parent_scope);
+                    let bucket =
+                        resolve_ident_to_bucket(db, PathId::from_ident(db, ident), parent_scope);
                     if let Ok(nr) = bucket.pick(NameDomain::TYPE) {
                         if let NameResKind::Scope(scope) = nr.kind {
                             return Ok(vec![GotoTarget::Scope(scope)]);
@@ -367,13 +396,23 @@ fn resolve_expression_definition<'db>(
                     // Resolve just the specific segment using analysis API
                     match resolve_path_segment(db, *path_id, segment_index, scope, true) {
                         Ok(path_res) => {
-                            if let hir_analysis::name_resolution::PathRes::EnumVariant(v) = &path_res {
+                            if let hir_analysis::name_resolution::PathRes::EnumVariant(v) =
+                                &path_res
+                            {
                                 return Ok(vec![GotoTarget::Scope(ScopeId::Variant(v.variant))]);
                             }
                             if let Some(scope) = path_res.as_scope(db) {
                                 return Ok(vec![GotoTarget::Scope(scope)]);
                             }
-                            if let Some(s) = hir_analysis::name_resolution::resolve_path_segment_scope(db, *path_id, path_id.segment_index(db), scope, true) {
+                            if let Some(s) =
+                                hir_analysis::name_resolution::resolve_path_segment_scope(
+                                    db,
+                                    *path_id,
+                                    path_id.segment_index(db),
+                                    scope,
+                                    true,
+                                )
+                            {
                                 return Ok(vec![GotoTarget::Scope(s)]);
                             }
                             if let hir_analysis::name_resolution::PathRes::Const(_) = &path_res {
@@ -392,7 +431,9 @@ fn resolve_expression_definition<'db>(
                                     .and_then(|p| p.ident(db).to_opt())
                                 {
                                     let single = PathId::from_ident(db, seg_ident);
-                                    if let Some(s) = resolve_value_name_scope(db, parent_scope, single) {
+                                    if let Some(s) =
+                                        resolve_value_name_scope(db, parent_scope, single)
+                                    {
                                         return Ok(vec![GotoTarget::Scope(s)]);
                                     }
                                 }
@@ -400,30 +441,43 @@ fn resolve_expression_definition<'db>(
                         }
                         Err(err) => match err.kind {
                             PathResErrorKind::NotFound(bucket) => {
-                                let scopes = bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                let scopes =
+                                    bucket.iter_ok().flat_map(|r| r.scope()).collect::<Vec<_>>();
                                 if !scopes.is_empty() {
                                     return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
                                 }
                             }
                             PathResErrorKind::Ambiguous(vec) => {
-                                let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                let scopes =
+                                    vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
                                 return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
                             }
                             _ => {}
                         },
                     }
                 }
-                hir::synthesis::HirNodeContext::Regular | hir::synthesis::HirNodeContext::MethodCall => {
+                hir::synthesis::HirNodeContext::Regular
+                | hir::synthesis::HirNodeContext::MethodCall => {
                     // Resolve the full path
                     match resolve_path(db, *path_id, scope, true) {
                         Ok(path_res) => {
-                            if let hir_analysis::name_resolution::PathRes::EnumVariant(v) = &path_res {
+                            if let hir_analysis::name_resolution::PathRes::EnumVariant(v) =
+                                &path_res
+                            {
                                 return Ok(vec![GotoTarget::Scope(ScopeId::Variant(v.variant))]);
                             }
                             if let Some(scope) = path_res.as_scope(db) {
                                 return Ok(vec![GotoTarget::Scope(scope)]);
                             }
-                            if let Some(s) = hir_analysis::name_resolution::resolve_path_segment_scope(db, *path_id, path_id.segment_index(db), scope, true) {
+                            if let Some(s) =
+                                hir_analysis::name_resolution::resolve_path_segment_scope(
+                                    db,
+                                    *path_id,
+                                    path_id.segment_index(db),
+                                    scope,
+                                    true,
+                                )
+                            {
                                 return Ok(vec![GotoTarget::Scope(s)]);
                             }
                             if let hir_analysis::name_resolution::PathRes::Const(_) = &path_res {
@@ -439,7 +493,9 @@ fn resolve_expression_definition<'db>(
                                 };
                                 if let Some(ident) = path_id.ident(db).to_opt() {
                                     let single = PathId::from_ident(db, ident);
-                                    if let Some(s) = resolve_value_name_scope(db, parent_scope, single) {
+                                    if let Some(s) =
+                                        resolve_value_name_scope(db, parent_scope, single)
+                                    {
                                         return Ok(vec![GotoTarget::Scope(s)]);
                                     }
                                 }
@@ -454,7 +510,8 @@ fn resolve_expression_definition<'db>(
                                 }
                             }
                             PathResErrorKind::Ambiguous(vec) => {
-                                let scopes = vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
+                                let scopes =
+                                    vec.into_iter().flat_map(|r| r.scope()).collect::<Vec<_>>();
                                 return Ok(scopes.into_iter().map(GotoTarget::Scope).collect());
                             }
                             _ => {}
@@ -517,20 +574,16 @@ fn resolve_expression_definition<'db>(
                     Ok(vec![])
                 }
                 Err(err) => match err.kind {
-                    PathResErrorKind::NotFound(bucket) => Ok(
-                        bucket
-                            .iter_ok()
-                            .flat_map(|r| r.scope())
-                            .map(GotoTarget::Scope)
-                            .collect::<Vec<_>>()
-                    ),
-                    PathResErrorKind::Ambiguous(vec) => Ok(
-                        vec
-                            .into_iter()
-                            .flat_map(|r| r.scope())
-                            .map(GotoTarget::Scope)
-                            .collect::<Vec<_>>()
-                    ),
+                    PathResErrorKind::NotFound(bucket) => Ok(bucket
+                        .iter_ok()
+                        .flat_map(|r| r.scope())
+                        .map(GotoTarget::Scope)
+                        .collect::<Vec<_>>()),
+                    PathResErrorKind::Ambiguous(vec) => Ok(vec
+                        .into_iter()
+                        .flat_map(|r| r.scope())
+                        .map(GotoTarget::Scope)
+                        .collect::<Vec<_>>()),
                     _ => Ok(vec![]),
                 },
             }
@@ -577,11 +630,12 @@ fn resolve_statement_definition<'db>(
                 // Get the type data and check if it's a path type
                 if let hir::hir_def::TypeKind::Path(Partial::Present(path_id)) = type_id.data(db) {
                     let scope = body.scope();
-                    
+
                     // Handle bare type identifiers
                     if path_id.is_bare_ident(db) {
                         if let Some(ident) = path_id.ident(db).to_opt() {
-                            let bucket = resolve_ident_to_bucket(db, PathId::from_ident(db, ident), scope);
+                            let bucket =
+                                resolve_ident_to_bucket(db, PathId::from_ident(db, ident), scope);
                             if let Ok(nr) = bucket.pick(NameDomain::TYPE) {
                                 if let NameResKind::Scope(type_scope) = nr.kind {
                                     return Ok(vec![GotoTarget::Scope(type_scope)]);
@@ -596,39 +650,56 @@ fn resolve_statement_definition<'db>(
                             // Resolve just the specific segment using analysis API
                             match resolve_path_segment(db, *path_id, segment_index, scope, false) {
                                 Ok(path_res) => {
-                                    if let hir_analysis::name_resolution::PathRes::EnumVariant(v) = &path_res {
-                                        targets.push(GotoTarget::Scope(ScopeId::Variant(v.variant)));
+                                    if let hir_analysis::name_resolution::PathRes::EnumVariant(v) =
+                                        &path_res
+                                    {
+                                        targets
+                                            .push(GotoTarget::Scope(ScopeId::Variant(v.variant)));
                                     } else if let Some(scope) = path_res.as_scope(db) {
                                         targets.push(GotoTarget::Scope(scope));
                                     }
                                 }
                                 Err(err) => match err.kind {
                                     PathResErrorKind::NotFound(bucket) => targets.extend(
-                                        bucket.iter_ok().flat_map(|r| r.scope()).map(GotoTarget::Scope)
+                                        bucket
+                                            .iter_ok()
+                                            .flat_map(|r| r.scope())
+                                            .map(GotoTarget::Scope),
                                     ),
                                     PathResErrorKind::Ambiguous(vec) => targets.extend(
-                                        vec.into_iter().flat_map(|r| r.scope()).map(GotoTarget::Scope)
+                                        vec.into_iter()
+                                            .flat_map(|r| r.scope())
+                                            .map(GotoTarget::Scope),
                                     ),
                                     _ => {}
                                 },
                             }
                         }
-                        hir::synthesis::HirNodeContext::Regular | hir::synthesis::HirNodeContext::MethodCall => {
+                        hir::synthesis::HirNodeContext::Regular
+                        | hir::synthesis::HirNodeContext::MethodCall => {
                             // Resolve the full path
                             match resolve_path(db, *path_id, scope, false) {
                                 Ok(path_res) => {
-                                    if let hir_analysis::name_resolution::PathRes::EnumVariant(v) = &path_res {
-                                        targets.push(GotoTarget::Scope(ScopeId::Variant(v.variant)));
+                                    if let hir_analysis::name_resolution::PathRes::EnumVariant(v) =
+                                        &path_res
+                                    {
+                                        targets
+                                            .push(GotoTarget::Scope(ScopeId::Variant(v.variant)));
                                     } else if let Some(scope) = path_res.as_scope(db) {
                                         targets.push(GotoTarget::Scope(scope));
                                     }
                                 }
                                 Err(err) => match err.kind {
                                     PathResErrorKind::NotFound(bucket) => targets.extend(
-                                        bucket.iter_ok().flat_map(|r| r.scope()).map(GotoTarget::Scope)
+                                        bucket
+                                            .iter_ok()
+                                            .flat_map(|r| r.scope())
+                                            .map(GotoTarget::Scope),
                                     ),
                                     PathResErrorKind::Ambiguous(vec) => targets.extend(
-                                        vec.into_iter().flat_map(|r| r.scope()).map(GotoTarget::Scope)
+                                        vec.into_iter()
+                                            .flat_map(|r| r.scope())
+                                            .map(GotoTarget::Scope),
                                     ),
                                     _ => {}
                                 },
@@ -832,7 +903,7 @@ pub async fn handle_goto_definition(
 
     // Use enhanced HIR synthesis approach
     match goto_definition_with_hir_synthesis(&backend.db, top_mod, cursor, file) {
-         Ok(targets) => {
+        Ok(targets) => {
             if !targets.is_empty() {
                 let locations: Result<Vec<_>, _> = targets
                     .iter()
@@ -846,9 +917,9 @@ pub async fn handle_goto_definition(
                     })
                     .collect();
                 match locations {
-                    Ok(locations) => Ok(Some(
-                        async_lsp::lsp_types::GotoDefinitionResponse::Array(locations),
-                    )),
+                    Ok(locations) => Ok(Some(async_lsp::lsp_types::GotoDefinitionResponse::Array(
+                        locations,
+                    ))),
                     Err(e) => {
                         error!("Failed to convert targets to locations: {:?}", e);
                         Ok(None)
@@ -858,7 +929,7 @@ pub async fn handle_goto_definition(
                 Ok(None)
             }
         }
-       Err(e) => {
+        Err(e) => {
             error!("Enhanced goto definition failed: {:?}", e);
             Ok(None)
         }
@@ -889,7 +960,9 @@ fn try_resolve_local_variable<'db>(
                         if let Some(span) = pat_id.span(body).resolve(db) {
                             if best_span
                                 .as_ref()
-                                .map(|s: &common::diagnostics::Span| s.range.start() < span.range.start())
+                                .map(|s: &common::diagnostics::Span| {
+                                    s.range.start() < span.range.start()
+                                })
                                 .unwrap_or(true)
                             {
                                 best_span = Some(span);
@@ -913,10 +986,12 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use hir::visitor::{VisitorCtxt, Visitor};
-    pub use crate::functionality::goto::debug_vis::{PathSpanCollector, find_path_surrounding_cursor, find_enclosing_item};
+    pub use crate::functionality::goto::debug_vis::{
+        find_enclosing_item, find_path_surrounding_cursor, PathSpanCollector,
+    };
     use crate::test_utils::load_ingot_from_directory;
     use driver::DriverDataBase;
+    use hir::visitor::{Visitor, VisitorCtxt};
 
     // given a cursor position and a string, convert to cursor line and column
     fn line_col_from_cursor(cursor: Cursor, s: &str) -> (usize, usize) {

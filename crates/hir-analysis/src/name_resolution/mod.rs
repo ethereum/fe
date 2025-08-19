@@ -6,6 +6,7 @@ mod path_resolver;
 pub(crate) mod traits_in_scope;
 mod visibility_checker;
 
+pub use crate::ty::ty_check::local_binding_span_for_expr;
 use common::ingot::Ingot;
 use hir::hir_def::TopLevelMod;
 pub use import_resolver::ResolvedImports;
@@ -14,10 +15,10 @@ pub use name_resolver::{
     NameResolutionError, QueryDirective,
 };
 pub use path_resolver::{
-    resolve_ident_to_bucket, resolve_name_res, resolve_path, resolve_path_with_observer,
-    resolve_path_segment, resolve_path_segment_scope, resolve_tail_value_scope, PathRes, PathResError, PathResErrorKind, ResolvedVariant,
+    resolve_ident_to_bucket, resolve_name_res, resolve_path, resolve_path_segment,
+    resolve_path_segment_scope, resolve_path_with_observer, resolve_tail_value_scope, PathRes,
+    PathResError, PathResErrorKind, ResolvedVariant,
 };
-pub use crate::ty::ty_check::local_binding_span_for_expr;
 use tracing::debug;
 pub use traits_in_scope::available_traits_in_scope;
 pub(crate) use visibility_checker::is_scope_visible_from;

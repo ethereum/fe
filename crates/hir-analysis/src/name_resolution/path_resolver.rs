@@ -373,7 +373,9 @@ pub fn resolve_path_segment<'db>(
     scope: ScopeId<'db>,
     resolve_tail_as_value: bool,
 ) -> PathResolutionResult<'db, PathRes<'db>> {
-    if seg_idx > path.segment_index(db) { return Err(PathResError::parse_err(path)); }
+    if seg_idx > path.segment_index(db) {
+        return Err(PathResError::parse_err(path));
+    }
     let mut current_parent: Option<PathRes<'db>> = None;
     let mut parent_scope = scope;
     for i in 0..=seg_idx {
@@ -407,26 +409,40 @@ pub fn resolve_path_segment_scope<'db>(
     scope: ScopeId<'db>,
     resolve_tail_as_value: bool,
 ) -> Option<ScopeId<'db>> {
-    if seg_idx > path.segment_index(db) { return None; }
+    if seg_idx > path.segment_index(db) {
+        return None;
+    }
     let mut current_parent: Option<PathRes<'db>> = None;
     let mut parent_scope = scope;
     for i in 0..=seg_idx {
         let segment = path.segment(db, i).unwrap();
-        let query_scope = current_parent.as_ref().and_then(|r| r.as_scope(db)).unwrap_or(parent_scope);
+        let query_scope = current_parent
+            .as_ref()
+            .and_then(|r| r.as_scope(db))
+            .unwrap_or(parent_scope);
         let query = make_query(db, segment, query_scope);
         let bucket = resolve_query(db, query);
         let nameres = if i == path.segment_index(db) && resolve_tail_as_value {
             match bucket.pick(NameDomain::VALUE) {
                 Ok(res) => res.clone(),
-                Err(_) => match bucket.pick(NameDomain::TYPE) { Ok(res) => res.clone(), Err(_) => return None },
+                Err(_) => match bucket.pick(NameDomain::TYPE) {
+                    Ok(res) => res.clone(),
+                    Err(_) => return None,
+                },
             }
         } else {
-            match bucket.pick(NameDomain::TYPE) { Ok(res) => res.clone(), Err(_) => return None }
+            match bucket.pick(NameDomain::TYPE) {
+                Ok(res) => res.clone(),
+                Err(_) => return None,
+            }
         };
         if i == seg_idx {
-            if let super::name_resolver::NameResKind::Scope(s) = nameres.kind { return Some(s); }
+            if let super::name_resolver::NameResKind::Scope(s) = nameres.kind {
+                return Some(s);
+            }
         }
-        let reso = resolve_name_res(db, &nameres, current_parent.clone(), segment, query_scope).ok()?;
+        let reso =
+            resolve_name_res(db, &nameres, current_parent.clone(), segment, query_scope).ok()?;
         current_parent = Some(reso);
         parent_scope = query_scope;
     }
@@ -454,7 +470,11 @@ pub fn resolve_tail_value_scope<'db>(
 ) -> Option<ScopeId<'db>> {
     let parent_scope = path
         .parent(db)
-        .and_then(|p| resolve_path(db, p, scope, false).ok().and_then(|r| r.as_scope(db)))
+        .and_then(|p| {
+            resolve_path(db, p, scope, false)
+                .ok()
+                .and_then(|r| r.as_scope(db))
+        })
         .unwrap_or(scope);
     let query = make_query(db, path, parent_scope);
     let bucket = resolve_query(db, query);

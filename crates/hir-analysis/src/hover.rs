@@ -40,7 +40,9 @@ pub fn get_item_definition_markdown(db: &dyn SpannedHirDb, item: ItemKind) -> Op
     if let Some(name_span) = item.name_span()?.resolve(db) {
         let mut name_line_start: usize = name_span.range.start().into();
         let file_text = span.file.text(db).as_str();
-        while name_line_start > 0 && file_text.chars().nth(name_line_start - 1).unwrap_or('\n') != '\n' {
+        while name_line_start > 0
+            && file_text.chars().nth(name_line_start - 1).unwrap_or('\n') != '\n'
+        {
             name_line_start -= 1;
         }
         start = name_line_start;
@@ -59,8 +61,12 @@ pub fn hover_markdown_for_scope(
     if let Some(item) = scope.to_item() {
         let header = get_item_definition_markdown(db_span, item);
         let mut lines = Vec::new();
-        if let Some(h) = header { lines.push(h); }
-        if let Some(doc) = get_docstring(db_hir, scope) { lines.push(doc); }
+        if let Some(h) = header {
+            lines.push(h);
+        }
+        if let Some(doc) = get_docstring(db_hir, scope) {
+            lines.push(doc);
+        }
         if lines.is_empty() {
             get_item_path_markdown(db_hir, item)
         } else {
@@ -68,6 +74,8 @@ pub fn hover_markdown_for_scope(
         }
     } else {
         // Fallback: show the pretty path for non-item scopes
-        scope.pretty_path(db_hir).map(|p| format!("```fe\n{}\n```", p))
+        scope
+            .pretty_path(db_hir)
+            .map(|p| format!("```fe\n{}\n```", p))
     }
 }

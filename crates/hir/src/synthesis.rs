@@ -21,12 +21,12 @@
 use parser::{ast_index::AstNodeAtPosition, TextSize};
 use rangemap::RangeMap;
 
+use crate::visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt};
 use crate::{
     hir_def::{Body, ExprId, ItemKind, PatId, PathId, StmtId, TopLevelMod, TypeId},
     span::{body_source_map, HirOrigin, LazySpan},
     SpannedHirDb,
 };
-use crate::visitor::{prelude::LazyPathSpan, Visitor, VisitorCtxt};
 
 /// Wrapper for RangeMap to add Salsa compatibility traits
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -191,6 +191,30 @@ impl<'db> ModuleLazyHir<'db> {
             end > start && cur == end
         }
     }
+    /// Return the path segment index at `cursor` if any, using inclusive end.
+    fn path_segment_index_at_cursor(path: &parser::ast::Path, cursor: Cursor) -> Option<usize> {
+        use parser::ast::prelude::AstNode;
+        for (idx, segment) in path.segments().enumerate() {
+            let r = segment.syntax().text_range();
+            if ModuleLazyHir::range_contains_inclusive(r, cursor) {
+                return Some(idx);
+            }
+        }
+        None
+    }
+
+    /// If `ty` is a path type that contains the cursor, return its path.
+    fn path_in_type_at_cursor(ty: &parser::ast::Type, cursor: Cursor) -> Option<parser::ast::Path> {
+        if let parser::ast::TypeKind::Path(path_ty) = ty.kind() {
+            if let Some(path) = path_ty.path() {
+                use parser::ast::prelude::AstNode;
+                if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
+                    return Some(path);
+                }
+            }
+        }
+        None
+    }
     /// Create a new lazy HIR resolver for the given module
     pub fn new(top_mod: TopLevelMod<'db>) -> Self {
         Self {
@@ -238,17 +262,17 @@ impl<'db> LazyHir<'db> for ModuleLazyHir<'db> {
             // Handle nodes within function bodies (existing logic)
             return resolver.find_hir_in_body(db, body, cursor);
         }
-        
+
         // If not in a body, check if we're in an item definition
         resolver.find_hir_in_item(db, cursor)
     }
-    
+
     fn find_bodies_at_position(&self, db: &'db dyn SpannedHirDb, cursor: Cursor) -> Vec<Body<'db>> {
         let mut resolver = self.clone();
         resolver.ensure_body_cache(db);
-        
+
         let cache = resolver.body_cache.as_ref().unwrap();
-        
+
         // For now, just return the single body at this position
         if let Some(body) = cache.get(&cursor) {
             vec![body]
@@ -281,18 +305,9 @@ impl<'db> ModuleLazyHir<'db> {
                     let context = match expr_ast.kind() {
                         parser::ast::ExprKind::Path(path_expr) => {
                             if let Some(path) = path_expr.path() {
-                                // Find which segment contains the cursor
-                                let mut segment_index = None;
-                                for (idx, segment) in path.segments().enumerate() {
-                                    use parser::ast::prelude::AstNode;
-                                    let segment_range = segment.syntax().text_range();
-                                    if ModuleLazyHir::range_contains_inclusive(segment_range, cursor) {
-                                        segment_index = Some(idx);
-                                        break;
-                                    }
-                                }
-                                
-                                if let Some(idx) = segment_index {
+                                if let Some(idx) =
+                                    ModuleLazyHir::path_segment_index_at_cursor(&path, cursor)
+                                {
                                     HirNodeContext::PathSegment(idx)
                                 } else {
                                     HirNodeContext::Regular
@@ -307,8 +322,12 @@ impl<'db> ModuleLazyHir<'db> {
                                 let r = name_tok.text_range();
                                 if ModuleLazyHir::range_contains_inclusive(r, cursor) {
                                     HirNodeContext::MethodCall
-                                } else { HirNodeContext::Regular }
-                            } else { HirNodeContext::Regular }
+                                } else {
+                                    HirNodeContext::Regular
+                                }
+                            } else {
+                                HirNodeContext::Regular
+                            }
                         }
                         parser::ast::ExprKind::Field(field_expr) => {
                             // Check if cursor is on the field name
@@ -328,21 +347,23 @@ impl<'db> ModuleLazyHir<'db> {
                             if let Some(path) = rec_init.path() {
                                 let pr = path.syntax().text_range();
                                 if ModuleLazyHir::range_contains_inclusive(pr, cursor) {
-                                    let mut segment_index = None;
-                                    for (idx, seg) in path.segments().enumerate() {
-                                        let sr = seg.syntax().text_range();
-                                        if ModuleLazyHir::range_contains_inclusive(sr, cursor) {
-                                            segment_index = Some(idx);
-                                            break;
-                                        }
+                                    if let Some(idx) =
+                                        ModuleLazyHir::path_segment_index_at_cursor(&path, cursor)
+                                    {
+                                        HirNodeContext::PathSegment(idx)
+                                    } else {
+                                        HirNodeContext::Regular
                                     }
-                                    if let Some(idx) = segment_index { HirNodeContext::PathSegment(idx) } else { HirNodeContext::Regular }
-                                } else { HirNodeContext::Regular }
-                            } else { HirNodeContext::Regular }
+                                } else {
+                                    HirNodeContext::Regular
+                                }
+                            } else {
+                                HirNodeContext::Regular
+                            }
                         }
-                        _ => HirNodeContext::Regular
+                        _ => HirNodeContext::Regular,
                     };
-                    
+
                     LazyHirResult::Expr(body, expr_id, context)
                 } else {
                     LazyHirResult::None
@@ -354,30 +375,11 @@ impl<'db> ModuleLazyHir<'db> {
                     // Check if cursor is within a path type in the statement
                     let context = if let parser::ast::StmtKind::Let(let_stmt) = stmt_ast.kind() {
                         if let Some(ty) = let_stmt.type_annotation() {
-                            if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
-                                if let Some(path) = path_type.path() {
-                                    // Check if cursor is within this path
-                                    use parser::ast::prelude::AstNode;
-                                    let path_range = path.syntax().text_range();
-                                    if ModuleLazyHir::range_contains_inclusive(path_range, cursor) {
-                                        // Find which segment contains the cursor
-                                        let mut segment_index = None;
-                                        for (idx, segment) in path.segments().enumerate() {
-                                            let segment_range = segment.syntax().text_range();
-                                            if ModuleLazyHir::range_contains_inclusive(segment_range, cursor) {
-                                                segment_index = Some(idx);
-                                                break;
-                                            }
-                                        }
-                                        
-                                        if let Some(idx) = segment_index {
-                                            HirNodeContext::PathSegment(idx)
-                                        } else {
-                                            HirNodeContext::Regular
-                                        }
-                                    } else {
-                                        HirNodeContext::Regular
-                                    }
+                            if let Some(path) = ModuleLazyHir::path_in_type_at_cursor(&ty, cursor) {
+                                if let Some(idx) =
+                                    ModuleLazyHir::path_segment_index_at_cursor(&path, cursor)
+                                {
+                                    HirNodeContext::PathSegment(idx)
                                 } else {
                                     HirNodeContext::Regular
                                 }
@@ -390,7 +392,7 @@ impl<'db> ModuleLazyHir<'db> {
                     } else {
                         HirNodeContext::Regular
                     };
-                    
+
                     LazyHirResult::Stmt(body, stmt_id, context)
                 } else {
                     LazyHirResult::None
@@ -404,40 +406,25 @@ impl<'db> ModuleLazyHir<'db> {
                     LazyHirResult::None
                 }
             }
-            AstNodeAtPosition::None => {
-                LazyHirResult::None
-            }
+            AstNodeAtPosition::None => LazyHirResult::None,
         }
     }
 
-    fn find_bodies_at_position(&self, db: &'db dyn SpannedHirDb, cursor: Cursor) -> Vec<Body<'db>> {
-        let mut resolver = self.clone();
-        if let Some(body) = resolver.find_containing_body(db, cursor) {
-            vec![body]
-        } else {
-            vec![]
-        }
-    }
-    
     /// Find HIR nodes in item-level constructs (generic bounds, where clauses, etc.)
-    fn find_hir_in_item(
-        &self,
-        db: &'db dyn SpannedHirDb,
-        cursor: Cursor,
-    ) -> LazyHirResult<'db> {
+    fn find_hir_in_item(&self, db: &'db dyn SpannedHirDb, cursor: Cursor) -> LazyHirResult<'db> {
         use parser::ast::prelude::AstNode;
         use parser::ast::{GenericParamsOwner, WhereClauseOwner};
-        
+
         // Parse the file to get the AST
         let green_node = crate::lower::parse_file_impl(db, self.top_mod);
         let root_syntax = parser::SyntaxNode::new_root(green_node);
-        
+
         // Find the most specific node at the cursor position
         let token = match root_syntax.token_at_offset(cursor).right_biased() {
             Some(token) => token,
             None => return LazyHirResult::None,
         };
-        
+
         // Walk up from the token to find relevant item-level constructs
         for ancestor in token.parent_ancestors() {
             // Check if we're in a struct/enum/trait/impl item
@@ -445,78 +432,70 @@ impl<'db> ModuleLazyHir<'db> {
                 if let Some(item_kind) = item.kind() {
                     match item_kind {
                         parser::ast::ItemKind::Struct(struct_item) => {
-                        // Check if cursor is in generic parameters
-                        if let Some(generics) = struct_item.generic_params() {
-                            if ModuleLazyHir::range_contains_inclusive(generics.syntax().text_range(), cursor) {
-                                // Find which generic parameter contains the cursor
-                                for (idx, param) in generics.into_iter().enumerate() {
-                                    // Param name under cursor -> generic param
-                                    if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
-                                        if let Some(name_tok) = type_param.name() {
-                                            if ModuleLazyHir::range_contains_inclusive(name_tok.text_range(), cursor) {
-                                                if let Some(item_kind) = parser::ast::Item::cast(struct_item.syntax().clone()).and_then(|i| i.kind()) {
-                                                    let hir_item = self.find_enclosing_item_for_ast(db, &parser::ast::Item::cast(struct_item.syntax().clone()).unwrap()).unwrap_or_else(|| self.top_mod.into());
-                                                    return LazyHirResult::ItemGenericParam(hir_item, idx as u16);
-                                                }
-                                            }
-                                        }
-                                    }
-                                    if ModuleLazyHir::range_contains_inclusive(param.syntax().text_range(), cursor) {
-                                        // Check if this is a type parameter with bounds
-                                        if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
-                                            if let Some(bounds) = type_param.bounds() {
-                                                for bound in bounds {
-                                                    if ModuleLazyHir::range_contains_inclusive(bound.syntax().text_range(), cursor) {
-                                                        // This is a type bound - we need to resolve it
-                                                        if let Some(path) = extract_path_from_type_bound(&bound) {
-                                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::TypeBound, cursor);
-                                                        }
+                            // Check if cursor is in generic parameters
+                            if let Some(generics) = struct_item.generic_params() {
+                                if ModuleLazyHir::range_contains_inclusive(
+                                    generics.syntax().text_range(),
+                                    cursor,
+                                ) {
+                                    // Find which generic parameter contains the cursor
+                                    for (idx, param) in generics.into_iter().enumerate() {
+                                        // Param name under cursor -> generic param
+                                        if let parser::ast::GenericParamKind::Type(type_param) =
+                                            param.kind()
+                                        {
+                                            if let Some(name_tok) = type_param.name() {
+                                                if ModuleLazyHir::range_contains_inclusive(
+                                                    name_tok.text_range(),
+                                                    cursor,
+                                                ) {
+                                                    if let Some(item_kind) =
+                                                        parser::ast::Item::cast(
+                                                            struct_item.syntax().clone(),
+                                                        )
+                                                        .and_then(|i| i.kind())
+                                                    {
+                                                        let hir_item = self
+                                                            .find_enclosing_item_for_ast(
+                                                                db,
+                                                                &parser::ast::Item::cast(
+                                                                    struct_item.syntax().clone(),
+                                                                )
+                                                                .unwrap(),
+                                                            )
+                                                            .unwrap_or_else(|| self.top_mod.into());
+                                                        return LazyHirResult::ItemGenericParam(
+                                                            hir_item, idx as u16,
+                                                        );
                                                     }
                                                 }
                                             }
                                         }
-                                    }
-                                }
-                            }
-                        }
-                        // Also inspect struct field types
-                        if let Some(fields) = struct_item.fields() {
-                            for field in fields {
-                                if let Some(ty) = field.ty() {
-                                    if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
-                                        if let Some(path) = path_type.path() {
-                                            use parser::ast::prelude::AstNode;
-                                            if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
-                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                        parser::ast::ItemKind::Impl(impl_item) => {
-                            // Check if cursor is in generic parameters
-                            if let Some(generics) = impl_item.generic_params() {
-                                if ModuleLazyHir::range_contains_inclusive(generics.syntax().text_range(), cursor) {
-                                    // Find which generic parameter contains the cursor
-                                    for (idx, param) in generics.into_iter().enumerate() {
-                                        if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
-                                            if let Some(name_tok) = type_param.name() {
-                                                if ModuleLazyHir::range_contains_inclusive(name_tok.text_range(), cursor) {
-                                                    return LazyHirResult::ItemGenericParam(self.find_enclosing_item_for_ast(db, &item).unwrap_or(self.top_mod.into()), idx as u16);
-                                                }
-                                            }
-                                        }
-                                        if ModuleLazyHir::range_contains_inclusive(param.syntax().text_range(), cursor) {
+                                        if ModuleLazyHir::range_contains_inclusive(
+                                            param.syntax().text_range(),
+                                            cursor,
+                                        ) {
                                             // Check if this is a type parameter with bounds
-                                            if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                            if let parser::ast::GenericParamKind::Type(type_param) =
+                                                param.kind()
+                                            {
                                                 if let Some(bounds) = type_param.bounds() {
                                                     for bound in bounds {
-                                                        if ModuleLazyHir::range_contains_inclusive(bound.syntax().text_range(), cursor) {
+                                                        if ModuleLazyHir::range_contains_inclusive(
+                                                            bound.syntax().text_range(),
+                                                            cursor,
+                                                        ) {
                                                             // This is a type bound - we need to resolve it
-                                                            if let Some(path) = extract_path_from_type_bound(&bound) {
-                                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::TypeBound, cursor);
+                                                            if let Some(path) =
+                                                                extract_path_from_type_bound(&bound)
+                                                            {
+                                                                return self.resolve_item_path(
+                                                                    db,
+                                                                    item.clone(),
+                                                                    path,
+                                                                    ItemNodeContext::TypeBound,
+                                                                    cursor,
+                                                                );
                                                             }
                                                         }
                                                     }
@@ -526,13 +505,108 @@ impl<'db> ModuleLazyHir<'db> {
                                     }
                                 }
                             }
-                            
+                            // Also inspect struct field types
+                            if let Some(fields) = struct_item.fields() {
+                                for field in fields {
+                                    if let Some(ty) = field.ty() {
+                                        if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                            if let Some(path) = path_type.path() {
+                                                use parser::ast::prelude::AstNode;
+                                                if ModuleLazyHir::range_contains_inclusive(
+                                                    path.syntax().text_range(),
+                                                    cursor,
+                                                ) {
+                                                    return self.resolve_item_path(
+                                                        db,
+                                                        item.clone(),
+                                                        path,
+                                                        ItemNodeContext::Regular,
+                                                        cursor,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        parser::ast::ItemKind::Impl(impl_item) => {
+                            // Check if cursor is in generic parameters
+                            if let Some(generics) = impl_item.generic_params() {
+                                if ModuleLazyHir::range_contains_inclusive(
+                                    generics.syntax().text_range(),
+                                    cursor,
+                                ) {
+                                    // Find which generic parameter contains the cursor
+                                    for (idx, param) in generics.into_iter().enumerate() {
+                                        if let parser::ast::GenericParamKind::Type(type_param) =
+                                            param.kind()
+                                        {
+                                            if let Some(name_tok) = type_param.name() {
+                                                if ModuleLazyHir::range_contains_inclusive(
+                                                    name_tok.text_range(),
+                                                    cursor,
+                                                ) {
+                                                    return LazyHirResult::ItemGenericParam(
+                                                        self.find_enclosing_item_for_ast(db, &item)
+                                                            .unwrap_or(self.top_mod.into()),
+                                                        idx as u16,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        if ModuleLazyHir::range_contains_inclusive(
+                                            param.syntax().text_range(),
+                                            cursor,
+                                        ) {
+                                            // Check if this is a type parameter with bounds
+                                            if let parser::ast::GenericParamKind::Type(type_param) =
+                                                param.kind()
+                                            {
+                                                if let Some(bounds) = type_param.bounds() {
+                                                    for bound in bounds {
+                                                        if ModuleLazyHir::range_contains_inclusive(
+                                                            bound.syntax().text_range(),
+                                                            cursor,
+                                                        ) {
+                                                            // This is a type bound - we need to resolve it
+                                                            if let Some(path) =
+                                                                extract_path_from_type_bound(&bound)
+                                                            {
+                                                                return self.resolve_item_path(
+                                                                    db,
+                                                                    item.clone(),
+                                                                    path,
+                                                                    ItemNodeContext::TypeBound,
+                                                                    cursor,
+                                                                );
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             // Check if cursor is in the impl target type
                             if let Some(impl_target) = impl_item.ty() {
-                                if ModuleLazyHir::range_contains_inclusive(impl_target.syntax().text_range(), cursor) {
-                                    if let parser::ast::TypeKind::Path(path_type) = impl_target.kind() {
+                                if ModuleLazyHir::range_contains_inclusive(
+                                    impl_target.syntax().text_range(),
+                                    cursor,
+                                ) {
+                                    if let parser::ast::TypeKind::Path(path_type) =
+                                        impl_target.kind()
+                                    {
                                         if let Some(path) = path_type.path() {
-                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::ImplHeader, cursor);
+                                            return self.resolve_item_path(
+                                                db,
+                                                item.clone(),
+                                                path,
+                                                ItemNodeContext::ImplHeader,
+                                                cursor,
+                                            );
                                         }
                                     }
                                 }
@@ -544,11 +618,22 @@ impl<'db> ModuleLazyHir<'db> {
                                     if let Some(params) = func.params() {
                                         for param in params {
                                             if let Some(ty) = param.ty() {
-                                                if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                                if let parser::ast::TypeKind::Path(path_type) =
+                                                    ty.kind()
+                                                {
                                                     if let Some(path) = path_type.path() {
                                                         use parser::ast::prelude::AstNode;
-                                                        if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
-                                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                                        if ModuleLazyHir::range_contains_inclusive(
+                                                            path.syntax().text_range(),
+                                                            cursor,
+                                                        ) {
+                                                            return self.resolve_item_path(
+                                                                db,
+                                                                item.clone(),
+                                                                path,
+                                                                ItemNodeContext::Regular,
+                                                                cursor,
+                                                            );
                                                         }
                                                     }
                                                 }
@@ -560,8 +645,17 @@ impl<'db> ModuleLazyHir<'db> {
                                         if let parser::ast::TypeKind::Path(path_type) = ret.kind() {
                                             if let Some(path) = path_type.path() {
                                                 use parser::ast::prelude::AstNode;
-                                                if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
-                                                    return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                                if ModuleLazyHir::range_contains_inclusive(
+                                                    path.syntax().text_range(),
+                                                    cursor,
+                                                ) {
+                                                    return self.resolve_item_path(
+                                                        db,
+                                                        item.clone(),
+                                                        path,
+                                                        ItemNodeContext::Regular,
+                                                        cursor,
+                                                    );
                                                 }
                                             }
                                         }
@@ -575,22 +669,42 @@ impl<'db> ModuleLazyHir<'db> {
                                 if generics.syntax().text_range().contains(cursor) {
                                     // Find which generic parameter contains the cursor
                                     for (idx, param) in generics.into_iter().enumerate() {
-                                        if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                        if let parser::ast::GenericParamKind::Type(type_param) =
+                                            param.kind()
+                                        {
                                             if let Some(name_tok) = type_param.name() {
                                                 if name_tok.text_range().contains(cursor) {
-                                                    return LazyHirResult::ItemGenericParam(self.find_enclosing_item_for_ast(db, &item).unwrap_or(self.top_mod.into()), idx as u16);
+                                                    return LazyHirResult::ItemGenericParam(
+                                                        self.find_enclosing_item_for_ast(db, &item)
+                                                            .unwrap_or(self.top_mod.into()),
+                                                        idx as u16,
+                                                    );
                                                 }
                                             }
                                         }
                                         if param.syntax().text_range().contains(cursor) {
                                             // Check if this is a type parameter with bounds
-                                            if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
+                                            if let parser::ast::GenericParamKind::Type(type_param) =
+                                                param.kind()
+                                            {
                                                 if let Some(bounds) = type_param.bounds() {
                                                     for bound in bounds {
-                                                        if bound.syntax().text_range().contains(cursor) {
+                                                        if bound
+                                                            .syntax()
+                                                            .text_range()
+                                                            .contains(cursor)
+                                                        {
                                                             // This is a type bound - we need to resolve it
-                                                            if let Some(path) = extract_path_from_type_bound(&bound) {
-                                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::TypeBound, cursor);
+                                                            if let Some(path) =
+                                                                extract_path_from_type_bound(&bound)
+                                                            {
+                                                                return self.resolve_item_path(
+                                                                    db,
+                                                                    item.clone(),
+                                                                    path,
+                                                                    ItemNodeContext::TypeBound,
+                                                                    cursor,
+                                                                );
                                                             }
                                                         }
                                                     }
@@ -600,49 +714,84 @@ impl<'db> ModuleLazyHir<'db> {
                                     }
                                 }
                             }
-                            
+
                             // Check if cursor is in the trait being implemented
                             if let Some(trait_ref) = impl_trait.trait_ref() {
                                 if let Some(trait_path) = trait_ref.path() {
                                     if trait_path.syntax().text_range().contains(cursor) {
-                                        return self.resolve_item_path(db, item.clone(), trait_path, ItemNodeContext::ImplHeader, cursor);
+                                        return self.resolve_item_path(
+                                            db,
+                                            item.clone(),
+                                            trait_path,
+                                            ItemNodeContext::ImplHeader,
+                                            cursor,
+                                        );
                                     }
                                 }
                             }
-                            
+
                             // Check if cursor is in the impl target type
                             if let Some(impl_target) = impl_trait.ty() {
                                 if impl_target.syntax().text_range().contains(cursor) {
-                                    if let parser::ast::TypeKind::Path(path_type) = impl_target.kind() {
+                                    if let parser::ast::TypeKind::Path(path_type) =
+                                        impl_target.kind()
+                                    {
                                         if let Some(path) = path_type.path() {
-                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::ImplHeader, cursor);
+                                            return self.resolve_item_path(
+                                                db,
+                                                item.clone(),
+                                                path,
+                                                ItemNodeContext::ImplHeader,
+                                                cursor,
+                                            );
                                         }
                                     }
                                 }
                             }
                         }
                         parser::ast::ItemKind::Trait(trait_item) => {
-                        // Check if cursor is in generic parameters
-                        if let Some(generics) = trait_item.generic_params() {
-                            if generics.syntax().text_range().contains(cursor) {
-                                // Find which generic parameter contains the cursor
-                                for (idx, param) in generics.into_iter().enumerate() {
-                                    if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
-                                        if let Some(name_tok) = type_param.name() {
-                                            if name_tok.text_range().contains(cursor) {
-                                                return LazyHirResult::ItemGenericParam(self.find_enclosing_item_for_ast(db, &item).unwrap_or(self.top_mod.into()), idx as u16);
+                            // Check if cursor is in generic parameters
+                            if let Some(generics) = trait_item.generic_params() {
+                                if generics.syntax().text_range().contains(cursor) {
+                                    // Find which generic parameter contains the cursor
+                                    for (idx, param) in generics.into_iter().enumerate() {
+                                        if let parser::ast::GenericParamKind::Type(type_param) =
+                                            param.kind()
+                                        {
+                                            if let Some(name_tok) = type_param.name() {
+                                                if name_tok.text_range().contains(cursor) {
+                                                    return LazyHirResult::ItemGenericParam(
+                                                        self.find_enclosing_item_for_ast(db, &item)
+                                                            .unwrap_or(self.top_mod.into()),
+                                                        idx as u16,
+                                                    );
+                                                }
                                             }
                                         }
-                                    }
-                                    if param.syntax().text_range().contains(cursor) {
-                                        // Check if this is a type parameter with bounds
-                                        if let parser::ast::GenericParamKind::Type(type_param) = param.kind() {
-                                            if let Some(bounds) = type_param.bounds() {
-                                                for bound in bounds {
-                                                    if bound.syntax().text_range().contains(cursor) {
-                                                        // This is a type bound - we need to resolve it
-                                                        if let Some(path) = extract_path_from_type_bound(&bound) {
-                                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::TypeBound, cursor);
+                                        if param.syntax().text_range().contains(cursor) {
+                                            // Check if this is a type parameter with bounds
+                                            if let parser::ast::GenericParamKind::Type(type_param) =
+                                                param.kind()
+                                            {
+                                                if let Some(bounds) = type_param.bounds() {
+                                                    for bound in bounds {
+                                                        if bound
+                                                            .syntax()
+                                                            .text_range()
+                                                            .contains(cursor)
+                                                        {
+                                                            // This is a type bound - we need to resolve it
+                                                            if let Some(path) =
+                                                                extract_path_from_type_bound(&bound)
+                                                            {
+                                                                return self.resolve_item_path(
+                                                                    db,
+                                                                    item.clone(),
+                                                                    path,
+                                                                    ItemNodeContext::TypeBound,
+                                                                    cursor,
+                                                                );
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -651,30 +800,45 @@ impl<'db> ModuleLazyHir<'db> {
                                     }
                                 }
                             }
-                        }
-                        // Check super traits: trait Foo: Bar + Baz {}
-                        if let Some(supers) = trait_item.super_trait_list() {
-                            if supers.syntax().text_range().contains(cursor) {
-                                for trait_ref in supers {
-                                    if let Some(path) = trait_ref.path() {
-                                        if path.syntax().text_range().contains(cursor) {
-                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::SuperTrait, cursor);
+                            // Check super traits: trait Foo: Bar + Baz {}
+                            if let Some(supers) = trait_item.super_trait_list() {
+                                if supers.syntax().text_range().contains(cursor) {
+                                    for trait_ref in supers {
+                                        if let Some(path) = trait_ref.path() {
+                                            if path.syntax().text_range().contains(cursor) {
+                                                return self.resolve_item_path(
+                                                    db,
+                                                    item.clone(),
+                                                    path,
+                                                    ItemNodeContext::SuperTrait,
+                                                    cursor,
+                                                );
+                                            }
                                         }
                                     }
                                 }
                             }
-                        }
 
-                        // Check if cursor is in where clause bounds
-                        if let Some(where_clause) = trait_item.where_clause() {
-                            if where_clause.syntax().text_range().contains(cursor) {
-                                for predicate in where_clause {
-                                    if predicate.syntax().text_range().contains(cursor) {
-                                        if let Some(bounds) = predicate.bounds() {
-                                            for bound in bounds {
-                                                if bound.syntax().text_range().contains(cursor) {
-                                                    if let Some(path) = extract_path_from_type_bound(&bound) {
-                                                        return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::WhereClause, cursor);
+                            // Check if cursor is in where clause bounds
+                            if let Some(where_clause) = trait_item.where_clause() {
+                                if where_clause.syntax().text_range().contains(cursor) {
+                                    for predicate in where_clause {
+                                        if predicate.syntax().text_range().contains(cursor) {
+                                            if let Some(bounds) = predicate.bounds() {
+                                                for bound in bounds {
+                                                    if bound.syntax().text_range().contains(cursor)
+                                                    {
+                                                        if let Some(path) =
+                                                            extract_path_from_type_bound(&bound)
+                                                        {
+                                                            return self.resolve_item_path(
+                                                                db,
+                                                                item.clone(),
+                                                                path,
+                                                                ItemNodeContext::WhereClause,
+                                                                cursor,
+                                                            );
+                                                        }
                                                     }
                                                 }
                                             }
@@ -682,36 +846,55 @@ impl<'db> ModuleLazyHir<'db> {
                                     }
                                 }
                             }
-                        }
-                        // Inspect trait method signatures for param/ret types
-                        if let Some(items) = trait_item.item_list() {
-                            for func in items {
-                                if let Some(params) = func.params() {
-                                    for param in params {
-                                        if let Some(ty) = param.ty() {
-                                            if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
-                                                if let Some(path) = path_type.path() {
-                                                    use parser::ast::prelude::AstNode;
-                                                    if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
-                                                        return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                            // Inspect trait method signatures for param/ret types
+                            if let Some(items) = trait_item.item_list() {
+                                for func in items {
+                                    if let Some(params) = func.params() {
+                                        for param in params {
+                                            if let Some(ty) = param.ty() {
+                                                if let parser::ast::TypeKind::Path(path_type) =
+                                                    ty.kind()
+                                                {
+                                                    if let Some(path) = path_type.path() {
+                                                        use parser::ast::prelude::AstNode;
+                                                        if ModuleLazyHir::range_contains_inclusive(
+                                                            path.syntax().text_range(),
+                                                            cursor,
+                                                        ) {
+                                                            return self.resolve_item_path(
+                                                                db,
+                                                                item.clone(),
+                                                                path,
+                                                                ItemNodeContext::Regular,
+                                                                cursor,
+                                                            );
+                                                        }
                                                     }
                                                 }
                                             }
                                         }
                                     }
-                                }
-                                if let Some(ret) = func.ret_ty() {
-                                    if let parser::ast::TypeKind::Path(path_type) = ret.kind() {
-                                        if let Some(path) = path_type.path() {
-                                            use parser::ast::prelude::AstNode;
-                                            if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
-                                                return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                    if let Some(ret) = func.ret_ty() {
+                                        if let parser::ast::TypeKind::Path(path_type) = ret.kind() {
+                                            if let Some(path) = path_type.path() {
+                                                use parser::ast::prelude::AstNode;
+                                                if ModuleLazyHir::range_contains_inclusive(
+                                                    path.syntax().text_range(),
+                                                    cursor,
+                                                ) {
+                                                    return self.resolve_item_path(
+                                                        db,
+                                                        item.clone(),
+                                                        path,
+                                                        ItemNodeContext::Regular,
+                                                        cursor,
+                                                    );
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
                         }
                         parser::ast::ItemKind::Enum(enum_item) => {
                             if let Some(variants) = enum_item.variants() {
@@ -720,10 +903,21 @@ impl<'db> ModuleLazyHir<'db> {
                                     match var.kind() {
                                         parser::ast::VariantKind::Tuple(tuple_ty) => {
                                             for ty in tuple_ty.elem_tys() {
-                                                if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                                if let parser::ast::TypeKind::Path(path_type) =
+                                                    ty.kind()
+                                                {
                                                     if let Some(path) = path_type.path() {
-                                                        if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
-                                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                                        if ModuleLazyHir::range_contains_inclusive(
+                                                            path.syntax().text_range(),
+                                                            cursor,
+                                                        ) {
+                                                            return self.resolve_item_path(
+                                                                db,
+                                                                item.clone(),
+                                                                path,
+                                                                ItemNodeContext::Regular,
+                                                                cursor,
+                                                            );
                                                         }
                                                     }
                                                 }
@@ -732,7 +926,9 @@ impl<'db> ModuleLazyHir<'db> {
                                         parser::ast::VariantKind::Record(fields) => {
                                             for field in fields {
                                                 if let Some(ty) = field.ty() {
-                                                    if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
+                                                    if let parser::ast::TypeKind::Path(path_type) =
+                                                        ty.kind()
+                                                    {
                                                         if let Some(path) = path_type.path() {
                                                             if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
                                                                 return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
@@ -752,8 +948,17 @@ impl<'db> ModuleLazyHir<'db> {
                                 if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
                                     if let Some(path) = path_type.path() {
                                         use parser::ast::prelude::AstNode;
-                                        if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
-                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                        if ModuleLazyHir::range_contains_inclusive(
+                                            path.syntax().text_range(),
+                                            cursor,
+                                        ) {
+                                            return self.resolve_item_path(
+                                                db,
+                                                item.clone(),
+                                                path,
+                                                ItemNodeContext::Regular,
+                                                cursor,
+                                            );
                                         }
                                     }
                                 }
@@ -764,8 +969,17 @@ impl<'db> ModuleLazyHir<'db> {
                                 if let parser::ast::TypeKind::Path(path_type) = ty.kind() {
                                     if let Some(path) = path_type.path() {
                                         use parser::ast::prelude::AstNode;
-                                        if ModuleLazyHir::range_contains_inclusive(path.syntax().text_range(), cursor) {
-                                            return self.resolve_item_path(db, item.clone(), path, ItemNodeContext::Regular, cursor);
+                                        if ModuleLazyHir::range_contains_inclusive(
+                                            path.syntax().text_range(),
+                                            cursor,
+                                        ) {
+                                            return self.resolve_item_path(
+                                                db,
+                                                item.clone(),
+                                                path,
+                                                ItemNodeContext::Regular,
+                                                cursor,
+                                            );
                                         }
                                     }
                                 }
@@ -776,7 +990,7 @@ impl<'db> ModuleLazyHir<'db> {
                 }
             }
         }
-        
+
         // Generic catch-all: if inside an item, try to match any path span to avoid LSP fallbacks
         let green_node = crate::lower::parse_file_impl(db, self.top_mod);
         let root_syntax = parser::SyntaxNode::new_root(green_node);
@@ -784,24 +998,39 @@ impl<'db> ModuleLazyHir<'db> {
             for ancestor in token.parent_ancestors() {
                 if let Some(item) = parser::ast::Item::cast(ancestor.clone()) {
                     if let Some(kind) = item.kind() {
-                        let item_hir = match self.find_enclosing_item_for_ast(db, &item) { Some(it) => it, None => continue };
-                        let mut vctxt = VisitorCtxt::with_item(db, item_hir);
-                        let mut collector = PathSpanCollector::default();
-                        collector.visit_item(&mut vctxt, item_hir);
+                        let item_hir = match self.find_enclosing_item_for_ast(db, &item) {
+                            Some(it) => it,
+                            None => continue,
+                        };
+                        let collected = collect_item_paths(db, item_hir);
 
-                        let mut best: Option<(PathId<'db>, LazyPathSpan<'db>, usize, parser::TextRange)> = None;
-                        for (path_id, _scope, lazy_span) in collector.paths {
+                        let mut best: Option<(
+                            PathId<'db>,
+                            LazyPathSpan<'db>,
+                            usize,
+                            parser::TextRange,
+                        )> = None;
+                        for (path_id, lazy_span) in collected.iter().cloned() {
                             if let Some(span) = lazy_span.resolve(db) {
                                 if span.range.contains(cursor) {
                                     // segment idx by ident span
                                     let mut seg_idx = path_id.segment_index(db);
                                     for idx in 0..=path_id.segment_index(db) {
-                                        if let Some(id_span) = lazy_span.clone().segment(idx).ident().resolve(db) {
-                                            if id_span.range.contains(cursor) { seg_idx = idx; break; }
+                                        if let Some(id_span) =
+                                            lazy_span.clone().segment(idx).ident().resolve(db)
+                                        {
+                                            if id_span.range.contains(cursor) {
+                                                seg_idx = idx;
+                                                break;
+                                            }
                                         }
                                     }
                                     let len = span.range.end() - span.range.start();
-                                    if best.as_ref().map(|(_, _, _, r)| (r.end() - r.start()) > len).unwrap_or(true) {
+                                    if best
+                                        .as_ref()
+                                        .map(|(_, _, _, r)| (r.end() - r.start()) > len)
+                                        .unwrap_or(true)
+                                    {
                                         best = Some((path_id, lazy_span, seg_idx, span.range));
                                     }
                                 }
@@ -809,7 +1038,12 @@ impl<'db> ModuleLazyHir<'db> {
                         }
 
                         if let Some((path_id, _lazy, seg, _r)) = best {
-                            return LazyHirResult::ItemPath(item_hir, path_id, ItemNodeContext::Regular, Some(seg));
+                            return LazyHirResult::ItemPath(
+                                item_hir,
+                                path_id,
+                                ItemNodeContext::Regular,
+                                Some(seg),
+                            );
                         }
                         // Check enum variants types
                     }
@@ -819,7 +1053,7 @@ impl<'db> ModuleLazyHir<'db> {
 
         LazyHirResult::None
     }
-    
+
     /// Resolve a path found in an item context to HIR
     fn resolve_item_path(
         &self,
@@ -837,10 +1071,8 @@ impl<'db> ModuleLazyHir<'db> {
             None => return LazyHirResult::None,
         };
 
-        // 2) Within that item, collect HIR paths and their spans
-        let mut vctxt = VisitorCtxt::with_item(db, item_kind);
-        let mut collector = PathSpanCollector::default();
-        collector.visit_item(&mut vctxt, item_kind);
+        // 2) Within that item, fetch cached HIR paths and their spans
+        let paths = collect_item_paths(db, item_kind);
 
         // Derive segment index from AST path and cursor
         let seg_index = {
@@ -856,24 +1088,30 @@ impl<'db> ModuleLazyHir<'db> {
 
         // 3) Match the AST path range to a collected HIR path's span
         let ast_range = path_ast.syntax().text_range();
-        for (path_id, _scope, lazy_span) in collector.paths {
+        for (path_id, lazy_span) in paths.iter().cloned() {
             if let Some(span) = lazy_span.resolve(db) {
                 if span.range == ast_range {
-                    debug_assert!({
-                        // Invariant: AST segments count should match HIR len
-                        let ast_len = path_ast.segments().count();
-                        let hir_len = path_id.segment_index(db) + 1;
-                        ast_len == hir_len
-                    }, "AST/HIR path segment count mismatch in resolve_item_path");
+                    debug_assert!(
+                        {
+                            // Invariant: AST segments count should match HIR len
+                            let ast_len = path_ast.segments().count();
+                            let hir_len = path_id.segment_index(db) + 1;
+                            ast_len == hir_len
+                        },
+                        "AST/HIR path segment count mismatch in resolve_item_path"
+                    );
                     return LazyHirResult::ItemPath(item_kind, path_id, context, seg_index);
                 }
                 // Fallback: allow containment in case of minor mismatch
                 if span.range.contains(ast_range.start()) && span.range.contains(ast_range.end()) {
-                    debug_assert!({
-                        let ast_len = path_ast.segments().count();
-                        let hir_len = path_id.segment_index(db) + 1;
-                        ast_len == hir_len
-                    }, "AST/HIR path segment count mismatch in resolve_item_path (containment)");
+                    debug_assert!(
+                        {
+                            let ast_len = path_ast.segments().count();
+                            let hir_len = path_id.segment_index(db) + 1;
+                            ast_len == hir_len
+                        },
+                        "AST/HIR path segment count mismatch in resolve_item_path (containment)"
+                    );
                     return LazyHirResult::ItemPath(item_kind, path_id, context, seg_index);
                 }
             }
@@ -893,15 +1131,28 @@ fn extract_path_from_type_bound(bound: &parser::ast::TypeBound) -> Option<parser
 /// Lightweight path span collector for a single item
 #[derive(Default)]
 struct PathSpanCollector<'db> {
-    paths: Vec<(PathId<'db>, crate::hir_def::scope_graph::ScopeId<'db>, LazyPathSpan<'db>)>,
+    paths: Vec<(PathId<'db>, LazyPathSpan<'db>)>,
 }
 
 impl<'db, 'ast: 'db> Visitor<'ast> for PathSpanCollector<'db> {
     fn visit_path(&mut self, ctxt: &mut VisitorCtxt<'ast, LazyPathSpan<'ast>>, path: PathId<'db>) {
-        let Some(span) = ctxt.span() else { return; };
-        let scope = ctxt.scope();
-        self.paths.push((path, scope, span));
+        let Some(span) = ctxt.span() else {
+            return;
+        };
+        self.paths.push((path, span));
     }
+}
+
+/// Cached collection of all HIR paths and their lazy spans within an item
+#[salsa::tracked(return_ref)]
+pub fn collect_item_paths<'db>(
+    db: &'db dyn SpannedHirDb,
+    item: ItemKind<'db>,
+) -> Vec<(PathId<'db>, LazyPathSpan<'db>)> {
+    let mut vctxt = VisitorCtxt::with_item(db, item);
+    let mut collector = PathSpanCollector::default();
+    collector.visit_item(&mut vctxt, item);
+    collector.paths
 }
 
 impl<'db> ModuleLazyHir<'db> {
@@ -920,7 +1171,11 @@ impl<'db> ModuleLazyHir<'db> {
             if let Some(span) = crate::span::DynLazySpan::from(item.span()).resolve(db) {
                 if span.range.contains(ast_range.start()) && span.range.contains(ast_range.end()) {
                     let len = span.range.end() - span.range.start();
-                    if best.as_ref().map(|(_, r)| (r.end() - r.start()) > len).unwrap_or(true) {
+                    if best
+                        .as_ref()
+                        .map(|(_, r)| (r.end() - r.start()) > len)
+                        .unwrap_or(true)
+                    {
                         best = Some((item, span.range));
                     }
                 }
@@ -945,7 +1200,6 @@ fn find_ast_node_at_position(
     // Get the body's AST by parsing the entire file
     let green_node = crate::lower::parse_file_impl(db, body.top_mod(db));
     let root_syntax = SyntaxNode::new_root(green_node);
-
 
     // Use the parser's ast_index to find the node at the position
     let result = find_ast_node_at_position(&root_syntax, cursor);
@@ -1002,7 +1256,8 @@ pub fn lazy_hir_for_cursor<'db>(
     cursor: Cursor,
 ) -> LazyHirResult<'db> {
     let resolver = ModuleLazyHir::new(top_mod);
-    resolver.find_hir_at_position(db, cursor)}
+    resolver.find_hir_at_position(db, cursor)
+}
 
 /// Basic implementation of ResolveHir for demonstration
 pub struct BasicHirResolver;
