@@ -55,7 +55,7 @@ mod test_db {
     define_input_db!(TestDb);
 
     impl TestDb {
-        pub fn parse_source(&self, file: File) -> &ScopeGraph {
+        pub fn parse_source(&self, file: File) -> &ScopeGraph<'_> {
             let top_mod = map_file_to_mod(self, file);
             scope_graph(self, top_mod)
         }

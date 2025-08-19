@@ -16,11 +16,13 @@ use rustc_hash::FxHashMap;
 use crate::util::diag_to_lsp;
 
 /// Wrapper type to implement codespan Files trait
+#[allow(dead_code)]
 pub struct LspDb<'a>(pub &'a DriverDataBase);
 
 /// Extension trait for LSP-specific functionality on DriverDataBase
 pub trait LspDiagnostics {
     fn diagnostics_for_ingot(&self, ingot: Ingot) -> FxHashMap<Url, Vec<Diagnostic>>;
+    #[allow(dead_code)]
     fn file_line_starts(&self, file: File) -> Vec<usize>;
 }
 

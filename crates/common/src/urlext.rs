@@ -46,7 +46,7 @@ impl UrlExt for Url {
             // If we're not already at a directory, return the directory
             Some(directory)
         } else if self.path() == "/" {
-            return None;
+            None
         } else {
             // We're already at a directory, go up one level
             let mut parent = self.clone();
@@ -55,7 +55,7 @@ impl UrlExt for Url {
                 segments.pop();
                 segments.push(""); // Ensure trailing slash
             }
-            return Some(parent);
+            Some(parent)
         }
     }
 

@@ -69,7 +69,7 @@ impl<'db> ScopeGraph<'db> {
         ScopeGraphFormatter::new(db, self).render(w)
     }
 
-    pub fn scope_data(&self, scope: &ScopeId<'db>) -> &Scope {
+    pub fn scope_data(&self, scope: &ScopeId<'db>) -> &Scope<'_> {
         &self.scopes[scope]
     }
 }

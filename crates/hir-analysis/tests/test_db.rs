@@ -56,7 +56,7 @@ impl HirAnalysisTestDb {
         )
     }
 
-    pub fn top_mod(&self, input: File) -> (TopLevelMod, HirPropertyFormatter) {
+    pub fn top_mod(&self, input: File) -> (TopLevelMod<'_>, HirPropertyFormatter<'_>) {
         let mut prop_formatter = HirPropertyFormatter::default();
         let top_mod = self.register_file(&mut prop_formatter, input);
         (top_mod, prop_formatter)
