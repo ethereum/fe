@@ -63,11 +63,15 @@ pub fn init_ingot(db: &mut DriverDataBase, ingot_url: &Url) -> Vec<IngotInitDiag
     };
 
     // Check for cycles after graph resolution (now that handler is dropped)
+    let cyclic_subgraph = db.graph().cyclic_subgraph(db);
     let cycles = db.graph().cycles(db);
 
-    // Add cycle diagnostics - one per cycle
-    for cycle in cycles {
-        diagnostics.push(IngotInitDiagnostics::IngotDependencyCycle { cycle });
+    // Add cycle diagnostics - single comprehensive diagnostic if any cycles exist
+    if !cycles.is_empty() {
+        diagnostics.push(IngotInitDiagnostics::IngotDependencyCycle { 
+            subgraph: cyclic_subgraph,
+            cycles,
+        });
     }
 
     if diagnostics.is_empty() {
@@ -94,7 +98,8 @@ pub enum IngotInitDiagnostics {
         error: FilesResolutionError,
     },
     IngotDependencyCycle {
-        cycle: Vec<Url>,
+        subgraph: resolver::graph::DiGraph<Url, EdgeWeight>,
+        cycles: Vec<Vec<Url>>,
     },
     FileError {
         diagnostic: FilesResolutionDiagnostic,
@@ -118,8 +123,32 @@ impl std::fmt::Display for IngotInitDiagnostics {
             IngotInitDiagnostics::UnresolvableIngotDependency { target, error } => {
                 write!(f, "Failed to resolve ingot dependency '{target}': {error}")
             }
-            IngotInitDiagnostics::IngotDependencyCycle { cycle: _ } => {
-                write!(f, "Detected cycle in ingot dependencies")
+            IngotInitDiagnostics::IngotDependencyCycle { subgraph, cycles } => {
+                use resolver::graph::petgraph::visit::EdgeRef;
+                
+                writeln!(f, "Detected {} cycle(s) in ingot dependencies:", cycles.len())?;
+                
+                // Show individual cycles
+                for (cycle_idx, cycle) in cycles.iter().enumerate() {
+                    write!(f, "  Cycle {}: ", cycle_idx + 1)?;
+                    for (i, url) in cycle.iter().enumerate() {
+                        if i > 0 {
+                            write!(f, " -> ")?;
+                        }
+                        write!(f, "{}", url)?;
+                    }
+                    writeln!(f)?;
+                }
+                
+                // Show comprehensive dependency structure of all cyclic nodes
+                if subgraph.edge_count() > 0 {
+                    writeln!(f, "\n  Comprehensive cyclic dependency structure:")?;
+                    for edge in subgraph.edge_references() {
+                        writeln!(f, "    {} -> {}", subgraph[edge.source()], subgraph[edge.target()])?;
+                    }
+                }
+                
+                Ok(())
             }
             IngotInitDiagnostics::FileError { diagnostic } => {
                 write!(f, "File resolution error: {diagnostic}")

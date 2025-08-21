@@ -70,11 +70,11 @@ impl UrlExt for Url {
     }
 }
 
-pub fn canonical_url(path: &Utf8PathBuf) -> Url {
-    Url::from_directory_path(path.canonicalize_utf8().unwrap().as_str())
-        .unwrap()
-        .directory()
-        .unwrap()
+pub fn canonical_url(path: &Utf8PathBuf) -> Result<Url, UrlError> {
+    let canonical_path = path.canonicalize_utf8().map_err(|_| UrlError::CanonicalizationError)?;
+    let url = Url::from_directory_path(canonical_path.as_str())
+        .map_err(|_| UrlError::InvalidPath)?;
+    url.directory().ok_or(UrlError::InvalidPath)
 }
 
 #[cfg(test)]

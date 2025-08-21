@@ -11,7 +11,13 @@ use url::Url;
 pub fn print_tree(path: &Utf8PathBuf) {
     let mut graph_resolver = resolver::ingot::basic_ingot_graph_resolver();
     let mut node_handler = BasicIngotNodeHandler::default();
-    let ingot_url = canonical_url(path);
+    let ingot_url = match canonical_url(path) {
+        Ok(url) => url,
+        Err(_) => {
+            eprintln!("Error: Invalid or non-existent directory path: {}", path);
+            return;
+        }
+    };
 
     match graph_resolver.graph_resolve(&mut node_handler, &ingot_url) {
         Ok(ingot_graph) => {
@@ -87,18 +93,38 @@ fn print_node(
     cycle_nodes: &HashSet<NodeIndex>,
     seen: &mut HashSet<NodeIndex>,
 ) {
+    print_node_with_alias(graph, node, prefix, output, configs, cycle_nodes, seen, None);
+}
+
+fn print_node_with_alias(
+    graph: &DiGraph<Url, EdgeWeight>,
+    node: NodeIndex,
+    prefix: TreePrefix,
+    output: &mut String,
+    configs: &HashMap<Url, Config>,
+    cycle_nodes: &HashSet<NodeIndex>,
+    seen: &mut HashSet<NodeIndex>,
+    alias: Option<&str>,
+) {
     let ingot_path = &graph[node];
+    
+    // Build the label with alias support
     let base_label = if let Some(config) = configs.get(ingot_path) {
-        format!(
-            "➖ {} v{}",
-            config.metadata.name.as_deref().unwrap_or("null"),
-            config
-                .metadata
-                .version
-                .as_ref()
-                .map(ToString::to_string)
-                .unwrap_or_else(|| "null".to_string())
-        )
+        let ingot_name = config.metadata.name.as_deref().unwrap_or("null");
+        let version = config
+            .metadata
+            .version
+            .as_ref()
+            .map(ToString::to_string)
+            .unwrap_or_else(|| "null".to_string());
+        
+        // Show "ingot_name as alias" if alias differs from ingot name
+        match alias {
+            Some(alias_str) if alias_str != ingot_name => {
+                format!("➖ {} as {} v{}", ingot_name, alias_str, version)
+            }
+            _ => format!("➖ {} v{}", ingot_name, version),
+        }
     } else {
         "➖ [unknown config]".to_string()
     };
@@ -106,7 +132,7 @@ fn print_node(
     let is_in_cycle = cycle_nodes.contains(&node);
     let will_close_cycle = seen.contains(&node);
 
-    let mut label = base_label.clone();
+    let mut label = base_label;
     if will_close_cycle {
         label = format!("{label} 🔄 [cycle]");
     }
@@ -123,25 +149,26 @@ fn print_node(
 
     seen.insert(node);
 
-    let children: Vec<_> = graph
-        .neighbors_directed(node, petgraph::Direction::Outgoing)
-        .collect();
+    // Process children with alias information from edges
+    use petgraph::visit::EdgeRef;
+    let children: Vec<_> = graph.edges_directed(node, petgraph::Direction::Outgoing).collect();
 
-    for (i, child) in children.iter().enumerate() {
+    for (i, edge) in children.iter().enumerate() {
         let child_prefix = if i == children.len() - 1 {
             TreePrefix::Last(prefix.child_indent())
         } else {
             TreePrefix::Fork(prefix.child_indent())
         };
 
-        print_node(
+        print_node_with_alias(
             graph,
-            *child,
+            edge.target(),
             child_prefix,
             output,
             configs,
             cycle_nodes,
             seen,
+            Some(&edge.weight().alias),
         );
     }
 
@@ -151,6 +178,7 @@ fn print_node(
 fn red(s: &str) -> String {
     format!("\x1b[31m{s}\x1b[0m")
 }
+
 
 fn find_cycle_nodes<N, E>(graph: &DiGraph<N, E>) -> HashSet<NodeIndex> {
     use petgraph::algo::kosaraju_scc;
