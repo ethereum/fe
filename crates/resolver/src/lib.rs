@@ -1,6 +1,5 @@
 pub mod files;
 pub mod graph;
-pub mod ingot;
 
 pub trait Resolver: Sized {
     type Description;

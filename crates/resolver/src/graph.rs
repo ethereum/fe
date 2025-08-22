@@ -31,6 +31,8 @@ where
         <H as GraphResolutionHandler<NR::Description, DiGraph<NR::Description, E>>>::Item,
         UnresolvableRootNode,
     >;
+
+    fn take_diagnostics(&mut self) -> Vec<UnresolvableNode<NR::Description, NR::Error>>;
 }
 
 impl<NR, H, E> GraphResolver<NR, H, E> for GraphResolverImpl<NR, H, E>
@@ -114,6 +116,10 @@ where
             Ok(result)
         }
     }
+
+    fn take_diagnostics(&mut self) -> Vec<UnresolvableNode<NR::Description, NR::Error>> {
+        take(&mut self.diagnostics)
+    }
 }
 
 impl<NR, H, E> Default for GraphResolverImpl<NR, H, E>
@@ -150,9 +156,6 @@ where
         }
     }
 
-    pub fn take_diagnostics(&mut self) -> Vec<UnresolvableNode<NR::Description, NR::Error>> {
-        take(&mut self.diagnostics)
-    }
 }
 
 #[derive(Debug)]

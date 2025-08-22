@@ -3,14 +3,15 @@ use std::collections::{HashMap, HashSet};
 use camino::Utf8PathBuf;
 use common::{config::Config, graph::EdgeWeight, urlext::canonical_url};
 use resolver::{
-    graph::{petgraph, DiGraph, GraphResolver, NodeIndex},
-    ingot::BasicIngotNodeHandler,
+    files::{FilesResource, FilesResolver},
+    graph::{petgraph, DiGraph, GraphResolver, GraphResolutionHandler, NodeIndex},
+    ResolutionHandler,
 };
 use url::Url;
 
 pub fn print_tree(path: &Utf8PathBuf) {
-    let mut graph_resolver = resolver::ingot::basic_ingot_graph_resolver();
-    let mut node_handler = BasicIngotNodeHandler::default();
+    let mut graph_resolver = basic_ingot_graph_resolver();
+    let mut node_handler = TreeIngotNodeHandler::default();
     let ingot_url = match canonical_url(path) {
         Ok(url) => url,
         Err(_) => {
@@ -21,12 +22,36 @@ pub fn print_tree(path: &Utf8PathBuf) {
 
     match graph_resolver.graph_resolve(&mut node_handler, &ingot_url) {
         Ok(ingot_graph) => {
+            // Report diagnostics from graph resolution first
+            let graph_diagnostics = graph_resolver.take_diagnostics();
+            for diagnostic in &graph_diagnostics {
+                eprintln!("⚠️  {}", diagnostic);
+            }
+
+            // Report diagnostics from node handler
+            let node_diagnostics = node_handler.diagnostics();
+            for diagnostic in node_diagnostics {
+                eprintln!("⚠️  {}", diagnostic);
+            }
+
+            // Print tree after diagnostics
             print!(
                 "{}",
                 print_tree_impl(&ingot_graph, &ingot_url, &node_handler.configs)
             );
         }
         Err(err) => {
+            // Even if resolution failed, show available diagnostics first
+            let graph_diagnostics = graph_resolver.take_diagnostics();
+            for diagnostic in &graph_diagnostics {
+                eprintln!("⚠️  {}", diagnostic);
+            }
+
+            let node_diagnostics = node_handler.diagnostics();
+            for diagnostic in node_diagnostics {
+                eprintln!("⚠️  {}", diagnostic);
+            }
+
             println!("❌ Failed to resolve dependency tree: {err}");
         }
     }
@@ -198,4 +223,98 @@ fn find_cycle_nodes<N, E>(graph: &DiGraph<N, E>) -> HashSet<NodeIndex> {
         }
     }
     cycles
+}
+
+// Tree-specific ingot resolution types and functions
+
+pub type TreeIngotGraphResolver = resolver::graph::GraphResolverImpl<FilesResolver, TreeIngotNodeHandler, EdgeWeight>;
+
+pub fn basic_ingot_graph_resolver() -> TreeIngotGraphResolver {
+    let files_resolver = FilesResolver::new()
+        .with_required_file("fe.toml");
+    resolver::graph::GraphResolverImpl::new(files_resolver)
+}
+
+#[derive(Debug)]
+pub enum IngotResolutionDiagnostic {
+    ConfigParseWarning(Url, String),
+}
+
+impl std::fmt::Display for IngotResolutionDiagnostic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IngotResolutionDiagnostic::ConfigParseWarning(url, msg) => {
+                write!(f, "Warning parsing config at {url}: {msg}")
+            }
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct TreeIngotNodeHandler {
+    pub configs: HashMap<Url, Config>,
+    pub diagnostics: Vec<IngotResolutionDiagnostic>,
+}
+
+impl TreeIngotNodeHandler {
+    pub fn diagnostics(&self) -> &[IngotResolutionDiagnostic] {
+        &self.diagnostics
+    }
+}
+
+impl ResolutionHandler<FilesResolver> for TreeIngotNodeHandler {
+    type Item = Vec<(Url, EdgeWeight)>;
+
+    fn handle_resolution(&mut self, ingot_url: &Url, resource: FilesResource) -> Self::Item {
+        tracing::trace!(target: "resolver", "Handling ingot resolution for: {}", ingot_url);
+        
+        // Look for fe.toml file
+        if let Some(config_file) = resource.files.iter().find(|f| f.path.file_name() == Some("fe.toml")) {
+            match Config::parse(&config_file.content) {
+                Ok(config) => {
+                    tracing::trace!(target: "resolver", "Successfully parsed config for ingot: {}", ingot_url);
+                    self.configs.insert(ingot_url.clone(), config.clone());
+                    let dependencies = config
+                        .based_dependencies(ingot_url)
+                        .into_iter()
+                        .map(|based_dependency| {
+                            tracing::trace!(target: "resolver", "Found dependency: {} -> {}", ingot_url, based_dependency.url);
+                            (
+                                based_dependency.url,
+                                EdgeWeight {
+                                    alias: based_dependency.alias,
+                                    arguments: based_dependency.parameters,
+                                },
+                            )
+                        })
+                        .collect();
+                    dependencies
+                }
+                Err(err) => {
+                    tracing::warn!(target: "resolver", "Failed to parse config for ingot {}: {}", ingot_url, err);
+                    self.diagnostics
+                        .push(IngotResolutionDiagnostic::ConfigParseWarning(
+                            ingot_url.clone(),
+                            err.to_string(),
+                        ));
+                    vec![]
+                }
+            }
+        } else {
+            // This case should not happen since we require fe.toml, but handle it gracefully
+            vec![]
+        }
+    }
+}
+
+impl GraphResolutionHandler<Url, DiGraph<Url, EdgeWeight>> for TreeIngotNodeHandler {
+    type Item = DiGraph<Url, EdgeWeight>;
+
+    fn handle_graph_resolution(
+        &mut self,
+        _ingot_url: &Url,
+        graph: DiGraph<Url, EdgeWeight>,
+    ) -> Self::Item {
+        graph
+    }
 }

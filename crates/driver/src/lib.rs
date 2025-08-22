@@ -15,18 +15,28 @@ pub use db::DriverDataBase;
 use common::config::Config;
 use hir::hir_def::TopLevelMod;
 use resolver::{
-    files::{File, FilesResolutionDiagnostic, FilesResolutionError, FilesResolver},
-    graph::{DiGraph, GraphResolutionHandler, GraphResolver},
-    ingot::ingot_graph_resolver,
+    files::{FilesResource, FilesResolutionDiagnostic, FilesResolutionError, FilesResolver},
+    graph::{DiGraph, GraphResolutionHandler, GraphResolver, GraphResolverImpl},
     ResolutionHandler, Resolver,
 };
 use url::Url;
 
+pub type CheckIngotGraphResolver<'a> = GraphResolverImpl<FilesResolver, InputHandler<'a>, EdgeWeight>;
+
+pub fn check_ingot_graph_resolver<'a>() -> CheckIngotGraphResolver<'a> {
+    let files_resolver = FilesResolver::new()
+        .with_required_file("fe.toml")
+        .with_required_directory("src")
+        .with_required_file("src/lib.fe")
+        .with_pattern("src/**/*.fe");
+    GraphResolverImpl::new(files_resolver)
+}
+
 pub fn init_ingot(db: &mut DriverDataBase, ingot_url: &Url) -> Vec<IngotInitDiagnostics> {
     tracing::trace!(target: "resolver", "Starting workspace ingot resolution for: {}", ingot_url);
     let mut diagnostics: Vec<IngotInitDiagnostics> = {
-        let mut handler = InputHandler::from_db(db);
-        let mut ingot_graph_resolver = ingot_graph_resolver::<InputHandler>();
+        let mut handler = InputHandler::from_db(db, ingot_url.clone());
+        let mut ingot_graph_resolver = check_ingot_graph_resolver();
 
         // Handle resolution errors gracefully instead of panicking
         if let Err(err) = ingot_graph_resolver.graph_resolve(&mut handler, ingot_url) {
@@ -115,6 +125,10 @@ pub enum IngotInitDiagnostics {
         ingot_url: Url,
         diagnostic: common::config::ConfigDiagnostic,
     },
+    MissingRootFile {
+        ingot_url: Url,
+        is_main_ingot: bool,
+    },
 }
 
 impl std::fmt::Display for IngotInitDiagnostics {
@@ -165,6 +179,13 @@ impl std::fmt::Display for IngotInitDiagnostics {
             } => {
                 write!(f, "there are issues with the local fe.toml file {ingot_url}fe.toml\n  {diagnostic}")
             }
+            IngotInitDiagnostics::MissingRootFile { ingot_url, is_main_ingot } => {
+                if *is_main_ingot {
+                    write!(f, "Missing root file (src/lib.fe) in current ingot: {ingot_url}")
+                } else {
+                    write!(f, "Missing root file (src/lib.fe) in dependency: {ingot_url}")
+                }
+            }
         }
     }
 }
@@ -173,14 +194,16 @@ pub struct InputHandler<'a> {
     pub db: &'a mut dyn InputDb,
     pub join_edges: Vec<JoinEdge>,
     pub diagnostics: Vec<IngotInitDiagnostics>,
+    pub main_ingot_url: Url,
 }
 
 impl<'a> InputHandler<'a> {
-    pub fn from_db(db: &'a mut dyn InputDb) -> Self {
+    pub fn from_db(db: &'a mut dyn InputDb, main_ingot_url: Url) -> Self {
         Self {
             db,
             join_edges: vec![],
             diagnostics: vec![],
+            main_ingot_url,
         }
     }
 }
@@ -188,10 +211,11 @@ impl<'a> InputHandler<'a> {
 impl<'a> ResolutionHandler<FilesResolver> for InputHandler<'a> {
     type Item = Vec<(Url, EdgeWeight)>;
 
-    fn handle_resolution(&mut self, ingot_url: &Url, files: Vec<File>) -> Self::Item {
+    fn handle_resolution(&mut self, ingot_url: &Url, resource: FilesResource) -> Self::Item {
         let mut config = None;
 
-        for file in files {
+
+        for file in resource.files {
             if file.path.ends_with("fe.toml") {
                 self.db.workspace().touch(
                     self.db,
@@ -231,6 +255,8 @@ impl<'a> ResolutionHandler<FilesResolver> for InputHandler<'a> {
                     });
             }
 
+            // Missing src/lib.fe file is now handled by the FilesResolver diagnostics
+
             // let weights: HashSet<Url> = self.db.graph().node_weights().cloned().collect();
 
             config
@@ -259,10 +285,7 @@ impl<'a> ResolutionHandler<FilesResolver> for InputHandler<'a> {
                 })
                 .collect()
         } else {
-            // No fe.toml file found - record this as a diagnostic
-            self.diagnostics.push(IngotInitDiagnostics::MissingFeToml {
-                ingot_url: ingot_url.clone(),
-            });
+            // No fe.toml file found - this will be reported by the FilesResolver as a diagnostic
             vec![]
         }
     }
