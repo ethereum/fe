@@ -13,7 +13,6 @@ doctest = false
 
 [dependencies]
 camino.workspace = true
-clap.workspace = true
 codespan-reporting.workspace = true
 salsa.workspace = true
 

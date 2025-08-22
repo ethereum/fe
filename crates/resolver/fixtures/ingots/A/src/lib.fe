@@ -1,0 +1,6 @@
+use B::Bar
+use core
+
+fn foo() {
+  let b = Bar {} 
+}

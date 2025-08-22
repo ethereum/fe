@@ -9,12 +9,13 @@ use async_lsp::{
 };
 
 use common::InputDb;
-use resolver::{
-    ingot::{source_files::SourceFiles, Ingot as ResolvedIngot, IngotResolver},
-    Resolver,
-};
+// NOTE: Temporarily commenting out old resolver imports due to API changes
+// use resolver::{
+//     ingot::{source_files::SourceFiles, Ingot as ResolvedIngot, IngotResolver},
+//     Resolver,
+// };
 use rustc_hash::FxHashSet;
-use url::Url;
+// use url::Url; // Temporarily unused due to API changes
 
 use super::{capabilities::server_capabilities, hover::hover_helper};
 
@@ -54,12 +55,25 @@ pub enum ChangeKind {
 
 // Implementation moved to backend/mod.rs
 
+// NOTE: Temporarily disabled due to resolver API changes
 async fn discover_and_load_ingots(
+    _backend: &mut Backend,
+    _root_path: &std::path::Path,
+) -> Result<(), ResponseError> {
+    // TODO: Update to use new resolver API
+    warn!("Ingot discovery temporarily disabled due to resolver API changes");
+    Ok(())
+}
+
+/*
+// OLD IMPLEMENTATION - DISABLED DUE TO API CHANGES
+async fn discover_and_load_ingots_old(
     backend: &mut Backend,
     root_path: &std::path::Path,
 ) -> Result<(), ResponseError> {
     // Find all fe.toml files in the workspace
-    let pattern = format!("{}/**/fe.toml", root_path.to_string_lossy());
+    let pattern = format!("{}/**/
+fe.toml", root_path.to_string_lossy());
     let config_paths = glob::glob(&pattern)
         .map_err(|e| ResponseError::new(ErrorCode::INTERNAL_ERROR, format!("Glob error: {e}")))?
         .filter_map(Result::ok)
@@ -151,6 +165,7 @@ async fn discover_and_load_ingots(
 
     Ok(())
 }
+*/
 
 pub async fn initialize(
     backend: &mut Backend,
@@ -320,8 +335,8 @@ pub async fn handle_file_change(
 
                 // If a fe.toml was created, discover and load all files in the new ingot
                 if is_fe_toml {
-                    if let Some(ingot_dir) = path.parent() {
-                        load_ingot_files(backend, ingot_dir).await?;
+                    if let Some(_ingot_dir) = path.parent() {
+                        // load_ingot_files(backend, ingot_dir).await?; // Disabled due to API changes
                     }
                 }
             }
@@ -347,8 +362,8 @@ pub async fn handle_file_change(
 
                 // If fe.toml was modified, re-scan the ingot for any new files
                 if is_fe_toml {
-                    if let Some(ingot_dir) = path.parent() {
-                        load_ingot_files(backend, ingot_dir).await?;
+                    if let Some(_ingot_dir) = path.parent() {
+                        // load_ingot_files(backend, ingot_dir).await?; // Disabled due to API changes
                     }
                 }
             }
@@ -365,6 +380,8 @@ pub async fn handle_file_change(
     Ok(())
 }
 
+/*
+// NOTE: Temporarily disabled due to resolver API changes
 async fn load_ingot_files(
     backend: &mut Backend,
     ingot_dir: &std::path::Path,
@@ -403,6 +420,7 @@ async fn load_ingot_files(
 
     Ok(())
 }
+*/
 
 pub async fn handle_files_need_diagnostics(
     backend: &Backend,

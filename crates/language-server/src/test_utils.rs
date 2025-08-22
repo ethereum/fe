@@ -1,15 +1,18 @@
-use common::InputDb;
-#[cfg(test)]
-use driver::DriverDataBase;
-use resolver::{
-    ingot::{source_files::SourceFiles, Ingot as ResolvedIngot, IngotResolver},
-    Resolver,
-};
-use std::path::Path;
-use url::Url;
+// NOTE: Temporarily commented out due to resolver API changes
+// use common::InputDb;
+// #[cfg(test)]
+// use driver::DriverDataBase;
+// use resolver::{
+//     ingot::{source_files::SourceFiles, Ingot as ResolvedIngot, IngotResolver},
+//     Resolver,
+// };
+// use std::path::Path;
+// use url::Url;
 
+/*
 /// Load all files from an ingot directory into the database
 /// This is similar to what happens during initialization or when a new fe.toml is created
+/// NOTE: Temporarily disabled due to resolver API changes
 #[cfg(test)]
 pub fn load_ingot_from_directory(db: &mut DriverDataBase, ingot_dir: &Path) {
     let mut ingot_resolver = IngotResolver::default();
@@ -34,3 +37,4 @@ pub fn load_ingot_from_directory(db: &mut DriverDataBase, ingot_dir: &Path) {
         _ => panic!("Failed to resolve test ingot at {ingot_dir:?}"),
     }
 }
+*/

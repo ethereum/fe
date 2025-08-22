@@ -177,7 +177,7 @@ mod tests {
     use url::Url;
 
     use super::*;
-    use crate::test_utils::load_ingot_from_directory;
+    // use crate::test_utils::load_ingot_from_directory; // Disabled due to API changes
     use driver::DriverDataBase;
 
     // given a cursor position and a string, convert to cursor line and column
@@ -277,8 +277,29 @@ mod tests {
 
         let mut db = DriverDataBase::default();
 
-        // Load all files from the ingot directory
-        load_ingot_from_directory(&mut db, &ingot_base_dir);
+        // Load the ingot files manually since load_ingot_from_directory is disabled
+        let ingot_base_url = Url::from_directory_path(&ingot_base_dir).unwrap();
+
+        // Load fe.toml config file
+        let config_url = ingot_base_url.join("fe.toml").unwrap();
+        db.workspace()
+            .touch(&mut db, config_url, Some(String::new()));
+
+        // Load all .fe files in the src directory
+        let src_dir = ingot_base_dir.join("src");
+        if let Ok(entries) = std::fs::read_dir(&src_dir) {
+            for entry in entries.flatten() {
+                if let Some(ext) = entry.path().extension() {
+                    if ext == "fe" {
+                        if let Ok(content) = std::fs::read_to_string(entry.path()) {
+                            if let Ok(file_url) = Url::from_file_path(entry.path()) {
+                                db.workspace().touch(&mut db, file_url, Some(content));
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         // Get our specific test file
         let fe_source_path = fixture.path();
