@@ -160,6 +160,9 @@ impl super::Parse for TypeGenericParamScope {
         if parser.current_kind() == Some(SyntaxKind::Colon) {
             parser.parse(TypeBoundListScope::new(self.disallow_trait_bound))?;
         }
+        if parser.bump_if(SyntaxKind::Eq) {
+            parse_type(parser, None)?;
+        }
         Ok(())
     }
 }

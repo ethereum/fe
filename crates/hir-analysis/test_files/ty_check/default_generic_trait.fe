@@ -1,0 +1,14 @@
+trait Add<T = Self> {
+    type Output = Self
+
+    fn add(self: Self, _ rhs: T) -> Self::Output
+}
+
+impl Add for i32 {
+    fn add(self: Self, _ rhs: Self) -> Self { self }
+}
+
+fn f(x: i32) -> i32 {
+    x.add(x)
+}
+

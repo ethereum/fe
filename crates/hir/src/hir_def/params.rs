@@ -100,6 +100,7 @@ impl<'db> GenericParam<'db> {
 pub struct TypeGenericParam<'db> {
     pub name: Partial<IdentId<'db>>,
     pub bounds: Vec<TypeBound<'db>>,
+    pub default_ty: Option<TypeId<'db>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

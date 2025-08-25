@@ -1,0 +1,44 @@
+---
+source: crates/hir-analysis/tests/ty_check.rs
+expression: res
+input_file: test_files/ty_check/default_generic_trait.fe
+---
+note: 
+  ┌─ default_generic_trait.fe:8:45
+  │
+8 │     fn add(self: Self, _ rhs: Self) -> Self { self }
+  │                                             ^^^^^^^^ i32
+
+note: 
+  ┌─ default_generic_trait.fe:8:47
+  │
+8 │     fn add(self: Self, _ rhs: Self) -> Self { self }
+  │                                               ^^^^ i32
+
+note: 
+   ┌─ default_generic_trait.fe:11:21
+   │  
+11 │   fn f(x: i32) -> i32 {
+   │ ╭─────────────────────^
+12 │ │     x.add(x)
+13 │ │ }
+   │ ╰─^ i32
+
+note: 
+   ┌─ default_generic_trait.fe:12:5
+   │
+12 │     x.add(x)
+   │     ^ i32
+
+note: 
+   ┌─ default_generic_trait.fe:12:5
+   │
+12 │     x.add(x)
+   │     ^^^^^^^^ i32
+
+note: 
+   ┌─ default_generic_trait.fe:12:11
+   │
+12 │     x.add(x)
+   │           ^ i32
+

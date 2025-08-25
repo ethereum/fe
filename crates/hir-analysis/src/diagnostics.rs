@@ -1010,25 +1010,24 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 }
             }
 
-            Self::DuplicateGenericParamName(adt, idxs) => {
-                let message = if let Some(name) = adt.name(db) {
+            Self::DuplicateGenericParamName(owner, idxs) => {
+                let message = if let Some(name) = owner.name(db) {
                     format!(
                         "duplicate generic parameter name in {} `{}`",
-                        adt.kind_name(),
+                        owner.kind_name(),
                         name.data(db)
                     )
                 } else {
                     format!(
                         "duplicate generic parameter name in {} definition",
-                        adt.kind_name()
+                        owner.kind_name()
                     )
                 };
 
-                let gen = adt.generic_owner().unwrap();
-                let name = gen.params(db).data(db)[0].name().unwrap().data(db);
+                let name = owner.params(db).data(db)[0].name().unwrap().data(db);
                 let spans = idxs
                     .iter()
-                    .map(|i| gen.params_span().param(*i as usize).resolve(db));
+                    .map(|i| owner.params_span().param(*i as usize).resolve(db));
                 CompleteDiagnostic {
                     severity: Severity::Error,
                     message,
@@ -1119,6 +1118,30 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: "only literal expression is supported".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec![],
+                error_code,
+            },
+
+            Self::NonTrailingDefaultGenericParam(span) => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "generic parameters with a default must be trailing".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: "must not be followed by a parameter with no default".to_string(),
+                    span: span.resolve(db),
+                }],
+                notes: vec![],
+                error_code,
+            },
+
+            Self::GenericDefaultForwardRef { span, name } => CompleteDiagnostic {
+                severity: Severity::Error,
+                message: "cannot reference generic parameter before it is declared".to_string(),
+                sub_diagnostics: vec![SubDiagnostic {
+                    style: LabelStyle::Primary,
+                    message: format!("cannot reference `{}` before it's declared", name.data(db)),
                     span: span.resolve(db),
                 }],
                 notes: vec![],

@@ -1,5 +1,4 @@
 use super::{
-    adt_def::AdtRef,
     def_analysis::AdtCycleMember,
     func_def::FuncDef,
     trait_def::{TraitDef, TraitInstId},
@@ -12,8 +11,8 @@ use crate::{
 use either::Either;
 use hir::{
     hir_def::{
-        Enum, FieldIndex, FieldParent, Func, IdentId, ImplTrait, ItemKind, PathId, Trait,
-        TypeAlias as HirTypeAlias,
+        Enum, FieldIndex, FieldParent, Func, GenericParamOwner, IdentId, ImplTrait, ItemKind,
+        PathId, Trait, TypeAlias as HirTypeAlias,
     },
     span::{
         expr::LazyMethodCallExprSpan,
@@ -107,7 +106,7 @@ pub enum TyLowerDiag<'db> {
     DuplicateArgLabel(Func<'db>, SmallVec<[u16; 4]>),
     DuplicateFieldName(FieldParent<'db>, SmallVec<[u16; 4]>),
     DuplicateVariantName(Enum<'db>, SmallVec<[u16; 4]>),
-    DuplicateGenericParamName(AdtRef<'db>, SmallVec<[u16; 4]>),
+    DuplicateGenericParamName(GenericParamOwner<'db>, SmallVec<[u16; 4]>),
 
     InvalidConstParamTy(DynLazySpan<'db>),
     RecursiveConstParamTy(DynLazySpan<'db>),
@@ -129,6 +128,14 @@ pub enum TyLowerDiag<'db> {
     },
 
     InvalidConstTyExpr(DynLazySpan<'db>),
+
+    NonTrailingDefaultGenericParam(LazyGenericParamSpan<'db>),
+
+    // Default generic parameter diagnostics
+    GenericDefaultForwardRef {
+        span: LazyGenericParamSpan<'db>,
+        name: IdentId<'db>,
+    },
 }
 
 impl TyLowerDiag<'_> {
@@ -154,6 +161,8 @@ impl TyLowerDiag<'_> {
             Self::DuplicateVariantName(..) => 18,
             Self::DuplicateGenericParamName(..) => 19,
             Self::DuplicateArgLabel(..) => 20,
+            Self::NonTrailingDefaultGenericParam(_) => 21,
+            Self::GenericDefaultForwardRef { .. } => 22,
         }
     }
 }
