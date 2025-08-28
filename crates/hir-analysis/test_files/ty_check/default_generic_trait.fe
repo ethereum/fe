@@ -3,12 +3,27 @@ trait Add<T = Self> {
 
     fn add(self: Self, _ rhs: T) -> Self::Output
 }
+trait Sub<T = Self> {
+    type Output = Self
 
-impl Add for i32 {
+    fn sub(self: Self, _ rhs: T) -> Self::Output
+}
+
+struct Foo {}
+struct Bar {}
+
+impl Add for Foo {
+    fn add(self: Self, _ rhs: Self) -> Self { self }
+}
+impl Sub for Foo {
+    fn sub(self: Self, _ rhs: Self) -> Self { self }
+}
+impl Add for Bar {
     fn add(self: Self, _ rhs: Self) -> Self { self }
 }
 
-fn f(x: i32) -> i32 {
+fn f(x: Foo, y: Bar) -> Foo {
+    y.add(y)
+    x.sub(x)
     x.add(x)
 }
-

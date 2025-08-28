@@ -746,10 +746,6 @@ pub fn find_associated_type<'db>(
         };
     }
 
-    // Collect unique candidates keyed by their normalized associated type.
-    // This avoids scanning and dedups different trait bounds that resolve to
-    // the same concrete type.
-    let mut candidates: IndexMap<TyId<'db>, TraitInstId<'db>> = IndexMap::new();
     let ingot = scope.ingot(db);
     // Use a single unification table and snapshots to preserve outer
     // substitutions while isolating per-candidate attempts.
@@ -784,6 +780,7 @@ pub fn find_associated_type<'db>(
         }
     }
 
+    let mut candidates = SmallVec::new();
     // Check explicit bounds in assumptions that match `ty` only when `ty` is a type
     // parameter (to avoid spurious ambiguities for concrete types that already have impls).
     if let TyData::TyParam(_) = ty.value.data(db) {
@@ -796,7 +793,7 @@ pub fn find_associated_type<'db>(
             if table.unify(lhs_ty, pred_self_ty).is_ok() {
                 if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
                     let folded = assoc_ty.fold_with(&mut table);
-                    candidates.entry(folded).or_insert(trait_inst);
+                    candidates.push((trait_inst, folded));
                 }
             }
             table.rollback_to(snapshot);
@@ -811,7 +808,7 @@ pub fn find_associated_type<'db>(
         if table.unify(lhs_ty, impl_.self_ty(db)).is_ok() {
             if let Some(ty) = impl_.assoc_ty(db, name) {
                 let folded = ty.fold_with(&mut table);
-                candidates.entry(folded).or_insert(impl_.trait_(db));
+                candidates.push((impl_.trait_(db), folded));
             }
         }
         table.rollback_to(snapshot);
@@ -832,7 +829,7 @@ pub fn find_associated_type<'db>(
             if table.unify(ty_with_subst, trait_inst.self_ty(db)).is_ok() {
                 if let Some(assoc_ty) = trait_inst.assoc_ty(db, name) {
                     let folded = assoc_ty.fold_with(&mut table);
-                    candidates.entry(folded).or_insert(trait_inst);
+                    candidates.push((trait_inst, folded));
                 }
             }
             table.rollback_to(snapshot);
@@ -852,7 +849,7 @@ pub fn find_associated_type<'db>(
                 if let Ok(inst) = lower_trait_ref(db, self_ty, *trait_ref, scope, assumptions) {
                     if let Some(assoc_ty) = inst.assoc_ty(db, name) {
                         let folded = assoc_ty.fold_with(&mut table);
-                        candidates.entry(folded).or_insert(inst);
+                        candidates.push((inst, folded));
                     }
                 }
             }
@@ -860,9 +857,6 @@ pub fn find_associated_type<'db>(
     }
 
     candidates
-        .into_iter()
-        .map(|(ty, inst)| (inst, ty))
-        .collect()
 }
 
 pub fn resolve_name_res<'db>(
