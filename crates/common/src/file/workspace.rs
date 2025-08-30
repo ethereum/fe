@@ -21,7 +21,7 @@ pub struct Workspace {
 #[salsa::tracked]
 impl Workspace {
     pub fn default(db: &dyn InputDb) -> Self {
-        Workspace::new(db, Trie::new(), IndexMap::new())
+        Workspace::new(db, Trie::new(), IndexMap::default())
     }
     pub(crate) fn set(
         &self,

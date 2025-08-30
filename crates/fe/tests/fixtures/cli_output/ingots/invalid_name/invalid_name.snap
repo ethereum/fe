@@ -1,10 +1,8 @@
 ---
 source: crates/fe/tests/cli_output.rs
-assertion_line: 94
 expression: output
 ---
 === STDERR ===
-there are issues with the local fe.toml file file://<project>/crates/fe/tests/fixtures/cli_output/ingots/invalid_name/fe.toml
-  invalid ingot name "invalid_name_with_underscores"
+❌ Config validation error at file://<project>/crates/fe/tests/fixtures/cli_output/ingots/invalid_name/: Invalid ingot name "invalid-name-with-dashes"
 
 === EXIT CODE: 1 ===

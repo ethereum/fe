@@ -1,0 +1,10 @@
+---
+source: crates/fe/tests/cli_output.rs
+expression: output
+---
+=== STDOUT ===
+[31m➖ cycle_d v0.1.0[0m
+└── [31m➖ cycle_e v0.1.0[0m
+    └── [31m➖ cycle_d v0.1.0 🔄 [cycle][0m
+
+=== EXIT CODE: 0 ===

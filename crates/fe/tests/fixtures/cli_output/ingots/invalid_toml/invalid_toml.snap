@@ -1,11 +1,9 @@
 ---
 source: crates/fe/tests/cli_output.rs
-assertion_line: 94
 expression: output
 ---
 === STDERR ===
-there are issues with the local fe.toml file file://<project>/crates/fe/tests/fixtures/cli_output/ingots/invalid_toml/fe.toml
-  invalid TOML syntax: TOML parse error at line 2, column 20
+❌ Invalid fe.toml file in ingot file://<project>/crates/fe/tests/fixtures/cli_output/ingots/invalid_toml/: TOML parse error at line 2, column 20
   |
 2 | name = "invalidtoml
   |                    ^

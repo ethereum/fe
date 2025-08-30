@@ -8,7 +8,6 @@ criterion = "0.5"
 walkdir = "2.4"
 
 [dependencies]
-hir-analysis.workspace = true
 driver.workspace = true
 parser.workspace = true
 common.workspace = true

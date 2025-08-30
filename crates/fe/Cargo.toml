@@ -7,7 +7,10 @@ edition = "2021"
 clap.workspace = true
 driver.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
+common.workspace = true
+resolver.workspace = true
+camino.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 dir-test.workspace = true

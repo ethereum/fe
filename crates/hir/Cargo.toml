@@ -19,10 +19,8 @@ num-traits = "0.2.19"
 paste.workspace = true
 rustc-hash.workspace = true
 salsa.workspace = true
-smallvec.workspace = true
 thin-vec.workspace = true
 
 common.workspace = true
 parser.workspace = true
 url.workspace = true
-tracing.workspace = true

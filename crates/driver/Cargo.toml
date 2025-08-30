@@ -13,7 +13,6 @@ doctest = false
 
 [dependencies]
 camino.workspace = true
-clap.workspace = true
 codespan-reporting.workspace = true
 salsa.workspace = true
 
@@ -22,6 +21,4 @@ hir.workspace = true
 hir-analysis.workspace = true
 resolver.workspace = true
 url.workspace = true
-smol_str.workspace = true
-test-utils.workspace = true
 tracing.workspace = true

@@ -16,7 +16,6 @@ derive_more.workspace = true
 lazy_static = "1.5.0"
 logos = "0.15"
 rowan = "0.16.1"
-rustc-hash.workspace = true
 smallvec.workspace = true
 unwrap-infallible = "0.1.5"
 tracing.workspace = true

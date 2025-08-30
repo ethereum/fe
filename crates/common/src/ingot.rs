@@ -132,9 +132,9 @@ impl<'db> Ingot<'db> {
         let base_url = self.base(db);
         let mut deps = match self.config(db) {
             Some(config) => config
-                .based_dependencies(&base_url)
+                .forward_edges(&base_url)
                 .into_iter()
-                .map(|based_dependency| (based_dependency.alias, based_dependency.url))
+                .map(|(url, weight)| (weight.alias, url))
                 .collect(),
             None => vec![],
         };

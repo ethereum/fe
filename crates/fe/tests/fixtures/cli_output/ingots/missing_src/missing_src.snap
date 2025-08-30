@@ -1,9 +1,9 @@
 ---
 source: crates/fe/tests/cli_output.rs
-assertion_line: 78
 expression: output
 ---
 === STDERR ===
-source files resolution error: `src` folder does not exist in the ingot directory
+❌ File resolution error: Missing required directory 'src' in ingot at file://<project>/crates/fe/tests/fixtures/cli_output/ingots/missing_src/
+❌ File resolution error: Missing required file 'src/lib.fe' in ingot at file://<project>/crates/fe/tests/fixtures/cli_output/ingots/missing_src/
 
 === EXIT CODE: 1 ===

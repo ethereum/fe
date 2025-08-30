@@ -16,8 +16,18 @@ fn normalize_output(output: &str) -> String {
     output.replace(&project_root.to_string_lossy().to_string(), "<project>")
 }
 
-// Helper function to run fe binary
+// Helper function to run fe check
 fn run_fe_check(path: &str) -> (String, i32) {
+    run_fe_command("check", path)
+}
+
+// Helper function to run fe tree
+fn run_fe_tree(path: &str) -> (String, i32) {
+    run_fe_command("tree", path)
+}
+
+// Helper function to run fe binary with specified subcommand
+fn run_fe_command(subcommand: &str, path: &str) -> (String, i32) {
     // Build the fe binary
     let cargo_exe = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_string());
     let output = Command::new(&cargo_exe)
@@ -32,7 +42,7 @@ fn run_fe_check(path: &str) -> (String, i32) {
         );
     }
 
-    // Run fe check
+    // Run fe subcommand
     let fe_binary = std::env::current_exe()
         .expect("Failed to get current exe")
         .parent()
@@ -42,10 +52,10 @@ fn run_fe_check(path: &str) -> (String, i32) {
         .join("fe");
 
     let output = Command::new(&fe_binary)
-        .args(["check", path])
+        .args([subcommand, path])
         .env("NO_COLOR", "1") // Disable color output for consistent snapshots across environments
         .output()
-        .expect("Failed to run fe check");
+        .unwrap_or_else(|_| panic!("Failed to run fe {}", subcommand));
 
     // Combine stdout and stderr for snapshot
     let mut full_output = String::new();
@@ -92,5 +102,22 @@ fn test_cli_ingot(fixture: Fixture<&str>) {
     // Use the ingot directory name for the snapshot to avoid numbering
     let ingot_name = ingot_dir.file_name().unwrap().to_str().unwrap();
     let snapshot_path = ingot_dir.join(ingot_name);
+    snap_test!(output, snapshot_path.to_str().unwrap());
+}
+
+#[dir_test(
+    dir: "$CARGO_MANIFEST_DIR/tests/fixtures/cli_output/ingots",
+    glob: "**/fe.toml",
+)]
+fn test_tree_output(fixture: Fixture<&str>) {
+    let ingot_dir = std::path::Path::new(fixture.path())
+        .parent()
+        .expect("fe.toml should have parent");
+
+    let (output, _) = run_fe_tree(ingot_dir.to_str().unwrap());
+
+    // Use the ingot directory name for the snapshot with _tree suffix
+    let ingot_name = ingot_dir.file_name().unwrap().to_str().unwrap();
+    let snapshot_path = ingot_dir.join(format!("{}_tree", ingot_name));
     snap_test!(output, snapshot_path.to_str().unwrap());
 }
