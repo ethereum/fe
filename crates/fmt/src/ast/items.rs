@@ -225,6 +225,26 @@ fn where_doc<'a, N: ast::WhereClauseOwner + AstNode>(
     }
 }
 
+/// Counts newlines in a node's leading trivia (before its first non-trivia
+/// token or child node).
+fn node_leading_newlines(ctx: &RewriteContext, node: &parser::SyntaxNode) -> usize {
+    use parser::syntax_kind::SyntaxKind;
+    use parser::syntax_node::NodeOrToken;
+
+    let mut count = 0;
+    for child in node.children_with_tokens() {
+        match child {
+            NodeOrToken::Token(token) => match token.kind() {
+                SyntaxKind::Newline => count += newline_count(ctx.snippet(token.text_range())),
+                SyntaxKind::WhiteSpace => {}
+                _ => break,
+            },
+            NodeOrToken::Node(_) => break,
+        }
+    }
+    count
+}
+
 /// Format a block of items `{ ... }`, preserving whether there was a blank line
 /// between entries in the source (2+ newlines => one blank line; otherwise none).
 /// Takes a syntax node and a function to cast child nodes to the item type.
@@ -269,9 +289,13 @@ fn block_items_doc<'a, T: ToDoc>(
                         alloc.hardline(),
                     ))
                 } else {
-                    let Some(item) = cast_fn(node) else {
+                    let Some(item) = cast_fn(node.clone()) else {
                         continue;
                     };
+                    // Item nodes own their leading comments and newlines, but the
+                    // node's doc drops that leading trivia; count it here so blank
+                    // lines between entries are preserved without doubling.
+                    pending_newlines += node_leading_newlines(ctx, &node);
                     Some(item.to_doc(ctx))
                 }
             }

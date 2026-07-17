@@ -105,6 +105,26 @@ macro_rules! block_list_auto_impl {
 block_list_auto_impl!(block_list_auto, block_list);
 block_list_auto_impl!(block_list_spaced_auto, block_list_spaced);
 
+/// Returns true if the first non-trivia token of the node is `<` (a qualified
+/// type such as `<T as Trait>::Item`). Such a node must not be emitted
+/// directly after another `<`, or the two would lex as a single `<<` shift
+/// token on reparse; callers insert a space between them.
+pub(crate) fn starts_with_lt(syntax: &parser::SyntaxNode) -> bool {
+    syntax
+        .descendants_with_tokens()
+        .filter_map(|child| child.into_token())
+        .find(|token| {
+            !matches!(
+                token.kind(),
+                SyntaxKind::WhiteSpace
+                    | SyntaxKind::Newline
+                    | SyntaxKind::Comment
+                    | SyntaxKind::DocComment
+            )
+        })
+        .is_some_and(|token| token.kind() == SyntaxKind::Lt)
+}
+
 pub fn has_comment_tokens(syntax: &parser::SyntaxNode) -> bool {
     syntax.children_with_tokens().any(|child| {
         matches!(
@@ -200,6 +220,13 @@ impl<'a> TokenDocBuilder<'a> {
 
     fn push_piece(&mut self, piece: TokenPiece<'a>) {
         let alloc = &self.ctx.alloc;
+
+        // Leading newlines inside a node are the enclosing container's
+        // concern (it emits the separation between entries); rendering them
+        // here too would add another blank line on every format pass.
+        if self.is_start {
+            self.pending_newlines = 0;
+        }
 
         if self.pending_newlines > 0 {
             let doc = hardlines(alloc, self.pending_newlines).append(piece.doc);
@@ -1093,8 +1120,16 @@ impl ToDoc for ast::QualifiedType {
                 None => return alloc.nil(),
             };
 
+            // A qualified type nested directly inside another (`< <A as B>::C
+            // as D>`) needs a space after the opening `<` so it doesn't lex
+            // as `<<`.
+            let open = if self.ty().is_some_and(|t| starts_with_lt(t.syntax())) {
+                "< "
+            } else {
+                "<"
+            };
             return alloc
-                .text("<")
+                .text(open)
                 .append(ty)
                 .append(alloc.text(" as "))
                 .append(trait_path)
