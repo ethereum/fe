@@ -4,6 +4,7 @@ use pretty::DocAllocator;
 
 use crate::RewriteContext;
 use parser::ast::{self, AttrArgValueKind, AttrKind, prelude::AstNode};
+use parser::syntax_kind::SyntaxKind;
 
 use super::types::{Doc, ToDoc, block_list_auto, intersperse};
 
@@ -11,12 +12,23 @@ impl ToDoc for ast::AttrList {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         let alloc = &ctx.alloc;
 
-        let attrs: Vec<_> = self.iter().map(|attr| attr.to_doc(ctx)).collect();
-        if attrs.is_empty() {
-            alloc.nil()
-        } else {
-            intersperse(alloc, attrs, alloc.hardline()).append(alloc.hardline())
+        match attr_lines(self, ctx) {
+            Some(doc) => doc.append(alloc.hardline()),
+            None => alloc.nil(),
         }
+    }
+}
+
+/// Renders the attributes of a list one per line, without a line break after
+/// the last one. Returns `None` for an empty list.
+pub(crate) fn attr_lines<'a>(list: &ast::AttrList, ctx: &'a RewriteContext<'a>) -> Option<Doc<'a>> {
+    let alloc = &ctx.alloc;
+
+    let attrs: Vec<_> = list.iter().map(|attr| attr.to_doc(ctx)).collect();
+    if attrs.is_empty() {
+        None
+    } else {
+        Some(intersperse(alloc, attrs, alloc.hardline()))
     }
 }
 
@@ -54,12 +66,30 @@ impl ToDoc for ast::NormalAttr {
             alloc.nil()
         };
 
+        // Inner attributes (`#![...]`) have a `!` after the `#`.
+        let open = if is_inner_attr(self) { "#![" } else { "#[" };
+
         alloc
-            .text("#[")
+            .text(open)
             .append(path)
             .append(suffix_doc)
             .append(alloc.text("]"))
     }
+}
+
+fn is_inner_attr(attr: &ast::NormalAttr) -> bool {
+    let mut tokens = attr
+        .syntax()
+        .children_with_tokens()
+        .filter_map(|child| child.into_token())
+        .filter(|token| !token.kind().is_trivia() && token.kind() != SyntaxKind::Newline);
+    matches!(
+        (
+            tokens.next().map(|t| t.kind()),
+            tokens.next().map(|t| t.kind())
+        ),
+        (Some(SyntaxKind::Pound), Some(SyntaxKind::Not))
+    )
 }
 
 impl ToDoc for ast::DocCommentAttr {

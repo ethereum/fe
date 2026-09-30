@@ -242,6 +242,7 @@ mod strings {
 "#;
     let expected = r#"mod inner {
     #![arithmetic(unchecked)]
+
     pub(ingot) fn sum() -> u256 {
         var total: u256 = 0
         #[unroll]
@@ -267,6 +268,7 @@ mod strings {
 
     third")]
     #![other]
+
     fn looped() {
         #[example(text = "one
    two")]
@@ -334,6 +336,71 @@ fn sum(xs: [u256; 4]) -> u256 {
         }
     }
     total
+}
+"#;
+    assert_formats_to(source, expected);
+}
+
+#[test]
+fn nested_module_inner_attributes_are_kept() {
+    let source = r#"#![arithmetic(checked)]
+
+mod math {
+    #![arithmetic(unchecked)]
+
+    pub fn wrap() -> u8 {
+        let x: u8 = 255
+        x + 1
+    }
+}
+
+mod tight {   #![arithmetic(unchecked)]
+    fn f() {}
+}
+
+mod outer {
+    #![arithmetic(unchecked)]
+    #![payable]
+
+
+    mod inner {
+        #![arithmetic(checked)]
+        fn g() {}
+    }
+}
+
+mod only_attrs {
+    #![arithmetic(unchecked)]
+}
+"#;
+    let expected = r#"#![arithmetic(checked)]
+
+mod math {
+    #![arithmetic(unchecked)]
+
+    pub fn wrap() -> u8 {
+        let x: u8 = 255
+        x + 1
+    }
+}
+
+mod tight {
+    #![arithmetic(unchecked)]
+    fn f() {}
+}
+
+mod outer {
+    #![arithmetic(unchecked)]
+    #![payable]
+
+    mod inner {
+        #![arithmetic(checked)]
+        fn g() {}
+    }
+}
+
+mod only_attrs {
+    #![arithmetic(unchecked)]
 }
 "#;
     assert_formats_to(source, expected);
