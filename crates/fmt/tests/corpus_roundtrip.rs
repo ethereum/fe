@@ -6,16 +6,18 @@
 //! - `fmt(file)` succeeds,
 //! - `parse(fmt(file))` succeeds — the formatter must never emit output the
 //!   parser rejects (e.g. a line-start `-` after wrapping),
-//! - `fmt(fmt(file)) == fmt(file)` — formatting is idempotent.
-//!
-//! There is no span-erased AST-equality utility in the codebase, so semantic
-//! preservation is covered only indirectly (reparse success + idempotence).
+//! - `fmt(fmt(file)) == fmt(file)` — formatting is idempotent,
+//! - `fmt(file)` keeps the same tokens as `file`: the same sequence of
+//!   identifiers, keywords, literals, operators and comment text, ignoring
+//!   whitespace and layout punctuation (see `is_layout_token`). This catches
+//!   the formatter dropping code (an attribute, a comment, a visibility
+//!   restriction) even when the result still parses.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use fe_fmt::{Config, FormatError, format_str};
-use parser::{RecoveryMode, parse_source_file};
+use parser::{RecoveryMode, SyntaxKind, SyntaxNode, SyntaxToken, parse_source_file};
 
 /// Directories that contain no source corpus or deliberately broken files.
 const SKIP_DIRS: &[&str] = &["target", ".git", "node_modules"];
@@ -39,6 +41,76 @@ fn collect_fe_files(dir: &Path, out: &mut Vec<PathBuf>) {
 fn parses_cleanly(source: &str) -> bool {
     let (_, errors) = parse_source_file(source, RecoveryMode::new(true));
     errors.is_empty()
+}
+
+/// The tokens of a file that formatting must not change, in order: all tokens
+/// except whitespace, line breaks and layout punctuation. Comments are compared
+/// without trailing whitespace. `<<` in types is two `<` tokens, so `< <` and
+/// `<<` compare equal.
+fn significant_tokens(source: &str) -> Vec<String> {
+    let (green, _) = parse_source_file(source, RecoveryMode::new(true));
+    SyntaxNode::new_root(green)
+        .descendants_with_tokens()
+        .filter_map(|element| element.into_token())
+        .filter(|token| !is_layout_token(token))
+        .map(|token| token.text().trim_end().to_string())
+        .collect()
+}
+
+fn is_layout_token(token: &SyntaxToken) -> bool {
+    let parent = token.parent();
+    let parent_kind = parent.as_ref().map(|parent| parent.kind());
+    let grandparent_kind = parent
+        .as_ref()
+        .and_then(|parent| parent.parent())
+        .map(|grandparent| grandparent.kind());
+    match token.kind() {
+        SyntaxKind::WhiteSpace | SyntaxKind::Newline => true,
+        // List entries are separated by commas or line breaks, and trailing
+        // commas come and go with the layout. Only a one-element tuple needs
+        // its comma: `(x,)` is a tuple, `(x)` is not. A tuple variant's single
+        // field (`Some(T,)`, `Some(x,)`) is the same either way.
+        SyntaxKind::Comma => {
+            let one_element_tuple = matches!(
+                parent_kind,
+                Some(SyntaxKind::TupleType | SyntaxKind::TupleExpr | SyntaxKind::TuplePatElemList)
+            ) && !matches!(
+                grandparent_kind,
+                Some(SyntaxKind::VariantDef | SyntaxKind::PathTuplePat)
+            ) && parent
+                .is_some_and(|parent| parent.children().count() == 1);
+            !one_element_tuple
+        }
+        // The formatter puts braces around a match arm body such as
+        // `=> return x`.
+        SyntaxKind::LBrace | SyntaxKind::RBrace => {
+            parent_kind == Some(SyntaxKind::BlockExpr)
+                && grandparent_kind == Some(SyntaxKind::MatchArm)
+        }
+        _ => false,
+    }
+}
+
+/// Describes where two token sequences first differ, with a little context.
+fn token_difference(before: &[String], after: &[String]) -> Option<String> {
+    let at = before
+        .iter()
+        .zip(after)
+        .position(|(b, a)| b != a)
+        .unwrap_or(before.len().min(after.len()));
+    if at == before.len() && at == after.len() {
+        return None;
+    }
+    let window = |tokens: &[String]| {
+        let start = at.saturating_sub(3);
+        let end = (at + 5).min(tokens.len());
+        tokens[start..end].join(" ")
+    };
+    Some(format!(
+        "at token {at}\n  before: {}\n  after:  {}",
+        window(before),
+        window(after)
+    ))
 }
 
 #[test]
@@ -84,6 +156,15 @@ fn corpus_roundtrip() {
                 "{display}: formatted output no longer parses:\n{formatted}"
             ));
             continue;
+        }
+
+        if let Some(difference) = token_difference(
+            &significant_tokens(&source),
+            &significant_tokens(&formatted),
+        ) {
+            failures.push(format!(
+                "{display}: formatting changed the code {difference}"
+            ));
         }
 
         match format_str(&formatted, &config) {
