@@ -21,7 +21,7 @@ fn loop_examples(arr: Array<i32, 10>) {
     }
 
     var maybe = Some(1)
-    while let Some(v,) = maybe {
+    while let Some(v) = maybe {
         maybe = None
         if v > 0 { break }
     }

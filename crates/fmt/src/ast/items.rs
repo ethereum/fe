@@ -1217,7 +1217,17 @@ impl ToDoc for ast::VariantDef {
 
         let kind_doc = match self.kind() {
             ast::VariantKind::Unit => alloc.nil(),
-            ast::VariantKind::Tuple(tuple_type) => tuple_type.to_doc(ctx),
+            // Unlike a one-element tuple type, a single field needs no
+            // trailing comma: `Some(T)`, not `Some(T,)`.
+            ast::VariantKind::Tuple(tuple_type) => block_list_auto(
+                ctx,
+                tuple_type.syntax(),
+                "(",
+                ")",
+                ast::Type::cast,
+                ctx.config.indent_width as isize,
+                true,
+            ),
             ast::VariantKind::Record(fields) => {
                 if has_comment_tokens(fields.syntax()) {
                     return attrs.append(name.clone()).append(alloc.text(" ")).append(
