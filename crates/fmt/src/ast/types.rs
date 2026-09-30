@@ -125,13 +125,43 @@ pub(crate) fn starts_with_lt(syntax: &parser::SyntaxNode) -> bool {
         .is_some_and(|token| token.kind() == SyntaxKind::Lt)
 }
 
+/// Comments directly after an item's attribute list are rendered together with
+/// the attributes (see `ast::AttrList::to_doc`), so they don't count here.
 pub fn has_comment_tokens(syntax: &parser::SyntaxNode) -> bool {
     syntax.children_with_tokens().any(|child| {
         matches!(
             child,
             NodeOrToken::Token(t) if matches!(t.kind(), SyntaxKind::Comment | SyntaxKind::DocComment)
+                && !(t.kind() == SyntaxKind::Comment && follows_attr_list(&t))
         )
     })
+}
+
+/// Returns true if only trivia separates the token from a preceding attribute
+/// list of an item or statement (not the inner attributes of a module, whose
+/// following comments belong to the module's items).
+pub(crate) fn follows_attr_list(token: &parser::SyntaxToken) -> bool {
+    let mut prev = token.prev_sibling_or_token();
+    while let Some(el) = prev {
+        match el {
+            NodeOrToken::Token(t)
+                if matches!(
+                    t.kind(),
+                    SyntaxKind::WhiteSpace | SyntaxKind::Newline | SyntaxKind::Comment
+                ) =>
+            {
+                prev = t.prev_sibling_or_token();
+            }
+            NodeOrToken::Node(node) => {
+                return node.kind() == SyntaxKind::AttrList
+                    && node
+                        .parent()
+                        .is_some_and(|parent| parent.kind() != SyntaxKind::ItemList);
+            }
+            NodeOrToken::Token(_) => return false,
+        }
+    }
+    false
 }
 
 pub(crate) fn hardlines<'a>(alloc: &'a RcAllocator, count: usize) -> Doc<'a> {
@@ -321,6 +351,8 @@ fn token_doc_inner<'a>(
                 }
 
                 match token.kind() {
+                    // Rendered with the attribute list they follow.
+                    SyntaxKind::Newline | SyntaxKind::Comment if follows_attr_list(&token) => {}
                     SyntaxKind::Newline => builder.bump_newlines(&token),
                     SyntaxKind::WhiteSpace => {}
                     SyntaxKind::Comment | SyntaxKind::DocComment => builder.push_comment(&token),

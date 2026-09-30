@@ -405,3 +405,20 @@ mod only_attrs {
 "#;
     assert_formats_to(source, expected);
 }
+
+#[test]
+fn comments_among_inner_and_loop_attributes_are_kept() {
+    let source = r#"mod m {
+    #![arithmetic(unchecked)]
+    // Comment inside the inner attributes.
+    #![payable]
+    // Comment on the first item.
+    fn f(xs: [u8; 2]) {
+        #[unroll(never)]
+        // Note on the loop.
+        for x in xs {}
+    }
+}
+"#;
+    assert_formats_to(source, source);
+}
