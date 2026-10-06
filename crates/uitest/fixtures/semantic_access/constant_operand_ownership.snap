@@ -5,17 +5,12 @@ expression: diags
 input_file: fixtures/semantic_access/constant_operand_ownership.fe
 ---
 error[16-0001]: access conflict in `fn move_while_borrowed`
-   ┌─ constant_operand_ownership.fe:94:34
+   ┌─ constant_operand_ownership.fe:97:9
    │
-94 │   fn move_while_borrowed() -> u256 {
-   │ ╭──────────────────────────────────^
-95 │ │     let b = Boxed { v: 3 }
-96 │ │     let r = ref b
-   │ │             ----- access opened here
-97 │ │     let moved = b
-98 │ │     r.v + moved.v
-99 │ │ }
-   │ ╰─^ cannot move out of this place while a `ref` access of it is open
+96 │     let r = ref b
+   │             ----- access opened here
+97 │     let moved = b
+   │         ^^^^^ cannot move out of this place while a `ref` access of it is open
 
 error[16-0001]: access conflict in `fn read_while_mut_borrowed`
     ┌─ constant_operand_ownership.fe:105:13
@@ -26,43 +21,28 @@ error[16-0001]: access conflict in `fn read_while_mut_borrowed`
     │             ^ cannot read this place while a `mut` access of it is open
 
 error[16-0002]: move conflict in `fn double_move`
-   ┌─ constant_operand_ownership.fe:11:26
+   ┌─ constant_operand_ownership.fe:14:9
    │
-11 │     fn double_move() -> u256 {
-   │ ╭────────────────────────────^
-   │ │ ╭──────────────────────────'
-12 │ │ │     let b = Boxed { v: 3 }
-13 │ │ │     let first = b
-14 │ │ │     let second = b
-15 │ │ │     first.v + second.v
-16 │ │ │ }
-   │ ╰─│─^ cannot use a value after it was moved
-   │   ╰─' value is moved here
+13 │     let first = b
+   │         ----- value is moved here
+14 │     let second = b
+   │         ^^^^^^ cannot use a value after it was moved
 
 error[16-0002]: move conflict in `fn aggregate_then_move`
-   ┌─ constant_operand_ownership.fe:19:34
+   ┌─ constant_operand_ownership.fe:22:9
    │
-19 │   fn aggregate_then_move() -> u256 {
-   │ ╭──────────────────────────────────^
-20 │ │     let b = Boxed { v: 3 }
-21 │ │     let t = (b,)
-   │ │              - value is moved here
-22 │ │     let moved = b
-23 │ │     t.0.v + moved.v
-24 │ │ }
-   │ ╰─^ cannot use a value after it was moved
+21 │     let t = (b,)
+   │              - value is moved here
+22 │     let moved = b
+   │         ^^^^^ cannot use a value after it was moved
 
 error[16-0002]: move conflict in `fn use_after_move`
    ┌─ constant_operand_ownership.fe:30:5
    │
-27 │   fn use_after_move() -> u256 {
-   │ ╭─────────────────────────────'
-28 │ │     let b = Boxed { v: 3 }
-29 │ │     let moved = b
-30 │ │     b.v + moved.v
-   │ │     ^^^ cannot use a value after it was moved
-31 │ │ }
-   │ ╰─' value is moved here
+29 │     let moved = b
+   │         ----- value is moved here
+30 │     b.v + moved.v
+   │     ^^^ cannot use a value after it was moved
 
 error[16-0002]: move conflict in `fn call_then_move`
    ┌─ constant_operand_ownership.fe:37:21
@@ -124,3 +104,9 @@ error[16-0002]: move conflict in `fn loop_move`
    │                          │
    │                          cannot use a value after it was moved
    │                          value is moved here
+
+error[16-0002]: move conflict in `fn payload_moved_through_access`
+    ┌─ constant_operand_ownership.fe:174:22
+    │
+174 │         Option::Some(b) => b.v
+    │                      ^ cannot move out of a place reached through a `ref` access

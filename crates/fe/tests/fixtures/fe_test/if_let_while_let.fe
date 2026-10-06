@@ -21,7 +21,7 @@ fn sum_nested_if_let(_ value: Option<(Point, Option<u256>)>) -> u256 {
 }
 
 fn sum_compound_if_let(_ a: Option<Option<usize>>) -> usize {
-    if let Option::Some(b) = a && let Option::Some(c) = b {
+    if let Option::Some(b) = ref a && let Option::Some(c) = b {
         c
     } else {
         0
@@ -29,7 +29,7 @@ fn sum_compound_if_let(_ a: Option<Option<usize>>) -> usize {
 }
 
 fn sum_compound_if_let_annotated(_ a: Option<Option<usize>>) -> usize {
-    let x: usize = if let Option::Some(b) = a && let Option::Some(c) = b {
+    let x: usize = if let Option::Some(b) = ref a && let Option::Some(c) = b {
         c
     } else {
         0

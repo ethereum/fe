@@ -151,19 +151,29 @@ fn copy_reuse() -> u256 {
     a + c
 }
 
-// Accepted: matching through a borrow does not move the payload.
+// Accepted: matching through a `ref` access binds the payload by `ref`.
 fn borrowed_matches() -> u256 {
     let o: Option<Boxed> = Option::Some(Boxed { v: 21 })
     let r = ref o
-    let a = match r {
+    let a = match ref r {
         Option::Some(b) => b.v
         Option::None => 0
     }
-    let c = match r {
+    let c = match ref r {
         Option::Some(b) => b.v
         Option::None => 0
     }
     a + c
+}
+
+// Rejected: a by-value binding moves the payload out of the access.
+fn payload_moved_through_access() -> u256 {
+    let o: Option<Boxed> = Option::Some(Boxed { v: 21 })
+    let r = ref o
+    match r {
+        Option::Some(b) => b.v
+        Option::None => 0
+    }
 }
 
 // Accepted: the borrow ends before the move.

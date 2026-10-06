@@ -1,7 +1,7 @@
 use salsa::Update;
 
 use crate::analysis::HirAnalysisDb;
-use crate::core::hir_def::{ExprId, IdentId, Partial, Pat, PatId, Stmt, StmtId};
+use crate::core::hir_def::{Expr, ExprId, IdentId, Partial, Pat, PatId, Stmt, StmtId, UnOp};
 
 use super::{Callable, LocalBinding, TyChecker, instantiate_trait_method};
 use crate::analysis::ty::{
@@ -10,6 +10,7 @@ use crate::analysis::ty::{
     corelib::resolve_core_trait,
     diagnostics::BodyDiag,
     fold::{TyFoldable, TyFolder},
+    shape::Shape,
     trait_def::{TraitInstId, impls_for_ty},
     trait_resolution::TraitSolveCx,
     ty_def::{InvalidCause, TyId},
@@ -86,12 +87,13 @@ impl<'db> TyChecker<'db> {
             Stmt::Continue => self.check_continue(stmt, stmt_data),
             Stmt::Break => self.check_break(stmt, stmt_data),
             Stmt::Return(..) => self.check_return(stmt, stmt_data),
+            Stmt::Yield(expr) => self.check_yield(stmt, *expr),
             Stmt::Expr(expr) => self.check_expr(*expr, expected).ty,
         }
     }
 
     fn check_let(&mut self, stmt: StmtId, stmt_data: &Stmt<'db>) -> TyId<'db> {
-        let Stmt::Let(pat, ascription, expr) = stmt_data else {
+        let Stmt::Let(pat, ascription, expr, else_) = stmt_data else {
             unreachable!()
         };
 
@@ -112,10 +114,38 @@ impl<'db> TyChecker<'db> {
                     .set_local_borrow_provider(pat, prop.borrow_provider);
             }
 
-            if prop.shape.is_some() {
+            // `let mut x = p.get()` binds a mutable copy of a projection's
+            // `Copy` grant (an explicit `mut p` stays an access).
+            let copies_grant = matches!(
+                pat.data(self.db, self.body()),
+                Partial::Present(Pat::Path(_, true))
+            ) && !matches!(
+                self.env.expr_data(*expr),
+                Partial::Present(Expr::Un(_, UnOp::Ref | UnOp::Mut))
+            ) && matches!(prop.shape, Some(Shape::Access(_, ty)) if self.ty_is_copy(ty));
+            if copies_grant {
+                self.consume_access(*expr);
+            } else if prop.shape.is_some() {
                 self.bind_pattern_source(*pat, *expr, &prop);
             } else if self.pattern_binds_any(*pat) {
                 self.record_implicit_move_for_owned_expr(*expr, prop.ty);
+            }
+            if let Some(else_) = else_ {
+                let else_ty = self
+                    .check_expr_unknown(*else_)
+                    .ty
+                    .fold_with(self.db, &mut self.table);
+                if !else_ty.is_never(self.db) && !else_ty.has_invalid(self.db) {
+                    self.push_diag(BodyDiag::LetElseMustDiverge {
+                        primary: else_.span(self.body()).into(),
+                    });
+                }
+            } else if let Some(root) = self.env.pattern_store().root(*pat)
+                && !self.env.pattern_store().is_irrefutable(self.db, root)
+            {
+                self.push_diag(BodyDiag::RefutableLetPattern {
+                    primary: pat.span(self.body()).into(),
+                });
             }
         } else {
             let ascription = ascription.unwrap_or_else(|| self.fresh_ty());
@@ -436,13 +466,33 @@ impl<'db> TyChecker<'db> {
         let Stmt::Return(expr) = stmt_data else {
             unreachable!()
         };
+        // In a body with `yield` statements, a bare `return` ends the slide.
+        if expr.is_some() || !self.explicit_yields || self.projection_shape.is_none() {
+            self.check_exit_value(stmt, *expr);
+        }
+        TyId::never(self.db)
+    }
 
+    fn check_yield(&mut self, stmt: StmtId, expr: ExprId) -> TyId<'db> {
+        if self.projection_shape.is_some() {
+            self.check_exit_value(stmt, Some(expr));
+        } else {
+            self.check_expr(expr, self.expected);
+            self.push_diag(BodyDiag::YieldOutsideProjection {
+                primary: stmt.span(self.env.body()).into(),
+            });
+        }
+        TyId::unit(self.db)
+    }
+
+    /// Checks the value a `return` or `yield` ends its path with.
+    fn check_exit_value(&mut self, stmt: StmtId, expr: Option<ExprId>) {
         let (returned_expr, returned_prop, returned_ty, had_child_err) = if let Some(expr) = expr {
             let before = self.diags.len();
             let expected = self.fresh_ty();
-            let prop = self.check_expr(*expr, expected);
+            let prop = self.check_expr(expr, expected);
             let ty = expected.fold_with(self.db, &mut self.table);
-            (Some(*expr), Some(prop), ty, self.diags.len() > before)
+            (Some(expr), Some(prop), ty, self.diags.len() > before)
         } else {
             (None, None, TyId::unit(self.db), false)
         };
@@ -476,7 +526,5 @@ impl<'db> TyChecker<'db> {
         {
             self.first_return_borrow_provider.get_or_insert(provider);
         }
-
-        TyId::never(self.db)
     }
 }

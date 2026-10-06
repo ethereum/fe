@@ -8,7 +8,11 @@
 //! last use there; one that dies on a control-flow edge ends at the start of
 //! the successor, on an edge block of its own when the successor has other
 //! predecessors. An access whose carrier is never used ends right after it
-//! opens. Accesses ending at one point end innermost first.
+//! opens. Of the accesses ending at one point, borrows close first, then
+//! sessions finish in reverse creation order, which finishes a session before
+//! any session it depends on.
+use std::cmp::Reverse;
+
 use cranelift_entity::EntityRef;
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -29,6 +33,20 @@ pub(super) fn elaborate_ends<'db>(db: &'db dyn HirAnalysisDb, body: &mut Semanti
     if families.is_empty() {
         return;
     }
+    let sessions: FxHashSet<Access> = body
+        .blocks
+        .iter()
+        .flat_map(|block| &block.stmts)
+        .filter(
+            |stmt| matches!(&stmt.kind, SStmtKind::Assign { expr, .. } if opens_session(db, expr)),
+        )
+        .map(|stmt| stmt.id)
+        .collect();
+    let sorted = |accesses: &mut dyn Iterator<Item = &Access>| -> Vec<Access> {
+        let mut accesses: Vec<_> = accesses.copied().collect();
+        accesses.sort_unstable_by_key(|access| (sessions.contains(access), Reverse(*access)));
+        accesses
+    };
     // Locals each access depends on.
     let mut accesses_of: FxHashMap<SLocalId, Vec<Access>> = FxHashMap::default();
     for (access, family) in &families {
@@ -83,7 +101,7 @@ pub(super) fn elaborate_ends<'db>(db: &'db dyn HirAnalysisDb, body: &mut Semanti
             if families.contains_key(&stmt.id) {
                 open.insert(stmt.id);
             }
-            let dead = sorted(open.difference(&live(&after[index])));
+            let dead = sorted(&mut open.difference(&live(&after[index])));
             for access in dead {
                 open.remove(&access);
                 stmts.push(end(access));
@@ -91,7 +109,7 @@ pub(super) fn elaborate_ends<'db>(db: &'db dyn HirAnalysisDb, body: &mut Semanti
         }
         // Accesses live at the terminator end on each edge that drops them.
         for (position, successor) in data.terminator.kind.successors().iter().enumerate() {
-            let dropped = sorted(open.difference(&live(&live_in[successor.index()])));
+            let dropped = sorted(&mut open.difference(&live(&live_in[successor.index()])));
             if !dropped.is_empty() {
                 edge_ends.push((block, position, dropped));
             }
@@ -123,13 +141,6 @@ pub(super) fn elaborate_ends<'db>(db: &'db dyn HirAnalysisDb, body: &mut Semanti
     }
 }
 
-/// Accesses in the order they end: innermost (latest opened) first.
-fn sorted<'a>(accesses: impl Iterator<Item = &'a Access>) -> Vec<Access> {
-    let mut accesses: Vec<_> = accesses.copied().collect();
-    accesses.sort_unstable_by(|lhs, rhs| rhs.cmp(lhs));
-    accesses
-}
-
 /// Each access-opening statement and the locals its access depends on: its
 /// carrier and every carrier derived from it.
 fn access_families<'db>(
@@ -141,15 +152,7 @@ fn access_families<'db>(
     for stmt in body.blocks.iter().flat_map(|block| &block.stmts) {
         let (dst, used) = match &stmt.kind {
             SStmtKind::Assign { dst, expr } => {
-                let opens = match expr {
-                    SExpr::Borrow { .. } => true,
-                    SExpr::Call { callee, .. } => matches!(
-                        callee.key.owner(db),
-                        BodyOwner::Func(func) if func.is_projection(db)
-                    ),
-                    _ => false,
-                };
-                if opens {
+                if matches!(expr, SExpr::Borrow { .. }) || opens_session(db, expr) {
                     families.insert(stmt.id, *dst);
                 }
                 (*dst, expr.used_locals())
@@ -189,6 +192,15 @@ fn access_families<'db>(
             (access, family)
         })
         .collect()
+}
+
+/// Whether `expr` is a projection call, which opens a session.
+fn opens_session<'db>(db: &'db dyn HirAnalysisDb, expr: &SExpr<'db>) -> bool {
+    matches!(
+        expr,
+        SExpr::Call { callee, .. }
+            if matches!(callee.key.owner(db), BodyOwner::Func(func) if func.is_projection(db))
+    )
 }
 
 /// Backward liveness transfer of one statement.

@@ -652,6 +652,7 @@ module.exports = grammar({
       $.instantiation_expression,
       $.field_expression,
       $.index_expression,
+      $.try_expression,
       // Path expressions: identifier and scoped paths directly in expression
       prec.left($.identifier),
       $.scoped_path,
@@ -878,6 +879,11 @@ module.exports = grammar({
       field('field', choice($.identifier, $.integer_literal)),
     )),
 
+    try_expression: $ => prec(PREC.POSTFIX, seq(
+      field('value', $._expression),
+      '?',
+    )),
+
     index_expression: $ => prec(PREC.POSTFIX, seq(
       field('value', $._expression),
       '[',
@@ -965,6 +971,7 @@ module.exports = grammar({
       $.instantiation_expression,
       $.field_expression,
       $.index_expression,
+      $.try_expression,
       prec.left($.identifier),
       $.scoped_path,
       'self',
@@ -1038,6 +1045,7 @@ module.exports = grammar({
       $.instantiation_expression,
       $.field_expression,
       $.index_expression,
+      $.try_expression,
       prec.left($.identifier),
       $.scoped_path,
       'self',
@@ -1096,6 +1104,7 @@ module.exports = grammar({
       field('value', choice(
         $._expression,
         $.match_arm_return,
+        $.match_arm_yield,
         $.match_arm_break,
         $.match_arm_continue,
       )),
@@ -1109,6 +1118,8 @@ module.exports = grammar({
       'return',
       optional(field('value', $._expression)),
     )),
+
+    match_arm_yield: $ => seq('yield', field('value', $._expression)),
 
     match_arm_break: $ => 'break',
 
@@ -1182,6 +1193,7 @@ module.exports = grammar({
       $.for_statement,
       $.while_statement,
       $.return_statement,
+      $.yield_statement,
       $.break_statement,
       $.continue_statement,
       $.expression_statement,
@@ -1198,7 +1210,11 @@ module.exports = grammar({
       optional('mut'),
       field('name', $._pattern),
       optional(seq(':', field('type', $._type))),
-      optional(seq('=', field('value', $._expression))),
+      optional(seq(
+        '=',
+        field('value', $._expression),
+        optional(seq('else', field('alternative', $.block))),
+      )),
       $._terminator,
     ),
 
@@ -1221,6 +1237,12 @@ module.exports = grammar({
       optional(field('value', $._expression)),
       $._terminator,
     )),
+
+    yield_statement: $ => seq(
+      'yield',
+      field('value', $._expression),
+      $._terminator,
+    ),
 
     break_statement: $ => seq('break', $._terminator),
 

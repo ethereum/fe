@@ -26,7 +26,7 @@ use crate::analysis::ty::corelib::resolve_lib_type_path;
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::method_table::ProbedMethod;
 use crate::analysis::ty::provider::{ProviderKind, provider_semantics};
-use crate::analysis::ty::shape::Shape;
+use crate::analysis::ty::shape::{Shape, view_param_misuse};
 use crate::analysis::ty::trait_lower::lower_impl_trait;
 use crate::analysis::ty::trait_resolution::constraint::{
     PredicateSource, collect_func_decl_constraint_pairs,
@@ -65,7 +65,9 @@ pub use stmt::ForLoopSeq;
 use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
 
-use crate::analysis::place::{Place, PlaceBase, PlaceProjection, is_pointer_place_expr};
+use crate::analysis::place::{
+    Place, PlaceBase, PlaceProjection, is_grant_place_expr, is_pointer_place_expr,
+};
 
 use super::{
     LayoutBundlePath, LayoutBundlePathStep,
@@ -1154,7 +1156,9 @@ fn blocked_const_detail<'db>(
         .and_then(|key| key.owner(db).body(db))
         .or_else(|| match info.origin {
             SemOrigin::Body(owner) => owner.body(db),
-            SemOrigin::Expr(_) | SemOrigin::Stmt(_) | SemOrigin::Synthetic => None,
+            SemOrigin::Expr(_) | SemOrigin::Stmt(_) | SemOrigin::Pat(_) | SemOrigin::Synthetic => {
+                None
+            }
         })
         .unwrap_or(body);
     let primary = origin_expr_for_const_eval_diag(db, origin_body, info.origin)
@@ -1294,6 +1298,9 @@ pub struct TyChecker<'db> {
     expected: TyId<'db>,
     /// The return shape of the projection being checked.
     projection_shape: Option<Shape<'db>>,
+    /// Whether the body yields with `yield` statements. Every yield is then
+    /// explicit, and the body's tail ends the slide.
+    explicit_yields: bool,
     effect_provider_keys: FxHashSet<InferenceKey<'db>>,
     first_return_borrow_provider: Option<ProviderAddressSpace>,
     diags: Vec<FuncBodyDiag<'db>>,
@@ -1352,10 +1359,14 @@ impl<'db> TyChecker<'db> {
         }
 
         let root_expr = self.env.body().expr(self.db);
-        self.check_expr(root_expr, self.expected);
-        match self.projection_shape.clone() {
-            Some(shape) => self.check_yield_site(root_expr, &shape),
-            None => self.record_implicit_move_for_owned_expr(root_expr, self.expected),
+        if self.explicit_yields && self.projection_shape.is_some() {
+            self.check_expr(root_expr, TyId::unit(self.db));
+        } else {
+            self.check_expr(root_expr, self.expected);
+            match self.projection_shape.clone() {
+                Some(shape) => self.check_yield_site(root_expr, &shape),
+                None => self.record_implicit_move_for_owned_expr(root_expr, self.expected),
+            }
         }
         self.check_access_uses();
     }
@@ -2466,12 +2477,18 @@ impl<'db> TyChecker<'db> {
             BodyOwner::Func(func) => func.return_shape(db).cloned(),
             _ => None,
         };
+        let explicit_yields = env
+            .body()
+            .stmts(db)
+            .values()
+            .any(|stmt| matches!(stmt, Partial::Present(crate::hir_def::Stmt::Yield(_))));
         Self {
             db,
             env,
             table,
             expected,
             projection_shape,
+            explicit_yields,
             effect_provider_keys: FxHashSet::default(),
             first_return_borrow_provider: None,
             diags: Vec::new(),
@@ -2868,10 +2885,109 @@ impl<'db> TyChecker<'db> {
     }
 
     /// Binds `pat` to what `source` grants: its accesses if it has a shape.
+    /// A matched place grants a `mut` access to each `mut` binding only.
     fn bind_pattern_source(&mut self, pat: PatId, source: ExprId, prop: &ExprProp<'db>) {
         if let Some(shape) = &prop.shape {
             self.consume_access(source);
-            self.bind_pattern_accesses(pat, shape);
+            if self.env.is_matched_place(source) {
+                self.bind_mut_pattern_accesses(pat);
+            } else {
+                self.bind_pattern_accesses(pat, shape);
+            }
+        }
+    }
+
+    /// The address space of the place an access of `expr` names, if known.
+    pub(super) fn access_provider(&self, expr: ExprId) -> Option<ProviderAddressSpace> {
+        self.env
+            .expr_place(expr)
+            .and_then(|place| self.concrete_borrow_provider_for_place(&place))
+            .or_else(|| {
+                self.env
+                    .is_pointer_place_expr(expr)
+                    .then_some(ProviderAddressSpace::Memory)
+            })
+    }
+
+    /// A `mut` binding in a pattern matched against a place opens a `mut`
+    /// access on the sub-place it binds, so the place is matched through a
+    /// `mut` access of it. Its other bindings still bind by value.
+    fn open_matched_place(
+        &mut self,
+        scrutinee: ExprId,
+        prop: ExprProp<'db>,
+        pats: impl IntoIterator<Item = PatId>,
+    ) -> ExprProp<'db> {
+        let Some(mut_pat) = pats.into_iter().find_map(|pat| self.first_mut_binding(pat)) else {
+            return prop;
+        };
+        if prop.shape.is_some() || !self.env.is_place_expr(scrutinee) {
+            return prop;
+        }
+        if !prop.is_mut {
+            self.report_cannot_borrow_mut(scrutinee, mut_pat.span(self.body()).into());
+            return prop;
+        }
+        let prop = ExprProp {
+            borrow_provider: self.access_provider(scrutinee),
+            shape: Some(Shape::Access(BorrowKind::Mut, prop.ty)),
+            ..prop
+        };
+        self.env.open_matched_place(scrutinee, prop.clone());
+        prop
+    }
+
+    /// A `#[view]` type is never accessed by `mut`.
+    pub(super) fn check_view_mut_access(&mut self, ty: TyId<'db>, span: DynLazySpan<'db>) {
+        if ty.is_view(self.db) {
+            self.push_diag(TyDiagCollection::from(TyLowerDiag::ViewTypeMode {
+                span,
+                ty,
+                mode: "accessed by `mut`",
+            }));
+        }
+    }
+
+    fn first_mut_binding(&self, pat: PatId) -> Option<PatId> {
+        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
+            return None;
+        };
+        match pat_data {
+            Pat::Path(_, true) => Some(pat),
+            Pat::WildCard | Pat::Rest | Pat::Lit(_) | Pat::Path(..) => None,
+            Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
+                pats.iter().find_map(|pat| self.first_mut_binding(*pat))
+            }
+            Pat::Record(_, fields) => fields
+                .iter()
+                .find_map(|field| self.first_mut_binding(field.pat)),
+            Pat::Or(lhs, rhs) => self
+                .first_mut_binding(*lhs)
+                .or_else(|| self.first_mut_binding(*rhs)),
+        }
+    }
+
+    fn bind_mut_pattern_accesses(&mut self, pat: PatId) {
+        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
+            return;
+        };
+        match pat_data {
+            Pat::Path(_, true) => self.set_pattern_access(pat, BorrowKind::Mut),
+            Pat::WildCard | Pat::Rest | Pat::Lit(_) | Pat::Path(..) => {}
+            Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
+                for pat in pats {
+                    self.bind_mut_pattern_accesses(*pat);
+                }
+            }
+            Pat::Record(_, fields) => {
+                for field in fields {
+                    self.bind_mut_pattern_accesses(field.pat);
+                }
+            }
+            Pat::Or(lhs, rhs) => {
+                self.bind_mut_pattern_accesses(*lhs);
+                self.bind_mut_pattern_accesses(*rhs);
+            }
         }
     }
 
@@ -2945,6 +3061,12 @@ impl<'db> TyChecker<'db> {
         match pat_data {
             Pat::Path(..) => {
                 if let Some(LocalBinding::Local { .. }) = self.env.pat_binding(pat) {
+                    if kind == BorrowKind::Mut
+                        && let Some(ty) = self.env.pat_ty(pat)
+                    {
+                        let ty = ty.fold_with(self.db, &mut self.table);
+                        self.check_view_mut_access(ty, pat.span(self.body()).into());
+                    }
                     self.env
                         .set_pat_binding_mode(pat, PatBindingMode::Access(kind));
                 }
@@ -4020,6 +4142,9 @@ impl<'db> TypedBody<'db> {
         self.expr_place(expr).is_some()
             || self.tables.body.is_some_and(|body| {
                 is_pointer_place_expr(db, body, expr, &mut |expr| self.expr_ty(db, expr))
+                    || is_grant_place_expr(db, body, expr, &|expr| {
+                        self.expr_prop(db, expr).access().is_some()
+                    })
             })
     }
 
@@ -4255,7 +4380,8 @@ impl<'db> TypedBody<'db> {
         let body = self.body()?;
 
         for (_, stmt) in body.stmts(db).iter() {
-            if let Partial::Present(crate::hir_def::Stmt::Let(stmt_pat, _, Some(init_expr))) = stmt
+            if let Partial::Present(crate::hir_def::Stmt::Let(stmt_pat, _, Some(init_expr), _)) =
+                stmt
                 && let Some(projection) = self.binding_projection_in_pat(*stmt_pat, pat)
             {
                 return Some(BindingSource {
@@ -4927,15 +5053,17 @@ impl<'db> TypedBody<'db> {
         };
 
         match stmt_data {
-            crate::hir_def::Stmt::Let(_, _, Some(init)) => {
-                self.collect_explicit_return_param_sources_in_expr(
-                    db,
-                    body,
-                    *init,
-                    out,
-                    saw_non_param,
-                    seen,
-                );
+            crate::hir_def::Stmt::Let(_, _, Some(init), else_) => {
+                for expr in std::iter::once(init).chain(else_) {
+                    self.collect_explicit_return_param_sources_in_expr(
+                        db,
+                        body,
+                        *expr,
+                        out,
+                        saw_non_param,
+                        seen,
+                    );
+                }
             }
             crate::hir_def::Stmt::For(_, iter, loop_body, _) => {
                 self.collect_explicit_return_param_sources_in_expr(
@@ -4973,7 +5101,7 @@ impl<'db> TypedBody<'db> {
                     seen,
                 );
             }
-            crate::hir_def::Stmt::Return(Some(expr)) => {
+            crate::hir_def::Stmt::Return(Some(expr)) | crate::hir_def::Stmt::Yield(expr) => {
                 let mut visited_locals = FxHashSet::default();
                 if let Some(indices) = self.forwarded_return_param_sources_from_expr(
                     db,
@@ -4995,7 +5123,7 @@ impl<'db> TypedBody<'db> {
                 saw_non_param,
                 seen,
             ),
-            crate::hir_def::Stmt::Let(_, _, None)
+            crate::hir_def::Stmt::Let(_, _, None, _)
             | crate::hir_def::Stmt::Return(None)
             | crate::hir_def::Stmt::Continue
             | crate::hir_def::Stmt::Break => {}
@@ -5046,7 +5174,10 @@ impl<'db> TypedBody<'db> {
                     seen,
                 );
             }
-            Expr::Un(inner, _) | Expr::Cast(inner, _) | Expr::Field(inner, _) => {
+            Expr::Un(inner, _)
+            | Expr::Cast(inner, _)
+            | Expr::Field(inner, _)
+            | Expr::Try(inner) => {
                 self.collect_explicit_return_param_sources_in_expr(
                     db,
                     body,
@@ -5789,6 +5920,19 @@ impl<'db> Visitor<'db> for TyCheckerFinalizer<'db> {
             self.check_unknown(callable_ty, span.into());
         }
 
+        match expr_data {
+            Expr::RecordInit(..) => {
+                let ty = self.body.expr_prop(self.db, expr).ty;
+                self.check_view_construction(ty, ctxt.span().unwrap().into());
+            }
+            Expr::Call(..) | Expr::MethodCall(..) => {
+                if let Some(callable) = self.body.callable_expr(expr).cloned() {
+                    self.check_view_call(&callable, expr, ctxt.span().unwrap().into());
+                }
+            }
+            _ => {}
+        }
+
         walk_expr(self, ctxt, expr);
     }
 
@@ -5865,6 +6009,68 @@ impl<'db> TyCheckerFinalizer<'db> {
         if !skip_diag {
             let diag = BodyDiag::TypeAnnotationNeeded { span, ty };
             self.diags.push(diag.into())
+        }
+    }
+
+    /// A `#[view]` value is built only in its type's module, by the
+    /// projections that yield it.
+    fn check_view_construction(&mut self, ty: TyId<'db>, span: DynLazySpan<'db>) {
+        let db = self.db;
+        if ty.is_view(db)
+            && let Some(adt) = ty.base_ty(db).adt_ref(db)
+            && let Some(module) = adt.scope().parent_module(db)
+            && let Some(body) = self.body.body()
+            && !body.scope().is_transitive_child_of(db, module)
+        {
+            let diag = TyLowerDiag::ViewTypeMode {
+                span,
+                ty,
+                mode: "constructed outside its defining module",
+            };
+            self.diags.push(TyDiagCollection::from(diag).into());
+        }
+    }
+
+    /// A call constructing a `#[view]` value, or instantiating its callee at
+    /// a `#[view]` type in a position a view type cannot take.
+    fn check_view_call(&mut self, callable: &Callable<'db>, expr: ExprId, span: DynLazySpan<'db>) {
+        let db = self.db;
+        if let CallableDef::VariantCtor(_) = callable.callable_def {
+            let ty = self.body.expr_prop(db, expr).ty;
+            return self.check_view_construction(ty, span);
+        }
+        // A callee's declared signature is checked where it is declared.
+        let def = callable.callable_def;
+        if callable.generic_args().is_empty()
+            || matches!(def, CallableDef::Func(func) if !func.diags_view_types(db).is_empty())
+        {
+            return;
+        }
+        let Some(body) = self.body.body() else {
+            return;
+        };
+        let (scope, assumptions) = (body.scope(), self.assumptions);
+        let mut params = (0..).map_while(|idx| {
+            let ty = normalize_ty(db, callable.arg_ty(db, idx)?, scope, assumptions);
+            Some((def.param_mode(db, idx), ty))
+        });
+        let misuse = params
+            .find_map(|(mode, ty)| view_param_misuse(db, mode, ty))
+            .or_else(|| {
+                let ret = callable
+                    .ret_shape(db)
+                    .unwrap_or_else(|| Shape::Owned(callable.ret_ty(db)));
+                normalize_ty(db, ret, scope, assumptions).view_misuse(db)
+            });
+        if let Some((ty, position)) = misuse {
+            self.diags.push(
+                BodyDiag::ViewInstantiation {
+                    primary: span,
+                    ty,
+                    position,
+                }
+                .into(),
+            );
         }
     }
 

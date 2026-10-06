@@ -520,7 +520,7 @@ pub(crate) fn desired_runtime_value_carrier<'db>(
     }
 }
 
-fn runtime_class_has_zero_sized_payload<'db>(
+pub(super) fn runtime_class_has_zero_sized_payload<'db>(
     db: &'db dyn MirDb,
     class: &RuntimeClass<'db>,
 ) -> bool {

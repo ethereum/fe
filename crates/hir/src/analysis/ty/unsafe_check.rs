@@ -116,9 +116,9 @@ impl<'db> UnsafeChecker<'db, '_> {
         };
 
         match stmt_data {
-            Stmt::Let(_, _, init) => {
-                if let Some(init) = init {
-                    self.check_expr(*init);
+            Stmt::Let(_, _, init, else_) => {
+                for expr in init.iter().chain(else_) {
+                    self.check_expr(*expr);
                 }
             }
             Stmt::For(_, iter, body, _) => {
@@ -135,7 +135,7 @@ impl<'db> UnsafeChecker<'db, '_> {
                     self.check_expr(*expr);
                 }
             }
-            Stmt::Expr(expr) => self.check_expr(*expr),
+            Stmt::Yield(expr) | Stmt::Expr(expr) => self.check_expr(*expr),
         }
     }
 
@@ -183,7 +183,9 @@ impl<'db> UnsafeChecker<'db, '_> {
                 self.check_call_target(expr);
             }
 
-            Expr::Cast(inner, _) | Expr::ArrayRep(inner, _) => self.check_expr(*inner),
+            Expr::Cast(inner, _) | Expr::ArrayRep(inner, _) | Expr::Try(inner) => {
+                self.check_expr(*inner)
+            }
 
             Expr::Call(callee, args) => {
                 self.check_expr(*callee);

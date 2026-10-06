@@ -9,3 +9,27 @@ error[16-0002]: move conflict in `fn unwrap`
    │
 11 │     let p = w.p
    │             ^^^ cannot move out of a place reached through a `ref` access
+
+error[16-0002]: move conflict in `fn whole_return`
+   ┌─ view_param_noncopy_projection_move.fe:24:5
+   │
+24 │     value
+   │     ^^^^^ cannot move out of a place reached through a `ref` access
+
+error[16-0002]: move conflict in `fn whole_let`
+   ┌─ view_param_noncopy_projection_move.fe:28:24
+   │
+28 │     let copied: Pair = value
+   │                        ^^^^^ cannot move out of a place reached through a `ref` access
+
+error[16-0002]: move conflict in `fn whole_assign`
+   ┌─ view_param_noncopy_projection_move.fe:32:14
+   │
+32 │     target = value
+   │              ^^^^^ cannot move out of a place reached through a `ref` access
+
+error[16-0002]: move conflict in `fn whole_generic`
+   ┌─ view_param_noncopy_projection_move.fe:36:5
+   │
+36 │     value
+   │     ^^^^^ cannot move out of a place reached through a `ref` access

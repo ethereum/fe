@@ -118,16 +118,10 @@ fn builtin_core_calls_have_semantic_lowerings() {
 }
 
 #[test]
-fn mem_slice_by_value_access_requires_copy_elements() {
+fn mem_slice_get_requires_copy_elements() {
     let mut db = DriverDataBase::default();
-    let url = Url::parse("file:///mem_slice_by_value_access_requires_copy_elements.fe").unwrap();
+    let url = Url::parse("file:///mem_slice_get_requires_copy_elements.fe").unwrap();
     let src = r#"
-fn index_noncopy(
-    slice: core::ptr::MemSlice<core::ptr::MemBuffer>,
-) -> core::ptr::MemBuffer {
-    slice[0]
-}
-
 fn get_noncopy(
     slice: core::ptr::MemSlice<core::ptr::MemBuffer>,
 ) -> core::option::Option<core::ptr::MemBuffer> {
@@ -140,10 +134,6 @@ fn get_noncopy(
     let diags = db.run_on_top_mod(top_mod);
     let rendered = diags.format_diags(&db);
 
-    assert!(
-        rendered.contains("trait bound `MemBuffer: Copy` is not satisfied"),
-        "{rendered}"
-    );
     assert!(
         rendered.contains("`MemBuffer` doesn't implement `Copy`"),
         "{rendered}"
@@ -491,7 +481,7 @@ fn string_literals_can_pick_up_dynstring_api_from_later_use() {
     let src = r#"
 pub fn root() -> u8 {
     let text = "hello-dynamic-api"
-    text.view().byte_at(0)
+    text.payload_span().byte_at(0)
 }
 "#;
 
@@ -531,7 +521,7 @@ fn long_string_literals_can_pick_up_dynstring_api_from_later_use() {
     let src = r#"
 pub fn root() -> u8 {
     let text = "hello-dynamic-api-abcdefghijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789"
-    text.view().byte_at(0)
+    text.payload_span().byte_at(0)
 }
 "#;
 

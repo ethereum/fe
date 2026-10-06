@@ -1152,7 +1152,7 @@ impl<'a, 'db> Visitor<'db> for LetBindingCollector<'a, 'db> {
         _stmt: hir::hir_def::StmtId,
         stmt_data: &Stmt<'db>,
     ) {
-        if let Stmt::Let(pat_id, _ty, _expr) = stmt_data {
+        if let Stmt::Let(pat_id, _ty, _expr, _) = stmt_data {
             // Extract the name from the pattern
             if let Partial::Present(Pat::Path(Partial::Present(path), _)) =
                 pat_id.data(self.db, self.body)

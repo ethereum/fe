@@ -138,6 +138,7 @@ fn verify_stmt<'db>(
             variant,
             fields,
         } => verify_enum_write_variant(program, body, *root, *variant, fields),
+        RStmt::End { .. } => Ok(()),
     }
 }
 
@@ -273,7 +274,8 @@ fn same_block_dominating_enum_assert<'db>(
             | RStmt::Store { .. }
             | RStmt::CopyInto { .. }
             | RStmt::EnumSetTag { .. }
-            | RStmt::EnumWriteVariant { .. } => {}
+            | RStmt::EnumWriteVariant { .. }
+            | RStmt::End { .. } => {}
         }
     }
     proven
@@ -373,7 +375,16 @@ fn verify_terminator<'db>(
         RTerminator::RevertEmpty => Ok(()),
         RTerminator::SelfDestruct { beneficiary } => verify_word_value(body, *beneficiary),
         RTerminator::Trap => Ok(()),
-        RTerminator::Return(value) => {
+        // A projection's slide returns nothing to its (inlined) caller.
+        RTerminator::Return(None)
+            if body
+                .key
+                .semantic(db)
+                .is_some_and(|semantic| semantic.is_projection(db)) =>
+        {
+            Ok(())
+        }
+        RTerminator::Return(value) | RTerminator::Yield { value, .. } => {
             let class = value
                 .map(|value| runtime_value_class(body, value).cloned())
                 .transpose()?;

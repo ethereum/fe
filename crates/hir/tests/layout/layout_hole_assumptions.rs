@@ -216,7 +216,7 @@ fn f<T: HasSlot<Assoc = Slot<u256>>>(x: T::Assoc) {}
 }
 
 #[test]
-fn contract_field_mutex_try_lock_keeps_concrete_inner_type() {
+fn contract_field_mutex_value_keeps_concrete_inner_type() {
     parse_ok!(
         db,
         top_mod,
@@ -233,10 +233,7 @@ pub contract C {
 
     recv Msg {
         Protected { user } -> u256 uses (mut guarded_balances) {
-            match guarded_balances.try_lock() {
-                Option::Some(mut balances) => balances.get(key: user),
-                Option::None => 0,
-            }
+            guarded_balances.value().get(key: user)
         }
     }
 }
@@ -251,21 +248,16 @@ pub contract C {
     let recv = contract.recvs(&db).data(&db).first().expect("missing recv");
     let body = recv.arms.data(&db).first().expect("missing arm").body;
     let (diags, typed_body) = check_contract_recv_arm_body(&db, contract, 0, 0);
-    let try_lock = find_method_call_expr_named_in_body(&db, body, "try_lock");
-    let receiver_expr = match try_lock.data(&db, body) {
+    let value = find_method_call_expr_named_in_body(&db, body, "value");
+    let receiver_expr = match value.data(&db, body) {
         Partial::Present(Expr::MethodCall(receiver, ..)) => *receiver,
-        _ => panic!("try_lock expr is not a method call"),
+        _ => panic!("value expr is not a method call"),
     };
-    let balances_pat = find_binding_pat(&db, body, "balances");
     let receiver_ty = typed_body
         .expr_ty(&db, receiver_expr)
         .pretty_print(&db)
         .clone();
-    let try_lock_ty = typed_body.expr_ty(&db, try_lock).pretty_print(&db).clone();
-    let balances_ty = typed_body
-        .pat_ty(&db, balances_pat)
-        .pretty_print(&db)
-        .to_string();
+    let value_ty = typed_body.expr_ty(&db, value).pretty_print(&db).clone();
     assert!(
         diags.is_empty(),
         "{}",
@@ -273,8 +265,7 @@ pub contract C {
     );
     assert_eq!(field_ty, "Mutex<StorageMap<Address, u256, 0>>");
     assert_eq!(receiver_ty, "Mutex<StorageMap<Address, u256, 0>>");
-    assert_eq!(try_lock_ty, "Option<StorageMap<Address, u256, 0>>");
-    assert_eq!(balances_ty, "StorageMap<Address, u256, 0>");
+    assert_eq!(value_ty, "StorageMap<Address, u256, 0>");
 }
 
 #[test]
@@ -416,10 +407,7 @@ pub contract C {
 
     recv Msg {
         Protected { user } -> u256 uses (mut wrapped) {
-            match wrapped.inner.try_lock() {
-                Option::Some(mut balances) => balances.get(key: user),
-                Option::None => 0,
-            }
+            wrapped.inner.value().get(key: user)
         }
     }
 }
@@ -455,12 +443,11 @@ pub contract C {
         fe_hir::analysis::diagnostics::format_diags(&db, diags.iter())
     );
 
-    let try_lock = find_method_call_expr_named_in_body(&db, body, "try_lock");
-    let receiver_expr = match try_lock.data(&db, body) {
+    let value = find_method_call_expr_named_in_body(&db, body, "value");
+    let receiver_expr = match value.data(&db, body) {
         Partial::Present(Expr::MethodCall(receiver, ..)) => *receiver,
-        _ => panic!("try_lock expr is not a method call"),
+        _ => panic!("value expr is not a method call"),
     };
-    let balances_pat = find_binding_pat(&db, body, "balances");
     assert_eq!(
         typed_body
             .expr_ty(&db, receiver_expr)
@@ -469,14 +456,7 @@ pub contract C {
         "Mutex<StorageMap<Address, u256, 0>>"
     );
     assert_eq!(
-        typed_body.expr_ty(&db, try_lock).pretty_print(&db).clone(),
-        "Option<StorageMap<Address, u256, 0>>"
-    );
-    assert_eq!(
-        typed_body
-            .pat_ty(&db, balances_pat)
-            .pretty_print(&db)
-            .to_string(),
+        typed_body.expr_ty(&db, value).pretty_print(&db).clone(),
         "StorageMap<Address, u256, 0>"
     );
 }

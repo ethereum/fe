@@ -193,9 +193,16 @@ impl DiagnosticVoucher for SemanticDiagnostic<'_> {
             SemanticDiagnosticKind::TransportViolation => 7,
             SemanticDiagnosticKind::StorageViolation => 8,
             SemanticDiagnosticKind::InvalidConcreteType => 10,
+            SemanticDiagnosticKind::YieldViolation => 11,
+            SemanticDiagnosticKind::DiscardedWrites => 12,
+            SemanticDiagnosticKind::ProjectionRecursion => 13,
+        };
+        let severity = match self.kind {
+            SemanticDiagnosticKind::DiscardedWrites => Severity::Warning,
+            _ => Severity::Error,
         };
         CompleteDiagnostic::new(
-            Severity::Error,
+            severity,
             self.kind.header(db, self.instance),
             std::iter::once(SubDiagnostic::new(
                 LabelStyle::Primary,
@@ -245,6 +252,14 @@ impl SemanticDiagnosticKind {
                 "invalid concrete type in `fn {}`",
                 checker_name(db, instance)
             ),
+            Self::YieldViolation => format!("invalid yield in `fn {}`", checker_name(db, instance)),
+            Self::ProjectionRecursion => format!(
+                "recursion through a projection in `fn {}`",
+                checker_name(db, instance)
+            ),
+            Self::DiscardedWrites => {
+                format!("discarded writes in `fn {}`", checker_name(db, instance))
+            }
         }
     }
 }
@@ -298,6 +313,7 @@ pub(crate) fn span_for_origin_from_body<'db>(
     match origin {
         SemOrigin::Expr(expr) => expr.span(body).resolve(db),
         SemOrigin::Stmt(stmt) => stmt.span(body).resolve(db),
+        SemOrigin::Pat(pat) => pat.span(body).resolve(db),
         SemOrigin::Body(owner) => owner.body(db).and_then(|body| body.span().resolve(db)),
         SemOrigin::Synthetic => None,
     }
@@ -416,4 +432,8 @@ pub enum SemanticDiagnosticKind {
     StorageViolation,
     ProviderProvenanceConflict,
     InvalidConcreteType,
+    YieldViolation,
+    ProjectionRecursion,
+    /// A warning: writes through a yielded session-owned place are lost.
+    DiscardedWrites,
 }

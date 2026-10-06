@@ -9,7 +9,7 @@ enum Checked<const N: usize> where N > 0 {
 }
 
 fn read<const M: usize>(_ item: Checked<M>) -> u256 where M > 0 {
-    match item {
+    match ref item {
         Checked::Empty => 7,
         Checked::Tuple(payload) => payload.value,
         Checked::Record { value } => value + 1,

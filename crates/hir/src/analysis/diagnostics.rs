@@ -1637,6 +1637,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
     fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code());
         match self {
+            Self::ViewTypeMode { span, ty, mode } => primary_diag(
+                Severity::Error,
+                format!("`{}` is a `#[view]` type", ty.pretty_print(db)),
+                format!("a `#[view]` type cannot be {mode}"),
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::ModeNotType(span) => primary_diag(
                 Severity::Error,
                 "`ref` and `mut` are not types",
@@ -3750,6 +3758,69 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 Severity::Error,
                 "invalid yield",
                 format!("this does not yield `{shape}`"),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::RefutableLetPattern { primary } => primary_diag(
+                Severity::Error,
+                "refutable pattern in `let`",
+                "this pattern may not match; handle the other cases with `let … else`",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::LetElseMustDiverge { primary } => primary_diag(
+                Severity::Error,
+                "`let … else` block must diverge",
+                "this block must return, break, continue or revert",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::TryOnNonSum { primary, ty } => primary_diag(
+                Severity::Error,
+                "`?` needs an `Option` or a `Result`",
+                format!("this has type `{}`", ty.pretty_print(db)),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::TryReturnMismatch {
+                primary,
+                operand,
+                ret,
+            } => primary_diag(
+                Severity::Error,
+                "`?` cannot return from this function",
+                format!(
+                    "`?` on `{}` may exit early, but `{}` cannot carry its `None` or `Err`",
+                    operand.pretty_print(db),
+                    ret.pretty_print(db)
+                ),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ViewInstantiation {
+                primary,
+                ty,
+                position,
+            } => primary_diag(
+                Severity::Error,
+                format!(
+                    "this call instantiates its callee at the `#[view]` type `{}`",
+                    ty.pretty_print(db)
+                ),
+                format!("a `#[view]` type cannot be {position}"),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::YieldOutsideProjection { primary } => primary_diag(
+                Severity::Error,
+                "`yield` outside a projection",
+                "only a function returning `ref`, `mut` or a yield shape can yield",
                 primary.resolve(db),
                 error_code,
             ),

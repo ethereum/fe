@@ -36,34 +36,34 @@ use super::ops
 /// sibling up to the child of the root.
 pub trait ProofNodes {
     /// The nodes as a word slice over the source's own memory.
-    fn nodes(self) -> MemSlice<u256>
+    fn nodes(self) -> ref MemSlice<u256>
 }
 
 impl ProofNodes for MemSlice<u256> {
-    fn nodes(self) -> MemSlice<u256> {
-        self
+    fn nodes(self) -> ref MemSlice<u256> {
+        ref self
     }
 }
 
 impl ProofNodes for DynArray<u256> {
-    fn nodes(self) -> MemSlice<u256> {
-        dyn_array_words(self.encoded_span().ptr(), len: self.len())
+    fn nodes(self) -> ref MemSlice<u256> {
+        unsafe { dyn_array_words(self.encoded_span().ptr(), len: self.len()) }
     }
 }
 
 /// `Bytes32` elements are used as raw 32-byte words, exactly as Solidity's
 /// `bytes32[]`; no per-element decoding happens.
 impl ProofNodes for DynArray<Bytes32> {
-    fn nodes(self) -> MemSlice<u256> {
-        dyn_array_words(self.encoded_span().ptr(), len: self.len())
+    fn nodes(self) -> ref MemSlice<u256> {
+        unsafe { dyn_array_words(self.encoded_span().ptr(), len: self.len()) }
     }
 }
 
 // Static-element DynArray tails are the length word followed by `len`
 // element words, validated when the array is constructed or decoded.
 #[inline(always)]
-fn dyn_array_words(_ data: *u8, len: u256) -> MemSlice<u256> {
-    unsafe { MemSlice::from_raw_parts(ptr: ptr::cast<u8, u256>(ptr::offset_bytes(data, 32)), len) }
+unsafe fn dyn_array_words(_ data: *u8, len: u256) -> ref MemSlice<u256> {
+    MemSlice::from_raw_parts(ptr: ptr::cast<u8, u256>(ptr::offset_bytes(data, 32)), len)
 }
 
 /// `keccak256(abi.encode(min(a, b), max(a, b)))`: OpenZeppelin's

@@ -398,6 +398,7 @@ fn format_stmt<'db>(db: &'db dyn MirDb, stmt: &RStmt<'db>) -> String {
                 format_variant(db, *variant)
             )
         }
+        RStmt::End { session } => format!("end {}", format_local_id(*session)),
         RStmt::EnumWriteVariant {
             root,
             variant,
@@ -625,6 +626,11 @@ fn format_terminator<'db>(db: &'db dyn MirDb, term: &RTerminator<'db>) -> String
         RTerminator::Return(value) => value
             .map(|value| format!("return {}", format_local_id(value)))
             .unwrap_or_else(|| "return".to_string()),
+        RTerminator::Yield { value, resume } => format!(
+            "yield {} resume bb{}",
+            value.map_or_else(|| "()".to_string(), format_local_id),
+            resume.index()
+        ),
         RTerminator::Stop => "stop".to_string(),
     }
 }

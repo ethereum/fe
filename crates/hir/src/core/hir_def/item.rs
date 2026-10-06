@@ -709,6 +709,12 @@ impl<'db> Func<'db> {
         self.attributes(db).is_must_use(db)
     }
 
+    /// A `#[view]` type is only ever reached through accesses: it admits no
+    /// `own` parameter and no `mut` yield.
+    pub fn is_view(self, db: &'db dyn HirDb) -> bool {
+        self.attributes(db).has_marker_attr(db, "view")
+    }
+
     fn inline_attr(self, db: &'db dyn HirDb) -> Option<InlineAttr> {
         self.attributes(db).inline_attr(db)
     }
@@ -843,6 +849,12 @@ impl<'db> Struct<'db> {
 
     pub fn is_must_use(self, db: &'db dyn HirDb) -> bool {
         self.attributes(db).is_must_use(db)
+    }
+
+    /// A `#[view]` type is only ever reached through accesses: it admits no
+    /// `own` parameter and no `mut` yield.
+    pub fn is_view(self, db: &'db dyn HirDb) -> bool {
+        self.attributes(db).has_marker_attr(db, "view")
     }
 
     /// Returns the human readable string of the expected struct initializer.
@@ -1024,6 +1036,12 @@ impl<'db> Enum<'db> {
 
     pub fn is_must_use(self, db: &'db dyn HirDb) -> bool {
         self.attributes(db).is_must_use(db)
+    }
+
+    /// A `#[view]` type is only ever reached through accesses: it admits no
+    /// `own` parameter and no `mut` yield.
+    pub fn is_view(self, db: &'db dyn HirDb) -> bool {
+        self.attributes(db).has_marker_attr(db, "view")
     }
 }
 

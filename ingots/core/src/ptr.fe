@@ -1,5 +1,5 @@
 use super::intrinsic::size_of
-use super::marker::{Borrows, Copy}
+use super::marker::Copy
 use super::option::Option
 use super::ops::{Eq, Index, IndexMut}
 use super::panic_code
@@ -36,11 +36,13 @@ pub struct MemArray<T> {
     len: u256,
 }
 
-/// A copyable read-only view over typed values in linear memory.
+/// A read-only view over typed values in linear memory.
 ///
-/// A slice does not own or allocate its memory. Constructing one from raw parts
-/// asserts that the entire range is valid linear memory for the lifetime of the
-/// operation using it.
+/// A slice does not own or allocate its memory: it exists only as the result
+/// of a projection, a view of the owner the projection's session reserves.
+/// Constructing one from raw parts asserts that the entire range is valid
+/// linear memory for that session.
+#[view]
 pub struct MemSlice<T> {
     ptr: *T,
     len: u256,
@@ -68,10 +70,6 @@ pub struct FixedMemBuffer<const N: usize> {
 }
 
 impl<T> Copy for *T {}
-impl<T> Copy for MemSlice<T> {}
-
-/// A slice borrows the memory it views from the value it was derived from.
-impl<T> Borrows for MemSlice<T> {}
 
 impl<T> Eq for *T {
     fn eq(self, _ other: *T) -> bool {
@@ -116,11 +114,11 @@ impl<T> MemArray<T> {
         }
     }
 
-    pub fn as_slice(self) -> MemSlice<T> {
+    pub fn as_slice(self) -> ref MemSlice<T> {
         unsafe { MemSlice::from_raw_parts(ptr: self.ptr, len: self.len) }
     }
 
-    pub fn span(self) -> MemSpan {
+    pub fn span(self) -> ref MemSpan {
         self.as_slice().as_bytes()
     }
 
@@ -141,6 +139,22 @@ impl<T> MemArray<T> {
         mem_array_elem(self, index)
     }
 
+    pub fn get_mut(mut self, _ index: usize) -> Option<mut T> {
+        if index as u256 >= self.len {
+            return Option::None
+        }
+        Option::Some(unsafe { mut *elem(self.ptr, index) })
+    }
+
+    /// Two distinct elements at once. Reverts unless `i != j`, which makes
+    /// the two accesses disjoint.
+    pub fn pair_mut(mut self, _ i: usize, _ j: usize) -> (mut T, mut T) {
+        if i == j {
+            index_out_of_bounds()
+        }
+        unsafe { (mut *mem_array_elem(self, i), mut *mem_array_elem(self, j)) }
+    }
+
     pub fn zero(mut self) {
         unsafe { zero_bytes(cast<T, u8>(self.ptr), self.byte_len()) }
     }
@@ -154,11 +168,15 @@ impl<T> MemSlice<T> {
     /// wrapping within the original allocation. This constructor does not check
     /// that claim. Typed reads additionally require valid initialized contents;
     /// neither this constructor nor a cast creates native reference authority.
-    pub unsafe fn from_raw_parts(ptr: *T, len: u256) -> Self {
-        Self { ptr, len }
+    ///
+    /// The slice is a temporary that lives for the access.
+    pub unsafe fn from_raw_parts(ptr: *T, len: u256) -> ref Self {
+        let slice = Self { ptr, len }
+        ref slice
     }
 
-    pub fn empty() -> Self {
+    /// An empty slice, which views nothing.
+    pub fn empty() -> ref Self {
         unsafe { Self::from_raw_parts(ptr: cast<u8, T>(alloc_raw(0)), len: 0) }
     }
 
@@ -178,38 +196,37 @@ impl<T> MemSlice<T> {
         self.len * size_of<T>()
     }
 
-    pub fn as_bytes(self) -> MemSpan {
+    pub fn as_bytes(self) -> ref MemSpan {
         unsafe { MemSlice::from_raw_parts(ptr: cast<T, u8>(self.ptr), len: self.byte_len()) }
     }
 
-    /// Checks containment in this slice's asserted extent. The parent range
-    /// must already satisfy `from_raw_parts`' validity contract.
-    pub fn try_slice(self, start: u256, len: u256) -> Option<Self> {
+    /// The range `start..start + len`, if this slice contains it; pass it to
+    /// `slice`.
+    pub fn try_slice(self, start: u256, len: u256) -> Option<(u256, u256)> {
         if start > self.len || len > self.len - start {
             return Option::None
         }
-        Option::Some(unsafe { Self::from_raw_parts(ptr: offset(self.ptr, start), len) })
+        Option::Some((start, len))
     }
 
-    pub fn slice(self, offset: u256, len: u256) -> Self {
-        match self.try_slice(start: offset, len) {
-            Option::Some(slice) => slice
-            Option::None => index_out_of_bounds()
-        }
-    }
-
-    pub fn split_at(self, offset: u256) -> (Self, Self) {
-        if offset > self.len {
+    pub fn slice(self, offset: u256, len: u256) -> ref Self {
+        if offset > self.len || len > self.len - offset {
             index_out_of_bounds()
         }
-        (
-            self.truncate(len: offset),
-            self.slice(offset, len: self.len - offset),
-        )
+        unsafe { Self::from_raw_parts(ptr: offset_bytes(self.ptr, offset * size_of<T>()), len) }
     }
 
-    pub fn truncate(self, len: u256) -> Self {
-        self.slice(offset: 0, len)
+    /// The first `n` elements.
+    pub fn head(self, _ n: u256) -> ref Self {
+        self.slice(offset: 0, len: n)
+    }
+
+    /// The elements after the first `n`.
+    pub fn tail(self, _ n: u256) -> ref Self {
+        if n > self.len {
+            index_out_of_bounds()
+        }
+        self.slice(offset: n, len: self.len - n)
     }
 
     pub fn ptr_at(self, _ index: u256) -> *T {
@@ -217,6 +234,10 @@ impl<T> MemSlice<T> {
             index_out_of_bounds()
         }
         offset(self.ptr, index)
+    }
+
+    pub fn at(self, _ index: u256) -> ref T {
+        unsafe { ref *self.ptr_at(index) }
     }
 
     pub fn get(self, _ index: u256) -> Option<T>
@@ -259,7 +280,7 @@ impl MemBuffer {
         Self::with_capacity(0)
     }
 
-    pub fn from_span(_ source: own MemSpan) -> Self {
+    pub fn from_span(_ source: MemSpan) -> Self {
         let mut buffer = Self::with_capacity(source.len())
         buffer.extend_from(source)
         buffer
@@ -282,18 +303,18 @@ impl MemBuffer {
     }
 
     /// View the logical byte extent.
-    pub fn span(self) -> MemSpan {
+    pub fn span(self) -> ref MemSpan {
         unsafe { MemSpan::from_raw_parts(ptr: self.ptr, len: self.len) }
     }
 
     /// View the full allocation, including bytes beyond the logical extent.
     ///
     /// Callers must initialize those additional bytes before reading the span.
-    pub unsafe fn capacity_span(self) -> MemSpan {
+    pub unsafe fn capacity_span(self) -> ref MemSpan {
         MemSpan::from_raw_parts(ptr: self.ptr, len: self.capacity)
     }
 
-    pub fn slice(self, offset: u256, len: u256) -> MemSpan {
+    pub fn slice(self, offset: u256, len: u256) -> ref MemSpan {
         self.span().slice(offset, len)
     }
 
@@ -322,14 +343,14 @@ impl MemBuffer {
     }
 
     /// Append bytes, growing the allocation when necessary.
-    pub fn extend_from(mut self, _ source: own MemSpan) {
+    pub fn extend_from(mut self, _ source: MemSpan) {
         self.reserve(source.len())
         unsafe { copy(dest: offset_bytes(self.ptr, self.len), source) }
         self.len += source.len()
     }
 
     /// Copy bytes into an allocation subrange and extend the logical extent.
-    pub fn copy_from(mut self, dest_offset: u256, _ source: own MemSpan) {
+    pub fn copy_from(mut self, dest_offset: u256, _ source: MemSpan) {
         if dest_offset > self.capacity || source.len() > self.capacity - dest_offset {
             index_out_of_bounds()
         }
@@ -392,7 +413,7 @@ impl<const N: usize> FixedMemBuffer<N> {
     }
 
     #[inline(always)]
-    pub fn span(self) -> MemSpan {
+    pub fn span(self) -> ref MemSpan {
         unsafe { MemSpan::from_raw_parts(ptr: self.ptr, len: N as u256) }
     }
 
@@ -448,7 +469,7 @@ pub unsafe fn zero_bytes(_ ptr: *u8, _ len: u256) {
 /// The caller must ensure that `dest` has room for `source.len()` bytes.
 /// Both complete ranges must fit without wrapping in their live allocations.
 /// Source and destination may overlap.
-pub unsafe fn copy(_ dest: *u8, _ source: own MemSpan) {
+pub unsafe fn copy(_ dest: *u8, _ source: MemSpan) {
     copy_raw(dest, source: source.ptr(), len: source.len())
 }
 
@@ -475,14 +496,12 @@ fn elem<T>(_ ptr: *T, _ index: usize) -> *T {
     offset(ptr, index as u256)
 }
 
-impl<T> Index<usize> for MemArray<T>
-    where T: Copy
-{
+impl<T> Index<usize> for MemArray<T> {
     type Output = T
 
     #[inline(always)]
-    fn index(self, _ index: usize) -> T {
-        unsafe { *mem_array_elem(self, index) }
+    fn index(self, _ index: usize) -> ref T {
+        unsafe { ref *mem_array_elem(self, index) }
     }
 }
 
@@ -495,14 +514,12 @@ impl<T> IndexMut<usize> for MemArray<T> {
     }
 }
 
-impl<T> Index<usize> for MemSlice<T>
-    where T: Copy
-{
+impl<T> Index<usize> for MemSlice<T> {
     type Output = T
 
     #[inline(always)]
-    fn index(self, _ index: usize) -> T {
-        unsafe { *self.ptr_at(index as u256) }
+    fn index(self, _ index: usize) -> ref T {
+        unsafe { ref *self.ptr_at(index as u256) }
     }
 }
 

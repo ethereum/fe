@@ -15,6 +15,7 @@ use crate::analysis::ty::diagnostics::{TraitConstraintDiag, TyDiagCollection, Ty
 use crate::analysis::ty::generic_defaults::{default_dependencies, type_default_diags};
 use crate::analysis::ty::method_table::{MethodProbe, probe_method};
 use crate::analysis::ty::normalize::normalize_ty;
+use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::trait_lower::lower_impl_trait;
 use crate::analysis::ty::ty_def::{InvalidCause, TyId};
 use crate::analysis::ty::ty_error::{collect_ty_lower_errors, emit_invalid_ty_error};
@@ -377,6 +378,27 @@ impl<'db> Func<'db> {
         diags
     }
 
+    /// A `#[view]` type is taken only by view parameters and `ref` results.
+    pub fn diags_view_types(self, db: &'db dyn HirAnalysisDb) -> Vec<TyDiagCollection<'db>> {
+        let normalize =
+            |ty| ty::normalize::normalize_ty(db, ty, self.scope(), self.assumptions(db));
+        let params = self.params(db).filter_map(|param| {
+            let (ty, position) =
+                ty::shape::view_param_misuse(db, param.mode(db), normalize(param.ty(db)))?;
+            Some((param.span().into(), ty, position))
+        });
+        let ret = self
+            .return_shape(db)
+            .cloned()
+            .unwrap_or_else(|| Shape::Owned(normalize(self.return_ty(db))))
+            .view_misuse(db)
+            .map(|(ty, position)| (self.span().ret_ty().into(), ty, position));
+        params
+            .chain(ret)
+            .map(|(span, ty, mode)| TyLowerDiag::ViewTypeMode { span, ty, mode }.into())
+            .collect()
+    }
+
     /// Diagnostics for function parameter types:
     /// - For all params: star kind required and reject const types
     /// - For self param: enforce exact `Self` type shape
@@ -658,6 +680,24 @@ impl<'db> Impl<'db> {
 }
 
 impl<'db> ImplTrait<'db> {
+    /// A `#[view]` type has no copies.
+    fn diags_view_copy(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        implementor: ImplementorId<'db>,
+    ) -> Option<TyDiagCollection<'db>> {
+        let ty = implementor.self_ty(db);
+        let copy = ty::corelib::resolve_core_trait(db, self.scope(), &["marker", "Copy"])?;
+        (ty.is_view(db) && implementor.trait_def(db) == copy).then(|| {
+            TyLowerDiag::ViewTypeMode {
+                span: self.span().ty().into(),
+                ty,
+                mode: "`Copy`",
+            }
+            .into()
+        })
+    }
+
     fn diags_effect_handle_raw(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1183,6 +1223,17 @@ impl<'db> VariantView<'db> {
                 );
                 continue;
             }
+            if ty.is_view(db) {
+                out.push(
+                    TyLowerDiag::ViewTypeMode {
+                        span: span.clone().into(),
+                        ty,
+                        mode: "a field",
+                    }
+                    .into(),
+                );
+                continue;
+            }
 
             // Trait-bound well-formedness for element type.
             match check_ty_wf(
@@ -1614,6 +1665,7 @@ impl<'db> Diagnosable<'db> for Func<'db> {
         out.extend(self.diags_parameters(db));
         out.extend(self.diags_param_types(db));
         out.extend(self.diags_return(db));
+        out.extend(self.diags_view_types(db));
 
         for pred in WhereClauseOwner::Func(self).clause(db).predicates(db) {
             out.extend(pred.diags(db));
@@ -1707,6 +1759,7 @@ impl<'db> Diagnosable<'db> for ImplTrait<'db> {
         let mut out = validity_diags;
         out.extend(implementor.diags_method_conformance(db));
         out.extend(self.diags_effect_handle_raw(db, implementor));
+        out.extend(self.diags_view_copy(db, implementor));
         out.extend(self.diags_trait_ref_and_wf(db));
         out.extend(self.diags_assoc_types_wf(db));
         out.extend(self.diags_assoc_types(db));

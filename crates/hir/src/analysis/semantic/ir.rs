@@ -10,7 +10,7 @@ use crate::{
             ty_def::{BorrowKind, TyId},
         },
     },
-    hir_def::{BinOp, ExprId, Func, StmtId, StringId, UnOp},
+    hir_def::{BinOp, ExprId, Func, PatId, StmtId, StringId, UnOp},
     projection::{IndexSource, Projection, ProjectionPath},
     semantic::ProviderBinding,
 };
@@ -299,6 +299,8 @@ pub struct SemanticCalleeRef<'db> {
 pub enum SemOrigin<'db> {
     Expr(ExprId),
     Stmt(StmtId),
+    /// A pattern binding.
+    Pat(PatId),
     Body(BodyOwner<'db>),
     Synthetic,
 }

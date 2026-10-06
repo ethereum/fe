@@ -15,7 +15,7 @@ pub contract Blob {
 
     recv BlobMsg {
         Set { data } uses (mut blobs) {
-            blobs.store_view(key: 0, view: data.view())
+            blobs.store_view(key: 0, view: data.payload_span())
         }
 
         Get {} uses (blobs) {

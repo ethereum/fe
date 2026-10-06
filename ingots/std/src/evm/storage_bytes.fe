@@ -1,4 +1,4 @@
-use core::abi::{ByteInput, BytesView}
+use core::abi::ByteInput
 use core::ptr
 
 use super::ops
@@ -42,13 +42,20 @@ pub unsafe fn zero_pad_memory_bytes(ptr: *u8, len: u256) {
     ops::mstore(addr: tail_ptr, value: word & mask_for_bytes(rem))
 }
 
-fn copy_view_words_to_memory<I>(_ view: BytesView<I>, _ dest: *u8)
-    where I: ByteInput
-{
-    let word_count = ceil_words(view.len())
+// The word at `offset` of `input`, with the bytes past its end zeroed.
+fn masked_word_at<I: ByteInput>(_ input: I, _ offset: u256) -> u256 {
+    let remaining = input.len() - offset
+    if remaining < 32 {
+        return input.word_at(offset) & mask_for_bytes(rem: remaining)
+    }
+    input.word_at(offset)
+}
+
+fn copy_input_words_to_memory<I: ByteInput>(_ input: I, _ dest: *u8) {
+    let word_count = ceil_words(input.len())
     let mut i: u256 = 0
     while i < word_count {
-        unsafe { ops::mstore(addr: offset(dest, i * 32), value: view.word_at(i * 32)) }
+        unsafe { ops::mstore(addr: offset(dest, i * 32), value: masked_word_at(input, i * 32)) }
         i += 1
     }
 }
@@ -68,10 +75,8 @@ pub fn encode_bytes_return_from_calldata(data_ptr: u256, len: u256) -> ! {
     }
 }
 
-/// Return ABI-encoded `bytes` copied from an arbitrary byte view.
-pub fn encode_bytes_return_view<I>(view: BytesView<I>) -> !
-    where I: ByteInput
-{
+/// Return ABI-encoded `bytes` copied from an arbitrary byte input.
+pub fn encode_bytes_return_view<I: ByteInput>(view: I) -> ! {
     let len = view.len()
     let total_len = 64 + ceil_words(len) * 32
     let ptr = ptr::alloc_bytes(total_len)
@@ -79,7 +84,7 @@ pub fn encode_bytes_return_view<I>(view: BytesView<I>) -> !
         ops::mstore(addr: ptr, value: 32)
         ops::mstore(addr: offset(ptr, 32), value: len)
     }
-    copy_view_words_to_memory(view, offset(ptr, 64))
+    copy_input_words_to_memory(view, offset(ptr, 64))
     unsafe { ops::return_data(offset: ptr, len: total_len) }
 }
 
@@ -99,16 +104,14 @@ pub fn emit_bytes_event(topic0: u256, data_ptr: u256, data_len: u256) {
 }
 
 /// Emit a Solidity-compatible event with a single dynamic `bytes` payload.
-pub fn emit_bytes_event_view<I>(topic0: u256, view: BytesView<I>)
-    where I: ByteInput
-{
+pub fn emit_bytes_event_view<I: ByteInput>(topic0: u256, view: I) {
     let total_len = 64 + ceil_words(view.len()) * 32
     let ptr = ptr::alloc_bytes(total_len)
     unsafe {
         ops::mstore(addr: ptr, value: 32)
         ops::mstore(addr: offset(ptr, 32), value: view.len())
     }
-    copy_view_words_to_memory(view, offset(ptr, 64))
+    copy_input_words_to_memory(view, offset(ptr, 64))
     unsafe { ops::log1(offset: ptr, len: total_len, topic0: topic0) }
 }
 
@@ -180,10 +183,8 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
         }
     }
 
-    /// Store bytes from an arbitrary ABI byte view.
-    pub fn store_view<I>(mut self, key: K, view: BytesView<I>)
-        where I: ByteInput
-    {
+    /// Store bytes from an arbitrary byte input.
+    pub fn store_view<I: ByteInput>(mut self, key: K, view: I) {
         self.clear(key)
 
         let mut lengths: StorageMap<K, u256, LEN_SALT> = StorageMap::new_unchecked()
@@ -193,7 +194,7 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
         let word_count = ceil_words(view.len())
         let mut i: u256 = 0
         while i < word_count {
-            words.set_unchecked(key: (key, i), value: view.word_at(i * 32))
+            words.set_unchecked(key: (key, i), value: masked_word_at(view, i * 32))
             i += 1
         }
     }

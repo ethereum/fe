@@ -66,16 +66,9 @@ pub contract B {
         }
 
         Protected { user } -> u256 uses (mut guarded_balances) {
-            let mut result = guarded_balances.peek().get(key: user)
-            let mut did_lock = false
-            match guarded_balances.try_lock() {
-                Option::Some(mut balances) => {
-                    result = balances.get(key: user)
-                    did_lock = true
-                }
-                Option::None => ()
-            }
-            if did_lock {
+            let locked = guarded_balances.try_lock()
+            let result = guarded_balances.value().get(key: user)
+            if locked {
                 guarded_balances.unlock()
             }
             result

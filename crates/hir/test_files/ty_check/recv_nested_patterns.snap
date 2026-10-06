@@ -8,25 +8,25 @@ note:
   ┌─ recv_nested_patterns.fe:6:5
   │
 6 │     SetPair { pair: (u64, bool) } -> u64,
-  │     ^^^^^^^ () | (u64, bool) | *<u8> | SetPair | __fe_D | __fe_I | fn decode_field<Sol, (u64, bool), __fe_D> | fn decode_msg_field_from<Sol, (u64, bool), __fe_I> | fn dynamic_payload_size<(u64, bool)> | fn encode_field_at<Sol, (u64, bool)> | u256
+  │     ^^^^^^^ () | (u64, bool) | *<u8> | SetPair | __fe_D | __fe_I | fn decode_field<Sol, (u64, bool), __fe_D, __fe_I> | fn decode_msg_field_from<Sol, (u64, bool), __fe_I> | fn dynamic_payload_size<(u64, bool)> | fn encode_field_at<Sol, (u64, bool)> | u256
 
 note:
   ┌─ recv_nested_patterns.fe:8:5
   │
 8 │     SetTriple { triple: (u64, u64, u64) } -> u64,
-  │     ^^^^^^^^^ () | (u64, u64, u64) | *<u8> | SetTriple | __fe_D | __fe_I | fn decode_field<Sol, (u64, u64, u64), __fe_D> | fn decode_msg_field_from<Sol, (u64, u64, u64), __fe_I> | fn dynamic_payload_size<(u64, u64, u64)> | fn encode_field_at<Sol, (u64, u64, u64)> | u256
+  │     ^^^^^^^^^ () | (u64, u64, u64) | *<u8> | SetTriple | __fe_D | __fe_I | fn decode_field<Sol, (u64, u64, u64), __fe_D, __fe_I> | fn decode_msg_field_from<Sol, (u64, u64, u64), __fe_I> | fn dynamic_payload_size<(u64, u64, u64)> | fn encode_field_at<Sol, (u64, u64, u64)> | u256
 
 note:
    ┌─ recv_nested_patterns.fe:10:5
    │
 10 │     SetNested { nested: ((u64, u64), bool) } -> u64,
-   │     ^^^^^^^^^ ((u64, u64), bool) | () | *<u8> | SetNested | __fe_D | __fe_I | fn decode_field<Sol, ((u64, u64), bool), __fe_D> | fn decode_msg_field_from<Sol, ((u64, u64), bool), __fe_I> | fn dynamic_payload_size<((u64, u64), bool)> | fn encode_field_at<Sol, ((u64, u64), bool)> | u256
+   │     ^^^^^^^^^ ((u64, u64), bool) | () | *<u8> | SetNested | __fe_D | __fe_I | fn decode_field<Sol, ((u64, u64), bool), __fe_D, __fe_I> | fn decode_msg_field_from<Sol, ((u64, u64), bool), __fe_I> | fn dynamic_payload_size<((u64, u64), bool)> | fn encode_field_at<Sol, ((u64, u64), bool)> | u256
 
 note:
    ┌─ recv_nested_patterns.fe:12:5
    │
 12 │     Multi { a: (u64, u64), b: (bool, bool) } -> bool,
-   │     ^^^^^ () | (bool, bool) | (u64, u64) | *<u8> | Multi | __fe_D | __fe_I | fn abi_field_head_size<(u64, u64)> | fn decode_field<Sol, (bool, bool), __fe_D> | fn decode_field<Sol, (u64, u64), __fe_D> | fn decode_msg_field_from<Sol, (bool, bool), __fe_I> | fn decode_msg_field_from<Sol, (u64, u64), __fe_I> | fn dynamic_payload_size<(bool, bool)> | fn dynamic_payload_size<(u64, u64)> | fn encode_field_at<Sol, (bool, bool)> | fn encode_field_at<Sol, (u64, u64)> | u256
+   │     ^^^^^ () | (bool, bool) | (u64, u64) | *<u8> | Multi | __fe_D | __fe_I | fn abi_field_head_size<(u64, u64)> | fn decode_field<Sol, (bool, bool), __fe_D, __fe_I> | fn decode_field<Sol, (u64, u64), __fe_D, __fe_I> | fn decode_msg_field_from<Sol, (bool, bool), __fe_I> | fn decode_msg_field_from<Sol, (u64, u64), __fe_I> | fn dynamic_payload_size<(bool, bool)> | fn dynamic_payload_size<(u64, u64)> | fn encode_field_at<Sol, (bool, bool)> | fn encode_field_at<Sol, (u64, u64)> | u256
 
 note:
    ┌─ recv_nested_patterns.fe:20:9
@@ -945,7 +945,7 @@ note:
     ┌─ recv_nested_patterns.fe:109:5
     │
 109 │     TypeMismatch { pair: (u64, u64) } -> u64,
-    │     ^^^^^^^^^^^^ () | (u64, u64) | *<u8> | TypeMismatch | __fe_D | __fe_I | fn decode_field<Sol, (u64, u64), __fe_D> | fn decode_msg_field_from<Sol, (u64, u64), __fe_I> | fn dynamic_payload_size<(u64, u64)> | fn encode_field_at<Sol, (u64, u64)> | u256
+    │     ^^^^^^^^^^^^ () | (u64, u64) | *<u8> | TypeMismatch | __fe_D | __fe_I | fn decode_field<Sol, (u64, u64), __fe_D, __fe_I> | fn decode_msg_field_from<Sol, (u64, u64), __fe_I> | fn dynamic_payload_size<(u64, u64)> | fn encode_field_at<Sol, (u64, u64)> | u256
 
 note:
     ┌─ recv_nested_patterns.fe:117:9
@@ -1002,7 +1002,7 @@ note:
     ┌─ recv_nested_patterns.fe:126:5
     │
 126 │     Deep { nested: (((u64, u64), u64), bool) } -> u64,
-    │     ^^^^ (((u64, u64), u64), bool) | () | *<u8> | Deep | __fe_D | __fe_I | fn decode_field<Sol, (((u64, u64), u64), bool), __fe_D> | fn decode_msg_field_from<Sol, (((u64, u64), u64), bool), __fe_I> | fn dynamic_payload_size<(((u64, u64), u64), bool)> | fn encode_field_at<Sol, (((u64, u64), u64), bool)> | u256
+    │     ^^^^ (((u64, u64), u64), bool) | () | *<u8> | Deep | __fe_D | __fe_I | fn decode_field<Sol, (((u64, u64), u64), bool), __fe_D, __fe_I> | fn decode_msg_field_from<Sol, (((u64, u64), u64), bool), __fe_I> | fn dynamic_payload_size<(((u64, u64), u64), bool)> | fn encode_field_at<Sol, (((u64, u64), u64), bool)> | u256
 
 note:
     ┌─ recv_nested_patterns.fe:134:9

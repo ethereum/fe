@@ -161,7 +161,7 @@ impl PackedUserOperation {
 
     /// `paymaster_and_data` from byte 52 on, the paymaster's own data. Empty
     /// when it is shorter than 52 bytes.
-    pub fn paymaster_data(self) -> MemSpan {
+    pub fn paymaster_data(self) -> ref MemSpan {
         let len = self.paymaster_and_data.len()
         if len < PAYMASTER_DATA_OFFSET {
             return MemSpan::empty()

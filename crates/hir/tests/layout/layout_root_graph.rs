@@ -3363,8 +3363,8 @@ impl<const ROOT: u256> Copy for Rooted<ROOT> {}
 impl<const ROOT: u256> Index<usize> for Rooted<ROOT> {
     type Output = StorageMap<u256, u256, ROOT>
 
-    fn index(self, _ index: usize) -> StorageMap<u256, u256, ROOT> {
-        self.map
+    fn index(self, _ index: usize) -> ref StorageMap<u256, u256, ROOT> {
+        ref self.map
     }
 }
 

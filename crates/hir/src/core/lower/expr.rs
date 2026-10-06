@@ -55,6 +55,8 @@ impl<'db> Expr<'db> {
                 Self::Cast(expr, ty)
             }
 
+            ast::ExprKind::Try(try_) => Self::Try(Self::push_to_body_opt(ctxt, try_.expr())),
+
             ast::ExprKind::Call(call) => {
                 let args = call
                     .args()

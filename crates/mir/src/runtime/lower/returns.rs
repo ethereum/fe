@@ -34,7 +34,7 @@ use super::{
     },
     infer::{
         AssignmentSpace, CarrierInferer, ReturnClassLookup, join_reference_transports,
-        merge_runtime_class,
+        merge_runtime_class, runtime_class_has_zero_sized_payload,
     },
     interface::{runtime_visible_binding_local, runtime_visible_binding_plans},
     semantic_body::{RuntimeOperand, RuntimeSemanticBody},
@@ -190,6 +190,18 @@ impl<'db> RuntimeReturnSummary<'db> {
     }
 }
 
+/// A projection is inlined into each of its callers, so its grant has the
+/// class its body yields rather than one fixed by its declaration.
+#[salsa::tracked]
+fn projection_return_class<'db>(
+    db: &'db dyn MirDb,
+    key: RuntimeInstanceKey<'db>,
+) -> Option<RuntimeClass<'db>> {
+    let semantic = key.semantic(db)?;
+    let body = RuntimeSemanticBody::admitted(db, semantic).ok()?;
+    runtime_return_class_for_body(db, key, &body)
+}
+
 pub(crate) fn runtime_return_class_for_body<'db>(
     db: &'db dyn MirDb,
     key: RuntimeInstanceKey<'db>,
@@ -211,6 +223,9 @@ pub(crate) fn declaration_runtime_return_class<'db>(
     key: RuntimeInstanceKey<'db>,
 ) -> Option<RuntimeClass<'db>> {
     let semantic = key.semantic(db)?;
+    if semantic.is_projection(db) {
+        return projection_return_class(db, key);
+    }
     if let StaticRuntimeReturnDecision::Known(class) = static_runtime_return_decision(db, semantic)
     {
         return class;
@@ -806,7 +821,13 @@ pub(crate) fn evaluate_runtime_return_class<'db>(
         else {
             return summary.default_return_class.clone();
         };
-        returned.push(selected.class);
+        // A value with a zero-sized payload is erased, like its carrier.
+        if !runtime_class_has_zero_sized_payload(db, &selected.class) {
+            returned.push(selected.class);
+        }
+    }
+    if returned.is_empty() {
+        return None;
     }
     let Some(class) = merged_return_class(
         db,
@@ -910,8 +931,8 @@ mod tests {
     use crate::{
         build_runtime_package,
         runtime::{
-            AddressSpaceKind, Layout, RExpr, RStmt, RTerminator, RefKind, RuntimeCarrier,
-            RuntimeClass, RuntimeExitBehavior,
+            AddressSpaceKind, RExpr, RStmt, RTerminator, RuntimeCarrier, RuntimeClass,
+            RuntimeExitBehavior,
         },
     };
 
@@ -1456,77 +1477,6 @@ pub contract C {
             "provider-root return slice should match full-body carrier inference:\ninstance={key:#?}"
         );
     }
-
-    #[test]
-    fn return_class_merges_default_enum_with_storage_provider_variant() {
-        let mut db = DriverDataBase::default();
-        let file_url =
-            Url::parse("file:///return_class_merges_default_enum_with_storage_provider_variant.fe")
-                .unwrap();
-        db.workspace().touch(
-            &mut db,
-            file_url.clone(),
-            Some(
-                include_str!("../../../../fe/tests/fixtures/fe_test/reentrancy_mutex.fe")
-                    .to_string(),
-            ),
-        );
-        let file = db
-            .workspace()
-            .get(&db, &file_url)
-            .expect("file should be loaded");
-        let top_mod = db.top_mod(file);
-        let package = build_runtime_package(&db, top_mod).expect("runtime package");
-        let function = package
-            .functions(&db)
-            .iter()
-            .copied()
-            .find(|function| function.symbol(&db).contains("try_lock"))
-            .expect("missing specialized try_lock runtime function");
-        let instance = function.instance(&db);
-        let semantic = instance
-            .key(&db)
-            .semantic(&db)
-            .expect("try_lock should be a semantic runtime instance");
-        let return_ty = semantic.key(&db).typed_body(&db).result_ty();
-        let option_enum = return_ty
-            .as_enum(&db)
-            .expect("try_lock should return Option");
-        let some_variant_idx = option_enum
-            .variants(&db)
-            .position(|variant| {
-                variant
-                    .name(&db)
-                    .is_some_and(|name| name.data(&db) == "Some")
-            })
-            .expect("Option should include Some");
-        let ret = instance
-            .interface_signature(&db)
-            .ret
-            .expect("try_lock should return a runtime-visible Option");
-        let RuntimeClass::AggregateValue { layout } = ret else {
-            panic!("try_lock should return an aggregate enum: {ret:#?}");
-        };
-        let Layout::Enum(enum_layout) = layout.data(&db) else {
-            panic!("try_lock should return an enum layout: {layout:#?}");
-        };
-        let some_variant = enum_layout
-            .variants
-            .get(some_variant_idx)
-            .expect("Option layout should include Some");
-
-        assert!(
-            matches!(
-                some_variant.fields.first(),
-                Some(RuntimeClass::Ref {
-                    kind: RefKind::Native,
-                    ..
-                })
-            ),
-            "returned enum fields must use native carriers that preserve storage layout:\n{ret:#?}"
-        );
-    }
-
     #[test]
     fn aggregate_temporaries_match_full_inference_in_return_slices() {
         let mut db = DriverDataBase::default();

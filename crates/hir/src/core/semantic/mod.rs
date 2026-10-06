@@ -2926,7 +2926,7 @@ fn selector_local_binding_init_expr<'db>(
     pat: PatId,
 ) -> Option<ExprId> {
     for (_, stmt) in body.stmts(db).iter() {
-        if let Partial::Present(Stmt::Let(stmt_pat, _, Some(init_expr))) = stmt
+        if let Partial::Present(Stmt::Let(stmt_pat, _, Some(init_expr), _)) = stmt
             && *stmt_pat == pat
         {
             return Some(*init_expr);
@@ -5541,6 +5541,17 @@ impl<'db> FieldView<'db> {
                 TyLowerDiag::NormalTypeExpected {
                     span: span.clone(),
                     given: ty,
+                }
+                .into(),
+            );
+            return out;
+        }
+        if ty.is_view(db) {
+            out.push(
+                TyLowerDiag::ViewTypeMode {
+                    span: span.clone(),
+                    ty,
+                    mode: "a field",
                 }
                 .into(),
             );

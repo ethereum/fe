@@ -4,6 +4,7 @@
 // `cast wallet sign --no-hash --private-key <anvil key 0> <digest>`.
 use core::option::Option
 use core::ptr::{self, MemBuffer, MemSpan}
+use core::abi::store_word
 use std::abi::{Bytes, Bytes32, sol}
 use std::evm::{Address, Call, Evm, RawOps, assert, signature}
 
@@ -105,27 +106,35 @@ pub contract LongMagic {
 }
 
 // Exactly 65 bytes are allocated, so `parse` must not read past the span.
-fn sig65(r: u256, s: u256, v: u256) -> MemSpan uses (evm: mut Evm) {
+// These spans view frame-local buffers, so their sessions reserve no
+// storage: the helpers write memory without an `Evm` effect.
+fn sig65(r: u256, s: u256, v: u256) -> ref MemSpan {
     let data = MemBuffer::alloc(65)
-    unsafe { evm.mstore(addr: data.ptr(), value: r) }
-    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: s) }
-    unsafe { evm.mstore8(addr: ptr::offset_bytes(data.ptr(), 64), value: v.downcast_truncate()) }
+    unsafe {
+        store_word(ptr: data.ptr(), value: r)
+        store_word(ptr: ptr::offset_bytes(data.ptr(), 32), value: s)
+        *ptr::offset_bytes(data.ptr(), 64) = v.downcast_truncate()
+    }
     data.span()
 }
 
-fn sig64(r: u256, vs: u256) -> MemSpan uses (evm: mut Evm) {
+fn sig64(r: u256, vs: u256) -> ref MemSpan {
     let data = MemBuffer::alloc(64)
-    unsafe { evm.mstore(addr: data.ptr(), value: r) }
-    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: vs) }
-    unsafe { MemSpan::from_raw_parts(ptr: data.ptr(), len: 64) }
+    unsafe {
+        store_word(ptr: data.ptr(), value: r)
+        store_word(ptr: ptr::offset_bytes(data.ptr(), 32), value: vs)
+    }
+    data.span()
 }
 
-fn blob(len: u256) -> MemSpan uses (evm: mut Evm) {
+fn blob(len: u256) -> ref MemSpan {
     let data = MemBuffer::alloc(96)
-    unsafe { evm.mstore(addr: data.ptr(), value: R_1) }
-    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: S_1) }
-    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 64), value: 0x1c1c << 240) }
-    unsafe { MemSpan::from_raw_parts(ptr: data.ptr(), len) }
+    unsafe {
+        store_word(ptr: data.ptr(), value: R_1)
+        store_word(ptr: ptr::offset_bytes(data.ptr(), 32), value: S_1)
+        store_word(ptr: ptr::offset_bytes(data.ptr(), 64), value: 0x1c1c << 240)
+        MemSpan::from_raw_parts(ptr: data.ptr(), len)
+    }
 }
 
 fn is_addr(_ value: Option<Address>, _ expected: u256) -> bool {

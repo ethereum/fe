@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 431
+assertion_line: 416
 expression: output
 input_file: crates/codegen/tests/fixtures/raw_log_emit.fe
 ---
@@ -42,16 +42,6 @@ func private %cast__gcc1f(v0.i256) -> i256 {
 
     block1:
         return v0;
-}
-
-func private %from_raw_parts(v0.i256, v1.i256) -> @layout_0 {
-    block0:
-        jump block1;
-
-    block1:
-        v6.@layout_0 = insert_value undef.@layout_0 0.i256 v0;
-        v8.@layout_0 = insert_value v6 1.i256 v1;
-        return v8;
 }
 
 func private %len(v0.objref<@layout_0>) -> i256 {
@@ -111,15 +101,28 @@ func private %raw_emit() {
     block1:
         v1.i256 = call %alloc;
         v2.i256 = call %byte_ptr v1;
-        v4.@layout_0 = call %from_raw_parts v2 32.i256;
-        v6.objref<i256> = obj.proj v0 0.i256;
-        v7.i256 = extract_value v4 0.i256;
-        obj.store v6 v7;
-        v9.objref<i256> = obj.proj v0 1.i256;
-        v10.i256 = extract_value v4 1.i256;
-        obj.store v9 v10;
+        jump block3;
+
+    block2:
         call %log0 v0;
+        jump block5;
+
+    block3:
+        v9.@layout_0 = insert_value undef.@layout_0 0.i256 v2;
+        v12.@layout_0 = insert_value v9 1.i256 32.i256;
+        v13.objref<i256> = obj.proj v0 0.i256;
+        v14.i256 = extract_value v12 0.i256;
+        obj.store v13 v14;
+        v15.objref<i256> = obj.proj v0 1.i256;
+        v16.i256 = extract_value v12 1.i256;
+        obj.store v15 v16;
+        jump block2;
+
+    block4:
         return;
+
+    block5:
+        jump block4;
 }
 
 

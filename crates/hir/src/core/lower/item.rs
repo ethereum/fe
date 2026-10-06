@@ -114,6 +114,7 @@ const EVENT_TARGETS: &str = "structs";
 const ERROR_TARGETS: &str = "structs";
 const ABI_TARGETS: &str = "structs";
 const MUST_USE_TARGETS: &str = "functions, structs, and enums";
+const VIEW_TARGETS: &str = "structs and enums";
 const PAYABLE_TARGETS: &str = "init blocks and recv arms";
 const INDEXED_TARGETS: &str = "event fields";
 
@@ -178,6 +179,7 @@ fn validate_func_attrs<'db>(
             arithmetic,
             AttrRule::supported("inline", INLINE_FORM, INLINE_EXPECTED),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
+            AttrRule::unsupported("view", VIEW_TARGETS),
             AttrRule::unsupported("event", EVENT_TARGETS),
             AttrRule::unsupported("error", ERROR_TARGETS),
             AttrRule::unsupported("abi", ABI_TARGETS),
@@ -201,6 +203,7 @@ fn validate_struct_attrs<'db>(
             AttrRule::supported("error", BARE_FORM, "`#[error]`"),
             AttrRule::supported("abi", BARE_FORM, "`#[abi]`"),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
+            AttrRule::supported("view", BARE_FORM, "`#[view]`"),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
     );
@@ -221,6 +224,7 @@ fn validate_enum_attrs<'db>(
             AttrRule::unsupported("error", ERROR_TARGETS),
             AttrRule::unsupported("abi", ABI_TARGETS),
             AttrRule::supported("must_use", BARE_FORM, MUST_USE_EXPECTED),
+            AttrRule::supported("view", BARE_FORM, "`#[view]`"),
             AttrRule::unsupported("payable", PAYABLE_TARGETS),
         ],
     );

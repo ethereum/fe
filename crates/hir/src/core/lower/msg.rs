@@ -414,31 +414,36 @@ fn lower_msg_variant_decode_trait_impl<'db>(
 
     builder.impl_trait(trait_ref, ty, |builder| {
         let abi_decoder_trait_ref = builder.core_abi_trait_ref_sol("AbiDecoder");
-        let (d_generic_params, d_ty) =
-            builder.type_param_with_trait_bound("D", abi_decoder_trait_ref);
+        let byte_input_trait_ref = builder.core_abi_trait_ref("ByteInput");
+        let (payload_generic_params, payload_tys) = builder.type_params_with_trait_bounds([
+            ("D", abi_decoder_trait_ref),
+            ("I", byte_input_trait_ref),
+        ]);
 
         let decoder_ident = builder.generated_ident("msg_decode_decoder");
-        let params = builder.params([builder.param_mut_underscore_named(decoder_ident, d_ty)]);
+        let input_ident = builder.generated_ident("msg_decode_input");
+        let params = builder.params([
+            builder.param_mut_underscore_named(decoder_ident, payload_tys[0]),
+            builder.param_underscore_named(input_ident, payload_tys[1]),
+        ]);
 
         builder.func_generic_inline_always(
             "decode_payload",
-            d_generic_params,
+            payload_generic_params,
             params,
             Some(builder.self_ty()),
             FuncModifiers::new(Visibility::Private, false, false, false),
             |body| {
                 for (name, ty) in fields.iter().copied() {
-                    body.decode_into(name, ty, decoder_ident, d_ty);
+                    body.decode_into(name, ty, [decoder_ident, input_ident], payload_tys);
                 }
                 body.return_record_self(&field_names);
             },
         );
 
-        let byte_input_trait_ref = builder.core_abi_trait_ref("ByteInput");
-        let (i_generic_params, i_ty) =
-            builder.type_param_with_trait_bound("I", byte_input_trait_ref);
+        let (i_generic_params, [i_ty]) =
+            builder.type_params_with_trait_bounds([("I", byte_input_trait_ref)]);
 
-        let input_ident = builder.generated_ident("msg_decode_input");
         let base_ident = builder.generated_ident("msg_decode_base");
         let input_len_ident = builder.generated_ident("msg_decode_input_len");
         let u256_ty = builder.ty_ident(builder.ident("u256"));

@@ -1514,6 +1514,11 @@ pub enum RStmt<'db> {
         variant: VariantId<'db>,
         fields: Box<[RValueId]>,
     },
+    /// Finishes the projection session whose call assigned `session`: the
+    /// session's slide runs here once the call is inlined.
+    End {
+        session: RLocalId,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
@@ -1553,7 +1558,350 @@ pub enum RTerminator<'db> {
     },
     Trap,
     Return(Option<RValueId>),
+    /// A projection grants `value` to its caller; the caller's `End` of the
+    /// session resumes at `resume`, which runs the slide and returns.
+    Yield {
+        value: Option<RValueId>,
+        resume: RBlockId,
+    },
     Stop,
+}
+
+impl<'db> RuntimePlace<'db> {
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut RValueId> {
+        let root = match &mut self.root {
+            PlaceRoot::Slot(local) | PlaceRoot::Ref(local) | PlaceRoot::Ptr { addr: local, .. } => {
+                Some(local)
+            }
+            PlaceRoot::Provider(_) => None,
+        };
+        root.into_iter()
+            .chain(self.path.iter_mut().filter_map(|elem| match elem {
+                PlaceElem::Index(IndexSource::Dynamic(index)) => Some(index),
+                PlaceElem::Index(_)
+                | PlaceElem::Field(_)
+                | PlaceElem::VariantField { .. }
+                | PlaceElem::Deref => None,
+            }))
+    }
+}
+
+impl<'db> RuntimeBuiltin<'db> {
+    pub fn values_mut(&mut self) -> Vec<&mut RValueId> {
+        match self {
+            Self::Mload { addr }
+            | Self::ExtCodeSize { addr }
+            | Self::ExtCodeHash { addr }
+            | Self::Balance { addr } => vec![addr],
+            Self::Sload { slot: value }
+            | Self::CallDataLoad { offset: value }
+            | Self::LeadingZeros { value }
+            | Self::BlockHash { block: value }
+            | Self::BlobHash { index: value }
+            | Self::Malloc { size: value }
+            | Self::NativePtrIsNull { ptr: value } => vec![value],
+            Self::Mstore { addr: a, value: b }
+            | Self::Mstore8 { addr: a, value: b }
+            | Self::ZeroMem { dst: a, len: b }
+            | Self::Sstore { slot: a, value: b }
+            | Self::Keccak256 { offset: a, len: b }
+            | Self::Byte { pos: a, value: b }
+            | Self::SignExtend { byte: a, value: b }
+            | Self::IntrinsicArith { lhs: a, rhs: b, .. }
+            | Self::Saturating { lhs: a, rhs: b, .. }
+            | Self::PtrOffsetBytes { ptr: a, offset: b }
+            | Self::Log0 { offset: a, len: b } => vec![a, b],
+            Self::Mcopy {
+                dst: a,
+                src: b,
+                len: c,
+            }
+            | Self::ReturnDataCopy {
+                dst: a,
+                offset: b,
+                len: c,
+            }
+            | Self::CallDataCopy {
+                dst: a,
+                offset: b,
+                len: c,
+            }
+            | Self::CodeCopy {
+                dst: a,
+                offset: b,
+                len: c,
+            }
+            | Self::AddMod {
+                lhs: a,
+                rhs: b,
+                modulus: c,
+            }
+            | Self::MulMod {
+                lhs: a,
+                rhs: b,
+                modulus: c,
+            }
+            | Self::Create {
+                value: a,
+                offset: b,
+                len: c,
+            }
+            | Self::Log1 {
+                offset: a,
+                len: b,
+                topic0: c,
+            } => vec![a, b, c],
+            Self::ExtCodeCopy {
+                addr: a,
+                dst: b,
+                offset: c,
+                len: d,
+            }
+            | Self::Create2 {
+                value: a,
+                offset: b,
+                len: c,
+                salt: d,
+            }
+            | Self::Log2 {
+                offset: a,
+                len: b,
+                topic0: c,
+                topic1: d,
+            } => vec![a, b, c, d],
+            Self::Log3 {
+                offset,
+                len,
+                topic0,
+                topic1,
+                topic2,
+            } => vec![offset, len, topic0, topic1, topic2],
+            Self::Log4 {
+                offset,
+                len,
+                topic0,
+                topic1,
+                topic2,
+                topic3,
+            } => vec![offset, len, topic0, topic1, topic2, topic3],
+            Self::StaticCall {
+                gas,
+                addr,
+                args_offset,
+                args_len,
+                ret_offset,
+                ret_len,
+            }
+            | Self::DelegateCall {
+                gas,
+                addr,
+                args_offset,
+                args_len,
+                ret_offset,
+                ret_len,
+            } => vec![gas, addr, args_offset, args_len, ret_offset, ret_len],
+            Self::Call {
+                gas,
+                addr,
+                value,
+                args_offset,
+                args_len,
+                ret_offset,
+                ret_len,
+            } => vec![gas, addr, value, args_offset, args_len, ret_offset, ret_len],
+            Self::Msize
+            | Self::CallValue
+            | Self::ReturnDataSize
+            | Self::CallDataSize
+            | Self::CodeSize
+            | Self::Address
+            | Self::Caller
+            | Self::Origin
+            | Self::GasPrice
+            | Self::CoinBase
+            | Self::Timestamp
+            | Self::Number
+            | Self::PrevRandao
+            | Self::GasLimit
+            | Self::ChainId
+            | Self::BaseFee
+            | Self::SelfBalance
+            | Self::BlobBaseFee
+            | Self::Gas
+            | Self::CurrentCodeRegionLen
+            | Self::CodeRegionOffset { .. }
+            | Self::CodeRegionLen { .. }
+            | Self::CallDataSelector
+            | Self::MakeContractFieldRef { .. } => Vec::new(),
+        }
+    }
+}
+
+impl<'db> RExpr<'db> {
+    /// The values the expression reads, including those in its places.
+    pub fn values_mut(&mut self) -> Vec<&mut RValueId> {
+        match self {
+            Self::Use(value)
+            | Self::Unary { value, .. }
+            | Self::Cast { value, .. }
+            | Self::MaterializeToObject { src: value }
+            | Self::NativeRef { value }
+            | Self::ProviderRefFromRaw { raw: value, .. }
+            | Self::WordToRawAddr { value, .. }
+            | Self::ProviderRefToRaw { value }
+            | Self::RetagRef { value }
+            | Self::AggregateExtract { value, .. }
+            | Self::EnumTagOfValue { value }
+            | Self::EnumIsVariant { value, .. }
+            | Self::EnumExtract { value, .. }
+            | Self::EnumAssertVariantRef { root: value, .. } => vec![value],
+            Self::Binary { lhs, rhs, .. } => vec![lhs, rhs],
+            Self::MaterializePlaceToObject { place }
+            | Self::AddrOf { place }
+            | Self::Load { place }
+            | Self::EnumGetTag { place } => place.values_mut().collect(),
+            Self::AggregateMake { fields, .. }
+            | Self::Call { args: fields, .. }
+            | Self::EnumMake { fields, .. } => fields.iter_mut().collect(),
+            Self::Builtin(builtin) => builtin.values_mut(),
+            Self::ConstScalar(_)
+            | Self::Placeholder { .. }
+            | Self::ConstRef { .. }
+            | Self::AllocObject { .. } => Vec::new(),
+        }
+    }
+}
+
+impl<'db> RExpr<'db> {
+    pub fn place_mut(&mut self) -> Option<&mut RuntimePlace<'db>> {
+        match self {
+            Self::MaterializePlaceToObject { place }
+            | Self::AddrOf { place }
+            | Self::Load { place }
+            | Self::EnumGetTag { place } => Some(place),
+            Self::Use(_)
+            | Self::ConstScalar(_)
+            | Self::Placeholder { .. }
+            | Self::Builtin(_)
+            | Self::Unary { .. }
+            | Self::Binary { .. }
+            | Self::Cast { .. }
+            | Self::ConstRef { .. }
+            | Self::AllocObject { .. }
+            | Self::MaterializeToObject { .. }
+            | Self::NativeRef { .. }
+            | Self::ProviderRefFromRaw { .. }
+            | Self::WordToRawAddr { .. }
+            | Self::ProviderRefToRaw { .. }
+            | Self::RetagRef { .. }
+            | Self::AggregateExtract { .. }
+            | Self::AggregateMake { .. }
+            | Self::Call { .. }
+            | Self::EnumMake { .. }
+            | Self::EnumTagOfValue { .. }
+            | Self::EnumIsVariant { .. }
+            | Self::EnumExtract { .. }
+            | Self::EnumAssertVariantRef { .. } => None,
+        }
+    }
+}
+
+impl<'db> RStmt<'db> {
+    pub fn place_mut(&mut self) -> Option<&mut RuntimePlace<'db>> {
+        match self {
+            Self::Assign { expr, .. } => expr.place_mut(),
+            Self::Store { dst, .. } | Self::CopyInto { dst, .. } => Some(dst),
+            Self::AssertIndexInBounds { .. }
+            | Self::EnumAssertVariant { .. }
+            | Self::EnumSetTag { .. }
+            | Self::EnumWriteVariant { .. }
+            | Self::End { .. } => None,
+        }
+    }
+
+    /// The locals the statement reads or writes, including those in its places.
+    pub fn locals_mut(&mut self) -> Vec<&mut RLocalId> {
+        match self {
+            Self::Assign { dst, expr } => {
+                let mut locals = expr.values_mut();
+                locals.push(dst);
+                locals
+            }
+            Self::AssertIndexInBounds { index, .. } => match index {
+                IndexSource::Dynamic(index) => vec![index],
+                IndexSource::Constant(_) | IndexSource::Any => Vec::new(),
+            },
+            Self::EnumAssertVariant { value, .. }
+            | Self::EnumSetTag { root: value, .. }
+            | Self::End { session: value } => vec![value],
+            Self::Store { dst, src } | Self::CopyInto { dst, src } => {
+                let mut locals: Vec<_> = dst.values_mut().collect();
+                locals.push(src);
+                locals
+            }
+            Self::EnumWriteVariant { root, fields, .. } => {
+                std::iter::once(root).chain(fields.iter_mut()).collect()
+            }
+        }
+    }
+}
+
+impl<'db> RTerminator<'db> {
+    pub fn values_mut(&mut self) -> Vec<&mut RValueId> {
+        match self {
+            Self::Branch { cond: value, .. }
+            | Self::SwitchScalar { discr: value, .. }
+            | Self::MatchEnumTag { tag: value, .. }
+            | Self::SelfDestruct { beneficiary: value }
+            | Self::Return(Some(value))
+            | Self::Yield {
+                value: Some(value), ..
+            } => vec![value],
+            Self::TerminalCall { args, .. } => args.iter_mut().collect(),
+            Self::ReturnData { offset, len } | Self::Revert { offset, len } => vec![offset, len],
+            Self::Goto(_)
+            | Self::RevertEmpty
+            | Self::Trap
+            | Self::Return(None)
+            | Self::Yield { value: None, .. }
+            | Self::Stop => Vec::new(),
+        }
+    }
+
+    pub fn successors(&self) -> Vec<RBlockId> {
+        self.clone()
+            .successors_mut()
+            .into_iter()
+            .map(|block| *block)
+            .collect()
+    }
+
+    pub fn successors_mut(&mut self) -> Vec<&mut RBlockId> {
+        match self {
+            Self::Goto(target) | Self::Yield { resume: target, .. } => vec![target],
+            Self::Branch {
+                then_bb, else_bb, ..
+            } => vec![then_bb, else_bb],
+            Self::SwitchScalar { cases, default, .. } => cases
+                .iter_mut()
+                .map(|(_, target)| target)
+                .chain(std::iter::once(default))
+                .collect(),
+            Self::MatchEnumTag { cases, default, .. } => cases
+                .iter_mut()
+                .map(|(_, target)| target)
+                .chain(default.iter_mut())
+                .collect(),
+            Self::TerminalCall { .. }
+            | Self::ReturnData { .. }
+            | Self::Revert { .. }
+            | Self::RevertEmpty
+            | Self::SelfDestruct { .. }
+            | Self::Trap
+            | Self::Return(_)
+            | Self::Stop => Vec::new(),
+        }
+    }
 }
 
 pub trait RuntimeProgramView<'db> {

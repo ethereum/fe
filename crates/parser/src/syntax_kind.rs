@@ -102,6 +102,9 @@ pub enum SyntaxKind {
     Tilde,
     #[token("!")]
     Not,
+    /// `?`
+    #[token("?")]
+    Question,
     #[token("^")]
     Hat,
     /// `&`
@@ -195,6 +198,9 @@ pub enum SyntaxKind {
     /// `return`
     #[token("return")]
     ReturnKw,
+    /// `yield`
+    #[token("yield")]
+    YieldKw,
     /// `self`
     #[token("self")]
     SelfKw,
@@ -264,6 +270,8 @@ pub enum SyntaxKind {
     UnExpr,
     /// `expr as Type`
     CastExpr,
+    /// `expr?`
+    TryExpr,
     /// `foo(x, y)`
     CallExpr,
     /// `foo!(x, y)`
@@ -337,6 +345,8 @@ pub enum SyntaxKind {
 
     /// `return 1`
     ReturnStmt,
+    /// `yield mut x`
+    YieldStmt,
     /// `1`
     ExprStmt,
 
@@ -621,6 +631,7 @@ impl SyntaxKind {
             SyntaxKind::Percent => "`%`",
             SyntaxKind::Tilde => "`~`",
             SyntaxKind::Not => "`!`",
+            SyntaxKind::Question => "`?`",
             SyntaxKind::Hat => "`^`",
             SyntaxKind::Amp => "`&`",
             SyntaxKind::Amp2 => "`&&`",
@@ -652,6 +663,7 @@ impl SyntaxKind {
             SyntaxKind::WhileKw => "`while`",
             SyntaxKind::PubKw => "`pub`",
             SyntaxKind::ReturnKw => "`return`",
+            SyntaxKind::YieldKw => "`yield`",
             SyntaxKind::SelfKw => "`self`",
             SyntaxKind::SelfTypeKw => "`Self`",
             SyntaxKind::StructKw => "`struct`",
@@ -695,6 +707,7 @@ impl SyntaxKind {
             SyntaxKind::BinExpr => "binary expression",
             SyntaxKind::UnExpr => "unary expression",
             SyntaxKind::CastExpr => "cast expression",
+            SyntaxKind::TryExpr => "`?` expression",
             SyntaxKind::CallExpr => "function call expression",
             SyntaxKind::MacroCallExpr => "macro call expression",
             SyntaxKind::CallArg => "function call argument",
@@ -727,6 +740,7 @@ impl SyntaxKind {
             SyntaxKind::ContinueStmt => "`continue` statement",
             SyntaxKind::BreakStmt => "`break` statement",
             SyntaxKind::ReturnStmt => "`return` statement",
+            SyntaxKind::YieldStmt => "`yield` statement",
             SyntaxKind::ExprStmt => "`expr` statement",
             SyntaxKind::WildCardPat => "wildcard pattern",
             SyntaxKind::RestPat => "`..` pattern",
@@ -874,6 +888,7 @@ impl SyntaxKind {
                 | SyntaxKind::WhileKw
                 | SyntaxKind::PubKw
                 | SyntaxKind::ReturnKw
+                | SyntaxKind::YieldKw
                 | SyntaxKind::SelfKw
                 | SyntaxKind::SelfTypeKw
                 | SyntaxKind::StructKw

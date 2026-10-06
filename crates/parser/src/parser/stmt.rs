@@ -57,6 +57,9 @@ pub fn parse_stmt<S: TokenStream>(parser: &mut Parser<S>) -> Result<(), Recovery
         Some(ReturnKw) => parser
             .parse_cp(ReturnStmtScope::default(), checkpoint)
             .map(|_| ()),
+        Some(YieldKw) => parser
+            .parse_cp(YieldStmtScope::default(), checkpoint)
+            .map(|_| ()),
         _ => parser
             .parse_cp(ExprStmtScope::default(), checkpoint)
             .map(|_| ()),
@@ -79,6 +82,9 @@ impl super::Parse for LetStmtScope {
 
         if parser.bump_if(SyntaxKind::Eq) {
             parse_continuation_expr(parser)?;
+            if parser.bump_if(SyntaxKind::ElseKw) {
+                parser.parse(BlockExprScope::default())?;
+            }
         }
         Ok(())
     }
@@ -164,6 +170,17 @@ impl super::Parse for ReturnStmtScope {
             parse_expr(parser)?;
         }
         Ok(())
+    }
+}
+
+define_scope! { YieldStmtScope, YieldStmt }
+impl super::Parse for YieldStmtScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.bump_expected(SyntaxKind::YieldKw);
+        parser.set_newline_as_trivia(false);
+        parse_expr(parser)
     }
 }
 

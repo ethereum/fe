@@ -407,8 +407,8 @@ impl<A: Abi, const N: usize> AbiSpan<A> for FixedBytes<N> {
 }
 
 impl<A: Abi, const N: usize> Decode<A> for FixedBytes<N> {
-    fn decode_payload<D: AbiDecoder<A>>(_ d: mut D) -> Self {
-        FixedBytes { val: decode_fixed_bytes_word(word: d.read_word(), len: N as u256) }
+    fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        FixedBytes { val: decode_fixed_bytes_word(word: d.read_word(input), len: N as u256) }
     }
 
     #[inline(always)]

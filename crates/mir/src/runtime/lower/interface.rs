@@ -1,9 +1,6 @@
 use hir::analysis::{
     semantic::{SemanticBody, SemanticInstance, owner_effect_bindings, same_owner_effect_binding},
-    ty::{
-        ty_check::{BodyOwner, LocalBinding, ParamSite},
-        ty_def::TyId,
-    },
+    ty::ty_check::{BodyOwner, LocalBinding},
 };
 
 use crate::{
@@ -53,24 +50,6 @@ pub(crate) fn runtime_param_locals<'db>(
         .collect()
 }
 
-fn runtime_visible_binding_semantic_ty<'db>(
-    db: &'db dyn MirDb,
-    semantic: SemanticInstance<'db>,
-    typed_body: &hir::analysis::ty::ty_check::TypedBody<'db>,
-    binding: LocalBinding<'db>,
-) -> TyId<'db> {
-    match binding {
-        LocalBinding::EffectParam { .. }
-        | LocalBinding::Param {
-            site: ParamSite::EffectField(_),
-            ..
-        } => semantic.binding_ty(db, binding),
-        LocalBinding::Local { .. } | LocalBinding::Param { .. } => {
-            typed_body.binding_carrier_ty(db, binding)
-        }
-    }
-}
-
 #[salsa::tracked(return_ref)]
 pub(crate) fn runtime_param_plans<'db>(
     db: &'db dyn MirDb,
@@ -99,7 +78,7 @@ pub(crate) fn runtime_visible_binding_plans<'db>(
         if !matches!(plan, RuntimeParamPlan::Erased) {
             entries.push(RuntimeVisibleBindingPlan {
                 binding,
-                semantic_ty: runtime_visible_binding_semantic_ty(db, semantic, typed_body, binding),
+                semantic_ty: semantic.binding_ty(db, binding),
                 plan,
             });
         }

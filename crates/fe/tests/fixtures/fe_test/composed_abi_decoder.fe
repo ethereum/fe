@@ -13,9 +13,9 @@ impl AbiSpan<Sol> for Pair {
     }
 }
 impl Decode<Sol> for Pair {
-    fn decode_payload<D: AbiDecoder<Sol>>(_ d: mut D) -> Self {
-        let a = <Address as Decode<Sol>>::decode_payload(mut d)
-        let b = <Address as Decode<Sol>>::decode_payload(mut d)
+    fn decode_payload<D: AbiDecoder<Sol>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        let a = <Address as Decode<Sol>>::decode_payload(mut d, input)
+        let b = <Address as Decode<Sol>>::decode_payload(mut d, input)
         Self { a, b }
     }
 }

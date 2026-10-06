@@ -1060,21 +1060,29 @@ impl<'db> SemanticInstance<'db> {
                 idx,
                 ..
             } => effect_binding_ty_from_env(db, instantiated_effect_env(db, self), idx, None),
+            LocalBinding::Param { ty, .. } if self.binding_is_session_copy(db, binding) => ty,
+            LocalBinding::Local { .. } | LocalBinding::Param { .. } => {
+                self.key(db).typed_body(db).binding_carrier_ty(db, binding)
+            }
+        }
+    }
+
+    /// Whether `binding` is a projection's `Copy` view parameter: a copy the
+    /// session owns, never the caller's place.
+    pub fn binding_is_session_copy(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        binding: LocalBinding<'db>,
+    ) -> bool {
+        matches!(
+            binding,
             LocalBinding::Param {
                 mode: FuncParamMode::View,
                 ty,
                 ..
             } if self.is_projection(db)
-                && ty_is_copy(db, self.normalization_scope(db), ty, self.assumptions(db)) =>
-            {
-                // A projection's `Copy` view parameter is a copy the session
-                // owns, never the caller's place.
-                ty
-            }
-            LocalBinding::Local { .. } | LocalBinding::Param { .. } => {
-                self.key(db).typed_body(db).binding_carrier_ty(db, binding)
-            }
-        }
+                && ty_is_copy(db, self.normalization_scope(db), ty, self.assumptions(db))
+        )
     }
 
     pub fn is_projection(self, db: &'db dyn HirAnalysisDb) -> bool {

@@ -1,0 +1,174 @@
+use std::evm::Evm
+
+// The code after a projection's `yield` is its slide: it runs when the
+// caller's session ends, after the last use of the grant.
+struct Cell {
+    v: u256,
+}
+
+impl Cell {
+    fn get(self) -> u256 {
+        self.v
+    }
+
+    fn set(mut self, _ v: u256) {
+        self.v = v
+    }
+
+    // The write-back form: the slide stores the session's temporary.
+    fn cached(mut self) -> mut u256 {
+        let mut tmp = self.get()
+        yield mut tmp
+        self.set(tmp)
+    }
+
+    // One yield on each path; the slide runs after either.
+    fn pick(mut self, _ use_tmp: bool) -> mut u256 {
+        let mut tmp = self.get()
+        yield if use_tmp { mut tmp } else { mut self.v }
+        self.v += 100
+    }
+
+    // An empty variant grants nothing and has no slide.
+    fn entry(mut self, _ present: bool) -> Option<mut u256> {
+        if !present {
+            return Option::None
+        }
+        let mut tmp = self.get()
+        yield Option::Some(mut tmp)
+        self.set(tmp)
+    }
+
+    // The ramp's own sessions finish on every exit: returning the empty
+    // variant runs the inner write-back but no outer slide.
+    fn maybe_via(mut self, _ present: bool) -> Option<mut u256> {
+        let x = self.cached()
+        x += 5
+        if !present {
+            return Option::None
+        }
+        yield Option::Some(mut x)
+        self.v *= 2
+    }
+
+    // A projection whose yield is another projection's grant: the inner
+    // session ends with the outer one.
+    fn via(mut self) -> mut u256 {
+        yield self.cached()
+        self.v *= 10
+    }
+}
+
+fn ended_on_two_paths(_ early: bool) -> u256 {
+    let mut cell = Cell { v: 1 }
+    let x = cell.cached()
+    if early {
+        x += 10
+        return cell.v + 1000
+    }
+    x += 20
+    cell.v
+}
+
+#[test]
+fn write_back_lands_after_the_last_use() {
+    let mut cell = Cell { v: 1 }
+    let x = cell.cached()
+    x += 5
+    assert!(cell.v == 6)
+}
+
+#[test]
+fn slide_follows_either_yield() {
+    // Writes to the session's temporary are not written back.
+    let mut a = Cell { v: 1 }
+    let x = a.pick(true)
+    x += 5
+    assert!(a.v == 101)
+
+    let mut b = Cell { v: 1 }
+    let y = b.pick(false)
+    y += 5
+    assert!(b.v == 106)
+}
+
+#[test]
+fn each_iteration_runs_its_session() {
+    let mut cell = Cell { v: 1 }
+    let mut i: u256 = 0
+    while i < 3 {
+        let x = cell.cached()
+        x += 1
+        i += 1
+    }
+    assert!(cell.v == 4)
+}
+
+#[test]
+fn every_exit_ends_the_session() {
+    assert!(ended_on_two_paths(true) == 1011)
+    assert!(ended_on_two_paths(false) == 21)
+}
+
+#[test]
+fn optional_projection_slides_only_when_present() {
+    let mut cell = Cell { v: 1 }
+    if let Option::Some(x) = cell.entry(true) {
+        x += 2
+    }
+    if let Option::Some(x) = cell.entry(false) {
+        x += 100
+    }
+    assert!(cell.v == 3)
+}
+
+#[test]
+fn empty_variant_finishes_the_ramp_sessions() {
+    let mut cell = Cell { v: 1 }
+    if let Option::Some(x) = cell.maybe_via(true) {
+        x += 1
+    }
+    assert!(cell.v == 14)
+
+    let mut other = Cell { v: 1 }
+    if let Option::Some(x) = other.maybe_via(false) {
+        x += 100
+    }
+    assert!(other.v == 6)
+}
+
+#[test]
+fn nested_sessions_end_innermost_first() {
+    let mut cell = Cell { v: 1 }
+    let x = cell.via()
+    x += 1
+    assert!(cell.v == 20)
+}
+
+msg Msg {
+    #[selector = 1]
+    Bump -> u256,
+}
+
+pub contract Counter {
+    mut cell: Cell,
+
+    init() uses (mut cell) {
+        cell.v = 5
+    }
+
+    recv Msg {
+        Bump -> u256 uses (mut cell) {
+            let x = cell.cached()
+            x += 1
+            cell.v
+        }
+    }
+}
+
+#[test]
+fn storage_receiver_writes_back() uses (evm: mut Evm) {
+    let c = evm.create2<Counter>(value: 0, args: (), salt: 9)
+    assert!(evm.call(addr: c, gas: 100000, value: 0, message: Msg::Bump {}) == 6)
+    assert!(evm.call(addr: c, gas: 100000, value: 0, message: Msg::Bump {}) == 7)
+}

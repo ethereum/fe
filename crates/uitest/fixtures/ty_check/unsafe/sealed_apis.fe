@@ -7,7 +7,7 @@ pub fn copy_bytes(dest: *u8, source: *u8) {
     ptr::copy_raw(dest, source, 32)
 }
 
-pub fn forge_slice(p: *u256) -> MemSlice<u256> {
+pub fn forge_slice(p: *u256) -> ref MemSlice<u256> {
     MemSlice::from_raw_parts(ptr: p, len: 4)
 }
 

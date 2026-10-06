@@ -66,3 +66,12 @@ error[8-0031]: type annotation is needed
    │     │
    │     type annotation is needed
    │     no default type is provided for an integer type. consider giving integer type
+
+error[8-0066]: mutable borrow requires a mutable place
+   ┌─ assign.fe:43:14
+   │
+29 │ fn foo<T>(x: i32, mut y: own u32, opt: Option<T>, opt2: Option<i32>) {
+   │                                   --- `opt` does not provide mutable access
+   ·
+43 │         Some(mut t) => {
+   │              ^^^^^ cannot borrow as `mut`

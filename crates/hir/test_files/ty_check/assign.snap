@@ -50,10 +50,10 @@ note:
    │                                 ^ u32
 
 note:
-   ┌─ assign.fe:25:34
+   ┌─ assign.fe:25:38
    │
-25 │   pub fn foo(opt: own Option<i32>) {
-   │ ╭──────────────────────────────────^
+25 │   pub fn foo(mut opt: own Option<i32>) {
+   │ ╭──────────────────────────────────────^
 26 │ │     let mut x = 1
 27 │ │     let y = 2
 28 │ │

@@ -21,7 +21,8 @@ use super::{
 use crate::{
     analysis::HirAnalysisDb,
     hir_def::{
-        GenericArg, Partial, PathId, TypeId as HirTyId, TypeKind, TypeMode, scope_graph::ScopeId,
+        FuncParamMode, GenericArg, Partial, PathId, TypeId as HirTyId, TypeKind, TypeMode,
+        scope_graph::ScopeId,
     },
     span::types::LazyTySpan,
 };
@@ -41,7 +42,54 @@ pub enum Shape<'db> {
     },
 }
 
+/// A `#[view]` type exists only behind view and `ref` accesses: `ty` takes
+/// one wrongly if it is a part of another type, or if it is one and the
+/// position it is in would make it `whole`. Returns the view type and what
+/// the position would make it.
+fn view_misuse<'db>(
+    db: &'db dyn HirAnalysisDb,
+    ty: TyId<'db>,
+    whole: Option<&'static str>,
+) -> Option<(TyId<'db>, &'static str)> {
+    match ty.view_part(db) {
+        Some(view) => Some((view, "part of another type")),
+        None => whole
+            .filter(|_| ty.is_view(db))
+            .map(|position| (ty, position)),
+    }
+}
+
+/// A `#[view]` type a parameter of `mode` and type `ty` takes wrongly: as an
+/// `own` or `mut` parameter, or as part of another type.
+pub fn view_param_misuse<'db>(
+    db: &'db dyn HirAnalysisDb,
+    mode: FuncParamMode,
+    ty: TyId<'db>,
+) -> Option<(TyId<'db>, &'static str)> {
+    let whole = match mode {
+        FuncParamMode::Own => Some("an `own` parameter"),
+        FuncParamMode::Mut => Some("a `mut` parameter"),
+        FuncParamMode::View => None,
+    };
+    view_misuse(db, ty, whole)
+}
+
 impl<'db> Shape<'db> {
+    /// A `#[view]` type this return takes wrongly: by value, by a `mut`
+    /// yield, or as part of another type.
+    pub fn view_misuse(&self, db: &'db dyn HirAnalysisDb) -> Option<(TyId<'db>, &'static str)> {
+        match self {
+            Self::Owned(ty) => view_misuse(db, *ty, Some("returned by value")),
+            Self::Access(kind, ty) => view_misuse(
+                db,
+                *ty,
+                (*kind == BorrowKind::Mut).then_some("yielded by `mut`"),
+            ),
+            Self::Tuple(elems) => elems.iter().find_map(|elem| elem.view_misuse(db)),
+            Self::Sum { payload, .. } => payload.view_misuse(db),
+        }
+    }
+
     /// Whether this shape grants an access, i.e. whether a function returning
     /// it is a projection.
     pub fn has_access(&self) -> bool {
@@ -302,8 +350,29 @@ pub fn lower_return_shape<'db>(
     }
 }
 
-/// The variant and type argument of a sum type that carries a shape:
-/// `Option::Some(T)` and `Result::Ok(T)` (`Result<E, T>`).
+/// The variant of `ty` that carries a payload, if `ty` is an `Option` or a
+/// `Result`: `Option::Some(T)` or `Result::Ok(T)` (`Result<E, T>`). The
+/// payload is the type argument with the variant's index; the other variant
+/// is empty or carries the error.
+pub(crate) fn sum_payload_variant<'db>(
+    db: &'db dyn HirAnalysisDb,
+    scope: ScopeId<'db>,
+    ty: TyId<'db>,
+) -> Option<u16> {
+    let is = |lib_path| {
+        resolve_lib_type_path(db, scope, lib_path)
+            .is_some_and(|lib| lib.base_ty(db) == ty.base_ty(db))
+    };
+    if is("core::option::Option") {
+        Some(0)
+    } else if is("core::result::Result") {
+        Some(1)
+    } else {
+        None
+    }
+}
+
+/// The variant and type argument of a sum type that carries a shape.
 fn sum_shape_slot<'db>(
     db: &'db dyn HirAnalysisDb,
     path: PathId<'db>,
@@ -315,17 +384,8 @@ fn sum_shape_slot<'db>(
         TypeKind::Path(Partial::Present(path.strip_generic_args(db))),
     );
     let ctor = lower_hir_ty(db, ctor_hir, scope, assumptions);
-    let is = |lib_path| {
-        resolve_lib_type_path(db, scope, lib_path)
-            .is_some_and(|lib| lib.base_ty(db) == ctor.base_ty(db))
-    };
-    if is("core::option::Option") {
-        Some((ctor, 0, 0))
-    } else if is("core::result::Result") {
-        Some((ctor, 1, 1))
-    } else {
-        None
-    }
+    let variant = sum_payload_variant(db, scope, ctor)?;
+    Some((ctor, variant, variant as usize))
 }
 
 fn sum_type_args<'db>(db: &'db dyn HirAnalysisDb, path: PathId<'db>) -> Option<Vec<HirTyId<'db>>> {

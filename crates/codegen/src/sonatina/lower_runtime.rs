@@ -1527,6 +1527,11 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
                 self.checked_indices.clear();
                 self.pending_enum_proof = None;
             }
+            RStmt::End { .. } => {
+                return Err(LowerError::Internal(
+                    "projection sessions are inlined before code generation".into(),
+                ));
+            }
         }
         Ok(Lowered::Value(()))
     }
@@ -2671,6 +2676,11 @@ impl<'ctx, 'db, 'a, I: LoweringInstSet + 'static> FunctionLowerer<'ctx, 'db, 'a,
 
     fn lower_terminator(&mut self, terminator: &RTerminator<'db>) -> Result<(), LowerError> {
         match terminator {
+            RTerminator::Yield { .. } => {
+                return Err(LowerError::Internal(
+                    "projections are inlined before code generation".into(),
+                ));
+            }
             RTerminator::Goto(block) => {
                 self.fb.insert_inst_no_result(Jump::new(
                     self.module.inst_set(),
@@ -6006,33 +6016,6 @@ impl<'a, 'db> LowerBodyContext<'a, 'db> {
     }
 }
 
-fn block_successors<'db>(terminator: &RTerminator<'db>) -> SmallVec<[RBlockId; 2]> {
-    match terminator {
-        RTerminator::Goto(block) => smallvec![*block],
-        RTerminator::Branch {
-            then_bb, else_bb, ..
-        } => smallvec![*then_bb, *else_bb],
-        RTerminator::SwitchScalar { cases, default, .. } => cases
-            .iter()
-            .map(|(_, block)| *block)
-            .chain(std::iter::once(*default))
-            .collect(),
-        RTerminator::MatchEnumTag { cases, default, .. } => cases
-            .iter()
-            .map(|(_, block)| *block)
-            .chain(default.iter().copied())
-            .collect(),
-        RTerminator::TerminalCall { .. }
-        | RTerminator::ReturnData { .. }
-        | RTerminator::Revert { .. }
-        | RTerminator::RevertEmpty
-        | RTerminator::SelfDestruct { .. }
-        | RTerminator::Trap
-        | RTerminator::Return(_)
-        | RTerminator::Stop => SmallVec::new(),
-    }
-}
-
 fn compute_reachable_blocks<'db>(body: &RuntimeBody<'db>) -> Vec<bool> {
     let mut reachable = vec![false; body.blocks.len()];
     let mut worklist = vec![0usize];
@@ -6040,7 +6023,7 @@ fn compute_reachable_blocks<'db>(body: &RuntimeBody<'db>) -> Vec<bool> {
         if std::mem::replace(&mut reachable[idx], true) {
             continue;
         }
-        for succ in block_successors(&body.blocks[idx].terminator) {
+        for succ in body.blocks[idx].terminator.successors() {
             worklist.push(succ.as_u32() as usize);
         }
     }

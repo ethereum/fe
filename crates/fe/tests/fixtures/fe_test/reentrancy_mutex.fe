@@ -62,20 +62,12 @@ pub contract B {
         }
 
         Protected -> u256 uses (mut guard) {
-            let mut result = guard.peek()
-            let mut did_lock = false
-            match guard.try_lock() {
-                Option::Some(mut counter) => {
-                    counter += 1
-                    result = counter
-                    did_lock = true
-                }
-                Option::None => ()
+            if !guard.try_lock() {
+                return guard.peek()
             }
-            if did_lock {
-                guard.unlock()
-            }
-            result
+            guard.value_mut() += 1
+            guard.unlock()
+            guard.peek()
         }
 
         Get -> u256 uses (guard) {

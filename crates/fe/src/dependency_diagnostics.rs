@@ -3,7 +3,10 @@ use std::{
     fmt::Write as _,
 };
 
-use common::{InputDb, diagnostics::CompleteDiagnostic};
+use common::{
+    InputDb,
+    diagnostics::{CompleteDiagnostic, Severity},
+};
 use driver::{DriverDataBase, db::DiagnosticsCollection};
 use hir::{Ingot, hir_def::TopLevelMod};
 use url::Url;
@@ -181,6 +184,10 @@ impl<'db> CompilationDiagnostics<'db> {
             || DependencyIssues::collect(db, &ingot_url, seen),
             || db.mir_diagnostics_for_ingot(ingot),
         )
+    }
+
+    pub(crate) fn mir_has_errors(&self) -> bool {
+        self.mir.iter().any(|diag| diag.severity == Severity::Error)
     }
 
     fn finish(

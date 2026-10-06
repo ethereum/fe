@@ -50,9 +50,9 @@ mod InnerMsg {
     impl core::abi::Decode<std::abi::Sol> for Inner {
 
         #[inline(always)]
-        fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>>(_ __fe_msg_decode_decoder: mut __fe_D) -> Self {
-            let marker: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D>(mut __fe_msg_decode_decoder)
-            let data: Bytes = core::abi::decode_field<std::abi::Sol, Bytes, __fe_D>(mut __fe_msg_decode_decoder)
+        fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>, __fe_I: core::abi::ByteInput>(_ __fe_msg_decode_decoder: mut __fe_D, _ __fe_msg_decode_input: __fe_I) -> Self {
+            let marker: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D, __fe_I>(mut __fe_msg_decode_decoder, __fe_msg_decode_input)
+            let data: Bytes = core::abi::decode_field<std::abi::Sol, Bytes, __fe_D, __fe_I>(mut __fe_msg_decode_decoder, __fe_msg_decode_input)
             return Self { marker: marker, data: data }
         }
 
@@ -104,8 +104,8 @@ mod OuterMsg {
     impl core::abi::Decode<std::abi::Sol> for Outer {
 
         #[inline(always)]
-        fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>>(_ __fe_msg_decode_decoder: mut __fe_D) -> Self {
-            let inner: InnerMsg::Inner = core::abi::decode_field<std::abi::Sol, InnerMsg::Inner, __fe_D>(mut __fe_msg_decode_decoder)
+        fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>, __fe_I: core::abi::ByteInput>(_ __fe_msg_decode_decoder: mut __fe_D, _ __fe_msg_decode_input: __fe_I) -> Self {
+            let inner: InnerMsg::Inner = core::abi::decode_field<std::abi::Sol, InnerMsg::Inner, __fe_D, __fe_I>(mut __fe_msg_decode_decoder, __fe_msg_decode_input)
             return Self { inner: inner }
         }
 

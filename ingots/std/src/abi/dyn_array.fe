@@ -9,7 +9,7 @@ use core::abi::{
     store_word,
 }
 use ingot::abi::{Sol, StaticAbi}
-use core::ptr::{self, MemSpan}
+use core::ptr::{self, MemBuffer, MemSpan}
 use core::size_of
 use ingot::evm::panic::{PANIC_ASSERT, PANIC_INDEX_OUT_OF_BOUNDS, Panic}
 use ingot::evm::revert_error
@@ -124,11 +124,11 @@ pub fn canonical_dyn_array<T>(_ values: DynArray<T>) -> DynArray<T>
     // Dynamic elements: the canonical size is only known after decoding.
     // Encode each element's tail once while sizing and copy the tails into
     // place afterwards, instead of decoding every element a second time.
-    let mut tails = unsafe { ptr::alloc_array<MemSpan>(count) }
+    let mut tails = unsafe { ptr::alloc_array<MemBuffer>(count) }
     let mut size: u256 = 0
     let mut i: u256 = 0
     while i < count {
-        let encoded = encode_alloc<Sol, T>(values.get(i)).span()
+        let encoded = encode_alloc<Sol, T>(values.get(i))
         size += encoded.len()
         tails[i as usize] = encoded
         i += 1
@@ -267,7 +267,9 @@ impl<T> MemVec<T>
 /// `32 + len * 32 + (sum of element encodings)` bytes and copies every
 /// encoding once more, so the final array is independent of the builder.
 pub struct DynVec<T> {
-    parts: *MemSpan,
+    /// The element encodings. `filled` shares one encoding between slots,
+    /// so an encoding is never written once it is in the table.
+    parts: *MemBuffer,
     capacity: u256,
     len: u256,
     parts_size: u256,
@@ -278,7 +280,7 @@ impl<T> DynVec<T>
 {
     /// An empty builder. Allocates nothing until the first `push`.
     pub fn new() -> Self {
-        DynVec { parts: ptr::cast<u8, MemSpan>(ptr::alloc_bytes(0)), capacity: 0, len: 0, parts_size: 0 }
+        DynVec { parts: ptr::cast<u8, MemBuffer>(ptr::alloc_bytes(0)), capacity: 0, len: 0, parts_size: 0 }
     }
 
     /// A builder with `len` elements that all equal `value`.
@@ -289,14 +291,25 @@ impl<T> DynVec<T>
     /// `Bytes::empty()`) when elements are filled in out of order or some may
     /// stay unset.
     pub fn filled(_ len: u256, value: own T) -> Self {
-        let part = encode_alloc<Sol, T>(value).span()
-        let parts = ptr::cast<u8, MemSpan>(ptr::alloc_bytes(len * size_of<MemSpan>()))
-        let mut i: u256 = 0
-        while i < len {
-            unsafe { *ptr::offset(parts, i) = part }
-            i += 1
+        let part = encode_alloc<Sol, T>(value)
+        let parts_size = len * part.len()
+        let parts = ptr::cast<u8, MemBuffer>(ptr::alloc_bytes(len * size_of<MemBuffer>()))
+        if len != 0 {
+            unsafe {
+                *parts = part
+                // Every slot shares the first slot's encoding.
+                let mut i: u256 = 1
+                while i < len {
+                    ptr::copy_raw(
+                        ptr::byte_ptr(ptr::offset(parts, i)),
+                        source: ptr::byte_ptr(parts),
+                        len: size_of<MemBuffer>(),
+                    )
+                    i += 1
+                }
+            }
         }
-        DynVec { parts, capacity: len, len, parts_size: len * part.len() }
+        DynVec { parts, capacity: len, len, parts_size }
     }
 
     /// Number of elements.
@@ -312,20 +325,20 @@ impl<T> DynVec<T>
     pub fn push(mut self, _ value: own T) {
         if self.len == self.capacity {
             let capacity = if self.capacity == 0 { 4 } else { self.capacity * 2 }
-            let parts = ptr::cast<u8, MemSpan>(ptr::alloc_bytes(capacity * size_of<MemSpan>()))
+            let parts = ptr::cast<u8, MemBuffer>(ptr::alloc_bytes(capacity * size_of<MemBuffer>()))
             unsafe {
                 ptr::copy_raw(
                     ptr::byte_ptr(parts),
                     source: ptr::byte_ptr(self.parts),
-                    len: self.len * size_of<MemSpan>(),
+                    len: self.len * size_of<MemBuffer>(),
                 )
             }
             self.parts = parts
             self.capacity = capacity
         }
-        let part = encode_alloc<Sol, T>(value).span()
-        unsafe { *ptr::offset(self.parts, self.len) = part }
+        let part = encode_alloc<Sol, T>(value)
         self.parts_size += part.len()
+        unsafe { *ptr::offset(self.parts, self.len) = part }
         self.len += 1
     }
 
@@ -336,7 +349,7 @@ impl<T> DynVec<T>
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
 
-        let part = encode_alloc<Sol, T>(value).span()
+        let part = encode_alloc<Sol, T>(value)
         let slot = ptr::offset(self.parts, index)
         self.parts_size = self.parts_size - unsafe { (*slot).len() } + part.len()
         unsafe { *slot = part }
@@ -354,7 +367,7 @@ impl<T> DynVec<T>
 /// Lays out `count` element encodings as one `DynArray<T>` payload: the length
 /// word, then (for dynamic `T`) one offset word per element, then the
 /// encodings back to back in index order.
-fn assemble_dyn_array<T>(_ parts: *MemSpan, count: u256, parts_size: u256) -> DynArray<T>
+fn assemble_dyn_array<T>(_ parts: *MemBuffer, count: u256, parts_size: u256) -> DynArray<T>
     where T: AbiSize
 {
     let head = if T::IS_DYNAMIC { 32 } else { 0 }
@@ -365,11 +378,11 @@ fn assemble_dyn_array<T>(_ parts: *MemSpan, count: u256, parts_size: u256) -> Dy
     let mut tail = count * head
     let mut i: u256 = 0
     while i < count {
-        let part = unsafe { *ptr::offset(parts, i) }
+        let part = unsafe { ref *ptr::offset(parts, i) }
         if T::IS_DYNAMIC {
             unsafe { store_word(ptr: ptr::offset_bytes(root, i * 32), value: tail) }
         }
-        unsafe { ptr::copy(ptr::offset_bytes(root, tail), part) }
+        unsafe { ptr::copy(ptr::offset_bytes(root, tail), part.span()) }
         tail += part.len()
         i += 1
     }

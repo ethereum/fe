@@ -1,5 +1,5 @@
 use crate::{
-    analysis::place::{Place, is_pointer_place_expr},
+    analysis::place::{Place, is_grant_place_expr, is_pointer_place_expr},
     hir_def::{
         BinOp, Body, Contract, Expr, ExprId, Func, IdentId, Partial, Pat, PatId, Stmt, StmtId,
         UnOp, scope_graph::ScopeId,
@@ -97,6 +97,9 @@ pub(crate) struct TyCheckEnv<'db> {
     /// place base, or yielded. Any other use of `ref p`, `mut p` or a tuple or
     /// sum shape is a value use, which is an error.
     consumed_accesses: FxHashSet<ExprId>,
+    /// Places matched through the `mut` access their `mut` pattern bindings
+    /// open.
+    matched_places: FxHashSet<ExprId>,
     /// The part of a projection's return shape each yield site grants.
     yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
 
@@ -168,6 +171,7 @@ impl<'db> TyCheckEnv<'db> {
             pattern_status: SecondaryMap::with_default(PatternAnalysisStatus::Invalid),
             call_effect_args: SecondaryMap::new(),
             consumed_accesses: FxHashSet::default(),
+            matched_places: FxHashSet::default(),
             yield_shapes: SecondaryMap::new(),
             for_loop_seq: SecondaryMap::new(),
             path_applications: Vec::new(),
@@ -425,9 +429,19 @@ impl<'db> TyCheckEnv<'db> {
     }
 
     /// Returns `true` if `expr` is an assignable, borrowable location: a
-    /// binding-rooted place, or memory addressed by a pointer.
+    /// binding-rooted place, memory addressed by a pointer, or a place in a
+    /// projection's grant.
     pub(super) fn is_place_expr(&self, expr: ExprId) -> bool {
-        self.expr_place(expr).is_some() || self.is_pointer_place_expr(expr)
+        self.expr_place(expr).is_some()
+            || self.is_pointer_place_expr(expr)
+            || self.is_grant_place(expr)
+    }
+
+    pub(super) fn is_grant_place(&self, expr: ExprId) -> bool {
+        is_grant_place_expr(self.db, self.body, expr, &|expr| {
+            self.typed_expr(expr)
+                .is_some_and(|prop| prop.access().is_some())
+        })
     }
 
     pub(super) fn is_pointer_place_expr(&self, expr: ExprId) -> bool {
@@ -666,6 +680,15 @@ impl<'db> TyCheckEnv<'db> {
         self.consumed_accesses.contains(&expr)
     }
 
+    pub(super) fn open_matched_place(&mut self, expr: ExprId, prop: ExprProp<'db>) {
+        self.matched_places.insert(expr);
+        self.type_expr(expr, prop);
+    }
+
+    pub(super) fn is_matched_place(&self, expr: ExprId) -> bool {
+        self.matched_places.contains(&expr)
+    }
+
     pub(super) fn record_yield_shape(&mut self, expr: ExprId, shape: Shape<'db>) {
         self.yield_shapes[expr] = Some(shape);
     }
@@ -772,6 +795,10 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn type_pat(&mut self, pat: PatId, ty: TyId<'db>) {
         self.pat_ty[pat] = Some(ty);
+    }
+
+    pub(super) fn pat_ty(&self, pat: PatId) -> Option<TyId<'db>> {
+        self.pat_ty.get(pat).copied().flatten()
     }
 
     pub(super) fn alloc_validated_pat(&mut self, pat: ValidatedPat<'db>) -> ValidatedPatId {

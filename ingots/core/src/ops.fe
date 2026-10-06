@@ -200,7 +200,7 @@ pub trait Ord<T = Self> {
 pub trait Index<I> {
     type Output
 
-    fn index(self, _ index: I) -> Self::Output
+    fn index(self, _ index: I) -> ref Self::Output
 }
 
 pub trait IndexMut<I> {

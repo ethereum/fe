@@ -182,7 +182,7 @@ fn fifty_bytes() -> Bytes uses (mem: mut RawMem) {
 fn test_dynamic_bytes_between_scalars() uses (mem: mut RawMem) {
     assert!(keccak_packed((0xaa as u8, fifty_bytes(), 0xbbcc as u16)) == DYN_BYTES_DIGEST)
     // A view packs identically to the owning Bytes.
-    assert!(keccak_packed((0xaa as u8, fifty_bytes().view(), 0xbbcc as u16)) == DYN_BYTES_DIGEST)
+    assert!(keccak_packed((0xaa as u8, fifty_bytes(), 0xbbcc as u16)) == DYN_BYTES_DIGEST)
     // Zero-length case.
     assert!(keccak_packed((0xaa as u8, Bytes::empty(), 0xbbcc as u16)) == DYN_EMPTY_DIGEST)
 }

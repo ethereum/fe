@@ -1132,7 +1132,7 @@ pub fn walk_stmt<'db, V>(
     };
 
     match stmt {
-        Stmt::Let(pat_id, ty, expr_id) => {
+        Stmt::Let(pat_id, ty, expr_id, else_id) => {
             visit_node_in_body!(visitor, ctxt, pat_id, pat);
 
             if let Some(ty) = ty {
@@ -1142,7 +1142,7 @@ pub fn walk_stmt<'db, V>(
                 );
             };
 
-            if let Some(expr_id) = expr_id {
+            for expr_id in expr_id.iter().chain(else_id) {
                 visit_node_in_body!(visitor, ctxt, expr_id, expr);
             }
         }
@@ -1158,7 +1158,7 @@ pub fn walk_stmt<'db, V>(
             visit_node_in_body!(visitor, ctxt, while_body_id, expr);
         }
 
-        Stmt::Return(Some(expr_id)) | Stmt::Expr(expr_id) => {
+        Stmt::Return(Some(expr_id)) | Stmt::Yield(expr_id) | Stmt::Expr(expr_id) => {
             visit_node_in_body!(visitor, ctxt, expr_id, expr);
         }
 
@@ -1218,6 +1218,10 @@ pub fn walk_expr<'db, V>(
                     |ctxt| visitor.visit_ty(ctxt, ty),
                 );
             }
+        }
+
+        Expr::Try(expr_id) => {
+            visit_node_in_body!(visitor, ctxt, expr_id, expr);
         }
 
         Expr::Call(callee_id, call_args) => {

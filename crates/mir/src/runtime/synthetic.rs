@@ -431,11 +431,10 @@ impl<'db> SyntheticBodyBuilder<'db> {
             );
             let input =
                 self.push_memory_span_value(decode_bb, plan.contract.scope(), tail_ptr, tail_len);
-            let input_ty = self.locals[input.index()].semantic_ty;
-            let decoder_new = resolve_sol_decoder_new(self.db, plan.contract.scope(), input_ty)
-                .expect("decoder_new");
-            let decoder = self.push_call_result(decode_bb, decoder_new, vec![input]);
-            if let Some(decoded) = self.push_call(decode_bb, decode_fn, vec![decoder]) {
+            let decoder_new =
+                resolve_sol_decoder_new(self.db, plan.contract.scope()).expect("decoder_new");
+            let decoder = self.push_call_result(decode_bb, decoder_new, vec![]);
+            if let Some(decoded) = self.push_call(decode_bb, decode_fn, vec![decoder, input]) {
                 call_args.extend(self.extract_selected_tuple_fields(
                     decode_bb,
                     decoded,
@@ -768,7 +767,7 @@ impl<'db> SyntheticBodyBuilder<'db> {
         let mut cases = Vec::with_capacity(dispatch.len());
         for arm in dispatch {
             let block = self.new_block();
-            cases.push((u32_scalar(arm.selector), block));
+            cases.push((uint_scalar(32, arm.selector.into()), block));
             self.blocks[block.index()].terminator = RTerminator::TerminalCall {
                 callee: arm.wrapper,
                 args: Box::default(),
@@ -1657,31 +1656,26 @@ fn selector_scalar_class<'db>() -> ScalarClass<'db> {
     }
 }
 
-fn u32_scalar(value: u32) -> ConstScalar {
+pub(crate) fn uint_scalar(bits: u16, value: u64) -> ConstScalar {
     ConstScalar::Int {
-        bits: 32,
+        bits,
         signed: false,
-        words: if value == 0 {
-            Vec::new()
-        } else {
-            value
-                .to_be_bytes()
-                .into_iter()
-                .skip_while(|byte| *byte == 0)
-                .collect()
-        },
+        words: value
+            .to_be_bytes()
+            .into_iter()
+            .skip_while(|byte| *byte == 0)
+            .collect(),
     }
 }
 
 fn resolve_sol_decoder_new<'db>(
     db: &'db dyn MirDb,
     scope: hir::hir_def::scope_graph::ScopeId<'db>,
-    input_ty: TyId<'db>,
 ) -> Option<RuntimeInstance<'db>> {
     let abi_ty = sol_abi_ty(db, scope)?;
     let abi_trait = resolve_core_trait(db, scope, &["abi", "Abi"])?;
     let inst = TraitInstId::new_simple(db, abi_trait, vec![abi_ty]);
-    resolve_trait_runtime_instance(db, scope, inst, "decoder_new", vec![input_ty]).ok()
+    resolve_trait_runtime_instance(db, scope, inst, "decoder_new", vec![]).ok()
 }
 
 fn sol_abi_ty<'db>(

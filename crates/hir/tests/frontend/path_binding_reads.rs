@@ -37,14 +37,15 @@ fn nth_let(body: fe_hir::hir_def::Body<'_>, db: &HirAnalysisTestDb, idx: usize) 
     body.stmts(db)
         .iter()
         .filter_map(|(_, stmt)| match stmt {
-            Partial::Present(Stmt::Let(pat, _, Some(init))) => Some((*pat, *init)),
+            Partial::Present(Stmt::Let(pat, _, Some(init), _)) => Some((*pat, *init)),
             Partial::Present(
-                Stmt::Let(_, _, None)
+                Stmt::Let(_, _, None, _)
                 | Stmt::While(..)
                 | Stmt::For(..)
                 | Stmt::Continue
                 | Stmt::Break
                 | Stmt::Return(..)
+                | Stmt::Yield(..)
                 | Stmt::Expr(..),
             )
             | Partial::Absent => None,

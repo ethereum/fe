@@ -213,7 +213,8 @@ fn lower_abi_span_impl<'db>(
         let modifiers = FuncModifiers::new(Visibility::Private, false, false, false);
 
         // Self::payload_end_with_input_len(input, base:, pos:, input_len: input.len())
-        let (generic_params, input_ty) = builder.type_param_with_trait_bound("I", byte_input);
+        let (generic_params, [input_ty]) =
+            builder.type_params_with_trait_bounds([("I", byte_input)]);
         let params = builder.params([
             builder.param_underscore_named(input_ident, input_ty),
             labeled(base_ident),
@@ -256,7 +257,8 @@ fn lower_abi_span_impl<'db>(
             },
         );
 
-        let (generic_params, input_ty) = builder.type_param_with_trait_bound("I", byte_input);
+        let (generic_params, [input_ty]) =
+            builder.type_params_with_trait_bounds([("I", byte_input)]);
         let params = builder.params([
             builder.param_underscore_named(input_ident, input_ty),
             labeled(base_ident),
@@ -292,7 +294,7 @@ fn lower_abi_span_impl<'db>(
                     Partial::Present(PathId::from_ident(db, end_ident)),
                     true,
                 ));
-                body.emit_stmt(Stmt::Let(end_pat, Some(u256_ty), Some(frame_end)));
+                body.emit_stmt(Stmt::Let(end_pat, Some(u256_ty), Some(frame_end), None));
 
                 // end = abi_record_field_end<Sol, F, I>(input, pos, head_pos, input_len, end)
                 for (idx, (_, field_ty)) in field_specs.iter().copied().enumerate() {
@@ -399,10 +401,15 @@ fn lower_decode_impl<'db>(
         .collect::<Vec<_>>();
     builder.impl_trait(trait_ref, self_ty, |builder| {
         let abi_decoder = builder.core_abi_trait_ref_sol("AbiDecoder");
-        let (generic_params, decoder_ty) = builder.type_param_with_trait_bound("D", abi_decoder);
+        let byte_input = builder.core_abi_trait_ref("ByteInput");
+        let (generic_params, payload_tys) =
+            builder.type_params_with_trait_bounds([("D", abi_decoder), ("I", byte_input)]);
         let decoder_ident = builder.generated_ident("abi_struct_decoder");
-        let params =
-            builder.params([builder.param_mut_underscore_named(decoder_ident, decoder_ty)]);
+        let input_ident = builder.generated_ident("abi_struct_input");
+        let params = builder.params([
+            builder.param_mut_underscore_named(decoder_ident, payload_tys[0]),
+            builder.param_underscore_named(input_ident, payload_tys[1]),
+        ]);
         builder.func_generic_inline_always(
             "decode_payload",
             generic_params,
@@ -411,7 +418,7 @@ fn lower_decode_impl<'db>(
             FuncModifiers::new(Visibility::Private, false, false, false),
             |body| {
                 for (name, ty) in field_specs.iter().copied() {
-                    body.decode_into(name, ty, decoder_ident, decoder_ty);
+                    body.decode_into(name, ty, [decoder_ident, input_ident], payload_tys);
                 }
                 body.return_record_self(&field_names);
             },
@@ -421,13 +428,12 @@ fn lower_decode_impl<'db>(
         // cursor. Check the head once and preserve the bound on dynamic tails.
         // Let the backend budget these generated direct decoders.
         let u256_ty = builder.ty_ident(builder.ident("u256"));
-        let input_ident = builder.generated_ident("abi_struct_input");
         let pos_ident = builder.generated_ident("abi_struct_pos");
         let input_len_ident = builder.generated_ident("abi_struct_input_len");
-        let byte_input = builder.core_abi_trait_ref("ByteInput");
         let modifiers = FuncModifiers::new(Visibility::Private, false, false, false);
 
-        let (generic_params, input_ty) = builder.type_param_with_trait_bound("I", byte_input);
+        let (generic_params, [input_ty]) =
+            builder.type_params_with_trait_bounds([("I", byte_input)]);
         let params = builder.params([
             builder.param_underscore_named(input_ident, input_ty),
             builder.param_underscore_named(pos_ident, u256_ty),
@@ -464,7 +470,8 @@ fn lower_decode_impl<'db>(
         );
 
         for name in ["decode_from", "decode_from_bounded"] {
-            let (generic_params, input_ty) = builder.type_param_with_trait_bound("I", byte_input);
+            let (generic_params, [input_ty]) =
+                builder.type_params_with_trait_bounds([("I", byte_input)]);
             let with_input_len = name == "decode_from_bounded";
             let mut params = vec![
                 builder.param_underscore_named(input_ident, input_ty),

@@ -107,6 +107,8 @@
 (break_statement) @keyword
 (continue_statement) @keyword
 (return_statement "return" @keyword)
+(yield_statement "yield" @keyword)
+(match_arm_yield "yield" @keyword)
 (let_statement "let" @keyword)
 (visibility) @keyword
 

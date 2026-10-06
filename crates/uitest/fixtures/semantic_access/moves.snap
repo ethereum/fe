@@ -58,14 +58,10 @@ error[16-0002]: move conflict in `fn use_before_init`
 error[16-0002]: move conflict in `fn assign_into_moved`
    ┌─ moves.fe:86:5
    │
-83 │   fn assign_into_moved() {
-   │ ╭────────────────────────'
-84 │ │     let mut pair = Pair { a: Item { n: 1 }, b: Item { n: 2 } }
-85 │ │     let moved = pair
-86 │ │     pair.a = Item { n: 3 }
-   │ │     ^^^^^^^^^^^^^^^^^^^^^^ cannot assign to part of a moved value
-87 │ │ }
-   │ ╰─' value is moved here
+85 │     let moved = pair
+   │         ----- value is moved here
+86 │     pair.a = Item { n: 3 }
+   │     ^^^^^^^^^^^^^^^^^^^^^^ cannot assign to part of a moved value
 
 error[16-0002]: move conflict in `fn call_moves_twice`
    ┌─ moves.fe:94:24

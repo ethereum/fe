@@ -121,13 +121,13 @@ fn put(_ buf: *u8, _ at: u256, _ value: u256) {
     unsafe { store_word(ptr: ptr::offset_bytes(buf, at), value) }
 }
 
-fn span(_ buf: *u8, _ len: u256) -> ptr::MemSpan {
+fn span(_ buf: *u8, _ len: u256) -> ref ptr::MemSpan {
     unsafe { ptr::MemSpan::from_raw_parts(ptr: buf, len) }
 }
 
 /// `Error(string)` revert data with explicit offset, length and total size;
 /// the payload bytes are "hi".
-fn error_string_data(offset: u256, length: u256, total: u256) -> ptr::MemSpan {
+fn error_string_data(offset: u256, length: u256, total: u256) -> ref ptr::MemSpan {
     let buf = scratch(total + offset + 128)
     put(buf, 0, 0x08c379a0 << 224)
     put(buf, 4, offset)
@@ -136,14 +136,14 @@ fn error_string_data(offset: u256, length: u256, total: u256) -> ptr::MemSpan {
     span(buf, total)
 }
 
-fn panic_data(_ code: u256, _ total: u256) -> ptr::MemSpan {
+fn panic_data(_ code: u256, _ total: u256) -> ref ptr::MemSpan {
     let buf = scratch(total)
     put(buf, 0, 0x4e487b71 << 224)
     put(buf, 4, code)
     span(buf, total)
 }
 
-fn insufficient_data(_ total: u256) -> ptr::MemSpan {
+fn insufficient_data(_ total: u256) -> ref ptr::MemSpan {
     let buf = scratch(total)
     put(
         buf,

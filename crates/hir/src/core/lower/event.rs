@@ -476,7 +476,7 @@ fn lower_emit_method<'db>(
                 .push_str(db, "Log"),
         ),
     );
-    let (generic_params, log_ty) = builder.type_param_with_trait_bound("L", log_trait_ref);
+    let (generic_params, [log_ty]) = builder.type_params_with_trait_bounds([("L", log_trait_ref)]);
     let log_param_ty = TypeId::new(db, TypeKind::Mode(TypeMode::Mut, Partial::Present(log_ty)));
 
     let self_param = FuncParam {

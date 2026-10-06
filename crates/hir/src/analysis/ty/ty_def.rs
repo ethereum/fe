@@ -72,6 +72,36 @@ impl<'db> TyId<'db> {
         args
     }
 
+    /// Whether this is a `#[view]` type, which exists only behind accesses.
+    pub fn is_view(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.base_ty(db)
+            .adt_ref(db)
+            .is_some_and(|adt| adt.is_view(db))
+    }
+
+    /// A `#[view]` type this type holds as a part: a type argument of an
+    /// ADT, a tuple, an array or a pointer, at any depth.
+    pub fn view_part(self, db: &'db dyn HirAnalysisDb) -> Option<Self> {
+        if let Some((_, target)) = self.as_capability(db) {
+            return target.view_part(db);
+        }
+        let holds_args = match self.base_ty(db).data(db) {
+            TyData::TyBase(TyBase::Adt(_)) => true,
+            TyData::TyBase(TyBase::Prim(prim)) => {
+                matches!(prim, PrimTy::Tuple(_) | PrimTy::Array | PrimTy::Ptr)
+            }
+            _ => false,
+        };
+        if !holds_args {
+            return None;
+        }
+        self.generic_args(db).iter().find_map(|arg| {
+            arg.is_view(db)
+                .then_some(*arg)
+                .or_else(|| arg.view_part(db))
+        })
+    }
+
     /// Returns teh base type of this type.
     /// ## Example
     /// `TyApp<Adt, i32>` returns `Adt`.
@@ -1087,6 +1117,11 @@ pub enum InvalidCause<'db> {
     /// on parameters and in projection return shapes.
     ModeNotType,
 
+    /// A `#[view]` type held as part of another type.
+    ViewPart {
+        view: TyId<'db>,
+    },
+
     /// Kind mismatch between two types.
     KindMismatch {
         expected: Option<Kind>,
@@ -1287,6 +1322,7 @@ impl InvalidCause<'_> {
                 res.pretty_path(db)
                     .unwrap_or_else(|| res.kind_name().into())
             ),
+            InvalidCause::ViewPart { view } => format!("ViewPart({})", view.pretty_print(db)),
             InvalidCause::NotFullyApplied
             | InvalidCause::ModeNotType
             | InvalidCause::TooManyGenericArgs { .. }

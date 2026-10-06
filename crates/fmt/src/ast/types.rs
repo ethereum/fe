@@ -1219,6 +1219,7 @@ impl ToDoc for ast::Expr {
             ExprKind::Bin(bin) => bin.to_doc(ctx),
             ExprKind::Un(un) => un.to_doc(ctx),
             ExprKind::Cast(cast) => cast.to_doc(ctx),
+            ExprKind::Try(try_) => try_.to_doc(ctx),
             ExprKind::Call(call) => call.to_doc(ctx),
             ExprKind::MacroCall(call) => call.to_doc(ctx),
             ExprKind::MethodCall(method) => method.to_doc(ctx),

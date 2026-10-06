@@ -23,8 +23,8 @@ pub contract OffsetProbe {
             } else if mode == 2 {
                 return abi_field_end<Sol, Bytes, MemSpan>(data.span(), base: 32, pos: 0)
             } else {
-                let mut decoder = Sol::decoder_with_base(data.span(), 32)
-                return decode_field<Sol, Bytes, SolDecoder<MemSpan>>(mut decoder).len()
+                let mut decoder = Sol::decoder_with_base(32)
+                return decode_field<Sol, Bytes, SolDecoder, MemSpan>(mut decoder, data.span()).len()
             }
         }
     }

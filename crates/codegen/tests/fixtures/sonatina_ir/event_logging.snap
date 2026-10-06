@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 431
+assertion_line: 416
 expression: output
 input_file: crates/codegen/tests/fixtures/event_logging.fe
 ---
@@ -90,19 +90,48 @@ func inline(always) private %emit(v0.@layout_2) {
         v15.objref<i256> = obj.proj v1 2.i256;
         v16.i256 = extract_value v9 2.i256;
         obj.store v15 v16;
-        v17.@layout_3 = call %span v1;
-        v18.objref<i256> = obj.proj v2 0.i256;
-        v19.i256 = extract_value v17 0.i256;
-        obj.store v18 v19;
-        v20.objref<i256> = obj.proj v2 1.i256;
-        v21.i256 = extract_value v17 1.i256;
-        obj.store v20 v21;
-        v23.@layout_0 = extract_value v0 0.i256;
-        v24.i256 = call %as_topic v23;
-        v25.@layout_0 = extract_value v0 1.i256;
-        v26.i256 = call %as_topic v25;
-        call %log3 v2 -15402802100530019096323380498944738953123845089667699673314898783681816316945.i256 v24 v26;
+        jump block3;
+
+    block2:
+        v20.@layout_0 = extract_value v0 0.i256;
+        v21.i256 = call %as_topic v20;
+        v22.@layout_0 = extract_value v0 1.i256;
+        v23.i256 = call %as_topic v22;
+        call %log3 v2 -15402802100530019096323380498944738953123845089667699673314898783681816316945.i256 v21 v23;
+        jump block7;
+
+    block3:
+        v26.objref<i256> = obj.proj v1 0.i256;
+        v27.i256 = obj.load v26;
+        v28.objref<i256> = obj.proj v1 1.i256;
+        v29.i256 = obj.load v28;
+        jump block5;
+
+    block4:
+        jump block2;
+
+    block5:
+        v33.@layout_3 = insert_value undef.@layout_3 0.i256 v27;
+        v35.@layout_3 = insert_value v33 1.i256 v29;
+        v36.objref<i256> = obj.proj v2 0.i256;
+        v37.i256 = extract_value v35 0.i256;
+        obj.store v36 v37;
+        v38.objref<i256> = obj.proj v2 1.i256;
+        v39.i256 = extract_value v35 1.i256;
+        obj.store v38 v39;
+        jump block4;
+
+    block6:
         return;
+
+    block7:
+        jump block9;
+
+    block8:
+        jump block6;
+
+    block9:
+        jump block8;
 }
 
 func private %emit_transfer(v0.constref<@layout_0>, v1.constref<@layout_0>, v2.i256) {
@@ -199,16 +228,6 @@ func inline(always) private %encode_field_at(v0.i256, v1.i256, v2.i256, v3.i256)
         return v3;
 }
 
-func private %from_raw_parts(v0.i256, v1.i256) -> @layout_3 {
-    block0:
-        jump block1;
-
-    block1:
-        v6.@layout_3 = insert_value undef.@layout_3 0.i256 v0;
-        v8.@layout_3 = insert_value v6 1.i256 v1;
-        return v8;
-}
-
 func private %len(v0.objref<@layout_3>) -> i256 {
     block0:
         jump block1;
@@ -296,19 +315,6 @@ func private %ptr_offset(v0.i256, v1.i256) -> i256 {
     block1:
         v4.i256 = add v0 v1;
         return v4;
-}
-
-func private %span(v0.objref<@layout_1>) -> @layout_3 {
-    block0:
-        jump block1;
-
-    block1:
-        v3.objref<i256> = obj.proj v0 0.i256;
-        v4.i256 = obj.load v3;
-        v6.objref<i256> = obj.proj v0 1.i256;
-        v7.i256 = obj.load v6;
-        v8.@layout_3 = call %from_raw_parts v4 v7;
-        return v8;
 }
 
 func private %store_word(v0.i256, v1.i256) {

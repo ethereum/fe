@@ -13,7 +13,7 @@ use core::ptr::{self, MemSlice}
 use std::abi::{Bytes32, DynArray, FixedBytes, MemVec}
 use std::evm::{Evm, merkle}
 
-fn words<const N: usize>(_ values: [u256; N]) -> MemSlice<u256> {
+fn words<const N: usize>(_ values: [u256; N]) -> ref MemSlice<u256> {
     let mut array = unsafe { ptr::alloc_array<u256>(N as u256) }
     let mut i: usize = 0
     for value in values {
@@ -23,7 +23,7 @@ fn words<const N: usize>(_ values: [u256; N]) -> MemSlice<u256> {
     array.as_slice()
 }
 
-fn empty() -> MemSlice<u256> {
+fn empty() -> ref MemSlice<u256> {
     MemSlice<u256>::empty()
 }
 
@@ -206,7 +206,7 @@ fn test_sorted_invalid_proofs() {
     // Wrong root.
     assert!(!merkle::verify(proof, root: ROOT_3, leaf: LEAF_8_0))
     // Truncated proof: yields the level-2 node, not the root.
-    assert!(!merkle::verify(proof: proof.truncate(len: 2), root: ROOT_8, leaf: LEAF_8_0))
+    assert!(!merkle::verify(proof: proof.head(2), root: ROOT_8, leaf: LEAF_8_0))
     // One node too many.
     let long = words([0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6, 0xc5fd106a8e5214837c622e5fdef112b1d83ad6de66beafb53451c77843c9d04e, 0x9687420ece112ec1bb7441fb691952a25e39a583bafbccedcbe2820ea484a425, 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6])
     assert!(!merkle::verify(proof: long, root: ROOT_8, leaf: LEAF_8_0))

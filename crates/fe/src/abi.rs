@@ -1201,8 +1201,8 @@ impl<T> core::abi::Encode<std::abi::Sol> for GenericMsg<T>
 impl<T> core::abi::Decode<std::abi::Sol> for GenericMsg<T>
     where T: core::abi::Decode<std::abi::Sol>
 {
-    fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-        let value = T::decode_payload(d)
+    fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>, I: core::abi::ByteInput>(_ d: mut D, _ input: I) -> Self {
+        let value = T::decode_payload(mut d, input)
         Self { value }
     }
 }
@@ -1265,9 +1265,9 @@ impl core::abi::Encode<std::abi::Sol> for Weird {
 }
 
 impl core::abi::Decode<std::abi::Sol> for Weird {
-    fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-        let flag = bool::decode_payload(d)
-        let amount = u64::decode_payload(d)
+    fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>, I: core::abi::ByteInput>(_ d: mut D, _ input: I) -> Self {
+        let flag = bool::decode_payload(mut d, input)
+        let amount = u64::decode_payload(mut d, input)
         Self { amount, flag }
     }
 }
@@ -1325,9 +1325,9 @@ mod TokenMsg {
     }
 
     impl core::abi::Decode<std::abi::Sol> for Transfer {
-        fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-            let to = u64::decode_payload(d)
-            let amount = u64::decode_payload(d)
+        fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>, I: core::abi::ByteInput>(_ d: mut D, _ input: I) -> Self {
+            let to = u64::decode_payload(mut d, input)
+            let amount = u64::decode_payload(mut d, input)
             Self { to, amount }
         }
     }

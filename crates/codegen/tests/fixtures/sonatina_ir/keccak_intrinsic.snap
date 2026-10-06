@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 431
+assertion_line: 416
 expression: output
 input_file: crates/codegen/tests/fixtures/keccak_intrinsic.fe
 ---
@@ -18,31 +18,34 @@ func private %alloc_bytes(v0.i256) -> i256 {
         return v3;
 }
 
-func private %from_raw_parts(v0.i256, v1.i256) -> @layout_0 {
-    block0:
-        jump block1;
-
-    block1:
-        v6.@layout_0 = insert_value undef.@layout_0 0.i256 v0;
-        v8.@layout_0 = insert_value v6 1.i256 v1;
-        return v8;
-}
-
 func private %hash(v0.i256, v1.i256) -> i256 {
     block0:
         v2.objref<@layout_0> = obj.alloc @layout_0;
         jump block1;
 
     block1:
-        v5.@layout_0 = call %from_raw_parts v0 v1;
-        v7.objref<i256> = obj.proj v2 0.i256;
-        v8.i256 = extract_value v5 0.i256;
-        obj.store v7 v8;
-        v10.objref<i256> = obj.proj v2 1.i256;
-        v11.i256 = extract_value v5 1.i256;
-        obj.store v10 v11;
-        v12.i256 = call %keccak256 v2;
-        return v12;
+        jump block3;
+
+    block2:
+        v6.i256 = call %keccak256 v2;
+        jump block5;
+
+    block3:
+        v10.@layout_0 = insert_value undef.@layout_0 0.i256 v0;
+        v13.@layout_0 = insert_value v10 1.i256 v1;
+        v14.objref<i256> = obj.proj v2 0.i256;
+        v15.i256 = extract_value v13 0.i256;
+        obj.store v14 v15;
+        v16.objref<i256> = obj.proj v2 1.i256;
+        v17.i256 = extract_value v13 1.i256;
+        obj.store v16 v17;
+        jump block2;
+
+    block4:
+        return v6;
+
+    block5:
+        jump block4;
 }
 
 func private %keccak256(v0.objref<@layout_0>) -> i256 {

@@ -1,13 +1,13 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 431
+assertion_line: 416
 expression: output
 input_file: crates/codegen/tests/fixtures/match_return.fe
 ---
 target = "evm-ethereum-osaka"
 
-type @layout_0 = {i256, i256};
-type @layout_1 = enum {
+type @layout_1 = {i256, i256};
+type @layout_0 = enum {
     #variant_0,
     #variant_1,
 };
@@ -20,62 +20,72 @@ func private %cast(v0.i256) -> i256 {
         return v0;
 }
 
-func private %empty() -> @layout_0 {
+func private %f(v0.@layout_0) {
     block0:
+        v1.objref<@layout_1> = obj.alloc @layout_1;
+        v2.objref<@layout_1> = obj.alloc @layout_1;
         jump block1;
 
     block1:
-        v1.*i8 = evm_malloc 0.i256;
-        v2.i256 = ptr_to_int v1 i256;
-        v3.i256 = call %cast v2;
-        v4.@layout_0 = call %from_raw_parts v3 0.i256;
-        return v4;
-}
-
-func private %f(v0.@layout_1) {
-    block0:
-        v1.objref<@layout_0> = obj.alloc @layout_0;
-        v2.objref<@layout_0> = obj.alloc @layout_0;
-        jump block1;
-
-    block1:
-        v4.enumtag(@layout_1) = enum.tag v0;
-        br_table v4 (0.enumtag(@layout_1) block2) (1.enumtag(@layout_1) block3);
+        v4.enumtag(@layout_0) = enum.tag v0;
+        br_table v4 (0.enumtag(@layout_0) block2) (1.enumtag(@layout_0) block3);
 
     block2:
-        v7.@layout_0 = call %empty;
-        v9.objref<i256> = obj.proj v1 0.i256;
-        v10.i256 = extract_value v7 0.i256;
-        obj.store v9 v10;
-        v12.objref<i256> = obj.proj v1 1.i256;
-        v13.i256 = extract_value v7 1.i256;
-        obj.store v12 v13;
+        jump block5;
+
+    block3:
+        jump block9;
+
+    block4:
         call %return_data v1;
         unreachable;
 
-    block3:
-        v14.@layout_0 = call %empty;
-        v15.objref<i256> = obj.proj v2 0.i256;
-        v16.i256 = extract_value v14 0.i256;
-        obj.store v15 v16;
-        v17.objref<i256> = obj.proj v2 1.i256;
-        v18.i256 = extract_value v14 1.i256;
-        obj.store v17 v18;
+    block5:
+        v9.*i8 = evm_malloc 0.i256;
+        v10.i256 = ptr_to_int v9 i256;
+        v11.i256 = call %cast v10;
+        jump block7;
+
+    block6:
+        jump block4;
+
+    block7:
+        v15.@layout_1 = insert_value undef.@layout_1 0.i256 v11;
+        v18.@layout_1 = insert_value v15 1.i256 0.i256;
+        v19.objref<i256> = obj.proj v1 0.i256;
+        v20.i256 = extract_value v18 0.i256;
+        obj.store v19 v20;
+        v21.objref<i256> = obj.proj v1 1.i256;
+        v22.i256 = extract_value v18 1.i256;
+        obj.store v21 v22;
+        jump block6;
+
+    block8:
         call %return_data v2;
         unreachable;
+
+    block9:
+        v24.*i8 = evm_malloc 0.i256;
+        v25.i256 = ptr_to_int v24 i256;
+        v26.i256 = call %cast v25;
+        jump block11;
+
+    block10:
+        jump block8;
+
+    block11:
+        v30.@layout_1 = insert_value undef.@layout_1 0.i256 v26;
+        v32.@layout_1 = insert_value v30 1.i256 0.i256;
+        v33.objref<i256> = obj.proj v2 0.i256;
+        v34.i256 = extract_value v32 0.i256;
+        obj.store v33 v34;
+        v35.objref<i256> = obj.proj v2 1.i256;
+        v36.i256 = extract_value v32 1.i256;
+        obj.store v35 v36;
+        jump block10;
 }
 
-func private %from_raw_parts(v0.i256, v1.i256) -> @layout_0 {
-    block0:
-        jump block1;
-
-    block1:
-        v6.@layout_0 = insert_value undef.@layout_0 0.i256 v0;
-        v8.@layout_0 = insert_value v6 1.i256 v1;
-        return v8;
-}
-
-func private %len(v0.objref<@layout_0>) -> i256 {
+func private %len(v0.objref<@layout_1>) -> i256 {
     block0:
         jump block1;
 
@@ -90,7 +100,7 @@ func private %main() {
         jump block1;
 
     block1:
-        v0.@layout_1 = enum.make @layout_1 #variant_0;
+        v0.@layout_0 = enum.make @layout_0 #variant_0;
         call %f v0;
         unreachable;
 }
@@ -104,7 +114,7 @@ func private %main_root() {
         evm_stop;
 }
 
-func private %ptr(v0.objref<@layout_0>) -> i256 {
+func private %ptr(v0.objref<@layout_1>) -> i256 {
     block0:
         jump block1;
 
@@ -114,7 +124,7 @@ func private %ptr(v0.objref<@layout_0>) -> i256 {
         return v4;
 }
 
-func private %return_data(v0.objref<@layout_0>) {
+func private %return_data(v0.objref<@layout_1>) {
     block0:
         jump block1;
 

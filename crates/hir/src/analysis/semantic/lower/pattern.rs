@@ -7,7 +7,7 @@ use crate::{
         HirAnalysisDb,
         semantic::{
             FieldIndex, SBlockId, SConst, SExpr, SLocalId, SOperand, SPlace, SStmtKind,
-            STerminatorKind, SValueId, VariantIndex, bool_const, bytes_const, int_const,
+            STerminatorKind, SValueId, SemOrigin, VariantIndex, bool_const, bytes_const, int_const,
         },
         ty::{
             decision_tree::{
@@ -389,16 +389,19 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         value
                     };
                     self.debug_assert_pattern_binding_ty_matches(dst, binding_value);
-                    self.push_synthetic_stmt(SStmtKind::Assign {
-                        dst,
-                        expr: if needs_borrow_read {
-                            SExpr::ReadPlace {
-                                place: SPlace::new(value.value),
-                            }
-                        } else {
-                            SExpr::UseValue(SOperand::synthetic(value.value))
+                    self.push_stmt(
+                        SemOrigin::Pat(binding.representative_pat),
+                        SStmtKind::Assign {
+                            dst,
+                            expr: if needs_borrow_read {
+                                SExpr::ReadPlace {
+                                    place: SPlace::new(value.value),
+                                }
+                            } else {
+                                SExpr::UseValue(SOperand::inherited(value.value))
+                            },
                         },
-                    });
+                    );
                 }
             }
             ValidatedPatKind::Wildcard { binding: None } => {}
@@ -656,10 +659,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let dst = self.alloc_binding_local(binding);
                 let src = self.project_decision_tree_path(projections, path);
                 self.debug_assert_pattern_binding_ty_matches(dst, src);
-                self.push_synthetic_stmt(SStmtKind::Assign {
-                    dst,
-                    expr: SExpr::UseValue(SOperand::synthetic(src.value)),
-                });
+                self.push_stmt(
+                    SemOrigin::Pat(binding_ref.representative_pat),
+                    SStmtKind::Assign {
+                        dst,
+                        expr: SExpr::UseValue(SOperand::inherited(src.value)),
+                    },
+                );
             }
         }
     }

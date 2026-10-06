@@ -1,6 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
-assertion_line: 431
+assertion_line: 416
 expression: output
 input_file: crates/codegen/tests/fixtures/full_contract.fe
 ---
@@ -30,15 +30,32 @@ func private %abi_encode(v0.i256) {
         obj.store v12 v13;
         v14.i256 = call %impl_MemBuffer__ptr v1;
         call %mstore v14 v0;
-        v17.@layout_3 = call %span v1;
-        v18.objref<i256> = obj.proj v2 0.i256;
-        v19.i256 = extract_value v17 0.i256;
-        obj.store v18 v19;
-        v20.objref<i256> = obj.proj v2 1.i256;
-        v21.i256 = extract_value v17 1.i256;
-        obj.store v20 v21;
+        jump block3;
+
+    block2:
         call %return_data v2;
         unreachable;
+
+    block3:
+        v19.objref<i256> = obj.proj v1 0.i256;
+        v20.i256 = obj.load v19;
+        v21.objref<i256> = obj.proj v1 1.i256;
+        v22.i256 = obj.load v21;
+        jump block5;
+
+    block4:
+        jump block2;
+
+    block5:
+        v26.@layout_3 = insert_value undef.@layout_3 0.i256 v20;
+        v28.@layout_3 = insert_value v26 1.i256 v22;
+        v29.objref<i256> = obj.proj v2 0.i256;
+        v30.i256 = extract_value v28 0.i256;
+        obj.store v29 v30;
+        v31.objref<i256> = obj.proj v2 1.i256;
+        v32.i256 = extract_value v28 1.i256;
+        obj.store v31 v32;
+        jump block4;
 }
 
 func private %alloc(v0.i256) -> @layout_0 {
@@ -189,7 +206,7 @@ func private %dispatch() {
         v21.objref<i256> = obj.proj v0 0.i256;
         v22.i256 = obj.load v21;
         (v23.i256, v24.i1) = uaddo v22 1.i256;
-        br v24 block8 block9;
+        br v24 block12 block13;
 
     block3:
         jump block4;
@@ -207,70 +224,64 @@ func private %dispatch() {
         v43.objref<i256> = obj.proj v1 0.i256;
         v44.i256 = obj.load v43;
         (v46.i256, v47.i1) = uaddo v44 3.i256;
-        br v47 block8 block11;
+        br v47 block12 block15;
 
     block6:
         jump block7;
 
     block7:
-        v50.@layout_3 = call %empty;
-        v51.objref<i256> = obj.proj v2 0.i256;
-        v52.i256 = extract_value v50 0.i256;
-        obj.store v51 v52;
-        v53.objref<i256> = obj.proj v2 1.i256;
-        v54.i256 = extract_value v50 1.i256;
-        obj.store v53 v54;
+        jump block9;
+
+    block8:
         call %return_data v2;
         unreachable;
 
-    block8:
+    block9:
+        v51.*i8 = evm_malloc 0.i256;
+        v52.i256 = ptr_to_int v51 i256;
+        v53.i256 = call %cast v52;
+        jump block11;
+
+    block10:
+        jump block8;
+
+    block11:
+        v57.@layout_3 = insert_value undef.@layout_3 0.i256 v53;
+        v59.@layout_3 = insert_value v57 1.i256 0.i256;
+        v60.objref<i256> = obj.proj v2 0.i256;
+        v61.i256 = extract_value v59 0.i256;
+        obj.store v60 v61;
+        v62.objref<i256> = obj.proj v2 1.i256;
+        v63.i256 = extract_value v59 1.i256;
+        obj.store v62 v63;
+        jump block10;
+
+    block12:
         mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
         mstore 4.i256 17.i256 i256;
         evm_revert 0.i256 36.i256;
 
-    block9:
+    block13:
         v27.objref<i256> = obj.proj v0 0.i256;
         obj.store v27 v23;
         v28.objref<i256> = obj.proj v0 1.i256;
         v29.i256 = obj.load v28;
         (v31.i256, v32.i1) = uaddo v29 2.i256;
-        br v32 block8 block10;
+        br v32 block12 block14;
 
-    block10:
+    block14:
         v33.objref<i256> = obj.proj v0 1.i256;
         obj.store v33 v31;
         v34.i256 = call %impl_Point__area v0;
         call %abi_encode v34;
         unreachable;
 
-    block11:
+    block15:
         v48.objref<i256> = obj.proj v1 0.i256;
         obj.store v48 v46;
         v49.i256 = call %impl_Square__area v1;
         call %abi_encode v49;
         unreachable;
-}
-
-func private %empty() -> @layout_3 {
-    block0:
-        jump block1;
-
-    block1:
-        v1.*i8 = evm_malloc 0.i256;
-        v2.i256 = ptr_to_int v1 i256;
-        v3.i256 = call %cast v2;
-        v4.@layout_3 = call %from_raw_parts v3 0.i256;
-        return v4;
-}
-
-func private %from_raw_parts(v0.i256, v1.i256) -> @layout_3 {
-    block0:
-        jump block1;
-
-    block1:
-        v6.@layout_3 = insert_value undef.@layout_3 0.i256 v0;
-        v8.@layout_3 = insert_value v6 1.i256 v1;
-        return v8;
 }
 
 func private %index_out_of_bounds() {
@@ -303,15 +314,32 @@ func private %init() {
         v13.i256 = extract_value v4 2.i256;
         obj.store v12 v13;
         call %codecopy v0 0.i256 v3 v2;
-        v15.@layout_3 = call %span v0;
-        v16.objref<i256> = obj.proj v1 0.i256;
-        v17.i256 = extract_value v15 0.i256;
-        obj.store v16 v17;
-        v18.objref<i256> = obj.proj v1 1.i256;
-        v19.i256 = extract_value v15 1.i256;
-        obj.store v18 v19;
+        jump block3;
+
+    block2:
         call %return_data v1;
         unreachable;
+
+    block3:
+        v17.objref<i256> = obj.proj v0 0.i256;
+        v18.i256 = obj.load v17;
+        v19.objref<i256> = obj.proj v0 1.i256;
+        v20.i256 = obj.load v19;
+        jump block5;
+
+    block4:
+        jump block2;
+
+    block5:
+        v24.@layout_3 = insert_value undef.@layout_3 0.i256 v18;
+        v26.@layout_3 = insert_value v24 1.i256 v20;
+        v27.objref<i256> = obj.proj v1 0.i256;
+        v28.i256 = extract_value v26 0.i256;
+        obj.store v27 v28;
+        v29.objref<i256> = obj.proj v1 1.i256;
+        v30.i256 = extract_value v26 1.i256;
+        obj.store v29 v30;
+        jump block4;
 }
 
 func private %len__g79ff(v0.objref<@layout_3>) -> i256 {
@@ -472,19 +500,6 @@ func private %set_len(v0.objref<@layout_0>, v1.i256) {
         v11.objref<i256> = obj.proj v0 1.i256;
         obj.store v11 v1;
         return;
-}
-
-func private %span(v0.objref<@layout_0>) -> @layout_3 {
-    block0:
-        jump block1;
-
-    block1:
-        v3.objref<i256> = obj.proj v0 0.i256;
-        v4.i256 = obj.load v3;
-        v6.objref<i256> = obj.proj v0 1.i256;
-        v7.i256 = obj.load v6;
-        v8.@layout_3 = call %from_raw_parts v4 v7;
-        return v8;
 }
 
 func private %zero_bytes(v0.i256, v1.i256) {

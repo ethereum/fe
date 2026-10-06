@@ -47,8 +47,7 @@ pub contract BytesViewBounds {
     recv BytesViewBoundsMsg {
         MemoryByte {} {
             let buffer = ptr::MemBuffer::alloc(1)
-            let view = BytesView::new(input: buffer.span(), start: 0, len: 1)
-            let _byte = view.byte_at(1)
+            let _byte = buffer.span().byte_at(1)
         }
 
         CalldataWord {} {
@@ -201,17 +200,18 @@ fn test_bytes_from_words_prefix_rejects_oversize_len() uses (mem: mut RawMem) {
 }
 
 #[test]
-fn test_memory_bytes_view_masks_partial_words() uses (evm: mut Evm) {
-    let buffer = ptr::MemBuffer::alloc(32)
+fn test_bytes_word_at_masks_partial_words() uses (evm: mut Evm) {
+    let tail = ptr::alloc_bytes(64)
     unsafe {
+        evm.mstore(addr: tail, value: 1)
         evm.mstore(
-            addr: buffer.ptr(),
+            addr: ptr::offset_bytes(tail, 32),
             value: 0x11ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
         )
     }
-    let view = BytesView::new(input: buffer.span(), start: 0, len: 1)
-    assert!(view.byte_at(0) == 0x11)
-    assert!(view.word_at(0) == 0x11 << 248)
+    let bytes = unsafe { Bytes::from_abi_tail(data: tail, len: 1, size: 64) }
+    assert!(bytes.byte_at(0) == 0x11)
+    assert!(bytes.word_at(0) == 0x11 << 248)
 }
 
 #[test]
@@ -220,12 +220,12 @@ fn test_memory_prefix_zero_pads_short_spans() {
     backing[0] = 0x44
     backing[1] = 0xff
 
-    let short = backing.span().truncate(len: 1)
+    let short = backing.span().head(1)
     let short_prefix = prefix(input: short)
     assert!(short_prefix.len == 1)
     assert!(short_prefix.word0 == 0x44 << 248)
 
-    let empty_prefix = prefix(input: short.truncate(len: 0))
+    let empty_prefix = prefix(input: short.head(0))
     assert!(empty_prefix.len == 0)
     assert!(empty_prefix.word0 == 0)
 }
@@ -246,18 +246,19 @@ fn test_owned_bytes_and_views_expose_explicit_spans() {
     assert!(bytes.payload_span().byte_at(1) == 0x22)
     assert!(bytes.encoded_span().byte_at(35) == 0)
 
-    let view = bytes.view()
-    let (head, tail) = view.split_at(offset: 1)
+    let payload = bytes.payload_span()
+    let head = payload.head(1)
+    let tail = payload.tail(1)
     assert!(head.len() == 1)
     assert!(head.byte_at(0) == 0x11)
     assert!(tail.len() == 2)
-    assert!(tail.truncate(len: 1).byte_at(0) == 0x22)
-    match view.get_byte(2) {
+    assert!(tail.head(1).byte_at(0) == 0x22)
+    match payload.get(2) {
         Option::Some(value) => assert!(value == 0x33)
         Option::None => assert!(false)
     }
-    assert!(view.get_byte(3).is_none())
-    assert!(view.try_slice(offset: 2, len: 2).is_none())
+    assert!(payload.get(3).is_none())
+    assert!(payload.try_slice(start: 2, len: 2).is_none())
 
     let string = DynString::from_payload(source: source.span())
     assert!(string.len() == 3)

@@ -37,14 +37,19 @@ use crate::{
             get_or_build_semantic_instance, identity_semantic_instance_key,
             normalized::normalize_semantic_body,
         },
-        ty::ty_check::BodyOwner,
+        ty::{provider::ProviderAddressSpace, ty_check::BodyOwner},
     },
     hir_def::{ItemKind, TopLevelMod},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Update)]
 pub enum SemanticAccessCheckResult<'db> {
-    Ok,
+    /// Checked, with the body's warnings and, for a projection, the address
+    /// space each access component yields: its result-space contract.
+    Ok {
+        warnings: Vec<SemanticDiagnosticId<'db>>,
+        spaces: Vec<Option<ProviderAddressSpace>>,
+    },
     Blocked(BlockedSemanticBody<'db>),
     Err(SemanticDiagnosticId<'db>),
 }
@@ -77,7 +82,25 @@ impl fmt::Display for SemanticAnalysisError<'_> {
     }
 }
 
-#[salsa::tracked(return_ref)]
+/// A projection's result-space contract, per access component, as its body
+/// infers it: callers depend on this exported fact, never on the body.
+pub(crate) fn projection_result_spaces<'db>(
+    db: &'db dyn HirAnalysisDb,
+    instance: SemanticInstance<'db>,
+) -> &'db [Option<ProviderAddressSpace>] {
+    match body_check(db, instance) {
+        SemanticAccessCheckResult::Ok { spaces, .. } => spaces,
+        SemanticAccessCheckResult::Blocked(_) | SemanticAccessCheckResult::Err(_) => &[],
+    }
+}
+
+// A projection's check reads its projection callees' contracts, so recursion
+// through projections, which the check rejects, is a cycle.
+#[salsa::tracked(
+    return_ref,
+    cycle_fn = body_check_cycle_recover,
+    cycle_initial = body_check_cycle_initial
+)]
 fn body_check<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
@@ -93,9 +116,34 @@ fn body_check<'db>(
         ) => return SemanticAccessCheckResult::Err(SemanticDiagnosticId::new(db, diag)),
     };
     match check::check_body(db, instance, &artifacts.body) {
-        Ok(()) => SemanticAccessCheckResult::Ok,
+        Ok((warnings, spaces)) => SemanticAccessCheckResult::Ok {
+            warnings: warnings
+                .into_iter()
+                .map(|diag| SemanticDiagnosticId::new(db, diag))
+                .collect(),
+            spaces,
+        },
         Err(diag) => SemanticAccessCheckResult::Err(SemanticDiagnosticId::new(db, diag)),
     }
+}
+
+fn body_check_cycle_initial<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: SemanticInstance<'db>,
+) -> SemanticAccessCheckResult<'db> {
+    SemanticAccessCheckResult::Ok {
+        warnings: Vec::new(),
+        spaces: Vec::new(),
+    }
+}
+
+fn body_check_cycle_recover<'db>(
+    _: &'db dyn HirAnalysisDb,
+    _: &SemanticAccessCheckResult<'db>,
+    _: u32,
+    _: SemanticInstance<'db>,
+) -> salsa::CycleRecoveryAction<SemanticAccessCheckResult<'db>> {
+    salsa::CycleRecoveryAction::Iterate
 }
 
 pub fn check_semantic_accesses<'db>(
@@ -103,7 +151,7 @@ pub fn check_semantic_accesses<'db>(
     instance: SemanticInstance<'db>,
 ) -> Result<(), SemanticAnalysisError<'db>> {
     match body_check(db, instance) {
-        SemanticAccessCheckResult::Ok => Ok(()),
+        SemanticAccessCheckResult::Ok { .. } => Ok(()),
         SemanticAccessCheckResult::Blocked(body) => {
             Err(SemanticAnalysisError::Blocked(body.clone()))
         }
@@ -172,6 +220,8 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
         .into_iter()
         .map(|owner| get_or_build_semantic_instance(db, identity_semantic_instance_key(db, owner)))
         .collect();
+    // Warnings are reported once, for the module's own bodies.
+    let own: FxHashSet<_> = pending.iter().copied().collect();
     let mut seen = FxHashSet::default();
     let mut seen_diags = FxHashSet::default();
     let mut diags: Vec<Box<dyn DiagnosticVoucher + 'db>> = Vec::new();
@@ -180,12 +230,21 @@ pub fn collect_semantic_access_diagnostic_vouchers<'db>(
             continue;
         }
         match body_check(db, instance) {
-            SemanticAccessCheckResult::Ok => pending.extend(
-                instance
-                    .callees(db)
-                    .iter()
-                    .map(|callee| get_or_build_semantic_instance(db, callee.key)),
-            ),
+            SemanticAccessCheckResult::Ok { warnings, .. } => {
+                if own.contains(&instance) {
+                    diags.extend(
+                        warnings
+                            .iter()
+                            .map(|diag| Box::new(*diag) as Box<dyn DiagnosticVoucher + 'db>),
+                    );
+                }
+                pending.extend(
+                    instance
+                        .callees(db)
+                        .iter()
+                        .map(|callee| get_or_build_semantic_instance(db, callee.key)),
+                );
+            }
             SemanticAccessCheckResult::Blocked(_) => {}
             SemanticAccessCheckResult::Err(diag) => {
                 if seen_diags.insert(*diag) {

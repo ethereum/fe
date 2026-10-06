@@ -65,6 +65,12 @@ pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
     /// `ref T`/`mut T` outside a parameter or projection return.
     ModeNotType(DynLazySpan<'db>),
+    /// An `own` parameter or a `mut` yield of a `#[view]` type.
+    ViewTypeMode {
+        span: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        mode: &'static str,
+    },
     InvalidTypeArgKind {
         span: DynLazySpan<'db>,
         expected: Option<Kind>,
@@ -291,6 +297,7 @@ impl TyLowerDiag<'_> {
         match self {
             Self::ExpectedStarKind(_) => 0,
             Self::ModeNotType(_) => 58,
+            Self::ViewTypeMode { .. } => 59,
             Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
             Self::GrowingRecursiveType(_) => 57,
@@ -636,6 +643,43 @@ pub enum BodyDiag<'db> {
     InvalidYield {
         primary: DynLazySpan<'db>,
         shape: String,
+    },
+
+    /// `yield` in a function that is not a projection.
+    YieldOutsideProjection {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// A `let` without `else` whose pattern may not match.
+    RefutableLetPattern {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// The `else` block of a `let … else` can complete.
+    LetElseMustDiverge {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// `?` on a value that is neither an `Option` nor a `Result`.
+    TryOnNonSum {
+        primary: DynLazySpan<'db>,
+        ty: TyId<'db>,
+    },
+
+    /// `?` in a function whose return cannot carry the operand's `None` or
+    /// `Err`.
+    TryReturnMismatch {
+        primary: DynLazySpan<'db>,
+        operand: TyId<'db>,
+        ret: TyId<'db>,
+    },
+
+    /// A call instantiates its callee at a `#[view]` type in a position a
+    /// view type cannot take.
+    ViewInstantiation {
+        primary: DynLazySpan<'db>,
+        ty: TyId<'db>,
+        position: &'static str,
     },
 
     /// Array repetition literals (`[x; N]`) duplicate the element value.
@@ -1018,6 +1062,12 @@ impl<'db> BodyDiag<'db> {
             Self::AccessNotValue { .. } => 70,
             Self::ShapeNotDestructured { .. } => 72,
             Self::InvalidYield { .. } => 99,
+            Self::YieldOutsideProjection { .. } => 100,
+            Self::RefutableLetPattern { .. } => 101,
+            Self::LetElseMustDiverge { .. } => 102,
+            Self::TryOnNonSum { .. } => 103,
+            Self::TryReturnMismatch { .. } => 104,
+            Self::ViewInstantiation { .. } => 105,
             Self::MutableBindingCannotBeCapability { .. } => 73,
             Self::ArrayRepeatRequiresCopy { .. } => 71,
             Self::ArrayIndexOutOfBounds { .. } => 84,

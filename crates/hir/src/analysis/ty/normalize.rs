@@ -37,12 +37,15 @@ use crate::analysis::{
 /// - Simple associated types (e.g., `T::Output`)
 /// - Nested associated types (e.g., `T::Encoder::Output`)
 /// - Associated types with generic parameters
-pub fn normalize_ty<'db>(
+pub fn normalize_ty<'db, T>(
     db: &'db dyn HirAnalysisDb,
-    ty: TyId<'db>,
+    ty: T,
     scope: ScopeId<'db>,
     assumptions: PredicateListId<'db>,
-) -> TyId<'db> {
+) -> T
+where
+    T: TyFoldable<'db>,
+{
     let mut normalizer = TypeNormalizer::new(db, scope, assumptions);
     ty.fold_with(db, &mut normalizer)
 }

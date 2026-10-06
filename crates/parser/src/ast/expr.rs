@@ -11,6 +11,7 @@ ast_node! {
     | SK::BinExpr
     | SK::UnExpr
     | SK::CastExpr
+    | SK::TryExpr
     | SK::CallExpr
     | SK::MacroCallExpr
     | SK::MethodCallExpr
@@ -40,6 +41,7 @@ impl Expr {
             SK::BinExpr => ExprKind::Bin(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::UnExpr => ExprKind::Un(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::CastExpr => ExprKind::Cast(AstNode::cast(self.syntax().clone()).unwrap()),
+            SK::TryExpr => ExprKind::Try(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::CallExpr => ExprKind::Call(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::MacroCallExpr => ExprKind::MacroCall(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::MethodCallExpr => {
@@ -127,6 +129,19 @@ impl UnExpr {
             rowan::NodeOrToken::Token(token) => UnOp::from_token(token),
             rowan::NodeOrToken::Node(_) => None,
         })
+    }
+}
+
+ast_node! {
+    /// `expr?`: the payload of a `Some` or `Ok`, or else an early exit with
+    /// the `None` or `Err`.
+    pub struct TryExpr,
+    SK::TryExpr
+}
+impl TryExpr {
+    /// Returns the operand.
+    pub fn expr(&self) -> Option<Expr> {
+        support::child(self.syntax())
     }
 }
 
@@ -518,6 +533,7 @@ pub enum ExprKind {
     Bin(BinExpr),
     Un(UnExpr),
     Cast(CastExpr),
+    Try(TryExpr),
     Call(CallExpr),
     MacroCall(MacroCallExpr),
     MethodCall(MethodCallExpr),

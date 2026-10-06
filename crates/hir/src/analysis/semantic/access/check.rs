@@ -23,7 +23,7 @@ use crate::{
         HirAnalysisDb,
         semantic::{
             SemOrigin, SemanticInstance,
-            access::control::semantic_may_return,
+            access::{control::semantic_may_return, projection_result_spaces},
             capability::semantics::{CapabilityClass, capability_semantics},
             definite_assignment::literal_index,
             diagnostics::{
@@ -90,6 +90,9 @@ enum MoveKey {
     Value(NValueId),
     Root(u32),
     Param(u32),
+    /// The referent of a `mut` access, which may hold a hole while the
+    /// access is open.
+    Access(TokenId),
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -157,6 +160,8 @@ pub(super) struct Analysis<'a, 'db> {
     /// The values whose accesses an `end` closes. Normalization opens
     /// others for a single call, which closes them.
     ended: FxHashSet<NValueId>,
+    /// The projection each session calls.
+    sessions: FxHashMap<NValueId, SemanticInstance<'db>>,
     entry: Vec<Option<State>>,
     moved_at: FxHashMap<(MoveKey, Path), SemOrigin<'db>>,
     /// The statement at which each block diverges into a call that never returns.
@@ -202,6 +207,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                     _ => None,
                 })
                 .collect(),
+            sessions: FxHashMap::default(),
             entry: vec![None; body.blocks.len()],
             moved_at: FxHashMap::default(),
             divergence: vec![None; body.blocks.len()],
@@ -440,7 +446,13 @@ impl<'a, 'db> Analysis<'a, 'db> {
             Base::Param(param) => Some(self.param_space(param)),
             Base::Domain(domain) => self.domains.space(domain),
             Base::State(space) => Some(space),
-            Base::Grant { .. } => None,
+            // A grant lies in the space its projection's contract exports.
+            Base::Grant { session, component } => {
+                projection_result_spaces(self.db, *self.sessions.get(&session)?)
+                    .get(component as usize)
+                    .copied()
+                    .flatten()
+            }
             Base::Raw => Some(ProviderAddressSpace::Memory),
         }
     }
@@ -709,6 +721,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 if let BodyOwner::Func(func) = callee.key.owner(self.db)
                     && let Some(shape) = func.return_shape(self.db)
                 {
+                    self.sessions
+                        .insert(result, get_or_build_semantic_instance(self.db, callee.key));
                     return self.open_session(result, origin, func, shape, args, effect_args);
                 }
                 // A handle result names the domains of the handles the call
@@ -1011,7 +1025,8 @@ impl<'a, 'db> Analysis<'a, 'db> {
 
     // --- checks -----------------------------------------------------------
 
-    pub fn check(&mut self) -> Result<(), Diag<'db>> {
+    /// Checks the body; returns its result-space contract.
+    pub fn check(&mut self) -> Result<Vec<Option<ProviderAddressSpace>>, Diag<'db>> {
         self.checking = true;
         for block in self.reverse_postorder() {
             let Some(mut state) = self.block_entry(block) else {
@@ -1025,7 +1040,166 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 self.check_terminator(block, &state)?;
             }
         }
+        self.check_yield_paths()?;
+        self.check_projection_recursion()?;
         self.check_yields()
+    }
+
+    /// Projections are inlined into their callers, so a projection may not
+    /// reach itself through projection calls.
+    fn check_projection_recursion(&self) -> Result<(), Diag<'db>> {
+        let owner = self.instance.key(self.db).owner(self.db);
+        if !self.instance.is_projection(self.db) {
+            return Ok(());
+        }
+        let mut explored = FxHashSet::default();
+        for statement in self.body.blocks.iter().flat_map(|block| &block.statements) {
+            if let NStatementKind::Define {
+                expr: NExpr::Call { callee, .. },
+                ..
+            } = &statement.kind
+                && reaches_owner(
+                    self.db,
+                    get_or_build_semantic_instance(self.db, callee.key),
+                    owner,
+                    &mut Vec::new(),
+                    &mut explored,
+                )
+            {
+                return Err(self.diag(
+                    SemanticDiagnosticKind::ProjectionRecursion,
+                    statement.origin,
+                    "this call reaches the projection again through projection calls, which \
+                     cannot be inlined"
+                        .into(),
+                ));
+            }
+        }
+        Ok(())
+    }
+
+    /// A projection yields exactly once on each path that completes.
+    fn check_yield_paths(&self) -> Result<(), Diag<'db>> {
+        const NOT_YET: u8 = 1;
+        const YIELDED: u8 = 2;
+        let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
+            return Ok(());
+        };
+        if func.body(self.db).is_none() || func.return_shape(self.db).is_none() {
+            return Ok(());
+        }
+        let mut entry = vec![0; self.body.blocks.len()];
+        entry[self.body.entry.index()] = NOT_YET;
+        let mut work = vec![self.body.entry];
+        while let Some(block) = work.pop() {
+            if self.diverges(block) {
+                continue;
+            }
+            let state = entry[block.index()];
+            let terminator = &self.body.blocks[block.index()].terminator;
+            let after = match terminator.kind {
+                NTerminatorKind::Yield { value, .. } if state & YIELDED != 0 => {
+                    // A sum shape's empty variant grants nothing.
+                    let message = if self.values[value.value.index()].is_empty() {
+                        "a projection returns its empty variant only before it yields"
+                    } else {
+                        "this path has already yielded"
+                    };
+                    return Err(self.diag(
+                        SemanticDiagnosticKind::YieldViolation,
+                        operand_origin(value, terminator.origin),
+                        message.into(),
+                    ));
+                }
+                NTerminatorKind::Yield { .. } => YIELDED,
+                NTerminatorKind::Return(_) if state & NOT_YET != 0 => {
+                    return Err(self.diag(
+                        SemanticDiagnosticKind::YieldViolation,
+                        terminator.origin,
+                        "a projection must yield on every path that completes".into(),
+                    ));
+                }
+                _ => state,
+            };
+            for successor in self.successors(block) {
+                let merged = entry[successor.index()] | after;
+                if merged != entry[successor.index()] {
+                    entry[successor.index()] = merged;
+                    work.push(successor);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// `mut` yields of session-owned places with no slide after them: writes
+    /// through them are discarded when the session finishes.
+    fn discarded_writes(&self) -> Vec<Diag<'db>> {
+        let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
+            return Vec::new();
+        };
+        let Some(shape) = func.return_shape(self.db) else {
+            return Vec::new();
+        };
+        let components = access_components(shape);
+        self.body
+            .blocks
+            .iter()
+            .filter_map(|block| match block.terminator.kind {
+                NTerminatorKind::Yield { value, ref resume } if !self.has_slide(resume.block) => {
+                    Some((value, block.terminator.origin))
+                }
+                _ => None,
+            })
+            .filter(|(value, _)| {
+                let held = &self.values[value.value.index()];
+                components.iter().any(|(path, kind)| {
+                    let mut tokens = held.iter().filter(|(_, rest)| rest == path).peekable();
+                    *kind == BorrowKind::Mut
+                        && tokens.peek().is_some()
+                        && tokens.all(|(token, _)| {
+                            self.tokens[*token as usize]
+                                .regions
+                                .iter()
+                                .all(|region| matches!(region.base, Base::Root(_)))
+                        })
+                })
+            })
+            .map(|(value, origin)| {
+                self.diag(
+                    SemanticDiagnosticKind::DiscardedWrites,
+                    operand_origin(value, origin),
+                    "this yields a place of the projection's own frame, and no code after the \
+                     yield writes it back"
+                        .into(),
+                )
+            })
+            .collect()
+    }
+
+    /// Whether code that can write runs between resuming at `block` and
+    /// returning.
+    fn has_slide(&self, mut block: NBlockId) -> bool {
+        loop {
+            let data = &self.body.blocks[block.index()];
+            if data.statements.iter().any(|statement| {
+                matches!(
+                    statement.kind,
+                    NStatementKind::Store { .. }
+                        | NStatementKind::Define {
+                            expr: NExpr::Call { .. },
+                            ..
+                        }
+                )
+            }) {
+                return true;
+            }
+            match &data.terminator.kind {
+                NTerminatorKind::Goto(next) => block = next.block,
+                NTerminatorKind::Return(_) => return false,
+                _ => return true,
+            }
+        }
     }
 
     fn diag(
@@ -1061,7 +1235,21 @@ impl<'a, 'db> Analysis<'a, 'db> {
             for token in &ended {
                 state.open.remove(token);
             }
-            return Ok(());
+            // An access ends with its referent restored.
+            let hole = ended.iter().find_map(|token| {
+                Some((*token, self.hole(state, MoveKey::Access(*token))?.clone()))
+            });
+            state
+                .moved
+                .retain(|(key, _)| !matches!(key, MoveKey::Access(token) if ended.contains(token)));
+            return match hole {
+                Some((token, hole)) => self.report(Err(self.moved_diag(
+                    "this access ends while its referent is moved out",
+                    self.tokens[token as usize].origin,
+                    &hole,
+                ))),
+                None => Ok(()),
+            };
         }
         // A statement that opens accesses again opens new instances of them.
         if let NStatementKind::Define { result, .. } = &statement.kind
@@ -1092,7 +1280,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 let path = self.path(&destination.path);
                 let key = match destination.base {
                     NPlaceBase::Root(root) => Some(MoveKey::Root(root.index() as u32)),
-                    NPlaceBase::CapabilityTarget { carrier } => self.param_input(carrier),
+                    NPlaceBase::CapabilityTarget { carrier } => self.carrier_key(carrier),
                 };
                 if let Some(key) = key
                     && !path.contains(&Step::Index(None))
@@ -1151,22 +1339,33 @@ impl<'a, 'db> Analysis<'a, 'db> {
         Ok(())
     }
 
-    /// The data parameter a carrier is the input of.
-    fn param_input(&self, carrier: NValueId) -> Option<MoveKey> {
-        match self.direct(carrier).as_slice() {
-            [token] => match self.tokens[*token as usize].regions.as_slice() {
+    /// What tracks the initialization of a carrier's referent: the data
+    /// parameter it is the input of, or the one `mut` access it holds.
+    fn carrier_key(&self, carrier: NValueId) -> Option<MoveKey> {
+        let [token] = self.direct(carrier)[..] else {
+            return None;
+        };
+        let data = &self.tokens[token as usize];
+        match (data.kind, data.regions.as_slice()) {
+            (
+                TokenKind::Input,
                 [
                     AbsPlace {
                         base: Base::Param(param),
                         ..
                     },
-                ] if self.tokens[*token as usize].kind == TokenKind::Input => {
-                    Some(MoveKey::Param(*param))
-                }
-                _ => None,
-            },
+                ],
+            ) => Some(MoveKey::Param(*param)),
+            (TokenKind::Access | TokenKind::Grant, _) if data.mode == BorrowKind::Mut => {
+                Some(MoveKey::Access(token))
+            }
             _ => None,
         }
+    }
+
+    /// The first hole in a referent an operation needs initialized.
+    fn hole<'s>(&'s self, state: &'s State, key: MoveKey) -> Option<&'s (MoveKey, Path)> {
+        state.moved.iter().find(|(moved, _)| *moved == key)
     }
 
     /// Reject a use of a possibly moved value, then record its move.
@@ -1232,7 +1431,7 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 Some(MoveKey::Root(root.index() as u32))
             }
             NPlaceBase::Root(_) => None,
-            NPlaceBase::CapabilityTarget { carrier } => self.param_input(carrier),
+            NPlaceBase::CapabilityTarget { carrier } => self.carrier_key(carrier),
         };
         if let Some(key) = key {
             let found = state.moved.iter().find(|(moved, moved_path)| {
@@ -1254,6 +1453,30 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 return Err(self.moved_diag(message, origin, found));
             }
             if kind == MemoryAccessKind::Move {
+                // `[*]` names no definite element to restore.
+                if path.contains(&Step::Index(None)) {
+                    return Err(self.diag(
+                        SemanticDiagnosticKind::MoveConflict,
+                        origin,
+                        "cannot move out of an element at a dynamic index".into(),
+                    ));
+                }
+                if let Some(
+                    space @ (ProviderAddressSpace::Storage | ProviderAddressSpace::Transient),
+                ) = resolved
+                    .regions
+                    .iter()
+                    .find_map(|region| self.space(region.base))
+                {
+                    return Err(self.diag(
+                        SemanticDiagnosticKind::MoveConflict,
+                        origin,
+                        format!(
+                            "cannot move out of {}, which never holds a hole",
+                            space.pretty()
+                        ),
+                    ));
+                }
                 self.moved_at.entry((key, path.clone())).or_insert(origin);
                 state.moved.insert((key, path));
             }
@@ -1456,6 +1679,16 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 .collect();
             let authority = self.ancestors(&direct);
             let arg_origin = operand_origin(*arg, origin);
+            // The callee may read its argument at once.
+            if let Some(key) = self.carrier_key(arg.value)
+                && let Some(hole) = self.hole(state, key)
+            {
+                return Err(self.moved_diag(
+                    "this argument's referent is moved out",
+                    arg_origin,
+                    hole,
+                ));
+            }
             self.check_conflicts(state, &regions, mode, &authority, &[], kind, arg_origin)?;
         }
         let mut footprints: Vec<_> = effect_args
@@ -1504,6 +1737,9 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 self.use_value(*arg, None, &mut edge, consume, terminator.origin)?;
             }
         }
+        if let NTerminatorKind::Yield { value, .. } = terminator.kind {
+            self.check_grant_creation(value, &state, terminator.origin)?;
+        }
         if matches!(
             terminator.kind,
             NTerminatorKind::Return(_) | NTerminatorKind::Yield { .. }
@@ -1521,15 +1757,52 @@ impl<'a, 'db> Analysis<'a, 'db> {
         Ok(())
     }
 
-    /// A projection's yields: each component of every yield site names a
-    /// place in one address space, and the access components of a split
-    /// are disjoint.
-    fn check_yields(&self) -> Result<(), Diag<'db>> {
+    /// Creating a grant is an access of its component's mode on the yielded
+    /// place, checked against every access the suspended frame retains: only
+    /// the grant's own ancestors are exempt.
+    fn check_grant_creation(
+        &self,
+        value: NOperand,
+        state: &State,
+        origin: SemOrigin<'db>,
+    ) -> Result<(), Diag<'db>> {
         let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
             return Ok(());
         };
         let Some(shape) = func.return_shape(self.db) else {
             return Ok(());
+        };
+        let held = &self.values[value.value.index()];
+        for (path, mode) in access_components(shape) {
+            let own: TokenSet = held
+                .iter()
+                .filter(|(_, rest)| *rest == path)
+                .map(|(token, _)| *token)
+                .collect();
+            let regions: Vec<AbsPlace> = own
+                .iter()
+                .flat_map(|token| self.tokens[*token as usize].regions.clone())
+                .collect();
+            let kind = match mode {
+                BorrowKind::Mut => MemoryAccessKind::MutAccess,
+                BorrowKind::Ref => MemoryAccessKind::Read,
+            };
+            let authority = self.ancestors(&own);
+            let origin = operand_origin(value, origin);
+            self.check_conflicts(state, &regions, mode, &authority, &own, kind, origin)?;
+        }
+        Ok(())
+    }
+
+    /// A projection's yields: each component of every yield site names a
+    /// place in one address space, its result-space contract, and the access
+    /// components of a split are disjoint.
+    fn check_yields(&self) -> Result<Vec<Option<ProviderAddressSpace>>, Diag<'db>> {
+        let BodyOwner::Func(func) = self.instance.key(self.db).owner(self.db) else {
+            return Ok(Vec::new());
+        };
+        let Some(shape) = func.return_shape(self.db) else {
+            return Ok(Vec::new());
         };
         let components = access_components(shape);
         let mut spaces: Vec<Option<(ProviderAddressSpace, SemOrigin<'db>)>> =
@@ -1590,8 +1863,42 @@ impl<'a, 'db> Analysis<'a, 'db> {
                 }
             }
         }
-        Ok(())
+        Ok(spaces
+            .into_iter()
+            .map(|space| space.map(|(space, _)| space))
+            .collect())
     }
+}
+
+/// Whether `instance`, a callee, is a projection that reaches `owner` through
+/// projection calls. A function that recurs on the path is not explored
+/// further: its own check reports it, which also bounds polymorphic recursion.
+fn reaches_owner<'db>(
+    db: &'db dyn HirAnalysisDb,
+    instance: SemanticInstance<'db>,
+    owner: BodyOwner<'db>,
+    path: &mut Vec<BodyOwner<'db>>,
+    explored: &mut FxHashSet<SemanticInstance<'db>>,
+) -> bool {
+    let instance_owner = instance.key(db).owner(db);
+    if !instance.is_projection(db) || path.contains(&instance_owner) || !explored.insert(instance) {
+        return false;
+    }
+    if instance_owner == owner {
+        return true;
+    }
+    path.push(instance_owner);
+    let reaches = instance.callees(db).iter().any(|callee| {
+        reaches_owner(
+            db,
+            get_or_build_semantic_instance(db, callee.key),
+            owner,
+            path,
+            explored,
+        )
+    });
+    path.pop();
+    reaches
 }
 
 /// The access components of a shape, by their path in its carrier.
@@ -1653,12 +1960,14 @@ fn specific_origin<'db>(first: SemOrigin<'db>, second: SemOrigin<'db>) -> SemOri
     }
 }
 
+/// Checks a body, returning its warnings and its result-space contract.
 pub(super) fn check_body<'db>(
     db: &'db dyn HirAnalysisDb,
     instance: SemanticInstance<'db>,
     body: &NormalizedBody<'db>,
-) -> Result<(), Diag<'db>> {
+) -> Result<(Vec<Diag<'db>>, Vec<Option<ProviderAddressSpace>>), Diag<'db>> {
     let mut analysis = Analysis::new(db, instance, body, true);
     analysis.solve();
-    analysis.check()
+    let spaces = analysis.check()?;
+    Ok((analysis.discarded_writes(), spaces))
 }

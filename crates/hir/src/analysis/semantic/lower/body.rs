@@ -25,7 +25,7 @@ use crate::{
                 const_ty_or_abstract_from_inherent_const_use,
             },
             normalize::normalize_ty,
-            shape::Shape,
+            shape::{Shape, sum_payload_variant},
             ty_check::{
                 BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef,
                 LocalBinding, PathReadSemantics, RecordInitLowering, RecordLike,
@@ -199,6 +199,8 @@ pub(super) struct SmirLowerCtxt<'a, 'db> {
     pub(super) loop_stack: Vec<LoopScope>,
     /// How many yield sites enclose the expression being lowered.
     pub(super) yield_depth: u32,
+    /// The slide of the `yield` statement being lowered.
+    slide: Option<SBlockId>,
 }
 
 pub(super) struct BlockState<'db> {
@@ -285,6 +287,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             next_stmt_id: 0,
             loop_stack: Vec::new(),
             yield_depth: 0,
+            slide: None,
         };
         cx.collect_binding_locals();
         cx.current = cx.new_block();
@@ -348,9 +351,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         if let Some(&local) = self.binding_locals.get(&binding) {
             return local;
         }
+        // `mut` on an access binding names its access kind: the binding
+        // itself is never reassigned.
         let local = self.alloc_local(
             self.binding_ty(binding),
-            if binding.is_mut() {
+            if binding.is_mut() && self.typed_body.binding_access(binding).is_none() {
                 Mutability::Mutable
             } else {
                 Mutability::Immutable
@@ -493,7 +498,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
     }
 
     /// Ends the body on the current path with `value`. A projection yields
-    /// it instead, and returns when its session finishes.
+    /// it instead: its session resumes in the slide of the `yield` statement
+    /// being lowered, or else returns.
     fn exit(&mut self, origin: SemOrigin<'db>, value: Option<SOperand>) {
         let block = self.current;
         let Some(value) = value.filter(|_| self.instance.is_projection(self.db)) else {
@@ -502,7 +508,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         };
         let resume = self.new_block();
         self.set_terminator(block, origin, STerminatorKind::Yield { value, resume });
-        self.set_terminator(resume, origin, STerminatorKind::Return(None));
+        let after = self
+            .slide
+            .map_or(STerminatorKind::Return(None), STerminatorKind::Goto);
+        self.set_terminator(resume, origin, after);
         self.current = resume;
     }
 
@@ -563,23 +572,6 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             .unwrap_or_else(|| panic!("access expression without a shape: {expr:?}"));
         let ty = shape.carrier_ty(self.db);
         match expr.data(self.db, self.body) {
-            Partial::Present(Expr::Un(inner, op @ (UnOp::Mut | UnOp::Ref))) => {
-                let kind = if *op == UnOp::Mut {
-                    BorrowKind::Mut
-                } else {
-                    BorrowKind::Ref
-                };
-                let place = self.lower_place(*inner);
-                self.emit_expr_with_origin(
-                    SemOrigin::Expr(expr),
-                    ty,
-                    SExpr::Borrow {
-                        place,
-                        kind,
-                        provider: prop.borrow_provider,
-                    },
-                )
-            }
             Partial::Present(Expr::Call(_, args)) => {
                 let args = args.iter().map(|arg| arg.expr).collect::<Vec<_>>();
                 self.lower_call_like_expr(expr, ty, None, &args)
@@ -591,6 +583,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             Partial::Present(Expr::Bin(base, index, BinOp::Index)) => {
                 self.lower_call_like_expr(expr, ty, Some(*base), &[*index])
             }
+            Partial::Present(Expr::Try(inner)) => self.lower_try(expr, *inner, ty),
             Partial::Present(Expr::Block(stmts, _)) => {
                 let (tail, head) = stmts.split_last().expect("an access block has a tail");
                 for stmt in head {
@@ -601,8 +594,102 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 };
                 self.lower_access(*tail)
             }
-            _ => panic!("unexpected access expression: {expr:?}"),
+            // `ref p`, `mut p`, or a place matched through the `mut` access
+            // its `mut` pattern bindings open.
+            data => {
+                let Shape::Access(kind, _) = shape else {
+                    panic!("unexpected access expression: {expr:?}")
+                };
+                let place = match data {
+                    Partial::Present(Expr::Un(inner, UnOp::Mut | UnOp::Ref)) => *inner,
+                    _ => expr,
+                };
+                let place = self.lower_place(place);
+                self.emit_expr_with_origin(
+                    SemOrigin::Expr(expr),
+                    ty,
+                    SExpr::Borrow {
+                        place,
+                        kind,
+                        provider: prop.borrow_provider,
+                    },
+                )
+            }
         }
+    }
+
+    /// Lowers `inner?`: the payload of a `Some` or `Ok` (a payload grant when
+    /// `inner` is a sum shape), or else an exit with the empty variant,
+    /// carrying an `Err`'s error.
+    fn lower_try(&mut self, expr: ExprId, inner: ExprId, ty: TyId<'db>) -> SValueId {
+        let origin = SemOrigin::Expr(expr);
+        let value = self.lower_source(inner);
+        let sum_ty = self.locals[value.index()].ty;
+        let success = sum_payload_variant(self.db, self.body.scope(), sum_ty)
+            .expect("`?` applies to an `Option` or a `Result`");
+        let failure = 1 - success;
+        let is_success = self.emit_expr_with_origin(
+            origin,
+            TyId::bool(self.db),
+            SExpr::IsEnumVariant {
+                value: SOperand::synthetic(value),
+                variant: VariantIndex(success),
+            },
+        );
+        let success_bb = self.new_block();
+        let failure_bb = self.new_block();
+        self.set_terminator(
+            self.current,
+            origin,
+            STerminatorKind::Branch {
+                cond: SOperand::synthetic(is_success),
+                then_bb: success_bb,
+                else_bb: failure_bb,
+            },
+        );
+
+        self.switch_to(failure_bb);
+        let error = (failure == 0).then(|| {
+            SOperand::synthetic(self.emit_expr_with_origin(
+                origin,
+                sum_ty.generic_args(self.db)[0],
+                SExpr::ExtractEnumField {
+                    value: SOperand::synthetic(value),
+                    variant: VariantIndex(failure),
+                    field: FieldIndex(0),
+                },
+            ))
+        });
+        let exit_ty = match self.template_owner {
+            BodyOwner::Func(func) if let Some(shape) = func.return_shape(self.db) => {
+                shape.carrier_ty(self.db)
+            }
+            _ => self.typed_body.result_ty(),
+        };
+        let exit = self.emit_expr_with_origin(
+            origin,
+            exit_ty,
+            SExpr::EnumMake {
+                enum_ty: exit_ty,
+                variant: VariantIndex(failure),
+                fields: error.into_iter().collect(),
+            },
+        );
+        // The empty variant grants nothing, so no slide follows it.
+        let slide = self.slide.take();
+        self.exit(origin, Some(SOperand::synthetic(exit)));
+        self.slide = slide;
+
+        self.switch_to(success_bb);
+        self.emit_expr_with_origin(
+            origin,
+            ty,
+            SExpr::ExtractEnumField {
+                value: SOperand::synthetic(value),
+                variant: VariantIndex(success),
+                field: FieldIndex(0),
+            },
+        )
     }
 
     /// Lowers a projection's yield site to the carrier of what it grants.
@@ -717,6 +804,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         match expr_data {
             Expr::Lit(lit) => self.lower_leaf_literal(expr, lit),
             Expr::Path(_) => self.lower_path_expr(expr),
+            Expr::Try(inner) => self.lower_try(expr, *inner, ty),
             Expr::Tuple(elems) | Expr::Array(elems) => {
                 let fields = elems
                     .iter()
@@ -1587,7 +1675,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let origin = SemOrigin::Stmt(stmt);
 
         match stmt_data {
-            Stmt::Let(pat, _, init) => {
+            Stmt::Let(pat, _, init, else_) => {
                 if let Some(init) = init {
                     let value = if matches!(
                         pat.data(self.db, self.body),
@@ -1597,7 +1685,17 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                     } else {
                         self.lower_scrutinee(*init)
                     };
-                    self.bind_pattern(*pat, value);
+                    match else_ {
+                        Some(else_) if !self.pattern_is_irrefutable(*pat) => {
+                            let then_bb = self.new_block();
+                            let else_bb = self.new_block();
+                            self.lower_pattern_branch(*pat, value, then_bb, else_bb);
+                            self.switch_to(else_bb);
+                            let _ = self.lower_expr(*else_);
+                            self.switch_to(then_bb);
+                        }
+                        _ => self.bind_pattern(*pat, value),
+                    }
                 }
             }
             Stmt::While(cond, body_expr) => self.lower_while(*cond, *body_expr),
@@ -1623,6 +1721,13 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                         }),
                     );
                 }
+            }
+            Stmt::Yield(expr) => {
+                let slide = self.new_block();
+                let outer = self.slide.replace(slide);
+                let _ = self.lower_expr(*expr);
+                self.slide = outer;
+                self.current = slide;
             }
             Stmt::Expr(expr) => {
                 let _ = self.lower_expr(*expr);

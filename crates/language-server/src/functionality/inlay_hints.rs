@@ -84,7 +84,7 @@ impl<'a, 'db> Visitor<'db> for InlayHintCollector<'a, 'db> {
         stmt_data: &hir::hir_def::Stmt<'db>,
     ) {
         // Check if this is a let statement without type annotation
-        if let hir::hir_def::Stmt::Let(pat, ty, expr) = stmt_data {
+        if let hir::hir_def::Stmt::Let(pat, ty, expr, _) = stmt_data {
             // Only show hint if there's no explicit type annotation and there's an initializer
             if ty.is_none() && expr.is_some() {
                 let expr_id = expr.unwrap();

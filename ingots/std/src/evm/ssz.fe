@@ -32,10 +32,10 @@
 ///
 /// ```ignore
 /// let root: u256 = (
-///     ssz::hash_tree_root<ssz::ByteVector<48>>(pubkey_view),
+///     ssz::hash_tree_root<ssz::ByteVector<48>>(pubkey.payload_span(), start: 0, len: 48),
 ///     wc_word,                            // already a 32-byte chunk
 ///     ssz::u64_chunk(amount_gwei),        // pack the uint64
-///     ssz::hash_tree_root<ssz::ByteVector<96>>(signature_view),
+///     ssz::hash_tree_root<ssz::ByteVector<96>>(signature.payload_span(), start: 0, len: 96),
 /// ).merkleize()                           // 4 chunks → balanced tree
 /// ```
 ///
@@ -46,7 +46,7 @@
 /// in current consensus types. For wider containers, extend the trait
 /// or pre-merkleize sub-trees yourself. Variable-length lists are
 /// supported via `mix_in_length` on top of a fixed-arity merkleization.
-use core::abi::{Bytes, BytesView}
+use core::abi::Bytes
 use core::ptr::MemSpan
 use core::ptr
 use super::effects::RawMem
@@ -126,31 +126,26 @@ pub fn serialize_u64(_ value: u64) -> Bytes {
 /// add an `impl HashTreeRoot for ByteVector<X>` to support new sizes.
 pub struct ByteVector<const N: usize> {}
 
-/// Compute the SSZ hash-tree-root of a value given its in-memory view.
+/// Compute the SSZ hash-tree-root of a value given its bytes in memory.
 ///
 /// Implementors decide how many chunks the value occupies and how to
-/// merkleize them. The view-based input avoids copying — callers
-/// pass an existing `BytesView` (typically from a calldata- or
-/// memory-backed `Bytes`).
+/// merkleize them. The value is the `len` bytes of `input` from `start`, so
+/// callers pass a view of existing bytes (typically `Bytes::payload_span`)
+/// without copying them.
 pub trait HashTreeRoot {
-    /// Compute the SSZ root for `view`.
-    fn hash_tree_root(_: BytesView<MemSpan>) -> u256 uses (mem: mut RawMem)
+    /// Compute the SSZ root of `input`'s bytes `start..start + len`.
+    fn hash_tree_root(_ input: MemSpan, start: u256, len: u256) -> u256 uses (mem: mut RawMem)
 }
 
 /// User-facing entry point for `HashTreeRoot`.
 ///
-/// Use as `ssz::hash_tree_root<ssz::ByteVector<48>>(view)`. The
-/// turbofish chooses the implementation; the view supplies the bytes.
+/// Use as `ssz::hash_tree_root<ssz::ByteVector<48>>(bytes, start: 0, len: 48)`.
+/// The turbofish chooses the implementation; the span supplies the bytes.
 #[inline(always)]
-pub fn hash_tree_root<T>(_ view: BytesView<MemSpan>) -> u256
+pub fn hash_tree_root<T>(_ input: MemSpan, start: u256, len: u256) -> u256
 uses (mem: mut RawMem) where T: HashTreeRoot
 {
-    T::hash_tree_root(view)
-}
-
-#[inline(always)]
-fn view_base(_ view: BytesView<MemSpan>) -> *u8 {
-    ptr::offset_bytes(view.input().ptr(), view.start())
+    T::hash_tree_root(input, start, len)
 }
 
 /// `ByteVector[48]` — packs into two chunks.
@@ -163,11 +158,11 @@ fn view_base(_ view: BytesView<MemSpan>) -> *u8 {
 /// Used for BLS public keys.
 impl HashTreeRoot for ByteVector<48> {
     #[inline(always)]
-    fn hash_tree_root(_ view: BytesView<MemSpan>) -> u256
+    fn hash_tree_root(_ input: MemSpan, start: u256, len: u256) -> u256
     uses (mem: mut RawMem)
     {
-        assert!(view.len() == 48)
-        let base = view_base(view)
+        assert!(len == 48)
+        let base = input.slice(offset: start, len).ptr()
         let tail = unsafe { ops::mload(ptr::offset_bytes(base, 32)) }
         let scratch = unsafe { alloc_pair(ops::mload(base), (tail >> 128) << 128) }
         hash_pair_buffer(scratch)
@@ -195,11 +190,11 @@ impl HashTreeRoot for ByteVector<48> {
 /// Used for BLS signatures.
 impl HashTreeRoot for ByteVector<96> {
     #[inline(always)]
-    fn hash_tree_root(_ view: BytesView<MemSpan>) -> u256
+    fn hash_tree_root(_ input: MemSpan, start: u256, len: u256) -> u256
     uses (mem: mut RawMem)
     {
-        assert!(view.len() == 96)
-        let base = view_base(view)
+        assert!(len == 96)
+        let base = input.slice(offset: start, len).ptr()
         let scratch = alloc_pair(0, 0)
         let offset = pair_offset(scratch)
         let left = sha256_64_to(base, offset)

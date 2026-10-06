@@ -69,8 +69,8 @@ impl AbiSize for FakeStatic {
 }
 
 impl Decode<Sol> for FakeStatic {
-    fn decode_payload<D: AbiDecoder<Sol>>(_ d: mut D) -> Self {
-        FakeStatic { value: d.read_word() }
+    fn decode_payload<D: AbiDecoder<Sol>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        FakeStatic { value: d.read_word(input) }
     }
 }
 
@@ -99,8 +99,8 @@ impl AbiSpan<Sol> for Word {
 }
 
 impl Decode<Sol> for Word {
-    fn decode_payload<D: AbiDecoder<Sol>>(_ d: mut D) -> Self {
-        Word { value: d.read_word() }
+    fn decode_payload<D: AbiDecoder<Sol>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        Word { value: d.read_word(input) }
     }
 }
 
@@ -292,8 +292,8 @@ fn zero_length_array_decoding_does_not_read_elements() {
     let decoded2 = <[Address; 0] as Decode<Sol>>::decode_from_bounded(encoded.span(), 0, 0)
     assert(encode_abi_payload(decoded).len() == 0)
     assert(encode_abi_payload(decoded2).len() == 0)
-    let mut decoder = sol::SolDecoder::new(encoded.span())
-    let decoded3 = <[Address; 0] as Decode<Sol>>::decode_payload(mut decoder)
+    let mut decoder = sol::SolDecoder::with_base(0)
+    let decoded3 = <[Address; 0] as Decode<Sol>>::decode_payload(mut decoder, encoded.span())
     assert(encode_abi_payload(decoded3).len() == 0)
     let units = MemVec<()>::zeroed(1)
     let _ = units.get(0)

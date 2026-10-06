@@ -43,7 +43,7 @@
 ///   values and Solidity's `bytes`).
 /// - No decoding counterpart: packed encoding is not self-describing,
 ///   and Solidity has none either.
-use core::abi::{Bytes, BytesView}
+use core::abi::Bytes
 use core::num::IntDowncast
 use core::ptr::{self, MemSpan}
 use core::result::Result
@@ -599,22 +599,6 @@ impl EncodePacked for Bytes {
         let source = self.payload_span()
         ptr::copy(dest, source)
         source.len()
-    }
-}
-
-impl EncodePacked for BytesView<MemSpan> {
-    #[inline(always)]
-    fn packed_width(self) -> u256 { self.len() }
-    fn pack_into(own self, mut _ p: own Packed) -> Packed uses (mem: mut RawMem) {
-        let source = self.into_raw_parts()
-        p.append_raw(source: source.0, len: source.1)
-        p
-    }
-    #[inline(always)]
-    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
-        let source = self.into_raw_parts()
-        ptr::copy(dest, MemSpan::from_raw_parts(ptr: source.0, len: source.1))
-        source.1
     }
 }
 

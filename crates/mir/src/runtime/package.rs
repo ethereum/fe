@@ -1569,11 +1569,18 @@ fn resolve_decode_instance<'db>(
     input_ty: TyId<'db>,
 ) -> Result<RuntimeInstance<'db>, LowerError> {
     let abi_ty = sol_abi_ty(db, scope)?;
-    let decoder_ty = sol_decoder_ty(db, scope, input_ty)?;
+    let decoder_ty = resolve_lib_type_path(db, scope, "std::abi::sol::SolDecoder")
+        .ok_or_else(|| LowerError::Unsupported("missing std::abi::sol::SolDecoder".to_string()))?;
     let decode_trait = resolve_core_trait(db, scope, &["abi", "Decode"])
         .ok_or_else(|| LowerError::Unsupported("missing required core::abi::Decode".to_string()))?;
     let inst = TraitInstId::new_simple(db, decode_trait, vec![ty, abi_ty]);
-    resolve_trait_runtime_instance(db, scope, inst, "decode_payload", vec![decoder_ty])
+    resolve_trait_runtime_instance(
+        db,
+        scope,
+        inst,
+        "decode_payload",
+        vec![decoder_ty, input_ty],
+    )
 }
 
 fn resolve_decode_runtime_args_instance<'db>(
@@ -1704,16 +1711,6 @@ fn memory_span_ty<'db>(
 ) -> Result<TyId<'db>, LowerError> {
     resolve_lib_type_path(db, scope, "core::ptr::MemSpan")
         .ok_or_else(|| LowerError::Unsupported("missing core::ptr::MemSpan".to_string()))
-}
-
-fn sol_decoder_ty<'db>(
-    db: &'db dyn MirDb,
-    scope: hir::hir_def::scope_graph::ScopeId<'db>,
-    input_ty: TyId<'db>,
-) -> Result<TyId<'db>, LowerError> {
-    let ctor = resolve_lib_type_path(db, scope, "std::abi::sol::SolDecoder")
-        .ok_or_else(|| LowerError::Unsupported("missing std::abi::sol::SolDecoder".to_string()))?;
-    Ok(TyId::app(db, ctor, input_ty))
 }
 
 fn make_runtime_function<'db>(
@@ -2717,7 +2714,7 @@ fn ambiguous<const ROOT: u256>(left: Rooted<ROOT>, right: Rooted<ROOT>) -> u256 
             file_url,
             Some(
                 r#"
-fn invalid(result: mut u256) -> mut u256 {
+fn invalid(result: mut u256) -> u256 {
     missing = 1
     result
 }

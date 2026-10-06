@@ -1666,7 +1666,7 @@ msg EmitThenTextMsg {
 pub contract EmitThenText {
     recv EmitThenTextMsg {
         EmitAndReturn { data } -> Text {
-            emit_bytes_event_view(topic0: TOPIC0, view: data.view())
+            emit_bytes_event_view(topic0: TOPIC0, view: data.payload_span())
             "emit-and-return-abcdefghijklmnopqrstuvwxyz-ABCDEFGHIJKLMNOPQRSTUVWXYZ-0123456789"
         }
     }
@@ -1927,7 +1927,7 @@ msg ViewMsg {
 pub contract StringViewHead {
     recv ViewMsg {
         Head { text } -> u8 {
-            text.view().byte_at(0)
+            text.payload_span().byte_at(0)
         }
     }
 }

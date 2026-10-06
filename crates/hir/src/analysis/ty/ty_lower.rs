@@ -89,7 +89,7 @@ fn lower_hir_ty_impl<'db>(
     let lower_child =
         |child_ty, _slot| lower_opt_hir_ty_impl(db, child_ty, scope, assumptions, minter);
 
-    match ty.data(db) {
+    let lowered = match ty.data(db) {
         HirTyKind::Ptr(pointee) => {
             let pointee = lower_child(*pointee, 0);
             let ptr = TyId::ptr(db);
@@ -128,6 +128,13 @@ fn lower_hir_ty_impl<'db>(
         }
 
         HirTyKind::Never => TyId::never(db),
+    };
+    // A `#[view]` type exists only behind accesses, never inside a value.
+    match lowered.view_part(db) {
+        Some(view) if !lowered.has_invalid(db) => {
+            TyId::invalid(db, InvalidCause::ViewPart { view })
+        }
+        _ => lowered,
     }
 }
 

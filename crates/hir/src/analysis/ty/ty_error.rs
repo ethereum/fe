@@ -531,6 +531,13 @@ pub(crate) fn diag_from_invalid_cause<'db>(
 
         InvalidCause::ModeNotType => TyLowerDiag::ModeNotType(span).into(),
 
+        InvalidCause::ViewPart { view } => TyLowerDiag::ViewTypeMode {
+            span,
+            ty: view,
+            mode: "part of another type",
+        }
+        .into(),
+
         InvalidCause::KindMismatch { expected, given } => TyLowerDiag::InvalidTypeArgKind {
             span,
             expected,

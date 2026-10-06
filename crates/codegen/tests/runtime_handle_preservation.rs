@@ -257,7 +257,8 @@ fn provider_root_trait_receivers_preserve_concrete_runtime_layouts() {
                     | RStmt::Store { .. }
                     | RStmt::CopyInto { .. }
                     | RStmt::EnumSetTag { .. }
-                    | RStmt::EnumWriteVariant { .. } => None,
+                    | RStmt::EnumWriteVariant { .. }
+                    | RStmt::End { .. } => None,
                 })
                 .unwrap_or_else(|| {
                     panic!("use_ctx should call the concrete trait receiver:\n{body:#?}")

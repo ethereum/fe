@@ -50,20 +50,28 @@ fn first_assignment_ty<'db>(
         .expect("missing matching assignment")
 }
 #[test]
-fn nested_wrapper_mutex_match_keeps_capability_payload_type() {
+fn nested_wrapper_optional_projection_match_keeps_access_payload_type() {
     let mut db = HirAnalysisTestDb::default();
     let file = db.new_stand_alone(
         "pattern_lowering.fe".into(),
         r#"
-use std::evm::Mutex
-
 msg Msg {
     #[selector = 1]
     Take -> u256,
 }
 
+struct Cell {
+    value: u256,
+}
+
+impl Cell {
+    fn try_get(mut self) -> Option<mut u256> {
+        Option::Some(mut self.value)
+    }
+}
+
 struct Wrapper {
-    inner: Mutex<u256>,
+    inner: Cell,
 }
 
 pub contract C {
@@ -71,7 +79,7 @@ pub contract C {
 
     recv Msg {
         Take -> u256 uses (mut wrapped) {
-            match wrapped.inner.try_lock() {
+            match wrapped.inner.try_get() {
                 Option::Some(value) => value
                 Option::None => 0
             }

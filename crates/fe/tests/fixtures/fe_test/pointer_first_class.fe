@@ -98,7 +98,8 @@ fn test_first_class_memory_pointers() {
 
     let bytes = array.into_bytes()
     assert(bytes.len() == 64)
-    let (first_word, second_word) = bytes.span().split_at(offset: 32)
+    let first_word = bytes.span().head(32)
+    let second_word = bytes.span().tail(32)
     assert(first_word.len() == 32)
     assert(second_word.len() == 32)
     assert(array_sum == 21)
@@ -197,7 +198,8 @@ fn test_typed_memory_slices_and_growable_buffers() {
         Option::None => assert!(false)
     }
     match typed.try_slice(start: 1, len: 2) {
-        Option::Some(tail) => {
+        Option::Some((start, len)) => {
+            let tail = typed.slice(offset: start, len)
             assert!(tail[0] == 0x5678)
             assert!(tail[1] == 0x9abc)
         }

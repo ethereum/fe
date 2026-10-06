@@ -20,3 +20,9 @@ error[16-0007]: transport violation in `fn pick`
    ·
 13 │             mut scratch
    │             ^^^^^^^^^^^ this yield names memory, but another yield names storage
+
+warning[16-0012]: discarded writes in `fn pick`
+   ┌─ domains.fe:13:13
+   │
+13 │             mut scratch
+   │             ^^^^^^^^^^^ this yields a place of the projection's own frame, and no code after the yield writes it back

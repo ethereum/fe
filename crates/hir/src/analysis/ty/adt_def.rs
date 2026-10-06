@@ -233,6 +233,13 @@ impl<'db> AdtRef<'db> {
         }
     }
 
+    pub fn is_view(self, db: &'db dyn HirAnalysisDb) -> bool {
+        match self {
+            AdtRef::Enum(enum_) => enum_.is_view(db),
+            AdtRef::Struct(struct_) => struct_.is_view(db),
+        }
+    }
+
     /// Returns the semantic ADT definition for this reference.
     /// Thin wrapper over the tracked `lower_adt` query for ergonomic use at call sites.
     pub fn as_adt(self, db: &'db dyn HirAnalysisDb) -> AdtDef<'db> {

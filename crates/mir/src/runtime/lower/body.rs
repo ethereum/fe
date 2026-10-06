@@ -13,7 +13,7 @@ use hir::analysis::{
         normalized::{
             NBlockId, NDataPath, NDataProjection, NEffectArg, NExpr, NIndex, NOperand, NPlace,
             NPlaceBase, NRootKind, NStatement, NStatementId, NStatementKind, NSuccessor,
-            NTerminator, NTerminatorKind, NValueId, ReadMode,
+            NTerminator, NTerminatorKind, NValueDefinition, NValueId, ReadMode,
         },
         reify_runtime_const_for_ty, runtime_size_bytes, sem_const_ty,
     },
@@ -40,6 +40,7 @@ use hir::hir_def::{
 };
 use hir::projection::IndexSource;
 use hir::semantic::ProviderBinding;
+use rustc_hash::FxHashMap;
 
 use crate::{
     db::MirDb,
@@ -481,6 +482,9 @@ pub(super) struct RmirEmitter<'db> {
     pub(super) provider_bindings: Vec<RuntimeProviderBinding<'db>>,
     layout_evidence_locals: Vec<RLocalId>,
     normalized_value_temps: Vec<Option<RLocalId>>,
+    /// The local each projection call assigns, by its normalized statement:
+    /// the session an `End` of the call's result finishes.
+    sessions: FxHashMap<NStatementId, RLocalId>,
     pub(super) locals: Vec<RLocal<'db>>,
     pub(super) blocks: Vec<RBlock<'db>>,
     pub(super) stmt_origins: Vec<Vec<SemOrigin<'db>>>,
@@ -734,6 +738,7 @@ impl<'db> RmirEmitter<'db> {
             provider_bindings,
             layout_evidence_locals,
             normalized_value_temps,
+            sessions: FxHashMap::default(),
             locals,
             blocks,
             stmt_origins,
@@ -974,8 +979,18 @@ impl<'db> RmirEmitter<'db> {
             NStatementKind::Define { result, expr } => {
                 self.lower_assign(bb, stmt_idx, stmt.source, *result, expr)
             }
-            // Projections are not inlined yet, so no session has a slide to run.
-            NStatementKind::End { .. } => {}
+            NStatementKind::End { access } => {
+                if let NValueDefinition::Statement { block, statement } =
+                    self.semantic_body.normalized.values[access.index()].definition
+                    && let Some(&session) = self.sessions.get(
+                        &self.semantic_body.normalized.blocks[block.index()].statements
+                            [statement as usize]
+                            .id,
+                    )
+                {
+                    self.push_stmt(bb, RStmt::End { session });
+                }
+            }
             NStatementKind::Store { destination, value } => {
                 if !(stmt.source.is_none()
                     && self.lower_local_root_assignment(bb, destination, *value))
@@ -3446,21 +3461,16 @@ impl<'db> RmirEmitter<'db> {
             return self.alloc_runtime_temp(TyId::unit(self.db), RuntimeCarrier::Erased);
         }
         let ret_ty = semantic_return_ty(self.db, semantic);
-        let Some(call_class) = abi.returns.class.clone() else {
-            let ret = self.alloc_runtime_temp(TyId::unit(self.db), RuntimeCarrier::Erased);
-            self.push_stmt(
-                bb,
-                RStmt::Assign {
-                    dst: ret,
-                    expr: RExpr::Call {
-                        callee,
-                        args: runtime_args.into_boxed_slice(),
-                    },
-                },
-            );
-            return ret;
-        };
-        let call_result = self.alloc_runtime_temp(ret_ty, RuntimeCarrier::Value(call_class));
+        let call_result = self.alloc_runtime_temp(
+            ret_ty,
+            abi.returns
+                .class
+                .clone()
+                .map_or(RuntimeCarrier::Erased, RuntimeCarrier::Value),
+        );
+        if semantic.is_projection(self.db) {
+            self.sessions.insert(stmt_id, call_result);
+        }
         self.push_stmt(
             bb,
             RStmt::Assign {
@@ -4811,18 +4821,25 @@ impl<'db> RmirEmitter<'db> {
                 }
             }
             NTerminatorKind::Assert { message } => self.lower_assert_terminator(bb, *message),
-            // A projection's caller is not inlined yet: its yield returns the
-            // grant, and its slide (empty before `yield` statements) never runs.
+            // A projection's slide returns nothing: its caller inlines it.
             NTerminatorKind::Return(None)
                 if self
                     .key
                     .semantic(self.db)
                     .is_some_and(|semantic| semantic.is_projection(self.db)) =>
             {
-                RTerminator::Trap
+                RTerminator::Return(None)
             }
             NTerminatorKind::Return(value) => self.lower_return(bb, *value),
-            NTerminatorKind::Yield { value, .. } => self.lower_return(bb, Some(*value)),
+            NTerminatorKind::Yield { value, resume } => {
+                let RTerminator::Return(value) = self.lower_return(bb, Some(*value)) else {
+                    unreachable!("a yielded grant lowers to a returned value")
+                };
+                RTerminator::Yield {
+                    value,
+                    resume: self.lower_successor(resume),
+                }
+            }
         }
     }
 

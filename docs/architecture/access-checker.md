@@ -37,14 +37,18 @@ flowchart TD
   access kind, a projection's return a shape. Semantic lowering represents an
   access by a *carrier* value (`View`, `BorrowRef`, `BorrowMut` types that
   exist only in the IR).
-- A projection's every exit is a `Yield` terminator whose resume block runs
-  the slide and returns. Each yield site yields on its own path.
+- A projection's every yield site is a `Yield` terminator whose resume block
+  runs the slide and returns. A tail or `return` yield has an empty slide; a
+  `yield` statement's slide is the code after it. Each yield site yields on
+  its own path.
 - `end` elaboration (`lower/elaborate.rs`) computes liveness on the raw body.
   An access (a borrow or a projection call's session) stays open while its
   carrier or any carrier derived from it may be used. It ends right after its
   last use on each path; an access that dies on a control-flow edge ends at
   the start of the successor, on an edge block of its own when the successor
-  has other predecessors. Accesses ending at one point end innermost first.
+  has other predecessors. Of the accesses ending at one point, borrows close
+  first, then sessions finish newest first, so a session finishes before any
+  session it depends on.
 - `check_semantic_accesses` checks one instance. The runtime lowering gate
   requires it for every concrete instance, and the diagnostics pass checks
   each item's identity instance and, transitively, its concrete callees.
@@ -82,7 +86,8 @@ dynamic indices):
   Distinct contract fields are disjoint; other domains of one address space
   may alias, since a caller may supply overlapping providers.
 - `Grant { session, component }`: what a session granted. Places derived from
-  one grant overlap; sibling components of a split are disjoint.
+  one grant overlap; sibling components of a split are disjoint. A grant lies
+  in the address space its projection's result-space contract exports.
 - `State(space)`: every slot of an address space, the footprint of external
   execution and raw storage authority.
 - `Raw`: memory reached through a raw pointer; never checked.
@@ -113,17 +118,42 @@ storage place as `mut` to a function declaring `mut Call` is rejected.
 
 A projection call opens a session: reservations for its arguments and its
 `uses` domains, and grants for the yielded components. Sessions are not a
-stack; they end at their `end`, in any order. In the projection's body, each
-component of every yield site must name places in one address space per
-instantiation, and the `mut` components of a split must be structurally
-disjoint.
+stack; they end at their `end`, in any order. In the projection's body:
+
+- Creating a grant is an access of its component's mode on the yielded
+  place, checked against every access the suspended frame keeps open; only
+  the grant's own ancestors are exempt. The exported referent must be
+  initialized, and an owned component may not overlap an access component.
+- Each component of every yield site names places in one address space per
+  instantiation. That space is the projection's *result-space contract*
+  (`projection_result_spaces`), inferred from the body and exported with the
+  instance: callers combine grants by their contracts, never by bodies.
+- The `mut` components of a split are structurally disjoint.
+- Every path that completes yields exactly once; a sum shape's empty variant
+  is returned only before the yield, and the ramp's sessions still finish on
+  that exit.
+
+A `mut` yield of a place in the projection's own frame with no slide after it
+is a warning: its writes are discarded.
+
+At runtime every projection call is inlined into its caller
+(`mir/src/runtime/lower/inline.rs`): the ramp replaces the call, each `end`
+of the session runs its own copy of the slide, and a projection with several
+yield sites records which one its ramp took. A projection's grant has the
+runtime class its body yields. Recursion through projection calls cannot be
+inlined and is rejected by the checker.
 
 ## Moves and initialization
 
-A forward analysis tracks possibly moved paths of values, local roots and
-`mut` parameters, joined at control-flow merges. Moving out of a place reached
-through an access is rejected, except out of a `mut` parameter, which must be
-reinitialized before the function returns or yields.
+A forward analysis tracks possibly moved paths of values, local roots, `mut`
+parameters and the referents of `mut` accesses, joined at control-flow
+merges. A place may be moved out of through a stable `mut` access (a binding,
+a grant or a parameter) only if the access restores it before it ends, or, for
+a parameter, before the function returns or yields; a hole blocks reads and
+arguments in between. `[*]` is a may-alias abstraction: moving out of an
+element at a dynamic index is rejected, and a store through one reinitializes
+nothing. Storage and transient slots never hold a hole, and nothing moves out
+of a `ref` access.
 
 ## Constant evaluation
 

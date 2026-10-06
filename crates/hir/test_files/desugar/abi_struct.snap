@@ -56,9 +56,9 @@ impl core::abi::Encode<std::abi::Sol> for Key {
 impl core::abi::Decode<std::abi::Sol> for Key {
 
     #[inline(always)]
-    fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>>(_ __fe_abi_struct_decoder: mut __fe_D) -> Self {
-        let currency0: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D>(mut __fe_abi_struct_decoder)
-        let fee: u32 = core::abi::decode_field<std::abi::Sol, u32, __fe_D>(mut __fe_abi_struct_decoder)
+    fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>, __fe_I: core::abi::ByteInput>(_ __fe_abi_struct_decoder: mut __fe_D, _ __fe_abi_struct_input: __fe_I) -> Self {
+        let currency0: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D, __fe_I>(mut __fe_abi_struct_decoder, __fe_abi_struct_input)
+        let fee: u32 = core::abi::decode_field<std::abi::Sol, u32, __fe_D, __fe_I>(mut __fe_abi_struct_decoder, __fe_abi_struct_input)
         return Self { currency0: currency0, fee: fee }
     }
 
@@ -154,13 +154,13 @@ impl core::abi::Encode<std::abi::Sol> for Hop {
 impl core::abi::Decode<std::abi::Sol> for Hop {
 
     #[inline(always)]
-    fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>>(_ __fe_abi_struct_decoder: mut __fe_D) -> Self {
-        let key: Key = core::abi::decode_field<std::abi::Sol, Key, __fe_D>(mut __fe_abi_struct_decoder)
-        let data: Bytes = core::abi::decode_field<std::abi::Sol, Bytes, __fe_D>(mut __fe_abi_struct_decoder)
-        let base: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D>(mut __fe_abi_struct_decoder)
-        let pos: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D>(mut __fe_abi_struct_decoder)
-        let input_len: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D>(mut __fe_abi_struct_decoder)
-        let ptr: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D>(mut __fe_abi_struct_decoder)
+    fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>, __fe_I: core::abi::ByteInput>(_ __fe_abi_struct_decoder: mut __fe_D, _ __fe_abi_struct_input: __fe_I) -> Self {
+        let key: Key = core::abi::decode_field<std::abi::Sol, Key, __fe_D, __fe_I>(mut __fe_abi_struct_decoder, __fe_abi_struct_input)
+        let data: Bytes = core::abi::decode_field<std::abi::Sol, Bytes, __fe_D, __fe_I>(mut __fe_abi_struct_decoder, __fe_abi_struct_input)
+        let base: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D, __fe_I>(mut __fe_abi_struct_decoder, __fe_abi_struct_input)
+        let pos: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D, __fe_I>(mut __fe_abi_struct_decoder, __fe_abi_struct_input)
+        let input_len: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D, __fe_I>(mut __fe_abi_struct_decoder, __fe_abi_struct_input)
+        let ptr: u256 = core::abi::decode_field<std::abi::Sol, u256, __fe_D, __fe_I>(mut __fe_abi_struct_decoder, __fe_abi_struct_input)
         return Self { key: key, data: data, base: base, pos: pos, input_len: input_len, ptr: ptr }
     }
 

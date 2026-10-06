@@ -16,6 +16,7 @@ use crate::{
                 collect_referenced_code_regions, collect_referenced_const_regions,
                 collect_runtime_calls as collect_runtime_calls_lowered,
             },
+            inline::inline_projections,
             returns::runtime_exit_behavior,
         },
         synthetic::lower_synthetic_runtime_body,
@@ -142,7 +143,9 @@ fn lower_runtime_body<'db>(
                     diag
                 )));
             }
-            lower_to_rmir(db, instance)?
+            let mut body = lower_to_rmir(db, instance)?;
+            inline_projections(db, &mut body)?;
+            body
         }
         RuntimeInstanceSource::Synthetic(synthetic) => {
             lower_synthetic_runtime_body(db, instance, synthetic.spec(db).clone())?

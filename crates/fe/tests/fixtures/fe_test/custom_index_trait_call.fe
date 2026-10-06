@@ -7,8 +7,10 @@ impl Copy for WordView {}
 impl Index<u256> for WordView {
     type Output = u256
 
-    fn index(self, _ offset: u256) -> u256 {
-        self.base + offset
+    // The grant is a temporary of the projection's own frame.
+    fn index(self, _ offset: u256) -> ref u256 {
+        let word = self.base + offset
+        ref word
     }
 }
 

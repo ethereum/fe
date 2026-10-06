@@ -87,7 +87,8 @@ define_scope! {
         WhileKw,
         ContinueKw,
         BreakKw,
-        ReturnKw
+        ReturnKw,
+        YieldKw
     )
 }
 impl super::Parse for BlockExprScope {
@@ -315,7 +316,12 @@ impl super::Parse for MatchArmScope {
         // arms by wrapping them in an implicit block expression.
         if matches!(
             parser.current_kind(),
-            Some(SyntaxKind::ReturnKw | SyntaxKind::BreakKw | SyntaxKind::ContinueKw)
+            Some(
+                SyntaxKind::ReturnKw
+                    | SyntaxKind::YieldKw
+                    | SyntaxKind::BreakKw
+                    | SyntaxKind::ContinueKw
+            )
         ) {
             parser.parse(ImplicitBlockExprScope::default())
         } else {

@@ -159,6 +159,28 @@ impl<'db> Place<'db> {
 /// Returns `true` if `expr` names memory addressed by a pointer: `*ptr`, or a
 /// field or array element selected through a pointer or from such memory.
 /// Unlike a [`Place`], the pointer need not be a binding, as in `f().field`.
+/// Whether `expr` names a place in a projection's grant: the projection's
+/// result, or a field or element of it. `is_access` tells whether an
+/// expression grants an access.
+pub fn is_grant_place_expr(
+    db: &dyn HirAnalysisDb,
+    body: Body<'_>,
+    expr: ExprId,
+    is_access: &dyn Fn(ExprId) -> bool,
+) -> bool {
+    match expr.data(db, body) {
+        Partial::Present(Expr::Call(..) | Expr::MethodCall(..) | Expr::Bin(_, _, BinOp::Index))
+            if is_access(expr) =>
+        {
+            true
+        }
+        Partial::Present(Expr::Field(base, _) | Expr::Bin(base, _, BinOp::Index)) => {
+            is_grant_place_expr(db, body, *base, is_access)
+        }
+        _ => false,
+    }
+}
+
 pub fn is_pointer_place_expr<'db>(
     db: &'db dyn HirAnalysisDb,
     body: Body<'db>,

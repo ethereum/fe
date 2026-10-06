@@ -2267,19 +2267,18 @@ pub(crate) fn desired_runtime_param_plan<'db>(
     let Some(binding) = typed_body.param_binding(idx) else {
         return RuntimeParamPlan::Erased;
     };
-    let binding_ty = typed_body.binding_carrier_ty(db, binding);
+    let binding_ty = semantic.binding_ty(db, binding);
     let env = RuntimeTypeEnv::for_semantic(db, semantic);
     let scope = env.scope;
     let assumptions = env.assumptions;
-    let semantic_binding_ty = semantic.binding_ty(db, binding);
-    if effect_handle_transport_class_for_ty_in_env(db, env, semantic_binding_ty).is_some() {
-        let representation_ty = semantic_binding_ty
+    if effect_handle_transport_class_for_ty_in_env(db, env, binding_ty).is_some() {
+        let representation_ty = binding_ty
             .as_capability(db)
-            .map_or(semantic_binding_ty, |(_, target)| target);
+            .map_or(binding_ty, |(_, target)| target);
         if runtime_zero_sized_ty(db, representation_ty, scope, assumptions) {
             return RuntimeParamPlan::Erased;
         }
-        return boundary_spec_for_ty_in_env(db, env, semantic_binding_ty, AddressSpaceKind::Memory)
+        return boundary_spec_for_ty_in_env(db, env, binding_ty, AddressSpaceKind::Memory)
             .map(|boundary| match boundary {
                 RuntimeBoundarySpec::BorrowLike {
                     pointee,
@@ -2335,6 +2334,7 @@ pub(crate) fn desired_runtime_param_plan<'db>(
             ..
         }
     ) && binding_ty.as_capability(db).is_none()
+        && !semantic.binding_is_session_copy(db, binding)
     {
         desired_read_only_view_param_plan(db, typed_body, binding, env, binding_ty)
     } else if let Some((CapabilityKind::View, inner)) = interface_ty.as_capability(db) {
@@ -3851,60 +3851,6 @@ uses (slot: Slot<u256>)
             .expect("file should be loaded");
         let top_mod = db.top_mod(file);
         let contract = contract_by_name(&db, top_mod, "B");
-        let protected = get_or_build_semantic_instance(
-            &db,
-            root_semantic_instance_key(
-                &db,
-                BodyOwner::ContractRecvArm {
-                    contract,
-                    recv_idx: 0,
-                    arm_idx: 1,
-                },
-            )
-            .unwrap_or_else(|err| panic!("failed to build Protected semantic key: {err:?}")),
-        );
-        let protected_body = normalize_semantic_body(&db, protected)
-            .unwrap_or_else(|err| panic!("failed to normalize Protected: {err:?}"));
-        let try_lock = protected_body
-            .normalized
-            .blocks
-            .iter()
-            .flat_map(|block| &block.statements)
-            .find_map(|stmt| {
-                let NStatementKind::Define {
-                    expr: NExpr::Call { callee, .. },
-                    ..
-                } = &stmt.kind
-                else {
-                    return None;
-                };
-                let BodyOwner::Func(func) = callee.key.owner(&db) else {
-                    return None;
-                };
-                func.name(&db)
-                    .to_opt()
-                    .is_some_and(|name| name.data(&db) == "try_lock")
-                    .then(|| get_or_build_semantic_instance(&db, callee.key))
-            })
-            .expect("Protected should call Mutex::try_lock");
-        let try_lock_return_sources = try_lock
-            .key(&db)
-            .typed_body(&db)
-            .forwarded_return_sources(&db);
-        assert!(
-            try_lock_return_sources.iter().any(|source| {
-                source.origin
-                    == hir::analysis::ty::const_ty::CallableInputLayoutHoleOrigin::Receiver
-            }),
-            "try_lock must retain its receiver among partial forwarded return sources:\n{try_lock_return_sources:#?}",
-        );
-        assert!(
-            runtime_param_plans(&db, try_lock)
-                .first()
-                .is_some_and(|plan| !matches!(plan, RuntimeParamPlan::Erased)),
-            "try_lock must keep its receiver runtime-visible for the Some borrow payload:\nplans={:#?}",
-            runtime_param_plans(&db, try_lock),
-        );
         let semantic = get_or_build_semantic_instance(
             &db,
             root_semantic_instance_key(
@@ -3961,20 +3907,11 @@ uses (slot: Slot<u256>)
                     panic!("{name} expression should keep staged call facts");
                 };
                 let receiver_plan = runtime_param_plans(&db, call_facts.semantic).first();
-                if name == "lock" {
-                    assert!(
-                        receiver_plan
-                            .is_some_and(|plan| { !matches!(plan, RuntimeParamPlan::Erased) }),
-                        "borrow-returning `lock` must keep its forwarded receiver transport runtime-visible:\nplans={:#?}",
-                        runtime_param_plans(&db, call_facts.semantic),
-                    );
-                } else {
-                    assert!(
-                        matches!(receiver_plan, Some(RuntimeParamPlan::Erased)),
-                        "non-forwarding `{name}` must erase its zero-width receiver and use only hidden layout roots:\nplans={:#?}",
-                        runtime_param_plans(&db, call_facts.semantic),
-                    );
-                }
+                assert!(
+                    matches!(receiver_plan, Some(RuntimeParamPlan::Erased)),
+                    "non-forwarding `{name}` must erase its zero-width receiver and use only hidden layout roots:\nplans={:#?}",
+                    runtime_param_plans(&db, call_facts.semantic),
+                );
                 let receiver = args.first().and_then(|arg| normalized.operand_local(*arg));
                 let (receiver_actual, receiver_materialized, selected, selected_classes) = {
                     let mut class_cache = InferClassCache::new(normalized.locals.len());
@@ -4025,26 +3962,6 @@ uses (slot: Slot<u256>)
                             )
                         ),
                         "provider-backed mutex receiver call input should preserve storage transport for `{name}`:\nreceiver_actual={receiver_actual:#?}\nreceiver_materialized={receiver_materialized:#?}\nselected_return={selected_return:#?}\nselected={selected:#?}",
-                    );
-                }
-                if name == "lock" {
-                    assert!(
-                        matches!(
-                            selected_return,
-                            Some(
-                                RuntimeClass::Ref {
-                                    kind: RefKind::Provider {
-                                        space: AddressSpaceKind::Storage,
-                                        ..
-                                    },
-                                    ..
-                                } | RuntimeClass::RawAddr {
-                                    space: AddressSpaceKind::Storage,
-                                    ..
-                                }
-                            )
-                        ),
-                        "storage-specialized `lock` should keep a storage transport return:\nreceiver_actual={receiver_actual:#?}\nreceiver_materialized={receiver_materialized:#?}\nselected_return={selected_return:#?}\nselected={selected:#?}",
                     );
                 }
                 checked_calls.push(name.to_string());

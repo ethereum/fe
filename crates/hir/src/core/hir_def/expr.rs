@@ -14,6 +14,9 @@ pub enum Expr<'db> {
     Un(ExprId, UnOp),
     /// `expr as Type`
     Cast(ExprId, Partial<TypeId<'db>>),
+    /// `expr?`: the payload of a `Some` or `Ok`; a `None` or `Err` ends the
+    /// enclosing function with that variant.
+    Try(ExprId),
     /// (callee, call args)
     Call(ExprId, Vec<CallArg<'db>>),
     /// Compiler-owned `assert!(cond[, "message"])` builtin.

@@ -93,12 +93,10 @@ pub fn parse_uint(_ text: DynString) -> Option<u256> {
 /// (Solidity `Strings.tryParseInt`). `None` for invalid digits, a missing
 /// digit or a value outside the `i256` range.
 pub fn parse_int(_ text: DynString) -> Option<i256> {
-    let mut digits = text.payload_span()
-    let negative = !digits.is_empty() && digits.byte_at(0) == 45
-    if negative || (!digits.is_empty() && digits.byte_at(0) == 43) {
-        digits = digits.slice(offset: 1, len: digits.len() - 1)
-    }
-    let magnitude = match parse_digits(digits, radix: 10) {
+    let text = text.payload_span()
+    let negative = !text.is_empty() && text.byte_at(0) == 45
+    let signed = negative || (!text.is_empty() && text.byte_at(0) == 43)
+    let magnitude = match parse_digits(text.tail(signed as u256), radix: 10) {
         Option::Some(value) => value
         Option::None => return Option::None
     }
@@ -117,11 +115,9 @@ pub fn parse_int(_ text: DynString) -> Option<i256> {
 /// `u256` (Solidity `Strings.tryParseHexUint`). `None` for an invalid
 /// digit, no digits or a value above `u256::max()`.
 pub fn parse_hex_uint(_ text: DynString) -> Option<u256> {
-    let mut digits = text.payload_span()
-    if digits.len() >= 2 && digits.byte_at(0) == 48 && digits.byte_at(1) == 120 {
-        digits = digits.slice(offset: 2, len: digits.len() - 2)
-    }
-    parse_digits(digits, radix: 16)
+    let text = text.payload_span()
+    let prefixed = text.len() >= 2 && text.byte_at(0) == 48 && text.byte_at(1) == 120
+    parse_digits(text.tail(if prefixed { 2 } else { 0 }), radix: 16)
 }
 
 fn parse_digits(_ digits: MemSpan, radix: u256) -> Option<u256> {

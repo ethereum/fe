@@ -12,7 +12,7 @@ pub struct ERC1167FailedCreateClone {}
 
 /// The standard 55-byte creation code for an ERC-1167 proxy.
 /// A noncanonical implementation address is rejected rather than truncated.
-pub fn clone_initcode(_ implementation: Address) -> MemSpan {
+pub fn clone_initcode(_ implementation: Address) -> ref MemSpan {
     if implementation.inner >> 160 != 0 {
         revert(())
     }

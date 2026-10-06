@@ -61,7 +61,7 @@ use crate::analysis::ty::{
         ProviderLayoutEvidence, ProviderTransport, provider_semantics,
         provider_semantics_for_specialized_call,
     },
-    shape::Shape,
+    shape::{Shape, sum_payload_variant},
     trait_def::TraitInstId,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
@@ -382,6 +382,7 @@ impl<'db> TyChecker<'db> {
             Expr::Block(..) => self.check_block(expr, expr_data, expected, result_discarded),
             Expr::Un(..) => self.check_unary(expr, expr_data),
             Expr::Cast(inner, ty) => self.check_cast(expr, *inner, *ty),
+            Expr::Try(inner) => self.check_try(expr, *inner),
             Expr::Bin(lhs, rhs, op) => self.check_binary(expr, *lhs, *rhs, *op),
             Expr::Call(..) => self.check_call(expr, expr_data),
             Expr::Assert(args) => self.check_assert(expr, args),
@@ -417,6 +418,7 @@ impl<'db> TyChecker<'db> {
                 | Expr::MethodCall(..)
                 | Expr::Bin(_, _, BinOp::Index)
                 | Expr::Block(..)
+                | Expr::Try(..)
         ) {
             actual.shape = None;
         }
@@ -584,22 +586,15 @@ impl<'db> TyChecker<'db> {
             self.consume_access(*lhs);
 
             let place_ty = prop.ty;
-            let borrow_provider = self
-                .env
-                .expr_place(*lhs)
-                .and_then(|place| self.concrete_borrow_provider_for_place(&place));
-            let borrow_provider =
-                if borrow_provider.is_none() && self.env.is_pointer_place_expr(*lhs) {
-                    Some(super::ProviderAddressSpace::Memory)
-                } else {
-                    borrow_provider
-                };
+            let borrow_provider = self.access_provider(*lhs);
 
             let kind = if *op == UnOp::Mut {
                 if !prop.is_mut {
                     self.report_cannot_borrow_mut(*lhs, expr.span(self.body()).into());
                     return ExprProp::invalid(self.db);
                 }
+                let ty = place_ty.fold_with(self.db, &mut self.table);
+                self.check_view_mut_access(ty, expr.span(self.body()).into());
                 BorrowKind::Mut
             } else {
                 BorrowKind::Ref
@@ -629,6 +624,57 @@ impl<'db> TyChecker<'db> {
         }
 
         self.check_ops_trait(expr, prop.ty, op, None)
+    }
+
+    /// `e?` on an `Option` or `Result`, a value or a sum shape: the payload,
+    /// or else an early exit with the operand's empty variant, which the
+    /// function's return must be able to carry (the same kind of sum, with
+    /// the same error type).
+    fn check_try(&mut self, expr: ExprId, inner: ExprId) -> ExprProp<'db> {
+        let prop = self.check_expr_unknown(inner);
+        let ty = prop.ty.fold_with(self.db, &mut self.table);
+        if ty.has_invalid(self.db) {
+            return ExprProp::invalid(self.db);
+        }
+        let scope = self.env.scope();
+        let Some(variant) = sum_payload_variant(self.db, scope, ty) else {
+            self.push_diag(BodyDiag::TryOnNonSum {
+                primary: inner.span(self.body()).into(),
+                ty,
+            });
+            return ExprProp::invalid(self.db);
+        };
+        let ret = self.expected.fold_with(self.db, &mut self.table);
+        let carries_exit = sum_payload_variant(self.db, scope, ret) == Some(variant)
+            && (variant == 0
+                || self
+                    .table
+                    .unify(ty.generic_args(self.db)[0], ret.generic_args(self.db)[0])
+                    .is_ok());
+        if !carries_exit {
+            if !ret.has_invalid(self.db) {
+                self.push_diag(BodyDiag::TryReturnMismatch {
+                    primary: expr.span(self.body()).into(),
+                    operand: ty,
+                    ret,
+                });
+            }
+            return ExprProp::invalid(self.db);
+        }
+        if let Some(Shape::Sum { payload, .. }) = prop.shape {
+            self.consume_access(inner);
+            return ExprProp {
+                shape: (!matches!(*payload, Shape::Owned(_))).then(|| (*payload).clone()),
+                ..ExprProp::new(payload.erased_ty(self.db), true)
+            };
+        }
+        // Like the `match` it stands for, `?` moves its operand only when it
+        // takes out a non-`Copy` payload or error.
+        let args = ty.generic_args(self.db);
+        if !args.iter().all(|arg| self.ty_is_copy(*arg)) {
+            self.record_implicit_move_for_owned_expr(inner, ty);
+        }
+        ExprProp::new(args[variant as usize], true)
     }
 
     fn check_cast(
@@ -1108,6 +1154,7 @@ impl<'db> TyChecker<'db> {
     fn check_let_condition(&mut self, pat: PatId, scrutinee: ExprId) -> ExprProp<'db> {
         let scrutinee_ty = self.fresh_ty();
         let scrutinee_prop = self.check_expr(scrutinee, scrutinee_ty);
+        let scrutinee_prop = self.open_matched_place(scrutinee, scrutinee_prop, [pat]);
         let layout = self.pattern_layout_context(scrutinee);
         self.check_pat_with_layout(pat, scrutinee_prop.ty, layout.as_ref());
         self.bind_pattern_source(pat, scrutinee, &scrutinee_prop);
@@ -4678,6 +4725,8 @@ impl<'db> TyChecker<'db> {
         let Partial::Present(arms) = arms else {
             return ExprProp::invalid(self.db);
         };
+        let scrutinee_prop =
+            self.open_matched_place(*scrutinee, scrutinee_prop, arms.iter().map(|arm| arm.pat));
 
         let mut match_ty = expected;
         let mut first_provider: Option<super::ProviderAddressSpace> = None;
@@ -5342,7 +5391,7 @@ impl<'db> TyChecker<'db> {
             Expr::Path(..) | Expr::Field(..) => true,
             Expr::Bin(_, _, op) if *op == BinOp::Index => true,
             Expr::Un(_, UnOp::Deref) => true,
-            _ => false,
+            _ => self.env.is_grant_place(expr),
         }
     }
 

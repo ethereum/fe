@@ -629,16 +629,31 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             },
             SExpr::UseValue(value) => {
                 let source_ty = self.normalized_local_ty(value.value);
-                if source_ty != dst_ty && self.local_has_place(value.value) {
+                // A place alias has no carrier of its own: reading one as a
+                // carrier accesses the aliased place.
+                let alias = matches!(
+                    self.raw.locals[value.value.index()].role,
+                    SemanticLocalRole::PlaceBoundValue {
+                        provenance: PlaceProvenance::Derived(_),
+                        ..
+                    }
+                );
+                if (source_ty != dst_ty || alias) && self.local_has_place(value.value) {
                     let place =
                         self.place_for_local(block, value.sem_origin(origin), value.value)?;
+                    // A by-value binding owns what it reads, so it moves a
+                    // non-`Copy` value out of its place.
+                    let binds_value = matches!(
+                        self.raw.locals[dst.index()].source,
+                        Some(LocalBinding::Local { .. })
+                    ) && !self.ty_is_copy(dst_ty);
                     self.load_or_borrow_place(
                         block,
                         value.sem_origin(origin),
                         value.value,
                         dst_ty,
                         place,
-                        None,
+                        binds_value.then_some(ReadMode::Move),
                     )?
                 } else {
                     NExpr::Forward {
@@ -2218,6 +2233,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             origin: match origin {
                 crate::analysis::semantic::SemOrigin::Expr(expr) => Some(expr),
                 crate::analysis::semantic::SemOrigin::Stmt(_)
+                | crate::analysis::semantic::SemOrigin::Pat(_)
                 | crate::analysis::semantic::SemOrigin::Body(_)
                 | crate::analysis::semantic::SemOrigin::Synthetic => None,
             },

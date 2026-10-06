@@ -66,3 +66,35 @@ fn nested_access_through_a_grant_writes_its_place() {
     alias = 19
     assert!(holder.value == 19)
 }
+
+// A `mut` projection's result is a place: it can be assigned, updated,
+// accessed again, and projected.
+struct Cell {
+    v: u256,
+    w: (u256, u256),
+}
+
+impl Cell {
+    fn get_mut(mut self) -> mut u256 {
+        mut self.v
+    }
+
+    fn pair_mut(mut self) -> mut (u256, u256) {
+        mut self.w
+    }
+}
+
+fn write_grants(_ c: mut Cell) -> u256 {
+    let x = mut c.get_mut()
+    x = 5
+    c.get_mut() = 7
+    c.get_mut() += 1
+    c.pair_mut().0 = 3
+    c.v + c.w.0
+}
+
+#[test]
+fn grant_places_are_assignable() {
+    let mut c = Cell { v: 0, w: (0, 0) }
+    assert!(write_grants(mut c) == 11)
+}

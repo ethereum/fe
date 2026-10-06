@@ -74,8 +74,8 @@ impl AbiSize for Address {
 
 impl<A: Abi> Decode<A> for Address {
     #[inline(always)]
-    fn decode_payload<D: AbiDecoder<A>>(_ d: mut D) -> Self {
-        let word = d.read_word()
+    fn decode_payload<D: AbiDecoder<A>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        let word = d.read_word(input)
         if word >> 160 != 0 {
             ops::revert_empty()
         }
@@ -540,7 +540,7 @@ impl CallOutcome {
         self.success
     }
 
-    pub fn returndata(self) -> MemSpan {
+    pub fn returndata(self) -> ref MemSpan {
         self.returndata.span()
     }
 
@@ -1359,7 +1359,7 @@ impl ContractHost for Evm {
         CallData::new()
     }
 
-    fn init_input<F>(mut self, _ runtime: F) -> Self::InitInput {
+    fn init_input<F>(mut self, _ runtime: F) -> ref Self::InitInput {
         let offset = self.code_region_offset(runtime)
         let len = self.code_region_len(runtime)
         let args_offset = offset + len

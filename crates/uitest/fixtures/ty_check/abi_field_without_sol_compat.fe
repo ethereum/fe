@@ -18,8 +18,8 @@ impl AbiSpan<Sol> for Word {
 }
 
 impl Decode<Sol> for Word {
-    fn decode_payload<D: AbiDecoder<Sol>>(_ d: mut D) -> Self {
-        Word { value: d.read_word() }
+    fn decode_payload<D: AbiDecoder<Sol>, I: ByteInput>(_ d: mut D, _ input: I) -> Self {
+        Word { value: d.read_word(input) }
     }
 }
 
