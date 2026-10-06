@@ -3,7 +3,7 @@ use super::{
     provider::{ProviderAddressSpace, ProviderLayoutFailure},
     trait_def::TraitInstId,
     ty_check::{RecordLike, TraitOps},
-    ty_def::{BorrowKind, CapabilityKind, Kind, TyId},
+    ty_def::{BorrowKind, Kind, TyId},
 };
 use crate::visitor::prelude::*;
 use crate::{analysis::HirAnalysisDb, hir_def::Trait};
@@ -63,6 +63,8 @@ impl<'db> TyDiagCollection<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub enum TyLowerDiag<'db> {
     ExpectedStarKind(DynLazySpan<'db>),
+    /// `ref T`/`mut T` outside a parameter or projection return.
+    ModeNotType(DynLazySpan<'db>),
     InvalidTypeArgKind {
         span: DynLazySpan<'db>,
         expected: Option<Kind>,
@@ -137,10 +139,9 @@ pub enum TyLowerDiag<'db> {
         ty: TyId<'db>,
     },
 
-    /// `own` parameters must have owned types. Borrow-handle types (`mut`/`ref`) are not owned.
-    OwnParamCannotBeBorrow {
+    /// `self: ref Self` is written `self`.
+    RefSelfType {
         span: DynLazySpan<'db>,
-        ty: TyId<'db>,
     },
 
     /// Non-`self` parameters cannot use the `mut x: T` prefix form unless the type is `own`.
@@ -289,6 +290,7 @@ impl TyLowerDiag<'_> {
     pub(crate) fn local_code(&self) -> u16 {
         match self {
             Self::ExpectedStarKind(_) => 0,
+            Self::ModeNotType(_) => 58,
             Self::InvalidTypeArgKind { .. } => 1,
             Self::RecursiveType { .. } => 2,
             Self::GrowingRecursiveType(_) => 57,
@@ -304,7 +306,7 @@ impl TyLowerDiag<'_> {
             Self::ConstTyExpected { .. } => 12,
             Self::NormalTypeExpected { .. } => 13,
             Self::ConstHoleInValuePosition { .. } => 32,
-            Self::OwnParamCannotBeBorrow { .. } => 14,
+            Self::RefSelfType { .. } => 14,
             Self::InvalidMutParamPrefixWithoutOwnType { .. } => 31,
             Self::InvalidConstTyExpr(_) => 15,
             Self::ConstEvalUnsupported(_) => 23,
@@ -530,13 +532,6 @@ pub enum BodyDiag<'db> {
         func: Option<CallableDef<'db>>,
     },
 
-    IncompatibleBorrowProviders {
-        primary: DynLazySpan<'db>,
-        previous: DynLazySpan<'db>,
-        previous_provider: ProviderAddressSpace,
-        current_provider: ProviderAddressSpace,
-    },
-
     TypeMustBeKnown(DynLazySpan<'db>),
     TypeSizeOverflow {
         primary: DynLazySpan<'db>,
@@ -621,26 +616,26 @@ pub enum BodyDiag<'db> {
         suggestion: Option<String>,
     },
 
-    /// `own` parameters must have owned types. Borrow-handle types (`mut`/`ref`) are not owned.
-    OwnParamCannotBeBorrow {
-        primary: DynLazySpan<'db>,
-        ty: TyId<'db>,
-    },
-
-    /// `let mut` local bindings must bind owned values, not capability handles.
+    /// `let mut` local bindings bind owned values, not accesses.
     MutableBindingCannotBeCapability {
         primary: DynLazySpan<'db>,
         ty: TyId<'db>,
     },
 
-    /// `own` call arguments must denote a transferable owned value.
-    ///
-    /// Capability-typed expressions (`mut`/`ref`/`view`) can only satisfy this when the checker
-    /// can safely unwrap them to an owned inner value.
-    OwnArgMustBeOwnedMove {
+    /// `ref p`, `mut p`, or a tuple or sum yield shape used as a value.
+    AccessNotValue {
         primary: DynLazySpan<'db>,
-        kind: CapabilityKind,
-        given: TyId<'db>,
+    },
+
+    /// A tuple or sum yield shape bound to a single name.
+    ShapeNotDestructured {
+        primary: DynLazySpan<'db>,
+    },
+
+    /// A projection's yield site does not grant its return shape.
+    InvalidYield {
+        primary: DynLazySpan<'db>,
+        shape: String,
     },
 
     /// Array repetition literals (`[x; N]`) duplicate the element value.
@@ -881,6 +876,18 @@ pub enum BodyDiag<'db> {
         primary: DynLazySpan<'db>,
         callee: CallableDef<'db>,
     },
+
+    // Unsafe-check diagnostics ---------------------------------------------
+    UnsafeDerefRequiresUnsafe {
+        primary: DynLazySpan<'db>,
+    },
+    UnsafeCallRequiresUnsafe {
+        primary: DynLazySpan<'db>,
+        callee: CallableDef<'db>,
+    },
+    UnsafeProviderRequiresUnsafe {
+        primary: DynLazySpan<'db>,
+    },
 }
 
 impl<'db> BodyDiag<'db> {
@@ -987,7 +994,6 @@ impl<'db> BodyDiag<'db> {
             Self::WithEffectTypeUnsatisfied { .. } => 76,
             Self::AmbiguousEffect { .. } => 40,
             Self::ReturnedTypeMismatch { .. } => 13,
-            Self::IncompatibleBorrowProviders { .. } => 77,
             Self::TypeMustBeKnown(..) => 14,
             Self::TypeSizeOverflow { .. } => 88,
             Self::InvalidCast { .. } => 55,
@@ -1009,8 +1015,9 @@ impl<'db> BodyDiag<'db> {
             Self::CannotBorrowMut { .. } => 66,
             Self::BorrowArgMustBePlace { .. } => 68,
             Self::ExplicitBorrowRequired { .. } => 69,
-            Self::OwnParamCannotBeBorrow { .. } => 70,
-            Self::OwnArgMustBeOwnedMove { .. } => 72,
+            Self::AccessNotValue { .. } => 70,
+            Self::ShapeNotDestructured { .. } => 72,
+            Self::InvalidYield { .. } => 99,
             Self::MutableBindingCannotBeCapability { .. } => 73,
             Self::ArrayRepeatRequiresCopy { .. } => 71,
             Self::ArrayIndexOutOfBounds { .. } => 84,
@@ -1056,6 +1063,9 @@ impl<'db> BodyDiag<'db> {
             Self::ConstFnEffectsNotAllowed(_) => 55,
             Self::ConstFnNonConstCall { .. } => 62,
             Self::ConstFnEffectfulCall { .. } => 63,
+            Self::UnsafeDerefRequiresUnsafe { .. } => 96,
+            Self::UnsafeCallRequiresUnsafe { .. } => 97,
+            Self::UnsafeProviderRequiresUnsafe { .. } => 98,
         }
     }
 }
@@ -1108,11 +1118,6 @@ pub enum TraitConstraintDiag<'db> {
         primary_goal: TraitInstId<'db>,
         unsat_subgoal: Option<TraitInstId<'db>>,
         required_by: Option<CallConstraintDiagInfo<'db>>,
-        /// A capability type (the internal `View` capability of a default parameter,
-        /// or `ref`/`mut`) whose failing bound would hold
-        /// for its underlying type (`T`). Set when the bound is unsatisfied
-        /// only because the value is a view/borrow rather than owned.
-        capability_hint: Option<TyId<'db>>,
     },
 
     InfiniteBoundRecursion(DynLazySpan<'db>, String),
@@ -1192,6 +1197,11 @@ pub enum ImplDiag<'db> {
     },
 
     MethodEffectMismatch {
+        trait_m: CallableDef<'db>,
+        impl_m: CallableDef<'db>,
+    },
+
+    MethodUnsafeMismatch {
         trait_m: CallableDef<'db>,
         impl_m: CallableDef<'db>,
     },
@@ -1300,6 +1310,7 @@ impl ImplDiag<'_> {
             Self::MethodRetTyMismatch { .. } => 8,
             Self::MethodStricterBound { .. } => 9,
             Self::MethodEffectMismatch { .. } => 24,
+            Self::MethodUnsafeMismatch { .. } => 25,
             Self::InvalidSelfType { .. } => 10,
             Self::InherentImplIsNotAllowed { .. } => 11,
             Self::MissingAssociatedType { .. } => 12,

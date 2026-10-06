@@ -721,7 +721,7 @@ impl super::Parse for SuperTraitListScope {
     }
 }
 
-define_scope! { TraitItemListScope, TraitItemList, (RBrace, Newline, FnKw, TypeKw, ConstKw) }
+define_scope! { TraitItemListScope, TraitItemList, (RBrace, Newline, UnsafeKw, FnKw, TypeKw, ConstKw) }
 impl super::Parse for TraitItemListScope {
     type Error = Recovery<ErrProof>;
 
@@ -843,7 +843,7 @@ impl super::Parse for ImplScope {
     }
 }
 
-define_scope! { ImplTraitItemListScope, TraitItemList, (RBrace, FnKw, TypeKw, ConstKw) }
+define_scope! { ImplTraitItemListScope, TraitItemList, (RBrace, UnsafeKw, FnKw, TypeKw, ConstKw) }
 impl super::Parse for ImplTraitItemListScope {
     type Error = Recovery<ErrProof>;
 
@@ -1037,14 +1037,26 @@ fn parse_trait_item_block<S: TokenStream>(
             break;
         }
 
-        let checkpoint = attr::parse_attr_list(parser)?;
+        let mut checkpoint = attr::parse_attr_list(parser)?;
 
-        while parser.current_kind().is_some_and(|k| k.is_modifier_head()) {
-            let kind = parser.current_kind().unwrap();
-            parser.unexpected_token_error(format!(
-                "{} modifier is not allowed in this block",
-                kind.describe()
-            ));
+        // Trait methods may be `unsafe`; their visibility is the trait's.
+        let mut is_unsafe = false;
+        while let Some(kind) = parser.current_kind().filter(|k| k.is_modifier_head()) {
+            if kind == SyntaxKind::UnsafeKw && !is_unsafe {
+                checkpoint.get_or_insert_with(|| parser.checkpoint());
+                parser.bump();
+                is_unsafe = true;
+            } else if kind == SyntaxKind::UnsafeKw {
+                parser.unexpected_token_error(format!("duplicate {} modifier", kind.describe()));
+            } else {
+                parser.unexpected_token_error(format!(
+                    "{} modifier is not allowed in this block",
+                    kind.describe()
+                ));
+            }
+        }
+        if is_unsafe && !is_fn_item_head(parser) {
+            parser.error("expected `fn` after `unsafe` keyword");
         }
 
         match parser.current_kind() {

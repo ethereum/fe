@@ -765,8 +765,10 @@ impl<T> EffectRef<T> for Ptr<T> {}
 fn needs() uses (logger: Logger) {}
 
 fn caller(p: own Ptr<Console>) {
-    with (Logger = p) {
-        needs()
+    unsafe {
+        with (Logger = p) {
+            needs()
+        }
     }
 }
 "#,
@@ -975,8 +977,10 @@ impl<T> EffectRef<T> for Ptr<T> {}
 fn needs() uses (logger: Logger) {}
 
 fn caller(p: Ptr<Console>) {
-    with (Logger = p) {
-        needs()
+    unsafe {
+        with (Logger = p) {
+            needs()
+        }
     }
 }
 "#,
@@ -990,52 +994,6 @@ fn caller(p: Ptr<Console>) {
         "expected keyed trait binding failure, got diagnostics: {diags:#?}"
     );
 }
-
-#[test]
-fn keyed_trait_effects_do_not_accept_capability_wrapped_targets() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        Utf8PathBuf::from("keyed_trait_effects_do_not_accept_capability_wrapped_targets.fe"),
-        r#"
-trait Logger {
-    fn log(self)
-}
-
-struct Console {}
-
-impl Logger for Console {
-    fn log(self) {}
-}
-
-fn needs() uses (logger: Logger) {}
-
-fn caller(c: ref Console) {
-    with (Logger = c) {
-        needs()
-    }
-}
-"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    let diags = diagnostics_for(&db, top_mod);
-    assert!(
-        diags.iter().any(|diag| {
-            diag.message.contains(
-                "keyed effect binding `Logger` requires `ref Console` to implement `Logger`",
-            )
-        }),
-        "expected capability-wrapper trait binding failure, got diagnostics: {diags:#?}"
-    );
-
-    let caller = find_func(&db, top_mod, "caller");
-    let call_expr = find_named_call_expr(&db, caller, "needs");
-    let typed_body = check_func_body(&db, caller).1.clone();
-    assert!(
-        typed_body.call_effect_args(call_expr).is_none(),
-        "invalid ref provider should not resolve an effect argument"
-    );
-}
-
 #[test]
 fn invalid_keyed_with_bindings_shadow_outer_providers() {
     let mut db = HirAnalysisTestDb::default();
@@ -2095,11 +2053,11 @@ fn caller() {
                 && diag
                     .sub_diagnostics
                     .iter()
-                    .any(|sub| sub.message.contains("ref Storage<u8>"))
+                    .any(|sub| sub.message.contains("Storage<u8>"))
                 && diag
                     .sub_diagnostics
                     .iter()
-                    .any(|sub| sub.message.contains("ref Storage<u16>"))
+                    .any(|sub| sub.message.contains("Storage<u16>"))
         }),
         "expected later inference to conflict with the committed explicit key, got diagnostics: {diags:#?}"
     );
@@ -2250,9 +2208,11 @@ fn needs() uses (store: Storage<u8>) {}
 
 fn caller() {
     let x = make()
-    with (x) {
-        needs()
-        take(ref x)
+    unsafe {
+        with (x) {
+            needs()
+            take(ref x)
+        }
     }
 }
 "#,
@@ -2265,11 +2225,11 @@ fn caller() {
                 && diag
                     .sub_diagnostics
                     .iter()
-                    .any(|sub| sub.message.contains("ref Ptr<Storage<u16>>"))
+                    .any(|sub| sub.message.contains("Ptr<Storage<u16>>"))
                 && diag
                     .sub_diagnostics
                     .iter()
-                    .any(|sub| sub.message.contains("ref Ptr<Storage<u8>>"))
+                    .any(|sub| sub.message.contains("Ptr<Storage<u8>>"))
         }),
         "expected later refinement to conflict with the committed wrapper proof, got diagnostics: {diags:#?}"
     );
@@ -2319,9 +2279,11 @@ fn needs() uses (store: Storage<u8>) {}
 
 fn caller() {
     let x = make()
-    with (Storage<u8> = x) {
-        needs()
-        take(ref x)
+    unsafe {
+        with (Storage<u8> = x) {
+            needs()
+            take(ref x)
+        }
     }
 }
 "#,
@@ -2334,11 +2296,11 @@ fn caller() {
                 && diag
                     .sub_diagnostics
                     .iter()
-                    .any(|sub| sub.message.contains("ref Ptr<Storage<u16>>"))
+                    .any(|sub| sub.message.contains("Ptr<Storage<u16>>"))
                 && diag
                     .sub_diagnostics
                     .iter()
-                    .any(|sub| sub.message.contains("ref Ptr<Storage<u8>>"))
+                    .any(|sub| sub.message.contains("Ptr<Storage<u8>>"))
         }),
         "expected later refinement to conflict with the committed keyed wrapper proof, got diagnostics: {diags:#?}"
     );
@@ -2379,8 +2341,10 @@ impl EffectRef<Storage<u8>> for Ptr<Storage<u8>> {}
 fn needs() uses (store: Storage<u8>) {}
 
 fn caller(x: own Ptr<Storage<u8>>) {
-    with (x) {
-        needs()
+    unsafe {
+        with (x) {
+            needs()
+        }
     }
 }
 "#,
@@ -2450,8 +2414,10 @@ fn needs() uses (store: Storage<u8>) {}
 
 fn caller() {
     let x = make()
-    with (x) {
-        needs()
+    unsafe {
+        with (x) {
+            needs()
+        }
     }
 }
 "#,
@@ -2521,8 +2487,10 @@ fn needs() uses (store: Storage<u8>) {}
 
 fn caller() {
     let x = make()
-    with (Storage<u8> = x) {
-        needs()
+    unsafe {
+        with (Storage<u8> = x) {
+            needs()
+        }
     }
 }
 "#,
@@ -2615,9 +2583,11 @@ fn needs() uses (logger: Logger) {}
 
 fn caller() {
     let x = make()
-    with (x) {
-        take(ref x)
-        needs()
+    unsafe {
+        with (x) {
+            take(ref x)
+            needs()
+        }
     }
 }
 "#,
@@ -2669,9 +2639,11 @@ fn needs() uses (logger: Logger) {}
 
 fn caller() {
     let x = make()
-    with (x) {
-        needs()
-        take(ref x)
+    unsafe {
+        with (x) {
+            needs()
+            take(ref x)
+        }
     }
 }
 "#,
@@ -2708,8 +2680,10 @@ impl Logger for Good {
 fn needs() uses (logger: Logger) {}
 
 fn caller(x: own Good) {
-    with (x) {
-        needs()
+    unsafe {
+        with (x) {
+            needs()
+        }
     }
 }
 "#,
@@ -2742,8 +2716,10 @@ impl Logger<u8> for Good {
 fn needs<T>() uses (logger: Logger<T>) {}
 
 fn caller(x: own Good) {
-    with (x) {
-        needs()
+    unsafe {
+        with (x) {
+            needs()
+        }
     }
 }
 "#,
@@ -2794,8 +2770,10 @@ where
 {}
 
 fn caller(x: own Good) {
-    with (x) {
-        needs()
+    unsafe {
+        with (x) {
+            needs()
+        }
     }
 }
 "#,
@@ -2858,8 +2836,10 @@ where
 {}
 
 fn caller(x: own Good) {
-    with (x) {
-        needs()
+    unsafe {
+        with (x) {
+            needs()
+        }
     }
 }
 "#,
@@ -3896,8 +3876,10 @@ impl EffectRef<Storage<u8>> for Ptr<Storage<u8>> {}
 fn needs() uses (store: Storage<u8>) {}
 
 fn caller(x: own Ptr<Storage<u8>>) {
-    with (Storage<u8> = x) {
-        needs()
+    unsafe {
+        with (Storage<u8> = x) {
+            needs()
+        }
     }
 }
 "#,
@@ -4965,7 +4947,8 @@ fn use_ctx_semantic_body_keeps_receiver_as_effect_binding_local() {
                 ..
             } => Some(args),
             fe_hir::analysis::semantic::SStmtKind::Assign { .. }
-            | fe_hir::analysis::semantic::SStmtKind::Store { .. } => None,
+            | fe_hir::analysis::semantic::SStmtKind::Store { .. }
+            | fe_hir::analysis::semantic::SStmtKind::End { .. } => None,
         })
         .unwrap_or_else(|| panic!("{body:#?}"));
     assert_eq!(args.len(), 1);
@@ -5140,7 +5123,8 @@ fn impl_sum_semantic_body_uses_self_binding_directly() {
                     ..
                 } => local.value != fe_hir::analysis::semantic::SLocalId::from_u32(0),
                 fe_hir::analysis::semantic::SStmtKind::Assign { .. }
-                | fe_hir::analysis::semantic::SStmtKind::Store { .. } => true,
+                | fe_hir::analysis::semantic::SStmtKind::Store { .. }
+                | fe_hir::analysis::semantic::SStmtKind::End { .. } => true,
             }),
         "{body:#?}"
     );
@@ -5201,7 +5185,8 @@ fn effect_handle_values_preserve_direct_carrier_roles_without_constructor_calls(
             | fe_hir::analysis::semantic::STerminatorKind::Branch { .. }
             | fe_hir::analysis::semantic::STerminatorKind::MatchEnum { .. }
             | fe_hir::analysis::semantic::STerminatorKind::Assert { .. }
-            | fe_hir::analysis::semantic::STerminatorKind::Return(None) => None,
+            | fe_hir::analysis::semantic::STerminatorKind::Return(None)
+            | fe_hir::analysis::semantic::STerminatorKind::Yield { .. } => None,
         })
         .unwrap_or_else(|| panic!("expected returned handle value: {callee_body:#?}"));
     assert!(
@@ -5807,11 +5792,13 @@ fn bump_stor() uses (foo: mut Foo) {
 
 fn test_spaces() uses (st: mut RawStorage) {
     let mp = ptr::alloc<Foo>()
-    with (mp) {
-        bump_mem()
+    unsafe {
+        with (mp) {
+            bump_mem()
+        }
     }
 
-    let sp: StorPtr<Foo> = st.stor_ptr(0)
+    let sp: StorPtr<Foo> = unsafe { st.stor_ptr(0) }
     with (sp) {
         bump_stor()
     }
@@ -5873,7 +5860,7 @@ fn write_cell(_ value: u256) uses (cell: mut Cell) {
 }
 
 fn test_projected(slot: u256, value: u256) uses (evm: mut Evm) {
-    let holder = Holder { ptr: evm.stor_ptr(slot) }
+    let holder = unsafe { Holder { ptr: evm.stor_ptr(slot) } }
     with (holder.ptr) {
         write_cell(value)
     }

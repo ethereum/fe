@@ -331,7 +331,10 @@ impl<'db> TyVisitable<'db> for ExprProp<'db> {
     where
         V: TyVisitor<'db> + ?Sized,
     {
-        self.ty.visit_with(visitor)
+        self.ty.visit_with(visitor);
+        if let Some(shape) = &self.shape {
+            shape.visit_with(visitor);
+        }
     }
 }
 

@@ -59,7 +59,7 @@ impl ByteInput for CallData {
         (word >> shift).downcast_truncate()
     }
 
-    fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) {
+    unsafe fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) {
         let input_len = self.len()
         if src_offset > input_len || len > input_len - src_offset {
             revert_empty()
@@ -70,7 +70,7 @@ impl ByteInput for CallData {
 
     #[arithmetic(unchecked)]
     #[inline(always)]
-    fn copy_to_memory_unchecked(self, dest: *u8, src_offset: u256, len: u256) {
+    unsafe fn copy_to_memory_unchecked(self, dest: *u8, src_offset: u256, len: u256) {
         calldatacopy(dest: dest, offset: self.base + src_offset, len: len)
     }
 }

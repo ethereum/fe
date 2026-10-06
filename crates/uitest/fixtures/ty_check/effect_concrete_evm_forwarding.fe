@@ -6,7 +6,7 @@ pub trait Writable {
 
 impl Writable for u256 {
     fn write_to(self, ptr: u256) uses (evm: mut Evm) {
-        evm.mstore(addr: ptr, value: self)
+        unsafe { evm.mstore(addr: ptr, value: self) }
     }
 }
 

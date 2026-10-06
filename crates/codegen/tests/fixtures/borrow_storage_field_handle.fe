@@ -7,7 +7,7 @@ struct CoinStore {
 fn borrow_storage_field_handle() -> u256
     uses (store: mut CoinStore)
 {
-    let p: mut u256 = mut store.alice
+    let p = mut store.alice
     p += 1
     store.alice
 }
@@ -15,7 +15,7 @@ fn borrow_storage_field_handle() -> u256
 pub fn main() -> u256
     uses (sto: mut RawStorage)
 {
-    let mut store: StorPtr<CoinStore> = sto.stor_ptr(0)
+    let mut store: StorPtr<CoinStore> = unsafe { sto.stor_ptr(0) }
     with (store) {
         borrow_storage_field_handle()
     }

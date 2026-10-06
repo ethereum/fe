@@ -1,5 +1,6 @@
 ---
-source: crates/hir/tests/ty_check.rs
+source: crates/hir/tests/frontend/ty_check.rs
+assertion_line: 46
 expression: res
 input_file: test_files/ty_check/associated_types_cycle.fe
 ---
@@ -50,7 +51,7 @@ note:
    ┌─ associated_types_cycle.fe:35:9
    │
 35 │         e.write_byte(self[0])
-   │         ^ mut SolEncoder
+   │         ^ SolEncoder
 
 note:
    ┌─ associated_types_cycle.fe:35:9
@@ -80,7 +81,7 @@ note:
    ┌─ associated_types_cycle.fe:36:9
    │
 36 │         e.write_byte(self[1])
-   │         ^ mut SolEncoder
+   │         ^ SolEncoder
 
 note:
    ┌─ associated_types_cycle.fe:36:9
@@ -110,7 +111,7 @@ note:
    ┌─ associated_types_cycle.fe:37:9
    │
 37 │         e.write_byte(self[2])
-   │         ^ mut SolEncoder
+   │         ^ SolEncoder
 
 note:
    ┌─ associated_types_cycle.fe:37:9
@@ -140,7 +141,7 @@ note:
    ┌─ associated_types_cycle.fe:38:9
    │
 38 │         e.write_byte(self[3])
-   │         ^ mut SolEncoder
+   │         ^ SolEncoder
 
 note:
    ┌─ associated_types_cycle.fe:38:9
@@ -303,7 +304,7 @@ note:
    ┌─ associated_types_cycle.fe:47:21
    │
 47 │     selector.encode(mut enc1)
-   │                     ^^^^^^^^ mut SolEncoder
+   │                     ^^^^^^^^ SolEncoder
 
 note:
    ┌─ associated_types_cycle.fe:47:25

@@ -260,8 +260,11 @@ pub struct AssocTypeGenericArg<'db> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
 pub enum FuncParamMode {
-    /// Default `x: T`: readable but cannot be moved-out.
+    /// Default `x: T` (or `x: ref T`): the caller's place is read-accessible
+    /// for the call.
     View,
+    /// `x: mut T`: the caller's place is exclusively accessible for the call.
+    Mut,
     /// `x: own T`: callee takes ownership of the argument.
     Own,
 }

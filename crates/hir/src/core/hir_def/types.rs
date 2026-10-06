@@ -16,6 +16,15 @@ impl<'db> TypeId<'db> {
         }
     }
 
+    /// The type under a parameter's outer mode: `T` for `mut T`, `ref T`
+    /// and `own T`.
+    pub fn without_mode(self, db: &'db dyn HirDb) -> Partial<Self> {
+        match self.data(db) {
+            TypeKind::Mode(_, inner) => *inner,
+            _ => Partial::Present(self),
+        }
+    }
+
     pub fn is_self_ty(self, db: &dyn HirDb) -> bool {
         match self.data(db) {
             TypeKind::Path(path) => {

@@ -358,14 +358,8 @@ fn f(a: Outer<u8>, b: Outer<u16>) {}
     db.assert_no_diags(top_mod);
 
     let func = find_func(&db, top_mod, "f");
-    let outer_u8 = func.arg_tys(&db)[0]
-        .instantiate_identity()
-        .as_view(&db)
-        .unwrap_or_else(|| panic!("expected view parameter"));
-    let outer_u16 = func.arg_tys(&db)[1]
-        .instantiate_identity()
-        .as_view(&db)
-        .unwrap_or_else(|| panic!("expected view parameter"));
+    let outer_u8 = func.arg_tys(&db)[0].instantiate_identity();
+    let outer_u16 = func.arg_tys(&db)[1].instantiate_identity();
     let inner_from_u8 = outer_u8.field_types(&db)[0];
     let inner_from_u16 = outer_u16.field_types(&db)[0];
 
@@ -408,14 +402,8 @@ fn f(a: Alias<u8>, b: Alias<u16>) {}
     db.assert_no_diags(top_mod);
 
     let func = find_func(&db, top_mod, "f");
-    let alias_u8 = func.arg_tys(&db)[0]
-        .instantiate_identity()
-        .as_view(&db)
-        .unwrap_or_else(|| panic!("expected view parameter"));
-    let alias_u16 = func.arg_tys(&db)[1]
-        .instantiate_identity()
-        .as_view(&db)
-        .unwrap_or_else(|| panic!("expected view parameter"));
+    let alias_u8 = func.arg_tys(&db)[0].instantiate_identity();
+    let alias_u16 = func.arg_tys(&db)[1].instantiate_identity();
     let inner_from_u8 = alias_u8.field_types(&db)[1];
     let inner_from_u16 = alias_u16.field_types(&db)[1];
 

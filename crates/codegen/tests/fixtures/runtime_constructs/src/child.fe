@@ -18,6 +18,6 @@ pub fn child_init() uses (evm: mut Evm) {
 #[contract_runtime(Child)]
 pub fn child_runtime() uses (evm: mut Evm) {
     let data = ptr::MemBuffer::alloc(32)
-    evm.mstore(addr: data.ptr(), value: 0xbeef)
+    unsafe { evm.mstore(addr: data.ptr(), value: 0xbeef) }
     evm.return_data(data: data.span())
 }

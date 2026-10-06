@@ -21,7 +21,7 @@ use crate::{
 pub(super) fn is_expr_atom_head(kind: SyntaxKind) -> bool {
     use SyntaxKind::*;
     match kind {
-        IfKw | MatchKw | LBrace | LParen | LBracket => true,
+        IfKw | MatchKw | UnsafeKw | LBrace | LParen | LBracket => true,
         kind if lit::is_lit(kind) => true,
         kind if path::is_path_segment(kind) => true,
         _ => false,
@@ -37,6 +37,7 @@ pub(super) fn parse_expr_atom<S: TokenStream>(
     match parser.current_kind() {
         Some(IfKw) => parser.parse_cp(IfExprScope::default(), None),
         Some(MatchKw) => parser.parse_cp(MatchExprScope::default(), None),
+        Some(UnsafeKw) => parser.parse_cp(UnsafeExprScope::default(), None),
         Some(SyntaxKind::Ident) => {
             // Contextual 'with': only treat as with-block when:
             // ident text is "with" AND we can parse a WithParamList AND next is '{'
@@ -102,10 +103,12 @@ impl super::Parse for BlockExprScope {
                 break;
             }
 
-            if parser
-                .current_kind()
-                .map(SyntaxKind::is_item_head)
-                .unwrap_or_default()
+            // `unsafe {` starts an `unsafe` block, not an `unsafe fn` item.
+            if parser.current_kind().is_some_and(SyntaxKind::is_item_head)
+                && !matches!(
+                    parser.peek_n_non_trivia(2).as_slice(),
+                    [SyntaxKind::UnsafeKw, SyntaxKind::LBrace]
+                )
             {
                 parser.parse(ItemScope::default())?;
                 continue;
@@ -182,6 +185,19 @@ impl super::Parse for WithExprScope {
         }
         parser.parse(BlockExprScope::default())?;
         Ok(())
+    }
+}
+
+define_scope! { UnsafeExprScope, UnsafeExpr }
+impl super::Parse for UnsafeExprScope {
+    type Error = Recovery<ErrProof>;
+
+    fn parse<S: TokenStream>(&mut self, parser: &mut Parser<S>) -> Result<(), Self::Error> {
+        parser.bump_expected(SyntaxKind::UnsafeKw);
+        if parser.current_kind() != Some(SyntaxKind::LBrace) {
+            return parser.error_and_recover("expected `{` after `unsafe`");
+        }
+        parser.parse(BlockExprScope::default())
     }
 }
 

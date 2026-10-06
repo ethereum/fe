@@ -20,7 +20,7 @@ impl AbiSize for MyError {
 }
 
 impl<A: Abi> Encode<A> for MyError {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         core::abi::store_word(ptr: ptr, value: self.to_int())
     }
 }
@@ -96,7 +96,7 @@ impl AbiSize for Inner {
 }
 
 impl<A: Abi> Encode<A> for Inner {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         core::abi::store_word(ptr: ptr, value: self.code)
     }
 }
@@ -112,7 +112,7 @@ impl AbiSize for Outer {
 }
 
 impl<A: Abi> Encode<A> for Outer {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         self.inner.encode(ptr)
         core::abi::store_word(ptr: ptr::offset_bytes(ptr, 32), value: self.extra)
     }

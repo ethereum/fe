@@ -442,7 +442,9 @@ fn normalized_value_place<'db>(
                     place.ty = data.ty;
                     place
                 }),
-                NStatementKind::Define { .. } | NStatementKind::Store { .. } => None,
+                NStatementKind::Define { .. }
+                | NStatementKind::Store { .. }
+                | NStatementKind::End { .. } => None,
             },
             NValueDefinition::EntryParam { .. } | NValueDefinition::BlockParam { .. } => None,
         }
@@ -482,7 +484,9 @@ pub(super) fn local_read_places_extractable_from_value(
                     place_root_local(body, place) != Some(local)
                         || place.path.iter().all(value_extractable_projection)
                 }
-                NStatementKind::Define { .. } | NStatementKind::Store { .. } => true,
+                NStatementKind::Define { .. }
+                | NStatementKind::Store { .. }
+                | NStatementKind::End { .. } => true,
             })
     })
 }

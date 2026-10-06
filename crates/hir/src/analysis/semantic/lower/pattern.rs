@@ -323,6 +323,11 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             scope,
             self.assumptions,
         );
+        // A by-value binding of an access's part reads through its carrier.
+        let src_ty = match src_ty.as_capability(self.db) {
+            Some((_, target)) if dst_ty.as_capability(self.db).is_none() => target,
+            _ => src_ty,
+        };
         debug_assert_eq!(
             src_ty,
             dst_ty,
@@ -365,8 +370,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 {
                     let dst = self.alloc_binding_local(local_binding);
                     let dst_ty = self.locals[dst.index()].ty;
-                    let by_borrow = self.typed_body.pat_binding_mode(binding.representative_pat)
-                        == Some(PatBindingMode::ByBorrow);
+                    let by_borrow = matches!(
+                        self.typed_body.pat_binding_mode(binding.representative_pat),
+                        Some(PatBindingMode::Access(_))
+                    );
                     let source_matches_dst = {
                         let scope = self.body.scope();
                         normalize_ty(self.db, value.carrier_ty.0, scope, self.assumptions)
@@ -562,7 +569,10 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             }
         }
 
-        if is_enum_switch && let Some(enum_ty) = enum_ty {
+        if is_enum_switch && enum_ty.is_some() {
+            // The switch reads the scrutinee's representation: a sum yield
+            // shape's payload is a carrier.
+            let enum_ty = self.projectable_place_ty(self.locals[occurrence.value.index()].ty);
             self.set_synthetic_terminator(
                 self.current,
                 STerminatorKind::MatchEnum {

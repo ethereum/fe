@@ -36,16 +36,18 @@ fn test_assert_macro_payload_layout() uses (evm: mut Evm) {
     // Build calldata containing only the ReverterMsg::Trigger selector.
     let selector_word = (0xaabbccdd as u256) << 224
     let ptr = ptr::alloc_bytes(4)
-    evm.mstore(addr: ptr, value: selector_word)
+    unsafe { evm.mstore(addr: ptr, value: selector_word) }
 
     let mut output = ptr::MemBuffer::empty()
-    let outcome = evm.raw_call(
-        addr: addr,
-        gas: 100000,
-        value: 0,
-        args: ptr::MemSpan::from_raw_parts(ptr, len: 4),
-        ret: mut output,
-    )
+    let outcome = unsafe {
+        evm.raw_call(
+            addr: addr,
+            gas: 100000,
+            value: 0,
+            args: ptr::MemSpan::from_raw_parts(ptr, len: 4),
+            ret: mut output,
+        )
+    }
     assert!(!outcome.success())
 
     // Solidity `Error(string)` for "boom":
@@ -55,11 +57,13 @@ fn test_assert_macro_payload_layout() uses (evm: mut Evm) {
     // (`offset || len || bytes`).
     let ret = copy_returndata()
     assert!(ret.len() == 100)
-    assert!(evm.mload(ret.ptr()) >> 224 == 0x08c379a0)
-    assert!(evm.mload(ptr::offset_bytes(ret.ptr(), 4)) == 0x20)
-    assert!(evm.mload(ptr::offset_bytes(ret.ptr(), 36)) == 4)
-    assert!(
-        evm.mload(ptr::offset_bytes(ret.ptr(), 68))
-            == 0x626f6f6d00000000000000000000000000000000000000000000000000000000,
-    )
+    unsafe { assert!(evm.mload(ret.ptr()) >> 224 == 0x08c379a0) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(ret.ptr(), 4)) == 0x20) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(ret.ptr(), 36)) == 4) }
+    unsafe {
+        assert!(
+            evm.mload(ptr::offset_bytes(ret.ptr(), 68))
+                == 0x626f6f6d00000000000000000000000000000000000000000000000000000000,
+        )
+    }
 }

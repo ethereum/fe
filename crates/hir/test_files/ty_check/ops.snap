@@ -1,5 +1,6 @@
 ---
-source: crates/hir/tests/ty_check.rs
+source: crates/hir/tests/frontend/ty_check.rs
+assertion_line: 46
 expression: res
 input_file: test_files/ty_check/ops.fe
 ---
@@ -257,7 +258,7 @@ note:
    ┌─ ops.fe:38:13
    │
 38 │             self = Ok::Yes
-   │             ^^^^ mut Ok
+   │             ^^^^ Ok
 
 note:
    ┌─ ops.fe:38:13

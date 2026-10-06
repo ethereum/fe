@@ -1940,7 +1940,7 @@ mod tests {
             "native_memzero.fe",
             r#"
 fn zero_buffer(ptr: *u8, len: u256) {
-    core::ptr::zero_bytes(ptr, len)
+    unsafe { core::ptr::zero_bytes(ptr, len) }
 }
 
 pub fn main(ptr: *u8, len: own u256) -> i32 {
@@ -1969,8 +1969,8 @@ pub fn main(ptr: *u8, len: own u256) -> i32 {
             "native_pointer_access.fe",
             r#"
 fn replace_byte(ptr: *u8, value: u8) -> u8 {
-    let previous = *ptr
-    *ptr = value
+    let previous = unsafe { *ptr }
+    unsafe { *ptr = value }
     previous
 }
 

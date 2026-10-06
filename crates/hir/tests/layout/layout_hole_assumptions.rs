@@ -273,8 +273,8 @@ pub contract C {
     );
     assert_eq!(field_ty, "Mutex<StorageMap<Address, u256, 0>>");
     assert_eq!(receiver_ty, "Mutex<StorageMap<Address, u256, 0>>");
-    assert_eq!(try_lock_ty, "Option<mut StorageMap<Address, u256, 0>>");
-    assert_eq!(balances_ty, "mut StorageMap<Address, u256, 0>");
+    assert_eq!(try_lock_ty, "Option<StorageMap<Address, u256, 0>>");
+    assert_eq!(balances_ty, "StorageMap<Address, u256, 0>");
 }
 
 #[test]
@@ -470,14 +470,14 @@ pub contract C {
     );
     assert_eq!(
         typed_body.expr_ty(&db, try_lock).pretty_print(&db).clone(),
-        "Option<mut StorageMap<Address, u256, 0>>"
+        "Option<StorageMap<Address, u256, 0>>"
     );
     assert_eq!(
         typed_body
             .pat_ty(&db, balances_pat)
             .pretty_print(&db)
             .to_string(),
-        "mut StorageMap<Address, u256, 0>"
+        "StorageMap<Address, u256, 0>"
     );
 }
 

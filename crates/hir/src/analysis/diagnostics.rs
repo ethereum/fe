@@ -75,42 +75,6 @@ fn pretty_print_ty_for_mismatch<'db>(db: &'db dyn SpannedHirAnalysisDb, ty: TyId
     }
 }
 
-/// Label and notes for a bound that is unsatisfied because a type in it is
-/// borrowed (the capability type `cap_ty`) and that would be satisfied if the
-/// type were owned. The borrowed type need not come from a passed value (it
-/// can be written in the bound or inferred from an expected type), so the
-/// label describes the type.
-///
-/// Default parameters (`x: T` without `own`) are borrowed read-only. That
-/// capability has no source syntax, so it is described in words rather than
-/// printed as a type. No impl is named, since the impl that applies to the
-/// owned value may differ from the one whose bound failed, and no edit is
-/// suggested, since the borrow may come from a projection or destructuring
-/// rather than from a binding the user can change to `own`.
-fn capability_bound_notes<'db>(
-    db: &'db dyn HirAnalysisDb,
-    cap_ty: TyId<'db>,
-) -> Option<(String, Vec<String>)> {
-    use crate::analysis::ty::ty_def::CapabilityKind;
-
-    let (kind, inner) = cap_ty.as_capability(db)?;
-    let inner_str = inner.pretty_print(db);
-    let held = match kind {
-        CapabilityKind::View => "is only borrowed here".to_string(),
-        CapabilityKind::Ref => format!("is borrowed here as `ref {inner_str}`"),
-        CapabilityKind::Mut => format!("is borrowed here as `mut {inner_str}`"),
-    };
-    let label = format!("`{inner_str}` {held}; the bound would be satisfied if it were owned");
-    let mut notes = Vec::new();
-    if kind == CapabilityKind::View {
-        notes.push(
-            "note: values reached through a parameter declared without `own` are borrowed, and a borrowed value cannot be used as an owned one unless its type is `Copy`"
-                .to_string(),
-        );
-    }
-    Some((label, notes))
-}
-
 fn pretty_print_ty_app_for_mismatch<'db>(
     db: &'db dyn SpannedHirAnalysisDb,
     ty: TyId<'db>,
@@ -319,15 +283,13 @@ fn format_method_param_ty<'db>(
         return ty;
     };
 
-    let mut rendered = String::new();
-    if param.is_mut(db) {
-        rendered.push_str("mut ");
-    }
-    if param.mode(db) == FuncParamMode::Own && !ty.starts_with("own ") {
-        rendered.push_str("own ");
-    }
-    rendered.push_str(&ty);
-    rendered
+    let mode = match param.mode(db) {
+        FuncParamMode::View => "",
+        FuncParamMode::Mut => "mut ",
+        FuncParamMode::Own if param.is_mut(db) => "mut own ",
+        FuncParamMode::Own => "own ",
+    };
+    format!("{mode}{ty}")
 }
 
 fn format_call_constraint_source<'db>(
@@ -1675,6 +1637,14 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
     fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let error_code = GlobalErrorCode::new(DiagnosticPass::TypeDefinition, self.local_code());
         match self {
+            Self::ModeNotType(span) => primary_diag(
+                Severity::Error,
+                "`ref` and `mut` are not types",
+                "modes are only allowed on parameters and in projection returns",
+                span.resolve(db),
+                error_code,
+            ),
+
             Self::ExpectedStarKind(span) => {
                 // find expected ty name, num of generic args, etc
                 primary_diag(
@@ -2422,22 +2392,13 @@ impl DiagnosticVoucher for TyLowerDiag<'_> {
                 }
             }
 
-            Self::OwnParamCannotBeBorrow { span, ty } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "invalid `own` parameter".to_string(),
-                sub_diagnostics: vec![SubDiagnostic {
-                    style: LabelStyle::Primary,
-                    message: format!(
-                        "`own` parameters must have owned types (found `{}`)",
-                        ty.pretty_print(db)
-                    ),
-                    span: span.resolve(db),
-                }],
-                notes: vec![
-                    "remove `own`, or change the parameter type to an owned type".to_string(),
-                ],
+            Self::RefSelfType { span } => primary_diag(
+                Severity::Error,
+                "`self: ref Self` is not a receiver",
+                "write `self` for a view receiver",
+                span.resolve(db),
                 error_code,
-            },
+            ),
 
             Self::InvalidMutParamPrefixWithoutOwnType { span } => CompleteDiagnostic {
                 severity: Severity::Error,
@@ -3409,37 +3370,6 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     error_code,
                 }
             }
-            Self::IncompatibleBorrowProviders {
-                primary,
-                previous,
-                previous_provider,
-                current_provider,
-            } => CompleteDiagnostic {
-                severity: Severity::Error,
-                message: "incompatible borrow providers".to_string(),
-                sub_diagnostics: vec![
-                    SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: format!(
-                            "this borrow is {}-backed",
-                            current_provider.pretty()
-                        ),
-                        span: primary.resolve(db),
-                    },
-                    SubDiagnostic {
-                        style: LabelStyle::Secondary,
-                        message: format!(
-                            "the previous value here is {}-backed",
-                            previous_provider.pretty()
-                        ),
-                        span: previous.resolve(db),
-                    },
-                ],
-                notes: vec![
-                    "Fe cannot assign or join `mut`/`ref` values backed by different providers into one value".to_string(),
-                ],
-                error_code,
-            },
             Self::TypeMustBeKnown(span) => primary_diag(
                 Severity::Error,
                 "type must be known",
@@ -3801,22 +3731,36 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 }
             }
 
-            Self::OwnParamCannotBeBorrow { primary, ty } => CompleteDiagnostic {
+            Self::AccessNotValue { primary } => CompleteDiagnostic {
                 severity: Severity::Error,
-                message: "invalid `own` parameter".to_string(),
+                message: "an access is not a value".to_string(),
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
-                    message: format!(
-                        "`own` parameters must have owned types (found `{}`)",
-                        ty.pretty_print(db)
-                    ),
+                    message: "this access is used as a value".to_string(),
                     span: primary.resolve(db),
                 }],
                 notes: vec![
-                    "remove `own`, or change the parameter type to an owned type".to_string(),
+                    "bind an access with `let`, pass it to a `mut` or view parameter, or yield it from a projection"
+                        .to_string(),
                 ],
                 error_code,
             },
+
+            Self::InvalidYield { primary, shape } => primary_diag(
+                Severity::Error,
+                "invalid yield",
+                format!("this does not yield `{shape}`"),
+                primary.resolve(db),
+                error_code,
+            ),
+
+            Self::ShapeNotDestructured { primary } => primary_diag(
+                Severity::Error,
+                "a projection's yield shape must be destructured",
+                "bind the shape's components with a tuple or variant pattern",
+                primary.resolve(db),
+                error_code,
+            ),
 
             Self::MutableBindingCannotBeCapability { primary, ty } => CompleteDiagnostic {
                 severity: Severity::Error,
@@ -3824,47 +3768,16 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                 sub_diagnostics: vec![SubDiagnostic {
                     style: LabelStyle::Primary,
                     message: format!(
-                        "`let mut` local bindings must be owned values (found `{}`)",
+                        "`let mut` binds an owned value, but this is an access to `{}`",
                         ty.pretty_print(db)
                     ),
                     span: primary.resolve(db),
                 }],
                 notes: vec![
-                    "remove `mut` from the local binding to keep a handle".to_string(),
-                    "or bind an owned value instead (for non-`Copy` values, use an explicit `.clone()`)".to_string(),
+                    "remove `mut`: writes through a `mut` access already reach its place".to_string(),
                 ],
                 error_code,
             },
-
-            Self::OwnArgMustBeOwnedMove {
-                primary,
-                kind,
-                given,
-            } => {
-                let kind = match kind {
-                    crate::analysis::ty::ty_def::CapabilityKind::Mut => "mut",
-                    crate::analysis::ty::ty_def::CapabilityKind::Ref => "ref",
-                    crate::analysis::ty::ty_def::CapabilityKind::View => "view",
-                };
-
-                CompleteDiagnostic {
-                    severity: Severity::Error,
-                    message: "`own` argument requires an owned movable value".to_string(),
-                    sub_diagnostics: vec![SubDiagnostic {
-                        style: LabelStyle::Primary,
-                        message: format!(
-                            "this expression has `{kind} {}` capability and cannot be moved as owned here",
-                            given.pretty_print(db)
-                        ),
-                        span: primary.resolve(db),
-                    }],
-                    notes: vec![
-                        "pass an owned place value, or change the callee parameter mode to borrow/view"
-                            .to_string(),
-                    ],
-                    error_code,
-                }
-            }
 
             Self::ArrayRepeatRequiresCopy { primary, ty } => CompleteDiagnostic {
                 severity: Severity::Error,
@@ -4859,6 +4772,48 @@ impl DiagnosticVoucher for BodyDiag<'_> {
                     error_code,
                 )
             }
+
+            BodyDiag::UnsafeDerefRequiresUnsafe { primary } => primary_diag(
+                severity,
+                "dereference of raw pointer requires an `unsafe` block or function",
+                "dereference of raw pointer",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            BodyDiag::UnsafeProviderRequiresUnsafe { primary } => primary_diag(
+                severity,
+                "binding a raw-pointer effect provider requires an `unsafe` block or function",
+                "provider reaches its target through a raw pointer",
+                primary.resolve(db),
+                error_code,
+            ),
+
+            BodyDiag::UnsafeCallRequiresUnsafe { primary, callee } => {
+                let name = callee
+                    .name(db)
+                    .map_or("<unknown>", |n| n.data(db).as_str());
+                CompleteDiagnostic::new(
+                    severity,
+                    format!(
+                        "call to unsafe function `{name}` requires an `unsafe` block or function"
+                    ),
+                    vec![
+                        SubDiagnostic::new(
+                            LabelStyle::Primary,
+                            "call to unsafe function".to_string(),
+                            primary.resolve(db),
+                        ),
+                        SubDiagnostic::new(
+                            LabelStyle::Secondary,
+                            "callee defined here".to_string(),
+                            callee.name_span().resolve(db),
+                        ),
+                    ],
+                    vec![],
+                    error_code,
+                )
+            }
         }
     }
 }
@@ -5000,7 +4955,6 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                 primary_goal,
                 unsat_subgoal,
                 required_by,
-                capability_hint,
             } => {
                 let msg = format!(
                     "`{}` doesn't implement `{}`",
@@ -5020,14 +4974,6 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     is_scope_visible_from(db, unsat.def(db).scope(), from_scope)
                 });
 
-                // A bound that fails only because the value is borrowed gets
-                // an explanation instead of the generic sub-goal line, which
-                // would print the borrowed value's type as if it were owned
-                // (e.g. "`T: AsBytes` is not satisfied" although it is). It
-                // names no trait, so it needs no visibility filter.
-                let capability =
-                    capability_hint.and_then(|cap_ty| capability_bound_notes(db, cap_ty));
-
                 let unsat_subgoal = visible_unsat.map(|unsat| {
                     format!(
                         "trait bound `{}` is not satisfied",
@@ -5041,11 +4987,7 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     span: span.resolve(db),
                 }];
 
-                let subgoal_label = match &capability {
-                    Some((label, _)) => Some(label.clone()),
-                    None => unsat_subgoal,
-                };
-                if let Some(subgoal) = subgoal_label {
+                if let Some(subgoal) = unsat_subgoal {
                     sub_diagnostics.push(SubDiagnostic {
                         style: LabelStyle::Secondary,
                         message: subgoal,
@@ -5061,13 +5003,11 @@ impl DiagnosticVoucher for TraitConstraintDiag<'_> {
                     });
                 }
 
-                let notes = capability.map(|(_, notes)| notes).unwrap_or_default();
-
                 CompleteDiagnostic {
                     severity,
                     message: "trait bound is not satisfied".to_string(),
                     sub_diagnostics,
-                    notes,
+                    notes: Vec::new(),
                     error_code,
                 }
             }
@@ -5301,6 +5241,13 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                 impl_ty,
             } => {
                 let method_name = impl_m.name(db).expect("methods have names").data(db);
+                // A projection's return is its shape.
+                let render = |callable: &CallableDef, ty: &TyId| {
+                    callable.ret_shape(db).map_or_else(
+                        || ty.pretty_print(db).to_string(),
+                        |shape| shape.skip_binder().pretty_print(db),
+                    )
+                };
 
                 CompleteDiagnostic {
                     severity,
@@ -5310,8 +5257,8 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                             style: LabelStyle::Primary,
                             message: format!(
                                 "expected `{}`, found `{}`",
-                                trait_ty.pretty_print(db),
-                                impl_ty.pretty_print(db),
+                                render(trait_m, trait_ty),
+                                render(impl_m, impl_ty),
                             ),
                             span: impl_m.name_span().resolve(db),
                         },
@@ -5355,6 +5302,36 @@ impl DiagnosticVoucher for ImplDiag<'_> {
                         SubDiagnostic {
                             style: LabelStyle::Secondary,
                             message: "trait requires these effects".to_string(),
+                            span: trait_m.name_span().resolve(db),
+                        },
+                    ],
+                    notes: vec![],
+                    error_code,
+                }
+            }
+
+            Self::MethodUnsafeMismatch { trait_m, impl_m } => {
+                let (impl_label, trait_label) = if matches!(trait_m, CallableDef::Func(func) if func.is_unsafe(db))
+                {
+                    ("this method is not `unsafe`", "trait method is `unsafe`")
+                } else {
+                    ("this method is `unsafe`", "trait method is not `unsafe`")
+                };
+                CompleteDiagnostic {
+                    severity,
+                    message: format!(
+                        "method `{}` must match the unsafety of the trait method",
+                        impl_m.name(db).expect("methods have names").data(db),
+                    ),
+                    sub_diagnostics: vec![
+                        SubDiagnostic {
+                            style: LabelStyle::Primary,
+                            message: impl_label.to_string(),
+                            span: impl_m.name_span().resolve(db),
+                        },
+                        SubDiagnostic {
+                            style: LabelStyle::Secondary,
+                            message: trait_label.to_string(),
                             span: trait_m.name_span().resolve(db),
                         },
                     ],

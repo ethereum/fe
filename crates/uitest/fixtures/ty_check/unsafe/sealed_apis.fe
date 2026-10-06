@@ -1,0 +1,36 @@
+use core::abi::Encode
+use std::abi::Sol
+use core::ptr::{self, MemSlice}
+use std::evm::{Evm, RawMem}
+
+pub fn copy_bytes(dest: *u8, source: *u8) {
+    ptr::copy_raw(dest, source, 32)
+}
+
+pub fn forge_slice(p: *u256) -> MemSlice<u256> {
+    MemSlice::from_raw_parts(ptr: p, len: 4)
+}
+
+pub fn store_through_effect(p: *u8) uses (mem: mut RawMem) {
+    mem.mstore(addr: p, value: 1)
+}
+
+pub fn store_through_evm(evm: mut Evm, p: *u8) {
+    evm.mstore(addr: p, value: 1)
+}
+
+pub fn encode_value<T: Encode<Sol>>(value: own T, p: *u8) {
+    value.encode(p)
+}
+
+pub fn uninit() -> u256 {
+    let array = ptr::alloc_array<u256>(1)
+    array[0]
+}
+
+pub fn sealed_inside_unsafe(dest: *u8, source: *u8) uses (mem: mut RawMem) {
+    unsafe {
+        ptr::copy_raw(dest, source, 32)
+        mem.mstore(addr: dest, value: 1)
+    }
+}

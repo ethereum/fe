@@ -51,14 +51,6 @@ error[8-0018]: left-hand side of assignment is immutable
    │     ^ immutable assignment
 
 error[8-0018]: left-hand side of assignment is immutable
-   ┌─ assign.fe:44:13
-   │
-43 │         Some(mut t) => {
-   │              ----- try changing to `mut t`
-44 │             t = 1
-   │             ^ immutable assignment
-
-error[8-0018]: left-hand side of assignment is immutable
    ┌─ assign.fe:51:13
    │
 50 │         Some(x) => {

@@ -79,9 +79,11 @@ pub fn dyn_array_from<T, const N: usize>(_ values: [T; N]) -> DynArray<T>
 {
     let size = 32 + values.payload_size()
     let data = ptr::alloc_bytes(size)
-    store_word(ptr: data, value: N as u256)
-    values.encode(ptr::offset_bytes(data, 32))
-    DynArray::from_abi_tail(data, len: N as u256, size)
+    unsafe {
+        store_word(ptr: data, value: N as u256)
+        values.encode(ptr::offset_bytes(data, 32))
+        DynArray::from_abi_tail(data, len: N as u256, size)
+    }
 }
 
 /// A canonically encoded copy of `values`.
@@ -99,26 +101,30 @@ pub fn canonical_dyn_array<T>(_ values: DynArray<T>) -> DynArray<T>
         // word is written, however long the array.
         if head == 0 {
             let data = ptr::alloc_bytes(32)
-            store_word(ptr: data, value: count)
-            return DynArray::from_abi_tail(data, len: count, size: 32)
+            return unsafe {
+                store_word(ptr: data, value: count)
+                DynArray::from_abi_tail(data, len: count, size: 32)
+            }
         }
         // The size is known up front, so each element is decoded once and
         // re-encoded in place.
         let size = 32 + count * head
         let data = ptr::alloc_bytes(size)
-        store_word(ptr: data, value: count)
-        let mut i: u256 = 0
-        while i < count {
-            values.get(i).encode(ptr::offset_bytes(data, 32 + i * head))
-            i += 1
+        return unsafe {
+            store_word(ptr: data, value: count)
+            let mut i: u256 = 0
+            while i < count {
+                values.get(i).encode(ptr::offset_bytes(data, 32 + i * head))
+                i += 1
+            }
+            DynArray::from_abi_tail(data, len: count, size)
         }
-        return DynArray::from_abi_tail(data, len: count, size)
     }
 
     // Dynamic elements: the canonical size is only known after decoding.
     // Encode each element's tail once while sizing and copy the tails into
     // place afterwards, instead of decoding every element a second time.
-    let tails = ptr::alloc_array<MemSpan>(count)
+    let mut tails = unsafe { ptr::alloc_array<MemSpan>(count) }
     let mut size: u256 = 0
     let mut i: u256 = 0
     while i < count {
@@ -165,7 +171,7 @@ impl<T> MemVec<T>
         assert_static_layout<T>()
         let total = len * T::HEAD_SIZE
         let ptr = ptr::alloc_bytes(total)
-        ptr::zero_bytes(ptr, total)
+        unsafe { ptr::zero_bytes(ptr, total) }
         MemVec { ptr, len }
     }
 
@@ -176,7 +182,7 @@ impl<T> MemVec<T>
         assert_static_layout<T>()
         let total = source.len() * T::HEAD_SIZE
         let ptr = ptr::alloc_bytes(total)
-        ptr::copy(ptr, source.encoded_span().slice(offset: 32, len: total))
+        unsafe { ptr::copy(ptr, source.encoded_span().slice(offset: 32, len: total)) }
         MemVec { ptr, len: source.len() }
     }
 
@@ -200,7 +206,7 @@ impl<T> MemVec<T>
             revert_error(Panic::from(PANIC_INDEX_OUT_OF_BOUNDS))
         }
 
-        let input = MemSpan::from_raw_parts(ptr: self.ptr, len: self.len * T::HEAD_SIZE)
+        let input = unsafe { MemSpan::from_raw_parts(ptr: self.ptr, len: self.len * T::HEAD_SIZE) }
         T::decode_from(input, index * T::HEAD_SIZE)
     }
 
@@ -212,7 +218,7 @@ impl<T> MemVec<T>
         }
 
         let at = ptr::offset_bytes(self.ptr, index * T::HEAD_SIZE)
-        value.encode(at)
+        unsafe { value.encode(at) }
     }
 
     /// Freeze into an ABI-encodable `DynArray`.
@@ -223,12 +229,14 @@ impl<T> MemVec<T>
         let payload = self.len * T::HEAD_SIZE
         let size = 32 + payload
         let data = ptr::alloc_bytes(size)
-        store_word(ptr: data, value: self.len)
-        ptr::copy(
-            ptr::offset_bytes(data, 32),
-            MemSpan::from_raw_parts(ptr: self.ptr, len: payload),
-        )
-        DynArray::from_abi_tail(data: data, len: self.len, size: size)
+        unsafe {
+            store_word(ptr: data, value: self.len)
+            ptr::copy(
+                ptr::offset_bytes(data, 32),
+                MemSpan::from_raw_parts(ptr: self.ptr, len: payload),
+            )
+            DynArray::from_abi_tail(data: data, len: self.len, size: size)
+        }
     }
 }
 
@@ -285,7 +293,7 @@ impl<T> DynVec<T>
         let parts = ptr::cast<u8, MemSpan>(ptr::alloc_bytes(len * size_of<MemSpan>()))
         let mut i: u256 = 0
         while i < len {
-            *ptr::offset(parts, i) = part
+            unsafe { *ptr::offset(parts, i) = part }
             i += 1
         }
         DynVec { parts, capacity: len, len, parts_size: len * part.len() }
@@ -305,16 +313,18 @@ impl<T> DynVec<T>
         if self.len == self.capacity {
             let capacity = if self.capacity == 0 { 4 } else { self.capacity * 2 }
             let parts = ptr::cast<u8, MemSpan>(ptr::alloc_bytes(capacity * size_of<MemSpan>()))
-            ptr::copy_raw(
-                ptr::byte_ptr(parts),
-                source: ptr::byte_ptr(self.parts),
-                len: self.len * size_of<MemSpan>(),
-            )
+            unsafe {
+                ptr::copy_raw(
+                    ptr::byte_ptr(parts),
+                    source: ptr::byte_ptr(self.parts),
+                    len: self.len * size_of<MemSpan>(),
+                )
+            }
             self.parts = parts
             self.capacity = capacity
         }
         let part = encode_alloc<Sol, T>(value).span()
-        *ptr::offset(self.parts, self.len) = part
+        unsafe { *ptr::offset(self.parts, self.len) = part }
         self.parts_size += part.len()
         self.len += 1
     }
@@ -328,8 +338,8 @@ impl<T> DynVec<T>
 
         let part = encode_alloc<Sol, T>(value).span()
         let slot = ptr::offset(self.parts, index)
-        self.parts_size = self.parts_size - (*slot).len() + part.len()
-        *slot = part
+        self.parts_size = self.parts_size - unsafe { (*slot).len() } + part.len()
+        unsafe { *slot = part }
     }
 
     /// Assemble the elements into an ABI-encodable `DynArray`.
@@ -350,18 +360,18 @@ fn assemble_dyn_array<T>(_ parts: *MemSpan, count: u256, parts_size: u256) -> Dy
     let head = if T::IS_DYNAMIC { 32 } else { 0 }
     let size = 32 + count * head + parts_size
     let data = ptr::alloc_bytes(size)
-    store_word(ptr: data, value: count)
+    unsafe { store_word(ptr: data, value: count) }
     let root = ptr::offset_bytes(data, 32)
     let mut tail = count * head
     let mut i: u256 = 0
     while i < count {
-        let part = *ptr::offset(parts, i)
+        let part = unsafe { *ptr::offset(parts, i) }
         if T::IS_DYNAMIC {
-            store_word(ptr: ptr::offset_bytes(root, i * 32), value: tail)
+            unsafe { store_word(ptr: ptr::offset_bytes(root, i * 32), value: tail) }
         }
-        ptr::copy(ptr::offset_bytes(root, tail), part)
+        unsafe { ptr::copy(ptr::offset_bytes(root, tail), part) }
         tail += part.len()
         i += 1
     }
-    DynArray::from_abi_tail(data, len: count, size)
+    unsafe { DynArray::from_abi_tail(data, len: count, size) }
 }

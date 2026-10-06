@@ -18,7 +18,7 @@ fn pick(_ env: Env, _ which: u256) -> u256 {
 
 #[inline(never)]
 fn prepare(_ which: u256) -> u256 uses (evm: mut Evm) {
-    evm.sstore(slot: 1, value: 77)
+    unsafe { evm.sstore(slot: 1, value: 77) }
     which
 }
 
@@ -75,7 +75,7 @@ pub contract Snapshot {
             pick(copied, 1)
         }
         ReadCalldata { .. } -> u256 uses (evm: Evm) {
-            let data = evm.calldata_ptr<[u256; 3]>(4)
+            let data = unsafe { evm.calldata_ptr<[u256; 3]>(4) }
             with (data) { read_words() }
         }
     }

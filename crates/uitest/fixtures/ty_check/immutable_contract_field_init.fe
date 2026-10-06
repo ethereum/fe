@@ -76,7 +76,7 @@ fn init_arg(_ x: mut u256, v: u256) {
 }
 
 fn init_arg_forward(_ x: mut u256, v: u256) {
-    init_arg(x, v: v)
+    init_arg(mut x, v: v)
 }
 
 contract InitViaEffectHelper {

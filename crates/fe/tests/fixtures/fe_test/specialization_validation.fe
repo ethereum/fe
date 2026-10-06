@@ -15,8 +15,8 @@ struct DefaultStep {}
 impl Step for DefaultStep {}
 
 fn twice<T: Step>(value: mut u256) {
-    T::step(value)
-    T::step(value)
+    T::step(mut value)
+    T::step(mut value)
 }
 
 #[test]

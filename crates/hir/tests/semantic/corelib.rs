@@ -3,7 +3,6 @@ use common::indexmap::IndexMap;
 use common::stdlib::{HasBuiltinCore, HasBuiltinStd};
 use driver::{DriverDataBase, db::DiagnosticsCollection};
 use fe_hir::Ingot;
-use fe_hir::analysis::ty::ty_check::ReturnProvenance;
 use fe_hir::analysis::ty::{
     corelib::{resolve_core_trait, resolve_lib_func_path, resolve_lib_type_path},
     trait_resolution::{GoalSatisfiability, TraitSolveCx, is_goal_satisfiable},
@@ -160,7 +159,7 @@ use core::{abi::Encode, ptr}
 use std::abi::Sol
 
 pub fn root(values: [bool; 5]) {
-    values.encode(ptr::alloc_bytes(160))
+    unsafe { values.encode(ptr::alloc_bytes(160)) }
 }
 "#;
 
@@ -744,23 +743,4 @@ pub fn selector() -> u32 {
     );
     let (top_mod, _) = db.top_mod(file);
     db.assert_no_diags(top_mod);
-}
-
-#[test]
-fn implicit_ref_load_returns_are_not_treated_as_forwarded_params() {
-    let mut db = HirAnalysisTestDb::default();
-    let file = db.new_stand_alone(
-        "implicit_ref_load_returns_are_not_treated_as_forwarded_params.fe".into(),
-        r#"fn read_balance(x: ref u256) -> u256 {
-    x
-}"#,
-    );
-    let (top_mod, _) = db.top_mod(file);
-    let funcs = top_mod.all_funcs(&db);
-    let [func] = funcs.as_slice() else {
-        panic!("expected exactly one function");
-    };
-
-    let typed_body = check_func_body(&db, *func).1.clone();
-    assert_eq!(typed_body.return_provenance(&db), ReturnProvenance::Fresh);
 }

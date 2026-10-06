@@ -1,5 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
+assertion_line: 431
 expression: output
 input_file: crates/codegen/tests/fixtures/tstor_ptr_contract.fe
 ---
@@ -487,45 +488,21 @@ func private %ptr_offset(v0.i256, v1.i256) -> i256 {
 
 func private %return_bytes(v0.objref<@layout_5>) {
     block0:
-        v1.objref<@layout_5> = obj.alloc @layout_5;
         jump block1;
 
     block1:
-        v3.@layout_5 = obj.load v0;
-        v5.objref<i256> = obj.proj v1 0.i256;
-        v6.i256 = extract_value v3 0.i256;
-        obj.store v5 v6;
-        v8.objref<i256> = obj.proj v1 1.i256;
-        v9.i256 = extract_value v3 1.i256;
-        obj.store v8 v9;
-        call %return_data v1;
+        call %return_data v0;
         unreachable;
 }
 
 func private %return_data(v0.objref<@layout_5>) {
     block0:
-        v1.objref<@layout_5> = obj.alloc @layout_5;
-        v2.objref<@layout_5> = obj.alloc @layout_5;
         jump block1;
 
     block1:
-        v4.@layout_5 = obj.load v0;
-        v6.objref<i256> = obj.proj v1 0.i256;
-        v7.i256 = extract_value v4 0.i256;
-        obj.store v6 v7;
-        v9.objref<i256> = obj.proj v1 1.i256;
-        v10.i256 = extract_value v4 1.i256;
-        obj.store v9 v10;
-        v11.i256 = call %ptr__g79ff v1;
-        v12.@layout_5 = obj.load v0;
-        v13.objref<i256> = obj.proj v2 0.i256;
-        v14.i256 = extract_value v12 0.i256;
-        obj.store v13 v14;
-        v15.objref<i256> = obj.proj v2 1.i256;
-        v16.i256 = extract_value v12 1.i256;
-        obj.store v15 v16;
-        v17.i256 = call %len__g79ff v2;
-        evm_return v11 v17;
+        v2.i256 = call %ptr__g79ff v0;
+        v3.i256 = call %len__g79ff v0;
+        evm_return v2 v3;
 }
 
 func private %return_value(v0.i1) {

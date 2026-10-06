@@ -68,10 +68,10 @@ fn build_bytes() -> Bytes
 uses (mem: mut std::evm::RawMem)
 {
     let data = ptr::alloc_bytes(96)
-    mem.mstore(addr: data, value: 64)
-    mem.mstore(addr: ptr::offset_bytes(data, 32), value: 0x1234)
-    mem.mstore(addr: ptr::offset_bytes(data, 64), value: 0x5678)
-    Bytes::from_abi_tail(data: data, len: 64, size: 96)
+    unsafe { mem.mstore(addr: data, value: 64) }
+    unsafe { mem.mstore(addr: ptr::offset_bytes(data, 32), value: 0x1234) }
+    unsafe { mem.mstore(addr: ptr::offset_bytes(data, 64), value: 0x5678) }
+    unsafe { Bytes::from_abi_tail(data: data, len: 64, size: 96) }
 }
 
 #[test]

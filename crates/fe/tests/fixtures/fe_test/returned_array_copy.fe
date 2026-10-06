@@ -52,7 +52,7 @@ fn write_byte(_ values: mut [u8; 1]) {
 fn returned_array_mut_borrow_still_writes_through() {
     let mut original = returned_bytes([128])
     let borrowed = mut original
-    write_byte(borrowed)
+    write_byte(mut borrowed)
     assert!(original[0] == 7)
 }
 

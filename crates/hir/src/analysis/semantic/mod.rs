@@ -1,4 +1,4 @@
-pub mod borrowck;
+pub mod access;
 pub mod capability;
 pub mod consts;
 pub mod ctfe;
@@ -11,7 +11,7 @@ pub mod lower;
 pub mod normalized;
 mod verify;
 
-pub use borrowck::*;
+pub use access::*;
 pub use consts::*;
 pub use ctfe::*;
 pub use definite_assignment::contract_init_assigned_fields;
@@ -19,7 +19,7 @@ pub use diagnostics::{
     BlockedSemanticBody, SemanticDiagnostic, SemanticDiagnosticId, SemanticDiagnosticKind,
     SemanticDiagnosticLabel, SemanticDiagnosticSpan, SemanticNormalizationFailure,
 };
-pub(crate) use instance::CallSiteProviderRefinement;
+pub(crate) use instance::{CallSiteProviderRefinement, RefinedInput};
 pub use instance::{
     EffectProviderSubst, GenericSubst, ImplEnv, InstantiatedEffectEnv, RootSemanticInstanceError,
     SemanticEffectEnvInstantiationError, SemanticInstance, SemanticInstanceKey, TypedBodyTemplate,

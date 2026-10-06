@@ -25,20 +25,26 @@ fn deploy(_ runtime: u256, _ length: u256, _ salt: u256) -> Address
 uses (create: mut Create)
 {
     let p = ptr::alloc_bytes(64)
-    core::abi::store_word(
-        ptr: p,
-        value: (0x6000600c60003960006000f3 as u256) << 160 | length << 240 | length << 184,
-    )
-    core::abi::store_word(
-        ptr: ptr::offset_bytes(p, 12),
-        value: runtime << (256 - length * 8),
-    )
-    let target = create
-        .create2_raw(
-            value: 0,
-            init_code: ptr::MemSpan::from_raw_parts(ptr: p, len: 12 + length),
-            salt,
+    unsafe {
+        core::abi::store_word(
+            ptr: p,
+            value: (0x6000600c60003960006000f3 as u256) << 160 | length << 240 | length << 184,
         )
+    }
+    unsafe {
+        core::abi::store_word(
+            ptr: ptr::offset_bytes(p, 12),
+            value: runtime << (256 - length * 8),
+        )
+    }
+    let target = unsafe {
+        create
+            .create2_raw(
+                value: 0,
+                init_code: ptr::MemSpan::from_raw_parts(ptr: p, len: 12 + length),
+                salt,
+            )
+    }
     assert!(target != Address::zero())
     target
 }
@@ -63,7 +69,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps, ctx: Ctx)
         Result::Ok(outcome,) => {
             assert!(outcome.success() && outcome.returndata_len() == 32)
             raw.returndatacopy(dest: mut output, dest_offset: 0, src_offset: 0, len: 32)
-            assert!(raw.mload(output.ptr()) == 49998)
+            unsafe { assert!(raw.mload(output.ptr()) == 49998) }
             assert!(ctx.gas() > 20000)
         },
     }
@@ -185,7 +191,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps, ctx: Ctx)
         Result::Ok(outcome,) => {
             assert!(outcome.success())
             raw.returndatacopy(dest: mut output, dest_offset: 0, src_offset: 0, len: 32)
-            assert!(raw.mload(output.ptr()) == 52298)
+            unsafe { assert!(raw.mload(output.ptr()) == 52298) }
             assert!(ctx.balance(target) == 7)
         },
     }
@@ -198,7 +204,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps)
     // CALLDATALOAD(0); MSTORE(0); REVERT(0,32).
     let target = deploy(0x5f355f5260205ffd, 8, 0)
     let input = ptr::MemBuffer::alloc(4096)
-    core::abi::store_word(ptr: input.ptr(), value: 0xdeadbeef)
+    unsafe { core::abi::store_word(ptr: input.ptr(), value: 0xdeadbeef) }
     let mut output = ptr::MemBuffer::alloc(32)
     match call.call_with_min_gas(
         addr: target,
@@ -211,7 +217,7 @@ uses (call: mut Call, create: mut Create, raw: mut RawOps)
         Result::Ok(outcome,) => {
             assert!(!outcome.success() && outcome.returndata_len() == 32)
             raw.returndatacopy(dest: mut output, dest_offset: 0, src_offset: 0, len: 32)
-            assert!(raw.mload(output.ptr()) == 0xdeadbeef)
+            unsafe { assert!(raw.mload(output.ptr()) == 0xdeadbeef) }
         },
     }
 }

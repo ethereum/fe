@@ -418,7 +418,7 @@ impl<A: Abi, const N: usize> Decode<A> for FixedBytes<N> {
 }
 
 impl<A: Abi, const N: usize> Encode<A> for FixedBytes<N> {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         store_word(ptr: ptr, value: self.word())
     }
 }

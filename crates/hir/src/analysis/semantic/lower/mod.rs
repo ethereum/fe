@@ -1,5 +1,6 @@
 mod body;
 mod effects;
+mod elaborate;
 mod local_facts;
 mod pattern;
 mod place;

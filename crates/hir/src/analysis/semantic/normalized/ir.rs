@@ -5,9 +5,9 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::{
-            BorrowActivation, CallSiteId, FieldIndex, Mutability, SConst, SStmtId, SemConstScalar,
-            SemConstValue, SemOrigin, SemanticCalleeRef, SemanticCodeRegionRef,
-            SemanticCodeRegionTarget, SemanticInstance, VariantIndex,
+            CallSiteId, FieldIndex, Mutability, SConst, SStmtId, SemConstScalar, SemConstValue,
+            SemOrigin, SemanticCalleeRef, SemanticCodeRegionRef, SemanticCodeRegionTarget,
+            SemanticInstance, VariantIndex,
             capability::handle::{HandleAddressSpace, OpaqueHandleContract},
         },
         ty::{
@@ -67,7 +67,7 @@ impl<'db> NormalizedBody<'db> {
         };
         match &self.block(block)?.statements.get(statement as usize)?.kind {
             NStatementKind::Define { expr, .. } => Some((block, expr)),
-            NStatementKind::Store { .. } => None,
+            NStatementKind::Store { .. } | NStatementKind::End { .. } => None,
         }
     }
 
@@ -143,6 +143,7 @@ impl<'db> NormalizedBody<'db> {
                     NStatementKind::Store { destination, value } => {
                         value.value == target || place_uses_target(destination)
                     }
+                    NStatementKind::End { access } => *access == target,
                 };
                 if used {
                     return true;
@@ -151,7 +152,9 @@ impl<'db> NormalizedBody<'db> {
             let direct_use = match &block.terminator.kind {
                 NTerminatorKind::Branch { cond, .. } => cond.value == target,
                 NTerminatorKind::MatchEnum { value, .. } => value.value == target,
-                NTerminatorKind::Return(Some(value)) => value.value == target,
+                NTerminatorKind::Return(Some(value)) | NTerminatorKind::Yield { value, .. } => {
+                    value.value == target
+                }
                 NTerminatorKind::Goto(_)
                 | NTerminatorKind::Assert { .. }
                 | NTerminatorKind::Return(None) => false,
@@ -354,7 +357,6 @@ pub enum NExpr<'db> {
     Borrow {
         place: NPlace<'db>,
         kind: BorrowKind,
-        activation: BorrowActivation<'db>,
         provider: Option<ProviderAddressSpace>,
     },
     MakeView {
@@ -562,6 +564,11 @@ pub enum NStatementKind<'db> {
         destination: NPlace<'db>,
         value: NOperand,
     },
+    /// Closes the access whose carrier `access` defines: a borrow, a view,
+    /// or a projection call's session.
+    End {
+        access: NValueId,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -594,9 +601,28 @@ pub enum NTerminatorKind<'db> {
         message: Option<StringId<'db>>,
     },
     Return(Option<NOperand>),
+    /// A projection grants `value` to its caller and suspends; its slide
+    /// resumes at `resume` when the caller ends the session.
+    Yield {
+        value: NOperand,
+        resume: NSuccessor,
+    },
 }
 
 impl NTerminatorKind<'_> {
+    /// The value the body hands its caller here: a returned value, or a
+    /// projection's yield.
+    pub fn returned(&self) -> Option<NOperand> {
+        match self {
+            Self::Return(Some(value)) | Self::Yield { value, .. } => Some(*value),
+            Self::Goto(_)
+            | Self::Branch { .. }
+            | Self::MatchEnum { .. }
+            | Self::Assert { .. }
+            | Self::Return(None) => None,
+        }
+    }
+
     pub fn successors(&self) -> Vec<&NSuccessor> {
         match self {
             Self::Goto(target) => vec![target],
@@ -610,6 +636,7 @@ impl NTerminatorKind<'_> {
                 .map(|(_, target)| target)
                 .chain(default.iter())
                 .collect(),
+            Self::Yield { resume, .. } => vec![resume],
             Self::Assert { .. } | Self::Return(_) => Vec::new(),
         }
     }
@@ -628,6 +655,7 @@ impl NTerminatorKind<'_> {
                 .map(|(_, target)| target)
                 .chain(default.iter_mut())
                 .collect(),
+            Self::Yield { resume, .. } => vec![resume],
             Self::Assert { .. } | Self::Return(_) => Vec::new(),
         }
     }

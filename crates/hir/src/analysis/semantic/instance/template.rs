@@ -3,6 +3,7 @@ use crate::{
         HirAnalysisDb,
         ty::{
             const_ty::lexical_const_body_owner,
+            provider::ProviderAddressSpace,
             subst::substitute_complete,
             trait_def::TraitInstId,
             trait_resolution::PredicateListId,
@@ -119,16 +120,21 @@ impl<'db> ImplEnv<'db> {
     }
 }
 
+/// What an instance is specialized on beyond its generic arguments: the
+/// providers its effects are bound to, and the address spaces of the places
+/// its data parameters name (memory unless listed).
 #[salsa::interned]
 #[derive(Debug)]
 pub struct EffectProviderSubst<'db> {
     #[return_ref]
     pub providers: Vec<ProviderBinding<'db>>,
+    #[return_ref]
+    pub param_spaces: Vec<(u32, ProviderAddressSpace)>,
 }
 
 impl<'db> EffectProviderSubst<'db> {
     pub fn empty(db: &'db dyn HirAnalysisDb) -> Self {
-        Self::new(db, Vec::new())
+        Self::new(db, Vec::new(), Vec::new())
     }
 }
 

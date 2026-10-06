@@ -123,7 +123,10 @@ uses (rng: mut Rng) where T: Copy
 
 /// Shuffles the memory viewed by `items` in place with an unbiased
 /// Fisher-Yates shuffle.
-pub fn shuffle_slice<T>(_ items: MemSlice<T>) uses (rng: mut Rng) where T: Copy {
+///
+/// A `MemSlice` is a read-only view: the caller must ensure that nothing else
+/// relies on the viewed memory staying unchanged.
+pub unsafe fn shuffle_slice<T>(_ items: MemSlice<T>) uses (rng: mut Rng) where T: Copy {
     let mut i = items.len()
     while i > 1 {
         let j = rng.uniform(i)

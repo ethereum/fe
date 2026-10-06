@@ -10,7 +10,7 @@ use crate::{
 use crate::hir_def::CallableDef;
 use crate::hir_def::params::FuncParamMode;
 use cranelift_entity::{PrimaryMap, SecondaryMap};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Update;
 use thin_vec::ThinVec;
 
@@ -36,10 +36,11 @@ use crate::analysis::{
         fold::{TyFoldable, TyFolder},
         normalize::normalize_ty,
         provider::ProviderAddressSpace,
+        shape::Shape,
         trait_def::TraitInstId,
         trait_resolution::{PredicateListId, constraint::collect_func_effect_provider_constraints},
         ty_contains_const_hole,
-        ty_def::{InvalidCause, StringFallback, TyData, TyId, TyVarSort},
+        ty_def::{BorrowKind, InvalidCause, StringFallback, TyData, TyId, TyVarSort},
         ty_is_copy,
         ty_lower::lower_hir_ty,
         unify::UnificationTable,
@@ -90,6 +91,14 @@ pub(crate) struct TyCheckEnv<'db> {
 
     /// Resolved effect arguments at call sites, keyed by the call expression.
     call_effect_args: SecondaryMap<ExprId, Option<Vec<super::ResolvedEffectArg<'db>>>>,
+
+    /// Expressions granting accesses that were used as accesses: bound by a
+    /// pattern, passed to a view or `mut` parameter, used as a receiver or
+    /// place base, or yielded. Any other use of `ref p`, `mut p` or a tuple or
+    /// sum shape is a value use, which is an error.
+    consumed_accesses: FxHashSet<ExprId>,
+    /// The part of a projection's return shape each yield site grants.
+    yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
 
     /// Resolved Seq trait methods for for-loops, keyed by the for statement.
     for_loop_seq: SecondaryMap<StmtId, Option<ForLoopSeq<'db>>>,
@@ -158,6 +167,8 @@ impl<'db> TyCheckEnv<'db> {
             pattern_store: PatternStore::default(),
             pattern_status: SecondaryMap::with_default(PatternAnalysisStatus::Invalid),
             call_effect_args: SecondaryMap::new(),
+            consumed_accesses: FxHashSet::default(),
+            yield_shapes: SecondaryMap::new(),
             for_loop_seq: SecondaryMap::new(),
             path_applications: Vec::new(),
         };
@@ -201,13 +212,14 @@ impl<'db> TyCheckEnv<'db> {
                 };
                 let assumptions = base_assumptions;
                 for (idx, param) in init.params(db).data(db).iter().enumerate() {
-                    let mut ty = match param.ty.to_opt() {
+                    let mut ty = match param
+                        .ty
+                        .to_opt()
+                        .and_then(|ty| ty.without_mode(db).to_opt())
+                    {
                         Some(hir_ty) => lower_hir_ty(db, hir_ty, owner_scope, assumptions),
                         None => TyId::invalid(db, InvalidCause::ParseError),
                     };
-                    if param.mode == FuncParamMode::View && ty.as_capability(db).is_none() {
-                        ty = TyId::view_of(db, ty);
-                    }
 
                     if !ty.is_star_kind(db) {
                         ty = TyId::invalid(db, InvalidCause::Other);
@@ -443,6 +455,10 @@ impl<'db> TyCheckEnv<'db> {
         }
     }
 
+    pub(super) fn value_path_ref(&self, expr: ExprId) -> Option<ValuePathRef<'db>> {
+        self.value_path_refs[expr]
+    }
+
     pub(super) fn register_value_path_ref(&mut self, expr: ExprId, value_path: ValuePathRef<'db>) {
         if self.value_path_refs[expr].replace(value_path).is_some() {
             panic!("value path ref is already registered for the given expr")
@@ -642,6 +658,26 @@ impl<'db> TyCheckEnv<'db> {
         self.pat_bindings[pat]
     }
 
+    pub(super) fn consume_access(&mut self, expr: ExprId) {
+        self.consumed_accesses.insert(expr);
+    }
+
+    pub(super) fn is_consumed_access(&self, expr: ExprId) -> bool {
+        self.consumed_accesses.contains(&expr)
+    }
+
+    pub(super) fn record_yield_shape(&mut self, expr: ExprId, shape: Shape<'db>) {
+        self.yield_shapes[expr] = Some(shape);
+    }
+
+    pub(super) fn forget_implicit_move(&mut self, expr: ExprId) {
+        self.implicit_moves.remove(&expr);
+    }
+
+    pub(super) fn binding_access(&self, binding: &LocalBinding<'db>) -> Option<BindingAccess> {
+        binding_access(binding, |pat| self.pat_binding_modes[pat])
+    }
+
     pub(super) fn local_borrow_provider(&self, pat: PatId) -> Option<ProviderAddressSpace> {
         self.local_borrow_providers[pat]
     }
@@ -689,7 +725,7 @@ impl<'db> TyCheckEnv<'db> {
 
     pub(super) fn enter_scope(&mut self, block: ExprId) {
         let new_scope = match block.data(self.db, self.body) {
-            Partial::Present(Expr::Block(_)) => ScopeId::Block(self.body, block),
+            Partial::Present(Expr::Block(..)) => ScopeId::Block(self.body, block),
             _ => self.scope(),
         };
 
@@ -857,6 +893,10 @@ impl<'db> TyCheckEnv<'db> {
             .values_mut()
             .flatten()
             .for_each(|ty| *ty = ty.fold_with(self.db, &mut prober));
+        self.yield_shapes
+            .values_mut()
+            .flatten()
+            .for_each(|shape| *shape = shape.clone().fold_with(self.db, &mut prober));
 
         self.const_refs
             .values_mut()
@@ -939,6 +979,7 @@ impl<'db> TyCheckEnv<'db> {
             assumptions,
             pat_ty: self.pat_ty,
             expr_ty: self.expr_ty,
+            yield_shapes: self.yield_shapes,
             implicit_moves,
             const_refs: self.const_refs,
             value_path_refs: self.value_path_refs,
@@ -1287,10 +1328,15 @@ pub(crate) enum EffectOrigin<'db> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Update)]
 pub struct ExprProp<'db> {
     pub ty: TyId<'db>,
+    /// Whether the place this expression names is writable.
     pub is_mut: bool,
     pub binding: Option<LocalBinding<'db>>,
     pub borrow_provider: Option<ProviderAddressSpace>,
     pub path_read_semantics: Option<PathReadSemantics>,
+    /// The accesses this expression grants: `Access` for `ref p`/`mut p`,
+    /// the instantiated return shape for a projection call. `None` for a
+    /// value or a place.
+    pub shape: Option<Shape<'db>>,
 }
 
 impl<'db> ExprProp<'db> {
@@ -1301,16 +1347,21 @@ impl<'db> ExprProp<'db> {
             binding: None,
             borrow_provider: None,
             path_read_semantics: None,
+            shape: None,
         }
     }
 
     pub(super) fn invalid(db: &'db dyn HirAnalysisDb) -> Self {
-        Self {
-            ty: TyId::invalid(db, InvalidCause::Other),
-            is_mut: true,
-            binding: None,
-            borrow_provider: None,
-            path_read_semantics: None,
+        Self::new(TyId::invalid(db, InvalidCause::Other), true)
+    }
+
+    /// The kind of the single access this expression grants, if it is an
+    /// access (`ref p`, `mut p`, or a call to a projection returning
+    /// `ref T`/`mut T`).
+    pub fn access(&self) -> Option<BorrowKind> {
+        match self.shape {
+            Some(Shape::Access(kind, _)) => Some(kind),
+            _ => None,
         }
     }
 }
@@ -1347,7 +1398,43 @@ pub enum LocalBinding<'db> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
 pub enum PatBindingMode {
     ByValue,
-    ByBorrow,
+    /// The binding is a named access to a place, open until its last use.
+    Access(BorrowKind),
+}
+
+/// How a binding refers to its value: an owned value has no access; a view
+/// parameter reads the caller's place; `ref`/`mut` bindings and `mut`
+/// parameters are accesses of their kind.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub enum BindingAccess {
+    View,
+    Ref,
+    Mut,
+}
+
+impl BindingAccess {
+    pub fn is_mut(self) -> bool {
+        self == Self::Mut
+    }
+}
+
+pub(crate) fn binding_access<'db>(
+    binding: &LocalBinding<'db>,
+    pat_mode: impl FnOnce(PatId) -> Option<PatBindingMode>,
+) -> Option<BindingAccess> {
+    match binding {
+        LocalBinding::Local { pat, .. } => match pat_mode(*pat)? {
+            PatBindingMode::ByValue => None,
+            PatBindingMode::Access(BorrowKind::Ref) => Some(BindingAccess::Ref),
+            PatBindingMode::Access(BorrowKind::Mut) => Some(BindingAccess::Mut),
+        },
+        LocalBinding::Param { mode, .. } => match mode {
+            FuncParamMode::View => Some(BindingAccess::View),
+            FuncParamMode::Mut => Some(BindingAccess::Mut),
+            FuncParamMode::Own => None,
+        },
+        LocalBinding::EffectParam { .. } => None,
+    }
 }
 
 impl<'db> LocalBinding<'db> {
@@ -1450,37 +1537,6 @@ impl<'db> LocalBinding<'db> {
             LocalBinding::Local { pat, .. } => pat.span(body).into(),
             LocalBinding::Param { site, idx, .. } => param_span(*site, *idx),
             LocalBinding::EffectParam { site, idx, .. } => effect_param_span(*site, *idx),
-        }
-    }
-
-    pub(crate) fn pretty_name_in_body(
-        &self,
-        db: &'db dyn HirAnalysisDb,
-        body: Body<'db>,
-    ) -> String {
-        match self {
-            Self::Local { pat, .. } => {
-                let Partial::Present(Pat::Path(Partial::Present(path), ..)) = pat.data(db, body)
-                else {
-                    return "_".to_string();
-                };
-                path.ident(db)
-                    .to_opt()
-                    .map_or_else(|| "_".to_string(), |ident| ident.data(db).to_string())
-            }
-            Self::Param {
-                site: ParamSite::EffectField(effect_site),
-                idx,
-                ..
-            } => effect_param_name(db, *effect_site, *idx)
-                .or_else(|| param_name(db, ParamSite::EffectField(*effect_site), *idx))
-                .map_or_else(|| format!("%param{idx}"), |ident| ident.data(db).clone()),
-            Self::Param { site, idx, .. } => param_name(db, *site, *idx)
-                .map_or_else(|| format!("%param{idx}"), |ident| ident.data(db).clone()),
-            Self::EffectParam {
-                binding_name, idx, ..
-            } => Some(*binding_name)
-                .map_or_else(|| format!("%effect{idx}"), |ident| ident.data(db).clone()),
         }
     }
 }

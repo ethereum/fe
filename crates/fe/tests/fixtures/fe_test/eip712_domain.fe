@@ -123,7 +123,7 @@ fn test_digest_matches_crypto_eip712_digest() {
 #[test]
 fn test_digest_leaves_neighbouring_memory_intact() uses (mem: mut RawMem) {
     let before = MemBuffer::alloc(32)
-    mem.mstore(addr: before.ptr(), value: 0xaa)
+    unsafe { mem.mstore(addr: before.ptr(), value: 0xaa) }
     assert!(
         eip712::digest(
                 domain_separator: SEAPORT_SEPARATOR,
@@ -132,7 +132,7 @@ fn test_digest_leaves_neighbouring_memory_intact() uses (mem: mut RawMem) {
             == SEAPORT_DIGEST,
     )
     let after = MemBuffer::alloc(32)
-    mem.mstore(addr: after.ptr(), value: 0xbb)
+    unsafe { mem.mstore(addr: after.ptr(), value: 0xbb) }
     assert!(
         eip712::digest(
                 domain_separator: SEAPORT_SEPARATOR,
@@ -140,8 +140,8 @@ fn test_digest_leaves_neighbouring_memory_intact() uses (mem: mut RawMem) {
             )
             == SEAPORT_DIGEST,
     )
-    assert!(mem.mload(before.ptr()) == 0xaa)
-    assert!(mem.mload(after.ptr()) == 0xbb)
+    unsafe { assert!(mem.mload(before.ptr()) == 0xaa) }
+    unsafe { assert!(mem.mload(after.ptr()) == 0xbb) }
 }
 
 msg SignerMsg {

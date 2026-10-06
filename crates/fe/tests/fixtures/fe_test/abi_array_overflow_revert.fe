@@ -22,9 +22,9 @@ uses (evm: mut Evm)
 {
     let receiver = evm.create2<ArrayReceiver>(value: 0, args: (), salt: salt)
     let data = MemBuffer::alloc(68)
-    evm.mstore(addr: data.ptr(), value: (0x11223344 as u256) << 224)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4), value: offset)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 36), value: length)
+    unsafe { evm.mstore(addr: data.ptr(), value: (0x11223344 as u256) << 224) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4), value: offset) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 36), value: length) }
     let mut ret = MemBuffer::empty()
     let outcome = evm
         .raw_call(
@@ -58,13 +58,15 @@ fn overflowing_array_end_reverts_empty() uses (evm: mut Evm) {
 fn overflowing_dynamic_element_tail_reverts_empty() uses (evm: mut Evm) {
     let receiver = evm.create2<ArrayReceiver>(value: 0, args: (), salt: 5)
     let data = MemBuffer::alloc(100)
-    evm.mstore(addr: data.ptr(), value: (0x11223345 as u256) << 224)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4), value: 32)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 36), value: 1)
-    evm.mstore(
-        addr: ptr::offset_bytes(data.ptr(), 68),
-        value: !(0 as u256) - 31,
-    )
+    unsafe { evm.mstore(addr: data.ptr(), value: (0x11223345 as u256) << 224) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4), value: 32) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 36), value: 1) }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data.ptr(), 68),
+            value: !(0 as u256) - 31,
+        )
+    }
     let mut ret = MemBuffer::empty()
     let outcome = evm
         .raw_call(

@@ -5,9 +5,9 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::{
-            BorrowActivation, CallSiteId, FieldIndex, Mutability, SConst, SemOrigin,
-            SemanticInstance, VariantIndex,
-            capability::{handle::OpaqueHandleContract, shape::capability_shape},
+            FieldIndex, Mutability, SConst, SemanticInstance, VariantIndex,
+            capability::handle::OpaqueHandleContract,
+            capability::semantics::contains_capability,
             get_or_build_semantic_instance,
             lower::{effect_param_site, enum_tag_ty},
             normalized::*,
@@ -16,7 +16,7 @@ use crate::{
         ty::{
             adt_def::AdtRef,
             provider::{ProviderLayoutEvidence, provider_semantics},
-            ty_check::{BodyOwner, EffectPassMode},
+            ty_check::EffectPassMode,
             ty_def::{BorrowKind, CapabilityKind, PrimTy, TyBase, TyData, TyId},
             ty_is_copy,
         },
@@ -80,7 +80,6 @@ pub enum NormalizedBodyVerifyError {
         actual: Option<BorrowKind>,
         target_matches: bool,
     },
-    InvalidBorrowActivation(NValueId),
     ExpressionType,
     ArrayRepeatRequiresCopy,
     ScalarCapability,
@@ -187,6 +186,11 @@ pub fn verify_normalized_body<'db>(
                         });
                     }
                     verify_mutation(db, body, destination, true)?;
+                }
+                NStatementKind::End { access } => {
+                    if body.value(*access).is_none() {
+                        return Err(NormalizedBodyVerifyError::MissingValue(*access));
+                    }
                 }
             }
         }
@@ -309,77 +313,7 @@ fn verify_expr<'db>(
             }
             Ok(())
         }
-        NExpr::Borrow {
-            place,
-            kind,
-            activation,
-            ..
-        } => {
-            if let BorrowActivation::AtCall { call_site, callee } = *activation {
-                let NValueDefinition::Statement { block, statement } =
-                    body.values[result.index()].definition
-                else {
-                    return Err(NormalizedBodyVerifyError::InvalidBorrowActivation(result));
-                };
-                let origin = body.blocks[block.index()].statements[statement as usize].origin;
-                let valid_receiver = matches!((call_site, origin), (CallSiteId::Expr(call), SemOrigin::Expr(expr)) if call == expr)
-                    && matches!(callee.key.owner(db), BodyOwner::Func(func)
-                        if func.receiver_ty(db).is_some_and(|ty| matches!(ty.skip_binder().as_borrow(db), Some((BorrowKind::Mut, _)))));
-                let mut aliases = FxHashSet::from_iter([result]);
-                loop {
-                    let mut changed = false;
-                    for statement in body.blocks.iter().flat_map(|block| &block.statements) {
-                        if let NStatementKind::Define {
-                            result: converted,
-                            expr: NExpr::StructuralRepack { value, .. },
-                        } = &statement.kind
-                            && aliases.contains(&value.value)
-                        {
-                            changed |= aliases.insert(*converted);
-                        }
-                    }
-                    if !changed {
-                        break;
-                    }
-                }
-                let mut receivers = 0;
-                let used_elsewhere = aliases.iter().any(|alias| {
-                    body.value_is_used_with(*alias, |expr| {
-                        let mut uses = 0;
-                        expr.for_each_value_operand(|operand| {
-                            uses += usize::from(operand.value == *alias)
-                        });
-                        if uses == 0 {
-                            return false;
-                        }
-                        if matches!(expr, NExpr::StructuralRepack { .. }) {
-                            return false;
-                        }
-                        if let NExpr::Call {
-                            call_site: site,
-                            callee: target,
-                            args,
-                            ..
-                        } = expr
-                            && *site == call_site
-                            && *target == callee
-                            && args
-                                .first()
-                                .is_some_and(|receiver| receiver.value == *alias)
-                        {
-                            receivers += 1;
-                            uses != 1
-                        } else {
-                            true
-                        }
-                    })
-                });
-                if *kind != BorrowKind::Mut || !valid_receiver || used_elsewhere || receivers > 1
-                    || body.roots.iter().any(|root| matches!(root.kind, NRootKind::CapabilityRepresentation { carrier } if aliases.contains(&carrier)))
-                {
-                    return Err(NormalizedBodyVerifyError::InvalidBorrowActivation(result));
-                }
-            }
+        NExpr::Borrow { place, kind, .. } => {
             let result_borrow = result_ty.as_borrow(db);
             if result_borrow
                 .is_none_or(|(result_kind, target)| result_kind != *kind || target != place.ty)
@@ -731,16 +665,21 @@ fn verify_terminator<'db>(
             }
             Ok(())
         }
-        NTerminatorKind::Return(Some(value)) => {
+        NTerminatorKind::Return(Some(value)) | NTerminatorKind::Yield { value, .. } => {
             let actual = operand_ty(body, *value)?;
             let expected = body.owner.normalized_result_ty(db);
             let compatible = expected.has_invalid(db) || actual == expected;
             compatible
                 .then_some(())
-                .ok_or(NormalizedBodyVerifyError::OperandType)
+                .ok_or(NormalizedBodyVerifyError::OperandType)?;
+            match terminator {
+                NTerminatorKind::Yield { resume, .. } => verify_successor(body, resume),
+                _ => Ok(()),
+            }
         }
+        // A projection's slide completes without a value.
         NTerminatorKind::Return(None) => {
-            if body.template_owner.body(db).is_some() {
+            if body.template_owner.body(db).is_some() && !body.owner.is_projection(db) {
                 let expected = body.owner.normalized_result_ty(db);
                 (expected == TyId::unit(db) || expected.has_invalid(db))
                     .then_some(())
@@ -934,14 +873,12 @@ fn has_capability<'db>(
     body: &NormalizedBody<'db>,
     ty: TyId<'db>,
 ) -> Result<bool, NormalizedBodyVerifyError> {
-    capability_shape(
+    Ok(contains_capability(
         db,
         body.owner.key(db).impl_env(db).normalization_scope(db),
         body.owner.assumptions(db),
         ty,
-    )
-    .map(|shape| shape.contains_capability(db))
-    .map_err(|_| NormalizedBodyVerifyError::ScalarCapability)
+    ))
 }
 
 fn verify_scalar_ty<'db>(
@@ -1104,15 +1041,9 @@ fn value_has_mutable_view_origin<'db>(
     source.is_some_and(|source| value_has_mutable_view_origin(db, body, source, visiting))
 }
 
-pub(crate) struct NormalizedCfg {
-    pub predecessors: Vec<Vec<NBlockId>>,
-    pub reachable: Vec<bool>,
-    pub dominators: Vec<FxHashSet<NBlockId>>,
-}
-
-pub(crate) fn normalized_cfg(
+fn normalized_dominators(
     body: &NormalizedBody<'_>,
-) -> Result<NormalizedCfg, NormalizedBodyVerifyError> {
+) -> Result<Vec<FxHashSet<NBlockId>>, NormalizedBodyVerifyError> {
     let mut predecessors = vec![Vec::new(); body.blocks.len()];
     for (block_index, block) in body.blocks.iter().enumerate() {
         for successor in terminator_successors(&block.terminator.kind) {
@@ -1178,15 +1109,11 @@ pub(crate) fn normalized_cfg(
             break;
         }
     }
-    Ok(NormalizedCfg {
-        predecessors,
-        reachable,
-        dominators,
-    })
+    Ok(dominators)
 }
 
 fn verify_value_dominance(body: &NormalizedBody<'_>) -> Result<(), NormalizedBodyVerifyError> {
-    let dominators = normalized_cfg(body)?.dominators;
+    let dominators = normalized_dominators(body)?;
     for (block_index, block) in body.blocks.iter().enumerate() {
         let block_id = NBlockId::new(block_index);
         for (statement_index, statement) in block.statements.iter().enumerate() {
@@ -1200,6 +1127,7 @@ fn verify_value_dominance(body: &NormalizedBody<'_>) -> Result<(), NormalizedBod
                     uses.push(value.value);
                     uses.extend(body.place_values(destination));
                 }
+                NStatementKind::End { access } => uses.push(*access),
             }
             for value in uses {
                 verify_value_dominates_use(body, &dominators, value, block_id, statement_index)?;
@@ -1227,6 +1155,7 @@ fn terminator_successors(terminator: &NTerminatorKind<'_>) -> Vec<NBlockId> {
             .map(|(_, target)| target.block)
             .chain(default.iter().map(|target| target.block))
             .collect(),
+        NTerminatorKind::Yield { resume, .. } => vec![resume.block],
         NTerminatorKind::Assert { .. } | NTerminatorKind::Return(_) => Vec::new(),
     }
 }
@@ -1260,6 +1189,10 @@ fn collect_terminator_values(terminator: &NTerminatorKind<'_>, values: &mut Vec<
             }
         }
         NTerminatorKind::Return(Some(value)) => values.push(value.value),
+        NTerminatorKind::Yield { value, resume } => {
+            values.push(value.value);
+            values.extend(resume.args.iter().map(|argument| argument.value));
+        }
         NTerminatorKind::Assert { .. } | NTerminatorKind::Return(None) => {}
     }
 }

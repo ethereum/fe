@@ -13,7 +13,7 @@ impl AbiSize for Bad {
 }
 
 impl<A: Abi> Encode<A> for Bad {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         store_word(ptr: ptr, value: self.word)
     }
 }

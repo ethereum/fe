@@ -13,11 +13,13 @@ fn bump() uses (foo: mut Foo) {
 
 fn test_effect_ptr_domains() uses (st: mut RawStorage) {
     let mp = ptr::alloc<Foo>()
-    with (mp) {
-        bump()
+    unsafe {
+        with (mp) {
+            bump()
+        }
     }
 
-    let sp: StorPtr<Foo> = st.stor_ptr(0)
+    let sp: StorPtr<Foo> = unsafe { st.stor_ptr(0) }
     with (sp) {
         bump()
     }

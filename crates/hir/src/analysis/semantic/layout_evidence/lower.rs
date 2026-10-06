@@ -12,8 +12,7 @@ use crate::analysis::{
         normalized::{
             NDataPath, NDataProjection, NEffectArg, NEffectArgValue, NExpr, NLayoutLocals,
             NLayoutPlan, NOperand, NPlace, NPlaceBase, NRootKind, NStatement, NStatementId,
-            NStatementKind, NTerminatorKind, NValueId, NormalizedBody,
-            normalize_runtime_semantic_body,
+            NStatementKind, NValueId, NormalizedBody, normalize_runtime_semantic_body,
         },
     },
     ty::{
@@ -259,6 +258,8 @@ enum LayoutTransfer<'db> {
         value: LayoutTransferBundle<'db>,
         fallback: Option<(SLocalId, LayoutTransferBundle<'db>)>,
     },
+    /// An access ends; no value moves.
+    End,
 }
 
 fn layout_projections<'db>(
@@ -1343,6 +1344,7 @@ impl<'a, 'db> LayoutEvidenceBuilder<'a, 'db> {
                     result_used,
                 })
             }
+            NStatementKind::End { .. } => Ok(LayoutTransfer::End),
             NStatementKind::Store { destination, value } => {
                 let src = self.operand_local(*value)?;
                 let (root, projection) = self.place_projection(destination)?;
@@ -1615,12 +1617,13 @@ impl<'a, 'db> LayoutEvidenceBuilder<'a, 'db> {
                         store_seeds.push(fallback.clone());
                     }
                 }
+                LayoutTransfer::End => {}
             }
         }
         let mut queue = VecDeque::new();
         let mut queued = FxHashSet::default();
         for block in &self.normalized.blocks {
-            if let NTerminatorKind::Return(Some(value)) = block.terminator.kind {
+            if let Some(value) = block.terminator.kind.returned() {
                 let local = self.operand_local(value)?;
                 for witness in &witnesses {
                     self.enqueue_contextual_source(
@@ -1958,7 +1961,9 @@ impl<'a, 'db> LayoutEvidenceBuilder<'a, 'db> {
                 assignments: self.transfer_assignments(*dst, value, false)?,
                 call: None,
             }),
-            LayoutTransfer::Store { dst: None, .. } => Ok(LayoutEvidenceStatement::default()),
+            LayoutTransfer::Store { dst: None, .. } | LayoutTransfer::End => {
+                Ok(LayoutEvidenceStatement::default())
+            }
         }
     }
 
@@ -2150,15 +2155,11 @@ fn layout_evidence_body_query<'db>(
         .blocks
         .iter()
         .map(|block| {
-            let returns = match block.terminator.kind {
-                NTerminatorKind::Return(Some(value)) => {
+            let returns = match block.terminator.kind.returned() {
+                Some(value) => {
                     builder.return_operands(builder.operand_local(value)?, &signature.output)?
                 }
-                NTerminatorKind::Goto(_)
-                | NTerminatorKind::Branch { .. }
-                | NTerminatorKind::MatchEnum { .. }
-                | NTerminatorKind::Assert { .. }
-                | NTerminatorKind::Return(None) => Box::new([]),
+                None => Box::new([]),
             };
             Ok(LayoutEvidenceTerminator { returns })
         })

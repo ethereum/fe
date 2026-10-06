@@ -11,13 +11,12 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::{
-            BorrowActivation, CallSiteId, FieldIndex, LayoutBackingPlace, LayoutBackingSource,
-            Mutability, SBlock, SBlockId, SConst, SExpr, SLocal, SLocalId, SOperand, SPlace, SStmt,
-            SStmtId, SStmtKind, STerminator, STerminatorKind, SValueId, SemConstId, SemConstValue,
-            SemOrigin, SemanticBody, SemanticCodeRegionTarget, SemanticLocalRole, VariantIndex,
-            bool_const, bytes_const, consts::instantiate_const_template, int_const,
-            reify_runtime_const_for_ty, runtime_size_bytes, sem_const_from_ty, struct_const,
-            unit_const,
+            CallSiteId, FieldIndex, LayoutBackingPlace, LayoutBackingSource, Mutability, SBlock,
+            SBlockId, SConst, SExpr, SLocal, SLocalId, SOperand, SPlace, SStmt, SStmtId, SStmtKind,
+            STerminator, STerminatorKind, SValueId, SemConstId, SemConstValue, SemOrigin,
+            SemanticBody, SemanticCodeRegionTarget, SemanticLocalRole, VariantIndex, bool_const,
+            bytes_const, consts::instantiate_const_template, int_const, reify_runtime_const_for_ty,
+            runtime_size_bytes, sem_const_from_ty, struct_const, unit_const,
         },
         ty::{
             const_expr::{ConstExpr, ConstExprId, ConstInvocation},
@@ -26,6 +25,7 @@ use crate::{
                 const_ty_or_abstract_from_inherent_const_use,
             },
             normalize::normalize_ty,
+            shape::Shape,
             ty_check::{
                 BodyOwner, Callable, CodeRegionIntrinsicKind, ConstIntrinsicKind, ConstRef,
                 LocalBinding, PathReadSemantics, RecordInitLowering, RecordLike,
@@ -37,13 +37,15 @@ use crate::{
     },
     hir_def::{
         ArithBinOp, Body, CallArg, CallableDef, Cond, CondId, Expr, ExprId, Field as HirField,
-        LitKind, MatchArm, Partial, PatId, PathId, Stmt, StmtId,
+        LitKind, MatchArm, Partial, Pat, PatId, PathId, Stmt, StmtId,
         expr::{BinOp, CompBinOp, LogicalBinOp, UnOp},
+        params::FuncParamMode,
     },
 };
 
 use super::{
     effects::{WithBindingSource, owner_effect_bindings, provisional_owner_effect_bindings},
+    elaborate::elaborate_ends,
     local_facts::{initial_snapshot_source, ordinary_direct_value_role},
 };
 
@@ -155,18 +157,13 @@ pub(crate) fn lower_to_smir_with_call_sites<'a, 'db>(
     );
     let result = cx.lower_expr(body.expr(db));
     if !cx.is_terminated(cx.current) {
-        let result = SOperand::expr(result, body.expr(db));
-        cx.set_terminator(
-            cx.current,
-            SemOrigin::Body(template_owner),
-            if cx.expr_ty(body.expr(db)) == TyId::unit(db) {
-                STerminatorKind::Return(None)
-            } else {
-                STerminatorKind::Return(Some(result))
-            },
-        );
+        let result = (cx.expr_ty(body.expr(db)) != TyId::unit(db))
+            .then(|| SOperand::expr(result, body.expr(db)));
+        cx.exit(SemOrigin::Body(template_owner), result);
     }
-    cx.finish()
+    let mut body = cx.finish();
+    elaborate_ends(db, &mut body);
+    body
 }
 
 fn owner_effect_bindings_for_mode<'db>(
@@ -200,6 +197,8 @@ pub(super) struct SmirLowerCtxt<'a, 'db> {
     pub(super) current: SBlockId,
     pub(super) next_stmt_id: u32,
     pub(super) loop_stack: Vec<LoopScope>,
+    /// How many yield sites enclose the expression being lowered.
+    pub(super) yield_depth: u32,
 }
 
 pub(super) struct BlockState<'db> {
@@ -212,6 +211,22 @@ struct SmirLowerInputs<'a, 'db> {
     call_sites: &'a [Option<CallSiteLowering<'db>>],
     for_loop_call_sites: &'a [Option<ForLoopCallSites<'db>>],
     binding_role_mode: BindingRoleMode,
+}
+
+/// A call's receiver between the resolution of its root place, before the
+/// call's arguments, and the opening of its accesses, after them.
+pub(super) enum Receiver<'db> {
+    /// An owned receiver or an access carrier, evaluated already.
+    Value(SValueId),
+    /// A place whose `mut` access opens after the arguments, guarded until
+    /// then.
+    Place {
+        place: SPlace<'db>,
+        guard: Option<SStmtId>,
+    },
+    /// A projection call in the receiver chain, by its own receiver: its
+    /// session opens after the arguments of the call it is the receiver of.
+    Chain(ExprId, Box<Receiver<'db>>),
 }
 
 #[derive(Clone, Copy)]
@@ -269,6 +284,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             current: SBlockId::from_u32(0),
             next_stmt_id: 0,
             loop_stack: Vec::new(),
+            yield_depth: 0,
         };
         cx.collect_binding_locals();
         cx.current = cx.new_block();
@@ -476,12 +492,31 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         self.push_stmt(SemOrigin::Synthetic, kind);
     }
 
+    /// Ends the body on the current path with `value`. A projection yields
+    /// it instead, and returns when its session finishes.
+    fn exit(&mut self, origin: SemOrigin<'db>, value: Option<SOperand>) {
+        let block = self.current;
+        let Some(value) = value.filter(|_| self.instance.is_projection(self.db)) else {
+            self.set_terminator(block, origin, STerminatorKind::Return(value));
+            return;
+        };
+        let resume = self.new_block();
+        self.set_terminator(block, origin, STerminatorKind::Yield { value, resume });
+        self.set_terminator(resume, origin, STerminatorKind::Return(None));
+        self.current = resume;
+    }
+
     pub(super) fn set_synthetic_terminator(&mut self, block: SBlockId, kind: STerminatorKind<'db>) {
         self.set_terminator(block, SemOrigin::Synthetic, kind);
     }
 
+    /// The semantic-IR type of `expr`'s value: a projection's yield sites
+    /// carry their grants.
     pub(super) fn expr_ty(&self, expr: ExprId) -> TyId<'db> {
-        self.typed_body.expr_ty(self.db, expr)
+        self.typed_body.yield_shape(expr).map_or_else(
+            || self.typed_body.expr_ty(self.db, expr),
+            |shape| shape.carrier_ty(self.db),
+        )
     }
 
     pub(super) fn unit_value(&mut self) -> SValueId {
@@ -491,10 +526,170 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         )
     }
 
+    /// Lowers what a pattern destructures: an access is destructured through
+    /// its carrier, so the pattern reads only the parts it binds.
+    fn lower_scrutinee(&mut self, expr: ExprId) -> SValueId {
+        if matches!(
+            expr.data(self.db, self.body),
+            Partial::Present(Expr::Path(_))
+        ) && let Some(binding) = self.typed_body.expr_binding(expr)
+            && let Some(&local) = self.binding_locals.get(&binding)
+            && self.locals[local.index()]
+                .ty
+                .as_capability(self.db)
+                .is_some()
+        {
+            return local;
+        }
+        self.lower_source(expr)
+    }
+
+    /// Lowers what a binding, scrutinee or argument receives from `expr`: the
+    /// carrier of the accesses it grants, or its value.
+    pub(super) fn lower_source(&mut self, expr: ExprId) -> SValueId {
+        if self.typed_body.expr_prop(self.db, expr).shape.is_some() {
+            self.lower_access(expr)
+        } else {
+            self.lower_expr(expr)
+        }
+    }
+
+    /// Lowers `ref p`, `mut p` or a projection call to the carrier of the
+    /// accesses it grants.
+    pub(super) fn lower_access(&mut self, expr: ExprId) -> SValueId {
+        let prop = self.typed_body.expr_prop(self.db, expr);
+        let shape = prop
+            .shape
+            .unwrap_or_else(|| panic!("access expression without a shape: {expr:?}"));
+        let ty = shape.carrier_ty(self.db);
+        match expr.data(self.db, self.body) {
+            Partial::Present(Expr::Un(inner, op @ (UnOp::Mut | UnOp::Ref))) => {
+                let kind = if *op == UnOp::Mut {
+                    BorrowKind::Mut
+                } else {
+                    BorrowKind::Ref
+                };
+                let place = self.lower_place(*inner);
+                self.emit_expr_with_origin(
+                    SemOrigin::Expr(expr),
+                    ty,
+                    SExpr::Borrow {
+                        place,
+                        kind,
+                        provider: prop.borrow_provider,
+                    },
+                )
+            }
+            Partial::Present(Expr::Call(_, args)) => {
+                let args = args.iter().map(|arg| arg.expr).collect::<Vec<_>>();
+                self.lower_call_like_expr(expr, ty, None, &args)
+            }
+            Partial::Present(Expr::MethodCall(receiver, _, _, args)) => {
+                let args = args.iter().map(|arg| arg.expr).collect::<Vec<_>>();
+                self.lower_call_like_expr(expr, ty, Some(*receiver), &args)
+            }
+            Partial::Present(Expr::Bin(base, index, BinOp::Index)) => {
+                self.lower_call_like_expr(expr, ty, Some(*base), &[*index])
+            }
+            Partial::Present(Expr::Block(stmts, _)) => {
+                let (tail, head) = stmts.split_last().expect("an access block has a tail");
+                for stmt in head {
+                    self.lower_stmt(*stmt);
+                }
+                let Partial::Present(Stmt::Expr(tail)) = tail.data(self.db, self.body) else {
+                    panic!("an access block ends in an expression")
+                };
+                self.lower_access(*tail)
+            }
+            _ => panic!("unexpected access expression: {expr:?}"),
+        }
+    }
+
+    /// Lowers a projection's yield site to the carrier of what it grants.
+    /// Tuples and variant constructors yield through their (yield-site)
+    /// elements; an access binding is re-yielded; a `ref` yield of any
+    /// other place or value views it.
+    fn lower_yield_leaf(&mut self, expr: ExprId, shape: Shape<'db>) -> SValueId {
+        if self.typed_body.expr_prop(self.db, expr).shape.is_some() {
+            return self.lower_access(expr);
+        }
+        if self
+            .typed_body
+            .callable_expr(expr)
+            .is_some_and(|callable| callable.ret_ty(self.db).is_never(self.db))
+        {
+            return self.lower_expr_inner(expr);
+        }
+        let Shape::Access(kind, _) = shape else {
+            return self.lower_expr_inner(expr);
+        };
+        let origin = SemOrigin::Expr(expr);
+        // An access binding is re-yielded through its carrier. (A projection's
+        // `Copy` view parameter is a session-owned copy, viewed below.)
+        if let Some(binding) = self.typed_body.expr_binding(expr)
+            && let Some(&local) = self.binding_locals.get(&binding)
+            && self.locals[local.index()]
+                .ty
+                .as_capability(self.db)
+                .is_some()
+        {
+            let ty = self.locals[local.index()].ty;
+            return self.emit_expr_with_origin(
+                origin,
+                ty,
+                SExpr::Forward(SOperand::expr(local, expr)),
+            );
+        }
+        let place = self.try_lower_place(expr).unwrap_or_else(|| {
+            let value = self.lower_expr_inner(expr);
+            let temp = self.alloc_local(
+                self.typed_body.expr_ty(self.db, expr),
+                Mutability::Immutable,
+                None,
+            );
+            self.push_stmt(
+                origin,
+                SStmtKind::Assign {
+                    dst: temp,
+                    expr: SExpr::UseValue(SOperand::expr(value, expr)),
+                },
+            );
+            SPlace::new(temp)
+        });
+        self.emit_expr_with_origin(
+            origin,
+            shape.carrier_ty(self.db),
+            SExpr::Borrow {
+                place,
+                kind,
+                provider: self.typed_body.expr_prop(self.db, expr).borrow_provider,
+            },
+        )
+    }
+
+    /// Lowers `expr`. A projection's yield site yields on its own path, so
+    /// each path's grant has its own resume point.
     pub(super) fn lower_expr(&mut self, expr: ExprId) -> SValueId {
-        let value = self.lower_expr_inner(expr);
+        let yield_leaf = self.typed_body.yield_shape(expr).filter(|_| {
+            !matches!(
+                expr.data(self.db, self.body),
+                Partial::Present(Expr::Block(..) | Expr::If(..) | Expr::Match(..) | Expr::With(..))
+            )
+        });
+        let value = match yield_leaf {
+            Some(shape) => {
+                self.yield_depth += 1;
+                let value = self.lower_yield_leaf(expr, shape.clone());
+                self.yield_depth -= 1;
+                value
+            }
+            None => self.lower_expr_inner(expr),
+        };
         if self.expr_ty(expr).is_never(self.db) && !self.is_terminated(self.current) {
             self.set_synthetic_terminator(self.current, STerminatorKind::Assert { message: None });
+        }
+        if yield_leaf.is_some() && self.yield_depth == 0 && !self.is_terminated(self.current) {
+            self.exit(SemOrigin::Expr(expr), Some(SOperand::expr(value, expr)));
         }
         value
     }
@@ -505,6 +700,19 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         };
         let origin = SemOrigin::Expr(expr);
         let ty = self.expr_ty(expr);
+
+        // A projection used as a value is read through its grant.
+        if !matches!(expr_data, Expr::Un(..))
+            && self.typed_body.yield_shape(expr).is_none()
+            && self.typed_body.expr_prop(self.db, expr).shape.is_some()
+        {
+            let carrier = self.lower_access(expr);
+            return self.emit_expr_with_origin(
+                origin,
+                ty,
+                SExpr::UseValue(SOperand::expr(carrier, expr)),
+            );
+        }
 
         match expr_data {
             Expr::Lit(lit) => self.lower_leaf_literal(expr, lit),
@@ -552,24 +760,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 let index = self.lower_expr_operand(*index);
                 self.emit_expr_with_origin(origin, ty, SExpr::Index { base, index })
             }
-            Expr::Un(inner, UnOp::Mut | UnOp::Ref) => {
-                let kind = match expr_data {
-                    Expr::Un(_, UnOp::Mut) => BorrowKind::Mut,
-                    Expr::Un(_, UnOp::Ref) => BorrowKind::Ref,
-                    _ => unreachable!(),
-                };
-                let place = self.lower_place(*inner);
-                self.emit_expr_with_origin(
-                    origin,
-                    ty,
-                    SExpr::Borrow {
-                        place,
-                        kind,
-                        activation: BorrowActivation::Immediate,
-                        provider: self.typed_body.expr_prop(self.db, expr).borrow_provider,
-                    },
-                )
-            }
+            Expr::Un(_, UnOp::Mut | UnOp::Ref) => self.lower_access(expr),
             Expr::Un(_, UnOp::Deref) => {
                 let place = self.lower_place(expr);
                 self.emit_expr_with_origin(origin, ty, SExpr::ReadPlace { place })
@@ -632,7 +823,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             Expr::MethodCall(receiver, _, _, args) => self.lower_call(expr, Some(*receiver), args),
             Expr::Assign(dst, src) => {
                 if self.typed_body.semantic_expr_lowering(*dst).is_some() {
-                    let dst = SPlace::new(self.lower_expr(*dst));
+                    let dst = SPlace::new(self.lower_access(*dst));
                     let src = self.lower_expr_operand(*src);
                     self.push_stmt(origin, SStmtKind::Store { dst, src });
                 } else {
@@ -675,7 +866,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 self.push_place_write(origin, dst_place, SOperand::inherited(sum));
                 self.unit_value()
             }
-            Expr::Block(stmts) => self.lower_block_expr(stmts),
+            Expr::Block(stmts, _) => self.lower_block_expr(stmts),
             Expr::If(cond, then_expr, else_expr) => {
                 self.lower_if_expr(expr, *cond, *then_expr, *else_expr)
             }
@@ -1034,6 +1225,8 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             });
         match lowering {
             SemanticExprLowering::Call { callable } => {
+                let receiver =
+                    receiver.map(|receiver| (receiver, self.prepare_receiver(receiver, callable)));
                 self.lower_callable_expr(expr, ty, receiver, args, callable)
             }
             SemanticExprLowering::CodeRegionIntrinsic {
@@ -1072,24 +1265,25 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             }, SemanticCodeRegionTarget::Resolved)
     }
 
+    /// Lowers a call. Its receiver's root place was resolved before the
+    /// arguments; its accesses open after them.
     fn lower_callable_expr(
         &mut self,
         expr: ExprId,
         ty: TyId<'db>,
-        receiver: Option<ExprId>,
+        receiver: Option<(ExprId, Receiver<'db>)>,
         args: &[ExprId],
         callable: &Callable<'db>,
     ) -> SValueId {
-        let mut values = Vec::with_capacity(args.len() + usize::from(receiver.is_some()));
-        if let Some(receiver) = receiver {
-            values.push(SOperand::expr(
-                self.lower_callable_receiver(expr, receiver, callable),
-                receiver,
-            ));
-        }
-        for &arg in args {
-            let value = self.lower_callable_argument(arg, callable, values.len());
+        let offset = usize::from(receiver.is_some());
+        let mut values = Vec::with_capacity(args.len() + offset);
+        for (index, &arg) in args.iter().enumerate() {
+            let value = self.lower_callable_argument(arg, callable, index + offset);
             values.push(SOperand::expr(value, arg));
+        }
+        if let Some((receiver, prepared)) = receiver {
+            let value = self.open_receiver(receiver, prepared);
+            values.insert(0, SOperand::expr(value, receiver));
         }
 
         match callable.callable_def() {
@@ -1139,82 +1333,157 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         param: usize,
     ) -> SValueId {
         let ty = self.expr_ty(expr);
-        if !ty_is_copy(self.db, self.body.scope(), ty, self.assumptions)
-            && callable.arg_ty(self.db, param).is_some_and(|param_ty| {
-                normalize_ty(self.db, param_ty, self.body.scope(), self.assumptions)
-                    .as_view(self.db)
-                    .is_some()
-            })
+        let mode = callable.callable_def().param_mode(self.db, param);
+        if mode == FuncParamMode::Own {
+            return self.lower_expr(expr);
+        }
+        // An access binding passed to a view parameter is viewed through its
+        // carrier.
+        if matches!(
+            expr.data(self.db, self.body),
+            Partial::Present(Expr::Path(_))
+        ) && let Some(binding) = self.typed_body.expr_binding(expr)
+            && self.typed_body.binding_access(binding).is_some()
+        {
+            return self.binding_locals[&binding];
+        }
+        if mode == FuncParamMode::View
+            && !ty_is_copy(self.db, self.body.scope(), ty, self.assumptions)
+            && self.typed_body.expr_prop(self.db, expr).shape.is_none()
             && let Some(place) = self.try_lower_place(expr)
             && !place.path.is_empty()
         {
-            return self.emit_expr_with_origin(
-                SemOrigin::Expr(expr),
-                TyId::view_of(self.db, ty),
-                SExpr::ReadPlace { place },
-            );
+            return self.emit_borrow(expr, place, BorrowKind::Ref, ty);
         }
-        self.lower_expr(expr)
+        self.lower_source(expr)
     }
 
-    fn lower_callable_receiver(
-        &mut self,
-        call_expr: ExprId,
-        receiver: ExprId,
-        callable: &Callable<'db>,
-    ) -> SValueId {
-        if let Some(site) = self
-            .call_sites
-            .get(call_expr.index())
-            .and_then(|site| site.as_ref())
-            && let Some(plan) = site.receiver
-        {
-            let activation = if plan.kind == BorrowKind::Mut {
-                BorrowActivation::AtCall {
-                    call_site: CallSiteId::Expr(call_expr),
-                    callee: site
-                        .callee
-                        .expect("receiver reservation must have a callee"),
-                }
-            } else {
-                BorrowActivation::Immediate
-            };
-            let receiver_prop = self.typed_body.expr_prop(self.db, receiver);
-            let place = if let Some(place) = self.try_lower_place(receiver) {
-                place
-            } else {
-                let value = self.lower_expr(receiver);
-                let local = self.alloc_local(
-                    plan.receiver_ty,
-                    if matches!(plan.kind, BorrowKind::Mut) {
-                        Mutability::Mutable
-                    } else {
-                        Mutability::Immutable
-                    },
-                    None,
-                );
-                self.push_stmt(
-                    SemOrigin::Expr(receiver),
-                    SStmtKind::Assign {
-                        dst: local,
-                        expr: SExpr::UseValue(SOperand::inherited(value)),
-                    },
-                );
-                SPlace::new(local)
-            };
-            return self.emit_expr_with_origin(
-                SemOrigin::Expr(call_expr),
-                plan.borrowed_ty,
-                SExpr::Borrow {
-                    place,
-                    kind: plan.kind,
-                    activation,
-                    provider: receiver_prop.borrow_provider,
-                },
-            );
+    /// Resolves a receiver before the call's arguments. A projection chain's
+    /// sessions open after them. An owned receiver is an ordinary first
+    /// argument, and a view receiver's access opens now, which excludes the
+    /// same argument writes as opening it later would. A `mut` receiver's
+    /// place is guarded by a `ref` access until its own access opens after
+    /// the arguments; a temporary root is hoisted into a local.
+    fn prepare_receiver(&mut self, receiver: ExprId, callable: &Callable<'db>) -> Receiver<'db> {
+        let mode = callable.callable_def().param_mode(self.db, 0);
+        if mode == FuncParamMode::Own {
+            return Receiver::Value(self.lower_expr(receiver));
         }
+        if self.typed_body.expr_prop(self.db, receiver).shape.is_some() {
+            if let Some(SemanticExprLowering::Call { callable: inner }) =
+                self.typed_body.semantic_expr_lowering(receiver)
+                && let Partial::Present(
+                    Expr::MethodCall(root, ..) | Expr::Bin(root, _, BinOp::Index),
+                ) = receiver.data(self.db, self.body)
+            {
+                let root = *root;
+                return Receiver::Chain(root, Box::new(self.prepare_receiver(root, inner)));
+            }
+            return Receiver::Value(self.lower_access(receiver));
+        }
+        if mode == FuncParamMode::View {
+            return Receiver::Value(self.lower_callable_argument(receiver, callable, 0));
+        }
+        let ty = normalize_ty(
+            self.db,
+            self.expr_ty(receiver),
+            self.body.scope(),
+            self.assumptions,
+        );
+        if matches!(
+            receiver.data(self.db, self.body),
+            Partial::Present(Expr::Path(_))
+        ) && let Some(binding) = self.typed_body.expr_binding(receiver)
+            && self.typed_body.binding_access(binding).is_some()
+        {
+            return Receiver::Value(self.binding_locals[&binding]);
+        }
+        if let Some(place) = self.try_lower_place(receiver) {
+            let guard = self.emit_borrow(receiver, place.clone(), BorrowKind::Ref, ty);
+            let guard = self.last_stmt_id(guard);
+            return Receiver::Place { place, guard };
+        }
+        let value = self.lower_expr(receiver);
+        let local = self.alloc_local(ty, Mutability::Mutable, None);
+        self.push_stmt(
+            SemOrigin::Expr(receiver),
+            SStmtKind::Assign {
+                dst: local,
+                expr: SExpr::UseValue(SOperand::expr(value, receiver)),
+            },
+        );
+        Receiver::Place {
+            place: SPlace::new(local),
+            guard: None,
+        }
+    }
 
-        self.lower_callable_argument(receiver, callable, 0)
+    /// Opens a prepared receiver's accesses: its chain's projection sessions
+    /// innermost first, then a `mut` receiver's access.
+    fn open_receiver(&mut self, receiver: ExprId, prepared: Receiver<'db>) -> SValueId {
+        match prepared {
+            Receiver::Value(value) => value,
+            Receiver::Chain(root, prepared) => {
+                let Some(SemanticExprLowering::Call { callable: inner }) =
+                    self.typed_body.semantic_expr_lowering(receiver)
+                else {
+                    unreachable!("a receiver chain link is a call")
+                };
+                let args: Vec<ExprId> = match receiver.data(self.db, self.body) {
+                    Partial::Present(Expr::MethodCall(_, _, _, args)) => {
+                        args.iter().map(|arg| arg.expr).collect()
+                    }
+                    Partial::Present(Expr::Bin(_, index, BinOp::Index)) => vec![*index],
+                    _ => unreachable!("a receiver chain link has a receiver"),
+                };
+                let ty = self
+                    .typed_body
+                    .expr_prop(self.db, receiver)
+                    .shape
+                    .expect("a receiver chain link is an access")
+                    .carrier_ty(self.db);
+                self.lower_callable_expr(receiver, ty, Some((root, *prepared)), &args, inner)
+            }
+            Receiver::Place { place, guard } => {
+                if let Some(guard) = guard {
+                    self.push_synthetic_stmt(SStmtKind::End { access: guard });
+                }
+                let ty = normalize_ty(
+                    self.db,
+                    self.expr_ty(receiver),
+                    self.body.scope(),
+                    self.assumptions,
+                );
+                self.emit_borrow(receiver, place, BorrowKind::Mut, ty)
+            }
+        }
+    }
+
+    fn emit_borrow(
+        &mut self,
+        expr: ExprId,
+        place: SPlace<'db>,
+        kind: BorrowKind,
+        ty: TyId<'db>,
+    ) -> SValueId {
+        self.emit_expr_with_origin(
+            SemOrigin::Expr(expr),
+            TyId::borrow_of(self.db, kind, ty),
+            SExpr::Borrow {
+                place,
+                kind,
+                provider: self.typed_body.expr_prop(self.db, expr).borrow_provider,
+            },
+        )
+    }
+
+    /// The statement that defined `value`, if it was emitted.
+    fn last_stmt_id(&self, value: SValueId) -> Option<SStmtId> {
+        self.blocks[self.current.index()]
+            .stmts
+            .last()
+            .filter(|stmt| matches!(stmt.kind, SStmtKind::Assign { dst, .. } if dst == value))
+            .map(|stmt| stmt.id)
     }
 
     fn lower_const_intrinsic(
@@ -1320,7 +1589,14 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         match stmt_data {
             Stmt::Let(pat, _, init) => {
                 if let Some(init) = init {
-                    let value = self.lower_expr(*init);
+                    let value = if matches!(
+                        pat.data(self.db, self.body),
+                        Partial::Present(Pat::Path(..))
+                    ) {
+                        self.lower_source(*init)
+                    } else {
+                        self.lower_scrutinee(*init)
+                    };
                     self.bind_pattern(*pat, value);
                 }
             }
@@ -1339,15 +1615,14 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
             }
             Stmt::Return(expr) => {
                 let value = expr.map(|expr| self.lower_expr_operand(expr));
-                self.set_terminator(
-                    self.current,
-                    origin,
-                    if expr.is_some_and(|expr| self.expr_ty(expr) == TyId::unit(self.db)) {
-                        STerminatorKind::Return(None)
-                    } else {
-                        STerminatorKind::Return(value)
-                    },
-                );
+                if !self.is_terminated(self.current) {
+                    self.exit(
+                        origin,
+                        value.filter(|_| {
+                            expr.is_none_or(|expr| self.expr_ty(expr) != TyId::unit(self.db))
+                        }),
+                    );
+                }
             }
             Stmt::Expr(expr) => {
                 let _ = self.lower_expr(*expr);
@@ -1655,7 +1930,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         let Partial::Present(arms) = arms else {
             panic!("match arms missing")
         };
-        let value = self.lower_expr(scrutinee);
+        let value = self.lower_scrutinee(scrutinee);
         let result = self.alloc_temp(self.expr_ty(expr));
         let join_bb = self.new_block();
         self.lower_match_expr_with_decision_tree(value, result, join_bb, arms)
@@ -1691,7 +1966,7 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 self.lower_cond_branch(*rhs, then_bb, else_bb);
             }
             Cond::Let(pat, expr) => {
-                let value = self.lower_expr(*expr);
+                let value = self.lower_scrutinee(*expr);
                 if self.pattern_is_irrefutable(*pat) {
                     self.bind_pattern(*pat, value);
                     self.set_synthetic_terminator(self.current, STerminatorKind::Goto(then_bb));

@@ -28,7 +28,10 @@ pub fn mask_for_bytes(rem: u256) -> u256 {
 }
 
 /// Zero the right-padding bytes after copying a dynamic byte slice into memory.
-pub fn zero_pad_memory_bytes(ptr: *u8, len: u256) {
+///
+/// The caller must ensure that `ptr` has room for `len` rounded up to whole
+/// words.
+pub unsafe fn zero_pad_memory_bytes(ptr: *u8, len: u256) {
     let rem = len % 32
     if rem == 0 {
         return
@@ -45,7 +48,7 @@ fn copy_view_words_to_memory<I>(_ view: BytesView<I>, _ dest: *u8)
     let word_count = ceil_words(view.len())
     let mut i: u256 = 0
     while i < word_count {
-        ops::mstore(addr: offset(dest, i * 32), value: view.word_at(i * 32))
+        unsafe { ops::mstore(addr: offset(dest, i * 32), value: view.word_at(i * 32)) }
         i += 1
     }
 }
@@ -56,11 +59,13 @@ fn copy_view_words_to_memory<I>(_ view: BytesView<I>, _ dest: *u8)
 pub fn encode_bytes_return_from_calldata(data_ptr: u256, len: u256) -> ! {
     let total_len = 64 + ceil_words(len) * 32
     let ptr = ptr::alloc_bytes(total_len)
-    ops::mstore(addr: ptr, value: 32)
-    ops::mstore(addr: offset(ptr, 32), value: len)
-    ops::calldatacopy(dest: offset(ptr, 64), offset: data_ptr, len: len)
-    zero_pad_memory_bytes(ptr: offset(ptr, 64), len: len)
-    ops::return_data(offset: ptr, len: total_len)
+    unsafe {
+        ops::mstore(addr: ptr, value: 32)
+        ops::mstore(addr: offset(ptr, 32), value: len)
+        ops::calldatacopy(dest: offset(ptr, 64), offset: data_ptr, len: len)
+        zero_pad_memory_bytes(ptr: offset(ptr, 64), len: len)
+        ops::return_data(offset: ptr, len: total_len)
+    }
 }
 
 /// Return ABI-encoded `bytes` copied from an arbitrary byte view.
@@ -70,10 +75,12 @@ pub fn encode_bytes_return_view<I>(view: BytesView<I>) -> !
     let len = view.len()
     let total_len = 64 + ceil_words(len) * 32
     let ptr = ptr::alloc_bytes(total_len)
-    ops::mstore(addr: ptr, value: 32)
-    ops::mstore(addr: offset(ptr, 32), value: len)
+    unsafe {
+        ops::mstore(addr: ptr, value: 32)
+        ops::mstore(addr: offset(ptr, 32), value: len)
+    }
     copy_view_words_to_memory(view, offset(ptr, 64))
-    ops::return_data(offset: ptr, len: total_len)
+    unsafe { ops::return_data(offset: ptr, len: total_len) }
 }
 
 /// Emit a Solidity-compatible event with a single dynamic `bytes` payload.
@@ -82,11 +89,13 @@ pub fn encode_bytes_return_view<I>(view: BytesView<I>) -> !
 pub fn emit_bytes_event(topic0: u256, data_ptr: u256, data_len: u256) {
     let total_len = 64 + ceil_words(data_len) * 32
     let ptr = ptr::alloc_bytes(total_len)
-    ops::mstore(addr: ptr, value: 32)
-    ops::mstore(addr: offset(ptr, 32), value: data_len)
-    ops::calldatacopy(dest: offset(ptr, 64), offset: data_ptr, len: data_len)
-    zero_pad_memory_bytes(ptr: offset(ptr, 64), len: data_len)
-    ops::log1(offset: ptr, len: total_len, topic0: topic0)
+    unsafe {
+        ops::mstore(addr: ptr, value: 32)
+        ops::mstore(addr: offset(ptr, 32), value: data_len)
+        ops::calldatacopy(dest: offset(ptr, 64), offset: data_ptr, len: data_len)
+        zero_pad_memory_bytes(ptr: offset(ptr, 64), len: data_len)
+        ops::log1(offset: ptr, len: total_len, topic0: topic0)
+    }
 }
 
 /// Emit a Solidity-compatible event with a single dynamic `bytes` payload.
@@ -95,10 +104,12 @@ pub fn emit_bytes_event_view<I>(topic0: u256, view: BytesView<I>)
 {
     let total_len = 64 + ceil_words(view.len()) * 32
     let ptr = ptr::alloc_bytes(total_len)
-    ops::mstore(addr: ptr, value: 32)
-    ops::mstore(addr: offset(ptr, 32), value: view.len())
+    unsafe {
+        ops::mstore(addr: ptr, value: 32)
+        ops::mstore(addr: offset(ptr, 32), value: view.len())
+    }
     copy_view_words_to_memory(view, offset(ptr, 64))
-    ops::log1(offset: ptr, len: total_len, topic0: topic0)
+    unsafe { ops::log1(offset: ptr, len: total_len, topic0: topic0) }
 }
 
 /// Storage-backed dynamic bytes keyed by `K`.
@@ -203,14 +214,16 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
 
         let mut i: u256 = 0
         while i < word_count {
-            ops::mstore(
-                addr: ptr::offset_bytes(buffer.ptr(), i * 32),
-                value: words.get_unchecked((key, i)),
-            )
+            unsafe {
+                ops::mstore(
+                    addr: ptr::offset_bytes(buffer.ptr(), i * 32),
+                    value: words.get_unchecked((key, i)),
+                )
+            }
             i += 1
         }
 
-        buffer.set_len(len)
+        unsafe { buffer.set_len(len) }
         buffer
     }
 
@@ -232,15 +245,17 @@ impl<K: StorageKey + Copy, const LEN_SALT: u256, const WORD_SALT: u256>
         let word_count = ceil_words(len)
         let total_len = 64 + word_count * 32
         let ptr = ptr::alloc_bytes(total_len)
-        ops::mstore(addr: ptr, value: 32)
-        ops::mstore(addr: offset(ptr, 32), value: len)
+        unsafe {
+            ops::mstore(addr: ptr, value: 32)
+            ops::mstore(addr: offset(ptr, 32), value: len)
+        }
 
         let mut i: u256 = 0
         while i < word_count {
-            ops::mstore(addr: offset(ptr, 64 + i * 32), value: words.get_unchecked((key, i)))
+            unsafe { ops::mstore(addr: offset(ptr, 64 + i * 32), value: words.get_unchecked((key, i))) }
             i += 1
         }
 
-        ops::return_data(offset: ptr, len: total_len)
+        unsafe { ops::return_data(offset: ptr, len: total_len) }
     }
 }

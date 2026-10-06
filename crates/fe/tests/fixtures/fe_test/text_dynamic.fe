@@ -6,16 +6,16 @@ use std::text::{concat_slice, TextBuilder}
 #[test]
 fn runtime_slice_and_empty() {
     assert!(concat_slice(MemSlice::empty()) == "")
-    let mut parts = MemArray<DynString>::new_uninit(4)
-    *parts.ptr_at(0) = "ab"
-    *parts.ptr_at(1) = ""
-    *parts.ptr_at(2) = "cde"
-    *parts.ptr_at(3) = "f"
+    let mut parts = unsafe { MemArray<DynString>::new_uninit(4) }
+    unsafe { *parts.ptr_at(0) = "ab" }
+    unsafe { *parts.ptr_at(1) = "" }
+    unsafe { *parts.ptr_at(2) = "cde" }
+    unsafe { *parts.ptr_at(3) = "f" }
     assert!(concat_slice(parts.as_slice()) == "abcdef")
     assert!(
         concat_slice(parts.as_slice().slice(offset: 1, len: 2)) == "cde",
     )
-    assert!(*parts.ptr_at(0) == "ab")
+    unsafe { assert!(*parts.ptr_at(0) == "ab") }
 }
 
 #[test]
@@ -36,10 +36,10 @@ fn growth_and_arbitrary_bytes() {
     let input = ptr::MemBuffer::alloc(65)
     let mut i = 0
     while i < 65 {
-        *ptr::offset_bytes(input.ptr(), i) = i.downcast_truncate()
+        unsafe { *ptr::offset_bytes(input.ptr(), i) = i.downcast_truncate() }
         i += 1
     }
-    *ptr::offset_bytes(input.ptr(), 64) = 255
+    unsafe { *ptr::offset_bytes(input.ptr(), 64) = 255 }
     let mut b = TextBuilder::new()
     b = b.push_bytes(input.slice(offset: 0, len: 31))
     b = b.push_bytes(input.slice(offset: 31, len: 1))

@@ -30,7 +30,7 @@ pub contract Blob uses (create: mut Create) {
         LoadHash -> u256 uses (blobs, mut marker) {
             let data = blobs.to_memory(key: 0)
             let len = data.len()
-            let hash = keccak256(data.capacity_span())
+            let hash = unsafe { keccak256(data.capacity_span()) }
             marker = len + 1
             hash
         }
@@ -82,8 +82,8 @@ uses (evm: mut Evm)
     assert!(blob.inner != 0)
 
     let data_ptr = ptr::alloc_bytes(32)
-    evm.mstore(addr: data_ptr, value: 0)
-    set_bytes(addr: blob, data: Bytes::from_abi_tail(data: data_ptr, len: 0, size: 32))
+    unsafe { evm.mstore(addr: data_ptr, value: 0) }
+    unsafe { set_bytes(addr: blob, data: Bytes::from_abi_tail(data: data_ptr, len: 0, size: 32)) }
 
     assert!(load_hash(addr: blob) == keccak256(ptr::MemSpan::empty()))
 
@@ -100,25 +100,33 @@ uses (evm: mut Evm)
 
     let payload_len: u256 = 64
     let data_ptr = ptr::alloc_bytes(payload_len + 32)
-    evm.mstore(addr: data_ptr, value: payload_len)
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 32),
-        value: 0x1111111111111111111111111111111111111111111111111111111111111111,
-    )
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 64),
-        value: 0x2222222222222222222222222222222222222222222222222222222222222222,
-    )
-    set_bytes(
-        addr: blob,
-        data: Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_len + 32),
-    )
+    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 32),
+            value: 0x1111111111111111111111111111111111111111111111111111111111111111,
+        )
+    }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 64),
+            value: 0x2222222222222222222222222222222222222222222222222222222222222222,
+        )
+    }
+    unsafe {
+        set_bytes(
+            addr: blob,
+            data: Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_len + 32),
+        )
+    }
 
     // Hash of the two payload words, computed locally.
-    let expected = keccak256(ptr::MemSpan::from_raw_parts(
-        ptr: ptr::offset_bytes(data_ptr, 32),
-        len: 64,
-    ))
+    let expected = unsafe {
+        keccak256(ptr::MemSpan::from_raw_parts(
+            ptr: ptr::offset_bytes(data_ptr, 32),
+            len: 64,
+        ))
+    }
     assert!(load_hash(addr: blob) == expected)
     assert!(get_marker(addr: blob) == 65)
 }
@@ -132,30 +140,40 @@ uses (evm: mut Evm)
 
     let payload_len: u256 = 65
     let data_ptr = ptr::alloc_bytes(128)
-    evm.mstore(addr: data_ptr, value: payload_len)
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 32),
-        value: 0x1111111111111111111111111111111111111111111111111111111111111111,
-    )
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 64),
-        value: 0x2222222222222222222222222222222222222222222222222222222222222222,
-    )
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 96),
-        value: 0x3300000000000000000000000000000000000000000000000000000000000000,
-    )
-    set_bytes(
-        addr: blob,
-        data: Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: 128),
-    )
+    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 32),
+            value: 0x1111111111111111111111111111111111111111111111111111111111111111,
+        )
+    }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 64),
+            value: 0x2222222222222222222222222222222222222222222222222222222222222222,
+        )
+    }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 96),
+            value: 0x3300000000000000000000000000000000000000000000000000000000000000,
+        )
+    }
+    unsafe {
+        set_bytes(
+            addr: blob,
+            data: Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: 128),
+        )
+    }
 
     // The contract hashes ceil_words(65) * 32 = 96 bytes, so a matching hash
     // proves the 31 padding bytes of the trailing word come back zeroed.
-    let expected = keccak256(ptr::MemSpan::from_raw_parts(
-        ptr: ptr::offset_bytes(data_ptr, 32),
-        len: 96,
-    ))
+    let expected = unsafe {
+        keccak256(ptr::MemSpan::from_raw_parts(
+            ptr: ptr::offset_bytes(data_ptr, 32),
+            len: 96,
+        ))
+    }
     assert!(load_hash(addr: blob) == expected)
     assert!(get_marker(addr: blob) == 66)
 
@@ -179,15 +197,19 @@ uses (evm: mut Evm)
     //   602a60005260206000f3      runtime: mstore(0, 42); return(0, 32)
     let payload_len: u256 = 22
     let data_ptr = ptr::alloc_bytes(64)
-    evm.mstore(addr: data_ptr, value: payload_len)
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 32),
-        value: 0x600a600c600039600a6000f3602a60005260206000f300000000000000000000,
-    )
-    set_bytes(
-        addr: blob,
-        data: Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: 64),
-    )
+    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 32),
+            value: 0x600a600c600039600a6000f3602a60005260206000f300000000000000000000,
+        )
+    }
+    unsafe {
+        set_bytes(
+            addr: blob,
+            data: Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: 64),
+        )
+    }
 
     let deployed: u256 = evm.call(addr: blob, gas: 1000000, value: 0, message: BlobMsg::Deploy { salt: 7 })
     assert!(deployed != 0)

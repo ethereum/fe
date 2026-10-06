@@ -8,9 +8,9 @@ use core::ptr::{self, MemSpan}
 
 fn hash_words(_ a: u256, _ b: u256) -> u256 uses (mem: mut RawMem) {
     let buffer = ptr::alloc_bytes(64)
-    mem.mstore(addr: buffer, value: a)
-    mem.mstore(addr: ptr::offset_bytes(buffer, 32), value: b)
-    keccak256(MemSpan::from_raw_parts(ptr: buffer, len: 64))
+    unsafe { mem.mstore(addr: buffer, value: a) }
+    unsafe { mem.mstore(addr: ptr::offset_bytes(buffer, 32), value: b) }
+    unsafe { keccak256(MemSpan::from_raw_parts(ptr: buffer, len: 64)) }
 }
 
 #[test]

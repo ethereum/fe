@@ -26,6 +26,7 @@ ast_node! {
     | SK::IfExpr
     | SK::MatchExpr
     | SK::WithExpr
+    | SK::UnsafeExpr
     | SK::ParenExpr
     | SK::AssignExpr
     | SK::AugAssignExpr,
@@ -58,6 +59,7 @@ impl Expr {
             SK::IfExpr => ExprKind::If(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::MatchExpr => ExprKind::Match(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::WithExpr => ExprKind::With(AstNode::cast(self.syntax().clone()).unwrap()),
+            SK::UnsafeExpr => ExprKind::Unsafe(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::ParenExpr => ExprKind::Paren(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::AssignExpr => ExprKind::Assign(AstNode::cast(self.syntax().clone()).unwrap()),
             SK::AugAssignExpr => ExprKind::AugAssign(AstNode::cast(self.syntax().clone()).unwrap()),
@@ -413,6 +415,21 @@ impl WithExpr {
 }
 
 ast_node! {
+    /// `unsafe { .. }`
+    pub struct UnsafeExpr,
+    SK::UnsafeExpr
+}
+impl UnsafeExpr {
+    pub fn unsafe_kw(&self) -> Option<SyntaxToken> {
+        support::token(self.syntax(), SK::UnsafeKw)
+    }
+
+    pub fn block(&self) -> Option<BlockExpr> {
+        support::child(self.syntax())
+    }
+}
+
+ast_node! {
     pub struct WithParamList,
     SK::WithParamList,
     IntoIterator<Item=WithParam>,
@@ -514,6 +531,7 @@ pub enum ExprKind {
     If(IfExpr),
     Match(MatchExpr),
     With(WithExpr),
+    Unsafe(UnsafeExpr),
     Paren(ParenExpr),
     Assign(AssignExpr),
     AugAssign(AugAssignExpr),
@@ -842,6 +860,14 @@ mod tests {
         }"#;
         let block_expr: BlockExpr = parse_expr(source);
         assert_eq!(block_expr.stmts().count(), 3);
+    }
+
+    #[test]
+    #[wasm_bindgen_test]
+    fn unsafe_expr() {
+        let unsafe_expr: UnsafeExpr = parse_expr("unsafe { *p }");
+        assert!(unsafe_expr.unsafe_kw().is_some());
+        assert_eq!(unsafe_expr.block().unwrap().stmts().count(), 1);
     }
 
     #[test]

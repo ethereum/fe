@@ -102,7 +102,7 @@ impl<const BITS: u256, const SALT: u256> StoragePackedArray<BITS, SALT>
     pub fn get(self, _ i: u256) -> u256 {
         let slot: u256 = Self::BASE_SLOT + (i / Self::LANES_PER_SLOT)
         let bit_pos: u256 = (i % Self::LANES_PER_SLOT) * BITS
-        (sload(slot) >> bit_pos) & Self::LANE_MASK
+        unsafe { (sload(slot) >> bit_pos) & Self::LANE_MASK }
     }
 
     /// Overwrite the lane at index `i` with `value`. Bits above `BITS` in
@@ -113,9 +113,9 @@ impl<const BITS: u256, const SALT: u256> StoragePackedArray<BITS, SALT>
         let slot: u256 = Self::BASE_SLOT + (i / Self::LANES_PER_SLOT)
         let bit_pos: u256 = (i % Self::LANES_PER_SLOT) * BITS
         let lane_mask_shifted: u256 = Self::LANE_MASK << bit_pos
-        let cleared: u256 = sload(slot) & (U256_MASK ^ lane_mask_shifted)
+        let cleared: u256 = unsafe { sload(slot) & (U256_MASK ^ lane_mask_shifted) }
         let inserted: u256 = (value & Self::LANE_MASK) << bit_pos
-        sstore(slot: slot, value: cleared | inserted)
+        unsafe { sstore(slot: slot, value: cleared | inserted) }
     }
 
     /// Linear search in `[start, end)` for the first lane equal to `needle`.
@@ -127,7 +127,7 @@ impl<const BITS: u256, const SALT: u256> StoragePackedArray<BITS, SALT>
     pub fn search(self, needle: u256, start: u256, end: u256) -> Option<u256> {
         let mut i: u256 = start
         while i < end {
-            let word: u256 = sload(Self::BASE_SLOT + (i / Self::LANES_PER_SLOT))
+            let word: u256 = unsafe { sload(Self::BASE_SLOT + (i / Self::LANES_PER_SLOT)) }
             let mut lane: u256 = i % Self::LANES_PER_SLOT
             while lane < Self::LANES_PER_SLOT && i < end {
                 if ((word >> (lane * BITS)) & Self::LANE_MASK) == needle {

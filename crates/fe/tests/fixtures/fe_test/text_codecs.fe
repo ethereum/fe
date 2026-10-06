@@ -12,7 +12,7 @@ fn from_hex(_ hex: DynString) -> Bytes {
     let mut i: u256 = 0
     while i < len {
         let byte = text::parse_hex_uint(hex.slice(start: 2 * i, len: 2)).unwrap()
-        *ptr::offset_bytes(buffer.ptr(), i) = byte.downcast_truncate()
+        unsafe { *ptr::offset_bytes(buffer.ptr(), i) = byte.downcast_truncate() }
         i += 1
     }
     Bytes::from_payload(source: buffer.span())
@@ -33,7 +33,7 @@ fn all_bytes() -> Bytes {
     let buffer = MemBuffer::alloc(256)
     let mut i: u256 = 0
     while i < 256 {
-        *ptr::offset_bytes(buffer.ptr(), i) = i.downcast_truncate()
+        unsafe { *ptr::offset_bytes(buffer.ptr(), i) = i.downcast_truncate() }
         i += 1
     }
     Bytes::from_payload(source: buffer.span())

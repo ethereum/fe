@@ -33,19 +33,6 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
         capture: bool,
     ) -> Option<SPlace<'db>> {
         if let Partial::Present(Expr::Un(inner, UnOp::Deref)) = expr.data(self.db, self.body) {
-            let inner_ty = self.expr_ty(*inner);
-            if let Some((_, ptr_ty)) = inner_ty.as_capability(self.db)
-                && ptr_ty.as_ptr(self.db).is_some()
-                && let Some(place) = self.typed_body.expr_place(*inner)
-            {
-                let place = self.lower_place_source(place, capture);
-                let ptr = self.emit_expr_with_origin(
-                    SemOrigin::Expr(*inner),
-                    ptr_ty,
-                    SExpr::ReadPlace { place },
-                );
-                return Some(SPlace::deref(ptr));
-            }
             let ptr = self.lower_place_operand(*inner, capture);
             return Some(SPlace::deref(ptr));
         }
@@ -79,11 +66,9 @@ impl<'a, 'db> SmirLowerCtxt<'a, 'db> {
                 place.push_dynamic_index(index);
                 Some(place)
             }
-            // A temporary native reference still names its original referent.
-            // Preserve that carrier before projecting, instead of materializing
-            // an owned receiver snapshot for a field or indexed method call.
-            _ if self.expr_ty(expr).as_borrow(self.db).is_some() => {
-                Some(SPlace::new(self.lower_place_operand(expr, capture)))
+            // A projection's result is a place in the grant its carrier names.
+            _ if self.typed_body.expr_prop(self.db, expr).access().is_some() => {
+                Some(SPlace::new(self.lower_access(expr)))
             }
             _ => None,
         }

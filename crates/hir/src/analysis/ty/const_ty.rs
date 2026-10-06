@@ -746,7 +746,7 @@ impl<'a, 'db> ConstBodyExprPrinter<'a, 'db> {
                 self.pretty_print(*expr)?,
                 to.to_opt()?.pretty_print(self.db)
             )),
-            Expr::Block(stmts) if stmts.len() == 1 => match stmts[0].data(self.db, self.body) {
+            Expr::Block(stmts, _) if stmts.len() == 1 => match stmts[0].data(self.db, self.body) {
                 Partial::Present(Stmt::Expr(tail_expr)) => self.pretty_print(*tail_expr),
                 Partial::Present(_) | Partial::Absent => None,
             },
@@ -1780,7 +1780,7 @@ fn eval_int_expr<'db>(
     has_captures: &dyn Fn() -> bool,
 ) -> Result<BigInt, ConstIntError> {
     match expr {
-        Expr::Block(stmts) => {
+        Expr::Block(stmts, _) => {
             let [stmt] = stmts.as_slice() else {
                 return Err(ConstIntError::NotIntExpr);
             };

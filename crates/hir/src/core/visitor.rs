@@ -1185,7 +1185,7 @@ pub fn walk_expr<'db, V>(
             },
         ),
 
-        Expr::Block(stmts) => {
+        Expr::Block(stmts, _) => {
             let scope = ctxt.scope();
             let graph = scope.scope_graph(ctxt.db);
             if graph.scopes.contains_key(&scope) {
@@ -2266,7 +2266,7 @@ where
         expr: ExprId,
     ) -> Self {
         let scope_id = match expr.data(db, body) {
-            Partial::Present(Expr::Block(_)) => ScopeId::Block(body, expr),
+            Partial::Present(Expr::Block(..)) => ScopeId::Block(body, expr),
             _ => scope,
         };
 

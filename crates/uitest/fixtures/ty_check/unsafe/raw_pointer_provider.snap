@@ -1,0 +1,22 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/unsafe/raw_pointer_provider.fe
+---
+error[8-0098]: binding a raw-pointer effect provider requires an `unsafe` block or function
+   ┌─ raw_pointer_provider.fe:26:11
+   │
+26 │     with (p) {
+   │           ^ provider reaches its target through a raw pointer
+
+error[8-0098]: binding a raw-pointer effect provider requires an `unsafe` block or function
+   ┌─ raw_pointer_provider.fe:32:11
+   │
+32 │     with (handle) {
+   │           ^^^^^^ provider reaches its target through a raw pointer
+
+error[8-0098]: binding a raw-pointer effect provider requires an `unsafe` block or function
+   ┌─ raw_pointer_provider.fe:40:11
+   │
+40 │     with (handle) {
+   │           ^^^^^^ provider reaches its target through a raw pointer

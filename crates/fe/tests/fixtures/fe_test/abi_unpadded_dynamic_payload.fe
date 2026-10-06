@@ -6,10 +6,10 @@ use std::evm::{Call, Evm, RawMem}
 
 fn input(_ size: u256) -> MemSpan {
     let p = ptr::alloc_bytes(96)
-    store_word(ptr: p, value: 33)
-    store_word(ptr: ptr::offset_bytes(p, 32), value: 0x1111111111111111111111111111111111111111111111111111111111111111)
-    store_word(ptr: ptr::offset_bytes(p, 64), value: 0x22ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
-    MemSpan::from_raw_parts(ptr: p, len: size)
+    unsafe { store_word(ptr: p, value: 33) }
+    unsafe { store_word(ptr: ptr::offset_bytes(p, 32), value: 0x1111111111111111111111111111111111111111111111111111111111111111) }
+    unsafe { store_word(ptr: ptr::offset_bytes(p, 64), value: 0x22ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) }
+    unsafe { MemSpan::from_raw_parts(ptr: p, len: size) }
 }
 fn check(_ bytes: Bytes) {
     assert!(bytes.len() == 33)
@@ -37,18 +37,18 @@ fn unpadded_strings() {
     assert!(text.len() == 33)
     assert!(text.encoded_span().word_at(64) == (0x22 as u256) << 248)
     let p = ptr::alloc_bytes(64)
-    store_word(ptr: p, value: 1)
-    store_word(ptr: ptr::offset_bytes(p, 32), value: (0x61 as u256) << 248)
-    let short = MemSpan::from_raw_parts(ptr: p, len: 33)
+    unsafe { store_word(ptr: p, value: 1) }
+    unsafe { store_word(ptr: ptr::offset_bytes(p, 32), value: (0x61 as u256) << 248) }
+    let short = unsafe { MemSpan::from_raw_parts(ptr: p, len: 33) }
     assert!(<String<1> as Decode<Sol>>::decode_from(short, 0) == "a")
 }
 fn array_input(_ size: u256) -> MemSpan {
     let p = ptr::alloc_bytes(128)
-    store_word(ptr: p, value: 1)
-    store_word(ptr: ptr::offset_bytes(p, 32), value: 32)
-    store_word(ptr: ptr::offset_bytes(p, 64), value: 1)
-    store_word(ptr: ptr::offset_bytes(p, 96), value: 0xaaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
-    MemSpan::from_raw_parts(ptr: p, len: size)
+    unsafe { store_word(ptr: p, value: 1) }
+    unsafe { store_word(ptr: ptr::offset_bytes(p, 32), value: 32) }
+    unsafe { store_word(ptr: ptr::offset_bytes(p, 64), value: 1) }
+    unsafe { store_word(ptr: ptr::offset_bytes(p, 96), value: 0xaaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) }
+    unsafe { MemSpan::from_raw_parts(ptr: p, len: size) }
 }
 #[test]
 fn unpadded_nested_bytes() {
@@ -71,14 +71,14 @@ fn missing_nested_bytes_rejected() {
 #[test]
 fn aligned_and_empty_bytes() {
     let p = ptr::alloc_bytes(64)
-    store_word(ptr: p, value: 32)
-    store_word(ptr: ptr::offset_bytes(p, 32), value: 123)
-    let data = MemSpan::from_raw_parts(ptr: p, len: 64)
+    unsafe { store_word(ptr: p, value: 32) }
+    unsafe { store_word(ptr: ptr::offset_bytes(p, 32), value: 123) }
+    let data = unsafe { MemSpan::from_raw_parts(ptr: p, len: 64) }
     let bytes = <Bytes as Decode<Sol>>::decode_from(data, 0)
     assert!(bytes.len() == 32)
     assert!(bytes.encoded_span().word_at(32) == 123)
-    store_word(ptr: p, value: 0)
-    let empty = <Bytes as Decode<Sol>>::decode_from(MemSpan::from_raw_parts(ptr: p, len: 32), 0)
+    unsafe { store_word(ptr: p, value: 0) }
+    let empty = unsafe { <Bytes as Decode<Sol>>::decode_from(MemSpan::from_raw_parts(ptr: p, len: 32), 0) }
     assert!(empty.len() == 0)
     assert!(empty.encoded_size() == 32)
 }
@@ -94,8 +94,8 @@ fn missing_length_word_rejected() {
 #[test(should_revert)]
 fn overflowing_length_rejected() {
     let p = ptr::alloc_bytes(32)
-    store_word(ptr: p, value: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
-    let _ = <Bytes as Decode<Sol>>::decode_from(MemSpan::from_raw_parts(ptr: p, len: 32), 0)
+    unsafe { store_word(ptr: p, value: 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) }
+    let _ = unsafe { <Bytes as Decode<Sol>>::decode_from(MemSpan::from_raw_parts(ptr: p, len: 32), 0) }
 }
 
 fn check_array_reencoding(_ array: own DynArray<Bytes>) {
@@ -105,8 +105,8 @@ fn check_array_reencoding(_ array: own DynArray<Bytes>) {
     let size = pair.payload_size()
     assert!(size == 256)
     let output = ptr::alloc_bytes(size)
-    <(DynArray<Bytes>, Bytes) as Encode<Sol>>::encode(pair, output)
-    let encoded = MemSpan::from_raw_parts(ptr: output, len: size)
+    unsafe { <(DynArray<Bytes>, Bytes) as Encode<Sol>>::encode(pair, output) }
+    let encoded = unsafe { MemSpan::from_raw_parts(ptr: output, len: size) }
     assert!(encoded.word_at(0) == 64)
     assert!(encoded.word_at(32) == 192)
     assert!(encoded.word_at(160) == (0xaa as u256) << 248)
@@ -137,18 +137,18 @@ impl ByteInput for BoundedInput {
     }
     fn byte_at(self, _ offset: u256) -> u8 {
         assert!(offset < self.len())
-        *ptr::offset_bytes(self.span.ptr(), offset)
+        unsafe { *ptr::offset_bytes(self.span.ptr(), offset) }
     }
-    fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) {
+    unsafe fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) {
         self.span.copy_to_memory(dest: dest, src_offset: src_offset, len: len)
     }
 }
 #[test]
 fn short_string_all_decode_paths_respect_input_extent() {
     let p = ptr::alloc_bytes(33)
-    store_word(ptr: p, value: 1)
-    *ptr::offset_bytes(p, 32) = 0x61
-    let data = BoundedInput { span: MemSpan::from_raw_parts(ptr: p, len: 33) }
+    unsafe { store_word(ptr: p, value: 1) }
+    unsafe { *ptr::offset_bytes(p, 32) = 0x61 }
+    let data = unsafe { BoundedInput { span: MemSpan::from_raw_parts(ptr: p, len: 33) } }
     assert!(<String<1> as Decode<Sol>>::decode_from(data, 0) == "a")
     assert!(<String<1> as Decode<Sol>>::decode_from_bounded(data, 0, 33) == "a")
     assert!(<String<1> as Decode<Sol>>::decode_from_prechecked_head(data, 0, 33) == "a")
@@ -169,10 +169,10 @@ fn partially_padded_array_all_decode_paths_clear_padding() {
 #[test]
 fn deeply_nested_array_clears_partial_padding() {
     let p = ptr::alloc_bytes(192)
-    store_word(ptr: p, value: 1)
-    store_word(ptr: ptr::offset_bytes(p, 32), value: 32)
-    array_input(128).copy_to_memory(dest: ptr::offset_bytes(p, 64), src_offset: 0, len: 128)
-    let data = MemSpan::from_raw_parts(ptr: p, len: 174)
+    unsafe { store_word(ptr: p, value: 1) }
+    unsafe { store_word(ptr: ptr::offset_bytes(p, 32), value: 32) }
+    unsafe { array_input(128).copy_to_memory(dest: ptr::offset_bytes(p, 64), src_offset: 0, len: 128) }
+    let data = unsafe { MemSpan::from_raw_parts(ptr: p, len: 174) }
     let array = <DynArray<DynArray<Bytes>> as Decode<Sol>>::decode_from(data, 0)
     assert!(array.encoded_size() == 192)
     assert!(array.encoded_span().word_at(160) == (0xaa as u256) << 248)
@@ -197,15 +197,15 @@ fn every_byte_boundary_preserves_data_and_clears_padding() {
         for len in 0..97 {
             let len = len as u256
             let p = ptr::alloc_bytes(192)
-            store_word(ptr: ptr::offset_bytes(p, pos), value: len)
+            unsafe { store_word(ptr: ptr::offset_bytes(p, pos), value: len) }
             for offset in 0..128 {
-                *ptr::offset_bytes(p, pos + 32 + offset as u256) = 0xaa
+                unsafe { *ptr::offset_bytes(p, pos + 32 + offset as u256) = 0xaa }
             }
             let input_len = pos + 32 + len
-            let data = BoundedInput { span: MemSpan::from_raw_parts(ptr: p, len: input_len) }
+            let data = unsafe { BoundedInput { span: MemSpan::from_raw_parts(ptr: p, len: input_len) } }
             check_boundary_bytes(<Bytes as Decode<Sol>>::decode_from(data, pos), len)
             // A wider backing span must not make its dirty suffix observable.
-            let backing = MemSpan::from_raw_parts(ptr: p, len: 192)
+            let backing = unsafe { MemSpan::from_raw_parts(ptr: p, len: 192) }
             check_boundary_bytes(<Bytes as Decode<Sol>>::decode_from_bounded(backing, pos, input_len), len)
             check_boundary_bytes(<Bytes as Decode<Sol>>::decode_from_prechecked_head(data, pos, input_len), len)
             let mut d = Sol::decoder_with_base(data, pos)
@@ -226,7 +226,7 @@ impl ByteInput for LengthInput {
     fn len(self) -> u256 { !(0 as u256) }
     fn word_at(self, _: u256) -> u256 { self.data_len }
     fn byte_at(self, _: u256) -> u8 { panic() }
-    fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) { panic() }
+    unsafe fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) { panic() }
 }
 
 #[test]
@@ -268,26 +268,28 @@ fn calldata_roundtrips_with_any_trailing_padding() uses (evm: mut Evm) {
     let data = ptr::alloc_bytes(164)
     let mut ret = ptr::MemBuffer::with_capacity(160)
     for selector in [1, 2] {
-        store_word(ptr: data, value: selector << 224)
-        store_word(ptr: ptr::offset_bytes(data, 4), value: 32)
+        unsafe { store_word(ptr: data, value: selector << 224) }
+        unsafe { store_word(ptr: ptr::offset_bytes(data, 4), value: 32) }
         for len in 0..97 {
             let len = len as u256
-            store_word(ptr: ptr::offset_bytes(data, 36), value: len)
+            unsafe { store_word(ptr: ptr::offset_bytes(data, 36), value: len) }
             for index in 0..96 {
                 let byte: u8 = if (index as u256) < len { (index * 37 % 128).downcast_unchecked() } else { 0xff }
                 // Explicit EVM stores avoid the current borrow checker's
                 // capability-write error for pointer assignments in this loop.
-                evm.mstore8(addr: ptr::offset_bytes(data, 68 + index as u256), value: byte)
+                unsafe { evm.mstore8(addr: ptr::offset_bytes(data, 68 + index as u256), value: byte) }
             }
             let padded_len = (len / 32 + (len % 32 != 0) as u256) * 32
             // Construct calldata manually and inspect raw returndata, so Fe's
             // decoder is not used as the oracle for Fe's returned encoding.
             for padding in 0..(padded_len - len + 1) as usize {
-                let outcome = evm.raw_call(
-                    addr: echo, gas: 1000000, value: 0,
-                    args: MemSpan::from_raw_parts(ptr: data, len: 68 + len + padding as u256),
-                    ret: mut ret,
-                )
+                let outcome = unsafe {
+                    evm.raw_call(
+                        addr: echo, gas: 1000000, value: 0,
+                        args: MemSpan::from_raw_parts(ptr: data, len: 68 + len + padding as u256),
+                        ret: mut ret,
+                    )
+                }
                 assert!(outcome.success())
                 assert!(outcome.returndata_len() == 64 + padded_len)
                 assert!(ret.len() == 64 + padded_len)
@@ -302,10 +304,12 @@ fn calldata_roundtrips_with_any_trailing_padding() uses (evm: mut Evm) {
             }
             // A missing actual byte, including an empty value's length word,
             // must still produce the ABI decoder's empty revert.
-            let outcome = evm.raw_call(
-                addr: echo, gas: 1000000, value: 0,
-                args: MemSpan::from_raw_parts(ptr: data, len: 67 + len), ret: mut ret,
-            )
+            let outcome = unsafe {
+                evm.raw_call(
+                    addr: echo, gas: 1000000, value: 0,
+                    args: MemSpan::from_raw_parts(ptr: data, len: 67 + len), ret: mut ret,
+                )
+            }
             assert!(!outcome.success())
             assert!(outcome.returndata_len() == 0)
         }

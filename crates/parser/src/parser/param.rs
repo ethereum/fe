@@ -601,9 +601,11 @@ fn skip_braces<S: TokenStream>(parser: &mut Parser<S>) -> bool {
 /// Whether a `where` predicate can start with `kind`: a type bound starts
 /// with a type, and a const condition with an expression. A `{` is left out:
 /// whether it opens a condition or the item's block is decided by
-/// [`WhereClauseScope::brace_opens_predicate`].
+/// [`WhereClauseScope::brace_opens_predicate`]. An `unsafe` is left out too:
+/// it starts the next `unsafe fn` of a trait or `extern` block.
 fn starts_predicate(kind: SyntaxKind) -> bool {
-    kind != SyntaxKind::LBrace && (is_type_start(kind) || is_expr_start(kind))
+    !matches!(kind, SyntaxKind::LBrace | SyntaxKind::UnsafeKw)
+        && (is_type_start(kind) || is_expr_start(kind))
 }
 
 define_scope! { WhereConstPredicateScope, WhereConstPredicate }

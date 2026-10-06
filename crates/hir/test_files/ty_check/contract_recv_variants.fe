@@ -28,7 +28,7 @@ mod TokenMsg {
     }
 
     impl core::abi::Encode<std::abi::Sol> for Transfer {
-        fn encode(own self, _ ptr: *u8) {
+        unsafe fn encode(own self, _ ptr: *u8) {
             let Self { to, amount } = self
             to.encode(ptr)
             amount.encode(core::ptr::offset_bytes(ptr, 32))
@@ -37,8 +37,8 @@ mod TokenMsg {
 
     impl core::abi::Decode<std::abi::Sol> for Transfer {
         fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-            let to = u64::decode_payload(d)
-            let amount = u64::decode_payload(d)
+            let to = u64::decode_payload(mut d)
+            let amount = u64::decode_payload(mut d)
             Self { to, amount }
         }
     }
@@ -58,7 +58,7 @@ mod TokenMsg {
     }
 
     impl core::abi::Encode<std::abi::Sol> for Balance {
-        fn encode(own self, _ ptr: *u8) {
+        unsafe fn encode(own self, _ ptr: *u8) {
             let Self { addr } = self
             addr.encode(ptr)
         }
@@ -66,7 +66,7 @@ mod TokenMsg {
 
     impl core::abi::Decode<std::abi::Sol> for Balance {
         fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-            let addr = u64::decode_payload(d)
+            let addr = u64::decode_payload(mut d)
             Self { addr }
         }
     }
@@ -90,7 +90,7 @@ impl core::abi::AbiSize for CustomQuery {
 }
 
 impl core::abi::Encode<std::abi::Sol> for CustomQuery {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         let Self { key } = self
         key.encode(ptr)
     }
@@ -98,7 +98,7 @@ impl core::abi::Encode<std::abi::Sol> for CustomQuery {
 
 impl core::abi::Decode<std::abi::Sol> for CustomQuery {
     fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-        let key = u64::decode_payload(d)
+        let key = u64::decode_payload(mut d)
         Self { key }
     }
 }

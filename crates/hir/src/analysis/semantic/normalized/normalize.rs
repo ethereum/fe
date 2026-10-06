@@ -7,14 +7,15 @@ use crate::{
     analysis::{
         HirAnalysisDb,
         semantic::{
-            BorrowActivation, EvalOutcome, FieldIndex, LayoutBackingPlace, LayoutBackingProjection,
-            PlaceProvenance, SBlockId, SConst, SExpr, SLocal, SLocalId, SOperand, SPlace, SStmtId,
-            SStmtKind, STerminatorKind, SemConstValue, SemOrigin, SemanticBody, SemanticInstance,
+            EvalOutcome, FieldIndex, LayoutBackingPlace, LayoutBackingProjection, PlaceProvenance,
+            SBlockId, SConst, SExpr, SLocal, SLocalId, SOperand, SPlace, SStmtId, SStmtKind,
+            STerminatorKind, SemConstValue, SemOrigin, SemanticBody, SemanticInstance,
             SemanticLocalRole, ValueProvenance, VariantIndex,
+            capability::semantics::contains_capability,
             capability::{
+                array::ArrayLength,
                 handle::OpaqueHandleContract,
                 semantics::{CapabilityClass, CapabilitySemantics, capability_semantics},
-                shape::{ArrayLength, ShapeId, capability_shape},
             },
             eval_const_ref, get_or_build_semantic_instance,
             lower::layout_backing_source_path_is_prefix,
@@ -97,6 +98,8 @@ struct NormalizeCx<'a, 'db> {
     current_values: Vec<Vec<NValueId>>,
     projection_values: Vec<Option<NValueId>>,
     copy_cache: RefCell<FxHashMap<TyId<'db>, bool>>,
+    /// The carrier each raw statement defined, so `End` can name the access.
+    defined: FxHashMap<SStmtId, NValueId>,
 }
 
 impl<'a, 'db> NormalizeCx<'a, 'db> {
@@ -127,6 +130,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             current_values: vec![Vec::new(); local_count],
             projection_values: vec![None; local_count],
             copy_cache: RefCell::new(FxHashMap::default()),
+            defined: FxHashMap::default(),
         }
     }
 
@@ -240,6 +244,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                             self.mark_address_root(dst.local, &mut needs_slot);
                         }
                     }
+                    SStmtKind::End { .. } => {}
                 }
             }
         }
@@ -512,7 +517,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                                 origin: statement.origin,
                             },
                             kind: BorrowKind::Mut,
-                            activation: BorrowActivation::Immediate,
                             provider: None,
                         };
                     }
@@ -560,8 +564,22 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                             *dst,
                             normalized,
                         )?;
+                        self.defined.insert(statement.id, value);
                         self.current_values[dst.index()].push(value);
                         pushed.push(*dst);
+                    }
+                }
+                SStmtKind::End { access } => {
+                    // An access the normalization folded away has nothing to close.
+                    if let Some(&access) = self.defined.get(access) {
+                        let id = NStatementId::new(self.statement_count);
+                        self.statement_count += 1;
+                        self.blocks[block_index].statements.push(NStatement {
+                            id,
+                            source: Some(statement.id),
+                            origin: statement.origin,
+                            kind: NStatementKind::End { access },
+                        });
                     }
                 }
                 SStmtKind::Store { dst, src } => {
@@ -614,18 +632,13 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 if source_ty != dst_ty && self.local_has_place(value.value) {
                     let place =
                         self.place_for_local(block, value.sem_origin(origin), value.value)?;
-                    let mode = matches!(
-                        self.raw.locals[value.value.index()].role,
-                        SemanticLocalRole::PlaceCarrier { .. }
-                    )
-                    .then_some(ReadMode::Copy);
                     self.load_or_borrow_place(
                         block,
                         value.sem_origin(origin),
                         value.value,
                         dst_ty,
                         place,
-                        mode,
+                        None,
                     )?
                 } else {
                     NExpr::Forward {
@@ -693,7 +706,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             SExpr::Borrow {
                 place,
                 kind,
-                activation,
                 provider,
             } => {
                 let mut normalized = self.normalize_place(block, origin, place)?;
@@ -704,7 +716,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 NExpr::Borrow {
                     place: normalized,
                     kind: *kind,
-                    activation: *activation,
                     provider: *provider,
                 }
             }
@@ -758,9 +769,7 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                     NExpr::Forward { src: value }
                 } else if from.as_ptr(self.db).is_some() || to.as_ptr(self.db).is_some() {
                     NExpr::PointerCast { value, to }
-                } else if self.shape(from)?.contains_capability(self.db)
-                    || self.shape(to)?.contains_capability(self.db)
-                {
+                } else if self.contains_capability(from) || self.contains_capability(to) {
                     let mapping = structural_repack_mapping(self.db, self.instance, from, to)
                         .ok_or(NormalizeError::UnsupportedCapabilityCast { from, to })?;
                     NExpr::StructuralRepack { value, mapping }
@@ -892,8 +901,25 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                                 place,
                                 target,
                             )?;
-                            if structural_repack_mapping(self.db, self.instance, place.ty, target)
-                                .is_none()
+                            // A `Copy` view argument is passed by copy. Copying
+                            // a provider's place is observable when the callee's
+                            // effects could write it, or when the copy validates
+                            // untrusted enum tags.
+                            let provider_copy = self.ty_is_copy(target)
+                                && matches!(place.base, NPlaceBase::Root(root)
+                                    if matches!(self.roots[root.index()].kind, NRootKind::Provider { .. })
+                                        && match self.roots[root.index()].address_space {
+                                            ProviderAddressSpace::Code => false,
+                                            ProviderAddressSpace::Calldata => {
+                                                ty_has_enum(self.db, target)
+                                            }
+                                            ProviderAddressSpace::Memory
+                                            | ProviderAddressSpace::Storage
+                                            | ProviderAddressSpace::Transient => true,
+                                        });
+                            if provider_copy
+                                || structural_repack_mapping(self.db, self.instance, place.ty, target)
+                                    .is_none()
                             {
                                 let value =
                                     self.read_operand(block, origin, *arg, Some(ReadMode::Copy))?;
@@ -1053,8 +1079,8 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
         })
     }
 
-    fn shape(&self, ty: TyId<'db>) -> Result<ShapeId<'db>, NormalizeError<'db>> {
-        capability_shape(
+    fn contains_capability(&self, ty: TyId<'db>) -> bool {
+        contains_capability(
             self.db,
             self.instance
                 .key(self.db)
@@ -1063,7 +1089,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             self.assumptions,
             ty,
         )
-        .map_err(|_| NormalizeError::UnresolvedHandleOrigin(ty))
     }
 
     fn normalize_constant(
@@ -1089,14 +1114,12 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                 CapabilityKind::Ref => NExpr::Borrow {
                     place,
                     kind: BorrowKind::Ref,
-                    activation: BorrowActivation::Immediate,
                     provider: None,
                 },
                 CapabilityKind::Mut => unreachable!(),
             });
         }
-        let shape = self.shape(ty)?;
-        if !shape.contains_capability(self.db) {
+        if !self.contains_capability(ty) {
             return Ok(NExpr::Const(constant));
         }
         let value = match constant {
@@ -1178,7 +1201,6 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
                     CapabilityKind::Ref => crate::analysis::ty::ty_def::BorrowKind::Ref,
                     CapabilityKind::View => unreachable!("views are explicit"),
                 },
-                activation: BorrowActivation::Immediate,
                 provider: None,
             });
         }
@@ -1724,21 +1746,33 @@ impl<'a, 'db> NormalizeCx<'a, 'db> {
             STerminatorKind::Assert { message } => NTerminatorKind::Assert { message: *message },
             STerminatorKind::Return(value) => NTerminatorKind::Return(
                 value
-                    .map(|value| {
-                        let target = self.instance.normalized_result_ty(self.db);
-                        if target.has_invalid(self.db) {
-                            self.read_operand(block, raw.origin, value, None)
-                        } else {
-                            self.read_operand_as(block, raw.origin, value, target)
-                        }
-                    })
+                    .map(|value| self.read_result(block, raw.origin, value))
                     .transpose()?,
             ),
+            STerminatorKind::Yield { value, resume } => NTerminatorKind::Yield {
+                value: self.read_result(block, raw.origin, *value)?,
+                resume: self.successor(block, raw.origin, *resume)?,
+            },
         };
         Ok(NTerminator {
             origin: raw.origin,
             kind,
         })
+    }
+
+    /// Reads a returned or yielded value as the instance's result.
+    fn read_result(
+        &mut self,
+        block: SBlockId,
+        origin: SemOrigin<'db>,
+        value: SOperand,
+    ) -> Result<NOperand, NormalizeError<'db>> {
+        let target = self.instance.normalized_result_ty(self.db);
+        if target.has_invalid(self.db) {
+            self.read_operand(block, origin, value, None)
+        } else {
+            self.read_operand_as(block, origin, value, target)
+        }
     }
 
     fn successor(
@@ -2690,7 +2724,15 @@ impl RawCfg {
         let successors = body
             .blocks
             .iter()
-            .map(|block| raw_successors(&block.terminator.kind))
+            .map(|block| {
+                block
+                    .terminator
+                    .kind
+                    .successors()
+                    .into_iter()
+                    .map(|block| block.index())
+                    .collect::<Vec<_>>()
+            })
             .collect::<Vec<_>>();
         let mut predecessors = vec![Vec::new(); body.blocks.len()];
         for (block, targets) in successors.iter().enumerate() {
@@ -2880,19 +2922,19 @@ impl RawCfg {
     }
 }
 
-fn raw_successors(terminator: &STerminatorKind<'_>) -> Vec<usize> {
-    match terminator {
-        STerminatorKind::Goto(block) => vec![block.index()],
-        STerminatorKind::Branch {
-            then_bb, else_bb, ..
-        } => vec![then_bb.index(), else_bb.index()],
-        STerminatorKind::MatchEnum { cases, default, .. } => cases
-            .iter()
-            .map(|(_, block)| block.index())
-            .chain(default.iter().map(|block| block.index()))
-            .collect(),
-        STerminatorKind::Assert { .. } | STerminatorKind::Return(_) => Vec::new(),
+/// Whether a value of `ty` holds an enum, whose tag a copy validates.
+fn ty_has_enum<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> bool {
+    if ty.as_enum(db).is_some() {
+        return true;
     }
+    if ty.is_array(db) {
+        return ty_has_enum(db, ty.generic_args(db)[0]);
+    }
+    (ty.is_tuple(db) || ty.is_struct(db))
+        && ty
+            .field_types(db)
+            .into_iter()
+            .any(|field| ty_has_enum(db, field))
 }
 
 fn block_uses_and_defs(
@@ -2906,7 +2948,7 @@ fn block_uses_and_defs(
         for statement in &block.stmts {
             match &statement.kind {
                 SStmtKind::Assign { dst, expr } => {
-                    for local in expr_used_locals(expr) {
+                    for local in expr.used_locals() {
                         if !block_defs.contains(&local) {
                             block_uses.insert(local);
                         }
@@ -2914,7 +2956,8 @@ fn block_uses_and_defs(
                     block_defs.insert(*dst);
                 }
                 SStmtKind::Store { dst, src } => {
-                    for local in place_used_locals(dst)
+                    for local in dst
+                        .used_locals()
                         .into_iter()
                         .chain(std::iter::once(src.value))
                     {
@@ -2923,9 +2966,10 @@ fn block_uses_and_defs(
                         }
                     }
                 }
+                SStmtKind::End { .. } => {}
             }
         }
-        for local in terminator_used_locals(&block.terminator.kind) {
+        for local in block.terminator.kind.used_locals() {
             if !block_defs.contains(&local) {
                 block_uses.insert(local);
             }
@@ -2955,80 +2999,6 @@ pub(super) fn normalized_source_local_value_ty<'db>(
     copied_scalar_ty(db, instance.normalized_ty(db, ty))
 }
 
-fn expr_used_locals(expr: &SExpr<'_>) -> Vec<SLocalId> {
-    let mut locals = Vec::new();
-    match expr {
-        SExpr::Forward(value)
-        | SExpr::UseValue(value)
-        | SExpr::Unary { value, .. }
-        | SExpr::Cast { value, .. }
-        | SExpr::ArrayRepeat { value, .. }
-        | SExpr::GetEnumTag { value }
-        | SExpr::IsEnumVariant { value, .. }
-        | SExpr::ExtractEnumField { value, .. } => locals.push(value.value),
-        SExpr::ReadPlace { place } | SExpr::Borrow { place, .. } => {
-            locals.extend(place_used_locals(place));
-        }
-        SExpr::Binary { lhs, rhs, .. } => {
-            locals.push(lhs.value);
-            locals.push(rhs.value);
-        }
-        SExpr::AggregateMake { fields, .. } | SExpr::EnumMake { fields, .. } => {
-            locals.extend(fields.iter().map(|field| field.value));
-        }
-        SExpr::Field { base, .. } => locals.push(base.value),
-        SExpr::Index { base, index } => {
-            locals.push(base.value);
-            locals.push(index.value);
-        }
-        SExpr::Call {
-            args, effect_args, ..
-        } => {
-            locals.extend(args.iter().map(|arg| arg.value));
-            for arg in effect_args {
-                match &arg.arg {
-                    crate::analysis::semantic::SEffectArgValue::Place(place) => {
-                        locals.extend(place_used_locals(place));
-                    }
-                    crate::analysis::semantic::SEffectArgValue::Value(value) => {
-                        locals.push(value.value);
-                    }
-                }
-            }
-        }
-        SExpr::CodeRegionRef { .. }
-        | SExpr::Const(_)
-        | SExpr::CodeRegionOffset { .. }
-        | SExpr::CodeRegionLen { .. } => {}
-    }
-    locals
-}
-
-fn place_used_locals(place: &SPlace<'_>) -> Vec<SLocalId> {
-    std::iter::once(place.local)
-        .chain(place.path.iter().filter_map(|projection| match projection {
-            Projection::Index(IndexSource::Dynamic(index)) => Some(*index),
-            Projection::Field(_)
-            | Projection::VariantField { .. }
-            | Projection::Discriminant
-            | Projection::Index(IndexSource::Constant(_))
-            | Projection::Deref
-            | Projection::Index(IndexSource::Any) => None,
-        }))
-        .collect()
-}
-
-fn terminator_used_locals(terminator: &STerminatorKind<'_>) -> Vec<SLocalId> {
-    match terminator {
-        STerminatorKind::Goto(_)
-        | STerminatorKind::Assert { .. }
-        | STerminatorKind::Return(None) => Vec::new(),
-        STerminatorKind::Branch { cond, .. }
-        | STerminatorKind::MatchEnum { value: cond, .. }
-        | STerminatorKind::Return(Some(cond)) => vec![cond.value],
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use cranelift_entity::EntityRef;
@@ -3036,7 +3006,7 @@ mod tests {
     use crate::{
         analysis::{
             semantic::{
-                BorrowActivation, FieldIndex, Mutability, SConst, SStmtId, VariantIndex,
+                FieldIndex, Mutability, SConst, SStmtId, VariantIndex,
                 get_or_build_semantic_instance, identity_semantic_instance_key,
                 normalized::{
                     NDataPath, NDataProjection, NEffectArgValue, NExpr, NIndex, NPlace, NPlaceBase,
@@ -3050,7 +3020,7 @@ mod tests {
             ty::{
                 const_ty::{ConstTyData, normalize_const_tys_for_comparison},
                 ty_check::{BodyOwner, EffectPassMode},
-                ty_def::{BorrowKind, CapabilityKind, TyData, TyId},
+                ty_def::{TyData, TyId},
             },
         },
         hir_def::{ArithBinOp, BinOp, ItemKind, LogicalBinOp, UnOp},
@@ -3106,316 +3076,6 @@ fn stored(_ x: u256) -> u256 {
         let (top_mod, _) = db.top_mod(file);
         let artifacts = normalized_func(&db, top_mod, "stored");
         verify_normalized_body(&db, &artifacts.body).expect("function item values must verify");
-    }
-
-    #[test]
-    fn native_call_results_keep_the_declared_carrier_before_contextual_copy_reads() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            "native_call_reads.fe".into(),
-            r#"
-fn shared(_ value: ref u256) -> ref u256 { value }
-fn mutable(_ value: mut u256) -> mut u256 { value }
-fn consume(_ value: u256) -> u256 { value }
-fn comparison(value: ref u256) -> bool { shared(value) == 11 }
-fn arithmetic(value: ref u256) -> u256 { shared(value) + 1 }
-fn argument(value: ref u256) -> u256 { consume(shared(value)) }
-fn returned(value: ref u256) -> u256 { shared(value) }
-fn exclusive(value: mut u256) -> bool { mutable(value) == 11 }
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-        for name in [
-            "comparison",
-            "arithmetic",
-            "argument",
-            "returned",
-            "exclusive",
-        ] {
-            let body = normalized_func(&db, top_mod, name).body;
-            verify_normalized_body(&db, &body)
-                .unwrap_or_else(|error| panic!("{name}: {error:?}\n{body:#?}"));
-            assert!(
-                body.blocks
-                    .iter()
-                    .flat_map(|block| &block.statements)
-                    .any(|statement| {
-                        let NStatementKind::Define {
-                            expr:
-                                NExpr::Load {
-                                    place,
-                                    mode: ReadMode::Copy,
-                                },
-                            ..
-                        } = &statement.kind
-                        else {
-                            return false;
-                        };
-                        let NPlaceBase::CapabilityTarget { carrier } = place.base else {
-                            return false;
-                        };
-                        let NValueDefinition::Statement { block, statement } =
-                            body.values[carrier.index()].definition
-                        else {
-                            return false;
-                        };
-                        body.values[carrier.index()].ty.as_borrow(&db).is_some()
-                            && matches!(
-                                body.blocks[block.index()].statements[statement as usize].kind,
-                                NStatementKind::Define {
-                                    expr: NExpr::Call { .. },
-                                    ..
-                                }
-                            )
-                    }),
-                "{name} must read the referent of the returned carrier"
-            );
-        }
-    }
-
-    #[test]
-    fn native_pointer_reads_load_the_carrier_before_copying_its_referent() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            "native_pointer_reads.fe".into(),
-            r#"
-fn identity<T>(_ pointer: *T) -> *T { pointer }
-fn shared(slot: *ref u256) -> u256 { *slot }
-fn exclusive(slot: *mut u256) -> u256 { *slot }
-fn temporary(slot: *ref u256) -> u256 { *identity(slot) }
-fn nested(slots: **ref u256) -> u256 { *(*slots) }
-fn indexed(slot: *ref [u256; 2]) -> u256 { (*slot)[1] }
-fn indexed_update(slot: *mut [u256; 2]) -> u256 {
-    (*slot)[1] += 1
-    (*slot)[1]
-}
-struct Pair { n: u256 }
-fn field(slot: *ref Pair) -> u256 { (*slot).n }
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        db.assert_no_diags(top_mod);
-        for name in [
-            "shared",
-            "exclusive",
-            "temporary",
-            "nested",
-            "indexed",
-            "indexed_update",
-            "field",
-        ] {
-            let body = normalized_func(&db, top_mod, name).body;
-            verify_normalized_body(&db, &body)
-                .unwrap_or_else(|error| panic!("{name}: {error:?}\n{body:#?}"));
-            let carrier = body
-                .blocks
-                .iter()
-                .flat_map(|block| &block.statements)
-                .find_map(|statement| match &statement.kind {
-                    NStatementKind::Define {
-                        expr:
-                            NExpr::Load {
-                                place,
-                                mode: ReadMode::Copy,
-                            },
-                        ..
-                    } if place.ty == TyId::u256(&db) => match place.base {
-                        NPlaceBase::CapabilityTarget { carrier }
-                            if body.values[carrier.index()].ty.as_borrow(&db).is_some() =>
-                        {
-                            Some(carrier)
-                        }
-                        _ => None,
-                    },
-                    _ => None,
-                })
-                .expect("Copy read must follow the stored native carrier");
-            let NValueDefinition::Statement { block, statement } =
-                body.values[carrier.index()].definition
-            else {
-                panic!("stored carrier must be loaded")
-            };
-            assert!(matches!(
-                &body.blocks[block.index()].statements[statement as usize].kind,
-                NStatementKind::Define {
-                    expr: NExpr::Load {
-                        mode: ReadMode::Copy,
-                        ..
-                    },
-                    ..
-                }
-            ));
-        }
-    }
-
-    #[test]
-    fn borrow_activation_distinguishes_receiver_reservations_from_explicit_borrows() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            "normalized.fe".into(),
-            r#"
-struct Counter { value: u256 }
-impl Counter {
-    fn set(mut self, value: u256) { self.value = value }
-    fn get(ref self) -> u256 { self.value }
-}
-fn reserved(mut counter: own Counter, flag: bool) -> u256 {
-    counter.set(value: if flag { counter.get() } else { 0 })
-    counter.get()
-}
-fn explicit(counter: mut Counter) -> mut u256 { mut counter.value }
-fn shared(counter: own Counter) -> u256 { counter.get() }
-fn take(_ counter: mut Counter) {}
-fn ordinary(counter: mut Counter) { take(mut counter) }
-fn stop() -> ! { core::panic() }
-fn never_called(mut counter: own Counter) { counter.set(value: stop()) }
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        let reserved = normalized_func(&db, top_mod, "reserved").body;
-        let reservation = reserved
-            .blocks
-            .iter()
-            .flat_map(|block| &block.statements)
-            .find_map(|statement| match statement.kind {
-                NStatementKind::Define {
-                    expr:
-                        NExpr::Borrow {
-                            activation: activation @ BorrowActivation::AtCall { .. },
-                            ..
-                        },
-                    ..
-                } => Some(activation),
-                _ => None,
-            })
-            .expect("implicit receiver reservation");
-        for name in ["reserved", "explicit", "shared", "ordinary", "never_called"] {
-            let body = normalized_func(&db, top_mod, name).body;
-            verify_normalized_body(&db, &body)
-                .unwrap_or_else(|error| panic!("{name}: {error:?}\n{body:#?}"));
-            let borrows = body
-                .blocks
-                .iter()
-                .flat_map(|block| &block.statements)
-                .filter_map(|statement| match statement.kind {
-                    NStatementKind::Define {
-                        result,
-                        expr:
-                            NExpr::Borrow {
-                                kind, activation, ..
-                            },
-                    } => Some((result, kind, activation)),
-                    _ => None,
-                })
-                .collect::<Vec<_>>();
-            assert!(!borrows.is_empty(), "{name} must exercise a borrow");
-            let reservations = borrows
-                .iter()
-                .filter(|(_, _, activation)| matches!(activation, BorrowActivation::AtCall { .. }))
-                .count();
-            assert_eq!(
-                reservations,
-                usize::from(matches!(name, "reserved" | "never_called")),
-                "{name}"
-            );
-            if name == "reserved" {
-                let receiver = borrows
-                    .iter()
-                    .find(|(_, _, activation)| {
-                        matches!(activation, BorrowActivation::AtCall { .. })
-                    })
-                    .unwrap()
-                    .0;
-                assert_eq!(
-                    borrows
-                        .iter()
-                        .filter(|(_, kind, _)| *kind == BorrowKind::Ref)
-                        .count(),
-                    2
-                );
-                let mut duplicated = body.clone();
-                for block in &mut duplicated.blocks {
-                    for statement in &mut block.statements {
-                        if let NStatementKind::Define {
-                            expr: NExpr::Call { args, .. },
-                            ..
-                        } = &mut statement.kind
-                            && args.first().is_some_and(|arg| arg.value == receiver)
-                        {
-                            args[1] = args[0];
-                        }
-                    }
-                }
-                assert_eq!(
-                    verify_normalized_body(&db, &duplicated),
-                    Err(NormalizedBodyVerifyError::InvalidBorrowActivation(receiver))
-                );
-            } else if name != "never_called" {
-                let mut invalid = body.clone();
-                let (result, activation) = invalid
-                    .blocks
-                    .iter_mut()
-                    .flat_map(|block| &mut block.statements)
-                    .find_map(|statement| match &mut statement.kind {
-                        NStatementKind::Define {
-                            result,
-                            expr: NExpr::Borrow { activation, .. },
-                        } => Some((*result, activation)),
-                        _ => None,
-                    })
-                    .unwrap();
-                *activation = reservation;
-                assert_eq!(
-                    verify_normalized_body(&db, &invalid),
-                    Err(NormalizedBodyVerifyError::InvalidBorrowActivation(result)),
-                    "{name}"
-                );
-                if name == "shared" {
-                    let activation = invalid
-                        .blocks
-                        .iter()
-                        .flat_map(|block| &block.statements)
-                        .find_map(|statement| match statement.kind {
-                            NStatementKind::Define {
-                                expr:
-                                    NExpr::Call {
-                                        call_site, callee, ..
-                                    },
-                                ..
-                            } => Some(BorrowActivation::AtCall { call_site, callee }),
-                            _ => None,
-                        })
-                        .unwrap();
-                    for block in &mut invalid.blocks {
-                        for statement in &mut block.statements {
-                            if let NStatementKind::Define {
-                                result: candidate,
-                                expr:
-                                    NExpr::Borrow {
-                                        kind,
-                                        place,
-                                        activation: candidate_activation,
-                                        ..
-                                    },
-                            } = &mut statement.kind
-                                && *candidate == result
-                            {
-                                *kind = BorrowKind::Mut;
-                                *candidate_activation = activation;
-                                invalid.values[result.index()].ty =
-                                    TyId::borrow_mut_of(&db, place.ty);
-                            }
-                        }
-                    }
-                    assert_eq!(
-                        verify_normalized_body(&db, &invalid),
-                        Err(NormalizedBodyVerifyError::InvalidBorrowActivation(result)),
-                        "a mutable argument cannot reserve a shared receiver"
-                    );
-                }
-            }
-        }
     }
 
     #[test]
@@ -3492,7 +3152,9 @@ fn read_twice(mut _ index: own usize, values: [u256; 2]) -> u256 {
                     | NDataProjection::VariantField { .. }
                     | NDataProjection::Index(NIndex::Const(_)) => None,
                 }),
-                NStatementKind::Define { .. } | NStatementKind::Store { .. } => None,
+                NStatementKind::Define { .. }
+                | NStatementKind::Store { .. }
+                | NStatementKind::End { .. } => None,
             })
             .collect::<Vec<_>>();
         assert_eq!(
@@ -3544,57 +3206,6 @@ fn read_twice(mut _ index: own usize, values: [u256; 2]) -> u256 {
             verify_normalized_body(&db, &invalid),
             Err(NormalizedBodyVerifyError::UseBeforeDefinition { value, .. })
                 if value == indices[1]
-        ));
-    }
-
-    #[test]
-    fn same_type_capability_cast_is_an_exact_forward() {
-        let mut db = HirAnalysisTestDb::default();
-        let file = db.new_stand_alone(
-            "normalized.fe".into(),
-            r#"
-struct Cell { value: u256 }
-fn identity(_ value: mut Cell) -> mut Cell {
-    value as mut Cell
-}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        let artifacts = normalized_func(&db, top_mod, "identity");
-        verify_normalized_body(&db, &artifacts.body).unwrap_or_else(|error| {
-            panic!(
-                "normalized body should verify: {error:?}\n{:#?}",
-                artifacts.body
-            )
-        });
-        let (result, source) = artifacts
-            .body
-            .blocks
-            .iter()
-            .flat_map(|block| &block.statements)
-            .find_map(|statement| match &statement.kind {
-                NStatementKind::Define {
-                    result,
-                    expr: NExpr::Forward { src },
-                } => Some((*result, src.value)),
-                _ => None,
-            })
-            .expect("identity capability cast must emit Forward");
-        let result_ty = artifacts.body.value(result).expect("forward result").ty;
-        assert_eq!(
-            result_ty,
-            artifacts.body.value(source).expect("forward source").ty
-        );
-        assert!(result_ty.as_capability(&db).is_some());
-
-        let mut invalid = artifacts.body.clone();
-        invalid.values[result.index()].ty = TyId::borrow_ref_of(&db, TyId::u256(&db));
-        assert!(matches!(
-            verify_normalized_body(&db, &invalid),
-            Err(NormalizedBodyVerifyError::ForwardType {
-                result: invalid_result,
-                source: invalid_source,
-            }) if invalid_result == result && invalid_source == source
         ));
     }
 
@@ -4102,10 +3713,6 @@ fn borrow_owned(mut _ value: own u256) -> mut u256 {
     mut value
 }
 
-fn borrow_ref(value: ref Pair, mut decoy: Pair) -> ref u256 {
-    ref value.first
-}
-
 fn classify(choice: Choice) -> u8 {
     match choice {
         Choice::A => 0,
@@ -4474,52 +4081,6 @@ fn generic_boundaries<T>(pair: (T, T), array: [T; 2]) -> (T, T) {
                 place: NPlaceBase::Root(root),
                 ..
             }) if root == borrow_root
-        ));
-
-        let mut invalid_ref_borrow = normalized_func(&db, top_mod, "borrow_ref").body;
-        let (borrow_result, borrow_carrier, borrow_ty, borrow_kind) = invalid_ref_borrow
-            .blocks
-            .iter_mut()
-            .flat_map(|block| &mut block.statements)
-            .find_map(|statement| match &mut statement.kind {
-                NStatementKind::Define {
-                    result,
-                    expr:
-                        NExpr::Borrow {
-                            place:
-                                NPlace {
-                                    base: NPlaceBase::CapabilityTarget { carrier },
-                                    ty,
-                                    ..
-                                },
-                            kind,
-                            ..
-                        },
-                } => Some((*result, *carrier, *ty, kind)),
-                _ => None,
-            })
-            .expect("reference field borrow");
-        *borrow_kind = BorrowKind::Mut;
-        invalid_ref_borrow.values[borrow_result.index()].ty = TyId::borrow_mut_of(&db, borrow_ty);
-        let decoy_source = invalid_ref_borrow
-            .values
-            .iter()
-            .find(|value| {
-                value.mutability == Mutability::Mutable
-                    && value
-                        .ty
-                        .as_capability(&db)
-                        .is_some_and(|(kind, _)| kind == CapabilityKind::View)
-            })
-            .and_then(|value| value.source)
-            .expect("mutable decoy binding");
-        invalid_ref_borrow.values[borrow_carrier.index()].source = Some(decoy_source);
-        assert!(matches!(
-            verify_normalized_body(&db, &invalid_ref_borrow),
-            Err(NormalizedBodyVerifyError::ImmutableMutation {
-                capability: Some(CapabilityKind::Ref),
-                ..
-            })
         ));
 
         let mut invalid_variant_test = normalized_func(&db, top_mod, "classify").body;

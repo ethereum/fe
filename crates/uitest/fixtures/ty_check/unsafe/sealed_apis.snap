@@ -1,0 +1,70 @@
+---
+source: crates/uitest/tests/ty_check.rs
+expression: diags
+input_file: fixtures/ty_check/unsafe/sealed_apis.fe
+---
+error[8-0097]: call to unsafe function `copy_raw` requires an `unsafe` block or function
+    ┌─ sealed_apis.fe:7:5
+    │
+  7 │     ptr::copy_raw(dest, source, 32)
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    │
+    ┌─ src/ptr.fe:461:15
+    │
+461 │ pub unsafe fn copy_raw(_ dest: *u8, _ source: *u8, _ len: u256) {
+    │               -------- callee defined here
+
+error[8-0097]: call to unsafe function `from_raw_parts` requires an `unsafe` block or function
+    ┌─ sealed_apis.fe:11:5
+    │
+ 11 │     MemSlice::from_raw_parts(ptr: p, len: 4)
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    │
+    ┌─ src/ptr.fe:157:19
+    │
+157 │     pub unsafe fn from_raw_parts(ptr: *T, len: u256) -> Self {
+    │                   -------------- callee defined here
+
+error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or function
+    ┌─ sealed_apis.fe:15:5
+    │
+ 15 │     mem.mstore(addr: p, value: 1)
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    │
+    ┌─ src/evm/effects.fe:304:15
+    │
+304 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
+    │               ------ callee defined here
+
+error[8-0097]: call to unsafe function `mstore` requires an `unsafe` block or function
+    ┌─ sealed_apis.fe:19:5
+    │
+ 19 │     evm.mstore(addr: p, value: 1)
+    │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    │
+    ┌─ src/evm/effects.fe:304:15
+    │
+304 │     unsafe fn mstore(mut self, addr: *u8, value: u256)
+    │               ------ callee defined here
+
+error[8-0097]: call to unsafe function `encode` requires an `unsafe` block or function
+    ┌─ sealed_apis.fe:23:5
+    │
+ 23 │     value.encode(p)
+    │     ^^^^^^^^^^^^^^^ call to unsafe function
+    │
+    ┌─ src/abi.fe:233:15
+    │
+233 │     unsafe fn encode(own self, _ ptr: *u8)
+    │               ------ callee defined here
+
+error[8-0097]: call to unsafe function `alloc_array` requires an `unsafe` block or function
+    ┌─ sealed_apis.fe:27:17
+    │
+ 27 │     let array = ptr::alloc_array<u256>(1)
+    │                 ^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+    │
+    ┌─ src/ptr.fe:436:15
+    │
+436 │ pub unsafe fn alloc_array<T>(_ len: u256) -> MemArray<T> {
+    │               ----------- callee defined here

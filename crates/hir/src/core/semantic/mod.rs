@@ -29,9 +29,10 @@ use crate::analysis::ty::corelib::{resolve_core_trait, resolve_lib_func_path};
 use crate::analysis::ty::diagnostics::{ImplDiag, TyLowerDiag};
 use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::normalize::normalize_ty;
+use crate::analysis::ty::shape::{Shape, lower_return_shape, mentions_mode, return_shape_diags};
 use crate::analysis::ty::ty_def::Kind;
 use crate::analysis::ty::ty_error::collect_hir_ty_diags;
-use crate::hir_def::params::KindBound as HirKindBound;
+use crate::hir_def::params::{FuncParamMode, KindBound as HirKindBound};
 use crate::hir_def::scope_graph::ScopeId;
 use crate::{HirDb, SpannedHirDb};
 pub use reference::{
@@ -77,7 +78,7 @@ use crate::analysis::ty::binder::Binder;
 use crate::hir_def::*;
 // When adding real methods, prefer calling internal lowering/normalization here
 // rather than exposing raw syntax.
-use crate::analysis::semantic::capability::shape::ArrayLength;
+use crate::analysis::semantic::capability::array::ArrayLength;
 use crate::analysis::ty::adt_def::{AdtCycleMember, AdtDef, AdtField, AdtRef};
 use crate::analysis::ty::const_ty::{
     CallableInputLayoutHoleOrigin, ConstTyData, ConstTyId, HoleAnchor, LoweringContext,
@@ -616,20 +617,15 @@ fn lower_self_fallback_param_ty<'db>(
         TypeKind::Path(path) if path.to_opt().is_some_and(|path| path.is_self_ty(db)) => func
             .expected_self_ty(db)
             .unwrap_or_else(|| lower_hir_ty(db, hir_ty, func.scope(), func.assumptions(db))),
-        TypeKind::Mode(mode, inner) => {
-            let Some(inner) = inner.to_opt() else {
-                return TyId::invalid(db, InvalidCause::ParseError);
-            };
-
-            let inner = lower_self_fallback_param_ty(db, func, inner);
-            match mode {
-                TypeMode::Mut => TyId::borrow_mut_of(db, inner),
-                TypeMode::Ref => TyId::borrow_ref_of(db, inner),
-                TypeMode::Own => inner,
-            }
-        }
         _ => lower_hir_ty(db, hir_ty, func.scope(), func.assumptions(db)),
     }
+}
+
+#[salsa::tracked(return_ref)]
+fn func_return_shape<'db>(db: &'db dyn HirAnalysisDb, func: Func<'db>) -> Option<Shape<'db>> {
+    let hir_ty = func.ret_type_ref(db)?;
+    let shape = lower_return_shape(db, hir_ty, func.scope(), func.assumptions(db));
+    shape.has_access().then_some(shape)
 }
 
 /// Call checking and callee planning elaborate the same parameters repeatedly.
@@ -648,7 +644,7 @@ fn func_arg_ty<'db>(
     idx: usize,
 ) -> Option<Binder<'db, TyId<'db>>> {
     let param = func.params_list(db).to_opt()?.data(db).get(idx)?;
-    let ty = elaborate_func_param_ty(db, func, idx, param, true);
+    let ty = elaborate_func_param_ty(db, func, idx, param);
     Some(Binder::bind(func.into(), ty))
 }
 
@@ -666,10 +662,13 @@ fn elaborate_func_param_ty<'db>(
     func: Func<'db>,
     param_idx: usize,
     param: &FuncParam<'db>,
-    apply_view: bool,
 ) -> TyId<'db> {
+    // The mode is the parameter's, not part of its type.
     let mut ty = match (
-        param.ty.to_opt(),
+        param
+            .ty
+            .to_opt()
+            .and_then(|ty| ty.without_mode(db).to_opt()),
         param.is_self_param(db),
         param.self_ty_fallback,
     ) {
@@ -701,15 +700,6 @@ fn elaborate_func_param_ty<'db>(
     {
         ty = substitute_layout_holes_by_placeholder(db, ty, layout_args);
     }
-
-    let ty = if apply_view
-        && param.mode == crate::hir_def::params::FuncParamMode::View
-        && ty.as_capability(db).is_none()
-    {
-        TyId::view_of(db, ty)
-    } else {
-        ty
-    };
 
     if had_layout_hole {
         let func_name = func
@@ -783,8 +773,12 @@ impl<'db> Func<'db> {
     }
 
     /// Explicit return type if annotated in source; `None` when the
-    /// function has no explicit return type.
+    /// function has no explicit return type. A projection's return type is
+    /// its shape's erased type.
     fn explicit_return_ty(self, db: &'db dyn HirAnalysisDb) -> Option<TyId<'db>> {
+        if let Some(shape) = self.return_shape(db) {
+            return Some(shape.erased_ty(db));
+        }
         let assumptions = self.assumptions(db);
         let hir = self.ret_type_ref(db)?;
         Some(lower_hir_ty(db, hir, self.scope(), assumptions))
@@ -794,6 +788,23 @@ impl<'db> Func<'db> {
     pub fn return_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
         self.explicit_return_ty(db)
             .unwrap_or_else(|| TyId::unit(db))
+    }
+
+    /// The return shape of a projection: a function whose return mentions
+    /// `ref` or `mut`. `None` for ordinary functions.
+    pub fn return_shape(self, db: &'db dyn HirAnalysisDb) -> Option<&'db Shape<'db>> {
+        func_return_shape(db, self).as_ref()
+    }
+
+    pub fn is_projection(self, db: &'db dyn HirAnalysisDb) -> bool {
+        self.return_shape(db).is_some()
+    }
+
+    /// The semantic-IR return type: a projection's access components are
+    /// carriers.
+    pub fn return_carrier_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
+        self.return_shape(db)
+            .map_or_else(|| self.return_ty(db), |shape| shape.carrier_ty(db))
     }
 
     /// Semantic argument types bound to identity parameters.
@@ -834,6 +845,15 @@ impl<'db> Func<'db> {
             return Vec::new();
         };
         let assumptions = self.assumptions(db);
+        if mentions_mode(db, hir_ty) {
+            return return_shape_diags(
+                db,
+                hir_ty,
+                self.scope(),
+                self.span().sig().ret_ty(),
+                assumptions,
+            );
+        }
         collect_ty_lower_errors(
             db,
             self.scope(),
@@ -1118,6 +1138,26 @@ impl<'db> CallableDef<'db> {
         }
     }
 
+    /// The return shape of a projection callee.
+    pub fn ret_shape(self, db: &'db dyn HirAnalysisDb) -> Option<Binder<'db, Shape<'db>>> {
+        match self {
+            Self::Func(func) => Some(Binder::bind(func.into(), func.return_shape(db)?.clone())),
+            Self::VariantCtor(_) => None,
+        }
+    }
+
+    /// The mode of parameter `idx`. Variant constructors take their fields
+    /// by value.
+    pub fn param_mode(self, db: &'db dyn HirAnalysisDb, idx: usize) -> FuncParamMode {
+        match self {
+            Self::Func(func) => func
+                .params(db)
+                .nth(idx)
+                .map_or(FuncParamMode::View, |param| param.mode(db)),
+            Self::VariantCtor(_) => FuncParamMode::Own,
+        }
+    }
+
     pub fn receiver_ty(self, db: &'db dyn HirAnalysisDb) -> Option<Binder<'db, TyId<'db>>> {
         match self {
             Self::Func(func) => func.receiver_ty(db),
@@ -1289,6 +1329,11 @@ impl<'db> FuncParamView<'db> {
                 let span = self.span().mut_kw().into();
                 return vec![TyLowerDiag::InvalidMutSelfPrefixWithExplicitType { span }.into()];
             }
+
+            if matches!(hir_ty.data(db), TypeKind::Mode(TypeMode::Ref, _)) {
+                let span = self.span().ty().into();
+                return vec![TyLowerDiag::RefSelfType { span }.into()];
+            }
         }
 
         if !self.is_self_param(db)
@@ -1299,21 +1344,21 @@ impl<'db> FuncParamView<'db> {
             return vec![TyLowerDiag::InvalidMutParamPrefixWithoutOwnType { span }.into()];
         }
 
-        // Surface name-resolution errors for the parameter type first
-        let errs =
-            collect_hir_ty_diags(db, func.scope(), hir_ty, self.lazy_ty_span(db), assumptions);
+        // Surface name-resolution errors for the parameter type first. The
+        // outer mode belongs to the parameter, not to its type.
+        let (inner_ty, inner_span) = match hir_ty.data(db) {
+            TypeKind::Mode(_, inner) => (*inner, self.lazy_ty_span(db).into_mode_type().inner()),
+            _ => (Partial::Present(hir_ty), self.lazy_ty_span(db)),
+        };
+        let Some(inner_ty) = inner_ty.to_opt() else {
+            return Vec::new();
+        };
+        let errs = collect_hir_ty_diags(db, func.scope(), inner_ty, inner_span, assumptions);
         if !errs.is_empty() {
             return errs;
         }
 
-        let semantic_ty = self.ty(db);
-        let ty = if semantic_ty.has_invalid(db) {
-            elaborate_func_param_ty(db, func, self.idx, param, false)
-        } else if self.mode(db) == crate::hir_def::params::FuncParamMode::View {
-            semantic_ty.as_view(db).unwrap_or(semantic_ty)
-        } else {
-            semantic_ty
-        };
+        let ty = self.ty(db);
         let ty_span = self.ty_span(db);
 
         let mut out = Vec::new();
@@ -1335,17 +1380,6 @@ impl<'db> FuncParamView<'db> {
             return out;
         }
 
-        if self.mode(db) == crate::hir_def::params::FuncParamMode::Own && ty.as_borrow(db).is_some()
-        {
-            out.push(
-                TyLowerDiag::OwnParamCannotBeBorrow {
-                    span: ty_span.clone(),
-                    ty,
-                }
-                .into(),
-            );
-        }
-
         // Well-formedness / trait-bound satisfaction for parameter type
         if let WellFormedness::IllFormed { goal, subgoal } = check_ty_wf(
             db,
@@ -1358,7 +1392,6 @@ impl<'db> FuncParamView<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             );
@@ -1389,12 +1422,7 @@ impl<'db> FuncParamView<'db> {
                     && exp_args.iter().zip(cand_args.iter()).all(|(a, b)| a == b)
             };
 
-            let is_allowed_self_ty = matches_expected(ty_norm)
-                || ty_norm
-                    .as_capability(db)
-                    .is_some_and(|(_, inner)| matches_expected(inner));
-
-            if !is_allowed_self_ty {
+            if !matches_expected(ty_norm) {
                 out.push(
                     ImplDiag::InvalidSelfType {
                         span: ty_span,
@@ -2799,7 +2827,7 @@ fn selector_signature_from_expr<'db>(
                 }
             }
         }
-        Partial::Present(Expr::Block(stmts)) => {
+        Partial::Present(Expr::Block(stmts, _)) => {
             if let Some(last_stmt) = stmts.last()
                 && let Partial::Present(Stmt::Expr(inner_expr)) = last_stmt.data(db, body)
             {
@@ -3363,7 +3391,6 @@ impl<'db> TypeAlias<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             ]
@@ -4669,7 +4696,6 @@ impl<'db> ImplTrait<'db> {
                         primary_goal: goal,
                         unsat_subgoal: subgoal,
                         required_by: None,
-                        capability_hint: None,
                     }
                     .into(),
                 ],
@@ -4869,7 +4895,6 @@ impl<'db> ImplAssocTypeView<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             ];
@@ -5535,7 +5560,6 @@ impl<'db> FieldView<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             );

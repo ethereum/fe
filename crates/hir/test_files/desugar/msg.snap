@@ -1,5 +1,6 @@
 ---
-source: crates/hir/tests/desugar.rs
+source: crates/hir/tests/frontend/desugar.rs
+assertion_line: 28
 expression: output
 input_file: test_files/desugar/msg.fe
 ---
@@ -31,7 +32,7 @@ mod CounterMsg {
     impl core::abi::Encode<std::abi::Sol> for Increment {
 
         #[inline(always)]
-        fn encode(own self, _ ptr: *u8) {}
+        unsafe fn encode(own self, _ ptr: *u8) {}
     }
 
     impl core::abi::Decode<std::abi::Sol> for Increment {
@@ -67,7 +68,7 @@ mod CounterMsg {
     impl core::abi::Encode<std::abi::Sol> for Get {
 
         #[inline(always)]
-        fn encode(own self, _ ptr: *u8) {}
+        unsafe fn encode(own self, _ ptr: *u8) {}
     }
 
     impl core::abi::Decode<std::abi::Sol> for Get {
@@ -105,7 +106,7 @@ mod CounterMsg {
     impl core::abi::Encode<std::abi::Sol> for Set {
 
         #[inline(always)]
-        fn encode(own self, _ ptr: *u8) {
+        unsafe fn encode(own self, _ ptr: *u8) {
             let mut __fe_tail = <Self as core::abi::AbiSize>::HEAD_SIZE
             let mut __fe_head_pos = 0
             let __fe_field_0 = self.val
@@ -117,7 +118,7 @@ mod CounterMsg {
 
         #[inline(always)]
         fn decode_payload<__fe_D: core::abi::AbiDecoder<std::abi::Sol>>(_ __fe_msg_decode_decoder: mut __fe_D) -> Self {
-            let val: u64 = core::abi::decode_field<std::abi::Sol, u64, __fe_D>(__fe_msg_decode_decoder)
+            let val: u64 = core::abi::decode_field<std::abi::Sol, u64, __fe_D>(mut __fe_msg_decode_decoder)
             return Self { val: val }
         }
 

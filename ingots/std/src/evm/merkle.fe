@@ -63,7 +63,7 @@ impl ProofNodes for DynArray<Bytes32> {
 // element words, validated when the array is constructed or decoded.
 #[inline(always)]
 fn dyn_array_words(_ data: *u8, len: u256) -> MemSlice<u256> {
-    MemSlice::from_raw_parts(ptr: ptr::cast<u8, u256>(ptr::offset_bytes(data, 32)), len)
+    unsafe { MemSlice::from_raw_parts(ptr: ptr::cast<u8, u256>(ptr::offset_bytes(data, 32)), len) }
 }
 
 /// `keccak256(abi.encode(min(a, b), max(a, b)))`: OpenZeppelin's
@@ -88,7 +88,7 @@ pub fn process_proof<P: ProofNodes>(proof: P, leaf: u256) -> u256 {
     let mut node = leaf
     let mut i: u256 = 0
     while i < len {
-        node = sorted_into(scratch, node, ops::mload(ptr::offset_bytes(base, i * 32)))
+        unsafe { node = sorted_into(scratch, node, ops::mload(ptr::offset_bytes(base, i * 32))) }
         i += 1
     }
     node
@@ -125,15 +125,19 @@ pub fn process_indexed_proof<P: ProofNodes>(proof: P, leaf: u256, index: u256) -
     let mut node = leaf
     let mut i: u256 = 0
     while i < len {
-        let sibling = ops::mload(ptr::offset_bytes(base, i * 32))
+        let sibling = unsafe { ops::mload(ptr::offset_bytes(base, i * 32)) }
         if (index >> i) & 1 == 1 {
-            ops::mstore(addr: scratch, value: sibling)
-            ops::mstore(addr: right_at, value: node)
+            unsafe {
+                ops::mstore(addr: scratch, value: sibling)
+                ops::mstore(addr: right_at, value: node)
+            }
         } else {
-            ops::mstore(addr: scratch, value: node)
-            ops::mstore(addr: right_at, value: sibling)
+            unsafe {
+                ops::mstore(addr: scratch, value: node)
+                ops::mstore(addr: right_at, value: sibling)
+            }
         }
-        node = ops::keccak256(offset: scratch, len: 64)
+        unsafe { node = ops::keccak256(offset: scratch, len: 64) }
         i += 1
     }
     node
@@ -149,11 +153,15 @@ pub fn verify_indexed<P: ProofNodes>(proof: P, root: u256, leaf: u256, index: u2
 fn sorted_into(_ scratch: *u8, _ a: u256, _ b: u256) -> u256 {
     let right_at = ptr::offset_bytes(scratch, 32)
     if a < b {
-        ops::mstore(addr: scratch, value: a)
-        ops::mstore(addr: right_at, value: b)
+        unsafe {
+            ops::mstore(addr: scratch, value: a)
+            ops::mstore(addr: right_at, value: b)
+        }
     } else {
-        ops::mstore(addr: scratch, value: b)
-        ops::mstore(addr: right_at, value: a)
+        unsafe {
+            ops::mstore(addr: scratch, value: b)
+            ops::mstore(addr: right_at, value: a)
+        }
     }
-    ops::keccak256(offset: scratch, len: 64)
+    unsafe { ops::keccak256(offset: scratch, len: 64) }
 }

@@ -9,7 +9,7 @@ pub contract C {
     recv Msg {
         Test -> u256 uses (mut value) {
             let mut local = 1
-            let target: mut u256 = mut local
+            let target = mut local
             target = mut value
             0
         }

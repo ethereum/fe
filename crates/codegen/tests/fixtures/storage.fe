@@ -29,7 +29,7 @@ fn transfer_result_code(res: TransferResult) -> u256 {
 
 fn abi_encode(value: u256) -> ! uses (ops: mut RawOps) {
     let data = ptr::MemBuffer::alloc(32)
-    ops.mstore(addr: data.ptr(), value)
+    unsafe { ops.mstore(addr: data.ptr(), value) }
     ops.return_data(data: data.span())
 }
 
@@ -130,8 +130,8 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(Coin)]
 fn runtime() uses (evm: mut Evm) {
-    let mut store: StorPtr<CoinStore> = evm.stor_ptr(0)
-    let mut supply: StorPtr<TotalSupply> = evm.stor_ptr(2)
+    let mut store: StorPtr<CoinStore> = unsafe { evm.stor_ptr(0) }
+    let mut supply: StorPtr<TotalSupply> = unsafe { evm.stor_ptr(2) }
     with (store, supply, RawOps = evm) {
         let selector = evm.calldataload(0) >> 224
         match selector {

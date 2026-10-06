@@ -56,19 +56,21 @@ impl ReturnData {
         let len = self.len()
         let padded = (len + 31) / 32 * 32
         let data = ptr::alloc_bytes(32 + padded)
-        store_word(ptr: data, value: len)
+        unsafe { store_word(ptr: data, value: len) }
         if len != 0 {
             if padded != len {
                 // The copy leaves the padding of the last word untouched.
-                store_word(ptr: ptr::offset_bytes(data, padded), value: 0)
+                unsafe { store_word(ptr: ptr::offset_bytes(data, padded), value: 0) }
             }
-            returndatacopy(
-                dest: ptr::offset_bytes(data, 32),
-                offset: self.base,
-                len: len,
-            )
+            unsafe {
+                returndatacopy(
+                    dest: ptr::offset_bytes(data, 32),
+                    offset: self.base,
+                    len: len,
+                )
+            }
         }
-        Bytes::from_abi_tail(data: data, len: len, size: 32 + padded)
+        unsafe { Bytes::from_abi_tail(data: data, len: len, size: 32 + padded) }
     }
 }
 
@@ -98,20 +100,24 @@ impl ByteInput for ReturnData {
         let available = len - byte_offset
         let scratch = ptr::FixedMemBuffer<32>::alloc()
         if available < 32 {
-            store_word(ptr: scratch.ptr(), value: 0)
-            returndatacopy(
-                dest: scratch.ptr(),
-                offset: self.base + byte_offset,
-                len: available,
-            )
+            unsafe {
+                store_word(ptr: scratch.ptr(), value: 0)
+                returndatacopy(
+                    dest: scratch.ptr(),
+                    offset: self.base + byte_offset,
+                    len: available,
+                )
+            }
         } else {
-            returndatacopy(
-                dest: scratch.ptr(),
-                offset: self.base + byte_offset,
-                len: 32,
-            )
+            unsafe {
+                returndatacopy(
+                    dest: scratch.ptr(),
+                    offset: self.base + byte_offset,
+                    len: 32,
+                )
+            }
         }
-        mload(scratch.ptr())
+        unsafe { mload(scratch.ptr()) }
     }
 
     #[arithmetic(unchecked)]
@@ -125,7 +131,7 @@ impl ByteInput for ReturnData {
 
     /// Copy `len` bytes at `src_offset`; reverts without data if the range
     /// is not inside the view.
-    fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) {
+    unsafe fn copy_to_memory(self, dest: *u8, src_offset: u256, len: u256) {
         let input_len = self.len()
         if src_offset > input_len || len > input_len - src_offset {
             revert_empty()
@@ -140,7 +146,7 @@ impl ByteInput for ReturnData {
 
     #[arithmetic(unchecked)]
     #[inline(always)]
-    fn copy_to_memory_unchecked(self, dest: *u8, src_offset: u256, len: u256) {
+    unsafe fn copy_to_memory_unchecked(self, dest: *u8, src_offset: u256, len: u256) {
         // As in `copy_to_memory`: an empty range of a view rebased past the
         // end is valid, but `RETURNDATACOPY` would halt on it.
         if len == 0 {
@@ -227,18 +233,20 @@ pub fn decode_error_string<I: ByteInput>(_ data: I) -> Option<DynString> {
     }
     let padded = (length + 31) / 32 * 32
     let tail = ptr::alloc_bytes(32 + padded)
-    store_word(ptr: tail, value: length)
+    unsafe { store_word(ptr: tail, value: length) }
     if padded > 0 {
-        store_word(ptr: ptr::offset_bytes(tail, padded), value: 0)
+        unsafe { store_word(ptr: ptr::offset_bytes(tail, padded), value: 0) }
     }
-    data.copy_to_memory(
-        dest: ptr::offset_bytes(tail, 32),
-        src_offset: offset + 0x24,
-        len: length,
-    )
-    Option::Some(
-        DynString::from_abi_tail(data: tail, len: length, size: 32 + padded),
-    )
+    unsafe {
+        data.copy_to_memory(
+            dest: ptr::offset_bytes(tail, 32),
+            src_offset: offset + 0x24,
+            len: length,
+        )
+        Option::Some(
+            DynString::from_abi_tail(data: tail, len: length, size: 32 + padded),
+        )
+    }
 }
 
 /// The code of a Solidity `Panic(uint256)` revert, accepted like Solidity's

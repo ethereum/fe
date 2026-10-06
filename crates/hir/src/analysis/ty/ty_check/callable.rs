@@ -22,12 +22,13 @@ use crate::analysis::{
         fold::{TyFoldable, TyFolder},
         generic_defaults::{DefaultApplication, GenericArgError},
         normalize::{normalize_ty, normalize_with_trait_evidence},
+        shape::Shape,
         trait_def::TraitInstId,
         trait_resolution::{
             TraitSolveCx, check_trait_inst_wf, constraint::collect_func_decl_constraints,
         },
-        ty_def::{BorrowKind, CapabilityKind},
-        ty_def::{InvalidCause, TyBase, TyData, TyFlags, TyId},
+        ty_def::BorrowKind,
+        ty_def::{TyBase, TyData, TyFlags, TyId},
         ty_error::emit_invalid_ty_error,
         ty_lower::{
             collect_generic_params, lower_generic_arg_list,
@@ -454,6 +455,15 @@ impl<'db> Callable<'db> {
         self.normalize_with_trait_evidence(db, ret)
     }
 
+    /// The instantiated return shape when the callee is a projection.
+    pub fn ret_shape(&self, db: &'db dyn HirAnalysisDb) -> Option<Shape<'db>> {
+        let shape = self
+            .callable_def
+            .ret_shape(db)?
+            .instantiate(db, &self.generic_args);
+        Some(self.normalize_with_trait_evidence(db, shape))
+    }
+
     pub fn arg_ty(&self, db: &'db dyn HirAnalysisDb, idx: usize) -> Option<TyId<'db>> {
         let arg = self
             .callable_def
@@ -544,20 +554,6 @@ impl<'db> Callable<'db> {
             return;
         }
 
-        let func_params: Option<Vec<_>> = match self.callable_def {
-            CallableDef::Func(func) => {
-                let params: Vec<_> = func.params(db).collect();
-                if params.len() != expected_arg_tys.len() {
-                    panic!(
-                        "callable param length mismatch: expected {} param tys but have {} params",
-                        expected_arg_tys.len(),
-                        params.len()
-                    );
-                }
-                Some(params)
-            }
-            CallableDef::VariantCtor(_) => None,
-        };
         let layout_input_origins = match self.callable_def {
             CallableDef::Func(func) => {
                 specialized_callable_layout_bundle_signature(db, func, &self.generic_args)
@@ -603,10 +599,7 @@ impl<'db> Callable<'db> {
                             .is_some_and(|origin| layout_input_origins.contains(&origin)))
                     .then(|| self.arg_ty(db, arg_idx))
                     .flatten()
-                    .map(|ty| {
-                        let ty = tc.normalize_ty(ty);
-                        ty.as_view(db).unwrap_or(ty)
-                    })
+                    .map(|ty| tc.normalize_ty(ty))
                 });
             args.push(CallArg::from_hir_arg(
                 tc,
@@ -645,56 +638,20 @@ impl<'db> Callable<'db> {
                 tc.push_diag(diag);
             }
 
-            let mut expected = expected.instantiate(db, &self.generic_args);
-            expected = self.normalize_with_trait_evidence(db, expected);
-            let mut expected = tc.normalize_ty(expected);
-            let mode = func_params
-                .as_ref()
-                .and_then(|params| params.get(i).copied())
-                .map(|param| param.mode(db));
+            let expected = expected.instantiate(db, &self.generic_args);
+            let expected = self.normalize_with_trait_evidence(db, expected);
+            let expected = tc.normalize_ty(expected);
+            let mode = self.callable_def.param_mode(db, i);
             let given_ty = tc.normalize_ty(given.expr_prop.ty);
             let given_string_source_ty = given.expr_prop.binding.map_or(given_ty, |binding| {
                 tc.normalize_ty(tc.env.lookup_binding_ty(&binding))
             });
-            let const_string_arg_ty = if matches!(self.callable_def, CallableDef::Func(func) if func.is_const(db))
+            let actual = if matches!(self.callable_def, CallableDef::Func(func) if func.is_const(db))
                 && expected.is_ty_var(db)
                 && let TyData::TyVar(var) = given_string_source_ty.base_ty(db).data(db)
                 && let crate::analysis::ty::ty_def::TyVarSort::String { min_len, .. } = var.sort
             {
-                Some(TyId::string_with_len(db, min_len))
-            } else {
-                None
-            };
-            let own_capability_inner = if mode == Some(FuncParamMode::Own)
-                && !expected.is_ty_var(db)
-                && let Some((kind, inner)) = given_ty.as_capability(db)
-                && tc.ty_unifies(inner, expected)
-                && !tc.ty_is_copy(inner)
-            {
-                Some((kind, inner))
-            } else {
-                None
-            };
-            let own_tyvar = mode == Some(FuncParamMode::Own) && expected.is_ty_var(db);
-            let mut actual = if let Some((kind, inner)) = own_capability_inner {
-                tc.push_diag(BodyDiag::OwnArgMustBeOwnedMove {
-                    primary: given.expr_span.clone(),
-                    kind,
-                    given: inner,
-                });
-                TyId::invalid(db, InvalidCause::Other)
-            } else if own_tyvar && let Some((kind, inner)) = given_ty.as_capability(db) {
-                if tc.ty_is_copy(inner) {
-                    inner
-                } else {
-                    tc.push_diag(BodyDiag::OwnArgMustBeOwnedMove {
-                        primary: given.expr_span.clone(),
-                        kind,
-                        given: inner,
-                    });
-                    TyId::invalid(db, InvalidCause::Other)
-                }
-            } else if let Some(fixed_string_ty) = const_string_arg_ty {
+                let fixed_string_ty = TyId::string_with_len(db, min_len);
                 if let Some(binding) = given.expr_prop.binding {
                     tc.equate_ty(
                         tc.env.lookup_binding_ty(&binding),
@@ -705,125 +662,67 @@ impl<'db> Callable<'db> {
                 tc.equate_ty(given.expr_prop.ty, fixed_string_ty, given.expr_span.clone());
                 fixed_string_ty
             } else {
-                tc.try_coerce_capability_for_expr_to_expected(
-                    given.expr,
-                    given.expr_prop.ty,
-                    expected,
-                )
-                .unwrap_or(given.expr_prop.ty)
+                given.expr_prop.ty
             };
-            let mut has_targeted_borrow_diag = false;
-            // A parameter declared without `own` is a view of its value. A
-            // `ref self` receiver borrows it, as an explicit `ref` would.
-            let receiver_ty = |kind| match (kind, given_ty.as_view(db)) {
-                (CapabilityKind::Ref, Some(inner)) => inner,
-                _ => given_ty,
-            };
-            if has_receiver
-                && i == 0
-                && let Some((required_kind, required_inner)) = expected.as_capability(db)
-                && matches!(required_kind, CapabilityKind::Mut | CapabilityKind::Ref)
-                && actual == given.expr_prop.ty
-                && tc.ty_unifies(receiver_ty(required_kind), required_inner)
-            {
-                if required_kind == CapabilityKind::Mut
-                    && !given.expr_prop.is_mut
-                    && (tc.env.expr_place(given.expr).is_some()
-                        || is_unary(given.expr, UnOp::Deref))
-                {
-                    tc.report_cannot_borrow_mut(given.expr, given.expr_span.clone());
-                    has_targeted_borrow_diag = true;
-                } else {
-                    actual = match required_kind {
-                        CapabilityKind::Mut => TyId::borrow_mut_of(db, given_ty),
-                        CapabilityKind::Ref => TyId::borrow_ref_of(db, receiver_ty(required_kind)),
-                        CapabilityKind::View => unreachable!(),
-                    };
+
+            // A view or `mut` parameter accesses the caller's place for the
+            // call. An argument that is already an access (`ref p`, `mut p`, a
+            // projection's result) is used as one; a receiver is accessed
+            // implicitly; any other `mut` argument must be written `mut p`.
+            let is_receiver = has_receiver && i == 0;
+            let access = given.expr_prop.access();
+            let mut diagnosed = false;
+            match mode {
+                FuncParamMode::Own => {}
+                FuncParamMode::View => {
+                    if access.is_some() {
+                        tc.consume_access(given.expr);
+                    }
+                }
+                FuncParamMode::Mut if access == Some(BorrowKind::Mut) => {
+                    tc.consume_access(given.expr);
+                }
+                FuncParamMode::Mut if is_receiver && access.is_none() => {
+                    if !given.expr_prop.is_mut
+                        && (tc.env.expr_place(given.expr).is_some()
+                            || is_unary(given.expr, UnOp::Deref))
+                    {
+                        tc.report_cannot_borrow_mut(given.expr, given.expr_span.clone());
+                        diagnosed = true;
+                    }
+                }
+                FuncParamMode::Mut => {
+                    diagnosed = true;
+                    if access.is_some() {
+                        tc.consume_access(given.expr);
+                        tc.report_cannot_borrow_mut(given.expr, given.expr_span.clone());
+                    } else if tc.env.is_place_expr(given.expr) {
+                        tc.push_diag(BodyDiag::ExplicitBorrowRequired {
+                            primary: given.expr_span.clone(),
+                            kind: BorrowKind::Mut,
+                            suggestion: place_borrow_suggestion(
+                                db,
+                                tc.body(),
+                                given.expr,
+                                BorrowKind::Mut,
+                            ),
+                        });
+                    } else if !given.expr_prop.ty.has_invalid(db) {
+                        tc.push_diag(BodyDiag::BorrowArgMustBePlace {
+                            primary: given.expr_span.clone(),
+                            kind: BorrowKind::Mut,
+                        });
+                    }
                 }
             }
 
-            // Enforce explicit call-site borrow syntax for places.
-            //
-            // Borrow handles are copyable values, and `own` parameters consume their argument.
-            // Requiring explicit `ref`/`mut` on *place* arguments makes aliasing visible at the
-            // call site, and ensures MIR borrow checking sees the right loan operations.
-            if let Some(params) = func_params.as_ref() {
-                let arg_is_place = tc.env.is_place_expr(given.expr);
-
-                let given_capability = tc
-                    .normalize_ty(given.expr_prop.ty)
-                    .as_capability(db)
-                    .map(|(kind, _)| kind);
-                if let Some((kind, _)) = expected.as_capability(db)
-                    && matches!(kind, CapabilityKind::Mut | CapabilityKind::Ref)
-                    && !(has_receiver && i == 0)
-                    && given_capability.is_none()
-                    && !given.expr_prop.ty.has_invalid(db)
-                {
-                    let borrow_kind = match kind {
-                        CapabilityKind::Mut => BorrowKind::Mut,
-                        CapabilityKind::Ref => BorrowKind::Ref,
-                        CapabilityKind::View => unreachable!(),
-                    };
-                    let unary_borrow = match kind {
-                        CapabilityKind::Mut => UnOp::Mut,
-                        CapabilityKind::Ref => UnOp::Ref,
-                        CapabilityKind::View => unreachable!(),
-                    };
-
-                    if arg_is_place {
-                        if !is_unary(given.expr, unary_borrow) {
-                            tc.push_diag(BodyDiag::ExplicitBorrowRequired {
-                                primary: given.expr_span.clone(),
-                                kind: borrow_kind,
-                                suggestion: place_borrow_suggestion(
-                                    db,
-                                    tc.body(),
-                                    given.expr,
-                                    borrow_kind,
-                                ),
-                            });
-                            has_targeted_borrow_diag = true;
-                        }
-                    } else {
-                        tc.push_diag(BodyDiag::BorrowArgMustBePlace {
-                            primary: given.expr_span.clone(),
-                            kind: borrow_kind,
-                        });
-                        has_targeted_borrow_diag = true;
-                    }
-                }
-
-                if !has_targeted_borrow_diag {
-                    tc.equate_ty(actual, expected, given.expr_span.clone());
-                    expected = tc.normalize_ty(expected);
-                }
-
-                let mode = match mode {
-                    Some(m) => m,
-                    None => match params.get(i).copied() {
-                        Some(p) => p.mode(db),
-                        None => {
-                            unreachable!(
-                                "missing func param at index {i} — length check above should have caught this"
-                            );
-                        }
-                    },
-                };
-                if mode == FuncParamMode::Own {
-                    if expected.as_borrow(db).is_some() {
-                        tc.push_diag(BodyDiag::OwnParamCannotBeBorrow {
-                            primary: given.expr_span.clone(),
-                            ty: expected,
-                        });
-                    } else {
-                        tc.record_implicit_move_for_owned_expr(given.expr, expected);
-                    }
-                }
-            } else {
+            if !diagnosed {
                 tc.equate_ty(actual, expected, given.expr_span.clone());
-                expected = tc.normalize_ty(expected);
-                // Variant constructors materialize their fields immediately (owned context).
+            }
+            if mode == FuncParamMode::Own {
+                // Owned arguments and variant fields are materialized: a
+                // place argument moves (or copies) its value.
+                let expected = tc.normalize_ty(expected);
                 tc.record_implicit_move_for_owned_expr(given.expr, expected);
             }
             checked_inputs.push(tc.normalize_ty(actual));
@@ -920,13 +819,6 @@ fn bind_callable_params_from_actual<'db>(
             }
         }
         _ => {}
-    }
-    if let Some((expected_kind, expected_inner)) = expected.as_capability(db)
-        && let Some((actual_kind, actual_inner)) = actual.as_capability(db)
-        && expected_kind == actual_kind
-    {
-        bind_callable_params_from_actual(db, expected_inner, actual_inner, args);
-        return;
     }
     let (expected_base, expected_args) = expected.decompose_ty_app(db);
     let (actual_base, actual_args) = actual.decompose_ty_app(db);

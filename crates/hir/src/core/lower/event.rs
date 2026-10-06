@@ -491,7 +491,7 @@ fn lower_emit_method<'db>(
     };
 
     let log_param = FuncParam {
-        mode: FuncParamMode::View,
+        mode: FuncParamMode::Mut,
         is_mut: false,
         has_ref_prefix: false,
         has_own_prefix: false,

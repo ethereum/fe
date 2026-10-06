@@ -1,6 +1,6 @@
 ---
-source: crates/hir/tests/ty_check.rs
-assertion_line: 45
+source: crates/hir/tests/frontend/ty_check.rs
+assertion_line: 46
 expression: res
 input_file: test_files/ty_check/assign.fe
 ---
@@ -17,7 +17,7 @@ note:
    ┌─ assign.fe:21:9
    │
 21 │         self.inner = Inner { x, y }
-   │         ^^^^ mut Outer
+   │         ^^^^ Outer
 
 note:
    ┌─ assign.fe:21:9

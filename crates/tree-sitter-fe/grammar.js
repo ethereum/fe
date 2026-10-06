@@ -668,6 +668,7 @@ module.exports = grammar({
       $.if_expression,
       $.match_expression,
       $.with_expression,
+      $.unsafe_expression,
       $.block,
       $.assignment_expression,
       $.augmented_assignment_expression,
@@ -979,6 +980,7 @@ module.exports = grammar({
       $.if_expression,
       $.match_expression,
       $.with_expression,
+      $.unsafe_expression,
       $.block,
       $.assignment_expression,
       $.augmented_assignment_expression,
@@ -1050,6 +1052,7 @@ module.exports = grammar({
       $.if_expression,
       $.match_expression,
       $.with_expression,
+      $.unsafe_expression,
       $.block,
       $.qualified_path_expression,
       $.mode_expression,
@@ -1114,6 +1117,11 @@ module.exports = grammar({
     with_expression: $ => seq(
       'with',
       field('params', $.with_param_list),
+      field('body', $.block),
+    ),
+
+    unsafe_expression: $ => seq(
+      'unsafe',
       field('body', $.block),
     ),
 

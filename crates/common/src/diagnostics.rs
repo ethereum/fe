@@ -200,7 +200,7 @@ pub enum DiagnosticPass {
     TyCheck,
 
     Mir,
-    SemanticBorrowck,
+    SemanticAccess,
     SemanticLayoutEvidence,
 
     ExternalAnalysis(ExternalAnalysisKey),
@@ -223,7 +223,7 @@ impl DiagnosticPass {
             Self::MethodDefinition => 7,
             Self::TyCheck => 8,
             Self::Mir => 11,
-            Self::SemanticBorrowck => 16,
+            Self::SemanticAccess => 16,
             Self::SemanticLayoutEvidence => 17,
 
             Self::ExternalAnalysis(_) => u16::MAX,
@@ -257,7 +257,7 @@ mod tests {
             MethodDefinition,
             TyCheck,
             Mir,
-            SemanticBorrowck,
+            SemanticAccess,
             SemanticLayoutEvidence,
         ];
         // Exhaustive, so that a new pass is also added to `passes`.
@@ -277,7 +277,7 @@ mod tests {
                 | MethodDefinition
                 | TyCheck
                 | Mir
-                | SemanticBorrowck
+                | SemanticAccess
                 | SemanticLayoutEvidence
                 | ExternalAnalysis(_) => {}
             }

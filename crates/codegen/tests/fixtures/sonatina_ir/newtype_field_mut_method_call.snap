@@ -1,5 +1,6 @@
 ---
 source: crates/codegen/tests/sonatina_ir.rs
+assertion_line: 431
 expression: output
 input_file: crates/codegen/tests/fixtures/newtype_field_mut_method_call.fe
 ---
@@ -16,9 +17,11 @@ func private %bump(v0.objref<@layout_1>) {
     block1:
         v3.objref<@layout_0> = obj.proj v0 0.i256;
         v4.objref<i256> = obj.proj v3 0.i256;
-        v6.i256 = obj.load v4;
-        (v7.i256, v8.i1) = uaddo v6 1.i256;
-        br v8 block2 block3;
+        v6.objref<@layout_0> = obj.proj v0 0.i256;
+        v7.objref<i256> = obj.proj v6 0.i256;
+        v8.i256 = obj.load v7;
+        (v9.i256, v10.i1) = uaddo v8 1.i256;
+        br v10 block2 block3;
 
     block2:
         mstore 0.i256 35408467139433450592217433187231851964531694900788300625387963629091585785856.i256 i256;
@@ -26,7 +29,7 @@ func private %bump(v0.objref<@layout_1>) {
         evm_revert 0.i256 36.i256;
 
     block3:
-        obj.store v4 v7;
+        obj.store v7 v9;
         return;
 }
 
@@ -73,12 +76,13 @@ func private %newtype_field_mut_method_call(v0.i256) -> i256 {
         v22.i256 = extract_value v18 1.i256;
         obj.store v21 v22;
         v23.objref<@layout_1> = obj.proj v1 1.i256;
-        call %bump v23;
-        v25.objref<@layout_1> = obj.proj v1 1.i256;
-        v26.objref<@layout_0> = obj.proj v25 0.i256;
-        v27.objref<i256> = obj.proj v26 0.i256;
-        v28.i256 = obj.load v27;
-        return v28;
+        v24.objref<@layout_1> = obj.proj v1 1.i256;
+        call %bump v24;
+        v26.objref<@layout_1> = obj.proj v1 1.i256;
+        v27.objref<@layout_0> = obj.proj v26 0.i256;
+        v28.objref<i256> = obj.proj v27 0.i256;
+        v29.i256 = obj.load v28;
+        return v29;
 }
 
 

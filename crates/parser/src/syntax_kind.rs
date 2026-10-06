@@ -314,6 +314,8 @@ pub enum SyntaxKind {
     MatchExpr,
     /// `with (Effect = value, ..) { Block }`
     WithExpr,
+    /// `unsafe { Block }`
+    UnsafeExpr,
     /// `(1 + 2)`
     ParenExpr,
     /// x = 1
@@ -715,6 +717,7 @@ impl SyntaxKind {
             SyntaxKind::IfExpr => "`if` expression",
             SyntaxKind::MatchExpr => "`match` expression",
             SyntaxKind::WithExpr => "`with` expression",
+            SyntaxKind::UnsafeExpr => "`unsafe` block",
             SyntaxKind::ParenExpr => "parenthesized expression",
             SyntaxKind::AssignExpr => "assignment expression",
             SyntaxKind::AugAssignExpr => "augmented assignment expression",

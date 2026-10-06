@@ -14,8 +14,8 @@ struct Flagged {
 }
 
 impl Flagged {
-    fn attach(mut self, slot: u256) uses (evm: Evm) {
-        self.flag = evm.tstor_ptr<bool>(slot)
+    fn attach(mut self, _ flag: TStorPtr<bool>) {
+        self.flag = flag
     }
 }
 
@@ -30,7 +30,8 @@ pub contract C {
     mut state: Flagged,
 
     init() uses (mut state, evm: Evm) {
-        state.attach(slot: 0xfe)
+        let flag = unsafe { evm.tstor_ptr<bool>(0xfe) }
+        state.attach(flag)
     }
 
     recv CMsg {

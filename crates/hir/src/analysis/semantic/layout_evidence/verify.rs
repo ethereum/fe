@@ -140,7 +140,9 @@ fn verify_const_bindings<'db>(
             expr: NExpr::Const(SConst::Evidence(value) | SConst::Description(value)),
             ..
         } => layout_const_param_uses(db, *value),
-        NStatementKind::Define { .. } | NStatementKind::Store { .. } => Vec::new(),
+        NStatementKind::Define { .. }
+        | NStatementKind::Store { .. }
+        | NStatementKind::End { .. } => Vec::new(),
     };
     let mut expected = Vec::new();
     for param in uses {
@@ -486,7 +488,9 @@ pub fn verify_layout_evidence_runtime_compatibility<'db>(
                 {
                     Some(*callee)
                 }
-                NStatementKind::Define { .. } | NStatementKind::Store { .. } => None,
+                NStatementKind::Define { .. }
+                | NStatementKind::Store { .. }
+                | NStatementKind::End { .. } => None,
             };
             if evidence_statement.call.is_some() != runtime_callee.is_some() {
                 return Err(LayoutEvidenceVerifyError::CallPresence {
@@ -527,7 +531,7 @@ pub fn verify_layout_evidence_body<'db>(
                 NStatementKind::Define { result, .. } => {
                     body.constant_bindings[result.index()].as_ref()
                 }
-                NStatementKind::Store { .. } => &[],
+                NStatementKind::Store { .. } | NStatementKind::End { .. } => &[],
             };
             verify_const_bindings(
                 db,
@@ -736,6 +740,7 @@ pub fn verify_layout_evidence_body<'db>(
                     None,
                     true,
                 ),
+                NStatementKind::End { .. } => continue,
             };
             let call_output = call_signature.as_ref().map(|signature| &signature.output);
             if statement.call.is_some()
@@ -873,14 +878,11 @@ pub fn verify_layout_evidence_body<'db>(
                 }
             }
         }
-        let returned_local = match normalized_block.terminator.kind {
-            NTerminatorKind::Return(Some(value)) => representations.value_local(value.value),
-            NTerminatorKind::Goto(_)
-            | NTerminatorKind::Branch { .. }
-            | NTerminatorKind::MatchEnum { .. }
-            | NTerminatorKind::Assert { .. }
-            | NTerminatorKind::Return(None) => None,
-        };
+        let returned_local = normalized_block
+            .terminator
+            .kind
+            .returned()
+            .and_then(|value| representations.value_local(value.value));
         let expected_returns = returned_local.map_or(0, |_| body.output.runtime_descriptor_count());
         let terminator = body
             .terminator(crate::analysis::semantic::SBlockId::from_u32(

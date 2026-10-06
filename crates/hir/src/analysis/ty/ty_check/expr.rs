@@ -18,9 +18,10 @@ use super::{
         FamilyKeyedEntry, FrameLookupResult, MatchedForwarder, MatchedKeyedEntry, MatchedWitness,
     },
     env::{
-        EffectOrigin, EffectParamSite, ExprProp, LocalBinding, ParamSite, PendingPrimitiveOp,
-        ProvidedEffect, TraitObligation, TraitObligationOrigin, TyCheckEnv,
+        BindingAccess, EffectOrigin, EffectParamSite, ExprProp, LocalBinding, ParamSite,
+        PendingPrimitiveOp, ProvidedEffect, TraitObligation, TraitObligationOrigin, TyCheckEnv,
     },
+    merged_borrow_provider,
     path::ResolvedPathInBody,
     ty_may_be_code_region_token,
 };
@@ -60,12 +61,13 @@ use crate::analysis::ty::{
         ProviderLayoutEvidence, ProviderTransport, provider_semantics,
         provider_semantics_for_specialized_call,
     },
+    shape::Shape,
     trait_def::TraitInstId,
     trait_resolution::{
         GoalSatisfiability, PredicateListId, TraitGoalSolution, TraitSolveCx, is_goal_satisfiable,
     },
     ty_check::callable::{Callable, EffectProviderProvenance, EffectProviderSpecialization},
-    ty_def::{CapabilityKind, PrimTy, TyBase, TyData, prim_int_bits},
+    ty_def::{BorrowKind, PrimTy, TyBase, TyData, prim_int_bits},
     unify::UnificationTable,
 };
 use crate::analysis::{
@@ -150,18 +152,6 @@ fn layout_projections_from_callable_path(
         }
     }
     Some(projections)
-}
-
-impl<'db> ProviderTargetResolution<'db> {
-    fn direct(target_ty: TyId<'db>) -> Self {
-        Self {
-            target_ty,
-            target_seed_ty: target_ty,
-            handle_proof: None,
-            effect_ref_proof: None,
-            effect_ref_mut_proof: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -417,13 +407,21 @@ impl<'db> TyChecker<'db> {
             }
         };
         self.env.leave_expr();
+        // Only `ref p`, `mut p` and projection calls grant accesses; a block
+        // (`unsafe { mut *p }`) forwards its tail's. An `if` or `match` is not
+        // a place, so it grants none.
+        if !matches!(
+            expr_data,
+            Expr::Un(_, UnOp::Ref | UnOp::Mut)
+                | Expr::Call(..)
+                | Expr::MethodCall(..)
+                | Expr::Bin(_, _, BinOp::Index)
+                | Expr::Block(..)
+        ) {
+            actual.shape = None;
+        }
 
         actual.ty = normalize_ty(self.db, actual.ty, self.env.scope(), self.env.assumptions());
-        if let Some(coerced) =
-            self.try_coerce_capability_for_expr_to_expected(expr, actual.ty, expected)
-        {
-            actual.ty = coerced;
-        }
         let typeable = Typeable::Expr(expr, actual.clone());
         actual.ty = self.unify_ty(typeable, actual.ty, expected);
         actual
@@ -450,7 +448,7 @@ impl<'db> TyChecker<'db> {
         expected: TyId<'db>,
         result_discarded: bool,
     ) -> ExprProp<'db> {
-        let Expr::Block(stmts) = expr_data else {
+        let Expr::Block(stmts, _) = expr_data else {
             unreachable!()
         };
 
@@ -548,11 +546,7 @@ impl<'db> TyChecker<'db> {
         }
 
         if *op == UnOp::Deref {
-            let ptr_ty = prop
-                .ty
-                .as_capability(self.db)
-                .map_or(prop.ty, |(_, inner)| inner);
-            if let Some(pointee) = ptr_ty.as_ptr(self.db) {
+            if let Some(pointee) = prop.ty.as_ptr(self.db) {
                 return ExprProp::new(pointee, true);
             }
 
@@ -585,11 +579,11 @@ impl<'db> TyChecker<'db> {
                 });
                 return ExprProp::invalid(self.db);
             }
+            // A projection's result is a place: `mut v.at(i)` opens an
+            // access inside the projection's grant.
+            self.consume_access(*lhs);
 
-            let place_ty = prop
-                .ty
-                .as_capability(self.db)
-                .map_or(prop.ty, |(_, inner)| inner);
+            let place_ty = prop.ty;
             let borrow_provider = self
                 .env
                 .expr_place(*lhs)
@@ -601,28 +595,20 @@ impl<'db> TyChecker<'db> {
                     borrow_provider
                 };
 
-            return match op {
-                UnOp::Ref => ExprProp {
-                    ty: TyId::borrow_ref_of(self.db, place_ty),
-                    is_mut: false,
-                    binding: None,
-                    borrow_provider,
-                    path_read_semantics: None,
-                },
-                UnOp::Mut => {
-                    if !prop.is_mut {
-                        self.report_cannot_borrow_mut(*lhs, expr.span(self.body()).into());
-                        return ExprProp::invalid(self.db);
-                    }
-                    ExprProp {
-                        ty: TyId::borrow_mut_of(self.db, place_ty),
-                        is_mut: true,
-                        binding: None,
-                        borrow_provider,
-                        path_read_semantics: None,
-                    }
+            let kind = if *op == UnOp::Mut {
+                if !prop.is_mut {
+                    self.report_cannot_borrow_mut(*lhs, expr.span(self.body()).into());
+                    return ExprProp::invalid(self.db);
                 }
-                _ => unreachable!(),
+                BorrowKind::Mut
+            } else {
+                BorrowKind::Ref
+            };
+            return ExprProp {
+                is_mut: kind == BorrowKind::Mut,
+                borrow_provider,
+                shape: Some(Shape::Access(kind, place_ty)),
+                ..ExprProp::new(place_ty, false)
             };
         }
 
@@ -642,12 +628,7 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        let lhs_ty = self.copy_inner_from_borrow(prop.ty).unwrap_or(prop.ty);
-        if lhs_ty != prop.ty {
-            self.unify_ty(Typeable::Expr(*lhs, prop.clone()), lhs_ty, lhs_ty);
-        }
-
-        self.check_ops_trait(expr, lhs_ty, op, None)
+        self.check_ops_trait(expr, prop.ty, op, None)
     }
 
     fn check_cast(
@@ -671,22 +652,13 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        let mut from = normalize_ty(
+        let from = normalize_ty(
             self.db,
             inner_prop.ty,
             self.env.scope(),
             self.env.assumptions(),
         );
         let to = normalize_ty(self.db, target_ty, self.env.scope(), self.env.assumptions());
-
-        // Casts operate on values, so for Copy capabilities treat the source as
-        // the inner value type. This allows widening/narrowing checks such as
-        // `(selector as u256)` when `selector` comes from a view parameter.
-        if let Some((_, inner)) = from.as_capability(self.db)
-            && self.ty_is_copy(inner)
-        {
-            from = inner;
-        }
 
         if from == to {
             return ExprProp::new(to, true);
@@ -964,10 +936,11 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        let lhs_place_ty = lhs
-            .ty
-            .as_capability(self.db)
-            .map_or(lhs.ty, |(_, inner)| inner);
+        let lhs_place_ty = lhs.ty;
+        if matches!(op, BinOp::Index) {
+            // The indexed base is a place, possibly a projection's result.
+            self.consume_access(lhs_expr);
+        }
         if matches!(op, BinOp::Index) && lhs_place_ty.is_array(self.db) {
             // Built-in array indexing (TODO: move to trait impl)
             let args = lhs_place_ty.generic_args(self.db);
@@ -1032,12 +1005,7 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        let lhs_ty = self.copy_inner_from_borrow(lhs.ty).unwrap_or(lhs.ty);
-        if lhs_ty != lhs.ty {
-            self.unify_ty(Typeable::Expr(lhs_expr, lhs.clone()), lhs_ty, lhs_ty);
-        }
-
-        self.check_ops_trait(expr, lhs_ty, &op, Some(rhs_expr))
+        self.check_ops_trait(expr, lhs.ty, &op, Some(rhs_expr))
     }
 
     pub(super) fn resolve_pending_primitive_op(
@@ -1068,9 +1036,6 @@ impl<'db> TyChecker<'db> {
                     let mut prober = super::env::Prober::new(&mut self.table, self.env.scope());
                     inner_prop.ty.fold_with(self.db, &mut prober)
                 };
-                let operand_ty = operand_ty
-                    .as_capability(self.db)
-                    .map_or(operand_ty, |(_, inner)| inner);
                 let operand_ty = self.normalize_ty(operand_ty);
                 if operand_ty.has_invalid(self.db) {
                     return PendingPrimitiveOpResolution::Done;
@@ -1117,13 +1082,7 @@ impl<'db> TyChecker<'db> {
                     let mut prober = super::env::Prober::new(&mut self.table, self.env.scope());
                     rhs_prop.ty.fold_with(self.db, &mut prober)
                 };
-                let lhs_ty = lhs_ty
-                    .as_capability(self.db)
-                    .map_or(lhs_ty, |(_, inner)| inner);
                 let lhs_ty = self.normalize_ty(lhs_ty);
-                let rhs_ty = rhs_ty
-                    .as_capability(self.db)
-                    .map_or(rhs_ty, |(_, inner)| inner);
                 let rhs_ty = self.normalize_ty(rhs_ty);
                 if lhs_ty.has_invalid(self.db) || rhs_ty.has_invalid(self.db) {
                     return PendingPrimitiveOpResolution::Done;
@@ -1149,12 +1108,9 @@ impl<'db> TyChecker<'db> {
     fn check_let_condition(&mut self, pat: PatId, scrutinee: ExprId) -> ExprProp<'db> {
         let scrutinee_ty = self.fresh_ty();
         let scrutinee_prop = self.check_expr(scrutinee, scrutinee_ty);
-        let (pat_expected, mode) = self.destructure_source_mode(scrutinee_prop.ty);
         let layout = self.pattern_layout_context(scrutinee);
-        self.check_pat_with_layout(pat, pat_expected, layout.as_ref());
-        if let super::PatternDestructureMode::Borrow(kind) = mode {
-            self.retype_pattern_bindings_for_borrow(pat, kind);
-        }
+        self.check_pat_with_layout(pat, scrutinee_prop.ty, layout.as_ref());
+        self.bind_pattern_source(pat, scrutinee, &scrutinee_prop);
 
         ExprProp::new(TyId::bool(self.db), true)
     }
@@ -1302,8 +1258,10 @@ impl<'db> TyChecker<'db> {
 
         for binding in bindings {
             let value_prop = self.check_expr_unknown(binding.value);
-
-            let is_mut = value_prop.binding.map_or(value_prop.is_mut, |b| b.is_mut());
+            // A provider confers authority over its place for the body; it
+            // opens no access.
+            self.consume_access(binding.value);
+            let is_mut = value_prop.is_mut;
 
             let provided = ProvidedEffect {
                 origin: EffectOrigin::With {
@@ -1420,17 +1378,7 @@ impl<'db> TyChecker<'db> {
         self.check_callable_effects(expr, &mut callable);
 
         callable.process_constraints(self, expr, call_span.callee().into());
-
-        let ret_ty = callable.ret_ty(self.db);
-        let normalized_ret_ty = self.normalize_ty(ret_ty);
-        if let Some(kind) = self.const_intrinsic_kind(callable.callable_def()) {
-            if !self.check_and_register_const_intrinsic(expr, callable, kind) {
-                return ExprProp::invalid(self.db);
-            }
-        } else {
-            self.env.register_semantic_call(expr, callable);
-        }
-        ExprProp::new(normalized_ret_ty, true)
+        self.finish_call(expr, callable)
     }
 
     fn check_assert(&mut self, expr: ExprId, args: &[HirCallArg<'db>]) -> ExprProp<'db> {
@@ -2023,10 +1971,7 @@ impl<'db> TyChecker<'db> {
                 self,
                 KeyMatchCommit::QueryToType {
                     query: query.clone(),
-                    actual: provider
-                        .ty
-                        .as_capability(self.db)
-                        .map_or(provider.ty, |(_, inner)| inner),
+                    actual: provider.ty,
                 },
             );
             self.rollback_state(snapshot);
@@ -2036,10 +1981,7 @@ impl<'db> TyChecker<'db> {
                     commit: EffectCommitPlan {
                         key_match: Some(KeyMatchCommit::QueryToType {
                             query: query.clone(),
-                            actual: provider
-                                .ty
-                                .as_capability(self.db)
-                                .map_or(provider.ty, |(_, inner)| inner),
+                            actual: provider.ty,
                         }),
                         trait_solutions: SmallVec::new(),
                         provider_resolution: None,
@@ -2193,13 +2135,6 @@ impl<'db> TyChecker<'db> {
     }
 
     fn provider_supports_mut(&mut self, provider: ProvidedEffect<'db>) -> bool {
-        if let Some((kind, _)) = provider.ty.as_capability(self.db) {
-            return matches!(kind, CapabilityKind::Mut)
-                || self
-                    .effect_provider_target_resolution(provider.ty, true)
-                    .is_some();
-        }
-
         provider.is_mut
             || self
                 .effect_provider_target_resolution(provider.ty, true)
@@ -2632,11 +2567,7 @@ impl<'db> TyChecker<'db> {
 
             false
         };
-        let direct_ty = if let Some((_, inner)) = provided.ty.as_capability(self.db) {
-            inner
-        } else {
-            provided.ty
-        };
+        let direct_ty = provided.ty;
 
         if matches_key(self, direct_ty) {
             return Some(TypeEffectBindingMatch::Direct { given: direct_ty });
@@ -2669,13 +2600,6 @@ impl<'db> TyChecker<'db> {
         scope: ScopeId<'db>,
         assumptions: PredicateListId<'db>,
     ) -> Option<ProviderTargetResolution<'db>> {
-        if let Some((kind, inner_ty)) = provided_ty.as_capability(self.db) {
-            if required_mut && !matches!(kind, CapabilityKind::Mut) {
-                return None;
-            }
-            return Some(ProviderTargetResolution::direct(inner_ty));
-        }
-
         let effect_ref_trait = resolve_core_trait(self.db, scope, &["EffectRef"])
             .expect("missing required core trait `core::EffectRef`");
         let effect_ref_mut_trait = resolve_core_trait(self.db, scope, &["EffectRefMut"])
@@ -3275,7 +3199,7 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         }
 
-        let receiver_tys = self.method_receiver_tys(*receiver, &receiver_prop);
+        let receiver_tys = self.receiver_candidates(receiver_prop.ty);
         let method_assumptions = self.env.assumptions();
 
         let mut selected_receiver_ty = receiver_tys[0];
@@ -3454,9 +3378,18 @@ impl<'db> TyChecker<'db> {
         self.check_callable_effects(expr, &mut callable);
 
         callable.process_constraints(self, expr, call_span.method_name().into());
+        self.finish_call(expr, callable)
+    }
 
+    /// Registers a checked call and types its result. A projection's result
+    /// is a place granted by the call's session; its shape says which parts
+    /// are accesses.
+    fn finish_call(&mut self, expr: ExprId, callable: Callable<'db>) -> ExprProp<'db> {
         let ret_ty = callable.ret_ty(self.db);
-        let normalized_ret_ty = self.normalize_ty(ret_ty);
+        let ret_ty = self.normalize_ty(ret_ty);
+        let shape = callable
+            .ret_shape(self.db)
+            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
         if let Some(kind) = self.const_intrinsic_kind(callable.callable_def()) {
             if !self.check_and_register_const_intrinsic(expr, callable, kind) {
                 return ExprProp::invalid(self.db);
@@ -3464,15 +3397,11 @@ impl<'db> TyChecker<'db> {
         } else {
             self.env.register_semantic_call(expr, callable);
         }
-        ExprProp::new(normalized_ret_ty, true)
-    }
-
-    fn method_receiver_tys(
-        &self,
-        _receiver: ExprId,
-        receiver_prop: &ExprProp<'db>,
-    ) -> Vec<TyId<'db>> {
-        self.capability_fallback_candidates(receiver_prop.ty)
+        ExprProp {
+            is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
+            shape,
+            ..ExprProp::new(ret_ty, true)
+        }
     }
 
     fn check_path(&mut self, expr: ExprId, expr_data: &Expr<'db>) -> ExprProp<'db> {
@@ -3542,20 +3471,14 @@ impl<'db> TyChecker<'db> {
                     .lookup_binding_ty(&binding)
                     .fold_with(self.db, &mut self.table);
                 let ty = self.normalize_ty(ty);
-                let mut is_mut = binding.is_mut();
-                if let Some((cap, _)) = ty.as_capability(self.db) {
-                    is_mut = match cap {
-                        CapabilityKind::Mut => true,
-                        CapabilityKind::Ref => false,
-                        CapabilityKind::View => binding.is_mut(),
-                    };
-                }
+                let is_mut = self
+                    .env
+                    .binding_access(&binding)
+                    .map_or(binding.is_mut(), BindingAccess::is_mut);
                 ExprProp {
-                    ty,
-                    is_mut,
                     binding: Some(binding),
                     borrow_provider: self.concrete_borrow_provider_for_binding(binding),
-                    path_read_semantics: None,
+                    ..ExprProp::new(ty, is_mut)
                 }
             }
             ResolvedPathInBody::NewBinding(ident) => {
@@ -3827,7 +3750,6 @@ impl<'db> TyChecker<'db> {
                                 primary_goal: inst,
                                 unsat_subgoal: None,
                                 required_by: None,
-                                capability_hint: None,
                             },
                         ));
                         return ExprProp::invalid(self.db);
@@ -4071,11 +3993,9 @@ impl<'db> TyChecker<'db> {
 
         let lhs_ty = self.fresh_ty();
         let typed_lhs = self.check_expr(*lhs, lhs_ty);
-        let lhs_ty = typed_lhs.ty;
-        let lhs_place_ty = lhs_ty
-            .as_capability(self.db)
-            .map_or(lhs_ty, |(_, inner)| inner);
-        // let lhs_ty = normalize_ty(self.db, lhs_ty, self.env.scope(), self.env.assumptions());
+        // The base is a place, possibly a projection's result.
+        self.consume_access(*lhs);
+        let lhs_place_ty = typed_lhs.ty;
 
         if lhs_place_ty.has_invalid(self.db) {
             return ExprProp::invalid(self.db);
@@ -4720,18 +4640,11 @@ impl<'db> TyChecker<'db> {
             self.env.clear_pending_bindings();
             self.env.leave_scope();
             let else_prop = self.check_expr_in_new_scope(*else_, expected, result_discarded);
-            let borrow_provider = self.merge_concrete_borrow_providers(
-                then.span(self.body()).into(),
-                then_prop.borrow_provider,
-                else_.span(self.body()).into(),
-                else_prop.borrow_provider,
-            );
+            let borrow_provider =
+                merged_borrow_provider(then_prop.borrow_provider, else_prop.borrow_provider);
             ExprProp {
-                ty: else_prop.ty,
-                is_mut: true,
-                binding: None,
                 borrow_provider,
-                path_read_semantics: None,
+                ..ExprProp::new(else_prop.ty, true)
             }
         } else {
             let if_ty = self.fresh_ty();
@@ -4758,8 +4671,8 @@ impl<'db> TyChecker<'db> {
         };
 
         let scrutinee_ty = self.fresh_ty();
-        let scrutinee_ty = self.check_expr(*scrutinee, scrutinee_ty).ty;
-        let (scrutinee_pat_ty, mode) = self.destructure_source_mode(scrutinee_ty);
+        let scrutinee_prop = self.check_expr(*scrutinee, scrutinee_ty);
+        let scrutinee_pat_ty = scrutinee_prop.ty;
         let pattern_layout = self.pattern_layout_context(*scrutinee);
 
         let Partial::Present(arms) = arms else {
@@ -4767,7 +4680,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let mut match_ty = expected;
-        let mut first_provider: Option<(DynLazySpan<'db>, super::ProviderAddressSpace)> = None;
+        let mut first_provider: Option<super::ProviderAddressSpace> = None;
         let mut provider_unknown = false;
         let mut provider_conflict = false;
         let mut arm_statuses = Vec::with_capacity(arms.len());
@@ -4775,9 +4688,7 @@ impl<'db> TyChecker<'db> {
         for arm in arms.iter() {
             let pat_result =
                 self.check_pat_with_layout(arm.pat, scrutinee_pat_ty, pattern_layout.as_ref());
-            if let super::PatternDestructureMode::Borrow(kind) = mode {
-                self.retype_pattern_bindings_for_borrow(arm.pat, kind);
-            }
+            self.bind_pattern_source(arm.pat, *scrutinee, &scrutinee_prop);
             arm_statuses.push(pat_result.analysis);
 
             self.env.enter_scope(arm.body);
@@ -4790,19 +4701,13 @@ impl<'db> TyChecker<'db> {
             match_ty = arm_prop.ty;
             self.env.leave_scope();
 
-            if arm_prop.ty.as_capability(self.db).is_some() {
+            if arm_prop.shape.is_some() {
                 if let Some(provider) = arm_prop.borrow_provider {
-                    if let Some((ref span, previous)) = first_provider {
-                        provider_conflict |= self
-                            .merge_concrete_borrow_providers(
-                                span.clone(),
-                                Some(previous),
-                                arm.body.span(self.body()).into(),
-                                Some(provider),
-                            )
-                            .is_none();
+                    if let Some(previous) = first_provider {
+                        provider_conflict |=
+                            merged_borrow_provider(Some(previous), Some(provider)).is_none();
                     } else {
-                        first_provider = Some((arm.body.span(self.body()).into(), provider));
+                        first_provider = Some(provider);
                     }
                 } else {
                     provider_unknown = true;
@@ -4863,26 +4768,12 @@ impl<'db> TyChecker<'db> {
         }
 
         ExprProp {
-            ty: match_ty,
-            is_mut: true,
-            binding: None,
             borrow_provider: if provider_unknown || provider_conflict {
                 None
             } else {
-                first_provider.map(|(_, provider)| provider)
+                first_provider
             },
-            path_read_semantics: None,
-        }
-    }
-
-    fn assignment_target_ty(&self, lhs: ExprId, ty: TyId<'db>) -> TyId<'db> {
-        // An explicit raw-pointer dereference selects the stored pointee, even
-        // when that value is a capability. Ordinary capability places instead
-        // assign through their referent.
-        if self.is_pointer_deref_expr(lhs) {
-            ty
-        } else {
-            ty.as_capability(self.db).map_or(ty, |(_, target)| target)
+            ..ExprProp::new(match_ty, true)
         }
     }
 
@@ -4896,34 +4787,20 @@ impl<'db> TyChecker<'db> {
         }
 
         let typed_lhs = self.check_expr_unknown(*lhs);
-        let lhs_ty = self.assignment_target_ty(*lhs, typed_lhs.ty);
+        // The target is a place, possibly a projection's result.
+        self.consume_access(*lhs);
         // Assignment is an expected-type boundary. In particular, an assigned
         // contract-field view can carry concrete layout roots that must reach
         // aggregate constructors before their runtime layout is selected.
-        let mut rhs_prop = self.check_expr(*rhs, lhs_ty);
-        if let Some(coerced) =
-            self.try_coerce_capability_for_expr_to_expected(*rhs, rhs_prop.ty, lhs_ty)
-        {
-            rhs_prop.ty = coerced;
-        }
-        rhs_prop.ty = self.unify_ty(Typeable::Expr(*rhs, rhs_prop.clone()), rhs_prop.ty, lhs_ty);
+        let mut rhs_prop = self.check_expr(*rhs, typed_lhs.ty);
+        rhs_prop.ty = self.unify_ty(
+            Typeable::Expr(*rhs, rhs_prop.clone()),
+            rhs_prop.ty,
+            typed_lhs.ty,
+        );
 
-        let lhs_status = self.check_assign_lhs(*lhs, &typed_lhs);
+        self.check_assign_lhs(*lhs, &typed_lhs);
         self.record_implicit_move_for_owned_expr(*rhs, rhs_prop.ty);
-
-        if lhs_status == AssignLhsStatus::Assignable
-            && typed_lhs.ty.as_capability(self.db).is_some()
-            && let Some(place) = self.env.expr_place(*lhs)
-            && place.projections.is_empty()
-        {
-            let PlaceBase::Binding(binding) = place.base;
-            self.merge_concrete_borrow_providers(
-                binding.def_span(&self.env),
-                self.concrete_borrow_provider_for_binding(binding),
-                rhs.span(self.body()).into(),
-                rhs_prop.borrow_provider,
-            );
-        }
 
         ExprProp::new(TyId::unit(self.db), true)
     }
@@ -4935,11 +4812,6 @@ impl<'db> TyChecker<'db> {
         }
 
         let mut rhs_prop = self.check_expr(rhs, target.target_ty);
-        if let Some(coerced) =
-            self.try_coerce_capability_for_expr_to_expected(rhs, rhs_prop.ty, target.target_ty)
-        {
-            rhs_prop.ty = coerced;
-        }
         rhs_prop.ty = self.unify_ty(
             Typeable::Expr(rhs, rhs_prop.clone()),
             rhs_prop.ty,
@@ -4947,20 +4819,7 @@ impl<'db> TyChecker<'db> {
         );
 
         if !target.trait_lowered {
-            let lhs_status = self.check_assign_lhs(lhs, &target.prop);
-            if lhs_status == AssignLhsStatus::Assignable
-                && target.prop.ty.as_capability(self.db).is_some()
-                && let Some(place) = self.env.expr_place(lhs)
-                && place.projections.is_empty()
-            {
-                let PlaceBase::Binding(binding) = place.base;
-                self.merge_concrete_borrow_providers(
-                    binding.def_span(&self.env),
-                    self.concrete_borrow_provider_for_binding(binding),
-                    rhs.span(self.body()).into(),
-                    rhs_prop.borrow_provider,
-                );
-            }
+            self.check_assign_lhs(lhs, &target.prop);
         }
 
         self.record_implicit_move_for_owned_expr(rhs, rhs_prop.ty);
@@ -4974,6 +4833,7 @@ impl<'db> TyChecker<'db> {
         };
 
         let base_prop = self.check_expr_unknown(*base);
+        self.consume_access(*base);
         if base_prop.ty.has_invalid(self.db) {
             return Some(MutableIndexTarget {
                 prop: ExprProp::invalid(self.db),
@@ -4982,10 +4842,7 @@ impl<'db> TyChecker<'db> {
             });
         }
 
-        let base_place_ty = base_prop
-            .ty
-            .as_capability(self.db)
-            .map_or(base_prop.ty, |(_, inner)| inner);
+        let base_place_ty = base_prop.ty;
         if base_place_ty.is_array(self.db) {
             let args = base_place_ty.generic_args(self.db);
             let lhs_ty = args[0];
@@ -5010,11 +4867,18 @@ impl<'db> TyChecker<'db> {
 
             return Some(MutableIndexTarget {
                 prop: typed_lhs,
-                target_ty: self.assignment_target_ty(lhs, lhs_ty),
+                target_ty: lhs_ty,
                 trait_lowered: false,
             });
         }
 
+        // `IndexMut::index_mut` takes `mut self`: a place base must be
+        // writable, as the receiver of any `mut self` method call must be.
+        if !base_prop.is_mut
+            && (self.env.expr_place(*base).is_some() || self.is_pointer_deref_expr(*base))
+        {
+            self.report_cannot_borrow_mut(*base, base.span(self.body()).into());
+        }
         let indexed = self.check_ops_trait(lhs, base_prop.ty, &IndexMutOp, Some(*index));
         if indexed.ty.has_invalid(self.db) {
             return Some(MutableIndexTarget {
@@ -5024,24 +4888,13 @@ impl<'db> TyChecker<'db> {
             });
         }
 
-        let Some((CapabilityKind::Mut, lhs_ty)) = indexed.ty.as_capability(self.db) else {
-            let expected = TyId::borrow_mut_of(self.db, self.fresh_ty());
-            self.push_diag(BodyDiag::TypeMismatch {
-                span: lhs.span(self.body()).into(),
-                expected,
-                given: indexed.ty,
-            });
-            return Some(MutableIndexTarget {
-                prop: ExprProp::invalid(self.db),
-                target_ty: TyId::invalid(self.db, InvalidCause::Other),
-                trait_lowered: true,
-            });
-        };
+        // `IndexMut::index_mut` is a `mut` projection: its result is the
+        // assigned place.
+        self.consume_access(lhs);
         self.unify_ty(Typeable::Expr(lhs, indexed.clone()), indexed.ty, indexed.ty);
-
         Some(MutableIndexTarget {
+            target_ty: indexed.ty,
             prop: indexed,
-            target_ty: lhs_ty,
             trait_lowered: true,
         })
     }
@@ -5058,26 +4911,11 @@ impl<'db> TyChecker<'db> {
                 (target.prop, target.target_ty, target.trait_lowered)
             } else {
                 let typed_lhs = self.check_expr_unknown(*lhs);
-                let lhs_place_ty = typed_lhs
-                    .ty
-                    .as_capability(self.db)
-                    .map_or(typed_lhs.ty, |(_, target)| target);
+                self.consume_access(*lhs);
+                let lhs_place_ty = typed_lhs.ty;
                 (typed_lhs, lhs_place_ty, false)
             };
         if typed_lhs.ty.has_invalid(self.db) {
-            return unit;
-        }
-        // Compound assignment mutates the referent. A writable slot containing
-        // a shared reference permits replacing the reference, not mutating it.
-        if matches!(
-            typed_lhs.ty.as_capability(self.db),
-            Some((CapabilityKind::Ref, _))
-        ) {
-            self.push_diag(BodyDiag::ImmutableAssignment {
-                primary: lhs.span(self.body()).into(),
-                binding: None,
-            });
-            self.check_expr_unknown(*rhs);
             return unit;
         }
         if !trait_lowered
@@ -5124,7 +4962,7 @@ impl<'db> TyChecker<'db> {
             return ExprProp::invalid(self.db);
         };
 
-        let lhs_candidates = self.capability_fallback_candidates(lhs_ty);
+        let lhs_candidates = self.receiver_candidates(lhs_ty);
         let method_assumptions = self.env.assumptions();
         let mut checked_rhs_ty = None;
 
@@ -5213,14 +5051,7 @@ impl<'db> TyChecker<'db> {
                         .ok()?;
                         let func_ty = self.table.instantiate_to_term(func_ty);
                         let expected_rhs = self.instantiated_ops_rhs_ty(func_ty, inst)?;
-                        let rhs_ty = self
-                            .try_coerce_capability_for_expr_to_expected(
-                                rhs_expr,
-                                rhs.ty,
-                                expected_rhs,
-                            )
-                            .unwrap_or(rhs.ty);
-                        self.table.unify(rhs_ty, expected_rhs).ok()
+                        self.table.unify(rhs.ty, expected_rhs).ok()
                     })()
                     .is_some();
                     self.rollback_state(snapshot);
@@ -5258,18 +5089,8 @@ impl<'db> TyChecker<'db> {
                         inst,
                     );
                     if let Some(expected_rhs) = self.instantiated_ops_rhs_ty(func_ty, inst) {
-                        let rhs_ty = self
-                            .try_coerce_capability_for_expr_to_expected(
-                                rhs_expr,
-                                rhs.ty,
-                                expected_rhs,
-                            )
-                            .unwrap_or(rhs.ty);
-                        // Like a call argument, the operand keeps its own type:
-                        // the call boundary applies the coercion, so a viewed
-                        // operand is borrowed in place rather than moved.
                         checked_rhs_ty = Some(self.equate_ty(
-                            rhs_ty,
+                            rhs.ty,
                             expected_rhs,
                             rhs_expr.span(self.body()).into(),
                         ));
@@ -5389,8 +5210,15 @@ impl<'db> TyChecker<'db> {
         callable.set_checked_input_tys(checked_inputs);
 
         let ret_ty = self.normalize_ty(callable.ret_ty(self.db));
+        let shape = callable
+            .ret_shape(self.db)
+            .map(|shape| shape.map_tys(&mut |ty| self.normalize_ty(ty)));
         self.env.register_semantic_call(expr, callable);
-        ExprProp::new(ret_ty, true)
+        ExprProp {
+            is_mut: matches!(shape, None | Some(Shape::Access(BorrowKind::Mut, _))),
+            shape,
+            ..ExprProp::new(ret_ty, true)
+        }
     }
 
     fn instantiated_ops_rhs_ty(

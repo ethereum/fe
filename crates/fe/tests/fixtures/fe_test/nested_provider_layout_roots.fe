@@ -7,8 +7,8 @@ struct Holder<T> {
 impl<T> Copy for Holder<T> {}
 
 impl<T> Holder<T> {
-    fn attach(mut self, slot: u256) uses (evm: Evm) {
-        self.ptr = evm.stor_ptr(slot)
+    fn attach(mut self, _ ptr: StorPtr<T>) {
+        self.ptr = ptr
     }
 }
 
@@ -34,8 +34,8 @@ struct TaggedHolder<T> {
 impl<T> Copy for TaggedHolder<T> {}
 
 impl<T> TaggedHolder<T> {
-    fn attach(mut self, slot: u256) uses (evm: Evm) {
-        self.ptr = TaggedStorPtr { tag: 19, ptr: evm.stor_ptr(slot) }
+    fn attach(mut self, _ ptr: StorPtr<T>) {
+        self.ptr = TaggedStorPtr { tag: 19, ptr }
     }
 }
 
@@ -78,10 +78,15 @@ pub contract NestedProviderMaps {
     mut direct: StorageMap<u256, u256>,
     mut tagged: TaggedHolder<StorageMap<u256, u256>>,
 
+    // A `mut` storage receiver cannot be held across a call whose effects
+    // reach every slot, so the handles are created before they are attached.
     init() uses (mut inferred, mut explicit, mut tagged, evm: Evm) {
-        inferred.attach(slot: 0)
-        explicit.attach(slot: 0)
-        tagged.attach(slot: 0)
+        let ptr = unsafe { evm.stor_ptr(0) }
+        inferred.attach(ptr)
+        let ptr = unsafe { evm.stor_ptr(0) }
+        explicit.attach(ptr)
+        let ptr = unsafe { evm.stor_ptr(0) }
+        tagged.attach(ptr)
     }
 
     recv NestedProviderMsg {

@@ -75,10 +75,10 @@ fn test_fixed_bytes_elements() {
 
 fn dirty_bool() -> DynArray<bool> {
     let data = MemBuffer::alloc(64)
-    store_word(ptr: data.ptr(), value: 1)
+    unsafe { store_word(ptr: data.ptr(), value: 1) }
     // The array shape is valid, but 2 is not a canonical ABI bool.
-    store_word(ptr: ptr::offset_bytes(data.ptr(), 32), value: 2)
-    DynArray::from_abi_tail(data: data.ptr(), len: 1, size: 64)
+    unsafe { store_word(ptr: ptr::offset_bytes(data.ptr(), 32), value: 2) }
+    unsafe { DynArray::from_abi_tail(data: data.ptr(), len: 1, size: 64) }
 }
 
 #[test(should_revert)]

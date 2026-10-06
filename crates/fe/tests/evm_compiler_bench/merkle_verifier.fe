@@ -15,9 +15,9 @@ msg MerkleMsg {
 
 fn hash_pair(a: u256, b: u256) -> u256 uses (raw: mut RawMem) {
     let ptr = ptr::alloc_bytes(64)
-    raw.mstore(addr: ptr, value: a)
-    raw.mstore(addr: ptr::offset_bytes(ptr, 32), value: b)
-    crypto::keccak256(MemSpan::from_raw_parts(ptr, len: 64))
+    unsafe { raw.mstore(addr: ptr, value: a) }
+    unsafe { raw.mstore(addr: ptr::offset_bytes(ptr, 32), value: b) }
+    unsafe { crypto::keccak256(MemSpan::from_raw_parts(ptr, len: 64)) }
 }
 
 pub contract MerkleVerifier uses (raw: mut RawMem) {

@@ -58,20 +58,20 @@ pub contract BytesViewBounds {
 
         InvalidBytesMetadata {} {
             let data = ptr::alloc_bytes(32)
-            *ptr::cast<u8, u256>(data) = 1
-            let _bytes = Bytes::from_abi_tail(data, len: 1, size: 32)
+            unsafe { *ptr::cast<u8, u256>(data) = 1 }
+            let _bytes = unsafe { Bytes::from_abi_tail(data, len: 1, size: 32) }
         }
 
         InvalidDynArrayMetadata {} {
             let data = ptr::alloc_bytes(32)
-            *ptr::cast<u8, u256>(data) = 2
-            let _array: DynArray<u256> = DynArray::from_abi_tail(data, len: 1, size: 32)
+            unsafe { *ptr::cast<u8, u256>(data) = 2 }
+            let _array: DynArray<u256> = unsafe { DynArray::from_abi_tail(data, len: 1, size: 32) }
         }
 
         OversizedStaticDynArrayMetadata {} {
             let data = ptr::alloc_bytes(96)
-            *ptr::cast<u8, u256>(data) = 1
-            let _array: DynArray<u256> = DynArray::from_abi_tail(data, len: 1, size: 96)
+            unsafe { *ptr::cast<u8, u256>(data) = 1 }
+            let _array: DynArray<u256> = unsafe { DynArray::from_abi_tail(data, len: 1, size: 96) }
         }
     }
 }
@@ -83,17 +83,21 @@ uses (evm: mut Evm)
     let payload_size: u256 = 96
     let data_ptr = ptr::alloc_bytes(payload_size)
 
-    evm.mstore(addr: data_ptr, value: payload_len)
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 32),
-        value: 0x1111111111111111111111111111111111111111111111111111111111111111,
-    )
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 64),
-        value: 0x2200000000000000000000000000000000000000000000000000000000000000,
-    )
+    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 32),
+            value: 0x1111111111111111111111111111111111111111111111111111111111111111,
+        )
+    }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 64),
+            value: 0x2200000000000000000000000000000000000000000000000000000000000000,
+        )
+    }
 
-    Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size)
+    unsafe { Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size) }
 }
 
 fn one_byte_bytes() -> Bytes
@@ -103,13 +107,15 @@ uses (evm: mut Evm)
     let payload_size: u256 = 64
     let data_ptr = ptr::alloc_bytes(payload_size)
 
-    evm.mstore(addr: data_ptr, value: payload_len)
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 32),
-        value: 0x3300000000000000000000000000000000000000000000000000000000000000,
-    )
+    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 32),
+            value: 0x3300000000000000000000000000000000000000000000000000000000000000,
+        )
+    }
 
-    Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size)
+    unsafe { Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size) }
 }
 
 fn oversized_one_word_bytes() -> Bytes uses (mem: mut RawMem) {
@@ -130,9 +136,9 @@ fn test_abi_dynamic_payload_tuple_encoding() uses (evm: Evm) {
     let data = encode_abi_payload(payload)
 
     assert!(data.len() == 96)
-    assert!(evm.mload(data.ptr()) == 0xdeadbeef)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 64)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 0)
+    unsafe { assert!(evm.mload(data.ptr()) == 0xdeadbeef) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 64) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 0) }
 }
 
 #[test]
@@ -145,13 +151,13 @@ fn test_bytes_from_words_prefix_uses_canonical_tail_size() uses (evm: mut Evm, m
     let data = encode_abi_payload(payload)
 
     assert!(data.len() == 224)
-    assert!(evm.mload(data.ptr()) == 96)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 0xabcdef)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 160)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 96)) == 1)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 128)) == 0x3300000000000000000000000000000000000000000000000000000000000000)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 160)) == 1)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 192)) == 0x3300000000000000000000000000000000000000000000000000000000000000)
+    unsafe { assert!(evm.mload(data.ptr()) == 96) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 0xabcdef) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 160) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 96)) == 1) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 128)) == 0x3300000000000000000000000000000000000000000000000000000000000000) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 160)) == 1) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 192)) == 0x3300000000000000000000000000000000000000000000000000000000000000) }
 }
 
 #[test]
@@ -182,11 +188,11 @@ fn test_error_dynamic_payload_tail_encoding() uses (evm: mut Evm) {
     })
 
     assert!(data.len() == 160)
-    assert!(evm.mload(data.ptr()) == 96)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 0xabcdef)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 128)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 96)) == 0)
-    assert!(evm.mload(ptr::offset_bytes(data.ptr(), 128)) == 0)
+    unsafe { assert!(evm.mload(data.ptr()) == 96) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 32)) == 0xabcdef) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 64)) == 128) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 96)) == 0) }
+    unsafe { assert!(evm.mload(ptr::offset_bytes(data.ptr(), 128)) == 0) }
 }
 
 #[test(should_revert)]
@@ -197,10 +203,12 @@ fn test_bytes_from_words_prefix_rejects_oversize_len() uses (mem: mut RawMem) {
 #[test]
 fn test_memory_bytes_view_masks_partial_words() uses (evm: mut Evm) {
     let buffer = ptr::MemBuffer::alloc(32)
-    evm.mstore(
-        addr: buffer.ptr(),
-        value: 0x11ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
-    )
+    unsafe {
+        evm.mstore(
+            addr: buffer.ptr(),
+            value: 0x11ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff,
+        )
+    }
     let view = BytesView::new(input: buffer.span(), start: 0, len: 1)
     assert!(view.byte_at(0) == 0x11)
     assert!(view.word_at(0) == 0x11 << 248)

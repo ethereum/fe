@@ -773,7 +773,7 @@ fn test_cli_build_native_checked_arithmetic_still_traps() {
     source.push_str(
         r#"
 pub fn main(argc: i32, argv: **u8) -> i32 {
-    let args = Args::new(argc, argv)
+    let args = unsafe { Args::new(argc, argv) }
     if args.len() != 2 { return 97 }
     let arg = args.get(1)
     if arg.len() != 1 { return 97 }
@@ -2848,16 +2848,16 @@ impl core::abi::AbiSize for Weird {
 }
 
 impl core::abi::Encode<std::abi::Sol> for Weird {
-    fn encode(own self, _ ptr: *u8) {
-        core::abi::store_word(ptr: ptr, value: if self.flag { 1 } else { 0 })
-        core::abi::store_word(ptr: core::ptr::offset_bytes(ptr, 32), value: self.amount as u256)
+    unsafe fn encode(own self, _ ptr: *u8) {
+        unsafe { core::abi::store_word(ptr: ptr, value: if self.flag { 1 } else { 0 }) }
+        unsafe { core::abi::store_word(ptr: core::ptr::offset_bytes(ptr, 32), value: self.amount as u256) }
     }
 }
 
 impl core::abi::Decode<std::abi::Sol> for Weird {
     fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-        let flag = bool::decode_payload(d)
-        let amount = u64::decode_payload(d)
+        let flag = bool::decode_payload(mut d)
+        let amount = u64::decode_payload(mut d)
         Self { amount, flag }
     }
 }
@@ -3699,53 +3699,6 @@ fn test_cli_test_workspace_preserves_builtin_authority() {
     assert!(
         output.contains("integer-backed handles are reserved for compiler-provided libraries"),
         "expected an untrusted handle error:\n{output}"
-    );
-}
-
-#[test]
-fn test_cli_borrowck_profiling_is_silent_without_exact_activation() {
-    let root = workspace_fixture("test_workspace_fe_test_core_std_no_tests");
-    for env in [
-        &[][..],
-        &[("FE_BORROWCK_SUBGRAPHS", "1")][..],
-        &[("FE_BORROWCK_PROFILE", "0"), ("FE_BORROWCK_SUBGRAPHS", "1")][..],
-        &[("FE_BORROWCK_PROFILE", "")][..],
-    ] {
-        let output = run_fe_main_impl(&["test", "--ingot", "app"], Some(&root), env);
-        let display = output.combined();
-        assert_eq!(output.exit_code, 0, "fe test failed: {display}");
-        assert!(
-            !output.stderr.contains("GRAPH_PROFILE"),
-            "unsolicited graph profile: {display}"
-        );
-        assert!(
-            !output.stderr.contains("SOLVER_"),
-            "unsolicited solver profile: {display}"
-        );
-    }
-}
-
-#[cfg(feature = "borrowck-profile")]
-#[test]
-fn test_cli_borrowck_profiling_opt_in_repo_root() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .and_then(|path| path.parent())
-        .expect("fe repo root");
-    let output = run_fe_main_impl(&["test"], Some(root), &[("FE_BORROWCK_PROFILE", "1")]);
-    let display = output.combined();
-    assert_eq!(output.exit_code, 0, "profiled fe test failed: {display}");
-    assert!(
-        output.stderr.contains("GRAPH_PROFILE event=start"),
-        "missing activation report: {display}"
-    );
-    assert!(
-        !output.stderr.contains("panicked"),
-        "profiling panic: {display}"
-    );
-    assert!(
-        !output.stderr.contains("counted"),
-        "profiling invariant failure: {display}"
     );
 }
 

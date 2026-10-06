@@ -1,0 +1,82 @@
+use core::effect_ref::{AddressSpace, EffectHandle, EffectHandleMut, EffectRef, EffectRefMut}
+
+struct Counter { value: u256 }
+
+fn bump() uses (counter: mut Counter) {
+    counter.value += 1
+}
+
+struct Handle { ptr: *Counter }
+
+impl EffectHandle for Handle {
+    type Target = Counter
+    const SPACE: AddressSpace = AddressSpace::Memory
+    type Raw = *Counter
+
+    fn raw(self) -> *Counter {
+        self.ptr
+    }
+}
+
+impl EffectHandleMut for Handle {}
+impl EffectRef<Counter> for Handle {}
+impl EffectRefMut<Counter> for Handle {}
+
+pub fn raw_pointer(p: own *Counter) {
+    with (p) {
+        bump()
+    }
+}
+
+pub fn user_handle(handle: own Handle) {
+    with (handle) {
+        bump()
+    }
+}
+
+pub fn generic_handle<H>(handle: own H)
+    where H: EffectHandle<Target = Counter> + EffectHandleMut + EffectRefMut<Counter>
+{
+    with (handle) {
+        bump()
+    }
+}
+
+pub fn inside_unsafe(p: own *Counter, handle: own Handle) {
+    unsafe {
+        with (p) {
+            bump()
+        }
+        with (handle) {
+            bump()
+        }
+    }
+}
+
+pub fn capability(mut counter: own Counter) {
+    with (mut counter) {
+        bump()
+    }
+}
+
+struct Tagged { ptr: *Counter }
+
+impl EffectHandle for Tagged {
+    type Target = Counter
+    const SPACE: AddressSpace = AddressSpace::Memory
+    type Raw = *Counter
+
+    fn raw(self) -> *Counter {
+        self.ptr
+    }
+}
+
+fn tagged_raw() -> *Counter uses (tagged: Tagged) {
+    tagged.raw()
+}
+
+pub fn value_only_handle(tagged: own Tagged) -> *Counter {
+    with (tagged) {
+        tagged_raw()
+    }
+}

@@ -66,7 +66,7 @@ fn runtime_visible_binding_semantic_ty<'db>(
             ..
         } => semantic.binding_ty(db, binding),
         LocalBinding::Local { .. } | LocalBinding::Param { .. } => {
-            typed_body.binding_ty(db, binding)
+            typed_body.binding_carrier_ty(db, binding)
         }
     }
 }

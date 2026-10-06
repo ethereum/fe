@@ -14,7 +14,7 @@ use hir::analysis::{
     analysis_pass::AnalysisPassManager,
     diagnostics::DiagnosticVoucher,
     initialize_analysis_pass,
-    semantic::{LayoutEvidenceAnalysisPass, SemanticBorrowAnalysisPass},
+    semantic::{LayoutEvidenceAnalysisPass, SemanticAccessAnalysisPass},
 };
 use hir::{
     Ingot,
@@ -122,7 +122,7 @@ impl DriverDataBase {
 
 fn initialize_mir_diagnostics_pass() -> AnalysisPassManager {
     let mut pass_manager = AnalysisPassManager::new();
-    pass_manager.add_module_pass("SemanticBorrow", Box::new(SemanticBorrowAnalysisPass));
+    pass_manager.add_module_pass("SemanticAccess", Box::new(SemanticAccessAnalysisPass));
     pass_manager.add_module_pass("LayoutEvidence", Box::new(LayoutEvidenceAnalysisPass));
     pass_manager
 }

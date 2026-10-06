@@ -51,8 +51,8 @@ fn shared_field_calls_keep_an_immutable_owner() {
 #[test]
 fn shared_pointee_calls_view_raw_memory() {
     let slot = ptr::alloc<Buffer>()
-    *slot = Buffer::new(5)
-    assert!((*slot).read() + read(*slot) == 10)
-    (*slot).write(6)
-    assert!((*slot).read() == 6)
+    unsafe { *slot = Buffer::new(5) }
+    unsafe { assert!((*slot).read() + read(*slot) == 10) }
+    unsafe { (*slot).write(6) }
+    unsafe { assert!((*slot).read() == 6) }
 }

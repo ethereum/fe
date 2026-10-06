@@ -1,5 +1,5 @@
 use hir::analysis::{
-    semantic::{SemanticInstance, check_semantic_borrows, check_semantic_boundaries},
+    semantic::{SemanticInstance, check_semantic_accesses},
     ty::ty_check::BodyOwner,
 };
 use salsa::Update;
@@ -135,16 +135,9 @@ fn lower_runtime_body<'db>(
 ) -> Result<LoweredRuntimeBody<'db>, LowerError> {
     let body = match instance.key(db).source(db) {
         RuntimeInstanceSource::Semantic(semantic) => {
-            if let Err(diag) = check_semantic_borrows(db, semantic) {
+            if let Err(diag) = check_semantic_accesses(db, semantic) {
                 return Err(LowerError::Unsupported(format!(
                     "semantic borrow checking failed for {:?}: {}",
-                    semantic.key(db),
-                    diag
-                )));
-            }
-            if let Err(diag) = check_semantic_boundaries(db, semantic) {
-                return Err(LowerError::Unsupported(format!(
-                    "semantic boundary checking failed for {:?}: {}",
                     semantic.key(db),
                     diag
                 )));
@@ -197,57 +190,4 @@ fn expect_lowered_runtime_body<'db>(
             instance.key(db).source(db)
         )
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use common::InputDb;
-    use driver::DriverDataBase;
-    use hir::analysis::{
-        semantic::{get_or_build_semantic_instance, identity_semantic_instance_key},
-        ty::ty_check::BodyOwner,
-    };
-    use url::Url;
-
-    #[test]
-    fn runtime_lowering_cannot_discharge_pending_semantic_validation() {
-        for source in [
-            "extern { fn opaque() }\nfn entry() { opaque() }",
-            "extern { fn opaque() -> ! }\nfn entry() -> u256 { opaque() }",
-            "trait Operation { fn apply() }\nfn entry<T: Operation>() { T::apply() }",
-        ] {
-            let mut db = DriverDataBase::default();
-            let file = db.workspace().touch(
-                &mut db,
-                Url::parse("file:///pending_runtime_validation.fe").unwrap(),
-                Some(source.into()),
-            );
-            let module = db.top_mod(file);
-            let func = module
-                .all_funcs(&db)
-                .iter()
-                .copied()
-                .find(|func| {
-                    func.name(&db)
-                        .to_opt()
-                        .is_some_and(|name| name.data(&db) == "entry")
-                })
-                .unwrap();
-            let semantic = get_or_build_semantic_instance(
-                &db,
-                identity_semantic_instance_key(&db, BodyOwner::Func(func)),
-            );
-            let key =
-                RuntimeInstanceKey::new(&db, RuntimeInstanceSource::Semantic(semantic), Vec::new());
-            let instance = get_or_build_runtime_instance(&db, key);
-            let Err(LowerError::Unsupported(message)) = lower_runtime_body(&db, instance) else {
-                panic!("pending validation reached runtime lowering");
-            };
-            assert!(
-                message.contains("requires concrete implementations"),
-                "{message}"
-            );
-        }
-    }
 }

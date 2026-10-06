@@ -406,6 +406,7 @@ impl<'db> FuncParam<'db> {
         let mut result = String::new();
         let mode_prefix = match self.mode {
             FuncParamMode::View => "",
+            FuncParamMode::Mut => "mut ",
             FuncParamMode::Own => "own ",
         };
 
@@ -583,12 +584,17 @@ impl<'db> Expr<'db> {
         match self {
             Expr::Lit(lit) => lit.pretty_print(db),
 
-            Expr::Block(stmts) => {
+            Expr::Block(stmts, kind) => {
+                let mut result = match kind {
+                    BlockKind::Normal => String::new(),
+                    BlockKind::Unsafe => "unsafe ".to_string(),
+                };
                 if stmts.is_empty() {
-                    return "{}".to_string();
+                    result.push_str("{}");
+                    return result;
                 }
 
-                let mut result = "{\n".to_string();
+                result.push_str("{\n");
                 for stmt_id in stmts.iter() {
                     let stmt = unwrap_partial_ref(stmt_id.data(db, body), "Stmt in block");
                     result.push_str(&indent_str(indent + 1));
@@ -758,7 +764,7 @@ impl<'db> Expr<'db> {
                     let else_expr = unwrap_partial_ref(else_id.data(db, body), "If::else");
                     result.push_str(" else ");
                     // else branch needs braces unless it's an if or block expression
-                    if matches!(else_expr, Expr::If(..) | Expr::Block(_)) {
+                    if matches!(else_expr, Expr::If(..) | Expr::Block(_, BlockKind::Normal)) {
                         result.push_str(&else_expr.pretty_print(db, body, indent));
                     } else {
                         result.push_str(&format!(
@@ -826,7 +832,7 @@ impl<'db> Expr<'db> {
                     .join(", ");
                 let expr_ref = unwrap_partial_ref(expr.data(db, body), "With::expr");
                 // With expressions always need braces around the body
-                let body_str = if matches!(expr_ref, Expr::Block(_)) {
+                let body_str = if matches!(expr_ref, Expr::Block(_, BlockKind::Normal)) {
                     expr_ref.pretty_print(db, body, indent)
                 } else {
                     format!("{{ {} }}", expr_ref.pretty_print(db, body, indent))

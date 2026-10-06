@@ -5,7 +5,7 @@ use core::ptr
 // never leave this module: ByteBuffer is the allocation owner.
 extern {
     fn malloc(size: u64) -> *u8
-    fn free(_ address: *u8)
+    unsafe fn free(_ address: *u8)
     fn is_null(_ address: *u8) -> bool
 }
 
@@ -56,8 +56,10 @@ impl ByteBuffer {
             if is_null(replacement) { return false }
             match self.allocation {
                 Option::Some(address) => {
-                    ptr::copy_raw(dest: replacement, source: address, len: self.len as u256)
-                    free(address)
+                    unsafe {
+                        ptr::copy_raw(dest: replacement, source: address, len: self.len as u256)
+                        free(address)
+                    }
                 }
                 Option::None => {}
             }
@@ -65,10 +67,12 @@ impl ByteBuffer {
             self.capacity = capacity
         }
         if len > self.len {
-            ptr::zero_bytes(
-                ptr: ptr::offset(self.data(), self.len as u256),
-                len: (len - self.len) as u256,
-            )
+            unsafe {
+                ptr::zero_bytes(
+                    ptr: ptr::offset(self.data(), self.len as u256),
+                    len: (len - self.len) as u256,
+                )
+            }
         }
         self.len = len
         true
@@ -76,12 +80,12 @@ impl ByteBuffer {
 
     pub fn byte_at(self, _ index: u64) -> u8 {
         core::assert(index < self.len)
-        *ptr::offset(self.data(), index as u256)
+        unsafe { *ptr::offset(self.data(), index as u256) }
     }
 
     pub fn set_byte(mut self, index: u64, value: u8) {
         core::assert(index < self.len)
-        *ptr::offset(self.data(), index as u256) = value
+        unsafe { *ptr::offset(self.data(), index as u256) = value }
     }
 
     /// Copy within the initialized extent, preserving overlapping source bytes.
@@ -89,11 +93,13 @@ impl ByteBuffer {
         core::assert(dest <= self.len && len <= self.len - dest)
         core::assert(source <= self.len && len <= self.len - source)
         if len == 0 { return }
-        ptr::copy_raw(
-            dest: ptr::offset(self.data(), dest as u256),
-            source: ptr::offset(self.data(), source as u256),
-            len: len as u256,
-        )
+        unsafe {
+            ptr::copy_raw(
+                dest: ptr::offset(self.data(), dest as u256),
+                source: ptr::offset(self.data(), source as u256),
+                len: len as u256,
+            )
+        }
     }
 
     /// Reset the logical extent while retaining reusable storage.
@@ -102,7 +108,7 @@ impl ByteBuffer {
     /// Release the allocation and consume the owner.
     pub fn release(own self) {
         match self.allocation {
-            Option::Some(address) => free(address)
+            Option::Some(address) => unsafe { free(address) }
             Option::None => {}
         }
     }

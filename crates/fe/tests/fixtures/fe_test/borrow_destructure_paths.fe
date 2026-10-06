@@ -22,12 +22,12 @@ fn test_borrow_destructure_paths() {
     }
 
     {
-        let a_mut: mut u256 = mut s.a
+        let a_mut = mut s.a
         a_mut += 7
     }
 
     {
-        let b_mut: mut u256 = mut s.b
+        let b_mut = mut s.b
         b_mut += 11
     }
 

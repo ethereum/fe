@@ -1294,6 +1294,30 @@ impl ToDoc for ast::WithExpr {
     }
 }
 
+impl ToDoc for ast::UnsafeExpr {
+    fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
+        let alloc = &ctx.alloc;
+
+        if !has_comment_tokens(self.syntax()) {
+            return match self.block() {
+                Some(block) => alloc.text("unsafe ").append(block.to_doc(ctx)),
+                None => alloc.text("unsafe"),
+            };
+        }
+
+        token_doc(
+            ctx,
+            self.syntax(),
+            ctx.config.indent_width as isize,
+            |node| ast::BlockExpr::cast(node).map(|block| TokenPiece::new(block.to_doc(ctx))),
+            |token| {
+                (token.kind() == SyntaxKind::UnsafeKw)
+                    .then(|| TokenPiece::new(alloc.text("unsafe")).space_after())
+            },
+        )
+    }
+}
+
 impl ToDoc for ast::WithParamList {
     fn to_doc<'a>(&self, ctx: &'a RewriteContext<'a>) -> Doc<'a> {
         let indent = ctx.config.indent_width as isize;

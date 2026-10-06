@@ -83,27 +83,21 @@ fn semantic_ctfe_evaluates_frame_local_borrows(fixture: dir_test::Fixture<&str>)
 }
 
 #[test]
-fn semantic_ctfe_rejects_references_to_a_returning_frame() {
+fn semantic_ctfe_keeps_a_projection_frame_for_its_session() {
     let mut db = HirAnalysisTestDb::default();
-    let (path, text) = semantic_ctfe_fixture("returning_frame_borrow.fe");
+    let (path, text) = semantic_ctfe_fixture("session_owned_yield.fe");
     let file = db.new_stand_alone(path, &text);
     let (top_mod, _) = db.top_mod(file);
-    let func = find_func(&db, top_mod, "use_dangling");
-    // Even direct evaluator clients that omit borrow analysis must get an
-    // error, not a stale frame reference or a panic when that reference is read.
-    let EvalOutcome::Failed(EvalFailure::Ctfe(error)) = eval_body_owner_const(
+    let func = find_func(&db, top_mod, "use_counter");
+    let value = match eval_body_owner_const(
         &db,
         BodyOwner::Func(func),
         GenericSubst::for_body_owner(&db, BodyOwner::Func(func), vec![]),
-    ) else {
-        panic!("a dangling frame reference must fail evaluation");
+    ) {
+        EvalOutcome::Ready(value) => value,
+        outcome => panic!("{outcome:?}"),
     };
-    // The failure happens in the callee and reaches the caller wrapped.
-    let mut root = &error;
-    while let CtfeError::CalleeError { source, .. } = root {
-        root = &**source;
-    }
-    assert!(matches!(root, CtfeError::InvalidBorrow { .. }), "{error:?}");
+    assert_eq!(value.pretty_print(&db), "42");
 }
 
 /// Borrowing or reading one element of an interned constant must not copy
@@ -1291,15 +1285,13 @@ fn entry() -> u256 {
     );
     let body = canonicalize_semantic_consts(&db, semantic)
         .expect("valid semantic body should be canonicalizable");
-    let expected_ty = top_mod
+    let array_expected_ty = top_mod
         .all_funcs(&db)
         .iter()
         .find(|func| matches!(func.name(&db), Partial::Present(name) if name.data(&db) == "first"))
         .and_then(|func| func.arg_tys(&db).first().copied())
         .map(|ty| ty.instantiate_identity())
         .expect("expected first(xs: ref [u256; 2]) parameter type");
-    let (_, args) = expected_ty.decompose_ty_app(&db);
-    let array_expected_ty = args.first().copied().expect("ref pointee type");
 
     let array_const = body
         .blocks
@@ -1468,78 +1460,89 @@ fn negated_min_i8_compares_equal() -> bool {
 }
 
 #[test]
-fn canonicalize_tracks_mutation_through_aggregate_capabilities() {
-    for (name, operation, folds) in [
-        ("field", "holder.handle = 1", false),
+fn canonicalize_tracks_mutation_through_accesses() {
+    for (name, operation, result, folds) in [
+        ("field", "holder.value = 1", "holder.value == 1", false),
         (
-            "reborrow",
-            "let alias = mut holder.handle\n alias = 1",
+            "access",
+            "let alias = mut holder.value\n alias = 1",
+            "holder.value == 1",
             false,
         ),
         (
             "array",
-            "let mut values = [holder]\n values[index].handle = 1",
+            "let mut values = [holder]\n values[index].value = 1",
+            "values[0].value == 1",
             false,
         ),
         (
-            "nested",
-            "let mut outer = Outer { inner: mut holder }\n outer.inner.handle = 1",
-            false,
-        ),
-        ("value_call", "write(holder)", false),
-        ("direct_effect", "with (counter) { write_direct() }", false),
-        ("mutable_effect", "with (holder) { write_effect() }", false),
-        ("borrowed_call", "write_borrowed(mut holder)", false),
-        (
-            "returned",
-            "let alias = returned(holder)\n alias = 1",
+            "mut_argument",
+            "write_mut(mut holder)",
+            "holder.value == 1",
             false,
         ),
         (
-            "stored",
-            "let mut values = [Wrap { handle: mut other }]\n values[0] = holder\n values[0].handle = 1",
+            "mut_field_argument",
+            "write_value(mut holder.value)",
+            "holder.value == 1",
             false,
         ),
         (
-            "call_stored",
-            "let mut values = [Wrap { handle: mut other }]\n replace(values: mut values, replacement: holder)\n values[0].handle = 1",
+            "direct_effect",
+            "with (counter) { write_direct() }",
+            "counter.value == 1",
+            false,
+        ),
+        (
+            "mutable_effect",
+            "with (holder) { write_effect() }",
+            "holder.value == 1",
+            false,
+        ),
+        (
+            "projection",
+            "let alias = holder.value_mut()\n alias = 1",
+            "holder.value == 1",
             false,
         ),
         (
             "loop",
-            "while index == 0 { holder.handle = 1\n break }",
+            "while index == 0 { holder.value = 1\n break }",
+            "holder.value == 1",
             false,
         ),
-        ("reassigned_control", "holder.handle = 1\n value = 1", true),
-        ("unrelated_control", "holder.handle = 1", true),
-        ("shared_control", "read(ref unrelated)", true),
+        (
+            "reassigned_control",
+            "holder.value = 1\n value = 1",
+            "value == 1",
+            true,
+        ),
+        (
+            "unrelated_control",
+            "holder.value = 1",
+            "unrelated == 7",
+            true,
+        ),
+        ("shared_control", "read(unrelated)", "unrelated == 7", true),
     ] {
         let mut db = HirAnalysisTestDb::default();
-        let result = if matches!(name, "unrelated_control" | "shared_control") {
-            "unrelated == 7"
-        } else if name == "direct_effect" {
-            "counter.value == 1"
-        } else {
-            "value == 1"
-        };
         let source = format!(
             r#"
 struct Counter {{ value: u256 }}
-struct Wrap {{ handle: mut u256 }}
+struct Holder {{ value: u256 }}
+impl Holder {{
+    fn value_mut(mut self) -> mut u256 {{ mut self.value }}
+}}
 fn write_direct() uses (counter: mut Counter) {{ counter.value = 1 }}
-fn write_effect() uses (holder: mut Wrap) {{ holder.handle = 1 }}
-struct Outer {{ inner: mut Wrap }}
-fn read(_ value: ref u256) -> u256 {{ value }}
-fn write(mut holder: own Wrap) {{ holder.handle = 1 }}
-fn write_borrowed(_ holder: mut Wrap) {{ holder.handle = 1 }}
-fn returned(holder: Wrap) -> mut u256 {{ holder.handle }}
-fn replace(values: mut [Wrap; 1], replacement: Wrap) {{ values[0] = replacement }}
+fn write_effect() uses (holder: mut Holder) {{ holder.value = 1 }}
+fn read(_ value: u256) -> u256 {{ value }}
+fn write_mut(_ holder: mut Holder) {{ holder.value = 1 }}
+fn write_value(_ value: mut u256) {{ value = 1 }}
 fn probe(index: usize) -> bool {{
     let unrelated: u256 = 7
     let mut counter = Counter {{ value: 0 }}
     let mut value: u256 = 0
-    let mut other: u256 = 0
-    let mut holder = Wrap {{ handle: mut value }}
+    let mut holder = Holder {{ value: 0 }}
     {operation}
     {result}
 }}

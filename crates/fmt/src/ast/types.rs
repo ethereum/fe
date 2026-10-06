@@ -1233,6 +1233,7 @@ impl ToDoc for ast::Expr {
             ExprKind::If(if_expr) => if_expr.to_doc(ctx),
             ExprKind::Match(match_expr) => match_expr.to_doc(ctx),
             ExprKind::With(with_expr) => with_expr.to_doc(ctx),
+            ExprKind::Unsafe(unsafe_expr) => unsafe_expr.to_doc(ctx),
             ExprKind::Paren(paren) => paren.to_doc(ctx),
             ExprKind::Assign(assign) => assign.to_doc(ctx),
             ExprKind::AugAssign(aug_assign) => aug_assign.to_doc(ctx),

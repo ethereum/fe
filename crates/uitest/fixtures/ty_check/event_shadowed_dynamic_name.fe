@@ -10,7 +10,7 @@ impl AbiSize for Bytes {
 }
 
 impl<A: Abi> Encode<A> for Bytes {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         store_word(ptr: ptr, value: self.word)
     }
 }

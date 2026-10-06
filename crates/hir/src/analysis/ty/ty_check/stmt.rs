@@ -105,23 +105,17 @@ impl<'db> TyChecker<'db> {
             } else {
                 self.check_expr_unknown(*expr)
             };
-            let (pat_expected, mode) = self.destructure_source_mode(prop.ty);
             let layout = self.pattern_layout_context(*expr);
-            self.check_pat_with_layout(*pat, pat_expected, layout.as_ref());
+            self.check_pat_with_layout(*pat, prop.ty, layout.as_ref());
             if let Some(LocalBinding::Local { pat, .. }) = self.env.pat_binding(*pat) {
                 self.env
                     .set_local_borrow_provider(pat, prop.borrow_provider);
             }
 
-            match mode {
-                super::PatternDestructureMode::Owned => {
-                    if self.pattern_binds_any(*pat) {
-                        self.record_implicit_move_for_owned_expr(*expr, prop.ty);
-                    }
-                }
-                super::PatternDestructureMode::Borrow(kind) => {
-                    self.retype_pattern_bindings_for_borrow(*pat, kind);
-                }
+            if prop.shape.is_some() {
+                self.bind_pattern_source(*pat, *expr, &prop);
+            } else if self.pattern_binds_any(*pat) {
+                self.record_implicit_move_for_owned_expr(*expr, prop.ty);
             }
         } else {
             let ascription = ascription.unwrap_or_else(|| self.fresh_ty());
@@ -155,7 +149,7 @@ impl<'db> TyChecker<'db> {
                     return;
                 };
                 let ty = self.env.lookup_binding_ty(&binding);
-                if ty.has_invalid(self.db) || ty.as_capability(self.db).is_none() {
+                if ty.has_invalid(self.db) || self.env.binding_access(&binding).is_none() {
                     return;
                 }
 
@@ -256,7 +250,7 @@ impl<'db> TyChecker<'db> {
             return (TyId::invalid(self.db, InvalidCause::Other), None);
         };
 
-        let iterable_candidates = self.capability_fallback_candidates(iterable_ty);
+        let iterable_candidates = self.receiver_candidates(iterable_ty);
         let scope_ingot = self.env.scope().ingot(self.db);
 
         for iterable_lookup_ty in iterable_candidates {
@@ -443,25 +437,15 @@ impl<'db> TyChecker<'db> {
             unreachable!()
         };
 
-        let (returned_expr, returned_prop, mut returned_ty, had_child_err) =
-            if let Some(expr) = expr {
-                let before = self.diags.len();
-                let expected = self.fresh_ty();
-                let prop = self.check_expr(*expr, expected);
-                let ty = expected.fold_with(self.db, &mut self.table);
-                (Some(*expr), Some(prop), ty, self.diags.len() > before)
-            } else {
-                (None, None, TyId::unit(self.db), false)
-            };
-
-        if !had_child_err
-            && !returned_ty.has_invalid(self.db)
-            && let Some(expr) = returned_expr
-            && let Some(coerced) =
-                self.try_coerce_capability_for_expr_to_expected(expr, returned_ty, self.expected)
-        {
-            returned_ty = coerced;
-        }
+        let (returned_expr, returned_prop, returned_ty, had_child_err) = if let Some(expr) = expr {
+            let before = self.diags.len();
+            let expected = self.fresh_ty();
+            let prop = self.check_expr(*expr, expected);
+            let ty = expected.fold_with(self.db, &mut self.table);
+            (Some(*expr), Some(prop), ty, self.diags.len() > before)
+        } else {
+            (None, None, TyId::unit(self.db), false)
+        };
 
         let ret_ty_ok = !had_child_err
             && !returned_ty.has_invalid(self.db)
@@ -479,25 +463,18 @@ impl<'db> TyChecker<'db> {
 
             self.push_diag(diag);
         } else if ret_ty_ok && let Some(expr) = returned_expr {
-            self.record_implicit_move_for_owned_expr(expr, self.expected);
+            match self.projection_shape.clone() {
+                Some(shape) => self.check_yield_site(expr, &shape),
+                None => self.record_implicit_move_for_owned_expr(expr, self.expected),
+            }
         }
 
         if ret_ty_ok
-            && let Some(expr) = returned_expr
+            && returned_expr.is_some()
             && let Some(prop) = returned_prop
             && let Some(provider) = prop.borrow_provider
         {
-            if let Some((ref previous_span, previous_provider)) = self.first_return_borrow_provider
-            {
-                self.merge_concrete_borrow_providers(
-                    previous_span.clone(),
-                    Some(previous_provider),
-                    expr.span(self.body()).into(),
-                    Some(provider),
-                );
-            } else {
-                self.first_return_borrow_provider = Some((expr.span(self.body()).into(), provider));
-            }
+            self.first_return_borrow_provider.get_or_insert(provider);
         }
 
         TyId::never(self.db)

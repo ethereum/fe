@@ -10,17 +10,21 @@ fn bump() uses (value: mut u256) {
 }
 
 fn raw_store() uses (data: *Data, mem: mut RawMem) {
-    mem.mstore(addr: ptr::byte_ptr(data), value: 8)
+    unsafe { mem.mstore(addr: ptr::byte_ptr(data), value: 8) }
 }
 
 pub fn explicit_raw_boundaries() uses (mem: mut RawMem) {
     let value_ptr = ptr::alloc<u256>()
-    with (value_ptr) {
-        bump()
+    unsafe {
+        with (value_ptr) {
+            bump()
+        }
     }
 
     let data = ptr::alloc<Data>()
-    with (data, mem) {
-        raw_store()
+    unsafe {
+        with (data, mem) {
+            raw_store()
+        }
     }
 }

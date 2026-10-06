@@ -49,12 +49,12 @@ fn answer(word: u256, len: u256) -> ! uses (raw: mut RawOps) {
     let alloc = if len < 32 { 32 } else { len }
     let mut data = ptr::MemBuffer::alloc(alloc)
     if len == REVERT {
-        raw.mstore(addr: data.ptr(), value: 0xdeadbeefcafebabe << 192)
-        data.set_len(32)
+        unsafe { raw.mstore(addr: data.ptr(), value: 0xdeadbeefcafebabe << 192) }
+        unsafe { data.set_len(32) }
         raw.revert(data: data.span())
     }
-    raw.mstore(addr: data.ptr(), value: word)
-    data.set_len(len)
+    unsafe { raw.mstore(addr: data.ptr(), value: word) }
+    unsafe { data.set_len(len) }
     raw.return_data(data: data.span())
 }
 

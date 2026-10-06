@@ -168,34 +168,6 @@ fn transported_local_from_param(body: &RuntimeBody<'_>, param: RLocalId) -> RLoc
         .unwrap_or(param)
 }
 
-fn body_preserves_handle_field(body: &RuntimeBody<'_>, param: RLocalId, field: u16) -> bool {
-    let mut transported = transported_local_from_param(body, param);
-    for stmt in runtime_body_stmts(body) {
-        if let RStmt::Assign {
-            dst,
-            expr: RExpr::NativeRef { value },
-        } = stmt
-            && *value == transported
-        {
-            transported = *dst;
-        }
-    }
-    runtime_body_stmts(body).any(|stmt| match stmt {
-        RStmt::Assign {
-            expr: RExpr::AggregateMake { fields, .. },
-            ..
-        } => fields
-            .get(field as usize)
-            .is_some_and(|src| *src == transported),
-        RStmt::Store { dst, src } => {
-            *src == transported
-                && matches!(dst.root, PlaceRoot::Ref(_))
-                && matches!(dst.path.as_ref(), [PlaceElem::Field(stored)] if stored.0 == field)
-        }
-        _ => false,
-    })
-}
-
 fn storage_pair_ref_layout<'db>(class: &RuntimeClass<'db>) -> Option<LayoutId<'db>> {
     match class {
         RuntimeClass::Ref {
@@ -240,75 +212,6 @@ fn local_storage_handles_preserve_storage_effect_transport() {
         }
     );
 }
-
-#[test]
-fn transparent_wrapper_returns_preserve_handle_fields_in_rmir() {
-    let src = format!(
-        "{}\nfn emit_helpers() -> u256 {{\n    let arr: [u256; 8] = [1, 2, 3, 4, 5, 6, 7, 8]\n    sum_last4(arr) + sum_first4(arr)\n}}\n",
-        include_str!("../../fe/tests/fixtures/fe_test/view_param_local_ref_take_reverse.fe"),
-    );
-    with_test_runtime_package!(
-        "transparent_wrapper_returns_preserve_handle_fields_in_rmir.fe",
-        src,
-        |db, package| {
-            let take_debug = package
-                .functions(&db)
-                .iter()
-                .copied()
-                .filter(|function| function.symbol(&db).contains("take"))
-                .map(|function| {
-                    let body = function.instance(&db).body(&db);
-                    format!("{}:\n{body:#?}", function.symbol(&db))
-                })
-                .collect::<Vec<_>>();
-            let take_u256 = package
-                .functions(&db)
-                .iter()
-                .copied()
-                .find(|function| {
-                    if !function.symbol(&db).contains("take") {
-                        return false;
-                    }
-                    let body = function.instance(&db).body(&db);
-                    let [_, param] = body.signature.params.as_slice() else {
-                        return false;
-                    };
-                    matches!(
-                        param.class,
-                        RuntimeClass::Ref { .. } | RuntimeClass::RawAddr { .. }
-                    ) && body_preserves_handle_field(&body, param.local, 1)
-                })
-                .unwrap_or_else(|| {
-                    panic!(
-                        "generated take helper that preserves the incoming handle field\n\n{}",
-                        take_debug.join("\n\n")
-                    )
-                });
-            let body = take_u256.instance(&db).body(&db);
-            let seq_param = body.signature.params[1].local;
-
-            assert!(
-                !body
-                    .blocks
-                    .iter()
-                    .flat_map(|block| block.stmts.iter())
-                    .any(|stmt| matches!(
-                        stmt,
-                        RStmt::Assign {
-                            expr: RExpr::MaterializeToObject { .. },
-                            ..
-                        }
-                    )),
-                "transparent wrapper returns should not materialize handle fields:\n{body:#?}"
-            );
-            assert!(
-                body_preserves_handle_field(&body, seq_param, 1),
-                "transparent wrapper returns should carry the incoming borrow transport directly into the wrapper field:\n{body:#?}"
-            );
-        }
-    );
-}
-
 #[test]
 fn provider_root_trait_receivers_preserve_concrete_runtime_layouts() {
     with_runtime_package!(
@@ -474,8 +377,8 @@ fn pointer_helpers_use_native_raw_addr_transport_in_rmir() {
         r#"
 pub fn pointer_roundtrip() -> u256 {
     let ptr = core::ptr::alloc<u256>()
-    *ptr = 7
-    *ptr
+    unsafe { *ptr = 7 }
+    unsafe { *ptr }
 }
 "#
         .to_string(),
@@ -689,142 +592,6 @@ pub fn entry() -> u256 {
         }
     );
 }
-
-#[test]
-fn object_backed_native_reference_fields_load_carriers_before_projection() {
-    let output = sonatina_ir_for_source(
-        "object_backed_native_reference_fields_load_carriers_before_projection.fe",
-        r#"struct Data {
-    x: u256,
-}
-
-struct View {
-    d: ref Data,
-}
-
-fn read(v: own View) -> u256 {
-    v.d.x
-}
-
-pub fn entry() -> u256 {
-    let data = Data { x: 1 }
-    let view = View { d: ref data }
-    read(view)
-}
-"#,
-    );
-    let read = sonatina_function_body(&output, "read");
-
-    assert!(
-        contains_op_subsequence(read, &["obj.load", "extract_value", "mload", "mload"]),
-        "stored native references must load their address/layout carrier before projecting the referent:\n{read}"
-    );
-}
-
-#[test]
-fn storage_backed_nested_handle_fields_follow_carriers_before_projecting_children() {
-    let output = sonatina_ir_for_source(
-        "storage_backed_nested_handle_fields_follow_carriers_before_projecting_children.fe",
-        include_str!("fixtures/effect_handle_field_deref.fe").to_string(),
-    );
-    let bump = sonatina_function_body(&output, "bump");
-
-    assert!(
-        contains_op_subsequence(bump, &["obj.proj", "obj.load", "evm_sload"]),
-        "nested storage-backed handle field access should load/follow the carrier before loading children:\n{bump}"
-    );
-}
-
-#[test]
-fn stored_native_field_borrows_preserve_the_native_transport() {
-    with_runtime_package!(
-        "stored_native_field_borrows_preserve_the_native_transport.fe",
-        include_str!("fixtures/effect_handle_field_deref.fe").to_string(),
-        |db, package| {
-            let bump = package
-                .functions(&db)
-                .iter()
-                .copied()
-                .find(|function| function.symbol(&db).contains("bump"))
-                .expect("generated bump runtime function");
-            let body = bump.instance(&db).body(&db);
-
-            let carrier = body
-                .blocks
-                .iter()
-                .flat_map(|block| block.stmts.iter())
-                .find_map(|stmt| match stmt {
-                    RStmt::Assign {
-                        dst,
-                        expr: RExpr::Load { place },
-                    } if matches!(place.root, PlaceRoot::Ref(_))
-                        && matches!(place.path.as_ref(), [PlaceElem::Field(field)] if field.0 == 0)
-                        && matches!(
-                            body.value_class(*dst),
-                            Some(RuntimeClass::Ref {
-                                pointee,
-                                kind: RefKind::Native,
-                                ..
-                            }) if matches!(**pointee, RuntimeClass::AggregateValue { .. })
-                        ) =>
-                    {
-                        Some(*dst)
-                    }
-                    RStmt::Assign { .. }
-                    | RStmt::AssertIndexInBounds { .. }
-                    | RStmt::EnumAssertVariant { .. }
-                    | RStmt::Store { .. }
-                    | RStmt::CopyInto { .. }
-                    | RStmt::EnumSetTag { .. }
-                    | RStmt::EnumWriteVariant { .. } => None,
-                })
-                .unwrap_or_else(|| {
-                    panic!("expected nested handle carrier load in bump runtime body:\n{body:#?}")
-                });
-            let nested_field_borrow = body
-                .blocks
-                .iter()
-                .flat_map(|block| block.stmts.iter())
-                .find_map(|stmt| match stmt {
-                    RStmt::Assign {
-                        dst,
-                        expr: RExpr::AddrOf { place },
-                    } if place.root == PlaceRoot::Ref(carrier)
-                        && matches!(place.path.as_ref(), [PlaceElem::Field(field)] if field.0 == 0) =>
-                    {
-                        Some(*dst)
-                    }
-                    RStmt::Assign { .. }
-                    | RStmt::AssertIndexInBounds { .. }
-                    | RStmt::EnumAssertVariant { .. }
-                    | RStmt::Store { .. }
-                    | RStmt::CopyInto { .. }
-                    | RStmt::EnumSetTag { .. }
-                    | RStmt::EnumWriteVariant { .. } => None,
-                })
-                .unwrap_or_else(|| {
-                    panic!("expected nested field borrow from its explicit carrier in bump runtime body:\n{body:#?}")
-                });
-
-            let Some(RuntimeClass::Ref { pointee, kind, .. }) =
-                body.value_class(nested_field_borrow)
-            else {
-                panic!(
-                    "nested storage-backed field borrow should lower as a typed ref:\n{body:#?}"
-                );
-            };
-            assert!(
-                matches!(**pointee, RuntimeClass::Scalar(_)),
-                "nested storage-backed field borrow should point at the scalar field:\n{body:#?}"
-            );
-            assert!(
-                matches!(kind, RefKind::Native),
-                "nested field borrow must retain its native address/layout carrier:\n{body:#?}"
-            );
-        }
-    );
-}
-
 #[test]
 fn projected_enum_field_snapshots_preserve_full_enum_payloads() {
     let output = sonatina_ir_for_source(
@@ -1891,9 +1658,11 @@ pub fn entry() -> u256 uses (evm: std::evm::RawOps) {
 }
 "#,
     );
-    let forward = sonatina_function_body(&ir, "forward");
+    // A `Copy` view argument is a copy: copying untrusted calldata validates
+    // its enum tags before the call.
+    let read_input = sonatina_function_body(&ir, "read_input");
     assert!(
-        forward.contains("unreachable"),
+        read_input.contains("unreachable"),
         "snapshotting nested enums must still validate their tags before the call:\n{ir}"
     );
 }

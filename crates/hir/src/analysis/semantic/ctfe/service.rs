@@ -704,6 +704,7 @@ fn extract_pure_body_term<'db>(
                 return Some(term);
             }
             STerminatorKind::Return(None)
+            | STerminatorKind::Yield { .. }
             | STerminatorKind::Branch { .. }
             | STerminatorKind::MatchEnum { .. }
             | STerminatorKind::Assert { .. } => return None,

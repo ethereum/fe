@@ -17,16 +17,18 @@ pub fn clone_initcode(_ implementation: Address) -> MemSpan {
         revert(())
     }
     let p = ptr::alloc_bytes(64)
-    store_word(
-        ptr: p,
-        value: (implementation.inner << 96 >> 232)
-            | 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000,
-    )
-    store_word(
-        ptr: ptr::offset_bytes(p, 32),
-        value: (implementation.inner << 120) | 0x5af43d82803e903d91602b57fd5bf3,
-    )
-    MemSpan::from_raw_parts(ptr: ptr::offset_bytes(p, 9), len: 55)
+    unsafe {
+        store_word(
+            ptr: p,
+            value: (implementation.inner << 96 >> 232)
+                | 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000,
+        )
+        store_word(
+            ptr: ptr::offset_bytes(p, 32),
+            value: (implementation.inner << 120) | 0x5af43d82803e903d91602b57fd5bf3,
+        )
+        MemSpan::from_raw_parts(ptr: ptr::offset_bytes(p, 9), len: 55)
+    }
 }
 
 /// Predict a CREATE2 proxy address without deploying it. `deployer` is the

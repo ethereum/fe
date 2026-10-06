@@ -43,7 +43,6 @@ url.workspace = true
 codespan-reporting.workspace = true
 
 [features]
-borrowck-profile = []
 testutils = []
 
 [dev-dependencies]

@@ -26,7 +26,6 @@ use crate::analysis::{
         pattern_ir::{
             BindingRef, ConstructorKind, PatternAnalysisStatus, ValidatedPat, ValidatedPatKind,
         },
-        pattern_types::pattern_match_expected_ty,
         trait_def::TraitInstId,
         trait_resolution::{GoalSatisfiability, TraitSolveCx, is_goal_satisfiable},
         ty_def::{InvalidCause, Kind, TyId, TyVarSort},
@@ -517,7 +516,6 @@ impl<'db> TyChecker<'db> {
                             primary_goal: inst,
                             unsat_subgoal: None,
                             required_by: None,
-                            capability_hint: None,
                         },
                     ));
                     return self.finish_pat_check(
@@ -891,22 +889,16 @@ impl<'db> TyChecker<'db> {
                 pat_idx += 1;
             }
             if rest_range.contains(&i) {
-                analyses
-                    .push(self.ready_wildcard(pattern_match_expected_ty(self.db, elem_ty), None));
+                analyses.push(self.ready_wildcard(elem_ty, None));
                 continue;
             }
             if pat_idx >= source_pats.len() {
-                analyses
-                    .push(self.ready_wildcard(pattern_match_expected_ty(self.db, elem_ty), None));
+                analyses.push(self.ready_wildcard(elem_ty, None));
                 continue;
             }
 
             let pat = source_pats[pat_idx];
-            let (pat_expected, mode) = self.destructure_source_mode(elem_ty);
-            let result = self.check_pat(pat, pat_expected);
-            if let super::PatternDestructureMode::Borrow(kind) = mode {
-                self.retype_pattern_bindings_for_borrow(pat, kind);
-            }
+            let result = self.check_pat(pat, elem_ty);
             analyses.push(result.analysis);
             pat_idx += 1;
         }
@@ -1208,13 +1200,7 @@ impl<'db> TyChecker<'db> {
                 })
                 .unwrap_or(expected);
 
-            let (pat_expected, mode) = rec_checker.tc.destructure_source_mode(expected);
-            let result = rec_checker.tc.check_pat(field_pat.pat, pat_expected);
-            if let super::PatternDestructureMode::Borrow(kind) = mode {
-                rec_checker
-                    .tc
-                    .retype_pattern_bindings_for_borrow(field_pat.pat, kind);
-            }
+            let result = rec_checker.tc.check_pat(field_pat.pat, expected);
             if let Some(field_idx) = field_idx {
                 field_status_by_idx.insert(field_idx, result.analysis);
             }
@@ -1257,13 +1243,10 @@ impl<'db> TyChecker<'db> {
         for (field_idx, field_ty) in field_tys.into_iter().enumerate() {
             match field_status_by_idx.remove(&field_idx) {
                 Some(status) => canonical_fields.push(status),
-                None if contains_rest => canonical_fields
-                    .push(self.ready_wildcard(pattern_match_expected_ty(self.db, field_ty), None)),
+                None if contains_rest => canonical_fields.push(self.ready_wildcard(field_ty, None)),
                 None => {
                     invalid = true;
-                    canonical_fields.push(
-                        self.ready_wildcard(pattern_match_expected_ty(self.db, field_ty), None),
-                    );
+                    canonical_fields.push(self.ready_wildcard(field_ty, None));
                 }
             }
         }

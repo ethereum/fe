@@ -22,9 +22,11 @@ use super::evm::ops
 #[inline(always)]
 pub fn bytes_from_word(_ w: u256) -> Bytes uses (mem: mut RawMem) {
     let data = ptr::alloc_bytes(64)
-    mem.mstore(addr: data, value: 32)
-    mem.mstore(addr: ptr::offset_bytes(data, 32), value: w)
-    Bytes::from_abi_tail(data: data, len: 32, size: 64)
+    unsafe {
+        mem.mstore(addr: data, value: 32)
+        mem.mstore(addr: ptr::offset_bytes(data, 32), value: w)
+        Bytes::from_abi_tail(data: data, len: 32, size: 64)
+    }
 }
 
 /// Allocate a Solidity ABI `bytes` value from `N` full 32-byte words.
@@ -38,13 +40,13 @@ uses (mem: mut RawMem)
     let len: u256 = (N as u256) * 32
     let size: u256 = 32 + len
     let data = ptr::alloc_bytes(size)
-    mem.mstore(addr: data, value: len)
+    unsafe { mem.mstore(addr: data, value: len) }
     let mut i: usize = 0
     while i < N {
-        mem.mstore(addr: ptr::offset_bytes(data, 32 + (i as u256) * 32), value: words[i])
+        unsafe { mem.mstore(addr: ptr::offset_bytes(data, 32 + (i as u256) * 32), value: words[i]) }
         i += 1
     }
-    Bytes::from_abi_tail(data: data, len: len, size: size)
+    unsafe { Bytes::from_abi_tail(data: data, len: len, size: size) }
 }
 
 /// Allocate a `Bytes` of byte length `LEN` from `N` u256 words.
@@ -69,11 +71,11 @@ uses (mem: mut RawMem)
     let payload: u256 = (payload_words as u256) * 32
     let size: u256 = 32 + payload
     let data = ptr::alloc_bytes(size)
-    mem.mstore(addr: data, value: len)
+    unsafe { mem.mstore(addr: data, value: len) }
     let mut i: usize = 0
     while i < payload_words {
-        mem.mstore(addr: ptr::offset_bytes(data, 32 + (i as u256) * 32), value: words[i])
+        unsafe { mem.mstore(addr: ptr::offset_bytes(data, 32 + (i as u256) * 32), value: words[i]) }
         i += 1
     }
-    Bytes::from_abi_tail(data: data, len: len, size: size)
+    unsafe { Bytes::from_abi_tail(data: data, len: len, size: size) }
 }

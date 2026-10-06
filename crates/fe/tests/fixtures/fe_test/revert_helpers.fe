@@ -113,16 +113,16 @@ pub contract Forwarder uses (call: mut Call) {
 /// stores near the end.
 fn scratch(_ len: u256) -> *u8 {
     let buf = ptr::alloc_bytes(len + 32)
-    ptr::zero_bytes(buf, len + 32)
+    unsafe { ptr::zero_bytes(buf, len + 32) }
     buf
 }
 
 fn put(_ buf: *u8, _ at: u256, _ value: u256) {
-    store_word(ptr: ptr::offset_bytes(buf, at), value)
+    unsafe { store_word(ptr: ptr::offset_bytes(buf, at), value) }
 }
 
 fn span(_ buf: *u8, _ len: u256) -> ptr::MemSpan {
-    ptr::MemSpan::from_raw_parts(ptr: buf, len)
+    unsafe { ptr::MemSpan::from_raw_parts(ptr: buf, len) }
 }
 
 /// `Error(string)` revert data with explicit offset, length and total size;
@@ -519,18 +519,20 @@ fn test_returndata_bounds() uses (evm: mut Evm) {
 
     // In-bounds copies work.
     let out = scratch(8)
-    rd.copy_to_memory(dest: out, src_offset: 32, len: 8)
-    assert!(evm.mload(out) == 0x2122232425262728 << 192)
+    unsafe { rd.copy_to_memory(dest: out, src_offset: 32, len: 8) }
+    unsafe { assert!(evm.mload(out) == 0x2122232425262728 << 192) }
     // Zero-length copies at the end of a view, including an empty view
     // rebased past the end, are no-ops rather than halting.
-    rd.copy_to_memory(dest: out, src_offset: 40, len: 0)
-    ReturnData::with_base(41).copy_to_memory(dest: out, src_offset: 0, len: 0)
-    ReturnData::with_base(41).copy_to_memory_unchecked(
-        dest: out,
-        src_offset: 0,
-        len: 0,
-    )
-    assert!(evm.mload(out) == 0x2122232425262728 << 192)
+    unsafe { rd.copy_to_memory(dest: out, src_offset: 40, len: 0) }
+    unsafe { ReturnData::with_base(41).copy_to_memory(dest: out, src_offset: 0, len: 0) }
+    unsafe {
+        ReturnData::with_base(41).copy_to_memory_unchecked(
+            dest: out,
+            src_offset: 0,
+            len: 0,
+        )
+    }
+    unsafe { assert!(evm.mload(out) == 0x2122232425262728 << 192) }
 }
 
 #[test(should_revert)]
@@ -543,7 +545,7 @@ fn test_returndata_copy_out_of_bounds_reverts() uses (evm: mut Evm) {
         ),
     )
     let out = scratch(64)
-    ReturnData::new().copy_to_memory(dest: out, src_offset: 60, len: 9)
+    unsafe { ReturnData::new().copy_to_memory(dest: out, src_offset: 60, len: 9) }
 }
 
 #[test(should_revert)]

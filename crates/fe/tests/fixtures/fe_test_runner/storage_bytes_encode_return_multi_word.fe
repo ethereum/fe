@@ -31,13 +31,15 @@ uses (evm: mut Evm)
     let payload_size: u256 = 64
     let data_ptr = ptr::alloc_bytes(payload_size)
 
-    evm.mstore(addr: data_ptr, value: payload_len)
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 32),
-        value: 0x1111111111111111111111111111111111111111111111111111111111111111,
-    )
+    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 32),
+            value: 0x1111111111111111111111111111111111111111111111111111111111111111,
+        )
+    }
 
-    Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size)
+    unsafe { Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size) }
 }
 
 fn two_word_payload() -> Bytes
@@ -47,17 +49,21 @@ uses (evm: mut Evm)
     let payload_size: u256 = 96
     let data_ptr = ptr::alloc_bytes(payload_size)
 
-    evm.mstore(addr: data_ptr, value: payload_len)
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 32),
-        value: 0x1111111111111111111111111111111111111111111111111111111111111111,
-    )
-    evm.mstore(
-        addr: ptr::offset_bytes(data_ptr, 64),
-        value: 0x2200000000000000000000000000000000000000000000000000000000000000,
-    )
+    unsafe { evm.mstore(addr: data_ptr, value: payload_len) }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 32),
+            value: 0x1111111111111111111111111111111111111111111111111111111111111111,
+        )
+    }
+    unsafe {
+        evm.mstore(
+            addr: ptr::offset_bytes(data_ptr, 64),
+            value: 0x2200000000000000000000000000000000000000000000000000000000000000,
+        )
+    }
 
-    Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size)
+    unsafe { Bytes::from_abi_tail(data: data_ptr, len: payload_len, size: payload_size) }
 }
 
 #[test]

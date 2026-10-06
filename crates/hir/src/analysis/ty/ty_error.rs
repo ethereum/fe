@@ -529,6 +529,8 @@ pub(crate) fn diag_from_invalid_cause<'db>(
     Some(match cause.clone() {
         InvalidCause::NotFullyApplied => TyLowerDiag::ExpectedStarKind(span).into(),
 
+        InvalidCause::ModeNotType => TyLowerDiag::ModeNotType(span).into(),
+
         InvalidCause::KindMismatch { expected, given } => TyLowerDiag::InvalidTypeArgKind {
             span,
             expected,

@@ -15,7 +15,7 @@ struct MemOuter {
 
 fn abi_encode(value: u256) -> ! uses (ops: mut RawOps) {
     let data = ptr::MemBuffer::alloc(32)
-    ops.mstore(addr: data.ptr(), value)
+    unsafe { ops.mstore(addr: data.ptr(), value) }
     ops.return_data(data: data.span())
 }
 
@@ -53,7 +53,7 @@ fn init() uses (evm: mut Evm) {
 
 #[contract_runtime(NestedStruct)]
 fn runtime() uses (evm: mut Evm) {
-    let mut outer: StorPtr<Outer> = evm.stor_ptr(0)
+    let mut outer: StorPtr<Outer> = unsafe { evm.stor_ptr(0) }
     with (outer, RawOps = evm) {
         let selector = evm.calldataload(0) >> 224
         match selector {

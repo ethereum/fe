@@ -11,7 +11,7 @@ struct Transfer {
 
 fn emit_transfer(evm: mut Evm, from: Address, to: Address, amount: u256) {
     let e = Transfer { from, to, amount }
-    e.emit(evm)
+    e.emit(mut evm)
 }
 
 pub fn main() uses (evm: mut Evm) {

@@ -215,7 +215,7 @@ impl<'db> ConstFnChecker<'db, '_> {
             )
             | Expr::Path(_) => {}
 
-            Expr::Block(stmts) => stmts.iter().for_each(|stmt| self.check_stmt(*stmt)),
+            Expr::Block(stmts, _) => stmts.iter().for_each(|stmt| self.check_stmt(*stmt)),
 
             Expr::Bin(lhs, rhs, _) => {
                 self.check_expr(*lhs);

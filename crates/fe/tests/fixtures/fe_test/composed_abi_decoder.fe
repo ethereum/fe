@@ -20,7 +20,7 @@ impl Decode<Sol> for Pair {
     }
 }
 impl Encode<Sol> for Pair {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         <(Address, Address) as Encode<Sol>>::encode((self.a, self.b), ptr)
     }
 }
@@ -42,9 +42,9 @@ fn check_pair(_ a: u256, _ b: u256, _ valid: bool) uses (evm: mut Evm) {
     let receiver = evm.create2<PairProbe>(value: 0, args: (), salt: 0)
     assert!(receiver.inner != 0)
     let data = MemBuffer::alloc(68)
-    evm.mstore(addr: data.ptr(), value: (0x11223344 as u256) << 224)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4), value: a)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 36), value: b)
+    unsafe { evm.mstore(addr: data.ptr(), value: (0x11223344 as u256) << 224) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4), value: a) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 36), value: b) }
     let mut ret = MemBuffer::alloc(64)
     let outcome = evm
         .raw_call(
@@ -57,8 +57,8 @@ fn check_pair(_ a: u256, _ b: u256, _ valid: bool) uses (evm: mut Evm) {
     assert!(outcome.success() == valid)
     if valid {
         assert!(outcome.returndata_len() == 64)
-        assert!(evm.mload(ret.ptr()) == a)
-        assert!(evm.mload(ptr::offset_bytes(ret.ptr(), 32)) == b)
+        unsafe { assert!(evm.mload(ret.ptr()) == a) }
+        unsafe { assert!(evm.mload(ptr::offset_bytes(ret.ptr(), 32)) == b) }
     } else {
         assert!(outcome.returndata_len() == 0)
     }

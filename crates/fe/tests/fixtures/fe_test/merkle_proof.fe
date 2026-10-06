@@ -14,7 +14,7 @@ use std::abi::{Bytes32, DynArray, FixedBytes, MemVec}
 use std::evm::{Evm, merkle}
 
 fn words<const N: usize>(_ values: [u256; N]) -> MemSlice<u256> {
-    let mut array = ptr::alloc_array<u256>(N as u256)
+    let mut array = unsafe { ptr::alloc_array<u256>(N as u256) }
     let mut i: usize = 0
     for value in values {
         array[i] = value
@@ -211,7 +211,7 @@ fn test_sorted_invalid_proofs() {
     let long = words([0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6, 0xc5fd106a8e5214837c622e5fdef112b1d83ad6de66beafb53451c77843c9d04e, 0x9687420ece112ec1bb7441fb691952a25e39a583bafbccedcbe2820ea484a425, 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6])
     assert!(!merkle::verify(proof: long, root: ROOT_8, leaf: LEAF_8_0))
     // A single flipped bit in a proof node.
-    let mut tampered = ptr::alloc_array<u256>(3)
+    let mut tampered = unsafe { ptr::alloc_array<u256>(3) }
     tampered[0] = proof[0]
     tampered[1] = proof[1] ^ 1
     tampered[2] = proof[2]

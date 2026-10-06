@@ -37,6 +37,6 @@ fn bump(_ v: mut u256) {
 fn forward_local_mut_borrow_to_fn() {
     let mut y: u256 = 1
     let r = mut y
-    bump(r)
+    bump(mut r)
     assert!(y == 2)
 }

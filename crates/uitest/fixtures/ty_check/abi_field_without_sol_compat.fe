@@ -24,7 +24,7 @@ impl Decode<Sol> for Word {
 }
 
 impl Encode<Sol> for Word {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         store_word(ptr, value: self.value)
     }
 }

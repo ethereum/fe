@@ -2,9 +2,9 @@ use parser::ast::{self, AttrListOwner as _, prelude::AstNode as _};
 
 use crate::{
     hir_def::{
-        AttrListId, Body, BodyKind, Contract, ContractInit, ContractRecv, ContractRecvArm,
-        ContractRecvArmListId, ContractRecvListId, Expr, FieldDef, FieldDefListId, FuncParamListId,
-        IdentId, Pat, TrackedItemVariant, TypeId,
+        AttrListId, BlockKind, Body, BodyKind, Contract, ContractInit, ContractRecv,
+        ContractRecvArm, ContractRecvArmListId, ContractRecvListId, Expr, FieldDef, FieldDefListId,
+        FuncParamListId, IdentId, Pat, TrackedItemVariant, TypeId,
     },
     lower::{FileLowerCtxt, body::BodyCtxt, item::lower_uses_clause_opt},
     span::HirOrigin,
@@ -46,7 +46,8 @@ impl<'db> ContractRecvArm<'db> {
             // explicit body block. Lower that shorthand as an empty block so
             // later typed/semantic stages never see an absent executable body.
             body_ctxt.f_ctxt.enter_block_scope();
-            let body_expr = body_ctxt.push_expr(Expr::Block(Vec::new()), HirOrigin::None);
+            let body_expr =
+                body_ctxt.push_expr(Expr::Block(Vec::new(), BlockKind::Normal), HirOrigin::None);
             body_ctxt.f_ctxt.leave_block_scope(body_expr);
             body_expr
         };

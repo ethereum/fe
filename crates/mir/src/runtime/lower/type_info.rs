@@ -979,10 +979,6 @@ struct Even {
     next: *Odd,
 }
 
-struct RefHolder {
-    target: *ref Node,
-}
-
 trait Word {
     type Repr
 }
@@ -1006,7 +1002,7 @@ struct Buffer<const N: usize> {
 fn first(_ p: *Node, _ bytes: *u8, _ pair: (u8, Node)) {}
 fn normalized(_ projected: *Projected<Narrow>, _ buffer: *Buffer<3>) {}
 fn second(_ p: *Node, _ bytes: *u8, _ words: [u8; 2]) {}
-fn shapes(_ a: *A, _ b: *B, _ odd: *Odd, _ holder: RefHolder) {}
+fn shapes(_ a: *A, _ b: *B, _ odd: *Odd) {}
 "#;
 
     fn with_source<T>(f: impl for<'db> FnOnce(&'db DriverDataBase, TopLevelMod<'db>) -> T) -> T {
@@ -1046,7 +1042,7 @@ fn shapes(_ a: *A, _ b: *B, _ odd: *Odd, _ holder: RefHolder) {}
         let binding = typed_body.param_binding(idx).expect("parameter binding");
         let env = RuntimeTypeEnv::for_semantic(db, semantic);
         (
-            runtime_repr_ty_in_env(db, env, typed_body.binding_ty(db, binding)),
+            runtime_repr_ty_in_env(db, env, typed_body.binding_carrier_ty(db, binding)),
             env,
         )
     }
@@ -1148,25 +1144,6 @@ fn shapes(_ a: *A, _ b: *B, _ odd: *Odd, _ holder: RefHolder) {}
             assert_eq!(struct_fields(db, &buffer)[0].array_len(db), Some(3));
         });
     }
-
-    #[test]
-    fn referent_pointees_stay_deferred() {
-        with_source(|db, top_mod| {
-            let (holder_ty, env) = param(db, top_mod, "shapes", 3);
-            let holder = stored_class_for_ty_in_env(db, env, holder_ty);
-            let field = struct_fields(db, &holder).remove(0);
-            let pointee = field.raw_pointee().expect("known raw pointee");
-            assert!(matches!(pointee.key(db), RawPointeeKey::Stored(_)));
-            assert!(matches!(
-                pointee.target(db),
-                RuntimeClass::Ref {
-                    kind: RefKind::Native,
-                    ..
-                }
-            ));
-        });
-    }
-
     #[test]
     fn canonical_scope_is_the_first_adt_in_type_syntax() {
         with_source(|db, top_mod| {

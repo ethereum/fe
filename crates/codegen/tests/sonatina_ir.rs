@@ -258,21 +258,6 @@ fn wildcard_storage_map_free_function_compiles_with_concrete_provider(fixture: F
     );
 }
 
-#[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "generic_noesc_storage_specialization_is_rejected_during_runtime_lowering.fe")]
-fn generic_noesc_storage_specialization_is_rejected_during_runtime_lowering(
-    fixture: Fixture<&str>,
-) {
-    let err = with_top_mod_for_source(&fixture, |db, top_mod| {
-        emit_module_sonatina_ir(db, top_mod)
-            .expect_err("runtime lowering should reject specialized noesc storage escape")
-    });
-    let message = err.to_string();
-    assert!(
-        message.contains("noesc violation in `fn store_generic`"),
-        "unexpected error message:\n{message}"
-    );
-}
-
 #[dir_test(dir: "$CARGO_MANIFEST_DIR/tests/fixtures/sonatina_ir_semantic", glob: "sonatina_ir_rejects_target_only_output.fe")]
 fn sonatina_ir_rejects_target_only_output(fixture: Fixture<&str>) {
     let err = with_top_mod_for_source(&fixture, |db, top_mod| {

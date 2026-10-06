@@ -11,11 +11,11 @@ pub contract OffsetProbe {
     recv OffsetMsg {
         Read { mode, offset } -> u256 uses (mem: mut RawMem) {
             let data = MemBuffer::alloc(160)
-            mem.mstore(addr: data.ptr(), value: offset)
-            mem.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: offset)
-            mem.mstore(addr: ptr::offset_bytes(data.ptr(), 64), value: 0)
-            mem.mstore(addr: ptr::offset_bytes(data.ptr(), 96), value: 0)
-            mem.mstore(addr: ptr::offset_bytes(data.ptr(), 128), value: 0)
+            unsafe { mem.mstore(addr: data.ptr(), value: offset) }
+            unsafe { mem.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: offset) }
+            unsafe { mem.mstore(addr: ptr::offset_bytes(data.ptr(), 64), value: 0) }
+            unsafe { mem.mstore(addr: ptr::offset_bytes(data.ptr(), 96), value: 0) }
+            unsafe { mem.mstore(addr: ptr::offset_bytes(data.ptr(), 128), value: 0) }
             if mode == 0 {
                 return <Bytes as Decode<Sol>>::decode_from_bounded(data.span(), offset, 160).len()
             } else if mode == 1 {
@@ -32,15 +32,15 @@ pub contract OffsetProbe {
 fn check_offset(_ mode: u256, _ offset: u256, _ valid: bool) uses (evm: mut Evm) {
     let target = evm.create2<OffsetProbe>(value: 0, args: (), salt: mode)
     let data = MemBuffer::alloc(68)
-    evm.mstore(addr: data.ptr(), value: (0x11223344 as u256) << 224)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4), value: mode)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 36), value: offset)
+    unsafe { evm.mstore(addr: data.ptr(), value: (0x11223344 as u256) << 224) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4), value: mode) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 36), value: offset) }
     let mut ret = MemBuffer::alloc(64)
     let result = evm.raw_call(addr: target, gas: 1000000, value: 0, args: data.span(), ret: mut ret)
     assert!(result.success() == valid)
     if valid {
         assert!(result.returndata_len() == 32)
-        assert!(evm.mload(ret.ptr()) == if mode == 2 { 128 } else { 0 })
+        unsafe { assert!(evm.mload(ret.ptr()) == if mode == 2 { 128 } else { 0 }) }
     } else {
         assert!(result.returndata_len() == 0)
     }

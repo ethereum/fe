@@ -18,7 +18,7 @@ impl<T> core::abi::AbiSize for GenericMsg<T>
 impl<T> core::abi::Encode<std::abi::Sol> for GenericMsg<T>
     where T: core::abi::Encode<std::abi::Sol>
 {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         let Self { value } = self
         value.encode(ptr)
     }
@@ -28,7 +28,7 @@ impl<T> core::abi::Decode<std::abi::Sol> for GenericMsg<T>
     where T: core::abi::Decode<std::abi::Sol>
 {
     fn decode_payload<D: core::abi::AbiDecoder<std::abi::Sol>>(_ d: mut D) -> Self {
-        let value = T::decode_payload(d)
+        let value = T::decode_payload(mut d)
         Self { value }
     }
 }

@@ -13,7 +13,7 @@ use crate::{
         semantic::{
             SLocalId, SemOrigin, SemanticInstance,
             normalized::{
-                NOperand, NormalizeError, NormalizedBody, NormalizedBodyVerifyError,
+                NOperand, NormalizeError, NormalizedBodyVerifyError,
                 NormalizedLayoutPlanVerifyError,
             },
         },
@@ -25,25 +25,6 @@ use crate::{
 
 pub(crate) fn operand_origin<'db>(operand: NOperand, fallback: SemOrigin<'db>) -> SemOrigin<'db> {
     operand.origin.map_or(fallback, SemOrigin::Expr)
-}
-
-pub(crate) fn normalized_body_internal_diag<'db>(
-    db: &'db dyn HirAnalysisDb,
-    instance: SemanticInstance<'db>,
-    body: &NormalizedBody<'db>,
-    origin: SemOrigin<'db>,
-    message: String,
-) -> SemanticDiagnostic<'db> {
-    SemanticDiagnostic::new(
-        instance,
-        SemanticDiagnosticKind::Internal,
-        message,
-        SemanticDiagnosticSpan::OriginWithTemplateFallback {
-            owner: instance.key(db).owner(db),
-            template_owner: body.template_owner,
-            origin,
-        },
-    )
 }
 
 pub(crate) fn smir_lowering_admission_diag<'db>(
@@ -205,17 +186,13 @@ impl DiagnosticVoucher for SemanticDiagnosticId<'_> {
 impl DiagnosticVoucher for SemanticDiagnostic<'_> {
     fn to_complete(&self, db: &dyn SpannedHirAnalysisDb) -> CompleteDiagnostic {
         let local_code = match self.kind {
-            SemanticDiagnosticKind::BorrowConflict => 1,
+            SemanticDiagnosticKind::AccessConflict => 1,
             SemanticDiagnosticKind::MoveConflict => 2,
-            SemanticDiagnosticKind::InvalidReturnBorrow => 3,
             SemanticDiagnosticKind::Internal => 4,
-            SemanticDiagnosticKind::NoEscViolation => 5,
             SemanticDiagnosticKind::ProviderProvenanceConflict => 6,
             SemanticDiagnosticKind::TransportViolation => 7,
             SemanticDiagnosticKind::StorageViolation => 8,
-            SemanticDiagnosticKind::UnresolvedCall => 9,
             SemanticDiagnosticKind::InvalidConcreteType => 10,
-            SemanticDiagnosticKind::UnboundedReferents => 11,
         };
         CompleteDiagnostic::new(
             Severity::Error,
@@ -234,7 +211,7 @@ impl DiagnosticVoucher for SemanticDiagnostic<'_> {
             }))
             .collect(),
             Vec::new(),
-            GlobalErrorCode::new(DiagnosticPass::SemanticBorrowck, local_code),
+            GlobalErrorCode::new(DiagnosticPass::SemanticAccess, local_code),
         )
     }
 }
@@ -242,24 +219,15 @@ impl DiagnosticVoucher for SemanticDiagnostic<'_> {
 impl SemanticDiagnosticKind {
     fn header<'db>(self, db: &'db dyn HirAnalysisDb, instance: SemanticInstance<'db>) -> String {
         match self {
-            Self::BorrowConflict => {
-                format!("borrow conflict in `fn {}`", checker_name(db, instance))
+            Self::AccessConflict => {
+                format!("access conflict in `fn {}`", checker_name(db, instance))
             }
             Self::MoveConflict => format!("move conflict in `fn {}`", checker_name(db, instance)),
-            Self::InvalidReturnBorrow => {
-                format!(
-                    "invalid return borrow in `fn {}`",
-                    checker_name(db, instance)
-                )
-            }
             Self::Internal => {
                 format!(
-                    "internal borrow checking error in `fn {}`",
+                    "internal access checking error in `fn {}`",
                     checker_name(db, instance)
                 )
-            }
-            Self::NoEscViolation => {
-                format!("noesc violation in `fn {}`", checker_name(db, instance))
             }
             Self::TransportViolation => {
                 format!("transport violation in `fn {}`", checker_name(db, instance))
@@ -273,16 +241,8 @@ impl SemanticDiagnosticKind {
                     checker_name(db, instance)
                 )
             }
-            Self::UnresolvedCall => format!(
-                "pending borrow validation in `fn {}`",
-                checker_name(db, instance)
-            ),
             Self::InvalidConcreteType => format!(
                 "invalid concrete type in `fn {}`",
-                checker_name(db, instance)
-            ),
-            Self::UnboundedReferents => format!(
-                "unbounded referent types in `fn {}`",
                 checker_name(db, instance)
             ),
         }
@@ -449,15 +409,11 @@ impl<'db> From<SemanticDiagnostic<'db>> for SemanticNormalizationFailure<'db> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
 pub enum SemanticDiagnosticKind {
-    BorrowConflict,
+    AccessConflict,
     MoveConflict,
-    InvalidReturnBorrow,
     Internal,
-    NoEscViolation,
     TransportViolation,
     StorageViolation,
     ProviderProvenanceConflict,
-    UnresolvedCall,
     InvalidConcreteType,
-    UnboundedReferents,
 }

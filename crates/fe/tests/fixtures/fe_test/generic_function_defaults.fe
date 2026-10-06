@@ -223,7 +223,7 @@ fn trait_function_items_keep_evidence_and_dispatch() {
 trait Out { type Item }
 impl Out for bool { type Item = u256 }
 
-fn equality_default<T: Out<Item = U>, U = T::Item>(_ t: T, _ x: U) -> U { x }
+fn equality_default<T: Out<Item = U>, U = T::Item>(_ t: T, _ x: own U) -> U { x }
 
 struct EqualityDefault<T: Out<Item = U>, U = T::Item> { t: T, x: U }
 

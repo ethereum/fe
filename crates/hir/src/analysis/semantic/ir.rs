@@ -23,19 +23,6 @@ pub enum Mutability {
     Immutable,
 }
 
-/// When a borrow begins excluding overlapping accesses. Only implicit mutable
-/// call receivers may reserve their target until argument evaluation finishes.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Update)]
-pub enum BorrowActivation<'db> {
-    Immediate,
-    /// Keep the intended call even when evaluating another argument diverges
-    /// and lowering never emits the call expression itself.
-    AtCall {
-        call_site: CallSiteId,
-        callee: SemanticCalleeRef<'db>,
-    },
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Update)]
 pub struct FieldIndex(pub u16);
 
@@ -413,6 +400,23 @@ impl<'db> SPlace<'db> {
     }
 }
 
+impl SPlace<'_> {
+    /// The locals computing the place's address: its base and dynamic indices.
+    pub fn used_locals(&self) -> Vec<SLocalId> {
+        std::iter::once(self.local)
+            .chain(self.path.iter().filter_map(|projection| match projection {
+                Projection::Index(IndexSource::Dynamic(index)) => Some(*index),
+                Projection::Field(_)
+                | Projection::VariantField { .. }
+                | Projection::Discriminant
+                | Projection::Index(IndexSource::Constant(_))
+                | Projection::Deref
+                | Projection::Index(IndexSource::Any) => None,
+            }))
+            .collect()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub struct SEffectArg<'db> {
     pub binding_idx: u32,
@@ -522,7 +526,6 @@ pub enum SExpr<'db> {
     Borrow {
         place: SPlace<'db>,
         kind: BorrowKind,
-        activation: BorrowActivation<'db>,
         provider: Option<ProviderAddressSpace>,
     },
     GetEnumTag {
@@ -551,6 +554,54 @@ pub enum SExpr<'db> {
     },
 }
 
+impl SExpr<'_> {
+    /// The locals the expression reads, including place addresses.
+    pub fn used_locals(&self) -> Vec<SLocalId> {
+        let mut locals = Vec::new();
+        match self {
+            Self::Forward(value)
+            | Self::UseValue(value)
+            | Self::Unary { value, .. }
+            | Self::Cast { value, .. }
+            | Self::ArrayRepeat { value, .. }
+            | Self::GetEnumTag { value }
+            | Self::IsEnumVariant { value, .. }
+            | Self::ExtractEnumField { value, .. }
+            | Self::Field { base: value, .. } => locals.push(value.value),
+            Self::ReadPlace { place } | Self::Borrow { place, .. } => {
+                locals.extend(place.used_locals());
+            }
+            Self::Binary { lhs, rhs, .. }
+            | Self::Index {
+                base: lhs,
+                index: rhs,
+            } => {
+                locals.push(lhs.value);
+                locals.push(rhs.value);
+            }
+            Self::AggregateMake { fields, .. } | Self::EnumMake { fields, .. } => {
+                locals.extend(fields.iter().map(|field| field.value));
+            }
+            Self::Call {
+                args, effect_args, ..
+            } => {
+                locals.extend(args.iter().map(|arg| arg.value));
+                for arg in effect_args {
+                    match &arg.arg {
+                        SEffectArgValue::Place(place) => locals.extend(place.used_locals()),
+                        SEffectArgValue::Value(value) => locals.push(value.value),
+                    }
+                }
+            }
+            Self::CodeRegionRef { .. }
+            | Self::Const(_)
+            | Self::CodeRegionOffset { .. }
+            | Self::CodeRegionLen { .. } => {}
+        }
+        locals
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub enum SConst<'db> {
     Value(VerifiedConstValueId<'db>),
@@ -569,8 +620,20 @@ pub struct SStmt<'db> {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
 pub enum SStmtKind<'db> {
-    Assign { dst: SLocalId, expr: SExpr<'db> },
-    Store { dst: SPlace<'db>, src: SOperand },
+    Assign {
+        dst: SLocalId,
+        expr: SExpr<'db>,
+    },
+    Store {
+        dst: SPlace<'db>,
+        src: SOperand,
+    },
+    /// Closes the access opened by statement `access` (a borrow, a view, or
+    /// a projection call's session). Liveness elaboration places it after
+    /// the access's last use on each path.
+    End {
+        access: SStmtId,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Update)]
@@ -597,4 +660,53 @@ pub enum STerminatorKind<'db> {
         message: Option<StringId<'db>>,
     },
     Return(Option<SOperand>),
+    /// A projection grants `value` to its caller and suspends. When the
+    /// caller ends the session, the slide resumes at `resume`.
+    Yield {
+        value: SOperand,
+        resume: SBlockId,
+    },
+}
+
+impl STerminatorKind<'_> {
+    pub fn successors(&self) -> Vec<SBlockId> {
+        match self {
+            Self::Goto(block) | Self::Yield { resume: block, .. } => vec![*block],
+            Self::Branch {
+                then_bb, else_bb, ..
+            } => vec![*then_bb, *else_bb],
+            Self::MatchEnum { cases, default, .. } => cases
+                .iter()
+                .map(|(_, block)| *block)
+                .chain(*default)
+                .collect(),
+            Self::Assert { .. } | Self::Return(_) => Vec::new(),
+        }
+    }
+
+    /// Successors in the same order as [`Self::successors`].
+    pub fn successors_mut(&mut self) -> Vec<&mut SBlockId> {
+        match self {
+            Self::Goto(block) | Self::Yield { resume: block, .. } => vec![block],
+            Self::Branch {
+                then_bb, else_bb, ..
+            } => vec![then_bb, else_bb],
+            Self::MatchEnum { cases, default, .. } => cases
+                .iter_mut()
+                .map(|(_, block)| block)
+                .chain(default.as_mut())
+                .collect(),
+            Self::Assert { .. } | Self::Return(_) => Vec::new(),
+        }
+    }
+
+    pub fn used_locals(&self) -> Vec<SLocalId> {
+        match self {
+            Self::Goto(_) | Self::Assert { .. } | Self::Return(None) => Vec::new(),
+            Self::Branch { cond: value, .. }
+            | Self::MatchEnum { value, .. }
+            | Self::Return(Some(value))
+            | Self::Yield { value, .. } => vec![value.value],
+        }
+    }
 }

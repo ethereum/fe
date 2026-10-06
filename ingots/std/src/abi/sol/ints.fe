@@ -929,7 +929,7 @@ impl<T: SolWrappingInt + SolInt> WrappingMul for T {
 }
 
 impl<T: SolWordRepr + SolInt, A: Abi> Encode<A> for T {
-    fn encode(own self, _ ptr: *u8) {
+    unsafe fn encode(own self, _ ptr: *u8) {
         store_word(ptr: ptr, value: self.canonical_word())
     }
 }
@@ -1580,7 +1580,7 @@ impl<T: SolWordRepr + SolInt> StorageKey for T {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         store_word(ptr: ptr, value: self.canonical_word())
     }
 }
@@ -1597,7 +1597,7 @@ impl<T: SolWordRepr + SolInt> EncodePacked for T {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self.canonical_word(), T::BITS / 8)
 
     }

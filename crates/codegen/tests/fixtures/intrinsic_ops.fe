@@ -2,23 +2,23 @@ use core::ptr
 use std::evm::{RawMem, RawOps, RawStorage}
 
 pub fn load_word(ptr: *u8) -> u256 uses (mem: RawMem) {
-    mem.mload(ptr)
+    unsafe { mem.mload(ptr) }
 }
 
 pub fn store_word(ptr: *u8, value: u256) uses (mem: mut RawMem) {
-    mem.mstore(addr: ptr, value: value)
+    unsafe { mem.mstore(addr: ptr, value: value) }
 }
 
 pub fn store_byte(ptr: *u8, value: u8) uses (mem: mut RawMem) {
-    mem.mstore8(addr: ptr, value: value)
+    unsafe { mem.mstore8(addr: ptr, value: value) }
 }
 
 pub fn load_slot(slot: u256) -> u256 uses (sto: RawStorage) {
-    sto.sload(slot)
+    unsafe { sto.sload(slot) }
 }
 
 pub fn store_slot(slot: u256, value: u256) uses (sto: mut RawStorage) {
-    sto.sstore(slot: slot, value: value)
+    unsafe { sto.sstore(slot: slot, value: value) }
 }
 
 pub fn load_calldata(offset: u256) -> u256 uses (ops: RawOps) {
@@ -26,7 +26,7 @@ pub fn load_calldata(offset: u256) -> u256 uses (ops: RawOps) {
 }
 
 pub fn finish(data: *u8, len: u256) uses (ops: RawOps) {
-    ops.return_data(data: ptr::MemSpan::from_raw_parts(ptr: data, len))
+    unsafe { ops.return_data(data: ptr::MemSpan::from_raw_parts(ptr: data, len)) }
 }
 
 pub fn main() -> u256

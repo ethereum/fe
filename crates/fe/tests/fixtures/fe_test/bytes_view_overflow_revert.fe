@@ -21,20 +21,22 @@ struct Outcome { success: bool, ret_len: u256, word0: u256 }
 fn call_words<const N: usize>(_ addr: Address, words: [u256; N]) -> Outcome uses (evm: mut Evm) {
     let len = 4 + (N as u256) * 32
     let data = MemBuffer::alloc(len + 32)
-    evm.mstore(addr: data.ptr(), value: 1 << 224)
+    unsafe { evm.mstore(addr: data.ptr(), value: 1 << 224) }
     let mut i: usize = 0
     while i < N {
-        evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4 + (i as u256) * 32), value: words[i])
+        unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 4 + (i as u256) * 32), value: words[i]) }
         i += 1
     }
     let mut ret = MemBuffer::alloc(64)
-    let outcome = evm.raw_call(
-        addr: addr,
-        gas: 1000000,
-        value: 0,
-        args: MemSpan::from_raw_parts(ptr: data.ptr(), len: len),
-        ret: mut ret,
-    )
+    let outcome = unsafe {
+        evm.raw_call(
+            addr: addr,
+            gas: 1000000,
+            value: 0,
+            args: MemSpan::from_raw_parts(ptr: data.ptr(), len: len),
+            ret: mut ret,
+        )
+    }
     let rlen = outcome.returndata_len()
     Outcome {
         success: outcome.success(),

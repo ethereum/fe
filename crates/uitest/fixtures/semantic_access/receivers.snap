@@ -1,0 +1,21 @@
+---
+source: crates/uitest/tests/semantic_access.rs
+assertion_line: 25
+expression: diags
+input_file: fixtures/semantic_access/receivers.fe
+---
+error[16-0001]: access conflict in `fn argument_writes_receiver`
+   ┌─ receivers.fe:48:22
+   │
+48 │     holder.set(reset(mut holder))
+   │     ------           ^^^^^^^^^^ cannot mutably access this place while a `ref` access of it is open
+   │     │
+   │     access opened here
+
+error[16-0001]: access conflict in `fn argument_moves_receiver`
+   ┌─ receivers.fe:54:16
+   │
+54 │     holder.set(holder.take())
+   │     ------     ^^^^^^ cannot move out of this place while a `ref` access of it is open
+   │     │
+   │     access opened here

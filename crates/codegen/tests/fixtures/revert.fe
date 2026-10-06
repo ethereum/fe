@@ -3,7 +3,7 @@ use std::evm::{RawMem, RawOps}
 
 fn fail() uses (ops: mut RawOps) {
     let data = ptr::MemBuffer::alloc(32)
-    ops.mstore(addr: data.ptr(), value: 42)
+    unsafe { ops.mstore(addr: data.ptr(), value: 42) }
     ops.revert(data: data.span())
 }
 

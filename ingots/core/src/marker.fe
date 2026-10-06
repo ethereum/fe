@@ -60,3 +60,11 @@ impl<T0, T1, T2, T3, T4> Copy for (T0, T1, T2, T3, T4)
 impl<T0, T1, T2, T3, T4, T5> Copy for (T0, T1, T2, T3, T4, T5)
     where T0: Copy, T1: Copy, T2: Copy, T3: Copy, T4: Copy, T5: Copy
 {}
+
+/// Values of a `Borrows` type hold a shared borrow of the values they were
+/// derived from, although their fields are raw pointers. The borrow checker
+/// treats them like `ref` values: a function returning one borrows from its
+/// `self` receiver, or else from every argument that holds a borrow, and the
+/// source stays borrowed while the value is live. Implement it for
+/// non-owning views over memory that safe code can obtain from an owner.
+pub trait Borrows {}

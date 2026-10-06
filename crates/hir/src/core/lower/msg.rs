@@ -235,7 +235,8 @@ fn lower_msg_variant_encode_impl<'db>(
                 builder.empty_generic_params(),
                 params,
                 None,
-                FuncModifiers::new(Visibility::Private, false, false, false),
+                // `Encode::encode` is unsafe: it writes through `ptr`.
+                FuncModifiers::new(Visibility::Private, true, false, false),
                 |body| {
                     body.encode_fields(&field_specs, ptr_ident);
                 },

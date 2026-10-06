@@ -33,8 +33,8 @@ fn packed_record_bytes_and_stride() {
         i += 1
     }
     let second = packets.ptr_at(1)
-    second.inner.code = 0x2468
-    second.samples[1] = 0xabcd
+    unsafe { second.inner.code = 0x2468 }
+    unsafe { second.samples[1] = 0xabcd }
     assert!(packets[1].inner.code == 0x2468)
     assert!(packets[1].samples[1] == 0xabcd)
     assert!(packets[0].inner.code == 0x1234)

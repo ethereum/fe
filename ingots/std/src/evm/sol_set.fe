@@ -9,8 +9,9 @@
 //! compatible with OZ's `AddressSet`, `UintSet` and `Bytes32Set`.
 //!
 //! ```fe
-//! // `EnumerableSet.AddressSet operators;` at slot 4
-//! let operators = SolEnumerableSet<Address>::at(4)
+//! // `EnumerableSet.AddressSet operators;` at slot 4, which no contract
+//! // field uses
+//! let operators = unsafe { SolEnumerableSet<Address>::at(4) }
 //! if operators.add(operator) { /* newly added */ }
 //! let n = operators.len()
 //! ```
@@ -22,7 +23,7 @@ use super::mapping::SolMapping
 use super::sol_array::{SolArray, read_dyn_array}
 use super::sol_slot::{SolPacked, data_slot, field_mask}
 
-pub struct SolEnumerableSet<T> { pub slot: u256 }
+pub struct SolEnumerableSet<T> { slot: u256 }
 
 impl<T> Copy for SolEnumerableSet<T> {}
 
@@ -30,7 +31,10 @@ impl<T> Copy for SolEnumerableSet<T> {}
 // `bytes32(uint256(uint160(a)))` for an address, like OZ.
 impl<T: SolPacked> SolEnumerableSet<T> {
     /// The set stored at `slot` (and `slot + 1`).
-    pub fn at(_ slot: u256) -> Self {
+    ///
+    /// The caller must ensure that no compiler-allocated storage, such as a
+    /// contract field, overlaps the slots this value accesses.
+    pub unsafe fn at(_ slot: u256) -> Self {
         SolEnumerableSet { slot }
     }
 
@@ -41,7 +45,7 @@ impl<T: SolPacked> SolEnumerableSet<T> {
 
     /// Whether `value` is in the set.
     pub fn contains(self, _ value: own T) -> bool uses (storage: RawStorage) {
-        storage.sload(self.position_slot(value.to_packed())) != 0
+        unsafe { storage.sload(self.position_slot(value.to_packed())) != 0 }
     }
 
     /// The element at `index` in the set's internal order, like OZ's `at`.
@@ -72,12 +76,14 @@ impl<T: SolPacked> SolEnumerableSet<T> {
     pub fn add(self, _ value: own T) -> bool uses (storage: mut RawStorage) {
         let word = value.to_packed()
         let position_slot = self.position_slot(word)
-        if storage.sload(position_slot) != 0 {
-            return false
+        unsafe {
+            if storage.sload(position_slot) != 0 {
+                return false
+            }
         }
         let values = self.array()
         values.push(word)
-        storage.sstore(slot: position_slot, value: values.len())
+        unsafe { storage.sstore(slot: position_slot, value: values.len()) }
         true
     }
 
@@ -86,7 +92,7 @@ impl<T: SolPacked> SolEnumerableSet<T> {
     pub fn remove(self, _ value: own T) -> bool uses (storage: mut RawStorage) {
         let word = value.to_packed()
         let position_slot = self.position_slot(word)
-        let position = storage.sload(position_slot)
+        let position = unsafe { storage.sload(position_slot) }
         if position == 0 {
             return false
         }
@@ -94,22 +100,24 @@ impl<T: SolPacked> SolEnumerableSet<T> {
         let index = position - 1
         let last = values.len() - 1
         if index != last {
-            let last_word = storage.sload(values.element_slot(last))
-            storage.sstore(slot: values.element_slot(index), value: last_word)
-            storage.sstore(slot: self.position_slot(last_word), value: position)
+            let last_word = unsafe { storage.sload(values.element_slot(last)) }
+            unsafe {
+                storage.sstore(slot: values.element_slot(index), value: last_word)
+                storage.sstore(slot: self.position_slot(last_word), value: position)
+            }
         }
         values.pop()
-        storage.sstore(slot: position_slot, value: 0)
+        unsafe { storage.sstore(slot: position_slot, value: 0) }
         true
     }
 
     fn array(self) -> SolArray<u256> {
-        SolArray::at(self.slot)
+        unsafe { SolArray::at(self.slot) }
     }
 
     fn position_slot(self, _ word: u256) -> u256 {
         // Slot arithmetic wraps like Solidity's: the set at `u256::max()`
         // keeps its mapping at slot 0.
-        SolMapping::at(self.slot.wrapping_add(1)).slot_of(word)
+        unsafe { SolMapping::at(self.slot.wrapping_add(1)).slot_of(word) }
     }
 }

@@ -236,13 +236,10 @@ impl<'db> FuncParam<'db> {
             }
         };
 
-        let mode = if ty
-            .to_opt()
-            .is_some_and(|ty| matches!(ty.data(ctxt.db()), TypeKind::Mode(TypeMode::Own, _)))
-        {
-            FuncParamMode::Own
-        } else {
-            FuncParamMode::View
+        let mode = match ty.to_opt().map(|ty| ty.data(ctxt.db())) {
+            Some(TypeKind::Mode(TypeMode::Own, _)) => FuncParamMode::Own,
+            Some(TypeKind::Mode(TypeMode::Mut, _)) => FuncParamMode::Mut,
+            _ => FuncParamMode::View,
         };
 
         Self {

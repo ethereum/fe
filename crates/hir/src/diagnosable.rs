@@ -139,7 +139,6 @@ impl<'db> SuperTraitRefView<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             ),
@@ -276,7 +275,6 @@ impl<'db> WherePredicateBoundView<'db> {
                                     primary_goal: goal,
                                     unsat_subgoal: None,
                                     required_by: None,
-                                    capability_hint: None,
                                 }
                                 .into(),
                             );
@@ -371,7 +369,6 @@ impl<'db> Func<'db> {
                         primary_goal: goal,
                         unsat_subgoal: subgoal,
                         required_by: None,
-                        capability_hint: None,
                     }
                     .into(),
                 );
@@ -432,7 +429,6 @@ impl<'db> Trait<'db> {
                                 primary_goal: trait_inst,
                                 unsat_subgoal: None,
                                 required_by: None,
-                                capability_hint: None,
                             }
                             .into(),
                         );
@@ -485,7 +481,6 @@ impl<'db> Trait<'db> {
                                 primary_goal: goal,
                                 unsat_subgoal: None,
                                 required_by: None,
-                                capability_hint: None,
                             }
                             .into(),
                         );
@@ -534,7 +529,6 @@ impl<'db> Impl<'db> {
                         primary_goal: goal,
                         unsat_subgoal: subgoal,
                         required_by: None,
-                        capability_hint: None,
                     }
                     .into(),
                 );
@@ -1010,7 +1004,6 @@ impl<'db> ImplTrait<'db> {
                             primary_goal: bound_inst,
                             unsat_subgoal: None,
                             required_by: None,
-                            capability_hint: None,
                         }
                         .into(),
                     );
@@ -1044,7 +1037,6 @@ impl<'db> ImplTrait<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             );
@@ -1062,7 +1054,6 @@ impl<'db> ImplTrait<'db> {
                             primary_goal: goal,
                             unsat_subgoal: None,
                             required_by: None,
-                            capability_hint: None,
                         }
                         .into(),
                     );
@@ -1207,7 +1198,6 @@ impl<'db> VariantView<'db> {
                             primary_goal: goal,
                             unsat_subgoal: subgoal,
                             required_by: None,
-                            capability_hint: None,
                         }
                         .into(),
                     );
@@ -1524,7 +1514,6 @@ impl<'db> GenericParamOwner<'db> {
                                     primary_goal: goal,
                                     unsat_subgoal: None,
                                     required_by: None,
-                                    capability_hint: None,
                                 }
                                 .into(),
                             ),

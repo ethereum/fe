@@ -9,13 +9,13 @@ use rustc_hash::FxHashSet;
 use crate::{
     HirDb,
     hir_def::{
-        ArithBinOp, AssocConstDef, AssocTyDef, Attr, AttrArg, AttrListId, BinOp, Body, BodyKind,
-        EffectParamListId, Expr, ExprId, FieldDefListId, FieldIndex, Func, FuncModifiers,
+        ArithBinOp, AssocConstDef, AssocTyDef, Attr, AttrArg, AttrListId, BinOp, BlockKind, Body,
+        BodyKind, EffectParamListId, Expr, ExprId, FieldDefListId, FieldIndex, Func, FuncModifiers,
         FuncParam, FuncParamListId, FuncParamMode, FuncParamName, GenericArg, GenericArgListId,
         GenericParam, GenericParamListId, IdentId, ImplTrait, IntegerId, ItemKind, LitKind, Mod,
         NormalAttr, Partial, Pat, PatId, PathId, PathKind, Stmt, StmtId, Struct, TopLevelMod,
         TrackedItemId, TrackedItemVariant, TraitRefId, TypeBound, TypeGenericArg, TypeGenericParam,
-        TypeId, TypeKind, TypeMode, Visibility, WhereClauseId, expr::CallArg,
+        TypeId, TypeKind, TypeMode, UnOp, Visibility, WhereClauseId, expr::CallArg,
     },
     span::{DesugaredOrigin, HirOrigin},
 };
@@ -273,7 +273,7 @@ where
         ty: TypeId<'db>,
     ) -> FuncParam<'db> {
         FuncParam {
-            mode: FuncParamMode::View,
+            mode: FuncParamMode::Mut,
             is_mut: false,
             has_ref_prefix: false,
             has_own_prefix: false,
@@ -689,6 +689,12 @@ where
         ))))
     }
 
+    /// `mut <ident>`: a `mut` access to a local place.
+    pub(super) fn mut_ident_expr(&mut self, ident: IdentId<'db>) -> ExprId {
+        let place = self.ident_expr(ident);
+        self.push_expr(Expr::Un(place, UnOp::Mut))
+    }
+
     pub(super) fn path_expr(&mut self, path: PathId<'db>) -> ExprId {
         self.push_expr(Expr::Path(Partial::Present(path)))
     }
@@ -896,7 +902,7 @@ where
             .push_str(db, "abi")
             .push_str_args(db, "decode_field", decode_args);
         let decode_callee = self.path_expr(decode_path);
-        let decoder_expr = self.ident_expr(decoder_ident);
+        let decoder_expr = self.mut_ident_expr(decoder_ident);
         let decode_call = self.call_expr(decode_callee, vec![decoder_expr]);
 
         let bind_pat = self.push_pat(Pat::Path(
@@ -998,7 +1004,7 @@ where
     fn finish(mut self) -> Body<'db> {
         self.body.f_ctxt.enter_block_scope();
         let stmts = std::mem::take(&mut self.stmts);
-        let root_expr = self.push_expr(Expr::Block(stmts));
+        let root_expr = self.push_expr(Expr::Block(stmts, BlockKind::Normal));
         self.body.f_ctxt.leave_block_scope(root_expr);
         self.body.build(None, root_expr, BodyKind::FuncBody)
     }

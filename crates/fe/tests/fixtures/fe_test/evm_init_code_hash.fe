@@ -114,8 +114,8 @@ fn static_args_are_abi_encoded_after_the_code() uses (evm: mut Evm) {
     let len = <WithArgs as Contract>::init_code_len()
     let mut code = MemBuffer::alloc(len + 64)
     evm.codecopy(dest: mut code, dest_offset: 0, src_offset: <WithArgs as Contract>::init_code_offset(), len)
-    evm.mstore(addr: core::ptr::offset_bytes(code.ptr(), len), value: 42)
-    evm.mstore(addr: core::ptr::offset_bytes(code.ptr(), len + 32), value: 0xabc)
+    unsafe { evm.mstore(addr: core::ptr::offset_bytes(code.ptr(), len), value: 42) }
+    unsafe { evm.mstore(addr: core::ptr::offset_bytes(code.ptr(), len + 32), value: 0xabc) }
     assert(init_code_hash<WithArgs>((42, owner)) == keccak256(code.span()))
     assert(init_code_hash<WithArgs>((43, owner)) != init_code_hash<WithArgs>((42, owner)))
 }

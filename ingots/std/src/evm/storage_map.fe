@@ -11,7 +11,10 @@ pub trait StorageKey {
 
     /// Writes exactly `self.encoded_len()` bytes into the reserved region at `ptr`.
     /// Encoding must remain stable between `encoded_len` and `write_key`.
-    fn write_key(ptr: *u8, self)
+    ///
+    /// The caller must ensure that `ptr` has room for `self.encoded_len()`
+    /// bytes in a live allocation.
+    unsafe fn write_key(ptr: *u8, self)
 }
 
 impl StorageKey for u256 {
@@ -20,7 +23,7 @@ impl StorageKey for u256 {
     }
 
     #[inline(always)]
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         mstore(addr: ptr, value: self)
     }
 }
@@ -31,7 +34,7 @@ impl StorageKey for Address {
     }
 
     #[inline(always)]
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.inner)
     }
 }
@@ -45,7 +48,7 @@ impl StorageKey for u8 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -55,7 +58,7 @@ impl StorageKey for u16 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -65,7 +68,7 @@ impl StorageKey for u32 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -75,7 +78,7 @@ impl StorageKey for u64 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -85,7 +88,7 @@ impl StorageKey for u128 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -95,7 +98,7 @@ impl StorageKey for usize {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -108,7 +111,7 @@ impl StorageKey for i8 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -118,7 +121,7 @@ impl StorageKey for i16 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -128,7 +131,7 @@ impl StorageKey for i32 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -138,7 +141,7 @@ impl StorageKey for i64 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -148,7 +151,7 @@ impl StorageKey for i128 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -158,7 +161,7 @@ impl StorageKey for i256 {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -168,7 +171,7 @@ impl StorageKey for isize {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -180,7 +183,7 @@ impl StorageKey for bool {
         32
     }
 
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         u256::write_key(ptr: ptr, self.to_word())
     }
 }
@@ -206,9 +209,11 @@ fn storagemap_storage_slot_with_salt<K>(key: K, salt: u256) -> u256
     // Reserve the entire preimage before encoding: key encoders may allocate.
     let key_len = K::encoded_len(key)
     let scratch = ptr::alloc_bytes(key_len + 32)
-    K::write_key(ptr: scratch, key)
-    mstore(addr: ptr::offset_bytes(scratch, key_len), value: salt)
-    keccak256(ptr::MemSpan::from_raw_parts(ptr: scratch, len: key_len + 32))
+    unsafe {
+        K::write_key(ptr: scratch, key)
+        mstore(addr: ptr::offset_bytes(scratch, key_len), value: salt)
+        keccak256(ptr::MemSpan::from_raw_parts(ptr: scratch, len: key_len + 32))
+    }
 }
 
 #[inline(always)]
@@ -216,7 +221,7 @@ fn storagemap_get_word_with_salt<K>(key: K, salt: u256) -> u256
     where K: StorageKey
 {
     let storage_slot = storagemap_storage_slot_with_salt(key, salt)
-    sload_hashed(storage_slot)
+    unsafe { sload_hashed(storage_slot) }
 }
 
 #[inline(always)]
@@ -224,7 +229,7 @@ fn storagemap_set_word_with_salt<K>(key: K, salt: u256, word: u256)
     where K: StorageKey
 {
     let storage_slot = storagemap_storage_slot_with_salt(key, salt)
-    sstore_hashed(slot: storage_slot, value: word)
+    unsafe { sstore_hashed(slot: storage_slot, value: word) }
 }
 
 impl<K: StorageKey, V: WordRepr, const SALT: u256> StorageMap<K, V, SALT> {
@@ -269,7 +274,7 @@ where A: StorageKey,
     }
 
     #[inline(always)]
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         let a_len = A::encoded_len(self.0)
         A::write_key(ptr: ptr, self.0)
         B::write_key(ptr: ptr::offset_bytes(ptr, a_len), self.1)
@@ -287,7 +292,7 @@ where A: StorageKey,
     }
 
     #[inline(always)]
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         let a_len = A::encoded_len(self.0)
         let b_len = B::encoded_len(self.1)
         A::write_key(ptr: ptr, self.0)
@@ -308,7 +313,7 @@ where A: StorageKey,
     }
 
     #[inline(always)]
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         let a_len = A::encoded_len(self.0)
         let b_len = B::encoded_len(self.1)
         let c_len = C::encoded_len(self.2)
@@ -332,7 +337,7 @@ where A: StorageKey,
     }
 
     #[inline(always)]
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         let a_len = A::encoded_len(self.0)
         let b_len = B::encoded_len(self.1)
         let c_len = C::encoded_len(self.2)
@@ -359,7 +364,7 @@ where A: StorageKey,
     }
 
     #[inline(always)]
-    fn write_key(ptr: *u8, self) {
+    unsafe fn write_key(ptr: *u8, self) {
         let a_len = A::encoded_len(self.0)
         let b_len = B::encoded_len(self.1)
         let c_len = C::encoded_len(self.2)

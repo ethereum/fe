@@ -146,14 +146,7 @@ pub fn lower_to_rmir<'db>(
             .normalized
             .blocks
             .iter()
-            .filter_map(|block| match &block.terminator.kind {
-                NTerminatorKind::Return(Some(value)) => normalized_body.operand_local(*value),
-                NTerminatorKind::Goto(_)
-                | NTerminatorKind::Branch { .. }
-                | NTerminatorKind::MatchEnum { .. }
-                | NTerminatorKind::Assert { .. }
-                | NTerminatorKind::Return(None) => None,
-            })
+            .filter_map(|block| normalized_body.operand_local(block.terminator.kind.returned()?))
             .collect::<Vec<_>>();
         inferer.seed_return_class(&return_locals, ret_class);
     }
@@ -981,6 +974,8 @@ impl<'db> RmirEmitter<'db> {
             NStatementKind::Define { result, expr } => {
                 self.lower_assign(bb, stmt_idx, stmt.source, *result, expr)
             }
+            // Projections are not inlined yet, so no session has a slide to run.
+            NStatementKind::End { .. } => {}
             NStatementKind::Store { destination, value } => {
                 if !(stmt.source.is_none()
                     && self.lower_local_root_assignment(bb, destination, *value))
@@ -3557,6 +3552,7 @@ impl<'db> RmirEmitter<'db> {
             NStatementKind::Store { destination, .. } => {
                 self.lower_place_index_checks(bb, destination)
             }
+            NStatementKind::End { .. } => {}
         }
     }
 
@@ -4815,59 +4811,72 @@ impl<'db> RmirEmitter<'db> {
                 }
             }
             NTerminatorKind::Assert { message } => self.lower_assert_terminator(bb, *message),
-            NTerminatorKind::Return(value) => {
-                let semantic = self
+            // A projection's caller is not inlined yet: its yield returns the
+            // grant, and its slide (empty before `yield` statements) never runs.
+            NTerminatorKind::Return(None)
+                if self
                     .key
                     .semantic(self.db)
-                    .expect("runtime body must have a semantic owner");
-                let returns = self.abi.returns.clone();
-                let Some(layout) = returns.layout else {
-                    return RTerminator::Return(match returns.visible {
-                        Some(class) => value
-                            .map(|value| self.lower_semantic_operand_for_class(bb, value, &class)),
-                        None => None,
-                    });
-                };
-                let mut fields = Vec::with_capacity(
-                    returns.evidence.len() + usize::from(returns.visible.is_some()),
-                );
-                if let Some(class) = &returns.visible {
-                    fields.push(
-                        value
-                            .map(|value| self.lower_semantic_operand_for_class(bb, value, class))
-                            .expect("visible runtime return must have a semantic value"),
-                    );
-                }
-                let operands = self
-                    .layout_evidence
-                    .terminator(SBlockId::from_u32(bb.as_u32()))
-                    .expect("verified layout evidence must contain every semantic terminator")
-                    .returns
-                    .clone();
-                assert_eq!(operands.len(), returns.evidence.len());
-                for (result, returned) in returns.evidence.iter().zip(operands) {
-                    assert_eq!(returned.component, result.component_id);
-                    let scalar = layout_root_scalar_class(self.db, self.env, result.ty);
-                    assert_eq!(RuntimeClass::Scalar(scalar.clone()), result.class);
-                    fields.push(self.lower_layout_operand(bb, &scalar, &returned.value));
-                }
-                let result = self.alloc_runtime_temp(
-                    semantic_return_ty(self.db, semantic),
-                    RuntimeCarrier::Value(RuntimeClass::AggregateValue { layout }),
-                );
-                self.push_stmt(
-                    bb,
-                    RStmt::Assign {
-                        dst: result,
-                        expr: RExpr::AggregateMake {
-                            layout,
-                            fields: fields.into_boxed_slice(),
-                        },
-                    },
-                );
-                RTerminator::Return(Some(result))
+                    .is_some_and(|semantic| semantic.is_projection(self.db)) =>
+            {
+                RTerminator::Trap
             }
+            NTerminatorKind::Return(value) => self.lower_return(bb, *value),
+            NTerminatorKind::Yield { value, .. } => self.lower_return(bb, Some(*value)),
         }
+    }
+
+    fn lower_return(&mut self, bb: RBlockId, value: Option<NOperand>) -> RTerminator<'db> {
+        let semantic = self
+            .key
+            .semantic(self.db)
+            .expect("runtime body must have a semantic owner");
+        let returns = self.abi.returns.clone();
+        let Some(layout) = returns.layout else {
+            return RTerminator::Return(match returns.visible {
+                Some(class) => {
+                    value.map(|value| self.lower_semantic_operand_for_class(bb, value, &class))
+                }
+                None => None,
+            });
+        };
+        let mut fields =
+            Vec::with_capacity(returns.evidence.len() + usize::from(returns.visible.is_some()));
+        if let Some(class) = &returns.visible {
+            fields.push(
+                value
+                    .map(|value| self.lower_semantic_operand_for_class(bb, value, class))
+                    .expect("visible runtime return must have a semantic value"),
+            );
+        }
+        let operands = self
+            .layout_evidence
+            .terminator(SBlockId::from_u32(bb.as_u32()))
+            .expect("verified layout evidence must contain every semantic terminator")
+            .returns
+            .clone();
+        assert_eq!(operands.len(), returns.evidence.len());
+        for (result, returned) in returns.evidence.iter().zip(operands) {
+            assert_eq!(returned.component, result.component_id);
+            let scalar = layout_root_scalar_class(self.db, self.env, result.ty);
+            assert_eq!(RuntimeClass::Scalar(scalar.clone()), result.class);
+            fields.push(self.lower_layout_operand(bb, &scalar, &returned.value));
+        }
+        let result = self.alloc_runtime_temp(
+            semantic_return_ty(self.db, semantic),
+            RuntimeCarrier::Value(RuntimeClass::AggregateValue { layout }),
+        );
+        self.push_stmt(
+            bb,
+            RStmt::Assign {
+                dst: result,
+                expr: RExpr::AggregateMake {
+                    layout,
+                    fields: fields.into_boxed_slice(),
+                },
+            },
+        );
+        RTerminator::Return(Some(result))
     }
 
     fn lower_successor(&mut self, successor: &NSuccessor) -> RBlockId {
@@ -6381,11 +6390,11 @@ struct Mixed<const ROOT: u256> {
     dynamic: StorageMap<u256, u256, ROOT>,
 }
 
-fn pass<const ROOT: u256>(value: Mixed<ROOT>) -> Mixed<ROOT> {
+fn pass<const ROOT: u256>(value: own Mixed<ROOT>) -> Mixed<ROOT> {
     value
 }
 
-fn forward<const ROOT: u256>(value: Mixed<ROOT>) -> Mixed<ROOT> {
+fn forward<const ROOT: u256>(value: own Mixed<ROOT>) -> Mixed<ROOT> {
     pass(value: value)
 }
 "#

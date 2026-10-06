@@ -9,6 +9,7 @@ mod expr;
 mod owner;
 mod pat;
 mod path;
+mod projection;
 mod stmt;
 
 pub(crate) use self::contract::eval_msg_variant_selector;
@@ -22,14 +23,15 @@ pub use self::path::RecordLike;
 use crate::analysis::name_resolution::ResolvedVariant;
 pub use crate::analysis::ty::ProviderAddressSpace;
 use crate::analysis::ty::corelib::resolve_lib_type_path;
-use crate::analysis::ty::fold::{TyFoldable, TyFolder};
+use crate::analysis::ty::fold::TyFoldable;
 use crate::analysis::ty::method_table::ProbedMethod;
 use crate::analysis::ty::provider::{ProviderKind, provider_semantics};
+use crate::analysis::ty::shape::Shape;
 use crate::analysis::ty::trait_lower::lower_impl_trait;
 use crate::analysis::ty::trait_resolution::constraint::{
-    PredicateSource, collect_func_decl_constraint_pairs, collect_func_decl_constraints,
+    PredicateSource, collect_func_decl_constraint_pairs,
 };
-use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty, walk_ty};
+use crate::analysis::ty::visitor::{TyVisitable, TyVisitor, walk_const_ty};
 use crate::hir_def::{CallableDef, ConstGenericArgValue, ImplTrait, Trait};
 use crate::{
     hir_def::{
@@ -50,7 +52,8 @@ use cranelift_entity::{PrimaryMap, SecondaryMap, entity_impl, packed_option::Pac
 use ena::unify::InPlace;
 use env::TyCheckEnv;
 pub use env::{
-    EffectParamSite, ExprProp, LocalBinding, ParamSite, PatBindingMode, PathReadSemantics,
+    BindingAccess, EffectParamSite, ExprProp, LocalBinding, ParamSite, PatBindingMode,
+    PathReadSemantics,
 };
 pub(super) use expr::TraitOps;
 use num_traits::ToPrimitive;
@@ -68,7 +71,6 @@ use super::{
     LayoutBundlePath, LayoutBundlePathStep,
     adt_def::ConcreteTypeView,
     assoc_const::{AssocConstUse, InherentConstUse},
-    binder::Binder,
     canonical::Canonical,
     diagnostics::{
         BodyDiag, CallConstraintDiagInfo, FuncBodyDiag, StaticAssertComparisonValues,
@@ -84,16 +86,16 @@ use super::{
     },
     ty_contains_const_hole,
     ty_def::{
-        AssocTy, BorrowKind, CapabilityKind, InvalidCause, Kind, MAX_INLINE_STRING_BYTES,
-        StringFallback, TyId, TyParam, TyVar, TyVarSort,
+        BorrowKind, InvalidCause, Kind, MAX_INLINE_STRING_BYTES, StringFallback, TyId, TyVarSort,
     },
     ty_lower::{
-        CallableInputLayoutBackingSource, ParamDomainId, ParamKey, ParamSchemaId, PartialSubst,
-        callable_input_layout_backing_index_lengths, callable_input_layout_backing_sources,
-        collect_generic_params, layout_param_projection_paths_in_ty, lower_hir_ty,
-        lower_hir_ty_deferred, resolve_callable_input_effect_key,
+        CallableInputLayoutBackingSource, callable_input_layout_backing_index_lengths,
+        callable_input_layout_backing_sources, collect_generic_params,
+        layout_param_projection_paths_in_ty, lower_hir_ty, lower_hir_ty_deferred,
+        resolve_callable_input_effect_key,
     },
     unify::{InferenceKey, Snapshot, UnificationError, UnificationTable},
+    unsafe_check::check_unsafe_ops,
 };
 use crate::analysis::semantic::SemanticCodeRegionRef;
 use crate::analysis::semantic::{
@@ -112,9 +114,6 @@ use crate::analysis::ty::{
     normalize::{normalize_ty, normalize_with_trait_evidence},
     pattern_ir::{
         ConstructorKind, PatternAnalysisStatus, PatternStore, ValidatedPatId, ValidatedPatKind,
-    },
-    pattern_types::{
-        PatternDestructureMode, apply_pattern_borrow_mode, destructure_pattern_source,
     },
     ty_error::{collect_ty_lower_errors, diag_from_invalid_cause},
 };
@@ -463,296 +462,6 @@ fn diag_depends_on_param_instantiation<'db>(
         FuncBodyDiag::Body(BodyDiag::TypeAnnotationNeeded { .. }) => true,
         _ => false,
     }
-}
-
-/// The `constraint_idx`-th bound of `callable_def` as declared, in terms of
-/// the callable's own generic parameters.
-fn declared_call_bound<'db>(
-    db: &'db dyn HirAnalysisDb,
-    callable_def: CallableDef<'db>,
-    constraint_idx: usize,
-) -> Option<TraitInstId<'db>> {
-    collect_func_decl_constraints(db, callable_def, true)
-        .instantiate_identity()
-        .list(db)
-        .get(constraint_idx)
-        .copied()
-}
-
-/// If the failing goal's self type is a capability (a borrowed value) and
-/// owning that value would satisfy `primary`, returns the capability type.
-/// The failing goal is `unsat`, the unsatisfied sub-goal, or `primary` itself
-/// when there is none.
-///
-/// This is the only claim the explanation makes; it names no impl, since the
-/// impl proving the owned goal may differ from the one whose bound failed for
-/// the borrowed value (`impl<A: Mark> Foo for W<A>` next to `impl Foo for
-/// W<S>`). It must never be wrong:
-/// - Either the capability type occurs once in `primary`'s self type, and
-///   elsewhere only in positions that follow it, or repeated positions come
-///   from one declared type binding containing the capability exactly once.
-///   The repeated case must reconstruct the complete bound, mention no other
-///   parameter, and leave no occurrence of that exact capability when owned.
-///   Other bindings can depend on the borrowed type through separate bounds,
-///   so holding them fixed would not prove the owned form of this bound.
-/// - `primary` holds with the value owned. The solver re-derives every
-///   sub-goal from its declared bounds (including `Self`-dependent defaults
-///   and explicit arguments such as `A: Rel<ref S>`).
-///
-/// A trait argument or associated type binding follows the value when
-/// `declared` (the call bound `primary` was instantiated from) writes it in
-/// terms of the bound's self type alone: exactly the self type (`X: Eq`, which
-/// is `X: Eq<X>`; `Out<Item = X>`), or, when the self type is a generic
-/// parameter `X`, a type mentioning no other parameter (`Rel<(X,)>`,
-/// `Out<Item = W<X>>`). Such a position is recomputed from its declared type
-/// with `X` bound to the owned value, after checking that binding `X` to the
-/// borrowed value reproduces the instantiated position.
-///
-/// One type binding can describe multiple input values. This explanation is
-/// about the bound's types, not a claim that owning one argument fixes a call.
-fn capability_only_unsat_ty<'db>(
-    db: &'db dyn HirAnalysisDb,
-    solve_cx: TraitSolveCx<'db>,
-    primary: TraitInstId<'db>,
-    call_bound: Option<(CallableDef<'db>, usize)>,
-    unsat: Option<TraitInstId<'db>>,
-) -> Option<TyId<'db>> {
-    fn occurrences<'db>(
-        db: &'db dyn HirAnalysisDb,
-        target: TyId<'db>,
-        value: &impl TyVisitable<'db>,
-    ) -> usize {
-        struct CountTy<'db> {
-            db: &'db dyn HirAnalysisDb,
-            target: TyId<'db>,
-            count: usize,
-        }
-
-        impl<'db> TyVisitor<'db> for CountTy<'db> {
-            fn db(&self) -> &'db dyn HirAnalysisDb {
-                self.db
-            }
-
-            fn visit_ty(&mut self, ty: TyId<'db>) {
-                if ty == self.target {
-                    self.count += 1;
-                } else {
-                    walk_ty(self, ty);
-                }
-            }
-        }
-
-        let mut counter = CountTy {
-            db,
-            target,
-            count: 0,
-        };
-        value.visit_with(&mut counter);
-        counter.count
-    }
-
-    /// Whether `ty` mentions `param` and no other parameter, inference
-    /// variable or projection, so it is determined by `param` alone.
-    fn determined_by<'db>(db: &'db dyn HirAnalysisDb, ty: TyId<'db>, param: TyId<'db>) -> bool {
-        struct Determined<'db> {
-            db: &'db dyn HirAnalysisDb,
-            param: TyId<'db>,
-            mentions: bool,
-            other: bool,
-        }
-
-        impl<'db> TyVisitor<'db> for Determined<'db> {
-            fn db(&self) -> &'db dyn HirAnalysisDb {
-                self.db
-            }
-
-            fn visit_ty(&mut self, ty: TyId<'db>) {
-                if ty == self.param {
-                    self.mentions = true;
-                } else if matches!(ty.data(self.db), TyData::QualifiedTy(_)) {
-                    self.other = true;
-                } else {
-                    walk_ty(self, ty);
-                }
-            }
-
-            fn visit_var(&mut self, _: &TyVar<'db>) {
-                self.other = true;
-            }
-
-            fn visit_param(&mut self, _: &TyParam<'db>) {
-                self.other = true;
-            }
-
-            fn visit_const_param(&mut self, _: &TyParam<'db>, _: TyId<'db>) {
-                self.other = true;
-            }
-
-            fn visit_assoc_ty(&mut self, _: &AssocTy<'db>) {
-                self.other = true;
-            }
-        }
-
-        let mut visitor = Determined {
-            db,
-            param,
-            mentions: false,
-            other: false,
-        };
-        ty.visit_with(&mut visitor);
-        visitor.mentions && !visitor.other
-    }
-
-    struct ReplaceTy<'db> {
-        from: TyId<'db>,
-        to: TyId<'db>,
-    }
-
-    impl<'db> TyFolder<'db> for ReplaceTy<'db> {
-        fn fold_ty(&mut self, db: &'db dyn HirAnalysisDb, ty: TyId<'db>) -> TyId<'db> {
-            if ty == self.from {
-                self.to
-            } else {
-                ty.super_fold_with(db, self)
-            }
-        }
-    }
-
-    fn match_ty<'db>(
-        db: &'db dyn HirAnalysisDb,
-        declared: TyId<'db>,
-        actual: TyId<'db>,
-        subst: &mut PartialSubst<'db>,
-        parameters: &mut IndexMap<ParamKey<'db>, bool>,
-    ) -> Option<()> {
-        if declared.as_generic_param(db).is_some() {
-            let key = subst.domain().schema(db).original_key(db, declared)?;
-            subst.bind(db, key, actual).ok()?;
-            parameters.insert(key, matches!(declared.data(db), TyData::TyParam(_)));
-            Some(())
-        } else if let (TyData::TyApp(left, right), TyData::TyApp(actual_left, actual_right)) =
-            (declared.data(db), actual.data(db))
-        {
-            match_ty(db, *left, *actual_left, subst, parameters)?;
-            match_ty(db, *right, *actual_right, subst, parameters)
-        } else {
-            (declared == actual).then_some(())
-        }
-    }
-
-    let replace = |ty: TyId<'db>, from: TyId<'db>, to: TyId<'db>| {
-        ty.fold_with(db, &mut ReplaceTy { from, to })
-    };
-    let holds = |goal| {
-        matches!(
-            is_goal_satisfiable(db, solve_cx, goal),
-            GoalSatisfiability::Satisfied(_)
-        )
-    };
-    let self_ty = unsat.unwrap_or(primary).self_ty(db);
-    let (_, inner) = self_ty.as_capability(db)?;
-
-    let primary_self = primary.self_ty(db);
-    let count = occurrences(db, self_ty, &primary_self);
-    if count == 0 {
-        return None;
-    }
-    let declared = call_bound
-        .and_then(|(callable_def, idx)| declared_call_bound(db, callable_def, idx))
-        .filter(|declared| {
-            declared.def(db) == primary.def(db) && declared.args(db).len() == primary.args(db).len()
-        });
-    if count > 1 {
-        let (callable_def, _) = call_bound?;
-        let declared = declared?;
-        let unsupported =
-            TyFlags::HAS_PROJECTION | TyFlags::HAS_VAR | TyFlags::HAS_INVALID | TyFlags::HAS_HOLE;
-        if collect_flags(db, declared).intersects(unsupported)
-            || collect_flags(db, primary).intersects(unsupported)
-            || declared.assoc_type_bindings(db).len() != primary.assoc_type_bindings(db).len()
-        {
-            return None;
-        }
-
-        let domain = ParamDomainId::full(db, ParamSchemaId::callable(db, callable_def));
-        let mut subst = PartialSubst::new(db, domain);
-        let mut parameters = IndexMap::new();
-        for (&declared_ty, &actual) in declared.args(db).iter().zip(primary.args(db)) {
-            match_ty(db, declared_ty, actual, &mut subst, &mut parameters)?;
-        }
-        for (name, &declared_ty) in declared.assoc_type_bindings(db) {
-            let actual = *primary.assoc_type_bindings(db).get(name)?;
-            match_ty(db, declared_ty, actual, &mut subst, &mut parameters)?;
-        }
-        let bound = Binder::bind(callable_def.generic_owner(), declared);
-        if bound.instantiate_subst(db, &subst.residualize(db)).ok()? != primary
-            || parameters.len() != 1
-        {
-            return None;
-        }
-        let (&key, &is_type) = parameters.iter().next()?;
-        let actual = subst.get(db, key)?;
-        if !is_type
-            || !matches!(key, ParamKey::Source { .. } | ParamKey::TraitSelf(_))
-            || occurrences(db, self_ty, &actual) != 1
-            || collect_flags(db, actual).intersects(unsupported)
-        {
-            return None;
-        }
-        let mut owned_subst = PartialSubst::new(db, domain);
-        owned_subst
-            .bind(db, key, replace(actual, self_ty, inner))
-            .ok()?;
-        let owned_primary = bound
-            .instantiate_subst(db, &owned_subst.residualize(db))
-            .ok()?;
-        return (occurrences(db, self_ty, &owned_primary) == 0
-            && !collect_flags(db, owned_primary).intersects(unsupported)
-            && holds(owned_primary))
-        .then_some(self_ty);
-    }
-
-    let owned_self = replace(primary_self, self_ty, inner);
-    let declared_self = declared.map(|declared| declared.self_ty(db));
-    // The owned form of a position declared as `declared_ty` and instantiated
-    // as `actual`, if it follows the value.
-    let follow = |declared_ty: TyId<'db>, actual: TyId<'db>| -> Option<TyId<'db>> {
-        let declared_self = declared_self?;
-        if declared_ty == declared_self {
-            return (actual == primary_self).then_some(owned_self);
-        }
-        if !matches!(declared_self.data(db), TyData::TyParam(_))
-            || !determined_by(db, declared_ty, declared_self)
-            || replace(declared_ty, declared_self, primary_self) != actual
-        {
-            return None;
-        }
-        Some(replace(declared_ty, declared_self, owned_self))
-    };
-
-    let mut elsewhere = 0;
-    let mut owned_args = primary.args(db).clone();
-    owned_args[0] = owned_self;
-    for (idx, arg) in owned_args.iter_mut().enumerate().skip(1) {
-        match declared.and_then(|declared| follow(declared.args(db)[idx], *arg)) {
-            Some(owned) => *arg = owned,
-            None => elsewhere += occurrences(db, self_ty, arg),
-        }
-    }
-    let mut owned_bindings = primary.assoc_type_bindings(db).clone();
-    for (name, ty) in owned_bindings.iter_mut() {
-        let declared_ty =
-            declared.and_then(|declared| declared.assoc_type_bindings(db).get(name).copied());
-        match declared_ty.and_then(|declared_ty| follow(declared_ty, *ty)) {
-            Some(owned) => *ty = owned,
-            None => elsewhere += occurrences(db, self_ty, ty),
-        }
-    }
-    if elsewhere != 0 {
-        return None;
-    }
-    let owned_primary = TraitInstId::new(db, primary.def(db), owned_args, owned_bindings);
-    holds(owned_primary).then_some(self_ty)
 }
 
 /// Ground predicates are declaration obligations. Ordinary generic functions
@@ -1135,6 +844,7 @@ fn infer_body_query<'db>(
 
     checker.run();
     let (mut diags, typed_body) = checker.finish();
+    diags.extend(check_unsafe_ops(db, owner, &typed_body));
     if let BodyOwner::Func(func) = owner
         && func.is_const(db)
         && !func.is_extern(db)
@@ -1526,6 +1236,7 @@ fn typed_body_for_bodyless_func<'db>(
         assumptions,
         pat_ty: SecondaryMap::new(),
         expr_ty: SecondaryMap::new(),
+        yield_shapes: SecondaryMap::new(),
         implicit_moves: FxHashSet::default(),
         const_refs: SecondaryMap::new(),
         value_path_refs: SecondaryMap::new(),
@@ -1581,8 +1292,10 @@ pub struct TyChecker<'db> {
     pub(crate) env: TyCheckEnv<'db>,
     pub(crate) table: UnificationTable<'db>,
     expected: TyId<'db>,
+    /// The return shape of the projection being checked.
+    projection_shape: Option<Shape<'db>>,
     effect_provider_keys: FxHashSet<InferenceKey<'db>>,
-    first_return_borrow_provider: Option<(DynLazySpan<'db>, ProviderAddressSpace)>,
+    first_return_borrow_provider: Option<ProviderAddressSpace>,
     diags: Vec<FuncBodyDiag<'db>>,
 }
 
@@ -1640,7 +1353,11 @@ impl<'db> TyChecker<'db> {
 
         let root_expr = self.env.body().expr(self.db);
         self.check_expr(root_expr, self.expected);
-        self.record_implicit_move_for_owned_expr(root_expr, self.expected);
+        match self.projection_shape.clone() {
+            Some(shape) => self.check_yield_site(root_expr, &shape),
+            None => self.record_implicit_move_for_owned_expr(root_expr, self.expected),
+        }
+        self.check_access_uses();
     }
 
     fn check_own_param_types(&mut self) {
@@ -1686,17 +1403,6 @@ impl<'db> TyChecker<'db> {
                             continue;
                         }
                         Ok(Some(_)) => {}
-                    }
-
-                    if param.mode != crate::hir_def::params::FuncParamMode::Own {
-                        continue;
-                    }
-
-                    if ty.as_borrow(self.db).is_some() {
-                        self.push_diag(BodyDiag::OwnParamCannotBeBorrow {
-                            primary: contract.span().init_block().params().param(idx).ty().into(),
-                            ty,
-                        });
                     }
                 }
             }
@@ -1923,7 +1629,6 @@ impl<'db> TyChecker<'db> {
         &self,
         binding: LocalBinding<'db>,
     ) -> Option<ProviderAddressSpace> {
-        let binding_ty = self.env.lookup_binding_ty(&binding);
         match binding {
             LocalBinding::Local { pat, .. } => self.env.local_borrow_provider(pat),
             LocalBinding::EffectParam {
@@ -1945,8 +1650,8 @@ impl<'db> TyChecker<'db> {
                 LocalBinding::Local { .. } | LocalBinding::Param { .. }
             )
             .then(|| {
-                binding_ty
-                    .as_capability(self.db)
+                self.env
+                    .binding_access(&binding)
                     .map(|_| ProviderAddressSpace::Memory)
             })?
         })
@@ -1972,7 +1677,7 @@ impl<'db> TyChecker<'db> {
             self.env.scope(),
             self.env.assumptions(),
         );
-        if binding_ty.as_capability(self.db).is_some() {
+        if self.env.binding_access(&binding).is_some() {
             return self.concrete_borrow_provider_for_binding(binding);
         }
         let binding_provider = match binding {
@@ -1992,29 +1697,6 @@ impl<'db> TyChecker<'db> {
                 )
                 .then_some(ProviderAddressSpace::Memory)
             })
-    }
-
-    fn merge_concrete_borrow_providers(
-        &mut self,
-        previous_span: DynLazySpan<'db>,
-        previous: Option<ProviderAddressSpace>,
-        current_span: DynLazySpan<'db>,
-        current: Option<ProviderAddressSpace>,
-    ) -> Option<ProviderAddressSpace> {
-        if let (Some(previous), Some(current)) = (previous, current)
-            && previous != current
-        {
-            self.push_diag(BodyDiag::IncompatibleBorrowProviders {
-                primary: current_span,
-                previous: previous_span,
-                previous_provider: previous,
-                current_provider: current,
-            });
-        }
-
-        previous
-            .zip(current)
-            .and_then(|(previous, current)| (previous == current).then_some(previous))
     }
 
     fn has_dead_inference_keys<T>(&self, value: &T) -> bool
@@ -2363,23 +2045,12 @@ impl<'db> TyChecker<'db> {
                         env::TraitObligationOrigin::GenericConfirmation => None,
                     };
                     let unsat = subgoal.map(|goal| query.extract_subgoal(&mut self.table, goal));
-                    let call_bound = match obligation.origin {
-                        env::TraitObligationOrigin::CallConstraint {
-                            callable_def,
-                            constraint_idx,
-                            ..
-                        } => Some((callable_def, constraint_idx)),
-                        env::TraitObligationOrigin::GenericConfirmation => None,
-                    };
-                    let capability_hint =
-                        capability_only_unsat_ty(db, solve_cx, goal, call_bound, unsat);
                     self.push_diag(TyDiagCollection::from(
                         TraitConstraintDiag::TraitBoundNotSat {
                             span: obligation.span.clone(),
                             primary_goal: goal,
                             unsat_subgoal: unsat,
                             required_by,
-                            capability_hint,
                         },
                     ));
                     TraitObligationOutcome::Discharged
@@ -2423,17 +2094,9 @@ impl<'db> TyChecker<'db> {
                     };
 
                     let inst_self = this.table.instantiate_to_term(inst.self_ty(db));
-                    let recv_ty = if this.table.unify(inst_self, recv_ty).is_ok() {
-                        recv_ty
-                    } else {
-                        let Some((_, recv_inner)) = recv_ty.as_capability(db) else {
-                            return Viability::Incompatible;
-                        };
-                        if this.table.unify(inst_self, recv_inner).is_err() {
-                            return Viability::Incompatible;
-                        }
-                        recv_inner
-                    };
+                    if this.table.unify(inst_self, recv_ty).is_err() {
+                        return Viability::Incompatible;
+                    }
 
                     let Ok(func_ty) = try_instantiate_trait_method(
                         db,
@@ -2508,9 +2171,6 @@ impl<'db> TyChecker<'db> {
                             scope,
                             assumptions,
                         );
-                        let given = this
-                            .try_coerce_capability_to_expected(given, expected)
-                            .unwrap_or(given);
                         if this.table.unify(given, expected).is_err() {
                             return Viability::Incompatible;
                         }
@@ -2802,11 +2462,16 @@ impl<'db> TyChecker<'db> {
 
     fn new_internal(db: &'db dyn HirAnalysisDb, env: TyCheckEnv<'db>, expected: TyId<'db>) -> Self {
         let table = UnificationTable::new(db);
+        let projection_shape = match env.owner() {
+            BodyOwner::Func(func) => func.return_shape(db).cloned(),
+            _ => None,
+        };
         Self {
             db,
             env,
             table,
             expected,
+            projection_shape,
             effect_provider_keys: FxHashSet::default(),
             first_return_borrow_provider: None,
             diags: Vec::new(),
@@ -2911,27 +2576,13 @@ impl<'db> TyChecker<'db> {
         crate::analysis::ty::ty_is_copy(self.db, self.env.scope(), ty, self.env.assumptions())
     }
 
-    fn copy_inner_from_borrow(&self, ty: TyId<'db>) -> Option<TyId<'db>> {
-        let (_, inner) = ty.as_capability(self.db)?;
-        self.ty_is_copy(inner).then_some(inner)
-    }
-
-    fn ty_unifies(&mut self, lhs: TyId<'db>, rhs: TyId<'db>) -> bool {
-        let snapshot = self.snapshot_state();
-        let unifies = self.table.unify(lhs, rhs).is_ok();
-        self.rollback_state(snapshot);
-        unifies
-    }
-
     fn binding_interface_shape(
         &mut self,
         binding: LocalBinding<'db>,
     ) -> BindingInterfaceShape<'db> {
         let ty = self.normalize_ty(self.env.lookup_binding_ty(&binding));
-        if let Some((_, value_ty)) = ty.as_capability(self.db) {
-            return BindingInterfaceShape::PlaceCarrier {
-                value_ty: self.normalize_ty(value_ty),
-            };
+        if self.env.binding_access(&binding).is_some() {
+            return BindingInterfaceShape::PlaceCarrier { value_ty: ty };
         }
         let provider = match binding {
             LocalBinding::EffectParam {
@@ -2970,121 +2621,14 @@ impl<'db> TyChecker<'db> {
         }
 
         match self.binding_interface_shape(binding) {
-            BindingInterfaceShape::OrdinaryValue => PathReadSemantics::MaterializeValue,
+            BindingInterfaceShape::OrdinaryValue | BindingInterfaceShape::PlaceCarrier { .. } => {
+                PathReadSemantics::MaterializeValue
+            }
             BindingInterfaceShape::ProviderValue { .. }
             | BindingInterfaceShape::DirectCarrier { .. } => PathReadSemantics::ForwardInterface,
-            BindingInterfaceShape::PlaceCarrier { .. } => expr_ty
-                .as_capability(self.db)
-                .map_or(PathReadSemantics::MaterializeValue, |_| {
-                    PathReadSemantics::ForwardInterface
-                }),
         }
     }
 
-    /// Contextual capability coercion:
-    /// - `mut T -> ref T`
-    /// - `mut/ref/view T -> view T`
-    /// - `mut/ref/view T -> T` when `T: Copy`
-    /// - `T -> view T`
-    fn try_coerce_capability_to_expected(
-        &mut self,
-        actual: TyId<'db>,
-        expected: TyId<'db>,
-    ) -> Option<TyId<'db>> {
-        self.try_coerce_capability_expr_to_expected(None, actual, expected)
-    }
-
-    fn try_coerce_capability_for_expr_to_expected(
-        &mut self,
-        expr: ExprId,
-        actual: TyId<'db>,
-        expected: TyId<'db>,
-    ) -> Option<TyId<'db>> {
-        self.try_coerce_capability_expr_to_expected(Some(expr), actual, expected)
-    }
-
-    fn try_coerce_capability_expr_to_expected(
-        &mut self,
-        expr: Option<ExprId>,
-        actual: TyId<'db>,
-        expected: TyId<'db>,
-    ) -> Option<TyId<'db>> {
-        if expected.is_ty_var(self.db) {
-            let actual = self.normalize_ty(actual);
-            if let Some((CapabilityKind::View, inner)) = actual.as_capability(self.db)
-                && self.ty_is_copy(inner)
-            {
-                return Some(inner);
-            }
-            return None;
-        }
-
-        let actual = self.normalize_ty(actual);
-        let expected = self.normalize_ty(expected);
-        if actual.has_invalid(self.db) || expected.has_invalid(self.db) {
-            return None;
-        }
-
-        let actual_cap = actual.as_capability(self.db);
-        let expected_cap = expected.as_capability(self.db);
-
-        match (actual_cap, expected_cap) {
-            (Some((given_kind, given_inner)), Some((required_kind, required_inner))) => {
-                if given_kind.rank() < required_kind.rank() {
-                    return None;
-                }
-                if !self.ty_unifies(given_inner, required_inner) {
-                    return None;
-                }
-                let coerced = match required_kind {
-                    CapabilityKind::Mut => TyId::borrow_mut_of(self.db, given_inner),
-                    CapabilityKind::Ref => TyId::borrow_ref_of(self.db, given_inner),
-                    CapabilityKind::View => TyId::view_of(self.db, given_inner),
-                };
-                Some(coerced)
-            }
-            (Some((given_kind, given_inner)), None) => {
-                if !self.ty_unifies(given_inner, expected) {
-                    return None;
-                }
-
-                if self.ty_is_copy(given_inner)
-                    || (matches!(given_kind, CapabilityKind::View)
-                        && expr.is_some_and(|expr| self.expr_can_move_from_place(expr)))
-                {
-                    return Some(given_inner);
-                }
-
-                None
-            }
-            (None, Some((CapabilityKind::View, required_inner))) => {
-                if !self.ty_unifies(actual, required_inner) {
-                    return None;
-                }
-                Some(TyId::view_of(self.db, actual))
-            }
-            (None, Some((CapabilityKind::Ref | CapabilityKind::Mut, _))) | (None, None) => None,
-        }
-    }
-
-    fn expr_can_move_from_place(&self, expr: ExprId) -> bool {
-        let Partial::Present(expr_data) = expr.data(self.db, self.body()) else {
-            return false;
-        };
-
-        match expr_data {
-            Expr::Path(_) => true,
-            Expr::Field(lhs, _) => self.expr_can_move_from_place(*lhs),
-            Expr::Bin(lhs, _, crate::hir_def::expr::BinOp::Index) => {
-                self.expr_can_move_from_place(*lhs)
-            }
-            _ => false,
-        }
-    }
-
-    /// In "owned" contexts, non-`Copy` values are implicitly moved from places.
-    ///
-    /// `Copy` values may be duplicated implicitly.
     fn record_implicit_move_for_owned_expr(&mut self, expr: ExprId, ty: TyId<'db>) {
         self.record_implicit_move_for_owned_expr_inner(expr, Some(ty));
     }
@@ -3101,7 +2645,7 @@ impl<'db> TyChecker<'db> {
         };
 
         match expr_data {
-            Expr::Block(stmts) => {
+            Expr::Block(stmts, _) => {
                 let Some(last) = stmts.last() else {
                     return;
                 };
@@ -3291,7 +2835,9 @@ impl<'db> TyChecker<'db> {
         (0..n).map(|_| self.fresh_ty()).collect()
     }
 
-    fn capability_fallback_candidates(&self, ty: TyId<'db>) -> Vec<TyId<'db>> {
+    /// Types to look a receiver's methods up on: the receiver's type, and the
+    /// runtime text type for a string literal.
+    fn receiver_candidates(&self, ty: TyId<'db>) -> Vec<TyId<'db>> {
         let mut candidates = vec![ty];
         if let TyData::TyVar(var) = ty.base_ty(self.db).data(self.db)
             && matches!(var.sort, TyVarSort::String { .. })
@@ -3299,20 +2845,7 @@ impl<'db> TyChecker<'db> {
                 resolve_lib_type_path(self.db, self.env.scope(), "core::abi::DynString")
         {
             candidates.push(text_ty);
-            candidates.push(TyId::view_of(self.db, text_ty));
         }
-        if let Some((cap, inner)) = ty.as_capability(self.db) {
-            if matches!(cap, CapabilityKind::Mut) {
-                candidates.push(TyId::borrow_ref_of(self.db, inner));
-            }
-            if !matches!(cap, CapabilityKind::View) {
-                candidates.push(TyId::view_of(self.db, inner));
-            }
-            candidates.push(inner);
-        } else {
-            candidates.push(TyId::view_of(self.db, ty));
-        }
-        candidates.dedup();
         candidates
     }
 
@@ -3334,44 +2867,101 @@ impl<'db> TyChecker<'db> {
         }
     }
 
-    fn destructure_source_mode(&self, ty: TyId<'db>) -> (TyId<'db>, PatternDestructureMode) {
-        destructure_pattern_source(self.db, ty)
+    /// Binds `pat` to what `source` grants: its accesses if it has a shape.
+    fn bind_pattern_source(&mut self, pat: PatId, source: ExprId, prop: &ExprProp<'db>) {
+        if let Some(shape) = &prop.shape {
+            self.consume_access(source);
+            self.bind_pattern_accesses(pat, shape);
+        }
     }
 
-    fn retype_pattern_bindings_for_borrow(&mut self, pat: PatId, kind: BorrowKind) {
+    /// Gives the bindings of `pat` the accesses its source grants. An access
+    /// destructures uniformly: every binding below it is an access of its
+    /// kind. Tuple and sum shapes assign their components, and owned
+    /// components bind by value. A shape is not a value, so a single binding
+    /// cannot hold a whole tuple or sum shape.
+    fn bind_pattern_accesses(&mut self, pat: PatId, shape: &Shape<'db>) {
+        let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
+            return;
+        };
+        match (shape, pat_data) {
+            (Shape::Owned(_), _) | (_, Pat::WildCard | Pat::Rest | Pat::Lit(_)) => {}
+            (Shape::Access(kind, _), _) => self.set_pattern_access(pat, *kind),
+            (_, Pat::Or(lhs, rhs)) => {
+                self.bind_pattern_accesses(*lhs, shape);
+                self.bind_pattern_accesses(*rhs, shape);
+            }
+            (Shape::Tuple(elems), Pat::Tuple(pats)) => {
+                let rest = pats
+                    .iter()
+                    .position(|pat| pat.is_rest(self.db, self.body()));
+                for (idx, &pat) in pats.iter().enumerate() {
+                    let elem = match rest {
+                        Some(rest) if idx > rest => (elems.len() + idx).checked_sub(pats.len()),
+                        _ => Some(idx),
+                    };
+                    if let Some(elem) = elem.and_then(|elem| elems.get(elem)) {
+                        self.bind_pattern_accesses(pat, elem);
+                    }
+                }
+            }
+            (
+                Shape::Sum {
+                    variant, payload, ..
+                },
+                Pat::PathTuple(_, pats),
+            ) => {
+                if self.pattern_variant(pat) == Some(*variant)
+                    && let [payload_pat] = pats.as_slice()
+                {
+                    self.bind_pattern_accesses(*payload_pat, payload);
+                }
+            }
+            (_, Pat::Path(..)) if self.env.pat_binding(pat).is_some() => {
+                self.push_diag(BodyDiag::ShapeNotDestructured {
+                    primary: pat.span(self.body()).into(),
+                });
+            }
+            _ => {}
+        }
+    }
+
+    /// The enum variant a checked constructor pattern matches.
+    fn pattern_variant(&self, pat: PatId) -> Option<u16> {
+        let root = self.env.pattern_store().root(pat)?;
+        match self.env.pattern_store().node(root).kind() {
+            ValidatedPatKind::Constructor {
+                ctor: ConstructorKind::Variant(variant, _),
+                ..
+            } => Some(variant.idx),
+            _ => None,
+        }
+    }
+
+    fn set_pattern_access(&mut self, pat: PatId, kind: BorrowKind) {
         let Partial::Present(pat_data) = pat.data(self.db, self.body()) else {
             return;
         };
         match pat_data {
             Pat::Path(..) => {
-                let Some(binding) = self.env.pat_binding(pat) else {
-                    return;
-                };
-                if !matches!(binding, LocalBinding::Local { .. }) {
-                    return;
+                if let Some(LocalBinding::Local { .. }) = self.env.pat_binding(pat) {
+                    self.env
+                        .set_pat_binding_mode(pat, PatBindingMode::Access(kind));
                 }
-                self.env.set_pat_binding_mode(pat, PatBindingMode::ByBorrow);
-                let inner = self.env.lookup_binding_ty(&binding);
-                if inner.has_invalid(self.db) || inner.as_capability(self.db).is_some() {
-                    return;
-                }
-                let borrow_ty =
-                    apply_pattern_borrow_mode(self.db, PatternDestructureMode::Borrow(kind), inner);
-                self.env.type_pat(pat, borrow_ty);
             }
             Pat::Tuple(pats) | Pat::PathTuple(_, pats) => {
                 for pat in pats {
-                    self.retype_pattern_bindings_for_borrow(*pat, kind);
+                    self.set_pattern_access(*pat, kind);
                 }
             }
             Pat::Record(_, fields) => {
                 for field in fields {
-                    self.retype_pattern_bindings_for_borrow(field.pat, kind);
+                    self.set_pattern_access(field.pat, kind);
                 }
             }
             Pat::Or(lhs, rhs) => {
-                self.retype_pattern_bindings_for_borrow(*lhs, kind);
-                self.retype_pattern_bindings_for_borrow(*rhs, kind);
+                self.set_pattern_access(*lhs, kind);
+                self.set_pattern_access(*rhs, kind);
             }
             Pat::WildCard | Pat::Rest | Pat::Lit(..) => {}
         }
@@ -3801,6 +3391,7 @@ mod typed_body_tables {
         pub(super) assumptions: PredicateListId<'db>,
         pub(super) pat_ty: SecondaryMap<PatId, Option<TyId<'db>>>,
         pub(super) expr_ty: SecondaryMap<ExprId, Option<ExprProp<'db>>>,
+        pub(super) yield_shapes: SecondaryMap<ExprId, Option<Shape<'db>>>,
         pub(super) implicit_moves: FxHashSet<ExprId>,
         pub(super) const_refs: SecondaryMap<ExprId, Option<ConstRef<'db>>>,
         pub(super) value_path_refs: SecondaryMap<ExprId, Option<ValuePathRef<'db>>>,
@@ -4127,6 +3718,9 @@ impl<'db> TypedBody<'db> {
         for prop in self.tables.expr_ty.values().flatten() {
             prop.visit_with(visitor);
         }
+        for shape in self.tables.yield_shapes.values().flatten() {
+            shape.visit_with(visitor);
+        }
         for cref in self.tables.const_refs.values().flatten() {
             cref.visit_with(visitor);
         }
@@ -4177,6 +3771,10 @@ impl<'db> TyFoldable<'db> for TypedBody<'db> {
             .values_mut()
             .flatten()
             .for_each(|prop| *prop = prop.clone().fold_with(db, folder));
+        this.yield_shapes
+            .values_mut()
+            .flatten()
+            .for_each(|shape| *shape = shape.clone().fold_with(db, folder));
         this.const_refs
             .values_mut()
             .flatten()
@@ -4483,6 +4081,12 @@ impl<'db> TypedBody<'db> {
             .unwrap_or_else(|| ExprProp::invalid(db))
     }
 
+    /// The part of the projection's return shape the yield site `expr`
+    /// grants.
+    pub fn yield_shape(&self, expr: ExprId) -> Option<&Shape<'db>> {
+        self.tables.yield_shapes[expr].as_ref()
+    }
+
     pub fn is_implicit_move(&self, expr: ExprId) -> bool {
         self.tables.implicit_moves.contains(&expr)
     }
@@ -4575,6 +4179,27 @@ impl<'db> TypedBody<'db> {
     /// Get how this local binding is captured by its source pattern destructuring.
     pub fn pat_binding_mode(&self, pat: PatId) -> Option<PatBindingMode> {
         self.tables.pat_binding_modes[pat]
+    }
+
+    /// How `binding` refers to its value.
+    pub fn binding_access(&self, binding: LocalBinding<'db>) -> Option<BindingAccess> {
+        env::binding_access(&binding, |pat| self.pat_binding_mode(pat))
+    }
+
+    /// The semantic-IR type of `binding`: an access binding or a view or
+    /// `mut` parameter is a carrier of its place.
+    pub fn binding_carrier_ty(
+        &self,
+        db: &'db dyn HirAnalysisDb,
+        binding: LocalBinding<'db>,
+    ) -> TyId<'db> {
+        let ty = self.binding_ty(db, binding);
+        match self.binding_access(binding) {
+            None => ty,
+            Some(BindingAccess::View) => TyId::view_of(db, ty),
+            Some(BindingAccess::Ref) => TyId::borrow_ref_of(db, ty),
+            Some(BindingAccess::Mut) => TyId::borrow_mut_of(db, ty),
+        }
     }
 
     pub fn binding_ty(&self, db: &'db dyn HirAnalysisDb, binding: LocalBinding<'db>) -> TyId<'db> {
@@ -4847,7 +4472,7 @@ impl<'db> TypedBody<'db> {
         }
 
         let forwarded = match expr_data {
-            Expr::Block(stmts) => {
+            Expr::Block(stmts, _) => {
                 let tail = stmts.last()?;
                 match tail.data(db, body) {
                     Partial::Present(crate::hir_def::Stmt::Expr(tail_expr)) => self
@@ -5391,7 +5016,7 @@ impl<'db> TypedBody<'db> {
         };
 
         match expr_data {
-            Expr::Block(stmts) => {
+            Expr::Block(stmts, _) => {
                 for stmt in stmts {
                     self.collect_explicit_return_param_sources_in_stmt(
                         db,
@@ -5603,7 +5228,7 @@ impl<'db> TypedBody<'db> {
         };
 
         match expr_data {
-            Expr::Block(stmts) => {
+            Expr::Block(stmts, _) => {
                 if let Some(last_stmt) = stmts.last()
                     && let Partial::Present(crate::hir_def::Stmt::Expr(tail_expr)) =
                         last_stmt.data(db, body)
@@ -5823,6 +5448,7 @@ impl<'db> TypedBody<'db> {
             assumptions: PredicateListId::empty_list(db),
             pat_ty: SecondaryMap::new(),
             expr_ty: SecondaryMap::new(),
+            yield_shapes: SecondaryMap::new(),
             implicit_moves: FxHashSet::default(),
             const_refs: SecondaryMap::new(),
             value_path_refs: SecondaryMap::new(),
@@ -6179,9 +5805,7 @@ impl<'db> TyCheckerFinalizer<'db> {
         let assumptions = checker.env.assumptions();
         checker.resolve_deferred();
         let mut body = checker.env.finish(&mut checker.table);
-        body.tables_mut().return_borrow_provider = checker
-            .first_return_borrow_provider
-            .map(|(_, provider)| provider);
+        body.tables_mut().return_borrow_provider = checker.first_return_borrow_provider;
         let direct_call_callees = body.body().map_or_else(FxHashSet::default, |body_id| {
             body_id
                 .exprs(checker.db)
@@ -6257,78 +5881,16 @@ impl<'db> TyCheckerFinalizer<'db> {
     }
 }
 
-#[cfg(test)]
-mod capability_hint_tests {
-    use crate::{
-        analysis::ty::{
-            diagnostics::{FuncBodyDiag, TraitConstraintDiag, TyDiagCollection},
-            trait_resolution::{
-                GoalSatisfiability, TraitSolveCompletion, TraitSolveCx, is_goal_satisfiable,
-            },
-            ty_def::CapabilityKind,
-        },
-        test_db::{HirAnalysisTestDb, find_func},
-    };
-
-    use super::{check_func_body, declared_call_bound};
-
-    #[test]
-    fn ambiguous_owned_bound_keeps_the_ordinary_capability_diagnostic() {
-        let mut db = HirAnalysisTestDb::default();
-        // Query the body and solver directly: coherence checking rejects the
-        // overlapping owned impls before an ordinary source fixture can isolate
-        // this diagnostic boundary.
-        let file = db.new_stand_alone(
-            "ambiguous_owned_capability_hint.fe".into(),
-            r#"
-trait Mark {}
-trait Foo {}
-struct S { x: u256 }
-impl Mark for S {}
-struct W<A> { a: A }
-struct P<A, B> { a: A, b: B }
-impl<A: Mark, B: Mark> Foo for P<A, B> {}
-impl Foo for P<S, S> {}
-
-fn need<X>(_ w: W<X>) where P<X, X>: Foo {}
-fn borrowed(_ s: ref S) { need(W { a: s }) }
-fn owned_bound() where P<S, S>: Foo {}
-"#,
-        );
-        let (top_mod, _) = db.top_mod(file);
-        let owned_bound = find_func(&db, top_mod, "owned_bound");
-        let owned_goal = declared_call_bound(&db, owned_bound.into(), 0).expect("owned bound");
-        assert!(matches!(
-            is_goal_satisfiable(&db, TraitSolveCx::new(&db, top_mod.scope()), owned_goal),
-            GoalSatisfiability::NeedsConfirmation {
-                solutions,
-                completion: TraitSolveCompletion::Saturated,
-            } if solutions.len() == 2
-        ));
-
-        let borrowed = find_func(&db, top_mod, "borrowed");
-        let (diags, _) = check_func_body(&db, borrowed);
-        let [
-            FuncBodyDiag::Ty(TyDiagCollection::Satisfiability(
-                TraitConstraintDiag::TraitBoundNotSat {
-                    primary_goal,
-                    unsat_subgoal: Some(unsat),
-                    capability_hint,
-                    ..
-                },
-            )),
-        ] = diags.as_slice()
-        else {
-            panic!("expected one direct capability-bound failure, got {diags:?}");
-        };
-        assert_eq!(primary_goal.pretty_print(&db, true), "P<ref S, ref S>: Foo");
-        assert_eq!(unsat.pretty_print(&db, true), "ref S: Mark");
-        assert_eq!(
-            unsat.self_ty(&db).as_capability(&db).map(|(kind, _)| kind),
-            Some(CapabilityKind::Ref)
-        );
-        assert_eq!(*capability_hint, None);
-    }
+/// The provider two joined accesses share, if any. Accesses backed by
+/// different providers join only at yield sites, where the access checker
+/// requires one address space per instantiation.
+pub(super) fn merged_borrow_provider(
+    previous: Option<ProviderAddressSpace>,
+    current: Option<ProviderAddressSpace>,
+) -> Option<ProviderAddressSpace> {
+    previous
+        .zip(current)
+        .and_then(|(previous, current)| (previous == current).then_some(previous))
 }
 
 #[cfg(test)]

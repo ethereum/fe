@@ -3,9 +3,8 @@ use common::{InputDb, indexmap::IndexMap, stdlib::HasBuiltinCore};
 use fe_hir::{
     analysis::{
         semantic::{
-            SemanticInstanceKey, check_semantic_borrows, check_semantic_boundaries,
-            get_or_build_semantic_instance, identity_semantic_instance_key,
-            root_semantic_instance_key,
+            SemanticInstanceKey, check_semantic_accesses, get_or_build_semantic_instance,
+            identity_semantic_instance_key, root_semantic_instance_key,
         },
         ty::{
             binder::Binder,
@@ -115,7 +114,7 @@ fn caller(_ x: mut Counter) { x.target() }",
             assert_eq!(root, called, "{source}");
             assert_eq!(identity_semantic_instance_key(&db, target), called);
             let instance = get_or_build_semantic_instance(&db, root);
-            check_semantic_borrows(&db, instance).expect("valid root borrows");
+            check_semantic_accesses(&db, instance).expect("valid root accesses");
             db.assert_no_diags(module);
         }
     }
@@ -125,7 +124,7 @@ fn caller(_ x: mut Counter) { x.target() }",
 fn symbolic_and_effect_roots_keep_their_declaration_environment() {
     for source in [
         "trait Value {}
-fn target<T: Value>(_ x: T) -> T { x }",
+fn target<T: Value>(_ x: own T) -> T { x }",
         "fn target() uses (value: mut u256) { value += 1 }",
     ] {
         let mut db = HirAnalysisTestDb::default();
@@ -136,7 +135,7 @@ fn target<T: Value>(_ x: T) -> T { x }",
         let key = identity_semantic_instance_key(&db, owner);
         assert_eq!(key.impl_env(&db).normalization_scope(&db), owner.scope());
         let instance = get_or_build_semantic_instance(&db, key);
-        check_semantic_borrows(&db, instance).expect("valid root borrows");
+        check_semantic_accesses(&db, instance).expect("valid root accesses");
     }
 }
 
@@ -327,7 +326,7 @@ fn sealed_effect_identity_retains_bodyless_call_after_semantic_checks() {
         Utf8PathBuf::from("sealed_effect_trait_selection.fe"),
         r#"
 use std::evm::RawStorage
-fn access() -> u256 uses (raw: mut RawStorage) { raw.sload(0) }
+fn access() -> u256 uses (raw: mut RawStorage) { unsafe { raw.sload(0) } }
 "#,
     );
     let (module, _) = db.top_mod(file);
@@ -335,9 +334,7 @@ fn access() -> u256 uses (raw: mut RawStorage) { raw.sload(0) }
     let func = find_func(&db, module, "access");
     let identity = identity_semantic_instance_key(&db, BodyOwner::Func(func));
     let instance = get_or_build_semantic_instance(&db, identity);
-    check_semantic_borrows(&db, instance).expect("sealed effect call must pass borrow validation");
-    check_semantic_boundaries(&db, instance)
-        .expect("sealed effect call must pass boundary validation");
+    check_semantic_accesses(&db, instance).expect("sealed effect call must pass access validation");
     let BodyOwner::Func(selected) = first_callee_key(&db, identity).owner(&db) else {
         panic!("sealed effect callee is not a function");
     };

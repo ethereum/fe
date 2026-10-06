@@ -54,6 +54,7 @@ pub mod pattern_ir;
 pub mod pattern_types;
 pub mod provider;
 pub(crate) mod scratch;
+pub mod shape;
 pub(crate) mod subst;
 pub mod trait_def;
 pub mod trait_lower;
@@ -63,6 +64,7 @@ pub mod ty_def;
 pub mod ty_error;
 pub mod ty_lower;
 pub mod unify;
+pub(crate) mod unsafe_check;
 pub mod visitor;
 
 pub use const_ty::CallableLayoutOwner;

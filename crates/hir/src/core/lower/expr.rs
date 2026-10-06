@@ -24,21 +24,14 @@ impl<'db> Expr<'db> {
             }
 
             ast::ExprKind::Block(block) => {
-                ctxt.f_ctxt.enter_block_scope();
-                let mut stmts = vec![];
+                return Self::lower_block(ctxt, &ast, block, BlockKind::Normal);
+            }
 
-                for stmt in block.stmts() {
-                    let stmt = Stmt::push_to_body(ctxt, stmt);
-                    stmts.push(stmt);
-                }
-                let expr_id = ctxt.push_expr(Self::Block(stmts), HirOrigin::raw(&ast));
-
-                for item in block.items() {
-                    ItemKind::lower_ast(ctxt.f_ctxt, item);
-                }
-
-                ctxt.f_ctxt.leave_block_scope(expr_id);
-                return expr_id;
+            ast::ExprKind::Unsafe(unsafe_) => {
+                return match unsafe_.block() {
+                    Some(block) => Self::lower_block(ctxt, &ast, block, BlockKind::Unsafe),
+                    None => ctxt.push_invalid_expr(HirOrigin::raw(&ast)),
+                };
             }
 
             ast::ExprKind::Bin(bin) => {
@@ -242,6 +235,29 @@ impl<'db> Expr<'db> {
         };
 
         ctxt.push_expr(expr, HirOrigin::raw(&ast))
+    }
+
+    /// Lowers `block` as the expression `ast`, which is the block itself or
+    /// the `unsafe` block wrapping it.
+    fn lower_block(
+        ctxt: &mut BodyCtxt<'_, 'db>,
+        ast: &ast::Expr,
+        block: ast::BlockExpr,
+        kind: BlockKind,
+    ) -> ExprId {
+        ctxt.f_ctxt.enter_block_scope();
+        let stmts = block
+            .stmts()
+            .map(|stmt| Stmt::push_to_body(ctxt, stmt))
+            .collect();
+        let expr_id = ctxt.push_expr(Self::Block(stmts, kind), HirOrigin::raw(ast));
+
+        for item in block.items() {
+            ItemKind::lower_ast(ctxt.f_ctxt, item);
+        }
+
+        ctxt.f_ctxt.leave_block_scope(expr_id);
+        expr_id
     }
 
     pub(super) fn push_to_body_opt(ctxt: &mut BodyCtxt<'_, '_>, ast: Option<ast::Expr>) -> ExprId {

@@ -73,12 +73,13 @@ pub trait EncodePacked {
 
     /// Writes the packed bytes at `dest` and returns how many were written.
     ///
-    /// `dest` must have room for `packed_width()` bytes plus 32 bytes of
-    /// slack, because word-sized values are written with one full-word store.
+    /// The caller must ensure that `dest` has room for `packed_width()` bytes
+    /// plus 32 bytes of slack in a live allocation, because word-sized values
+    /// are written with one full-word store.
     /// The default goes through a `Packed` builder; std's implementations
     /// store their bytes directly.
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let packed = self.pack_into(Packed::with_capacity(bytes: 0))
         let source = packed.buffer.span()
         ptr::copy(dest, source)
@@ -88,8 +89,9 @@ pub trait EncodePacked {
 
 /// Writes the low `width` bytes of `value` big-endian at `dest` with a single
 /// word store (clobbering the following `32 - width` bytes) and returns `width`.
+/// The caller must ensure that `dest` has room for 32 bytes.
 #[inline(always)]
-pub(ingot) fn write_word_prefix(_ dest: *u8, _ value: u256, _ width: u256) -> u256 uses (mem: mut RawMem) {
+pub(ingot) unsafe fn write_word_prefix(_ dest: *u8, _ value: u256, _ width: u256) -> u256 uses (mem: mut RawMem) {
     mem.mstore(addr: dest, value: value << ((32 - width) * 8))
     width
 }
@@ -102,8 +104,8 @@ pub(ingot) fn write_word_prefix(_ dest: *u8, _ value: u256, _ width: u256) -> u2
 pub fn encode_packed<T: EncodePacked>(_ value: own T) -> Packed uses (mem: mut RawMem) {
     let width = value.packed_width()
     let mut buffer = ptr::MemBuffer::with_capacity(width + 32)
-    let written = value.write_packed(buffer.ptr())
-    buffer.set_len(written)
+    let written = unsafe { value.write_packed(buffer.ptr()) }
+    unsafe { buffer.set_len(written) }
     Packed { buffer }
 }
 
@@ -112,8 +114,8 @@ pub fn encode_packed<T: EncodePacked>(_ value: own T) -> Packed uses (mem: mut R
 pub fn keccak_packed<T: EncodePacked>(_ value: own T) -> u256 uses (mem: mut RawMem) {
     let width = value.packed_width()
     let buffer = ptr::alloc_bytes(width + 32)
-    let written = value.write_packed(buffer)
-    crypto::keccak256(MemSpan::from_raw_parts(ptr: buffer, len: written))
+    let written = unsafe { value.write_packed(buffer) }
+    unsafe { crypto::keccak256(MemSpan::from_raw_parts(ptr: buffer, len: written)) }
 }
 
 /// Imperative builder for packed byte payloads.
@@ -227,10 +229,10 @@ impl Packed {
         let len = self.buffer.len()
         let mut i: usize = 0
         while i < N {
-            mem.mstore8(addr: ptr::offset_bytes(self.buffer.ptr(), len + (i as u256)), value: value[i])
+            unsafe { mem.mstore8(addr: ptr::offset_bytes(self.buffer.ptr(), len + (i as u256)), value: value[i]) }
             i += 1
         }
-        self.buffer.set_len(len + (N as u256))
+        unsafe { self.buffer.set_len(len + (N as u256)) }
     }
 
     /// Append a read-only memory span.
@@ -263,14 +265,16 @@ impl Packed {
         let len = self.len()
         let padded = (len + 31) / 32 * 32
         let data = ptr::alloc_bytes(32 + padded)
-        mem.mstore(addr: data, value: len)
+        unsafe { mem.mstore(addr: data, value: len) }
         if padded != 0 {
             // Zero the last payload word so the padding bytes are
             // canonical regardless of what the copy leaves behind.
-            mem.mstore(addr: ptr::offset_bytes(data, padded), value: 0)
+            unsafe { mem.mstore(addr: ptr::offset_bytes(data, padded), value: 0) }
         }
-        ptr::copy(dest: ptr::offset_bytes(data, 32), source: self.buffer.span())
-        Bytes::from_abi_tail(data, len, size: 32 + padded)
+        unsafe {
+            ptr::copy(dest: ptr::offset_bytes(data, 32), source: self.buffer.span())
+            Bytes::from_abi_tail(data, len, size: 32 + padded)
+        }
     }
 
     /// Write the low `width` bytes of `value` big-endian at the cursor.
@@ -290,16 +294,16 @@ impl Packed {
         let len = self.buffer.len()
         let cursor = ptr::offset_bytes(self.buffer.ptr(), len)
         if len + 32 <= self.buffer.capacity() {
-            mem.mstore(addr: cursor, value: value << ((32 - width) * 8))
+            unsafe { mem.mstore(addr: cursor, value: value << ((32 - width) * 8)) }
         } else {
             let mut i: u256 = 0
             while i < width {
                 let b: u8 = (value >> ((width - 1 - i) * 8)).downcast_truncate()
-                mem.mstore8(addr: ptr::offset_bytes(cursor, i), value: b)
+                unsafe { mem.mstore8(addr: ptr::offset_bytes(cursor, i), value: b) }
                 i += 1
             }
         }
-        self.buffer.set_len(len + width)
+        unsafe { self.buffer.set_len(len + width) }
     }
 
     /// Ensure `additional` bytes fit below `limit`, growing
@@ -311,12 +315,14 @@ impl Packed {
     fn append_raw(mut self, source: *u8, len: u256) uses (mem: mut RawMem) {
         self.reserve(len)
         let old_len = self.buffer.len()
-        ptr::copy_raw(
-            dest: ptr::offset_bytes(self.buffer.ptr(), old_len),
-            source,
-            len,
-        )
-        self.buffer.set_len(old_len + len)
+        unsafe {
+            ptr::copy_raw(
+                dest: ptr::offset_bytes(self.buffer.ptr(), old_len),
+                source,
+                len,
+            )
+            self.buffer.set_len(old_len + len)
+        }
     }
 }
 
@@ -333,7 +339,7 @@ impl EncodePacked for u8 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self as u256, 1)
     }
 }
@@ -346,7 +352,7 @@ impl EncodePacked for u16 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self as u256, 2)
     }
 }
@@ -359,7 +365,7 @@ impl EncodePacked for u32 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self as u256, 4)
     }
 }
@@ -372,7 +378,7 @@ impl EncodePacked for u64 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self as u256, 8)
     }
 }
@@ -385,7 +391,7 @@ impl EncodePacked for u128 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self as u256, 16)
     }
 }
@@ -398,7 +404,7 @@ impl EncodePacked for u256 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self, 32)
     }
 }
@@ -416,7 +422,7 @@ impl EncodePacked for i8 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let bits: u8 = self.downcast_truncate()
         write_word_prefix(dest, bits as u256, 1)
     }
@@ -431,7 +437,7 @@ impl EncodePacked for i16 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let bits: u16 = self.downcast_truncate()
         write_word_prefix(dest, bits as u256, 2)
     }
@@ -446,7 +452,7 @@ impl EncodePacked for i32 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let bits: u32 = self.downcast_truncate()
         write_word_prefix(dest, bits as u256, 4)
     }
@@ -461,7 +467,7 @@ impl EncodePacked for i64 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let bits: u64 = self.downcast_truncate()
         write_word_prefix(dest, bits as u256, 8)
     }
@@ -476,7 +482,7 @@ impl EncodePacked for i128 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let bits: u128 = self.downcast_truncate()
         write_word_prefix(dest, bits as u256, 16)
     }
@@ -491,7 +497,7 @@ impl EncodePacked for i256 {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let bits: u256 = self.downcast_truncate()
         write_word_prefix(dest, bits as u256, 32)
     }
@@ -505,7 +511,7 @@ impl EncodePacked for bool {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self as u256, 1)
     }
 }
@@ -518,7 +524,7 @@ impl EncodePacked for Address {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         // Non-canonical addresses revert, as in `Packed::address`.
         if self.inner >> 160 != 0 {
             ops::revert_empty()
@@ -536,7 +542,7 @@ impl<const N: usize> EncodePacked for String<N> {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         write_word_prefix(dest, self as u256, self.len() as u256)
     }
 }
@@ -549,7 +555,7 @@ impl<const N: usize> EncodePacked for [u8; N] {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut i: usize = 0
         while i < N {
             mem.mstore8(addr: ptr::offset_bytes(dest, i as u256), value: self[i])
@@ -569,7 +575,7 @@ impl<const N: usize> EncodePacked for FixedBytes<N> {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         // Unsupported widths and non-canonical values revert, as in
         // `Packed::fixed_bytes`.
         if N == 0 || N > 32 || (N < 32 && self.val >> ((N as u256) * 8) != 0) {
@@ -589,7 +595,7 @@ impl EncodePacked for Bytes {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let source = self.payload_span()
         ptr::copy(dest, source)
         source.len()
@@ -605,7 +611,7 @@ impl EncodePacked for BytesView<MemSpan> {
         p
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let source = self.into_raw_parts()
         ptr::copy(dest, MemSpan::from_raw_parts(ptr: source.0, len: source.1))
         source.1
@@ -631,7 +637,7 @@ impl<T0> EncodePacked for (T0,)
         self.0.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written
@@ -650,7 +656,7 @@ impl<T0, T1> EncodePacked for (T0, T1)
         self.1.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -671,7 +677,7 @@ impl<T0, T1, T2> EncodePacked for (T0, T1, T2)
         self.2.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -695,7 +701,7 @@ impl<T0, T1, T2, T3> EncodePacked for (T0, T1, T2, T3)
         self.3.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -722,7 +728,7 @@ impl<T0, T1, T2, T3, T4> EncodePacked for (T0, T1, T2, T3, T4)
         self.4.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -751,7 +757,7 @@ impl<T0, T1, T2, T3, T4, T5> EncodePacked for (T0, T1, T2, T3, T4, T5)
         self.5.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -783,7 +789,7 @@ impl<T0, T1, T2, T3, T4, T5, T6> EncodePacked for (T0, T1, T2, T3, T4, T5, T6)
         self.6.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -817,7 +823,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7> EncodePacked for (T0, T1, T2, T3, T4, T5, T
         self.7.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -855,7 +861,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8> EncodePacked
         self.8.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -896,7 +902,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9> EncodePacked
         self.9.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -939,7 +945,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> EncodePacked
         self.10.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -984,7 +990,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11> EncodePacked
         self.11.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -1033,7 +1039,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12> EncodePacked
         self.12.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -1084,7 +1090,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13> EncodePacked
         self.13.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -1137,7 +1143,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> EncodePack
         self.14.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))
@@ -1193,7 +1199,7 @@ impl<T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15> Encod
         self.15.pack_into(p)
     }
     #[inline(always)]
-    fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
+    unsafe fn write_packed(own self, _ dest: *u8) -> u256 uses (mem: mut RawMem) {
         let mut written: u256 = 0
         written += self.0.write_packed(ptr::offset_bytes(dest, written))
         written += self.1.write_packed(ptr::offset_bytes(dest, written))

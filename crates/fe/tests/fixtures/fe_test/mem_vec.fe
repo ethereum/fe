@@ -145,11 +145,11 @@ uses (evm: mut Evm, call: mut Call, ctx: Ctx)
 
     // Precomputed Solidity abi.encode(uint256[]): offset, length, elements.
     let expected = MemBuffer::alloc(160)
-    store_word(ptr: expected.ptr(), value: 0x20)
-    store_word(ptr: ptr::offset_bytes(expected.ptr(), 32), value: 3)
-    store_word(ptr: ptr::offset_bytes(expected.ptr(), 64), value: 100)
-    store_word(ptr: ptr::offset_bytes(expected.ptr(), 96), value: 200)
-    store_word(ptr: ptr::offset_bytes(expected.ptr(), 128), value: 300)
+    unsafe { store_word(ptr: expected.ptr(), value: 0x20) }
+    unsafe { store_word(ptr: ptr::offset_bytes(expected.ptr(), 32), value: 3) }
+    unsafe { store_word(ptr: ptr::offset_bytes(expected.ptr(), 64), value: 100) }
+    unsafe { store_word(ptr: ptr::offset_bytes(expected.ptr(), 96), value: 200) }
+    unsafe { store_word(ptr: ptr::offset_bytes(expected.ptr(), 128), value: 300) }
     assert!(keccak256(ret.span()) == keccak256(expected.span()))
 }
 
@@ -176,9 +176,9 @@ uses (evm: mut Evm)
     let hash: u256 = evm.call(addr: c, gas: 1000000, value: 0, message: VecMsg::PayloadHash { a: 0xaaaa, b: 0xbbbb })
 
     let expected = MemBuffer::alloc(128)
-    store_word(ptr: expected.ptr(), value: 0x20)
-    store_word(ptr: ptr::offset_bytes(expected.ptr(), 32), value: 2)
-    store_word(ptr: ptr::offset_bytes(expected.ptr(), 64), value: 0xaaaa)
-    store_word(ptr: ptr::offset_bytes(expected.ptr(), 96), value: 0xbbbb)
+    unsafe { store_word(ptr: expected.ptr(), value: 0x20) }
+    unsafe { store_word(ptr: ptr::offset_bytes(expected.ptr(), 32), value: 2) }
+    unsafe { store_word(ptr: ptr::offset_bytes(expected.ptr(), 64), value: 0xaaaa) }
+    unsafe { store_word(ptr: ptr::offset_bytes(expected.ptr(), 96), value: 0xbbbb) }
     assert!(hash == keccak256(expected.span()))
 }

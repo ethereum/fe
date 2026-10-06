@@ -168,8 +168,8 @@ impl HashTreeRoot for ByteVector<48> {
     {
         assert!(view.len() == 48)
         let base = view_base(view)
-        let tail = ops::mload(ptr::offset_bytes(base, 32))
-        let scratch = alloc_pair(ops::mload(base), (tail >> 128) << 128)
+        let tail = unsafe { ops::mload(ptr::offset_bytes(base, 32)) }
+        let scratch = unsafe { alloc_pair(ops::mload(base), (tail >> 128) << 128) }
         hash_pair_buffer(scratch)
     }
 }
@@ -204,7 +204,7 @@ impl HashTreeRoot for ByteVector<96> {
         let offset = pair_offset(scratch)
         let left = sha256_64_to(base, offset)
 
-        write_pair(scratch, ops::mload(ptr::offset_bytes(base, 64)), 0)
+        unsafe { write_pair(scratch, ops::mload(ptr::offset_bytes(base, 64)), 0) }
         let right = hash_pair_buffer(scratch)
 
         write_pair(scratch, left, right)
@@ -449,8 +449,10 @@ fn alloc_pair(_ left: u256, _ right: u256) -> *ChunkPair {
 
 #[inline(always)]
 fn write_pair(_ scratch: *ChunkPair, _ left: u256, _ right: u256) {
-    scratch.left = left
-    scratch.right = right
+    unsafe {
+        scratch.left = left
+        scratch.right = right
+    }
 }
 
 #[inline(always)]
@@ -472,19 +474,21 @@ fn hash_pair_buffer(_ scratch: *ChunkPair) -> u256 {
 // real EVM, but we don't want to trust silent truncation).
 #[inline(always)]
 fn sha256_64_to(_ offset: *u8, _ out: *u8) -> u256 {
-    let ok: u256 = ops::staticcall_precompile(
-        gas: ops::gas(),
-        addr: 2,
-        args_offset: offset,
-        args_len: 64,
-        ret_offset: out,
-        ret_len: 32,
-    )
+    let ok: u256 = unsafe {
+        ops::staticcall_precompile(
+            gas: ops::gas(),
+            addr: 2,
+            args_offset: offset,
+            args_len: 64,
+            ret_offset: out,
+            ret_len: 32,
+        )
+    }
     if ok == 0 {
         ops::revert_empty()
     }
     if ops::returndatasize() < 32 {
         ops::revert_empty()
     }
-    ops::mload(out)
+    unsafe { ops::mload(out) }
 }

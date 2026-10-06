@@ -784,6 +784,7 @@ fn semantic_callee_key_with_assumptions<'db>(
                     .into_iter()
                     .map(|specialization| specialization.provider)
                     .collect::<Vec<_>>(),
+                Vec::new(),
             ),
             impl_env,
         ),

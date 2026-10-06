@@ -3,7 +3,7 @@ use std::evm::{Evm, RawMem, RawOps, RawStorage, StorageMap, StorPtr}
 
 fn abi_encode(value: u256) -> ! uses (ops: mut RawOps) {
     let data = ptr::MemBuffer::alloc(32)
-    ops.mstore(addr: data.ptr(), value)
+    unsafe { ops.mstore(addr: data.ptr(), value) }
     ops.return_data(data: data.span())
 }
 

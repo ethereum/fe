@@ -7,9 +7,9 @@ use crate::analysis::{
     HirAnalysisDb,
     semantic::{
         LayoutBackingPlace, SBlock, SBlockId, SConst, SEffectArgValue, SExpr, SLocalId, SStmt,
-        SStmtKind, STerminatorKind, SemConstId, SemConstValue, SemanticBody, array_const,
-        enum_const, instance::SemanticInstance, reify_runtime_const_for_ty, sem_const_from_ty,
-        struct_const, tuple_const,
+        SStmtKind, SemConstId, SemConstValue, SemanticBody, array_const, enum_const,
+        instance::SemanticInstance, reify_runtime_const_for_ty, sem_const_from_ty, struct_const,
+        tuple_const,
     },
     ty::{
         const_ty::evaluate_type_level_const_ty,
@@ -146,7 +146,7 @@ fn canonicalize_semantic_consts_from_body_with_mode<'db>(
             continue;
         };
         body.blocks[bb.index()] = canonicalize_block(cx, &original.blocks[bb.index()], &mut locals);
-        for succ in block_successors(&original.blocks[bb.index()].terminator.kind) {
+        for succ in original.blocks[bb.index()].terminator.kind.successors() {
             if merge_local_consts(&mut incoming[succ.index()], &locals) {
                 pending.push_back(succ);
             }
@@ -233,6 +233,7 @@ fn canonicalize_stmt<'db>(
                 src: *src,
             }
         }
+        SStmtKind::End { access } => SStmtKind::End { access: *access },
     };
     SStmt {
         id: stmt.id,
@@ -252,6 +253,7 @@ fn collect_local_roots(body: &SemanticBody<'_>) -> LocalRoots {
         let mut changed = false;
         for statement in body.blocks.iter().flat_map(|block| &block.stmts) {
             let (dst, sources, address, writes) = match &statement.kind {
+                SStmtKind::End { .. } => continue,
                 SStmtKind::Assign { dst, expr } => {
                     let mut address = None;
                     let mut writes = Vec::new();
@@ -472,23 +474,6 @@ fn merge_local_consts<'db>(
             }
             changed
         }
-    }
-}
-
-fn block_successors<'db>(term: &STerminatorKind<'db>) -> Vec<SBlockId> {
-    match term {
-        STerminatorKind::Goto(bb) => vec![*bb],
-        STerminatorKind::Branch {
-            then_bb, else_bb, ..
-        } => vec![*then_bb, *else_bb],
-        STerminatorKind::MatchEnum { cases, default, .. } => {
-            let mut succs = cases.iter().map(|(_, bb)| *bb).collect::<Vec<_>>();
-            if let Some(default) = default {
-                succs.push(*default);
-            }
-            succs
-        }
-        STerminatorKind::Assert { .. } | STerminatorKind::Return(None | Some(_)) => Vec::new(),
     }
 }
 

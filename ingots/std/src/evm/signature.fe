@@ -69,8 +69,8 @@ pub fn parse(_ signature: MemSpan) -> Option<EcdsaSig> {
     if len != 64 && len != 65 {
         return Option::None
     }
-    let r = ops::mload(signature.ptr())
-    let s = ops::mload(offset(signature.ptr(), 32))
+    let r = unsafe { ops::mload(signature.ptr()) }
+    let s = unsafe { ops::mload(offset(signature.ptr(), 32)) }
     if len == 65 {
         let v = signature.byte_at(64) as u256
         return Option::Some(EcdsaSig { v, r, s })
@@ -110,21 +110,25 @@ uses (call: Call)
     let len = signature.len()
     let padded = (len + 31) / 32 * 32
     let args = MemBuffer::alloc(0x64 + padded)
-    ops::mstore(addr: args.ptr(), value: ERC1271_MAGIC_WORD)
-    ops::mstore(addr: offset(args.ptr(), 0x04), value: digest)
-    ops::mstore(addr: offset(args.ptr(), 0x24), value: 0x40)
-    ops::mstore(addr: offset(args.ptr(), 0x44), value: len)
-    if padded != 0 {
-        ops::mstore(addr: offset(args.ptr(), 0x44 + padded), value: 0)
+    unsafe {
+        ops::mstore(addr: args.ptr(), value: ERC1271_MAGIC_WORD)
+        ops::mstore(addr: offset(args.ptr(), 0x04), value: digest)
+        ops::mstore(addr: offset(args.ptr(), 0x24), value: 0x40)
+        ops::mstore(addr: offset(args.ptr(), 0x44), value: len)
     }
-    ptr::copy(offset(args.ptr(), 0x64), signature)
+    if padded != 0 {
+        unsafe { ops::mstore(addr: offset(args.ptr(), 0x44 + padded), value: 0) }
+    }
+    unsafe { ptr::copy(offset(args.ptr(), 0x64), signature) }
 
     let mut ret = MemBuffer::with_capacity(32)
     let outcome = call.raw_staticcall(addr: signer, gas: ops::gas(), args: args.span(), ret: mut ret)
-    outcome.success()
-        && outcome.returndata_len() >= 32
-        && ops::mload(ret.ptr()) == ERC1271_MAGIC_WORD
-        && ops::extcodesize(signer.inner) != 0
+    unsafe {
+        outcome.success()
+            && outcome.returndata_len() >= 32
+            && ops::mload(ret.ptr()) == ERC1271_MAGIC_WORD
+            && ops::extcodesize(signer.inner) != 0
+    }
 }
 
 /// Whether `signature` is valid for `signer` over `digest`: true if it

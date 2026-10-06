@@ -298,6 +298,13 @@ impl<'db> TyId<'db> {
         Self::app(db, ctor, inner)
     }
 
+    pub fn borrow_of(db: &'db dyn HirAnalysisDb, kind: BorrowKind, inner: TyId<'db>) -> TyId<'db> {
+        match kind {
+            BorrowKind::Mut => Self::borrow_mut_of(db, inner),
+            BorrowKind::Ref => Self::borrow_ref_of(db, inner),
+        }
+    }
+
     pub fn view_of(db: &'db dyn HirAnalysisDb, inner: TyId<'db>) -> TyId<'db> {
         let ctor = Self::new(db, TyData::TyBase(TyBase::Prim(PrimTy::View)));
         Self::app(db, ctor, inner)
@@ -680,7 +687,6 @@ impl<'db> TyId<'db> {
                     primary_goal: goal,
                     unsat_subgoal: subgoal,
                     required_by: None,
-                    capability_hint: None,
                 }
                 .into(),
             )
@@ -1077,6 +1083,10 @@ pub enum InvalidCause<'db> {
     /// Type is not fully applied where it is required.
     NotFullyApplied,
 
+    /// `ref T` or `mut T` written where a type is required. Modes appear only
+    /// on parameters and in projection return shapes.
+    ModeNotType,
+
     /// Kind mismatch between two types.
     KindMismatch {
         expected: Option<Kind>,
@@ -1278,6 +1288,7 @@ impl InvalidCause<'_> {
                     .unwrap_or_else(|| res.kind_name().into())
             ),
             InvalidCause::NotFullyApplied
+            | InvalidCause::ModeNotType
             | InvalidCause::TooManyGenericArgs { .. }
             | InvalidCause::InvalidConstParamTy
             | InvalidCause::RecursiveConstParamTy
@@ -1805,10 +1816,12 @@ pub enum PrimTy {
     BorrowRef,
 }
 
+/// Access kinds, ordered by strength: a `mut` access can stand in for a
+/// `ref` one.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BorrowKind {
-    Mut,
     Ref,
+    Mut,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

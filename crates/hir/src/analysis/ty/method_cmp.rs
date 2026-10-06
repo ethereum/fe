@@ -40,12 +40,13 @@ use rustc_hash::FxHashMap;
 ///
 /// This function performs the following checks:
 ///
-/// 1. Number of generic parameters.
-/// 2. Kinds of generic parameters.
-/// 3. Arity (number of arguments).
-/// 4. Argument labels.
-/// 5. Argument types and return type.
-/// 6. Method constraints.
+/// 1. Unsafety.
+/// 2. Number of generic parameters.
+/// 3. Kinds of generic parameters.
+/// 4. Arity (number of arguments).
+/// 5. Argument labels.
+/// 6. Argument types and return type.
+/// 7. Method constraints.
 ///
 /// If any of these checks fail, the function will record the appropriate
 /// diagnostics.
@@ -66,6 +67,12 @@ pub(super) fn compare_impl_method<'db>(
     trait_inst: TraitInstId<'db>,
     sink: &mut Vec<TyDiagCollection<'db>>,
 ) {
+    if let (CallableDef::Func(impl_func), CallableDef::Func(trait_func)) = (impl_m, trait_m)
+        && impl_func.is_unsafe(db) != trait_func.is_unsafe(db)
+    {
+        sink.push(ImplDiag::MethodUnsafeMismatch { trait_m, impl_m }.into());
+    }
+
     if !compare_generic_param_num(db, impl_m, trait_m, sink) {
         return;
     }
@@ -270,10 +277,11 @@ fn compare_ty<'db>(
             trait_inst,
             false,
         );
-        // 4) Compare for equality
+        // 4) Compare for equality, including the parameter's mode.
         if !impl_m_ty.has_invalid(db)
-            && layout_shape_key(db, trait_m_ty_normalized)
+            && (layout_shape_key(db, trait_m_ty_normalized)
                 != layout_shape_key(db, impl_m_ty_normalized)
+                || trait_m.param_mode(db, idx) != impl_m.param_mode(db, idx))
         {
             sink.push(
                 ImplDiag::MethodArgTyMismatch {
@@ -319,10 +327,18 @@ fn compare_ty<'db>(
         trait_inst,
         false,
     );
+    // A projection's return modes are part of its signature.
+    let same_modes = match (impl_m.ret_shape(db), trait_m.ret_shape(db)) {
+        (Some(impl_shape), Some(trait_shape)) => impl_shape
+            .skip_binder()
+            .same_modes(trait_shape.skip_binder()),
+        (impl_shape, trait_shape) => impl_shape.is_none() && trait_shape.is_none(),
+    };
     if !impl_m_ret_ty.has_invalid(db)
         && !trait_m_ret_ty.has_invalid(db)
-        && layout_shape_key(db, trait_m_ret_ty_normalized)
+        && (layout_shape_key(db, trait_m_ret_ty_normalized)
             != layout_shape_key(db, impl_m_ret_ty_normalized)
+            || !same_modes)
     {
         sink.push(
             ImplDiag::MethodRetTyMismatch {

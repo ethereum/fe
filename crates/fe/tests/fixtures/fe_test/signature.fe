@@ -74,8 +74,8 @@ pub contract ShortMagic {
     recv Erc1271Msg {
         IsValidSignature { hash, signature } -> u256 uses (raw: mut RawOps) {
             let mut data = MemBuffer::alloc(32)
-            raw.mstore(addr: data.ptr(), value: MAGIC_WORD)
-            data.set_len(4)
+            unsafe { raw.mstore(addr: data.ptr(), value: MAGIC_WORD) }
+            unsafe { data.set_len(4) }
             raw.return_data(data: data.span())
         }
     }
@@ -86,7 +86,7 @@ pub contract RevertMagic {
     recv Erc1271Msg {
         IsValidSignature { hash, signature } -> u256 uses (raw: mut RawOps) {
             let data = MemBuffer::alloc(32)
-            raw.mstore(addr: data.ptr(), value: MAGIC_WORD)
+            unsafe { raw.mstore(addr: data.ptr(), value: MAGIC_WORD) }
             raw.revert(data: data.span())
         }
     }
@@ -97,8 +97,8 @@ pub contract LongMagic {
     recv Erc1271Msg {
         IsValidSignature { hash, signature } -> u256 uses (raw: mut RawOps) {
             let data = MemBuffer::alloc(64)
-            raw.mstore(addr: data.ptr(), value: MAGIC_WORD)
-            raw.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: 0xdead)
+            unsafe { raw.mstore(addr: data.ptr(), value: MAGIC_WORD) }
+            unsafe { raw.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: 0xdead) }
             raw.return_data(data: data.span())
         }
     }
@@ -107,25 +107,25 @@ pub contract LongMagic {
 // Exactly 65 bytes are allocated, so `parse` must not read past the span.
 fn sig65(r: u256, s: u256, v: u256) -> MemSpan uses (evm: mut Evm) {
     let data = MemBuffer::alloc(65)
-    evm.mstore(addr: data.ptr(), value: r)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: s)
-    evm.mstore8(addr: ptr::offset_bytes(data.ptr(), 64), value: v.downcast_truncate())
+    unsafe { evm.mstore(addr: data.ptr(), value: r) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: s) }
+    unsafe { evm.mstore8(addr: ptr::offset_bytes(data.ptr(), 64), value: v.downcast_truncate()) }
     data.span()
 }
 
 fn sig64(r: u256, vs: u256) -> MemSpan uses (evm: mut Evm) {
     let data = MemBuffer::alloc(64)
-    evm.mstore(addr: data.ptr(), value: r)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: vs)
-    MemSpan::from_raw_parts(ptr: data.ptr(), len: 64)
+    unsafe { evm.mstore(addr: data.ptr(), value: r) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: vs) }
+    unsafe { MemSpan::from_raw_parts(ptr: data.ptr(), len: 64) }
 }
 
 fn blob(len: u256) -> MemSpan uses (evm: mut Evm) {
     let data = MemBuffer::alloc(96)
-    evm.mstore(addr: data.ptr(), value: R_1)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: S_1)
-    evm.mstore(addr: ptr::offset_bytes(data.ptr(), 64), value: 0x1c1c << 240)
-    MemSpan::from_raw_parts(ptr: data.ptr(), len)
+    unsafe { evm.mstore(addr: data.ptr(), value: R_1) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 32), value: S_1) }
+    unsafe { evm.mstore(addr: ptr::offset_bytes(data.ptr(), 64), value: 0x1c1c << 240) }
+    unsafe { MemSpan::from_raw_parts(ptr: data.ptr(), len) }
 }
 
 fn is_addr(_ value: Option<Address>, _ expected: u256) -> bool {

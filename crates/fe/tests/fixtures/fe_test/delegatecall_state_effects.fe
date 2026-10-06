@@ -39,14 +39,18 @@ fn delegation_updates_persistent_and_transient_state_with_empty_buffers()
     // Initcode copies and returns nine bytes of runtime code. That runtime writes
     // 41 to storage slot zero and 17 to transient slot zero, then stops.
     let init_code = ptr::alloc<[u8; 19]>()
-    *init_code = [
-        0x60, 0x09, 0x60, 0x0a, 0x5f, 0x39, 0x60, 0x09, 0x5f, 0xf3,
-        0x60, 0x29, 0x5f, 0x55, 0x60, 0x11, 0x5f, 0x5d, 0x00,
-    ]
-    let implementation = evm.create_raw(
-        value: 0,
-        init_code: MemSpan::from_raw_parts(ptr: ptr::byte_ptr(init_code), len: 19),
-    )
+    unsafe {
+        *init_code = [
+            0x60, 0x09, 0x60, 0x0a, 0x5f, 0x39, 0x60, 0x09, 0x5f, 0xf3,
+            0x60, 0x29, 0x5f, 0x55, 0x60, 0x11, 0x5f, 0x5d, 0x00,
+        ]
+    }
+    let implementation = unsafe {
+        evm.create_raw(
+            value: 0,
+            init_code: MemSpan::from_raw_parts(ptr: ptr::byte_ptr(init_code), len: 19),
+        )
+    }
     assert!(implementation.inner != 0)
     let caller = evm.create<DelegateCaller>(value: 0, args: ())
     let (persistent, transient) = evm.call(

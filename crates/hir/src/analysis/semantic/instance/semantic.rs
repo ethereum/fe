@@ -7,7 +7,7 @@ use crate::{
         semantic::{
             CallSiteId, PlaceProvenance, RuntimeSizeError, SemOrigin, SemanticBody,
             SemanticCalleeRef, SemanticLocalRole, ValueProvenance, VariantIndex,
-            borrowck::CallSiteRefinements,
+            access::{CallSiteRefinements, provisional_call_site_provider_refinements},
             diagnostics::{
                 SemanticDiagnostic, SemanticDiagnosticId, SemanticDiagnosticKind,
                 SemanticDiagnosticLabel, SemanticDiagnosticSpan,
@@ -38,14 +38,15 @@ use crate::{
                 EffectProviderSpecialization, LocalBinding, ParamSite, ResolvedEffectArg,
                 SemanticExprLowering, SmirLoweringIssue, TypedBody,
             },
-            ty_def::{BorrowKind, CapabilityKind, InvalidCause, TyId},
+            ty_def::{InvalidCause, TyId},
+            ty_is_copy,
             ty_lower::{
                 ParamSchemaId, SubstError, callable_layout_bundle_input_interface,
                 specialized_callable_layout_bundle_signature_with_normalizer,
             },
         },
     },
-    hir_def::{CallableDef, Expr, ExprId, Partial, scope_graph::ScopeId},
+    hir_def::{CallableDef, FuncParamMode, scope_graph::ScopeId},
     semantic::{
         AssignedLayoutBindingEnv, EffectEnvView, EffectRequirement, EffectRequirementKey,
         LayoutViewKind, ProviderBinding, ProviderSource, ResolvedEffectBinding,
@@ -72,6 +73,26 @@ pub struct SemanticInstanceKey<'db> {
 }
 
 impl<'db> SemanticInstanceKey<'db> {
+    /// This key instantiated with its data parameters naming places in
+    /// `param_spaces`.
+    fn with_param_spaces(
+        self,
+        db: &'db dyn HirAnalysisDb,
+        param_spaces: Vec<(u32, ProviderAddressSpace)>,
+    ) -> Self {
+        if param_spaces.is_empty() {
+            return self;
+        }
+        let providers = self.effect_providers(db).providers(db).clone();
+        Self::new(
+            db,
+            self.owner(db),
+            self.subst(db),
+            EffectProviderSubst::new(db, providers, param_spaces),
+            self.impl_env(db),
+        )
+    }
+
     pub fn typed_body(self, db: &'db dyn HirAnalysisDb) -> &'db TypedBody<'db> {
         instantiated_typed_body(db, self)
     }
@@ -171,17 +192,9 @@ pub(crate) enum SemanticBodyAdmissionError<'db> {
     InvalidConcreteType(crate::analysis::semantic::SemanticDiagnosticId<'db>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
-pub struct ReceiverLoweringPlan<'db> {
-    pub borrowed_ty: TyId<'db>,
-    pub receiver_ty: TyId<'db>,
-    pub kind: BorrowKind,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub struct CallSiteLowering<'db> {
     pub callee: Option<SemanticCalleeRef<'db>>,
-    pub receiver: Option<ReceiverLoweringPlan<'db>>,
     pub effect_args: Box<[ResolvedEffectArg<'db>]>,
     pub effect_pairs: Box<[(usize, usize)]>,
     pub provider_pairs: Box<[(u32, u32)]>,
@@ -193,12 +206,22 @@ pub struct ForLoopCallSites<'db> {
     pub get: CallSiteLowering<'db>,
 }
 
+/// The address space of the place a call supplies to one of its callee's
+/// inputs, which the callee is instantiated for.
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
 pub(crate) struct CallSiteProviderRefinement {
     pub call_site: CallSiteId,
-    pub binding_idx: u32,
-    pub provider_idx: Option<u32>,
+    pub input: RefinedInput,
     pub address_space: ProviderAddressSpace,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Update)]
+pub(crate) enum RefinedInput {
+    Effect {
+        binding_idx: u32,
+        provider_idx: Option<u32>,
+    },
+    Param(u32),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Update)]
@@ -279,64 +302,6 @@ pub fn instantiated_typed_body<'db>(
     instantiate_typed_body(db, typed_body_template(db, key.owner(db)), key.subst(db))
 }
 
-fn receiver_lowering_plan<'db>(
-    db: &'db dyn HirAnalysisDb,
-    expr_data: &Expr<'db>,
-    callable: &Callable<'db>,
-    typed_body: &TypedBody<'db>,
-    scope: ScopeId<'db>,
-    assumptions: PredicateListId<'db>,
-) -> Option<ReceiverLoweringPlan<'db>> {
-    let receiver = call_like_receiver_expr(expr_data)?;
-    let borrowed_ty = callable.arg_ty(db, 0)?;
-    let borrowed_ty = normalize_ty(db, borrowed_ty, scope, assumptions);
-    let receiver_ty = normalize_ty(db, typed_body.expr_ty(db, receiver), scope, assumptions);
-    let (kind, _) = borrowed_ty.as_capability(db)?;
-    // A `view` receiver (a parameter declared without `own`) is borrowed for
-    // a `ref self` method, as an explicit `ref` would borrow it.
-    let receiver_is_view = receiver_ty.as_view(db).is_some();
-    if !matches!(kind, CapabilityKind::Mut | CapabilityKind::Ref)
-        || (receiver_ty.as_capability(db).is_some()
-            && !(kind == CapabilityKind::Ref && receiver_is_view))
-    {
-        return None;
-    }
-    Some(ReceiverLoweringPlan {
-        borrowed_ty,
-        receiver_ty,
-        kind: match kind {
-            CapabilityKind::Mut => BorrowKind::Mut,
-            CapabilityKind::Ref => BorrowKind::Ref,
-            CapabilityKind::View => unreachable!(),
-        },
-    })
-}
-
-fn call_like_receiver_expr<'db>(expr_data: &Expr<'db>) -> Option<ExprId> {
-    match expr_data {
-        Expr::MethodCall(receiver, ..)
-        | Expr::Un(receiver, ..)
-        | Expr::Bin(receiver, ..)
-        | Expr::AugAssign(receiver, ..) => Some(*receiver),
-        Expr::Call(..)
-        | Expr::Assert(..)
-        | Expr::UnsupportedMacroCall
-        | Expr::Lit(..)
-        | Expr::Path(..)
-        | Expr::Tuple(..)
-        | Expr::Array(..)
-        | Expr::ArrayRep(..)
-        | Expr::RecordInit(..)
-        | Expr::Field(..)
-        | Expr::Cast(..)
-        | Expr::Assign(..)
-        | Expr::Block(..)
-        | Expr::If(..)
-        | Expr::Match(..)
-        | Expr::With(..) => None,
-    }
-}
-
 #[salsa::tracked(return_ref)]
 fn provisional_call_sites<'db>(
     db: &'db dyn HirAnalysisDb,
@@ -350,19 +315,15 @@ fn provisional_call_sites<'db>(
         };
     };
     let assumptions = semantic_instance_base_assumptions_for_key(db, instance.key(db));
-    let scope = body.scope();
     let mut sites = vec![None; body.exprs(db).len()];
     let mut diagnostic = None;
 
-    for (expr, expr_data) in body.exprs(db).iter() {
-        let Partial::Present(expr_data) = expr_data else {
-            continue;
-        };
+    for (expr, _) in body.exprs(db).iter() {
         let Some(SemanticExprLowering::Call { callable }) = typed_body.semantic_expr_lowering(expr)
         else {
             continue;
         };
-        let mut site = provisional_call_site(
+        let site = provisional_call_site(
             db,
             instance,
             callable,
@@ -371,8 +332,6 @@ fn provisional_call_sites<'db>(
             SemOrigin::Expr(expr),
             &mut diagnostic,
         );
-        site.receiver =
-            receiver_lowering_plan(db, expr_data, callable, typed_body, scope, assumptions);
         sites[expr.index()] = Some(site);
     }
 
@@ -467,7 +426,6 @@ fn provisional_call_site<'db>(
     };
     CallSiteLowering {
         callee,
-        receiver: None,
         effect_args,
         effect_pairs: effect_pairs.into(),
         provider_pairs: provider_pairs.into(),
@@ -509,10 +467,16 @@ fn final_call_site_data<'db>(
             diagnostic: None,
         };
     };
-    let refinements = if call_sites_have_effect_args(&call_sites, &for_loop_call_sites) {
-        match crate::analysis::semantic::borrowck::provisional_call_site_provider_refinements(
-            db, instance,
-        ) {
+    // Only effects and non-memory parameters can supply non-memory places.
+    let refinements = if call_sites_have_effect_args(&call_sites, &for_loop_call_sites)
+        || !instance
+            .key(db)
+            .effect_providers(db)
+            .param_spaces(db)
+            .is_empty()
+        || !owner_effect_bindings(db, instance.key(db).owner(db)).is_empty()
+    {
+        match provisional_call_site_provider_refinements(db, instance).clone() {
             CallSiteRefinements::Refined(refinements) => refinements,
             CallSiteRefinements::Blocked => {
                 return CallSiteFinalizationData {
@@ -569,11 +533,8 @@ fn finalize_call_sites<'db>(
     let refinements = |site| by_site.get(&site).map(Vec::as_slice);
     let same_assumptions = instance.assumptions(db)
         == semantic_instance_base_assumptions_for_key(db, instance.key(db));
-    for (expr, expr_data) in body.exprs(db).iter() {
+    for (expr, _) in body.exprs(db).iter() {
         let Some(site) = call_sites.get_mut(expr.index()).and_then(Option::as_mut) else {
-            continue;
-        };
-        let Partial::Present(expr_data) = expr_data else {
             continue;
         };
         let Some(SemanticExprLowering::Call { callable }) = typed_body.semantic_expr_lowering(expr)
@@ -590,17 +551,6 @@ fn finalize_call_sites<'db>(
             SemOrigin::Expr(expr),
             same_assumptions,
         )?;
-        // The provisional plan already used these assumptions.
-        if !same_assumptions {
-            site.receiver = receiver_lowering_plan(
-                db,
-                expr_data,
-                callable,
-                typed_body,
-                body.scope(),
-                instance.assumptions(db),
-            );
-        }
     }
 
     for (stmt, _) in body.stmts(db).iter() {
@@ -821,44 +771,53 @@ fn replan_call_site<'db>(
     let mut effect_providers = callable.effect_providers().to_vec();
     let mapping_diag = |error| method_arg_map_diagnostic(db, instance, error, origin);
     let mut refined_nominal_effect_args = nominal_effect_args.to_vec();
-    if let Some(refinements) = refinements {
-        for refinement in refinements {
-            let nominal_binding_idx = if site.effect_pairs.is_empty() {
-                refinement.binding_idx
-            } else {
-                let Some((nominal, _)) = site
-                    .effect_pairs
-                    .iter()
-                    .find(|(_, body)| *body == refinement.binding_idx as usize)
-                else {
-                    return Err(mapping_diag(MethodArgMapError::MissingEffectRole(
-                        refinement.binding_idx as usize,
-                    )));
-                };
-                u32::try_from(*nominal)
-                    .map_err(|_| mapping_diag(MethodArgMapError::MissingEffectRole(*nominal)))?
+    let mut param_spaces = Vec::new();
+    for refinement in refinements.into_iter().flatten() {
+        let (binding_idx, provider_idx) = match refinement.input {
+            RefinedInput::Param(param) => {
+                param_spaces.push((param, refinement.address_space));
+                continue;
+            }
+            RefinedInput::Effect {
+                binding_idx,
+                provider_idx,
+            } => (binding_idx, provider_idx),
+        };
+        let nominal_binding_idx = if site.effect_pairs.is_empty() {
+            binding_idx
+        } else {
+            let Some((nominal, _)) = site
+                .effect_pairs
+                .iter()
+                .find(|(_, body)| *body == binding_idx as usize)
+            else {
+                return Err(mapping_diag(MethodArgMapError::MissingEffectRole(
+                    binding_idx as usize,
+                )));
             };
-            for arg in &mut refined_nominal_effect_args {
-                if arg.binding_idx == nominal_binding_idx {
-                    arg.provider = Some(refinement.address_space);
-                }
+            u32::try_from(*nominal)
+                .map_err(|_| mapping_diag(MethodArgMapError::MissingEffectRole(*nominal)))?
+        };
+        for arg in &mut refined_nominal_effect_args {
+            if arg.binding_idx == nominal_binding_idx {
+                arg.provider = Some(refinement.address_space);
             }
-            if let Some(provider_idx) = refinement.provider_idx
-                && let Some(specialization) = effect_providers.iter_mut().find(|provider| {
-                    site.provider_pairs
-                        .iter()
-                        .find(|(nominal, _)| *nominal == provider.provider.provider_idx)
-                        .map_or(provider.provider.provider_idx, |(_, body)| *body)
-                        == provider_idx
-                })
-            {
-                specialize_provider_address_space(
-                    db,
-                    instance,
-                    specialization,
-                    refinement.address_space,
-                );
-            }
+        }
+        if let Some(provider_idx) = provider_idx
+            && let Some(specialization) = effect_providers.iter_mut().find(|provider| {
+                site.provider_pairs
+                    .iter()
+                    .find(|(nominal, _)| *nominal == provider.provider.provider_idx)
+                    .map_or(provider.provider.provider_idx, |(_, body)| *body)
+                    == provider_idx
+            })
+        {
+            specialize_provider_address_space(
+                db,
+                instance,
+                specialization,
+                refinement.address_space,
+            );
         }
     }
     let callee = semantic_callee_key_with_effect_providers(
@@ -874,7 +833,9 @@ fn replan_call_site<'db>(
             .map_err(mapping_diag)?;
         site.effect_pairs = callee.effect_pairs.into_boxed_slice();
         site.provider_pairs = callee.provider_pairs.into_boxed_slice();
-        site.callee = Some(SemanticCalleeRef { key: callee.key });
+        site.callee = Some(SemanticCalleeRef {
+            key: callee.key.with_param_spaces(db, param_spaces),
+        });
     } else {
         site.callee = None;
     }
@@ -1078,7 +1039,7 @@ impl<'db> SemanticInstance<'db> {
                 .unwrap_or_else(|| TyId::invalid(db, InvalidCause::Other))
             }
             LocalBinding::Local { .. } | LocalBinding::Param { .. } => {
-                self.key(db).typed_body(db).binding_ty(db, binding)
+                self.key(db).typed_body(db).binding_carrier_ty(db, binding)
             }
         }
     }
@@ -1099,10 +1060,36 @@ impl<'db> SemanticInstance<'db> {
                 idx,
                 ..
             } => effect_binding_ty_from_env(db, instantiated_effect_env(db, self), idx, None),
+            LocalBinding::Param {
+                mode: FuncParamMode::View,
+                ty,
+                ..
+            } if self.is_projection(db)
+                && ty_is_copy(db, self.normalization_scope(db), ty, self.assumptions(db)) =>
+            {
+                // A projection's `Copy` view parameter is a copy the session
+                // owns, never the caller's place.
+                ty
+            }
             LocalBinding::Local { .. } | LocalBinding::Param { .. } => {
-                self.key(db).typed_body(db).binding_ty(db, binding)
+                self.key(db).typed_body(db).binding_carrier_ty(db, binding)
             }
         }
+    }
+
+    pub fn is_projection(self, db: &'db dyn HirAnalysisDb) -> bool {
+        matches!(self.key(db).owner(db), BodyOwner::Func(func) if func.is_projection(db))
+    }
+
+    /// The address space of the place data parameter `param` names in this
+    /// instantiation.
+    pub fn param_space(self, db: &'db dyn HirAnalysisDb, param: u32) -> ProviderAddressSpace {
+        self.key(db)
+            .effect_providers(db)
+            .param_spaces(db)
+            .iter()
+            .find(|(index, _)| *index == param)
+            .map_or(ProviderAddressSpace::Memory, |(_, space)| *space)
     }
 
     #[salsa::tracked]
@@ -1178,7 +1165,15 @@ impl<'db> SemanticInstance<'db> {
     }
 
     #[salsa::tracked]
+    /// The semantic-IR result type: a projection returns the carriers of its
+    /// grants.
     pub fn normalized_result_ty(self, db: &'db dyn HirAnalysisDb) -> TyId<'db> {
+        if let BodyOwner::Func(func) = self.key(db).owner(db)
+            && let Some(shape) = func.return_shape(db)
+            && let Ok(ty) = instantiate_normalized_ty(db, self.key(db), shape.carrier_ty(db))
+        {
+            return ty;
+        }
         self.normalized_ty(db, self.key(db).typed_body(db).result_ty())
     }
 
@@ -1194,16 +1189,6 @@ impl<'db> SemanticInstance<'db> {
 }
 
 impl<'db> SemanticInstance<'db> {
-    pub(crate) fn provisional_callees(
-        self,
-        db: &'db dyn HirAnalysisDb,
-    ) -> Vec<SemanticCalleeRef<'db>> {
-        collect_callees(
-            &provisional_call_sites(db, self).sites,
-            &provisional_for_loop_call_sites(db, self).sites,
-        )
-    }
-
     fn ensure_body_admitted(
         self,
         db: &'db dyn HirAnalysisDb,
@@ -1268,7 +1253,7 @@ impl<'db> SemanticInstance<'db> {
         self.key(db).owner(db).scope()
     }
 
-    pub(crate) fn is_intrinsically_never_returning(self, db: &'db dyn HirAnalysisDb) -> bool {
+    pub fn is_intrinsically_never_returning(self, db: &'db dyn HirAnalysisDb) -> bool {
         self.is_nonreturning_builtin(db) || self.normalized_result_ty(db).is_never(db)
     }
 
@@ -1661,7 +1646,7 @@ pub fn root_semantic_instance_key<'db>(
         db,
         owner,
         subst,
-        EffectProviderSubst::new(db, effect_providers),
+        EffectProviderSubst::new(db, effect_providers, Vec::new()),
         root_impl_env(db, owner, subst),
     );
     validate_instantiated_effect_env_key(db, key)
@@ -2329,8 +2314,7 @@ mod tests {
         let provisional = provisional_call_sites(db, instance);
         assert!(provisional.diagnostic.is_none());
         let mut calls = 0;
-        let mut receivers = 0;
-        for (expr, expr_data) in body.exprs(db).iter() {
+        for (expr, _) in body.exprs(db).iter() {
             let Some(SemanticExprLowering::Call { callable }) =
                 typed_body.semantic_expr_lowering(expr)
             else {
@@ -2350,24 +2334,11 @@ mod tests {
                 SemOrigin::Expr(expr),
             )
             .unwrap();
-            let Partial::Present(expr_data) = expr_data else {
-                unreachable!();
-            };
-            replanned.receiver = receiver_lowering_plan(
-                db,
-                expr_data,
-                callable,
-                typed_body,
-                body.scope(),
-                assumptions,
-            );
             assert_eq!(site, &replanned);
             assert_eq!(instance.call_sites(db)[expr.index()].as_ref(), Some(site));
             calls += 1;
-            receivers += usize::from(site.receiver.is_some());
         }
         assert_eq!(calls, 3);
-        assert_eq!(receivers, 1);
     }
 
     #[test]
@@ -2476,8 +2447,10 @@ mod tests {
         let before = site.clone();
         let refinement = CallSiteProviderRefinement {
             call_site: CallSiteId::Expr(expr),
-            binding_idx: site.effect_args[0].binding_idx,
-            provider_idx: None,
+            input: RefinedInput::Effect {
+                binding_idx: site.effect_args[0].binding_idx,
+                provider_idx: None,
+            },
             address_space: ProviderAddressSpace::Storage,
         };
         finalize_call_site(

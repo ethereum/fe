@@ -1,0 +1,55 @@
+// Call elaboration order: a receiver's root place is resolved first, the
+// arguments are evaluated next, and the receiver's access opens last. The
+// arguments may read the receiver but neither write nor move it.
+use core::ptr::MemArray
+
+struct Holder { value: u256, items: MemArray<u256> }
+
+impl Holder {
+    fn len(self) -> u256 { self.items.len() }
+    fn set(mut self, _ value: u256) { self.value = value }
+    fn take(own self) -> u256 { self.value }
+    fn value_mut(mut self) -> mut u256 { mut self.value }
+}
+
+fn make() -> Holder {
+    Holder { value: 0, items: MemArray::new_zeroed(2) }
+}
+
+fn reset(_ target: mut Holder) -> u256 {
+    target.value = 0
+    1
+}
+
+// Accepted: an argument reads the receiver.
+fn argument_reads_receiver() -> u256 {
+    let mut holder = make()
+    holder.set(holder.len())
+    holder.value
+}
+
+// Accepted: indexing reads the indexed array in its index.
+fn index_reads_base() -> u256 {
+    let mut values: MemArray<u256> = MemArray::new_zeroed(3)
+    values[(values.len() - 1) as usize] = 5
+    values[2]
+}
+
+// Accepted: a temporary receiver is hoisted, then its projection's session
+// opens after the arguments.
+fn temporary_receiver_chain() -> u256 {
+    let value = make().value_mut()
+    value
+}
+
+// Rejected: an argument writes the receiver.
+fn argument_writes_receiver() {
+    let mut holder = make()
+    holder.set(reset(mut holder))
+}
+
+// Rejected: an argument moves the receiver.
+fn argument_moves_receiver() {
+    let mut holder = make()
+    holder.set(holder.take())
+}

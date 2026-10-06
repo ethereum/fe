@@ -4,18 +4,18 @@ struct Slot { pointer: *Option<Token> }
 struct Buffer { data: *u8, marker: u256 }
 fn clear_if(_ state: mut Buffer, clear: bool) {
     if clear {
-        ptr::zero_bytes(ptr: state.data, len: 1)
+        unsafe { ptr::zero_bytes(ptr: state.data, len: 1) }
     }
     state.marker = 1
 }
 fn run_children(_ state: mut Buffer) -> u256 {
     let slot = ptr::alloc<Option<Token>>()
-    *slot = Option::Some(Token { value: 7 })
+    unsafe { *slot = Option::Some(Token { value: 7 }) }
     let mut holder = Slot { pointer: slot }
     let mut sum = 0
     while true {
-        let value = *holder.pointer
-        *holder.pointer = Option::None
+        let value = unsafe { *holder.pointer }
+        unsafe { *holder.pointer = Option::None }
         match value {
             Option::Some(value,) => {
                 clear_if(mut state, clear: true)
@@ -31,9 +31,9 @@ fn run_children(_ state: mut Buffer) -> u256 {
 #[test]
 fn constant_call_preserves_the_pointer_stored_in_a_local() {
     let data = ptr::alloc<u8>()
-    *data = 12
+    unsafe { *data = 12 }
     let mut state = Buffer { data, marker: 0 }
     core::assert(run_children(mut state) == 7)
-    core::assert(*data == 0)
+    unsafe { core::assert(*data == 0) }
     core::assert(state.marker == 1)
 }

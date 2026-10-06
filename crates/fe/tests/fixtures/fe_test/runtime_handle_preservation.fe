@@ -17,7 +17,7 @@ uses (e: Empty)
 fn mem_value() -> u256
 uses (p: *Word)
 {
-    p.value
+    unsafe { p.value }
 }
 
 fn stor_handle_raw() -> u256
@@ -46,10 +46,12 @@ fn check_runtime_value(_ evm: mut Evm, value: u256) -> u256 {
 #[test]
 fn test_zst_target_effect_handles_keep_runtime_carriers() uses (evm: Evm) {
     let raw = ptr::alloc<Word>()
-    *raw = Word { value: 120 }
-    let sp: StorPtr<Empty> = evm.stor_ptr(7)
-    let mem = with (raw) {
-        mem_value()
+    unsafe { *raw = Word { value: 120 } }
+    let sp: StorPtr<Empty> = unsafe { evm.stor_ptr(7) }
+    let mem = unsafe {
+        with (raw) {
+            mem_value()
+        }
     }
     let storage = with (sp) {
         stor_handle_raw()
@@ -62,10 +64,10 @@ fn test_zst_target_effect_handles_keep_runtime_carriers() uses (evm: Evm) {
 #[test]
 fn pointers_and_effect_handles_support_read_write() uses (evm: Evm) {
     let mp = ptr::alloc<u256>()
-    *mp = 41
-    assert!(*mp == 41)
+    unsafe { *mp = 41 }
+    unsafe { assert!(*mp == 41) }
 
-    let sp: StorPtr<u256> = evm.stor_ptr(0xabc)
+    let sp: StorPtr<u256> = unsafe { evm.stor_ptr(0xabc) }
     sp.write(42)
     assert!(sp.read() == 42)
 }
@@ -89,17 +91,22 @@ struct Data {
 }
 
 struct View {
-    d: ref Data,
+    d: Data,
+}
+
+impl View {
+    fn data(self) -> ref Data {
+        ref self.d
+    }
 }
 
 fn read_view(_ view: own View) -> u256 {
-    view.d.x
+    view.data().x
 }
 
 #[test]
-fn test_object_backed_nested_ref_fields_are_readable() {
-    let data = Data { x: 1 }
-    let view = View { d: ref data }
+fn test_object_backed_nested_ref_projections_are_readable() {
+    let view = View { d: Data { x: 1 } }
 
     assert!(read_view(view) == 1)
 }

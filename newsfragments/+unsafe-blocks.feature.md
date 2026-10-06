@@ -1,0 +1,1 @@
+Added `unsafe { .. }` blocks, and gave `unsafe fn` its meaning. Dereferencing a raw pointer, explicitly or by selecting a field through it, and calling an `unsafe fn` are now errors outside an `unsafe` block or `unsafe fn` body. Trait methods may be declared `unsafe`, and an implementation's method must match the unsafety of the trait's declaration.

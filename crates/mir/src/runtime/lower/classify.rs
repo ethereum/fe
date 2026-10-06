@@ -1193,6 +1193,7 @@ fn local_disallows_const_ref_storage(body: &RuntimeSemanticBody<'_>, local: SLoc
             .statements
             .iter()
             .any(|statement| match &statement.kind {
+                NStatementKind::End { .. } => false,
                 NStatementKind::Store { destination, .. } => mutable_place_uses_local(destination),
                 NStatementKind::Define {
                     expr: NExpr::Borrow { place, kind, .. },
@@ -2266,7 +2267,7 @@ pub(crate) fn desired_runtime_param_plan<'db>(
     let Some(binding) = typed_body.param_binding(idx) else {
         return RuntimeParamPlan::Erased;
     };
-    let binding_ty = typed_body.binding_ty(db, binding);
+    let binding_ty = typed_body.binding_carrier_ty(db, binding);
     let env = RuntimeTypeEnv::for_semantic(db, semantic);
     let scope = env.scope;
     let assumptions = env.assumptions;
@@ -2389,7 +2390,7 @@ fn desired_read_only_view_param_plan<'db>(
     let Some(boundary) = boundary_spec_for_ty_in_env(
         db,
         env,
-        typed_body.binding_ty(db, binding),
+        typed_body.binding_carrier_ty(db, binding),
         AddressSpaceKind::Memory,
     ) else {
         return RuntimeParamPlan::Erased;
@@ -2862,10 +2863,10 @@ pub(crate) fn runtime_param_class<'db>(
     env: RuntimeTypeEnv<'db>,
     actual: RuntimeClass<'db>,
 ) -> RuntimeClass<'db> {
-    let ty = runtime_repr_ty_in_env(db, env, typed_body.binding_ty(db, binding));
+    let ty = runtime_repr_ty_in_env(db, env, typed_body.binding_carrier_ty(db, binding));
     if runtime_abstract_param_ty(
         db,
-        typed_body.binding_ty(db, binding),
+        typed_body.binding_carrier_ty(db, binding),
         env.scope,
         env.assumptions,
     ) || matches!(
@@ -2899,7 +2900,7 @@ pub(crate) fn runtime_param_boundary<'db>(
             access,
             allow,
         } => {
-            let ty = runtime_repr_ty_in_env(db, env, typed_body.binding_ty(db, binding));
+            let ty = runtime_repr_ty_in_env(db, env, typed_body.binding_carrier_ty(db, binding));
             if binding.is_mut() && ty.as_enum(db).is_some() {
                 return RuntimeBoundarySpec::ExactTransport(RuntimeClass::object_ref(
                     layout_for_ty_in_env(db, env, ty),
@@ -2914,11 +2915,15 @@ pub(crate) fn runtime_param_boundary<'db>(
     }
 }
 
+/// The semantic-IR return type: a projection returns carriers.
 pub(crate) fn semantic_return_ty<'db>(
     db: &'db dyn MirDb,
     semantic: SemanticInstance<'db>,
 ) -> TyId<'db> {
-    semantic.key(db).typed_body(db).result_ty()
+    match semantic.key(db).owner(db) {
+        BodyOwner::Func(func) if func.is_projection(db) => semantic.normalized_result_ty(db),
+        _ => semantic.key(db).typed_body(db).result_ty(),
+    }
 }
 
 pub(crate) fn default_return_class<'db>(
@@ -2927,8 +2932,8 @@ pub(crate) fn default_return_class<'db>(
 ) -> Option<RuntimeClass<'db>> {
     let typed_body = semantic.key(db).typed_body(db);
     let env = RuntimeTypeEnv::for_semantic(db, semantic);
-    let return_borrow_provider = typed_body
-        .result_ty()
+    let result_ty = semantic_return_ty(db, semantic);
+    let return_borrow_provider = result_ty
         .as_borrow(db)
         .and(typed_body.return_borrow_provider());
     let default_space =
@@ -2937,11 +2942,11 @@ pub(crate) fn default_return_class<'db>(
         return Some(provider_class_for_target_in_env(
             db,
             env,
-            Some(typed_body.result_ty()),
+            Some(result_ty),
             default_space,
         ));
     }
-    top_level_class_for_ty_in_env(db, env, typed_body.result_ty(), default_space)
+    top_level_class_for_ty_in_env(db, env, result_ty, default_space)
 }
 
 pub(crate) fn desired_runtime_return_plan<'db>(
@@ -2950,13 +2955,10 @@ pub(crate) fn desired_runtime_return_plan<'db>(
 ) -> RuntimeVisibleReturnPlan<'db> {
     let typed_body = semantic.key(db).typed_body(db);
     let env = RuntimeTypeEnv::for_semantic(db, semantic);
-    let return_borrow_provider = typed_body
-        .result_ty()
-        .as_borrow(db)
-        .and(typed_body.return_borrow_provider());
+    let ty = semantic_return_ty(db, semantic);
+    let return_borrow_provider = ty.as_borrow(db).and(typed_body.return_borrow_provider());
     let default_space =
         return_borrow_provider.map_or(AddressSpaceKind::Memory, address_space_from_provider);
-    let ty = typed_body.result_ty();
     if return_borrow_provider.is_some() {
         return RuntimeVisibleReturnPlan::PassActual;
     }
@@ -3014,8 +3016,8 @@ mod tests {
     use hir::{
         analysis::semantic::{
             EffectProviderSubst, GenericSubst, ImplEnv, NEffectArg, NPlace, NPlaceBase, NRootKind,
-            NStatementKind, NTerminatorKind, SemanticCalleeRef, SemanticInstance,
-            SemanticInstanceKey, get_or_build_semantic_instance, owner_effect_bindings,
+            NStatementKind, SemanticCalleeRef, SemanticInstance, SemanticInstanceKey,
+            get_or_build_semantic_instance, owner_effect_bindings,
             resolved_provider_binding_for_instance_effect, root_semantic_instance_key,
         },
         analysis::ty::{
@@ -3526,14 +3528,7 @@ fn caller(_ x: Slot<7>) { <bool as Has>::take(x) }
             .normalized
             .blocks
             .iter()
-            .filter_map(|block| match &block.terminator.kind {
-                NTerminatorKind::Return(Some(value)) => normalized.runtime_operand(*value),
-                NTerminatorKind::Goto(_)
-                | NTerminatorKind::Branch { .. }
-                | NTerminatorKind::MatchEnum { .. }
-                | NTerminatorKind::Assert { .. }
-                | NTerminatorKind::Return(None) => None,
-            })
+            .filter_map(|block| normalized.runtime_operand(block.terminator.kind.returned()?))
             .map(|operand| {
                 selected_visible_return_for_operand(env, operand, &return_plan, &inferred.carriers)
                     .unwrap_or_else(|| {
@@ -4373,163 +4368,6 @@ uses (slot: Slot<u256>)
             },
         }
     }
-
-    #[test]
-    fn inner_take_call_uses_the_same_runtime_key_and_return_class_as_lowering() {
-        let mut db = DriverDataBase::default();
-        let file_url = Url::parse(
-            "file:///inner_take_call_uses_the_same_runtime_key_and_return_class_as_lowering.fe",
-        )
-        .unwrap();
-        db.workspace().touch(
-            &mut db,
-            file_url.clone(),
-            Some(
-                include_str!(
-                    "../../../../fe/tests/fixtures/fe_test/view_param_local_ref_take_reverse.fe"
-                )
-                .to_string(),
-            ),
-        );
-        let file = db
-            .workspace()
-            .get(&db, &file_url)
-            .expect("file should be loaded");
-        let top_mod = db.top_mod(file);
-        let sum_last4 = semantic_instance_for_named_func(&db, top_mod, "sum_last4");
-        let (semantic, instance) = runtime_instance_for_semantic(&db, sum_last4)
-            .calls(&db)
-            .iter()
-            .find_map(|call| {
-                let semantic = call.callee.key(&db).semantic(&db)?;
-                match semantic.key(&db).owner(&db) {
-                    BodyOwner::Func(func)
-                        if func
-                            .name(&db)
-                            .to_opt()
-                            .is_some_and(|name| name.data(&db) == "take_u256") =>
-                    {
-                        Some((semantic, call.callee))
-                    }
-                    _ => None,
-                }
-            })
-            .expect("sum_last4 should call specialized take_u256");
-        let normalized = normalize_semantic_body(&db, semantic)
-            .unwrap_or_else(|err| panic!("failed to normalize specialized take_u256: {err:?}"));
-        let facts = BodyStaticFacts::new(&db, &normalized);
-        let env = BodyEnv::new(&db, &normalized, &facts);
-        let params = instance.key(&db).params(&db);
-        let inferred = LocalStateInferer::new(
-            env,
-            params,
-            &runtime_param_locals(&db, semantic, &normalized.source, params),
-        )
-        .run();
-        let (call_dst, args, effect_args, call_facts) = normalized
-            .normalized
-            .blocks
-            .iter()
-            .enumerate()
-            .find_map(|(block_idx, block)| {
-                block
-                    .statements
-                    .iter()
-                    .enumerate()
-                    .find_map(|(stmt_idx, stmt)| {
-                        let NStatementKind::Define { result, expr } = &stmt.kind else {
-                            return None;
-                        };
-                        let NExpr::Call {
-                            callee,
-                            args,
-                            effect_args,
-                            ..
-                        } = expr
-                        else {
-                            return None;
-                        };
-                        let BodyOwner::Func(func) = callee.key.owner(&db) else {
-                            return None;
-                        };
-                        if func
-                            .name(&db)
-                            .to_opt()
-                            .is_none_or(|name| name.data(&db) != "take")
-                        {
-                            return None;
-                        }
-                        let ExprStaticFacts::Call(call_facts) =
-                            facts.expr(block_idx, stmt_idx).unwrap_or_else(|| {
-                                panic!("missing staged call facts for {block_idx}:{stmt_idx}")
-                            })
-                        else {
-                            panic!("inner take expression should keep staged call facts");
-                        };
-                        Some((
-                            normalized.value_local(*result)?,
-                            args.clone(),
-                            effect_args.clone(),
-                            call_facts.clone(),
-                        ))
-                    })
-            })
-            .expect("specialized take_u256 should contain an inner call to take");
-        let mut class_cache = InferClassCache::new(normalized.locals.len());
-        let input_plan = call_input_plan_for_test(&db, &normalized, &call_facts, &effect_args);
-        let inferred_param_classes =
-            RuntimeArgSelector::new(env, &inferred.carriers, Some(&mut class_cache))
-                .selected_call_inputs(&args, &effect_args, &input_plan)
-                .into_iter()
-                .map(|arg| arg.class)
-                .collect::<Vec<_>>();
-        let lowered_take = instance
-            .calls(&db)
-            .iter()
-            .find_map(|call| {
-                let semantic = call.callee.key(&db).semantic(&db)?;
-                match semantic.key(&db).owner(&db) {
-                    BodyOwner::Func(func)
-                        if func
-                            .name(&db)
-                            .to_opt()
-                            .is_some_and(|name| name.data(&db) == "take") =>
-                    {
-                        Some(call.callee)
-                    }
-                    _ => None,
-                }
-            })
-            .expect("specialized take_u256 should lower an inner call to take");
-        let inferred_dst_class = match inferred.carriers.get(call_dst.index()) {
-            Some(RuntimeCarrier::Value(class)) => Some(class.clone()),
-            Some(RuntimeCarrier::Erased) | None => None,
-        };
-        let lowered_dst_class = match instance.body(&db).locals.get(call_dst.index()) {
-            Some(local) => match &local.carrier {
-                RuntimeCarrier::Value(class) => Some(class.clone()),
-                RuntimeCarrier::Erased => None,
-            },
-            None => None,
-        };
-        let lowered_return_class = declaration_runtime_return_class(&db, lowered_take.key(&db));
-
-        assert_eq!(
-            inferred_param_classes,
-            *lowered_take.key(&db).params(&db),
-            "infer-time call classification should build the same runtime key as lowering for take_u256 -> take:\ninferred_param_classes={inferred_param_classes:#?}\nlowered_key={:#?}",
-            lowered_take.key(&db),
-        );
-        assert_eq!(
-            inferred_dst_class, lowered_dst_class,
-            "infer-time dst carrier should match the lowered call-result carrier for take_u256 -> take:\ninferred_dst_class={inferred_dst_class:#?}\nlowered_dst_class={lowered_dst_class:#?}",
-        );
-        assert_eq!(
-            inferred_dst_class, lowered_return_class,
-            "infer-time dst carrier should match the specialized callee return class for take_u256 -> take:\ninferred_dst_class={inferred_dst_class:#?}\nlowered_return_class={lowered_return_class:#?}",
-        );
-    }
-
     #[test]
     fn own_scalar_call_inputs_materialize_provider_backed_direct_values() {
         let mut db = DriverDataBase::default();
