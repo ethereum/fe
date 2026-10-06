@@ -281,3 +281,60 @@ mod strings {
     let reformatted = format_str(&formatted, &Config::default()).expect("reformat should succeed");
     assert_eq!(reformatted, formatted, "formatting is not stable");
 }
+
+/// Formats `source`, checks the result against `expected`, and checks that it
+/// parses and formats to itself. For syntax that the tree-sitter grammar does
+/// not accept yet, which rules out a file in `tests/fixtures`.
+fn assert_formats_to(source: &str, expected: &str) {
+    let formatted = format_str(source, &Config::default()).expect("format should succeed");
+    assert_eq!(formatted, expected);
+
+    let (_, errors) = parse_source_file(&formatted, RecoveryMode::NoRecover);
+    assert!(errors.is_empty(), "{errors:#?}\n{formatted}");
+    assert_eq!(
+        format_str(&formatted, &Config::default()).expect("reformat should succeed"),
+        formatted,
+    );
+}
+
+#[test]
+fn for_loop_attributes_are_kept() {
+    let source = r#"
+fn sum(xs: [u256; 4]) -> u256 {
+    var total: u256 = 0
+    #[unroll(never)]
+    for x in xs {
+        total += x
+    }
+    #[unroll]
+       #[unroll(never)]
+    for   x   in   xs {}
+    for x in xs {
+        #[unroll(never)]
+        for y in xs {
+            // body comment
+        }
+    }
+    total
+}
+"#;
+    let expected = r#"fn sum(xs: [u256; 4]) -> u256 {
+    var total: u256 = 0
+    #[unroll(never)]
+    for x in xs {
+        total += x
+    }
+    #[unroll]
+    #[unroll(never)]
+    for x in xs {}
+    for x in xs {
+        #[unroll(never)]
+        for y in xs {
+            // body comment
+        }
+    }
+    total
+}
+"#;
+    assert_formats_to(source, expected);
+}
